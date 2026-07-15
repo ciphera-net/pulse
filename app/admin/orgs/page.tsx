@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { listAdminOrgs, type AdminOrgSummary } from '@/lib/api/admin'
+import { formatPlanName } from '@/lib/plans'
 import { Button, LoadingOverlay, toast } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 import { formatDate } from '@/lib/utils/formatDate'
@@ -66,7 +67,7 @@ export default function AdminOrgsPage() {
                 {orgs.map((org) => (
                   <tr key={org.organization_id} className="hover:bg-neutral-900/50">
                     <td className="px-4 py-3 text-white font-medium">
-                      {org.business_name || 'N/A'}
+                      {org.business_name || <span className="italic text-neutral-500">Unnamed</span>}
                     </td>
                     <td className="px-4 py-3">
                       <CopyableOrgId id={org.organization_id} />
@@ -78,11 +79,11 @@ export default function AdminOrgsPage() {
                         org.plan_id === 'solo' ? 'bg-green-900/30 text-green-400' :
                         'bg-neutral-800 text-neutral-400'
                       }`}>
-                        {org.plan_id}
+                        {formatPlanName(org.plan_id)}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-neutral-300">
-                      {org.subscription_status || '—'}
+                      {org.subscription_status || (org.plan_id === 'free' ? <span className="text-neutral-500">no subscription</span> : '—')}
                     </td>
                     <td className="px-4 py-3 text-neutral-300">
                       {new Intl.NumberFormat().format(org.pageview_limit)}

@@ -30,6 +30,8 @@ const REASON_COLORS: Record<string, string> = {
   heuristic: 'bg-orange-900/30 text-orange-400',
   velocity: 'bg-orange-900/30 text-orange-400',
   delayed_eval: 'bg-yellow-900/30 text-yellow-400',
+  fingerprint_uniformity: 'bg-orange-900/30 text-orange-400',
+  fingerprint_zero_engagement: 'bg-orange-900/30 text-orange-400',
   manual: 'bg-neutral-800 text-neutral-400',
 }
 
@@ -59,8 +61,25 @@ const SOURCE_COLORS: Record<string, string> = {
   manual: 'bg-neutral-800 text-neutral-400',
 }
 
+// * Every Cerberus reason gets a human label; the fallback Title-Cases any
+// * future enum so raw snake_case never reaches the admin UI again.
 const REASON_LABELS: Record<string, string> = {
+  bot_ua: 'Bot user-agent',
+  spam_keyword: 'Spam keyword',
+  reputation: 'Reputation',
+  heuristic: 'Heuristic',
   velocity: 'Velocity',
+  delayed_eval: 'Delayed evaluation',
+  fingerprint_uniformity: 'Fingerprint uniformity',
+  fingerprint_zero_engagement: 'Zero engagement',
+  manual: 'Manual',
+}
+
+function humanizeReason(reason: string): string {
+  return REASON_LABELS[reason] ?? reason
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
 }
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -123,7 +142,7 @@ function OverviewTab({ stats, loading }: { stats: QuarantineStats | null; loadin
                 .sort(([, a], [, b]) => b - a)
                 .map(([reason, count]) => (
                   <li key={reason} className="flex items-center justify-between">
-                    <Badge label={REASON_LABELS[reason] || reason} colorClass={REASON_COLORS[reason]} />
+                    <Badge label={humanizeReason(reason)} colorClass={REASON_COLORS[reason]} />
                     <span className="text-sm text-white tabular-nums">{count.toLocaleString()}</span>
                   </li>
                 ))}
@@ -201,8 +220,8 @@ function EventsTab() {
           className="rounded-none border border-neutral-800 bg-neutral-900 px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-neutral-600"
         >
           <option value="">All reasons</option>
-          {['bot_ua', 'spam_keyword', 'reputation', 'heuristic', 'velocity', 'delayed_eval', 'manual'].map((r) => (
-            <option key={r} value={r}>{r}</option>
+          {['bot_ua', 'spam_keyword', 'reputation', 'heuristic', 'velocity', 'delayed_eval', 'fingerprint_uniformity', 'fingerprint_zero_engagement', 'manual'].map((r) => (
+            <option key={r} value={r}>{humanizeReason(r)}</option>
           ))}
         </select>
 
@@ -278,7 +297,7 @@ function EventsTab() {
                       {ev.referrer || '—'}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge label={REASON_LABELS[ev.detection_reason] || ev.detection_reason} colorClass={REASON_COLORS[ev.detection_reason]} />
+                      <Badge label={humanizeReason(ev.detection_reason)} colorClass={REASON_COLORS[ev.detection_reason]} />
                     </td>
                     <td className="px-4 py-3">
                       <Badge label={ev.detection_method} colorClass={METHOD_COLORS[ev.detection_method]} />

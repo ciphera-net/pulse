@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Smoke — MPA</title>
+  <!-- Point the tracker at the mock ingest (this same origin) so NO event ever
+       reaches real Pulse ingest. domain is a reserved test hostname. -->
+  <script>window.pulseConfig = { api: location.origin, domain: 'smoke-test.invalid' };</script>
+  <script defer src="/script.js"></script>
+</head>
+<body>
+  <h1>MPA sample</h1>
+  <p>Full page load — expects one pageview.</p>
+  <a id="outbound" href="https://example.com/">outbound link</a>
+  <a id="download" href="/report.pdf">download</a>
+</body>
+</html>

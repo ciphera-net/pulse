@@ -1,10 +1,9 @@
-'use client'
-
-import { motion } from 'framer-motion'
 import Image from 'next/image'
-import { Check, X } from '@phosphor-icons/react'
+import { CheckIcon, XIcon } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 
+// Sentiment kept: a green check reads "yes/good", a red X reads "no/tradeoff".
+// Pulse's own column leads with the primary accent on its top edge.
 const pulseFeatures = [
   { label: 'No cookies required', has: true },
   { label: 'GDPR compliant by default', has: true },
@@ -31,82 +30,57 @@ const gaFeatures = [
 
 export default function ComparisonCards() {
   return (
-    <section className="py-20 lg:py-32 border-t border-white/[0.04]">
-      <div className="container mx-auto px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-16"
-        >
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white leading-tight mb-4">
-            How Pulse compares.
-          </h2>
-          <p className="text-lg text-neutral-400 max-w-2xl mx-auto">
-            Privacy-first analytics doesn&apos;t mean less insight. See how Pulse stacks up.
-          </p>
-        </motion.div>
-
-        <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-          {/* Pulse — highlighted */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="glass-surface rounded-none border-brand-orange/20 p-8 relative overflow-hidden"
-          >
-            <div className="absolute top-0 left-0 right-0 h-[3px] bg-brand-orange" />
-            <div className="flex items-center gap-3 mb-6">
-              <Image src={cdnUrl('/pulse_icon_no_margins.png')} alt="Pulse" width={40} height={40} className="rounded-none" unoptimized />
-              <div>
-                <h3 className="text-xl font-bold text-white">Pulse</h3>
-                <p className="text-xs text-brand-orange">Privacy-first analytics</p>
-              </div>
-            </div>
-            <ul className="space-y-4">
-              {pulseFeatures.map((f) => (
-                <li key={f.label} className="flex items-center gap-3">
-                  <Check weight="bold" className="w-5 h-5 text-brand-orange shrink-0" />
-                  <span className="text-neutral-300 text-sm">{f.label}</span>
-                </li>
-              ))}
-            </ul>
-          </motion.div>
-
-          {/* Google Analytics — muted */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="glass-surface rounded-none p-8"
-          >
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-none bg-neutral-800 flex items-center justify-center text-lg">
-                📊
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-white">Google Analytics</h3>
-                <p className="text-xs text-neutral-500">Traditional tracking</p>
-              </div>
-            </div>
-            <ul className="space-y-4">
-              {gaFeatures.map((f) => (
-                <li key={f.label} className="flex items-center gap-3">
-                  {f.has ? (
-                    <Check weight="bold" className="w-5 h-5 text-green-500 shrink-0" />
-                  ) : (
-                    <X weight="bold" className="w-5 h-5 text-red-500 shrink-0" />
-                  )}
-                  <span className="text-neutral-400 text-sm">{f.label}</span>
-                </li>
-              ))}
-            </ul>
-          </motion.div>
+    <div className="mt-12 grid gap-px border border-border bg-border md:grid-cols-2">
+      {/* Pulse — highlighted with the primary top edge */}
+      <div className="relative bg-card p-8">
+        <div aria-hidden="true" className="absolute inset-x-0 top-0 h-[3px] bg-primary" />
+        <div className="mb-6 flex items-center gap-3">
+          <Image
+            src={cdnUrl('/pulse_icon_no_margins.png')}
+            alt="Pulse"
+            width={40}
+            height={40}
+            unoptimized
+          />
+          <div>
+            <h3 className="text-xl font-bold text-foreground">Pulse</h3>
+            <p className="font-mono text-xs text-primary">Privacy-first analytics</p>
+          </div>
         </div>
+        <ul className="space-y-4">
+          {pulseFeatures.map((f) => (
+            <li key={f.label} className="flex items-center gap-3">
+              <CheckIcon aria-hidden="true" className="h-5 w-5 shrink-0 text-green-500" />
+              <span className="text-sm text-foreground/90">{f.label}</span>
+            </li>
+          ))}
+        </ul>
       </div>
-    </section>
+
+      {/* Google Analytics — muted */}
+      <div className="bg-background p-8">
+        <div className="mb-6 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center border border-border bg-muted text-lg">
+            📊
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-foreground">Google Analytics</h3>
+            <p className="font-mono text-xs text-muted-foreground">Traditional tracking</p>
+          </div>
+        </div>
+        <ul className="space-y-4">
+          {gaFeatures.map((f) => (
+            <li key={f.label} className="flex items-center gap-3">
+              {f.has ? (
+                <CheckIcon aria-hidden="true" className="h-5 w-5 shrink-0 text-green-500" />
+              ) : (
+                <XIcon aria-hidden="true" className="h-5 w-5 shrink-0 text-red-500" />
+              )}
+              <span className="text-sm text-muted-foreground">{f.label}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
   )
 }

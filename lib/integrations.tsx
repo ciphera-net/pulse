@@ -21,7 +21,69 @@ export type IntegrationCategory =
   | 'platform'
   | 'hosting'
 
-export interface Integration {
+/**
+ * Support tier — the honest signal of how well-proven an install path is.
+ * `verified`         first-class, hand-verified install path (script tag or
+ *                    official plugin). `verifiedAt` carries the CI-freshness
+ *                    stamp once the Playwright harness runs (null until then).
+ * `standard-snippet` the universal tag works via head injection; documented
+ *                    but not CI-gated.
+ * `plan-gated`       requires a paid plan / connected domain to inject code.
+ * `special-handling` needs a platform-specific artifact or has real caveats
+ *                    (Shopify checkout Custom Pixel, AMP config, GTM, or a
+ *                    hosted platform that does not accept a raw script tag).
+ */
+export type SupportTier =
+  | 'verified'
+  | 'standard-snippet'
+  | 'plan-gated'
+  | 'special-handling'
+
+export type InstallMethod =
+  | 'script-tag'
+  | 'plugin'
+  | 'custom-code-plan-gated'
+  | 'checkout-sandbox'
+  | 'amp-config'
+  | 'gtm-tag'
+
+/** How to install on a given platform — the single source of truth for the
+ *  snippet, moved off ScriptSetupBlock so registry, install UI, and docs can't
+ *  drift apart. `DOMAIN` in `code` is replaced with the real domain at render. */
+export interface FrameworkSnippet {
+  /** Where to paste it (e.g. `app/layout.tsx`, `Code Injection`). */
+  label: string
+  /** Copy-paste code block, if the platform needs framework-specific wiring. */
+  code?: string
+  /** Prose note for plan-gated / special-handling platforms. */
+  note?: string
+  /** Optional call to action (e.g. install the official plugin). */
+  cta?: { text: string; url: string }
+}
+
+/** Install/trust metadata merged onto every registry entry. Kept in the
+ *  central INSTALL_META table so that the merge guard forces EVERY integration
+ *  to declare a tier (the audit is the point) — a missing entry throws at
+ *  module load, failing the build rather than silently shipping. */
+export interface InstallMeta {
+  supportTier: SupportTier
+  installMethod: InstallMethod
+  /** Help-centre doc slug (help.ciphera.net/docs/pulse/<docsSlug>), or `null`
+   *  to SURFACE the gap — never `''`. */
+  docsSlug: string | null
+  /** ISO timestamp of the last CI verification, or `null` if never CI-proven.
+   *  A tier of `verified` with `verifiedAt: null` means "first-class support,
+   *  automated re-verification pending" — never a false CI claim. */
+  verifiedAt: string | null
+  /** Whether to offer this platform in the install-flow framework picker. */
+  showInPicker: boolean
+  /** Ordering within the picker (lower = earlier); `null` = long tail. */
+  pickerRank: number | null
+  /** The install snippet, or `null` if this platform has no dedicated one. */
+  snippet: FrameworkSnippet | null
+}
+
+export interface Integration extends InstallMeta {
   id: string
   name: string
   description: string
@@ -38,8 +100,11 @@ export interface Integration {
   officialUrl: string
   /** Related integration IDs for cross-linking */
   relatedIds: string[]
-  /** Whether this integration has a dedicated guide page */
 }
+
+/** The registry entry as authored in the literal below — everything except the
+ *  install/trust metadata, which is merged in from INSTALL_META. */
+type RawIntegration = Omit<Integration, keyof InstallMeta>
 
 // * ─── Category labels (for UI grouping) ──────────────────────────────────────
 
@@ -65,7 +130,7 @@ export const categoryOrder: IntegrationCategory[] = [
 
 // * ─── Integration registry ──────────────────────────────────────────────────
 
-export const integrations: Integration[] = [
+const rawIntegrations: RawIntegration[] = [
   // * ─── JavaScript Frameworks ────────────────────────────────────────────────
   {
     id: 'nextjs',
@@ -1165,6 +1230,281 @@ export const integrations: Integration[] = [
   },
 ]
 
+// * ─── Install snippets (single source of truth) ──────────────────────────────
+// Moved off ScriptSetupBlock so the registry, install UI, and docs cannot drift.
+// `DOMAIN` is replaced with the real site domain when rendered.
+
+const SNIPPETS: Record<string, FrameworkSnippet> = {
+  nextjs: {
+    label: 'app/layout.tsx',
+    code: `import Script from 'next/script'
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        <Script
+          defer
+          data-domain="DOMAIN"
+          src="https://js.ciphera.net/script.js"
+          strategy="afterInteractive"
+        />
+      </body>
+    </html>
+  )
+}`,
+  },
+  nuxt: {
+    label: 'nuxt.config.ts',
+    code: `export default defineNuxtConfig({
+  app: {
+    head: {
+      script: [
+        {
+          defer: true,
+          'data-domain': 'DOMAIN',
+          src: 'https://js.ciphera.net/script.js',
+        },
+      ],
+    },
+  },
+})`,
+  },
+  astro: {
+    label: 'src/layouts/Layout.astro',
+    code: `---
+// Your frontmatter
+---
+<html>
+  <head>
+    <script
+      defer
+      data-domain="DOMAIN"
+      src="https://js.ciphera.net/script.js"
+    ></script>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>`,
+  },
+  svelte: {
+    label: 'src/app.html',
+    code: `<!doctype html>
+<html>
+  <head>
+    <script
+      defer
+      data-domain="DOMAIN"
+      src="https://js.ciphera.net/script.js"
+    ></script>
+    %sveltekit.head%
+  </head>
+  <body>
+    %sveltekit.body%
+  </body>
+</html>`,
+  },
+  remix: {
+    label: 'app/root.tsx',
+    code: `export default function App() {
+  return (
+    <html>
+      <head>
+        <Meta />
+        <Links />
+        <script
+          defer
+          data-domain="DOMAIN"
+          src="https://js.ciphera.net/script.js"
+        />
+      </head>
+      <body>
+        <Outlet />
+        <Scripts />
+      </body>
+    </html>
+  )
+}`,
+  },
+  gatsby: {
+    label: 'gatsby-ssr.js',
+    code: `export const onRenderBody = ({ setHeadComponents }) => {
+  setHeadComponents([
+    <script
+      key="pulse"
+      defer
+      data-domain="DOMAIN"
+      src="https://js.ciphera.net/script.js"
+    />,
+  ])
+}`,
+  },
+  angular: { label: 'src/index.html' },
+  vue: { label: 'index.html' },
+  react: { label: 'public/index.html' },
+  hugo: { label: 'layouts/partials/head.html' },
+  jekyll: { label: '_includes/head.html' },
+  laravel: { label: 'resources/views/layouts/app.blade.php' },
+  django: { label: 'base.html' },
+  wordpress: {
+    label: 'WordPress plugin',
+    note: 'Install the Pulse Analytics plugin from your WordPress dashboard or wordpress.org — no code required.',
+    cta: { text: 'Install Plugin', url: 'https://wordpress.org/plugins/pulse-analytics/' },
+  },
+  woocommerce: {
+    label: 'WordPress plugin',
+    note: 'WooCommerce runs on WordPress — install the Pulse Analytics plugin and it covers your whole store.',
+    cta: { text: 'Install Plugin', url: 'https://wordpress.org/plugins/pulse-analytics/' },
+  },
+  ghost: { label: 'Code Injection', note: 'Add via Settings → Code Injection → Site Header. Works on self-hosted Ghost and every Ghost(Pro) tier.' },
+  drupal: { label: 'html.html.twig', note: 'Add to your theme’s html.html.twig template, or use a small custom module.' },
+  joomla: { label: 'index.php', note: 'Add via Extensions → Templates → your template → index.php, before </head>.' },
+  shopify: {
+    label: 'Custom Pixel (checkout) + theme.liquid (storefront)',
+    note: 'Storefront: add the tag to theme.liquid before </head>. Checkout (Plus and non-Plus): the checkout no longer accepts theme scripts — add a Customer Events Custom Pixel that forwards page_viewed and checkout_completed. See the guide.',
+  },
+  wix: { label: 'Custom Code', note: 'Add via Settings → Custom Code → Head. Requires a paid Wix plan with a connected domain.' },
+  squarespace: { label: 'Code Injection', note: 'Add via Settings → Advanced → Code Injection → Header. Requires a Business plan or higher.' },
+  webflow: { label: 'Custom Code', note: 'Add via Project Settings → Custom Code → Head Code. Requires a paid Site plan (the free Starter plan can’t inject custom code).' },
+  framer: { label: 'Custom Code', note: 'Add via Site Settings → Custom Code → head. Available on all plans; Framer’s canvas routing is an SPA and is covered by the universal tag.' },
+  gtm: {
+    label: 'Custom HTML tag',
+    note: 'Add a Custom HTML tag firing on All Pages, using window.pulseConfig (GTM may strip data-* attributes). Note: routing analytics through Google Tag Manager puts a US provider in your critical path.',
+  },
+  amp: {
+    label: 'amp-analytics',
+    note: 'AMP forbids author JavaScript, so the universal tag can’t run. Support requires an amp-analytics JSON config and a beacon ingest path — this is on the roadmap, not yet available.',
+  },
+  strapi: { label: 'Frontend head', note: 'Strapi is a headless CMS with no rendered <head> of its own — add the Pulse tag in the frontend app that consumes it (Next.js, Nuxt, etc.).' },
+  sanity: { label: 'Frontend head', note: 'Sanity is headless — add the Pulse tag in the frontend that renders your content, not in Sanity Studio.' },
+  contentful: { label: 'Frontend head', note: 'Contentful is headless — add the Pulse tag in the frontend that consumes the API.' },
+  payload: { label: 'Frontend head', note: 'Payload is headless — add the Pulse tag in the frontend app it powers.' },
+  storyblok: { label: 'Frontend head', note: 'Storyblok is headless — add the Pulse tag in the frontend that renders your stories.' },
+  prismic: { label: 'Frontend head', note: 'Prismic is headless — add the Pulse tag in the frontend that consumes the API.' },
+  notion: { label: 'Not directly supported', note: 'Native Notion pages don’t allow custom <head> scripts. Use a Notion-site wrapper (e.g. a hosting layer that adds a head tag) and place the Pulse tag there.' },
+  substack: { label: 'Not directly supported', note: 'Substack doesn’t allow custom script injection, so the Pulse tag can’t be added to a Substack-hosted publication.' },
+  linktree: { label: 'Not directly supported', note: 'Linktree doesn’t allow custom script injection, so the Pulse tag can’t be added.' },
+}
+
+// * ─── Install/trust metadata (the forced tier audit) ─────────────────────────
+// Every registry id MUST appear here — the merge below throws at module load
+// otherwise, so a new integration cannot ship without an explicit tier. Tuple:
+// [supportTier, installMethod, docsSlug, showInPicker, pickerRank].
+type TierRow = [SupportTier, InstallMethod, string | null, boolean, number | null]
+
+const TIER_TABLE: Record<string, TierRow> = {
+  // Frameworks
+  nextjs: ['verified', 'script-tag', 'framework-guides', true, 1],
+  react: ['verified', 'script-tag', 'framework-guides', true, 2],
+  vue: ['verified', 'script-tag', 'framework-guides', true, 3],
+  nuxt: ['verified', 'script-tag', 'framework-guides', true, 4],
+  svelte: ['verified', 'script-tag', 'framework-guides', true, 5],
+  astro: ['verified', 'script-tag', 'framework-guides', true, 6],
+  angular: ['standard-snippet', 'script-tag', 'framework-guides', true, 7],
+  remix: ['standard-snippet', 'script-tag', 'framework-guides', true, 8],
+  solidjs: ['standard-snippet', 'script-tag', 'script-installation', true, null],
+  qwik: ['standard-snippet', 'script-tag', 'script-installation', true, null],
+  preact: ['standard-snippet', 'script-tag', 'script-installation', true, null],
+  htmx: ['standard-snippet', 'script-tag', 'script-installation', true, null],
+  ember: ['standard-snippet', 'script-tag', 'script-installation', true, null],
+  flutter: ['special-handling', 'script-tag', null, false, null],
+  // Backend
+  laravel: ['verified', 'script-tag', 'framework-guides', true, 9],
+  django: ['verified', 'script-tag', 'framework-guides', true, 10],
+  rails: ['standard-snippet', 'script-tag', 'script-installation', true, null],
+  flask: ['standard-snippet', 'script-tag', 'script-installation', true, null],
+  express: ['standard-snippet', 'script-tag', 'script-installation', true, null],
+  // Static site generators
+  gatsby: ['standard-snippet', 'script-tag', 'framework-guides', true, null],
+  hugo: ['verified', 'script-tag', 'framework-guides', true, null],
+  eleventy: ['standard-snippet', 'script-tag', 'script-installation', true, null],
+  jekyll: ['standard-snippet', 'script-tag', 'framework-guides', true, null],
+  docusaurus: ['standard-snippet', 'script-tag', 'script-installation', true, null],
+  vitepress: ['standard-snippet', 'script-tag', 'script-installation', true, null],
+  hexo: ['standard-snippet', 'script-tag', 'script-installation', false, null],
+  mkdocs: ['standard-snippet', 'script-tag', 'script-installation', false, null],
+  gitbook: ['plan-gated', 'custom-code-plan-gated', null, false, null],
+  gridsome: ['standard-snippet', 'script-tag', 'script-installation', false, null],
+  readthedocs: ['standard-snippet', 'script-tag', 'script-installation', false, null],
+  sphinx: ['standard-snippet', 'script-tag', 'script-installation', false, null],
+  readme: ['plan-gated', 'custom-code-plan-gated', null, false, null],
+  // CMS & blogging
+  wordpress: ['verified', 'plugin', 'wordpress-plugin', true, 11],
+  ghost: ['verified', 'script-tag', 'framework-guides', true, null],
+  drupal: ['standard-snippet', 'script-tag', 'framework-guides', true, null],
+  joomla: ['standard-snippet', 'script-tag', 'framework-guides', true, null],
+  strapi: ['special-handling', 'script-tag', null, false, null],
+  sanity: ['special-handling', 'script-tag', null, false, null],
+  contentful: ['special-handling', 'script-tag', null, false, null],
+  payload: ['special-handling', 'script-tag', null, false, null],
+  craftcms: ['standard-snippet', 'script-tag', 'script-installation', false, null],
+  statamic: ['standard-snippet', 'script-tag', 'script-installation', false, null],
+  typo3: ['standard-snippet', 'script-tag', 'script-installation', false, null],
+  kirby: ['standard-snippet', 'script-tag', 'script-installation', false, null],
+  grav: ['standard-snippet', 'script-tag', 'script-installation', false, null],
+  umbraco: ['standard-snippet', 'script-tag', 'script-installation', false, null],
+  storyblok: ['special-handling', 'script-tag', null, false, null],
+  prismic: ['special-handling', 'script-tag', null, false, null],
+  // eCommerce
+  shopify: ['special-handling', 'checkout-sandbox', 'framework-guides', true, 12],
+  woocommerce: ['verified', 'plugin', 'wordpress-plugin', true, null],
+  bigcommerce: ['standard-snippet', 'script-tag', 'script-installation', true, null],
+  prestashop: ['standard-snippet', 'script-tag', 'script-installation', false, null],
+  shopware: ['standard-snippet', 'script-tag', 'script-installation', false, null],
+  magento: ['standard-snippet', 'script-tag', 'script-installation', false, null],
+  // Platforms & tools
+  webflow: ['plan-gated', 'custom-code-plan-gated', 'framework-guides', true, null],
+  squarespace: ['plan-gated', 'custom-code-plan-gated', 'framework-guides', true, null],
+  wix: ['plan-gated', 'custom-code-plan-gated', 'framework-guides', true, null],
+  framer: ['special-handling', 'script-tag', 'framework-guides', true, null],
+  carrd: ['plan-gated', 'custom-code-plan-gated', 'script-installation', false, null],
+  blogger: ['standard-snippet', 'script-tag', 'script-installation', false, null],
+  gtm: ['special-handling', 'gtm-tag', 'framework-guides', true, null],
+  notion: ['special-handling', 'custom-code-plan-gated', null, false, null],
+  bubble: ['plan-gated', 'custom-code-plan-gated', 'script-installation', false, null],
+  discourse: ['standard-snippet', 'script-tag', 'script-installation', false, null],
+  hubspot: ['plan-gated', 'custom-code-plan-gated', 'script-installation', false, null],
+  substack: ['special-handling', 'custom-code-plan-gated', null, false, null],
+  linktree: ['special-handling', 'custom-code-plan-gated', null, false, null],
+  weebly: ['plan-gated', 'custom-code-plan-gated', 'script-installation', false, null],
+  amp: ['special-handling', 'amp-config', null, false, null],
+  // Hosting & deployment (the tag lives in your framework's head; the host
+  // serves it as-is — so these point at the generic script-installation guide).
+  'cloudflare-pages': ['standard-snippet', 'script-tag', 'script-installation', false, null],
+  netlify: ['standard-snippet', 'script-tag', 'script-installation', false, null],
+  vercel: ['standard-snippet', 'script-tag', 'script-installation', false, null],
+  'github-pages': ['standard-snippet', 'script-tag', 'script-installation', false, null],
+  render: ['standard-snippet', 'script-tag', 'script-installation', false, null],
+  firebase: ['standard-snippet', 'script-tag', 'script-installation', false, null],
+}
+
+/**
+ * The public registry: raw entries merged with their install/trust metadata.
+ * The merge THROWS if any entry lacks a TIER_TABLE row — that build-breaking
+ * guard is the forced tier audit: no integration ships without a declared tier.
+ */
+export const integrations: Integration[] = rawIntegrations.map((base) => {
+  const row = TIER_TABLE[base.id]
+  if (!row) {
+    throw new Error(
+      `integrations: "${base.id}" has no TIER_TABLE row — every integration must declare a support tier.`,
+    )
+  }
+  const [supportTier, installMethod, docsSlug, showInPicker, pickerRank] = row
+  return {
+    ...base,
+    supportTier,
+    installMethod,
+    docsSlug,
+    verifiedAt: null, // set by the CI verification harness (Stage 4); null = not yet CI-proven
+    showInPicker,
+    pickerRank,
+    snippet: SNIPPETS[base.id] ?? null,
+  }
+})
+
 // * ─── Helpers ────────────────────────────────────────────────────────────────
 
 /** Retrieve a single integration by its route slug. */
@@ -1185,4 +1525,45 @@ export function getGroupedIntegrations(): {
       items: integrations.filter((i) => i.category === cat),
     }))
     .filter((group) => group.items.length > 0)
+}
+
+// * ─── Support-tier presentation ──────────────────────────────────────────────
+
+/** Short, honest label per support tier (mono micro-badge in the UI). */
+export const supportTierLabels: Record<SupportTier, string> = {
+  verified: 'Verified',
+  'standard-snippet': 'Standard',
+  'plan-gated': 'Plan-gated',
+  'special-handling': 'Special',
+}
+
+/** One-line explanation of each tier, for tooltips / the directory legend. */
+export const supportTierDescriptions: Record<SupportTier, string> = {
+  verified: 'First-class, hand-verified install path (script tag or official plugin).',
+  'standard-snippet': 'The universal tag works via a standard head snippet.',
+  'plan-gated': 'Requires a paid plan or connected domain to inject custom code.',
+  'special-handling': 'Needs a platform-specific setup or has caveats — read the guide first.',
+}
+
+/**
+ * Integrations to offer in the install-flow framework picker, ordered by
+ * pickerRank (ranked entries first, then the rest alphabetically). Replaces the
+ * arbitrary `.slice(0, 10)` cutoff with an explicit, honest selection.
+ */
+export function getPickerIntegrations(): Integration[] {
+  return integrations
+    .filter((i) => i.showInPicker)
+    .sort((a, b) => {
+      if (a.pickerRank != null && b.pickerRank != null) return a.pickerRank - b.pickerRank
+      if (a.pickerRank != null) return -1
+      if (b.pickerRank != null) return 1
+      return a.name.localeCompare(b.name)
+    })
+}
+
+/** Build the help-centre URL for an integration, or null if no doc exists. */
+export function integrationDocsUrl(integration: Integration): string | null {
+  return integration.docsSlug
+    ? `https://help.ciphera.net/docs/pulse/${integration.docsSlug}`
+    : null
 }

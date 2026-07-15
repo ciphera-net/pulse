@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { useAuth } from '@/lib/auth/context'
 import { useCan } from '@/lib/auth/permissions'
 import { getAuditLog, type AuditLogEntry } from '@/lib/api/audit'
+import { formatPlanName } from '@/lib/plans'
 import { formatDateTimeShort } from '@/lib/utils/formatDate'
 
 const ACTION_LABELS: Record<string, string> = {
@@ -29,7 +30,9 @@ const ACTION_LABELS: Record<string, string> = {
   member_removed: 'Removed member',
   member_role_changed: 'Changed member role',
   org_updated: 'Updated organization',
-  plan_changed: 'Changed plan',
+  subscription_plan_changed: 'Changed plan',
+  billing_checkout_started: 'Started checkout',
+  admin_plan_granted: 'Plan granted (admin)',
   subscription_cancelled: 'Cancelled subscription',
   subscription_resumed: 'Resumed subscription',
 }
@@ -165,7 +168,11 @@ export default function WorkspaceAuditTab() {
                     {Object.entries(entry.payload).map(([key, value]) => (
                       <span key={key} className="text-xs text-neutral-500">
                         <span className="text-neutral-600">{key.replace(/_/g, ' ')}:</span>{' '}
-                        {formatPayloadValue(value)}
+                        {/* plan ids surface in payloads (plan_id: "solo") — show the
+                            canonical display name, same as the billing card */}
+                        {key === 'plan_id' && typeof value === 'string'
+                          ? formatPlanName(value)
+                          : formatPayloadValue(value)}
                       </span>
                     ))}
                   </div>

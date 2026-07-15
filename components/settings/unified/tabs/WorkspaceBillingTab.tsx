@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button, Input, toast, Spinner, Modal } from '@ciphera-net/facet'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -11,7 +11,7 @@ import { formatDateLong, formatDate } from '@/lib/utils/formatDate'
 import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 import { useCan } from '@/lib/auth/permissions'
-import { formatPlanName } from '@/lib/plans'
+import { formatPlanName, FREE_PAGEVIEW_LIMIT } from '@/lib/plans'
 
 const PAYMENT_METHODS = [
   { id: 'creditcard', label: 'Cards', icons: ['/icons/payment/visa.svg', '/icons/payment/mastercard.svg'] },
@@ -29,6 +29,7 @@ export default function WorkspaceBillingTab() {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('')
+  const methodRefs = useRef<(HTMLButtonElement | null)[]>([])
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [invoicesError, setInvoicesError] = useState<string | null>(null)
   const [invoicesRetry, setInvoicesRetry] = useState(0)
@@ -118,6 +119,16 @@ export default function WorkspaceBillingTab() {
     }
   }
 
+  const onMethodKeyDown = (e: React.KeyboardEvent, index: number) => {
+    let target: number | null = null
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') target = (index + 1) % PAYMENT_METHODS.length
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') target = (index - 1 + PAYMENT_METHODS.length) % PAYMENT_METHODS.length
+    if (target === null) return
+    e.preventDefault()
+    setSelectedPaymentMethod(PAYMENT_METHODS[target].id)
+    methodRefs.current[target]?.focus()
+  }
+
 
   if (isLoading) {
     return (
@@ -142,6 +153,12 @@ export default function WorkspaceBillingTab() {
 
   const isActive = subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing'
   const isCanceled = subscription.subscription_status === 'canceled'
+  const isPastDue = subscription.subscription_status === 'past_due'
+
+  const overLimit =
+    subscription.pageview_limit > 0 &&
+    typeof subscription.pageview_usage === 'number' &&
+    subscription.pageview_usage > subscription.pageview_limit
 
   return (
     <div className="space-y-6">
@@ -170,11 +187,21 @@ export default function WorkspaceBillingTab() {
                 Cancelling
               </span>
             )}
+            {isPastDue && (
+              <span className="px-2 py-0.5 text-xs font-medium rounded-none bg-amber-900/30 text-amber-400 border border-amber-900/50">
+                Past due
+              </span>
+            )}
           </div>
           {canManageBilling ? (
-            <Button variant="default" className="text-sm" onClick={() => router.push(isCanceled ? '/setup/plan' : '/switch')}>
-              {isCanceled ? 'Resubscribe' : 'Change Plan'}
-            </Button>
+            // In past_due, "Change Plan" routes to /switch which bounces (the
+            // switch guard requires an active/trialing subscription). Hide it —
+            // the Update-payment-method CTA below is the correct action here.
+            isPastDue ? null : (
+              <Button variant="default" className="text-sm" onClick={() => router.push(isCanceled ? '/setup/plan' : '/switch')}>
+                {isCanceled ? 'Resubscribe' : 'Change Plan'}
+              </Button>
+            )
           ) : (
             <p className="text-xs text-neutral-500">Only the workspace owner can modify billing.</p>
           )}
@@ -184,7 +211,7 @@ export default function WorkspaceBillingTab() {
           <div className="flex items-start gap-3 p-3 rounded-none bg-red-900/20 border border-red-900/40 text-sm">
             <WarningCircle size={16} weight="fill" className="text-red-400 shrink-0 mt-0.5" />
             <p className="text-red-300">
-              Your {planLabel} plan has expired. You&apos;re now limited to 5,000 pageviews/month on the free tier.
+              Your {planLabel} plan has expired. You&apos;re now limited to {FREE_PAGEVIEW_LIMIT.toLocaleString()} pageviews/month on the free tier.
             </p>
           </div>
         ) : (
@@ -225,6 +252,24 @@ export default function WorkspaceBillingTab() {
         )}
       </div>
 
+      {/* Over-limit usage warning */}
+      {!isCanceled && overLimit && (
+        <div className="flex items-start gap-3 p-3 rounded-none bg-amber-900/20 border border-amber-900/40 text-sm mt-4">
+          <WarningCircle size={16} weight="fill" className="text-amber-400 shrink-0 mt-0.5" />
+          <p className="text-amber-300">
+            You&apos;ve exceeded your monthly pageview limit ({subscription.pageview_usage!.toLocaleString()} of {subscription.pageview_limit.toLocaleString()}).{' '}
+            {canManageBilling ? (
+              <button onClick={() => router.push('/switch')} className="underline font-medium text-amber-200 hover:text-white">
+                Upgrade your plan
+              </button>
+            ) : (
+              'Contact your workspace owner to upgrade the plan.'
+            )}
+            {canManageBilling ? ' to keep collecting data.' : ''}
+          </p>
+        </div>
+      )}
+
       {/* Account credit */}
       {subscription.credit_balance != null && subscription.credit_balance > 0 && (
         <div className="rounded-none border border-green-500/20 bg-green-500/5 px-4 py-3 flex items-center justify-between">
@@ -241,14 +286,32 @@ export default function WorkspaceBillingTab() {
         <div className="flex items-center gap-3 p-3 rounded-none bg-blue-900/20 border border-blue-900/40 text-sm mt-4">
           <ArrowRight size={16} className="text-blue-400 shrink-0" />
           <p className="text-blue-300">
-            Switching to <span className="font-semibold text-white">{subscription.pending_plan_id.charAt(0).toUpperCase() + subscription.pending_plan_id.slice(1)} Plan</span>
+            Plan change to <span className="font-semibold text-white">{formatPlanName(subscription.pending_plan_id)}</span>
             {subscription.pending_limit ? ` (${subscription.pending_limit.toLocaleString()} pageviews/${subscription.pending_interval === 'month' ? 'mo' : 'yr'})` : ''}
-            {subscription.current_period_end ? ` on ${formatDateLong(new Date(subscription.current_period_end))}` : ''}
+            {' '}pending
+            {subscription.current_period_end ? ` — applies ${formatDateLong(new Date(subscription.current_period_end))}` : ''}
           </p>
         </div>
       )}
 
-      {subscription.payment_failed_at && (
+      {isPastDue && (
+        <div className="flex items-start gap-3 p-3 rounded-none bg-amber-900/20 border border-amber-900/40 text-sm mt-4">
+          <WarningCircle size={16} weight="fill" className="text-amber-400 shrink-0 mt-0.5" />
+          <p className="text-amber-300">
+            Payment past due — update your payment method to keep your plan.{' '}
+            {canManageBilling ? (
+              <button onClick={() => { setSelectedPaymentMethod(''); setShowPaymentMethodModal(true) }} className="underline font-medium text-amber-200 hover:text-white">
+                Update payment method
+              </button>
+            ) : (
+              'Please contact your workspace owner to update the payment method.'
+            )}
+          </p>
+        </div>
+      )}
+
+      {/* Only shown when NOT past_due — past_due already conveys the failed payment above. */}
+      {!isPastDue && subscription.payment_failed_at && (
         <div className="flex items-start gap-3 p-3 rounded-none bg-amber-900/20 border border-amber-900/40 text-sm mt-4">
           <WarningCircle size={16} weight="fill" className="text-amber-400 shrink-0 mt-0.5" />
           <p className="text-amber-300">
@@ -296,25 +359,36 @@ export default function WorkspaceBillingTab() {
 
       {/* Payment method selection */}
       <Modal isOpen={showPaymentMethodModal} onClose={() => setShowPaymentMethodModal(false)} title="Choose payment method" className="max-w-sm">
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          {PAYMENT_METHODS.map(method => (
-            <button
-              key={method.id}
-              onClick={() => setSelectedPaymentMethod(method.id)}
-              className={`flex flex-col items-center justify-center gap-1.5 rounded-none border h-[60px] text-xs transition-all duration-base ${
-                selectedPaymentMethod === method.id
-                  ? 'border-brand-orange bg-brand-orange/5 text-white'
-                  : 'border-neutral-700/50 bg-neutral-800/30 text-neutral-400 hover:border-neutral-600'
-              } ease-apple`}
-            >
-              <div className="flex items-center gap-1 bg-white rounded-none px-1.5 py-1">
-                {method.icons.map((icon) => (
-                  <img key={icon} src={cdnUrl(icon)} alt="" className="h-5 w-auto" />
-                ))}
-              </div>
-              {method.label}
-            </button>
-          ))}
+        <div role="radiogroup" aria-label="Payment method" className="grid grid-cols-3 gap-2 mb-4">
+          {PAYMENT_METHODS.map((method, i) => {
+            const selected = selectedPaymentMethod === method.id
+            const isTabStop = selected || (!selectedPaymentMethod && i === 0)
+            return (
+              <button
+                key={method.id}
+                ref={(el) => { methodRefs.current[i] = el }}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                aria-label={method.label}
+                tabIndex={isTabStop ? 0 : -1}
+                onClick={() => setSelectedPaymentMethod(method.id)}
+                onKeyDown={(e) => onMethodKeyDown(e, i)}
+                className={`flex flex-col items-center justify-center gap-1.5 rounded-none border h-[60px] text-xs transition-all duration-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange ${
+                  selected
+                    ? 'border-brand-orange bg-brand-orange/5 text-white'
+                    : 'border-neutral-700/50 bg-neutral-800/30 text-neutral-400 hover:border-neutral-600'
+                } ease-apple`}
+              >
+                <div className="flex items-center gap-1 bg-white rounded-none px-1.5 py-1">
+                  {method.icons.map((icon) => (
+                    <img key={icon} src={cdnUrl(icon)} alt="" className="h-5 w-auto" />
+                  ))}
+                </div>
+                {method.label}
+              </button>
+            )
+          })}
         </div>
         <Button
           variant="default"
@@ -331,9 +405,13 @@ export default function WorkspaceBillingTab() {
         <p className="text-sm text-neutral-400 mb-1">
           Are you sure you want to cancel your subscription?
         </p>
-        {subscription.current_period_end && (
+        {subscription.current_period_end ? (
           <p className="text-sm text-neutral-500 mb-5">
             Your plan will remain active until {formatDateLong(new Date(subscription.current_period_end))}.
+          </p>
+        ) : (
+          <p className="text-sm text-neutral-500 mb-5">
+            You&apos;ll keep access until the end of your current billing period, then move to the free plan.
           </p>
         )}
         <div className="flex justify-end gap-3">
@@ -475,7 +553,7 @@ export default function WorkspaceBillingTab() {
           <div className="rounded-none border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
             {invoices.map(invoice => {
               const isCreditNote = invoice.document_type === 'credit_note'
-              const fmt = new Intl.NumberFormat('en-GB', { style: 'currency', currency: invoice.currency || 'EUR' })
+              const fmt = new Intl.NumberFormat(undefined, { style: 'currency', currency: invoice.currency || 'EUR' })
               return (
                 <div key={invoice.id} className="flex items-center justify-between px-4 py-3 group text-sm">
                   <div className="flex items-center gap-3">

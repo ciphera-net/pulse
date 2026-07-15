@@ -49,15 +49,15 @@ function BarRow({
     <div className="flex items-center gap-3">
       <div className="relative flex-1 h-[30px] flex items-center">
         <div
-          className="absolute inset-y-0 left-0 rounded-none bg-brand-orange/25"
+          className="absolute inset-y-0 left-0 rounded-none bg-primary/25"
           style={{ width: `${pct}%` }}
         />
         <div className="relative z-10 flex items-center gap-2 pl-2.5">
           {icon && <span className="w-4 h-4 flex items-center justify-center shrink-0">{icon}</span>}
-          <span className="text-xs text-white font-medium truncate">{label}</span>
+          <span className="text-xs text-foreground font-medium truncate">{label}</span>
         </div>
       </div>
-      <span className="text-xs text-neutral-400 tabular-nums w-8 text-right shrink-0">{value}</span>
+      <span className="text-xs text-muted-foreground tabular-nums w-8 text-right shrink-0">{value}</span>
     </div>
   )
 }
@@ -79,13 +79,13 @@ export function PagesCard() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Files className="w-4 h-4 text-neutral-400" weight="bold" />
-          <h4 className="text-sm font-bold text-white">Pages</h4>
+          <Files className="w-4 h-4 text-muted-foreground" weight="bold" />
+          <h4 className="text-sm font-bold text-foreground">Pages</h4>
         </div>
         <div className="flex items-center gap-3 text-[10px]">
-          <span className="text-white border-b border-brand-orange pb-0.5">Top Pages</span>
-          <span className="text-neutral-500">Entry</span>
-          <span className="text-neutral-500">Exit</span>
+          <span className="text-foreground border-b border-primary pb-0.5">Top Pages</span>
+          <span className="text-muted-foreground">Entry</span>
+          <span className="text-muted-foreground">Exit</span>
         </div>
       </div>
       <div className="space-y-1.5">
@@ -108,14 +108,14 @@ function getReferrerIcon(name: string, favicon?: string) {
     )
   }
   const lower = name.toLowerCase()
-  if (lower === 'direct') return <Globe className="w-4 h-4 text-neutral-400" />
+  if (lower === 'direct') return <Globe className="w-4 h-4 text-muted-foreground" />
   if (lower.includes('google')) return <GoogleLogo className="w-4 h-4 text-blue-500" />
-  if (lower.includes('twitter') || lower.includes('x')) return <XLogo className="w-4 h-4 text-neutral-200" />
-  if (lower.includes('github')) return <GithubLogo className="w-4 h-4 text-neutral-200" />
+  if (lower.includes('twitter') || lower.includes('x')) return <XLogo className="w-4 h-4 text-muted-foreground" />
+  if (lower.includes('github')) return <GithubLogo className="w-4 h-4 text-muted-foreground" />
   if (lower.includes('youtube')) return <YoutubeLogo className="w-4 h-4 text-red-500" />
   if (lower.includes('reddit')) return <RedditLogo className="w-4 h-4 text-orange-500" />
   if (lower.includes('hacker') || lower.includes('hn')) return <Link className="w-4 h-4 text-orange-400" />
-  return <Globe className="w-4 h-4 text-neutral-400" />
+  return <Globe className="w-4 h-4 text-muted-foreground" />
 }
 
 export function ReferrersCard() {
@@ -132,8 +132,8 @@ export function ReferrersCard() {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <ArrowSquareOut className="w-4 h-4 text-neutral-400" weight="bold" />
-        <h4 className="text-sm font-bold text-white">Referrers</h4>
+        <ArrowSquareOut className="w-4 h-4 text-muted-foreground" weight="bold" />
+        <h4 className="text-sm font-bold text-foreground">Referrers</h4>
       </div>
       <div className="space-y-1.5">
         {data.map((d) => (
@@ -160,28 +160,28 @@ export function LocationsCard() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-neutral-400" weight="bold" />
-          <h4 className="text-sm font-bold text-white">Locations</h4>
+          <MapPin className="w-4 h-4 text-muted-foreground" weight="bold" />
+          <h4 className="text-sm font-bold text-foreground">Locations</h4>
         </div>
         <div className="flex items-center gap-3 text-[10px]">
-          <span className="text-white border-b border-brand-orange pb-0.5">Map</span>
-          <span className="text-neutral-500">Countries</span>
-          <span className="text-neutral-500">Regions</span>
-          <span className="text-neutral-500">Cities</span>
+          <span className="text-foreground border-b border-primary pb-0.5">Map</span>
+          <span className="text-muted-foreground">Countries</span>
+          <span className="text-muted-foreground">Regions</span>
+          <span className="text-muted-foreground">Cities</span>
         </div>
       </div>
-      <div className="relative w-full aspect-[2.2/1] rounded-none bg-neutral-900 overflow-hidden">
+      <div className="relative w-full aspect-[2.2/1] rounded-none bg-card overflow-hidden">
         {MOCK_MARKERS.map((m, i) => (
           <div
             key={i}
-            className="absolute rounded-full"
+            className="absolute"
             style={{
               left: `${m.x}%`,
               top: `${m.y}%`,
               width: m.size,
               height: m.size,
-              background: 'rgba(253, 94, 15, 0.7)',
-              boxShadow: '0 0 8px rgba(253, 94, 15, 0.5), 0 0 20px rgba(253, 94, 15, 0.2)',
+              background: 'rgb(var(--primary) / 0.7)',
+              boxShadow: '0 0 8px rgb(var(--primary) / 0.5), 0 0 20px rgb(var(--primary) / 0.2)',
               transform: 'translate(-50%, -50%)',
             }}
           />
@@ -217,14 +217,14 @@ export function TechnologyCard() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Monitor className="w-4 h-4 text-neutral-400" weight="bold" />
-          <h4 className="text-sm font-bold text-white">Technology</h4>
+          <Monitor className="w-4 h-4 text-muted-foreground" weight="bold" />
+          <h4 className="text-sm font-bold text-foreground">Technology</h4>
         </div>
         <div className="flex items-center gap-3 text-[10px]">
-          <span className="text-white border-b border-brand-orange pb-0.5">Browsers</span>
-          <span className="text-neutral-500">OS</span>
-          <span className="text-neutral-500">Devices</span>
-          <span className="text-neutral-500">Screens</span>
+          <span className="text-foreground border-b border-primary pb-0.5">Browsers</span>
+          <span className="text-muted-foreground">OS</span>
+          <span className="text-muted-foreground">Devices</span>
+          <span className="text-muted-foreground">Screens</span>
         </div>
       </div>
       <div className="space-y-1.5">
@@ -255,11 +255,11 @@ const BUCKET_LABELS: Record<number, string> = { 0: '00:00', 3: '06:00', 6: '12:0
 
 const HIGHLIGHT_COLORS = [
   'transparent',
-  'rgba(253,94,15,0.15)',
-  'rgba(253,94,15,0.35)',
-  'rgba(253,94,15,0.60)',
-  'rgba(253,94,15,0.82)',
-  '#FD5E0F',
+  'rgb(var(--primary) / 0.15)',
+  'rgb(var(--primary) / 0.35)',
+  'rgb(var(--primary) / 0.60)',
+  'rgb(var(--primary) / 0.82)',
+  'rgb(var(--primary) / 1)',
 ]
 
 // Pre-computed mock heatmap grid[day][bucket] with raw values
@@ -304,16 +304,16 @@ export function PeakHoursCard() {
     <div className="space-y-2">
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-neutral-400" weight="bold" />
-          <h4 className="text-sm font-bold text-white">Peak Hours</h4>
+          <Clock className="w-4 h-4 text-muted-foreground" weight="bold" />
+          <h4 className="text-sm font-bold text-foreground">Peak Hours</h4>
         </div>
       </div>
-      <p className="text-[10px] text-neutral-500 mb-2">When your visitors are most active</p>
+      <p className="text-[10px] text-muted-foreground mb-2">When your visitors are most active</p>
 
       <div className="flex flex-col gap-[5px]">
         {MOCK_GRID.map((buckets, dayIdx) => (
           <div key={dayIdx} className="flex items-center gap-1.5">
-            <span className="text-[11px] text-neutral-500 w-7 shrink-0 text-right leading-none">
+            <span className="text-[11px] text-muted-foreground w-7 shrink-0 text-right leading-none">
               {DAYS[dayIdx]}
             </span>
             <div
@@ -329,8 +329,8 @@ export function PeakHoursCard() {
                 return (
                   <div
                     key={bucket}
-                    className={`aspect-square w-full rounded-none border border-neutral-800 ${
-                      isBestCell ? 'ring-1 ring-brand-orange/40' : ''
+                    className={`aspect-square w-full rounded-none border border-border ${
+                      isBestCell ? 'ring-1 ring-primary/40' : ''
                     }`}
                     style={{
                       backgroundColor: getHighlightColor(value, max),
@@ -350,14 +350,14 @@ export function PeakHoursCard() {
           {Object.entries(BUCKET_LABELS).map(([b, label]) => (
             <span
               key={b}
-              className="absolute text-[10px] text-neutral-600 -translate-x-1/2"
+              className="absolute text-[10px] text-muted-foreground -translate-x-1/2"
               style={{ left: `${(Number(b) / BUCKETS) * 100}%` }}
             >
               {label}
             </span>
           ))}
           <span
-            className="absolute text-[10px] text-neutral-600 -translate-x-full"
+            className="absolute text-[10px] text-muted-foreground -translate-x-full"
             style={{ left: '100%' }}
           >
             24:00
@@ -367,20 +367,20 @@ export function PeakHoursCard() {
 
       {/* Intensity legend */}
       <div className="flex items-center justify-end gap-1.5 mt-1">
-        <span className="text-[10px] text-neutral-500">Less</span>
+        <span className="text-[10px] text-muted-foreground">Less</span>
         {HIGHLIGHT_COLORS.map((color, i) => (
           <div
             key={i}
-            className="w-[10px] h-[10px] rounded-none border border-neutral-800"
+            className="w-[10px] h-[10px] rounded-none border border-border"
             style={{ backgroundColor: color }}
           />
         ))}
-        <span className="text-[10px] text-neutral-500">More</span>
+        <span className="text-[10px] text-muted-foreground">More</span>
       </div>
 
-      <p className="text-[10px] text-neutral-400 text-center mt-1">
+      <p className="text-[10px] text-muted-foreground text-center mt-1">
         Your busiest time is{' '}
-        <span className="text-brand-orange font-medium">
+        <span className="text-primary font-medium">
           {['Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays', 'Sundays'][bestDay]} at {String(bestBucket * 2).padStart(2, '0')}:00
         </span>
       </p>
@@ -419,8 +419,9 @@ export function PulseFeaturesCarousel() {
       className="relative w-full max-w-[520px] mx-auto"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
+      aria-hidden="true"
     >
-      <div className="rounded-none border border-white/[0.08] bg-neutral-900/80 px-6 py-5">
+      <div className="rounded-none border border-border bg-card px-6 py-5">
         <div className="min-h-[280px]">
           <ActiveComponent />
         </div>
@@ -432,10 +433,11 @@ export function PulseFeaturesCarousel() {
           <button
             key={card.id}
             onClick={() => setActive(i)}
+            tabIndex={-1}
             className={`h-2 rounded-none transition-all duration-300 ${
               i === active
-                ? 'w-7 bg-brand-orange'
-                : 'w-2 bg-neutral-600 hover:bg-neutral-500'
+                ? 'w-7 bg-primary'
+                : 'w-2 bg-muted hover:bg-muted-foreground/40'
             }`}
             aria-label={`Show ${card.title}`}
           />

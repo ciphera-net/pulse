@@ -98,21 +98,11 @@ const nextConfig: NextConfig = {
         destination: '/',
         permanent: false,
       },
-      {
-        source: '/integrations/script-tag',
-        destination: 'https://docs.ciphera.net/pulse/script-installation',
-        permanent: true,
-      },
-      {
-        source: '/integrations/wordpress',
-        destination: 'https://docs.ciphera.net/pulse/wordpress-plugin',
-        permanent: true,
-      },
-      {
-        source: '/integrations/:slug',
-        destination: 'https://docs.ciphera.net/pulse/framework-guides',
-        permanent: true,
-      },
+      // NOTE: the former `/integrations/:slug` → docs.ciphera.net redirects were
+      // removed. They shadowed the real per-integration guide pages
+      // (app/integrations/[slug]) and pointed at a defunct host (docs moved to
+      // help.ciphera.net). Each guide page now links out to help.ciphera.net
+      // via the registry's docsSlug.
     ]
   },
   async rewrites() {

@@ -51,23 +51,68 @@ export const DIMENSION_CATEGORIES = [
   { label: 'Events', dimensions: ['event_name'] },
 ] as const
 
-/** Serialize filters to query param format: "browser|is|Chrome,country|is|US" */
-export function serializeFilters(filters: DimensionFilter[]): string {
-  if (!filters.length) return ''
-  return filters
-    .map(f => `${f.dimension}|${f.operator}|${f.values.join(';')}`)
-    .join(',')
+// * Values may legitimately contain the format's structural delimiters
+// * (`,` between filters, `|` between fields, `;` between values), so the v2
+// * format percent-escapes each value on serialize and unescapes on parse.
+// * Only the delimiters and `%` itself are escaped.
+// *
+// * The format is VERSIONED via the "v2:" prefix because escaping is ambiguous
+// * in-band: stored page paths routinely contain literal %2C/%7C/%3B/%25 (the
+// * ingest pipeline re-encodes retained query strings), so a legacy URL like
+// * "page|is|/search?q=a%2Cb" must NOT be unescaped. Unprefixed (legacy) input
+// * is parsed exactly as before — raw values, byte-for-byte. No legacy string
+// * can collide with the prefix: dimensions are allowlisted and "v2:page" is
+// * not one. The backend mirrors all of this in ParseFilters
+// * (internal/api/stats.go).
+export const FILTERS_V2_PREFIX = 'v2:'
+
+const VALUE_ESCAPES: ReadonlyArray<readonly [RegExp, string]> = [
+  [/%/g, '%25'], // must run first: escapes the escape character
+  [/,/g, '%2C'],
+  [/\|/g, '%7C'],
+  [/;/g, '%3B'],
+]
+
+export function escapeFilterValue(value: string): string {
+  return VALUE_ESCAPES.reduce((v, [re, code]) => v.replace(re, code), value)
 }
 
-/** Parse filters from URL search param string */
+export function unescapeFilterValue(value: string): string {
+  // * Decodes exactly the four sequences the escaper produces (uppercase only),
+  // * with %25 last so a decoded "%" can never be re-consumed.
+  return value
+    .replaceAll('%2C', ',')
+    .replaceAll('%7C', '|')
+    .replaceAll('%3B', ';')
+    .replaceAll('%25', '%')
+}
+
+/** Serialize filters to query param format: "v2:browser|is|Chrome,country|is|US" */
+export function serializeFilters(filters: DimensionFilter[]): string {
+  if (!filters.length) return ''
+  const body = filters
+    .map(f => `${f.dimension}|${f.operator}|${f.values.map(escapeFilterValue).join(';')}`)
+    .join(',')
+  return FILTERS_V2_PREFIX + body
+}
+
+/** Parse filters from URL search param string (v2-prefixed or legacy). */
 export function parseFiltersFromURL(raw: string): DimensionFilter[] {
   if (!raw) return []
-  return raw.split(',').map(part => {
+  const isV2 = raw.startsWith(FILTERS_V2_PREFIX)
+  const body = isV2 ? raw.slice(FILTERS_V2_PREFIX.length) : raw
+  if (!body) return []
+  return body.split(',').map(part => {
     const [dimension, operator, valuesRaw] = part.split('|')
     return {
       dimension,
       operator: operator as DimensionFilter['operator'],
-      values: valuesRaw?.split(';') ?? [],
+      // * Drop empty / whitespace-only values. An empty valuesRaw splits to ['']
+      // * (length 1), which used to slip past the length check below and send an
+      // * empty filter value the backend rejects with a 400 on every request.
+      values: (valuesRaw?.split(';') ?? [])
+        .map(v => (isV2 ? unescapeFilterValue(v.trim()) : v.trim()))
+        .filter(v => v !== ''),
     }
   }).filter(f => f.dimension && f.operator && f.values.length > 0)
 }

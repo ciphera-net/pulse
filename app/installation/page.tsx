@@ -1,95 +1,122 @@
 'use client'
 
+/**
+ * @file Installation guide.
+ *
+ * Docs-minimal shape kept (design §5.6): the H1 stays, all copy and snippets
+ * unchanged. Rebuilt onto the marketing grammar — a mono eyebrow above the H1,
+ * mono step labels per section (`01 · Add the snippet`, `02 · Custom events`),
+ * and code blocks that keep the editor chrome but on `bg-card border
+ * border-border` with mono filename tabs. Syntax-highlight colours map to tokens
+ * (`text-primary` for attributes/identifiers per the T2 ScriptMockup, otherwise
+ * `text-foreground` / `text-muted-foreground`).
+ *
+ * Traffic-light dots: rendered as `h-3 w-3 bg-muted` SQUARES, matching the T2
+ * ScriptMockup precedent (`FeatureSections.tsx` ScriptMockup) so the two editor
+ * chromes read identically. No framer; tokens only.
+ */
+
 import React from 'react'
+import { MarketingSection } from '@/components/marketing/system/MarketingSection'
+
+// Editor-chrome traffic dots as squares — the T2 ScriptMockup precedent.
+function EditorDots() {
+  return (
+    <div className="flex gap-2">
+      <div className="h-3 w-3 bg-muted" />
+      <div className="h-3 w-3 bg-muted" />
+      <div className="h-3 w-3 bg-muted" />
+    </div>
+  )
+}
 
 export default function InstallationPage() {
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden">
-      
-      {/* * --- 1. ATMOSPHERE (Background) --- */}
-      <div className="absolute inset-0 -z-10 pointer-events-none">
-        {/* * Bottom-right Neutral Glow */}
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-neutral-400/10 rounded-full blur-[128px] opacity-40" />
-        {/* * Grid Pattern with Radial Mask */}
-        <div 
-          className="absolute inset-0 bg-grid-pattern opacity-[0.05]"
-          style={{ maskImage: 'radial-gradient(ellipse at center, black 0%, transparent 70%)' }}
-        />
-      </div>
-
-      <div className="flex-grow w-full max-w-4xl mx-auto px-4 pt-20 pb-10 z-10">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-6">
+    <>
+      {/* ── HERO ── */}
+      <MarketingSection>
+        <div className="max-w-2xl">
+          <p className="font-mono text-xs text-muted-foreground">Pulse · Docs</p>
+          <h1 className="mt-6 font-display text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
             Installation
           </h1>
-          <p className="text-xl text-neutral-400 max-w-2xl mx-auto leading-relaxed">
+          <p className="mt-6 text-base leading-relaxed text-muted-foreground sm:text-lg">
             Get up and running with Pulse in seconds.
           </p>
         </div>
+      </MarketingSection>
 
-        <div className="w-full text-center">
-          <h2 className="text-2xl font-bold mb-8 text-white">Add the snippet</h2>
-          <p className="text-neutral-500 mb-8">Just add this snippet to your &lt;head&gt; tag in your layout or index file.</p>
-          
-          <div className="max-w-2xl mx-auto glass-surface rounded-none overflow-hidden border border-border text-left">
-            <div className="flex items-center px-4 py-3 bg-neutral-800 border-b border-neutral-800">
-              <div className="flex gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-500/20" />
-                <div className="w-3 h-3 rounded-full bg-yellow-500/20" />
-                <div className="w-3 h-3 rounded-full bg-green-500/20" />
-              </div>
-              <span className="ml-4 text-xs text-neutral-500 font-mono">layout.tsx / index.html</span>
-            </div>
-            <div className="p-6 overflow-x-auto">
-              <code className="font-mono text-sm text-neutral-300">
-                <span className="text-blue-400">&lt;script</span>{' '}
-                <span className="text-sky-300">defer</span>{' '}
-                <span className="text-sky-300">data-domain</span>
-                <span className="text-white">=</span>
-                <span className="text-orange-300">"your-site.com"</span>{' '}
-                <span className="text-sky-300">src</span>
-                <span className="text-white">=</span>
-                <span className="text-orange-300">"https://pulse.ciphera.net/script.js"</span>
-                <span className="text-blue-400">&gt;&lt;/script&gt;</span>
-              </code>
-            </div>
-            <div className="flex items-center gap-4 px-6 py-3 border-t border-neutral-800 text-xs text-neutral-500">
-              <span>1.6 KB gzipped</span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                Non-blocking, async
-              </span>
-            </div>
+      {/* ── 01 · ADD THE SNIPPET ── */}
+      <MarketingSection
+        eyebrowNumber="01"
+        eyebrowLabel="Add the snippet"
+        heading="Add the snippet"
+        dek="Just add this snippet to your <head> tag in your layout or index file."
+      >
+        <div className="mt-10 max-w-2xl border border-border bg-card">
+          <div className="flex items-center border-b border-border px-4 py-3">
+            <EditorDots />
+            <span className="ml-4 font-mono text-xs text-muted-foreground">
+              layout.tsx / index.html
+            </span>
+          </div>
+          <pre className="overflow-x-auto p-6">
+            <code className="font-mono text-sm text-muted-foreground">
+              <span className="text-foreground">&lt;script</span>{' '}
+              <span className="text-primary">defer</span>{' '}
+              <span className="text-primary">data-domain</span>
+              <span className="text-foreground">=</span>
+              <span className="text-foreground">&quot;your-site.com&quot;</span>{' '}
+              <span className="text-primary">src</span>
+              <span className="text-foreground">=</span>
+              <span className="text-foreground">&quot;https://pulse.ciphera.net/script.js&quot;</span>
+              <span className="text-foreground">&gt;&lt;/script&gt;</span>
+            </code>
+          </pre>
+          <div className="flex items-center gap-4 border-t border-border px-6 py-3 text-xs text-muted-foreground">
+            <span>1.6 KB gzipped</span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 bg-green-500" />
+              Non-blocking, async
+            </span>
           </div>
         </div>
+      </MarketingSection>
 
-        <div className="w-full mt-16 text-center">
-          <h2 className="text-2xl font-bold mb-4 text-white">Custom events (goals)</h2>
-          <p className="text-neutral-500 mb-6 max-w-xl mx-auto">
-            Track custom events (e.g. signup, purchase) with <code className="px-1.5 py-0.5 rounded-none bg-neutral-700 text-sm font-mono">pulse.track(&apos;event_name&apos;)</code>. Use letters, numbers, and underscores only. Define goals in your site Settings → Goals to see counts in the dashboard.
-          </p>
-          <div className="max-w-2xl mx-auto glass-surface rounded-none overflow-hidden border border-border text-left">
-            <div className="flex items-center px-4 py-3 bg-neutral-800 border-b border-neutral-800">
-              <div className="flex gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-500/20" />
-                <div className="w-3 h-3 rounded-full bg-yellow-500/20" />
-                <div className="w-3 h-3 rounded-full bg-green-500/20" />
-              </div>
-              <span className="ml-4 text-xs text-neutral-500 font-mono">e.g. button click handler</span>
-            </div>
-            <div className="p-6 overflow-x-auto">
-              <code className="font-mono text-sm text-neutral-300">
-                <span className="text-purple-400">pulse</span>
-                <span className="text-white">.</span>
-                <span className="text-yellow-300">track</span>
-                <span className="text-white">(</span>
-                <span className="text-green-400">&apos;signup_click&apos;</span>
-                <span className="text-white">);</span>
-              </code>
-            </div>
+      {/* ── 02 · CUSTOM EVENTS ── */}
+      <MarketingSection
+        eyebrowNumber="02"
+        eyebrowLabel="Custom events"
+        heading="Custom events (goals)"
+      >
+        <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
+          Track custom events (e.g. signup, purchase) with{' '}
+          <code className="bg-muted px-1.5 py-0.5 font-mono text-sm text-foreground">
+            pulse.track(&apos;event_name&apos;)
+          </code>
+          . Use letters, numbers, and underscores only. Define goals in your site Settings →
+          Goals to see counts in the dashboard.
+        </p>
+
+        <div className="mt-8 max-w-2xl border border-border bg-card">
+          <div className="flex items-center border-b border-border px-4 py-3">
+            <EditorDots />
+            <span className="ml-4 font-mono text-xs text-muted-foreground">
+              e.g. button click handler
+            </span>
           </div>
+          <pre className="overflow-x-auto p-6">
+            <code className="font-mono text-sm text-muted-foreground">
+              <span className="text-primary">pulse</span>
+              <span className="text-foreground">.</span>
+              <span className="text-foreground">track</span>
+              <span className="text-foreground">(</span>
+              <span className="text-foreground">&apos;signup_click&apos;</span>
+              <span className="text-foreground">);</span>
+            </code>
+          </pre>
         </div>
-      </div>
-    </div>
+      </MarketingSection>
+    </>
   )
 }

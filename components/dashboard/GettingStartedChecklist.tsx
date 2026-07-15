@@ -151,13 +151,16 @@ export default function GettingStartedChecklist() {
         initial={{ opacity: 0, scale: 0.8, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ delay: 0.5, type: 'spring', stiffness: 300, damping: 20 }}
-        className="flex items-center gap-3 pl-3 pr-5 py-2.5 rounded-none border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 transition-colors ease-apple"
+        aria-label={`Getting started: ${completedCount} of ${items.length} steps completed`}
+        className="flex items-center gap-3 p-2 sm:pl-3 sm:pr-5 sm:py-2.5 rounded-none border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 transition-colors ease-apple"
       >
         <div className="relative flex items-center justify-center">
           <ProgressRing progress={progress} size={36} />
           <span className="absolute text-[10px] font-bold text-brand-orange">{completedCount}/{items.length}</span>
         </div>
-        <div className="flex flex-col items-start">
+        {/* label hidden on mobile: the full pill covered settings toggles at
+            390px (S2-i) — the ring alone keeps the footprint minimal */}
+        <div className="hidden sm:flex flex-col items-start">
           <span className="text-sm font-medium text-white leading-tight">
             {nextItem?.label}
           </span>

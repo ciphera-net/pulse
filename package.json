@@ -5,13 +5,15 @@
   "scripts": {
     "dev": "next dev",
     "generate:sri": "node scripts/generate-sri.js",
-    "prebuild": "npm run generate:sri",
+    "build:scripts": "node scripts/build-scripts.mjs",
+    "prebuild": "npm run generate:sri && npm run build:scripts",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "@ciphera-net/facet": "^0.2.0",

@@ -2,6 +2,8 @@ import fs from 'fs'
 import path from 'path'
 import ReactMarkdown from 'react-markdown'
 import type { Metadata } from 'next'
+import { MarketingSection } from '@/components/marketing/system/MarketingSection'
+import { ChangelogReleases, type Release } from './ChangelogReleases'
 
 export const metadata: Metadata = {
   title: 'Changelog - Pulse',
@@ -9,32 +11,37 @@ export const metadata: Metadata = {
 }
 
 // * How many release sections (incl. Unreleased) render expanded; every other
-// * version collapses to its heading so the page stays a few screens tall
-// * instead of ~29k px.
+// * version collapses to its heading so the page stays a few screens tall.
 const EXPANDED_SECTIONS = 2
 
-const PROSE_CLASSES = `prose prose-invert max-w-none
-  prose-headings:font-semibold prose-headings:tracking-tight
-  prose-a:text-brand-orange prose-a:no-underline hover:prose-a:underline
-  prose-ul:my-4 prose-li:my-0.5`
+// Preamble prose (the intro paragraph above the first release) — muted body,
+// orange only on links.
+const PREAMBLE_PROSE = `prose prose-invert max-w-none
+  prose-p:text-muted-foreground prose-p:leading-relaxed
+  prose-strong:text-foreground
+  prose-a:text-primary prose-a:no-underline hover:prose-a:underline`
 
-// * A collapsed release: the `## [x.y.z] - date` heading becomes the summary
-// * row; the body only renders (and only costs height) once opened.
-function CollapsedRelease({ section, linkDefs }: { section: string; linkDefs: string }) {
-  const newline = section.indexOf('\n')
-  const heading = (newline === -1 ? section : section.slice(0, newline)).replace(/^## /, '').replace(/[[\]]/g, '')
-  const body = newline === -1 ? '' : section.slice(newline + 1)
-  return (
-    <details className="border-b border-neutral-800 py-4">
-      <summary className="cursor-pointer list-none flex items-center justify-between text-base font-semibold text-neutral-300 hover:text-white transition-colors ease-apple [&::-webkit-details-marker]:hidden">
-        {heading}
-        <span className="text-neutral-600 text-sm">↓</span>
-      </summary>
-      <article className={`${PROSE_CLASSES} mt-4`}>
-        <ReactMarkdown>{[body, linkDefs].join('\n')}</ReactMarkdown>
-      </article>
-    </details>
-  )
+// * A stable anchor id from a version token: `0.15.0-alpha` → `release-0-15-0-alpha`,
+// * `Unreleased` → `release-unreleased`. There was no prior id scheme on this page
+// * (plain ReactMarkdown, no rehype-slug), so deep links were previously dead —
+// * this is the introduced scheme, recorded in the batch notes.
+function releaseId(version: string): string {
+  const slug = version
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return `release-${slug}`
+}
+
+// * Parse `## [Unreleased]` or `## [0.15.0-alpha] - 2026-03-13` into version + date.
+function parseHeading(line: string): { version: string; date: string | null } {
+  const stripped = line.replace(/^##\s+/, '').trim()
+  // `[version] - date` or `[version]`
+  const match = stripped.match(/^\[([^\]]+)\](?:\s*-\s*(.+))?$/)
+  if (match) {
+    return { version: match[1].trim(), date: match[2]?.trim() ?? null }
+  }
+  return { version: stripped.replace(/[[\]]/g, ''), date: null }
 }
 
 /**
@@ -45,51 +52,48 @@ export default function ChangelogPage() {
   const changelogPath = path.join(process.cwd(), 'CHANGELOG.md')
   const raw = fs.readFileSync(changelogPath, 'utf-8')
 
-  // * The page hero renders its own "Changelog" title — drop the markdown H1
-  // * (and its intro paragraph lives in the hero copy too) to avoid the
-  // * duplicate heading.
-  // * Dates: headings use ISO `- YYYY-MM-DD`; display is DD/MM/YYYY app-wide.
+  // * Drop the markdown H1 (the page renders its own <h1>); convert ISO dates
+  // * `YYYY-MM-DD` → app-wide DD/MM/YYYY.
   const content = raw
     .replace(/^# Changelog\s*\n/, '')
     .replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, '$3/$2/$1')
 
-  // * Keep-a-changelog link definitions sit at the file tail; every rendered
+  // * Keep-a-changelog link definitions sit at the file tail; each rendered
   // * chunk needs them appended or its `[0.x.y]` reference links go dead.
   const linkDefs = (content.match(/^\[[^\]]+\]:\s+\S+$/gm) ?? []).join('\n')
-  const body = content.replace(/^\[[^\]]+\]:\s+\S+$/gm, '').trimEnd()
+  const bodyText = content.replace(/^\[[^\]]+\]:\s+\S+$/gm, '').trimEnd()
 
   // * Split on version headings; index 0 is the preamble before the first `## `.
-  const [preamble, ...sections] = body.split(/\n(?=## )/)
-  const recent = sections.slice(0, EXPANDED_SECTIONS)
-  const older = sections.slice(EXPANDED_SECTIONS)
+  const [preamble, ...sections] = bodyText.split(/\n(?=## )/)
+
+  const releases: Release[] = sections.map((section, i) => {
+    const newline = section.indexOf('\n')
+    const headingLine = newline === -1 ? section : section.slice(0, newline)
+    const body = newline === -1 ? '' : section.slice(newline + 1)
+    const { version, date } = parseHeading(headingLine)
+    return {
+      id: releaseId(version),
+      version,
+      date,
+      expanded: i < EXPANDED_SECTIONS,
+      // Link defs appended so reference-style `[x.y.z]` links resolve.
+      body: [body.trim(), linkDefs].filter(Boolean).join('\n\n'),
+    }
+  })
 
   return (
-    <div className="mx-auto max-w-3xl px-4 sm:px-6 py-8">
-      <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-2">
-        Changelog
-      </h1>
-      <p className="text-neutral-400 mb-8 text-sm">
-        Release history and notable changes. We use{' '}
-        <a
-          href="https://keepachangelog.com/en/1.1.0/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-brand-orange hover:underline"
-        >
-          Keep a Changelog
-        </a>{' '}
-        and <strong>0.x.y</strong> versioning while in initial development.
-      </p>
-      <article className={PROSE_CLASSES}>
-        <ReactMarkdown>{[preamble, ...recent, linkDefs].join('\n')}</ReactMarkdown>
-      </article>
-      {older.length > 0 && (
-        <div className="mt-10 border-t border-neutral-800">
-          {older.map((section) => (
-            <CollapsedRelease key={section.slice(0, 40)} section={section} linkDefs={linkDefs} />
-          ))}
+    <MarketingSection>
+      <div className="max-w-2xl">
+        <p className="font-mono text-xs text-muted-foreground">Pulse · Changelog</p>
+        <h1 className="mt-6 font-display text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
+          Changelog
+        </h1>
+        <div className={`${PREAMBLE_PROSE} mt-6`}>
+          <ReactMarkdown>{preamble.trim()}</ReactMarkdown>
         </div>
-      )}
-    </div>
+      </div>
+
+      <ChangelogReleases releases={releases} />
+    </MarketingSection>
   )
 }

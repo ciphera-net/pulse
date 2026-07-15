@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic'
 import { useSites } from '@/lib/swr/sites'
 import { toast } from '@ciphera-net/facet'
 import { CaretDown } from '@phosphor-icons/react'
-import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
+import { SiteFavicon } from '@/components/sites/SiteFavicon'
 import { useCan, type Permission } from '@/lib/auth/permissions'
 import { ShieldWarning } from '@phosphor-icons/react'
 
@@ -104,12 +104,19 @@ export default function SiteSettingsTabPage() {
     return () => document.removeEventListener('mousedown', handler)
   }, [pickerOpen])
 
+  const TabComponent = TAB_COMPONENTS[tab]
+
+  // * Unknown tabs redirect to the section default instead of dead-ending on a
+  // * raw fallback string. This hook MUST stay above the early return below:
+  // * `sites` loads async (empty → resolved), so a hook placed after the guard
+  // * changes the render's hook count when sites arrive → React error #310.
+  useEffect(() => {
+    if (!TabComponent) router.replace('/settings/site/general')
+  }, [TabComponent, router])
+
   if (sites.length === 0 || !activeSiteId) {
     return null
   }
-
-
-  const TabComponent = TAB_COMPONENTS[tab]
 
   const activeSite = sites.find((s) => s.id === activeSiteId) ?? sites[0]
 
@@ -120,9 +127,10 @@ export default function SiteSettingsTabPage() {
           onClick={() => setPickerOpen(!pickerOpen)}
           className="w-full flex items-center gap-3 px-4 py-3 mb-6 rounded-none border border-neutral-800 bg-neutral-800/30 hover:border-neutral-700 transition-colors ease-apple cursor-pointer"
         >
-          <img
-            src={`${FAVICON_SERVICE_URL}?domain=${activeSite.domain}&sz=64`}
-            alt=""
+          <SiteFavicon
+            domain={activeSite.domain}
+            name={activeSite.name}
+            size={24}
             className="w-6 h-6 rounded-none object-contain shrink-0"
           />
           <div className="flex flex-col items-start min-w-0">
@@ -162,9 +170,10 @@ export default function SiteSettingsTabPage() {
                       : 'text-neutral-300 hover:bg-white/[0.06]'
                   }`}
                 >
-                  <img
-                    src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
-                    alt=""
+                  <SiteFavicon
+                    domain={site.domain}
+                    name={site.name}
+                    size={20}
                     className="w-5 h-5 rounded-none object-contain shrink-0"
                   />
                   <span className="flex flex-col min-w-0">
@@ -189,9 +198,7 @@ export default function SiteSettingsTabPage() {
         </div>
       ) : TabComponent ? (
         <TabComponent siteId={activeSiteId} />
-      ) : (
-        <p className="text-sm text-neutral-400">Unknown settings tab.</p>
-      )}
+      ) : null}
     </>
   )
 }

@@ -23,8 +23,9 @@ Pulse is a lightweight, privacy-focused website analytics platform built by Ciph
 ## Installation
 Add one script tag to your site:
 ```html
-<script defer src="https://pulse.ciphera.net/script.js" data-site-id="YOUR_SITE_ID"></script>
+<script defer data-domain="example.com" src="https://js.ciphera.net/script.js"></script>
 ```
+Set `data-domain` to the domain you registered in Pulse. Everything else has sensible defaults.
 
 ## Pages
 - [Home](https://pulse.ciphera.net): Product overview and dashboard
@@ -38,8 +39,8 @@ Add one script tag to your site:
 - [Documentation](https://pulse.ciphera.net/docs): Full API and usage docs
 
 ## About Ciphera
-- Founded: 2024, Diegem, Belgium
-- Infrastructure: Swiss-hosted servers (FADP protected)
+- Ciphera BV — a Belgian (EU) company; GDPR and NIS2 jurisdiction is Belgium/EU
+- Infrastructure: EU and Swiss-hosted (Exoscale, Switzerland)
 - Open source: https://github.com/ciphera-net
 - Website: https://ciphera.net
 - Contact: hello@ciphera.net

@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { PlusIcon, ExternalLinkIcon, LayoutDashboardIcon, PathIcon, FunnelIcon, CursorClickIcon, SearchIcon, CloudUploadIcon, HeartbeatIcon, SettingsIcon, UserMenu, type CipheraApp } from '@ciphera-net/facet'
+import { PlusIcon, ExternalLinkIcon, LayoutDashboardIcon, PathIcon, FunnelIcon, CursorClickIcon, SearchIcon, CloudUploadIcon, HeartbeatIcon, SettingsIcon, UserMenu } from '@ciphera-net/facet'
 import { formatUpdatedAgo } from '@/lib/utils/format'
 import { useFunnelDetail } from '@/lib/swr/dashboard'
 import { useAuth } from '@/lib/auth/context'
@@ -14,7 +14,6 @@ import NotificationCenter from '@/components/notifications/NotificationCenter'
 import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
 import { setSessionAction } from '@/app/actions/auth'
 import { logger } from '@/lib/utils/logger'
-import { cdnUrl } from '@/lib/cdn'
 import {
   CaretDown, CaretRight, SidebarSimple, Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, Globe as GlobeIcon,
   GearSix, Target, Eye, ShieldCheck, Robot, MagnifyingGlass, ChartBar,
@@ -26,17 +25,31 @@ import { SidebarProvider, useSidebar } from '@/lib/sidebar-context'
 import { LiveIndicatorProvider, useLiveIndicator } from '@/lib/live-indicator-context'
 import { getSite } from '@/lib/api/sites'
 import { useSites } from '@/lib/swr/sites'
-import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
+import { SiteFavicon } from '@/components/sites/SiteFavicon'
 import ContentHeader from './ContentHeader'
+import { CIPHERA_APPS } from '@/lib/ciphera-apps'
 import { ShortcutHandler } from '@/components/keyboard/ShortcutHandler'
 import { ShortcutsOverlay } from '@/components/keyboard/ShortcutsOverlay'
 import { CommandPalette } from '@/components/command/CommandPalette'
 
-const CIPHERA_APPS: CipheraApp[] = [
-  { id: 'pulse', name: 'Pulse', description: 'Your current app — Privacy-first analytics', icon: cdnUrl('/pulse_icon_no_margins.png'), href: 'https://pulse.ciphera.net', isAvailable: false },
-  { id: 'id', name: 'ID', description: 'Your Ciphera account settings', icon: 'https://ciphera.net/id_icon_no_margins.png', href: 'https://id.ciphera.net', isAvailable: true },
-  { id: 'help', name: 'Help', description: 'Documentation, support & status', icon: 'https://cdn.ciphera.net/help/help_icon.png', href: 'https://help.ciphera.net', isAvailable: true },
-]
+
+/**
+ * App tile icon with the same graceful monogram fallback as SiteFavicon — a
+ * missing CDN asset must degrade to a lettered tile, not the broken-image box
+ * with alt text bleeding through (exactly how the dead ID/Help URLs presented).
+ * `alt` is empty: the app name is printed right under the tile.
+ */
+function AppSwitcherIcon({ src, name }: { src: string; name: string }) {
+  const [failed, setFailed] = useState(false)
+  if (failed) {
+    return (
+      <div aria-hidden className="flex h-8 w-8 items-center justify-center bg-neutral-800 text-sm font-semibold text-neutral-400">
+        {name.trim()[0]?.toUpperCase() ?? '?'}
+      </div>
+    )
+  }
+  return <img src={src} alt="" className="w-8 h-8 object-contain" onError={() => setFailed(true)} />
+}
 
 type PageMeta = {
   title: string
@@ -198,7 +211,7 @@ function BreadcrumbAppSwitcher() {
                     } ease-apple`}
                   >
                     <div className="w-10 h-10 flex items-center justify-center shrink-0">
-                      <img src={app.icon} alt={app.name} className="w-8 h-8 object-contain" />
+                      <AppSwitcherIcon src={app.icon} name={app.name} />
                     </div>
                     <span className="text-xs font-medium text-white text-center">{app.name}</span>
                   </a>
@@ -324,9 +337,10 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
                     : 'text-neutral-300 hover:bg-white/[0.06]'
                 }`}
               >
-                <img
-                  src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
-                  alt=""
+                <SiteFavicon
+                  domain={site.domain}
+                  name={site.name}
+                  size={20}
                   className="w-5 h-5 rounded-none object-contain shrink-0"
                 />
                 <span className="flex flex-col min-w-0">
@@ -358,12 +372,11 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
         className="inline-flex items-center gap-2 text-neutral-500 hover:text-neutral-300 transition-colors max-w-[180px] cursor-pointer ease-apple"
       >
         {currentSite?.domain && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={`${FAVICON_SERVICE_URL}?domain=${currentSite.domain}&sz=64`}
-            alt=""
+          <SiteFavicon
+            domain={currentSite.domain}
+            name={currentSiteName}
+            size={14}
             className="w-3.5 h-3.5 rounded-none object-contain shrink-0"
-            aria-hidden="true"
           />
         )}
         <span className="truncate">{currentSiteName}</span>
@@ -551,9 +564,12 @@ export default function DashboardShell({
             className="flex-1 flex flex-col min-w-0 mr-3 mb-3 rounded-none bg-neutral-950 border border-neutral-800 overflow-hidden relative"
           >
             <ContentHeader onMobileMenuOpen={openMobile} />
+            {/* pb-24 on mobile: scroll clearance for the floating checklist
+                pill + support button (S2-i) */}
             <main
-              id="dashboard-scroll-container"
-              className="relative flex-1 overflow-y-auto overflow-x-hidden"
+              id="main-content"
+              tabIndex={-1}
+              className="relative flex-1 overflow-y-auto overflow-x-hidden pb-24 sm:pb-0"
             >
               {/* * Top spacing lives INSIDE the scrolled content, never as padding on
                * the scroll container — sticky children pin below a scroller's

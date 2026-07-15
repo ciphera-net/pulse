@@ -15,18 +15,18 @@ export const metadata: Metadata = {
 
 export default function PricingPage() {
   return (
-    <div className="min-h-screen pt-20">
-      <Suspense fallback={
-        <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-16">
-          <div className="text-center mb-12">
-            <div className="h-10 w-64 animate-pulse rounded-none bg-neutral-800 mx-auto mb-4" />
-            <div className="h-5 w-96 animate-pulse rounded-none bg-neutral-800 mx-auto" />
+    <Suspense
+      fallback={
+        <div className="px-6 py-16 sm:py-20">
+          <div className="mb-12 text-center">
+            <div className="mx-auto mb-4 h-10 w-64 animate-pulse bg-muted" />
+            <div className="mx-auto h-5 w-96 animate-pulse bg-muted" />
           </div>
           <PricingCardsSkeleton />
         </div>
-      }>
-        <PricingSection />
-      </Suspense>
-    </div>
+      }
+    >
+      <PricingSection />
+    </Suspense>
   )
 }

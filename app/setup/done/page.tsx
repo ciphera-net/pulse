@@ -123,7 +123,7 @@ export default function SetupDonePage() {
         </Link>
 
         <a
-          href="https://docs.ciphera.net/pulse"
+          href="https://help.ciphera.net/docs/pulse"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-3 p-3 rounded-none border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/30 transition-all"

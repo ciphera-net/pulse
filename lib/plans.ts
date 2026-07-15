@@ -14,6 +14,13 @@ export const PLAN_ID_TEAM = 'team'
 export const PLAN_ID_BUSINESS = 'business'
 
 /**
+ * Monthly pageview allowance on the free (Hobby) tier. Single source of truth
+ * for the free-tier limit shown in downgrade/expiry copy — do not re-hardcode
+ * "5,000" at call sites.
+ */
+export const FREE_PAGEVIEW_LIMIT = 5000
+
+/**
  * Display name for a subscription plan_id — the single source of truth.
  * Ad-hoc ternaries drift (the Privacy tab once recognised only 'pro' and
  * labelled a Pioneer org "Free").

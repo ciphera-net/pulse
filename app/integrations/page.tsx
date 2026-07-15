@@ -1,33 +1,80 @@
 'use client'
 
 /**
- * @file Integrations overview page with search, category filters, and grouped grid.
+ * @file Integrations directory — searchable, tier-aware, interactive.
  *
- * Displays all 75+ integrations in a filterable, searchable grid.
- * Features: search with result count, category chips, popular section,
- * keyboard shortcut (/ to focus search), and "Missing something?" card.
+ * Redesign (§7.3): every tile is now a real Link to its per-integration guide
+ * (`/integrations/[slug]`) with a Facet hover + focus ring; each carries an
+ * honest support-tier micro-badge sourced from the registry; a featured band of
+ * Tier-1 verified platforms leads, then a dense directory for the long tail. The
+ * grid uses auto-fill so incomplete rows never leave half-empty `bg-card` cells.
+ *
+ * This route is client-auth-gated (pre-existing): an unauthenticated visitor
+ * gets the marketing rail; an authenticated user gets DashboardShell. The gate
+ * lives in `app/layout-content.tsx` and is untouched here.
  */
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import Link from 'next/link'
+import { ArrowRightIcon, Button, SearchIcon, XIcon } from '@ciphera-net/facet'
+import { cn } from '@/lib/utils'
+import { MarketingSection } from '@/components/marketing/system/MarketingSection'
+import { TierBadge } from '@/components/integrations/TierBadge'
 import {
   integrations,
   categoryLabels,
   categoryOrder,
+  supportTierLabels,
+  type Integration,
   type IntegrationCategory,
+  type SupportTier,
 } from '@/lib/integrations'
 
-// * IDs of popular integrations shown in the pinned "Popular" row
-const POPULAR_IDS = [
-  'nextjs', 'react', 'wordpress', 'shopify', 'webflow', 'vue', 'astro', 'vercel',
+const CATEGORY_TABS: { key: IntegrationCategory | 'all'; label: string }[] = [
+  { key: 'all', label: 'All' },
+  ...categoryOrder.map((cat) => ({ key: cat, label: categoryLabels[cat] })),
 ]
+
+const TIER_FILTERS: { key: SupportTier | 'all'; label: string }[] = [
+  { key: 'all', label: 'All tiers' },
+  { key: 'verified', label: supportTierLabels.verified },
+  { key: 'standard-snippet', label: supportTierLabels['standard-snippet'] },
+  { key: 'plan-gated', label: supportTierLabels['plan-gated'] },
+  { key: 'special-handling', label: supportTierLabels['special-handling'] },
+]
+
+// * The featured band: Tier-1 verified platforms, ordered by pickerRank then name.
+const FEATURED = integrations
+  .filter((i) => i.supportTier === 'verified')
+  .sort((a, b) => {
+    if (a.pickerRank != null && b.pickerRank != null) return a.pickerRank - b.pickerRank
+    if (a.pickerRank != null) return -1
+    if (b.pickerRank != null) return 1
+    return a.name.localeCompare(b.name)
+  })
+
+function IntegrationCard({ integration }: { integration: Integration }) {
+  return (
+    <Link
+      href={`/integrations/${integration.id}`}
+      className="group flex items-center gap-3 bg-card p-4 transition-colors duration-150 ease-apple hover:bg-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
+    >
+      <div className="shrink-0 [&_svg]:h-6 [&_svg]:w-6">{integration.icon}</div>
+      <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
+        {integration.name}
+      </span>
+      <TierBadge tier={integration.supportTier} />
+    </Link>
+  )
+}
 
 export default function IntegrationsPage() {
   const [query, setQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState<IntegrationCategory | 'all'>('all')
+  const [activeTier, setActiveTier] = useState<SupportTier | 'all'>('all')
   const searchRef = useRef<HTMLInputElement>(null)
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
 
-  // * Keyboard shortcut: "/" to focus search
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (
@@ -42,15 +89,10 @@ export default function IntegrationsPage() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  // * Filter integrations by search query + active category
-  const { filteredGroups, totalResults, popularIntegrations } = useMemo(() => {
+  const { filteredGroups, totalResults } = useMemo(() => {
     const q = query.toLowerCase().trim()
-    const isSearching = q.length > 0
-    const isCategoryFiltered = activeCategory !== 'all'
-
     let filtered = integrations
-
-    if (isSearching) {
+    if (q) {
       filtered = filtered.filter(
         (i) =>
           i.name.toLowerCase().includes(q) ||
@@ -58,10 +100,8 @@ export default function IntegrationsPage() {
           categoryLabels[i.category].toLowerCase().includes(q),
       )
     }
-
-    if (isCategoryFiltered) {
-      filtered = filtered.filter((i) => i.category === activeCategory)
-    }
+    if (activeCategory !== 'all') filtered = filtered.filter((i) => i.category === activeCategory)
+    if (activeTier !== 'all') filtered = filtered.filter((i) => i.supportTier === activeTier)
 
     const groups = categoryOrder
       .map((cat) => ({
@@ -71,331 +111,248 @@ export default function IntegrationsPage() {
       }))
       .filter((g) => g.items.length > 0)
 
-    // * Only show popular row when not searching/filtering
-    const popular =
-      !isSearching && !isCategoryFiltered
-        ? POPULAR_IDS.map((id) => integrations.find((i) => i.id === id)).filter(Boolean)
-        : []
-
-    return { filteredGroups: groups, totalResults: filtered.length, popularIntegrations: popular }
-  }, [query, activeCategory])
+    return { filteredGroups: groups, totalResults: filtered.length }
+  }, [query, activeCategory, activeTier])
 
   const hasResults = filteredGroups.length > 0
-  const isFiltering = query.length > 0 || activeCategory !== 'all'
+  const isFiltering = query.length > 0 || activeCategory !== 'all' || activeTier !== 'all'
+  const showFeatured = !isFiltering
 
-  const handleCategoryClick = useCallback((cat: IntegrationCategory | 'all') => {
+  const selectCategory = useCallback((cat: IntegrationCategory | 'all') => {
     setActiveCategory(cat)
   }, [])
 
+  const handleTabKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+      const last = CATEGORY_TABS.length - 1
+      let next: number | null = null
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = index === last ? 0 : index + 1
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = index === 0 ? last : index - 1
+      else if (e.key === 'Home') next = 0
+      else if (e.key === 'End') next = last
+      if (next === null) return
+      e.preventDefault()
+      selectCategory(CATEGORY_TABS[next].key)
+      tabRefs.current[next]?.focus()
+    },
+    [selectCategory],
+  )
+
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden">
-      {/* * --- ATMOSPHERE (Background) --- */}
-      <div className="absolute inset-0 -z-10 pointer-events-none">
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-neutral-400/10 rounded-full blur-[128px] opacity-40" />
-        <div
-          className="absolute inset-0 bg-grid-pattern opacity-[0.05]"
-          style={{ maskImage: 'radial-gradient(ellipse at center, black 0%, transparent 70%)' }}
-        />
-      </div>
-
-      <div className="flex-grow w-full max-w-6xl mx-auto px-4 pt-20 pb-10 z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-10"
-        >
-          {/* * --- Title with count badge --- */}
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white">
-              Integrations
-            </h1>
-            <span className="inline-flex items-center px-3 py-1 rounded-none text-sm font-semibold bg-brand-orange/10 text-brand-orange border border-brand-orange/20">
-              {integrations.length}+
-            </span>
-          </div>
-          <p className="text-xl text-neutral-400 max-w-2xl mx-auto leading-relaxed mb-8">
-            Connect Pulse with {integrations.length}+ frameworks and platforms in minutes.
+    <>
+      {/* ── HERO + RAIL ── */}
+      <MarketingSection>
+        <div className="max-w-2xl">
+          <p className="font-mono text-xs text-muted-foreground">Pulse · Integrations</p>
+          <h1 className="mt-6 font-display text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
+            Integrations
+          </h1>
+          <p className="mt-6 text-base leading-relaxed text-muted-foreground sm:text-lg">
+            Connect Pulse with {integrations.length}+ frameworks, CMS platforms, and hosting
+            providers. One script tag — any stack. Every platform below carries an honest support
+            tier so you know exactly what to expect.
           </p>
-          <a
-            href="https://docs.ciphera.net/pulse/script-installation"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 mt-4 px-4 py-2 text-sm font-medium text-brand-orange border border-brand-orange/30 rounded-none hover:bg-brand-orange/10 transition-colors ease-apple"
-          >
-            Installation docs
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-            </svg>
-          </a>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <Button asChild size="lg" variant="outline">
+              <a href="https://help.ciphera.net/docs/pulse/script-installation" target="_blank" rel="noopener noreferrer">
+                Installation docs
+                <ArrowRightIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+              </a>
+            </Button>
+          </div>
+        </div>
 
-          {/* * --- Search Input with "/" hint --- */}
-          <div className="relative max-w-md mx-auto">
-            <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-              <svg
-                className="w-5 h-5 text-neutral-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
-                />
-              </svg>
+        {/* Search + filters */}
+        <div className="mt-12">
+          <div className="relative max-w-md">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+              <SearchIcon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             </div>
             <input
               ref={searchRef}
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search integrations..."
-              className="w-full pl-12 pr-16 py-3 glass-surface rounded-none text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-orange/50 focus:border-brand-orange/50 transition-all ease-apple"
+              placeholder="Search integrations…"
+              aria-label="Search integrations"
+              className="h-10 w-full border border-border bg-card pl-10 pr-16 font-mono text-sm text-foreground placeholder:font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             />
             {query ? (
               <button
+                type="button"
                 onClick={() => setQuery('')}
-                className="absolute inset-y-0 right-0 flex items-center pr-4 text-neutral-400 hover:text-neutral-600 hover:text-neutral-300 transition-colors ease-apple"
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground transition-colors hover:text-foreground motion-reduce:transition-none"
                 aria-label="Clear search"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                </svg>
+                <XIcon className="h-4 w-4" aria-hidden="true" />
               </button>
             ) : (
-              <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
-                <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded-none text-xs font-mono font-medium bg-neutral-700/80 text-neutral-400 border border-neutral-600">
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                <kbd className="hidden items-center border border-border bg-background px-1.5 py-0.5 font-mono text-xs text-muted-foreground sm:inline-flex">
                   /
                 </kbd>
               </div>
             )}
           </div>
 
-          {/* * --- Result count (shown when filtering) --- */}
           {isFiltering && (
-            <motion.p
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-sm text-neutral-400 mt-3"
-            >
+            <p className="mt-3 font-mono text-xs text-muted-foreground">
               {totalResults} {totalResults === 1 ? 'integration' : 'integrations'} found
               {query && <> for &ldquo;{query}&rdquo;</>}
-            </motion.p>
+            </p>
           )}
-        </motion.div>
 
-        {/* * --- Category Filter Chips --- */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.15 }}
-          className="flex flex-wrap justify-center gap-2 mb-10"
-        >
-          <button
-            onClick={() => handleCategoryClick('all')}
-            className={`px-4 py-1.5 rounded-none text-sm font-medium transition-all ${
-              activeCategory === 'all'
-                ? 'bg-brand-orange-button text-white'
-                : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
-            } ease-apple`}
+          {/* Category tabs (roving tabindex) */}
+          <div
+            role="tablist"
+            aria-label="Filter integrations by category"
+            className="mt-6 flex flex-wrap gap-x-6 gap-y-2"
           >
-            All
-          </button>
-          {categoryOrder.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => handleCategoryClick(cat)}
-              className={`px-4 py-1.5 rounded-none text-sm font-medium transition-all ${
-                activeCategory === cat
-                  ? 'bg-brand-orange-button text-white'
-                  : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
-              } ease-apple`}
-            >
-              {categoryLabels[cat]}
-            </button>
-          ))}
-        </motion.div>
+            {CATEGORY_TABS.map((tab, i) => {
+              const isActive = tab.key === activeCategory
+              return (
+                <button
+                  key={tab.key}
+                  ref={(el) => {
+                    tabRefs.current[i] = el
+                  }}
+                  type="button"
+                  role="tab"
+                  tabIndex={isActive ? 0 : -1}
+                  aria-selected={isActive}
+                  onClick={() => selectCategory(tab.key)}
+                  onKeyDown={(e) => handleTabKeyDown(e, i)}
+                  className={cn(
+                    'border-b py-1.5 text-left font-mono text-xs transition-colors duration-150 motion-reduce:transition-none',
+                    isActive
+                      ? 'border-brand-orange text-foreground'
+                      : 'border-transparent text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {tab.label}
+                </button>
+              )
+            })}
+          </div>
 
-        <AnimatePresence mode="wait">
-          {hasResults ? (
-            <motion.div
-              key="results"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              {/* * --- Popular Integrations (pinned row) --- */}
-              {popularIntegrations.length > 0 && (
-                <div className="mb-12">
-                  <motion.h2
-                    initial={{ opacity: 0, y: 10 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.4 }}
-                    className="text-lg font-semibold text-neutral-400 mb-6 flex items-center gap-2"
-                  >
-                    <svg className="w-5 h-5 text-brand-orange" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M10 1l2.39 4.84 5.34.78-3.87 3.77.91 5.33L10 13.27l-4.77 2.5.91-5.33L2.27 6.67l5.34-.78L10 1z" />
-                    </svg>
-                    Popular
-                  </motion.h2>
+          {/* Tier filter */}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {TIER_FILTERS.map((t) => {
+              const isActive = t.key === activeTier
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setActiveTier(t.key)}
+                  className={cn(
+                    'rounded-none border px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.08em] transition-colors duration-150 ease-apple motion-reduce:transition-none',
+                    isActive
+                      ? 'border-brand-orange bg-brand-orange/10 text-brand-orange'
+                      : 'border-border text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {t.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </MarketingSection>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {popularIntegrations.map((integration, i) => (
-                      <motion.div
-                        key={integration!.id}
-                        initial={{ opacity: 0, y: 15 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.4, delay: i * 0.05 }}
-                      >
-                        <div
-                          className="flex items-center gap-3 p-4 glass-surface rounded-none h-full"
-                        >
-                          <div className="p-2 bg-neutral-800 rounded-none shrink-0 [&_svg]:w-6 [&_svg]:h-6">
-                            {integration!.icon}
-                          </div>
-                          <span className="font-semibold text-white text-sm">
-                            {integration!.name}
-                          </span>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
+      {/* ── FEATURED (Tier-1 verified) ── */}
+      {showFeatured && (
+        <MarketingSection>
+          <p className="mb-6 font-mono text-xs text-muted-foreground">Verified · first-class support</p>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-px border border-border bg-border">
+            {FEATURED.map((integration) => (
+              <Link
+                key={integration.id}
+                href={`/integrations/${integration.id}`}
+                className="group flex flex-col gap-3 bg-card p-5 transition-colors duration-150 ease-apple hover:bg-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="[&_svg]:h-8 [&_svg]:w-8">{integration.icon}</div>
+                  <TierBadge tier={integration.supportTier} />
                 </div>
-              )}
-
-              {/* * --- Category Groups --- */}
-              {filteredGroups.map((group) => (
-                <div key={group.category} className="mb-12">
-                  <motion.h2
-                    initial={{ opacity: 0, y: 10 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.4 }}
-                    className="text-lg font-semibold text-neutral-400 mb-6"
-                  >
-                    {group.label}
-                  </motion.h2>
-
-                  {activeCategory === 'all' && query.trim() === '' ? (
-                    /* * The default "All" view is an overview of ~75 integrations —
-                     * compact tiles keep it scannable; picking a category or
-                     * searching switches to the full cards with descriptions. */
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {group.items.map((integration, i) => (
-                        <motion.div
-                          key={integration.id}
-                          initial={{ opacity: 0, y: 15 }}
-                          whileInView={{ opacity: 1, y: 0 }}
-                          viewport={{ once: true }}
-                          transition={{ duration: 0.4, delay: Math.min(i * 0.03, 0.3) }}
-                        >
-                          <div className="flex items-center gap-3 p-4 glass-surface rounded-none h-full">
-                            <div className="p-2 bg-neutral-800 rounded-none shrink-0 [&_svg]:w-6 [&_svg]:h-6">
-                              {integration.icon}
-                            </div>
-                            <span className="font-semibold text-white text-sm">
-                              {integration.name}
-                            </span>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {group.items.map((integration, i) => (
-                        <motion.div
-                          key={integration.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          whileInView={{ opacity: 1, y: 0 }}
-                          viewport={{ once: true }}
-                          transition={{ duration: 0.5, delay: i * 0.05 }}
-                        >
-                          <div
-                            className="relative p-6 glass-surface rounded-none block h-full"
-                          >
-                            <div className="flex items-start mb-6">
-                              <div className="p-3 bg-neutral-800 rounded-none">
-                                {integration.icon}
-                              </div>
-                            </div>
-
-                            <h3 className="text-xl font-bold text-white mb-3">
-                              {integration.name}
-                            </h3>
-                            <p className="text-neutral-400 leading-relaxed">
-                              {integration.description}
-                            </p>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
+                <div>
+                  <h3 className="text-base font-semibold text-foreground">{integration.name}</h3>
+                  {integration.snippet?.label && (
+                    <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+                      {integration.snippet.label}
+                    </p>
                   )}
                 </div>
-              ))}
-            </motion.div>
-          ) : (
-            // * --- No Results: "Missing something?" card ---
-            <motion.div
-              key="no-results"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.3 }}
-              className="max-w-md mx-auto mt-8 p-10 border border-dashed border-neutral-700 rounded-none flex flex-col items-center justify-center text-center"
-            >
-              <div className="p-4 bg-neutral-800 rounded-none mb-4">
-                <svg className="w-8 h-8 text-neutral-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold text-white mb-2">
-                Missing something?
-              </h3>
-              <p className="text-neutral-400 text-sm mb-1">
-                No integrations found for &ldquo;{query}&rdquo;.
-              </p>
-              <p className="text-neutral-400 text-sm mb-5">
-                Let us know which integration you&apos;d like to see next.
-              </p>
-              <a
-                href="mailto:support@ciphera.net"
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-orange-button text-white font-medium rounded-none hover:bg-brand-orange/90 transition-[color,transform] duration-fast active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2"
-              >
-                Request Integration
-              </a>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              </Link>
+            ))}
+          </div>
+        </MarketingSection>
+      )}
 
-        {/* * Request Integration Card — always shown when there ARE results */}
-        {hasResults && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="max-w-md mx-auto mt-12 p-6 border border-dashed border-neutral-700 rounded-none flex flex-col items-center justify-center text-center"
-          >
-            <h3 className="text-xl font-bold text-white mb-2">
-              Missing something?
+      {/* ── DIRECTORY ── */}
+      <MarketingSection>
+        {hasResults ? (
+          <div className="space-y-14">
+            {filteredGroups.map((group) => (
+              <div key={group.category}>
+                <p className="mb-6 font-mono text-xs text-muted-foreground">
+                  {group.label}
+                  <span className="ml-2 tabular-nums text-muted-foreground/60">
+                    {String(group.items.length).padStart(2, '0')}
+                  </span>
+                </p>
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-px border border-border bg-border">
+                  {group.items.map((integration) => (
+                    <IntegrationCard key={integration.id} integration={integration} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="border border-border bg-card p-10 text-center">
+            <p className="font-mono text-xs text-muted-foreground">No matches</p>
+            <h3 className="mt-3 text-lg font-semibold text-foreground">
+              Nothing found{query && <> for &ldquo;{query}&rdquo;</>}
             </h3>
-            <p className="text-neutral-400 text-sm mb-4">
-              Let us know which integration you&apos;d like to see next.
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+              Pulse is a single script tag, so it already works anywhere. Tell us which platform
+              you&apos;d like a dedicated guide for and we&apos;ll add it.
             </p>
-            <a
-              href="mailto:support@ciphera.net"
-              className="text-sm font-medium text-brand-orange hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:rounded-none"
-            >
-              Request Integration
-            </a>
-          </motion.div>
+            <div className="mt-6 flex justify-center">
+              <Button asChild size="lg">
+                <a href="mailto:support@ciphera.net">Request integration</a>
+              </Button>
+            </div>
+          </div>
         )}
-      </div>
-    </div>
+      </MarketingSection>
+
+      {/* ── REQUEST CTA ── */}
+      {hasResults && (
+        <MarketingSection>
+          <div className="flex flex-col items-start justify-between gap-6 border border-border bg-card p-8 sm:flex-row sm:items-center">
+            <div>
+              <p className="font-mono text-xs text-muted-foreground">Missing something?</p>
+              <p className="mt-3 text-lg font-semibold text-foreground">Request an integration.</p>
+              <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+                Pulse is a single script tag, so it already works anywhere. Tell us the platform
+                you&apos;d like a dedicated guide for and we&apos;ll add it.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button asChild size="lg">
+                <a href="mailto:support@ciphera.net">Request integration</a>
+              </Button>
+              <Button asChild variant="outline" size="lg">
+                <Link href="/installation">
+                  Read the docs
+                  <ArrowRightIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </MarketingSection>
+      )}
+    </>
   )
 }

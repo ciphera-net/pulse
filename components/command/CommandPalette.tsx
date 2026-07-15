@@ -30,7 +30,7 @@ import {
   DeviceMobile,
 } from '@phosphor-icons/react'
 import { useSites } from '@/lib/swr/sites'
-import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
+import { SiteFavicon } from '@/components/sites/SiteFavicon'
 import {
   CommandDialog,
   CommandEmpty,
@@ -161,12 +161,11 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
               value={`site-${site.name}-${site.domain}`}
               onSelect={() => go(`/sites/${site.id}`)}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={`${FAVICON_SERVICE_URL}?domain=${site.domain}&sz=64`}
-                alt=""
+              <SiteFavicon
+                domain={site.domain}
+                name={site.name}
+                size={16}
                 className="w-4 h-4 rounded-none object-contain shrink-0"
-                aria-hidden="true"
               />
               <span className="truncate"><HighlightMatch text={site.name} query={search} /></span>
               <span className="ms-auto text-xs text-muted-foreground truncate">{site.domain}</span>

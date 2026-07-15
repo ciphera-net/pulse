@@ -29,8 +29,8 @@ import {
   type TransitionsResponse,
   type EntryPoint,
 } from '@/lib/api/journeys'
-import { getSite } from '@/lib/api/sites'
-import type { Site } from '@/lib/api/sites'
+import { getSite, getInstallStatus } from '@/lib/api/sites'
+import type { Site, InstallStatusResponse } from '@/lib/api/sites'
 import { listFunnels, getFunnel, getFunnelStats, getFunnelTrends, getFunnelBreakdown, type Funnel, type FunnelStats, type FunnelTrends, type FunnelBreakdown } from '@/lib/api/funnels'
 import { getUptimeStatus, type UptimeStatusResponse } from '@/lib/api/uptime'
 import { getPageSpeedConfig, getPageSpeedLatest, getPageSpeedHistory, type PageSpeedConfig, type PageSpeedCheck } from '@/lib/api/pagespeed'
@@ -71,6 +71,7 @@ import type {
 // * SWR fetcher functions
 const fetchers = {
   site: (siteId: string) => getSite(siteId),
+  installStatus: (siteId: string) => getInstallStatus(siteId),
   dashboard: (siteId: string, start: string, end: string, interval?: string, filters?: string, period?: string) => getDashboard(siteId, start, end, 10, interval, filters, period),
   dashboardOverview: (siteId: string, start: string, end: string, interval?: string, filters?: string) => getDashboardOverview(siteId, start, end, interval, filters),
   dashboardPages: (siteId: string, start: string, end: string, filters?: string) => getDashboardPages(siteId, start, end, undefined, filters),
@@ -153,6 +154,29 @@ export function useSite(siteId: string) {
       dedupingInterval: 30 * 1000,
     }
   )
+}
+
+/**
+ * Install-health for a site. Polls more eagerly while waiting for the first
+ * event (so the install-flow "listening…" loop feels live), and backs off once
+ * the install is active. Returns undefined data while loading.
+ */
+export function useInstallStatus(siteId: string | undefined, options?: { poll?: boolean }) {
+  const poll = options?.poll ?? false
+  const swr = useSWR<InstallStatusResponse>(
+    siteId ? ['install-status', siteId] : null,
+    () => fetchers.installStatus(siteId as string),
+    {
+      ...dashboardSWRConfig,
+      // While actively watching for the first event, poll every 4s; otherwise
+      // refresh on the slow cadence. The consumer flips `poll` on when the panel
+      // is open and the install is not yet active.
+      refreshInterval: (latest) =>
+        poll && latest?.install_status !== 'active' ? 4000 : 60 * 1000,
+      dedupingInterval: 2000,
+    }
+  )
+  return swr
 }
 
 // * Hook for full dashboard data (single request replaces 7 focused hooks)

@@ -39,9 +39,21 @@ export interface Site {
   uptime_enabled: boolean
   is_verified?: boolean
   detected_framework?: string | null
+  // Install-health telemetry (server-derived)
+  first_event_at?: string | null
+  last_event_at?: string | null
+  install_status?: InstallStatus
   created_at: string
   updated_at: string
   deleted_at?: string | null
+}
+
+export type InstallStatus = 'never_installed' | 'active' | 'stalled'
+
+export interface InstallStatusResponse {
+  install_status: InstallStatus
+  first_event_at: string | null
+  last_event_at: string | null
 }
 
 export interface CreateSiteRequest {
@@ -86,6 +98,10 @@ export async function listSites(): Promise<Site[]> {
 
 export async function getSite(id: string): Promise<Site> {
   return apiRequest<Site>(`/sites/${id}`)
+}
+
+export async function getInstallStatus(id: string): Promise<InstallStatusResponse> {
+  return apiRequest<InstallStatusResponse>(`/sites/${id}/install-status`)
 }
 
 export async function createSite(data: CreateSiteRequest): Promise<Site> {

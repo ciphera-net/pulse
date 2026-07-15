@@ -1,0 +1,21 @@
+{
+  "version": "1.0.0",
+  "baseUrl": "https://js.ciphera.net",
+  "files": {
+    "script.js": {
+      "path": "/v1.0.0/script.js",
+      "sha384": "sha384-XpjCwHyCl2ZfY5iIiOL40e3FJ6GzKnRJpbP8X0Yy0LZVQejv+i93Xpo+/HEpGMHz",
+      "sha512": "sha512-3PtTEqlLOZkPadFHkaaioDxoe/SEi+Q9FvpGV1LC7GsZcV3aTNiMEHF1YmU7kSSCDwOVC38srfp4ygcmijSYeg=="
+    },
+    "script.frustration.js": {
+      "path": "/v1.0.0/script.frustration.js",
+      "sha384": "sha384-9Za95ObpeoZLGaI/XlhKjcdG10pxpw28g3ZUccS50EKvj7AK2LeNA7ccVmbDg6Cb",
+      "sha512": "sha512-8433RQY+9Het1EEcOMQznbWXPo7W/xeAsSfXKqC7HLcd5+VRS9sEM+bwqJlnHVAGZLkLYWbbVVanyVgEnOlhdA=="
+    },
+    "script.interactions.js": {
+      "path": "/v1.0.0/script.interactions.js",
+      "sha384": "sha384-79RA9oNU+wglFhUfEnSnR3NDiH9tNsTcHNxX27V1U0QtcxwyYi3UetUDY0r1yICH",
+      "sha512": "sha512-vWUdX1ylK1PvM72HTYZaHjK6bAkJxj7h7HCzAkmNEvSREu+13y+qA9ZP+o4/7XYVk6QDXFUhMsercvBTKo1DtQ=="
+    }
+  }
+}

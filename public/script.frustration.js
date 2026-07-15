@@ -20,11 +20,13 @@
       waited += POLL_INTERVAL;
       if (waited < MAX_WAIT) {
         setTimeout(init, POLL_INTERVAL);
-      } else {
-        if (typeof console !== 'undefined' && console.warn) {
-          console.warn('Pulse frustration add-on: core script not detected. Frustration tracking disabled.');
-        }
       }
+      // * No core script after MAX_WAIT: exit silently. Its absence is expected,
+      // * not an error — the core opts out (and never registers window.pulse) on
+      // * Do Not Track, Global Privacy Control, webdriver/headless, or ?pulse-ignore.
+      // * The add-on simply has nothing to attach to; a console.warn here would
+      // * fire on every privacy-respecting visit and every automated (Playwright)
+      // * load, polluting the console for correct, intended behavior.
       return;
     }
 

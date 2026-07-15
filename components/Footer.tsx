@@ -2,8 +2,9 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { GithubIcon, TwitterIcon, SwissFlagIcon } from '@ciphera-net/facet'
+import { GithubIcon, TwitterIcon, ArrowUpRightIcon } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
+import { Watermark } from '@/components/marketing/system/Watermark'
 
 interface FooterProps {
   LinkComponent?: React.ElementType
@@ -11,56 +12,95 @@ interface FooterProps {
   isAuthenticated?: boolean
 }
 
-const footerLinks = {
-  products: [
-    { name: 'Pulse', href: 'https://pulse.ciphera.net', external: true },
-    { name: 'Ciphera ID', href: 'https://ciphera.net/products#id', external: true },
-    { name: 'Ciphera Captcha', href: 'https://ciphera.net/products#captcha', external: true },
-    { name: 'Ciphera Relay', href: 'https://ciphera.net/products#relay', external: true },
-  ],
-  company: [
-    { name: 'Features', href: '/features', external: false },
-    { name: 'About', href: '/about', external: false },
-    { name: 'Pricing', href: '/pricing', external: false },
-    { name: 'Contact', href: 'https://ciphera.net/contact', external: true },
-  ],
-  resources: [
-    { name: 'Changelog', href: '/changelog', external: false },
-    { name: 'Installation', href: '/installation', external: false },
-    { name: 'Integrations', href: '/integrations', external: false },
-    { name: 'Documentation', href: 'https://docs.ciphera.net', external: true },
-    { name: 'GitHub', href: 'https://github.com/ciphera-net', external: true },
-  ],
-  legal: [
-    { name: 'Privacy Policy', href: 'https://ciphera.net/#privacy', external: true },
-    { name: 'Terms of Service', href: 'https://ciphera.net/#terms', external: true },
-  ],
+type FooterLink = { name: string; href: string; external?: boolean }
+
+const footerColumns: { heading: string; links: FooterLink[] }[] = [
+  {
+    heading: 'Product',
+    links: [
+      { name: 'Features', href: '/features' },
+      { name: 'Pricing', href: '/pricing' },
+      { name: 'Integrations', href: '/integrations' },
+      { name: 'Changelog', href: '/changelog' },
+    ],
+  },
+  {
+    heading: 'Resources',
+    links: [
+      { name: 'Installation', href: '/installation' },
+      { name: 'FAQ', href: '/faq' },
+      { name: 'Documentation', href: 'https://help.ciphera.net', external: true },
+      { name: 'About', href: '/about' },
+    ],
+  },
+  {
+    heading: 'Legal',
+    links: [
+      { name: 'Privacy Policy', href: 'https://ciphera.net/#privacy', external: true },
+      { name: 'Terms of Service', href: 'https://ciphera.net/#terms', external: true },
+      { name: 'Contact', href: 'https://ciphera.net/contact', external: true },
+    ],
+  },
+]
+
+const LINK_CLASS =
+  'inline-block py-1.5 text-sm text-foreground/80 transition-colors duration-fast motion-reduce:transition-none hover:text-foreground'
+
+function FooterLinkItem({
+  link,
+  Component,
+}: {
+  link: FooterLink
+  Component: React.ElementType
+}) {
+  if (link.external) {
+    return (
+      <a
+        href={link.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={LINK_CLASS}
+      >
+        {link.name}
+        <ArrowUpRightIcon aria-hidden="true" className="ml-1 inline h-3 w-3" />
+      </a>
+    )
+  }
+  return (
+    <Component href={link.href} className={LINK_CLASS}>
+      {link.name}
+    </Component>
+  )
 }
 
-export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticated = false }: FooterProps) {
+export function Footer({
+  LinkComponent = Link,
+  appName = 'Pulse',
+  isAuthenticated = false,
+}: FooterProps) {
   const Component = LinkComponent
   const year = new Date().getFullYear()
 
-  // * Simple footer for authenticated users
+  // * Simple footer for authenticated users (dashboard chrome).
   if (isAuthenticated) {
     return (
-      <footer className="w-full py-8 mt-auto border-t border-neutral-800 bg-neutral-900">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="text-sm text-neutral-400">
+      <footer className="mt-auto w-full border-t border-border py-8">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
+            <div className="text-sm text-muted-foreground">
               © 2024-{year} Ciphera. All rights reserved.
             </div>
-            <div className="flex gap-6 text-sm font-medium text-neutral-300">
-              <Component href="/about" className="hover:text-brand-orange transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus:rounded-none ease-apple">
+            <div className="flex gap-6 text-sm font-medium text-foreground/80">
+              <Component href="/about" className="transition-colors duration-fast hover:text-foreground">
                 Why {appName}
               </Component>
-              <Component href="/changelog" className="hover:text-brand-orange transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus:rounded-none ease-apple">
+              <Component href="/changelog" className="transition-colors duration-fast hover:text-foreground">
                 Changelog
               </Component>
-              <Component href="/pricing" className="hover:text-brand-orange transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus:rounded-none ease-apple">
+              <Component href="/pricing" className="transition-colors duration-fast hover:text-foreground">
                 Pricing
               </Component>
-              <Component href="/faq" className="hover:text-brand-orange transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus:rounded-none ease-apple">
+              <Component href="/faq" className="transition-colors duration-fast hover:text-foreground">
                 FAQ
               </Component>
             </div>
@@ -70,173 +110,89 @@ export function Footer({ LinkComponent = Link, appName = 'Pulse', isAuthenticate
     )
   }
 
-  // * Comprehensive footer for unauthenticated users
+  // * Comprehensive marketing footer — on the rail so the vertical lines run
+  // * continuously from the header through every section into the footer.
   return (
-    <footer className="w-full mt-auto border-t border-neutral-800 bg-neutral-900">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 lg:py-16">
-        {/* * Main footer content */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 sm:gap-8 lg:gap-12">
-          {/* * Brand column */}
-          <div className="col-span-1 sm:col-span-2 md:col-span-4 lg:col-span-1 lg:pr-8">
-            <Link href="/" className="flex items-center gap-3 mb-4 group">
-              <Image
-                src={cdnUrl('/pulse_icon_no_margins.png')}
-                alt="Pulse privacy-first analytics logo"
-                width={36}
-                height={36}
-                loading="lazy"
-                className="w-9 h-9 object-contain group-hover:scale-105 transition-transform duration-slow ease-apple"
-              />
-              <span className="text-xl font-bold text-white group-hover:text-brand-orange transition-colors duration-slow ease-apple">
-                Pulse
-              </span>
-            </Link>
-            <p className="text-sm text-neutral-400 mb-4 leading-relaxed">
-              Simple analytics for privacy-conscious apps.
-            </p>
-            <div className="inline-flex items-center gap-3 text-sm text-neutral-400 mb-4">
-              <span className="flex items-center justify-center w-8 h-8 rounded-none bg-neutral-800 shrink-0 overflow-hidden ring-1 ring-neutral-700" aria-hidden>
-                <SwissFlagIcon className="w-5 h-5" />
-              </span>
-              <span>Swiss infrastructure</span>
+    <footer className="border-t border-border">
+      <div className="mx-auto w-full max-w-6xl sm:border-x sm:border-border">
+        {/* Link grid */}
+        <div className="px-6 py-16">
+          <div className="grid gap-12 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
+            {/* Brand column */}
+            <div>
+              <Link href="/" className="flex items-center gap-2">
+                <Image
+                  src={cdnUrl('/pulse_icon_no_margins.png')}
+                  alt=""
+                  width={28}
+                  height={28}
+                  loading="lazy"
+                  className="h-7 w-7 object-contain"
+                  unoptimized
+                />
+                <span className="font-display text-lg font-bold tracking-tight text-foreground">
+                  Pulse
+                </span>
+              </Link>
+              <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
+                Simple, privacy-first web analytics. No cookies, no tracking, no
+                consent banners — insight without surveillance.
+              </p>
+              <div className="mt-6 flex items-center gap-2">
+                <a
+                  href="https://github.com/ciphera-net"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Pulse on GitHub"
+                  className="inline-flex h-9 w-9 items-center justify-center border border-border text-muted-foreground transition-colors duration-fast hover:text-foreground"
+                >
+                  <GithubIcon className="h-4 w-4" />
+                </a>
+                <a
+                  href="https://x.com/cipheranet"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Ciphera on X"
+                  className="inline-flex h-9 w-9 items-center justify-center border border-border text-muted-foreground transition-colors duration-fast hover:text-foreground"
+                >
+                  <TwitterIcon className="h-4 w-4" />
+                </a>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <a
-                href="https://github.com/ciphera-net"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-9 h-9 rounded-none bg-neutral-800 flex items-center justify-center text-neutral-400 hover:text-brand-orange hover:bg-neutral-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ease-apple"
-                aria-label="GitHub"
-              >
-                <GithubIcon className="w-5 h-5" />
-              </a>
-              <a
-                href="https://x.com/cipheranet"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-9 h-9 rounded-none bg-neutral-800 flex items-center justify-center text-neutral-400 hover:text-brand-orange hover:bg-neutral-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ease-apple"
-                aria-label="X (Twitter)"
-              >
-                <TwitterIcon className="w-5 h-5" />
-              </a>
-            </div>
-          </div>
 
-          {/* * Products */}
-          <div>
-            <h4 className="font-semibold text-white mb-4">Products</h4>
-            <ul className="space-y-3">
-              {footerLinks.products.map((link) => (
-                <li key={link.name}>
-                  {link.external ? (
-                    <a
-                      href={link.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-neutral-400 hover:text-brand-orange transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus:rounded-none ease-apple"
-                    >
-                      {link.name}
-                    </a>
-                  ) : (
-                    <Component
-                      href={link.href}
-                      className="text-sm text-neutral-400 hover:text-brand-orange transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus:rounded-none ease-apple"
-                    >
-                      {link.name}
-                    </Component>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* * Company */}
-          <div>
-            <h4 className="font-semibold text-white mb-4">Company</h4>
-            <ul className="space-y-3">
-              {footerLinks.company.map((link) => (
-                <li key={link.name}>
-                  {link.external ? (
-                    <a
-                      href={link.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-neutral-400 hover:text-brand-orange transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus:rounded-none ease-apple"
-                    >
-                      {link.name}
-                    </a>
-                  ) : (
-                    <Component
-                      href={link.href}
-                      className="text-sm text-neutral-400 hover:text-brand-orange transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus:rounded-none ease-apple"
-                    >
-                      {link.name}
-                    </Component>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* * Resources */}
-          <div>
-            <h4 className="font-semibold text-white mb-4">Resources</h4>
-            <ul className="space-y-3">
-              {footerLinks.resources.map((link) => (
-                <li key={link.name}>
-                  {link.external ? (
-                    <a
-                      href={link.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-neutral-400 hover:text-brand-orange transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus:rounded-none ease-apple"
-                    >
-                      {link.name}
-                    </a>
-                  ) : (
-                    <Component
-                      href={link.href}
-                      className="text-sm text-neutral-400 hover:text-brand-orange transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus:rounded-none ease-apple"
-                    >
-                      {link.name}
-                    </Component>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* * Legal */}
-          <div>
-            <h4 className="font-semibold text-white mb-4">Legal</h4>
-            <ul className="space-y-3">
-              {footerLinks.legal.map((link) => (
-                <li key={link.name}>
-                  <a
-                    href={link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-neutral-400 hover:text-brand-orange transition-colors ease-apple"
-                  >
-                    {link.name}
-                  </a>
-                </li>
-              ))}
-            </ul>
+            {/* Link columns */}
+            {footerColumns.map((column) => (
+              <div key={column.heading}>
+                <h3 className="font-mono text-xs text-muted-foreground">
+                  {column.heading}
+                </h3>
+                <ul className="mt-4 space-y-3">
+                  {column.links.map((link) => (
+                    <li key={link.name}>
+                      <FooterLinkItem link={link} Component={Component} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* * Divider */}
-        <div className="h-px w-full bg-gradient-to-r from-transparent via-neutral-800 to-transparent my-8" />
+        {/* Typographic signature */}
+        <Watermark />
 
-        {/* * Bottom bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-neutral-400">
-            © 2024-{year} Ciphera. All rights reserved.
-          </p>
-          <p className="text-sm text-neutral-400">
-            Where Privacy Still Exists
-          </p>
+        {/* Bottom bar */}
+        <div>
+          <div className="px-6 py-6">
+            <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
+              <p className="text-xs text-muted-foreground">
+                © 2024–{year} Ciphera. All rights reserved.
+              </p>
+              <p className="font-mono text-xs text-muted-foreground">
+                Zero-knowledge · No tracking · Open source
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </footer>

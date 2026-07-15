@@ -55,14 +55,15 @@ export default function FunnelsPage() {
   const { period, dateRange, setPeriod, shiftPeriod } = useUrlDateRange()
   const [deletingFunnel, setDeletingFunnel] = useState<{ id: string; name: string } | null>(null)
   const [prefill, setPrefill] = useState<FunnelPrefill | null>(() => parsePrefill(searchParams.get('prefill')))
-  const [modalOpen, setModalOpen] = useState<boolean>(() => parsePrefill(searchParams.get('prefill')) !== null)
+  const [modalOpen, setModalOpen] = useState<boolean>(() => parsePrefill(searchParams.get('prefill')) !== null || searchParams.get('create') === '1')
   const [editingFunnel, setEditingFunnel] = useState<Funnel | null>(null)
 
-  // * Consume the prefill param once — the modal is seeded, the URL cleaned
+  // * Consume the prefill/create params once — the modal is open, the URL cleaned
   useEffect(() => {
-    if (!searchParams.get('prefill')) return
+    if (!searchParams.get('prefill') && !searchParams.get('create')) return
     const url = new URL(window.location.href)
     url.searchParams.delete('prefill')
+    url.searchParams.delete('create')
     window.history.replaceState({}, '', url.toString())
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

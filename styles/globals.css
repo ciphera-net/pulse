@@ -160,4 +160,38 @@
   .animate-skeleton-fade {
     animation: skeletonFade var(--duration-base) var(--ease-apple);
   }
+
+  /* * Hero word rotator — plays ONCE on load and settles on the first
+     phrase (an orchestrated entrance, not a loop; endings make motion feel
+     designed). Items 2-3 are decorative duplicates (aria-hidden, base
+     opacity-0) that only exist mid-animation; item 1 is visible at rest,
+     so with animations disabled (motion-reduce, JS-off, crawlers) the
+     settled sentence is simply there. Exit slides up, entry rises from
+     below; the invisible reposition happens while opacity is 0. */
+  @keyframes heroWordFirst {
+    0%, 28% { opacity: 1; transform: translateY(0); }
+    31% { opacity: 0; transform: translateY(-0.3em); }
+    32%, 90% { opacity: 0; transform: translateY(0.3em); }
+    93%, 100% { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes heroWordSecond {
+    0%, 28% { opacity: 0; transform: translateY(0.3em); }
+    31%, 59% { opacity: 1; transform: translateY(0); }
+    62%, 100% { opacity: 0; transform: translateY(-0.3em); }
+  }
+  @keyframes heroWordThird {
+    0%, 59% { opacity: 0; transform: translateY(0.3em); }
+    62%, 90% { opacity: 1; transform: translateY(0); }
+    93%, 100% { opacity: 0; transform: translateY(-0.3em); }
+  }
+  .animate-hero-word-1 { animation: heroWordFirst 4.5s var(--ease-apple) both; }
+  .animate-hero-word-2 { animation: heroWordSecond 4.5s var(--ease-apple) both; }
+  .animate-hero-word-3 { animation: heroWordThird 4.5s var(--ease-apple) both; }
+}
+
+/* S2-j: facet's Toaster hardcodes sonner's top-right position, whose default
+   offset overlays the app header's action row (plan-limit pill, nav icons,
+   notification bell). Push the toast stack below the header. */
+[data-sonner-toaster][data-y-position='top'] {
+  top: 72px !important;
 }

@@ -8,7 +8,8 @@ import { Check, CheckCircle, ArrowRight } from '@phosphor-icons/react'
 import { toast, Spinner, LoadingOverlay } from '@ciphera-net/facet'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { getPrices, changePlan, estimatePlanChange, type PlanChangeEstimate } from '@/lib/api/billing'
-import { TRAFFIC_TIERS } from '@/lib/plans'
+import { TRAFFIC_TIERS, formatPlanName } from '@/lib/plans'
+import Select from '@/components/ui/select'
 import { cdnUrl } from '@/lib/cdn'
 import { TIMING } from '@/lib/motion'
 
@@ -115,6 +116,10 @@ function SwitchPlanContent() {
   const [estimateLoading, setEstimateLoading] = useState(false)
   const [estimateError, setEstimateError] = useState(false)
   const [switching, setSwitching] = useState(false)
+  // True when the backend accepted the change but it awaits payment confirmation
+  // (grant-after-payment upgrade). Drives the "pending" success copy so we never
+  // imply the new plan is already live.
+  const [changePending, setChangePending] = useState(false)
 
   // * Preselect the org's current billing interval — a yearly org defaulting
   // * to Monthly misquotes their own plan. Ref-guarded so an SWR revalidation
@@ -167,9 +172,10 @@ function SwitchPlanContent() {
   const handleSwitch = async () => {
     setSwitching(true)
     try {
-      await changePlan({ plan_id: selectedPlan, interval: newInterval, limit: selectedLimit })
+      const result = await changePlan({ plan_id: selectedPlan, interval: newInterval, limit: selectedLimit })
+      setChangePending(result.pending === true)
       setStep(2)
-      toast.success('Plan updated successfully')
+      toast.success(result.pending ? 'Plan change pending payment confirmation' : 'Plan updated successfully')
       setTimeout(() => router.push('/'), 3000)
     } catch {
       toast.error('Failed to change plan. Please try again.')
@@ -198,7 +204,7 @@ function SwitchPlanContent() {
                   Switch your plan
                 </h1>
                 <p className="mt-2 text-sm text-neutral-400 max-w-sm mx-auto">
-                  Currently on <span className="text-white font-medium">{currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}</span> with {formatLimit(currentLimit)} pageviews ({currentInterval === 'year' ? 'yearly' : 'monthly'}).
+                  Currently on <span className="text-white font-medium">{formatPlanName(currentPlan)}</span> with {formatLimit(currentLimit)} pageviews ({currentInterval === 'year' ? 'yearly' : 'monthly'}).
                 </p>
               </div>
 
@@ -232,17 +238,16 @@ function SwitchPlanContent() {
                 <label className="block text-xs font-medium text-neutral-500 mb-1.5 text-center">
                   Monthly pageviews
                 </label>
-                <select
-                  value={selectedLimit}
-                  onChange={(e) => setSelectedLimit(Number(e.target.value))}
-                  className="w-full py-2 px-3 bg-neutral-800/80 border border-neutral-800 rounded-none text-white text-sm outline-none focus-visible:border-brand-orange"
-                >
-                  {TRAFFIC_TIERS.map((tier) => (
-                    <option key={tier.value} value={tier.value}>
-                      {tier.label} pageviews/month
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  variant="input"
+                  fullWidth
+                  value={String(selectedLimit)}
+                  onChange={(v) => setSelectedLimit(Number(v))}
+                  options={TRAFFIC_TIERS.map((tier) => ({
+                    value: String(tier.value),
+                    label: `${tier.label} pageviews/month`,
+                  }))}
+                />
               </div>
 
               {/* Plan cards */}
@@ -338,7 +343,7 @@ function SwitchPlanContent() {
                 <div className="flex items-center gap-4">
                   <div className="flex-1 rounded-none border border-neutral-700 bg-neutral-800/50 p-4">
                     <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-1">Current</p>
-                    <p className="text-base font-semibold text-white">{currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}</p>
+                    <p className="text-base font-semibold text-white">{formatPlanName(currentPlan)}</p>
                     <p className="text-sm text-neutral-400">{formatLimit(currentLimit)} pageviews</p>
                     <p className="text-xs text-neutral-500 mt-0.5">{currentInterval === 'year' ? 'Yearly' : 'Monthly'} billing</p>
                   </div>
@@ -347,7 +352,7 @@ function SwitchPlanContent() {
 
                   <div className="flex-1 rounded-none border border-brand-orange/50 bg-brand-orange/5 p-4">
                     <p className="text-xs font-medium text-brand-orange uppercase tracking-wider mb-1">New</p>
-                    <p className="text-base font-semibold text-white">{selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)}</p>
+                    <p className="text-base font-semibold text-white">{formatPlanName(selectedPlan)}</p>
                     <p className="text-sm text-neutral-400">{formatLimit(selectedLimit)} pageviews</p>
                     <p className="text-xs text-neutral-500 mt-0.5">{isYearly ? 'Yearly' : 'Monthly'} billing</p>
                   </div>
@@ -454,18 +459,31 @@ function SwitchPlanContent() {
             >
               <div className="text-center mb-8">
                 <h1 className="text-2xl font-bold tracking-tight text-white">
-                  Plan updated
+                  {changePending ? 'Change pending' : 'Plan updated'}
                 </h1>
               </div>
 
               <div className="rounded-none bg-card border border-border p-8 text-center">
-                <CheckCircle weight="fill" className="w-12 h-12 text-green-500 mx-auto mb-4" />
-                <h2 className="text-xl font-semibold text-white mb-2">
-                  You&apos;re now on {selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)}
-                </h2>
-                <p className="text-sm text-neutral-400">
-                  {formatLimit(selectedLimit)} pageviews, {isYearly ? 'yearly' : 'monthly'} billing. Redirecting to your dashboard...
-                </p>
+                <CheckCircle weight="fill" className={`w-12 h-12 mx-auto mb-4 ${changePending ? 'text-amber-400' : 'text-green-500'}`} />
+                {changePending ? (
+                  <>
+                    <h2 className="text-xl font-semibold text-white mb-2">
+                      Plan change pending payment confirmation
+                    </h2>
+                    <p className="text-sm text-neutral-400">
+                      Your switch to {formatPlanName(selectedPlan)} ({formatLimit(selectedLimit)} pageviews, {isYearly ? 'yearly' : 'monthly'} billing) will apply as soon as your payment is confirmed. Redirecting to your dashboard...
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="text-xl font-semibold text-white mb-2">
+                      You&apos;re now on {formatPlanName(selectedPlan)}
+                    </h2>
+                    <p className="text-sm text-neutral-400">
+                      {formatLimit(selectedLimit)} pageviews, {isYearly ? 'yearly' : 'monthly'} billing. Redirecting to your dashboard...
+                    </p>
+                  </>
+                )}
               </div>
             </motion.div>
           )}

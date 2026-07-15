@@ -12,6 +12,8 @@ const PUBLIC_ROUTES = new Set([
   '/faq',
   '/changelog',
   '/installation',
+  '/demo', // * Public live demo — redirects to the ciphera.net share view
+
   '/script.js', // * Tracking script – must load without auth for embedded sites (Shopify, etc.)
   '/script.frustration.js', // * Frustration tracking add-on (rage clicks, dead clicks)
   '/script-sri.json', // * Subresource Integrity manifest (sha384 of both scripts); consumed by ciphera-website build to pin <script integrity="">.

@@ -12,6 +12,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: '/changelog', priority: 0.6, changeFrequency: 'weekly' as const },
     { url: '/installation', priority: 0.8, changeFrequency: 'monthly' as const },
     { url: '/integrations', priority: 0.8, changeFrequency: 'monthly' as const },
+    { url: '/demo', priority: 0.8, changeFrequency: 'weekly' as const },
   ]
 
   return publicRoutes.map((route) => ({
