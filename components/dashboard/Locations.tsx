@@ -365,7 +365,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
 
   return (
     <>
-      <div ref={containerRef} className="bg-card rounded-none p-6 h-full flex flex-col border border-border">
+      <div ref={containerRef} className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
         <div className="flex items-center justify-between mb-4">
           <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1" role="tablist" aria-label="Audience view tabs" onKeyDown={handleTabKeyDown}>
             {(['map', 'countries', 'regions', 'cities', 'languages', 'timezones'] as Tab[]).map((tab) => (

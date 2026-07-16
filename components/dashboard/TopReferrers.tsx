@@ -137,7 +137,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
 
   return (
     <>
-      <div className="bg-card rounded-none p-6 h-full flex flex-col border border-border">
+      <div className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
         <div className="flex items-center justify-between mb-4">
           <div className="flex gap-1 pb-1" role="tablist" aria-label="Referrers view tabs">
             {(['referrers', 'channels'] as const).map((tab) => (
