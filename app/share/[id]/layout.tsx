@@ -1,71 +1,30 @@
 import type { Metadata } from 'next'
-import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
-import { env } from '@/lib/env'
 
-// Zod-validated URL, guaranteed to be a `string` at runtime.
-const API_URL = env.NEXT_PUBLIC_API_URL
-
-interface SharePageParams {
-  params: Promise<{ id: string }>
-}
-
-export async function generateMetadata({ params }: SharePageParams): Promise<Metadata> {
-  const { id } = await params
-  const fallback: Metadata = {
+// * Static, static-safe metadata for the public share dashboard.
+// *
+// * /demo (the address the announcement links) 307-redirects here, so this is
+// * the card social crawlers actually unfurl. It is deliberately STATIC: the
+// * previous generateMetadata did a per-request server-side fetch to build a
+// * per-domain title, but that call targeted the API without its `/api/v1`
+// * prefix, so it always 404'd and silently fell back to exactly the copy
+// * below — a wasted round-trip and latency on the highest-traffic public
+// * link for no observable benefit. A plain static object guarantees a sane
+// * title/description card with zero runtime dependency on the API being
+// * reachable.
+export const metadata: Metadata = {
+  title: 'Public Dashboard | Pulse',
+  description: 'Privacy-first web analytics — view this site\'s public stats.',
+  openGraph: {
     title: 'Public Dashboard | Pulse',
     description: 'Privacy-first web analytics — view this site\'s public stats.',
-    openGraph: {
-      title: 'Public Dashboard | Pulse',
-      description: 'Privacy-first web analytics — view this site\'s public stats.',
-      siteName: 'Pulse by Ciphera',
-      type: 'website',
-    },
-    twitter: {
-      card: 'summary',
-      title: 'Public Dashboard | Pulse',
-      description: 'Privacy-first web analytics — view this site\'s public stats.',
-    },
-  }
-
-  try {
-    const res = await fetch(`${API_URL}/public/sites/${id}/dashboard?limit=1`, {
-      next: { revalidate: 3600 },
-    })
-    if (!res.ok) return fallback
-
-    const data = await res.json()
-    const domain = data?.site?.domain
-    if (!domain) return fallback
-
-    const title = `${domain} analytics | Pulse`
-    const description = `Live, privacy-first analytics for ${domain} — powered by Pulse.`
-
-    return {
-      title,
-      description,
-      openGraph: {
-        title,
-        description,
-        siteName: 'Pulse by Ciphera',
-        type: 'website',
-        images: [{
-          // * OG images must be absolute for external crawlers; the proxy
-          // * path is origin-relative, so prefix our own public URL.
-          url: `${env.NEXT_PUBLIC_APP_URL}${FAVICON_SERVICE_URL}?domain=${domain}&sz=128`,
-          width: 128,
-          height: 128,
-          alt: `${domain} favicon`,
-        }],
-      },
-      twitter: {
-        card: 'summary',
-        title,
-        description,
-      },
-    }
-  } catch {
-    return fallback
-  }
+    siteName: 'Pulse by Ciphera',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Public Dashboard | Pulse',
+    description: 'Privacy-first web analytics — view this site\'s public stats.',
+  },
 }
 
 export default function ShareLayout({
