@@ -195,7 +195,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
 
   return (
     <>
-      <div className="bg-card rounded-none p-6 h-full flex flex-col border border-border">
+      <div className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
         <div className="flex items-center justify-between mb-4">
           <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1" role="tablist" aria-label="Pages view tabs" onKeyDown={handleTabKeyDown}>
             {(['top_pages', 'entry_pages', 'exit_pages', 'engagement'] as Tab[]).map((tab) => (
