@@ -14,9 +14,10 @@ import { Button } from '@ciphera-net/facet'
  * this whenever an SWR/fetch `error` is present so a server failure is visibly
  * distinct from a genuine empty result, with a Retry that calls `mutate()`.
  *
- * `variant="card"` (default) is a bordered block for a whole-section failure;
- * `variant="banner"` is a compact inline strip for a sub-section that failed
- * while the rest of the tab rendered.
+ * `variant="card"` (default) is an in-frame, left-aligned block sharing the
+ * panel grammar (coral hairline, muted line icon, inline Retry) — a
+ * whole-section failure. `variant="banner"` is a compact inline strip for a
+ * sub-section that failed while the rest of the tab rendered.
  */
 interface SettingsErrorStateProps {
   message?: string
@@ -36,16 +37,16 @@ export function SettingsErrorState({
   if (variant === 'banner') {
     return (
       <div
-        className={`flex items-start gap-3 p-3 rounded-none bg-amber-900/20 border border-amber-900/40 text-sm ${className ?? ''}`}
+        className={`flex items-start gap-3 rounded-none border border-destructive/30 bg-destructive/10 p-3 text-sm ${className ?? ''}`}
       >
-        <WarningCircle size={16} weight="fill" className="text-amber-400 shrink-0 mt-0.5" />
-        <p className="text-amber-200 flex-1">{message}</p>
+        <WarningCircle size={16} weight="fill" className="mt-0.5 shrink-0 text-destructive" />
+        <p className="flex-1 text-foreground">{message}</p>
         {onRetry && (
           <button
             type="button"
             onClick={onRetry}
             disabled={retrying}
-            className="text-amber-200 underline font-medium hover:text-white transition-colors duration-fast ease-apple disabled:opacity-50"
+            className="font-medium text-destructive underline transition-colors duration-fast ease-apple hover:text-foreground disabled:opacity-50"
           >
             {retrying ? 'Retrying…' : 'Retry'}
           </button>
@@ -56,15 +57,23 @@ export function SettingsErrorState({
 
   return (
     <div
-      className={`flex flex-col items-center justify-center text-center py-12 px-4 rounded-none border border-red-900/40 bg-red-900/10 ${className ?? ''}`}
+      className={`rounded-none border border-destructive/30 bg-card ${className ?? ''}`}
+      role="alert"
     >
-      <WarningCircle size={28} weight="fill" className="text-red-400 mb-3" />
-      <p className="text-sm text-neutral-300 max-w-sm mb-4">{message}</p>
-      {onRetry && (
-        <Button variant="secondary" className="text-sm" onClick={onRetry} disabled={retrying}>
-          {retrying ? 'Retrying…' : 'Try again'}
-        </Button>
-      )}
+      <div className="flex items-start gap-3 px-5 py-6">
+        <WarningCircle size={20} weight="fill" className="mt-0.5 shrink-0 text-destructive" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-foreground">Couldn&apos;t load this</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">{message}</p>
+          {onRetry && (
+            <div className="mt-3">
+              <Button variant="secondary" size="sm" onClick={onRetry} disabled={retrying}>
+                {retrying ? 'Retrying…' : 'Try again'}
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

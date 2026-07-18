@@ -1,245 +1,329 @@
 'use client'
 
-import { useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import {
-  GearSix,
-  Target,
-  Eye,
-  ShieldCheck,
-  Robot,
-  MagnifyingGlass,
-  ChartBar,
-  Plugs,
-  Buildings,
-  UsersThree,
-  Key,
-  CreditCard,
-  Bell,
-  ClockCounterClockwise,
-  User,
-  Lock,
-  DeviceMobile,
-} from '@phosphor-icons/react'
-import Select from '@/components/ui/select'
+import { usePathname } from 'next/navigation'
+import { AnimatePresence, motion } from 'framer-motion'
+import { CaretUpDown, X } from '@phosphor-icons/react'
+import { SPRING } from '@/lib/motion'
 import { useCan } from '@/lib/auth/permissions'
+import { cn } from '@/lib/utils'
+import { ActiveSiteProvider } from '@/components/settings/active-site'
+import SiteContextBand from '@/components/settings/SiteContextBand'
+import {
+  MastheadSlotProvider,
+  MastheadAction,
+  SaveBarSlotProvider,
+} from '@/components/settings/shell-slots'
 
-// ─── Types ──────────────────────────────────────────────────────
+// Re-exported so P2 tabs can `import { MastheadAction } from '.../SettingsShell'`.
+export { MastheadAction }
 
-type IconWeight = 'regular' | 'fill'
+type Section = 'site' | 'organization' | 'account'
 
-interface TabDef {
-  id: string
+interface NavTab {
   label: string
   href: string
-  Icon: React.ComponentType<{ className?: string; weight?: IconWeight }>
-  /** When set, the tab is only visible when this permission is held. */
+  /** Only visible when this permission is held. */
   requires?: string
 }
 
 interface NavGroup {
   label: string
-  tabs: TabDef[]
+  section: Section
+  tabs: NavTab[]
 }
 
-// ─── Static nav ──────────────────────────────────────────────────
+// ─── Static nav ──────────────────────────────────────────────────────────
+// No per-row icons (spec §2.1). Account gains Notifications (moved from the
+// org sub-router); org Notifications is gated on notification_settings.manage.
 
 const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Site',
+    section: 'site',
     tabs: [
-      { id: 'general',        label: 'General',       href: '/settings/site/general',        Icon: GearSix,          requires: 'sites.edit' },
-      { id: 'goals',          label: 'Goals',         href: '/settings/site/goals',          Icon: Target,           requires: 'goals.manage' },
-      { id: 'visibility',     label: 'Visibility',    href: '/settings/site/visibility',     Icon: Eye,              requires: 'sites.edit' },
-      { id: 'privacy',        label: 'Privacy',       href: '/settings/site/privacy',        Icon: ShieldCheck,      requires: 'sites.edit' },
-      { id: 'bot-spam',       label: 'Bot & Spam',    href: '/settings/site/bot-spam',       Icon: Robot,            requires: 'quarantine.view' },
-      { id: 'privacy-scan',   label: 'Privacy Scan',  href: '/settings/site/privacy-scan',   Icon: MagnifyingGlass,  requires: 'privacy_scan.manage' },
-      { id: 'reports',        label: 'Reports',       href: '/settings/site/reports',        Icon: ChartBar,         requires: 'reports.manage' },
-      { id: 'integrations',   label: 'Integrations',  href: '/settings/site/integrations',   Icon: Plugs,            requires: 'integrations.manage' },
+      { label: 'General', href: '/settings/site/general', requires: 'sites.edit' },
+      { label: 'Goals', href: '/settings/site/goals', requires: 'goals.manage' },
+      { label: 'Visibility', href: '/settings/site/visibility', requires: 'sites.edit' },
+      { label: 'Privacy', href: '/settings/site/privacy', requires: 'sites.edit' },
+      // Bot & Spam is viewable by anyone with quarantine.view; the tab gates
+      // mutations on quarantine.manage internally.
+      { label: 'Bot & Spam', href: '/settings/site/bot-spam', requires: 'quarantine.view' },
+      { label: 'Privacy Scan', href: '/settings/site/privacy-scan', requires: 'privacy_scan.manage' },
+      { label: 'Reports', href: '/settings/site/reports', requires: 'reports.manage' },
+      { label: 'Integrations', href: '/settings/site/integrations', requires: 'integrations.manage' },
     ],
   },
   {
     label: 'Organization',
+    section: 'organization',
     tabs: [
-      { id: 'general',       label: 'General',            href: '/settings/organization/general',       Icon: Buildings },
-      { id: 'members',       label: 'Members',            href: '/settings/organization/members',       Icon: UsersThree,          requires: 'team.view' },
-      { id: 'roles',         label: 'Roles & Permissions', href: '/settings/organization/roles',         Icon: Key,                 requires: 'roles.manage' },
-      { id: 'billing',       label: 'Billing',            href: '/settings/organization/billing',       Icon: CreditCard,          requires: 'billing.view' },
-      { id: 'notifications', label: 'Notifications',      href: '/settings/organization/notifications', Icon: Bell },
-      { id: 'audit',         label: 'Audit Log',          href: '/settings/organization/audit',         Icon: ClockCounterClockwise, requires: 'audit.view' },
+      { label: 'General', href: '/settings/organization/general' },
+      { label: 'Members', href: '/settings/organization/members', requires: 'team.view' },
+      { label: 'Roles & Permissions', href: '/settings/organization/roles', requires: 'roles.manage' },
+      { label: 'Billing', href: '/settings/organization/billing', requires: 'billing.view' },
+      { label: 'Notifications', href: '/settings/organization/notifications', requires: 'notification_settings.manage' },
+      { label: 'Audit Log', href: '/settings/organization/audit', requires: 'audit.view' },
     ],
   },
   {
     label: 'Account',
+    section: 'account',
     tabs: [
-      { id: 'profile',  label: 'Profile',  href: '/settings/account/profile',  Icon: User },
-      { id: 'security', label: 'Security', href: '/settings/account/security', Icon: Lock },
-      { id: 'devices',  label: 'Devices',  href: '/settings/account/devices',  Icon: DeviceMobile },
+      { label: 'Profile', href: '/settings/account/profile' },
+      { label: 'Security', href: '/settings/account/security' },
+      { label: 'Devices', href: '/settings/account/devices' },
+      { label: 'Notifications', href: '/settings/account/notifications' },
     ],
   },
 ]
 
-// ─── Page header ──────────────────────────────────────────────────
-
-function resolvePageHeader(pathname: string): { title: string; subtitle: string } {
-  if (pathname.startsWith('/settings/site')) {
-    return { title: 'Site Settings', subtitle: 'Manage your site configuration' }
-  }
-  if (pathname.startsWith('/settings/organization')) {
-    return { title: 'Organization Settings', subtitle: 'Manage your workspace' }
-  }
-  if (pathname.startsWith('/settings/account')) {
-    return { title: 'Account Settings', subtitle: 'Manage your profile and security' }
-  }
-  return { title: 'Settings', subtitle: '' }
+const MASTHEAD: Record<Section, { eyebrow: string; title: string; lede: string }> = {
+  site: {
+    eyebrow: 'Site',
+    title: 'Site',
+    lede: 'Analytics, privacy, and sharing for the selected site.',
+  },
+  organization: {
+    eyebrow: 'Organization',
+    title: 'Organization',
+    lede: 'Manage your workspace, team, and billing.',
+  },
+  account: {
+    eyebrow: 'Account',
+    title: 'Account',
+    lede: 'Your profile, security, devices, and notifications.',
+  },
 }
 
-// ─── Component ───────────────────────────────────────────────────
+function sectionOf(pathname: string): Section | null {
+  if (pathname.startsWith('/settings/site')) return 'site'
+  if (pathname.startsWith('/settings/organization')) return 'organization'
+  if (pathname.startsWith('/settings/account')) return 'account'
+  return null
+}
 
 export default function SettingsShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const router = useRouter()
-  const { title, subtitle } = resolvePageHeader(pathname)
-  const [search, setSearch] = useState('')
+  const section = sectionOf(pathname)
 
-  const canGoalsManage      = useCan('goals.manage')
-  const canReportsManage    = useCan('reports.manage')
-  const canSitesEdit        = useCan('sites.edit')
-  const canQuarantineView   = useCan('quarantine.view')
-  const canPrivacyScan      = useCan('privacy_scan.manage')
-  const canIntegrations     = useCan('integrations.manage')
-  const canTeamView         = useCan('team.view')
-  const canRolesManage      = useCan('roles.manage')
-  const canBillingView      = useCan('billing.view')
-  const canAuditView        = useCan('audit.view')
+  // Slot mount nodes — set via callback refs so the portal contexts update
+  // once the DOM nodes exist.
+  const [mastheadSlot, setMastheadSlot] = useState<HTMLElement | null>(null)
+  const [saveBarSlot, setSaveBarSlot] = useState<HTMLElement | null>(null)
+  const [sheetOpen, setSheetOpen] = useState(false)
 
-  const permMap: Record<string, boolean> = {
-    'goals.manage':        canGoalsManage,
-    'reports.manage':      canReportsManage,
-    'sites.edit':          canSitesEdit,
-    // Bot & Spam is viewable by anyone with quarantine.view (analyst/member by
-    // default); the tab's own controls gate mutations on quarantine.manage.
-    'quarantine.view':     canQuarantineView,
-    'privacy_scan.manage': canPrivacyScan,
-    'integrations.manage': canIntegrations,
-    'team.view':           canTeamView,
-    'roles.manage':        canRolesManage,
-    'billing.view':        canBillingView,
-    'audit.view':          canAuditView,
+  // Permission gates — evaluated unconditionally (hooks), one per gated tab.
+  const perm: Record<string, boolean> = {
+    'sites.edit': useCan('sites.edit'),
+    'goals.manage': useCan('goals.manage'),
+    'quarantine.view': useCan('quarantine.view'),
+    'privacy_scan.manage': useCan('privacy_scan.manage'),
+    'reports.manage': useCan('reports.manage'),
+    'integrations.manage': useCan('integrations.manage'),
+    'team.view': useCan('team.view'),
+    'roles.manage': useCan('roles.manage'),
+    'billing.view': useCan('billing.view'),
+    'notification_settings.manage': useCan('notification_settings.manage'),
+    'audit.view': useCan('audit.view'),
   }
 
-  // Filter tabs based on permission requirements
   const visibleGroups = NAV_GROUPS.map((group) => ({
     ...group,
-    tabs: group.tabs.filter((tab) => {
-      if (tab.requires) return permMap[tab.requires] ?? true
-      return true
-    }),
-  }))
+    tabs: group.tabs.filter((tab) => (tab.requires ? (perm[tab.requires] ?? true) : true)),
+  })).filter((group) => group.tabs.length > 0)
 
   const allVisibleTabs = visibleGroups.flatMap((g) => g.tabs)
+  const activeTab = allVisibleTabs.find((t) => pathname === t.href)
+  const activeGroup = visibleGroups.find((g) => g.tabs.some((t) => t.href === activeTab?.href))
 
-  // Mobile select options — the flat list drops group headers, so prefix each
-  // label with its group to disambiguate the two "General" tabs (Site vs
-  // Organization), which are otherwise identical entries on mobile.
-  const mobileOptions = visibleGroups.flatMap((g) =>
-    g.tabs.map((t) => ({ value: t.href, label: `${g.label} · ${t.label}` })),
-  )
-  const mobileValue = allVisibleTabs.find((t) => pathname === t.href)?.href ?? ''
+  // Close the mobile sheet on route change / Escape.
+  useEffect(() => {
+    setSheetOpen(false)
+  }, [pathname])
 
-  // Filtered nav groups for search
-  const filteredGroups = search.trim()
-    ? visibleGroups.map(group => ({
-        ...group,
-        tabs: group.tabs.filter(tab =>
-          tab.label.toLowerCase().includes(search.toLowerCase()) ||
-          group.label.toLowerCase().includes(search.toLowerCase())
-        )
-      })).filter(group => group.tabs.length > 0)
-    : visibleGroups.filter(group => group.tabs.length > 0)
+  useEffect(() => {
+    if (!sheetOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSheetOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [sheetOpen])
+
+  const masthead = section ? MASTHEAD[section] : null
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
-      {/* Page header — sticky so long tab content keeps its context. Fixed h-16
-          so the nav's sticky offset (top-16) is exactly the header's height —
-          a guessed pixel offset here lets the nav slide underneath. The border
-          marks the edge content is meant to pass under; bg must be opaque. */}
-      <div className="sticky top-0 z-20 h-16 flex flex-col justify-center border-b border-neutral-800 bg-neutral-950 mb-6">
-        <h1 className="text-lg font-semibold text-neutral-200">{title}</h1>
-        {subtitle && <p className="text-sm text-neutral-400 mt-0.5">{subtitle}</p>}
-      </div>
-
-      {/* Mobile tab selector */}
-      <div className="md:hidden mb-4">
-        <Select
-          value={mobileValue}
-          onChange={(href: string) => router.push(href)}
-          options={mobileOptions}
-          variant="input"
-          fullWidth
-        />
-      </div>
-
-      {/* Main layout */}
-      <div className="flex gap-8">
-        {/* Left nav — sticks below the header; taller-than-viewport navs scroll
-            internally instead of pinning the tail out of reach. */}
-        <nav className="w-52 shrink-0 hidden md:block md:sticky md:top-16 md:self-start md:max-h-[calc(100vh-140px)] md:overflow-y-auto">
-          <div className="relative mb-4">
-            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
-            <input
-              type="text"
-              placeholder="Search settings..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-9 pl-9 pr-3 bg-transparent border border-neutral-800 rounded-none text-sm text-white placeholder-neutral-500 focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/10 focus:outline-none transition-colors ease-apple"
-            />
-          </div>
-          <div className="flex flex-col gap-6">
-            {filteredGroups.length === 0 && search.trim() && (
-              <p className="px-3 text-xs text-neutral-500">No settings found</p>
-            )}
-            {filteredGroups.map((group) => (
-              <div key={group.label}>
-                <p className="px-3 mb-1 text-micro-label font-semibold text-neutral-500 uppercase">
-                  {group.label}
-                </p>
-                <ul className="flex flex-col gap-0.5">
-                  {group.tabs.map((tab) => {
-                    const active = pathname === tab.href
-                    return (
-                      <li key={tab.href}>
-                        <Link
-                          href={tab.href}
-                          className={`flex items-center gap-2.5 px-3 py-2 rounded-none text-sm font-medium transition-colors duration-fast ease-apple ${
-                            active
-                              ? 'bg-brand-orange/10 text-brand-orange'
-                              : 'text-neutral-400 hover:text-white hover:bg-white/[0.06]'
-                          }`}
-                        >
-                          <tab.Icon
-                            className="w-[18px] h-[18px] shrink-0"
-                            weight={active ? 'fill' : 'regular'}
-                          />
-                          {tab.label}
-                        </Link>
-                      </li>
-                    )
-                  })}
-                </ul>
+    <ActiveSiteProvider>
+      <MastheadSlotProvider value={mastheadSlot}>
+        <SaveBarSlotProvider value={saveBarSlot}>
+          <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
+            {/* ── Masthead — one header per screen (spec §2.1) ── */}
+            <header className="mb-8">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  {masthead && (
+                    <p className="mb-2 font-mono text-micro-label uppercase text-muted-foreground">
+                      {masthead.eyebrow}
+                    </p>
+                  )}
+                  <h1 className="text-title-1 font-semibold tracking-tight text-foreground">
+                    {masthead ? masthead.title : 'Settings'}
+                  </h1>
+                  <p className="mt-1.5 text-sm text-muted-foreground">
+                    {masthead ? masthead.lede : 'Manage your sites, workspace, and account.'}
+                  </p>
+                </div>
+                {/* Masthead action slot — a tab's primary CTA portals in here. */}
+                <div ref={setMastheadSlot} className="flex shrink-0 items-center gap-2" />
               </div>
-            ))}
-          </div>
-        </nav>
 
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="bg-card p-6 border border-border">
-            {children}
+              {/* Mobile nav trigger — opens the bottom-sheet. Section pages only. */}
+              {section && activeTab && (
+                <button
+                  type="button"
+                  onClick={() => setSheetOpen(true)}
+                  className="mt-4 flex h-11 w-full items-center justify-between rounded-none border border-input bg-card px-4 text-sm text-foreground md:hidden"
+                >
+                  <span>
+                    <span className="text-muted-foreground">{activeGroup?.label} · </span>
+                    {activeTab.label}
+                  </span>
+                  <CaretUpDown className="h-4 w-4 text-muted-foreground" />
+                </button>
+              )}
+            </header>
+
+            {section ? (
+              <div className="flex gap-8">
+                {/* ── Nav rail — grid-rail device (spec §2.1) ── */}
+                <nav className="hidden w-56 shrink-0 md:block" aria-label="Settings sections">
+                  <div className="grid grid-cols-1 gap-px rounded-none border border-border bg-border">
+                    {visibleGroups.map((group) => (
+                      <Fragment key={group.section}>
+                        <div className="bg-muted px-4 py-2 font-mono text-micro-label uppercase text-muted-foreground">
+                          {group.label}
+                        </div>
+                        {group.tabs.map((tab) => {
+                          const active = pathname === tab.href
+                          return (
+                            <Link
+                              key={tab.href}
+                              href={tab.href}
+                              aria-current={active ? 'page' : undefined}
+                              aria-label={`${group.label}: ${tab.label}`}
+                              className={cn(
+                                'relative block px-4 py-2.5 text-sm font-medium transition-colors duration-fast ease-apple',
+                                active
+                                  ? 'bg-accent text-primary'
+                                  : 'bg-card text-muted-foreground hover:bg-muted hover:text-foreground',
+                              )}
+                            >
+                              {active && (
+                                <span
+                                  aria-hidden="true"
+                                  className="absolute inset-y-0 left-0 w-0.5 bg-primary"
+                                />
+                              )}
+                              {tab.label}
+                            </Link>
+                          )
+                        })}
+                      </Fragment>
+                    ))}
+                  </div>
+                </nav>
+
+                {/* ── Content column ── */}
+                <div className="relative min-w-0 max-w-3xl flex-1">
+                  {section === 'site' && <SiteContextBand />}
+                  <div className="space-y-8 pb-24">{children}</div>
+                  {/* SaveBar docks here — sticky, centered on the content column. */}
+                  <div
+                    ref={setSaveBarSlot}
+                    className="pointer-events-none sticky bottom-6 z-40 flex justify-center"
+                  />
+                </div>
+              </div>
+            ) : (
+              // ── Landing (spec §5) — section index, no rail ──
+              <div className="max-w-3xl">{children}</div>
+            )}
           </div>
-        </div>
-      </div>
-    </div>
+
+          {/* ── Mobile bottom-sheet nav (spec §2.1) ── */}
+          <AnimatePresence>
+            {sheetOpen && section && (
+              <div className="md:hidden">
+                <motion.div
+                  className="fixed inset-0 z-40 bg-black/30"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setSheetOpen(false)}
+                />
+                <motion.div
+                  role="dialog"
+                  aria-label="Settings sections"
+                  className="fixed inset-x-0 bottom-0 z-50 max-h-[80vh] overflow-auto rounded-none border-t border-border bg-card"
+                  initial={{ y: '100%' }}
+                  animate={{ y: 0 }}
+                  exit={{ y: '100%' }}
+                  transition={SPRING}
+                >
+                  <div className="sticky top-0 flex items-center justify-between border-b border-border bg-card px-5 py-3">
+                    <span className="font-mono text-micro-label uppercase text-muted-foreground">
+                      Settings
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSheetOpen(false)}
+                      aria-label="Close"
+                      className="p-1 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {visibleGroups.map((group) => (
+                      <div key={group.section}>
+                        <p className="bg-muted px-5 py-2 font-mono text-micro-label uppercase text-muted-foreground">
+                          {group.label}
+                        </p>
+                        {group.tabs.map((tab) => {
+                          const active = pathname === tab.href
+                          return (
+                            <Link
+                              key={tab.href}
+                              href={tab.href}
+                              onClick={() => setSheetOpen(false)}
+                              aria-current={active ? 'page' : undefined}
+                              aria-label={`${group.label}: ${tab.label}`}
+                              className={cn(
+                                'relative flex min-h-[44px] items-center px-5 py-3 text-sm',
+                                active ? 'text-primary' : 'text-foreground',
+                              )}
+                            >
+                              {active && (
+                                <span
+                                  aria-hidden="true"
+                                  className="absolute inset-y-0 left-0 w-0.5 bg-primary"
+                                />
+                              )}
+                              {tab.label}
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+        </SaveBarSlotProvider>
+      </MastheadSlotProvider>
+    </ActiveSiteProvider>
   )
 }

@@ -26,23 +26,27 @@ export type ChipTone =
   | 'brand'
   | 'purple'
 
+// Alpha-wash recipe (spec §2.3): `bg-{tone}/10` + toned text, no border. Danger
+// and brand route through the semantic `destructive` / `primary` tokens. Neutral
+// is deliberately a touch stronger than a 10% wash so it stays legible on the
+// #0f0f0f card surface.
 const TONES: Record<ChipTone, string> = {
-  neutral: 'bg-neutral-800 text-neutral-400 border-neutral-700',
-  success: 'bg-green-900/30 text-green-400 border-green-900/50',
-  info: 'bg-blue-900/30 text-blue-400 border-blue-900/50',
-  warning: 'bg-amber-900/30 text-amber-400 border-amber-900/50',
-  danger: 'bg-red-900/30 text-red-400 border-red-900/50',
-  brand: 'bg-brand-orange/10 text-brand-orange border-brand-orange/30',
-  purple: 'bg-purple-900/30 text-purple-400 border-purple-900/50',
+  neutral: 'bg-white/[0.06] text-neutral-300',
+  success: 'bg-emerald-500/10 text-emerald-400',
+  info: 'bg-blue-500/10 text-blue-400',
+  warning: 'bg-amber-500/10 text-amber-400',
+  danger: 'bg-destructive/10 text-destructive',
+  brand: 'bg-primary/10 text-primary',
+  purple: 'bg-purple-500/10 text-purple-400',
 }
 
 const DOT_COLOR: Record<ChipTone, string> = {
-  neutral: 'bg-neutral-500',
-  success: 'bg-green-400',
+  neutral: 'bg-neutral-400',
+  success: 'bg-emerald-400',
   info: 'bg-blue-400',
   warning: 'bg-amber-400',
-  danger: 'bg-red-400',
-  brand: 'bg-brand-orange',
+  danger: 'bg-destructive',
+  brand: 'bg-primary',
   purple: 'bg-purple-400',
 }
 
@@ -61,7 +65,7 @@ export function StatusChip({ tone = 'neutral', dot, pulse, icon, className, chil
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-none border text-xs font-medium whitespace-nowrap',
+        'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-none text-xs font-medium whitespace-nowrap',
         TONES[tone],
         className,
       )}

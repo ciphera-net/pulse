@@ -22,7 +22,6 @@ export default function robots(): MetadataRoute.Robots {
           '/sites/',
           '/notifications/',
           '/onboarding/',
-          '/org-settings/',
           '/welcome/',
           '/auth/',
           '/actions/',
