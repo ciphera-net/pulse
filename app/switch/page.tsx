@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import useSWR from 'swr'
 import { CheckCircle, ClockCountdown, ArrowRight, WarningCircle } from '@phosphor-icons/react'
 import { toast, Button, Spinner, LoadingOverlay } from '@ciphera-net/facet'
+import { useAuth } from '@/lib/auth/context'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { getPrices, changePlan, estimatePlanChange, type PlanChangeEstimate } from '@/lib/api/billing'
 import { PLAN_CATALOG, TRAFFIC_TIERS, getPlanPricing, formatPlanName } from '@/lib/plans'
@@ -90,6 +91,7 @@ function SwitchStepper({ currentStep }: { currentStep: number }) {
 function SwitchPlanContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { loading: authLoading } = useAuth()
   const { data: subscription, isLoading, mutate: mutateSubscription } = useSubscription()
   const { data: prices, isLoading: pricesLoading } = useSWR('plan-prices', getPrices)
 
@@ -160,7 +162,11 @@ function SwitchPlanContent() {
     }
   }, [subscription, searchParams, runEstimate])
 
-  if (isLoading) {
+  // * useSubscription's SWR key is null until the auth user resolves, so its
+  // * isLoading is FALSE with no data during auth load — redirecting on
+  // * !subscription at that moment bounces users with perfectly active
+  // * subscriptions (a race observed live). Wait for auth first.
+  if (authLoading || isLoading) {
     return <LoadingOverlay logoSrc={cdnUrl('/pulse_icon_no_margins.png')} title="Pulse" />
   }
 
