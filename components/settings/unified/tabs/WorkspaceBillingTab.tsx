@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { Button, Input, toast, Spinner, Modal } from '@ciphera-net/facet'
@@ -51,6 +51,21 @@ export default function WorkspaceBillingTab() {
     : null
 
   const { data: prices } = useSWR('plan-prices', getPrices)
+
+  // Return params from the Mollie payment-method update flow (redirectUrl /
+  // cancelUrl land here) — acknowledge the outcome instead of a silent reload.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('payment_updated') === 'true') {
+      toast.success('Payment method updated')
+      mutate()
+    } else if (params.get('payment_update_canceled') === 'true') {
+      toast.info('Payment method update canceled.')
+    } else {
+      return
+    }
+    window.history.replaceState({}, '', window.location.pathname)
+  }, [mutate])
 
   const handleUpdatePayment = async (method: string) => {
     try {

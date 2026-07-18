@@ -13,7 +13,7 @@ import TierSlider from '@/components/billing/TierSlider'
 import PlanChoiceCard from '@/components/billing/PlanChoiceCard'
 import PlanSummary from '@/components/checkout/PlanSummary'
 import PaymentForm from '@/components/checkout/PaymentForm'
-import { Button } from '@ciphera-net/facet'
+import { Button, toast } from '@ciphera-net/facet'
 import { TIMING } from '@/lib/motion'
 
 const DEFAULT_LIMIT = 10_000
@@ -47,6 +47,18 @@ export default function SetupPlanPage() {
       router.replace('/setup/done')
     }
   }, [subscription, completeStep, router])
+
+  // Mollie's cancelUrl lands here with ?canceled=true when the customer backs
+  // out of the hosted checkout — acknowledge it instead of showing the plan
+  // picker as if nothing happened. (window.location, not useSearchParams, to
+  // avoid the prerender Suspense requirement.)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('canceled') === 'true') {
+      toast.info("Checkout was canceled. You can try again whenever you're ready.")
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
 
   const handleSkip = () => {
     completeStep('plan')
