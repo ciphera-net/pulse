@@ -4,7 +4,7 @@ import { SupportWidgetAuth } from '@/components/support-widget-auth'
 import { AuthProvider } from '@/lib/auth/context'
 import SWRProvider from '@/components/SWRProvider'
 import type { Metadata, Viewport } from 'next'
-import { Space_Grotesk, Geist, JetBrains_Mono } from 'next/font/google'
+import { Geist, JetBrains_Mono } from 'next/font/google'
 import LayoutContent from './layout-content'
 import { cdnUrl } from '@/lib/cdn'
 import '@ciphera-net/facet/styles'
@@ -21,12 +21,6 @@ const SITE_DESCRIPTION =
 // * (https://cdn.ciphera.net/pulse in prod) → an absolute URL crawlers can
 // * fetch. DEPLOY DEPENDENCY: og-pulse.png must exist at that CDN path.
 const OG_IMAGE = cdnUrl('/og-pulse.png')
-
-const spaceGrotesk = Space_Grotesk({
-  subsets: ['latin'],
-  variable: '--font-space-grotesk',
-  display: 'swap',
-})
 
 const geist = Geist({
   subsets: ['latin'],
@@ -102,7 +96,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${geist.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} dark`} suppressHydrationWarning>
+    <html lang="en" className={`${geist.variable} ${jetbrainsMono.variable} dark`} suppressHydrationWarning>
       <body className="antialiased min-h-screen flex flex-col bg-background text-foreground">
         {/* WCAG 2.1 A: first focusable element; visible only on keyboard focus */}
         <a
