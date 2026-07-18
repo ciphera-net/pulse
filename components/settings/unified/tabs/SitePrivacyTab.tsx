@@ -253,7 +253,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
           )}
           {(!subscription || subscription.plan_id?.includes('free')) && (
             <p className="text-xs text-neutral-500 mt-2">
-              <Link href="/pricing" className="text-brand-orange hover:underline">Upgrade</Link> for longer retention.
+              <Link href="/setup/plan" className="text-brand-orange hover:underline">Upgrade</Link> for longer retention.
             </p>
           )}
         </div>
