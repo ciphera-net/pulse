@@ -1,7 +1,9 @@
 'use client'
 import { useState } from 'react'
 import { Button, Input } from '@ciphera-net/facet'
+import { CheckCircle, XCircle } from '@phosphor-icons/react'
 import { Checkbox } from '@/components/ui/checkbox'
+import { StatusChip } from '@/components/settings/StatusChip'
 import { createWebhook, testWebhook } from '@/lib/api/notifications-webhooks'
 import {
   Dialog,
@@ -29,23 +31,26 @@ export default function WebhookFormModal({ onClose, onCreated }: Props) {
   const [label, setLabel] = useState('')
   const [selected, setSelected] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
-  const [testResult, setTestResult] = useState<string | null>(null)
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<{ url?: string; types?: string }>({})
   const [err, setErr] = useState<string | null>(null)
 
   const toggle = (id: string) => {
+    setFieldErrors(fe => ({ ...fe, types: undefined }))
     setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id])
   }
 
   const handleTest = async () => {
     setTestResult(null); setErr(null)
-    if (!url) { setErr('URL is required'); return }
+    if (!url) { setFieldErrors(fe => ({ ...fe, url: 'Enter the webhook URL first.' })); return }
+    setFieldErrors(fe => ({ ...fe, url: undefined }))
     setBusy(true)
     try {
       const r = await testWebhook(url)
-      if (r.ok) setTestResult(`✓ Got ${r.status} from endpoint`)
-      else setTestResult(`✗ ${r.error ?? 'Test failed'} (status ${r.status ?? 'n/a'})`)
+      if (r.ok) setTestResult({ ok: true, message: `Got ${r.status} from endpoint` })
+      else setTestResult({ ok: false, message: `${r.error ?? 'Test failed'} (status ${r.status ?? 'n/a'})` })
     } catch (e) {
-      setTestResult(`✗ ${(e as Error).message ?? 'Test failed'}`)
+      setTestResult({ ok: false, message: (e as Error).message ?? 'Test failed' })
     } finally {
       setBusy(false)
     }
@@ -53,8 +58,11 @@ export default function WebhookFormModal({ onClose, onCreated }: Props) {
 
   const handleSave = async () => {
     setErr(null)
-    if (!url) { setErr('URL is required'); return }
-    if (selected.length === 0) { setErr('Pick at least one event type'); return }
+    const next: { url?: string; types?: string } = {}
+    if (!url) next.url = 'Enter the webhook URL.'
+    if (selected.length === 0) next.types = 'Pick at least one event type.'
+    setFieldErrors(next)
+    if (next.url || next.types) return
     setBusy(true)
     try {
       await createWebhook({ url, label: label || null, subscribed_types: selected })
@@ -80,9 +88,11 @@ export default function WebhookFormModal({ onClose, onCreated }: Props) {
             <Input
               type="url"
               value={url}
-              onChange={e => setUrl(e.target.value)}
+              onChange={e => { setUrl(e.target.value); setFieldErrors(fe => ({ ...fe, url: undefined })) }}
               placeholder="https://hooks.slack.com/services/..."
+              aria-invalid={fieldErrors.url ? true : undefined}
             />
+            {fieldErrors.url && <p className="text-xs text-red-400 mt-1">{fieldErrors.url}</p>}
           </div>
 
           <div>
@@ -107,12 +117,21 @@ export default function WebhookFormModal({ onClose, onCreated }: Props) {
                 />
               ))}
             </div>
+            {fieldErrors.types && <p className="text-xs text-red-400 mt-1">{fieldErrors.types}</p>}
           </div>
 
           {testResult && (
-            <p className={`text-xs ${testResult.startsWith('✓') ? 'text-green-400' : 'text-red-400'}`}>
-              {testResult}
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusChip
+                tone={testResult.ok ? 'success' : 'danger'}
+                icon={testResult.ok
+                  ? <CheckCircle size={14} weight="fill" />
+                  : <XCircle size={14} weight="fill" />}
+              >
+                {testResult.ok ? 'Reachable' : 'Failed'}
+              </StatusChip>
+              <span className="text-xs text-neutral-400">{testResult.message}</span>
+            </div>
           )}
           {err && <p className="text-xs text-red-400">{err}</p>}
         </div>

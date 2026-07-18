@@ -2,12 +2,14 @@
 import { useEffect, useState, useRef } from 'react'
 import { Toggle } from '@ciphera-net/facet'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
+import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { getCategorySettings, updateCategorySettings, type CategorySetting } from '@/lib/api/notifications-webhooks'
 
 export default function CategoryTogglesSection() {
   const [settings, setSettings] = useState<Record<string, boolean> | null>(null)
   const [categories, setCategories] = useState<CategorySetting[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [retrying, setRetrying] = useState(false)
   const [saving, setSaving] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -15,14 +17,22 @@ export default function CategoryTogglesSection() {
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
   }, [])
 
-  useEffect(() => {
+  const load = () =>
     getCategorySettings()
       .then(r => {
         setSettings(r.settings ?? {})
         setCategories(r.categories ?? [])
+        setError(null)
       })
       .catch(e => setError(e.message ?? 'Failed to load'))
-  }, [])
+
+  useEffect(() => { load() }, [])
+
+  const retry = async () => {
+    setRetrying(true)
+    await load()
+    setRetrying(false)
+  }
 
   const toggle = (id: string) => {
     if (!settings) return
@@ -44,7 +54,7 @@ export default function CategoryTogglesSection() {
     }, 300)
   }
 
-  if (error && !settings) return <div className="text-red-400 text-sm">{error}</div>
+  if (error && !settings) return <SettingsErrorState message={error} onRetry={retry} retrying={retrying} />
   if (!settings) return <SettingsLoadingState />
 
   return (

@@ -22,7 +22,7 @@ export default function RetentionOverridesTable({ prefs, onChange }: Props) {
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-xs text-neutral-500 uppercase tracking-wider">
+          <tr className="text-micro-label text-neutral-500 uppercase">
             <th className="text-left py-2 font-normal">Category</th>
             <th className="text-left py-2 font-normal">Default</th>
             <th className="text-left py-2 font-normal">Purge my read items after</th>

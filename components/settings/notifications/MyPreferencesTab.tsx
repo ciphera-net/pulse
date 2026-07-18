@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 import { Input, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import Select from '@/components/ui/select'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
+import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { getPrefs, updatePrefs, type Preferences } from '@/lib/api/notifications-preferences'
 import { purgeMine } from '@/lib/api/notifications-v2'
 import DeliveryModesTable from './DeliveryModesTable'
@@ -14,6 +15,7 @@ export default function MyPreferencesTab() {
   const [prefs, setPrefs] = useState<Preferences | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [retrying, setRetrying] = useState(false)
   const [purging, setPurging] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -21,11 +23,23 @@ export default function MyPreferencesTab() {
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
   }, [])
 
-  useEffect(() => {
-    getPrefs().then(setPrefs).catch(e => setError(e.message ?? 'Failed to load'))
-  }, [])
+  const load = () =>
+    getPrefs()
+      .then(p => { setPrefs(p); setError(null) })
+      .catch(e => setError(e.message ?? 'Failed to load'))
+
+  useEffect(() => { load() }, [])
+
+  const retry = async () => {
+    setRetrying(true)
+    await load()
+    setRetrying(false)
+  }
 
   const debouncedSave = (next: Preferences) => {
+    // Optimistic update — but keep the last-good value so we can roll back if
+    // the server rejects the write (server is the source of truth).
+    const prev = prefs
     setPrefs(next)
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(async () => {
@@ -34,6 +48,7 @@ export default function MyPreferencesTab() {
         await updatePrefs(next)
         setError(null)
       } catch (e) {
+        setPrefs(prev)
         setError((e as Error).message ?? 'Failed to save')
       } finally {
         setSaving(false)
@@ -41,7 +56,7 @@ export default function MyPreferencesTab() {
     }, 400)
   }
 
-  if (error && !prefs) return <div className="text-red-400 text-sm">{error}</div>
+  if (error && !prefs) return <SettingsErrorState message={error} onRetry={retry} retrying={retrying} />
   if (!prefs) return <SettingsLoadingState />
 
   // Detect IANA timezones available in this browser.

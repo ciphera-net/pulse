@@ -16,9 +16,26 @@ import {
 } from '@/lib/api/privacy'
 import { formatRelativeTime } from '@/lib/utils/formatDate'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
+import { StatusChip, type ChipTone } from '@/components/settings/StatusChip'
+import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { useCan } from '@/lib/auth/permissions'
 
 const SCAN_COOLDOWN_SECONDS = 300
+const SCAN_POLL_INTERVAL_MS = 10_000
+const SCAN_POLL_MAX_ATTEMPTS = 6
+
+function categoryTone(category: string): ChipTone {
+  switch (category) {
+    case 'analytics':
+      return 'info'
+    case 'advertising':
+      return 'danger'
+    case 'social':
+      return 'purple'
+    default:
+      return 'neutral'
+  }
+}
 
 export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
   const canManage = useCan('privacy_scan.manage')
@@ -29,38 +46,51 @@ export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
   const [scanning, setScanning] = useState(false)
   const [cooldown, setCooldown] = useState(0)
   const [lastScan, setLastScan] = useState<PrivacyScanResult | null>(null)
+  const [polling, setPolling] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [retrying, setRetrying] = useState(false)
 
   const initialRef = useRef('')
   const hasInitialized = useRef(false)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pollCountRef = useRef(0)
 
-  // Load config and latest scan result on mount
+  // Load config + latest scan result. Extracted so Retry can re-run it — the
+  // previous inline effect's retry only cleared `error` and never re-fetched,
+  // leaving the tab stuck on the spinner.
+  const loadData = useCallback(async () => {
+    try {
+      const [config, scan] = await Promise.all([
+        getPrivacyScanConfig(siteId),
+        getLatestPrivacyScan(siteId),
+      ])
+
+      const resolvedEnabled = config?.enabled ?? false
+      const resolvedFrequency = config?.frequency ?? 'weekly'
+
+      setEnabled(resolvedEnabled)
+      setFrequency(resolvedFrequency)
+      setLastScan(scan)
+
+      initialRef.current = JSON.stringify({ enabled: resolvedEnabled, frequency: resolvedFrequency })
+      setError(null)
+      setConfigLoaded(true)
+    } catch (err) {
+      setError(getAuthErrorMessage(err))
+    }
+  }, [siteId])
+
   useEffect(() => {
     if (hasInitialized.current) return
+    hasInitialized.current = true
+    loadData()
+  }, [loadData])
 
-    async function load() {
-      try {
-        const [config, scan] = await Promise.all([
-          getPrivacyScanConfig(siteId),
-          getLatestPrivacyScan(siteId),
-        ])
-
-        const resolvedEnabled = config?.enabled ?? false
-        const resolvedFrequency = config?.frequency ?? 'weekly'
-
-        setEnabled(resolvedEnabled)
-        setFrequency(resolvedFrequency)
-        setLastScan(scan)
-
-        initialRef.current = JSON.stringify({ enabled: resolvedEnabled, frequency: resolvedFrequency })
-        hasInitialized.current = true
-        setConfigLoaded(true)
-      } catch (err) {
-        setError(getAuthErrorMessage(err))
-      }
-    }
-
-    load()
-  }, [siteId])
+  const handleRetry = useCallback(async () => {
+    setRetrying(true)
+    await loadData()
+    setRetrying(false)
+  }, [loadData])
 
   // Track dirty state
   const isDirty = initialRef.current
@@ -99,36 +129,71 @@ export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
     return () => clearInterval(interval)
   }, [cooldown])
 
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current)
+      pollRef.current = null
+    }
+    pollCountRef.current = 0
+    setPolling(false)
+  }, [])
+
   const handleScan = useCallback(async () => {
     setScanning(true)
     try {
       await triggerPrivacyScan(siteId)
       toast.success('Privacy scan triggered — results will appear shortly')
       setCooldown(SCAN_COOLDOWN_SECONDS)
+
+      // Scans run async on the backend, so the freshly-triggered result isn't
+      // ready yet. Poll a bounded number of times (cleared on unmount / when a
+      // new result lands) so it appears without leaving and returning.
+      const baselineId = lastScan?.id ?? null
+      stopPolling()
+      pollCountRef.current = 0
+      setPolling(true)
+      pollRef.current = setInterval(async () => {
+        pollCountRef.current += 1
+        const scan = await getLatestPrivacyScan(siteId)
+        if (scan && scan.id !== baselineId) {
+          setLastScan(scan)
+          toast.success('Scan results updated')
+          stopPolling()
+        } else if (pollCountRef.current >= SCAN_POLL_MAX_ATTEMPTS) {
+          stopPolling()
+        }
+      }, SCAN_POLL_INTERVAL_MS)
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to trigger scan')
     } finally {
       setScanning(false)
     }
+  }, [siteId, lastScan, stopPolling])
+
+  // Manual "Refresh results" affordance — a plain re-fetch of the latest scan.
+  const handleRefreshResults = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      const scan = await getLatestPrivacyScan(siteId)
+      if (scan) setLastScan(scan)
+    } finally {
+      setRefreshing(false)
+    }
   }, [siteId])
 
+  // Clear any in-flight poll on unmount.
+  useEffect(() => () => {
+    if (pollRef.current) clearInterval(pollRef.current)
+  }, [])
+
   if (error) {
-    const retry = () => {
-      setError(null)
-      hasInitialized.current = false
-    }
     return (
-      <div className="rounded-none border border-red-900/50 bg-red-950/20 p-6 text-center">
-        <p className="text-red-400 text-sm">{error}</p>
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={retry}
-          className="mt-4"
-        >
-          Retry
-        </Button>
-      </div>
+      <SettingsErrorState
+        variant="card"
+        message={error}
+        onRetry={handleRetry}
+        retrying={retrying}
+      />
     )
   }
 
@@ -204,7 +269,7 @@ export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
       </AnimatePresence>
 
       {/* Scan Now */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Button
           variant="secondary"
           onClick={handleScan}
@@ -219,6 +284,25 @@ export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
             `Wait ${cooldown}s`
           ) : (
             'Scan Now'
+          )}
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={handleRefreshResults}
+          disabled={polling || refreshing}
+        >
+          {polling ? (
+            <>
+              <Spinner className="w-4 h-4" />
+              Checking for results…
+            </>
+          ) : refreshing ? (
+            <>
+              <Spinner className="w-4 h-4" />
+              Refreshing…
+            </>
+          ) : (
+            'Refresh results'
           )}
         </Button>
         {lastScan && (
@@ -261,19 +345,7 @@ export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
                     className="flex items-center justify-between p-3 rounded-none border border-neutral-800 bg-neutral-800/30"
                   >
                     <span className="text-sm text-white font-mono">{s.host}</span>
-                    <span
-                      className={`text-[10px] font-medium px-2 py-0.5 rounded-none ${
-                        s.category === 'analytics'
-                          ? 'bg-blue-500/20 text-blue-400'
-                          : s.category === 'advertising'
-                          ? 'bg-red-500/20 text-red-400'
-                          : s.category === 'social'
-                          ? 'bg-purple-500/20 text-purple-400'
-                          : 'bg-neutral-500/20 text-neutral-400'
-                      }`}
-                    >
-                      {s.category}
-                    </span>
+                    <StatusChip tone={categoryTone(s.category)}>{s.category}</StatusChip>
                   </div>
                 ))}
               </div>
@@ -295,16 +367,8 @@ export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
                       <span className="text-xs text-neutral-500 ml-2">{c.domain}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {c.secure && (
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-none bg-green-500/20 text-green-400">
-                          Secure
-                        </span>
-                      )}
-                      {c.http_only && (
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-none bg-blue-500/20 text-blue-400">
-                          HttpOnly
-                        </span>
-                      )}
+                      {c.secure && <StatusChip tone="success">Secure</StatusChip>}
+                      {c.http_only && <StatusChip tone="info">HttpOnly</StatusChip>}
                     </div>
                   </div>
                 ))}

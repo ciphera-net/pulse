@@ -10,6 +10,7 @@ import { getOrganization, updateOrganization, deleteOrganization, getOrganizatio
 import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
+import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 
 export default function WorkspaceGeneralTab() {
   const { user } = useAuth()
@@ -73,7 +74,6 @@ export default function WorkspaceGeneralTab() {
     try {
       await updateOrganization(user.org_id, name, slug)
       initialRef.current = JSON.stringify({ name, slug })
-      // ref update must precede any async re-render (no mutate call here)
       toast.success('Organization updated')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to update organization')
@@ -101,20 +101,21 @@ export default function WorkspaceGeneralTab() {
       toast.success('Ownership transferred. You are now a member.')
       // Reload to reflect the new role — force a full page reload so the
       // JWT context is refreshed with the updated role.
-      window.location.href = '/settings/workspace/general'
+      window.location.href = '/settings/organization/general'
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to transfer ownership')
       setTransferring(false)
     }
   }
 
+  const handleRetry = () => {
+    setError(null)
+    hasInitialized.current = false
+    setRetryCount(c => c + 1)
+  }
+
   if (error) {
-    return (
-      <div className="rounded-none border border-red-900/50 bg-red-950/20 p-6 text-center">
-        <p className="text-red-400 text-sm mb-4">{error}</p>
-        <Button variant="secondary" onClick={() => { setError(null); hasInitialized.current = false; setRetryCount(c => c + 1) }}>Retry</Button>
-      </div>
-    )
+    return <SettingsErrorState message={error} onRetry={handleRetry} />
   }
 
   if (loading) {
@@ -134,12 +135,12 @@ export default function WorkspaceGeneralTab() {
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-neutral-400 mb-1.5">Organization Name</label>
+          <label className="block text-micro-label uppercase text-neutral-400 mb-1.5">Organization Name</label>
           <Input value={name} onChange={e => setName(e.target.value)} placeholder="Acme Corp" disabled={!canDeleteOrg} />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-neutral-400 mb-1.5">Organization Slug</label>
+          <label className="block text-micro-label uppercase text-neutral-400 mb-1.5">Organization Slug</label>
           <div className="flex items-center gap-2">
             <span className="text-sm text-neutral-500">pulse.ciphera.net/</span>
             <Input value={slug} onChange={e => setSlug(e.target.value)} placeholder="acme-corp" disabled={!canDeleteOrg} />
@@ -175,14 +176,17 @@ export default function WorkspaceGeneralTab() {
             ) : (
               <>
                 <div>
-                  <label className="block text-xs font-medium text-neutral-400 mb-1">New owner</label>
+                  <label className="block text-micro-label uppercase text-neutral-400 mb-1">New owner</label>
                   <Select
                     variant="input"
                     value={transferTargetId}
                     onChange={setTransferTargetId}
                     options={[
                       { value: '', label: 'Select a member…' },
-                      ...members.map(m => ({ value: m.user_id, label: `${m.user_id} (${m.role})` })),
+                      ...members.map(m => ({
+                        value: m.user_id,
+                        label: `${m.user_email || `Member ${m.user_id.slice(0, 8)}`} (${m.role})`,
+                      })),
                     ]}
                     fullWidth
                   />
@@ -192,7 +196,7 @@ export default function WorkspaceGeneralTab() {
                     variant="secondary"
                     onClick={handleTransfer}
                     disabled={!transferTargetId || transferring}
-                    className="bg-red-600 hover:bg-red-700 text-white border-red-600"
+                    className="text-sm text-red-400 border-red-900 hover:bg-red-900/20"
                   >
                     {transferring ? 'Transferring…' : 'Transfer Ownership'}
                   </Button>
@@ -217,7 +221,7 @@ export default function WorkspaceGeneralTab() {
               <li>All notifications and settings</li>
             </ul>
             <div>
-              <label className="block text-xs font-medium text-neutral-400 mb-1">Type DELETE to confirm</label>
+              <label className="block text-micro-label uppercase text-neutral-400 mb-1">Type DELETE to confirm</label>
               <Input
                 value={deleteText}
                 onChange={e => setDeleteText(e.target.value)}
