@@ -43,13 +43,13 @@ const PAYMENT_METHODS = [
   { id: 'applepay', label: 'Apple Pay', icons: ['/icons/payment/applepay.svg'] },
 ]
 
-/** A single usage stat tile inside the plan-band RailGrid — mono numerals + a
- *  micro-label cap, per spec §2.2. */
+/** A single usage stat tile inside the plan-band RailGrid — tabular numerals + a
+ *  Geist micro-label cap, per spec §2.2. */
 function StatTile({ label, value, sub }: { label: string; value: React.ReactNode; sub?: React.ReactNode }) {
   return (
     <RailGridTile>
-      <p className="font-mono text-micro-label uppercase text-muted-foreground">{label}</p>
-      <p className="mt-1.5 font-mono text-lg font-semibold tabular-nums text-foreground">{value}</p>
+      <p className="font-semibold text-micro-label uppercase text-muted-foreground">{label}</p>
+      <p className="mt-1.5 text-lg font-semibold tabular-nums text-foreground">{value}</p>
       {sub}
     </RailGridTile>
   )
@@ -430,7 +430,7 @@ export default function WorkspaceBillingTab() {
             tone="info"
             title="Account credit"
             action={
-              <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
+              <span className="text-sm font-semibold tabular-nums text-foreground">
                 {euro.format(subscription.credit_balance / 100)}
               </span>
             }

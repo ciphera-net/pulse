@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
  * SettingsPanel — the bordered frame every settings group lives in (spec §2.2).
  *
  * A hairline-bordered, 0-radius surface on `bg-card`. When a `kicker` is given
- * it renders a header row (mono micro-label + optional description + right
+ * it renders a header row (Geist micro-label cap + optional description + right
  * `action`) separated from the body by a `border-b` hairline. Body is whatever
  * children you pass — typically a `<PanelRows>` of `<PanelRow>`s.
  *
@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils'
  * header is the panel's visual + reading label.
  */
 export interface SettingsPanelProps {
-  /** Mono micro-label, rendered UPPERCASE. Presence of a kicker draws the header hairline. */
+  /** Micro-label cap (Geist semibold), rendered UPPERCASE. Presence of a kicker draws the header hairline. */
   kicker?: string
   /** One-line muted description under the kicker. */
   description?: React.ReactNode
@@ -61,7 +61,7 @@ export function SettingsPanel({
             {kicker && (
               <p
                 className={cn(
-                  'font-mono text-micro-label uppercase',
+                  'font-semibold text-micro-label uppercase',
                   danger ? 'text-destructive' : 'text-muted-foreground',
                 )}
               >

@@ -77,7 +77,7 @@ function riskChip(score: number) {
 
 /** Micro-label section header — the section grammar now that SettingsSections is gone. */
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <p className="font-mono text-micro-label uppercase text-muted-foreground">{children}</p>
+  return <p className="font-semibold text-micro-label uppercase text-muted-foreground">{children}</p>
 }
 
 export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
@@ -534,12 +534,12 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
   )
 }
 
-/** A single detection stat: mono numeral over a mono micro-label caption. */
+/** A single detection stat: tabular numeral over a Geist micro-label caption. */
 function StatTile({ value, label }: { value: number; label: string }) {
   return (
     <RailGridTile>
-      <p className="font-mono text-2xl tabular-nums text-foreground">{value}</p>
-      <p className="mt-1 font-mono text-micro-label uppercase text-muted-foreground">{label}</p>
+      <p className="text-2xl tabular-nums text-foreground">{value}</p>
+      <p className="mt-1 font-semibold text-micro-label uppercase text-muted-foreground">{label}</p>
     </RailGridTile>
   )
 }

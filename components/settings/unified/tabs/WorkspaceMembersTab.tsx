@@ -33,7 +33,7 @@ function MemberAvatar({ monogram }: { monogram?: string }) {
   return (
     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-none bg-accent text-muted-foreground">
       {monogram
-        ? <span className="font-mono text-sm">{monogram}</span>
+        ? <span className="text-sm font-semibold">{monogram}</span>
         : <User weight="regular" className="h-5 w-5" />}
     </span>
   )
@@ -148,7 +148,7 @@ export default function WorkspaceMembersTab() {
                   {joined && (
                     <span
                       title={`Joined ${joined}`}
-                      className="hidden shrink-0 font-mono text-xs tabular-nums text-muted-foreground sm:inline"
+                      className="hidden shrink-0 tabular-nums text-xs text-muted-foreground sm:inline"
                     >
                       {joined}
                     </span>

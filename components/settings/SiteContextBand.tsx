@@ -53,7 +53,7 @@ export default function SiteContextBand() {
 
   return (
     <div className="mb-8 flex items-center gap-3 rounded-none border border-border bg-muted px-4 py-3">
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-none border border-border bg-accent font-mono text-xs font-semibold text-foreground">
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-none border border-border bg-accent text-xs font-semibold text-foreground">
         {monogramOf(activeSite.name)}
       </div>
 

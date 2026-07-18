@@ -45,7 +45,7 @@ export default function RetentionOverridesTable({ prefs, onChange }: Props) {
             return (
               <TR key={c.id}>
                 <TD className="font-medium text-foreground">{c.label}</TD>
-                <TD className="font-mono tabular-nums text-muted-foreground">{def} days</TD>
+                <TD className="tabular-nums text-muted-foreground">{def} days</TD>
                 <TD>
                   <div className="w-48">
                     <Select

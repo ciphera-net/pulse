@@ -129,7 +129,7 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
         {formOpen && (
           <div className="border-b border-border">
             <div className="px-5 py-3">
-              <p className="font-mono text-micro-label uppercase text-muted-foreground">
+              <p className="font-semibold text-micro-label uppercase text-muted-foreground">
                 {editing ? 'Edit goal' : 'New goal'}
               </p>
             </div>

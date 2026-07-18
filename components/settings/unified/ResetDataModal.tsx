@@ -164,9 +164,9 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
               indeterminate={selected.size > 0 && !allSelected}
               onChange={toggleAll}
               disabled={isResetting}
-              label={<span className="font-mono text-micro-label uppercase text-muted-foreground">All modules</span>}
+              label={<span className="font-semibold text-micro-label uppercase text-muted-foreground">All modules</span>}
             />
-            <span className="font-mono text-micro-label uppercase text-muted-foreground">
+            <span className="tabular-nums text-micro-label uppercase text-muted-foreground">
               {selected.size}/{RESET_MODULES.length}
             </span>
           </div>

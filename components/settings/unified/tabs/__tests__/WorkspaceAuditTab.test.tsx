@@ -73,7 +73,7 @@ describe('WorkspaceAuditTab', () => {
     )
   })
 
-  it('tones the action chip with the disciplined map — no lone greens, mono micro-label', async () => {
+  it('tones the action chip with the disciplined map — no lone greens, Geist caps micro-label', async () => {
     mockGetAuditLog.mockResolvedValue({ entries: [entry({ action: 'site_created' })], total: 1 })
     render(<WorkspaceAuditTab />)
 
@@ -82,7 +82,9 @@ describe('WorkspaceAuditTab', () => {
     const chip = within(table).getByText('Created site')
     // A creation is NOT a success signal — neutral, never the emerald wash.
     expect(chip.className).not.toMatch(/emerald/)
-    expect(chip.className).toMatch(/font-mono/)
+    // Label role reads Geist caps now (mono reserved for code/data), not terminal mono.
+    expect(chip.className).toMatch(/font-semibold/)
+    expect(chip.className).not.toMatch(/font-mono/)
   })
 
   it('routes a destructive action to the danger tone', async () => {
