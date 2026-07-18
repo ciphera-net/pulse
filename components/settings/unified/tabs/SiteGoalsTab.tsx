@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import { Input, Button, toast, Spinner } from '@ciphera-net/facet'
-import { Plus, Pencil, Trash, X, Target } from '@phosphor-icons/react'
+import { Plus, Pencil, Trash, Target } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { useGoals } from '@/lib/swr/dashboard'
 import { createGoal, updateGoal, deleteGoal } from '@/lib/api/goals'
 import { getAuthErrorMessage } from '@ciphera-net/facet'
@@ -12,19 +13,22 @@ import { useCan } from '@/lib/auth/permissions'
 
 export default function SiteGoalsTab({ siteId }: { siteId: string }) {
   const canManageGoals = useCan('goals.manage')
-  const { data: goals = [], mutate, isLoading } = useGoals(siteId)
+  const { data: goals = [], mutate, isLoading, isValidating, error } = useGoals(siteId)
   const [editing, setEditing] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState('')
   const [eventName, setEventName] = useState('')
   const [saving, setSaving] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; eventName?: string }>({})
 
   const startCreate = () => {
     setCreating(true)
     setEditing(null)
     setName('')
     setEventName('')
+    setFieldErrors({})
   }
 
   const startEdit = (goal: { id: string; name: string; event_name: string }) => {
@@ -32,6 +36,7 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
     setCreating(false)
     setName(goal.name)
     setEventName(goal.event_name)
+    setFieldErrors({})
   }
 
   const cancel = () => {
@@ -39,17 +44,20 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
     setEditing(null)
     setName('')
     setEventName('')
+    setFieldErrors({})
+  }
+
+  const validate = () => {
+    const next: { name?: string; eventName?: string } = {}
+    if (!name.trim()) next.name = 'Display name is required'
+    if (!eventName.trim()) next.eventName = 'Event name is required'
+    else if (!/^[a-zA-Z0-9_]+$/.test(eventName)) next.eventName = 'Only letters, numbers, and underscores'
+    setFieldErrors(next)
+    return Object.keys(next).length === 0
   }
 
   const handleSave = async () => {
-    if (!name.trim() || !eventName.trim()) {
-      toast.error('Name and event name are required')
-      return
-    }
-    if (!/^[a-zA-Z0-9_]+$/.test(eventName)) {
-      toast.error('Event name can only contain letters, numbers, and underscores')
-      return
-    }
+    if (!validate()) return
 
     setSaving(true)
     try {
@@ -70,12 +78,16 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
   }
 
   const handleDelete = async (goalId: string) => {
+    if (deletingId) return
+    setDeletingId(goalId)
     try {
       await deleteGoal(siteId, goalId)
       toast.success('Goal deleted')
       await mutate()
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to delete goal')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -84,6 +96,16 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
       <div className="flex items-center justify-center py-12">
         <Spinner className="w-6 h-6 text-neutral-500" />
       </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <SettingsErrorState
+        message={getAuthErrorMessage(error as Error) || 'Failed to load goals.'}
+        onRetry={() => mutate()}
+        retrying={isValidating}
+      />
     )
   }
 
@@ -106,25 +128,38 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
         <div className="rounded-none border border-neutral-800 bg-neutral-800/30 p-4 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-neutral-400 mb-1">Display Name</label>
+              <label className="block text-micro-label uppercase text-neutral-400 mb-1">Display Name</label>
               <Input
                 value={name}
-                onChange={e => setName(e.target.value)}
+                onChange={e => {
+                  setName(e.target.value)
+                  if (fieldErrors.name) setFieldErrors(prev => ({ ...prev, name: undefined }))
+                }}
                 placeholder="e.g. Sign Up"
+                disabled={saving}
+                aria-invalid={!!fieldErrors.name}
+                className={fieldErrors.name ? 'border-red-500 focus:border-red-500' : undefined}
               />
+              {fieldErrors.name && <p className="mt-1 text-xs text-red-400">{fieldErrors.name}</p>}
             </div>
             <div>
-              <label className="block text-xs font-medium text-neutral-400 mb-1">Event Name</label>
+              <label className="block text-micro-label uppercase text-neutral-400 mb-1">Event Name</label>
               <Input
                 value={eventName}
-                onChange={e => setEventName(e.target.value)}
+                onChange={e => {
+                  setEventName(e.target.value)
+                  if (fieldErrors.eventName) setFieldErrors(prev => ({ ...prev, eventName: undefined }))
+                }}
                 placeholder="e.g. signup_click"
-                disabled={!!editing}
+                disabled={!!editing || saving}
+                aria-invalid={!!fieldErrors.eventName}
+                className={fieldErrors.eventName ? 'border-red-500 focus:border-red-500' : undefined}
               />
+              {fieldErrors.eventName && <p className="mt-1 text-xs text-red-400">{fieldErrors.eventName}</p>}
             </div>
           </div>
           <div className="flex items-center gap-2 justify-end">
-            <Button onClick={cancel} variant="secondary" className="text-sm">Cancel</Button>
+            <Button onClick={cancel} variant="secondary" className="text-sm" disabled={saving}>Cancel</Button>
             <Button onClick={handleSave} variant="default" className="text-sm" disabled={saving}>
               {saving ? 'Saving...' : editing ? 'Update' : 'Create'}
             </Button>
@@ -153,12 +188,13 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
                 <p className="text-xs text-neutral-500 font-mono">{goal.event_name}</p>
               </div>
               {canManageGoals && (
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ease-apple">
+                <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-fast ease-apple">
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
                     onClick={() => startEdit(goal)}
+                    disabled={deletingId === goal.id}
                   >
                     <Pencil weight="bold" className="w-3.5 h-3.5" />
                   </Button>
@@ -167,8 +203,11 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
                     size="icon"
                     className="h-8 w-8 text-red-400 hover:text-red-300"
                     onClick={() => setConfirmDeleteId(goal.id)}
+                    disabled={deletingId === goal.id}
                   >
-                    <Trash weight="bold" className="w-3.5 h-3.5" />
+                    {deletingId === goal.id
+                      ? <Spinner className="w-3.5 h-3.5" />
+                      : <Trash weight="bold" className="w-3.5 h-3.5" />}
                   </Button>
                 </div>
               )}

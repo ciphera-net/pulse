@@ -70,10 +70,15 @@ export default function GettingStartedChecklist() {
 
   const items: ChecklistItem[] = [
     { key: 'site', label: 'Add your first site', href: '/sites/new', completed: sites.length > 0 },
-    { key: 'script', label: 'Install tracking script', href: firstSiteId ? `/sites/${firstSiteId}/settings` : undefined, completed: sites.some(s => s.is_verified) },
+    // Point directly at the settings tabs. The old `/sites/{id}/settings` /
+    // `/sites/{id}/goals` targets were a deprecated redirect shim and a dead
+    // 404 respectively; "Enable email reports" also landed on General, not
+    // Reports. The site-settings page resolves the active site from
+    // sessionStorage, falling back to the first site (firstSiteId here).
+    { key: 'script', label: 'Install tracking script', href: firstSiteId ? '/settings/site/general' : undefined, completed: sites.some(s => s.is_verified) },
     { key: 'teammate', label: 'Invite a teammate', href: '/settings/organization/members', completed: members.length > 1 },
-    { key: 'goal', label: 'Set up a goal', href: firstSiteId ? `/sites/${firstSiteId}/goals` : undefined, completed: (goals?.length ?? 0) > 0 },
-    { key: 'reports', label: 'Enable email reports', href: firstSiteId ? `/sites/${firstSiteId}/settings` : undefined, completed: schedules?.some(s => s.channel === 'email' && s.enabled) ?? false },
+    { key: 'goal', label: 'Set up a goal', href: firstSiteId ? '/settings/site/goals' : undefined, completed: (goals?.length ?? 0) > 0 },
+    { key: 'reports', label: 'Enable email reports', href: firstSiteId ? '/settings/site/reports' : undefined, completed: schedules?.some(s => s.channel === 'email' && s.enabled) ?? false },
   ]
 
   const completedCount = items.filter(i => i.completed).length

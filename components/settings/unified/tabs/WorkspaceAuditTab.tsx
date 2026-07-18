@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react'
 import { Spinner, Input, Button, getAuthErrorMessage } from '@ciphera-net/facet'
 import Select from '@/components/ui/select'
-import { ListChecks } from '@phosphor-icons/react'
+import { ListChecks, WarningCircle } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { StatusChip, type ChipTone } from '@/components/settings/StatusChip'
+import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { useAuth } from '@/lib/auth/context'
-import { useCan } from '@/lib/auth/permissions'
 import { getAuditLog, type AuditLogEntry } from '@/lib/api/audit'
 import { formatPlanName } from '@/lib/plans'
 import { formatDateTimeShort } from '@/lib/utils/formatDate'
@@ -44,6 +45,15 @@ function humanizeAction(action: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1)
 }
 
+// * Tone the action chip by intent so destructive events (deletes, removals,
+// * disconnects) stand out in an audit scan; creations/connections read as
+// * success; everything else stays neutral.
+function actionTone(action: string): ChipTone {
+  if (/(deleted|removed|disconnected|cancelled)$/.test(action)) return 'danger'
+  if (/(created|connected|restored|resumed|granted|invited)$/.test(action)) return 'success'
+  return 'neutral'
+}
+
 // * Payload values are shallow (strings/numbers/bools; rarely a nested object).
 function formatPayloadValue(value: unknown): string {
   if (value === null || value === undefined) return '—'
@@ -55,7 +65,6 @@ const PAGE_SIZE = 20
 
 export default function WorkspaceAuditTab() {
   const { user } = useAuth()
-  const canView = useCan('audit.view')
   const [entries, setEntries] = useState<AuditLogEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -88,16 +97,12 @@ export default function WorkspaceAuditTab() {
       .finally(() => setLoading(false))
   }, [user?.org_id, page, actionFilter, startDate, endDate, retryCount])
 
-  if (error) {
-    return (
-      <div className="rounded-none border border-red-900/50 bg-red-950/20 p-6 text-center">
-        <p className="text-red-400 text-sm mb-4">{error}</p>
-        <Button variant="secondary" onClick={() => { setError(null); setRetryCount(c => c + 1) }}>Retry</Button>
-      </div>
-    )
-  }
+  const handleRetry = () => { setError(null); setRetryCount(c => c + 1) }
 
-  if (loading) return <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-neutral-500" /></div>
+  // Date inputs emit `YYYY-MM-DD`, so a lexical comparison correctly detects an
+  // inverted range — which the API answers with zero rows and would otherwise
+  // read as a genuine "No activity yet" empty state.
+  const invalidRange = Boolean(startDate && endDate && startDate > endDate)
 
   return (
     <div className="space-y-6">
@@ -146,7 +151,20 @@ export default function WorkspaceAuditTab() {
         )}
       </div>
 
-      {entries.length === 0 ? (
+      {invalidRange && (
+        <p className="flex items-center gap-1.5 text-xs text-amber-400">
+          <WarningCircle size={14} weight="fill" className="shrink-0" />
+          Start date is after end date.
+        </p>
+      )}
+
+      {error ? (
+        <SettingsErrorState variant="card" message={error} onRetry={handleRetry} />
+      ) : loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Spinner className="w-6 h-6 text-neutral-500" />
+        </div>
+      ) : entries.length === 0 ? (
         <EmptyState
           title="No activity yet"
           description="Workspace actions like site changes and member updates will appear here as they happen."
@@ -154,61 +172,69 @@ export default function WorkspaceAuditTab() {
           className="py-8"
         />
       ) : (
-        <div className="space-y-1">
-          {entries.map(entry => (
-            <div key={entry.id} className="flex items-center justify-between px-4 py-3 rounded-none hover:bg-neutral-800/40 transition-colors ease-apple">
-              <div>
-                <p className="text-sm text-white">
-                  <span className="font-medium">{entry.actor_email || 'System'}</span>
-                  {' '}
-                  <span className="text-neutral-400">{ACTION_LABELS[entry.action] || humanizeAction(entry.action)}</span>
-                </p>
-                {entry.payload && Object.keys(entry.payload).length > 0 && (
-                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
-                    {Object.entries(entry.payload).map(([key, value]) => (
-                      <span key={key} className="text-xs text-neutral-500">
-                        <span className="text-neutral-600">{key.replace(/_/g, ' ')}:</span>{' '}
-                        {/* plan ids surface in payloads (plan_id: "solo") — show the
-                            canonical display name, same as the billing card */}
-                        {key === 'plan_id' && typeof value === 'string'
-                          ? formatPlanName(value)
-                          : formatPayloadValue(value)}
-                      </span>
-                    ))}
+        <>
+          <div className="rounded-none border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
+            {entries.map(entry => (
+              <div
+                key={entry.id}
+                className="flex items-start justify-between gap-4 px-4 py-3 group hover:bg-neutral-800/40 transition-colors duration-fast ease-apple"
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-medium text-white">{entry.actor_email || 'System'}</span>
+                    <StatusChip tone={actionTone(entry.action)}>
+                      {ACTION_LABELS[entry.action] || humanizeAction(entry.action)}
+                    </StatusChip>
                   </div>
-                )}
+                  {entry.payload && Object.keys(entry.payload).length > 0 && (
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
+                      {Object.entries(entry.payload).map(([key, value]) => (
+                        <span key={key} className="inline-flex items-baseline gap-1">
+                          <span className="text-micro-label uppercase text-neutral-500">{key.replace(/_/g, ' ')}</span>
+                          {/* plan ids surface in payloads (plan_id: "solo") — show the
+                              canonical display name, same as the billing card */}
+                          <span className="text-xs text-neutral-300">
+                            {key === 'plan_id' && typeof value === 'string'
+                              ? formatPlanName(value)
+                              : formatPayloadValue(value)}
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-neutral-500 shrink-0 whitespace-nowrap">
+                  {formatDateTimeShort(new Date(entry.occurred_at))}
+                </p>
               </div>
-              <p className="text-xs text-neutral-500 shrink-0 ml-4">
-                {formatDateTimeShort(new Date(entry.occurred_at))}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
 
-      <div className="flex items-center justify-between pt-6 border-t border-neutral-800">
-        <span className="text-xs text-neutral-500">
-          {total > 0 ? `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, total)} of ${total}` : 'No entries'}
-        </span>
-        <div className="flex gap-2">
-          <Button
-            variant="secondary"
-            className="text-sm"
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page <= 1}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="secondary"
-            className="text-sm"
-            onClick={() => setPage(p => p + 1)}
-            disabled={page * PAGE_SIZE >= total}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
+          <div className="flex items-center justify-between pt-6 border-t border-neutral-800">
+            <span className="text-xs text-neutral-500">
+              {total > 0 ? `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, total)} of ${total}` : 'No entries'}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                className="text-sm"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page <= 1}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="secondary"
+                className="text-sm"
+                onClick={() => setPage(p => p + 1)}
+                disabled={page * PAGE_SIZE >= total}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

@@ -53,7 +53,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'goals',          label: 'Goals',         href: '/settings/site/goals',          Icon: Target,           requires: 'goals.manage' },
       { id: 'visibility',     label: 'Visibility',    href: '/settings/site/visibility',     Icon: Eye,              requires: 'sites.edit' },
       { id: 'privacy',        label: 'Privacy',       href: '/settings/site/privacy',        Icon: ShieldCheck,      requires: 'sites.edit' },
-      { id: 'bot-spam',       label: 'Bot & Spam',    href: '/settings/site/bot-spam',       Icon: Robot,            requires: 'quarantine.manage' },
+      { id: 'bot-spam',       label: 'Bot & Spam',    href: '/settings/site/bot-spam',       Icon: Robot,            requires: 'quarantine.view' },
       { id: 'privacy-scan',   label: 'Privacy Scan',  href: '/settings/site/privacy-scan',   Icon: MagnifyingGlass,  requires: 'privacy_scan.manage' },
       { id: 'reports',        label: 'Reports',       href: '/settings/site/reports',        Icon: ChartBar,         requires: 'reports.manage' },
       { id: 'integrations',   label: 'Integrations',  href: '/settings/site/integrations',   Icon: Plugs,            requires: 'integrations.manage' },
@@ -106,7 +106,7 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
   const canGoalsManage      = useCan('goals.manage')
   const canReportsManage    = useCan('reports.manage')
   const canSitesEdit        = useCan('sites.edit')
-  const canQuarantineManage = useCan('quarantine.manage')
+  const canQuarantineView   = useCan('quarantine.view')
   const canPrivacyScan      = useCan('privacy_scan.manage')
   const canIntegrations     = useCan('integrations.manage')
   const canTeamView         = useCan('team.view')
@@ -118,7 +118,9 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
     'goals.manage':        canGoalsManage,
     'reports.manage':      canReportsManage,
     'sites.edit':          canSitesEdit,
-    'quarantine.manage':   canQuarantineManage,
+    // Bot & Spam is viewable by anyone with quarantine.view (analyst/member by
+    // default); the tab's own controls gate mutations on quarantine.manage.
+    'quarantine.view':     canQuarantineView,
     'privacy_scan.manage': canPrivacyScan,
     'integrations.manage': canIntegrations,
     'team.view':           canTeamView,
@@ -138,8 +140,12 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
 
   const allVisibleTabs = visibleGroups.flatMap((g) => g.tabs)
 
-  // Mobile select options
-  const mobileOptions = allVisibleTabs.map((t) => ({ value: t.href, label: t.label }))
+  // Mobile select options — the flat list drops group headers, so prefix each
+  // label with its group to disambiguate the two "General" tabs (Site vs
+  // Organization), which are otherwise identical entries on mobile.
+  const mobileOptions = visibleGroups.flatMap((g) =>
+    g.tabs.map((t) => ({ value: t.href, label: `${g.label} · ${t.label}` })),
+  )
   const mobileValue = allVisibleTabs.find((t) => pathname === t.href)?.href ?? ''
 
   // Filtered nav groups for search
@@ -196,7 +202,7 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
             )}
             {filteredGroups.map((group) => (
               <div key={group.label}>
-                <p className="px-3 mb-1 text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">
+                <p className="px-3 mb-1 text-micro-label font-semibold text-neutral-500 uppercase">
                   {group.label}
                 </p>
                 <ul className="flex flex-col gap-0.5">

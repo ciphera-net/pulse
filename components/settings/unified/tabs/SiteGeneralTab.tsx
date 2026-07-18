@@ -13,6 +13,8 @@ import ResetDataModal from '@/components/settings/unified/ResetDataModal'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 import VerificationModal from '@/components/sites/VerificationModal'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
+import { StatusChip } from '@/components/settings/StatusChip'
+import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 
 const ALL_TIMEZONES = (() => {
   try {
@@ -110,10 +112,11 @@ function TimezoneCombobox({ value, onChange, disabled }: { value: string; onChan
 export default function SiteGeneralTab({ siteId }: { siteId: string }) {
   const router = useRouter()
   const { user } = useAuth()
-  const { data: site, mutate } = useSite(siteId)
+  const { data: site, error, isValidating, mutate } = useSite(siteId)
   const [name, setName] = useState('')
   const [timezone, setTimezone] = useState('UTC')
   const [scriptFeatures, setScriptFeatures] = useState<Record<string, unknown>>({})
+  const [saving, setSaving] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
 
@@ -144,7 +147,8 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
   }
 
   const handleSave = useCallback(async () => {
-    if (!site) return
+    if (!site || saving) return
+    setSaving(true)
     try {
       await updateSite(siteId, { name, timezone, script_features: scriptFeatures })
       initialRef.current = JSON.stringify({ name, timezone, scriptFeatures: JSON.stringify(scriptFeatures) })
@@ -152,10 +156,24 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
       toast.success('Site updated')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')
+    } finally {
+      setSaving(false)
     }
-  }, [site, siteId, name, timezone, scriptFeatures, mutate])
+  }, [site, saving, siteId, name, timezone, scriptFeatures, mutate])
 
   const [showResetModal, setShowResetModal] = useState(false)
+
+  // A permanent fetch failure must not fall through to an infinite spinner —
+  // surface it as a distinct, retryable error while there is no data to show.
+  if (error && !site) {
+    return (
+      <SettingsErrorState
+        message="We couldn't load this site's settings. It may be a temporary problem."
+        onRetry={() => mutate()}
+        retrying={isValidating}
+      />
+    )
+  }
 
   if (!site || !hasInitialized.current) {
     return (
@@ -178,7 +196,7 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-neutral-400 mb-1.5">Site Name</label>
-              <Input value={name} onChange={e => setName(e.target.value)} placeholder="My Website" disabled={!canEdit} />
+              <Input value={name} onChange={e => setName(e.target.value)} placeholder="My Website" disabled={!canEdit || saving} />
             </div>
             <div>
               <label className="block text-xs font-medium text-neutral-400 mb-1.5">Domain</label>
@@ -189,7 +207,7 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
 
           <div>
             <label className="block text-xs font-medium text-neutral-400 mb-1.5">Timezone</label>
-            <TimezoneCombobox value={timezone} onChange={setTimezone} disabled={!canEdit} />
+            <TimezoneCombobox value={timezone} onChange={setTimezone} disabled={!canEdit || saving} />
           </div>
         </div>
       </div>
@@ -207,27 +225,22 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
           showFrameworkPicker
           className="mb-4"
           onFeaturesChange={(features) => setScriptFeatures(features)}
-          disabled={!canEdit}
+          disabled={!canEdit || saving}
         />
 
-        {/* Verify Installation */}
-        <Button
-          variant="secondary"
-          className={site.is_verified ? 'bg-green-900/10 border-green-900/30 text-green-400 hover:bg-green-900/20' : ''}
-          onClick={() => setShowVerificationModal(true)}
-        >
-          {site.is_verified ? (
-            <>
-              <CheckIcon className="w-4 h-4" />
-              Verified
-            </>
-          ) : (
-            <>
-              <ZapIcon className="w-4 h-4" />
-              Verify Installation
-            </>
-          )}
-        </Button>
+        {/* Verification status + action */}
+        <div className="flex flex-wrap items-center gap-3">
+          <StatusChip
+            tone={site.is_verified ? 'success' : 'neutral'}
+            icon={site.is_verified ? <CheckIcon className="w-3 h-3" /> : undefined}
+          >
+            {site.is_verified ? 'Verified' : 'Not verified'}
+          </StatusChip>
+          <Button variant="secondary" onClick={() => setShowVerificationModal(true)}>
+            <ZapIcon className="w-4 h-4" />
+            {site.is_verified ? 'Re-verify' : 'Verify Installation'}
+          </Button>
+        </div>
         <p className="text-xs text-neutral-500">
           {site.is_verified ? 'Your site is sending data correctly.' : 'Check if your site is sending data correctly.'}
         </p>

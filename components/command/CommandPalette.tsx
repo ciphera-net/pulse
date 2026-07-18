@@ -30,6 +30,7 @@ import {
   DeviceMobile,
 } from '@phosphor-icons/react'
 import { useSites } from '@/lib/swr/sites'
+import { useCan } from '@/lib/auth/permissions'
 import { SiteFavicon } from '@/components/sites/SiteFavicon'
 import {
   CommandDialog,
@@ -96,6 +97,20 @@ const PLACEHOLDERS = [
 export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPaletteProps) {
   const router = useRouter()
   const { sites } = useSites()
+
+  // Permission gating for the Settings group — the palette was the one entry
+  // point that skipped useCan(), so a viewer/member could jump straight to a
+  // tab that only renders "Access restricted". Mirror the nav's gates.
+  const canSitesEdit      = useCan('sites.edit')
+  const canGoalsManage    = useCan('goals.manage')
+  const canQuarantineView = useCan('quarantine.view')
+  const canPrivacyScan    = useCan('privacy_scan.manage')
+  const canReportsManage  = useCan('reports.manage')
+  const canIntegrations   = useCan('integrations.manage')
+  const canTeamView       = useCan('team.view')
+  const canBillingView    = useCan('billing.view')
+  const canAuditView      = useCan('audit.view')
+
   const [search, setSearch] = useState('')
   const [placeholderIdx, setPlaceholderIdx] = useState(0)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -190,58 +205,80 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
         </CommandGroup>
         <CommandSeparator />
         <CommandGroup heading="Settings">
-          <CommandItem value="settings-site-general" onSelect={() => go('/settings/site/general')}>
-            <GearSix size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span><HighlightMatch text="Site General Settings" query={search} /></span>
-          </CommandItem>
-          <CommandItem value="settings-site-goals" onSelect={() => go('/settings/site/goals')}>
-            <Target size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span><HighlightMatch text="Goals" query={search} /></span>
-          </CommandItem>
-          <CommandItem value="settings-site-visibility" onSelect={() => go('/settings/site/visibility')}>
-            <Eye size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span><HighlightMatch text="Visibility & Sharing" query={search} /></span>
-          </CommandItem>
-          <CommandItem value="settings-site-privacy" onSelect={() => go('/settings/site/privacy')}>
-            <ShieldCheck size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span><HighlightMatch text="Privacy Settings" query={search} /></span>
-          </CommandItem>
-          <CommandItem value="settings-site-bot-spam" onSelect={() => go('/settings/site/bot-spam')}>
-            <Robot size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span><HighlightMatch text="Bot & Spam Filtering" query={search} /></span>
-          </CommandItem>
-          <CommandItem value="settings-site-privacy-scan" onSelect={() => go('/settings/site/privacy-scan')}>
-            <MagnifyingGlass size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span><HighlightMatch text="Privacy Scan" query={search} /></span>
-          </CommandItem>
-          <CommandItem value="settings-site-reports" onSelect={() => go('/settings/site/reports')}>
-            <ChartBar size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span><HighlightMatch text="Reports & Alerts" query={search} /></span>
-          </CommandItem>
-          <CommandItem value="settings-site-integrations" onSelect={() => go('/settings/site/integrations')}>
-            <Plugs size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span><HighlightMatch text="Integrations" query={search} /></span>
-          </CommandItem>
+          {canSitesEdit && (
+            <CommandItem value="settings-site-general" onSelect={() => go('/settings/site/general')}>
+              <GearSix size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+              <span><HighlightMatch text="Site General Settings" query={search} /></span>
+            </CommandItem>
+          )}
+          {canGoalsManage && (
+            <CommandItem value="settings-site-goals" onSelect={() => go('/settings/site/goals')}>
+              <Target size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+              <span><HighlightMatch text="Goals" query={search} /></span>
+            </CommandItem>
+          )}
+          {canSitesEdit && (
+            <CommandItem value="settings-site-visibility" onSelect={() => go('/settings/site/visibility')}>
+              <Eye size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+              <span><HighlightMatch text="Visibility & Sharing" query={search} /></span>
+            </CommandItem>
+          )}
+          {canSitesEdit && (
+            <CommandItem value="settings-site-privacy" onSelect={() => go('/settings/site/privacy')}>
+              <ShieldCheck size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+              <span><HighlightMatch text="Privacy Settings" query={search} /></span>
+            </CommandItem>
+          )}
+          {canQuarantineView && (
+            <CommandItem value="settings-site-bot-spam" onSelect={() => go('/settings/site/bot-spam')}>
+              <Robot size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+              <span><HighlightMatch text="Bot & Spam Filtering" query={search} /></span>
+            </CommandItem>
+          )}
+          {canPrivacyScan && (
+            <CommandItem value="settings-site-privacy-scan" onSelect={() => go('/settings/site/privacy-scan')}>
+              <MagnifyingGlass size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+              <span><HighlightMatch text="Privacy Scan" query={search} /></span>
+            </CommandItem>
+          )}
+          {canReportsManage && (
+            <CommandItem value="settings-site-reports" onSelect={() => go('/settings/site/reports')}>
+              <ChartBar size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+              <span><HighlightMatch text="Reports & Alerts" query={search} /></span>
+            </CommandItem>
+          )}
+          {canIntegrations && (
+            <CommandItem value="settings-site-integrations" onSelect={() => go('/settings/site/integrations')}>
+              <Plugs size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+              <span><HighlightMatch text="Integrations" query={search} /></span>
+            </CommandItem>
+          )}
           <CommandItem value="settings-org-general" onSelect={() => go('/settings/organization/general')}>
             <Buildings size={16} weight="regular" className="opacity-60" aria-hidden="true" />
             <span><HighlightMatch text="Organization Settings" query={search} /></span>
           </CommandItem>
-          <CommandItem value="settings-org-members" onSelect={() => go('/settings/organization/members')}>
-            <UsersThree size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span><HighlightMatch text="Team Members" query={search} /></span>
-          </CommandItem>
-          <CommandItem value="settings-org-billing" onSelect={() => go('/settings/organization/billing')}>
-            <CreditCard size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span><HighlightMatch text="Billing & Subscription" query={search} /></span>
-          </CommandItem>
+          {canTeamView && (
+            <CommandItem value="settings-org-members" onSelect={() => go('/settings/organization/members')}>
+              <UsersThree size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+              <span><HighlightMatch text="Team Members" query={search} /></span>
+            </CommandItem>
+          )}
+          {canBillingView && (
+            <CommandItem value="settings-org-billing" onSelect={() => go('/settings/organization/billing')}>
+              <CreditCard size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+              <span><HighlightMatch text="Billing & Subscription" query={search} /></span>
+            </CommandItem>
+          )}
           <CommandItem value="settings-org-notifications" onSelect={() => go('/settings/organization/notifications')}>
             <Bell size={16} weight="regular" className="opacity-60" aria-hidden="true" />
             <span><HighlightMatch text="Notification Preferences" query={search} /></span>
           </CommandItem>
-          <CommandItem value="settings-org-audit" onSelect={() => go('/settings/organization/audit')}>
-            <ClockCounterClockwise size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span><HighlightMatch text="Audit Log" query={search} /></span>
-          </CommandItem>
+          {canAuditView && (
+            <CommandItem value="settings-org-audit" onSelect={() => go('/settings/organization/audit')}>
+              <ClockCounterClockwise size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+              <span><HighlightMatch text="Audit Log" query={search} /></span>
+            </CommandItem>
+          )}
           <CommandItem value="settings-account-profile" onSelect={() => go('/settings/account/profile')}>
             <User size={16} weight="regular" className="opacity-60" aria-hidden="true" />
             <span><HighlightMatch text="Profile" query={search} /></span>

@@ -11,6 +11,8 @@ import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { formatDateTime } from '@/lib/utils/formatDate'
 import { useCan } from '@/lib/auth/permissions'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { StatusChip } from '@/components/settings/StatusChip'
+import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 
 function GoogleIcon() {
   return (
@@ -53,10 +55,12 @@ function IntegrationCard({
   name,
   description,
   connected,
-  detail,
+  status,
+  error,
   onConnect,
   onDisconnect,
   connectLabel = 'Connect',
+  connecting = false,
   canManage = true,
   children,
 }: {
@@ -64,42 +68,50 @@ function IntegrationCard({
   name: string
   description: string
   connected: boolean
-  detail?: string
+  status?: 'active' | 'syncing' | 'error'
+  /** When present (status fetch failed), the card shows this instead of the
+   *  action + details so a real failure is distinct from a genuine disconnect. */
+  error?: React.ReactNode
   onConnect: () => void
   onDisconnect: () => void
   connectLabel?: string
+  connecting?: boolean
   canManage?: boolean
   children?: React.ReactNode
 }) {
   return (
     <div className="rounded-none border border-neutral-800 bg-neutral-800/30">
-      <div className="flex items-center justify-between py-4 px-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-none bg-neutral-800">{icon}</div>
-          <div>
-            <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-3 py-4 px-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="p-2 rounded-none bg-neutral-800 shrink-0">{icon}</div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
               <p className="text-sm font-medium text-white">{name}</p>
-              {connected && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-none bg-green-900/30 text-green-400 border border-green-900/50">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                  Connected
-                </span>
+              {!error && connected && (
+                status === 'error' ? (
+                  <StatusChip tone="danger" dot>Error</StatusChip>
+                ) : status === 'syncing' ? (
+                  <StatusChip tone="info" dot pulse>Syncing</StatusChip>
+                ) : (
+                  <StatusChip tone="success" dot>Connected</StatusChip>
+                )
               )}
             </div>
-            <p className="text-xs text-neutral-400">{detail || description}</p>
+            <p className="text-xs text-neutral-400">{description}</p>
           </div>
         </div>
-        {canManage && (connected ? (
-          <Button onClick={onDisconnect} variant="secondary" className="text-sm text-red-400 border-red-900/50 hover:bg-red-900/20 gap-1.5">
+        {!error && canManage && (connected ? (
+          <Button onClick={onDisconnect} variant="secondary" className="text-sm text-red-400 border-red-900/50 hover:bg-red-900/20 gap-1.5 shrink-0">
             <LinkBreak weight="bold" className="w-3.5 h-3.5" /> Disconnect
           </Button>
         ) : (
-          <Button onClick={onConnect} variant="default" className="text-sm gap-1.5">
-            <Plugs weight="bold" className="w-3.5 h-3.5" /> {connectLabel}
+          <Button onClick={onConnect} variant="default" className="text-sm gap-1.5 shrink-0" disabled={connecting}>
+            {connecting ? <Spinner className="w-4 h-4" /> : <Plugs weight="bold" className="w-3.5 h-3.5" />}
+            {connectLabel}
           </Button>
         ))}
       </div>
-      {children}
+      {error ? <div className="px-4 pb-4">{error}</div> : children}
     </div>
   )
 }
@@ -247,10 +259,13 @@ function BunnySetupForm({ siteId, onConnected }: { siteId: string; onConnected: 
 
 export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
   const canManage = useCan('integrations.manage')
-  const { data: gscStatus, isLoading: gscLoading, mutate: mutateGSC } = useGSCStatus(siteId)
-  const { data: bunnyStatus, isLoading: bunnyLoading, mutate: mutateBunny } = useBunnyStatus(siteId)
+  const { data: gscStatus, error: gscError, isLoading: gscLoading, mutate: mutateGSC } = useGSCStatus(siteId)
+  const { data: bunnyStatus, error: bunnyError, isLoading: bunnyLoading, mutate: mutateBunny } = useBunnyStatus(siteId)
   const [showBunnySetup, setShowBunnySetup] = useState(false)
   const [confirmDisconnect, setConfirmDisconnect] = useState<'gsc' | 'bunny' | null>(null)
+  const [connectingGSC, setConnectingGSC] = useState(false)
+  const [retryingGSC, setRetryingGSC] = useState(false)
+  const [retryingBunny, setRetryingBunny] = useState(false)
 
   if (gscLoading || bunnyLoading) {
     return (
@@ -261,9 +276,20 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
   }
 
   const handleConnectGSC = async () => {
+    if (connectingGSC) return
+    setConnectingGSC(true)
     try {
       const data = await getGSCAuthURL(siteId)
-      window.open(data.auth_url, '_blank')
+      // A blocked popup returns null — surface that instead of a silent no-op.
+      // (We open without the `noopener` feature so the ref survives for block
+      // detection, then sever `opener` to get the same reverse-tabnabbing
+      // protection `noopener` would give.)
+      const popup = window.open(data.auth_url, '_blank')
+      if (!popup) {
+        toast.error('Your browser blocked the sign-in popup. Please allow popups for this site and try again.')
+        return
+      }
+      popup.opener = null
       const handleVisibility = () => {
         if (document.visibilityState === 'visible') {
           mutateGSC()
@@ -273,7 +299,19 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
       document.addEventListener('visibilitychange', handleVisibility)
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to start Google authorization')
+    } finally {
+      setConnectingGSC(false)
     }
+  }
+
+  const retryGSC = () => {
+    setRetryingGSC(true)
+    Promise.resolve(mutateGSC()).finally(() => setRetryingGSC(false))
+  }
+
+  const retryBunny = () => {
+    setRetryingBunny(true)
+    Promise.resolve(mutateBunny()).finally(() => setRetryingBunny(false))
   }
 
   const handleDisconnectGSC = () => {
@@ -316,9 +354,19 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
           name="Google Search Console"
           description="View search queries, clicks, impressions, and ranking data."
           connected={gscStatus?.connected ?? false}
+          status={gscStatus?.status}
+          error={gscError ? (
+            <SettingsErrorState
+              variant="banner"
+              message="Couldn't load your Google Search Console connection status. This is usually temporary — your connection isn't affected."
+              onRetry={retryGSC}
+              retrying={retryingGSC}
+            />
+          ) : undefined}
           onConnect={handleConnectGSC}
           onDisconnect={handleDisconnectGSC}
           connectLabel="Connect with Google"
+          connecting={connectingGSC}
           canManage={canManage}
         >
           {gscStatus?.connected && <GSCDetails gscStatus={gscStatus} />}
@@ -330,6 +378,15 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
           name="BunnyCDN"
           description="Monitor bandwidth, cache hit rates, and CDN performance."
           connected={bunnyConnected}
+          status={bunnyStatus?.status}
+          error={bunnyError ? (
+            <SettingsErrorState
+              variant="banner"
+              message="Couldn't load your BunnyCDN connection status. This is usually temporary — your connection isn't affected."
+              onRetry={retryBunny}
+              retrying={retryingBunny}
+            />
+          ) : undefined}
           onConnect={handleConnectBunny}
           onDisconnect={handleDisconnectBunny}
           canManage={canManage}

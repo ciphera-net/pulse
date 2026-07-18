@@ -8,6 +8,7 @@ import { BarChartIcon, SettingsIcon, BookOpenIcon, ExternalLinkIcon, Button } fr
 import { SiteFavicon } from '@/components/sites/SiteFavicon'
 import { PlusCircle } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { useCan } from '@/lib/auth/permissions'
 
 export type SiteStatsMap = Record<string, { stats: Stats }>
 
@@ -26,6 +27,9 @@ interface SiteCardProps {
 function SiteCard({ site, stats, statsLoading }: SiteCardProps) {
   const visitors24h = stats?.visitors ?? 0
   const pageviews = stats?.pageviews ?? 0
+  // The settings gear was unguarded, unlike its sidebar counterpart — a
+  // viewer/member clicking it just lands on the "Access restricted" screen.
+  const canEditSite = useCan('sites.edit')
 
   return (
     <div className="group relative flex flex-col rounded-none border border-neutral-800 bg-neutral-900 p-6 transition-all duration-base hover:border-neutral-700 active:scale-[0.99] ease-apple">
@@ -101,17 +105,19 @@ function SiteCard({ site, stats, statsLoading }: SiteCardProps) {
             View Dashboard
           </Button>
         </Link>
-        <Link
-          href="/settings/site/general"
-          className="flex items-center justify-center rounded-none border border-neutral-700 px-3 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 ease-apple"
-          title="Site Settings"
-          onClick={(e) => {
-            e.stopPropagation()
-            sessionStorage.setItem('pulse_active_site', site.id)
-          }}
-        >
-          <SettingsIcon className="h-4 w-4" />
-        </Link>
+        {canEditSite && (
+          <Link
+            href="/settings/site/general"
+            className="flex items-center justify-center rounded-none border border-neutral-700 px-3 hover:bg-neutral-800 text-neutral-500 hover:text-neutral-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 ease-apple"
+            title="Site Settings"
+            onClick={(e) => {
+              e.stopPropagation()
+              sessionStorage.setItem('pulse_active_site', site.id)
+            }}
+          >
+            <SettingsIcon className="h-4 w-4" />
+          </Link>
+        )}
       </div>
     </div>
   )

@@ -12,6 +12,8 @@ import { Copy, CheckCircle, EyeSlash, Trash, ArrowUp, ArrowDown, Plus } from '@p
 import Link from 'next/link'
 import SettingsSections from '@/components/settings/SettingsSections'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
+import { StatusChip } from '@/components/settings/StatusChip'
+import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { useCan } from '@/lib/auth/permissions'
 import { formatPlanName } from '@/lib/plans'
 
@@ -35,9 +37,9 @@ function PrivacyToggle({ label, desc, checked, onToggle, disabled }: { label: st
 
 export default function SitePrivacyTab({ siteId }: { siteId: string }) {
   const canEdit = useCan('sites.edit')
-  const { data: site, mutate } = useSite(siteId)
+  const { data: site, error: siteError, mutate } = useSite(siteId)
   const { data: subscription, error: subscriptionError, mutate: mutateSubscription } = useSubscription()
-  const { data: psiConfig, mutate: mutatePSIConfig } = usePageSpeedConfig(siteId)
+  const { data: psiConfig, error: psiConfigError, mutate: mutatePSIConfig } = usePageSpeedConfig(siteId)
   const [collectPagePaths, setCollectPagePaths] = useState(true)
   const [collectReferrers, setCollectReferrers] = useState(true)
   const [collectDeviceInfo, setCollectDeviceInfo] = useState(true)
@@ -51,6 +53,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
   const [allowedQueryParams, setAllowedQueryParams] = useState('')
   const [psiFrequency, setPsiFrequency] = useState('weekly')
   const [snippetCopied, setSnippetCopied] = useState(false)
+  const [saving, setSaving] = useState(false)
   const initialRef = useRef('')
 
   // Sync form state — only on first load, skip dirty tracking until ready
@@ -123,6 +126,8 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
   }
 
   const handleSave = useCallback(async () => {
+    if (saving) return
+    setSaving(true)
     try {
       await updateSite(siteId, {
         name: site!.name,
@@ -148,8 +153,10 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
       toast.success('Privacy settings updated')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')
+    } finally {
+      setSaving(false)
     }
-  }, [siteId, collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency, psiConfig, mutatePSIConfig, mutate])
+  }, [saving, siteId, collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency, psiConfig, mutatePSIConfig, mutate])
 
   const updateRule = (index: number, updates: Partial<PageRule>) => {
     setPageRules(rules => rules.map((r, i) => i === index ? { ...r, ...updates } : r))
@@ -169,6 +176,15 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
     })
   }
 
+  if (siteError && !site) {
+    return (
+      <SettingsErrorState
+        message="We couldn't load this site's privacy settings. It may be a temporary problem."
+        onRetry={() => mutate()}
+      />
+    )
+  }
+
   if (!site) return <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-neutral-500" /></div>
 
   return (
@@ -181,9 +197,10 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
         { id: 'section-query-params', label: 'Query Parameters' },
         { id: 'section-exclude-self', label: 'Exclude Self' },
         { id: 'section-pagespeed', label: 'PageSpeed' },
+        { id: 'section-privacy-policy', label: 'Privacy Policy' },
       ]} />
 
-      <div id="section-data-privacy">
+      <div id="section-data-privacy" className="scroll-mt-20">
         <h3 className="text-base font-semibold text-white mb-1">Data & Privacy</h3>
         <p className="text-sm text-neutral-400">Control what data is collected from your visitors.</p>
       </div>
@@ -197,7 +214,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
         <PrivacyToggle label="Hide unknown locations" desc='Exclude "Unknown" from location stats.' checked={hideUnknownLocations} onToggle={() => setHideUnknownLocations(v => !v)} disabled={!canEdit} />
       </div>
 
-      <div id="section-geographic" className="p-4 rounded-none border border-neutral-800 bg-neutral-800/30">
+      <div id="section-geographic" className="scroll-mt-20 p-4 rounded-none border border-neutral-800 bg-neutral-800/30">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-white">Geographic data</p>
@@ -215,14 +232,15 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
       </div>
 
       {/* Data Retention */}
-      <div id="section-data-retention" className="space-y-3 pt-6 border-t border-neutral-800">
+      <div id="section-data-retention" className="scroll-mt-20 space-y-3 pt-6 border-t border-neutral-800">
         <h4 className="text-sm font-medium text-neutral-300">Data Retention</h4>
 
         {subscriptionError && (
-          <div className="p-3 rounded-none border border-amber-800 bg-amber-900/20 flex items-center justify-between">
-            <p className="text-xs text-amber-200">Plan limits could not be loaded.</p>
-            <Button variant="secondary" size="sm" onClick={() => mutateSubscription()}>Retry</Button>
-          </div>
+          <SettingsErrorState
+            variant="banner"
+            message="Plan limits could not be loaded."
+            onRetry={() => mutateSubscription()}
+          />
         )}
 
         <div className="p-4 bg-neutral-800/30 rounded-none border border-neutral-800">
@@ -260,7 +278,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
       </div>
 
       {/* Page Rules */}
-      <div id="section-path-grouping" className="space-y-3 pt-6 border-t border-neutral-800">
+      <div id="section-path-grouping" className="scroll-mt-20 space-y-3 pt-6 border-t border-neutral-800">
         <div>
           <h4 className="text-sm font-medium text-neutral-300">Page Rules</h4>
           <p className="text-xs text-neutral-500 mt-1">Control how page paths are tracked, grouped, or excluded from analytics.</p>
@@ -357,10 +375,10 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
       </div>
 
       {/* Allowed Query Parameters */}
-      <div id="section-query-params" className="space-y-3 pt-6 border-t border-neutral-800">
+      <div id="section-query-params" className="scroll-mt-20 space-y-3 pt-6 border-t border-neutral-800">
         <h4 className="text-sm font-medium text-neutral-300">Query Parameters</h4>
         <div>
-          <label className="block text-xs font-medium text-neutral-400 mb-1.5">Parameters to keep in page stats</label>
+          <label className="block text-micro-label uppercase text-neutral-400 mb-1.5">Parameters to keep in page stats</label>
           <Input
             type="text"
             value={allowedQueryParams}
@@ -373,7 +391,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
       </div>
 
       {/* Exclude My Visits */}
-      <div id="section-exclude-self" className="space-y-3 pt-6 border-t border-neutral-800">
+      <div id="section-exclude-self" className="scroll-mt-20 space-y-3 pt-6 border-t border-neutral-800">
         <h4 className="text-sm font-medium text-neutral-300">Exclude My Visits</h4>
         <div className="p-4 rounded-none border border-neutral-800 bg-neutral-800/30">
           <div className="flex items-start gap-4">
@@ -401,15 +419,26 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
       </div>
 
       {/* PageSpeed Monitoring */}
-      <div id="section-pagespeed" className="space-y-3 pt-6 border-t border-neutral-800">
+      <div id="section-pagespeed" className="scroll-mt-20 space-y-3 pt-6 border-t border-neutral-800">
         <h4 className="text-sm font-medium text-neutral-300">PageSpeed Monitoring</h4>
+        {psiConfigError && (
+          <SettingsErrorState
+            variant="banner"
+            message="PageSpeed configuration could not be loaded."
+            onRetry={() => mutatePSIConfig()}
+          />
+        )}
         <div className="p-4 bg-neutral-800/30 rounded-none border border-neutral-800">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <div>
               <p className="font-medium text-white text-sm">Check frequency</p>
               <p className="text-xs text-neutral-500 mt-0.5">How often PageSpeed Insights runs automated checks.</p>
             </div>
-            {psiConfig?.enabled ? (
+            {psiConfigError ? (
+              <StatusChip tone="neutral" className="shrink-0">Unavailable</StatusChip>
+            ) : psiConfig === undefined ? (
+              <Spinner className="w-4 h-4 text-neutral-500 shrink-0" />
+            ) : psiConfig.enabled ? (
               <Select
                 value={psiFrequency}
                 onChange={(v) => setPsiFrequency(v)}
@@ -423,14 +452,22 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
                 disabled={!canEdit}
               />
             ) : (
-              <span className="text-sm text-neutral-400">Not enabled</span>
+              <div className="flex flex-col items-end gap-1.5 shrink-0">
+                <StatusChip tone="neutral">Not enabled</StatusChip>
+                <Link
+                  href={`/sites/${siteId}/pagespeed`}
+                  className="text-xs font-medium text-brand-orange hover:text-brand-orange/80 transition-colors ease-apple"
+                >
+                  Enable monitoring
+                </Link>
+              </div>
             )}
           </div>
         </div>
       </div>
 
       {/* Privacy Policy */}
-      <div className="space-y-3 pt-6 border-t border-neutral-800">
+      <div id="section-privacy-policy" className="scroll-mt-20 space-y-3 pt-6 border-t border-neutral-800">
         <h4 className="text-sm font-medium text-neutral-300">For your privacy policy</h4>
         <p className="text-xs text-neutral-500">Copy the text below into your Privacy Policy. It updates automatically based on your saved settings.</p>
         <p className="text-xs text-amber-500">This is provided for convenience and is not legal advice. Consult a lawyer for compliance requirements.</p>
@@ -445,11 +482,15 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
             variant="ghost"
             size="icon"
             className="absolute top-3 right-3"
-            onClick={() => {
-              navigator.clipboard.writeText(generatePrivacySnippet(site))
-              setSnippetCopied(true)
-              toast.success('Privacy snippet copied')
-              setTimeout(() => setSnippetCopied(false), 2000)
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(generatePrivacySnippet(site))
+                setSnippetCopied(true)
+                toast.success('Privacy snippet copied')
+                setTimeout(() => setSnippetCopied(false), 2000)
+              } catch {
+                toast.error('Could not copy to clipboard')
+              }
             }}
           >
             {snippetCopied ? <CheckCircle weight="bold" className="w-4 h-4" /> : <Copy weight="bold" className="w-4 h-4" />}

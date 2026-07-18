@@ -21,6 +21,8 @@ import {
 } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { StatusChip } from '@/components/settings/StatusChip'
+import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { useAuth } from '@/lib/auth/context'
 import { useCan } from '@/lib/auth/permissions'
 import { SPRING } from '@/lib/motion'
@@ -50,11 +52,14 @@ const OWNER_ONLY_PERMS = new Set(['roles.manage', 'org.delete'])
 // ─── Role color badge ─────────────────────────────────────────────────────────
 
 function ColorDot({ color }: { color: string | null }) {
-  const bg = color ?? '#6b7280'
+  // No user-chosen color: fall back to a neutral token dot, not a raw hex.
+  if (!color) {
+    return <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0 bg-neutral-500" />
+  }
   return (
     <span
       className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-      style={{ background: bg }}
+      style={{ background: color }}
     />
   )
 }
@@ -186,7 +191,7 @@ function CreateRoleForm({
       <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
         {permissionGroups.map((group) => (
           <div key={group.key}>
-            <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
+            <p className="text-micro-label font-semibold text-neutral-500 uppercase mb-2">
               {group.label}
             </p>
             <ul className="space-y-1">
@@ -210,9 +215,9 @@ function CreateRoleForm({
                     >
                       <span className="text-sm text-white">{pi.label}</span>
                       {ownerOnly && (
-                        <span className="ml-2 text-[10px] font-semibold uppercase tracking-wider text-brand-orange border border-brand-orange/30 rounded-none px-1.5 py-0.5">
+                        <StatusChip tone="brand" className="ml-2 align-middle">
                           Owner only
-                        </span>
+                        </StatusChip>
                       )}
                       <p className="text-xs text-neutral-500 mt-0.5">{pi.description}</p>
                     </label>
@@ -268,8 +273,18 @@ function RoleCard({
   const [siteIds, setSiteIds] = useState<string[]>(role.site_ids ?? [])
   const [saving, setSaving] = useState(false)
   const [savingIndicator, setSavingIndicator] = useState(false)
+  const [savedIndicator, setSavedIndicator] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { sites } = useSites()
+
+  // Clear any pending timers on unmount so we never set state after teardown.
+  useEffect(() => {
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current)
+      if (savedTimer.current) clearTimeout(savedTimer.current)
+    }
+  }, [])
 
   const isOwner = role.slug === 'owner'
 
@@ -277,6 +292,8 @@ function RoleCard({
   const scheduleSave = useCallback(
     (nextPerms: string[], nextSiteScoped: boolean, nextSiteIds: string[]) => {
       if (saveTimer.current) clearTimeout(saveTimer.current)
+      if (savedTimer.current) clearTimeout(savedTimer.current)
+      setSavedIndicator(false)
       saveTimer.current = setTimeout(async () => {
         setSavingIndicator(true)
         try {
@@ -286,6 +303,9 @@ function RoleCard({
             site_scoped: nextSiteScoped,
             site_ids: nextSiteScoped ? nextSiteIds : [],
           })
+          // Subtle success confirmation, mirroring the explicit name-save toast.
+          setSavedIndicator(true)
+          savedTimer.current = setTimeout(() => setSavedIndicator(false), 2000)
         } catch (err) {
           toast.error(getAuthErrorMessage(err as Error) || 'Failed to save permissions')
           // Revert
@@ -418,9 +438,9 @@ function RoleCard({
           )}
 
           {role.is_builtin && (
-            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-neutral-500 border border-neutral-700 rounded-none px-1.5 py-0.5">
+            <StatusChip tone="neutral" className="shrink-0">
               Built-in
-            </span>
+            </StatusChip>
           )}
           </div>
           {role.is_builtin && (
@@ -508,9 +528,19 @@ function RoleCard({
               )}
 
               {/* Auto-save indicator */}
-              {savingIndicator && (
-                <p className="text-xs text-neutral-500">Saving…</p>
-              )}
+              {savingIndicator ? (
+                <p className="flex items-center gap-1.5 text-xs text-neutral-500">
+                  <Spinner className="w-3 h-3" />
+                  Saving…
+                </p>
+              ) : savedIndicator ? (
+                <StatusChip
+                  tone="success"
+                  icon={<Check weight="bold" className="w-3 h-3" />}
+                >
+                  Saved
+                </StatusChip>
+              ) : null}
 
               {/* Site-scoped toggle */}
               {!isOwner && (
@@ -557,7 +587,7 @@ function RoleCard({
 
               {permissionGroups.map((group) => (
                 <div key={group.key}>
-                  <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
+                  <p className="text-micro-label font-semibold text-neutral-500 uppercase mb-2">
                     {group.label}
                   </p>
                   <ul className="space-y-2">
@@ -583,9 +613,9 @@ function RoleCard({
                               {pi.label}
                             </span>
                             {ownerOnly && !isOwner && (
-                              <span className="ml-2 text-[10px] font-semibold uppercase tracking-wider text-brand-orange border border-brand-orange/30 rounded-none px-1.5 py-0.5">
+                              <StatusChip tone="brand" className="ml-2 align-middle">
                                 Owner only
-                              </span>
+                              </StatusChip>
                             )}
                             <p className="text-xs text-neutral-500 mt-0.5">{pi.description}</p>
                           </label>
@@ -612,9 +642,12 @@ export default function WorkspaceRolesTab() {
   const [roles, setRoles] = useState<Role[]>([])
   const [permissionGroups, setPermissionGroups] = useState<PermissionGroup[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [retrying, setRetrying] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
 
   const load = useCallback(async () => {
+    setError(false)
     try {
       const [rolesData, groupsData] = await Promise.all([
         listRoles(),
@@ -623,11 +656,19 @@ export default function WorkspaceRolesTab() {
       setRoles(rolesData.roles)
       setPermissionGroups(groupsData.groups)
     } catch {
-      // Silently handle — the empty state surfaces naturally
+      // Built-in roles always exist, so an empty result is impossible — a
+      // failure here is a genuine error and must read as one, not as "no roles".
+      setError(true)
     } finally {
       setLoading(false)
+      setRetrying(false)
     }
   }, [])
+
+  const handleRetry = useCallback(() => {
+    setRetrying(true)
+    load()
+  }, [load])
 
   useEffect(() => {
     if (user?.org_id) load()
@@ -664,7 +705,7 @@ export default function WorkspaceRolesTab() {
             Control what each role can do in your workspace. Built-in roles cannot be deleted.
           </p>
         </div>
-        {canManage && !showCreate && (
+        {canManage && !showCreate && !error && (
           <Button
             onClick={() => setShowCreate(true)}
             variant="default"
@@ -696,7 +737,13 @@ export default function WorkspaceRolesTab() {
       </AnimatePresence>
 
       {/* Role cards */}
-      {roles.length === 0 ? (
+      {error ? (
+        <SettingsErrorState
+          message="We couldn't load roles and permissions. It may be a temporary problem."
+          onRetry={handleRetry}
+          retrying={retrying}
+        />
+      ) : roles.length === 0 ? (
         <EmptyState
           title="No roles configured"
           description="Roles let you control what each team member can access in the workspace."

@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react'
 import { Button } from '@ciphera-net/facet'
 import { Plugs } from '@phosphor-icons/react'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
+import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
+import { StatusChip } from '@/components/settings/StatusChip'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { listWebhooks, deleteWebhook, type Webhook } from '@/lib/api/notifications-webhooks'
 import WebhookFormModal from './WebhookFormModal'
@@ -11,6 +13,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 export default function WebhooksSection() {
   const [webhooks, setWebhooks] = useState<Webhook[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [retrying, setRetrying] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
@@ -18,6 +21,7 @@ export default function WebhooksSection() {
     try {
       const r = await listWebhooks()
       setWebhooks(r.webhooks ?? [])
+      setError(null)
     } catch (e) {
       setError((e as Error).message ?? 'Failed to load')
     }
@@ -25,14 +29,25 @@ export default function WebhooksSection() {
 
   useEffect(() => { load() }, [])
 
+  const retry = async () => {
+    setRetrying(true)
+    await load()
+    setRetrying(false)
+  }
+
   const handleDelete = (id: string) => {
     setConfirmDeleteId(id)
   }
 
   const doDelete = async () => {
     if (!confirmDeleteId) return
-    await deleteWebhook(confirmDeleteId)
-    load()
+    try {
+      await deleteWebhook(confirmDeleteId)
+      await load()
+    } catch (e) {
+      // Surface the failure instead of silently swallowing it.
+      setError((e as Error).message ?? 'Failed to delete webhook')
+    }
   }
 
   return (
@@ -50,9 +65,16 @@ export default function WebhooksSection() {
         </Button>
       </div>
 
-      {error && <div className="text-red-400 text-sm">{error}</div>}
-      {webhooks === null && <SettingsLoadingState />}
-      {webhooks && webhooks.length === 0 && (
+      {error && (
+        <SettingsErrorState
+          variant="banner"
+          message={error}
+          onRetry={retry}
+          retrying={retrying}
+        />
+      )}
+      {!error && webhooks === null && <SettingsLoadingState />}
+      {!error && webhooks && webhooks.length === 0 && (
         <EmptyState
           title="No webhooks configured"
           description="Add a webhook to receive event notifications via HTTP."
@@ -65,14 +87,14 @@ export default function WebhooksSection() {
           {webhooks.map(w => (
             <div key={w.id} className="flex items-center justify-between px-4 py-3 group">
               <div className="min-w-0 flex-1">
-                <p className="text-sm text-white">{w.label || '(no label)'}</p>
-                <p className="text-xs text-neutral-500 font-mono truncate">{w.url_masked}</p>
-                <p className="text-xs text-neutral-400 mt-1">
-                  {w.subscribed_types.join(', ')}
-                  {!w.enabled && <span className="ml-2 text-red-400">disabled</span>}
+                <p className="text-sm text-white flex items-center gap-2">
+                  {w.label || '(no label)'}
+                  {!w.enabled && <StatusChip tone="neutral">Disabled</StatusChip>}
                 </p>
+                <p className="text-xs text-neutral-500 font-mono truncate">{w.url_masked}</p>
+                <p className="text-xs text-neutral-400 mt-1">{w.subscribed_types.join(', ')}</p>
               </div>
-              <div className="opacity-0 group-hover:opacity-100 transition-opacity ease-apple">
+              <div className="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity ease-apple">
                 <Button
                   variant="ghost"
                   size="sm"
