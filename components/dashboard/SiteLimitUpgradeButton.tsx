@@ -18,7 +18,7 @@ interface SiteLimitUpgradeButtonProps {
 export default function SiteLimitUpgradeButton({ used, limit }: SiteLimitUpgradeButtonProps) {
   return (
     <Link
-      href="/pricing"
+      href="/switch"
       aria-label={`${used} of ${limit} sites used — upgrade for more`}
       className="group inline-flex h-9 items-stretch rounded-none bg-brand-orange text-sm font-medium text-white transition-colors duration-fast hover:bg-brand-orange-hover"
     >

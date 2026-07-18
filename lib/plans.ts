@@ -46,6 +46,69 @@ export function getSitesLimitForPlan(planId: string | null | undefined): number 
   }
 }
 
+/**
+ * Marketing copy for the purchasable plans — the single source of truth for
+ * every in-app plan picker (/setup/plan, /switch). Duplicated literals in the
+ * two pages drifted against each other and against the marketing site before
+ * this existed; add new highlights HERE, not at the call sites.
+ */
+export interface PlanCatalogEntry {
+  id: string
+  name: string
+  description: string
+  popular?: boolean
+  highlights: string[]
+}
+
+export const PLAN_CATALOG: PlanCatalogEntry[] = [
+  {
+    id: PLAN_ID_SOLO,
+    name: 'Solo',
+    description: 'For personal sites',
+    highlights: ['1 site', 'Custom events', 'Email reports'],
+  },
+  {
+    id: PLAN_ID_TEAM,
+    name: 'Team',
+    description: 'For startups & agencies',
+    popular: true,
+    highlights: ['Up to 5 sites', 'Funnels & journeys', 'Team dashboard', 'API access'],
+  },
+  {
+    id: PLAN_ID_BUSINESS,
+    name: 'Business',
+    description: 'For larger organizations',
+    highlights: ['Up to 10 sites', 'Uptime monitoring', 'Priority support', 'Everything in Team'],
+  },
+]
+
+export interface PlanPricing {
+  /** Price per month on monthly billing, in EUR (excl. VAT). */
+  monthly: number
+  /** Effective per-month price on yearly billing (11 months paid / 12). */
+  effectiveMonthly: number
+  /** Total billed per year on yearly billing (11 × monthly — 1 month free). */
+  yearlyTotal: number
+}
+
+/**
+ * Derive display pricing for a plan at a pageview tier from the
+ * GET /api/billing/prices map. Yearly = 11 × monthly (1 month free) — the
+ * same formula the backend uses; keep the two in sync.
+ */
+export function getPlanPricing(
+  prices: Record<string, Record<number, number>> | undefined,
+  planId: string,
+  limit: number,
+): PlanPricing | null {
+  const baseCents = prices?.[planId]?.[limit]
+  if (!baseCents) return null
+  const monthly = baseCents / 100
+  const yearlyTotal = Math.round(monthly * 11 * 100) / 100
+  const effectiveMonthly = Math.round((yearlyTotal / 12) * 100) / 100
+  return { monthly, effectiveMonthly, yearlyTotal }
+}
+
 /** Traffic tiers available for Solo plan (pageview limits). */
 export const TRAFFIC_TIERS = [
   { label: '10k', value: 10000 },

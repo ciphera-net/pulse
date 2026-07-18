@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { SWRConfig } from 'swr'
 import type { SubscriptionDetails, Invoice } from '@/lib/api/billing'
 import * as billingApi from '@/lib/api/billing'
 
@@ -25,6 +26,7 @@ vi.mock('@/lib/api/billing', () => ({
   cancelSubscription: vi.fn(),
   resumeSubscription: vi.fn(),
   getInvoices: vi.fn().mockResolvedValue([]),
+  getPrices: vi.fn().mockResolvedValue({ team: { 10000: 2300 } }),
   downloadInvoicePDF: vi.fn(),
   updateBillingSettings: vi.fn(),
 }))
@@ -50,6 +52,16 @@ vi.mock('@/components/ui/tooltip', () => ({
 
 import WorkspaceBillingTab from '../WorkspaceBillingTab'
 
+// Fresh SWR cache per render — the component fetches invoices/prices via SWR
+// now, and a shared cache would leak one test's invoice list into the next.
+function renderTab() {
+  return render(
+    <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
+      <WorkspaceBillingTab />
+    </SWRConfig>,
+  )
+}
+
 const base: SubscriptionDetails = {
   plan_id: 'team',
   subscription_status: 'active',
@@ -69,7 +81,7 @@ beforeEach(() => {
 describe('WorkspaceBillingTab banners & states', () => {
   it('renders a distinct past-due banner for subscription_status past_due', async () => {
     mockSubscription = { ...base, subscription_status: 'past_due' }
-    render(<WorkspaceBillingTab />)
+    renderTab()
     await waitFor(() =>
       expect(screen.getByText(/Payment past due — update your payment method to keep your plan/i)).toBeTruthy(),
     )
@@ -79,7 +91,7 @@ describe('WorkspaceBillingTab banners & states', () => {
 
   it('shows the over-limit warning with an upgrade CTA when usage exceeds the limit', async () => {
     mockSubscription = { ...base, pageview_usage: 15000, pageview_limit: 10000 }
-    render(<WorkspaceBillingTab />)
+    renderTab()
     await waitFor(() =>
       expect(screen.getByText(/exceeded your monthly pageview limit/i)).toBeTruthy(),
     )
@@ -88,26 +100,28 @@ describe('WorkspaceBillingTab banners & states', () => {
 
   it('cancel modal uses fallback copy when current_period_end is missing', async () => {
     mockSubscription = { ...base, current_period_end: '' }
-    render(<WorkspaceBillingTab />)
+    renderTab()
     const cancelBtn = await screen.findByRole('button', { name: 'Cancel subscription' })
     fireEvent.click(cancelBtn)
     await waitFor(() =>
       expect(
-        screen.getByText(/keep access until the end of your current billing period, then move to the free plan/i),
+        screen.getByText(/keep access until the end of your current billing period and won.t be charged again/i),
       ).toBeTruthy(),
     )
+    // The consequences line is always present.
+    expect(screen.getByText(/moves to the free Hobby plan/i)).toBeTruthy()
   })
 
   it('renders a direction-neutral pending plan-change banner via formatPlanName', async () => {
     mockSubscription = { ...base, pending_plan_id: 'business', pending_limit: 50000, pending_interval: 'month' }
-    render(<WorkspaceBillingTab />)
+    renderTab()
     await waitFor(() => expect(screen.getByText(/Plan change to/i)).toBeTruthy())
     expect(screen.getByText('Business')).toBeTruthy()
     expect(screen.getByText(/pending/i)).toBeTruthy()
   })
 
   it('payment-method modal exposes a radiogroup with radio options', async () => {
-    render(<WorkspaceBillingTab />)
+    renderTab()
     const updateBtn = await screen.findByRole('button', { name: /Update payment method/i })
     fireEvent.click(updateBtn)
     await waitFor(() => expect(screen.getByRole('radiogroup', { name: 'Payment method' })).toBeTruthy())
@@ -116,7 +130,7 @@ describe('WorkspaceBillingTab banners & states', () => {
 
   it('shows Change Plan for an active subscription', async () => {
     mockSubscription = { ...base, subscription_status: 'active' }
-    render(<WorkspaceBillingTab />)
+    renderTab()
     await waitFor(() => expect(screen.getByRole('button', { name: 'Change Plan' })).toBeTruthy())
   })
 
@@ -124,7 +138,7 @@ describe('WorkspaceBillingTab banners & states', () => {
     // /switch bounces in past_due (its guard requires active/trialing), so the
     // Change Plan button must not be offered here.
     mockSubscription = { ...base, subscription_status: 'past_due' }
-    render(<WorkspaceBillingTab />)
+    renderTab()
     await waitFor(() =>
       expect(screen.getByText(/Payment past due — update your payment method to keep your plan/i)).toBeTruthy(),
     )
@@ -179,7 +193,7 @@ describe('WorkspaceBillingTab invoice amount formatting', () => {
     }
     vi.spyOn(billingApi, 'getInvoices').mockResolvedValue([invoice])
 
-    render(<WorkspaceBillingTab />)
+    renderTab()
 
     // €1,210.00 total, €210.00 VAT — exactly what Intl produces for en-US/EUR.
     await waitFor(() => expect(screen.getByText(fmt('EUR', 1210))).toBeTruthy())
@@ -204,7 +218,7 @@ describe('WorkspaceBillingTab invoice amount formatting', () => {
     }
     vi.spyOn(billingApi, 'getInvoices').mockResolvedValue([creditNote])
 
-    render(<WorkspaceBillingTab />)
+    renderTab()
 
     // Amount is rendered as the absolute value with a leading minus glyph.
     await waitFor(() => expect(screen.getByText(`−${fmt('EUR', 60.5)}`)).toBeTruthy())

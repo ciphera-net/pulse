@@ -36,6 +36,9 @@ vi.mock('framer-motion', () => ({
 vi.mock('@ciphera-net/facet', () => ({
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
   Spinner: () => <div>loading</div>,
+  // lib/utils re-exports cn from the facet package — keep it callable for the
+  // real Slider/PlanChoiceCard rendered under this page.
+  cn: (...classes: unknown[]) => classes.filter(Boolean).join(' '),
 }))
 
 // Child components are exercised elsewhere — stub to keep the plan-page test focused.
@@ -47,6 +50,11 @@ vi.mock('@/components/checkout/PaymentForm', () => ({
 }))
 vi.mock('@/components/ui/select', () => ({
   default: () => <div data-testid="select" />,
+}))
+// Radix Slider requires ResizeObserver, which jsdom lacks — the slider itself
+// is not what this page test exercises.
+vi.mock('@/components/ui/slider', () => ({
+  Slider: () => <div data-testid="slider" />,
 }))
 
 import SetupPlanPage from '../page'

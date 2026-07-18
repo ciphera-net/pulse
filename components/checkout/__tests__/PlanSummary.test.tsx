@@ -57,9 +57,12 @@ function renderSummary(country: string) {
     <PlanSummary
       plan="team"
       interval="month"
+      onIntervalChange={noop}
       limit={10000}
       country={country}
       vatId=""
+      verifiedVatId=""
+      onVerifiedVatIdChange={noop}
       onCountryChange={noop}
       onVatIdChange={noop}
       businessName=""
@@ -97,7 +100,8 @@ describe('PlanSummary VAT race', () => {
     // Trigger the country change to DE by re-rendering with the new prop.
     rerender(
       <PlanSummary
-        plan="team" interval="month" limit={10000} country="DE" vatId=""
+        plan="team" interval="month" onIntervalChange={noop} limit={10000} country="DE" vatId=""
+        verifiedVatId="" onVerifiedVatIdChange={noop}
         onCountryChange={noop} onVatIdChange={noop}
         businessName="" onBusinessNameChange={noop}
         billingEmail="" onBillingEmailChange={noop}
@@ -124,7 +128,8 @@ describe('PlanSummary VAT race', () => {
     calculateVAT.mockResolvedValue(vat(21))
     render(
       <PlanSummary
-        plan="price_legacy123" interval="month" limit={10000} country="" vatId=""
+        plan="price_legacy123" interval="month" onIntervalChange={noop} limit={10000} country="" vatId=""
+        verifiedVatId="" onVerifiedVatIdChange={noop}
         onCountryChange={noop} onVatIdChange={noop}
         businessName="" onBusinessNameChange={noop}
         billingEmail="" onBillingEmailChange={noop}
