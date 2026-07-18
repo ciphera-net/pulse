@@ -27,22 +27,48 @@ export const MastheadSlotProvider = MastheadSlotContext.Provider
  *
  * Renders null until the shell's slot has mounted; portals thereafter. Only one
  * tab is mounted at a time, so there is exactly one masthead action per view.
+ *
+ * PRECEDENCE: while a SettingsSaveBar owns the masthead (dirty / saving / just-
+ * saved), the save cluster is the action area — the CTA yields and renders null,
+ * restoring the instant the view is clean again.
  */
 export function MastheadAction({ children }: { children: ReactNode }) {
   const slot = useContext(MastheadSlotContext)
-  if (!slot) return null
+  const { active } = useSaveActive()
+  if (!slot || active) return null
   return createPortal(children, slot)
 }
 
-// ─── SaveBar slot ─────────────────────────────────────────────────────────
+// ─── Masthead save slot ───────────────────────────────────────────────────
 //
-// The floating SettingsSaveBar docks bottom-center of the *content column*
-// (spec §2.4), not the viewport. The shell renders a sticky, centered mount
-// node inside the content column and exposes it here; SettingsSaveBar portals
-// its bar into it (falling back to document.body if used outside the shell).
+// Owner-chosen save model (option D): the buffered-save cluster lives in the
+// masthead action area, not a floating bottom dock. The shell renders a mount
+// node next to the action slot; `SettingsSaveBar` portals its compact cluster
+// (dirty dot + status + Discard/Save + ⌘S) into it.
 
-const SaveBarSlotContext = createContext<HTMLElement | null>(null)
-export const SaveBarSlotProvider = SaveBarSlotContext.Provider
-export function useSaveBarSlot(): HTMLElement | null {
-  return useContext(SaveBarSlotContext)
+const MastheadSaveSlotContext = createContext<HTMLElement | null>(null)
+export const MastheadSaveSlotProvider = MastheadSaveSlotContext.Provider
+export function useMastheadSaveSlot(): HTMLElement | null {
+  return useContext(MastheadSaveSlotContext)
+}
+
+// ─── Save-active signal ───────────────────────────────────────────────────
+//
+// The save cluster lives deep inside a tab but the shell needs to know when it
+// is present, to (a) hide any MastheadAction CTA and (b) make the masthead
+// title+action row sticky-while-dirty. `SettingsSaveBar` reports its occupancy
+// through `register`; the shell owns the boolean and exposes it as `active`.
+
+interface SaveActiveValue {
+  active: boolean
+  register: (active: boolean) => void
+}
+
+const SaveActiveContext = createContext<SaveActiveValue>({
+  active: false,
+  register: () => {},
+})
+export const SaveActiveProvider = SaveActiveContext.Provider
+export function useSaveActive(): SaveActiveValue {
+  return useContext(SaveActiveContext)
 }

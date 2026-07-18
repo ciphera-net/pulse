@@ -1,7 +1,8 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Banner, Select, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
+import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { getPrefs, updatePrefs, type Preferences } from '@/lib/api/notifications-preferences'
@@ -15,21 +16,39 @@ import PurgeConfirmDialog from '@/app/notifications/PurgeConfirmDialog'
 const timeInputClass =
   'h-9 rounded-none border border-input bg-transparent px-3 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [color-scheme:dark]'
 
+// Order-insensitive deep compare of two preference snapshots. `retention_overrides`
+// keys are added/removed/re-added, so plain JSON.stringify would report a false
+// dirty on identical-but-reordered maps — canonicalize keys first.
+function canonical(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(canonical)
+  if (v && typeof v === 'object') {
+    return Object.keys(v as Record<string, unknown>)
+      .sort()
+      .reduce<Record<string, unknown>>((acc, k) => {
+        acc[k] = canonical((v as Record<string, unknown>)[k])
+        return acc
+      }, {})
+  }
+  return v
+}
+
+function prefsEqual(a: Preferences, b: Preferences): boolean {
+  return JSON.stringify(canonical(a)) === JSON.stringify(canonical(b))
+}
+
 export default function MyPreferencesTab() {
-  const [prefs, setPrefs] = useState<Preferences | null>(null)
-  const [saving, setSaving] = useState(false)
+  // Buffered save model (owner-chosen option D): `server` is the last-saved
+  // snapshot (source of truth), `draft` holds in-progress edits. Every control
+  // edits the draft; Save persists it in one PUT, Discard restores the snapshot.
+  const [server, setServer] = useState<Preferences | null>(null)
+  const [draft, setDraft] = useState<Preferences | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
   const [purging, setPurging] = useState(false)
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
-  }, [])
 
   const load = () =>
     getPrefs()
-      .then(p => { setPrefs(p); setError(null) })
+      .then(p => { setServer(p); setDraft(p); setError(null) })
       .catch(e => setError(e.message ?? 'Failed to load'))
 
   useEffect(() => { load() }, [])
@@ -40,34 +59,36 @@ export default function MyPreferencesTab() {
     setRetrying(false)
   }
 
-  const debouncedSave = (next: Preferences) => {
-    // Optimistic update — but keep the last-good value so we can roll back if
-    // the server rejects the write (server is the source of truth).
-    const prev = prefs
-    setPrefs(next)
-    if (saveTimer.current) clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(async () => {
-      setSaving(true)
-      try {
-        await updatePrefs(next)
-        setError(null)
-      } catch (e) {
-        setPrefs(prev)
-        setError((e as Error).message ?? 'Failed to save')
-      } finally {
-        setSaving(false)
-      }
-    }, 400)
-  }
+  const handleSave = useCallback(async () => {
+    if (!draft) return
+    try {
+      await updatePrefs(draft)
+      setServer(draft)
+      setError(null)
+    } catch (e) {
+      // Keep the draft (server is the source of truth only once it accepts the
+      // write) and surface the failure in the Banner below.
+      setError((e as Error).message ?? 'Failed to save')
+      throw e
+    }
+  }, [draft])
 
-  if (error && !prefs) return <SettingsErrorState message={error} onRetry={retry} retrying={retrying} />
-  if (!prefs) return <SettingsLoadingState />
+  const handleDiscard = useCallback(() => {
+    setDraft(server)
+    setError(null)
+  }, [server])
+
+  // Load failure — an honest error state, never an empty panel.
+  if (error && !server) return <SettingsErrorState message={error} onRetry={retry} retrying={retrying} />
+  if (!draft || !server) return <SettingsLoadingState />
+
+  const isDirty = !prefsEqual(draft, server)
 
   // Detect IANA timezones available in this browser. `Intl.supportedValuesOf`
   // returns the canonical zone list but OMITS 'UTC' — and it can lack a legacy
   // stored zone too — so the current value would match no option and Radix Select
   // would render a blank trigger. Always fold 'UTC' and the current value in.
-  const currentTimezone = prefs.timezone || 'UTC'
+  const currentTimezone = draft.timezone || 'UTC'
   const timezones = (() => {
     let zones: string[]
     try { zones = Intl.supportedValuesOf('timeZone') } catch { zones = [] }
@@ -77,7 +98,7 @@ export default function MyPreferencesTab() {
   return (
     <>
       <SettingsPanel kicker="Delivery" description="How you get notified for each category.">
-        <DeliveryModesTable prefs={prefs} onChange={debouncedSave} />
+        <DeliveryModesTable prefs={draft} onChange={setDraft} />
       </SettingsPanel>
 
       <SettingsPanel
@@ -90,8 +111,8 @@ export default function MyPreferencesTab() {
               <input
                 type="time"
                 className={timeInputClass}
-                value={prefs.digest_time ?? '09:00'}
-                onChange={e => debouncedSave({ ...prefs, digest_time: e.target.value })}
+                value={draft.digest_time ?? '09:00'}
+                onChange={e => setDraft({ ...draft, digest_time: e.target.value })}
                 aria-label="Digest send time"
               />
               <div className="w-64">
@@ -99,7 +120,7 @@ export default function MyPreferencesTab() {
                   aria-label="Timezone"
                   size="sm"
                   value={currentTimezone}
-                  onChange={v => debouncedSave({ ...prefs, timezone: v })}
+                  onChange={v => setDraft({ ...draft, timezone: v })}
                   placeholder="Select timezone"
                   options={timezones.map(tz => ({ value: tz, label: tz }))}
                 />
@@ -113,14 +134,14 @@ export default function MyPreferencesTab() {
         kicker="Quiet hours"
         description="Non-critical emails are suppressed during these hours. Billing and security alerts always deliver."
       >
-        <QuietHoursSection prefs={prefs} onChange={debouncedSave} />
+        <QuietHoursSection prefs={draft} onChange={setDraft} />
       </SettingsPanel>
 
       <SettingsPanel
         kicker="Retention"
         description="Tighten how long Ciphera keeps your read notifications. You can only shorten retention, never extend it."
       >
-        <RetentionOverridesTable prefs={prefs} onChange={debouncedSave} />
+        <RetentionOverridesTable prefs={draft} onChange={setDraft} />
       </SettingsPanel>
 
       <SettingsPanel
@@ -139,12 +160,7 @@ export default function MyPreferencesTab() {
         </div>
       </SettingsPanel>
 
-      {saving && (
-        <p className="font-semibold text-micro-label uppercase text-muted-foreground" role="status">
-          Saving…
-        </p>
-      )}
-      {error && prefs && (
+      {error && (
         <Banner tone="danger" title="Couldn't save your preferences" onDismiss={() => setError(null)}>
           {error}
         </Banner>
@@ -164,6 +180,8 @@ export default function MyPreferencesTab() {
           }}
         />
       )}
+
+      <SettingsSaveBar isDirty={isDirty} onSave={handleSave} onDiscard={handleDiscard} />
     </>
   )
 }

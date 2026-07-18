@@ -110,7 +110,9 @@ export default function TrustedDevicesCard() {
           <THead>
             <TR>
               <TH>Device</TH>
-              <TH>First seen</TH>
+              {/* First seen drops out below sm — Last seen carries the signal
+                  and the table then fits a ~358px viewport. */}
+              <TH className="hidden sm:table-cell">First seen</TH>
               <TH>Last seen</TH>
               <TH className="w-px" aria-label="Actions" />
             </TR>
@@ -119,9 +121,12 @@ export default function TrustedDevicesCard() {
             {devices.map(device => (
               <TR key={device.id}>
                 <TD>
-                  <div className="flex items-center gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
                     <DeviceGlyph hint={device.display_hint} />
-                    <span className="truncate font-medium text-foreground">
+                    <span
+                      className="min-w-0 flex-1 truncate font-medium text-foreground"
+                      title={device.display_hint || 'Unknown device'}
+                    >
                       {device.display_hint || 'Unknown device'}
                     </span>
                     {device.is_current && (
@@ -133,7 +138,7 @@ export default function TrustedDevicesCard() {
                 </TD>
                 <TD
                   numeric
-                  className="whitespace-nowrap text-xs text-muted-foreground"
+                  className="hidden whitespace-nowrap text-xs text-muted-foreground sm:table-cell"
                   title={formatDateTimeFull(new Date(device.first_seen_at))}
                 >
                   {formatRelativeTime(device.first_seen_at)}

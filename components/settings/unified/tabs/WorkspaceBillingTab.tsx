@@ -650,9 +650,11 @@ export default function WorkspaceBillingTab() {
             <THead>
               <TR>
                 <TH>Invoice</TH>
-                <TH>Date</TH>
+                {/* Date + VAT drop out below sm so Invoice/Amount/Status/Download
+                    fit a narrow viewport — no data change, both stay in the PDF. */}
+                <TH className="hidden sm:table-cell">Date</TH>
                 <TH numeric>Amount</TH>
-                <TH numeric>VAT</TH>
+                <TH numeric className="hidden sm:table-cell">VAT</TH>
                 <TH>Status</TH>
                 <TH>
                   <span className="sr-only">Download</span>
@@ -668,13 +670,13 @@ export default function WorkspaceBillingTab() {
                     <TD>
                       <span className="font-mono text-xs text-muted-foreground">{invoice.invoice_number ?? '—'}</span>
                     </TD>
-                    <TD>{formatDate(new Date(invoice.created_at))}</TD>
+                    <TD className="hidden sm:table-cell">{formatDate(new Date(invoice.created_at))}</TD>
                     <TD numeric>
                       <span className="text-foreground">
                         {isCreditNote ? '−' : ''}{fmt.format(Math.abs(invoice.total_cents) / 100)}
                       </span>
                     </TD>
-                    <TD numeric>
+                    <TD numeric className="hidden sm:table-cell">
                       <span className="text-muted-foreground">
                         {isCreditNote ? 'refund ' : 'incl. '}{fmt.format(Math.abs(invoice.vat_cents) / 100)}
                       </span>

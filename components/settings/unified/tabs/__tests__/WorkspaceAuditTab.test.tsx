@@ -87,6 +87,18 @@ describe('WorkspaceAuditTab', () => {
     expect(chip.className).not.toMatch(/font-mono/)
   })
 
+  it('truncates a long actor with a title so it cannot force horizontal overflow', async () => {
+    const long = 'a-very-long-service-account-name@really-long-subdomain.example.com'
+    mockGetAuditLog.mockResolvedValue({ entries: [entry({ actor_email: long })], total: 1 })
+    render(<WorkspaceAuditTab />)
+
+    const actor = await screen.findByText(long)
+    // Effective truncation (not the old ineffective bare truncate) + a title so
+    // the full value is still recoverable on hover.
+    expect(actor.className).toMatch(/truncate/)
+    expect(actor).toHaveAttribute('title', long)
+  })
+
   it('routes a destructive action to the danger tone', async () => {
     mockGetAuditLog.mockResolvedValue({ entries: [entry({ action: 'site_deleted' })], total: 1 })
     render(<WorkspaceAuditTab />)

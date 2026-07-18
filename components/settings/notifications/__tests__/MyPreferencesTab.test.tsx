@@ -61,6 +61,19 @@ vi.mock('@ciphera-net/facet', () => ({
   getAuthErrorMessage: () => 'error',
 }))
 
+// SaveBar is portal + shell-slot machinery (its own behavior is covered by the
+// masthead-save test). Here we stub it to a marker that exposes dirty state and
+// drives onSave/onDiscard, mirroring the real component's try/catch so a failing
+// save never becomes an unhandled rejection in the test.
+vi.mock('@/components/settings/SettingsSaveBar', () => ({
+  default: ({ isDirty, onSave, onDiscard }: any) => (
+    <div data-testid="savebar" data-dirty={String(isDirty)}>
+      <button onClick={() => { void onSave().catch(() => {}) }}>save-changes</button>
+      <button onClick={onDiscard}>discard-changes</button>
+    </div>
+  ),
+}))
+
 import MyPreferencesTab from '../MyPreferencesTab'
 
 const base: Preferences = {
@@ -109,22 +122,44 @@ describe('MyPreferencesTab (Account · Notifications, Facet panels)', () => {
     expect(within(uptime).getByRole('radio', { name: 'Off' })).toBeInTheDocument()
   })
 
-  it('optimistically applies a delivery change and persists it (debounced)', async () => {
-    vi.useFakeTimers()
-    try {
-      render(<MyPreferencesTab />)
-      // Flush the load() promise under fake timers.
-      await vi.waitFor(() => screen.getByRole('radiogroup', { name: 'Delivery for Uptime monitoring' }))
-      const uptime = screen.getByRole('radiogroup', { name: 'Delivery for Uptime monitoring' })
-      fireEvent.click(within(uptime).getByRole('radio', { name: 'Off' }))
-      // Optimistic: the clicked segment is now checked immediately.
-      expect(within(uptime).getByRole('radio', { name: 'Off' })).toHaveAttribute('aria-checked', 'true')
-      // Debounced write fires after 400ms.
-      await vi.advanceTimersByTimeAsync(400)
-      expect(updatePrefs).toHaveBeenCalledTimes(1)
-    } finally {
-      vi.useRealTimers()
-    }
+  it('buffers a delivery change until Save (no write on edit)', async () => {
+    render(<MyPreferencesTab />)
+    const uptime = await screen.findByRole('radiogroup', { name: 'Delivery for Uptime monitoring' })
+
+    // Clean on load.
+    expect(screen.getByTestId('savebar').dataset.dirty).toBe('false')
+
+    // Editing the draft flips dirty but writes NOTHING yet.
+    fireEvent.click(within(uptime).getByRole('radio', { name: 'Off' }))
+    expect(within(uptime).getByRole('radio', { name: 'Off' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByTestId('savebar').dataset.dirty).toBe('true')
+    expect(updatePrefs).not.toHaveBeenCalled()
+
+    // One PUT of the whole draft on Save; back to clean afterwards.
+    fireEvent.click(screen.getByRole('button', { name: 'save-changes' }))
+    await waitFor(() => expect(updatePrefs).toHaveBeenCalledTimes(1))
+    expect(updatePrefs).toHaveBeenCalledWith(
+      expect.objectContaining({ delivery_modes: expect.objectContaining({ uptime: 'off' }) }),
+    )
+    await waitFor(() => expect(screen.getByTestId('savebar').dataset.dirty).toBe('false'))
+  })
+
+  it('keeps the draft and shows a banner when the save fails', async () => {
+    updatePrefs.mockRejectedValueOnce(new Error('server said no'))
+    render(<MyPreferencesTab />)
+    const uptime = await screen.findByRole('radiogroup', { name: 'Delivery for Uptime monitoring' })
+
+    fireEvent.click(within(uptime).getByRole('radio', { name: 'Off' }))
+    fireEvent.click(screen.getByRole('button', { name: 'save-changes' }))
+
+    // Failure surfaces in the banner (error ≠ empty) and the draft is preserved,
+    // so the tab stays dirty and the edited value survives. (The Banner stub
+    // renders title+children in one element, so assert on its text content.)
+    const banner = await screen.findByRole('alert')
+    expect(banner).toHaveTextContent("Couldn't save your preferences")
+    expect(banner).toHaveTextContent('server said no')
+    expect(within(uptime).getByRole('radio', { name: 'Off' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByTestId('savebar').dataset.dirty).toBe('true')
   })
 
   it('renders retention defaults as a ruled table', async () => {
