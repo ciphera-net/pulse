@@ -137,8 +137,10 @@ function IntegrationRow({
             <LinkBreak weight="bold" className="w-3.5 h-3.5" /> Disconnect
           </Button>
         ) : (
-          // Connect is the tab's call-to-action — this is where the orange lives.
-          <Button onClick={onConnect} variant="default" size="sm" className="shrink-0 gap-1.5" disabled={connecting}>
+          // Two integrations, two Connect actions — outline keeps them off the
+          // orange budget (§2.3: at most one solid-orange element per view; zero
+          // here is fine). The solid accent stays on the inline Bunny setup submit.
+          <Button onClick={onConnect} variant="outline" size="sm" className="shrink-0 gap-1.5" disabled={connecting}>
             {connecting ? <Spinner className="w-4 h-4" /> : <Plugs weight="bold" className="w-3.5 h-3.5" />}
             {connectLabel}
           </Button>

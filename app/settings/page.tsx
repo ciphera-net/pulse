@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { CaretRight, Globe } from '@phosphor-icons/react'
 import { useCan } from '@/lib/auth/permissions'
 import { useActiveSite } from '@/components/settings/active-site'
+import { SETTINGS_TAB_ICONS } from '@/components/settings/nav'
 import { SettingsPanel } from '@/components/settings/panels/SettingsPanel'
 import { PanelRows } from '@/components/settings/panels/PanelRow'
 import { EmptyRow } from '@/components/settings/panels/EmptyRow'
@@ -18,11 +19,20 @@ interface SectionRow {
 }
 
 function SectionLink({ label, href, description }: SectionRow) {
+  // Icon metaphors are shared with the nav rail / mobile sheet (nav.ts) —
+  // keyed by the same hrefs, never a second table.
+  const Icon = SETTINGS_TAB_ICONS[href]
   return (
     <Link
       href={href}
       className="group flex items-center gap-4 px-5 py-3.5 transition-colors duration-fast ease-apple hover:bg-muted"
     >
+      {/* House row-tile idiom (same as the SiteContextBand monogram tile). */}
+      {Icon && (
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-none border border-border bg-accent">
+          <Icon weight="regular" aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
+        </span>
+      )}
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-foreground">{label}</p>
         <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>

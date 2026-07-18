@@ -63,9 +63,15 @@ export default function MyPreferencesTab() {
   if (error && !prefs) return <SettingsErrorState message={error} onRetry={retry} retrying={retrying} />
   if (!prefs) return <SettingsLoadingState />
 
-  // Detect IANA timezones available in this browser.
+  // Detect IANA timezones available in this browser. `Intl.supportedValuesOf`
+  // returns the canonical zone list but OMITS 'UTC' — and it can lack a legacy
+  // stored zone too — so the current value would match no option and Radix Select
+  // would render a blank trigger. Always fold 'UTC' and the current value in.
+  const currentTimezone = prefs.timezone || 'UTC'
   const timezones = (() => {
-    try { return Intl.supportedValuesOf('timeZone') } catch { return [prefs.timezone || 'UTC'] }
+    let zones: string[]
+    try { zones = Intl.supportedValuesOf('timeZone') } catch { zones = [] }
+    return Array.from(new Set(['UTC', currentTimezone, ...zones]))
   })()
 
   return (
@@ -92,8 +98,9 @@ export default function MyPreferencesTab() {
                 <Select
                   aria-label="Timezone"
                   size="sm"
-                  value={prefs.timezone || 'UTC'}
+                  value={currentTimezone}
                   onChange={v => debouncedSave({ ...prefs, timezone: v })}
+                  placeholder="Select timezone"
                   options={timezones.map(tz => ({ value: tz, label: tz }))}
                 />
               </div>
