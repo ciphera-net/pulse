@@ -1,17 +1,20 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import useSWR from 'swr'
 import { Button, Input, toast, Spinner, Modal } from '@ciphera-net/facet'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { CreditCard, DownloadSimple, ArrowRight, WarningCircle, PencilSimple } from '@phosphor-icons/react'
 import { useSubscription } from '@/lib/swr/dashboard'
-import { updatePaymentMethod, cancelSubscription, resumeSubscription, getInvoices, downloadInvoicePDF, updateBillingSettings, type Invoice } from '@/lib/api/billing'
-import { formatDateLong, formatDate } from '@/lib/utils/formatDate'
+import { updatePaymentMethod, cancelSubscription, resumeSubscription, getInvoices, getPrices, downloadInvoicePDF, updateBillingSettings } from '@/lib/api/billing'
+import { formatDate, formatDateFull } from '@/lib/utils/formatDate'
 import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 import { useCan } from '@/lib/auth/permissions'
-import { formatPlanName, FREE_PAGEVIEW_LIMIT } from '@/lib/plans'
+import { formatPlanName, getPlanPricing, FREE_PAGEVIEW_LIMIT } from '@/lib/plans'
+
+const euro = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR' })
 
 const PAYMENT_METHODS = [
   { id: 'creditcard', label: 'Cards', icons: ['/icons/payment/visa.svg', '/icons/payment/mastercard.svg'] },
@@ -30,19 +33,24 @@ export default function WorkspaceBillingTab() {
   const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('')
   const methodRefs = useRef<(HTMLButtonElement | null)[]>([])
-  const [invoices, setInvoices] = useState<Invoice[]>([])
-  const [invoicesError, setInvoicesError] = useState<string | null>(null)
-  const [invoicesRetry, setInvoicesRetry] = useState(0)
   const [editingBilling, setEditingBilling] = useState(false)
   const [savingBilling, setSavingBilling] = useState(false)
   const [billingForm, setBillingForm] = useState({ business_name: '', billing_email: '', address: '', city: '', postal_code: '' })
 
-  useEffect(() => {
-    setInvoicesError(null)
-    getInvoices()
-      .then(setInvoices)
-      .catch((err) => setInvoicesError(getAuthErrorMessage(err as Error) || 'Failed to load invoices'))
-  }, [invoicesRetry])
+  // SWR (matching useSubscription) so loading, empty, and error are three
+  // distinguishable states — the old effect+state version rendered nothing
+  // for both "still fetching" and "no invoices ever".
+  const {
+    data: invoices,
+    error: invoicesFetchError,
+    isLoading: invoicesLoading,
+    mutate: retryInvoices,
+  } = useSWR('billing-invoices', getInvoices)
+  const invoicesError = invoicesFetchError
+    ? getAuthErrorMessage(invoicesFetchError as Error) || 'Failed to load invoices'
+    : null
+
+  const { data: prices } = useSWR('plan-prices', getPrices)
 
   const handleUpdatePayment = async (method: string) => {
     try {
@@ -144,7 +152,7 @@ export default function WorkspaceBillingTab() {
         <CreditCard className="w-10 h-10 text-neutral-500 mx-auto mb-3" />
         <h3 className="text-base font-semibold text-white mb-1">No subscription</h3>
         <p className="text-sm text-neutral-400 mb-4">You're on the Hobby plan.</p>
-        <Button variant="default" className="text-sm" onClick={() => router.push('/switch')}>View Plans</Button>
+        <Button variant="default" className="text-sm" onClick={() => router.push('/setup/plan')}>View Plans</Button>
       </div>
     )
   }
@@ -152,8 +160,15 @@ export default function WorkspaceBillingTab() {
   const planLabel = formatPlanName(subscription.plan_id)
 
   const isActive = subscription.subscription_status === 'active' || subscription.subscription_status === 'trialing'
+  const isTrialing = subscription.subscription_status === 'trialing'
   const isCanceled = subscription.subscription_status === 'canceled'
   const isPastDue = subscription.subscription_status === 'past_due'
+  // Hobby/free orgs have a subscription row but no live Mollie subscription —
+  // payment-method and cancel actions would only error for them.
+  const isFree = subscription.plan_id === 'free' && subscription.subscription_status === ''
+
+  const planPricing = getPlanPricing(prices, subscription.plan_id, subscription.pageview_limit)
+  const isYearlyInterval = subscription.billing_interval === 'year'
 
   const overLimit =
     subscription.pageview_limit > 0 &&
@@ -172,9 +187,14 @@ export default function WorkspaceBillingTab() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <h4 className="text-lg font-bold text-white">{planLabel} Plan</h4>
-            {isActive && !subscription.cancel_at_period_end && (
+            {isActive && !isTrialing && !subscription.cancel_at_period_end && (
               <span className="px-2 py-0.5 text-xs font-medium rounded-none bg-green-900/30 text-green-400 border border-green-900/50">
                 Active
+              </span>
+            )}
+            {isTrialing && !subscription.cancel_at_period_end && (
+              <span className="px-2 py-0.5 text-xs font-medium rounded-none bg-blue-900/30 text-blue-400 border border-blue-900/50">
+                Trial
               </span>
             )}
             {subscription.subscription_status === 'canceled' && (
@@ -198,8 +218,12 @@ export default function WorkspaceBillingTab() {
             // switch guard requires an active/trialing subscription). Hide it —
             // the Update-payment-method CTA below is the correct action here.
             isPastDue ? null : (
-              <Button variant="default" className="text-sm" onClick={() => router.push(isCanceled ? '/setup/plan' : '/switch')}>
-                {isCanceled ? 'Resubscribe' : 'Change Plan'}
+              <Button
+                variant="default"
+                className="text-sm"
+                onClick={() => router.push(isCanceled || isFree ? '/setup/plan' : '/switch')}
+              >
+                {isCanceled ? 'Resubscribe' : isFree ? 'Upgrade' : 'Change Plan'}
               </Button>
             )
           ) : (
@@ -237,12 +261,24 @@ export default function WorkspaceBillingTab() {
             {subscription.current_period_end && (
               <div>
                 <p className="text-xs text-neutral-500 uppercase tracking-wider">
-                  {subscription.cancel_at_period_end ? 'Ends' : 'Renews'}
+                  {subscription.cancel_at_period_end ? 'Ends' : isTrialing ? 'Trial ends' : 'Renews'}
                 </p>
-                <p className="text-lg font-semibold text-white">{formatDateLong(new Date(subscription.current_period_end))}</p>
+                <p className="text-lg font-semibold text-white">{formatDateFull(new Date(subscription.current_period_end))}</p>
               </div>
             )}
-            {subscription.pageview_limit > 0 && (
+            {planPricing && !isFree ? (
+              <div>
+                <p className="text-xs text-neutral-500 uppercase tracking-wider">Price</p>
+                <p className="text-lg font-semibold text-white">
+                  {isYearlyInterval ? `€${planPricing.yearlyTotal}/yr` : `€${planPricing.monthly}/mo`}
+                </p>
+                <p className="text-xs text-neutral-500 mt-0.5">
+                  excl. VAT{isYearlyInterval ? ` · €${planPricing.effectiveMonthly}/mo` : ''}
+                </p>
+              </div>
+            ) : subscription.pageview_limit > 0 && (
+              // Legacy plan ids have no entry in the prices map — fall back to
+              // the limit rather than showing an empty cell.
               <div>
                 <p className="text-xs text-neutral-500 uppercase tracking-wider">Limit</p>
                 <p className="text-lg font-semibold text-white">{subscription.pageview_limit.toLocaleString()} / mo</p>
@@ -277,7 +313,7 @@ export default function WorkspaceBillingTab() {
             <p className="text-sm font-medium text-green-400">Account credit</p>
             <p className="text-xs text-neutral-500">Automatically applied to your next invoice</p>
           </div>
-          <p className="text-lg font-semibold text-green-400">&euro;{(subscription.credit_balance / 100).toFixed(2)}</p>
+          <p className="text-lg font-semibold text-green-400">{euro.format(subscription.credit_balance / 100)}</p>
         </div>
       )}
 
@@ -289,40 +325,26 @@ export default function WorkspaceBillingTab() {
             Plan change to <span className="font-semibold text-white">{formatPlanName(subscription.pending_plan_id)}</span>
             {subscription.pending_limit ? ` (${subscription.pending_limit.toLocaleString()} pageviews/${subscription.pending_interval === 'month' ? 'mo' : 'yr'})` : ''}
             {' '}pending
-            {subscription.current_period_end ? ` — applies ${formatDateLong(new Date(subscription.current_period_end))}` : ''}
+            {subscription.current_period_end ? ` — applies ${formatDateFull(new Date(subscription.current_period_end))}` : ''}
           </p>
         </div>
       )}
 
-      {isPastDue && (
+      {/* One payment-trouble banner: past_due (plan at risk) or a softer
+          payment-failed warning while the subscription is still active. */}
+      {(isPastDue || subscription.payment_failed_at) && (
         <div className="flex items-start gap-3 p-3 rounded-none bg-amber-900/20 border border-amber-900/40 text-sm mt-4">
           <WarningCircle size={16} weight="fill" className="text-amber-400 shrink-0 mt-0.5" />
           <p className="text-amber-300">
-            Payment past due — update your payment method to keep your plan.{' '}
-            {canManageBilling ? (
-              <button onClick={() => { setSelectedPaymentMethod(''); setShowPaymentMethodModal(true) }} className="underline font-medium text-amber-200 hover:text-white">
-                Update payment method
-              </button>
-            ) : (
-              'Please contact your workspace owner to update the payment method.'
-            )}
-          </p>
-        </div>
-      )}
-
-      {/* Only shown when NOT past_due — past_due already conveys the failed payment above. */}
-      {!isPastDue && subscription.payment_failed_at && (
-        <div className="flex items-start gap-3 p-3 rounded-none bg-amber-900/20 border border-amber-900/40 text-sm mt-4">
-          <WarningCircle size={16} weight="fill" className="text-amber-400 shrink-0 mt-0.5" />
-          <p className="text-amber-300">
-            Your last payment could not be processed.{' '}
+            {isPastDue
+              ? 'Payment past due — update your payment method to keep your plan.'
+              : 'Your last payment could not be processed.'}{' '}
             {canManageBilling ? (
               <>
-                Please{' '}
                 <button onClick={() => { setSelectedPaymentMethod(''); setShowPaymentMethodModal(true) }} className="underline font-medium text-amber-200 hover:text-white">
-                  update your payment method
-                </button>{' '}
-                to avoid service interruption.
+                  Update payment method
+                </button>
+                {!isPastDue && ' to avoid service interruption.'}
               </>
             ) : (
               'Please contact your workspace owner to update the payment method.'
@@ -331,8 +353,9 @@ export default function WorkspaceBillingTab() {
         </div>
       )}
 
-      {/* Actions */}
-      {!isCanceled && canManageBilling && (
+      {/* Actions — hidden for Hobby/free: there is no Mollie customer or
+          subscription behind them, so both calls would only error. */}
+      {!isCanceled && !isFree && canManageBilling && (
         <div className="flex flex-wrap gap-3">
           <Button onClick={() => { setSelectedPaymentMethod(''); setShowPaymentMethodModal(true) }} variant="secondary" className="text-sm gap-1.5">
             <CreditCard weight="bold" className="w-3.5 h-3.5" />
@@ -402,18 +425,17 @@ export default function WorkspaceBillingTab() {
 
       {/* Cancel confirmation */}
       <Modal isOpen={showCancelConfirm} onClose={() => setShowCancelConfirm(false)} title="Cancel subscription" className="max-w-md">
-        <p className="text-sm text-neutral-400 mb-1">
+        <p className="text-sm text-neutral-400 mb-3">
           Are you sure you want to cancel your subscription?
         </p>
-        {subscription.current_period_end ? (
-          <p className="text-sm text-neutral-500 mb-5">
-            Your plan will remain active until {formatDateLong(new Date(subscription.current_period_end))}.
-          </p>
-        ) : (
-          <p className="text-sm text-neutral-500 mb-5">
-            You&apos;ll keep access until the end of your current billing period, then move to the free plan.
-          </p>
-        )}
+        <p className="text-sm text-neutral-500 mb-1">
+          {subscription.current_period_end
+            ? <>Your {planLabel} plan stays fully active until <span className="text-neutral-300">{formatDateFull(new Date(subscription.current_period_end))}</span> — you won&apos;t be charged again.</>
+            : <>You&apos;ll keep access until the end of your current billing period and won&apos;t be charged again.</>}
+        </p>
+        <p className="text-sm text-neutral-500 mb-5">
+          After that, your workspace moves to the free Hobby plan ({FREE_PAGEVIEW_LIMIT.toLocaleString()} pageviews/month, 1 site). Your data stays in place.
+        </p>
         <div className="flex justify-end gap-3">
           <Button variant="secondary" className="text-sm" onClick={() => setShowCancelConfirm(false)} disabled={cancelling}>
             Keep plan
@@ -429,12 +451,14 @@ export default function WorkspaceBillingTab() {
         </div>
       </Modal>
 
-      {/* Billing Details */}
-      {subscription.billing_email && (
+      {/* Billing Details — also rendered (as an add-details empty state) when
+          the billing email hasn't synced yet, so managers are never locked out
+          of entering details the API fully supports. */}
+      {(subscription.billing_email || (canManageBilling && !isFree)) && (
         <div className="space-y-3 pt-6 border-t border-neutral-800">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-medium text-neutral-300">Billing Details</h4>
-            {!editingBilling && canManageBilling && (
+            {!editingBilling && canManageBilling && subscription.billing_email && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -516,7 +540,7 @@ export default function WorkspaceBillingTab() {
                 </Button>
               </div>
             </div>
-          ) : (
+          ) : subscription.billing_email ? (
             <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
               {subscription.business_name && (
                 <>
@@ -537,19 +561,35 @@ export default function WorkspaceBillingTab() {
                 </>
               )}
             </div>
+          ) : (
+            <div className="flex items-center justify-between rounded-none border border-neutral-800 bg-neutral-800/30 px-4 py-3">
+              <p className="text-sm text-neutral-500">No billing details on file yet.</p>
+              <Button variant="secondary" className="text-sm" onClick={handleEditBilling}>
+                Add billing details
+              </Button>
+            </div>
           )}
         </div>
       )}
 
       {/* Recent Invoices */}
-      {invoicesError ? (
-        <div className="rounded-none border border-red-900/50 bg-red-950/20 p-6 text-center pt-6 border-t border-neutral-800">
-          <p className="text-red-400 text-sm mb-4">{invoicesError}</p>
-          <Button variant="secondary" onClick={() => { setInvoicesError(null); setInvoicesRetry(c => c + 1) }}>Retry</Button>
-        </div>
-      ) : invoices.length > 0 && (
-        <div className="pt-6 border-t border-neutral-800 space-y-2">
-          <h4 className="text-sm font-medium text-neutral-300">Recent Invoices</h4>
+      <div className="pt-6 border-t border-neutral-800 space-y-2">
+        <h4 className="text-sm font-medium text-neutral-300">Recent Invoices</h4>
+        {invoicesError ? (
+          <div className="rounded-none border border-red-900/50 bg-red-950/20 p-6 text-center">
+            <p className="text-red-400 text-sm mb-4">{invoicesError}</p>
+            <Button variant="secondary" onClick={() => retryInvoices()}>Retry</Button>
+          </div>
+        ) : invoicesLoading ? (
+          <div className="flex items-center gap-3 rounded-none border border-neutral-800 bg-neutral-800/30 px-4 py-3">
+            <Spinner size="sm" />
+            <span className="text-sm text-neutral-500">Loading invoices...</span>
+          </div>
+        ) : !invoices || invoices.length === 0 ? (
+          <p className="rounded-none border border-neutral-800 bg-neutral-800/30 px-4 py-3 text-sm text-neutral-500">
+            No invoices yet. Your first invoice appears here after your first payment.
+          </p>
+        ) : (
           <div className="rounded-none border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
             {invoices.map(invoice => {
               const isCreditNote = invoice.document_type === 'credit_note'
@@ -576,7 +616,8 @@ export default function WorkspaceBillingTab() {
                         {invoice.status === 'sent' ? 'Paid' : invoice.status}
                       </span>
                     )}
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity ease-apple">
+                    {/* Hover-reveal only where hover exists — always visible on touch. */}
+                    <div className="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity ease-apple">
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -596,8 +637,8 @@ export default function WorkspaceBillingTab() {
               )
             })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
