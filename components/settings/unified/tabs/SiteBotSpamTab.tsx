@@ -346,8 +346,8 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
             <THead>
               <TR>
                 {canManage && <TH className="w-8" aria-label="Select" />}
-                <TH>Session</TH>
-                <TH>Risk</TH>
+                <TH className="w-full max-w-0">Session</TH>
+                <TH className="hidden sm:table-cell">Risk</TH>
                 {canManage && <TH className="w-px" aria-label="Actions" />}
               </TR>
             </THead>
@@ -380,13 +380,13 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
                         />
                       </TD>
                     )}
-                    <TD>
+                    <TD className="w-full max-w-0">
                       <div className="flex min-w-0 flex-col gap-0.5">
-                        <span className="truncate font-mono text-sm text-foreground">{path}</span>
-                        <span className="text-xs text-muted-foreground">{meta}</span>
+                        <span className="truncate font-mono text-sm text-foreground" title={path}>{path}</span>
+                        <span className="truncate text-xs text-muted-foreground">{meta}</span>
                       </div>
                     </TD>
-                    <TD>{session.suspicion_score != null ? riskChip(session.suspicion_score) : null}</TD>
+                    <TD className="hidden sm:table-cell">{session.suspicion_score != null ? riskChip(session.suspicion_score) : null}</TD>
                     {canManage && (
                       <TD className="text-right">
                         <Button
@@ -442,8 +442,8 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
           <Table aria-label="Domain reputation" containerClassName="max-h-[22rem] overflow-y-auto">
             <THead>
               <TR>
-                <TH>Domain</TH>
-                <TH numeric>Events</TH>
+                <TH className="w-full max-w-0">Domain</TH>
+                <TH numeric className="hidden sm:table-cell">Events</TH>
                 <TH numeric>Bot</TH>
                 {canManage && <TH className="w-px" aria-label="Actions" />}
               </TR>
@@ -451,7 +451,7 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
             <TBody>
               {domains.map(domain => (
                 <TR key={domain.domain}>
-                  <TD>
+                  <TD className="w-full max-w-0">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                       <span className="min-w-0 flex-1 truncate font-mono text-sm text-foreground" title={domain.domain}>{domain.domain}</span>
                       <StatusChip tone={actionTone(domain.action)}>{humanizeAction(domain.action)}</StatusChip>
@@ -461,7 +461,7 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
                       )}
                     </div>
                   </TD>
-                  <TD numeric className="text-muted-foreground">{domain.total_events}</TD>
+                  <TD numeric className="hidden text-muted-foreground sm:table-cell">{domain.total_events}</TD>
                   <TD numeric className="text-muted-foreground">{Math.round(domain.bot_ratio * 100)}%</TD>
                   {canManage && (
                     <TD>
