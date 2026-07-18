@@ -8,6 +8,8 @@ import { useSite } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { env } from '@/lib/env'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
+import { StatusChip } from '@/components/settings/StatusChip'
+import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { useCan } from '@/lib/auth/permissions'
 
 // Zod-validated URL, guaranteed to be a `string` at runtime.
@@ -15,11 +17,18 @@ const APP_URL = env.NEXT_PUBLIC_APP_URL
 
 export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
   const canEdit = useCan('sites.edit')
-  const { data: site, mutate } = useSite(siteId)
+  const { data: site, error, mutate } = useSite(siteId)
   const [isPublic, setIsPublic] = useState(false)
   const [password, setPassword] = useState('')
   const [passwordEnabled, setPasswordEnabled] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
+  // Set on a save attempt that would persist an empty password (protection on,
+  // no stored password, blank field) — drives the inline validation message.
+  const [pwError, setPwError] = useState(false)
+  // In-flight guard for the updateSite mutation: disables the toggles/field and
+  // prevents a second submit while a save is running.
+  const [saving, setSaving] = useState(false)
+  const [retrying, setRetrying] = useState(false)
   const initialRef = useRef('')
   const hasInitialized = useRef(false)
 
@@ -42,9 +51,19 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
     setIsPublic(snap.isPublic)
     setPasswordEnabled(snap.passwordEnabled)
     setPassword('')
+    setPwError(false)
   }
 
   const handleSave = useCallback(async () => {
+    // Enabling protection on a site with no stored password and a blank field
+    // would persist an empty password. Block the save with an inline message;
+    // reject so the save bar keeps "Unsaved changes" instead of flashing saved.
+    if (passwordEnabled && !site!.has_password && password.trim().length === 0) {
+      setPwError(true)
+      toast.error('Enter a password to enable protection')
+      throw new Error('password-required')
+    }
+    setSaving(true)
     try {
       await updateSite(siteId, {
         name: site!.name,
@@ -54,21 +73,55 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
       })
       initialRef.current = JSON.stringify({ isPublic, passwordEnabled })
       setPassword('')
+      setPwError(false)
       await mutate()
       toast.success('Visibility updated')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')
+    } finally {
+      setSaving(false)
     }
-  }, [siteId, isPublic, passwordEnabled, password, mutate])
+  }, [siteId, site, isPublic, passwordEnabled, password, mutate])
 
-  const copyLink = () => {
-    navigator.clipboard.writeText(`${APP_URL}/share/${siteId}`)
-    setLinkCopied(true)
-    toast.success('Link copied')
-    setTimeout(() => setLinkCopied(false), 2000)
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(`${APP_URL}/share/${siteId}`)
+      setLinkCopied(true)
+      toast.success('Link copied')
+      setTimeout(() => setLinkCopied(false), 2000)
+    } catch {
+      toast.error("Couldn't copy link")
+    }
   }
 
-  if (!site) return <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-neutral-500" /></div>
+  const handleRetry = useCallback(async () => {
+    setRetrying(true)
+    try {
+      await mutate()
+    } finally {
+      setRetrying(false)
+    }
+  }, [mutate])
+
+  // Distinguish loading from a failed fetch: a server error must surface a retry,
+  // not fall through to an infinite spinner.
+  if (!site) {
+    if (error) {
+      return (
+        <SettingsErrorState
+          variant="card"
+          message={getAuthErrorMessage(error as Error) || undefined}
+          onRetry={handleRetry}
+          retrying={retrying}
+        />
+      )
+    }
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Spinner className="w-6 h-6 text-neutral-500" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -83,7 +136,7 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
           <p className="text-sm font-medium text-white">Public Dashboard</p>
           <p className="text-xs text-neutral-500">Allow anyone with the link to view this dashboard.</p>
         </div>
-        <Toggle checked={isPublic} onChange={() => setIsPublic(p => !p)} disabled={!canEdit} />
+        <Toggle checked={isPublic} onChange={() => setIsPublic(p => !p)} disabled={!canEdit || saving} />
       </div>
 
       <AnimatePresence>
@@ -96,7 +149,16 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
           >
             {/* Share link */}
             <div className="p-4 rounded-none border border-neutral-800 bg-neutral-800/30">
-              <label className="block text-xs font-medium text-neutral-400 mb-1.5">Public Link</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-micro-label uppercase text-neutral-400">Public Link</label>
+                {/* Reflects the SAVED server state, not the pending toggle: the
+                    link only resolves once the change is saved. */}
+                {site.is_public ? (
+                  <StatusChip tone="success" dot pulse>Live</StatusChip>
+                ) : (
+                  <StatusChip tone="warning">Not saved yet</StatusChip>
+                )}
+              </div>
               <div className="flex gap-2">
                 <Input value={`${APP_URL}/share/${siteId}`} readOnly className="font-mono text-xs" />
                 <Button onClick={copyLink} variant="secondary" className="shrink-0 text-sm gap-1.5">
@@ -111,11 +173,18 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
               <div className="flex items-center gap-2">
                 <Lock weight="bold" className="w-4 h-4 text-neutral-500" />
                 <div>
-                  <p className="text-sm font-medium text-white">Password Protection</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-white">Password Protection</p>
+                    {site.has_password && <StatusChip tone="success">Password set</StatusChip>}
+                  </div>
                   <p className="text-xs text-neutral-500">Require a password to view the public dashboard.</p>
                 </div>
               </div>
-              <Toggle checked={passwordEnabled} onChange={() => setPasswordEnabled(p => !p)} disabled={!canEdit} />
+              <Toggle
+                checked={passwordEnabled}
+                onChange={() => { setPasswordEnabled(p => !p); setPwError(false) }}
+                disabled={!canEdit || saving}
+              />
             </div>
 
             <AnimatePresence>
@@ -129,15 +198,21 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
                   <Input
                     type="password"
                     value={password}
-                    onChange={e => setPassword(e.target.value)}
+                    onChange={e => { setPassword(e.target.value); if (pwError) setPwError(false) }}
                     placeholder={site.has_password ? 'Leave empty to keep current password' : 'Set a password'}
+                    disabled={saving}
+                    aria-invalid={pwError || undefined}
                   />
+                  {pwError && (
+                    <p className="mt-1.5 text-xs text-red-400">Enter a password to enable protection.</p>
+                  )}
                   {site.has_password && (
                     <Button
                       variant="ghost"
                       size="sm"
                       className="mt-2 text-red-400 hover:text-red-300"
-                      onClick={() => { setPasswordEnabled(false); setPassword('') }}
+                      onClick={() => { setPasswordEnabled(false); setPassword(''); setPwError(false) }}
+                      disabled={saving}
                     >
                       Remove password protection
                     </Button>

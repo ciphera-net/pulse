@@ -11,13 +11,53 @@ import { updateSite } from '@/lib/api/sites'
 import { quarantineSessions, restoreSessions, createDomainOverride, deleteDomainOverride } from '@/lib/api/quarantine'
 import SettingsSections from '@/components/settings/SettingsSections'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
+import { StatusChip, type ChipTone } from '@/components/settings/StatusChip'
+import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useCan } from '@/lib/auth/permissions'
+
+/** Title-case a raw snake_case string as a readable fallback. */
+function titleCase(value: string): string {
+  return value.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+/** Domain reputation classification → house tone + label. */
+function actionTone(action: string): ChipTone {
+  if (action === 'quarantine') return 'danger'
+  if (action === 'allow') return 'success'
+  return 'neutral'
+}
+function humanizeAction(action: string): string {
+  if (action === 'quarantine') return 'Blocked'
+  if (action === 'allow') return 'Allowed'
+  return titleCase(action)
+}
+
+/**
+ * Reputation source → tone + label. Learned/collaborative (dynamic) sources
+ * read as `purple`; imported seed/blocklist sources read as `info`. Raw
+ * snake_case is humanized (matomo_seed → "Seed", legacy_blocklist → "Blocklist").
+ */
+function sourceTone(source: string): ChipTone {
+  if (source === 'learned' || source === 'collaborative') return 'purple'
+  if (source === 'matomo_seed' || source === 'legacy_blocklist') return 'info'
+  return 'neutral'
+}
+function humanizeSource(source: string): string {
+  switch (source) {
+    case 'matomo_seed': return 'Seed'
+    case 'legacy_blocklist': return 'Blocklist'
+    case 'learned': return 'Learned'
+    case 'collaborative': return 'Collaborative'
+    default: return titleCase(source)
+  }
+}
 
 export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
   const canManage = useCan('quarantine.manage')
   const { data: site, mutate } = useSite(siteId)
-  const { data: botStats, mutate: mutateBotStats } = useQuarantineStats(siteId)
-  const { data: domainReputation, mutate: mutateDomains } = useSiteDomainReputation(siteId)
+  const { data: botStats, error: botStatsError, isLoading: botStatsLoading, mutate: mutateBotStats } = useQuarantineStats(siteId)
+  const { data: domainReputation, error: domainsError, isLoading: domainsLoading, mutate: mutateDomains } = useSiteDomainReputation(siteId)
   const [filterBots, setFilterBots] = useState(false)
   const initialFilterRef = useRef<boolean | null>(null)
 
@@ -28,6 +68,29 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
 
   const { data: sessionsData, error: sessionsError, isLoading: sessionsLoading, mutate: mutateSessions } = useSessions(siteId, { start_date: botDateRange.start, end_date: botDateRange.end, suspicious: botView === 'review' ? suspiciousOnly : undefined })
   const sessions = sessionsData?.sessions
+
+  // Per-action in-flight tracking: disables the acting control and guards
+  // against double-submit while a mutation is pending. Keys: 'bulk',
+  // `session:<id>`, `<domain>:allow|block|reset`.
+  const [savingKeys, setSavingKeys] = useState<Set<string>>(new Set())
+  const isSaving = (key: string) => savingKeys.has(key)
+  const withSaving = useCallback(async (key: string, fn: () => Promise<void>) => {
+    if (savingKeys.has(key)) return
+    setSavingKeys(prev => new Set(prev).add(key))
+    try {
+      await fn()
+    } finally {
+      setSavingKeys(prev => {
+        const next = new Set(prev)
+        next.delete(key)
+        return next
+      })
+    }
+  }, [savingKeys])
+
+  // Consequential-action confirmations (reclassify LIVE traffic as bot).
+  const [confirmBulkFlag, setConfirmBulkFlag] = useState(false)
+  const [blockTarget, setBlockTarget] = useState<string | null>(null)
 
   const hasInitialized = useRef(false)
   useEffect(() => {
@@ -56,31 +119,62 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')
     }
-  }, [siteId, filterBots, mutate])
+  }, [siteId, filterBots, mutate, site])
 
-  const handleBotFilter = async (sessionIds: string[]) => {
-    try {
-      await quarantineSessions(siteId, sessionIds)
-      toast.success(`${sessionIds.length} session(s) flagged as bot`)
-      setSelectedSessions(new Set())
-      mutateSessions()
-      mutateBotStats()
-    } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to flag sessions')
-    }
-  }
+  const handleBotFilter = (sessionIds: string[], key: string) =>
+    withSaving(key, async () => {
+      try {
+        await quarantineSessions(siteId, sessionIds)
+        toast.success(`${sessionIds.length} session(s) flagged as bot`)
+        setSelectedSessions(new Set())
+        mutateSessions()
+        mutateBotStats()
+      } catch (err) {
+        toast.error(getAuthErrorMessage(err as Error) || 'Failed to flag sessions')
+      }
+    })
 
-  const handleBotUnfilter = async (sessionIds: string[]) => {
-    try {
-      await restoreSessions(siteId, sessionIds)
-      toast.success(`${sessionIds.length} session(s) unblocked`)
-      setSelectedSessions(new Set())
-      mutateSessions()
-      mutateBotStats()
-    } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to unblock sessions')
-    }
-  }
+  const handleBotUnfilter = (sessionIds: string[], key: string) =>
+    withSaving(key, async () => {
+      try {
+        await restoreSessions(siteId, sessionIds)
+        toast.success(`${sessionIds.length} session(s) unblocked`)
+        setSelectedSessions(new Set())
+        mutateSessions()
+        mutateBotStats()
+      } catch (err) {
+        toast.error(getAuthErrorMessage(err as Error) || 'Failed to unblock sessions')
+      }
+    })
+
+  const handleDomainAllow = (domainName: string) =>
+    withSaving(`${domainName}:allow`, async () => {
+      try {
+        await createDomainOverride(siteId, domainName, 'allow')
+        toast.success(`${domainName} allowed`)
+        mutateDomains()
+      } catch (err) { toast.error(getAuthErrorMessage(err as Error) || 'Failed to update domain') }
+    })
+
+  const handleDomainBlock = (domainName: string) =>
+    withSaving(`${domainName}:block`, async () => {
+      try {
+        await createDomainOverride(siteId, domainName, 'quarantine')
+        toast.success(`${domainName} quarantined`)
+        mutateDomains()
+      } catch (err) { toast.error(getAuthErrorMessage(err as Error) || 'Failed to quarantine domain') }
+    })
+
+  const handleDomainReset = (domainName: string) =>
+    withSaving(`${domainName}:reset`, async () => {
+      try {
+        await deleteDomainOverride(siteId, domainName)
+        toast.success('Override removed')
+        mutateDomains()
+      } catch (err) { toast.error(getAuthErrorMessage(err as Error) || 'Failed to reset override') }
+    })
+
+  const domainBusy = (d: string) => isSaving(`${d}:allow`) || isSaving(`${d}:block`) || isSaving(`${d}:reset`)
 
   if (!site) return <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-neutral-500" /></div>
 
@@ -92,7 +186,7 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
         { id: 'section-reputation', label: 'Domain Reputation' },
       ]} />
 
-      <div id="section-filtering">
+      <div id="section-filtering" className="scroll-mt-20">
         <h3 className="text-base font-semibold text-white mb-1">Bot & Spam Filtering</h3>
         <p className="text-sm text-neutral-400">Automatically filter bot traffic and referrer spam from your analytics.</p>
       </div>
@@ -109,8 +203,15 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
         <Toggle checked={filterBots} onChange={() => setFilterBots(p => !p)} disabled={!canManage} />
       </div>
 
-      {/* Stats */}
-      {botStats && (
+      {/* Stats — a failed fetch must read as a server error, not a clean site */}
+      {botStatsError ? (
+        <SettingsErrorState
+          variant="banner"
+          message="Couldn't load quarantine stats. This is a server error, not a clean site — try again in a moment."
+          onRetry={() => mutateBotStats()}
+          retrying={botStatsLoading}
+        />
+      ) : botStats ? (
         <div className="grid grid-cols-3 gap-3">
           <div className="rounded-none border border-neutral-800 bg-neutral-800/30 p-4 text-center">
             <p className="text-2xl font-bold tabular-nums text-white">{botStats.total_quarantined ?? 0}</p>
@@ -125,12 +226,21 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
             <p className="text-xs text-neutral-500 mt-1">Detection types</p>
           </div>
         </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-3">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="rounded-none border border-neutral-800 bg-neutral-800/30 p-4">
+              <div className="h-7 w-12 mx-auto rounded-none bg-neutral-800 animate-pulse" />
+              <div className="h-3 w-20 mx-auto mt-2 rounded-none bg-neutral-800/60 animate-pulse" />
+            </div>
+          ))}
+        </div>
       )}
 
       {/* Session Review */}
-      <div id="section-sessions" className="space-y-3 pt-6 border-t border-neutral-800">
+      <div id="section-sessions" className="scroll-mt-20 space-y-3 pt-6 border-t border-neutral-800">
         <div className="flex items-center justify-between">
-          <h4 className="text-sm font-semibold text-white mb-2">Session Review</h4>
+          <h4 className="text-sm font-medium text-neutral-300 mb-2">Session Review</h4>
           {/* Review/Blocked toggle */}
           <div className="flex items-center gap-1">
             <Button
@@ -150,7 +260,7 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
           </div>
         </div>
 
-        {/* Suspicious only filter (review mode only) */}
+        {/* Suspicious only filter (review mode only) — a view filter, available to all */}
         {botView === 'review' && (
           <div className="flex items-center justify-between py-3 px-4 rounded-none bg-neutral-800/30 border border-neutral-800">
             <div>
@@ -161,36 +271,45 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
           </div>
         )}
 
-        {/* Bulk actions bar */}
-        {selectedSessions.size > 0 && (
+        {/* Bulk actions bar (managers only — selection is hidden for view-only) */}
+        {canManage && selectedSessions.size > 0 && (
           <div className="flex items-center gap-3 p-2 bg-brand-orange/10 border border-brand-orange/20 rounded-none text-sm">
             <span className="text-neutral-300">{selectedSessions.size} selected</span>
             {botView === 'review' ? (
-              <Button variant="secondary" size="sm" onClick={() => handleBotFilter(Array.from(selectedSessions))} disabled={!canManage} className="text-red-400 border-red-900/50 hover:bg-red-900/20">Flag as bot</Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setConfirmBulkFlag(true)}
+                disabled={isSaving('bulk')}
+                className="text-red-400 border-red-900/50 hover:bg-red-900/20"
+              >
+                {isSaving('bulk') ? <><Spinner className="w-4 h-4" />Flagging…</> : 'Flag as bot'}
+              </Button>
             ) : (
-              <Button variant="secondary" size="sm" onClick={() => handleBotUnfilter(Array.from(selectedSessions))} disabled={!canManage}>Unblock</Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => handleBotUnfilter(Array.from(selectedSessions), 'bulk')}
+                disabled={isSaving('bulk')}
+              >
+                {isSaving('bulk') ? <><Spinner className="w-4 h-4" />Unblocking…</> : 'Unblock'}
+              </Button>
             )}
-            <Button variant="secondary" size="sm" onClick={() => setSelectedSessions(new Set())} className="ml-auto">Clear</Button>
+            <Button variant="secondary" size="sm" onClick={() => setSelectedSessions(new Set())} disabled={isSaving('bulk')} className="ml-auto">Clear</Button>
           </div>
         )}
 
         {/* Session cards */}
         <div className="space-y-2 max-h-96 overflow-y-auto">
           {sessionsError ? (
-            /* * A failed request must never masquerade as "no suspicious sessions" —
+            /* A failed request must never masquerade as "no suspicious sessions" —
              * that would read as a healthy site while detection is actually down. */
-            <div className="p-4 border border-red-900/50 bg-red-900/10 rounded-none space-y-2">
-              <p className="text-sm font-medium text-red-300">Couldn&apos;t load sessions</p>
-              <p className="text-xs text-neutral-400">The session list failed to load, so this is a server error — not an empty result. Try again in a moment.</p>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => mutateSessions()}
-                className="text-red-400 border-red-900/50 hover:bg-red-900/20"
-              >
-                Retry
-              </Button>
-            </div>
+            <SettingsErrorState
+              variant="card"
+              message="Couldn't load sessions — the request failed, so this is a server error, not an empty result. Try again in a moment."
+              onRetry={() => mutateSessions()}
+              retrying={sessionsLoading}
+            />
           ) : sessionsLoading ? (
             <div className="flex items-center justify-center py-8">
               <Spinner className="w-5 h-5 text-neutral-500" />
@@ -199,27 +318,27 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
             <>
           {(sessions || [])
             .filter(s => botView === 'blocked' ? s.quarantined : !s.quarantined)
-            .map(session => (
+            .map(session => {
+              const sessionKey = `session:${session.session_id}`
+              return (
               <div key={session.session_id} className="flex items-center gap-3 p-3 rounded-none border border-neutral-800 hover:bg-neutral-800/40 hover:border-neutral-700 transition-colors ease-apple">
-                <Checkbox
-                  checked={selectedSessions.has(session.session_id)}
-                  onCheckedChange={(checked) => {
-                    const next = new Set(selectedSessions)
-                    checked ? next.add(session.session_id) : next.delete(session.session_id)
-                    setSelectedSessions(next)
-                  }}
-                />
+                {canManage && (
+                  <Checkbox
+                    checked={selectedSessions.has(session.session_id)}
+                    onCheckedChange={(checked) => {
+                      const next = new Set(selectedSessions)
+                      checked ? next.add(session.session_id) : next.delete(session.session_id)
+                      setSelectedSessions(next)
+                    }}
+                  />
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-white truncate">{session.first_page || '/'}</span>
                     {session.suspicion_score != null && (
-                      <span className={`px-1.5 py-0.5 rounded-none text-micro-label font-medium ${
-                        session.suspicion_score >= 5 ? 'bg-red-900/30 text-red-400' :
-                        session.suspicion_score >= 3 ? 'bg-yellow-900/30 text-yellow-400' :
-                        'bg-neutral-800 text-neutral-400'
-                      }`}>
+                      <StatusChip tone={session.suspicion_score >= 5 ? 'danger' : session.suspicion_score >= 3 ? 'warning' : 'neutral'}>
                         {session.suspicion_score >= 5 ? 'High risk' : session.suspicion_score >= 3 ? 'Suspicious' : 'Low risk'}
-                      </span>
+                      </StatusChip>
                     )}
                   </div>
                   <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-neutral-500 mt-0.5">
@@ -230,17 +349,22 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
                     <span>{session.referrer || 'Direct'}</span>
                   </div>
                 </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => botView === 'review' ? handleBotFilter([session.session_id]) : handleBotUnfilter([session.session_id])}
-                  disabled={!canManage}
-                  className={`shrink-0 ${botView === 'review' ? 'text-red-400 border-red-900/50 hover:bg-red-900/20' : ''}`}
-                >
-                  {botView === 'review' ? 'Flag as bot' : 'Unblock'}
-                </Button>
+                {canManage && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => botView === 'review' ? handleBotFilter([session.session_id], sessionKey) : handleBotUnfilter([session.session_id], sessionKey)}
+                    disabled={isSaving(sessionKey)}
+                    className={`shrink-0 ${botView === 'review' ? 'text-red-400 border-red-900/50 hover:bg-red-900/20' : ''}`}
+                  >
+                    {isSaving(sessionKey)
+                      ? <><Spinner className="w-4 h-4" />{botView === 'review' ? 'Flagging…' : 'Unblocking…'}</>
+                      : (botView === 'review' ? 'Flag as bot' : 'Unblock')}
+                  </Button>
+                )}
               </div>
-            ))}
+              )
+            })}
           {(!sessions || sessions.filter(s => botView === 'blocked' ? s.quarantined : !s.quarantined).length === 0) && (
             <EmptyState
               title={botView === 'blocked' ? 'No quarantined sessions' : 'No suspicious sessions found'}
@@ -255,101 +379,83 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
       </div>
 
       {/* Domain Reputation */}
-      <div id="section-reputation" className="space-y-3 pt-6 border-t border-neutral-800">
-        <h4 className="text-sm font-semibold text-white mb-2">Domain Reputation</h4>
+      <div id="section-reputation" className="scroll-mt-20 space-y-3 pt-6 border-t border-neutral-800">
+        <h4 className="text-sm font-medium text-neutral-300 mb-2">Domain Reputation</h4>
         <p className="text-xs text-neutral-500">Referrer domains seen on your site and their global reputation. Override to allow or block specific domains.</p>
 
-        <div className="space-y-2 max-h-64 overflow-y-auto">
-          {domainReputation?.domains?.map(domain => (
-            <div key={domain.domain} className="flex items-center justify-between p-3 rounded-none border border-neutral-800 hover:bg-neutral-800/40 transition-colors ease-apple">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-mono text-white truncate">{domain.domain}</span>
-                  <span className={`px-1.5 py-0.5 rounded-none text-micro-label font-medium ${
-                    domain.action === 'quarantine' ? 'bg-red-900/30 text-red-400' :
-                    domain.action === 'allow' ? 'bg-green-900/30 text-green-400' :
-                    'bg-neutral-800 text-neutral-400'
-                  }`}>
-                    {domain.action}
-                  </span>
-                  <span className={`px-1.5 py-0.5 rounded-none text-micro-label font-medium ${
-                    domain.source === 'matomo_seed' || domain.source === 'legacy_blocklist' ? 'bg-blue-900/30 text-blue-400' :
-                    domain.source === 'learned' ? 'bg-purple-900/30 text-purple-400' :
-                    domain.source === 'collaborative' ? 'bg-purple-900/30 text-purple-400' :
-                    'bg-neutral-800 text-neutral-400'
-                  }`}>
-                    {domain.source === 'matomo_seed' ? 'seed' : domain.source === 'collaborative' ? 'Collaborative' : domain.source}
-                  </span>
-                  {domain.override && (
-                    <span className="px-1.5 py-0.5 rounded-none text-micro-label font-medium bg-amber-900/30 text-amber-400">
-                      override: {domain.override}
-                    </span>
-                  )}
+        {domainsError ? (
+          <SettingsErrorState
+            variant="banner"
+            message="Couldn't load domain reputation. This is a server error, not an empty list — try again in a moment."
+            onRetry={() => mutateDomains()}
+            retrying={domainsLoading}
+          />
+        ) : domainReputation === undefined ? (
+          <div className="flex items-center justify-center py-8">
+            <Spinner className="w-5 h-5 text-neutral-500" />
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {domainReputation.domains?.map(domain => (
+              <div key={domain.domain} className="flex items-center justify-between p-3 rounded-none border border-neutral-800 hover:bg-neutral-800/40 transition-colors ease-apple">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-mono text-white truncate">{domain.domain}</span>
+                    <StatusChip tone={actionTone(domain.action)}>{humanizeAction(domain.action)}</StatusChip>
+                    <StatusChip tone={sourceTone(domain.source)}>{humanizeSource(domain.source)}</StatusChip>
+                    {domain.override && (
+                      <StatusChip tone="warning">Override: {humanizeAction(domain.override)}</StatusChip>
+                    )}
+                  </div>
+                  <div className="flex gap-3 text-xs text-neutral-500 mt-0.5">
+                    <span>{domain.total_events} events</span>
+                    <span>{Math.round(domain.bot_ratio * 100)}% bot</span>
+                  </div>
                 </div>
-                <div className="flex gap-3 text-xs text-neutral-500 mt-0.5">
-                  <span>{domain.total_events} events</span>
-                  <span>{Math.round(domain.bot_ratio * 100)}% bot</span>
-                </div>
-              </div>
-              <div className="flex gap-1.5 shrink-0">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={async () => {
-                    try {
-                      await createDomainOverride(siteId, domain.domain, 'allow')
-                      toast.success(`${domain.domain} allowed`)
-                      mutateDomains()
-                    } catch (err) { toast.error(getAuthErrorMessage(err as Error) || 'Failed to update domain') }
-                  }}
-                  disabled={!canManage}
-                  className={domain.override === 'allow' ? 'bg-green-900/20 text-green-400 border-green-500/30' : ''}
-                >
-                  Allow
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={async () => {
-                    try {
-                      await createDomainOverride(siteId, domain.domain, 'quarantine')
-                      toast.success(`${domain.domain} quarantined`)
-                      mutateDomains()
-                    } catch (err) { toast.error(getAuthErrorMessage(err as Error) || 'Failed to quarantine domain') }
-                  }}
-                  disabled={!canManage}
-                  className={`text-red-400 border-red-900/50 hover:bg-red-900/20${domain.override === 'quarantine' ? ' bg-red-900/20' : ''}`}
-                >
-                  Block
-                </Button>
-                {domain.override && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={async () => {
-                      try {
-                        await deleteDomainOverride(siteId, domain.domain)
-                        toast.success('Override removed')
-                        mutateDomains()
-                      } catch (err) { toast.error(getAuthErrorMessage(err as Error) || 'Failed to reset override') }
-                    }}
-                    disabled={!canManage}
-                  >
-                    Reset
-                  </Button>
+                {canManage && (
+                  <div className="flex gap-1.5 shrink-0">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleDomainAllow(domain.domain)}
+                      disabled={domainBusy(domain.domain)}
+                      className={domain.override === 'allow' ? 'bg-green-900/30 text-green-400 border-green-900/50' : ''}
+                    >
+                      {isSaving(`${domain.domain}:allow`) ? <Spinner className="w-4 h-4" /> : 'Allow'}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setBlockTarget(domain.domain)}
+                      disabled={domainBusy(domain.domain)}
+                      className={`text-red-400 border-red-900/50 hover:bg-red-900/20${domain.override === 'quarantine' ? ' bg-red-900/30' : ''}`}
+                    >
+                      {isSaving(`${domain.domain}:block`) ? <Spinner className="w-4 h-4" /> : 'Block'}
+                    </Button>
+                    {domain.override && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleDomainReset(domain.domain)}
+                        disabled={domainBusy(domain.domain)}
+                      >
+                        {isSaving(`${domain.domain}:reset`) ? <Spinner className="w-4 h-4" /> : 'Reset'}
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
-            </div>
-          ))}
-          {(!domainReputation?.domains || domainReputation.domains.length === 0) && (
-            <EmptyState
-              title="No domain data yet"
-              description="Referrer domain reputation scores will appear once traffic flows through your site."
-              icon={<Shield weight="regular" />}
-              className="py-8"
-            />
-          )}
-        </div>
+            ))}
+            {(!domainReputation.domains || domainReputation.domains.length === 0) && (
+              <EmptyState
+                title="No domain data yet"
+                description="Referrer domain reputation scores will appear once traffic flows through your site."
+                icon={<Shield weight="regular" />}
+                className="py-8"
+              />
+            )}
+          </div>
+        )}
       </div>
 
       {canManage && (
@@ -359,6 +465,26 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
           onDiscard={handleDiscard}
         />
       )}
+
+      {/* Consequential-action confirmations — bulk flag & domain block reclassify LIVE traffic */}
+      <ConfirmDialog
+        open={confirmBulkFlag}
+        onOpenChange={setConfirmBulkFlag}
+        title={`Flag ${selectedSessions.size} session(s) as bot?`}
+        description="These sessions will be quarantined and removed from your analytics as bot traffic going forward. You can unblock them later from the Quarantined view."
+        confirmLabel="Flag as bot"
+        variant="danger"
+        onConfirm={() => handleBotFilter(Array.from(selectedSessions), 'bulk')}
+      />
+      <ConfirmDialog
+        open={blockTarget !== null}
+        onOpenChange={(open) => { if (!open) setBlockTarget(null) }}
+        title="Block this domain?"
+        description={blockTarget ? `Traffic from ${blockTarget} will be reclassified as bot traffic and quarantined from your analytics going forward. You can reset this override later.` : undefined}
+        confirmLabel="Block domain"
+        variant="danger"
+        onConfirm={async () => { if (blockTarget) await handleDomainBlock(blockTarget) }}
+      />
     </div>
   )
 }

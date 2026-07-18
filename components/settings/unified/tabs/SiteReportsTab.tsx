@@ -23,6 +23,8 @@ import {
 import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { formatDateTime } from '@/lib/utils/formatDate'
 import SettingsSections from '@/components/settings/SettingsSections'
+import { StatusChip } from '@/components/settings/StatusChip'
+import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -87,6 +89,7 @@ function ScheduleRow({
   canManage: boolean
 }) {
   const [testing, setTesting] = useState(false)
+  const [toggling, setToggling] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const handleTest = async () => {
@@ -102,6 +105,8 @@ function ScheduleRow({
   }
 
   const handleToggle = async () => {
+    if (toggling) return
+    setToggling(true)
     try {
       await updateReportSchedule(siteId, schedule.id, {
         channel: schedule.channel,
@@ -118,6 +123,8 @@ function ScheduleRow({
       onMutate()
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to update')
+    } finally {
+      setToggling(false)
     }
   }
 
@@ -131,33 +138,46 @@ function ScheduleRow({
     }
   }
 
+  const isEmail = schedule.channel === 'email' && 'recipients' in schedule.channel_config
+  const recipients = isEmail ? ((schedule.channel_config as EmailConfig).recipients ?? []) : []
+  const primaryLabel = isEmail ? (recipients[0] ?? schedule.channel) : schedule.channel
+  const extraRecipients = recipients.length > 1 ? recipients.length - 1 : 0
+
   return (
-    <div className="flex items-center justify-between px-4 py-3 group">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className={`p-1.5 rounded-none flex-shrink-0 ${schedule.enabled ? 'bg-brand-orange/10 text-brand-orange' : 'bg-neutral-800 text-neutral-500'}`}>
-          <ChannelIcon channel={schedule.channel} />
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-white truncate">
-            {schedule.channel === 'email' && 'recipients' in schedule.channel_config
-              ? (schedule.channel_config as EmailConfig).recipients?.[0]
-              : schedule.channel}
-            {!schedule.enabled && <span className="ml-2 text-xs text-neutral-500">(paused)</span>}
-          </p>
-          <p className="text-xs text-neutral-500">
-            {schedule.frequency} · {schedule.report_type} report
-            {schedule.last_sent_at && (
-              <span className="ml-1">· sent {formatDateTime(new Date(schedule.last_sent_at))}</span>
+    <TooltipProvider>
+      <div className="flex items-center justify-between px-4 py-3 group">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`p-1.5 rounded-none flex-shrink-0 ${schedule.enabled ? 'bg-brand-orange/10 text-brand-orange' : 'bg-neutral-800 text-neutral-500'}`}>
+            <ChannelIcon channel={schedule.channel} />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <p className="text-sm font-medium text-white truncate">{primaryLabel}</p>
+              {extraRecipients > 0 && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-xs text-neutral-500 shrink-0 cursor-default">+{extraRecipients} more</span>
+                  </TooltipTrigger>
+                  <TooltipContent>{recipients.slice(1).join(', ')}</TooltipContent>
+                </Tooltip>
+              )}
+              {!schedule.enabled && (
+                <StatusChip tone="neutral" className="shrink-0">Paused</StatusChip>
+              )}
+            </div>
+            <p className="text-xs text-neutral-500">
+              {schedule.frequency} · {schedule.report_type} report
+              {schedule.last_sent_at && (
+                <span className="ml-1">· sent {formatDateTime(new Date(schedule.last_sent_at))}</span>
+              )}
+            </p>
+            {schedule.last_error && (
+              <p className="text-xs text-red-400 truncate mt-0.5">{schedule.last_error}</p>
             )}
-          </p>
-          {schedule.last_error && (
-            <p className="text-xs text-red-400 truncate mt-0.5">{schedule.last_error}</p>
-          )}
+          </div>
         </div>
-      </div>
-      {canManage && (
-        <TooltipProvider>
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity ease-apple flex items-center gap-1">
+        {canManage && (
+          <div className="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity ease-apple flex items-center gap-1">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(schedule)}>
@@ -169,13 +189,13 @@ function ScheduleRow({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleTest} disabled={testing}>
-                  <PaperPlaneTilt weight="bold" className="w-3.5 h-3.5" />
+                  {testing ? <Spinner className="w-3.5 h-3.5" /> : <PaperPlaneTilt weight="bold" className="w-3.5 h-3.5" />}
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Send test</TooltipContent>
             </Tooltip>
-            <Button variant="ghost" size="sm" onClick={handleToggle}>
-              {schedule.enabled ? 'Pause' : 'Enable'}
+            <Button variant="ghost" size="sm" onClick={handleToggle} disabled={toggling}>
+              {toggling ? <Spinner className="w-3.5 h-3.5" /> : schedule.enabled ? 'Pause' : 'Enable'}
             </Button>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -186,19 +206,19 @@ function ScheduleRow({
               <TooltipContent>Delete</TooltipContent>
             </Tooltip>
           </div>
-        </TooltipProvider>
-      )}
+        )}
 
-      <ConfirmDialog
-        open={confirmDelete}
-        onOpenChange={setConfirmDelete}
-        title="Delete schedule"
-        description="This report schedule will be permanently removed."
-        confirmLabel="Delete"
-        variant="danger"
-        onConfirm={handleDelete}
-      />
-    </div>
+        <ConfirmDialog
+          open={confirmDelete}
+          onOpenChange={setConfirmDelete}
+          title="Delete schedule"
+          description="This report schedule will be permanently removed."
+          confirmLabel="Delete"
+          variant="danger"
+          onConfirm={handleDelete}
+        />
+      </div>
+    </TooltipProvider>
   )
 }
 
@@ -638,8 +658,8 @@ function AlertChannelModal({
 export default function SiteReportsTab({ siteId }: { siteId: string }) {
   const canManage = useCan('reports.manage')
   const { data: site } = useSite(siteId)
-  const { data: reports = [], isLoading: reportsLoading, mutate: mutateReports } = useReportSchedules(siteId)
-  const { data: alerts = [], isLoading: alertsLoading, mutate: mutateAlerts } = useAlertSchedules(siteId)
+  const { data: reports = [], isLoading: reportsLoading, isValidating: reportsValidating, error: reportsError, mutate: mutateReports } = useReportSchedules(siteId)
+  const { data: alerts = [], isLoading: alertsLoading, isValidating: alertsValidating, error: alertsError, mutate: mutateAlerts } = useAlertSchedules(siteId)
 
   // Report modal state
   const [reportModalOpen, setReportModalOpen] = useState(false)
@@ -667,7 +687,7 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
       ]} />
 
       {/* Scheduled Reports */}
-      <div id="section-reports" className="space-y-3">
+      <div id="section-reports" className="scroll-mt-20 space-y-3">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-base font-semibold text-white mb-1">Scheduled Reports</h3>
@@ -680,7 +700,14 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
           )}
         </div>
 
-        {reports.length === 0 ? (
+        {reportsError && reports.length === 0 ? (
+          <SettingsErrorState
+            variant="card"
+            message="We couldn't load your scheduled reports. It may be a temporary problem."
+            onRetry={() => mutateReports()}
+            retrying={reportsValidating}
+          />
+        ) : reports.length === 0 ? (
           <EmptyState
             title="No scheduled reports yet"
             description="Get automated analytics summaries delivered to your inbox on a recurring schedule."
@@ -697,7 +724,7 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
       </div>
 
       {/* Alert Channels */}
-      <div id="section-alerts" className="pt-6 border-t border-neutral-800 space-y-3">
+      <div id="section-alerts" className="scroll-mt-20 pt-6 border-t border-neutral-800 space-y-3">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-base font-semibold text-white mb-1">Alert Channels</h3>
@@ -710,7 +737,14 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
           )}
         </div>
 
-        {alerts.length === 0 ? (
+        {alertsError && alerts.length === 0 ? (
+          <SettingsErrorState
+            variant="card"
+            message="We couldn't load your alert channels. It may be a temporary problem."
+            onRetry={() => mutateAlerts()}
+            retrying={alertsValidating}
+          />
+        ) : alerts.length === 0 ? (
           <EmptyState
             title="No alert channels yet"
             description="Add a channel to get notified when uptime monitors detect downtime."

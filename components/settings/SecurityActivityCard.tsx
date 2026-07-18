@@ -4,8 +4,19 @@ import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/lib/auth/context'
 import { getUserActivity, type AuditLogEntry } from '@/lib/api/activity'
 import { Button, Spinner } from '@ciphera-net/facet'
-import { Shield } from '@phosphor-icons/react'
+import {
+  Shield,
+  SignIn,
+  ShieldWarning,
+  Password,
+  ShieldCheck,
+  ShieldSlash,
+  TrashSimple,
+  type Icon,
+} from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { StatusChip, type ChipTone } from '@/components/settings/StatusChip'
+import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { formatRelativeTime, formatDateTimeFull } from '@/lib/utils/formatDate'
 
 const PAGE_SIZE = 20
@@ -22,25 +33,37 @@ const EVENT_LABELS: Record<string, string> = {
   account_deleted: 'Account deleted',
 }
 
-const EVENT_ICONS: Record<string, string> = {
-  login_success: 'M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9',
-  login_failure: 'M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 13.036h.008v.008H12v-.008z',
-  oauth_login_success: 'M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9',
-  oauth_login_failure: 'M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 13.036h.008v.008H12v-.008z',
-  password_change: 'M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z',
-  '2fa_enabled': 'M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z',
-  '2fa_disabled': 'M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 13.036h.008v.008H12v-.008z',
-  recovery_codes_regenerated: 'M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z',
-  account_deleted: 'M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0',
+const EVENT_ICONS: Record<string, Icon> = {
+  login_success: SignIn,
+  login_failure: ShieldWarning,
+  oauth_login_success: SignIn,
+  oauth_login_failure: ShieldWarning,
+  password_change: Password,
+  '2fa_enabled': ShieldCheck,
+  '2fa_disabled': ShieldSlash,
+  recovery_codes_regenerated: Password,
+  account_deleted: TrashSimple,
 }
 
-function getEventColor(eventType: string, outcome: string): string {
-  if (outcome === 'failure') return 'text-red-400 bg-red-950/30'
-  if (eventType === '2fa_enabled') return 'text-green-400 bg-green-950/30'
-  if (eventType === '2fa_disabled') return 'text-amber-400 bg-amber-950/30'
-  if (eventType === 'account_deleted') return 'text-red-400 bg-red-950/30'
-  if (eventType === 'recovery_codes_regenerated') return 'text-amber-400 bg-amber-950/30'
-  return 'text-neutral-400 bg-neutral-800'
+function getEventTone(eventType: string, outcome: string): ChipTone {
+  if (outcome === 'failure') return 'danger'
+  if (eventType === '2fa_enabled') return 'success'
+  if (eventType === '2fa_disabled') return 'warning'
+  if (eventType === 'account_deleted') return 'danger'
+  if (eventType === 'recovery_codes_regenerated') return 'warning'
+  return 'neutral'
+}
+
+// Icon-box tint, aligned to the StatusChip house palette (bg-{c}-900/30
+// text-{c}-400) so the event glyph reads identically to its status chip.
+const EVENT_BOX_TONE: Record<ChipTone, string> = {
+  neutral: 'bg-neutral-800 text-neutral-400',
+  success: 'bg-green-900/30 text-green-400',
+  info: 'bg-blue-900/30 text-blue-400',
+  warning: 'bg-amber-900/30 text-amber-400',
+  danger: 'bg-red-900/30 text-red-400',
+  brand: 'bg-brand-orange/10 text-brand-orange',
+  purple: 'bg-purple-900/30 text-purple-400',
 }
 
 function getMethodLabel(entry: AuditLogEntry): string | null {
@@ -96,6 +119,7 @@ export default function SecurityActivityCard() {
   const [offset, setOffset] = useState(0)
 
   const fetchActivity = useCallback(async (currentOffset: number, append: boolean) => {
+    setError('')
     try {
       const data = await getUserActivity(PAGE_SIZE, currentOffset)
       const newEntries = data.entries ?? []
@@ -120,6 +144,11 @@ export default function SecurityActivityCard() {
     setLoadingMore(false)
   }
 
+  const handleRetry = useCallback(() => {
+    setLoading(true)
+    fetchActivity(0, false).finally(() => setLoading(false))
+  }, [fetchActivity])
+
   return (
     <div>
       <h2 className="text-base font-semibold text-white mb-1">Security Activity</h2>
@@ -132,9 +161,7 @@ export default function SecurityActivityCard() {
           <Spinner />
         </div>
       ) : error ? (
-        <div className="rounded-none border border-red-900/50 bg-red-950/20 p-6 text-center">
-          <p className="text-red-400">{error}</p>
-        </div>
+        <SettingsErrorState message={error} onRetry={handleRetry} />
       ) : entries.length === 0 ? (
         <div className="bg-card border border-border">
           <EmptyState
@@ -147,8 +174,8 @@ export default function SecurityActivityCard() {
         <div className="space-y-2">
           {entries.map((entry) => {
             const label = EVENT_LABELS[entry.event_type] || entry.event_type.replace(/_/g, ' ')
-            const color = getEventColor(entry.event_type, entry.outcome)
-            const iconPath = EVENT_ICONS[entry.event_type] || EVENT_ICONS['login_success']
+            const tone = getEventTone(entry.event_type, entry.outcome)
+            const EventIcon = EVENT_ICONS[entry.event_type] || Shield
             const method = getMethodLabel(entry)
             const reason = getFailureReason(entry)
             const browser = entry.user_agent ? parseBrowserName(entry.user_agent) : null
@@ -160,10 +187,8 @@ export default function SecurityActivityCard() {
                 key={entry.id}
                 className="bg-card border border-border flex items-start gap-3 rounded-none px-4 py-3"
               >
-                <div className={`flex-shrink-0 w-9 h-9 rounded-none flex items-center justify-center mt-0.5 ${color}`}>
-                  <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d={iconPath} />
-                  </svg>
+                <div className={`flex-shrink-0 w-9 h-9 rounded-none flex items-center justify-center mt-0.5 ${EVENT_BOX_TONE[tone]}`}>
+                  <EventIcon size={18} weight="regular" />
                 </div>
 
                 <div className="flex-1 min-w-0">
@@ -171,16 +196,8 @@ export default function SecurityActivityCard() {
                     <span className="font-medium text-white text-sm">
                       {label}
                     </span>
-                    {method && (
-                      <span className="text-xs px-1.5 py-0.5 rounded-none bg-neutral-800 text-neutral-400">
-                        {method}
-                      </span>
-                    )}
-                    {entry.outcome === 'failure' && (
-                      <span className="text-xs px-1.5 py-0.5 rounded-none bg-red-950/40 text-red-400">
-                        Failed
-                      </span>
-                    )}
+                    {method && <StatusChip tone="neutral">{method}</StatusChip>}
+                    {entry.outcome === 'failure' && <StatusChip tone="danger">Failed</StatusChip>}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-400 flex-wrap">
                     {reason && <span>{reason}</span>}

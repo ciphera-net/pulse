@@ -8,30 +8,20 @@ import { useAuth } from '@/lib/auth/context'
 import { useCan } from '@/lib/auth/permissions'
 import { getOrganizationMembers, removeOrganizationMember, getInviteLinks, type OrganizationMember, type InviteLink } from '@/lib/api/organization'
 import { listRoles, type Role } from '@/lib/api/roles'
-import { getAuthErrorMessage } from '@ciphera-net/facet'
 import CreateInviteLinkModal from './CreateInviteLinkModal'
 import InviteLinksSection from './InviteLinksSection'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { StatusChip } from '@/components/settings/StatusChip'
+import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 
 function RoleBadge({ role, roles }: { role: string; roles: Role[] }) {
-  if (role === 'owner') return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-none bg-brand-orange/10 text-brand-orange">
-      <Crown weight="bold" className="w-3 h-3" /> Owner
-    </span>
-  )
+  if (role === 'owner') {
+    return <StatusChip tone="brand" icon={<Crown weight="bold" className="w-3 h-3" />}>Owner</StatusChip>
+  }
   const matched = roles.find(r => r.slug === role || r.id === role)
   const label = matched?.name ?? role
   const isAdmin = role === 'admin' || matched?.slug === 'admin'
-  if (isAdmin) return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-none bg-blue-900/30 text-blue-400">
-      {label}
-    </span>
-  )
-  return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-none bg-neutral-800 text-neutral-400">
-      {label}
-    </span>
-  )
+  return <StatusChip tone={isAdmin ? 'info' : 'neutral'}>{label}</StatusChip>
 }
 
 export default function WorkspaceMembersTab() {
@@ -39,6 +29,8 @@ export default function WorkspaceMembersTab() {
   const [members, setMembers] = useState<OrganizationMember[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [retrying, setRetrying] = useState(false)
   const [inviteLinks, setInviteLinks] = useState<InviteLink[]>([])
   const [showLinkModal, setShowLinkModal] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState<{ userId: string; email: string } | null>(null)
@@ -47,6 +39,7 @@ export default function WorkspaceMembersTab() {
 
   const loadMembers = async () => {
     if (!user?.org_id) return
+    setError(false)
     try {
       const [membersData, rolesData, linksData] = await Promise.all([
         getOrganizationMembers(user.org_id),
@@ -56,8 +49,18 @@ export default function WorkspaceMembersTab() {
       setMembers(membersData)
       setRoles(rolesData)
       setInviteLinks(linksData)
-    } catch { }
+    } catch {
+      // A real getOrganizationMembers failure must be visible, not rendered as
+      // an empty roster — surface the error state below with a retry.
+      setError(true)
+    }
     finally { setLoading(false) }
+  }
+
+  const handleRetry = async () => {
+    setRetrying(true)
+    await loadMembers()
+    setRetrying(false)
   }
 
   useEffect(() => { loadMembers() }, [user?.org_id])
@@ -75,6 +78,20 @@ export default function WorkspaceMembersTab() {
   }
 
   if (loading) return <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-neutral-500" /></div>
+
+  if (error) return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-base font-semibold text-white mb-1">Members</h3>
+        <p className="text-sm text-neutral-400">Manage who has access to your organization.</p>
+      </div>
+      <SettingsErrorState
+        message="We couldn't load your organization members. It may be a temporary problem."
+        onRetry={handleRetry}
+        retrying={retrying}
+      />
+    </div>
+  )
 
   return (
     <div className="space-y-6">
@@ -114,7 +131,7 @@ export default function WorkspaceMembersTab() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100"
+                  className="h-8 w-8 text-red-400 hover:text-red-300 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity ease-apple"
                   onClick={() => handleRemove(member.user_id, member.user_email || member.user_id)}
                 >
                   <Trash weight="bold" className="w-3.5 h-3.5" />
@@ -135,7 +152,7 @@ export default function WorkspaceMembersTab() {
 
       {user?.org_id && (
         <>
-          <InviteLinksSection orgId={user.org_id} links={inviteLinks} roles={roles} loading={loading} onRevoked={loadMembers} />
+          <InviteLinksSection orgId={user.org_id} links={inviteLinks} roles={roles} onRevoked={loadMembers} />
           <CreateInviteLinkModal orgId={user.org_id} roles={roles} open={showLinkModal} onOpenChange={setShowLinkModal} onCreated={loadMembers} />
         </>
       )}

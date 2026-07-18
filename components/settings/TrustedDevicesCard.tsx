@@ -7,6 +7,8 @@ import { Button, Spinner, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { Laptop } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { StatusChip } from '@/components/settings/StatusChip'
+import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { formatRelativeTime, formatDateTimeFull } from '@/lib/utils/formatDate'
 
 function getDeviceIcon(hint: string): string {
@@ -26,6 +28,7 @@ export default function TrustedDevicesCard() {
   const [confirmDevice, setConfirmDevice] = useState<TrustedDevice | null>(null)
 
   const fetchDevices = useCallback(async () => {
+    setError('')
     try {
       const data = await getUserDevices()
       setDevices(data.devices ?? [])
@@ -39,6 +42,11 @@ export default function TrustedDevicesCard() {
     setLoading(true)
     fetchDevices().finally(() => setLoading(false))
   }, [user, fetchDevices])
+
+  const handleRetry = useCallback(() => {
+    setLoading(true)
+    fetchDevices().finally(() => setLoading(false))
+  }, [fetchDevices])
 
   const handleRemove = async (device: TrustedDevice) => {
     if (device.is_current) {
@@ -70,9 +78,7 @@ export default function TrustedDevicesCard() {
           <Spinner />
         </div>
       ) : error ? (
-        <div className="rounded-none border border-red-900/50 bg-red-950/20 p-6 text-center">
-          <p className="text-red-400">{error}</p>
-        </div>
+        <SettingsErrorState message={error} onRetry={handleRetry} />
       ) : devices.length === 0 ? (
         <div className="bg-card border border-border">
           <EmptyState
@@ -100,9 +106,7 @@ export default function TrustedDevicesCard() {
                     {device.display_hint || 'Unknown device'}
                   </span>
                   {device.is_current && (
-                    <span className="text-xs px-1.5 py-0.5 rounded-none bg-green-950/40 text-green-400 flex-shrink-0">
-                      This device
-                    </span>
+                    <StatusChip tone="success" className="flex-shrink-0">This device</StatusChip>
                   )}
                 </div>
                 <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-400">
@@ -117,7 +121,7 @@ export default function TrustedDevicesCard() {
               </div>
 
               {!device.is_current && (
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity ease-apple">
+                <div className="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity ease-apple">
                   <Button
                     variant="ghost"
                     size="sm"

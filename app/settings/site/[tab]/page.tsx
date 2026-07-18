@@ -5,10 +5,12 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useSites } from '@/lib/swr/sites'
 import { toast } from '@ciphera-net/facet'
-import { CaretDown } from '@phosphor-icons/react'
+import { CaretDown, ShieldWarning, Globe } from '@phosphor-icons/react'
 import { SiteFavicon } from '@/components/sites/SiteFavicon'
 import { useCan, type Permission } from '@/lib/auth/permissions'
-import { ShieldWarning } from '@phosphor-icons/react'
+import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
+import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 const SiteGeneralTab      = dynamic(() => import('@/components/settings/unified/tabs/SiteGeneralTab'))
 const SiteGoalsTab        = dynamic(() => import('@/components/settings/unified/tabs/SiteGoalsTab'))
@@ -24,7 +26,7 @@ const SITE_TAB_PERMISSIONS: Record<string, Permission> = {
   goals: 'goals.manage',
   visibility: 'sites.edit',
   privacy: 'sites.edit',
-  'bot-spam': 'quarantine.manage',
+  'bot-spam': 'quarantine.view',
   'privacy-scan': 'privacy_scan.manage',
   reports: 'reports.manage',
   integrations: 'integrations.manage',
@@ -54,7 +56,7 @@ export default function SiteSettingsTabPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const tab = params.tab as string
-  const { sites } = useSites()
+  const { sites, isLoading: sitesLoading, error: sitesError, mutate: mutateSites } = useSites()
 
   const [activeSiteId, setActiveSiteId] = useState<string | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -114,8 +116,36 @@ export default function SiteSettingsTabPage() {
     if (!TabComponent) router.replace('/settings/site/general')
   }, [TabComponent, router])
 
-  if (sites.length === 0 || !activeSiteId) {
-    return null
+  // Honest fetch states — a failed /sites load previously fell through to the
+  // same blank pane as "still loading" (silent failure); a zero-site org got a
+  // blank content pane inside the full settings chrome with no way forward.
+  if (sitesError) {
+    return (
+      <SettingsErrorState
+        message="We couldn't load your sites. This is usually a temporary problem."
+        onRetry={() => mutateSites()}
+      />
+    )
+  }
+
+  if (sitesLoading && sites.length === 0) {
+    return <SettingsLoadingState />
+  }
+
+  if (sites.length === 0) {
+    return (
+      <EmptyState
+        icon={<Globe className="w-8 h-8 text-neutral-500" weight="regular" />}
+        title="No sites yet"
+        description="Create your first site to configure its analytics, privacy, and sharing settings."
+        action={{ label: 'Create a site', href: '/sites/new' }}
+      />
+    )
+  }
+
+  // Sites loaded but the active id hasn't resolved yet (one render tick).
+  if (!activeSiteId) {
+    return <SettingsLoadingState />
   }
 
   const activeSite = sites.find((s) => s.id === activeSiteId) ?? sites[0]
