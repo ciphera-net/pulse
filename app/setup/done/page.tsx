@@ -4,18 +4,58 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import { WarningCircle } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
 import { useSetup } from '@/lib/setup/context'
 import { completeOnboarding } from '@/lib/api/organization'
 import { getRealtime } from '@/lib/api/stats'
+import { getSubscription } from '@/lib/api/billing'
 import { Button, Spinner, CheckCircleIcon, UsersIcon, BookOpenIcon, FunnelIcon } from '@ciphera-net/facet'
+
+/**
+ * Payment-confirmation state for arrivals from the Mollie checkout
+ * (?from=checkout on the redirect URL). Mollie sends failed/expired/pending
+ * returns to the same redirect URL as successes, so "you're all set" must be
+ * EARNED by observing an active subscription — never assumed.
+ */
+type PaymentState = 'none' | 'confirming' | 'confirmed' | 'unconfirmed'
 
 export default function SetupDonePage() {
   const router = useRouter()
   const { user } = useAuth()
   const { site, completeStep } = useSetup()
   const [dataReceived, setDataReceived] = useState(false)
+  const [payment, setPayment] = useState<PaymentState>('none')
   const cancelledRef = useRef(false)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('from') !== 'checkout') return
+    setPayment('confirming')
+    let cancelled = false
+    ;(async () => {
+      // ~75s: instant methods confirm in seconds; bank redirects can lag.
+      for (let i = 0; i < 25; i++) {
+        try {
+          const sub = await getSubscription()
+          if (cancelled) return
+          if (sub.subscription_status === 'active' || sub.subscription_status === 'trialing') {
+            setPayment('confirmed')
+            // Only now is the param safe to drop — a refresh mid-confirmation
+            // must re-enter this check, not fall through to the success page.
+            window.history.replaceState({}, '', window.location.pathname)
+            return
+          }
+        } catch {
+          // transient — keep polling
+        }
+        await new Promise((r) => setTimeout(r, 3000))
+        if (cancelled) return
+      }
+      if (!cancelled) setPayment('unconfirmed')
+    })()
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
     completeStep('done')
@@ -48,6 +88,48 @@ export default function SetupDonePage() {
 
     return () => { cancelledRef.current = true }
   }, [site])
+
+  if (payment === 'confirming') {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16">
+        <Spinner className="mx-auto mb-5" />
+        <h1 className="text-2xl font-bold tracking-tight text-white">
+          Confirming your payment...
+        </h1>
+        <p className="mt-2 text-sm text-neutral-400 max-w-sm mx-auto">
+          This usually takes a few seconds. Your plan activates automatically
+          as soon as the payment is confirmed.
+        </p>
+      </motion.div>
+    )
+  }
+
+  if (payment === 'unconfirmed') {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-10">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-none bg-amber-900/20 border border-amber-900/40 mb-5">
+          <WarningCircle weight="fill" className="h-8 w-8 text-amber-400" />
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight text-white">
+          We couldn&apos;t confirm your payment
+        </h1>
+        <p className="mt-3 text-sm text-neutral-400 max-w-md mx-auto">
+          If you cancelled or the payment failed, no charge was made — you can
+          simply try again. If you did complete the payment, your plan
+          activates automatically within a few minutes; you won&apos;t be
+          charged twice.
+        </p>
+        <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+          <Button variant="default" className="text-sm" onClick={() => router.push('/setup/plan')}>
+            Try again
+          </Button>
+          <Button variant="secondary" className="text-sm" onClick={() => router.push('/settings/organization/billing')}>
+            View billing
+          </Button>
+        </div>
+      </motion.div>
+    )
+  }
 
   return (
     <motion.div
