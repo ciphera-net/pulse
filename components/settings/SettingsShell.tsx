@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -14,7 +14,8 @@ import { NAV_GROUPS, type Section } from '@/components/settings/nav'
 import {
   MastheadSlotProvider,
   MastheadAction,
-  SaveBarSlotProvider,
+  MastheadSaveSlotProvider,
+  SaveActiveProvider,
 } from '@/components/settings/shell-slots'
 
 // Re-exported so P2 tabs can `import { MastheadAction } from '.../SettingsShell'`.
@@ -59,8 +60,16 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
   // Slot mount nodes — set via callback refs so the portal contexts update
   // once the DOM nodes exist.
   const [mastheadSlot, setMastheadSlot] = useState<HTMLElement | null>(null)
-  const [saveBarSlot, setSaveBarSlot] = useState<HTMLElement | null>(null)
+  const [mastheadSaveSlot, setMastheadSaveSlot] = useState<HTMLElement | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
+
+  // Whether a tab's SettingsSaveBar currently owns the masthead (dirty / saving
+  // / just-saved). Drives CTA precedence + the sticky-while-dirty header row.
+  const [saveActive, setSaveActive] = useState(false)
+  const saveActiveValue = useMemo(
+    () => ({ active: saveActive, register: setSaveActive }),
+    [saveActive],
+  )
 
   // Permission gates — evaluated unconditionally (hooks), one per gated tab.
   const perm: Record<string, boolean> = {
@@ -105,11 +114,22 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
   return (
     <ActiveSiteProvider>
       <MastheadSlotProvider value={mastheadSlot}>
-        <SaveBarSlotProvider value={saveBarSlot}>
+        <MastheadSaveSlotProvider value={mastheadSaveSlot}>
+          <SaveActiveProvider value={saveActiveValue}>
           <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
             {/* ── Masthead — one header per screen (spec §2.1) ── */}
             <header className="mb-8">
-              <div className="flex items-start justify-between gap-4">
+              {/* Title + action row. While a tab has unsaved edits the save
+                  cluster owns the action area and this row goes sticky so Save
+                  stays reachable through a long scroll; opaque bg + a hairline
+                  (backdrop-blur is banned in Facet). The 1px border is reserved
+                  transparent when clean, so toggling never shifts layout. */}
+              <div
+                className={cn(
+                  'flex items-start justify-between gap-4 border-b bg-background',
+                  saveActive ? 'sticky top-0 z-30 border-border' : 'border-transparent',
+                )}
+              >
                 <div className="min-w-0">
                   {masthead && (
                     <p className="mb-2 font-semibold text-micro-label uppercase text-muted-foreground">
@@ -123,8 +143,13 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                     {masthead ? masthead.lede : 'Manage your sites, workspace, and account.'}
                   </p>
                 </div>
-                {/* Masthead action slot — a tab's primary CTA portals in here. */}
-                <div ref={setMastheadSlot} className="flex shrink-0 items-center gap-2" />
+                {/* Masthead action area — a tab's primary CTA OR the buffered-
+                    save cluster (save wins; the CTA yields via MastheadAction).
+                    Contents wrappers so the empty slot adds no phantom gap. */}
+                <div className="flex shrink-0 items-center gap-2">
+                  <span ref={setMastheadSaveSlot} className="contents" />
+                  <span ref={setMastheadSlot} className="contents" />
+                </div>
               </div>
 
               {/* Mobile nav trigger — opens the bottom-sheet. Section pages only. */}
@@ -190,12 +215,9 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                 {/* ── Content column ── */}
                 <div className="relative min-w-0 max-w-3xl flex-1">
                   {section === 'site' && <SiteContextBand />}
-                  <div className="space-y-8 pb-24">{children}</div>
-                  {/* SaveBar docks here — sticky, centered on the content column. */}
-                  <div
-                    ref={setSaveBarSlot}
-                    className="pointer-events-none sticky bottom-6 z-40 flex justify-center"
-                  />
+                  {/* Save now lives in the masthead cluster, so the content
+                      column no longer reserves floating-bar clearance. */}
+                  <div className="space-y-8 pb-8">{children}</div>
                 </div>
               </div>
             ) : (
@@ -281,7 +303,8 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
               </div>
             )}
           </AnimatePresence>
-        </SaveBarSlotProvider>
+          </SaveActiveProvider>
+        </MastheadSaveSlotProvider>
       </MastheadSlotProvider>
     </ActiveSiteProvider>
   )

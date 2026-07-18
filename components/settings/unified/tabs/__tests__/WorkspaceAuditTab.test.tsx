@@ -80,11 +80,25 @@ describe('WorkspaceAuditTab', () => {
     // Scope to the table — the filter <select> carries an <option> of the same label.
     const table = await screen.findByRole('table')
     const chip = within(table).getByText('Created site')
-    // A creation is NOT a success signal — neutral, never the emerald wash.
-    expect(chip.className).not.toMatch(/emerald/)
+    // A creation is NOT a success signal — the chip reads neutral grey, never the
+    // Facet-green success tone (`text-pos` / `bg-pos`).
+    expect(chip.className).toMatch(/text-neutral-300/)
+    expect(chip.className).not.toMatch(/\bpos\b/)
     // Label role reads Geist caps now (mono reserved for code/data), not terminal mono.
     expect(chip.className).toMatch(/font-semibold/)
     expect(chip.className).not.toMatch(/font-mono/)
+  })
+
+  it('truncates a long actor with a title so it cannot force horizontal overflow', async () => {
+    const long = 'a-very-long-service-account-name@really-long-subdomain.example.com'
+    mockGetAuditLog.mockResolvedValue({ entries: [entry({ actor_email: long })], total: 1 })
+    render(<WorkspaceAuditTab />)
+
+    const actor = await screen.findByText(long)
+    // Effective truncation (not the old ineffective bare truncate) + a title so
+    // the full value is still recoverable on hover.
+    expect(actor.className).toMatch(/truncate/)
+    expect(actor).toHaveAttribute('title', long)
   })
 
   it('routes a destructive action to the danger tone', async () => {

@@ -47,7 +47,7 @@ export default function RetentionOverridesTable({ prefs, onChange }: Props) {
                 <TD className="font-medium text-foreground">{c.label}</TD>
                 <TD className="tabular-nums text-muted-foreground">{def} days</TD>
                 <TD>
-                  <div className="w-48">
+                  <div className="w-full min-w-0 max-w-[12rem]">
                     <Select
                       aria-label={`Read retention override for ${c.label}`}
                       size="sm"

@@ -54,7 +54,7 @@ function CopyLinkButton({ url }: { url?: string }) {
             onClick={handleCopy}
           >
             {copied
-              ? <Check weight="bold" className="w-3.5 h-3.5 text-emerald-400" />
+              ? <Check weight="bold" className="w-3.5 h-3.5 text-pos" />
               : <Copy weight="bold" className="w-3.5 h-3.5" />
             }
           </Button>

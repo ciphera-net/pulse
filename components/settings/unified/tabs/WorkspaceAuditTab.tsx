@@ -247,13 +247,15 @@ export default function WorkspaceAuditTab() {
                       <TD className="whitespace-nowrap tabular-nums text-xs text-muted-foreground">
                         {formatDateTimeShort(new Date(entry.occurred_at))}
                       </TD>
-                      <TD className="font-medium text-foreground">
-                        {entry.actor_email || 'System'}
+                      <TD className="min-w-0 font-medium text-foreground">
+                        <span className="block truncate" title={entry.actor_email || 'System'}>
+                          {entry.actor_email || 'System'}
+                        </span>
                       </TD>
-                      <TD>
+                      <TD title={ACTION_LABELS[entry.action] || humanizeAction(entry.action)}>
                         <StatusChip
                           tone={actionTone(entry.action)}
-                          className="font-semibold uppercase text-[11px] tracking-[0.08em]"
+                          className="whitespace-normal font-semibold uppercase text-[11px] tracking-[0.08em]"
                         >
                           {ACTION_LABELS[entry.action] || humanizeAction(entry.action)}
                         </StatusChip>

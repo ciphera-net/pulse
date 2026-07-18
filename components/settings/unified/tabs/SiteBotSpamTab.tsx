@@ -452,8 +452,8 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
               {domains.map(domain => (
                 <TR key={domain.domain}>
                   <TD>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="truncate font-mono text-sm text-foreground">{domain.domain}</span>
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <span className="min-w-0 flex-1 truncate font-mono text-sm text-foreground" title={domain.domain}>{domain.domain}</span>
                       <StatusChip tone={actionTone(domain.action)}>{humanizeAction(domain.action)}</StatusChip>
                       <StatusChip tone={sourceTone(domain.source)}>{humanizeSource(domain.source)}</StatusChip>
                       {domain.override && (
@@ -465,7 +465,7 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
                   <TD numeric className="text-muted-foreground">{Math.round(domain.bot_ratio * 100)}%</TD>
                   {canManage && (
                     <TD>
-                      <div className="flex justify-end gap-1.5">
+                      <div className="flex flex-wrap justify-end gap-1.5">
                         <Button
                           variant="secondary"
                           size="sm"

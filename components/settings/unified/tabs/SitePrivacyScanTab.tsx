@@ -54,10 +54,11 @@ function categoryTone(category: string): ChipTone {
   }
 }
 
-// A privacy score is genuine signal (spec §2.3 permits success/danger for real
-// signal, never decoration): green above 80, amber 50–79, coral below.
+// A privacy score is genuine signal (success/danger for real signal, never
+// decoration): the Facet green `pos` (#3ECF8E) above 80, amber 50–79, coral
+// below — the score numeral and its chip share one tone.
 function scoreBand(score: number): { tone: ChipTone; color: string; grade: string } {
-  if (score >= 80) return { tone: 'success', color: 'text-emerald-400', grade: 'Good' }
+  if (score >= 80) return { tone: 'success', color: 'text-pos', grade: 'Good' }
   if (score >= 50) return { tone: 'warning', color: 'text-amber-400', grade: 'Fair' }
   return { tone: 'danger', color: 'text-destructive', grade: 'Poor' }
 }

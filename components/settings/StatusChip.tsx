@@ -26,23 +26,26 @@ export type ChipTone =
   | 'brand'
   | 'purple'
 
-// Alpha-wash recipe (spec §2.3): `bg-{tone}/10` + toned text, no border. Danger
-// and brand route through the semantic `destructive` / `primary` tokens. Neutral
-// is deliberately a touch stronger than a 10% wash so it stays legible on the
-// #0f0f0f card surface.
+// Alpha-wash recipe: a /15 fill + vivid full-strength toned text, no border.
+// The /10 washes were nearly invisible on the #0f0f0f card, so the semantic
+// tones step up to /15 (a real, legible tint) AND route their text through the
+// brightest token — success = the Facet green `pos` (#3ECF8E), danger = the
+// coral `destructive`/`neg` (#F8836B) — so success/danger/warning read
+// unmistakably at a glance. Neutral stays deliberately quiet (a 6% white wash +
+// soft grey text) so it never competes with a genuine good/bad/live state.
 const TONES: Record<ChipTone, string> = {
   neutral: 'bg-white/[0.06] text-neutral-300',
-  success: 'bg-emerald-500/10 text-emerald-400',
-  info: 'bg-blue-500/10 text-blue-400',
-  warning: 'bg-amber-500/10 text-amber-400',
-  danger: 'bg-destructive/10 text-destructive',
-  brand: 'bg-primary/10 text-primary',
-  purple: 'bg-purple-500/10 text-purple-400',
+  success: 'bg-pos/15 text-pos',
+  info: 'bg-blue-500/15 text-blue-400',
+  warning: 'bg-amber-500/15 text-amber-400',
+  danger: 'bg-destructive/15 text-destructive',
+  brand: 'bg-primary/15 text-primary',
+  purple: 'bg-purple-500/15 text-purple-400',
 }
 
 const DOT_COLOR: Record<ChipTone, string> = {
   neutral: 'bg-neutral-400',
-  success: 'bg-emerald-400',
+  success: 'bg-pos',
   info: 'bg-blue-400',
   warning: 'bg-amber-400',
   danger: 'bg-destructive',
@@ -57,13 +60,16 @@ interface StatusChipProps {
   pulse?: boolean
   /** Optional leading icon (Phosphor node); mutually complementary with `dot`. */
   icon?: React.ReactNode
+  /** Native tooltip — e.g. a "live state" chip surfacing its last-event time. */
+  title?: string
   className?: string
   children: React.ReactNode
 }
 
-export function StatusChip({ tone = 'neutral', dot, pulse, icon, className, children }: StatusChipProps) {
+export function StatusChip({ tone = 'neutral', dot, pulse, icon, title, className, children }: StatusChipProps) {
   return (
     <span
+      title={title}
       className={cn(
         'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-none text-xs font-medium whitespace-nowrap',
         TONES[tone],

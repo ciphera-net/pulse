@@ -1,7 +1,9 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import { Toggle, Banner } from '@ciphera-net/facet'
+import { Check } from '@phosphor-icons/react'
 import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
+import { StatusChip } from '@/components/settings/StatusChip'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { getCategorySettings, updateCategorySettings, type CategorySetting } from '@/lib/api/notifications-webhooks'
@@ -12,10 +14,18 @@ export default function CategoryTogglesSection() {
   const [error, setError] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
   const [saving, setSaving] = useState(false)
+  // Auto-save stays instant here (toggles are direct controls) — but a success
+  // needs a visible confirmation, not just the absence of "Saving…". Mirror the
+  // WorkspaceRolesTab chip pattern: a transient "Saved" chip after each write.
+  const [savedIndicator, setSavedIndicator] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current)
+      if (savedTimer.current) clearTimeout(savedTimer.current)
+    }
   }, [])
 
   const load = () =>
@@ -41,11 +51,15 @@ export default function CategoryTogglesSection() {
     const next = { ...settings, [id]: !settings[id] }
     setSettings(next)
     if (saveTimer.current) clearTimeout(saveTimer.current)
+    if (savedTimer.current) clearTimeout(savedTimer.current)
+    setSavedIndicator(false)
     saveTimer.current = setTimeout(async () => {
       setSaving(true)
       try {
         await updateCategorySettings({ [id]: next[id] })
         setError(null)
+        setSavedIndicator(true)
+        savedTimer.current = setTimeout(() => setSavedIndicator(false), 2000)
       } catch (e) {
         setSettings(prev)
         setError((e as Error).message ?? 'Failed to save')
@@ -66,6 +80,10 @@ export default function CategoryTogglesSection() {
         action={
           saving ? (
             <span className="font-semibold text-micro-label uppercase text-muted-foreground">Saving…</span>
+          ) : savedIndicator ? (
+            <StatusChip tone="success" icon={<Check weight="bold" className="h-3 w-3" />}>
+              Saved
+            </StatusChip>
           ) : undefined
         }
       >

@@ -432,7 +432,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
               <Table aria-label="Page rules">
                 <THead>
                   <TR>
-                    <TH className="w-32">Type</TH>
+                    <TH className="w-24 sm:w-32">Type</TH>
                     <TH>Pattern</TH>
                     <TH>Label</TH>
                     <TH className="w-px" aria-label="Actions" />
@@ -449,7 +449,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
                             { value: 'exclude', label: 'Exclude' },
                             { value: 'group', label: 'Group' },
                           ]}
-                          className="w-32"
+                          className="w-full min-w-0 sm:w-32"
                           aria-label={`Rule ${index + 1} type`}
                         />
                       </TD>
