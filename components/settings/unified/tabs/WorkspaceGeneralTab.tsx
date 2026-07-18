@@ -199,7 +199,7 @@ export default function WorkspaceGeneralTab() {
             ) : (
               <>
                 <div className="space-y-1.5">
-                  <label className="block font-mono text-micro-label uppercase text-muted-foreground">New owner</label>
+                  <label className="block font-semibold text-micro-label uppercase text-muted-foreground">New owner</label>
                   <Select
                     value={transferTargetId}
                     onChange={setTransferTargetId}
@@ -244,7 +244,7 @@ export default function WorkspaceGeneralTab() {
               <li>All notifications and settings</li>
             </ul>
             <div className="space-y-1.5">
-              <label className="block font-mono text-micro-label uppercase text-muted-foreground">Type DELETE to confirm</label>
+              <label className="block font-semibold text-micro-label uppercase text-muted-foreground">Type DELETE to confirm</label>
               <Input
                 value={deleteText}
                 onChange={e => setDeleteText(e.target.value)}

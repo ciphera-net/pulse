@@ -86,7 +86,7 @@ export default function TrustedDevicesCard() {
   return (
     <section className="space-y-4">
       <div className="min-w-0">
-        <p className="font-mono text-micro-label uppercase text-muted-foreground">Trusted devices</p>
+        <p className="font-semibold text-micro-label uppercase text-muted-foreground">Trusted devices</p>
         <p className="mt-1.5 text-sm text-muted-foreground">
           Devices that have signed in to your account. Removing a device means the next sign-in from
           it will trigger a new-device alert.

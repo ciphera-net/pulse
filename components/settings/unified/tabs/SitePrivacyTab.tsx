@@ -400,7 +400,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
           <div className="space-y-3">
             <div className="flex items-end justify-between gap-4">
               <div className="min-w-0">
-                <p className="font-mono text-micro-label uppercase text-muted-foreground">Manual rules</p>
+                <p className="font-semibold text-micro-label uppercase text-muted-foreground">Manual rules</p>
                 <p className="mt-1 text-sm text-muted-foreground">Rules are evaluated top-to-bottom. First matching rule wins.</p>
               </div>
               <Button

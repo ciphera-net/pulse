@@ -71,9 +71,9 @@ function StatTile({ label, value, valueClassName, chip }: {
 }) {
   return (
     <RailGridTile>
-      <p className="font-mono text-micro-label uppercase text-muted-foreground">{label}</p>
+      <p className="font-semibold text-micro-label uppercase text-muted-foreground">{label}</p>
       <div className="mt-2 flex items-baseline gap-2">
-        <span className={cn('font-mono text-3xl font-semibold tabular-nums text-foreground', valueClassName)}>
+        <span className={cn('text-3xl font-semibold tabular-nums text-foreground', valueClassName)}>
           {value}
         </span>
         {chip}
@@ -338,8 +338,8 @@ export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
       {lastScan ? (
         <div className="space-y-6">
           <div className="flex items-center justify-between gap-4">
-            <p className="font-mono text-micro-label uppercase text-muted-foreground">Latest results</p>
-            <p className="font-mono text-xs tabular-nums text-muted-foreground">
+            <p className="font-semibold text-micro-label uppercase text-muted-foreground">Latest results</p>
+            <p className="text-xs tabular-nums text-muted-foreground">
               Scanned {formatRelativeTime(lastScan.scanned_at)}
             </p>
           </div>

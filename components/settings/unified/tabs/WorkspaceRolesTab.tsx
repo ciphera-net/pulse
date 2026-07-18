@@ -108,7 +108,7 @@ function PermissionMatrix({
     <RailGrid minTileWidth={260}>
       {groups.map((group) => (
         <RailGridTile key={group.key} className="space-y-3">
-          <p className="font-mono text-micro-label uppercase text-muted-foreground">
+          <p className="font-semibold text-micro-label uppercase text-muted-foreground">
             {group.label}
           </p>
           <div className="space-y-3">
@@ -497,8 +497,8 @@ function RoleRow({
           )}
         </div>
 
-        {/* Permission count — mono metric */}
-        <span className="hidden font-mono text-xs tabular-nums text-muted-foreground sm:inline shrink-0">
+        {/* Permission count — tabular metric */}
+        <span className="hidden tabular-nums text-xs text-muted-foreground sm:inline shrink-0">
           {permCount}
         </span>
 
@@ -616,7 +616,7 @@ function RoleRow({
                   </div>
                   {siteScoped && !role.is_builtin && sites.length > 0 && (
                     <div className="space-y-2 pl-1">
-                      <p className="font-mono text-micro-label uppercase text-muted-foreground">
+                      <p className="font-semibold text-micro-label uppercase text-muted-foreground">
                         Allowed sites
                       </p>
                       <ul className="space-y-2 max-h-40 overflow-y-auto pr-1">
@@ -667,7 +667,7 @@ function GhostRoleRow() {
         <span className="text-sm font-medium text-foreground">Analyst</span>
         <StatusChip tone="neutral">All sites</StatusChip>
       </div>
-      <span className="hidden font-mono text-xs tabular-nums text-muted-foreground sm:inline">
+      <span className="hidden tabular-nums text-xs text-muted-foreground sm:inline">
         6 permissions
       </span>
       <CaretDown weight="bold" className="w-4 h-4 text-muted-foreground shrink-0" />

@@ -65,7 +65,7 @@ export default function CategoryTogglesSection() {
         description="Disable a category to stop new notifications of that type from being created for everyone in the workspace. Billing and security alerts are always delivered and cannot be disabled."
         action={
           saving ? (
-            <span className="font-mono text-micro-label uppercase text-muted-foreground">Saving…</span>
+            <span className="font-semibold text-micro-label uppercase text-muted-foreground">Saving…</span>
           ) : undefined
         }
       >
@@ -91,10 +91,10 @@ export default function CategoryTogglesSection() {
                 control={
                   critical ? (
                     // Locked category: Toggle rendered ON + disabled (unambiguous,
-                    // control-state orange) with a mono "Always on" micro-label —
+                    // control-state orange) with an "Always on" micro-label cap —
                     // never a gray-off switch, never an orange badge.
                     <div className="flex items-center gap-2.5">
-                      <span className="font-mono text-micro-label uppercase text-muted-foreground">
+                      <span className="font-semibold text-micro-label uppercase text-muted-foreground">
                         Always on
                       </span>
                       <Toggle checked disabled onChange={() => {}} />

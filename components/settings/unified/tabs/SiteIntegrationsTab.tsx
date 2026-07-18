@@ -157,7 +157,7 @@ function DetailRows({ rows }: { rows: { label: string; value: React.ReactNode; m
       <PanelRows>
         {rows.map(row => (
           <PanelRow key={row.label} label={row.label}>
-            <span className={cn('text-sm text-foreground', row.mono && 'font-mono tabular-nums text-muted-foreground')}>
+            <span className={cn('text-sm text-foreground', row.mono && 'tabular-nums text-muted-foreground')}>
               {row.value}
             </span>
           </PanelRow>
@@ -267,7 +267,7 @@ function BunnySetupForm({ siteId, onConnected }: { siteId: string; onConnected: 
   return (
     <div className="space-y-4 border-t border-border px-5 py-4">
       <div className="space-y-1.5">
-        <label htmlFor="bunny-api-key" className="block font-mono text-micro-label uppercase text-muted-foreground">
+        <label htmlFor="bunny-api-key" className="block font-semibold text-micro-label uppercase text-muted-foreground">
           API key
         </label>
         <div className="flex gap-2">
@@ -292,7 +292,7 @@ function BunnySetupForm({ siteId, onConnected }: { siteId: string; onConnected: 
 
       {zonesReady && (
         <div className="space-y-1.5">
-          <label className="block font-mono text-micro-label uppercase text-muted-foreground">Pull zone</label>
+          <label className="block font-semibold text-micro-label uppercase text-muted-foreground">Pull zone</label>
           <Select
             value={String(selectedZone?.id ?? '')}
             onChange={(v) => {

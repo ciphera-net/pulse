@@ -123,7 +123,7 @@ export default function InviteLinksSection({ orgId, links, roles, onRevoked }: P
                     )}
                     <LinkRoleBadge roleId={roleId} roles={roles} />
                   </div>
-                  <div className="mt-1 flex items-center gap-2 font-mono text-xs text-muted-foreground">
+                  <div className="mt-1 flex items-center gap-2 tabular-nums text-xs text-muted-foreground">
                     <span>{usageLabel}</span>
                     {!isExhausted && !isExpired && (
                       <span>· expires {formatDate(expiresAt)}</span>

@@ -44,7 +44,7 @@ export default function DeliveryModesTable({ prefs, onChange }: Props) {
             label={c.label}
             caption={
               isCritical ? (
-                <span className="font-mono text-micro-label uppercase text-muted-foreground">
+                <span className="font-semibold text-micro-label uppercase text-muted-foreground">
                   Always on
                 </span>
               ) : undefined

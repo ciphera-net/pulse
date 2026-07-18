@@ -112,7 +112,7 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   {masthead && (
-                    <p className="mb-2 font-mono text-micro-label uppercase text-muted-foreground">
+                    <p className="mb-2 font-semibold text-micro-label uppercase text-muted-foreground">
                       {masthead.eyebrow}
                     </p>
                   )}
@@ -150,7 +150,7 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                   <div className="grid grid-cols-1 gap-px rounded-none border border-border bg-border">
                     {visibleGroups.map((group) => (
                       <Fragment key={group.section}>
-                        <div className="bg-muted px-4 py-2 font-mono text-micro-label uppercase text-muted-foreground">
+                        <div className="bg-muted px-4 py-2 font-semibold text-micro-label uppercase text-muted-foreground">
                           {group.label}
                         </div>
                         {group.tabs.map((tab) => {
@@ -225,7 +225,7 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                   transition={SPRING}
                 >
                   <div className="sticky top-0 flex items-center justify-between border-b border-border bg-card px-5 py-3">
-                    <span className="font-mono text-micro-label uppercase text-muted-foreground">
+                    <span className="font-semibold text-micro-label uppercase text-muted-foreground">
                       Settings
                     </span>
                     <button
@@ -240,7 +240,7 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                   <div className="divide-y divide-border">
                     {visibleGroups.map((group) => (
                       <div key={group.section}>
-                        <p className="bg-muted px-5 py-2 font-mono text-micro-label uppercase text-muted-foreground">
+                        <p className="bg-muted px-5 py-2 font-semibold text-micro-label uppercase text-muted-foreground">
                           {group.label}
                         </p>
                         {group.tabs.map((tab) => {

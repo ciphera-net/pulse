@@ -140,7 +140,7 @@ export default function MyPreferencesTab() {
       </SettingsPanel>
 
       {saving && (
-        <p className="font-mono text-micro-label uppercase text-muted-foreground" role="status">
+        <p className="font-semibold text-micro-label uppercase text-muted-foreground" role="status">
           Saving…
         </p>
       )}

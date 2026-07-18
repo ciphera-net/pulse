@@ -159,7 +159,7 @@ export default function SecurityActivityCard() {
   return (
     <section className="space-y-4">
       <div className="min-w-0">
-        <p className="font-mono text-micro-label uppercase text-muted-foreground">Security activity</p>
+        <p className="font-semibold text-micro-label uppercase text-muted-foreground">Security activity</p>
         <p className="mt-1.5 text-sm text-muted-foreground">
           Recent security events on your account{totalCount > 0 ? ` (${totalCount})` : ''}.
         </p>
@@ -208,7 +208,7 @@ export default function SecurityActivityCard() {
                       <TR>
                         <TD
                           colSpan={3}
-                          className="bg-muted px-5 py-2 font-mono text-micro-label uppercase text-muted-foreground"
+                          className="bg-muted px-5 py-2 font-semibold text-micro-label uppercase text-muted-foreground"
                         >
                           {dayGroupLabel(created)}
                         </TD>
@@ -232,8 +232,8 @@ export default function SecurityActivityCard() {
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                           {method && (
                             // The repeated "opaque" auth-method chip is demoted to
-                            // inline mono metadata (spec §6) — no lone status pill.
-                            <span className="font-mono uppercase tracking-[0.06em] text-[11px]">
+                            // an inline caps micro-label (spec §6) — no lone status pill.
+                            <span className="font-semibold uppercase tracking-[0.06em] text-[11px]">
                               {method}
                             </span>
                           )}

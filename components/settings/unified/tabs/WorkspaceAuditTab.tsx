@@ -137,7 +137,7 @@ export default function WorkspaceAuditTab() {
       {/* Filters — Facet Select + dark-schemed native date inputs (spec §6) */}
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1.5">
-          <label htmlFor="audit-action" className="block font-mono text-micro-label uppercase text-muted-foreground">
+          <label htmlFor="audit-action" className="block font-semibold text-micro-label uppercase text-muted-foreground">
             Action
           </label>
           <Select
@@ -158,7 +158,7 @@ export default function WorkspaceAuditTab() {
           />
         </div>
         <div className="space-y-1.5">
-          <label htmlFor="audit-from" className="block font-mono text-micro-label uppercase text-muted-foreground">
+          <label htmlFor="audit-from" className="block font-semibold text-micro-label uppercase text-muted-foreground">
             From
           </label>
           <Input
@@ -170,7 +170,7 @@ export default function WorkspaceAuditTab() {
           />
         </div>
         <div className="space-y-1.5">
-          <label htmlFor="audit-to" className="block font-mono text-micro-label uppercase text-muted-foreground">
+          <label htmlFor="audit-to" className="block font-semibold text-micro-label uppercase text-muted-foreground">
             To
           </label>
           <Input
@@ -244,7 +244,7 @@ export default function WorkspaceAuditTab() {
                           </button>
                         )}
                       </TD>
-                      <TD className="whitespace-nowrap font-mono tabular-nums text-xs text-muted-foreground">
+                      <TD className="whitespace-nowrap tabular-nums text-xs text-muted-foreground">
                         {formatDateTimeShort(new Date(entry.occurred_at))}
                       </TD>
                       <TD className="font-medium text-foreground">
@@ -253,7 +253,7 @@ export default function WorkspaceAuditTab() {
                       <TD>
                         <StatusChip
                           tone={actionTone(entry.action)}
-                          className="font-mono uppercase text-[11px] tracking-[0.08em]"
+                          className="font-semibold uppercase text-[11px] tracking-[0.08em]"
                         >
                           {ACTION_LABELS[entry.action] || humanizeAction(entry.action)}
                         </StatusChip>
@@ -268,7 +268,7 @@ export default function WorkspaceAuditTab() {
                                 key={key}
                                 className="flex items-baseline justify-between gap-3 border-b border-border/60 pb-2"
                               >
-                                <dt className="font-mono text-micro-label uppercase text-muted-foreground">
+                                <dt className="font-semibold text-micro-label uppercase text-muted-foreground">
                                   {key.replace(/_/g, ' ')}
                                 </dt>
                                 {/* plan ids surface in payloads (plan_id: "solo") — show the
@@ -291,7 +291,7 @@ export default function WorkspaceAuditTab() {
           </Table>
 
           <div className="flex items-center justify-between gap-4">
-            <span className="font-mono text-xs tabular-nums text-muted-foreground">
+            <span className="text-xs tabular-nums text-muted-foreground">
               {total > 0 ? `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, total)} of ${total}` : 'No entries'}
             </span>
             <div className="flex gap-2">

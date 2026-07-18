@@ -282,7 +282,7 @@ function ChannelPicker({ value, onChange }: { value: string; onChange: (v: strin
 
 function FormLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
   return (
-    <label htmlFor={htmlFor} className="mb-1.5 block font-mono text-micro-label uppercase text-muted-foreground">
+    <label htmlFor={htmlFor} className="mb-1.5 block font-semibold text-micro-label uppercase text-muted-foreground">
       {children}
     </label>
   )
