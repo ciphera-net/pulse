@@ -53,19 +53,30 @@ export function PanelRow({ label, caption, control, htmlFor, className, children
     )
   ) : null
 
+  // Only reserve the value cell when there's actually a value to render — a
+  // control-only row (a lone Toggle) must not stack an empty box on mobile.
+  const hasValue = children !== undefined && children !== null && children !== false
+
   return (
     <div
       className={cn(
-        'grid grid-cols-[minmax(160px,220px)_1fr] items-center gap-x-4 gap-y-2 px-5 py-3.5 md:grid-cols-[220px_1fr_auto]',
+        // Mobile (< md): a single column. The label/caption block, then the value,
+        // then the control each take the full row width beneath one another — the
+        // fixed `220px` label column crushed inputs to ~70px at 390px otherwise.
+        // From md up: the property grid — label | value | right-aligned control.
+        'grid grid-cols-1 gap-x-4 gap-y-2 px-5 py-3.5',
+        'md:grid-cols-[220px_1fr_auto] md:items-center',
         className,
       )}
     >
-      <div className="min-w-0">
+      <div className="min-w-0 md:col-start-1 md:row-start-1">
         {labelNode}
         {caption && <p className="mt-0.5 text-xs text-muted-foreground">{caption}</p>}
       </div>
-      <div className="min-w-0">{children}</div>
-      {control && <div className="md:justify-self-end">{control}</div>}
+      {hasValue && <div className="min-w-0 md:col-start-2 md:row-start-1">{children}</div>}
+      {control && (
+        <div className="md:col-start-3 md:row-start-1 md:justify-self-end">{control}</div>
+      )}
     </div>
   )
 }

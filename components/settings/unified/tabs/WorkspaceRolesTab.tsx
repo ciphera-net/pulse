@@ -799,7 +799,14 @@ export default function WorkspaceRolesTab() {
       ) : (
         <SettingsPanel
           kicker="Roles"
-          description="Built-in roles cannot be deleted. Expand a role to edit its permissions."
+          // Only claim built-in roles can't be deleted when built-in rows are
+          // actually rendered — the API can return custom roles only, and the copy
+          // must not reference rows that aren't there.
+          description={
+            roles.some((r) => r.is_builtin)
+              ? 'Built-in roles cannot be deleted. Expand a role to edit its permissions.'
+              : 'Expand a role to edit its permissions.'
+          }
         >
           <div className="divide-y divide-border">
             {roles.map((role) => (

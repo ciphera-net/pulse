@@ -10,6 +10,7 @@ import { useCan } from '@/lib/auth/permissions'
 import { cn } from '@/lib/utils'
 import { ActiveSiteProvider } from '@/components/settings/active-site'
 import SiteContextBand from '@/components/settings/SiteContextBand'
+import { NAV_GROUPS, type Section } from '@/components/settings/nav'
 import {
   MastheadSlotProvider,
   MastheadAction,
@@ -19,65 +20,12 @@ import {
 // Re-exported so P2 tabs can `import { MastheadAction } from '.../SettingsShell'`.
 export { MastheadAction }
 
-type Section = 'site' | 'organization' | 'account'
-
-interface NavTab {
-  label: string
-  href: string
-  /** Only visible when this permission is held. */
-  requires?: string
-}
-
-interface NavGroup {
-  label: string
-  section: Section
-  tabs: NavTab[]
-}
-
 // ─── Static nav ──────────────────────────────────────────────────────────
-// No per-row icons (spec §2.1). Account gains Notifications (moved from the
-// org sub-router); org Notifications is gated on notification_settings.manage.
-
-const NAV_GROUPS: NavGroup[] = [
-  {
-    label: 'Site',
-    section: 'site',
-    tabs: [
-      { label: 'General', href: '/settings/site/general', requires: 'sites.edit' },
-      { label: 'Goals', href: '/settings/site/goals', requires: 'goals.manage' },
-      { label: 'Visibility', href: '/settings/site/visibility', requires: 'sites.edit' },
-      { label: 'Privacy', href: '/settings/site/privacy', requires: 'sites.edit' },
-      // Bot & Spam is viewable by anyone with quarantine.view; the tab gates
-      // mutations on quarantine.manage internally.
-      { label: 'Bot & Spam', href: '/settings/site/bot-spam', requires: 'quarantine.view' },
-      { label: 'Privacy Scan', href: '/settings/site/privacy-scan', requires: 'privacy_scan.manage' },
-      { label: 'Reports', href: '/settings/site/reports', requires: 'reports.manage' },
-      { label: 'Integrations', href: '/settings/site/integrations', requires: 'integrations.manage' },
-    ],
-  },
-  {
-    label: 'Organization',
-    section: 'organization',
-    tabs: [
-      { label: 'General', href: '/settings/organization/general' },
-      { label: 'Members', href: '/settings/organization/members', requires: 'team.view' },
-      { label: 'Roles & Permissions', href: '/settings/organization/roles', requires: 'roles.manage' },
-      { label: 'Billing', href: '/settings/organization/billing', requires: 'billing.view' },
-      { label: 'Notifications', href: '/settings/organization/notifications', requires: 'notification_settings.manage' },
-      { label: 'Audit Log', href: '/settings/organization/audit', requires: 'audit.view' },
-    ],
-  },
-  {
-    label: 'Account',
-    section: 'account',
-    tabs: [
-      { label: 'Profile', href: '/settings/account/profile' },
-      { label: 'Security', href: '/settings/account/security' },
-      { label: 'Devices', href: '/settings/account/devices' },
-      { label: 'Notifications', href: '/settings/account/notifications' },
-    ],
-  },
-]
+// Groups, tabs, and icon metaphors live in `nav.ts` — shared with the
+// `/settings` landing page. Per-row icons per owner direction 18-07; group
+// band headers stay text-only (deliberate contrast). Account carries
+// Notifications (moved from the org sub-router); org Notifications is gated
+// on notification_settings.manage.
 
 const MASTHEAD: Record<Section, { eyebrow: string; title: string; lede: string }> = {
   site: {
@@ -184,7 +132,7 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                 <button
                   type="button"
                   onClick={() => setSheetOpen(true)}
-                  className="mt-4 flex h-11 w-full items-center justify-between rounded-none border border-input bg-card px-4 text-sm text-foreground md:hidden"
+                  className="mt-4 flex h-11 w-full items-center justify-between rounded-none border border-input bg-card px-4 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:hidden"
                 >
                   <span>
                     <span className="text-muted-foreground">{activeGroup?.label} · </span>
@@ -214,7 +162,7 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                               aria-current={active ? 'page' : undefined}
                               aria-label={`${group.label}: ${tab.label}`}
                               className={cn(
-                                'relative block px-4 py-2.5 text-sm font-medium transition-colors duration-fast ease-apple',
+                                'relative flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium transition-colors duration-fast ease-apple',
                                 active
                                   ? 'bg-accent text-primary'
                                   : 'bg-card text-muted-foreground hover:bg-muted hover:text-foreground',
@@ -226,6 +174,10 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                                   className="absolute inset-y-0 left-0 w-0.5 bg-primary"
                                 />
                               )}
+                              {/* Fixed icon column; color inherits the row (muted →
+                                  foreground on hover, orange when active) so icon +
+                                  text stay one signal. */}
+                              <tab.icon weight="regular" aria-hidden="true" className="h-4 w-4 shrink-0" />
                               {tab.label}
                             </Link>
                           )
@@ -301,7 +253,7 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                               aria-current={active ? 'page' : undefined}
                               aria-label={`${group.label}: ${tab.label}`}
                               className={cn(
-                                'relative flex min-h-[44px] items-center px-5 py-3 text-sm',
+                                'relative flex min-h-[44px] items-center gap-2.5 px-5 py-3 text-sm',
                                 active ? 'text-primary' : 'text-foreground',
                               )}
                             >
@@ -311,6 +263,13 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                                   className="absolute inset-y-0 left-0 w-0.5 bg-primary"
                                 />
                               )}
+                              {/* Muted at rest; the active row's icon inherits the
+                                  orange with the text (one signal, no extra treatment). */}
+                              <tab.icon
+                                weight="regular"
+                                aria-hidden="true"
+                                className={cn('h-4 w-4 shrink-0', !active && 'text-muted-foreground')}
+                              />
                               {tab.label}
                             </Link>
                           )

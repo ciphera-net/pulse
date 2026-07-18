@@ -244,13 +244,15 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
             retrying={botStatsLoading}
           />
         ) : botStats ? (
-          <RailGrid minTileWidth={150}>
+          // Fixed 3-up: an auto-fill track left a trailing empty filler tile
+          // beside the three real stats (§2.2 RailGrid).
+          <RailGrid columns={3}>
             <StatTile value={botStats.total_quarantined ?? 0} label="Quarantined" />
             <StatTile value={botStats.last_24h ?? 0} label="Last 24h" />
             <StatTile value={Object.keys(botStats.by_reason || {}).length} label="Detection types" />
           </RailGrid>
         ) : (
-          <RailGrid minTileWidth={150}>
+          <RailGrid columns={3}>
             {[0, 1, 2].map(i => (
               <RailGridTile key={i}>
                 <div className="h-7 w-12 animate-pulse rounded-none bg-input" />

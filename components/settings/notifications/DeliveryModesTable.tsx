@@ -52,6 +52,10 @@ export default function DeliveryModesTable({ prefs, onChange }: Props) {
           >
             <SegmentedControl
               aria-label={`Delivery for ${c.label}`}
+              // Fills the stacked row on mobile (segments distribute evenly so all
+              // four stay reachable — the inline track clipped at the viewport edge
+              // inside the crushed grid before); reverts to content width from md up.
+              className="w-full [&>button]:flex-1 md:w-auto md:[&>button]:flex-none"
               options={options}
               value={current ?? ''}
               onChange={v =>

@@ -75,6 +75,11 @@ function formatPayloadValue(value: unknown): string {
 
 const PAGE_SIZE = 20
 
+// Sentinel for the "no action filter" state. An empty string blanks a Radix
+// Select trigger, so we select this explicitly and translate it to '' (= no
+// `action` param) at the call site.
+const ACTION_FILTER_ALL = 'all'
+
 export default function WorkspaceAuditTab() {
   const { user } = useAuth()
   const [entries, setEntries] = useState<AuditLogEntry[]>([])
@@ -138,11 +143,16 @@ export default function WorkspaceAuditTab() {
           <Select
             id="audit-action"
             aria-label="Filter by action"
-            value={actionFilter}
-            onChange={(val) => { setActionFilter(val); setPage(1) }}
+            // Radix Select renders a blank trigger for an empty value (it reads as
+            // "no selection"), so the unfiltered state carries an explicit `all`
+            // sentinel — mapped back to '' for the API — and a placeholder as a
+            // belt-and-suspenders fallback.
+            value={actionFilter || ACTION_FILTER_ALL}
+            onChange={(val) => { setActionFilter(val === ACTION_FILTER_ALL ? '' : val); setPage(1) }}
+            placeholder="All actions"
             className="w-[13rem]"
             options={[
-              { value: '', label: 'All actions' },
+              { value: ACTION_FILTER_ALL, label: 'All actions' },
               ...Object.entries(ACTION_LABELS).map(([value, label]) => ({ value, label })),
             ]}
           />
