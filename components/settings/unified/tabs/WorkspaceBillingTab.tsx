@@ -258,19 +258,25 @@ export default function WorkspaceBillingTab() {
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-base font-semibold text-foreground">{planLabel} Plan</h3>
+            {/* A running plan is a genuinely good, live state — success (green).
+                A trial is running too, so it reads success with its own label. */}
             {isActive && !isTrialing && !subscription.cancel_at_period_end && (
-              <StatusChip tone="success">Active</StatusChip>
+              <StatusChip tone="success" dot>Active</StatusChip>
             )}
             {isTrialing && !subscription.cancel_at_period_end && (
-              <StatusChip tone="info">Trial</StatusChip>
+              <StatusChip tone="success" dot>Trial</StatusChip>
             )}
+            {/* Cancelled is a settled, user-chosen end state (now on the free
+                tier) — not trouble, so neutral, never coral. */}
             {subscription.subscription_status === 'canceled' && (
-              <StatusChip tone="danger">Cancelled</StatusChip>
+              <StatusChip tone="neutral">Cancelled</StatusChip>
             )}
             {subscription.cancel_at_period_end && subscription.subscription_status !== 'canceled' && (
               <StatusChip tone="warning">Cancelling</StatusChip>
             )}
-            {isPastDue && <StatusChip tone="warning">Past due</StatusChip>}
+            {/* Past due IS genuine trouble — the plan is at risk — so it earns the
+                coral danger tone (coral is reserved for real problems). */}
+            {isPastDue && <StatusChip tone="danger" dot>Past due</StatusChip>}
           </div>
           {!canManageBilling && (
             <p className="text-xs text-muted-foreground">Only the workspace owner can modify billing.</p>
@@ -684,10 +690,13 @@ export default function WorkspaceBillingTab() {
                     <TD>
                       {isCreditNote ? (
                         <StatusChip tone="info">Credit Note</StatusChip>
+                      ) : invoice.status === 'sent' ? (
+                        <StatusChip tone="success">Paid</StatusChip>
+                      ) : invoice.status === 'failed' ? (
+                        // A failed charge is real trouble — coral, not a quiet grey.
+                        <StatusChip tone="danger">Failed</StatusChip>
                       ) : (
-                        <StatusChip tone={invoice.status === 'sent' ? 'success' : 'neutral'}>
-                          {invoice.status === 'sent' ? 'Paid' : invoice.status}
-                        </StatusChip>
+                        <StatusChip tone="neutral">{invoice.status}</StatusChip>
                       )}
                     </TD>
                     <TD>

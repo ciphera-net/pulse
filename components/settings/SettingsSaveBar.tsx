@@ -88,7 +88,7 @@ export default function SettingsSaveBar({ isDirty, onSave, onDiscard, saveLabel 
   const cluster = (
     <div className="flex items-center gap-2">
       {saved ? (
-        <span className="flex items-center gap-1.5 whitespace-nowrap text-sm text-emerald-400">
+        <span className="flex items-center gap-1.5 whitespace-nowrap text-sm text-pos">
           <Check className="h-4 w-4" weight="bold" />
           Saved
         </span>

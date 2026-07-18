@@ -133,7 +133,7 @@ export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange
         /* Result state */
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-none bg-emerald-500/10 text-emerald-400">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-none bg-pos/15 text-pos">
               <Check weight="bold" className="h-5 w-5" />
             </span>
             <div className="min-w-0">
@@ -148,7 +148,7 @@ export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange
               className="flex-shrink-0 rounded-none p-1.5 text-muted-foreground transition-colors duration-fast ease-apple hover:bg-accent hover:text-foreground"
             >
               {copied
-                ? <Check weight="bold" className="w-4 h-4 text-emerald-400" />
+                ? <Check weight="bold" className="w-4 h-4 text-pos" />
                 : <Copy weight="bold" className="w-4 h-4" />
               }
             </button>

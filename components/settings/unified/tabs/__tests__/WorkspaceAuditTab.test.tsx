@@ -80,8 +80,10 @@ describe('WorkspaceAuditTab', () => {
     // Scope to the table — the filter <select> carries an <option> of the same label.
     const table = await screen.findByRole('table')
     const chip = within(table).getByText('Created site')
-    // A creation is NOT a success signal — neutral, never the emerald wash.
-    expect(chip.className).not.toMatch(/emerald/)
+    // A creation is NOT a success signal — the chip reads neutral grey, never the
+    // Facet-green success tone (`text-pos` / `bg-pos`).
+    expect(chip.className).toMatch(/text-neutral-300/)
+    expect(chip.className).not.toMatch(/\bpos\b/)
     // Label role reads Geist caps now (mono reserved for code/data), not terminal mono.
     expect(chip.className).toMatch(/font-semibold/)
     expect(chip.className).not.toMatch(/font-mono/)
