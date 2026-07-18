@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { SPRING, TIMING } from '@/lib/motion'
 import Select from '@/components/ui/select'
@@ -13,11 +12,16 @@ import { calculateVAT, getPrices, type VATResult } from '@/lib/api/billing'
 interface PlanSummaryProps {
   plan: string
   interval: string
+  /** Interval toggle is parent-owned state — the same value PaymentForm submits. */
+  onIntervalChange: (interval: 'month' | 'year') => void
   limit: number
   country: string
   vatId: string
   onCountryChange: (country: string) => void
   onVatIdChange: (vatId: string) => void
+  /** Lifted so PaymentForm can refuse to submit an unverified, edited VAT ID. */
+  verifiedVatId: string
+  onVerifiedVatIdChange: (v: string) => void
   businessName: string
   onBusinessNameChange: (v: string) => void
   billingEmail: string
@@ -28,39 +32,39 @@ interface PlanSummaryProps {
   onCityChange: (v: string) => void
   postalCode: string
   onPostalCodeChange: (v: string) => void
+  /** Field keys PaymentForm flagged as missing on the last submit attempt. */
+  missingFields?: string[]
 }
 
 const inputClass =
   'w-full rounded-none border border-neutral-700 bg-neutral-800/50 px-3 py-2.5 text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-brand-orange focus:border-brand-orange transition-colors ease-apple'
+
+const inputErrorClass =
+  'w-full rounded-none border border-red-500/60 bg-neutral-800/50 px-3 py-2.5 text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-brand-orange focus:border-brand-orange transition-colors ease-apple'
 
 /** Convert VIES ALL-CAPS text to title case (e.g. "SA SODIMAS" → "Sa Sodimas") */
 function toTitleCase(s: string) {
   return s.replace(/\S+/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
 }
 
-export default function PlanSummary({ plan, interval, limit, country, vatId, onCountryChange, onVatIdChange, businessName, onBusinessNameChange, billingEmail, onBillingEmailChange, address, onAddressChange, city, onCityChange, postalCode, onPostalCodeChange }: PlanSummaryProps) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const [currentInterval, setCurrentInterval] = useState(interval)
+export default function PlanSummary({ plan, interval, onIntervalChange, limit, country, vatId, onCountryChange, onVatIdChange, verifiedVatId, onVerifiedVatIdChange, businessName, onBusinessNameChange, billingEmail, onBillingEmailChange, address, onAddressChange, city, onCityChange, postalCode, onPostalCodeChange, missingFields = [] }: PlanSummaryProps) {
   const [vatResult, setVatResult] = useState<VATResult | null>(null)
   const [vatLoading, setVatLoading] = useState(false)
-  const [verifiedVatId, setVerifiedVatId] = useState('')
+  // Set when the VAT-calculation request itself failed (network/backend) — the
+  // silent fallback used to be indistinguishable from "no country selected".
+  const [vatFailed, setVatFailed] = useState(false)
+  const [vatRetryNonce, setVatRetryNonce] = useState(0)
 
   const { data: prices } = useSWR('plan-prices', getPrices)
   const monthlyCents = prices?.[plan]?.[limit] || 0
-  const isYearly = currentInterval === 'year'
+  const isYearly = interval === 'year'
   const baseDisplay = isYearly ? (monthlyCents * 11) / 100 : monthlyCents / 100
 
   const tierLabel =
     TRAFFIC_TIERS.find((t) => t.value === limit)?.label ||
     `${(limit / 1000).toFixed(0)}k`
 
-  const handleIntervalToggle = (newInterval: string) => {
-    setCurrentInterval(newInterval)
-    const params = new URLSearchParams(searchParams.toString())
-    params.set('interval', newInterval)
-    router.replace(`/checkout?${params.toString()}`, { scroll: false })
-  }
+  const fieldClass = (key: string) => (missingFields.includes(key) ? inputErrorClass : inputClass)
 
   // Editing the VAT ID after a successful verification invalidates the verified
   // state. This is pure state normalization — it does NOT fetch. Clearing
@@ -68,9 +72,9 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
   // (21%) VAT ID, so there is exactly one fetch path.
   useEffect(() => {
     if (verifiedVatId !== '' && vatId !== verifiedVatId) {
-      setVerifiedVatId('')
+      onVerifiedVatIdChange('')
     }
-  }, [vatId, verifiedVatId])
+  }, [vatId, verifiedVatId, onVerifiedVatIdChange])
 
   // Single, well-ordered VAT fetch path. Two guards prevent an out-of-order
   // response from clobbering a newer one:
@@ -80,14 +84,15 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
   //      network error), only the latest request's result is applied.
   const vatSeq = useRef(0)
   useEffect(() => {
-    if (!country) { setVatResult(null); setVatLoading(false); return }
+    if (!country) { setVatResult(null); setVatLoading(false); setVatFailed(false); return }
 
     const seq = ++vatSeq.current
     const controller = new AbortController()
     setVatLoading(true)
+    setVatFailed(false)
 
     calculateVAT(
-      { plan_id: plan, interval: currentInterval, limit, country, vat_id: verifiedVatId || undefined },
+      { plan_id: plan, interval, limit, country, vat_id: verifiedVatId || undefined },
       controller.signal,
     )
       .then((result) => {
@@ -99,14 +104,15 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
         if (seq !== vatSeq.current) return // stale failure — ignore
         setVatResult(null)
         setVatLoading(false)
+        setVatFailed(true)
       })
 
     return () => controller.abort()
-  }, [country, currentInterval, verifiedVatId, plan, limit])
+  }, [country, interval, verifiedVatId, plan, limit, vatRetryNonce])
 
   const handleVerifyVatId = () => {
     if (!vatId || !country) return
-    setVerifiedVatId(vatId)
+    onVerifiedVatIdChange(vatId)
     // useEffect on verifiedVatId will trigger the fetch
   }
 
@@ -125,12 +131,12 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
             <button
               key={iv}
               type="button"
-              onClick={() => handleIntervalToggle(iv)}
+              onClick={() => onIntervalChange(iv)}
               className={`relative px-3.5 py-1.5 text-sm font-medium rounded-none transition-colors duration-base ${
-                currentInterval === iv ? 'text-white' : 'text-neutral-400 hover:text-white'
+                interval === iv ? 'text-white' : 'text-neutral-400 hover:text-white'
               } ease-apple`}
             >
-              {currentInterval === iv && (
+              {interval === iv && (
                 <motion.div
                   layoutId="checkout-interval-bg"
                   className="absolute inset-0 bg-neutral-700 rounded-none"
@@ -146,59 +152,69 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
       {/* Billing details */}
       <div className="space-y-3">
         <div>
-          <label className="block text-sm font-medium text-neutral-300 mb-1.5">Business name</label>
+          <label htmlFor="billing-business-name" className="block text-sm font-medium text-neutral-300 mb-1.5">Business name</label>
           <input
+            id="billing-business-name"
             type="text"
             value={businessName}
             onChange={(e) => onBusinessNameChange(e.target.value)}
             placeholder="Ciphera BV"
             autoComplete="organization"
-            className={inputClass}
+            aria-invalid={missingFields.includes('business_name') || undefined}
+            className={fieldClass('business_name')}
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-neutral-300 mb-1.5">Billing email</label>
+          <label htmlFor="billing-email" className="block text-sm font-medium text-neutral-300 mb-1.5">Billing email</label>
           <input
+            id="billing-email"
             type="email"
             value={billingEmail}
             onChange={(e) => onBillingEmailChange(e.target.value)}
             placeholder="billing@example.com"
             autoComplete="off"
-            className={inputClass}
+            aria-invalid={missingFields.includes('billing_email') || undefined}
+            className={fieldClass('billing_email')}
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-neutral-300 mb-1.5">Address</label>
+          <label htmlFor="billing-address" className="block text-sm font-medium text-neutral-300 mb-1.5">Address</label>
           <input
+            id="billing-address"
             type="text"
             value={address}
             onChange={(e) => onAddressChange(e.target.value)}
             placeholder="Kerkstraat 1"
             autoComplete="street-address"
-            className={inputClass}
+            aria-invalid={missingFields.includes('address') || undefined}
+            className={fieldClass('address')}
           />
         </div>
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-neutral-300 mb-1.5">City</label>
+            <label htmlFor="billing-city" className="block text-sm font-medium text-neutral-300 mb-1.5">City</label>
             <input
+              id="billing-city"
               type="text"
               value={city}
               onChange={(e) => onCityChange(e.target.value)}
               placeholder="Brussels"
               autoComplete="address-level2"
-              className={inputClass}
+              aria-invalid={missingFields.includes('city') || undefined}
+              className={fieldClass('city')}
             />
           </div>
           <div className="w-32">
-            <label className="block text-sm font-medium text-neutral-300 mb-1.5">Postal code</label>
+            <label htmlFor="billing-postal-code" className="block text-sm font-medium text-neutral-300 mb-1.5">Postal code</label>
             <input
+              id="billing-postal-code"
               type="text"
               value={postalCode}
               onChange={(e) => onPostalCodeChange(e.target.value)}
               placeholder="1000"
               autoComplete="postal-code"
-              className={inputClass}
+              aria-invalid={missingFields.includes('postal_code') || undefined}
+              className={fieldClass('postal_code')}
             />
           </div>
         </div>
@@ -207,12 +223,14 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
       {/* Country */}
       <div className="relative z-10">
         <label className="block text-sm font-medium text-neutral-300 mb-1.5">Country</label>
-        <Select
-          value={country}
-          onChange={onCountryChange}
-          variant="input"
-          options={[{ value: '', label: 'Select country' }, ...COUNTRY_OPTIONS.map((c) => ({ value: c.value, label: c.label }))]}
-        />
+        <div id="billing-country" className={missingFields.includes('country') ? 'ring-1 ring-red-500/60' : ''}>
+          <Select
+            value={country}
+            onChange={onCountryChange}
+            variant="input"
+            options={[{ value: '', label: 'Select country' }, ...COUNTRY_OPTIONS.map((c) => ({ value: c.value, label: c.label }))]}
+          />
+        </div>
       </div>
 
       {/* VAT ID */}
@@ -273,6 +291,21 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
         </AnimatePresence>
       </div>
 
+      {/* VAT calculation failure — never fall back silently to the excl.-VAT
+          display, which is indistinguishable from "no country selected". */}
+      {vatFailed && (
+        <div className="flex items-start gap-2 rounded-none bg-amber-900/20 border border-amber-900/40 px-3 py-2 text-xs text-amber-300">
+          <span className="flex-1">VAT calculation failed — the totals below exclude VAT.</span>
+          <button
+            type="button"
+            onClick={() => setVatRetryNonce((n) => n + 1)}
+            className="underline font-medium text-amber-200 hover:text-white shrink-0"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Price breakdown */}
       <div className={`pt-2 border-t border-neutral-800 transition-opacity duration-base ${vatLoading ? 'opacity-50' : 'opacity-100'} ease-apple`}>
         {vatResult ? (
@@ -308,7 +341,7 @@ export default function PlanSummary({ plan, interval, limit, country, vatId, onC
             </div>
             <div className="flex justify-between text-neutral-500 text-xs">
               <span>VAT</span>
-              <span>{vatLoading ? 'Calculating...' : 'Select country'}</span>
+              <span>{vatLoading ? 'Calculating...' : vatFailed ? 'Unavailable' : 'Select country'}</span>
             </div>
             <div className="flex justify-between font-semibold text-white pt-1 border-t border-neutral-800">
               <span>Total {isYearly ? '/year' : '/mo'} <span className="font-normal text-neutral-500 text-xs">excl. VAT</span></span>
