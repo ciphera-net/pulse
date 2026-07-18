@@ -383,9 +383,11 @@ function SwitchPlanContent() {
                         <span className="text-white">{formatCents(estimate.new_plan_cost ?? 0)}</span>
                       </div>
                     </div>
-                    <p className="text-xs text-neutral-500 pt-1">
-                      Refund will be returned to your original payment method.
-                    </p>
+                    {(estimate.refund_amount ?? 0) > 0 && (
+                      <p className="text-xs text-neutral-500 pt-1">
+                        Refund will be returned to your original payment method.
+                      </p>
+                    )}
                   </div>
                 )}
 
