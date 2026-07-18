@@ -114,7 +114,9 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
       <>
         {showOfflineBar && <OfflineBanner isOnline={isOnline} />}
         <DashboardShell siteId={null}>{children}</DashboardShell>
-        <GettingStartedChecklist />
+        {/* Onboarding widget is suppressed on /settings/* (spec §2.4): it clipped
+            the Create-role / Delete buttons there. It still shows everywhere else. */}
+        {!pathname.startsWith('/settings') && <GettingStartedChecklist />}
       </>
     )
   }
@@ -125,8 +127,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   }
 
   // Setup wizard: own layout with stepper — no app shell
-  // Org-settings: redirect shim that opens unified settings modal — no shell needed
-  if (isAuthenticated && (pathname.startsWith('/setup') || pathname.startsWith('/org-settings') || pathname.startsWith('/switch') || pathname.startsWith('/join'))) {
+  if (isAuthenticated && (pathname.startsWith('/setup') || pathname.startsWith('/switch') || pathname.startsWith('/join'))) {
     return <>{children}</>
   }
 

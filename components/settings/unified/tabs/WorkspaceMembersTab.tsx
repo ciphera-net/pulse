@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Button, toast, Spinner } from '@ciphera-net/facet'
-import { Plus, Trash, Crown, UserCircle, Users } from '@phosphor-icons/react'
-import { EmptyState } from '@/components/ui/EmptyState'
+import { Button, toast } from '@ciphera-net/facet'
+import { Plus, Trash, Crown, User, Users } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
 import { useCan } from '@/lib/auth/permissions'
 import { getOrganizationMembers, removeOrganizationMember, getInviteLinks, type OrganizationMember, type InviteLink } from '@/lib/api/organization'
@@ -13,15 +12,31 @@ import InviteLinksSection from './InviteLinksSection'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
+import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
+import { SettingsPanel, PanelRows, EmptyRow } from '@/components/settings/panels'
+import { MastheadAction } from '@/components/settings/shell-slots'
+import { formatDate } from '@/lib/utils/formatDate'
 
 function RoleBadge({ role, roles }: { role: string; roles: Role[] }) {
+  // Owner keeps the Crown as its signal but stays NEUTRAL — orange is reserved
+  // for the page's one CTA (spec §2.3), so a role chip never spends it.
   if (role === 'owner') {
-    return <StatusChip tone="brand" icon={<Crown weight="bold" className="w-3 h-3" />}>Owner</StatusChip>
+    return <StatusChip tone="neutral" icon={<Crown weight="bold" className="w-3 h-3" />}>Owner</StatusChip>
   }
   const matched = roles.find(r => r.slug === role || r.id === role)
   const label = matched?.name ?? role
   const isAdmin = role === 'admin' || matched?.slug === 'admin'
   return <StatusChip tone={isAdmin ? 'info' : 'neutral'}>{label}</StatusChip>
+}
+
+function MemberAvatar({ monogram }: { monogram?: string }) {
+  return (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-none bg-accent text-muted-foreground">
+      {monogram
+        ? <span className="font-mono text-sm">{monogram}</span>
+        : <User weight="regular" className="h-5 w-5" />}
+    </span>
+  )
 }
 
 export default function WorkspaceMembersTab() {
@@ -77,78 +92,90 @@ export default function WorkspaceMembersTab() {
     loadMembers()
   }
 
-  if (loading) return <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-neutral-500" /></div>
+  if (loading) return <SettingsLoadingState rows={4} />
 
   if (error) return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-base font-semibold text-white mb-1">Members</h3>
-        <p className="text-sm text-neutral-400">Manage who has access to your organization.</p>
-      </div>
-      <SettingsErrorState
-        message="We couldn't load your organization members. It may be a temporary problem."
-        onRetry={handleRetry}
-        retrying={retrying}
-      />
-    </div>
+    <SettingsErrorState
+      message="We couldn't load your organization members. It may be a temporary problem."
+      onRetry={handleRetry}
+      retrying={retrying}
+    />
   )
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-base font-semibold text-white mb-1">Members</h3>
-          <p className="text-sm text-neutral-400">{members.length} member{members.length !== 1 ? 's' : ''} in your organization.</p>
-        </div>
-        {canManage && (
-          <Button onClick={() => setShowLinkModal(true)} variant="default" className="text-sm gap-1.5">
-            <Plus weight="bold" className="w-3.5 h-3.5" /> Invite
+    <div className="space-y-8">
+      {/* The tab's one orange: the primary CTA, portaled into the masthead. */}
+      {canManage && (
+        <MastheadAction>
+          <Button onClick={() => setShowLinkModal(true)} variant="default" className="gap-1.5">
+            <Plus weight="bold" className="h-4 w-4" /> Invite member
           </Button>
-        )}
-      </div>
+        </MastheadAction>
+      )}
 
-      {/* Members list */}
-      <div className="rounded-none border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
-        {members.map(member => (
-          <div key={member.user_id} className="flex items-center justify-between px-4 py-3 group">
-            <div className="flex items-center gap-3">
-              <UserCircle weight="fill" className="w-8 h-8 text-neutral-600" />
-              <div>
-                {/* * Zero-PII backend: most members have no stored email/name. Show
-                 * "You" for the signed-in member, the invite email when the backend
-                 * has one (pending invites), and a short member id otherwise —
-                 * never a raw 36-char UUID as a display name. */}
-                <p className="text-sm font-medium text-white">
-                  {member.user_id === user?.id
-                    ? 'You'
-                    : member.user_email || `Member ${member.user_id.slice(0, 8)}`}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <RoleBadge role={member.role} roles={roles} />
-              {canManage && member.role !== 'owner' && member.user_id !== user?.id && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-red-400 hover:text-red-300 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity ease-apple"
-                  onClick={() => handleRemove(member.user_id, member.user_email || member.user_id)}
-                >
-                  <Trash weight="bold" className="w-3.5 h-3.5" />
-                </Button>
-              )}
-            </div>
-          </div>
-        ))}
-        {members.length === 0 && (
-          <EmptyState
-            title="No members found"
-            description="Invite your team to collaborate on analytics and settings."
+      {/* Roster — one ruled panel (spec §6). */}
+      <SettingsPanel
+        kicker="Members"
+        description={`${members.length} member${members.length !== 1 ? 's' : ''} in your organization`}
+      >
+        {members.length === 0 ? (
+          <EmptyRow
             icon={<Users weight="regular" />}
-            className="py-8"
+            title="No members yet"
+            caption="Invite your team to collaborate on analytics and settings."
           />
+        ) : (
+          <PanelRows>
+            {members.map(member => {
+              const isYou = member.user_id === user?.id
+              /* * Zero-PII backend: most members have no stored email/name. Show
+               * "You" for the signed-in member, the invite email when the backend
+               * has one (pending invites), and a short member id otherwise —
+               * never a raw 36-char UUID as a display name. */
+              const displayName = isYou
+                ? 'You'
+                : (member.user_email || `Member ${member.user_id.slice(0, 8)}`)
+              const monogram = (isYou ? user?.email : member.user_email)?.trim().charAt(0).toUpperCase() || undefined
+              const canRemove = canManage && member.role !== 'owner' && !isYou
+              const joined = member.joined_at ? formatDate(new Date(member.joined_at)) : null
+
+              return (
+                <div key={member.user_id} className="flex items-center gap-4 px-5 py-3.5">
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <MemberAvatar monogram={monogram} />
+                    <p className="truncate text-sm font-medium text-foreground">{displayName}</p>
+                  </div>
+                  {joined && (
+                    <span
+                      title={`Joined ${joined}`}
+                      className="hidden shrink-0 font-mono text-xs tabular-nums text-muted-foreground sm:inline"
+                    >
+                      {joined}
+                    </span>
+                  )}
+                  <RoleBadge role={member.role} roles={roles} />
+                  {/* Reserve the action column so rows align whether or not a
+                   * member is removable — actions are ALWAYS visible (B12), never
+                   * a hover-only reveal. */}
+                  <div className="flex w-8 shrink-0 justify-end">
+                    {canRemove && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Remove ${displayName}`}
+                        className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => handleRemove(member.user_id, member.user_email || member.user_id)}
+                      >
+                        <Trash weight="bold" className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </PanelRows>
         )}
-      </div>
+      </SettingsPanel>
 
       {user?.org_id && (
         <>

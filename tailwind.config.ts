@@ -40,7 +40,10 @@ const config: Config = {
       },
       fontFamily: {
         sans: ['var(--font-geist-sans)', 'Geist', 'system-ui', 'sans-serif'],
-        display: ['var(--font-space-grotesk)', '"Space Grotesk"', 'sans-serif'],
+        // * One-family system (Space Grotesk retired 18-07-2026): `display`
+        // * aliases the Geist sans stack so existing font-display consumers keep
+        // * working — a future display face is a facet-tokens change, not a font load.
+        display: ['var(--font-geist-sans)', 'Geist', 'system-ui', 'sans-serif'],
         mono: ['var(--font-jetbrains-mono)', '"JetBrains Mono"', 'monospace'],
       },
       colors: {
@@ -65,6 +68,7 @@ const config: Config = {
         border: 'rgb(var(--border) / <alpha-value>)',
         input: 'rgb(var(--input) / <alpha-value>)',
         ring: 'rgb(var(--ring) / <alpha-value>)',
+        destructive: 'rgb(var(--destructive) / <alpha-value>)',
         muted: {
           DEFAULT: 'rgb(var(--muted) / <alpha-value>)',
           foreground: 'rgb(var(--muted-foreground) / <alpha-value>)',
@@ -87,7 +91,7 @@ const config: Config = {
         'title-3': ['14px', { lineHeight: '1.4' }],
         body: ['14px', { lineHeight: '1.5' }],
         caption: ['12px', { lineHeight: '1.4' }],
-        'micro-label': ['11px', { lineHeight: '1', letterSpacing: '0.06em' }],
+        'micro-label': ['11px', { lineHeight: '1', letterSpacing: '0.08em' }],
       },
     },
   },

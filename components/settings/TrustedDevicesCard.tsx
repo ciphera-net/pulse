@@ -3,20 +3,37 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/lib/auth/context'
 import { getUserDevices, removeDevice, type TrustedDevice } from '@/lib/api/devices'
-import { Button, Spinner, toast, getAuthErrorMessage } from '@ciphera-net/facet'
-import { Laptop } from '@phosphor-icons/react'
-import { EmptyState } from '@/components/ui/EmptyState'
+import {
+  Button,
+  toast,
+  getAuthErrorMessage,
+  Table,
+  THead,
+  TBody,
+  TR,
+  TH,
+  TD,
+} from '@ciphera-net/facet'
+import { Laptop, DeviceMobile } from '@phosphor-icons/react'
+import { EmptyRow } from '@/components/settings/panels'
+import { SettingsPanel } from '@/components/settings/panels'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
+import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { formatRelativeTime, formatDateTimeFull } from '@/lib/utils/formatDate'
 
-function getDeviceIcon(hint: string): string {
+/** Muted line glyph for a device row — phone vs. laptop, never a tinted tile. */
+function DeviceGlyph({ hint }: { hint: string }) {
   const h = hint.toLowerCase()
-  if (h.includes('iphone') || h.includes('android') || h.includes('ios')) {
-    return 'M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3'
-  }
-  return 'M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25A2.25 2.25 0 015.25 3h13.5A2.25 2.25 0 0121 5.25z'
+  const isMobile =
+    h.includes('iphone') ||
+    h.includes('android') ||
+    h.includes('ios') ||
+    h.includes('mobile') ||
+    h.includes('phone')
+  const Glyph = isMobile ? DeviceMobile : Laptop
+  return <Glyph size={18} weight="regular" className="shrink-0 text-muted-foreground" />
 }
 
 export default function TrustedDevicesCard() {
@@ -67,75 +84,84 @@ export default function TrustedDevicesCard() {
   }
 
   return (
-    <div>
-      <h2 className="text-base font-semibold text-white mb-1">Trusted Devices</h2>
-      <p className="text-neutral-400 text-sm mb-6">
-        Devices that have signed in to your account. Removing a device means the next sign-in from it will trigger a new device alert.
-      </p>
+    <section className="space-y-4">
+      <div className="min-w-0">
+        <p className="font-mono text-micro-label uppercase text-muted-foreground">Trusted devices</p>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          Devices that have signed in to your account. Removing a device means the next sign-in from
+          it will trigger a new-device alert.
+        </p>
+      </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Spinner />
-        </div>
+        <SettingsLoadingState rows={3} />
       ) : error ? (
         <SettingsErrorState message={error} onRetry={handleRetry} />
       ) : devices.length === 0 ? (
-        <div className="bg-card border border-border">
-          <EmptyState
-            title="No trusted devices yet"
-            description="Devices are added automatically the first time you sign in and verify your session."
+        <SettingsPanel>
+          <EmptyRow
             icon={<Laptop weight="regular" />}
+            title="No trusted devices yet"
+            caption="Devices are added automatically the first time you sign in and verify your session."
           />
-        </div>
+        </SettingsPanel>
       ) : (
-        <div className="rounded-none border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
-          {devices.map((device) => (
-            <div
-              key={device.id}
-              className="flex items-center gap-3 px-4 py-3 group"
-            >
-              <div className="flex-shrink-0 w-9 h-9 rounded-none flex items-center justify-center bg-neutral-800 text-neutral-400">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d={getDeviceIcon(device.display_hint)} />
-                </svg>
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-white text-sm truncate">
-                    {device.display_hint || 'Unknown device'}
-                  </span>
-                  {device.is_current && (
-                    <StatusChip tone="success" className="flex-shrink-0">This device</StatusChip>
+        <Table aria-label="Trusted devices">
+          <THead>
+            <TR>
+              <TH>Device</TH>
+              <TH>First seen</TH>
+              <TH>Last seen</TH>
+              <TH className="w-px" aria-label="Actions" />
+            </TR>
+          </THead>
+          <TBody>
+            {devices.map(device => (
+              <TR key={device.id}>
+                <TD>
+                  <div className="flex items-center gap-3">
+                    <DeviceGlyph hint={device.display_hint} />
+                    <span className="truncate font-medium text-foreground">
+                      {device.display_hint || 'Unknown device'}
+                    </span>
+                    {device.is_current && (
+                      <StatusChip tone="neutral" className="shrink-0">
+                        This device
+                      </StatusChip>
+                    )}
+                  </div>
+                </TD>
+                <TD
+                  numeric
+                  className="whitespace-nowrap text-xs text-muted-foreground"
+                  title={formatDateTimeFull(new Date(device.first_seen_at))}
+                >
+                  {formatRelativeTime(device.first_seen_at)}
+                </TD>
+                <TD
+                  numeric
+                  className="whitespace-nowrap text-xs text-muted-foreground"
+                  title={formatDateTimeFull(new Date(device.last_seen_at))}
+                >
+                  {formatRelativeTime(device.last_seen_at)}
+                </TD>
+                <TD className="text-right">
+                  {!device.is_current && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => setConfirmDevice(device)}
+                      disabled={removingId === device.id}
+                    >
+                      {removingId === device.id ? 'Removing…' : 'Remove'}
+                    </Button>
                   )}
-                </div>
-                <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-400">
-                  <span title={formatDateTimeFull(new Date(device.first_seen_at))}>
-                    First seen {formatRelativeTime(device.first_seen_at)}
-                  </span>
-                  <span>&middot;</span>
-                  <span title={formatDateTimeFull(new Date(device.last_seen_at))}>
-                    Last seen {formatRelativeTime(device.last_seen_at)}
-                  </span>
-                </div>
-              </div>
-
-              {!device.is_current && (
-                <div className="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity ease-apple">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="flex-shrink-0 text-red-400 hover:text-red-300"
-                    onClick={() => setConfirmDevice(device)}
-                    disabled={removingId === device.id}
-                  >
-                    {removingId === device.id ? 'Removing...' : 'Remove'}
-                  </Button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+                </TD>
+              </TR>
+            ))}
+          </TBody>
+        </Table>
       )}
 
       <ConfirmDialog
@@ -149,6 +175,6 @@ export default function TrustedDevicesCard() {
           if (confirmDevice) await handleRemove(confirmDevice)
         }}
       />
-    </div>
+    </section>
   )
 }

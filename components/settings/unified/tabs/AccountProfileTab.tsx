@@ -1,13 +1,13 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Button, Input, toast, Spinner } from '@ciphera-net/facet'
+import { Button, Input, Banner, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
-import { updateDisplayName } from '@/lib/api/user'
-import { deleteAccount } from '@/lib/api/user'
-import { getAuthErrorMessage } from '@ciphera-net/facet'
+import { updateDisplayName, deleteAccount } from '@/lib/api/user'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
+import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
+import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
 
 export default function AccountProfileTab() {
   const { user, refresh, logout } = useAuth()
@@ -58,7 +58,15 @@ export default function AccountProfileTab() {
     }
   }
 
-  if (!user) return <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-neutral-500" /></div>
+  const cancelDelete = () => {
+    setShowDeleteConfirm(false)
+    setDeleteText('')
+    setDeletePassword('')
+  }
+
+  // While the auth context is still hydrating the session, render the skeleton
+  // shaped like the panel it will become — never a bare spinner (spec §2.3).
+  if (!user) return <SettingsLoadingState rows={2} />
 
   // * Zero-knowledge accounts: the server never stores PII, so name/email are
   // * hydrated from the encrypted-vault cookie that Ciphera ID sets on
@@ -67,50 +75,92 @@ export default function AccountProfileTab() {
   const piiUnavailable = !user.email
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-base font-semibold text-white mb-1">Profile</h3>
-        <p className="text-sm text-neutral-400">Manage your personal account settings.</p>
-      </div>
-
-      {piiUnavailable && (
-        <div className="p-4 border border-yellow-900/50 bg-yellow-900/10 rounded-none space-y-2">
-          <p className="text-sm font-medium text-yellow-300">Profile details unavailable in this session</p>
-          <p className="text-xs text-neutral-400">
-            Your name and email are end-to-end encrypted and weren&apos;t unlocked when you signed
-            in here. Sign in on Ciphera ID once, then reload Pulse to restore them.
-          </p>
-          <a
-            href="https://id.ciphera.net"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex text-xs font-medium text-brand-orange hover:underline"
-          >
-            Open Ciphera ID →
-          </a>
-        </div>
+    <div className="space-y-8">
+      {/* Zero-knowledge note (spec §6 Account · Profile). When PII is unlocked
+          this is the standing info banner; when it is not, it becomes the honest
+          "profile details unavailable" state — same slot, escalated tone. */}
+      {piiUnavailable ? (
+        <Banner
+          tone="warning"
+          title="Profile details unavailable in this session"
+          action={
+            <a
+              href="https://id.ciphera.net"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="whitespace-nowrap text-sm font-medium text-foreground hover:underline"
+            >
+              Open Ciphera ID
+            </a>
+          }
+        >
+          Your name and email are end-to-end encrypted and weren&apos;t unlocked when you signed
+          in here. Sign in on Ciphera ID once, then reload Pulse to restore them.
+        </Banner>
+      ) : (
+        <Banner
+          tone="info"
+          title="Your profile is end-to-end encrypted"
+          action={
+            <a
+              href="https://id.ciphera.net/settings"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="whitespace-nowrap text-sm font-medium text-foreground hover:underline"
+            >
+              Manage on Ciphera ID
+            </a>
+          }
+        >
+          Pulse never stores your name or email in plain text. Email and password changes are
+          verified and managed on Ciphera ID.
+        </Banner>
       )}
 
-      {/* Display Name */}
-      <div className="space-y-4">
-        <div>
-          <label className="block text-xs font-medium text-neutral-400 mb-1.5">Display Name</label>
-          <Input
-            value={displayName}
-            onChange={e => setDisplayName(e.target.value)}
-            placeholder="Your name"
-            maxLength={100}
-          />
-        </div>
+      {/* Profile */}
+      <SettingsPanel kicker="Profile" description="Your personal account details.">
+        <PanelRows>
+          <PanelRow
+            label="Display name"
+            htmlFor="account-display-name"
+            caption="Shown to your teammates across Pulse."
+          >
+            <Input
+              id="account-display-name"
+              value={displayName}
+              onChange={e => setDisplayName(e.target.value)}
+              placeholder="Your name"
+              maxLength={100}
+            />
+          </PanelRow>
 
-        <div>
-          <label className="block text-xs font-medium text-neutral-400 mb-1.5">Email Address</label>
-          <Input value={user.email} disabled placeholder="Not available in this session" className="opacity-60" />
-          <p className="text-xs text-neutral-500 mt-1">Email changes require password verification. Use <a href="https://id.ciphera.net/settings" target="_blank" rel="noopener noreferrer" className="text-brand-orange hover:underline">Ciphera ID</a> to change your email.</p>
-        </div>
-      </div>
+          <PanelRow
+            label="Email address"
+            caption="Read-only in Pulse."
+          >
+            <Input
+              value={user.email}
+              disabled
+              placeholder="Not available in this session"
+              className="bg-muted text-muted-foreground"
+            />
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Changes require password verification — manage your email on{' '}
+              <a
+                href="https://id.ciphera.net/settings"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-foreground hover:underline"
+              >
+                Ciphera ID
+              </a>
+              .
+            </p>
+          </PanelRow>
+        </PanelRows>
+      </SettingsPanel>
 
-      {/* Danger Zone */}
+      {/* Danger zone — trigger row via the shared DangerZone API. */}
       <DangerZone
         items={[
           {
@@ -124,52 +174,56 @@ export default function AccountProfileTab() {
             }),
           },
         ]}
-      />
-
-      {showDeleteConfirm && (
-        <div className="p-4 border border-red-900/50 bg-red-900/10 rounded-none space-y-3">
-          <p className="text-sm text-red-300">This will permanently delete:</p>
-          <ul className="text-xs text-neutral-400 list-disc list-inside space-y-1">
-            <li>Your account and all personal data</li>
-            <li>All sessions and trusted devices</li>
-            <li>You will be removed from all organizations</li>
-          </ul>
-          <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1">Your password</label>
-            <Input
-              type="password"
-              value={deletePassword}
-              onChange={e => setDeletePassword(e.target.value)}
-              placeholder="Enter your password"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1">Type DELETE to confirm</label>
-            <Input
-              type="text"
-              value={deleteText}
-              onChange={e => setDeleteText(e.target.value)}
-              placeholder="DELETE"
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="secondary"
-              className="bg-red-600 hover:bg-red-700 text-white border-red-600"
-              onClick={handleDelete}
-              disabled={deleteText !== 'DELETE' || !deletePassword || deleting}
-            >
-              {deleting ? 'Deleting...' : 'Delete Account'}
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => { setShowDeleteConfirm(false); setDeleteText(''); setDeletePassword('') }}
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      )}
+      >
+        {showDeleteConfirm && (
+          <SettingsPanel tone="danger" kicker="Confirm account deletion">
+            <div className="border-b border-border px-5 py-4">
+              <p className="text-sm text-destructive">This permanently deletes:</p>
+              <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-muted-foreground">
+                <li>Your account and all personal data</li>
+                <li>All sessions and trusted devices</li>
+                <li>Your membership in every organization</li>
+              </ul>
+            </div>
+            <PanelRows>
+              <PanelRow
+                label="Your password"
+                htmlFor="account-delete-password"
+                caption="Required to confirm it's you."
+              >
+                <Input
+                  id="account-delete-password"
+                  type="password"
+                  value={deletePassword}
+                  onChange={e => setDeletePassword(e.target.value)}
+                  placeholder="Enter your password"
+                />
+              </PanelRow>
+              <PanelRow label="Type DELETE to confirm" htmlFor="account-delete-confirm">
+                <Input
+                  id="account-delete-confirm"
+                  type="text"
+                  value={deleteText}
+                  onChange={e => setDeleteText(e.target.value)}
+                  placeholder="DELETE"
+                />
+              </PanelRow>
+            </PanelRows>
+            <div className="flex gap-2 border-t border-border px-5 py-4">
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={deleteText !== 'DELETE' || !deletePassword || deleting}
+              >
+                {deleting ? 'Deleting…' : 'Delete account'}
+              </Button>
+              <Button variant="secondary" onClick={cancelDelete}>
+                Cancel
+              </Button>
+            </div>
+          </SettingsPanel>
+        )}
+      </DangerZone>
 
       <SettingsSaveBar
         isDirty={isDirty}

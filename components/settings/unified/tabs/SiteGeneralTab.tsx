@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Input, Button, toast, Spinner, CheckIcon, ZapIcon, getAuthErrorMessage } from '@ciphera-net/facet'
+import { Input, Button, Select, toast, Spinner, CheckIcon, ZapIcon, getAuthErrorMessage } from '@ciphera-net/facet'
 import { useSite } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
-import { useAuth } from '@/lib/auth/context'
 import { useCan } from '@/lib/auth/permissions'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
@@ -15,8 +14,16 @@ import VerificationModal from '@/components/sites/VerificationModal'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
+import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
 
-const ALL_TIMEZONES = (() => {
+// Full IANA zone list with each zone's live short-offset, resolved once. Feeds
+// the timezone Select; the hand-rolled combobox it replaces is retired (spec §3
+// — Facet Select supersedes the bespoke comboboxes across settings).
+const TIMEZONE_OPTIONS: { value: string; label: string }[] = (() => {
+  const build = (tz: string, offset: string) => ({
+    value: tz,
+    label: offset ? `${tz.replace(/_/g, ' ')} (${offset})` : tz.replace(/_/g, ' '),
+  })
   try {
     const now = new Date()
     return Intl.supportedValuesOf('timeZone').map(tz => {
@@ -24,94 +31,23 @@ const ALL_TIMEZONES = (() => {
         timeZone: tz,
         timeZoneName: 'shortOffset',
       }).formatToParts(now).find(p => p.type === 'timeZoneName')?.value ?? ''
-      return { value: tz, label: tz.replace(/_/g, ' '), offset }
+      return build(tz, offset)
     })
   } catch {
     // Fallback for older environments
     return [
-      { value: 'UTC', label: 'UTC', offset: 'GMT' },
-      { value: 'Europe/London', label: 'Europe/London', offset: 'GMT' },
-      { value: 'Europe/Brussels', label: 'Europe/Brussels', offset: 'GMT+1' },
-      { value: 'America/New_York', label: 'America/New York', offset: 'GMT-5' },
-      { value: 'America/Los_Angeles', label: 'America/Los Angeles', offset: 'GMT-8' },
-      { value: 'Asia/Tokyo', label: 'Asia/Tokyo', offset: 'GMT+9' },
+      build('UTC', 'GMT'),
+      build('Europe/London', 'GMT'),
+      build('Europe/Brussels', 'GMT+1'),
+      build('America/New_York', 'GMT-5'),
+      build('America/Los_Angeles', 'GMT-8'),
+      build('Asia/Tokyo', 'GMT+9'),
     ]
   }
 })()
 
-function TimezoneCombobox({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
-  const [search, setSearch] = useState('')
-  const [open, setOpen] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const listRef = useRef<HTMLDivElement>(null)
-
-  const filtered = search
-    ? ALL_TIMEZONES.filter(tz =>
-        tz.label.toLowerCase().includes(search.toLowerCase()) ||
-        tz.value.toLowerCase().includes(search.toLowerCase()) ||
-        tz.offset.toLowerCase().includes(search.toLowerCase())
-      )
-    : ALL_TIMEZONES
-
-  const selected = ALL_TIMEZONES.find(tz => tz.value === value)
-
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      if (
-        listRef.current && !listRef.current.contains(e.target as Node) &&
-        inputRef.current && !inputRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false)
-        setSearch('')
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
-
-  return (
-    <div className="relative">
-      <input
-        ref={inputRef}
-        value={open ? search : (selected ? `${selected.label} (${selected.offset})` : value)}
-        onChange={e => { if (disabled) return; setSearch(e.target.value); if (!open) setOpen(true) }}
-        onFocus={() => { if (disabled) return; setOpen(true); setSearch('') }}
-        placeholder="Search timezone..."
-        disabled={disabled}
-        className="w-full h-10 px-4 bg-transparent border border-neutral-800 rounded-none text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      />
-      {open && (
-        <div
-          ref={listRef}
-          className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-none border border-neutral-800 bg-card border-border"
-        >
-          {filtered.length === 0 ? (
-            <div className="px-4 py-3 text-sm text-neutral-500">No timezones found</div>
-          ) : (
-            filtered.map(tz => (
-              <button
-                key={tz.value}
-                type="button"
-                onClick={() => { onChange(tz.value); setOpen(false); setSearch('') }}
-                className={`w-full px-4 py-2 text-left text-sm hover:bg-neutral-800 transition-colors flex justify-between items-center ${
-                  tz.value === value ? 'text-brand-orange bg-brand-orange/5' : 'text-neutral-300'
-                }`}
-              >
-                <span>{tz.label}</span>
-                <span className="text-neutral-500 text-xs">{tz.offset}</span>
-              </button>
-            ))
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
 export default function SiteGeneralTab({ siteId }: { siteId: string }) {
   const router = useRouter()
-  const { user } = useAuth()
   const { data: site, error, isValidating, mutate } = useSite(siteId)
   const [name, setName] = useState('')
   const [timezone, setTimezone] = useState('UTC')
@@ -119,10 +55,21 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
   const [saving, setSaving] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
+  const [showResetModal, setShowResetModal] = useState(false)
 
   const canEdit = useCan('sites.edit')
   const initialRef = useRef('')
   const hasInitialized = useRef(false)
+
+  // A zone whose value isn't in the resolved list (rare — a backend zone the
+  // browser's ICU doesn't know) still needs a legible option so the Select can
+  // render its current value rather than falling back to the placeholder.
+  const timezoneOptions = useMemo(() => {
+    if (timezone && !TIMEZONE_OPTIONS.some(o => o.value === timezone)) {
+      return [{ value: timezone, label: timezone.replace(/_/g, ' ') }, ...TIMEZONE_OPTIONS]
+    }
+    return TIMEZONE_OPTIONS
+  }, [timezone])
 
   useEffect(() => {
     if (!site || hasInitialized.current) return
@@ -150,6 +97,8 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
     if (!site || saving) return
     setSaving(true)
     try {
+      // Partial PUT (B1): only the fields this tab owns — never a full-object
+      // resurrection that would clobber server-owned columns.
       await updateSite(siteId, { name, timezone, script_features: scriptFeatures })
       initialRef.current = JSON.stringify({ name, timezone, scriptFeatures: JSON.stringify(scriptFeatures) })
       await mutate()
@@ -160,8 +109,6 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
       setSaving(false)
     }
   }, [site, saving, siteId, name, timezone, scriptFeatures, mutate])
-
-  const [showResetModal, setShowResetModal] = useState(false)
 
   // A permanent fetch failure must not fall through to an infinite spinner —
   // surface it as a distinct, retryable error while there is no data to show.
@@ -178,75 +125,77 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
   if (!site || !hasInitialized.current) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Spinner className="w-6 h-6 text-neutral-500" />
+        <Spinner className="w-6 h-6 text-muted-foreground" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Site details */}
-      <div className="space-y-4">
-        <div>
-          <h3 className="text-base font-semibold text-white mb-1">General Configuration</h3>
-          <p className="text-sm text-neutral-400">Update your site details and tracking script.</p>
-        </div>
+    <div className="space-y-8">
+      {/* ── Site details ─────────────────────────────────────────────────── */}
+      <SettingsPanel kicker="Site" description="Core details for this site.">
+        <PanelRows>
+          <PanelRow label="Name" caption="Shown across Pulse and in reports." htmlFor="site-name">
+            <Input
+              id="site-name"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="My Website"
+              disabled={!canEdit || saving}
+            />
+          </PanelRow>
+          <PanelRow label="Domain" caption="Set at creation and can't be changed." htmlFor="site-domain">
+            <Input id="site-domain" value={site.domain} disabled className="opacity-60" />
+          </PanelRow>
+          <PanelRow label="Timezone" caption="Used to bucket stats into local days." htmlFor="site-timezone">
+            <Select
+              id="site-timezone"
+              value={timezone}
+              onChange={setTimezone}
+              options={timezoneOptions}
+              placeholder="Select a timezone…"
+              disabled={!canEdit || saving}
+              className="w-full"
+              aria-label="Timezone"
+            />
+          </PanelRow>
+        </PanelRows>
+      </SettingsPanel>
 
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-neutral-400 mb-1.5">Site Name</label>
-              <Input value={name} onChange={e => setName(e.target.value)} placeholder="My Website" disabled={!canEdit || saving} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-neutral-400 mb-1.5">Domain</label>
-              <Input value={site.domain} disabled className="opacity-60" />
-              <p className="text-xs text-neutral-500 mt-1">Cannot be changed.</p>
-            </div>
+      {/* ── Tracking script ──────────────────────────────────────────────── */}
+      <SettingsPanel
+        kicker="Tracking script"
+        description="Add this to your site to start collecting privacy-first analytics."
+      >
+        <div className="space-y-5 p-5">
+          <ScriptSetupBlock
+            site={{ domain: site.domain, name: site.name, script_features: scriptFeatures, detected_framework: site.detected_framework }}
+            siteId={siteId}
+            showFrameworkPicker
+            onFeaturesChange={(features) => setScriptFeatures(features)}
+            disabled={!canEdit || saving}
+          />
+
+          {/* Verification status + action */}
+          <div className="flex flex-wrap items-center gap-3 border-t border-border pt-5">
+            <StatusChip
+              tone={site.is_verified ? 'success' : 'neutral'}
+              icon={site.is_verified ? <CheckIcon className="w-3 h-3" /> : undefined}
+            >
+              {site.is_verified ? 'Verified' : 'Not verified'}
+            </StatusChip>
+            <span className="text-xs text-muted-foreground">
+              {site.is_verified ? 'Your site is sending data correctly.' : 'Check if your site is sending data correctly.'}
+            </span>
+            <Button variant="secondary" size="sm" className="ml-auto" onClick={() => setShowVerificationModal(true)}>
+              <ZapIcon className="w-4 h-4" />
+              {site.is_verified ? 'Re-verify' : 'Verify installation'}
+            </Button>
           </div>
-
-          <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1.5">Timezone</label>
-            <TimezoneCombobox value={timezone} onChange={setTimezone} disabled={!canEdit || saving} />
-          </div>
         </div>
-      </div>
+      </SettingsPanel>
 
-      {/* Tracking Script */}
-      <div className="space-y-3">
-        <div>
-          <h3 className="text-base font-semibold text-white mb-1">Tracking Script</h3>
-          <p className="text-sm text-neutral-400">Add this to your website to start tracking visitors. Choose your framework for setup instructions.</p>
-        </div>
-
-        <ScriptSetupBlock
-          site={{ domain: site.domain, name: site.name, script_features: scriptFeatures, detected_framework: site.detected_framework }}
-          siteId={siteId}
-          showFrameworkPicker
-          className="mb-4"
-          onFeaturesChange={(features) => setScriptFeatures(features)}
-          disabled={!canEdit || saving}
-        />
-
-        {/* Verification status + action */}
-        <div className="flex flex-wrap items-center gap-3">
-          <StatusChip
-            tone={site.is_verified ? 'success' : 'neutral'}
-            icon={site.is_verified ? <CheckIcon className="w-3 h-3" /> : undefined}
-          >
-            {site.is_verified ? 'Verified' : 'Not verified'}
-          </StatusChip>
-          <Button variant="secondary" onClick={() => setShowVerificationModal(true)}>
-            <ZapIcon className="w-4 h-4" />
-            {site.is_verified ? 'Re-verify' : 'Verify Installation'}
-          </Button>
-        </div>
-        <p className="text-xs text-neutral-500">
-          {site.is_verified ? 'Your site is sending data correctly.' : 'Check if your site is sending data correctly.'}
-        </p>
-      </div>
-
-      {/* Danger Zone */}
+      {/* ── Danger zone ──────────────────────────────────────────────────── */}
       {canEdit && (
         <DangerZone
           items={[

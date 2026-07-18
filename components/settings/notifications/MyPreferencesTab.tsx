@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
-import { Input, toast, getAuthErrorMessage } from '@ciphera-net/facet'
-import Select from '@/components/ui/select'
+import { Banner, Select, toast, getAuthErrorMessage } from '@ciphera-net/facet'
+import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { getPrefs, updatePrefs, type Preferences } from '@/lib/api/notifications-preferences'
@@ -10,6 +10,10 @@ import DeliveryModesTable from './DeliveryModesTable'
 import QuietHoursSection from './QuietHoursSection'
 import RetentionOverridesTable from './RetentionOverridesTable'
 import PurgeConfirmDialog from '@/app/notifications/PurgeConfirmDialog'
+
+// Native time input, Input-styled + dark color-scheme (spec §2.3).
+const timeInputClass =
+  'h-9 rounded-none border border-input bg-transparent px-3 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [color-scheme:dark]'
 
 export default function MyPreferencesTab() {
   const [prefs, setPrefs] = useState<Preferences | null>(null)
@@ -65,81 +69,94 @@ export default function MyPreferencesTab() {
   })()
 
   return (
-    <div className="space-y-8">
-      <section>
-        <h3 className="font-medium text-white mb-1">Delivery preferences</h3>
-        <p className="text-xs text-neutral-500 mb-3">How you get notified per category.</p>
+    <>
+      <SettingsPanel kicker="Delivery" description="How you get notified for each category.">
         <DeliveryModesTable prefs={prefs} onChange={debouncedSave} />
-      </section>
+      </SettingsPanel>
 
-      <section>
-        <h3 className="font-medium text-white mb-1">Daily digest time</h3>
-        <p className="text-xs text-neutral-500 mb-3">When your batched non-critical emails are sent.</p>
-        <div className="flex items-center gap-3 text-sm">
-          <Input
-            type="time"
-            value={prefs.digest_time ?? '09:00'}
-            onChange={e => debouncedSave({ ...prefs, digest_time: e.target.value })}
-            aria-label="Digest send time"
-          />
-          <div aria-label="Timezone" className="max-w-xs">
-            <Select
-              variant="input"
-              value={prefs.timezone || 'UTC'}
-              onChange={(v) => debouncedSave({ ...prefs, timezone: v })}
-              options={timezones.map(tz => ({ value: tz, label: tz }))}
-            />
-          </div>
-        </div>
-      </section>
+      <SettingsPanel
+        kicker="Daily digest"
+        description="When your batched non-critical emails are sent."
+      >
+        <PanelRows>
+          <PanelRow label="Send time">
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                type="time"
+                className={timeInputClass}
+                value={prefs.digest_time ?? '09:00'}
+                onChange={e => debouncedSave({ ...prefs, digest_time: e.target.value })}
+                aria-label="Digest send time"
+              />
+              <div className="w-64">
+                <Select
+                  aria-label="Timezone"
+                  size="sm"
+                  value={prefs.timezone || 'UTC'}
+                  onChange={v => debouncedSave({ ...prefs, timezone: v })}
+                  options={timezones.map(tz => ({ value: tz, label: tz }))}
+                />
+              </div>
+            </div>
+          </PanelRow>
+        </PanelRows>
+      </SettingsPanel>
 
-      <section>
-        <h3 className="font-medium text-white mb-1">Quiet hours</h3>
+      <SettingsPanel
+        kicker="Quiet hours"
+        description="Non-critical emails are suppressed during these hours. Billing and security alerts always deliver."
+      >
         <QuietHoursSection prefs={prefs} onChange={debouncedSave} />
-      </section>
+      </SettingsPanel>
 
-      <section>
-        <h3 className="font-medium text-white mb-1">Retention — make Ciphera forget sooner</h3>
-        <p className="text-xs text-neutral-500 mb-3">
-          Tighten how long Ciphera keeps your read notifications. Defaults are listed; you can only go shorter.
-        </p>
+      <SettingsPanel
+        kicker="Retention"
+        description="Tighten how long Ciphera keeps your read notifications. You can only shorten retention, never extend it."
+      >
         <RetentionOverridesTable prefs={prefs} onChange={debouncedSave} />
-      </section>
+      </SettingsPanel>
 
-      <section>
-        <h3 className="font-medium text-white mb-1 text-red-400">Danger zone</h3>
-        <p className="text-xs text-neutral-500 mb-3">
-          Permanently delete every notification stored against your account. Other team members' copies are not affected.
-        </p>
-        <button
-          type="button"
-          onClick={() => setPurging(true)}
-          className="px-4 py-2 text-sm rounded-none border border-red-500/30 text-red-400 hover:bg-red-500/10"
-        >
-          Delete all my notification history
-        </button>
-        {purging && (
-          <PurgeConfirmDialog
-            count={null}
-            onCancel={() => setPurging(false)}
-            onConfirm={async () => {
-              try {
-                await purgeMine()
-                setPurging(false)
-              } catch (err) {
-                toast.error(getAuthErrorMessage(err as Error) || 'Failed to purge notifications')
-              }
-            }}
-          />
-        )}
-      </section>
-
-      {(saving || error) && (
-        <div className="text-xs">
-          {saving && <span className="text-neutral-500">Saving…</span>}
-          {error && <span className="text-red-400">{error}</span>}
+      <SettingsPanel
+        tone="danger"
+        kicker="Danger zone"
+        description="Permanently delete every notification stored against your account. Other team members' copies are not affected."
+      >
+        <div className="px-5 py-4">
+          <button
+            type="button"
+            onClick={() => setPurging(true)}
+            className="inline-flex items-center rounded-none border border-destructive/30 px-4 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-destructive"
+          >
+            Delete all my notification history
+          </button>
         </div>
+      </SettingsPanel>
+
+      {saving && (
+        <p className="font-mono text-micro-label uppercase text-muted-foreground" role="status">
+          Saving…
+        </p>
       )}
-    </div>
+      {error && prefs && (
+        <Banner tone="danger" title="Couldn't save your preferences" onDismiss={() => setError(null)}>
+          {error}
+        </Banner>
+      )}
+
+      {purging && (
+        <PurgeConfirmDialog
+          count={null}
+          onCancel={() => setPurging(false)}
+          onConfirm={async () => {
+            try {
+              await purgeMine()
+              setPurging(false)
+            } catch (err) {
+              toast.error(getAuthErrorMessage(err as Error) || 'Failed to purge notifications')
+            }
+          }}
+        />
+      )}
+    </>
   )
 }
