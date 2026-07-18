@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Button, Input, toast, getAuthErrorMessage, AlertTriangleIcon, Spinner } from '@ciphera-net/facet'
+import { Button, Input, Checkbox, Banner, toast, getAuthErrorMessage, Spinner, cn } from '@ciphera-net/facet'
 import { resetSiteData, type ResetModule } from '@/lib/api/sites'
 import { ChartBar, Path, Funnel, Heartbeat, Gauge, Cloud, MagnifyingGlass } from '@phosphor-icons/react'
 import {
@@ -146,9 +146,9 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
         if (!isOpen && !isResetting) handleClose()
       }}
     >
-      <DialogContent className="sm:max-w-lg border-red-900">
+      <DialogContent className="sm:max-w-lg border-destructive/30">
         <DialogHeader>
-          <DialogTitle className="text-red-500">Reset Data</DialogTitle>
+          <DialogTitle className="text-destructive">Reset Data</DialogTitle>
           <DialogDescription>
             Select which data modules to permanently delete for{' '}
             <span className="font-medium text-foreground">{siteDomain}</span>.
@@ -156,71 +156,79 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
           </DialogDescription>
         </DialogHeader>
 
-        {/* Select All */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={toggleAll}
-          disabled={isResetting}
-          className="w-full justify-start text-xs"
-        >
-          {allSelected ? 'Deselect all' : 'Select all'}
-        </Button>
+        {/* Module picker — one ruled frame, select-all in the header */}
+        <div className="rounded-none border border-border">
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <Checkbox
+              checked={allSelected}
+              indeterminate={selected.size > 0 && !allSelected}
+              onChange={toggleAll}
+              disabled={isResetting}
+              label={<span className="font-mono text-micro-label uppercase text-muted-foreground">All modules</span>}
+            />
+            <span className="font-mono text-micro-label uppercase text-muted-foreground">
+              {selected.size}/{RESET_MODULES.length}
+            </span>
+          </div>
 
-        {/* Module checkboxes */}
-        <div className="space-y-2">
-          {RESET_MODULES.map((mod) => {
-            const Icon = mod.icon
-            const checked = selected.has(mod.id)
-            return (
-              <Button
-                key={mod.id}
-                variant={checked ? 'default' : 'secondary'}
-                size="sm"
-                onClick={() => toggleModule(mod.id)}
-                disabled={isResetting}
-                className={`w-full flex items-start gap-3 p-3 rounded-none text-left h-auto ${
-                  checked
-                    ? 'border-red-500/50 bg-red-900/15 hover:bg-red-900/20'
-                    : 'border-neutral-800 bg-neutral-800/30 hover:border-neutral-700'
-                }`}
-              >
-                <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-none border transition-colors ${
-                  checked
-                    ? 'border-red-500 bg-red-500'
-                    : 'border-neutral-600'
-                } ease-apple`}>
-                  {checked && (
-                    <svg viewBox="0 0 12 12" className="h-3 w-3 text-white" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M2 6l3 3 5-5" />
-                    </svg>
+          <div className="divide-y divide-border">
+            {RESET_MODULES.map((mod) => {
+              const Icon = mod.icon
+              const checked = selected.has(mod.id)
+              return (
+                <button
+                  key={mod.id}
+                  type="button"
+                  onClick={() => toggleModule(mod.id)}
+                  disabled={isResetting}
+                  aria-pressed={checked}
+                  className={cn(
+                    'flex w-full items-start gap-3 px-4 py-3 text-left transition-colors cursor-pointer disabled:cursor-not-allowed',
+                    checked ? 'bg-destructive/5 hover:bg-destructive/10' : 'hover:bg-muted',
                   )}
-                </div>
-                <Icon weight="bold" className={`w-4 h-4 mt-0.5 shrink-0 ${checked ? 'text-red-400' : 'text-neutral-500'}`} />
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium ${checked ? 'text-red-300' : 'text-white'}`}>{mod.label}</p>
-                  <p className="text-xs text-neutral-500 mt-0.5">{mod.description}</p>
-                </div>
-              </Button>
-            )
-          })}
+                >
+                  {/* Presentational mark — the row itself is the control, so no
+                      nested interactive checkbox. Checked uses the control-state
+                      accent (bg-primary), matching Toggle/Checkbox-on. */}
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-none border transition-colors ease-apple',
+                      checked ? 'border-primary bg-primary' : 'border-input',
+                    )}
+                  >
+                    {checked && (
+                      <svg viewBox="0 0 12 12" className="h-3 w-3 text-primary-foreground" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M2 6l3 3 5-5" />
+                      </svg>
+                    )}
+                  </span>
+                  <Icon weight="bold" className={cn('mt-0.5 h-4 w-4 shrink-0', checked ? 'text-destructive' : 'text-muted-foreground')} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground">{mod.label}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{mod.description}</p>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
         </div>
 
         {/* Confirmation */}
         {selected.size > 0 && (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 p-3 bg-red-900/10 border border-red-900/20 rounded-none">
-              <AlertTriangleIcon className="h-4 w-4 text-red-500 shrink-0" />
-              <span className="text-xs font-medium text-red-300">
-                {selected.size === RESET_MODULES.length
+            <Banner
+              tone="danger"
+              title={
+                selected.size === RESET_MODULES.length
                   ? 'All data modules will be permanently deleted.'
-                  : `${selected.size} module${selected.size > 1 ? 's' : ''} will be permanently deleted.`}
-              </span>
-            </div>
+                  : `${selected.size} module${selected.size > 1 ? 's' : ''} will be permanently deleted.`
+              }
+            />
 
             <div>
-              <label className="block text-xs font-medium text-neutral-300 mb-1">
-                Type <span className="font-mono font-bold text-red-400">{allSelected ? siteDomain : 'RESET'}</span> to confirm
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                Type <span className="font-mono font-bold text-destructive">{allSelected ? siteDomain : 'RESET'}</span> to confirm
               </label>
               <Input
                 type="text"
@@ -242,10 +250,10 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
                 Cancel
               </Button>
               <Button
-                variant="secondary"
+                variant="destructive"
                 onClick={handleReset}
                 disabled={!isConfirmed || isResetting}
-                className="flex-1 sm:flex-none bg-red-600 hover:bg-red-700 text-white border-red-600 gap-2"
+                className="flex-1 sm:flex-none gap-2"
               >
                 {isResetting ? (
                   <>

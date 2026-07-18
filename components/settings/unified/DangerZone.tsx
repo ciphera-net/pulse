@@ -1,12 +1,23 @@
 'use client'
 
 import { Button } from '@ciphera-net/facet'
+import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
 
 interface DangerZoneItem {
   title: string
   description: string
   buttonLabel: string
-  /** 'outline' = bordered button (Reset Data style), 'solid' = red filled button (Delete style) */
+  /**
+   * Which weight the row's entry button carries:
+   * - `'outline'` = neutral outline (the less-final action — Transfer, Reset Data)
+   * - `'solid'`   = destructive outline in coral (the final/irreversible action — Delete)
+   *
+   * Note: `'solid'` no longer paints a filled red button. Per the color
+   * discipline (spec §2.3) solid destructive fill is reserved for the final
+   * confirm button inside a reveal/dialog; the danger-row entry buttons are
+   * always outlines. The prop name is kept for API compatibility with the three
+   * tabs that consume this component.
+   */
   variant: 'outline' | 'solid'
   onClick: () => void
   disabled?: boolean
@@ -19,43 +30,37 @@ interface DangerZoneProps {
 
 export function DangerZone({ items, children }: DangerZoneProps) {
   return (
-    <div className="space-y-4 pt-6 border-t border-neutral-800">
-      <div>
-        <h3 className="text-base font-semibold text-red-500 mb-1">Danger Zone</h3>
-        <p className="text-xs text-neutral-500">Irreversible actions.</p>
-      </div>
-
-      {items.map((item) => (
-        <div key={item.title} className="rounded-none border border-red-900/30 bg-red-900/10 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-white">{item.title}</p>
-              <p className="text-xs text-neutral-400">{item.description}</p>
-            </div>
-            {item.variant === 'outline' ? (
+    <SettingsPanel tone="danger" kicker="Danger zone" description="Irreversible actions.">
+      <PanelRows>
+        {items.map((item) => (
+          <PanelRow
+            key={item.title}
+            label={item.title}
+            caption={item.description}
+            control={
               <Button
                 variant="secondary"
-                className="text-sm text-red-400 border-red-900 hover:bg-red-900/20"
+                size="sm"
                 onClick={item.onClick}
                 disabled={item.disabled}
+                className={
+                  item.variant === 'solid'
+                    ? 'border-destructive/40 text-destructive hover:border-destructive/60 hover:bg-destructive/10'
+                    : undefined
+                }
               >
                 {item.buttonLabel}
               </Button>
-            ) : (
-              <Button
-                variant="secondary"
-                className="bg-red-600 hover:bg-red-700 text-white border-red-600"
-                onClick={item.onClick}
-                disabled={item.disabled}
-              >
-                {item.buttonLabel}
-              </Button>
-            )}
-          </div>
-        </div>
-      ))}
+            }
+          />
+        ))}
+      </PanelRows>
 
-      {children}
-    </div>
+      {/* Reveal blocks (typed-DELETE / transfer pickers) dock inside the danger
+          frame, ruled off from the rows above. Only Workspace·General passes
+          children today; Site·General and Account·Profile drive their confirms
+          through modals / sibling blocks and pass none. */}
+      {children && <div className="border-t border-destructive/30">{children}</div>}
+    </SettingsPanel>
   )
 }

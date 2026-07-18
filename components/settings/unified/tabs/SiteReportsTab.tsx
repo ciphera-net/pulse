@@ -1,12 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Button, toast, Spinner, Modal } from '@ciphera-net/facet'
-import Select from '@/components/ui/select'
+import { Button, toast, Spinner, Modal, Input, Select, getAuthErrorMessage } from '@ciphera-net/facet'
 import { Plus, Pencil, Trash, EnvelopeSimple, WebhooksLogo, PaperPlaneTilt, FileText, Bell } from '@phosphor-icons/react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { EmptyState } from '@/components/ui/EmptyState'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { cn } from '@/lib/utils'
 import { cdnUrl } from '@/lib/cdn'
 import { useReportSchedules, useAlertSchedules, useSite } from '@/lib/swr/dashboard'
 import { useCan } from '@/lib/auth/permissions'
@@ -20,9 +19,9 @@ import {
   type EmailConfig,
   type WebhookConfig,
 } from '@/lib/api/report-schedules'
-import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { formatDateTime } from '@/lib/utils/formatDate'
-import SettingsSections from '@/components/settings/SettingsSections'
+import { SettingsPanel, PanelRows, EmptyRow } from '@/components/settings/panels'
+import { MastheadAction } from '@/components/settings/shell-slots'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 
@@ -145,18 +144,23 @@ function ScheduleRow({
 
   return (
     <TooltipProvider>
-      <div className="flex items-center justify-between px-4 py-3 group">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className={`p-1.5 rounded-none flex-shrink-0 ${schedule.enabled ? 'bg-brand-orange/10 text-brand-orange' : 'bg-neutral-800 text-neutral-500'}`}>
+      <div className="flex items-center justify-between gap-4 px-5 py-3.5">
+        <div className="flex min-w-0 items-center gap-3">
+          <div
+            className={cn(
+              'flex h-8 w-8 shrink-0 items-center justify-center rounded-none',
+              schedule.enabled ? 'bg-accent text-foreground' : 'bg-muted text-muted-foreground',
+            )}
+          >
             <ChannelIcon channel={schedule.channel} />
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <p className="text-sm font-medium text-white truncate">{primaryLabel}</p>
+            <div className="flex min-w-0 items-center gap-2">
+              <p className="truncate text-sm font-medium text-foreground">{primaryLabel}</p>
               {extraRecipients > 0 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="text-xs text-neutral-500 shrink-0 cursor-default">+{extraRecipients} more</span>
+                    <span className="shrink-0 cursor-default text-xs text-muted-foreground">+{extraRecipients} more</span>
                   </TooltipTrigger>
                   <TooltipContent>{recipients.slice(1).join(', ')}</TooltipContent>
                 </Tooltip>
@@ -165,22 +169,23 @@ function ScheduleRow({
                 <StatusChip tone="neutral" className="shrink-0">Paused</StatusChip>
               )}
             </div>
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-muted-foreground">
               {schedule.frequency} · {schedule.report_type} report
               {schedule.last_sent_at && (
                 <span className="ml-1">· sent {formatDateTime(new Date(schedule.last_sent_at))}</span>
               )}
             </p>
             {schedule.last_error && (
-              <p className="text-xs text-red-400 truncate mt-0.5">{schedule.last_error}</p>
+              <p className="mt-0.5 truncate text-xs text-destructive">{schedule.last_error}</p>
             )}
           </div>
         </div>
         {canManage && (
-          <div className="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity ease-apple flex items-center gap-1">
+          /* Row actions are ALWAYS visible (spec §6 / B12) — never a hover-only reveal. */
+          <div className="flex shrink-0 items-center gap-1">
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(schedule)}>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(schedule)} aria-label="Edit">
                   <Pencil weight="bold" className="w-3.5 h-3.5" />
                 </Button>
               </TooltipTrigger>
@@ -188,7 +193,7 @@ function ScheduleRow({
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleTest} disabled={testing}>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleTest} disabled={testing} aria-label="Send test">
                   {testing ? <Spinner className="w-3.5 h-3.5" /> : <PaperPlaneTilt weight="bold" className="w-3.5 h-3.5" />}
                 </Button>
               </TooltipTrigger>
@@ -199,7 +204,13 @@ function ScheduleRow({
             </Button>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-neutral-500 hover:text-red-400 hover:bg-red-900/20" onClick={() => setConfirmDelete(true)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => setConfirmDelete(true)}
+                  aria-label="Delete"
+                >
                   <Trash weight="bold" className="w-3.5 h-3.5" />
                 </Button>
               </TooltipTrigger>
@@ -222,6 +233,22 @@ function ScheduleRow({
   )
 }
 
+// ── Ghost preview rows (empty-state hint, spec §2.3) ──────────────────────────
+
+function GhostRow({ icon, primary, secondary }: { icon: React.ReactNode; primary: string; secondary: string }) {
+  return (
+    <div className="flex items-center gap-3 px-5 py-3.5">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-none bg-muted text-muted-foreground">
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium text-foreground">{primary}</p>
+        <p className="text-xs text-muted-foreground">{secondary}</p>
+      </div>
+    </div>
+  )
+}
+
 // ── Channel Grid Picker ──────────────────────────────────────────────────────
 
 const CHANNELS = ['email', 'slack', 'discord', 'webhook'] as const
@@ -234,11 +261,14 @@ function ChannelPicker({ value, onChange }: { value: string; onChange: (v: strin
           key={ch}
           type="button"
           onClick={() => onChange(ch)}
-          className={`flex flex-col items-center gap-1.5 p-3 rounded-none border transition-colors ${
+          className={cn(
+            'flex flex-col items-center gap-1.5 rounded-none border p-3 transition-colors',
+            // Selected state is NEUTRAL (spec §2.3) — orange is reserved for the
+            // page's one CTA, never a picked segment.
             value === ch
-              ? 'border-brand-orange bg-brand-orange/10 text-white'
-              : 'border-neutral-800 text-neutral-400 hover:border-neutral-700 hover:text-white'
-          } ease-apple`}
+              ? 'border-input bg-accent text-foreground'
+              : 'border-border text-muted-foreground hover:border-input hover:text-foreground',
+          )}
         >
           {CHANNEL_ICONS[ch]}
           <span className="text-xs capitalize">{ch}</span>
@@ -251,19 +281,10 @@ function ChannelPicker({ value, onChange }: { value: string; onChange: (v: strin
 // ── Shared form label ────────────────────────────────────────────────────────
 
 function FormLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
-  return <label htmlFor={htmlFor} className="block text-xs font-medium text-neutral-400 mb-1.5">{children}</label>
-}
-
-function FormInput({ id, type = 'text', value, onChange, placeholder }: { id?: string; type?: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
-    <input
-      id={id}
-      type={type}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="w-full h-10 px-4 bg-transparent border border-neutral-800 rounded-none text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-brand-orange focus:ring-4 focus:ring-brand-orange/10 transition-colors ease-apple"
-    />
+    <label htmlFor={htmlFor} className="mb-1.5 block font-mono text-micro-label uppercase text-muted-foreground">
+      {children}
+    </label>
   )
 }
 
@@ -388,22 +409,22 @@ function ReportScheduleModal({
         {form.channel === 'email' ? (
           <div>
             <FormLabel htmlFor="report-recipients">Recipients</FormLabel>
-            <FormInput
+            <Input
               id="report-recipients"
               value={form.recipients}
-              onChange={(v) => updateField('recipients', v)}
+              onChange={(e) => updateField('recipients', e.target.value)}
               placeholder="email@example.com, another@example.com"
             />
-            <p className="text-xs text-neutral-500 mt-1">Comma-separated email addresses</p>
+            <p className="mt-1 text-xs text-muted-foreground">Comma-separated email addresses</p>
           </div>
         ) : (
           <div>
             <FormLabel htmlFor="report-webhook">Webhook URL</FormLabel>
-            <FormInput
+            <Input
               id="report-webhook"
               type="url"
               value={form.webhookUrl}
-              onChange={(v) => updateField('webhookUrl', v)}
+              onChange={(e) => updateField('webhookUrl', e.target.value)}
               placeholder={webhookPlaceholder}
             />
           </div>
@@ -415,8 +436,6 @@ function ReportScheduleModal({
           <Select
             value={form.frequency}
             onChange={(v) => updateField('frequency', v)}
-            variant="input"
-            fullWidth
             options={[
               { value: 'daily', label: 'Daily' },
               { value: 'weekly', label: 'Weekly' },
@@ -432,8 +451,6 @@ function ReportScheduleModal({
             <Select
               value={String(form.sendDay)}
               onChange={(v) => updateField('sendDay', Number(v))}
-              variant="input"
-              fullWidth
               options={WEEKDAY_NAMES.map((name, i) => ({ value: String(i + 1), label: name }))}
             />
           </div>
@@ -446,8 +463,6 @@ function ReportScheduleModal({
             <Select
               value={String(form.sendDay)}
               onChange={(v) => updateField('sendDay', Number(v))}
-              variant="input"
-              fullWidth
               options={Array.from({ length: 28 }, (_, i) => ({
                 value: String(i + 1),
                 label: ordinalSuffix(i + 1),
@@ -462,8 +477,6 @@ function ReportScheduleModal({
           <Select
             value={String(form.sendHour)}
             onChange={(v) => updateField('sendHour', Number(v))}
-            variant="input"
-            fullWidth
             options={Array.from({ length: 24 }, (_, i) => ({
               value: String(i),
               label: formatHour(i),
@@ -477,8 +490,6 @@ function ReportScheduleModal({
           <Select
             value={form.timezone}
             onChange={(v) => updateField('timezone', v)}
-            variant="input"
-            fullWidth
             options={TIMEZONES.map((tz) => ({ value: tz, label: tz.replace(/_/g, ' ') }))}
           />
         </div>
@@ -489,8 +500,6 @@ function ReportScheduleModal({
           <Select
             value={form.reportType}
             onChange={(v) => updateField('reportType', v)}
-            variant="input"
-            fullWidth
             options={[
               { value: 'summary', label: 'Summary' },
               { value: 'pages', label: 'Pages' },
@@ -613,30 +622,30 @@ function AlertChannelModal({
         {form.channel === 'email' ? (
           <div>
             <FormLabel htmlFor="alert-recipients">Recipients</FormLabel>
-            <FormInput
+            <Input
               id="alert-recipients"
               value={form.recipients}
-              onChange={(v) => updateField('recipients', v)}
+              onChange={(e) => updateField('recipients', e.target.value)}
               placeholder="email@example.com, another@example.com"
             />
-            <p className="text-xs text-neutral-500 mt-1">Comma-separated email addresses</p>
+            <p className="mt-1 text-xs text-muted-foreground">Comma-separated email addresses</p>
           </div>
         ) : (
           <div>
             <FormLabel htmlFor="alert-webhook">Webhook URL</FormLabel>
-            <FormInput
+            <Input
               id="alert-webhook"
               type="url"
               value={form.webhookUrl}
-              onChange={(v) => updateField('webhookUrl', v)}
+              onChange={(e) => updateField('webhookUrl', e.target.value)}
               placeholder={webhookPlaceholder}
             />
           </div>
         )}
 
         {/* Info box */}
-        <div className="rounded-none border border-neutral-800 bg-neutral-800/30 p-3">
-          <p className="text-xs text-neutral-400">
+        <div className="rounded-none border border-border bg-muted p-3">
+          <p className="text-xs text-muted-foreground">
             Alerts are sent automatically when your site goes down or recovers.
           </p>
         </div>
@@ -677,88 +686,93 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
   const openNewAlert = () => { setEditingAlert(null); setAlertModalOpen(true) }
   const openEditAlert = (schedule: ReportSchedule) => { setEditingAlert(schedule); setAlertModalOpen(true) }
 
-  if (loading) return <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-neutral-500" /></div>
+  if (loading) return <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-muted-foreground" /></div>
 
   return (
-    <div className="space-y-6">
-      <SettingsSections sections={[
-        { id: 'section-reports', label: 'Scheduled Reports' },
-        { id: 'section-alerts', label: 'Alert Channels' },
-      ]} />
+    <div className="space-y-8">
+      {/* The tab's one orange: the primary CTA, portaled into the masthead. */}
+      {canManage && (
+        <MastheadAction>
+          <Button variant="default" className="gap-1.5" onClick={openNewReport}>
+            <Plus weight="bold" className="h-4 w-4" /> Add report
+          </Button>
+        </MastheadAction>
+      )}
 
       {/* Scheduled Reports */}
-      <div id="section-reports" className="scroll-mt-20 space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-base font-semibold text-white mb-1">Scheduled Reports</h3>
-            <p className="text-sm text-neutral-400">Automated analytics summaries via email or webhook.</p>
-          </div>
-          {canManage && (
-            <Button variant="default" className="text-sm gap-1.5" onClick={openNewReport}>
-              <Plus weight="bold" className="w-3.5 h-3.5" /> Add Report
-            </Button>
-          )}
-        </div>
-
+      <SettingsPanel
+        kicker="Scheduled reports"
+        description="Automated analytics summaries via email or webhook."
+      >
         {reportsError && reports.length === 0 ? (
-          <SettingsErrorState
-            variant="card"
-            message="We couldn't load your scheduled reports. It may be a temporary problem."
-            onRetry={() => mutateReports()}
-            retrying={reportsValidating}
-          />
+          <div className="p-5">
+            <SettingsErrorState
+              variant="banner"
+              message="We couldn't load your scheduled reports. It may be a temporary problem."
+              onRetry={() => mutateReports()}
+              retrying={reportsValidating}
+            />
+          </div>
         ) : reports.length === 0 ? (
-          <EmptyState
-            title="No scheduled reports yet"
-            description="Get automated analytics summaries delivered to your inbox on a recurring schedule."
+          <EmptyRow
             icon={<FileText weight="regular" />}
-            className="py-8"
+            title="No scheduled reports yet"
+            caption="Get automated analytics summaries delivered on a recurring schedule."
+            action={canManage ? (
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={openNewReport}>
+                <Plus weight="bold" className="h-3.5 w-3.5" /> Add report
+              </Button>
+            ) : undefined}
+            ghost={<GhostRow icon={<EnvelopeSimple weight="bold" className="h-4 w-4" />} primary="you@example.com" secondary="weekly · summary report" />}
           />
         ) : (
-          <div className="rounded-none border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
+          <PanelRows>
             {reports.map((r) => (
               <ScheduleRow key={r.id} schedule={r} siteId={siteId} onMutate={() => mutateReports()} onEdit={openEditReport} canManage={canManage} />
             ))}
-          </div>
+          </PanelRows>
         )}
-      </div>
+      </SettingsPanel>
 
-      {/* Alert Channels */}
-      <div id="section-alerts" className="scroll-mt-20 pt-6 border-t border-neutral-800 space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-base font-semibold text-white mb-1">Alert Channels</h3>
-            <p className="text-sm text-neutral-400">Get notified when uptime monitors go down.</p>
-          </div>
-          {canManage && (
-            <Button variant="default" className="text-sm gap-1.5" onClick={openNewAlert}>
-              <Plus weight="bold" className="w-3.5 h-3.5" /> Add Channel
-            </Button>
-          )}
-        </div>
-
+      {/* Alert Channels — header CTA is an outline (neutral) button, not orange. */}
+      <SettingsPanel
+        kicker="Alert channels"
+        description="Get notified when uptime monitors go down."
+        action={canManage ? (
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={openNewAlert}>
+            <Plus weight="bold" className="h-3.5 w-3.5" /> Add channel
+          </Button>
+        ) : undefined}
+      >
         {alertsError && alerts.length === 0 ? (
-          <SettingsErrorState
-            variant="card"
-            message="We couldn't load your alert channels. It may be a temporary problem."
-            onRetry={() => mutateAlerts()}
-            retrying={alertsValidating}
-          />
+          <div className="p-5">
+            <SettingsErrorState
+              variant="banner"
+              message="We couldn't load your alert channels. It may be a temporary problem."
+              onRetry={() => mutateAlerts()}
+              retrying={alertsValidating}
+            />
+          </div>
         ) : alerts.length === 0 ? (
-          <EmptyState
-            title="No alert channels yet"
-            description="Add a channel to get notified when uptime monitors detect downtime."
+          <EmptyRow
             icon={<Bell weight="regular" />}
-            className="py-8"
+            title="No alert channels yet"
+            caption="Add a channel to get notified when uptime monitors detect downtime."
+            action={canManage ? (
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={openNewAlert}>
+                <Plus weight="bold" className="h-3.5 w-3.5" /> Add channel
+              </Button>
+            ) : undefined}
+            ghost={<GhostRow icon={<WebhooksLogo weight="bold" className="h-4 w-4" />} primary="alerts@example.com" secondary="daily · downtime alerts" />}
           />
         ) : (
-          <div className="rounded-none border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
+          <PanelRows>
             {alerts.map((a) => (
               <ScheduleRow key={a.id} schedule={a} siteId={siteId} onMutate={() => mutateAlerts()} onEdit={openEditAlert} canManage={canManage} />
             ))}
-          </div>
+          </PanelRows>
         )}
-      </div>
+      </SettingsPanel>
 
       {/* Report Schedule Modal */}
       {reportModalOpen && (

@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { Fragment, useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/lib/auth/context'
 import { getUserActivity, type AuditLogEntry } from '@/lib/api/activity'
-import { Button, Spinner } from '@ciphera-net/facet'
+import { Button, Table, THead, TBody, TR, TH, TD } from '@ciphera-net/facet'
 import {
   Shield,
   SignIn,
@@ -14,9 +14,10 @@ import {
   TrashSimple,
   type Icon,
 } from '@phosphor-icons/react'
-import { EmptyState } from '@/components/ui/EmptyState'
+import { EmptyRow, SettingsPanel } from '@/components/settings/panels'
 import { StatusChip, type ChipTone } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
+import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { formatRelativeTime, formatDateTimeFull } from '@/lib/utils/formatDate'
 
 const PAGE_SIZE = 20
@@ -52,18 +53,6 @@ function getEventTone(eventType: string, outcome: string): ChipTone {
   if (eventType === 'account_deleted') return 'danger'
   if (eventType === 'recovery_codes_regenerated') return 'warning'
   return 'neutral'
-}
-
-// Icon-box tint, aligned to the StatusChip house palette (bg-{c}-900/30
-// text-{c}-400) so the event glyph reads identically to its status chip.
-const EVENT_BOX_TONE: Record<ChipTone, string> = {
-  neutral: 'bg-neutral-800 text-neutral-400',
-  success: 'bg-green-900/30 text-green-400',
-  info: 'bg-blue-900/30 text-blue-400',
-  warning: 'bg-amber-900/30 text-amber-400',
-  danger: 'bg-red-900/30 text-red-400',
-  brand: 'bg-brand-orange/10 text-brand-orange',
-  purple: 'bg-purple-900/30 text-purple-400',
 }
 
 function getMethodLabel(entry: AuditLogEntry): string | null {
@@ -108,6 +97,24 @@ function parseOS(ua: string): string {
   return ''
 }
 
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+
+/** Calendar-day bucket key (local) so adjacent same-day events share a group. */
+function dayKey(d: Date): string {
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+}
+
+/** Mono date-group header label: "TODAY" / "YESTERDAY" / "05 MAY" (spec §6). */
+function dayGroupLabel(d: Date): string {
+  const now = new Date()
+  if (dayKey(d) === dayKey(now)) return 'TODAY'
+  const yesterday = new Date(now)
+  yesterday.setDate(now.getDate() - 1)
+  if (dayKey(d) === dayKey(yesterday)) return 'YESTERDAY'
+  const label = `${String(d.getDate()).padStart(2, '0')} ${MONTHS[d.getMonth()]}`
+  return d.getFullYear() !== now.getFullYear() ? `${label} ${d.getFullYear()}` : label
+}
+
 export default function SecurityActivityCard() {
   const { user } = useAuth()
   const [entries, setEntries] = useState<AuditLogEntry[]>([])
@@ -150,86 +157,114 @@ export default function SecurityActivityCard() {
   }, [fetchActivity])
 
   return (
-    <div>
-      <h2 className="text-base font-semibold text-white mb-1">Security Activity</h2>
-      <p className="text-neutral-400 text-sm mb-6">
-        Recent security events on your account{totalCount > 0 ? ` (${totalCount})` : ''}
-      </p>
+    <section className="space-y-4">
+      <div className="min-w-0">
+        <p className="font-mono text-micro-label uppercase text-muted-foreground">Security activity</p>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          Recent security events on your account{totalCount > 0 ? ` (${totalCount})` : ''}.
+        </p>
+      </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Spinner />
-        </div>
+        <SettingsLoadingState rows={5} />
       ) : error ? (
         <SettingsErrorState message={error} onRetry={handleRetry} />
       ) : entries.length === 0 ? (
-        <div className="bg-card border border-border">
-          <EmptyState
-            title="No security activity yet"
-            description="Sign-ins, password changes, and device events will appear here over time."
+        <SettingsPanel>
+          <EmptyRow
             icon={<Shield weight="regular" />}
+            title="No security activity yet"
+            caption="Sign-ins, password changes, and device events will appear here over time."
           />
-        </div>
+        </SettingsPanel>
       ) : (
-        <div className="space-y-2">
-          {entries.map((entry) => {
-            const label = EVENT_LABELS[entry.event_type] || entry.event_type.replace(/_/g, ' ')
-            const tone = getEventTone(entry.event_type, entry.outcome)
-            const EventIcon = EVENT_ICONS[entry.event_type] || Shield
-            const method = getMethodLabel(entry)
-            const reason = getFailureReason(entry)
-            const browser = entry.user_agent ? parseBrowserName(entry.user_agent) : null
-            const os = entry.user_agent ? parseOS(entry.user_agent) : null
-            const deviceStr = [browser, os].filter(Boolean).join(' on ')
+        <>
+          <Table aria-label="Security activity">
+            <THead>
+              <TR>
+                <TH>Event</TH>
+                <TH>Details</TH>
+                <TH numeric>When</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {entries.map((entry, i) => {
+                const label = EVENT_LABELS[entry.event_type] || entry.event_type.replace(/_/g, ' ')
+                const tone = getEventTone(entry.event_type, entry.outcome)
+                const EventIcon = EVENT_ICONS[entry.event_type] || Shield
+                const method = getMethodLabel(entry)
+                const reason = getFailureReason(entry)
+                const browser = entry.user_agent ? parseBrowserName(entry.user_agent) : null
+                const os = entry.user_agent ? parseOS(entry.user_agent) : null
+                const deviceStr = [browser, os].filter(Boolean).join(' on ')
+                const created = new Date(entry.created_at)
 
-            return (
-              <div
-                key={entry.id}
-                className="bg-card border border-border flex items-start gap-3 rounded-none px-4 py-3"
-              >
-                <div className={`flex-shrink-0 w-9 h-9 rounded-none flex items-center justify-center mt-0.5 ${EVENT_BOX_TONE[tone]}`}>
-                  <EventIcon size={18} weight="regular" />
-                </div>
+                const prevKey = i > 0 ? dayKey(new Date(entries[i - 1].created_at)) : null
+                const showGroup = dayKey(created) !== prevKey
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium text-white text-sm">
-                      {label}
-                    </span>
-                    {method && <StatusChip tone="neutral">{method}</StatusChip>}
-                    {entry.outcome === 'failure' && <StatusChip tone="danger">Failed</StatusChip>}
-                  </div>
-                  <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-400 flex-wrap">
-                    {reason && <span>{reason}</span>}
-                    {reason && (deviceStr || entry.ip_address) && <span>&middot;</span>}
-                    {deviceStr && <span>{deviceStr}</span>}
-                    {deviceStr && entry.ip_address && <span>&middot;</span>}
-                    {entry.ip_address && <span>{entry.ip_address}</span>}
-                  </div>
-                </div>
-
-                <div className="flex-shrink-0 text-right">
-                  <span className="text-xs text-neutral-400" title={formatDateTimeFull(new Date(entry.created_at))}>
-                    {formatRelativeTime(entry.created_at)}
-                  </span>
-                </div>
-              </div>
-            )
-          })}
+                return (
+                  <Fragment key={entry.id}>
+                    {showGroup && (
+                      <TR>
+                        <TD
+                          colSpan={3}
+                          className="bg-muted px-5 py-2 font-mono text-micro-label uppercase text-muted-foreground"
+                        >
+                          {dayGroupLabel(created)}
+                        </TD>
+                      </TR>
+                    )}
+                    <TR>
+                      <TD>
+                        <div className="flex items-center gap-2.5">
+                          <EventIcon
+                            size={18}
+                            weight="regular"
+                            className={`shrink-0 ${tone === 'danger' ? 'text-destructive' : 'text-muted-foreground'}`}
+                          />
+                          <span className="font-medium text-foreground">{label}</span>
+                          {entry.outcome === 'failure' && (
+                            <StatusChip tone="danger" className="shrink-0">Failed</StatusChip>
+                          )}
+                        </div>
+                      </TD>
+                      <TD className="text-xs text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          {method && (
+                            // The repeated "opaque" auth-method chip is demoted to
+                            // inline mono metadata (spec §6) — no lone status pill.
+                            <span className="font-mono uppercase tracking-[0.06em] text-[11px]">
+                              {method}
+                            </span>
+                          )}
+                          {reason && <span>{reason}</span>}
+                          {deviceStr && <span>{deviceStr}</span>}
+                          {entry.ip_address && <span className="font-mono">{entry.ip_address}</span>}
+                        </div>
+                      </TD>
+                      <TD
+                        numeric
+                        className="whitespace-nowrap text-xs text-muted-foreground"
+                        title={formatDateTimeFull(created)}
+                      >
+                        {formatRelativeTime(entry.created_at)}
+                      </TD>
+                    </TR>
+                  </Fragment>
+                )
+              })}
+            </TBody>
+          </Table>
 
           {hasMore && (
-            <div className="pt-2 text-center">
-              <Button
-                variant="ghost"
-                onClick={handleLoadMore}
-                disabled={loadingMore}
-              >
-                {loadingMore ? 'Loading...' : 'Load more'}
+            <div className="flex justify-center pt-1">
+              <Button variant="ghost" onClick={handleLoadMore} disabled={loadingMore}>
+                {loadingMore ? 'Loading…' : 'Load more'}
               </Button>
             </div>
           )}
-        </div>
+        </>
       )}
-    </div>
+    </section>
   )
 }

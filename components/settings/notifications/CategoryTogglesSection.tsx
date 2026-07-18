@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
-import { Toggle } from '@ciphera-net/facet'
+import { Toggle, Banner } from '@ciphera-net/facet'
+import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { getCategorySettings, updateCategorySettings, type CategorySetting } from '@/lib/api/notifications-webhooks'
@@ -58,41 +59,60 @@ export default function CategoryTogglesSection() {
   if (!settings) return <SettingsLoadingState />
 
   return (
-    <div className="space-y-2">
-      <p className="text-xs text-neutral-500">
-        Disable a category to prevent new notifications of that type from being created for the workspace. Billing and security alerts are always delivered and cannot be disabled.
-      </p>
-      <ul className="divide-y divide-neutral-800 rounded-none border border-neutral-800 bg-neutral-800/30">
-        {categories.map(c => {
-          const critical = c.id === 'billing' || c.id === 'security'
-          const enabled = settings[c.id] ?? true
-          return (
-            <li key={c.id} className="flex items-center justify-between px-4 py-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-white flex items-center gap-2">
-                  {c.label}
-                  {critical && <span className="text-micro-label uppercase tracking-wider text-brand-orange border border-brand-orange/30 rounded-none px-1.5 py-0.5">Always on</span>}
-                </p>
-                <p className="text-xs text-neutral-500 mt-0.5">{c.description}</p>
-                {(c.id === 'security' || c.id === 'team' || c.id === 'system') && (
-                  <p className="text-xs text-neutral-600 mt-0.5 italic">No notifications of this type are being generated yet.</p>
-                )}
-              </div>
-              <Toggle
-                checked={critical ? true : enabled}
-                onChange={() => !critical && toggle(c.id)}
-                disabled={critical}
-                aria-label={`Toggle ${c.label}`}
+    <div className="space-y-3">
+      <SettingsPanel
+        kicker="Categories"
+        description="Disable a category to stop new notifications of that type from being created for everyone in the workspace. Billing and security alerts are always delivered and cannot be disabled."
+        action={
+          saving ? (
+            <span className="font-mono text-micro-label uppercase text-muted-foreground">Saving…</span>
+          ) : undefined
+        }
+      >
+        <PanelRows>
+          {categories.map(c => {
+            const critical = c.id === 'billing' || c.id === 'security'
+            const enabled = settings[c.id] ?? true
+            const noneYet = c.id === 'security' || c.id === 'team' || c.id === 'system'
+            return (
+              <PanelRow
+                key={c.id}
+                label={c.label}
+                caption={
+                  <>
+                    {c.description}
+                    {noneYet && (
+                      <span className="mt-0.5 block italic text-muted-foreground/70">
+                        No notifications of this type are being generated yet.
+                      </span>
+                    )}
+                  </>
+                }
+                control={
+                  critical ? (
+                    // Locked category: Toggle rendered ON + disabled (unambiguous,
+                    // control-state orange) with a mono "Always on" micro-label —
+                    // never a gray-off switch, never an orange badge.
+                    <div className="flex items-center gap-2.5">
+                      <span className="font-mono text-micro-label uppercase text-muted-foreground">
+                        Always on
+                      </span>
+                      <Toggle checked disabled onChange={() => {}} />
+                    </div>
+                  ) : (
+                    <Toggle checked={enabled} onChange={() => toggle(c.id)} />
+                  )
+                }
               />
-            </li>
-          )
-        })}
-      </ul>
-      {(saving || error) && (
-        <div className="text-xs">
-          {saving && <span className="text-neutral-500">Saving…</span>}
-          {error && <span className="text-red-400">{error}</span>}
-        </div>
+            )
+          })}
+        </PanelRows>
+      </SettingsPanel>
+
+      {error && (
+        <Banner tone="danger" title="Couldn't save that change">
+          {error}
+        </Banner>
       )}
     </div>
   )

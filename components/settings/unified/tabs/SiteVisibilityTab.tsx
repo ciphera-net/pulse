@@ -1,15 +1,25 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Button, Input, Toggle, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/facet'
+import {
+  Button,
+  Input,
+  InputGroup,
+  InputGroupInput,
+  InputGroupButton,
+  Toggle,
+  toast,
+  getAuthErrorMessage,
+} from '@ciphera-net/facet'
 import { Copy, CheckCircle, Lock } from '@phosphor-icons/react'
-import { AnimatePresence, motion } from 'framer-motion'
 import { useSite } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { env } from '@/lib/env'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
+import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
+import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
 import { useCan } from '@/lib/auth/permissions'
 
 // Zod-validated URL, guaranteed to be a `string` at runtime.
@@ -116,113 +126,119 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
         />
       )
     }
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Spinner className="w-6 h-6 text-neutral-500" />
-      </div>
-    )
+    return <SettingsLoadingState rows={3} />
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-base font-semibold text-white mb-1">Visibility</h3>
-        <p className="text-sm text-neutral-400">Control who can see your analytics dashboard.</p>
-      </div>
-
-      {/* Public toggle */}
-      <div className="flex items-center justify-between py-3 px-4 rounded-none bg-neutral-800/30 border border-neutral-800">
-        <div>
-          <p className="text-sm font-medium text-white">Public Dashboard</p>
-          <p className="text-xs text-neutral-500">Allow anyone with the link to view this dashboard.</p>
-        </div>
-        <Toggle checked={isPublic} onChange={() => setIsPublic(p => !p)} disabled={!canEdit || saving} />
-      </div>
-
-      <AnimatePresence>
-        {isPublic && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="space-y-4 overflow-hidden"
-          >
-            {/* Share link */}
-            <div className="p-4 rounded-none border border-neutral-800 bg-neutral-800/30">
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-micro-label uppercase text-neutral-400">Public Link</label>
-                {/* Reflects the SAVED server state, not the pending toggle: the
-                    link only resolves once the change is saved. */}
-                {site.is_public ? (
-                  <StatusChip tone="success" dot pulse>Live</StatusChip>
-                ) : (
-                  <StatusChip tone="warning">Not saved yet</StatusChip>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <Input value={`${APP_URL}/share/${siteId}`} readOnly className="font-mono text-xs" />
-                <Button onClick={copyLink} variant="secondary" className="shrink-0 text-sm gap-1.5">
-                  {linkCopied ? <CheckCircle weight="bold" className="w-3.5 h-3.5" /> : <Copy weight="bold" className="w-3.5 h-3.5" />}
-                  {linkCopied ? 'Copied' : 'Copy'}
-                </Button>
-              </div>
-            </div>
-
-            {/* Password protection */}
-            <div className="flex items-center justify-between py-3 px-4 rounded-none bg-neutral-800/30 border border-neutral-800">
-              <div className="flex items-center gap-2">
-                <Lock weight="bold" className="w-4 h-4 text-neutral-500" />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-white">Password Protection</p>
-                    {site.has_password && <StatusChip tone="success">Password set</StatusChip>}
-                  </div>
-                  <p className="text-xs text-neutral-500">Require a password to view the public dashboard.</p>
-                </div>
-              </div>
+    <div className="space-y-8">
+      {/* ONE panel — public toggle, share link, and password all live as ruled
+          rows in the same frame (spec §6: no lone toggle in a void). */}
+      <SettingsPanel kicker="Visibility" description="Control who can see your analytics dashboard.">
+        <PanelRows>
+          <PanelRow
+            label="Public dashboard"
+            caption="Allow anyone with the link to view this dashboard."
+            control={
               <Toggle
-                checked={passwordEnabled}
-                onChange={() => { setPasswordEnabled(p => !p); setPwError(false) }}
+                checked={isPublic}
+                onChange={() => setIsPublic(p => !p)}
                 disabled={!canEdit || saving}
+                aria-label="Public dashboard"
               />
-            </div>
+            }
+          />
 
-            <AnimatePresence>
-              {passwordEnabled && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
+          {isPublic && (
+            <PanelRow
+              label="Public link"
+              htmlFor="site-public-link"
+              control={
+                /* Reflects the SAVED server state, not the pending toggle: the
+                   link only resolves once the change is saved. */
+                site.is_public
+                  ? <StatusChip tone="success" dot pulse>Live</StatusChip>
+                  : <StatusChip tone="warning">Not saved yet</StatusChip>
+              }
+            >
+              <InputGroup>
+                <InputGroupInput
+                  id="site-public-link"
+                  value={`${APP_URL}/share/${siteId}`}
+                  readOnly
+                  className="font-mono text-xs"
+                />
+                <InputGroupButton
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  onClick={copyLink}
+                  aria-label="Copy public link"
                 >
-                  <Input
-                    type="password"
-                    value={password}
-                    onChange={e => { setPassword(e.target.value); if (pwError) setPwError(false) }}
-                    placeholder={site.has_password ? 'Leave empty to keep current password' : 'Set a password'}
-                    disabled={saving}
-                    aria-invalid={pwError || undefined}
-                  />
-                  {pwError && (
-                    <p className="mt-1.5 text-xs text-red-400">Enter a password to enable protection.</p>
-                  )}
-                  {site.has_password && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="mt-2 text-red-400 hover:text-red-300"
-                      onClick={() => { setPasswordEnabled(false); setPassword(''); setPwError(false) }}
-                      disabled={saving}
-                    >
-                      Remove password protection
-                    </Button>
-                  )}
-                </motion.div>
+                  {linkCopied
+                    ? <CheckCircle weight="bold" className="h-3.5 w-3.5" />
+                    : <Copy weight="bold" className="h-3.5 w-3.5" />}
+                  <span className="ml-1">{linkCopied ? 'Copied' : 'Copy'}</span>
+                </InputGroupButton>
+              </InputGroup>
+            </PanelRow>
+          )}
+
+          {isPublic && (
+            <PanelRow
+              label={
+                <span className="flex items-center gap-2">
+                  <Lock weight="bold" className="h-4 w-4 text-muted-foreground" />
+                  Password protection
+                </span>
+              }
+              caption="Require a password to view the public dashboard."
+              control={
+                <Toggle
+                  checked={passwordEnabled}
+                  onChange={() => { setPasswordEnabled(p => !p); setPwError(false) }}
+                  disabled={!canEdit || saving}
+                  aria-label="Password protection"
+                />
+              }
+            >
+              {site.has_password && <StatusChip tone="success">Password set</StatusChip>}
+            </PanelRow>
+          )}
+
+          {isPublic && passwordEnabled && (
+            <PanelRow
+              label="Password"
+              htmlFor="site-password"
+              caption={site.has_password ? 'Leave empty to keep the current password.' : 'Choose a password viewers must enter.'}
+            >
+              <Input
+                id="site-password"
+                type="password"
+                value={password}
+                onChange={e => { setPassword(e.target.value); if (pwError) setPwError(false) }}
+                placeholder={site.has_password ? 'Leave empty to keep current password' : 'Set a password'}
+                disabled={saving}
+                aria-invalid={pwError || undefined}
+                className={pwError ? 'border-destructive focus:border-destructive' : undefined}
+              />
+              {pwError && (
+                <p className="mt-1.5 text-xs text-destructive">Enter a password to enable protection.</p>
               )}
-            </AnimatePresence>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              {site.has_password && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => { setPasswordEnabled(false); setPassword(''); setPwError(false) }}
+                  disabled={saving}
+                >
+                  Remove password protection
+                </Button>
+              )}
+            </PanelRow>
+          )}
+        </PanelRows>
+      </SettingsPanel>
 
       {canEdit && (
         <SettingsSaveBar

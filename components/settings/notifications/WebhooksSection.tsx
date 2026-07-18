@@ -1,11 +1,10 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Button } from '@ciphera-net/facet'
+import { Button, Banner } from '@ciphera-net/facet'
 import { Plugs } from '@phosphor-icons/react'
+import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/settings/panels'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
-import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { StatusChip } from '@/components/settings/StatusChip'
-import { EmptyState } from '@/components/ui/EmptyState'
 import { listWebhooks, deleteWebhook, type Webhook } from '@/lib/api/notifications-webhooks'
 import WebhookFormModal from './WebhookFormModal'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -50,63 +49,85 @@ export default function WebhooksSection() {
     }
   }
 
+  // Exact branch parity with the pre-redesign section:
+  //  - list renders whenever populated (even alongside an error banner)
+  //  - the in-frame empty state only shows when there is no error
+  //  - the bare loading skeleton only shows when there is no error
+  const showPanel = webhooks !== null && (webhooks.length > 0 || !error)
+  const showLoading = webhooks === null && !error
+
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-neutral-500">
-          Webhook URLs are stored encrypted at rest. Payload contains event ID and timestamp only — no event content.
-        </p>
-        <Button
-          variant="default"
-          size="sm"
-          onClick={() => setShowForm(true)}
-        >
-          Add webhook
-        </Button>
-      </div>
-
+      {/* Delivery / operation failure surface (load + delete errors). Rendered
+          as a persistent danger Banner above the panel; the populated list
+          stays visible beneath it, and Retry re-runs the load. */}
       {error && (
-        <SettingsErrorState
-          variant="banner"
-          message={error}
-          onRetry={retry}
-          retrying={retrying}
+        <Banner
+          tone="danger"
+          title={error}
+          action={
+            <Button size="sm" variant="secondary" isLoading={retrying} onClick={retry}>
+              Retry
+            </Button>
+          }
         />
       )}
-      {!error && webhooks === null && <SettingsLoadingState />}
-      {!error && webhooks && webhooks.length === 0 && (
-        <EmptyState
-          title="No webhooks configured"
-          description="Add a webhook to receive event notifications via HTTP."
-          icon={<Plugs weight="regular" />}
-          className="py-8"
-        />
-      )}
-      {webhooks && webhooks.length > 0 && (
-        <div className="rounded-none border border-neutral-800 bg-neutral-800/30 divide-y divide-neutral-800">
-          {webhooks.map(w => (
-            <div key={w.id} className="flex items-center justify-between px-4 py-3 group">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-white flex items-center gap-2">
-                  {w.label || '(no label)'}
-                  {!w.enabled && <StatusChip tone="neutral">Disabled</StatusChip>}
-                </p>
-                <p className="text-xs text-neutral-500 font-mono truncate">{w.url_masked}</p>
-                <p className="text-xs text-neutral-400 mt-1">{w.subscribed_types.join(', ')}</p>
-              </div>
-              <div className="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity ease-apple">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-red-400 ml-3"
-                  onClick={() => handleDelete(w.id)}
-                >
-                  Delete
+
+      {showLoading && <SettingsLoadingState rows={2} />}
+
+      {showPanel && (
+        <SettingsPanel
+          kicker="Webhook destinations"
+          description="Webhook URLs are stored encrypted at rest. Payloads contain the event ID and timestamp only — never event content."
+          action={
+            <Button variant="default" size="sm" onClick={() => setShowForm(true)}>
+              Add webhook
+            </Button>
+          }
+        >
+          {webhooks!.length === 0 ? (
+            <EmptyRow
+              icon={<Plugs weight="regular" />}
+              title="No webhooks configured"
+              caption="Add a webhook to receive event notifications over HTTP."
+              action={
+                <Button variant="secondary" size="sm" onClick={() => setShowForm(true)}>
+                  Add webhook
                 </Button>
-              </div>
-            </div>
-          ))}
-        </div>
+              }
+            />
+          ) : (
+            <PanelRows>
+              {webhooks!.map(w => (
+                <PanelRow
+                  key={w.id}
+                  label={
+                    <span className="flex items-center gap-2">
+                      {w.label || '(no label)'}
+                      {!w.enabled && <StatusChip tone="neutral">Disabled</StatusChip>}
+                    </span>
+                  }
+                  control={
+                    // Row action is ALWAYS visible (no hover-only reveal).
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive"
+                      onClick={() => handleDelete(w.id)}
+                    >
+                      Delete
+                    </Button>
+                  }
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-mono text-xs text-muted-foreground">{w.url_masked}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{w.subscribed_types.join(', ')}</p>
+                  </div>
+                </PanelRow>
+              ))}
+            </PanelRows>
+          )}
+        </SettingsPanel>
       )}
 
       {showForm && (

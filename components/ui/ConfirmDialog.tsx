@@ -44,11 +44,6 @@ export function ConfirmDialog({
     }
   }
 
-  const confirmClassName =
-    variant === 'danger'
-      ? 'bg-red-600 hover:bg-red-700 text-white border-red-600'
-      : 'bg-amber-600 hover:bg-amber-700 text-white border-amber-600'
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[400px]">
@@ -65,9 +60,16 @@ export function ConfirmDialog({
           >
             {cancelLabel}
           </Button>
+          {/* Danger uses the sanctioned solid destructive fill; the (currently
+              unused) warning path keeps an amber treatment until Facet ships a
+              warning Button variant. */}
           <Button
-            variant="secondary"
-            className={`text-sm ${confirmClassName}`}
+            variant={variant === 'danger' ? 'destructive' : 'secondary'}
+            className={
+              variant === 'danger'
+                ? 'text-sm'
+                : 'text-sm bg-amber-600 hover:bg-amber-700 text-white border-amber-600'
+            }
             onClick={handleConfirm}
             disabled={loading}
           >

@@ -2,9 +2,19 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { EASE_APPLE } from '@/lib/motion'
-import { Button, Input, Spinner, toast, getAuthErrorMessage } from '@ciphera-net/facet'
-import { Checkbox } from '@/components/ui/checkbox'
+import { EASE_APPLE, SPRING } from '@/lib/motion'
+import { cn } from '@/lib/utils'
+import {
+  Button,
+  Input,
+  Select,
+  Checkbox,
+  RailGrid,
+  RailGridTile,
+  Spinner,
+  toast,
+  getAuthErrorMessage,
+} from '@ciphera-net/facet'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   CaretDown,
@@ -19,13 +29,13 @@ import {
   Check,
   X,
 } from '@phosphor-icons/react'
-import { EmptyState } from '@/components/ui/EmptyState'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { SettingsPanel, EmptyRow } from '@/components/settings/panels'
+import { MastheadAction } from '@/components/settings/shell-slots'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { useAuth } from '@/lib/auth/context'
 import { useCan } from '@/lib/auth/permissions'
-import { SPRING } from '@/lib/motion'
 import {
   listRoles,
   listPermissionGroups,
@@ -54,26 +64,86 @@ const OWNER_ONLY_PERMS = new Set(['roles.manage', 'org.delete'])
 function ColorDot({ color }: { color: string | null }) {
   // No user-chosen color: fall back to a neutral token dot, not a raw hex.
   if (!color) {
-    return <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0 bg-neutral-500" />
+    return <span className="inline-block w-2 h-2 rounded-full shrink-0 bg-muted-foreground" />
   }
   return (
     <span
-      className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+      className="inline-block w-2 h-2 rounded-full shrink-0"
       style={{ background: color }}
     />
   )
 }
 
-// ─── Built-in role icon ───────────────────────────────────────────────────────
+// ─── Built-in role icon (neutral — no decorative accent, per §2.3 budget) ──────
 
 function RoleIcon({ slug }: { slug: string }) {
-  if (slug === 'owner')
-    return <Crown weight="fill" className="w-4 h-4 text-brand-orange" />
-  if (slug === 'admin')
-    return <ShieldCheck weight="fill" className="w-4 h-4 text-blue-400" />
-  if (slug === 'member')
-    return <UserCircle weight="fill" className="w-4 h-4 text-neutral-400" />
-  return <Users weight="regular" className="w-4 h-4 text-neutral-400" />
+  const className = 'w-4 h-4 text-muted-foreground shrink-0'
+  if (slug === 'owner') return <Crown weight="fill" className={className} />
+  if (slug === 'admin') return <ShieldCheck weight="fill" className={className} />
+  if (slug === 'member') return <UserCircle weight="fill" className={className} />
+  return <Users weight="regular" className={className} />
+}
+
+// ─── Permission matrix (Checkbox grid grouped by domain in RailGrid bands) ─────
+
+interface PermissionMatrixProps {
+  groups: PermissionGroup[]
+  idPrefix: string
+  isChecked: (perm: string) => boolean
+  isDisabled: (perm: string) => boolean
+  /** Whether to surface the "Owner only" chip on the owner-locked permissions. */
+  showOwnerBadge: (perm: string) => boolean
+  onToggle: (perm: string) => void
+}
+
+function PermissionMatrix({
+  groups,
+  idPrefix,
+  isChecked,
+  isDisabled,
+  showOwnerBadge,
+  onToggle,
+}: PermissionMatrixProps) {
+  return (
+    <RailGrid minTileWidth={260}>
+      {groups.map((group) => (
+        <RailGridTile key={group.key} className="space-y-3">
+          <p className="font-mono text-micro-label uppercase text-muted-foreground">
+            {group.label}
+          </p>
+          <div className="space-y-3">
+            {group.permissions.map((pi) => {
+              const checked = isChecked(pi.permission)
+              const disabled = isDisabled(pi.permission)
+              const dimmed = disabled && !checked
+              return (
+                <Checkbox
+                  key={pi.permission}
+                  id={`${idPrefix}-${pi.permission}`}
+                  checked={checked}
+                  disabled={disabled}
+                  onChange={() => onToggle(pi.permission)}
+                  label={
+                    <span className="flex flex-col gap-0.5">
+                      <span className="inline-flex items-center gap-2">
+                        <span className={cn('text-sm', dimmed ? 'text-muted-foreground' : 'text-foreground')}>
+                          {pi.label}
+                        </span>
+                        {showOwnerBadge(pi.permission) && (
+                          <StatusChip tone="neutral">Owner only</StatusChip>
+                        )}
+                      </span>
+                      <span className="text-xs text-muted-foreground">{pi.description}</span>
+                    </span>
+                  }
+                />
+              )
+            })}
+          </div>
+        </RailGridTile>
+      ))}
+    </RailGrid>
+  )
 }
 
 // ─── Create role form ─────────────────────────────────────────────────────────
@@ -146,110 +216,78 @@ function CreateRoleForm({
     .map((r) => ({ value: r.slug, label: r.name }))
 
   return (
-    <div className="rounded-none border border-neutral-800 bg-neutral-800/30 p-5 space-y-5">
-      <h4 className="text-sm font-semibold text-white">New custom role</h4>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-neutral-400">Name</label>
-          <Input
-            value={name}
-            onChange={(e) => handleNameChange(e.target.value)}
-            placeholder="e.g. Analyst"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-neutral-400">Slug</label>
-          <Input
-            value={slug}
-            onChange={(e) => handleSlugChange(e.target.value)}
-            placeholder="e.g. analyst"
-          />
-        </div>
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-xs font-medium text-neutral-400">Copy permissions from</label>
-        <div className="flex gap-2 flex-wrap">
-          {templateOptions.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => setTemplateSlug(opt.value)}
-              className={`px-3 py-1.5 rounded-none text-xs font-medium border transition-colors ease-apple ${
-                templateSlug === opt.value
-                  ? 'border-brand-orange/60 bg-brand-orange/10 text-brand-orange'
-                  : 'border-neutral-700 text-neutral-400 hover:text-white hover:border-neutral-600'
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Permission checkboxes for the new role */}
-      <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
-        {permissionGroups.map((group) => (
-          <div key={group.key}>
-            <p className="text-micro-label font-semibold text-neutral-500 uppercase mb-2">
-              {group.label}
-            </p>
-            <ul className="space-y-1">
-              {group.permissions.map((pi) => {
-                const ownerOnly = OWNER_ONLY_PERMS.has(pi.permission)
-                const checked = ownerOnly ? false : permissions.includes(pi.permission)
-                return (
-                  <li
-                    key={pi.permission}
-                    className={`flex items-start gap-3 py-1 ${ownerOnly ? 'opacity-40' : ''}`}
-                  >
-                    <Checkbox
-                      id={`new-${pi.permission}`}
-                      checked={checked}
-                      disabled={ownerOnly}
-                      onCheckedChange={() => togglePerm(pi.permission)}
-                    />
-                    <label
-                      htmlFor={`new-${pi.permission}`}
-                      className={`flex-1 min-w-0 ${ownerOnly ? '' : 'cursor-pointer'}`}
-                    >
-                      <span className="text-sm text-white">{pi.label}</span>
-                      {ownerOnly && (
-                        <StatusChip tone="brand" className="ml-2 align-middle">
-                          Owner only
-                        </StatusChip>
-                      )}
-                      <p className="text-xs text-neutral-500 mt-0.5">{pi.description}</p>
-                    </label>
-                  </li>
-                )
-              })}
-            </ul>
+    <SettingsPanel kicker="New custom role">
+      <div className="space-y-5 p-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <label htmlFor="new-role-name" className="block text-sm font-medium text-foreground">
+              Name
+            </label>
+            <Input
+              id="new-role-name"
+              value={name}
+              onChange={(e) => handleNameChange(e.target.value)}
+              placeholder="e.g. Analyst"
+            />
           </div>
-        ))}
-      </div>
+          <div className="space-y-1.5">
+            <label htmlFor="new-role-slug" className="block text-sm font-medium text-foreground">
+              Slug
+            </label>
+            <Input
+              id="new-role-slug"
+              value={slug}
+              onChange={(e) => handleSlugChange(e.target.value)}
+              placeholder="e.g. analyst"
+            />
+          </div>
+        </div>
 
-      <div className="flex gap-2 justify-end pt-2 border-t border-neutral-800">
-        <Button onClick={onCancel} variant="secondary" className="text-sm">
-          Cancel
-        </Button>
-        <Button
-          onClick={handleSave}
-          variant="default"
-          className="text-sm gap-1.5"
-          disabled={saving || !name.trim() || !slug.trim()}
-        >
-          <Check weight="bold" className="w-3.5 h-3.5" />
-          {saving ? 'Creating…' : 'Create role'}
-        </Button>
+        <div className="space-y-1.5">
+          <label htmlFor="new-role-template" className="block text-sm font-medium text-foreground">
+            Copy permissions from
+          </label>
+          <Select
+            id="new-role-template"
+            value={templateSlug}
+            onChange={setTemplateSlug}
+            options={templateOptions}
+            placeholder="Select a role"
+            aria-label="Copy permissions from"
+          />
+        </div>
+
+        {/* Permission matrix for the new role */}
+        <PermissionMatrix
+          groups={permissionGroups}
+          idPrefix="new"
+          isChecked={(perm) => !OWNER_ONLY_PERMS.has(perm) && permissions.includes(perm)}
+          isDisabled={(perm) => OWNER_ONLY_PERMS.has(perm)}
+          showOwnerBadge={(perm) => OWNER_ONLY_PERMS.has(perm)}
+          onToggle={togglePerm}
+        />
+
+        <div className="flex justify-end gap-2 border-t border-border pt-4">
+          <Button onClick={onCancel} variant="secondary">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            className="gap-1.5"
+            disabled={saving || !name.trim() || !slug.trim()}
+          >
+            <Check weight="bold" className="w-3.5 h-3.5" />
+            {saving ? 'Creating…' : 'Create role'}
+          </Button>
+        </div>
       </div>
-    </div>
+    </SettingsPanel>
   )
 }
 
-// ─── Role card ────────────────────────────────────────────────────────────────
+// ─── Role row (ruled row expanding in place) ───────────────────────────────────
 
-interface RoleCardProps {
+interface RoleRowProps {
   role: Role
   permissionGroups: PermissionGroup[]
   canManage: boolean
@@ -257,13 +295,13 @@ interface RoleCardProps {
   onDeleted: (roleId: string) => void
 }
 
-function RoleCard({
+function RoleRow({
   role,
   permissionGroups,
   canManage,
   onUpdated,
   onDeleted,
-}: RoleCardProps) {
+}: RoleRowProps) {
   const [expanded, setExpanded] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [editingName, setEditingName] = useState(false)
@@ -385,66 +423,71 @@ function RoleCard({
     toast.success(`"${role.name}" deleted`)
   }
 
+  // Scope chip copy — built-in roles always span every site.
+  const scopeLabel = siteScoped
+    ? `${siteIds.length} ${siteIds.length === 1 ? 'site' : 'sites'}`
+    : 'All sites'
+  const permCount = isOwner ? 'All permissions' : `${permissions.length} permissions`
+
   return (
-    <div className="rounded-none border border-neutral-800 bg-neutral-800/30 overflow-hidden">
-      {/* Card header */}
+    <div>
+      {/* Row header */}
       <div
-        className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none hover:bg-neutral-800/40 transition-colors ease-apple"
+        className="flex items-center gap-3 px-5 py-3.5 cursor-pointer select-none transition-colors duration-fast ease-apple hover:bg-muted"
         onClick={() => setExpanded((v) => !v)}
       >
         <RoleIcon slug={role.slug} />
         <ColorDot color={role.color} />
 
-        {/* Name + description */}
+        {/* Name + meta */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-          {editingName && !role.is_builtin ? (
-            <div
-              className="flex items-center gap-1.5"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Input
-                value={nameValue}
-                onChange={(e) => setNameValue(e.target.value)}
-                className="h-7 text-sm w-40"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSaveName()
-                  if (e.key === 'Escape') {
+          <div className="flex items-center gap-2 flex-wrap">
+            {editingName && !role.is_builtin ? (
+              <div
+                className="flex items-center gap-1.5"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Input
+                  value={nameValue}
+                  onChange={(e) => setNameValue(e.target.value)}
+                  className="h-7 text-sm w-40"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveName()
+                    if (e.key === 'Escape') {
+                      setEditingName(false)
+                      setNameValue(role.name)
+                    }
+                  }}
+                />
+                <button
+                  onClick={handleSaveName}
+                  disabled={saving}
+                  aria-label="Save name"
+                  className="p-1 rounded-none text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  <Check weight="bold" className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => {
                     setEditingName(false)
                     setNameValue(role.name)
-                  }
-                }}
-              />
-              <button
-                onClick={handleSaveName}
-                disabled={saving}
-                className="p-1 rounded-none text-green-400 hover:bg-green-900/20 transition-colors"
-              >
-                <Check weight="bold" className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => {
-                  setEditingName(false)
-                  setNameValue(role.name)
-                }}
-                className="p-1 rounded-none text-neutral-500 hover:text-neutral-300 transition-colors"
-              >
-                <X weight="bold" className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ) : (
-            <span className="text-sm font-medium text-white truncate">{nameValue}</span>
-          )}
+                  }}
+                  aria-label="Cancel rename"
+                  className="p-1 rounded-none text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X weight="bold" className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <span className="text-sm font-medium text-foreground truncate">{nameValue}</span>
+            )}
 
-          {role.is_builtin && (
-            <StatusChip tone="neutral" className="shrink-0">
-              Built-in
-            </StatusChip>
-          )}
+            {role.is_builtin && <StatusChip tone="neutral">Built-in</StatusChip>}
+            <StatusChip tone="neutral">{scopeLabel}</StatusChip>
           </div>
           {role.is_builtin && (
-            <p className="text-xs text-neutral-500 mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               {role.slug === 'owner' && 'Full access to everything. Cannot be modified.'}
               {role.slug === 'admin' && 'Manage sites, team, and settings. Cannot access billing or delete the workspace.'}
               {role.slug === 'analyst' && 'Create and manage goals, funnels, and reports. Cannot manage sites, team, or billing.'}
@@ -454,10 +497,15 @@ function RoleCard({
           )}
         </div>
 
-        {/* Actions */}
+        {/* Permission count — mono metric */}
+        <span className="hidden font-mono text-xs tabular-nums text-muted-foreground sm:inline shrink-0">
+          {permCount}
+        </span>
+
+        {/* Actions — always visible (touch-safe), never hover-only */}
         <TooltipProvider>
           <div
-            className="flex items-center gap-1.5 shrink-0"
+            className="flex items-center gap-1 shrink-0"
             onClick={(e) => e.stopPropagation()}
           >
             {canManage && !role.is_builtin && !editingName && (
@@ -465,7 +513,8 @@ function RoleCard({
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => setEditingName(true)}
-                    className="p-1.5 rounded-none text-neutral-500 hover:text-neutral-200 hover:bg-white/[0.06] transition-colors ease-apple"
+                    aria-label="Rename role"
+                    className="p-1.5 rounded-none text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-fast ease-apple"
                   >
                     <Pencil weight="bold" className="w-3.5 h-3.5" />
                   </button>
@@ -478,7 +527,8 @@ function RoleCard({
                 <TooltipTrigger asChild>
                   <button
                     onClick={handleDelete}
-                    className="p-1.5 rounded-none text-neutral-500 hover:text-red-400 hover:bg-red-900/20 transition-colors ease-apple"
+                    aria-label="Delete role"
+                    className="p-1.5 rounded-none text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors duration-fast ease-apple"
                   >
                     <Trash weight="bold" className="w-3.5 h-3.5" />
                   </button>
@@ -492,7 +542,7 @@ function RoleCard({
         <motion.div
           animate={{ rotate: expanded ? 180 : 0 }}
           transition={SPRING}
-          className="shrink-0 text-neutral-500"
+          className="shrink-0 text-muted-foreground"
         >
           <CaretDown weight="bold" className="w-4 h-4" />
         </motion.div>
@@ -508,7 +558,7 @@ function RoleCard({
         onConfirm={doDelete}
       />
 
-      {/* Expanded permissions panel */}
+      {/* Expanded permission panel */}
       <AnimatePresence initial={false}>
         {expanded && (
           <motion.div
@@ -518,10 +568,10 @@ function RoleCard({
             transition={{ duration: 0.2, ease: EASE_APPLE }}
             className="overflow-hidden"
           >
-            <div className="border-t border-neutral-800 px-4 py-4 space-y-5">
+            <div className="border-t border-border bg-muted/30 px-5 py-5 space-y-5">
               {/* Owner note */}
               {isOwner && (
-                <div className="flex items-center gap-2 text-xs text-neutral-500">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Lock weight="bold" className="w-3.5 h-3.5 shrink-0" />
                   Owner always has all permissions and cannot be restricted.
                 </div>
@@ -529,7 +579,7 @@ function RoleCard({
 
               {/* Auto-save indicator */}
               {savingIndicator ? (
-                <p className="flex items-center gap-1.5 text-xs text-neutral-500">
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Spinner className="w-3 h-3" />
                   Saving…
                 </p>
@@ -542,18 +592,18 @@ function RoleCard({
                 </StatusChip>
               ) : null}
 
-              {/* Site-scoped toggle */}
+              {/* Site-scoped controls */}
               {!isOwner && (
-                <div className="space-y-2 pb-1 border-b border-neutral-800">
-                  <div className="flex items-center justify-between gap-3">
+                <div className="space-y-3 border-b border-border pb-4">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white">Site-scoped</p>
+                      <p className="text-sm font-medium text-foreground">Site-scoped</p>
                       {role.is_builtin ? (
-                        <p className="text-xs text-neutral-500 mt-0.5">
+                        <p className="text-xs text-muted-foreground mt-0.5">
                           Built-in roles always have access to all sites.
                         </p>
                       ) : (
-                        <p className="text-xs text-neutral-500 mt-0.5">
+                        <p className="text-xs text-muted-foreground mt-0.5">
                           When enabled, this role only has access to the selected sites.
                         </p>
                       )}
@@ -561,20 +611,22 @@ function RoleCard({
                     <Checkbox
                       checked={siteScoped}
                       disabled={!canManage || role.is_builtin}
-                      onCheckedChange={toggleSiteScoped}
+                      onChange={toggleSiteScoped}
                     />
                   </div>
                   {siteScoped && !role.is_builtin && sites.length > 0 && (
-                    <div className="space-y-1 pl-1">
-                      <p className="text-xs text-neutral-500 font-medium mb-1.5">Allowed sites</p>
-                      <ul className="space-y-1 max-h-40 overflow-y-auto pr-1">
+                    <div className="space-y-2 pl-1">
+                      <p className="font-mono text-micro-label uppercase text-muted-foreground">
+                        Allowed sites
+                      </p>
+                      <ul className="space-y-2 max-h-40 overflow-y-auto pr-1">
                         {sites.map((site) => (
                           <li key={site.id}>
                             <Checkbox
                               id={`${role.id}-site-${site.id}`}
                               checked={siteIds.includes(site.id)}
                               disabled={!canManage}
-                              onCheckedChange={() => toggleSiteId(site.id)}
+                              onChange={() => toggleSiteId(site.id)}
                               label={site.name || site.domain}
                             />
                           </li>
@@ -585,50 +637,40 @@ function RoleCard({
                 </div>
               )}
 
-              {permissionGroups.map((group) => (
-                <div key={group.key}>
-                  <p className="text-micro-label font-semibold text-neutral-500 uppercase mb-2">
-                    {group.label}
-                  </p>
-                  <ul className="space-y-2">
-                    {group.permissions.map((pi) => {
-                      const ownerOnly = OWNER_ONLY_PERMS.has(pi.permission)
-                      const locked = isOwner || ownerOnly
-                      const checked = isOwner ? true : permissions.includes(pi.permission)
-                      const editable = canManage && !locked
-
-                      return (
-                        <li key={pi.permission} className="flex items-start gap-3">
-                          <Checkbox
-                            id={`${role.id}-${pi.permission}`}
-                            checked={checked}
-                            disabled={!editable}
-                            onCheckedChange={() => togglePerm(pi.permission)}
-                          />
-                          <label
-                            htmlFor={`${role.id}-${pi.permission}`}
-                            className={`flex-1 min-w-0 ${editable ? 'cursor-pointer' : ''}`}
-                          >
-                            <span className={`text-sm ${locked && !isOwner ? 'text-neutral-500' : 'text-white'}`}>
-                              {pi.label}
-                            </span>
-                            {ownerOnly && !isOwner && (
-                              <StatusChip tone="brand" className="ml-2 align-middle">
-                                Owner only
-                              </StatusChip>
-                            )}
-                            <p className="text-xs text-neutral-500 mt-0.5">{pi.description}</p>
-                          </label>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </div>
-              ))}
+              {/* Permission matrix */}
+              <PermissionMatrix
+                groups={permissionGroups}
+                idPrefix={role.id}
+                isChecked={(perm) => (isOwner ? true : permissions.includes(perm))}
+                isDisabled={(perm) =>
+                  !canManage || isOwner || OWNER_ONLY_PERMS.has(perm)
+                }
+                showOwnerBadge={(perm) => OWNER_ONLY_PERMS.has(perm) && !isOwner}
+                onToggle={togglePerm}
+              />
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  )
+}
+
+// ─── Ghost preview row (empty-state hint) ──────────────────────────────────────
+
+function GhostRoleRow() {
+  return (
+    <div className="flex items-center gap-3 px-5 py-3.5">
+      <Users weight="regular" className="w-4 h-4 text-muted-foreground shrink-0" />
+      <span className="inline-block w-2 h-2 rounded-full bg-muted-foreground shrink-0" />
+      <div className="flex-1 min-w-0 flex items-center gap-2">
+        <span className="text-sm font-medium text-foreground">Analyst</span>
+        <StatusChip tone="neutral">All sites</StatusChip>
+      </div>
+      <span className="hidden font-mono text-xs tabular-nums text-muted-foreground sm:inline">
+        6 permissions
+      </span>
+      <CaretDown weight="bold" className="w-4 h-4 text-muted-foreground shrink-0" />
     </div>
   )
 }
@@ -690,32 +732,23 @@ export default function WorkspaceRolesTab() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Spinner className="w-6 h-6 text-neutral-500" />
+        <Spinner className="w-6 h-6 text-muted-foreground" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h3 className="text-base font-semibold text-white mb-1">Roles &amp; Permissions</h3>
-          <p className="text-sm text-neutral-400">
-            Control what each role can do in your workspace. Built-in roles cannot be deleted.
-          </p>
-        </div>
-        {canManage && !showCreate && !error && (
-          <Button
-            onClick={() => setShowCreate(true)}
-            variant="default"
-            className="text-sm gap-1.5 shrink-0"
-          >
+    <div className="space-y-8">
+      {/* Primary CTA — the tab's one orange element (hidden while the create
+          form is open, so its "Create role" submit is then the single accent). */}
+      {canManage && !showCreate && !error && (
+        <MastheadAction>
+          <Button onClick={() => setShowCreate(true)} className="gap-1.5">
             <Plus weight="bold" className="w-3.5 h-3.5" />
             New role
           </Button>
-        )}
-      </div>
+        </MastheadAction>
+      )}
 
       {/* Create form */}
       <AnimatePresence>
@@ -736,7 +769,7 @@ export default function WorkspaceRolesTab() {
         )}
       </AnimatePresence>
 
-      {/* Role cards */}
+      {/* Roles */}
       {error ? (
         <SettingsErrorState
           message="We couldn't load roles and permissions. It may be a temporary problem."
@@ -744,30 +777,48 @@ export default function WorkspaceRolesTab() {
           retrying={retrying}
         />
       ) : roles.length === 0 ? (
-        <EmptyState
-          title="No roles configured"
-          description="Roles let you control what each team member can access in the workspace."
-          icon={<Users weight="regular" />}
-          className="py-8"
-        />
+        <SettingsPanel
+          kicker="Roles"
+          description="Roles control what each team member can access in your workspace."
+        >
+          <EmptyRow
+            icon={<Users weight="regular" />}
+            title="No roles configured"
+            caption="Create a custom role to control what team members can access."
+            action={
+              canManage ? (
+                <Button onClick={() => setShowCreate(true)} variant="secondary" className="gap-1.5">
+                  <Plus weight="bold" className="w-3.5 h-3.5" />
+                  New role
+                </Button>
+              ) : undefined
+            }
+            ghost={<GhostRoleRow />}
+          />
+        </SettingsPanel>
       ) : (
-        <div className="space-y-3">
-          {roles.map((role) => (
-            <RoleCard
-              key={role.id}
-              role={role}
-              permissionGroups={permissionGroups}
-              canManage={canManage}
-              onUpdated={handleRoleUpdated}
-              onDeleted={handleRoleDeleted}
-            />
-          ))}
-        </div>
+        <SettingsPanel
+          kicker="Roles"
+          description="Built-in roles cannot be deleted. Expand a role to edit its permissions."
+        >
+          <div className="divide-y divide-border">
+            {roles.map((role) => (
+              <RoleRow
+                key={role.id}
+                role={role}
+                permissionGroups={permissionGroups}
+                canManage={canManage}
+                onUpdated={handleRoleUpdated}
+                onDeleted={handleRoleDeleted}
+              />
+            ))}
+          </div>
+        </SettingsPanel>
       )}
 
       {/* Footer note for non-managers */}
       {!canManage && (
-        <p className="text-xs text-neutral-500 flex items-center gap-1.5">
+        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
           <Lock weight="bold" className="w-3.5 h-3.5 shrink-0" />
           Only workspace owners can modify role permissions.
         </p>
