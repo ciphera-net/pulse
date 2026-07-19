@@ -39,9 +39,13 @@ export function SettingsPanel({
 }: SettingsPanelProps) {
   const danger = tone === 'danger'
   const hasHeader = Boolean(kicker || description || action)
+  // Stable id so the landmark <section> can be labelled by its own kicker
+  // heading (only wired when a kicker is actually rendered).
+  const kickerId = React.useId()
 
   return (
     <section
+      aria-labelledby={kicker ? kickerId : undefined}
       className={cn(
         'rounded-none border bg-card',
         danger ? 'border-destructive/30' : 'border-border',
@@ -59,14 +63,15 @@ export function SettingsPanel({
         >
           <div className="min-w-0">
             {kicker && (
-              <p
+              <h2
+                id={kickerId}
                 className={cn(
                   'font-semibold text-micro-label uppercase',
                   danger ? 'text-destructive' : 'text-muted-foreground',
                 )}
               >
                 {kicker}
-              </p>
+              </h2>
             )}
             {description && (
               <p className={cn('text-sm text-muted-foreground', kicker && 'mt-1.5')}>

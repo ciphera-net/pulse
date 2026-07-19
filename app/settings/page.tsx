@@ -25,7 +25,7 @@ function SectionLink({ label, href, description }: SectionRow) {
   return (
     <Link
       href={href}
-      className="group flex items-center gap-4 px-5 py-3.5 transition-colors duration-fast ease-apple hover:bg-muted"
+      className="group flex items-center gap-4 px-5 py-3.5 transition-colors duration-fast ease-apple hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
     >
       {/* House row-tile idiom (same as the SiteContextBand monogram tile). */}
       {Icon && (
@@ -124,12 +124,12 @@ export default function SettingsLandingPage() {
           ) : (
             <>
               {activeSite && (
-                <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-5 py-3">
-                  <span className="truncate text-sm font-medium text-foreground">{activeSite.name}</span>
-                  <span className="truncate text-xs text-muted-foreground">{activeSite.domain}</span>
+                <div className="flex min-w-0 items-center gap-2 border-b border-border bg-muted/40 px-5 py-3">
+                  <span className="min-w-0 truncate text-sm font-medium text-foreground">{activeSite.name}</span>
+                  <span className="min-w-0 truncate text-xs text-muted-foreground">{activeSite.domain}</span>
                   <StatusChip
                     tone={activeSite.is_verified ? 'success' : 'warning'}
-                    className="ml-auto"
+                    className="ml-auto shrink-0"
                   >
                     {activeSite.is_verified ? 'Verified' : 'Unverified'}
                   </StatusChip>

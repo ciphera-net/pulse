@@ -1,5 +1,6 @@
 'use client'
 
+import { MotionConfig } from 'framer-motion'
 import { OfflineBanner } from '@/components/OfflineBanner'
 import { CIPHERA_APPS } from '@/lib/ciphera-apps'
 import { Footer } from '@/components/Footer'
@@ -222,9 +223,14 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
-    <ErrorBoundary>
-      <VersionToast />
-      <LayoutInner>{children}</LayoutInner>
-    </ErrorBoundary>
+    // One app-wide honour of `prefers-reduced-motion` — every framer-motion
+    // consumer (settings bottom-sheet, accordions, notification panel, …) drops
+    // transform/opacity animation to an instant cut when the OS asks for it.
+    <MotionConfig reducedMotion="user">
+      <ErrorBoundary>
+        <VersionToast />
+        <LayoutInner>{children}</LayoutInner>
+      </ErrorBoundary>
+    </MotionConfig>
   )
 }

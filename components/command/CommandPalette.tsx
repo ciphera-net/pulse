@@ -28,6 +28,7 @@ import {
   User,
   Lock,
   DeviceMobile,
+  BellRinging,
 } from '@phosphor-icons/react'
 import { useSites } from '@/lib/swr/sites'
 import { useCan } from '@/lib/auth/permissions'
@@ -109,6 +110,7 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
   const canIntegrations   = useCan('integrations.manage')
   const canTeamView       = useCan('team.view')
   const canBillingView    = useCan('billing.view')
+  const canNotificationSettings = useCan('notification_settings.manage')
   const canAuditView      = useCan('audit.view')
 
   const [search, setSearch] = useState('')
@@ -269,10 +271,12 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
               <span><HighlightMatch text="Billing & Subscription" query={search} /></span>
             </CommandItem>
           )}
-          <CommandItem value="settings-org-notifications" onSelect={() => go('/settings/organization/notifications')}>
-            <Bell size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span><HighlightMatch text="Notification Preferences" query={search} /></span>
-          </CommandItem>
+          {canNotificationSettings && (
+            <CommandItem value="settings-org-notifications" onSelect={() => go('/settings/organization/notifications')}>
+              <BellRinging size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+              <span><HighlightMatch text="Workspace Notifications" query={search} /></span>
+            </CommandItem>
+          )}
           {canAuditView && (
             <CommandItem value="settings-org-audit" onSelect={() => go('/settings/organization/audit')}>
               <ClockCounterClockwise size={16} weight="regular" className="opacity-60" aria-hidden="true" />
@@ -290,6 +294,10 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
           <CommandItem value="settings-account-devices" onSelect={() => go('/settings/account/devices')}>
             <DeviceMobile size={16} weight="regular" className="opacity-60" aria-hidden="true" />
             <span><HighlightMatch text="Trusted Devices" query={search} /></span>
+          </CommandItem>
+          <CommandItem value="settings-account-notifications" onSelect={() => go('/settings/account/notifications')}>
+            <Bell size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+            <span><HighlightMatch text="Notification Preferences" query={search} /></span>
           </CommandItem>
         </CommandGroup>
       </CommandList>

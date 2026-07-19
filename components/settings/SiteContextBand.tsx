@@ -110,9 +110,11 @@ export default function SiteContextBand() {
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="truncate text-sm font-medium text-foreground">{activeSite.name}</span>
-          <SiteStatusChip site={activeSite} />
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="min-w-0 truncate text-sm font-medium text-foreground">{activeSite.name}</span>
+          <span className="shrink-0">
+            <SiteStatusChip site={activeSite} />
+          </span>
         </div>
         <span className="block truncate text-xs text-muted-foreground">{activeSite.domain}</span>
       </div>
