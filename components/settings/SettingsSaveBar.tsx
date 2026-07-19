@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Button } from '@ciphera-net/facet'
 import { Check } from '@phosphor-icons/react'
-import { useMastheadSaveSlot, useSaveActive } from '@/components/settings/shell-slots'
+import { useSaveSlot } from '@/components/settings/shell-slots'
 
 interface SettingsSaveBarProps {
   isDirty: boolean
@@ -15,10 +15,12 @@ interface SettingsSaveBarProps {
 
 /**
  * SettingsSaveBar — the buffered-save control for a settings tab (owner-chosen
- * option D: masthead save). Public API is unchanged: pass dirty state + a save
- * and discard handler. It renders a compact cluster into the shell masthead
- * action area (never a floating bottom dock), and keeps the guardrails a save
- * model needs — a beforeunload prompt and ⌘/Ctrl-S while dirty.
+ * option C: panel-footer save). Public API is unchanged: pass dirty state + a
+ * save and discard handler. It renders a full-column-width footer strip into the
+ * shell's content-column-end slot, styled as panel anatomy and pinned with
+ * `sticky bottom-0` so Save stays in view through a long scroll and settles
+ * beneath the last panel at scroll end. The guardrails a save model needs are
+ * unchanged — a beforeunload prompt and ⌘/Ctrl-S while dirty.
  *
  * A rejected `onSave` is caught here so it never surfaces as an unhandled
  * rejection and never shows a false "Saved" — the consuming tab owns the error
@@ -27,8 +29,7 @@ interface SettingsSaveBarProps {
 export default function SettingsSaveBar({ isDirty, onSave, onDiscard, saveLabel = 'Save changes' }: SettingsSaveBarProps) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const slot = useMastheadSaveSlot()
-  const { register } = useSaveActive()
+  const slot = useSaveSlot()
 
   async function handleSave() {
     setSaving(true)
@@ -47,14 +48,9 @@ export default function SettingsSaveBar({ isDirty, onSave, onDiscard, saveLabel 
   const saveRef = useRef(handleSave)
   saveRef.current = handleSave
 
-  // The cluster occupies the masthead while there's anything to show — dirty,
-  // an in-flight save, or the brief post-save confirmation. Report that up so
-  // the shell can yield the action area and go sticky-while-dirty.
+  // The strip is present while there's anything to show — dirty, an in-flight
+  // save, or the brief post-save confirmation.
   const occupied = isDirty || saving || saved
-  useEffect(() => {
-    register(occupied)
-    return () => register(false)
-  }, [occupied, register])
 
   // Guard against navigating away with unsaved edits (unchanged semantics).
   useEffect(() => {
@@ -85,34 +81,40 @@ export default function SettingsSaveBar({ isDirty, onSave, onDiscard, saveLabel 
   // active regardless, so unsaved edits are never silently unguarded.
   if (!slot) return null
 
-  const cluster = (
-    <div className="flex items-center gap-2">
-      {saved ? (
-        <span className="flex items-center gap-1.5 whitespace-nowrap text-sm text-pos">
-          <Check className="h-4 w-4" weight="bold" />
-          Saved
-        </span>
-      ) : (
-        <span className="flex items-center gap-1.5 whitespace-nowrap text-sm text-muted-foreground">
-          <span aria-hidden="true" className="size-1.5 rounded-full bg-primary" />
-          {saving ? 'Saving…' : 'Unsaved changes'}
-        </span>
-      )}
-      {!saved && (
-        <>
-          <Button variant="ghost" size="sm" onClick={onDiscard} disabled={saving}>
-            Discard
-          </Button>
-          <Button variant="default" size="sm" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving…' : saveLabel}
-          </Button>
-          <kbd className="hidden items-center gap-0.5 rounded-none border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] leading-none text-muted-foreground sm:inline-flex">
-            ⌘S
-          </kbd>
-        </>
-      )}
+  // Full-column-width footer strip — panel anatomy (opaque card, hairline
+  // border, no backdrop-blur, no resting shadow). `sticky bottom-0` pins it to
+  // the viewport bottom while dirty; its containing block is the tall content
+  // column (the slot is `display:contents`), so the pin holds the whole scroll.
+  const strip = (
+    <div className="sticky bottom-0 z-20 border border-border bg-card">
+      <div className="flex items-center justify-between gap-4 px-5 py-3">
+        {saved ? (
+          <span className="flex items-center gap-1.5 whitespace-nowrap text-sm text-pos">
+            <Check className="h-4 w-4" weight="bold" />
+            Saved
+          </span>
+        ) : (
+          <span className="flex items-center gap-1.5 whitespace-nowrap text-sm text-muted-foreground">
+            <span aria-hidden="true" className="size-1.5 rounded-full bg-primary" />
+            {saving ? 'Saving…' : 'Unsaved changes'}
+          </span>
+        )}
+        {!saved && (
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={onDiscard} disabled={saving}>
+              Discard
+            </Button>
+            <Button variant="default" size="sm" onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving…' : saveLabel}
+            </Button>
+            <kbd className="hidden items-center gap-0.5 rounded-none border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] leading-none text-muted-foreground sm:inline-flex">
+              ⌘S
+            </kbd>
+          </div>
+        )}
+      </div>
     </div>
   )
 
-  return createPortal(cluster, slot)
+  return createPortal(strip, slot)
 }
