@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -14,8 +14,7 @@ import { NAV_GROUPS, type Section } from '@/components/settings/nav'
 import {
   MastheadSlotProvider,
   MastheadAction,
-  MastheadSaveSlotProvider,
-  SaveActiveProvider,
+  SaveSlotProvider,
 } from '@/components/settings/shell-slots'
 
 // Re-exported so P2 tabs can `import { MastheadAction } from '.../SettingsShell'`.
@@ -58,18 +57,11 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
   const section = sectionOf(pathname)
 
   // Slot mount nodes — set via callback refs so the portal contexts update
-  // once the DOM nodes exist.
+  // once the DOM nodes exist. `saveSlot` is the content-column-end mount for the
+  // buffered-save footer strip (option C).
   const [mastheadSlot, setMastheadSlot] = useState<HTMLElement | null>(null)
-  const [mastheadSaveSlot, setMastheadSaveSlot] = useState<HTMLElement | null>(null)
+  const [saveSlot, setSaveSlot] = useState<HTMLElement | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
-
-  // Whether a tab's SettingsSaveBar currently owns the masthead (dirty / saving
-  // / just-saved). Drives CTA precedence + the sticky-while-dirty header row.
-  const [saveActive, setSaveActive] = useState(false)
-  const saveActiveValue = useMemo(
-    () => ({ active: saveActive, register: setSaveActive }),
-    [saveActive],
-  )
 
   // Permission gates — evaluated unconditionally (hooks), one per gated tab.
   const perm: Record<string, boolean> = {
@@ -114,22 +106,15 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
   return (
     <ActiveSiteProvider>
       <MastheadSlotProvider value={mastheadSlot}>
-        <MastheadSaveSlotProvider value={mastheadSaveSlot}>
-          <SaveActiveProvider value={saveActiveValue}>
+        <SaveSlotProvider value={saveSlot}>
           <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
             {/* ── Masthead — one header per screen (spec §2.1) ── */}
             <header className="mb-8">
-              {/* Title + action row. While a tab has unsaved edits the save
-                  cluster owns the action area and this row goes sticky so Save
-                  stays reachable through a long scroll; opaque bg + a hairline
-                  (backdrop-blur is banned in Facet). The 1px border is reserved
-                  transparent when clean, so toggling never shifts layout. */}
-              <div
-                className={cn(
-                  'flex items-start justify-between gap-4 border-b bg-background',
-                  saveActive ? 'sticky top-0 z-30 border-border' : 'border-transparent',
-                )}
-              >
+              {/* Title + action row. The buffered-save control no longer lives
+                  here (it's a panel footer in the content column), so this row
+                  stays a plain, non-sticky header — the tab's primary CTA is the
+                  only thing that portals into the action area. */}
+              <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   {masthead && (
                     <p className="mb-2 font-semibold text-micro-label uppercase text-muted-foreground">
@@ -143,13 +128,8 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                     {masthead ? masthead.lede : 'Manage your sites, workspace, and account.'}
                   </p>
                 </div>
-                {/* Masthead action area — a tab's primary CTA OR the buffered-
-                    save cluster (save wins; the CTA yields via MastheadAction).
-                    Contents wrappers so the empty slot adds no phantom gap. */}
-                <div className="flex shrink-0 items-center gap-2">
-                  <span ref={setMastheadSaveSlot} className="contents" />
-                  <span ref={setMastheadSlot} className="contents" />
-                </div>
+                {/* Masthead action slot — a tab's primary CTA portals in here. */}
+                <div ref={setMastheadSlot} className="flex shrink-0 items-center gap-2" />
               </div>
 
               {/* Mobile nav trigger — opens the bottom-sheet. Section pages only. */}
@@ -212,12 +192,18 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                   </div>
                 </nav>
 
-                {/* ── Content column ── */}
-                <div className="relative min-w-0 max-w-3xl flex-1">
+                {/* ── Content column ──
+                    `pb-4` gives the settled footer strip a little breathing room
+                    at scroll end so it doesn't kiss the content-panel edge. */}
+                <div className="relative min-w-0 max-w-3xl flex-1 pb-4">
                   {section === 'site' && <SiteContextBand />}
-                  {/* Save now lives in the masthead cluster, so the content
-                      column no longer reserves floating-bar clearance. */}
                   <div className="space-y-8 pb-8">{children}</div>
+                  {/* Panel-footer save slot — the buffered-save strip portals in
+                      here as the LAST flow child of the column. `display:contents`
+                      (no box of its own) so the strip's containing block is this
+                      tall column, which is what lets `sticky bottom-0` hold across
+                      a long scroll instead of pinning against a zero-travel wrapper. */}
+                  <span ref={setSaveSlot} className="contents" />
                 </div>
               </div>
             ) : (
@@ -303,8 +289,7 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
               </div>
             )}
           </AnimatePresence>
-          </SaveActiveProvider>
-        </MastheadSaveSlotProvider>
+        </SaveSlotProvider>
       </MastheadSlotProvider>
     </ActiveSiteProvider>
   )
