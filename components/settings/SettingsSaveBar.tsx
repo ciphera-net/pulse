@@ -87,20 +87,26 @@ export default function SettingsSaveBar({ isDirty, onSave, onDiscard, saveLabel 
   // column (the slot is `display:contents`), so the pin holds the whole scroll.
   const strip = (
     <div className="sticky bottom-0 z-20 border border-border bg-card">
-      <div className="flex items-center justify-between gap-4 px-5 py-3">
+      {/* pr-28 below sm keeps Discard/Save clear of the fixed support pill
+          (100×40 at right:20 bottom:20 → occupies the rightmost 120px) when the
+          strip pins to the viewport bottom on a narrow screen; sm+ has room, so
+          it relaxes to pr-5. The status label truncates and the action group is
+          shrink-0 so the buttons hold their position while the pill is cleared —
+          the narrow strip can't fit full status + actions + a 120px pill gap. */}
+      <div className="flex items-center justify-between gap-4 py-3 pl-5 pr-28 sm:pr-5">
         {saved ? (
-          <span className="flex items-center gap-1.5 whitespace-nowrap text-sm text-pos">
-            <Check className="h-4 w-4" weight="bold" />
-            Saved
+          <span className="flex min-w-0 items-center gap-1.5 text-sm text-pos">
+            <Check className="h-4 w-4 shrink-0" weight="bold" />
+            <span className="truncate">Saved</span>
           </span>
         ) : (
-          <span className="flex items-center gap-1.5 whitespace-nowrap text-sm text-muted-foreground">
-            <span aria-hidden="true" className="size-1.5 rounded-full bg-primary" />
-            {saving ? 'Saving…' : 'Unsaved changes'}
+          <span className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
+            <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-primary" />
+            <span className="truncate">{saving ? 'Saving…' : 'Unsaved changes'}</span>
           </span>
         )}
         {!saved && (
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <Button variant="ghost" size="sm" onClick={onDiscard} disabled={saving}>
               Discard
             </Button>
