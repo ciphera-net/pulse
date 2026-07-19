@@ -16,9 +16,9 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
-    "@ciphera-net/facet": "^0.2.0",
-    "@ciphera-net/facet-tailwind": "^0.1.2",
-    "@ciphera-net/facet-tokens": "^0.0.3",
+    "@ciphera-net/facet": "^0.4.1",
+    "@ciphera-net/facet-tailwind": "^0.2.0",
+    "@ciphera-net/facet-tokens": "^0.1.0",
     "@ciphera-net/support-widget": "^0.10.0",
     "@ducanh2912/next-pwa": "^10.2.9",
     "@phosphor-icons/react": "^2.1.10",

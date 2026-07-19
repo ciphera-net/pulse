@@ -1,16 +1,31 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Button, Toggle, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/facet'
-import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Button,
+  Toggle,
+  Checkbox,
+  SegmentedControl,
+  Spinner,
+  Table,
+  THead,
+  TBody,
+  TR,
+  TH,
+  TD,
+  RailGrid,
+  RailGridTile,
+  toast,
+  getAuthErrorMessage,
+} from '@ciphera-net/facet'
+import { Shield, Globe } from '@phosphor-icons/react'
 import { getDateRange } from '@/lib/utils/format'
-import { ShieldCheck, Shield } from '@phosphor-icons/react'
-import { EmptyState } from '@/components/ui/EmptyState'
 import { useSite, useQuarantineStats, useSessions, useSiteDomainReputation } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { quarantineSessions, restoreSessions, createDomainOverride, deleteDomainOverride } from '@/lib/api/quarantine'
-import SettingsSections from '@/components/settings/SettingsSections'
+import { SettingsPanel, PanelRows, PanelRow, EmptyRow } from '@/components/settings/panels'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
+import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { StatusChip, type ChipTone } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -51,6 +66,18 @@ function humanizeSource(source: string): string {
     case 'collaborative': return 'Collaborative'
     default: return titleCase(source)
   }
+}
+
+/** A session's suspicion score → the house risk chip (danger/warning/neutral). */
+function riskChip(score: number) {
+  const tone: ChipTone = score >= 5 ? 'danger' : score >= 3 ? 'warning' : 'neutral'
+  const label = score >= 5 ? 'High risk' : score >= 3 ? 'Suspicious' : 'Low risk'
+  return <StatusChip tone={tone}>{label}</StatusChip>
+}
+
+/** Micro-label section header — the section grammar now that SettingsSections is gone. */
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return <p className="font-semibold text-micro-label uppercase text-muted-foreground">{children}</p>
 }
 
 export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
@@ -176,114 +203,106 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
 
   const domainBusy = (d: string) => isSaving(`${d}:allow`) || isSaving(`${d}:block`) || isSaving(`${d}:reset`)
 
-  if (!site) return <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-neutral-500" /></div>
+  // The visible slice of the current view — sessions this view is responsible
+  // for. Drives both the rows and the empty check so a failed fetch can never
+  // masquerade as an empty result (that path is handled separately below).
+  const visibleSessions = (sessions || []).filter(s => botView === 'blocked' ? s.quarantined : !s.quarantined)
+
+  // A domain-block final confirm reclassifies LIVE traffic; the destructive
+  // solid fill lives only on that dialog's confirm button.
+  const domains = domainReputation?.domains
+
+  if (!site) return <SettingsLoadingState rows={3} />
 
   return (
-    <div className="space-y-6">
-      <SettingsSections sections={[
-        { id: 'section-filtering', label: 'Filtering' },
-        { id: 'section-sessions', label: 'Bot Sessions' },
-        { id: 'section-reputation', label: 'Domain Reputation' },
-      ]} />
+    <div className="space-y-8">
+      {/* ── Filtering ─────────────────────────────────────────────────── */}
+      <SettingsPanel
+        kicker="Filtering"
+        description="Automatically filter bot traffic and referrer spam from your analytics."
+      >
+        <PanelRows>
+          <PanelRow
+            label="Bot filtering"
+            caption="Filter known bots, crawlers, referrer spam, and suspicious traffic."
+            control={
+              <Toggle checked={filterBots} onChange={() => setFilterBots(p => !p)} disabled={!canManage} />
+            }
+          />
+        </PanelRows>
+      </SettingsPanel>
 
-      <div id="section-filtering" className="scroll-mt-20">
-        <h3 className="text-base font-semibold text-white mb-1">Bot & Spam Filtering</h3>
-        <p className="text-sm text-neutral-400">Automatically filter bot traffic and referrer spam from your analytics.</p>
-      </div>
+      {/* ── Detection stats — RailGrid of mono numerals ───────────────── */}
+      <section className="space-y-3">
+        <SectionLabel>Quarantine activity</SectionLabel>
+        {botStatsError ? (
+          /* A failed fetch must read as a server error, not a clean site. */
+          <SettingsErrorState
+            variant="banner"
+            message="Couldn't load quarantine stats. This is a server error, not a clean site — try again in a moment."
+            onRetry={() => mutateBotStats()}
+            retrying={botStatsLoading}
+          />
+        ) : botStats ? (
+          // Fixed 3-up: an auto-fill track left a trailing empty filler tile
+          // beside the three real stats (§2.2 RailGrid).
+          <RailGrid columns={3}>
+            <StatTile value={botStats.total_quarantined ?? 0} label="Quarantined" />
+            <StatTile value={botStats.last_24h ?? 0} label="Last 24h" />
+            <StatTile value={Object.keys(botStats.by_reason || {}).length} label="Detection types" />
+          </RailGrid>
+        ) : (
+          <RailGrid columns={3}>
+            {[0, 1, 2].map(i => (
+              <RailGridTile key={i}>
+                <div className="h-7 w-12 animate-pulse rounded-none bg-input" />
+                <div className="mt-2 h-3 w-20 animate-pulse rounded-none bg-muted" />
+              </RailGridTile>
+            ))}
+          </RailGrid>
+        )}
+      </section>
 
-      {/* Bot filtering toggle */}
-      <div className="flex items-center justify-between py-3 px-4 rounded-none bg-neutral-800/30 border border-neutral-800">
-        <div className="flex items-center gap-3">
-          <ShieldCheck weight="bold" className="w-5 h-5 text-brand-orange" />
-          <div>
-            <p className="text-sm font-medium text-white">Enable bot filtering</p>
-            <p className="text-xs text-neutral-500">Filter known bots, crawlers, referrer spam, and suspicious traffic.</p>
-          </div>
-        </div>
-        <Toggle checked={filterBots} onChange={() => setFilterBots(p => !p)} disabled={!canManage} />
-      </div>
-
-      {/* Stats — a failed fetch must read as a server error, not a clean site */}
-      {botStatsError ? (
-        <SettingsErrorState
-          variant="banner"
-          message="Couldn't load quarantine stats. This is a server error, not a clean site — try again in a moment."
-          onRetry={() => mutateBotStats()}
-          retrying={botStatsLoading}
-        />
-      ) : botStats ? (
-        <div className="grid grid-cols-3 gap-3">
-          <div className="rounded-none border border-neutral-800 bg-neutral-800/30 p-4 text-center">
-            <p className="text-2xl font-bold tabular-nums text-white">{botStats.total_quarantined ?? 0}</p>
-            <p className="text-xs text-neutral-500 mt-1">Quarantined events</p>
-          </div>
-          <div className="rounded-none border border-neutral-800 bg-neutral-800/30 p-4 text-center">
-            <p className="text-2xl font-bold tabular-nums text-white">{botStats.last_24h ?? 0}</p>
-            <p className="text-xs text-neutral-500 mt-1">Last 24h</p>
-          </div>
-          <div className="rounded-none border border-neutral-800 bg-neutral-800/30 p-4 text-center">
-            <p className="text-2xl font-bold tabular-nums text-white">{Object.keys(botStats.by_reason || {}).length}</p>
-            <p className="text-xs text-neutral-500 mt-1">Detection types</p>
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-3 gap-3">
-          {[0, 1, 2].map(i => (
-            <div key={i} className="rounded-none border border-neutral-800 bg-neutral-800/30 p-4">
-              <div className="h-7 w-12 mx-auto rounded-none bg-neutral-800 animate-pulse" />
-              <div className="h-3 w-20 mx-auto mt-2 rounded-none bg-neutral-800/60 animate-pulse" />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Session Review */}
-      <div id="section-sessions" className="scroll-mt-20 space-y-3 pt-6 border-t border-neutral-800">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-medium text-neutral-300 mb-2">Session Review</h4>
-          {/* Review/Blocked toggle */}
-          <div className="flex items-center gap-1">
-            <Button
-              variant={botView === 'review' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => { setBotView('review'); setSelectedSessions(new Set()) }}
-            >
-              Suspicious
-            </Button>
-            <Button
-              variant={botView === 'blocked' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => { setBotView('blocked'); setSelectedSessions(new Set()) }}
-            >
-              Quarantined
-            </Button>
-          </div>
+      {/* ── Session review — RuledTable + neutral SegmentedControl ─────── */}
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <SectionLabel>Session review</SectionLabel>
+          <SegmentedControl
+            aria-label="Session view"
+            size="sm"
+            options={[
+              { value: 'review', label: 'Suspicious' },
+              { value: 'blocked', label: 'Quarantined' },
+            ]}
+            value={botView}
+            onChange={(v) => { setBotView(v as 'review' | 'blocked'); setSelectedSessions(new Set()) }}
+          />
         </div>
 
-        {/* Suspicious only filter (review mode only) — a view filter, available to all */}
+        {/* Suspicious-only view filter (review mode only) — available to all. */}
         {botView === 'review' && (
-          <div className="flex items-center justify-between py-3 px-4 rounded-none bg-neutral-800/30 border border-neutral-800">
-            <div>
-              <p className="text-sm font-medium text-white">Suspicious only</p>
-              <p className="text-xs text-neutral-500">Show only sessions flagged as suspicious.</p>
+          <div className="flex items-center justify-between gap-4 rounded-none border border-border bg-card px-5 py-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">Suspicious only</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">Show only sessions flagged as suspicious.</p>
             </div>
             <Toggle checked={suspiciousOnly} onChange={() => setSuspiciousOnly(v => !v)} />
           </div>
         )}
 
-        {/* Bulk actions bar (managers only — selection is hidden for view-only) */}
+        {/* Bulk actions — managers only; selection is hidden for view-only. */}
         {canManage && selectedSessions.size > 0 && (
-          <div className="flex items-center gap-3 p-2 bg-brand-orange/10 border border-brand-orange/20 rounded-none text-sm">
-            <span className="text-neutral-300">{selectedSessions.size} selected</span>
+          <div className="flex items-center gap-3 rounded-none border border-border bg-muted px-4 py-2 text-sm">
+            <span className="text-muted-foreground">{selectedSessions.size} selected</span>
             {botView === 'review' ? (
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={() => setConfirmBulkFlag(true)}
                 disabled={isSaving('bulk')}
-                className="text-red-400 border-red-900/50 hover:bg-red-900/20"
+                className="border-destructive/30 text-destructive hover:bg-destructive/10"
               >
-                {isSaving('bulk') ? <><Spinner className="w-4 h-4" />Flagging…</> : 'Flag as bot'}
+                {isSaving('bulk') ? <><Spinner className="h-4 w-4" />Flagging…</> : 'Flag as bot'}
               </Button>
             ) : (
               <Button
@@ -292,96 +311,113 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
                 onClick={() => handleBotUnfilter(Array.from(selectedSessions), 'bulk')}
                 disabled={isSaving('bulk')}
               >
-                {isSaving('bulk') ? <><Spinner className="w-4 h-4" />Unblocking…</> : 'Unblock'}
+                {isSaving('bulk') ? <><Spinner className="h-4 w-4" />Unblocking…</> : 'Unblock'}
               </Button>
             )}
             <Button variant="secondary" size="sm" onClick={() => setSelectedSessions(new Set())} disabled={isSaving('bulk')} className="ml-auto">Clear</Button>
           </div>
         )}
 
-        {/* Session cards */}
-        <div className="space-y-2 max-h-96 overflow-y-auto">
-          {sessionsError ? (
-            /* A failed request must never masquerade as "no suspicious sessions" —
-             * that would read as a healthy site while detection is actually down. */
-            <SettingsErrorState
-              variant="card"
-              message="Couldn't load sessions — the request failed, so this is a server error, not an empty result. Try again in a moment."
-              onRetry={() => mutateSessions()}
-              retrying={sessionsLoading}
-            />
-          ) : sessionsLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Spinner className="w-5 h-5 text-neutral-500" />
-            </div>
-          ) : (
-            <>
-          {(sessions || [])
-            .filter(s => botView === 'blocked' ? s.quarantined : !s.quarantined)
-            .map(session => {
-              const sessionKey = `session:${session.session_id}`
-              return (
-              <div key={session.session_id} className="flex items-center gap-3 p-3 rounded-none border border-neutral-800 hover:bg-neutral-800/40 hover:border-neutral-700 transition-colors ease-apple">
-                {canManage && (
-                  <Checkbox
-                    checked={selectedSessions.has(session.session_id)}
-                    onCheckedChange={(checked) => {
-                      const next = new Set(selectedSessions)
-                      checked ? next.add(session.session_id) : next.delete(session.session_id)
-                      setSelectedSessions(next)
-                    }}
-                  />
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-white truncate">{session.first_page || '/'}</span>
-                    {session.suspicion_score != null && (
-                      <StatusChip tone={session.suspicion_score >= 5 ? 'danger' : session.suspicion_score >= 3 ? 'warning' : 'neutral'}>
-                        {session.suspicion_score >= 5 ? 'High risk' : session.suspicion_score >= 3 ? 'Suspicious' : 'Low risk'}
-                      </StatusChip>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-neutral-500 mt-0.5">
-                    <span>{session.pageviews} page(s)</span>
-                    <span>{session.duration ? `${Math.round(session.duration)}s` : 'No duration'}</span>
-                    <span>{[session.city, session.country].filter(Boolean).join(', ') || 'Unknown location'}</span>
-                    <span>{session.browser || 'Unknown browser'}</span>
-                    <span>{session.referrer || 'Direct'}</span>
-                  </div>
-                </div>
-                {canManage && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => botView === 'review' ? handleBotFilter([session.session_id], sessionKey) : handleBotUnfilter([session.session_id], sessionKey)}
-                    disabled={isSaving(sessionKey)}
-                    className={`shrink-0 ${botView === 'review' ? 'text-red-400 border-red-900/50 hover:bg-red-900/20' : ''}`}
-                  >
-                    {isSaving(sessionKey)
-                      ? <><Spinner className="w-4 h-4" />{botView === 'review' ? 'Flagging…' : 'Unblocking…'}</>
-                      : (botView === 'review' ? 'Flag as bot' : 'Unblock')}
-                  </Button>
-                )}
-              </div>
-              )
-            })}
-          {(!sessions || sessions.filter(s => botView === 'blocked' ? s.quarantined : !s.quarantined).length === 0) && (
-            <EmptyState
-              title={botView === 'blocked' ? 'No quarantined sessions' : 'No suspicious sessions found'}
-              description={botView === 'blocked' ? 'Suspicious and blocked sessions will appear here once traffic flows through your site.' : undefined}
+        {sessionsError ? (
+          /* A failed request must never masquerade as "no suspicious sessions" —
+           * that would read as a healthy site while detection is actually down. */
+          <SettingsErrorState
+            variant="card"
+            message="Couldn't load sessions — the request failed, so this is a server error, not an empty result. Try again in a moment."
+            onRetry={() => mutateSessions()}
+            retrying={sessionsLoading}
+          />
+        ) : sessionsLoading ? (
+          <div className="flex items-center justify-center rounded-none border border-border bg-card py-10">
+            <Spinner className="h-5 w-5 text-muted-foreground" />
+          </div>
+        ) : visibleSessions.length === 0 ? (
+          <SettingsPanel>
+            <EmptyRow
               icon={<Shield weight="regular" />}
-              className="py-8"
+              title={botView === 'blocked' ? 'No quarantined sessions' : 'No suspicious sessions found'}
+              caption={botView === 'blocked'
+                ? 'Suspicious and blocked sessions will appear here once traffic flows through your site.'
+                : 'Sessions flagged as suspicious will appear here for review.'}
             />
-          )}
-            </>
-          )}
-        </div>
-      </div>
+          </SettingsPanel>
+        ) : (
+          <Table aria-label="Session review" containerClassName="max-h-[26rem] overflow-y-auto">
+            <THead>
+              <TR>
+                {canManage && <TH className="w-8" aria-label="Select" />}
+                <TH className="w-full max-w-0">Session</TH>
+                <TH className="hidden sm:table-cell">Risk</TH>
+                {canManage && <TH className="w-px" aria-label="Actions" />}
+              </TR>
+            </THead>
+            <TBody>
+              {visibleSessions.map(session => {
+                const sessionKey = `session:${session.session_id}`
+                const path = session.first_page || '/'
+                const meta = [
+                  `${session.pageviews} page(s)`,
+                  session.duration ? `${Math.round(session.duration)}s` : 'No duration',
+                  [session.city, session.country].filter(Boolean).join(', ') || 'Unknown location',
+                  session.browser || 'Unknown browser',
+                  session.referrer || 'Direct',
+                ].join(' · ')
+                return (
+                  <TR key={session.session_id}>
+                    {canManage && (
+                      <TD className="w-8">
+                        <Checkbox
+                          checked={selectedSessions.has(session.session_id)}
+                          onChange={() => {
+                            setSelectedSessions(prev => {
+                              const next = new Set(prev)
+                              if (next.has(session.session_id)) next.delete(session.session_id)
+                              else next.add(session.session_id)
+                              return next
+                            })
+                          }}
+                          aria-label={`Select session ${path}`}
+                        />
+                      </TD>
+                    )}
+                    <TD className="w-full max-w-0">
+                      <div className="flex min-w-0 flex-col gap-0.5">
+                        <span className="truncate font-mono text-sm text-foreground" title={path}>{path}</span>
+                        <span className="truncate text-xs text-muted-foreground">{meta}</span>
+                      </div>
+                    </TD>
+                    <TD className="hidden sm:table-cell">{session.suspicion_score != null ? riskChip(session.suspicion_score) : null}</TD>
+                    {canManage && (
+                      <TD className="text-right">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => botView === 'review' ? handleBotFilter([session.session_id], sessionKey) : handleBotUnfilter([session.session_id], sessionKey)}
+                          disabled={isSaving(sessionKey)}
+                          className={`shrink-0 whitespace-nowrap ${botView === 'review' ? 'border-destructive/30 text-destructive hover:bg-destructive/10' : ''}`}
+                        >
+                          {isSaving(sessionKey)
+                            ? <><Spinner className="h-4 w-4" />{botView === 'review' ? 'Flagging…' : 'Unblocking…'}</>
+                            : (botView === 'review' ? 'Flag as bot' : 'Unblock')}
+                        </Button>
+                      </TD>
+                    )}
+                  </TR>
+                )
+              })}
+            </TBody>
+          </Table>
+        )}
+      </section>
 
-      {/* Domain Reputation */}
-      <div id="section-reputation" className="scroll-mt-20 space-y-3 pt-6 border-t border-neutral-800">
-        <h4 className="text-sm font-medium text-neutral-300 mb-2">Domain Reputation</h4>
-        <p className="text-xs text-neutral-500">Referrer domains seen on your site and their global reputation. Override to allow or block specific domains.</p>
+      {/* ── Domain reputation — ruled rows ────────────────────────────── */}
+      <section className="space-y-3">
+        <div>
+          <SectionLabel>Domain reputation</SectionLabel>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Referrer domains seen on your site and their global reputation. Override to allow or block specific domains.
+          </p>
+        </div>
 
         {domainsError ? (
           <SettingsErrorState
@@ -391,72 +427,81 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
             retrying={domainsLoading}
           />
         ) : domainReputation === undefined ? (
-          <div className="flex items-center justify-center py-8">
-            <Spinner className="w-5 h-5 text-neutral-500" />
+          <div className="flex items-center justify-center rounded-none border border-border bg-card py-10">
+            <Spinner className="h-5 w-5 text-muted-foreground" />
           </div>
+        ) : !domains || domains.length === 0 ? (
+          <SettingsPanel>
+            <EmptyRow
+              icon={<Globe weight="regular" />}
+              title="No domain data yet"
+              caption="Referrer domain reputation scores will appear once traffic flows through your site."
+            />
+          </SettingsPanel>
         ) : (
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {domainReputation.domains?.map(domain => (
-              <div key={domain.domain} className="flex items-center justify-between p-3 rounded-none border border-neutral-800 hover:bg-neutral-800/40 transition-colors ease-apple">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-mono text-white truncate">{domain.domain}</span>
-                    <StatusChip tone={actionTone(domain.action)}>{humanizeAction(domain.action)}</StatusChip>
-                    <StatusChip tone={sourceTone(domain.source)}>{humanizeSource(domain.source)}</StatusChip>
-                    {domain.override && (
-                      <StatusChip tone="warning">Override: {humanizeAction(domain.override)}</StatusChip>
-                    )}
-                  </div>
-                  <div className="flex gap-3 text-xs text-neutral-500 mt-0.5">
-                    <span>{domain.total_events} events</span>
-                    <span>{Math.round(domain.bot_ratio * 100)}% bot</span>
-                  </div>
-                </div>
-                {canManage && (
-                  <div className="flex gap-1.5 shrink-0">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleDomainAllow(domain.domain)}
-                      disabled={domainBusy(domain.domain)}
-                      className={domain.override === 'allow' ? 'bg-green-900/30 text-green-400 border-green-900/50' : ''}
-                    >
-                      {isSaving(`${domain.domain}:allow`) ? <Spinner className="w-4 h-4" /> : 'Allow'}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setBlockTarget(domain.domain)}
-                      disabled={domainBusy(domain.domain)}
-                      className={`text-red-400 border-red-900/50 hover:bg-red-900/20${domain.override === 'quarantine' ? ' bg-red-900/30' : ''}`}
-                    >
-                      {isSaving(`${domain.domain}:block`) ? <Spinner className="w-4 h-4" /> : 'Block'}
-                    </Button>
-                    {domain.override && (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => handleDomainReset(domain.domain)}
-                        disabled={domainBusy(domain.domain)}
-                      >
-                        {isSaving(`${domain.domain}:reset`) ? <Spinner className="w-4 h-4" /> : 'Reset'}
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-            {(!domainReputation.domains || domainReputation.domains.length === 0) && (
-              <EmptyState
-                title="No domain data yet"
-                description="Referrer domain reputation scores will appear once traffic flows through your site."
-                icon={<Shield weight="regular" />}
-                className="py-8"
-              />
-            )}
-          </div>
+          <Table aria-label="Domain reputation" containerClassName="max-h-[22rem] overflow-y-auto">
+            <THead>
+              <TR>
+                <TH className="w-full max-w-0">Domain</TH>
+                <TH numeric className="hidden sm:table-cell">Events</TH>
+                <TH numeric>Bot</TH>
+                {canManage && <TH className="w-px" aria-label="Actions" />}
+              </TR>
+            </THead>
+            <TBody>
+              {domains.map(domain => (
+                <TR key={domain.domain}>
+                  <TD className="w-full max-w-0">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <span className="min-w-0 flex-1 truncate font-mono text-sm text-foreground" title={domain.domain}>{domain.domain}</span>
+                      <StatusChip tone={actionTone(domain.action)}>{humanizeAction(domain.action)}</StatusChip>
+                      <StatusChip tone={sourceTone(domain.source)}>{humanizeSource(domain.source)}</StatusChip>
+                      {domain.override && (
+                        <StatusChip tone="warning">Override: {humanizeAction(domain.override)}</StatusChip>
+                      )}
+                    </div>
+                  </TD>
+                  <TD numeric className="hidden text-muted-foreground sm:table-cell">{domain.total_events}</TD>
+                  <TD numeric className="text-muted-foreground">{Math.round(domain.bot_ratio * 100)}%</TD>
+                  {canManage && (
+                    <TD>
+                      <div className="flex flex-wrap justify-end gap-1.5">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleDomainAllow(domain.domain)}
+                          disabled={domainBusy(domain.domain)}
+                        >
+                          {isSaving(`${domain.domain}:allow`) ? <Spinner className="h-4 w-4" /> : 'Allow'}
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setBlockTarget(domain.domain)}
+                          disabled={domainBusy(domain.domain)}
+                          className="border-destructive/30 text-destructive hover:bg-destructive/10"
+                        >
+                          {isSaving(`${domain.domain}:block`) ? <Spinner className="h-4 w-4" /> : 'Block'}
+                        </Button>
+                        {domain.override && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handleDomainReset(domain.domain)}
+                            disabled={domainBusy(domain.domain)}
+                          >
+                            {isSaving(`${domain.domain}:reset`) ? <Spinner className="h-4 w-4" /> : 'Reset'}
+                          </Button>
+                        )}
+                      </div>
+                    </TD>
+                  )}
+                </TR>
+              ))}
+            </TBody>
+          </Table>
         )}
-      </div>
+      </section>
 
       {canManage && (
         <SettingsSaveBar
@@ -486,5 +531,15 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
         onConfirm={async () => { if (blockTarget) await handleDomainBlock(blockTarget) }}
       />
     </div>
+  )
+}
+
+/** A single detection stat: tabular numeral over a Geist micro-label caption. */
+function StatTile({ value, label }: { value: number; label: string }) {
+  return (
+    <RailGridTile>
+      <p className="text-2xl tabular-nums text-foreground">{value}</p>
+      <p className="mt-1 font-semibold text-micro-label uppercase text-muted-foreground">{label}</p>
+    </RailGridTile>
   )
 }

@@ -10,7 +10,10 @@ const WorkspaceGeneralTab = dynamic(() => import('@/components/settings/unified/
 const WorkspaceMembersTab = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceMembersTab'))
 const WorkspaceRolesTab   = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceRolesTab'))
 const WorkspaceBillingTab = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceBillingTab'))
-const NotificationsTab    = dynamic(() => import('@/components/settings/unified/tabs/NotificationsTab'))
+// * Org Notifications is now workspace-only (categories + webhooks). Personal
+// * preferences moved to Account (spec §5.2); the "mine/workspace" mini-router
+// * that used to wrap both is retired.
+const WorkspaceNotificationsTab = dynamic(() => import('@/components/settings/notifications/WorkspaceNotificationsTab'))
 const WorkspaceAuditTab   = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceAuditTab'))
 
 const TAB_COMPONENTS: Record<string, React.ComponentType> = {
@@ -18,15 +21,16 @@ const TAB_COMPONENTS: Record<string, React.ComponentType> = {
   members:       WorkspaceMembersTab,
   roles:         WorkspaceRolesTab,
   billing:       WorkspaceBillingTab,
-  notifications: NotificationsTab,
+  notifications: WorkspaceNotificationsTab,
   audit:         WorkspaceAuditTab,
 }
 
 const TAB_PERMISSIONS: Record<string, Permission> = {
-  members: 'team.view',
-  roles:   'roles.manage',
-  billing: 'billing.view',
-  audit:   'audit.view',
+  members:       'team.view',
+  roles:         'roles.manage',
+  billing:       'billing.view',
+  notifications: 'notification_settings.manage',
+  audit:         'audit.view',
 }
 
 function AccessDenied() {

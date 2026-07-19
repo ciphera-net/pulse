@@ -120,7 +120,12 @@ function useHomePageMeta(): PageMeta {
       devices: { label: 'Devices', icon: DeviceMobile },
     }
     const tabSlug = parts[2] ?? ''
-    const meta = TAB_META[tabSlug] ?? { label: 'Settings', icon: SettingsIcon }
+    const meta = TAB_META[tabSlug]
+    // No concrete tab (the `/settings` landing page, or a bare group path) — a
+    // single "Settings" crumb. Adding the "Settings" parent here would double it.
+    if (!meta) {
+      return { title: 'Settings', icon: SettingsIcon }
+    }
     return {
       title: meta.label,
       icon: meta.icon,

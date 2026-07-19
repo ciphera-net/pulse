@@ -39,8 +39,29 @@ vi.mock('@ciphera-net/facet', () => ({
   Spinner: () => <div>loading</div>,
   Modal: ({ isOpen, children, title }: any) =>
     isOpen ? <div role="dialog" aria-label={title}>{children}</div> : null,
-  toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
+  // Facet 0.4.0 primitives the rebuilt tab composes with. Rendered as their
+  // semantic DOM equivalents so text/role queries resolve exactly as they do
+  // against the real components (the styling contract is out of scope here).
+  Banner: ({ title, children, action }: any) => (
+    <div role="status">
+      <div>{title}</div>
+      {children}
+      {action}
+    </div>
+  ),
+  Table: ({ children, containerClassName: _c, ...props }: any) => <table {...props}>{children}</table>,
+  THead: ({ children, ...props }: any) => <thead {...props}>{children}</thead>,
+  TBody: ({ children, ...props }: any) => <tbody {...props}>{children}</tbody>,
+  TR: ({ children, ...props }: any) => <tr {...props}>{children}</tr>,
+  TH: ({ children, numeric: _n, ...props }: any) => <th {...props}>{children}</th>,
+  TD: ({ children, numeric: _n, ...props }: any) => <td {...props}>{children}</td>,
+  RailGrid: ({ children, minTileWidth: _m, columns: _col, ...props }: any) => <div {...props}>{children}</div>,
+  RailGridTile: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+  toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() },
   getAuthErrorMessage: () => 'error',
+  // `@/lib/utils` re-exports `cn` from facet; the local panels/StatusChip the
+  // rebuilt tab composes with call it, so the mock must supply a real join.
+  cn: (...args: any[]) => args.filter((a) => typeof a === 'string').join(' '),
 }))
 
 vi.mock('@/components/ui/tooltip', () => ({
@@ -50,14 +71,20 @@ vi.mock('@/components/ui/tooltip', () => ({
   TooltipTrigger: ({ children }: any) => <>{children}</>,
 }))
 
+import { MastheadSlotProvider } from '@/components/settings/shell-slots'
 import WorkspaceBillingTab from '../WorkspaceBillingTab'
 
 // Fresh SWR cache per render — the component fetches invoices/prices via SWR
 // now, and a shared cache would leak one test's invoice list into the next.
+// The tab portals its primary CTA into the shell masthead slot; provide a real
+// slot node (the document body) so the portaled button is queryable, exactly
+// as it would be when the tab renders inside SettingsShell.
 function renderTab() {
   return render(
     <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
-      <WorkspaceBillingTab />
+      <MastheadSlotProvider value={document.body}>
+        <WorkspaceBillingTab />
+      </MastheadSlotProvider>
     </SWRConfig>,
   )
 }
@@ -76,6 +103,23 @@ beforeEach(() => {
   mockCanManage = true
   mockSubscription = { ...base }
   mockPush.mockClear()
+})
+
+describe('WorkspaceBillingTab structured-panels composition (smoke)', () => {
+  it('renders the plan status band: plan label, StatusChip, and usage stat tiles', async () => {
+    renderTab()
+    await waitFor(() => expect(screen.getByText('Team Plan')).toBeTruthy())
+    // StatusChip (migrated from the inline pill) reads the active subscription.
+    expect(screen.getByText('Active')).toBeTruthy()
+    // Usage RailGrid stat tiles carry micro-label captions.
+    expect(screen.getByText('Pageviews')).toBeTruthy()
+    expect(screen.getByText('Renews')).toBeTruthy()
+  })
+
+  it('portals the plan CTA into the masthead slot as the single primary action', async () => {
+    renderTab()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Change Plan' })).toBeTruthy())
+  })
 })
 
 describe('WorkspaceBillingTab banners & states', () => {

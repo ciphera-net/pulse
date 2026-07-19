@@ -1,28 +1,45 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import { Toggle, Button, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/facet'
-import Select from '@/components/ui/select'
-import { CheckCircle, XCircle } from '@phosphor-icons/react'
+import {
+  Toggle,
+  Button,
+  toast,
+  Spinner,
+  Select,
+  RailGrid,
+  RailGridTile,
+  getAuthErrorMessage,
+} from '@ciphera-net/facet'
+import { ShieldCheck, Warning, MagnifyingGlass, ArrowsClockwise } from '@phosphor-icons/react'
 import {
   getPrivacyScanConfig,
   updatePrivacyScanConfig,
   triggerPrivacyScan,
   getLatestPrivacyScan,
-  type PrivacyScanConfig,
   type PrivacyScanResult,
   type SecurityHeaders,
 } from '@/lib/api/privacy'
+import { cn } from '@/lib/utils'
 import { formatRelativeTime } from '@/lib/utils/formatDate'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import { StatusChip, type ChipTone } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
+import { SettingsPanel, PanelRows, PanelRow, EmptyRow } from '@/components/settings/panels'
 import { useCan } from '@/lib/auth/permissions'
 
 const SCAN_COOLDOWN_SECONDS = 300
 const SCAN_POLL_INTERVAL_MS = 10_000
 const SCAN_POLL_MAX_ATTEMPTS = 6
+
+const HEADER_CHECKS: { key: keyof SecurityHeaders; label: string }[] = [
+  { key: 'hsts', label: 'Strict-Transport-Security' },
+  { key: 'x_content_type', label: 'X-Content-Type-Options' },
+  { key: 'x_frame_options', label: 'X-Frame-Options' },
+  { key: 'csp', label: 'Content-Security-Policy' },
+  { key: 'referrer_policy', label: 'Referrer-Policy' },
+  { key: 'permissions_policy', label: 'Permissions-Policy' },
+]
 
 function categoryTone(category: string): ChipTone {
   switch (category) {
@@ -35,6 +52,35 @@ function categoryTone(category: string): ChipTone {
     default:
       return 'neutral'
   }
+}
+
+// A privacy score is genuine signal (success/danger for real signal, never
+// decoration): the Facet green `pos` (#3ECF8E) above 80, amber 50–79, coral
+// below — the score numeral and its chip share one tone.
+function scoreBand(score: number): { tone: ChipTone; color: string; grade: string } {
+  if (score >= 80) return { tone: 'success', color: 'text-pos', grade: 'Good' }
+  if (score >= 50) return { tone: 'warning', color: 'text-amber-400', grade: 'Fair' }
+  return { tone: 'danger', color: 'text-destructive', grade: 'Poor' }
+}
+
+/** A bare stat tile for the results RailGrid — mono numeral + micro-label caps. */
+function StatTile({ label, value, valueClassName, chip }: {
+  label: string
+  value: React.ReactNode
+  valueClassName?: string
+  chip?: React.ReactNode
+}) {
+  return (
+    <RailGridTile>
+      <p className="font-semibold text-micro-label uppercase text-muted-foreground">{label}</p>
+      <div className="mt-2 flex items-baseline gap-2">
+        <span className={cn('text-3xl font-semibold tabular-nums text-foreground', valueClassName)}>
+          {value}
+        </span>
+        {chip}
+      </div>
+    </RailGridTile>
+  )
 }
 
 export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
@@ -200,220 +246,218 @@ export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
   if (!configLoaded) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Spinner className="w-6 h-6 text-neutral-500" />
+        <Spinner className="w-6 h-6 text-muted-foreground" />
       </div>
     )
   }
 
   const scripts = lastScan?.third_party_scripts ?? []
+  const cookies = lastScan?.cookies ?? []
   const headers = lastScan?.security_headers ?? ({} as SecurityHeaders)
   const score = lastScan?.privacy_score ?? 0
+  const band = scoreBand(score)
+  const headersPassed = HEADER_CHECKS.filter(h => headers[h.key]).length
 
-  const HEADER_CHECKS: { key: keyof SecurityHeaders; label: string }[] = [
-    { key: 'hsts', label: 'Strict-Transport-Security' },
-    { key: 'x_content_type', label: 'X-Content-Type-Options' },
-    { key: 'x_frame_options', label: 'X-Frame-Options' },
-    { key: 'csp', label: 'Content-Security-Policy' },
-    { key: 'referrer_policy', label: 'Referrer-Policy' },
-    { key: 'permissions_policy', label: 'Permissions-Policy' },
-  ]
+  // Scan controls (spec §6): "Scan Now" is an OUTLINE button with cooldown —
+  // deliberately not the page's solid-orange, plus a ghost manual refresh.
+  const scanControls = (
+    <div className="flex flex-wrap items-center gap-2">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleScan}
+        disabled={!canManage || scanning || cooldown > 0}
+        className="gap-1.5"
+      >
+        {scanning ? (
+          <><Spinner className="h-4 w-4" /> Scanning…</>
+        ) : cooldown > 0 ? (
+          `Wait ${cooldown}s`
+        ) : (
+          <><MagnifyingGlass weight="bold" className="h-4 w-4" /> Scan now</>
+        )}
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handleRefreshResults}
+        disabled={polling || refreshing}
+        className="gap-1.5"
+      >
+        {polling ? (
+          <><Spinner className="h-4 w-4" /> Checking…</>
+        ) : refreshing ? (
+          <><Spinner className="h-4 w-4" /> Refreshing…</>
+        ) : (
+          <><ArrowsClockwise weight="bold" className="h-4 w-4" /> Refresh</>
+        )}
+      </Button>
+    </div>
+  )
 
   return (
-    <div className="space-y-6">
-      {/* Heading */}
-      <div>
-        <h3 className="text-base font-semibold text-white mb-1">Privacy Scanner</h3>
-        <p className="text-sm text-neutral-400">Scan your site for third-party trackers, cookies, and security headers</p>
-      </div>
-
-      {/* Enable toggle */}
-      <div className="flex items-center justify-between p-4 rounded-none border border-neutral-800 bg-neutral-800/30">
-        <div>
-          <p className="text-sm font-medium text-white">Enable privacy scanning</p>
-          <p className="text-xs text-neutral-500">Automatically scan for trackers and security issues</p>
-        </div>
-        <Toggle checked={enabled} onChange={() => setEnabled(v => !v)} disabled={!canManage} />
-      </div>
-
-      {/* Frequency selector — revealed when enabled */}
-      <AnimatePresence>
-        {enabled && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="p-4 rounded-none border border-neutral-800 bg-neutral-800/30">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-white">Scan frequency</p>
-                  <p className="text-xs text-neutral-500">How often to check for privacy issues</p>
-                </div>
+    <div className="space-y-8">
+      {/* Configuration — one panel of ruled property rows (spec §6). */}
+      <SettingsPanel
+        kicker="Privacy scanner"
+        description="Scan your site for third-party trackers, cookies, and security headers."
+        action={scanControls}
+      >
+        <PanelRows>
+          <PanelRow
+            label="Automatic scanning"
+            caption="Automatically scan for trackers and security issues"
+            control={
+              <Toggle checked={enabled} onChange={() => setEnabled(v => !v)} disabled={!canManage} />
+            }
+          />
+          {enabled && (
+            <PanelRow
+              label="Scan frequency"
+              caption="How often to check for privacy issues"
+              control={
                 <Select
-                  variant="input"
+                  aria-label="Scan frequency"
                   value={frequency}
                   onChange={setFrequency}
+                  disabled={!canManage}
+                  size="sm"
+                  className="w-40"
                   options={[
                     { value: 'daily', label: 'Daily' },
                     { value: 'weekly', label: 'Weekly' },
                     { value: 'monthly', label: 'Monthly' },
                   ]}
-                  className="shrink-0 min-w-[200px]"
-                  disabled={!canManage}
                 />
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Scan Now */}
-      <div className="flex flex-wrap items-center gap-3">
-        <Button
-          variant="secondary"
-          onClick={handleScan}
-          disabled={!canManage || scanning || cooldown > 0}
-        >
-          {scanning ? (
-            <>
-              <Spinner className="w-4 h-4" />
-              Scanning...
-            </>
-          ) : cooldown > 0 ? (
-            `Wait ${cooldown}s`
-          ) : (
-            'Scan Now'
+              }
+            />
           )}
-        </Button>
-        <Button
-          variant="ghost"
-          onClick={handleRefreshResults}
-          disabled={polling || refreshing}
-        >
-          {polling ? (
-            <>
-              <Spinner className="w-4 h-4" />
-              Checking for results…
-            </>
-          ) : refreshing ? (
-            <>
-              <Spinner className="w-4 h-4" />
-              Refreshing…
-            </>
-          ) : (
-            'Refresh results'
-          )}
-        </Button>
-        {lastScan && (
-          <span className="text-xs text-neutral-500">
-            Last scan: {formatRelativeTime(lastScan.scanned_at)}
-          </span>
-        )}
-      </div>
+        </PanelRows>
+      </SettingsPanel>
 
-      {/* Results — only shown when a scan result exists */}
-      {lastScan && (
-        <div className="pt-6 border-t border-neutral-800 space-y-5">
-
-          {/* Privacy Score */}
-          <div className="flex flex-col items-center py-4">
-            <div
-              className={`text-5xl font-bold tabular-nums ${
-                score >= 80
-                  ? 'text-green-400'
-                  : score >= 50
-                  ? 'text-amber-400'
-                  : 'text-red-400'
-              }`}
-            >
-              {score}
-            </div>
-            <span className="text-sm text-neutral-500 mt-1">Privacy Score</span>
+      {/* Results */}
+      {lastScan ? (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between gap-4">
+            <p className="font-semibold text-micro-label uppercase text-muted-foreground">Latest results</p>
+            <p className="text-xs tabular-nums text-muted-foreground">
+              Scanned {formatRelativeTime(lastScan.scanned_at)}
+            </p>
           </div>
+
+          {/* Score + headline counts as stat tiles */}
+          <RailGrid minTileWidth={150}>
+            <StatTile
+              label="Privacy score"
+              value={score}
+              valueClassName={band.color}
+              chip={<StatusChip tone={band.tone}>{band.grade}</StatusChip>}
+            />
+            <StatTile label="Trackers" value={scripts.length} />
+            <StatTile label="Cookies" value={cookies.length} />
+            <StatTile label="Headers passed" value={`${headersPassed}/${HEADER_CHECKS.length}`} />
+          </RailGrid>
+
+          {/* Security headers — ruled checklist rows */}
+          <SettingsPanel kicker="Security headers">
+            <PanelRows>
+              {HEADER_CHECKS.map(h => (
+                <PanelRow
+                  key={h.key}
+                  label={<span className="font-mono text-xs text-foreground">{h.label}</span>}
+                  control={
+                    headers[h.key]
+                      ? <StatusChip tone="success">Present</StatusChip>
+                      : <StatusChip tone="danger">Missing</StatusChip>
+                  }
+                />
+              ))}
+            </PanelRows>
+          </SettingsPanel>
 
           {/* Third-party scripts */}
-          <div>
-            <h4 className="text-sm font-semibold text-white mb-3">Third-party scripts</h4>
+          <SettingsPanel kicker="Third-party scripts" description={`${scripts.length} detected`}>
             {scripts.length === 0 ? (
-              <p className="text-sm text-neutral-500">No third-party scripts detected</p>
+              <EmptyRow
+                icon={<ShieldCheck weight="regular" />}
+                title="No third-party scripts detected"
+                caption="This site loads no external tracking scripts."
+              />
             ) : (
-              <div className="space-y-2">
+              <PanelRows>
                 {scripts.map(s => (
-                  <div
+                  <PanelRow
                     key={s.host}
-                    className="flex items-center justify-between p-3 rounded-none border border-neutral-800 bg-neutral-800/30"
-                  >
-                    <span className="text-sm text-white font-mono">{s.host}</span>
-                    <StatusChip tone={categoryTone(s.category)}>{s.category}</StatusChip>
-                  </div>
+                    label={<span className="break-all font-mono text-xs text-foreground">{s.host}</span>}
+                    control={<StatusChip tone={categoryTone(s.category)}>{s.category}</StatusChip>}
+                  />
                 ))}
-              </div>
+              </PanelRows>
             )}
-          </div>
+          </SettingsPanel>
 
           {/* Cookies */}
-          {lastScan.cookies && lastScan.cookies.length > 0 && (
-            <div>
-              <h4 className="text-sm font-semibold text-white mb-3">Cookies</h4>
-              <div className="space-y-2">
-                {lastScan.cookies.map(c => (
-                  <div
+          {cookies.length > 0 && (
+            <SettingsPanel kicker="Cookies" description={`${cookies.length} set`}>
+              <PanelRows>
+                {cookies.map(c => (
+                  <PanelRow
                     key={`${c.name}-${c.domain}`}
-                    className="flex items-center justify-between p-3 rounded-none border border-neutral-800 bg-neutral-800/30"
-                  >
-                    <div>
-                      <span className="text-sm text-white font-mono">{c.name}</span>
-                      <span className="text-xs text-neutral-500 ml-2">{c.domain}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {c.secure && <StatusChip tone="success">Secure</StatusChip>}
-                      {c.http_only && <StatusChip tone="info">HttpOnly</StatusChip>}
-                    </div>
-                  </div>
+                    label={<span className="font-mono text-xs text-foreground">{c.name}</span>}
+                    caption={c.domain}
+                    control={
+                      <div className="flex items-center gap-2">
+                        {c.secure && <StatusChip tone="success">Secure</StatusChip>}
+                        {c.http_only && <StatusChip tone="info">HttpOnly</StatusChip>}
+                      </div>
+                    }
+                  />
                 ))}
-              </div>
-            </div>
+              </PanelRows>
+            </SettingsPanel>
           )}
 
-          {/* Security headers checklist */}
-          <div>
-            <h4 className="text-sm font-semibold text-white mb-3">Security headers</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {HEADER_CHECKS.map(h => (
-                <div
-                  key={h.key}
-                  className="flex items-center gap-2 p-2.5 rounded-none border border-neutral-800 bg-neutral-800/30"
-                >
-                  {headers[h.key] ? (
-                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" weight="fill" />
-                  ) : (
-                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" weight="fill" />
-                  )}
-                  <span className="text-xs text-neutral-300 font-mono">{h.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Issues list */}
+          {/* Issues */}
           {lastScan.issues && lastScan.issues.length > 0 && (
-            <div>
-              <h4 className="text-sm font-semibold text-white mb-3">Issues</h4>
-              <div className="space-y-2">
+            <SettingsPanel kicker="Issues" description={`${lastScan.issues.length} to review`}>
+              <PanelRows>
                 {lastScan.issues.map((issue, i) => (
-                  <div
-                    key={i}
-                    className="flex items-start gap-2 p-3 rounded-none border border-neutral-800 bg-neutral-800/30"
-                  >
-                    <XCircle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" weight="fill" />
-                    <span className="text-sm text-neutral-300">{issue}</span>
+                  <div key={i} className="flex items-start gap-3 px-5 py-3.5">
+                    <Warning weight="fill" className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                    <span className="text-sm text-muted-foreground">{issue}</span>
                   </div>
                 ))}
-              </div>
-            </div>
+              </PanelRows>
+            </SettingsPanel>
           )}
         </div>
+      ) : (
+        <SettingsPanel kicker="Results">
+          <EmptyRow
+            icon={<ShieldCheck weight="regular" />}
+            title="No scan results yet"
+            caption="Run a scan to check this site for trackers, cookies and security headers."
+            action={
+              canManage ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleScan}
+                  disabled={scanning || cooldown > 0}
+                  className="gap-1.5"
+                >
+                  {scanning ? (
+                    <><Spinner className="h-4 w-4" /> Scanning…</>
+                  ) : cooldown > 0 ? (
+                    `Wait ${cooldown}s`
+                  ) : (
+                    <><MagnifyingGlass weight="bold" className="h-4 w-4" /> Scan now</>
+                  )}
+                </Button>
+              ) : undefined
+            }
+          />
+        </SettingsPanel>
       )}
 
       {canManage && (

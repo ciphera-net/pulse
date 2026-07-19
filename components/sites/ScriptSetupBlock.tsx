@@ -11,14 +11,25 @@
  */
 
 import { useState, useCallback, useMemo } from 'react'
-import { ArrowUpRight, CaretDown } from '@phosphor-icons/react'
+import { ArrowUpRight, CaretDown, MagnifyingGlass } from '@phosphor-icons/react'
 import {
   getIntegration,
-  getPickerIntegrations,
+  getGroupedIntegrations,
+  categoryLabels,
   integrationDocsUrl,
   type Integration,
 } from '@/lib/integrations'
-import { toast, Toggle, CheckIcon, CopyIcon, Spinner } from '@ciphera-net/facet'
+import {
+  toast,
+  Toggle,
+  Input,
+  Select as FacetSelect,
+  RailGrid,
+  CheckIcon,
+  CopyIcon,
+  Spinner,
+  cn,
+} from '@ciphera-net/facet'
 import Select from '@/components/ui/select'
 import { TierBadge } from '@/components/integrations/TierBadge'
 import { useInstallStatus } from '@/lib/swr/dashboard'
@@ -119,9 +130,37 @@ export default function ScriptSetupBlock({
   const [copied, setCopied] = useState(false)
   const [cspCopied, setCspCopied] = useState(false)
   const [customizeOpen, setCustomizeOpen] = useState(false)
+  const [browseOpen, setBrowseOpen] = useState(false)
+  const [platformSearch, setPlatformSearch] = useState('')
 
-  const pickerIntegrations = useMemo(() => getPickerIntegrations(), [])
+  // Every platform, flattened in category order — feeds both the primary Select
+  // and the "Browse all platforms" logo grid so a pick from either stays in sync.
+  const allIntegrations = useMemo(
+    () => getGroupedIntegrations().flatMap((g) => g.items),
+    [],
+  )
   const selected: Integration | undefined = framework ? getIntegration(framework) : undefined
+
+  const platformOptions = useMemo(
+    () =>
+      allIntegrations.map((fw) => ({
+        value: fw.id,
+        label: fw.name,
+        description: site.detected_framework === fw.id ? 'Detected on your site' : categoryLabels[fw.category],
+      })),
+    [allIntegrations, site.detected_framework],
+  )
+
+  const browseResults = useMemo(() => {
+    const q = platformSearch.trim().toLowerCase()
+    if (!q) return allIntegrations
+    return allIntegrations.filter(
+      (fw) =>
+        fw.name.toLowerCase().includes(q) ||
+        fw.id.toLowerCase().includes(q) ||
+        categoryLabels[fw.category].toLowerCase().includes(q),
+    )
+  }, [allIntegrations, platformSearch])
 
   // * Defense-in-depth: the snippet is COPIED and pasted into the customer's
   // * <head>, so a domain value carrying a double-quote could break out of the
@@ -212,32 +251,91 @@ export default function ScriptSetupBlock({
       {/* ── 1. Platform picker drives the panel ─────────────────────────────── */}
       {showFrameworkPicker && (
         <div className="mb-4">
-          <h4 className="text-sm font-semibold text-white mb-1">Your platform</h4>
-          <p className="text-xs text-neutral-400 mb-3">
+          <h4 className="text-sm font-semibold text-foreground mb-1">Your platform</h4>
+          <p className="text-xs text-muted-foreground mb-3">
             Pick where you&apos;re installing Pulse for the exact snippet and steps.
           </p>
-          <div className="flex flex-wrap gap-2">
-            {pickerIntegrations.map((fw) => (
-              <button
-                key={fw.id}
-                type="button"
-                onClick={() => setFramework(framework === fw.id ? '' : fw.id)}
-                className={`flex items-center gap-2 rounded-none border px-3 py-2 text-sm transition-all cursor-pointer ease-apple ${
-                  framework === fw.id
-                    ? 'border-brand-orange bg-brand-orange/10 text-brand-orange'
-                    : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:border-neutral-700 hover:text-white'
-                }`}
-              >
-                <span className="[&_svg]:h-4 [&_svg]:w-4 shrink-0 flex items-center">{fw.icon}</span>
-                <span className="font-medium">{fw.name}</span>
-                {site.detected_framework === fw.id && (
-                  <span className="text-[9px] font-medium bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-none">
-                    Detected
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+          <FacetSelect
+            value={framework}
+            onChange={(v) => setFramework(v)}
+            options={platformOptions}
+            placeholder="Select your platform…"
+            disabled={disabled}
+            className="w-full"
+            aria-label="Your platform"
+          />
+
+          {/* Progressive disclosure: the full logo wall lives here, behind a
+              search, instead of always occupying the panel. */}
+          <button
+            type="button"
+            onClick={() => setBrowseOpen((v) => !v)}
+            className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors ease-apple"
+          >
+            <CaretDown className={cn('w-3.5 h-3.5 transition-transform ease-apple', browseOpen && 'rotate-180')} />
+            Browse all platforms
+          </button>
+
+          {browseOpen && (
+            <div className="mt-3">
+              <div className="relative mb-px">
+                <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  value={platformSearch}
+                  onChange={(e) => setPlatformSearch(e.target.value)}
+                  placeholder="Search platforms…"
+                  className="pl-9"
+                  aria-label="Search platforms"
+                />
+              </div>
+              {browseResults.length === 0 ? (
+                <p className="px-1 py-6 text-sm text-muted-foreground">No platforms match &ldquo;{platformSearch}&rdquo;.</p>
+              ) : (
+                <RailGrid minTileWidth={104} className="mt-3">
+                  {browseResults.map((fw) => {
+                    const isSelected = framework === fw.id
+                    const isDetected = site.detected_framework === fw.id
+                    return (
+                      <button
+                        key={fw.id}
+                        type="button"
+                        onClick={() => setFramework(isSelected ? '' : fw.id)}
+                        aria-pressed={isSelected}
+                        className={cn(
+                          'group relative flex flex-col items-center justify-center gap-2 bg-card px-2 py-4 text-center transition-colors ease-apple cursor-pointer',
+                          isSelected ? 'bg-accent' : 'hover:bg-muted',
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'flex items-center justify-center transition duration-200 [&_svg]:h-7 [&_svg]:w-7',
+                            isSelected
+                              ? 'grayscale-0 opacity-100'
+                              : 'grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100',
+                          )}
+                        >
+                          {fw.icon}
+                        </span>
+                        <span
+                          className={cn(
+                            'text-[11px] font-medium leading-tight',
+                            isSelected ? 'text-foreground' : 'text-muted-foreground',
+                          )}
+                        >
+                          {fw.name}
+                        </span>
+                        {isDetected && (
+                          <span className="absolute right-1 top-1 font-mono text-[8px] uppercase tracking-[0.08em] text-muted-foreground">
+                            Detected
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </RailGrid>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -246,22 +344,22 @@ export default function ScriptSetupBlock({
         <div className="rounded-none border border-amber-500/25 bg-amber-500/5 p-4 mb-3">
           <div className="flex items-center gap-2 mb-1.5">
             <TierBadge tier={selected.supportTier} />
-            <span className="text-sm font-medium text-white">{selected.name}</span>
+            <span className="text-sm font-medium text-foreground">{selected.name}</span>
           </div>
-          <p className="text-sm text-neutral-300">{selected.snippet.note}</p>
+          <p className="text-sm text-muted-foreground">{selected.snippet.note}</p>
         </div>
       )}
 
       {/* ── 3. The snippet + where to paste it ───────────────────────────────── */}
       {isPlugin && selected?.snippet ? (
-        <div className="rounded-none border border-neutral-800 bg-neutral-800/30 p-4">
-          <p className="text-sm text-neutral-300">{selected.snippet.note}</p>
+        <div className="rounded-none border border-border bg-muted p-4">
+          <p className="text-sm text-muted-foreground">{selected.snippet.note}</p>
           {selected.snippet.cta && (
             <a
               href={selected.snippet.cta.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 rounded-none bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange/90 transition-colors ease-apple"
+              className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 rounded-none bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors ease-apple"
             >
               {selected.snippet.cta.text}
               <ArrowUpRight className="w-3.5 h-3.5" />
@@ -269,43 +367,35 @@ export default function ScriptSetupBlock({
           )}
         </div>
       ) : (
-        <div className="rounded-none border border-neutral-800 overflow-hidden">
-          <div className="h-1 bg-gradient-to-r from-brand-orange via-brand-orange/60 to-transparent" />
-          <div className="bg-neutral-950">
-            <div className="flex items-center justify-between px-5 py-3">
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
-                </div>
-                <span className="text-xs font-medium text-neutral-500 ml-2">
-                  {selected?.snippet?.label ?? 'tracking script'}
-                </span>
-                {selected && <TierBadge tier={selected.supportTier} />}
-              </div>
-              <button
-                type="button"
-                onClick={copyScript}
-                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-none transition-all cursor-pointer bg-brand-orange/10 hover:bg-brand-orange/20 text-brand-orange border border-brand-orange/20 ease-apple"
-              >
-                {copied ? (
-                  <>
-                    <CheckIcon className="w-3.5 h-3.5" />
-                    Copied
-                  </>
-                ) : (
-                  <>
-                    <CopyIcon className="w-3.5 h-3.5" />
-                    Copy
-                  </>
-                )}
-              </button>
+        <div className="rounded-none border border-border bg-background">
+          <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="font-mono text-micro-label uppercase text-muted-foreground truncate">
+                {selected?.snippet?.label ?? 'Tracking script'}
+              </span>
+              {selected && <TierBadge tier={selected.supportTier} />}
             </div>
-            <pre className="px-5 pb-5 text-[13px] leading-relaxed font-mono text-neutral-300 whitespace-pre-wrap break-all overflow-x-auto selection:bg-brand-orange/30">
-              {scriptSnippet}
-            </pre>
+            <button
+              type="button"
+              onClick={copyScript}
+              className="flex items-center gap-1.5 shrink-0 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer ease-apple"
+            >
+              {copied ? (
+                <>
+                  <CheckIcon className="w-3.5 h-3.5" />
+                  Copied
+                </>
+              ) : (
+                <>
+                  <CopyIcon className="w-3.5 h-3.5" />
+                  Copy
+                </>
+              )}
+            </button>
           </div>
+          <pre className="px-4 py-4 text-[13px] leading-relaxed font-mono text-muted-foreground whitespace-pre-wrap break-all overflow-x-auto selection:bg-primary/30">
+            {scriptSnippet}
+          </pre>
         </div>
       )}
 
@@ -313,43 +403,43 @@ export default function ScriptSetupBlock({
       {siteId && <InstallVerify siteId={siteId} domain={site.domain} />}
 
       {/* ── 5. CSP + docs one-liners ─────────────────────────────────────────── */}
-      <div className="mt-4 rounded-none border border-neutral-800 bg-neutral-900/50 p-4">
+      <div className="mt-4 rounded-none border border-border bg-muted/50 p-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold text-white">Behind a Content Security Policy?</span>
+          <span className="text-xs font-semibold text-foreground">Behind a Content Security Policy?</span>
           <button
             type="button"
             onClick={copyCsp}
-            className="flex items-center gap-1.5 text-[11px] font-medium text-neutral-400 hover:text-brand-orange transition-colors ease-apple"
+            className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors ease-apple"
           >
             {cspCopied ? <CheckIcon className="w-3 h-3" /> : <CopyIcon className="w-3 h-3" />}
             Copy directives
           </button>
         </div>
-        <code className="block text-[11px] font-mono text-neutral-400 break-all">{CSP_DIRECTIVES}</code>
+        <code className="block text-[11px] font-mono text-muted-foreground break-all">{CSP_DIRECTIVES}</code>
         <a
           href="https://help.ciphera.net/docs/pulse/csp"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 mt-2 text-[11px] font-medium text-neutral-500 hover:text-brand-orange transition-colors ease-apple"
+          className="inline-flex items-center gap-1 mt-2 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors ease-apple"
         >
           CSP &amp; ad-blocker guide →
         </a>
       </div>
 
       {/* ── 6. Customize (collapsed by default; refinements, not the main path) ─ */}
-      <div className="mt-4 rounded-none border border-neutral-800">
+      <div className="mt-4 rounded-none border border-border">
         <button
           type="button"
           onClick={() => setCustomizeOpen((v) => !v)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-white cursor-pointer"
+          className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-foreground cursor-pointer"
         >
           Customize tracking
           <CaretDown
-            className={`w-4 h-4 text-neutral-500 transition-transform ease-apple ${customizeOpen ? 'rotate-180' : ''}`}
+            className={`w-4 h-4 text-muted-foreground transition-transform ease-apple ${customizeOpen ? 'rotate-180' : ''}`}
           />
         </button>
         {customizeOpen && (
-          <div className="px-4 pb-4 border-t border-neutral-800 pt-4">
+          <div className="px-4 pb-4 border-t border-border pt-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {FEATURES.map((f) => (
                 <div
@@ -357,8 +447,8 @@ export default function ScriptSetupBlock({
                   className="bg-card border border-border flex items-center justify-between rounded-none px-4 py-3"
                 >
                   <div className="min-w-0 mr-3">
-                    <span className="text-sm font-medium text-white block">{f.label}</span>
-                    <span className="text-xs text-neutral-400">{f.description}</span>
+                    <span className="text-sm font-medium text-foreground block">{f.label}</span>
+                    <span className="text-xs text-muted-foreground">{f.description}</span>
                   </div>
                   <Toggle checked={features[f.key]} onChange={() => toggleFeature(f.key)} disabled={disabled} />
                 </div>
@@ -366,19 +456,19 @@ export default function ScriptSetupBlock({
             </div>
 
             {/* Add-ons */}
-            <div className="mt-3 flex items-center justify-between rounded-none border border-dashed border-neutral-700 bg-neutral-900 px-4 py-3">
+            <div className="mt-3 flex items-center justify-between rounded-none border border-dashed border-input bg-muted px-4 py-3">
               <div className="min-w-0 mr-3">
-                <span className="text-sm font-medium text-white block">Frustration tracking</span>
-                <span className="text-xs text-neutral-400">
+                <span className="text-sm font-medium text-foreground block">Frustration tracking</span>
+                <span className="text-xs text-muted-foreground">
                   Rage &amp; dead clicks &middot; Loads a separate add-on script
                 </span>
               </div>
               <Toggle checked={features.frustration} onChange={() => toggleFeature('frustration')} disabled={disabled} />
             </div>
-            <div className="mt-2 flex items-center justify-between rounded-none border border-dashed border-neutral-700 bg-neutral-900 px-4 py-3">
+            <div className="mt-2 flex items-center justify-between rounded-none border border-dashed border-input bg-muted px-4 py-3">
               <div className="min-w-0 mr-3">
-                <span className="text-sm font-medium text-white block">Interaction tracking</span>
-                <span className="text-xs text-neutral-400">
+                <span className="text-sm font-medium text-foreground block">Interaction tracking</span>
+                <span className="text-xs text-muted-foreground">
                   Copy, print &amp; video events &middot; Loads a separate add-on script
                 </span>
               </div>
@@ -386,10 +476,10 @@ export default function ScriptSetupBlock({
             </div>
 
             {/* SRI — emits the immutable versioned URL (never the rolling one) */}
-            <div className="mt-3 flex items-center justify-between rounded-none border border-dashed border-neutral-700 bg-neutral-900 px-4 py-3">
+            <div className="mt-3 flex items-center justify-between rounded-none border border-dashed border-input bg-muted px-4 py-3">
               <div className="min-w-0 mr-3">
-                <span className="text-sm font-medium text-white block">Subresource Integrity (SRI)</span>
-                <span className="text-xs text-neutral-400">
+                <span className="text-sm font-medium text-foreground block">Subresource Integrity (SRI)</span>
+                <span className="text-xs text-muted-foreground">
                   Pins the script to version {VERSION_MANIFEST.version} with an integrity hash &middot; you update the
                   tag to adopt new versions
                 </span>
@@ -399,14 +489,14 @@ export default function ScriptSetupBlock({
 
             {/* Visitor identity */}
             <div className="mt-4">
-              <h4 className="text-sm font-semibold text-white mb-1">Visitor identity</h4>
-              <p className="text-xs text-neutral-400 mb-3">
+              <h4 className="text-sm font-semibold text-foreground mb-1">Visitor identity</h4>
+              <p className="text-xs text-muted-foreground mb-3">
                 How returning visitors are recognized. Stricter settings increase privacy but may raise unique visitor
                 counts.
               </p>
               <div className="flex items-end gap-3">
                 <div className="min-w-0">
-                  <label className="text-xs font-medium text-neutral-400 mb-1 block">Recognition</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Recognition</label>
                   <Select
                     variant="input"
                     value={storage}
@@ -420,7 +510,7 @@ export default function ScriptSetupBlock({
                 </div>
                 {storage === 'local' && (
                   <div>
-                    <label className="text-xs font-medium text-neutral-400 mb-1 block">Reset after</label>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Reset after</label>
                     <Select
                       variant="input"
                       value={ttl}
@@ -445,7 +535,7 @@ export default function ScriptSetupBlock({
           href={docsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 mt-4 text-sm font-medium text-brand-orange hover:text-brand-orange/80 transition-colors ease-apple"
+          className="inline-flex items-center gap-1 mt-4 text-sm font-medium text-primary hover:text-primary/80 transition-colors ease-apple"
         >
           {selected.name} installation guide →
         </a>
@@ -466,7 +556,7 @@ function InstallVerify({ siteId, domain }: { siteId: string; domain: string }) {
   const status = data?.install_status
   const lastSeen = data?.last_event_at ? relativeTime(data.last_event_at) : null
 
-  let tone = 'border-neutral-800 bg-neutral-900/50 text-neutral-400'
+  let tone = 'border-border bg-muted text-muted-foreground'
   let icon = <Spinner size="sm" />
   let title = 'Listening for your first event…'
   let detail = `Load ${domain} in a browser — Pulse will confirm here within seconds.`
@@ -475,7 +565,7 @@ function InstallVerify({ siteId, domain }: { siteId: string; domain: string }) {
     title = 'Checking install status…'
     detail = ''
   } else if (status === 'active') {
-    tone = 'border-[#3ECF8E]/30 bg-[#3ECF8E]/10 text-[#3ECF8E]'
+    tone = 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
     icon = <CheckIcon className="w-4 h-4" />
     title = 'Active'
     detail = lastSeen ? `Last event received ${lastSeen}.` : 'Receiving events.'
@@ -492,13 +582,13 @@ function InstallVerify({ siteId, domain }: { siteId: string; domain: string }) {
         <span className="flex items-center justify-center w-5 h-5">{icon}</span>
         <span className="text-sm font-medium">{title}</span>
       </div>
-      {detail && <p className="text-xs text-neutral-400 mt-1 ml-7">{detail}</p>}
+      {detail && <p className="text-xs text-muted-foreground mt-1 ml-7">{detail}</p>}
       {status !== 'active' && (
         <a
           href="https://help.ciphera.net/docs/pulse/troubleshooting"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 mt-2 ml-7 text-[11px] font-medium text-neutral-500 hover:text-brand-orange transition-colors ease-apple"
+          className="inline-flex items-center gap-1 mt-2 ml-7 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors ease-apple"
         >
           Troubleshooting guide →
         </a>

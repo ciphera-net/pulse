@@ -376,7 +376,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
               <button
                 onClick={() => {
                   setOpen(false)
-                  router.push('/settings/organization/notifications')
+                  router.push('/settings/account/notifications')
                 }}
                 className="flex items-center gap-2 text-sm text-neutral-400 hover:text-brand-orange transition-colors cursor-pointer ease-apple"
               >

@@ -1,16 +1,24 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Button, Input, toast } from '@ciphera-net/facet'
-import Select from '@/components/ui/select'
-import { Spinner } from '@ciphera-net/facet'
+import {
+  Button,
+  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  Select,
+  Spinner,
+  toast,
+  getAuthErrorMessage,
+} from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
 import { useCan } from '@/lib/auth/permissions'
 import { getOrganization, updateOrganization, deleteOrganization, getOrganizationMembers, transferOwnership, type OrganizationMember } from '@/lib/api/organization'
-import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
+import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
 
 export default function WorkspaceGeneralTab() {
   const { user } = useAuth()
@@ -121,33 +129,48 @@ export default function WorkspaceGeneralTab() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Spinner className="w-6 h-6 text-neutral-500" />
+        <Spinner className="w-6 h-6 text-muted-foreground" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-4">
-        <div>
-          <h3 className="text-base font-semibold text-white mb-1">General Information</h3>
-          <p className="text-sm text-neutral-400">Basic details about your organization.</p>
-        </div>
-
-        <div>
-          <label className="block text-micro-label uppercase text-neutral-400 mb-1.5">Organization Name</label>
-          <Input value={name} onChange={e => setName(e.target.value)} placeholder="Acme Corp" disabled={!canDeleteOrg} />
-        </div>
-
-        <div>
-          <label className="block text-micro-label uppercase text-neutral-400 mb-1.5">Organization Slug</label>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-neutral-500">pulse.ciphera.net/</span>
-            <Input value={slug} onChange={e => setSlug(e.target.value)} placeholder="acme-corp" disabled={!canDeleteOrg} />
-          </div>
-          <p className="text-xs text-neutral-500 mt-1">Changing the slug will change your organization&apos;s URL.</p>
-        </div>
-      </div>
+    <div className="space-y-8">
+      <SettingsPanel kicker="Workspace" description="Basic details about your organization.">
+        <PanelRows>
+          <PanelRow
+            label="Name"
+            caption="The name shown across Pulse."
+            htmlFor="org-name"
+          >
+            <Input
+              id="org-name"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Acme Corp"
+              disabled={!canDeleteOrg}
+            />
+          </PanelRow>
+          <PanelRow
+            label="Slug"
+            caption="Changing the slug will change your organization's URL."
+            htmlFor="org-slug"
+          >
+            <InputGroup>
+              <InputGroupAddon align="inline-start" className="text-muted-foreground">
+                pulse.ciphera.net/
+              </InputGroupAddon>
+              <InputGroupInput
+                id="org-slug"
+                value={slug}
+                onChange={e => setSlug(e.target.value)}
+                placeholder="acme-corp"
+                disabled={!canDeleteOrg}
+              />
+            </InputGroup>
+          </PanelRow>
+        </PanelRows>
+      </SettingsPanel>
 
       {/* Danger Zone */}
       {canDeleteOrg && <DangerZone
@@ -169,39 +192,39 @@ export default function WorkspaceGeneralTab() {
         ]}
       >
         {showTransferConfirm && (
-          <div className="p-4 border border-red-900/50 bg-red-900/10 rounded-none space-y-3">
-            <p className="text-sm text-neutral-300">Select a member to become the new owner. You will be demoted to a regular member immediately.</p>
+          <div className="space-y-3 bg-destructive/5 px-5 py-4">
+            <p className="text-sm text-muted-foreground">Select a member to become the new owner. You will be demoted to a regular member immediately.</p>
             {members.length === 0 ? (
-              <p className="text-xs text-neutral-500">No other members are available. Invite and verify a member first.</p>
+              <p className="text-xs text-muted-foreground">No other members are available. Invite and verify a member first.</p>
             ) : (
               <>
-                <div>
-                  <label className="block text-micro-label uppercase text-neutral-400 mb-1">New owner</label>
+                <div className="space-y-1.5">
+                  <label className="block font-semibold text-micro-label uppercase text-muted-foreground">New owner</label>
                   <Select
-                    variant="input"
                     value={transferTargetId}
                     onChange={setTransferTargetId}
-                    options={[
-                      { value: '', label: 'Select a member…' },
-                      ...members.map(m => ({
-                        value: m.user_id,
-                        label: `${m.user_email || `Member ${m.user_id.slice(0, 8)}`} (${m.role})`,
-                      })),
-                    ]}
-                    fullWidth
+                    placeholder="Select a member…"
+                    options={members.map(m => ({
+                      value: m.user_id,
+                      label: m.user_email || `Member ${m.user_id.slice(0, 8)}`,
+                      description: m.role,
+                    }))}
+                    className="w-full"
+                    aria-label="New owner"
                   />
                 </div>
                 <div className="flex gap-2">
                   <Button
-                    variant="secondary"
+                    variant="destructive"
+                    size="sm"
                     onClick={handleTransfer}
                     disabled={!transferTargetId || transferring}
-                    className="text-sm text-red-400 border-red-900 hover:bg-red-900/20"
                   >
                     {transferring ? 'Transferring…' : 'Transfer Ownership'}
                   </Button>
                   <Button
                     variant="secondary"
+                    size="sm"
                     onClick={() => { setShowTransferConfirm(false); setTransferTargetId('') }}
                   >
                     Cancel
@@ -212,16 +235,16 @@ export default function WorkspaceGeneralTab() {
           </div>
         )}
         {showDeleteConfirm && (
-          <div className="p-4 border border-red-900/50 bg-red-900/10 rounded-none space-y-3">
-            <p className="text-sm text-red-300">This will permanently delete:</p>
-            <ul className="text-xs text-neutral-400 list-disc list-inside space-y-1">
+          <div className="space-y-3 bg-destructive/5 px-5 py-4">
+            <p className="text-sm text-destructive">This will permanently delete:</p>
+            <ul className="list-inside list-disc space-y-1 text-xs text-muted-foreground">
               <li>All sites and their analytics data</li>
               <li>All team members and pending invitations</li>
               <li>Active subscription will be cancelled</li>
               <li>All notifications and settings</li>
             </ul>
-            <div>
-              <label className="block text-micro-label uppercase text-neutral-400 mb-1">Type DELETE to confirm</label>
+            <div className="space-y-1.5">
+              <label className="block font-semibold text-micro-label uppercase text-muted-foreground">Type DELETE to confirm</label>
               <Input
                 value={deleteText}
                 onChange={e => setDeleteText(e.target.value)}
@@ -230,15 +253,16 @@ export default function WorkspaceGeneralTab() {
             </div>
             <div className="flex gap-2">
               <Button
-                variant="secondary"
+                variant="destructive"
+                size="sm"
                 onClick={handleDelete}
                 disabled={deleteText !== 'DELETE' || deleting}
-                className="bg-red-600 hover:bg-red-700 text-white border-red-600"
               >
                 {deleting ? 'Deleting...' : 'Delete Organization'}
               </Button>
               <Button
                 variant="secondary"
+                size="sm"
                 onClick={() => { setShowDeleteConfirm(false); setDeleteText('') }}
               >
                 Cancel

@@ -1,5 +1,6 @@
 'use client'
 
+import { MotionConfig } from 'framer-motion'
 import { OfflineBanner } from '@/components/OfflineBanner'
 import { CIPHERA_APPS } from '@/lib/ciphera-apps'
 import { Footer } from '@/components/Footer'
@@ -114,7 +115,9 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
       <>
         {showOfflineBar && <OfflineBanner isOnline={isOnline} />}
         <DashboardShell siteId={null}>{children}</DashboardShell>
-        <GettingStartedChecklist />
+        {/* Onboarding widget is suppressed on /settings/* (spec §2.4): it clipped
+            the Create-role / Delete buttons there. It still shows everywhere else. */}
+        {!pathname.startsWith('/settings') && <GettingStartedChecklist />}
       </>
     )
   }
@@ -125,8 +128,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   }
 
   // Setup wizard: own layout with stepper — no app shell
-  // Org-settings: redirect shim that opens unified settings modal — no shell needed
-  if (isAuthenticated && (pathname.startsWith('/setup') || pathname.startsWith('/org-settings') || pathname.startsWith('/switch') || pathname.startsWith('/join'))) {
+  if (isAuthenticated && (pathname.startsWith('/setup') || pathname.startsWith('/switch') || pathname.startsWith('/join'))) {
     return <>{children}</>
   }
 
@@ -221,9 +223,14 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
-    <ErrorBoundary>
-      <VersionToast />
-      <LayoutInner>{children}</LayoutInner>
-    </ErrorBoundary>
+    // One app-wide honour of `prefers-reduced-motion` — every framer-motion
+    // consumer (settings bottom-sheet, accordions, notification panel, …) drops
+    // transform/opacity animation to an instant cut when the OS asks for it.
+    <MotionConfig reducedMotion="user">
+      <ErrorBoundary>
+        <VersionToast />
+        <LayoutInner>{children}</LayoutInner>
+      </ErrorBoundary>
+    </MotionConfig>
   )
 }

@@ -1,5 +1,5 @@
 'use client'
-import Select from '@/components/ui/select'
+import { Select, Table, THead, TBody, TR, TH, TD } from '@ciphera-net/facet'
 import type { Preferences } from '@/lib/api/notifications-preferences'
 import type { Category } from '@/lib/notifications/types'
 import { RETENTION_DEFAULTS, OVERRIDE_OPTIONS_DAYS } from '@/lib/notifications/retention-policy'
@@ -10,6 +10,15 @@ interface Props {
   onChange: (next: Preferences) => void
 }
 
+/**
+ * Retention overrides — the Facet RuledTable (spec §2.2): micro-label caps
+ * column headers, mono defaults, a per-row Select. Sits flush inside its
+ * SettingsPanel, so the Table's own bordered container is suppressed
+ * (`!border-0`) to avoid a box-in-box hairline.
+ *
+ * Overrides can only shorten retention (options filtered to `<= default`), and
+ * clearing an override deletes the key — never widening the stored TTL.
+ */
 export default function RetentionOverridesTable({ prefs, onChange }: Props) {
   const setOverride = (cat: Category, days: number | null) => {
     const next = { ...prefs.retention_overrides }
@@ -19,45 +28,47 @@ export default function RetentionOverridesTable({ prefs, onChange }: Props) {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-micro-label text-neutral-500 uppercase">
-            <th className="text-left py-2 font-normal">Category</th>
-            <th className="text-left py-2 font-normal">Default</th>
-            <th className="text-left py-2 font-normal">Purge my read items after</th>
-          </tr>
-        </thead>
-        <tbody>
+    <>
+      <Table containerClassName="!border-0">
+        <THead>
+          <TR>
+            <TH>Category</TH>
+            <TH>Default</TH>
+            <TH>Purge my read items after</TH>
+          </TR>
+        </THead>
+        <TBody>
           {NOTIFICATION_CATEGORIES.map(c => {
             const def = RETENTION_DEFAULTS[c.id].read_ttl_days
             const allowedOpts = OVERRIDE_OPTIONS_DAYS.filter(d => d <= def)
             const current = prefs.retention_overrides?.[c.id]?.read_ttl_days ?? null
             return (
-              <tr key={c.id} className="border-t border-neutral-800/60">
-                <td className="py-3 text-neutral-200">{c.label}</td>
-                <td className="py-3 text-neutral-400">{def} days</td>
-                <td className="py-3">
-                  <div aria-label={`Read retention override for ${c.label}`}>
+              <TR key={c.id}>
+                <TD className="font-medium text-foreground">{c.label}</TD>
+                <TD className="tabular-nums text-muted-foreground">{def} days</TD>
+                <TD>
+                  <div className="w-full min-w-0 max-w-[12rem]">
                     <Select
-                      variant="input"
+                      aria-label={`Read retention override for ${c.label}`}
+                      size="sm"
                       value={String(current ?? '')}
-                      onChange={(v) => setOverride(c.id, v === '' ? null : Number(v))}
+                      onChange={v => setOverride(c.id, v === '' ? null : Number(v))}
                       options={[
                         { value: '', label: `Default (${def} days)` },
                         ...allowedOpts.map(d => ({ value: String(d), label: `${d} days` })),
                       ]}
                     />
                   </div>
-                </td>
-              </tr>
+                </TD>
+              </TR>
             )
           })}
-        </tbody>
-      </table>
-      <p className="text-xs text-neutral-500 mt-3">
-        Overrides can only shorten retention — never extend it. Unread notifications still follow the default unread TTL.
+        </TBody>
+      </Table>
+      <p className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
+        Overrides can only shorten retention — never extend it. Unread notifications still follow the
+        default unread TTL.
       </p>
-    </div>
+    </>
   )
 }

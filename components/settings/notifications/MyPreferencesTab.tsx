@@ -1,7 +1,8 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
-import { Input, toast, getAuthErrorMessage } from '@ciphera-net/facet'
-import Select from '@/components/ui/select'
+import { useCallback, useEffect, useState } from 'react'
+import { Banner, Select, toast, getAuthErrorMessage } from '@ciphera-net/facet'
+import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
+import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { getPrefs, updatePrefs, type Preferences } from '@/lib/api/notifications-preferences'
@@ -11,21 +12,43 @@ import QuietHoursSection from './QuietHoursSection'
 import RetentionOverridesTable from './RetentionOverridesTable'
 import PurgeConfirmDialog from '@/app/notifications/PurgeConfirmDialog'
 
+// Native time input, Input-styled + dark color-scheme (spec §2.3).
+const timeInputClass =
+  'h-9 rounded-none border border-input bg-transparent px-3 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [color-scheme:dark]'
+
+// Order-insensitive deep compare of two preference snapshots. `retention_overrides`
+// keys are added/removed/re-added, so plain JSON.stringify would report a false
+// dirty on identical-but-reordered maps — canonicalize keys first.
+function canonical(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(canonical)
+  if (v && typeof v === 'object') {
+    return Object.keys(v as Record<string, unknown>)
+      .sort()
+      .reduce<Record<string, unknown>>((acc, k) => {
+        acc[k] = canonical((v as Record<string, unknown>)[k])
+        return acc
+      }, {})
+  }
+  return v
+}
+
+function prefsEqual(a: Preferences, b: Preferences): boolean {
+  return JSON.stringify(canonical(a)) === JSON.stringify(canonical(b))
+}
+
 export default function MyPreferencesTab() {
-  const [prefs, setPrefs] = useState<Preferences | null>(null)
-  const [saving, setSaving] = useState(false)
+  // Buffered save model (owner-chosen option D): `server` is the last-saved
+  // snapshot (source of truth), `draft` holds in-progress edits. Every control
+  // edits the draft; Save persists it in one PUT, Discard restores the snapshot.
+  const [server, setServer] = useState<Preferences | null>(null)
+  const [draft, setDraft] = useState<Preferences | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
   const [purging, setPurging] = useState(false)
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
-  }, [])
 
   const load = () =>
     getPrefs()
-      .then(p => { setPrefs(p); setError(null) })
+      .then(p => { setServer(p); setDraft(p); setError(null) })
       .catch(e => setError(e.message ?? 'Failed to load'))
 
   useEffect(() => { load() }, [])
@@ -36,110 +59,129 @@ export default function MyPreferencesTab() {
     setRetrying(false)
   }
 
-  const debouncedSave = (next: Preferences) => {
-    // Optimistic update — but keep the last-good value so we can roll back if
-    // the server rejects the write (server is the source of truth).
-    const prev = prefs
-    setPrefs(next)
-    if (saveTimer.current) clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(async () => {
-      setSaving(true)
-      try {
-        await updatePrefs(next)
-        setError(null)
-      } catch (e) {
-        setPrefs(prev)
-        setError((e as Error).message ?? 'Failed to save')
-      } finally {
-        setSaving(false)
-      }
-    }, 400)
-  }
+  const handleSave = useCallback(async () => {
+    if (!draft) return
+    try {
+      await updatePrefs(draft)
+      setServer(draft)
+      setError(null)
+    } catch (e) {
+      // Keep the draft (server is the source of truth only once it accepts the
+      // write) and surface the failure in the Banner below.
+      setError((e as Error).message ?? 'Failed to save')
+      throw e
+    }
+  }, [draft])
 
-  if (error && !prefs) return <SettingsErrorState message={error} onRetry={retry} retrying={retrying} />
-  if (!prefs) return <SettingsLoadingState />
+  const handleDiscard = useCallback(() => {
+    setDraft(server)
+    setError(null)
+  }, [server])
 
-  // Detect IANA timezones available in this browser.
+  // Load failure — an honest error state, never an empty panel.
+  if (error && !server) return <SettingsErrorState message={error} onRetry={retry} retrying={retrying} />
+  if (!draft || !server) return <SettingsLoadingState />
+
+  const isDirty = !prefsEqual(draft, server)
+
+  // Detect IANA timezones available in this browser. `Intl.supportedValuesOf`
+  // returns the canonical zone list but OMITS 'UTC' — and it can lack a legacy
+  // stored zone too — so the current value would match no option and Radix Select
+  // would render a blank trigger. Always fold 'UTC' and the current value in.
+  const currentTimezone = draft.timezone || 'UTC'
   const timezones = (() => {
-    try { return Intl.supportedValuesOf('timeZone') } catch { return [prefs.timezone || 'UTC'] }
+    let zones: string[]
+    try { zones = Intl.supportedValuesOf('timeZone') } catch { zones = [] }
+    return Array.from(new Set(['UTC', currentTimezone, ...zones]))
   })()
 
   return (
-    <div className="space-y-8">
-      <section>
-        <h3 className="font-medium text-white mb-1">Delivery preferences</h3>
-        <p className="text-xs text-neutral-500 mb-3">How you get notified per category.</p>
-        <DeliveryModesTable prefs={prefs} onChange={debouncedSave} />
-      </section>
+    <>
+      <SettingsPanel kicker="Delivery" description="How you get notified for each category.">
+        <DeliveryModesTable prefs={draft} onChange={setDraft} />
+      </SettingsPanel>
 
-      <section>
-        <h3 className="font-medium text-white mb-1">Daily digest time</h3>
-        <p className="text-xs text-neutral-500 mb-3">When your batched non-critical emails are sent.</p>
-        <div className="flex items-center gap-3 text-sm">
-          <Input
-            type="time"
-            value={prefs.digest_time ?? '09:00'}
-            onChange={e => debouncedSave({ ...prefs, digest_time: e.target.value })}
-            aria-label="Digest send time"
-          />
-          <div aria-label="Timezone" className="max-w-xs">
-            <Select
-              variant="input"
-              value={prefs.timezone || 'UTC'}
-              onChange={(v) => debouncedSave({ ...prefs, timezone: v })}
-              options={timezones.map(tz => ({ value: tz, label: tz }))}
-            />
-          </div>
+      <SettingsPanel
+        kicker="Daily digest"
+        description="When your batched non-critical emails are sent."
+      >
+        <PanelRows>
+          <PanelRow label="Send time">
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                type="time"
+                className={timeInputClass}
+                value={draft.digest_time ?? '09:00'}
+                onChange={e => setDraft({ ...draft, digest_time: e.target.value })}
+                aria-label="Digest send time"
+              />
+              <div className="w-64">
+                <Select
+                  aria-label="Timezone"
+                  size="sm"
+                  value={currentTimezone}
+                  onChange={v => setDraft({ ...draft, timezone: v })}
+                  placeholder="Select timezone"
+                  options={timezones.map(tz => ({ value: tz, label: tz }))}
+                />
+              </div>
+            </div>
+          </PanelRow>
+        </PanelRows>
+      </SettingsPanel>
+
+      <SettingsPanel
+        kicker="Quiet hours"
+        description="Non-critical emails are suppressed during these hours. Billing and security alerts always deliver."
+      >
+        <QuietHoursSection prefs={draft} onChange={setDraft} />
+      </SettingsPanel>
+
+      <SettingsPanel
+        kicker="Retention"
+        description="Tighten how long Ciphera keeps your read notifications. You can only shorten retention, never extend it."
+      >
+        <RetentionOverridesTable prefs={draft} onChange={setDraft} />
+      </SettingsPanel>
+
+      <SettingsPanel
+        tone="danger"
+        kicker="Danger zone"
+        description="Permanently delete every notification stored against your account. Other team members' copies are not affected."
+      >
+        <div className="px-5 py-4">
+          <button
+            type="button"
+            onClick={() => setPurging(true)}
+            className="inline-flex items-center rounded-none border border-destructive/30 px-4 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-destructive"
+          >
+            Delete all my notification history
+          </button>
         </div>
-      </section>
+      </SettingsPanel>
 
-      <section>
-        <h3 className="font-medium text-white mb-1">Quiet hours</h3>
-        <QuietHoursSection prefs={prefs} onChange={debouncedSave} />
-      </section>
-
-      <section>
-        <h3 className="font-medium text-white mb-1">Retention — make Ciphera forget sooner</h3>
-        <p className="text-xs text-neutral-500 mb-3">
-          Tighten how long Ciphera keeps your read notifications. Defaults are listed; you can only go shorter.
-        </p>
-        <RetentionOverridesTable prefs={prefs} onChange={debouncedSave} />
-      </section>
-
-      <section>
-        <h3 className="font-medium text-white mb-1 text-red-400">Danger zone</h3>
-        <p className="text-xs text-neutral-500 mb-3">
-          Permanently delete every notification stored against your account. Other team members' copies are not affected.
-        </p>
-        <button
-          type="button"
-          onClick={() => setPurging(true)}
-          className="px-4 py-2 text-sm rounded-none border border-red-500/30 text-red-400 hover:bg-red-500/10"
-        >
-          Delete all my notification history
-        </button>
-        {purging && (
-          <PurgeConfirmDialog
-            count={null}
-            onCancel={() => setPurging(false)}
-            onConfirm={async () => {
-              try {
-                await purgeMine()
-                setPurging(false)
-              } catch (err) {
-                toast.error(getAuthErrorMessage(err as Error) || 'Failed to purge notifications')
-              }
-            }}
-          />
-        )}
-      </section>
-
-      {(saving || error) && (
-        <div className="text-xs">
-          {saving && <span className="text-neutral-500">Saving…</span>}
-          {error && <span className="text-red-400">{error}</span>}
-        </div>
+      {error && (
+        <Banner tone="danger" title="Couldn't save your preferences" onDismiss={() => setError(null)}>
+          {error}
+        </Banner>
       )}
-    </div>
+
+      {purging && (
+        <PurgeConfirmDialog
+          count={null}
+          onCancel={() => setPurging(false)}
+          onConfirm={async () => {
+            try {
+              await purgeMine()
+              setPurging(false)
+            } catch (err) {
+              toast.error(getAuthErrorMessage(err as Error) || 'Failed to purge notifications')
+            }
+          }}
+        />
+      )}
+
+      <SettingsSaveBar isDirty={isDirty} onSave={handleSave} onDiscard={handleDiscard} />
+    </>
   )
 }

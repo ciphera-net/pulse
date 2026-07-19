@@ -1,18 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { Button, Input, toast, Spinner } from '@ciphera-net/facet'
-import Select from '@/components/ui/select'
+import { Button, Input, Select, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/facet'
 import { Plugs, LinkBreak, ShieldCheck } from '@phosphor-icons/react'
 import { useGSCStatus, useBunnyStatus } from '@/lib/swr/dashboard'
-import { disconnectGSC, getGSCAuthURL } from '@/lib/api/gsc'
-import { disconnectBunny, getBunnyPullZones, connectBunny, type BunnyPullZone } from '@/lib/api/bunny'
-import { getAuthErrorMessage } from '@ciphera-net/facet'
+import { disconnectGSC, getGSCAuthURL, type GSCStatus } from '@/lib/api/gsc'
+import { disconnectBunny, getBunnyPullZones, connectBunny, type BunnyPullZone, type BunnyStatus } from '@/lib/api/bunny'
 import { formatDateTime } from '@/lib/utils/formatDate'
 import { useCan } from '@/lib/auth/permissions'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
+import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
+import { cn } from '@/lib/utils'
 
 function GoogleIcon() {
   return (
@@ -25,6 +25,9 @@ function GoogleIcon() {
   )
 }
 
+// BunnyIcon keeps its brand gradient — brand-fidelity exception to the
+// monochrome-logo rule (spec §6 / assignment). The grayscale wash lives on the
+// tile wrapper (LogoTile), so a disconnected Bunny still desaturates cleanly.
 function BunnyIcon() {
   return (
     <svg className="w-5 h-5" viewBox="0 0 23 26" fill="none">
@@ -50,7 +53,30 @@ function BunnyIcon() {
   )
 }
 
-function IntegrationCard({
+/**
+ * LogoTile — the grayscale brand tile that colorizes once the integration is
+ * connected (spec §6). Grayscale lives here so both the multi-color Google mark
+ * and the Bunny gradient desaturate through one wrapper.
+ */
+function LogoTile({ colorize, children }: { colorize: boolean; children: React.ReactNode }) {
+  return (
+    <span
+      className={cn(
+        'flex h-10 w-10 shrink-0 items-center justify-center rounded-none bg-accent transition-[filter,opacity]',
+        !colorize && 'grayscale opacity-60',
+      )}
+    >
+      {children}
+    </span>
+  )
+}
+
+/**
+ * IntegrationRow — one ruled integration inside the shared Integrations panel:
+ * logo tile + name + StatusChip on the left, the Connect/Disconnect action on
+ * the right, connected details / setup form as ruled sub-sections below.
+ */
+function IntegrationRow({
   icon,
   name,
   description,
@@ -69,7 +95,7 @@ function IntegrationCard({
   description: string
   connected: boolean
   status?: 'active' | 'syncing' | 'error'
-  /** When present (status fetch failed), the card shows this instead of the
+  /** When present (status fetch failed), the row shows this instead of the
    *  action + details so a real failure is distinct from a genuine disconnect. */
   error?: React.ReactNode
   onConnect: () => void
@@ -79,77 +105,114 @@ function IntegrationCard({
   canManage?: boolean
   children?: React.ReactNode
 }) {
+  const colorize = connected && !error
+
   return (
-    <div className="rounded-none border border-neutral-800 bg-neutral-800/30">
-      <div className="flex items-center justify-between gap-3 py-4 px-4">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="p-2 rounded-none bg-neutral-800 shrink-0">{icon}</div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-sm font-medium text-white">{name}</p>
-              {!error && connected && (
-                status === 'error' ? (
-                  <StatusChip tone="danger" dot>Error</StatusChip>
-                ) : status === 'syncing' ? (
-                  <StatusChip tone="info" dot pulse>Syncing</StatusChip>
-                ) : (
-                  <StatusChip tone="success" dot>Connected</StatusChip>
-                )
-              )}
-            </div>
-            <p className="text-xs text-neutral-400">{description}</p>
+    <div>
+      <div className="flex items-center gap-4 px-5 py-4">
+        <LogoTile colorize={colorize}>{icon}</LogoTile>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-sm font-medium text-foreground">{name}</p>
+            {!error && connected && (
+              status === 'error' ? (
+                <StatusChip tone="danger" dot>Error</StatusChip>
+              ) : status === 'syncing' ? (
+                <StatusChip tone="info" dot pulse>Syncing</StatusChip>
+              ) : (
+                <StatusChip tone="success" dot>Connected</StatusChip>
+              )
+            )}
           </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
         </div>
         {!error && canManage && (connected ? (
-          <Button onClick={onDisconnect} variant="secondary" className="text-sm text-red-400 border-red-900/50 hover:bg-red-900/20 gap-1.5 shrink-0">
+          // Destructive = coral text + outline (spec §2.3), never a red fill.
+          <Button
+            onClick={onDisconnect}
+            variant="outline"
+            size="sm"
+            className="shrink-0 gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          >
             <LinkBreak weight="bold" className="w-3.5 h-3.5" /> Disconnect
           </Button>
         ) : (
-          <Button onClick={onConnect} variant="default" className="text-sm gap-1.5 shrink-0" disabled={connecting}>
+          // Two integrations, two Connect actions — outline keeps them off the
+          // orange budget (§2.3: at most one solid-orange element per view; zero
+          // here is fine). The solid accent stays on the inline Bunny setup submit.
+          <Button onClick={onConnect} variant="outline" size="sm" className="shrink-0 gap-1.5" disabled={connecting}>
             {connecting ? <Spinner className="w-4 h-4" /> : <Plugs weight="bold" className="w-3.5 h-3.5" />}
             {connectLabel}
           </Button>
         ))}
       </div>
-      {error ? <div className="px-4 pb-4">{error}</div> : children}
+      {error ? <div className="px-5 pb-4">{error}</div> : children}
+    </div>
+  )
+}
+
+function DetailRows({ rows }: { rows: { label: string; value: React.ReactNode; mono?: boolean }[] }) {
+  return (
+    <div className="border-t border-border">
+      <PanelRows>
+        {rows.map(row => (
+          <PanelRow key={row.label} label={row.label}>
+            <span className={cn('text-sm text-foreground', row.mono && 'tabular-nums text-muted-foreground')}>
+              {row.value}
+            </span>
+          </PanelRow>
+        ))}
+      </PanelRows>
+    </div>
+  )
+}
+
+function IntegrationErrorMessage({ message }: { message: string }) {
+  return (
+    <div className="border-t border-border bg-destructive/10 px-5 py-3">
+      <p className="text-xs text-destructive">{message}</p>
     </div>
   )
 }
 
 function SecurityNote({ text }: { text: string }) {
   return (
-    <div className="flex items-start gap-2 px-4 py-3 mx-4 mb-4 rounded-none bg-neutral-800/40 border border-neutral-700/50">
-      <ShieldCheck weight="bold" className="w-4 h-4 text-neutral-400 mt-0.5 shrink-0" />
-      <p className="text-xs text-neutral-400 leading-relaxed">{text}</p>
+    <div className="flex items-start gap-2 border-t border-border bg-muted/40 px-5 py-3">
+      <ShieldCheck weight="bold" className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+      <p className="text-xs leading-relaxed text-muted-foreground">{text}</p>
     </div>
   )
 }
 
-function GSCDetails({ gscStatus }: { gscStatus: { connected: boolean; google_email?: string; gsc_property?: string; status?: string; last_synced_at?: string | null; error_message?: string | null } }) {
+function GSCDetails({ gscStatus }: { gscStatus: GSCStatus }) {
   if (!gscStatus.connected) return null
 
-  const rows = [
-    { label: 'Google Account', value: gscStatus.google_email || 'Unknown' },
-    { label: 'GSC Property', value: gscStatus.gsc_property || 'Unknown' },
-    { label: 'Last Synced', value: gscStatus.last_synced_at ? formatDateTime(new Date(gscStatus.last_synced_at)) : 'Never' },
-  ]
-
   return (
-    <div className="px-4 pb-4 space-y-3">
-      <div className="grid grid-cols-2 gap-x-6 gap-y-3 px-4 py-3 rounded-none bg-neutral-800/40 border border-neutral-700/50">
-        {rows.map(row => (
-          <div key={row.label} className="flex flex-col gap-0.5">
-            <span className="text-xs text-neutral-500">{row.label}</span>
-            <span className="text-sm text-white">{row.value}</span>
-          </div>
-        ))}
-      </div>
-      {gscStatus.error_message && (
-        <div className="px-4 py-3 rounded-none bg-red-900/20 border border-red-900/50">
-          <p className="text-xs text-red-400">{gscStatus.error_message}</p>
-        </div>
-      )}
-    </div>
+    <>
+      <DetailRows
+        rows={[
+          { label: 'Google account', value: gscStatus.google_email || 'Unknown' },
+          { label: 'GSC property', value: gscStatus.gsc_property || 'Unknown' },
+          { label: 'Last synced', value: gscStatus.last_synced_at ? formatDateTime(new Date(gscStatus.last_synced_at)) : 'Never', mono: true },
+        ]}
+      />
+      {gscStatus.error_message && <IntegrationErrorMessage message={gscStatus.error_message} />}
+    </>
+  )
+}
+
+function BunnyDetails({ bunnyStatus }: { bunnyStatus: BunnyStatus }) {
+  return (
+    <>
+      <DetailRows
+        rows={[
+          { label: 'Pull zone', value: bunnyStatus.pull_zone_name || 'Unknown' },
+          { label: 'Last synced', value: bunnyStatus.last_synced_at ? formatDateTime(new Date(bunnyStatus.last_synced_at)) : 'Never', mono: true },
+          { label: 'Connected since', value: bunnyStatus.created_at ? formatDateTime(new Date(bunnyStatus.created_at)) : 'Unknown', mono: true },
+        ]}
+      />
+      {bunnyStatus.error_message && <IntegrationErrorMessage message={bunnyStatus.error_message} />}
+    </>
   )
 }
 
@@ -199,60 +262,61 @@ function BunnySetupForm({ siteId, onConnected }: { siteId: string; onConnected: 
     }
   }
 
+  const zonesReady = zonesLoaded && pullZones.length > 0
+
   return (
-    <div className="px-4 pb-4 space-y-3">
-      <div className="space-y-3 px-4 py-3 rounded-none bg-neutral-800/40 border border-neutral-700/50">
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-neutral-400">API Key</label>
-          <div className="flex gap-2">
-            <Input
-              type="password"
-              value={apiKey}
-              onChange={e => setApiKey(e.target.value)}
-              placeholder="Enter your BunnyCDN API key"
-              className="flex-1"
-            />
-            <Button
-              onClick={handleLoadZones}
-              variant="secondary"
-              className="text-sm shrink-0"
-              disabled={loadingZones || !apiKey.trim()}
-            >
-              {loadingZones ? <Spinner className="w-4 h-4" /> : 'Load Zones'}
-            </Button>
-          </div>
-        </div>
-
-        {zonesLoaded && pullZones.length > 0 && (
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-neutral-400">Pull Zone</label>
-            <Select
-              value={String(selectedZone?.id ?? '')}
-              onChange={(v) => {
-                const zone = pullZones.find(z => z.id === Number(v))
-                setSelectedZone(zone || null)
-              }}
-              variant="input"
-              fullWidth
-              options={[
-                { value: '', label: 'Select a pull zone' },
-                ...pullZones.map(zone => ({ value: String(zone.id), label: zone.name })),
-              ]}
-            />
-          </div>
-        )}
-
-        {zonesLoaded && pullZones.length > 0 && (
+    <div className="space-y-4 border-t border-border px-5 py-4">
+      <div className="space-y-1.5">
+        <label htmlFor="bunny-api-key" className="block font-semibold text-micro-label uppercase text-muted-foreground">
+          API key
+        </label>
+        <div className="flex gap-2">
+          <Input
+            id="bunny-api-key"
+            type="password"
+            value={apiKey}
+            onChange={e => setApiKey(e.target.value)}
+            placeholder="Enter your BunnyCDN API key"
+            className="flex-1"
+          />
           <Button
-            onClick={handleConnect}
-            variant="default"
-            className="text-sm w-full"
-            disabled={connecting || !selectedZone}
+            onClick={handleLoadZones}
+            variant="secondary"
+            className="shrink-0"
+            disabled={loadingZones || !apiKey.trim()}
           >
-            {connecting ? <Spinner className="w-4 h-4" /> : 'Connect BunnyCDN'}
+            {loadingZones ? <Spinner className="w-4 h-4" /> : 'Load zones'}
           </Button>
-        )}
+        </div>
       </div>
+
+      {zonesReady && (
+        <div className="space-y-1.5">
+          <label className="block font-semibold text-micro-label uppercase text-muted-foreground">Pull zone</label>
+          <Select
+            value={String(selectedZone?.id ?? '')}
+            onChange={(v) => {
+              const zone = pullZones.find(z => z.id === Number(v))
+              setSelectedZone(zone || null)
+            }}
+            placeholder="Select a pull zone"
+            options={pullZones.map(zone => ({ value: String(zone.id), label: zone.name }))}
+            className="w-full"
+            aria-label="Pull zone"
+          />
+        </div>
+      )}
+
+      {zonesReady && (
+        <Button
+          onClick={handleConnect}
+          variant="default"
+          className="w-full"
+          disabled={connecting || !selectedZone}
+        >
+          {connecting ? <Spinner className="w-4 h-4" /> : 'Connect BunnyCDN'}
+        </Button>
+      )}
     </div>
   )
 }
@@ -270,7 +334,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
   if (gscLoading || bunnyLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Spinner className="w-6 h-6 text-neutral-500" />
+        <Spinner className="w-6 h-6 text-muted-foreground" />
       </div>
     )
   }
@@ -342,90 +406,66 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
   const bunnyConnected = bunnyStatus?.connected ?? false
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-base font-semibold text-white mb-1">Integrations</h3>
-        <p className="text-sm text-neutral-400">Connect third-party services to enrich your analytics.</p>
-      </div>
+    <div className="space-y-8">
+      {/* GSC + Bunny as ruled rows in ONE panel (spec §6). */}
+      <SettingsPanel kicker="Integrations" description="Connect third-party services to enrich your analytics.">
+        <PanelRows>
+          <IntegrationRow
+            icon={<GoogleIcon />}
+            name="Google Search Console"
+            description="View search queries, clicks, impressions, and ranking data."
+            connected={gscStatus?.connected ?? false}
+            status={gscStatus?.status}
+            error={gscError ? (
+              <SettingsErrorState
+                variant="banner"
+                message="Couldn't load your Google Search Console connection status. This is usually temporary — your connection isn't affected."
+                onRetry={retryGSC}
+                retrying={retryingGSC}
+              />
+            ) : undefined}
+            onConnect={handleConnectGSC}
+            onDisconnect={handleDisconnectGSC}
+            connectLabel="Connect with Google"
+            connecting={connectingGSC}
+            canManage={canManage}
+          >
+            {gscStatus?.connected && <GSCDetails gscStatus={gscStatus} />}
+            <SecurityNote text="Pulse only requests read-only access. Your tokens are encrypted at rest." />
+          </IntegrationRow>
 
-      <div className="space-y-3">
-        <IntegrationCard
-          icon={<GoogleIcon />}
-          name="Google Search Console"
-          description="View search queries, clicks, impressions, and ranking data."
-          connected={gscStatus?.connected ?? false}
-          status={gscStatus?.status}
-          error={gscError ? (
-            <SettingsErrorState
-              variant="banner"
-              message="Couldn't load your Google Search Console connection status. This is usually temporary — your connection isn't affected."
-              onRetry={retryGSC}
-              retrying={retryingGSC}
-            />
-          ) : undefined}
-          onConnect={handleConnectGSC}
-          onDisconnect={handleDisconnectGSC}
-          connectLabel="Connect with Google"
-          connecting={connectingGSC}
-          canManage={canManage}
-        >
-          {gscStatus?.connected && <GSCDetails gscStatus={gscStatus} />}
-          <SecurityNote text="Pulse only requests read-only access. Your tokens are encrypted at rest." />
-        </IntegrationCard>
-
-        <IntegrationCard
-          icon={<BunnyIcon />}
-          name="BunnyCDN"
-          description="Monitor bandwidth, cache hit rates, and CDN performance."
-          connected={bunnyConnected}
-          status={bunnyStatus?.status}
-          error={bunnyError ? (
-            <SettingsErrorState
-              variant="banner"
-              message="Couldn't load your BunnyCDN connection status. This is usually temporary — your connection isn't affected."
-              onRetry={retryBunny}
-              retrying={retryingBunny}
-            />
-          ) : undefined}
-          onConnect={handleConnectBunny}
-          onDisconnect={handleDisconnectBunny}
-          canManage={canManage}
-        >
-          {bunnyConnected && (
-            <div className="px-4 pb-4 space-y-3">
-              <div className="grid grid-cols-2 gap-x-6 gap-y-3 px-4 py-3 rounded-none bg-neutral-800/40 border border-neutral-700/50">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xs text-neutral-500">Pull Zone</span>
-                  <span className="text-sm text-white">{bunnyStatus?.pull_zone_name || 'Unknown'}</span>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xs text-neutral-500">Last Synced</span>
-                  <span className="text-sm text-white">{bunnyStatus?.last_synced_at ? formatDateTime(new Date(bunnyStatus.last_synced_at)) : 'Never'}</span>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xs text-neutral-500">Connected Since</span>
-                  <span className="text-sm text-white">{bunnyStatus?.created_at ? formatDateTime(new Date(bunnyStatus.created_at)) : 'Unknown'}</span>
-                </div>
-              </div>
-              {bunnyStatus?.error_message && (
-                <div className="px-4 py-3 rounded-none bg-red-900/20 border border-red-900/50">
-                  <p className="text-xs text-red-400">{bunnyStatus.error_message}</p>
-                </div>
-              )}
-            </div>
-          )}
-          {!bunnyConnected && showBunnySetup && canManage && (
-            <BunnySetupForm
-              siteId={siteId}
-              onConnected={() => {
-                mutateBunny()
-                setShowBunnySetup(false)
-              }}
-            />
-          )}
-          <SecurityNote text="Your API key is encrypted at rest and only used to fetch read-only statistics." />
-        </IntegrationCard>
-      </div>
+          <IntegrationRow
+            icon={<BunnyIcon />}
+            name="BunnyCDN"
+            description="Monitor bandwidth, cache hit rates, and CDN performance."
+            connected={bunnyConnected}
+            status={bunnyStatus?.status}
+            error={bunnyError ? (
+              <SettingsErrorState
+                variant="banner"
+                message="Couldn't load your BunnyCDN connection status. This is usually temporary — your connection isn't affected."
+                onRetry={retryBunny}
+                retrying={retryingBunny}
+              />
+            ) : undefined}
+            onConnect={handleConnectBunny}
+            onDisconnect={handleDisconnectBunny}
+            canManage={canManage}
+          >
+            {bunnyConnected && bunnyStatus && <BunnyDetails bunnyStatus={bunnyStatus} />}
+            {!bunnyConnected && showBunnySetup && canManage && (
+              <BunnySetupForm
+                siteId={siteId}
+                onConnected={() => {
+                  mutateBunny()
+                  setShowBunnySetup(false)
+                }}
+              />
+            )}
+            <SecurityNote text="Your API key is encrypted at rest and only used to fetch read-only statistics." />
+          </IntegrationRow>
+        </PanelRows>
+      </SettingsPanel>
 
       <ConfirmDialog
         open={confirmDisconnect === 'gsc'}
