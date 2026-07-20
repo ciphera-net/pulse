@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { login, handleLogin } from './support/login'
+import { login } from './support/login'
 import { collectConsoleErrors, type ConsoleErrorCollector } from './support/console-errors'
 
 /**
@@ -63,7 +63,6 @@ test.describe.serial('Settings smoke (read-only, authed)', () => {
   test('settings landing renders', async () => {
     beginRoute()
     await page.goto(`${BASE_URL}/settings`)
-    await handleLogin(page)
 
     // Landing has no nav rail; the masthead h1 is "Settings" and the section
     // index panels (Site / Organization / Account) are the stable landmarks.
@@ -77,7 +76,6 @@ test.describe.serial('Settings smoke (read-only, authed)', () => {
     test(`${route.label} renders`, async () => {
       beginRoute()
       await page.goto(`${BASE_URL}${route.path}`)
-      await handleLogin(page)
 
       // Settings-specific landmark #1: the section masthead <h1>.
       await expect(

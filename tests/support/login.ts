@@ -56,10 +56,35 @@ export async function handleLogin(page: Page): Promise<void> {
 }
 
 /**
- * Navigate to `baseURL` and ensure we are authenticated. Returns once the
- * browser is back on the app origin with the session established.
+ * Establish an authenticated session and return once the browser is back on the
+ * app origin.
+ *
+ * We navigate to a PROTECTED route (`/settings`) rather than `baseURL` itself:
+ * on staging the root `/` serves the PUBLIC marketing page and never triggers a
+ * login bounce, so a `goto(baseURL)` would be a silent no-op that leaves us
+ * unauthenticated. A protected route, while unauthenticated, redirects through
+ * Pulse `/login` to the Ciphera ID origin (OPAQUE — the password never reaches
+ * Pulse). Deep-linking to `/settings` unauthenticated loses the return target
+ * and lands on `/` after login (app bug, ledger item 5-3) — harmless here: we
+ * only need the session established, and each test re-navigates to its route
+ * with an already-authed goto.
  */
 export async function login(page: Page, baseURL: string): Promise<void> {
-  await page.goto(baseURL)
-  await handleLogin(page)
+  await page.goto(`${baseURL}/settings`)
+
+  // Wait to be bounced to the ID origin; if we never leave (already authed, or
+  // no redirect), fall through — the guard below re-checks the real URL.
+  await page
+    .waitForURL((url) => onIdOrigin(url.toString()), { timeout: 30_000 })
+    .catch(() => {})
+
+  if (onIdOrigin(page.url())) {
+    const { email, password } = requireCredentials()
+    await page.fill('input[placeholder="you@example.com"]', email)
+    await page.fill('input[placeholder="Enter your password"]', password)
+    await page.click('button:has-text("Sign in")')
+    await page.waitForURL((url) => !onIdOrigin(url.toString()), { timeout: 30_000 })
+  }
+
+  await page.waitForLoadState('networkidle').catch(() => {})
 }
