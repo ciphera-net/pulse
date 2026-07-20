@@ -13,6 +13,7 @@
     "type-check": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:smoke": "playwright test tests/settings-smoke.spec.ts",
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
@@ -71,6 +72,7 @@
     }
   },
   "devDependencies": {
+    "@playwright/test": "1.59.1",
     "@tailwindcss/typography": "^0.5.19",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",

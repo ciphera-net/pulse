@@ -1,0 +1,39 @@
+# Post-deploy settings smoke — STAGING CANARY (not a pre-merge gate).
+#
+# Runs AFTER the staging deploy (depends_on: deploy) and hits the freshly
+# deployed pulse-frontend-staging over the network. It logs in and NAVIGATES
+# the settings IA read-only, asserting each route renders with zero console
+# errors. It is a canary: because it runs post-deploy, a failure reports on its
+# own GitHub check but does not roll the deploy back — a true pre-merge gate
+# would need an ephemeral, throwaway stack (staging shares the PRODUCTION DB,
+# so it must never be mutated), which is out of scope here.
+#
+# Staging only — never runs on main (production).
+
+depends_on:
+  - deploy
+
+when:
+  - event: push
+    branch: staging
+
+steps:
+  smoke:
+    image: node:22
+    environment:
+      # @ciphera-net package resolution — the committed .npmrc reads
+      # ${NODE_AUTH_TOKEN} (same pattern as test.yml).
+      NODE_AUTH_TOKEN:
+        from_secret: npm_read_token
+      # Target the freshly deployed staging frontend.
+      SMOKE_BASE_URL: https://pulse-staging.ciphera.net
+      # Authed-login credentials — injected by NAME from Woodpecker secrets.
+      # Never inlined. The login helper reads these from the environment.
+      CIPHERA_ID_EMAIL:
+        from_secret: ciphera_id_email
+      CIPHERA_SETTINGS_SMOKE_PASSWORD:
+        from_secret: ciphera_settings_smoke_password
+    commands:
+      - npm ci
+      - npx playwright install --with-deps chromium
+      - npm run test:smoke
