@@ -46,6 +46,10 @@ export interface OpaqueFinishBody {
   encrypted_vault?: string
   opaque_wrapped_key?: string
   session_key_b64?: string
+  /** Only the dedicated re-auth endpoint (`/auth/reauth/finish`, Slice 4) returns
+   *  this: a single-use, short-TTL server token proving a fresh OPAQUE ceremony.
+   *  The login/finish body never carries it. Empty/absent = mint failed → retry. */
+  reauth_token?: string
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- server JSON is dynamic at this trust boundary
@@ -62,6 +66,11 @@ export interface OpaqueTransportOptions {
   seedWraps?: Partial<Record<WrapMethod, string>>
   /** Extra fields merged into the login/finish body (device signals, totp_code). */
   loginExtras?: Record<string, unknown>
+  /** Base path for the login ceremony's start/finish POSTs. Defaults to the primary
+   *  login endpoint; the delete re-auth flow (Slice 4) passes `'/auth/reauth'` so the
+   *  SAME ceremony code drives the dedicated session-authed re-auth endpoint. Only the
+   *  login start/finish paths derive from this — register/putWraps signup paths never do. */
+  basePath?: string
   /** Injectable POST (defaults to authFetch → `${ID_API_URL}/api/v1${path}`). */
   post?: PostFn
 }
@@ -83,6 +92,7 @@ const defaultPost: PostFn = (path, body) =>
 
 export function makeOpaqueTransport(o: OpaqueTransportOptions): OpaqueTransport {
   const post = o.post ?? defaultPost
+  const loginBasePath = o.basePath ?? '/auth/opaque/login'
   let credentialId: string | null = o.credentialId ?? null
   const buf: { uploadB64?: string; wraps: Record<string, string> } = { wraps: {} }
   let finish: OpaqueFinishBody | null = null
@@ -102,13 +112,14 @@ export function makeOpaqueTransport(o: OpaqueTransportOptions): OpaqueTransport 
 
     async loginStart({ requestB64 }) {
       // The DB lookup key is the frontend blind index, NOT the SDK's credentialId.
-      const j = await post('/auth/opaque/login/start', { blind_index: o.blindIndex, request_b64: requestB64 })
+      const j = await post(`${loginBasePath}/start`, { blind_index: o.blindIndex, request_b64: requestB64 })
       return { loginId: j.login_id, responseB64: j.response_b64 }
     },
 
     async loginFinish({ loginId, finalizationB64 }) {
       // login/finish sets the JWT cookies server-side AND returns the vault material.
-      finish = await post('/auth/opaque/login/finish', {
+      // On the re-auth base path it returns only { reauth_token } — no vault, no cookies.
+      finish = await post(`${loginBasePath}/finish`, {
         login_id: loginId,
         finalization_b64: finalizationB64,
         ...(o.loginExtras ?? {}),

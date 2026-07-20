@@ -54,12 +54,13 @@ export default function AccountProfileTab() {
     setDeleting(true)
     try {
       // * Deletion is authorized by a FRESH OPAQUE proof: the reauth modal collects
-      // * the sign-in email (Pulse has no in-session email for ZKE accounts) and
-      // * completes an OPAQUE login with the typed email + this password. A wrong
-      // * email/password fails the ceremony with NO deletion. Only after it passes
-      // * do we call DELETE. (Server-side single-use gate is the separate Slice 4.)
-      await requestReauth({ op: 'delete', password: deletePassword })
-      await deleteAccount()
+      // * the sign-in email (Pulse has no in-session email for ZKE accounts) and runs
+      // * an OPAQUE ceremony against id-backend's dedicated re-auth endpoint with the
+      // * typed email + this password. A wrong email/password fails the ceremony with
+      // * NO token and NO deletion. On success it mints a single-use, session-bound
+      // * re-auth token which we forward to DELETE; the server GETDELs + re-checks it.
+      const { reauthToken } = await requestReauth({ op: 'delete', password: deletePassword })
+      await deleteAccount(reauthToken!)
       logout()
     } catch (err) {
       if (isReauthCancelled(err)) {
