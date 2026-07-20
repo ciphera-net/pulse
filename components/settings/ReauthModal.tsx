@@ -29,6 +29,25 @@
  *  - the VMK handle lives only for the write, held in a ref and dropped in finally.
  *  - every OPAQUE sub-call uses skipAuthRetry (a 401 means bad password, not an
  *    expired token — auto-refresh would burn the single-use login state).
+ *
+ * Session-swap guard (WS2 hardening):
+ *  The typed login email is free-form, so a user who knows a DIFFERENT account's
+ *  email + password can drive a successful OPAQUE ceremony for THAT account. The
+ *  ceremony's login/finish silently REPLACES the browser JWT cookies with the other
+ *  identity, and every sensitive op (password PUT, email PUT, account DELETE) is
+ *  cookie-authenticated — so without a guard the op would land on the wrong account.
+ *  We therefore capture the CURRENT session's user id (JWT `sub`, always present even
+ *  when the email claim is absent) BEFORE the ceremony, read the re-authenticated
+ *  user id from the OPAQUE finish body, and refuse to mutate anything unless they
+ *  match. This gates ALL three ops.
+ *
+ * Org-context restore (WS2 hardening):
+ *  login/finish issues an ORG-SCOPED access token bound to the user's PRIMARY org
+ *  (id-backend issueOrgScopedAccessToken → pickPrimaryOrg = alphabetically-first
+ *  membership), NOT the org the user was actively viewing. For the email op — the
+ *  only op whose session survives (password → all sessions revoked → re-login;
+ *  delete → account gone) — we re-establish the pre-ceremony org via switch-context
+ *  so the change never silently moves the user to a different workspace.
  */
 
 import { useCallback, useRef, useState } from 'react'
@@ -39,7 +58,57 @@ import { encryptVaultH } from '@/lib/crypto/vault-ops'
 import { getRelayPublicKey, sealForRelay } from '@/lib/crypto/relay'
 import { performOpaqueLogin } from '@/lib/auth/tessera/opaque-login'
 import { performOpaqueChangePassword } from '@/lib/auth/tessera/opaque-change-password'
+import { getSessionAction, setSessionAction } from '@/app/actions/auth'
+import { switchContext } from '@/lib/api/organization'
+import { logger } from '@/lib/utils/logger'
 import type { VaultKeyHandle } from '@/lib/auth/vault-key'
+
+/** The current session as the server sees it (JWT claims), captured before the
+ *  OPAQUE ceremony overwrites the auth cookies. */
+type SessionSnapshot = Awaited<ReturnType<typeof getSessionAction>>
+
+/**
+ * Thrown when the re-authenticated account does not match the account the user is
+ * signed in as. Distinct from a bad-password failure so the modal can surface the
+ * precise "different account" message. No write has happened when this is thrown.
+ */
+class SessionSwapError extends Error {
+  constructor() {
+    super('__reauth_session_swap__')
+    this.name = 'SessionSwapError'
+  }
+}
+
+/**
+ * Fail the re-auth unless the ceremony re-authenticated the SAME account the user
+ * is signed in as. Fails CLOSED: a missing expected sub (no session) or a missing
+ * finish user_id both count as a mismatch — we never mutate on an unverifiable id.
+ */
+function assertSameAccount(expectedSub: string | undefined, reauthedUserId: string | undefined): void {
+  if (!expectedSub || !reauthedUserId || expectedSub !== reauthedUserId) {
+    throw new SessionSwapError()
+  }
+}
+
+/**
+ * Re-establish the org context the user held before the ceremony. The email op's
+ * login/finish leaves an access token scoped to the PRIMARY org; switch-context
+ * re-issues a token for the org the user was actually in and re-writes the cookie.
+ *
+ * Best-effort and non-silent: the login/finish token is itself a fully valid,
+ * org-scoped session (never a broken half-scoped one), so a failed restore is
+ * logged — never swallowed — but does not fail the (already-committed) email change.
+ * The app's org-wall effect reconciles from whatever org the surviving token carries.
+ */
+async function restoreOrgContext(sessionBefore: SessionSnapshot): Promise<void> {
+  try {
+    const targetOrg = sessionBefore?.org_id ?? ''
+    const { access_token } = await switchContext(targetOrg || null)
+    await setSessionAction(access_token)
+  } catch (e) {
+    logger.error('reauth: failed to restore org context after email change', e)
+  }
+}
 
 /**
  * The op the modal must prove. The password / new-password / new-email inputs are
@@ -138,17 +207,24 @@ export function useReauthModal(): {
   }, [])
 
   const runCeremony = useCallback(
-    async (request: ReauthRequest, loginEmail: string): Promise<void> => {
+    async (request: ReauthRequest, loginEmail: string, sessionBefore: SessionSnapshot): Promise<void> => {
       const trimmed = loginEmail.trim()
+      // The account the user believes they are acting on. login/finish inside the
+      // ceremony will overwrite the auth cookies, so this MUST be read beforehand.
+      const expectedSub = sessionBefore?.id
+
       if (request.op === 'password') {
         // OPAQUE re-registration under the new password; the SDK re-wraps the SAME
         // VMK internally (vault untouched). Then PUT the new record. skipAuthRetry:
         // a retry would re-post single-use registration state and fail.
-        const payload = await performOpaqueChangePassword({
+        const { payload, userId } = await performOpaqueChangePassword({
           email: trimmed,
           oldPassword: request.oldPassword,
           newPassword: request.newPassword,
         })
+        // Session-swap guard: the internal re-auth may have signed us in as another
+        // account. Refuse the PUT unless it resolved to THIS account.
+        assertSameAccount(expectedSub, userId)
         await apiRequest('/auth/user/password/opaque', {
           method: 'PUT',
           body: JSON.stringify(payload),
@@ -159,13 +235,16 @@ export function useReauthModal(): {
 
       if (request.op === 'email') {
         // Fresh OPAQUE login yields a live VMK handle + the already-decrypted vault.
-        const { handle, vaultData } = await performOpaqueLogin({
+        const { handle, vaultData, finish } = await performOpaqueLogin({
           email: trimmed,
           password: request.password,
           blindIndex: await computeBlindIndex(trimmed),
         })
         handleRef.current = handle
         try {
+          // Session-swap guard: gate the vault re-seal + PUT on the login/finish
+          // user_id matching the current session. Runs before ANY mutation.
+          assertSameAccount(expectedSub, finish.user_id)
           // Lockout guard #3: encrypted_vault, email_blind_index, and relay_blob are
           // ALL derived from the single newEmail variable — currentEmail (trimmed)
           // never leaks into the vault write.
@@ -180,6 +259,10 @@ export function useReauthModal(): {
             body: JSON.stringify({ encrypted_vault, email_blind_index, relay_blob }),
             skipAuthRetry: true,
           })
+          // Org-context restore: login/finish reset the token to the PRIMARY org.
+          // Re-establish the org the user was actually in so the email change never
+          // silently moves them to a different workspace.
+          await restoreOrgContext(sessionBefore)
         } finally {
           handleRef.current = null
         }
@@ -188,13 +271,17 @@ export function useReauthModal(): {
 
       // delete: a fresh OPAQUE login is the proof; drop the VMK immediately. The
       // caller performs the DELETE after this resolves (keeps its 409 handling).
-      const { handle } = await performOpaqueLogin({
+      const { handle, finish } = await performOpaqueLogin({
         email: trimmed,
         password: request.password,
         blindIndex: await computeBlindIndex(trimmed),
       })
       handleRef.current = handle
       handleRef.current = null
+      // Session-swap guard: refuse to let the caller DELETE unless the proof
+      // resolved to THIS account. Throwing here rejects requestReauth(), so the
+      // caller's deleteAccount() never runs.
+      assertSameAccount(expectedSub, finish.user_id)
     },
     []
   )
@@ -210,7 +297,11 @@ export function useReauthModal(): {
       setBusy(true)
       setError(null)
       try {
-        await runCeremony(pending.request, email)
+        // Capture the current session BEFORE the ceremony — its login/finish will
+        // overwrite the auth cookies. `sub` drives the session-swap guard; `org_id`
+        // drives the post-op org-context restore.
+        const sessionBefore = await getSessionAction()
+        await runCeremony(pending.request, email, sessionBefore)
         const { resolve } = pending
         close()
         resolve()
@@ -219,11 +310,17 @@ export function useReauthModal(): {
         // can correct the email/password and retry — never a silent close.
         handleRef.current = null
         setBusy(false)
-        setError(
-          err instanceof Error && /network/i.test(err.message)
-            ? 'Network error. Please try again.'
-            : 'That email or password didn’t match. Nothing was changed — please try again.'
-        )
+        if (err instanceof SessionSwapError) {
+          setError(
+            'You signed in as a different account. Nothing was changed — use THIS account’s sign-in email.'
+          )
+        } else {
+          setError(
+            err instanceof Error && /network/i.test(err.message)
+              ? 'Network error. Please try again.'
+              : 'That email or password didn’t match. Nothing was changed — please try again.'
+          )
+        }
       }
     },
     [pending, busy, email, runCeremony, close]
