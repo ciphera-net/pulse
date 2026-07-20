@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button, Input, Banner, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
 import { updateDisplayName, deleteAccount } from '@/lib/api/user'
+import { ApiError } from '@/lib/api/client'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
@@ -53,7 +54,16 @@ export default function AccountProfileTab() {
       await deleteAccount(deletePassword)
       logout()
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to delete account')
+      // * A 409 from deleteAccount carries a humanized, per-workspace message
+      // * (WS2 Slice 1 — "You own N workspaces that must be resolved first…").
+      // * getAuthErrorMessage maps by status and would replace it with the
+      // * generic "Something went wrong" string, so surface err.message directly
+      // * when the ApiError already spells out what to do.
+      if (err instanceof ApiError && err.status === 409 && err.message) {
+        toast.error(err.message)
+      } else {
+        toast.error(getAuthErrorMessage(err as Error) || 'Failed to delete account')
+      }
       setDeleting(false)
     }
   }
