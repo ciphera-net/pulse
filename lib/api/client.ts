@@ -133,11 +133,22 @@ function cleanupExpiredEntries(): void {
 }
 
 /**
+ * Options for apiRequest. Extends the standard RequestInit with a skip-refresh
+ * flag for OPAQUE endpoints: those are unauthenticated and a 401 means bad
+ * password / require_2fa, NOT an expired access token — so the auto-refresh retry
+ * must be skipped, otherwise it burns the single-use OPAQUE login state on a
+ * pointless retry.
+ */
+export interface ApiRequestOptions extends RequestInit {
+  skipAuthRetry?: boolean // * Set to true to skip automatic refresh on 401
+}
+
+/**
  * Base API client with error handling, request deduplication, and short-term caching
  */
 async function apiRequest<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: ApiRequestOptions = {}
 ): Promise<T> {
   // * Skip deduplication for non-GET requests (mutations should always execute)
   const method = options.method || 'GET'
@@ -230,8 +241,9 @@ async function apiRequest<T>(
       // * Attempt Token Refresh if 401
       if (typeof window !== 'undefined') {
         // * Skip token refresh for public endpoints (they use password auth, not session tokens)
-        // * and for refresh requests themselves (prevent infinite loop)
-        if (!endpoint.includes('/auth/refresh') && !endpoint.includes('/public/') && refreshHandler) {
+        // * and for refresh requests themselves (prevent infinite loop). OPAQUE flows pass
+        // * skipAuthRetry so a 401 never triggers a refresh that would burn single-use login state.
+        if (!options.skipAuthRetry && !endpoint.includes('/auth/refresh') && !endpoint.includes('/public/') && refreshHandler) {
           const success = await refreshHandler()
 
           if (success) {
