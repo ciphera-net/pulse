@@ -9,9 +9,11 @@ import { DangerZone } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
+import { useReauthModal, isReauthCancelled } from '@/components/settings/ReauthModal'
 
 export default function AccountProfileTab() {
   const { user, refresh, logout } = useAuth()
+  const { requestReauth, modal } = useReauthModal()
   const [displayName, setDisplayName] = useState('')
   const initialRef = useRef('')
   const hasInitialized = useRef(false)
@@ -51,9 +53,20 @@ export default function AccountProfileTab() {
     if (deleteText !== 'DELETE' || !deletePassword) return
     setDeleting(true)
     try {
-      await deleteAccount(deletePassword)
+      // * Deletion is authorized by a FRESH OPAQUE proof: the reauth modal collects
+      // * the sign-in email (Pulse has no in-session email for ZKE accounts) and
+      // * completes an OPAQUE login with the typed email + this password. A wrong
+      // * email/password fails the ceremony with NO deletion. Only after it passes
+      // * do we call DELETE. (Server-side single-use gate is the separate Slice 4.)
+      await requestReauth({ op: 'delete', password: deletePassword })
+      await deleteAccount()
       logout()
     } catch (err) {
+      if (isReauthCancelled(err)) {
+        // User backed out of the verification step — no toast, just re-enable.
+        setDeleting(false)
+        return
+      }
       // * A 409 from deleteAccount carries a humanized, per-workspace message
       // * (WS2 Slice 1 — "You own N workspaces that must be resolved first…").
       // * getAuthErrorMessage maps by status and would replace it with the
@@ -240,6 +253,8 @@ export default function AccountProfileTab() {
         onSave={handleSave}
         onDiscard={handleDiscard}
       />
+
+      {modal}
     </div>
   )
 }

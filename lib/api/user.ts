@@ -19,12 +19,21 @@ function isOwnsOrgsBody(b: unknown): b is OwnsOrgsBody {
   return obj.error === 'owns_organizations' && Array.isArray(obj.organizations)
 }
 
-export async function deleteAccount(password: string): Promise<void> {
+// id-backend's DeleteAccountRequest binds `password` as `required,len=64` but the
+// handler NEVER reads it (user.go:75-77, 218-310) — the field is vestigial. Real
+// authorization for an OPAQUE account is the fresh client-side OPAQUE proof the
+// ReauthModal completes immediately before this call (a server-side single-use
+// re-auth-token gate is the separate Slice 4). We therefore send a fixed 64-char
+// placeholder purely to satisfy the `len=64` bind; it carries no secret and grants
+// no access. Do NOT reintroduce a derived password here — deriveAuthKey is retired.
+const DELETE_VESTIGIAL_PASSWORD = '0'.repeat(64)
+
+export async function deleteAccount(): Promise<void> {
   // This goes to ciphera-id
   try {
     await apiRequest<void>('/auth/user', {
       method: 'DELETE',
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ password: DELETE_VESTIGIAL_PASSWORD }),
     })
   } catch (err) {
     // * B.1 D1: server returns HTTP 409 with a structured list of organizations

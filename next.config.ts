@@ -11,8 +11,11 @@ const withPWA = withPWAInit({
 // * CSP directives — restrict resource loading to known origins
 const cspDirectives = [
   "default-src 'self'",
-  // Next.js requires 'unsafe-inline' for its bootstrap scripts; 'unsafe-eval' only in dev (HMR)
-  `script-src 'self' 'unsafe-inline' https://js.ciphera.net https://api.help.ciphera.net${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
+  // Next.js requires 'unsafe-inline' for its bootstrap scripts; 'unsafe-eval' only in dev (HMR).
+  // 'wasm-unsafe-eval' lets the browser compile/instantiate the @ciphera-net/tessera OPAQUE
+  // WASM core (settings re-auth) — without it WebAssembly.instantiate is CSP-blocked and the
+  // re-auth ceremony fails at runtime. It permits WASM compilation only, not arbitrary eval.
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://js.ciphera.net https://api.help.ciphera.net${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
   // * google/gstatic were only ever here for favicons — those now go through
   // * the same-origin /api/favicon proxy, and CSP enforces that nothing
@@ -41,6 +44,30 @@ const nextConfig: NextConfig = {
   productionBrowserSourceMaps: false,
   experimental: {
     optimizePackageImports: ['@phosphor-icons/react'],
+  },
+  // @ciphera-net/tessera ships a WASM OPAQUE core (settings re-auth). Keep it out of
+  // the server bundle — it is a client-only SDK loaded via init() in the browser — so
+  // the server build never tries to bundle the .wasm binary.
+  serverExternalPackages: ['@ciphera-net/tessera'],
+  // Turbopack (next dev) path: stub Node's `fs` for the BROWSER bundle only. The
+  // SDK's isomorphic loader references a Node WASM target (`require('fs')`) that is
+  // never reached client-side (isNode() === false) but is still traversed by the
+  // bundler. A `turbopack` block is also required to pair with the webpack fallback
+  // below — a webpack config without one is a hard build error in Next 16.
+  turbopack: {
+    resolveAlias: {
+      fs: { browser: './lib/tessera-fs-stub.js' },
+    },
+  },
+  // Webpack path (next build --webpack — Pulse's production build): enable
+  // asyncWebAssembly + emit tessera_bg.wasm as a static asset, and stub `fs` for the
+  // browser bundle (mirrors the Turbopack alias above).
+  webpack: (config) => {
+    config.experiments = { ...config.experiments, asyncWebAssembly: true, layers: true }
+    config.module.rules.push({ test: /\.wasm$/, type: 'asset/resource' })
+    config.resolve = config.resolve || {}
+    config.resolve.fallback = { ...config.resolve.fallback, fs: false }
+    return config
   },
   images: {
     remotePatterns: [
