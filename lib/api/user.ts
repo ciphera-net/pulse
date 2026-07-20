@@ -1,11 +1,67 @@
-import apiRequest from './client'
+import apiRequest, { ApiError } from './client'
 
-export async function deleteAccount(password: string): Promise<void> {
+interface OwnsOrgsBody {
+  error: 'owns_organizations'
+  message?: string
+  organizations: Array<{
+    id: string
+    name: string
+    slug: string
+    member_count: number
+    other_admins: number
+    action_required: 'transfer_ownership' | 'delete_workspace'
+  }>
+}
+
+function isOwnsOrgsBody(b: unknown): b is OwnsOrgsBody {
+  if (!b || typeof b !== 'object') return false
+  const obj = b as Record<string, unknown>
+  return obj.error === 'owns_organizations' && Array.isArray(obj.organizations)
+}
+
+// id-backend's DeleteAccountRequest binds `password` as `required,len=64` but the
+// handler NEVER reads it (user.go:75-77, 218-310) — the field is vestigial. Real
+// authorization for an OPAQUE account is the fresh client-side OPAQUE proof the
+// ReauthModal completes immediately before this call (a server-side single-use
+// re-auth-token gate is the separate Slice 4). We therefore send a fixed 64-char
+// placeholder purely to satisfy the `len=64` bind; it carries no secret and grants
+// no access. Do NOT reintroduce a derived password here — deriveAuthKey is retired.
+const DELETE_VESTIGIAL_PASSWORD = '0'.repeat(64)
+
+export async function deleteAccount(): Promise<void> {
   // This goes to ciphera-id
-  return apiRequest<void>('/auth/user', {
-    method: 'DELETE',
-    body: JSON.stringify({ password }),
-  })
+  try {
+    await apiRequest<void>('/auth/user', {
+      method: 'DELETE',
+      body: JSON.stringify({ password: DELETE_VESTIGIAL_PASSWORD }),
+    })
+  } catch (err) {
+    // * B.1 D1: server returns HTTP 409 with a structured list of organizations
+    // * the user must transfer or delete before their account can be removed.
+    // * Reformat into a human-readable message naming each blocking workspace
+    // * so the toast/error surface is actionable instead of showing the
+    // * generic server message.
+    // * NOTE: Pulse's ApiError stores the parsed body on `.data` (id-frontend
+    // * uses `.body`) — this is the only divergence from id-frontend's port.
+    if (err instanceof ApiError && err.status === 409 && isOwnsOrgsBody(err.data)) {
+      const orgs = err.data.organizations
+      const lines = orgs.map((o) => {
+        const verb =
+          o.action_required === 'transfer_ownership' ? 'transfer ownership' : 'delete workspace'
+        return `• ${o.name} — ${verb}`
+      })
+      const summary =
+        orgs.length === 1
+          ? `You own 1 workspace that must be resolved first:`
+          : `You own ${orgs.length} workspaces that must be resolved first:`
+      throw new ApiError(
+        `${summary}\n${lines.join('\n')}\n\nGo to Settings → Organizations.`,
+        409,
+        err.data,
+      )
+    }
+    throw err
+  }
 }
 
 export interface Session {
