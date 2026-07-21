@@ -1,4 +1,4 @@
-import React, { type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { cdnUrl } from '@/lib/cdn'
 import {
   Globe,
@@ -15,7 +15,8 @@ import {
   Tag,
   FrameCorners,
 } from '@phosphor-icons/react'
-import * as Flags from 'country-flag-icons/react/3x2'
+import { CountryFlag } from '@/components/ui/CountryFlag'
+import { hasFlag } from '@/lib/flags'
 const ICON_SIZE = 20
 
 function brandIcon(slug: string, alt: string) {
@@ -313,9 +314,8 @@ export function getReferrerFavicon(referrer: string): string | null {
 
 /** Country flag for an ISO code; special aggregate codes fall back to a globe. */
 export function getCountryFlagIcon(code: string): ReactNode {
-  if (!code || code === 'Unknown') return <Globe className="text-neutral-400" />
-  const FlagComponent = (Flags as Record<string, React.ComponentType<{ className?: string }>>)[code.toUpperCase()]
-  return FlagComponent ? <FlagComponent className="rounded-none" /> : <Globe className="text-neutral-400" />
+  if (!code || code === 'Unknown' || !hasFlag(code)) return <Globe className="text-neutral-400" />
+  return <CountryFlag code={code} className="h-4 w-4 rounded-none" />
 }
 
 /**
