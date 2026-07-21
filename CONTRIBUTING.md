@@ -1,62 +1,26 @@
-# Contributing to Pulse
+# Contributing
 
-Thank you for your interest in contributing to Pulse! We welcome contributions from the community to help make privacy-first analytics better for everyone.
+Thanks for your interest in contributing.
 
-## Getting Started
+## Developer Certificate of Origin
 
-1.  **Fork the repository** on GitHub.
-2.  **Clone your fork** locally:
-    ```bash
-    git clone https://github.com/YOUR_USERNAME/pulse.git
-    cd pulse
-    ```
-3.  **Install dependencies**:
-    ```bash
-    npm install
-    ```
-4.  **Set up environment variables**:
-    Copy `.env.example` (if available) or create `.env.local` with the following:
-    ```env
-    NEXT_PUBLIC_API_URL=http://localhost:8082
-    NEXT_PUBLIC_AUTH_URL=http://localhost:3000
-    NEXT_PUBLIC_AUTH_API_URL=http://localhost:8081
-    NEXT_PUBLIC_APP_URL=http://localhost:3003
-    ```
-5.  **Run the development server**:
-    ```bash
-    npm run dev
-    ```
+All contributions must be signed off under the [Developer Certificate of
+Origin](https://developercertificate.org/) (DCO). By signing off, you certify
+that you wrote the contribution or otherwise have the right to submit it under
+this repository's license.
 
-## Development Workflow
+Sign off every commit:
 
-1.  Create a new branch for your feature or fix:
-    ```bash
-    git checkout -b feature/my-new-feature
-    ```
-2.  Make your changes.
-3.  **Lint and Type Check**:
-    Before committing, ensure your code passes our quality checks:
-    ```bash
-    npm run lint
-    npm run type-check
-    ```
-4.  Commit your changes with a descriptive message.
-5.  Push to your fork and submit a **Pull Request**.
+```bash
+git commit -s
+```
 
-## Code Style
-
--   We use **Next.js** with **TypeScript**.
--   Styling is done with **Tailwind CSS**.
--   Please follow the existing code style and conventions found in the project.
--   Ensure all new components are responsive and support dark mode.
-
-## Pull Request Guidelines
-
--   Provide a clear description of what your PR does.
--   Link to any relevant issues.
--   Ensure all checks pass (linting, type checking).
--   If you are adding a new feature, please include screenshots or a video if applicable.
+This adds a `Signed-off-by: Your Name <your@email>` trailer to the commit
+message. Pull requests containing commits without a sign-off cannot be
+accepted.
 
 ## License
 
-By contributing to Pulse, you agree that your contributions will be licensed under the [AGPL-3.0 License](LICENSE).
+This repository is licensed under the GNU Affero General Public License v3.0
+(see [LICENSE](./LICENSE)). By contributing, you agree that your contributions
+are licensed under the same terms.
