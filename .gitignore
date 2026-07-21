@@ -47,9 +47,17 @@ public/swe-worker-*.js
 
 # Local brainstorm mockups — never tracked
 .superpowers/
-playwright.config.ts
 test-results/
-tests/
+playwright-report/
+
+# Playwright: track the config + the read-only settings smoke suite, but keep
+# other local *.test.ts / *.spec.ts experiments under tests/ untracked.
+tests/*
+!tests/settings-smoke.spec.ts
+!tests/support/
+tests/support/*
+!tests/support/login.ts
+!tests/support/console-errors.ts
 
 # Versioned tracking-script build artifacts (published to CDN, not committed)
 dist/scripts/

@@ -57,6 +57,7 @@ import { computeBlindIndex } from '@/lib/crypto/blind-index'
 import { encryptVaultH } from '@/lib/crypto/vault-ops'
 import { getRelayPublicKey, sealForRelay } from '@/lib/crypto/relay'
 import { performOpaqueLogin } from '@/lib/auth/tessera/opaque-login'
+import { performOpaqueReauth } from '@/lib/auth/tessera/opaque-reauth'
 import { performOpaqueChangePassword } from '@/lib/auth/tessera/opaque-change-password'
 import { getSessionAction, setSessionAction } from '@/app/actions/auth'
 import { switchContext } from '@/lib/api/organization'
@@ -119,17 +120,28 @@ async function restoreOrgContext(sessionBefore: SessionSnapshot): Promise<void> 
  *    PUT the new OPAQUE record. All sessions are revoked on success.
  *  - email:    fresh OPAQUE login → live VMK → re-seal the vault under newEmail and
  *    PUT the three real fields.
- *  - delete:   fresh OPAQUE login as a proof only; the VMK is dropped immediately
- *    and the caller performs the DELETE (keeping its own 409 handling).
+ *  - delete:   fresh OPAQUE ceremony against the DEDICATED re-auth endpoint
+ *    (`/auth/reauth/*`, Slice 4) as a proof only; it mints a single-use server
+ *    re-auth token, no VMK and no session swap. The token is handed back to the
+ *    caller, which performs the DELETE (keeping its own 409 handling).
  */
 export type ReauthRequest =
   | { op: 'password'; oldPassword: string; newPassword: string }
   | { op: 'email'; password: string; newEmail: string }
   | { op: 'delete'; password: string }
 
+/**
+ * What a successful re-auth resolves with. Only the delete op carries a
+ * `reauthToken` (minted by the dedicated re-auth endpoint); password/email prove
+ * themselves in-modal and resolve with nothing.
+ */
+export interface ReauthResult {
+  reauthToken?: string
+}
+
 interface Pending {
   request: ReauthRequest
-  resolve: () => void
+  resolve: (result: ReauthResult) => void
   reject: (err: Error) => void
 }
 
@@ -175,11 +187,12 @@ const BLURBS: Record<ReauthRequest['op'], string> = {
  * Consumers:
  *  - password/email: await requestReauth(...) then handle the terminal UX (password
  *    → sign in again; email → refresh). The write happens inside the modal.
- *  - delete: await requestReauth({op:'delete', password}) for the proof, then call
- *    deleteAccount() yourself (so the 409 owns-organizations handling stays local).
+ *  - delete: await requestReauth({op:'delete', password}) → resolves { reauthToken },
+ *    then call deleteAccount(reauthToken) yourself (so the 409 owns-organizations
+ *    handling stays local).
  */
 export function useReauthModal(): {
-  requestReauth: (request: ReauthRequest) => Promise<void>
+  requestReauth: (request: ReauthRequest) => Promise<ReauthResult>
   modal: React.ReactNode
 } {
   const [pending, setPending] = useState<Pending | null>(null)
@@ -190,11 +203,11 @@ export function useReauthModal(): {
   // there are no key bytes to wipe; nulling the ref lets the GC reclaim it.
   const handleRef = useRef<VaultKeyHandle | null>(null)
 
-  const requestReauth = useCallback((request: ReauthRequest): Promise<void> => {
+  const requestReauth = useCallback((request: ReauthRequest): Promise<ReauthResult> => {
     setEmail(prefillEmail())
     setError(null)
     setBusy(false)
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<ReauthResult>((resolve, reject) => {
       setPending({ request, resolve, reject })
     })
   }, [])
@@ -207,7 +220,7 @@ export function useReauthModal(): {
   }, [])
 
   const runCeremony = useCallback(
-    async (request: ReauthRequest, loginEmail: string, sessionBefore: SessionSnapshot): Promise<void> => {
+    async (request: ReauthRequest, loginEmail: string, sessionBefore: SessionSnapshot): Promise<ReauthResult> => {
       const trimmed = loginEmail.trim()
       // The account the user believes they are acting on. login/finish inside the
       // ceremony will overwrite the auth cookies, so this MUST be read beforehand.
@@ -230,7 +243,7 @@ export function useReauthModal(): {
           body: JSON.stringify(payload),
           skipAuthRetry: true,
         })
-        return
+        return {}
       }
 
       if (request.op === 'email') {
@@ -266,22 +279,21 @@ export function useReauthModal(): {
         } finally {
           handleRef.current = null
         }
-        return
+        return {}
       }
 
-      // delete: a fresh OPAQUE login is the proof; drop the VMK immediately. The
-      // caller performs the DELETE after this resolves (keeps its 409 handling).
-      const { handle, finish } = await performOpaqueLogin({
+      // delete: a fresh OPAQUE ceremony against the DEDICATED re-auth endpoint mints a
+      // single-use server re-auth token. No VMK, no session swap (the re-auth endpoint
+      // issues no cookies), no vault material. The client-side assertSameAccount is
+      // dropped for delete: the re-auth/finish body has no user_id, and the server
+      // binds the token to the session user and re-checks `== sessionUserID` at consume.
+      // The caller performs the DELETE with this token (keeps its own 409 handling).
+      const reauthToken = await performOpaqueReauth({
         email: trimmed,
         password: request.password,
         blindIndex: await computeBlindIndex(trimmed),
       })
-      handleRef.current = handle
-      handleRef.current = null
-      // Session-swap guard: refuse to let the caller DELETE unless the proof
-      // resolved to THIS account. Throwing here rejects requestReauth(), so the
-      // caller's deleteAccount() never runs.
-      assertSameAccount(expectedSub, finish.user_id)
+      return { reauthToken }
     },
     []
   )
@@ -301,10 +313,10 @@ export function useReauthModal(): {
         // overwrite the auth cookies. `sub` drives the session-swap guard; `org_id`
         // drives the post-op org-context restore.
         const sessionBefore = await getSessionAction()
-        await runCeremony(pending.request, email, sessionBefore)
+        const result = await runCeremony(pending.request, email, sessionBefore)
         const { resolve } = pending
         close()
-        resolve()
+        resolve(result)
       } catch (err) {
         // No write happened on a failed ceremony. Keep the modal open so the user
         // can correct the email/password and retry — never a silent close.
