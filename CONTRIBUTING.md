@@ -57,6 +57,23 @@ Thank you for your interest in contributing to Pulse! We welcome contributions f
 -   Ensure all checks pass (linting, type checking).
 -   If you are adding a new feature, please include screenshots or a video if applicable.
 
+## Developer Certificate of Origin
+
+All contributions must be signed off under the [Developer Certificate of
+Origin](https://developercertificate.org/) (DCO). By signing off, you certify
+that you wrote the contribution or otherwise have the right to submit it under
+this repository's license.
+
+Sign off every commit:
+
+```bash
+git commit -s
+```
+
+This adds a `Signed-off-by: Your Name <your@email>` trailer to the commit
+message. Pull requests containing commits without a sign-off cannot be
+accepted.
+
 ## License
 
 By contributing to Pulse, you agree that your contributions will be licensed under the [AGPL-3.0 License](LICENSE).
