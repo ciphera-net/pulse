@@ -149,7 +149,7 @@ export default function PricingSection() {
       <section className="border-b border-border">
         <div className="px-6 pb-12 pt-16 text-center sm:pt-20">
           <Eyebrow label="Pulse · Pricing" className="text-center" />
-          <h1 className="mt-6 font-display text-5xl font-bold tracking-tight text-foreground sm:text-6xl">
+          <h1 className="mt-6 font-display text-5xl font-semibold tracking-tight text-foreground sm:text-6xl">
             Pricing
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
@@ -301,7 +301,7 @@ export default function PricingSection() {
                     {plan.isFree ? (
                       <>
                         <div className="flex items-baseline gap-1">
-                          <span className="font-display text-4xl font-bold tabular-nums text-foreground">
+                          <span className="font-display text-4xl font-semibold tabular-nums text-foreground">
                             €0
                           </span>
                           <span className="text-sm text-muted-foreground">/mo</span>
@@ -313,7 +313,7 @@ export default function PricingSection() {
                     ) : isCustomTier ? (
                       <>
                         <div className="flex items-baseline gap-1">
-                          <span className="font-display text-4xl font-bold text-foreground">
+                          <span className="font-display text-4xl font-semibold text-foreground">
                             Custom
                           </span>
                         </div>
@@ -324,7 +324,7 @@ export default function PricingSection() {
                     ) : priceDetails ? (
                       <>
                         <div className="flex items-baseline gap-1">
-                          <span className="font-display text-4xl font-bold tabular-nums text-foreground">
+                          <span className="font-display text-4xl font-semibold tabular-nums text-foreground">
                             €{isYearly ? priceDetails.effectiveMonthly : priceDetails.monthly}
                           </span>
                           <span className="text-sm text-muted-foreground">/mo</span>
@@ -342,7 +342,7 @@ export default function PricingSection() {
                     ) : (
                       <>
                         <div className="flex items-baseline gap-1">
-                          <span className="font-display text-4xl font-bold text-muted-foreground">
+                          <span className="font-display text-4xl font-semibold text-muted-foreground">
                             —
                           </span>
                         </div>
@@ -447,7 +447,7 @@ export default function PricingSection() {
       <section className="border-b border-border">
         <div className="px-6 py-16 sm:py-20">
           <Eyebrow label="FAQ" />
-          <h2 className="mt-4 font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          <h2 className="mt-4 font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
             Pricing questions, answered.
           </h2>
           <PricingFAQ />
@@ -458,7 +458,7 @@ export default function PricingSection() {
       <section>
         <div className="flex flex-col items-start justify-between gap-8 px-6 py-20 sm:py-24 lg:flex-row lg:items-center">
           <div className="max-w-xl">
-            <h2 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               Start tracking with privacy.
             </h2>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground">

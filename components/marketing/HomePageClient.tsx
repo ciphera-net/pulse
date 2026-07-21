@@ -52,7 +52,7 @@ export default function HomePageClient() {
               the TrustStrip below owns the claims as chips. Forced two-line
               headline so the larger scale never rewraps. */}
           <div className="relative mx-auto max-w-5xl px-6 pt-20 text-center sm:pt-28">
-            <h1 className="font-display text-5xl font-bold leading-[0.95] tracking-tight text-foreground sm:text-7xl lg:text-[5.5rem]">
+            <h1 className="font-display text-5xl font-semibold leading-[0.95] tracking-tight text-foreground sm:text-7xl lg:text-[5.5rem]">
               Analytics without
               <span className="sr-only"> the surveillance.</span>
               {/* Rotates ONCE on load through the three things Pulse removes,

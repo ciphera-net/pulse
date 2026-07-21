@@ -130,7 +130,7 @@ export function Footer({
                   className="h-7 w-7 object-contain"
                   unoptimized
                 />
-                <span className="font-display text-lg font-bold tracking-tight text-foreground">
+                <span className="font-display text-lg font-semibold tracking-tight text-foreground">
                   Pulse
                 </span>
               </Link>

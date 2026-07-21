@@ -85,7 +85,7 @@ export default function ChangelogPage() {
     <MarketingSection>
       <div className="max-w-2xl">
         <p className="text-xs text-muted-foreground">Pulse · Changelog</p>
-        <h1 className="mt-6 font-display text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
+        <h1 className="mt-6 font-display text-4xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
           Changelog
         </h1>
         <div className={`${PREAMBLE_PROSE} mt-6`}>

@@ -187,7 +187,7 @@ export default function FAQPage() {
       <MarketingSection>
         <div className="max-w-2xl">
           <p className="text-xs text-muted-foreground">Pulse · Support</p>
-          <h1 className="mt-6 font-display text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
+          <h1 className="mt-6 font-display text-4xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
             Frequently asked questions
           </h1>
           <p className="mt-6 text-base leading-relaxed text-muted-foreground sm:text-lg">

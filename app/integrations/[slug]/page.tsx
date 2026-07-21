@@ -81,7 +81,7 @@ export default async function IntegrationGuidePage({ params }: { params: Promise
             <div className="shrink-0 [&_svg]:h-10 [&_svg]:w-10">{integration.icon}</div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+                <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
                   {integration.name}
                 </h1>
                 <TierBadge tier={integration.supportTier} />

@@ -108,7 +108,7 @@ export default function AboutPage() {
       <MarketingSection>
         <div className="text-center">
           <p className="text-xs text-muted-foreground">Pulse · Why Pulse</p>
-          <h1 className="mx-auto mt-6 max-w-2xl font-display text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
+          <h1 className="mx-auto mt-6 max-w-2xl font-display text-4xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
             Why Pulse?
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">

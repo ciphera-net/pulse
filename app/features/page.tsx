@@ -174,7 +174,7 @@ export default function FeaturesPage() {
       <MarketingSection>
         <div className="text-center">
           <p className="text-xs text-muted-foreground">Pulse · Product tour</p>
-          <h1 className="mx-auto mt-6 max-w-3xl font-display text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
+          <h1 className="mx-auto mt-6 max-w-3xl font-display text-4xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
             Everything you need. Nothing you don&apos;t.
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
@@ -275,7 +275,7 @@ export default function FeaturesPage() {
       <section>
         <div className="flex flex-col items-start justify-between gap-8 px-6 py-20 sm:py-24 lg:flex-row lg:items-center">
           <div className="max-w-xl">
-            <h2 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               Ready to see it in action?
             </h2>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground">

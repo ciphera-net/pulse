@@ -83,7 +83,7 @@ function ReleaseBlock({ release }: { release: Release }) {
             {release.version}
             {release.date && <> · {release.date}</>}
           </p>
-          <h2 className="mt-2 font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
             {release.version}
           </h2>
         </div>
