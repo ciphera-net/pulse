@@ -34,11 +34,13 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
   const integration = getIntegration(slug)
-  if (!integration) return { title: 'Integration | Pulse' }
-  const title = `${integration.name} analytics — install Pulse | Pulse`
+  if (!integration) return { title: 'Integration' }
+  // Bare page name — the root title template appends "| Pulse by Ciphera".
+  const title = `${integration.name} analytics — install Pulse`
   return {
     title,
     description: integration.description,
+    alternates: { canonical: `/integrations/${slug}` },
     openGraph: { title, description: integration.description, siteName: 'Pulse by Ciphera' },
   }
 }
@@ -66,8 +68,22 @@ export default async function IntegrationGuidePage({ params }: { params: Promise
   const caveat =
     integration.supportTier === 'plan-gated' || integration.supportTier === 'special-handling'
 
+  const breadcrumb = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://pulse.ciphera.net' },
+      { '@type': 'ListItem', position: 2, name: 'Integrations', item: 'https://pulse.ciphera.net/integrations' },
+      { '@type': 'ListItem', position: 3, name: integration.name },
+    ],
+  }
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
+      />
       <MarketingSection>
         <div className="max-w-3xl">
           <Link
