@@ -113,7 +113,7 @@ export default function SettingsSaveBar({ isDirty, onSave, onDiscard, saveLabel 
             <Button variant="default" size="sm" onClick={handleSave} disabled={saving}>
               {saving ? 'Saving…' : saveLabel}
             </Button>
-            <kbd className="hidden items-center gap-0.5 rounded-none border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] leading-none text-muted-foreground sm:inline-flex">
+            <kbd className="hidden items-center gap-0.5 rounded-none border border-border bg-muted px-1.5 py-0.5 text-[10px] leading-none text-muted-foreground sm:inline-flex">
               ⌘S
             </kbd>
           </div>

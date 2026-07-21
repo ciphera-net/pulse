@@ -325,7 +325,7 @@ export default function ScriptSetupBlock({
                           {fw.name}
                         </span>
                         {isDetected && (
-                          <span className="absolute right-1 top-1 font-mono text-[8px] uppercase tracking-[0.08em] text-muted-foreground">
+                          <span className="absolute right-1 top-1 text-[8px] uppercase tracking-[0.08em] text-muted-foreground">
                             Detected
                           </span>
                         )}
@@ -370,7 +370,7 @@ export default function ScriptSetupBlock({
         <div className="rounded-none border border-border bg-background">
           <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
             <div className="flex items-center gap-2 min-w-0">
-              <span className="font-mono text-micro-label uppercase text-muted-foreground truncate">
+              <span className="text-micro-label uppercase text-muted-foreground truncate">
                 {selected?.snippet?.label ?? 'Tracking script'}
               </span>
               {selected && <TierBadge tier={selected.supportTier} />}
