@@ -297,7 +297,7 @@ export default function CDNPage() {
                 {/* Bandwidth — stacked cached (orange) over origin (neutral) */}
                 <motion.div {...cascade(0.04)} className="mt-6 rounded-none border border-border bg-card p-4">
                   <div className="mb-3 flex items-center justify-between gap-3">
-                    <span className="font-mono text-xs text-neutral-500">Bandwidth</span>
+                    <span className="text-xs text-neutral-500">Bandwidth</span>
                     <div className="flex items-center gap-4">
                       <LegendDot color={CACHED} label="Cached" />
                       <LegendDot color={ORIGIN} label="Origin" />
@@ -323,7 +323,7 @@ export default function CDNPage() {
                 <motion.div {...cascade(0.08)} className="mt-6 grid gap-6 lg:grid-cols-3">
                   {/* Requests — stacked cached / uncached */}
                   <div className="rounded-none border border-border bg-card p-4">
-                    <span className="font-mono text-xs text-neutral-500">Requests</span>
+                    <span className="text-xs text-neutral-500">Requests</span>
                     <div className="mt-3">
                       {daily.length > 0 ? (
                         <BarChart
@@ -359,11 +359,11 @@ export default function CDNPage() {
 
                   {/* Errors — 3xx neutral (redirects), 4xx/5xx red; no orange here */}
                   <div className="rounded-none border border-border bg-card p-4">
-                    <span className="font-mono text-xs text-neutral-500">Errors</span>
+                    <span className="text-xs text-neutral-500">Errors</span>
                     <div className="mt-3">
                       {daily.length > 0 && errorData.every((d) => d['3xx'] + d['4xx'] + d['5xx'] === 0) ? (
                         <div className="flex h-[220px] items-center justify-center">
-                          <p className="font-mono text-xs text-neutral-500">No errors in this period.</p>
+                          <p className="text-xs text-neutral-500">No errors in this period.</p>
                         </div>
                       ) : daily.length > 0 ? (
                         <BarChart
@@ -400,7 +400,7 @@ export default function CDNPage() {
 
                   {/* Origin latency — single orange line */}
                   <div className="rounded-none border border-border bg-card p-4">
-                    <span className="font-mono text-xs text-neutral-500">Origin latency</span>
+                    <span className="text-xs text-neutral-500">Origin latency</span>
                     <div className="mt-3">
                       {daily.length > 0 ? (
                         <AreaChart
@@ -436,7 +436,7 @@ export default function CDNPage() {
 
             {/* Traffic distribution — map kept, datacenter grid → ranked rows */}
             <motion.div {...cascade(0.12)} className="mt-6 rounded-none border border-border bg-card p-4">
-              <span className="font-mono text-xs text-neutral-500">Traffic distribution</span>
+              <span className="text-xs text-neutral-500">Traffic distribution</span>
               {countriesError ? (
                 <ErrorCard
                   title="Couldn't load traffic distribution"
@@ -478,7 +478,7 @@ export default function CDNPage() {
 function PctDelta({ change, invert = false }: { change: PctChangeResult; invert?: boolean }) {
   if (!change || change.type !== 'pct') return null
   if (change.value === 0) {
-    return <span className="font-mono text-xs tabular-nums text-neutral-500">0%</span>
+    return <span className="text-xs tabular-nums text-neutral-500">0%</span>
   }
   const up = change.value > 0
   const good = invert ? !up : up
@@ -494,7 +494,7 @@ function PointsDelta({ points }: { points: number | null }) {
   if (points === null) return null
   const rounded = Math.round(points * 10) / 10
   if (rounded === 0) {
-    return <span className="font-mono text-xs tabular-nums text-neutral-500">0 pt</span>
+    return <span className="text-xs tabular-nums text-neutral-500">0 pt</span>
   }
   const up = rounded > 0
   return (
@@ -518,7 +518,7 @@ function KpiCard({
   return (
     <div className="rounded-none border border-border bg-card p-4">
       <div className="mb-1.5 flex items-start justify-between gap-2">
-        <span className="font-mono text-xs text-neutral-500">{label}</span>
+        <span className="text-xs text-neutral-500">{label}</span>
         {delta}
       </div>
       <AnimatedNumber value={value} format={format} className="text-2xl font-semibold tabular-nums text-white" />
@@ -686,7 +686,7 @@ function TooltipRow({ color, label, value }: { color: string; label: string; val
 
 function LegendDot({ color, label }: { color: string; label: string }) {
   return (
-    <span className="flex items-center gap-1.5 font-mono text-xs text-neutral-500">
+    <span className="flex items-center gap-1.5 text-xs text-neutral-500">
       <span className="h-2 w-2 rounded-none" style={{ backgroundColor: color }} />
       {label}
     </span>
@@ -711,7 +711,7 @@ function DistributionRow({ row, maxBandwidth, totalBandwidth }: { row: BunnyGeoR
       <span className="relative flex min-w-0 flex-1 items-center gap-2">
         {getFlagIcon(cc) || <span className="h-3.5 w-5 shrink-0 rounded-none bg-neutral-800" aria-hidden="true" />}
         <span className="truncate text-sm text-white">{city}</span>
-        {cc && <span className="shrink-0 font-mono text-xs text-neutral-500">{cc}</span>}
+        {cc && <span className="shrink-0 text-xs text-neutral-500">{cc}</span>}
       </span>
       <span className="relative flex shrink-0 items-center gap-3 text-sm tabular-nums">
         <span className="text-xs font-medium tabular-nums text-brand-orange opacity-0 transition-opacity duration-fast ease-apple group-hover:opacity-100">

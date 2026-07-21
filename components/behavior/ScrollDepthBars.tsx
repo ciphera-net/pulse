@@ -21,7 +21,7 @@ export default function ScrollDepthBars({ scrollDepth }: { scrollDepth?: ScrollD
   return (
     <div className="flex h-full flex-col rounded-none border border-border bg-card p-4">
       <div className="mb-3">
-        <span className="font-mono text-xs text-neutral-500">Scroll depth</span>
+        <span className="text-xs text-neutral-500">Scroll depth</span>
       </div>
 
       {hasData ? (
@@ -32,7 +32,7 @@ export default function ScrollDepthBars({ scrollDepth }: { scrollDepth?: ScrollD
               const pct = total > 0 ? (count / total) * 100 : 0
               return (
                 <div key={threshold} className="flex items-center gap-3">
-                  <span className="w-9 shrink-0 font-mono text-xs tabular-nums text-neutral-500">{threshold}%</span>
+                  <span className="w-9 shrink-0 text-xs tabular-nums text-neutral-500">{threshold}%</span>
                   <div className="relative h-6 flex-1 rounded-none bg-neutral-800/40">
                     {pct > 0 && (
                       <div
@@ -47,7 +47,7 @@ export default function ScrollDepthBars({ scrollDepth }: { scrollDepth?: ScrollD
               )
             })}
           </div>
-          <p className="mt-3 font-mono text-xs text-neutral-500">
+          <p className="mt-3 text-xs text-neutral-500">
             {formatNumber(total)} {total === 1 ? 'session' : 'sessions'}
           </p>
         </>

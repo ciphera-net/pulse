@@ -74,7 +74,7 @@ export function StandardMetrics({ clicks, impressions, ctr, position }: Standard
 
 export function StandardHeader({ label }: { label: string }) {
   return (
-    <div className="flex h-8 items-center border-b border-border px-3 font-mono text-xs text-neutral-500">
+    <div className="flex h-8 items-center border-b border-border px-3 text-xs text-neutral-500">
       <span className="min-w-0 flex-1">{label}</span>
       <div className="ml-3 flex shrink-0 items-center gap-3">
         <span className={cn(W.clicks, 'text-right')}>Clicks</span>
@@ -134,7 +134,7 @@ export function Pagination({ page, pageSize, total, onPage }: { page: number; pa
   const to = Math.min((page + 1) * pageSize, total)
   return (
     <div className="flex items-center justify-between border-t border-border px-3 py-2.5">
-      <span className="font-mono text-xs tabular-nums text-neutral-500">
+      <span className="text-xs tabular-nums text-neutral-500">
         {from.toLocaleString()}&ndash;{to.toLocaleString()} of {total.toLocaleString()}
       </span>
       <div className="flex items-center gap-2">

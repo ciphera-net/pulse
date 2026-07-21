@@ -34,7 +34,7 @@ export function NewQueriesChip({ siteId, start, end, onPick }: NewQueriesChipPro
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="inline-flex h-8 items-center rounded-none border border-border px-2.5 font-mono text-xs tabular-nums text-neutral-400 transition-colors duration-fast ease-apple hover:border-neutral-700 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+        className="inline-flex h-8 items-center rounded-none border border-border px-2.5 text-xs tabular-nums text-neutral-400 transition-colors duration-fast ease-apple hover:border-neutral-700 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
       >
         {count} new {count === 1 ? 'query' : 'queries'}
       </button>
