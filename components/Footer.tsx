@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { GithubIcon, TwitterIcon, ArrowUpRightIcon } from '@ciphera-net/facet'
+import { LinkedinLogo } from '@phosphor-icons/react/dist/ssr'
 import { cdnUrl } from '@/lib/cdn'
 import { Watermark } from '@/components/marketing/system/Watermark'
 
@@ -149,13 +150,22 @@ export function Footer({
                   <GithubIcon className="h-4 w-4" />
                 </a>
                 <a
-                  href="https://x.com/cipheranet"
+                  href="https://x.com/CipheraNET"
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Ciphera on X"
                   className="inline-flex h-9 w-9 items-center justify-center border border-border text-muted-foreground transition-colors duration-fast hover:text-foreground"
                 >
                   <TwitterIcon className="h-4 w-4" />
+                </a>
+                <a
+                  href="https://www.linkedin.com/company/ciphera/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Ciphera on LinkedIn"
+                  className="inline-flex h-9 w-9 items-center justify-center border border-border text-muted-foreground transition-colors duration-fast hover:text-foreground"
+                >
+                  <LinkedinLogo className="h-4 w-4" />
                 </a>
               </div>
             </div>
@@ -187,6 +197,18 @@ export function Footer({
             <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
               <p className="text-xs text-muted-foreground">
                 © 2024–{year} Ciphera. All rights reserved.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                A{' '}
+                <a
+                  href="https://ciphera.net"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-foreground/80 underline decoration-dotted underline-offset-2 transition-colors duration-fast hover:text-foreground"
+                >
+                  Ciphera
+                </a>{' '}
+                product
               </p>
               <p className="font-mono text-xs text-muted-foreground">
                 Zero-knowledge · No tracking · Open source
