@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic'
 import { logger } from '@/lib/utils/logger'
 import { formatNumber } from '@/lib/utils/format'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
-import * as Flags from 'country-flag-icons/react/3x2'
+import { CountryFlag } from '@/components/ui/CountryFlag'
 import iso3166 from 'iso-3166-2'
 
 const MapView = dynamic(() => import('./MapView'), { ssr: false })
@@ -213,8 +213,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
         return <GlobeIcon className="w-5 h-5 text-neutral-400" />
     }
 
-    const FlagComponent = (Flags as Record<string, React.ComponentType<{ className?: string }>>)[countryCode]
-    return FlagComponent ? <FlagComponent className="w-5 h-5 rounded-none" /> : null
+    return <CountryFlag code={countryCode} className="w-5 h-5 rounded-none" />
   }
 
   const getCountryName = (code: string) => {

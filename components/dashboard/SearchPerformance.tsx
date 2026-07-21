@@ -6,7 +6,7 @@ import { Modal, Spinner } from '@ciphera-net/facet'
 import { formatNumber } from '@/lib/utils/format'
 import { FrameCornersIcon, Monitor, DeviceMobile, DeviceTablet, MagnifyingGlass } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
-import * as Flags from 'country-flag-icons/react/3x2'
+import { CountryFlag as CdnFlag } from '@/components/ui/CountryFlag'
 import countries from 'i18n-iso-countries'
 import { useGSCStatus, useGSCOverview, useGSCTopQueries, useGSCTopPages, useGSCTopCountries, useGSCTopDevices, useGSCOpportunities } from '@/lib/swr/dashboard'
 import { getGSCTopQueries, getGSCTopPages, getGSCTopCountries, getGSCTopDevices, getGSCOpportunities, getGSCQueryTrend } from '@/lib/api/gsc'
@@ -52,8 +52,7 @@ const stripProtocol = (url: string) => url.replace(/^https?:\/\//, '').replace(/
 function CountryFlag({ alpha3, className = 'w-5 h-5 rounded-none shrink-0' }: { alpha3: string; className?: string }) {
   const a2 = getAlpha2(alpha3)
   if (!a2) return null
-  const FlagComponent = (Flags as Record<string, React.ComponentType<{ className?: string }>>)[a2]
-  return FlagComponent ? <FlagComponent className={className} /> : null
+  return <CdnFlag code={a2} className={className} />
 }
 
 function getDeviceIcon(device: string) {

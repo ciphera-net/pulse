@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { Monitor, DeviceMobile, DeviceTablet } from '@phosphor-icons/react'
-import * as Flags from 'country-flag-icons/react/3x2'
+import { CountryFlag as CdnFlag } from '@/components/ui/CountryFlag'
 import { cn } from '@/lib/utils'
 import { formatNumber } from '@/lib/utils/format'
 import { alpha3ToAlpha2 } from '@/lib/utils/countryCodes'
@@ -99,10 +99,13 @@ export function SubRow({ label, title, clicks, impressions, ctr, position }: { l
 // ─── Country flag + device glyph ─────────────────────────────────
 
 export function CountryFlag({ alpha3 }: { alpha3: string }) {
-  const a2 = alpha3ToAlpha2(alpha3)
-  const Flag = a2 ? (Flags as Record<string, React.ComponentType<{ className?: string }>>)[a2] : undefined
-  if (!Flag) return <span className="h-3.5 w-5 shrink-0 rounded-none bg-neutral-800" aria-hidden="true" />
-  return <Flag className="w-5 shrink-0 rounded-none" />
+  return (
+    <CdnFlag
+      code={alpha3ToAlpha2(alpha3)}
+      className="h-3.5 w-5 shrink-0 rounded-none"
+      fallback={<span className="h-3.5 w-5 shrink-0 rounded-none bg-neutral-800" aria-hidden="true" />}
+    />
+  )
 }
 
 export function deviceIcon(device: string) {
