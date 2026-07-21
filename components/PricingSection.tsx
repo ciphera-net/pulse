@@ -199,7 +199,7 @@ export default function PricingSection() {
                 Yearly
               </button>
             </div>
-            <span className="font-mono text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               Get 1 month free with yearly
             </span>
           </div>
@@ -220,7 +220,7 @@ export default function PricingSection() {
                     onClick={() => setSliderIndex(i)}
                     aria-label={`Select ${tier.label} pageviews per month`}
                     className={cn(
-                      'whitespace-nowrap px-1 py-0.5 font-mono text-xs tabular-nums transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none',
+                      'whitespace-nowrap px-1 py-0.5 text-xs tabular-nums transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none',
                       i === sliderIndex
                         ? 'text-primary'
                         : 'text-muted-foreground hover:text-foreground',
@@ -284,13 +284,13 @@ export default function PricingSection() {
                     isTeam && 'ring-1 ring-inset ring-primary',
                   )}
                 >
-                  {/* Tier name — mono micro-label; popular tier flags itself */}
+                  {/* Tier name — micro-label; popular tier flags itself */}
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                    <span className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
                       {plan.name}
                     </span>
                     {isTeam && (
-                      <span className="font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                      <span className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
                         Most popular
                       </span>
                     )}
@@ -410,7 +410,7 @@ export default function PricingSection() {
 
           {/* All plans include — quiet bordered row */}
           <div className="mt-6 border border-border bg-card px-6 py-5">
-            <p className="mb-4 text-center font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+            <p className="mb-4 text-center text-xs uppercase tracking-[0.08em] text-muted-foreground">
               All plans include
             </p>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-center sm:gap-8">
@@ -435,7 +435,7 @@ export default function PricingSection() {
             </p>
             <a
               href="mailto:business@ciphera.net?subject=Enterprise%20Plan%20Inquiry"
-              className="shrink-0 font-mono text-xs text-primary transition-colors duration-150 hover:text-foreground motion-reduce:transition-none"
+              className="shrink-0 text-xs text-primary transition-colors duration-150 hover:text-foreground motion-reduce:transition-none"
             >
               Let&apos;s talk →
             </a>

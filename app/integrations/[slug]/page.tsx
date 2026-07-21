@@ -72,7 +72,7 @@ export default async function IntegrationGuidePage({ params }: { params: Promise
         <div className="max-w-3xl">
           <Link
             href="/integrations"
-            className="font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
+            className="text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             ← All integrations
           </Link>
@@ -86,7 +86,7 @@ export default async function IntegrationGuidePage({ params }: { params: Promise
                 </h1>
                 <TierBadge tier={integration.supportTier} />
               </div>
-              <p className="mt-1 font-mono text-xs text-muted-foreground">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {categoryLabels[integration.category]} · {INSTALL_METHOD_LABEL[integration.installMethod]}
               </p>
             </div>
@@ -103,7 +103,7 @@ export default async function IntegrationGuidePage({ params }: { params: Promise
         {/* Caveat banner for plan-gated / special-handling platforms. */}
         {caveat && hasNote && (
           <div className="mt-8 max-w-3xl rounded-none border border-amber-500/25 bg-amber-500/5 p-5">
-            <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.08em] text-amber-400">
+            <p className="mb-1 text-[11px] uppercase tracking-[0.08em] text-amber-400">
               Before you start
             </p>
             <p className="text-sm leading-relaxed text-foreground">{integration.snippet?.note}</p>
@@ -131,7 +131,7 @@ export default async function IntegrationGuidePage({ params }: { params: Promise
             <div className="rounded-none border border-border overflow-hidden">
               <div className="h-1 bg-gradient-to-r from-brand-orange via-brand-orange/60 to-transparent" />
               <div className="bg-neutral-950 p-5">
-                <p className="mb-3 font-mono text-xs text-muted-foreground">
+                <p className="mb-3 text-xs text-muted-foreground">
                   {integration.snippet?.label ?? 'Add to your site’s <head>'}
                 </p>
                 <pre className="overflow-x-auto whitespace-pre-wrap break-all font-mono text-[13px] leading-relaxed text-neutral-300">
@@ -173,7 +173,7 @@ export default async function IntegrationGuidePage({ params }: { params: Promise
       {/* Related integrations. */}
       {related.length > 0 && (
         <MarketingSection>
-          <p className="mb-6 font-mono text-xs text-muted-foreground">Related</p>
+          <p className="mb-6 text-xs text-muted-foreground">Related</p>
           <div className="grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
             {related.map((r) => (
               <Link

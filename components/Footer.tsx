@@ -163,7 +163,7 @@ export function Footer({
             {/* Link columns */}
             {footerColumns.map((column) => (
               <div key={column.heading}>
-                <h3 className="font-mono text-xs text-muted-foreground">
+                <h3 className="text-xs text-muted-foreground">
                   {column.heading}
                 </h3>
                 <ul className="mt-4 space-y-3">
@@ -188,7 +188,7 @@ export function Footer({
               <p className="text-xs text-muted-foreground">
                 © 2024–{year} Ciphera. All rights reserved.
               </p>
-              <p className="font-mono text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Zero-knowledge · No tracking · Open source
               </p>
             </div>

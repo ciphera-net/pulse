@@ -36,7 +36,7 @@ export default function InstallationPage() {
       {/* ── HERO ── */}
       <MarketingSection>
         <div className="max-w-2xl">
-          <p className="font-mono text-xs text-muted-foreground">Pulse · Docs</p>
+          <p className="text-xs text-muted-foreground">Pulse · Docs</p>
           <h1 className="mt-6 font-display text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
             Installation
           </h1>
@@ -101,7 +101,7 @@ export default function InstallationPage() {
         <div className="mt-8 max-w-2xl border border-border bg-card">
           <div className="flex items-center border-b border-border px-4 py-3">
             <EditorDots />
-            <span className="ml-4 font-mono text-xs text-muted-foreground">
+            <span className="ml-4 text-xs text-muted-foreground">
               e.g. button click handler
             </span>
           </div>

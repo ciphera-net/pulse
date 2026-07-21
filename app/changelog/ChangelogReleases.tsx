@@ -36,10 +36,10 @@ export interface Release {
   body: string
 }
 
-// * Prose recipe for a release body: mono micro-labels for the ### category
+// * Prose recipe for a release body: micro-labels for the ### category
 // * headings (Added / Improved / Fixed …), orange only on links, tokens throughout.
 const PROSE_CLASSES = `prose prose-invert max-w-none
-  prose-headings:font-mono prose-headings:text-xs prose-headings:font-normal
+  prose-headings:text-xs prose-headings:font-normal
   prose-headings:uppercase prose-headings:tracking-[0.08em]
   prose-headings:text-muted-foreground prose-headings:mt-6 prose-headings:mb-3
   prose-p:text-muted-foreground prose-li:text-muted-foreground

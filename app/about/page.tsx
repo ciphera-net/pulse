@@ -41,7 +41,7 @@ function ComparisonTable({ title, competitors }: { title: string; competitors: C
         <table className="w-full border-collapse text-left">
           <thead>
             <tr className="border-b border-border">
-              <th className="p-4 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground sm:p-6">
+              <th className="p-4 text-xs uppercase tracking-[0.08em] text-muted-foreground sm:p-6">
                 Feature
               </th>
               {competitors.map((comp) => (
@@ -107,7 +107,7 @@ export default function AboutPage() {
       {/* ── HERO ── */}
       <MarketingSection>
         <div className="text-center">
-          <p className="font-mono text-xs text-muted-foreground">Pulse · Why Pulse</p>
+          <p className="text-xs text-muted-foreground">Pulse · Why Pulse</p>
           <h1 className="mx-auto mt-6 max-w-2xl font-display text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
             Why Pulse?
           </h1>
@@ -179,7 +179,7 @@ export default function AboutPage() {
 
         {/* Plausible callout — kept verbatim, framed as a bordered aside */}
         <aside className="mt-10 max-w-2xl border border-border bg-card p-6">
-          <p className="font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+          <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
             On Plausible
           </p>
           <p className="mt-4 text-sm font-semibold text-foreground">What about Plausible?</p>

@@ -131,7 +131,7 @@ const trustSignals: { title: string; description: string }[] = [
 ]
 
 const proofLinkClass =
-  'mt-5 inline-flex items-center gap-1 font-mono text-xs text-primary transition-colors duration-150 hover:text-primary/80 motion-reduce:transition-none'
+  'mt-5 inline-flex items-center gap-1 text-xs text-primary transition-colors duration-150 hover:text-primary/80 motion-reduce:transition-none'
 
 function ProofLink({ proof }: { proof: NonNullable<Feature['proof']> }) {
   if (proof.external) {
@@ -173,7 +173,7 @@ export default function FeaturesPage() {
       {/* ── HERO ── */}
       <MarketingSection>
         <div className="text-center">
-          <p className="font-mono text-xs text-muted-foreground">Pulse · Product tour</p>
+          <p className="text-xs text-muted-foreground">Pulse · Product tour</p>
           <h1 className="mx-auto mt-6 max-w-3xl font-display text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
             Everything you need. Nothing you don&apos;t.
           </h1>
@@ -205,7 +205,7 @@ export default function FeaturesPage() {
             ))}
           </HairlineGrid>
           <div className="border border-border bg-card p-6">
-            <p className="mb-4 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+            <p className="mb-4 text-xs uppercase tracking-[0.08em] text-muted-foreground">
               Live preview
             </p>
             <PulseFeaturesCarousel />
@@ -234,7 +234,7 @@ export default function FeaturesPage() {
         <div className="mt-6 flex flex-wrap items-center gap-6">
           <Link
             href="/integrations"
-            className="inline-flex items-center gap-1 font-mono text-xs text-primary transition-colors duration-150 hover:text-primary/80 motion-reduce:transition-none"
+            className="inline-flex items-center gap-1 text-xs text-primary transition-colors duration-150 hover:text-primary/80 motion-reduce:transition-none"
           >
             View all integrations
             <ArrowUpRightIcon aria-hidden="true" className="h-3 w-3" />
@@ -243,7 +243,7 @@ export default function FeaturesPage() {
             href="https://github.com/ciphera-net/pulse"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 font-mono text-xs text-primary transition-colors duration-150 hover:text-primary/80 motion-reduce:transition-none"
+            className="inline-flex items-center gap-1 text-xs text-primary transition-colors duration-150 hover:text-primary/80 motion-reduce:transition-none"
           >
             View on GitHub
             <ArrowUpRightIcon aria-hidden="true" className="h-3 w-3" />
@@ -261,7 +261,7 @@ export default function FeaturesPage() {
         <HairlineGrid columns={3} className="mt-12">
           {steps.map((s) => (
             <div key={s.step} className="flex items-start gap-4 bg-card p-6">
-              <span className="font-mono text-sm text-primary">{s.step.padStart(2, '0')}</span>
+              <span className="text-sm text-primary">{s.step.padStart(2, '0')}</span>
               <div>
                 <p className="text-sm font-semibold text-foreground">{s.title}</p>
                 <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{s.desc}</p>

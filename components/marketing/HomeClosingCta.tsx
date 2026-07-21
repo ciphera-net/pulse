@@ -16,7 +16,7 @@ export function HomeClosingCta() {
   return (
     <div className="grid items-center gap-12 px-6 py-20 sm:py-28 lg:grid-cols-[1.3fr_1fr]">
       <div>
-        <p className="font-mono text-xs text-muted-foreground">05 · Get started</p>
+        <p className="text-xs text-muted-foreground">05 · Get started</p>
         <h2 className="mt-4 max-w-2xl font-display text-3xl font-bold tracking-tight text-foreground sm:text-5xl">
           Start tracking with privacy.
         </h2>
@@ -33,7 +33,7 @@ export function HomeClosingCta() {
             <Link href="/pricing">View pricing</Link>
           </Button>
         </div>
-        <p className="mt-8 font-mono text-xs text-muted-foreground">
+        <p className="mt-8 text-xs text-muted-foreground">
           Cookie-free &middot; Open source &middot; GDPR compliant
         </p>
       </div>

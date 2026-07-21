@@ -130,7 +130,7 @@ export default function HomePageClient() {
                 live-visitors control (RealtimeVisitors recipe). */}
             <Link
               href="/demo"
-              className="mt-5 flex items-center justify-center gap-2 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground motion-reduce:transition-none"
+              className="mt-5 flex items-center justify-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground motion-reduce:transition-none"
             >
               <span
                 aria-hidden="true"

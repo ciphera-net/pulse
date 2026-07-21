@@ -112,7 +112,7 @@ function FaqRail() {
               onClick={() => selectGroup(g.key)}
               onKeyDown={(e) => handleTabKeyDown(e, i)}
               className={cn(
-                'flex items-baseline justify-between gap-3 py-1.5 text-left font-mono text-xs transition-colors duration-150 motion-reduce:transition-none',
+                'flex items-baseline justify-between gap-3 py-1.5 text-left text-xs transition-colors duration-150 motion-reduce:transition-none',
                 isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
               )}
             >
@@ -144,7 +144,7 @@ function FaqRail() {
                 onClick={() => setOpenId(isOpen ? null : item.n)}
                 className="flex w-full items-center gap-5 px-5 py-4 text-left transition-colors duration-150 hover:bg-accent motion-reduce:transition-none"
               >
-                <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                <span className="text-xs tabular-nums text-muted-foreground">
                   {item.n}
                 </span>
                 <span className="flex-1 text-sm font-medium text-foreground">{item.question}</span>
@@ -186,7 +186,7 @@ export default function FAQPage() {
       {/* ── HERO + RAIL ── */}
       <MarketingSection>
         <div className="max-w-2xl">
-          <p className="font-mono text-xs text-muted-foreground">Pulse · Support</p>
+          <p className="text-xs text-muted-foreground">Pulse · Support</p>
           <h1 className="mt-6 font-display text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
             Frequently asked questions
           </h1>
@@ -203,7 +203,7 @@ export default function FAQPage() {
       <MarketingSection>
         <div className="flex flex-col items-start justify-between gap-6 border border-border bg-card p-8 sm:flex-row sm:items-center">
           <div>
-            <p className="font-mono text-xs text-muted-foreground">Still have questions?</p>
+            <p className="text-xs text-muted-foreground">Still have questions?</p>
             <p className="mt-3 text-lg font-semibold text-foreground">
               We&apos;re happy to help.
             </p>

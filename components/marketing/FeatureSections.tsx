@@ -144,7 +144,7 @@ function FeatureRowBlock({ id, label, heading, description, features, mockup, pr
       <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16 [&>*]:min-w-0">
         {/* Text side */}
         <div className={cn(reverse && 'lg:order-last')}>
-          <p className="font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+          <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
             {label}
           </p>
           <h3 className="mt-4 font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
@@ -164,7 +164,7 @@ function FeatureRowBlock({ id, label, heading, description, features, mockup, pr
           {proof && (
             <Link
               href={proof.href}
-              className="mt-6 inline-flex items-center gap-1 font-mono text-xs text-primary transition-colors duration-150 hover:text-primary/80 motion-reduce:transition-none"
+              className="mt-6 inline-flex items-center gap-1 text-xs text-primary transition-colors duration-150 hover:text-primary/80 motion-reduce:transition-none"
             >
               {proof.label}
               <ArrowUpRightIcon aria-hidden="true" className="h-3 w-3" />
