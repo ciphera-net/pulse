@@ -83,13 +83,15 @@ export default function ProfileSettings({ activeTab, borderless, hideDangerZone 
     // display email was available); else the arg is already the raw password (Facet
     // passes it through when user.email is empty — the common ZKE case).
     const password = passwordCaptureCountRef.current > 0 ? capturedPasswordsRef.current.current : passwordArg
+    let reauthToken: string | undefined
     try {
-      await requestReauth({ op: 'delete', password })
+      ;({ reauthToken } = await requestReauth({ op: 'delete', password }))
     } catch (err) {
       if (isReauthCancelled(err)) throw new Error('Account deletion cancelled.')
       throw err
     }
-    await deleteAccount()
+    // Slice 4: the delete op resolves with the server-minted single-use re-auth token.
+    await deleteAccount(reauthToken!)
     // Facet's own handler calls logout() next.
   }
 

@@ -19,21 +19,21 @@ function isOwnsOrgsBody(b: unknown): b is OwnsOrgsBody {
   return obj.error === 'owns_organizations' && Array.isArray(obj.organizations)
 }
 
-// id-backend's DeleteAccountRequest binds `password` as `required,len=64` but the
-// handler NEVER reads it (user.go:75-77, 218-310) — the field is vestigial. Real
-// authorization for an OPAQUE account is the fresh client-side OPAQUE proof the
-// ReauthModal completes immediately before this call (a server-side single-use
-// re-auth-token gate is the separate Slice 4). We therefore send a fixed 64-char
-// placeholder purely to satisfy the `len=64` bind; it carries no secret and grants
-// no access. Do NOT reintroduce a derived password here — deriveAuthKey is retired.
-const DELETE_VESTIGIAL_PASSWORD = '0'.repeat(64)
-
-export async function deleteAccount(): Promise<void> {
+// Delete authorization is a server-side single-use re-auth token (Slice 4): the
+// ReauthModal drives a fresh OPAQUE ceremony against id-backend's dedicated
+// `/auth/reauth/*` endpoint, which mints the token bound to the session user. We
+// forward that token as `reauth_token`; the delete handler GETDELs it and requires
+// `tokenUserID == sessionUserID` before any state mutation. The old `password`
+// placeholder (a vestigial `len=64` bind field the handler never read) is retired.
+export async function deleteAccount(reauthToken: string): Promise<void> {
+  // Loud-fail: never POST an empty token (the ceremony returning "" means the mint
+  // failed — the caller must retry a fresh ceremony, not send a blank credential).
+  if (!reauthToken) throw new Error('Re-authentication token missing')
   // This goes to ciphera-id
   try {
     await apiRequest<void>('/auth/user', {
       method: 'DELETE',
-      body: JSON.stringify({ password: DELETE_VESTIGIAL_PASSWORD }),
+      body: JSON.stringify({ reauth_token: reauthToken }),
     })
   } catch (err) {
     // * B.1 D1: server returns HTTP 409 with a structured list of organizations
