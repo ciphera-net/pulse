@@ -44,6 +44,40 @@ steps:
           https://10.10.0.110:4646/v1/jobs
       - echo "Deployed pulse-frontend ($DEPLOY_SHA)"
 
+  # After the rollout converges, purge the immutable /_next/static assets from the
+  # Bunny edge. Chunk hashes change per build; during the rollout window the edge can
+  # cache a 404 for a new-build chunk (pulled from the still-old alloc) and then serve
+  # that 404 for 30 days — blanking the site. Waiting for the deployment to be healthy
+  # before purging guarantees the edge re-populates from the NEW allocation.
+  purge-cdn:
+    image: alpine:3.20
+    when:
+      - event: push
+        branch: main
+    volumes:
+      - /opt/woodpecker/secrets/nomad-token:/run/ci/nomad-token:ro
+      - /opt/vault-agent/tls/ca.pem:/run/ci/nomad-ca.pem:ro
+    environment:
+      BUNNY_API_KEY:
+        from_secret: bunny_api_key
+    commands:
+      - apk add --no-cache curl jq >/dev/null
+      - export NOMAD_TOKEN=$(cat /run/ci/nomad-token)
+      - |
+        for i in $(seq 1 60); do
+          S=$(curl -sf --cacert /run/ci/nomad-ca.pem -H "X-Nomad-Token: $NOMAD_TOKEN" \
+            https://10.10.0.110:4646/v1/job/pulse-frontend/deployment | jq -r '.Status // "none"')
+          echo "deployment: $S"
+          [ "$S" = "successful" ] && break
+          case "$S" in failed|cancelled) echo "deploy not healthy ($S)"; exit 1 ;; esac
+          sleep 5
+        done
+      - |
+        curl -fsS -X POST \
+          "https://api.bunny.net/purge?url=https://pulse.ciphera.net/_next/static/*&async=false" \
+          -H "AccessKey: $BUNNY_API_KEY"
+      - echo "Purged pulse.ciphera.net /_next/static/*"
+
   deploy-staging:
     image: alpine:3.20
     when:
@@ -79,6 +113,37 @@ steps:
           -d "{\"Job\": $(cat /tmp/job.json)}" \
           https://10.10.0.110:4646/v1/jobs
       - echo "Deployed pulse-frontend-staging ($DEPLOY_SHA)"
+
+  # Same as purge-cdn, for the staging pull zone. (This is exactly the failure that
+  # blanked pulse-staging on 22-07-2026 after the flags-CDN deploy.)
+  purge-cdn-staging:
+    image: alpine:3.20
+    when:
+      - event: push
+        branch: staging
+    volumes:
+      - /opt/woodpecker/secrets/nomad-token:/run/ci/nomad-token:ro
+      - /opt/vault-agent/tls/ca.pem:/run/ci/nomad-ca.pem:ro
+    environment:
+      BUNNY_API_KEY:
+        from_secret: bunny_api_key
+    commands:
+      - apk add --no-cache curl jq >/dev/null
+      - export NOMAD_TOKEN=$(cat /run/ci/nomad-token)
+      - |
+        for i in $(seq 1 60); do
+          S=$(curl -sf --cacert /run/ci/nomad-ca.pem -H "X-Nomad-Token: $NOMAD_TOKEN" \
+            https://10.10.0.110:4646/v1/job/pulse-frontend-staging/deployment | jq -r '.Status // "none"')
+          echo "deployment: $S"
+          [ "$S" = "successful" ] && break
+          case "$S" in failed|cancelled) echo "deploy not healthy ($S)"; exit 1 ;; esac
+          sleep 5
+        done
+      - |
+        curl -fsS -X POST \
+          "https://api.bunny.net/purge?url=https://pulse-staging.ciphera.net/_next/static/*&async=false" \
+          -H "AccessKey: $BUNNY_API_KEY"
+      - echo "Purged pulse-staging.ciphera.net /_next/static/*"
 
   cdn-scripts:
     image: alpine:3.20

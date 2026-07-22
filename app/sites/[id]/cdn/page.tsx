@@ -8,7 +8,8 @@ import { motion } from 'framer-motion'
 import { scaleLinear, scaleTime } from 'd3-scale'
 import { area as d3Area, curveMonotoneX } from 'd3-shape'
 import { bisector } from 'd3-array'
-import * as Flags from 'country-flag-icons/react/3x2'
+import { CountryFlag } from '@/components/ui/CountryFlag'
+import { hasFlag } from '@/lib/flags'
 
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { formatNumber } from '@/lib/utils/format'
@@ -48,9 +49,8 @@ const TOTAL_DOT = '#a3a3a3'
 
 /** Flag icon for an alpha-2 country code, or null when unavailable. */
 function getFlagIcon(code: string) {
-  if (!code) return null
-  const FlagComponent = (Flags as Record<string, React.ComponentType<{ className?: string }>>)[code]
-  return FlagComponent ? <FlagComponent className="h-3.5 w-5 shrink-0 rounded-none" /> : null
+  if (!code || !hasFlag(code)) return null
+  return <CountryFlag code={code} className="h-3.5 w-5 shrink-0 rounded-none" />
 }
 
 /** Map datacenter entries to country centroids for the dotted map, summing

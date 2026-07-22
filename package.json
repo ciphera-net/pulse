@@ -1,6 +1,7 @@
 {
   "name": "pulse-frontend",
   "version": "0.15.0-alpha",
+  "license": "AGPL-3.0-only",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -39,7 +40,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
-    "country-flag-icons": "^1.6.4",
     "d3": "^7.9.0",
     "d3-array": "^3.2.4",
     "d3-scale": "^4.0.2",
