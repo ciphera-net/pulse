@@ -38,9 +38,9 @@ export default function FrustrationByPageTable({ pages, lensPage, onToggleLens }
   return (
     <div className="rounded-none border border-border bg-card p-4">
       <div className="mb-3 flex h-6 items-center justify-between gap-3">
-        <span className="font-mono text-xs text-neutral-500">Frustration by page</span>
+        <span className="text-xs text-neutral-500">Frustration by page</span>
         {hasData && (
-          <span className="hidden font-mono text-xs text-neutral-600 sm:block">
+          <span className="hidden text-xs text-neutral-600 sm:block">
             Select a page to filter signals
           </span>
         )}
@@ -49,7 +49,7 @@ export default function FrustrationByPageTable({ pages, lensPage, onToggleLens }
       {hasData ? (
         <div className="overflow-x-auto">
           {/* Column header */}
-          <div className="flex h-6 items-center px-2 font-mono text-xs text-neutral-500">
+          <div className="flex h-6 items-center px-2 text-xs text-neutral-500">
             <span className="flex-1">Page</span>
             <div className="flex items-center gap-6">
               <span className="w-12 text-right">Rage</span>

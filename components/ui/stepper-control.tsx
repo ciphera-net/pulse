@@ -108,7 +108,7 @@ export function StepperControl({ label, value, min, max, step = 1, onChange, for
         className,
       )}
     >
-      <span className="font-mono text-xs text-neutral-500 pr-0.5">{label}</span>
+      <span className="text-xs text-neutral-500 pr-0.5">{label}</span>
       <button
         type="button"
         tabIndex={-1}

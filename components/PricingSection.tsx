@@ -149,7 +149,7 @@ export default function PricingSection() {
       <section className="border-b border-border">
         <div className="px-6 pb-12 pt-16 text-center sm:pt-20">
           <Eyebrow label="Pulse · Pricing" className="text-center" />
-          <h1 className="mt-6 font-display text-5xl font-bold tracking-tight text-foreground sm:text-6xl">
+          <h1 className="mt-6 font-display text-5xl font-semibold tracking-tight text-foreground sm:text-6xl">
             Pricing
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
@@ -199,7 +199,7 @@ export default function PricingSection() {
                 Yearly
               </button>
             </div>
-            <span className="font-mono text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               Get 1 month free with yearly
             </span>
           </div>
@@ -220,7 +220,7 @@ export default function PricingSection() {
                     onClick={() => setSliderIndex(i)}
                     aria-label={`Select ${tier.label} pageviews per month`}
                     className={cn(
-                      'whitespace-nowrap px-1 py-0.5 font-mono text-xs tabular-nums transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none',
+                      'whitespace-nowrap px-1 py-0.5 text-xs tabular-nums transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none',
                       i === sliderIndex
                         ? 'text-primary'
                         : 'text-muted-foreground hover:text-foreground',
@@ -284,13 +284,13 @@ export default function PricingSection() {
                     isTeam && 'ring-1 ring-inset ring-primary',
                   )}
                 >
-                  {/* Tier name — mono micro-label; popular tier flags itself */}
+                  {/* Tier name — micro-label; popular tier flags itself */}
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                    <span className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
                       {plan.name}
                     </span>
                     {isTeam && (
-                      <span className="font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                      <span className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
                         Most popular
                       </span>
                     )}
@@ -301,7 +301,7 @@ export default function PricingSection() {
                     {plan.isFree ? (
                       <>
                         <div className="flex items-baseline gap-1">
-                          <span className="font-display text-4xl font-bold tabular-nums text-foreground">
+                          <span className="font-display text-4xl font-semibold tabular-nums text-foreground">
                             €0
                           </span>
                           <span className="text-sm text-muted-foreground">/mo</span>
@@ -313,7 +313,7 @@ export default function PricingSection() {
                     ) : isCustomTier ? (
                       <>
                         <div className="flex items-baseline gap-1">
-                          <span className="font-display text-4xl font-bold text-foreground">
+                          <span className="font-display text-4xl font-semibold text-foreground">
                             Custom
                           </span>
                         </div>
@@ -324,7 +324,7 @@ export default function PricingSection() {
                     ) : priceDetails ? (
                       <>
                         <div className="flex items-baseline gap-1">
-                          <span className="font-display text-4xl font-bold tabular-nums text-foreground">
+                          <span className="font-display text-4xl font-semibold tabular-nums text-foreground">
                             €{isYearly ? priceDetails.effectiveMonthly : priceDetails.monthly}
                           </span>
                           <span className="text-sm text-muted-foreground">/mo</span>
@@ -342,7 +342,7 @@ export default function PricingSection() {
                     ) : (
                       <>
                         <div className="flex items-baseline gap-1">
-                          <span className="font-display text-4xl font-bold text-muted-foreground">
+                          <span className="font-display text-4xl font-semibold text-muted-foreground">
                             —
                           </span>
                         </div>
@@ -410,7 +410,7 @@ export default function PricingSection() {
 
           {/* All plans include — quiet bordered row */}
           <div className="mt-6 border border-border bg-card px-6 py-5">
-            <p className="mb-4 text-center font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+            <p className="mb-4 text-center text-xs uppercase tracking-[0.08em] text-muted-foreground">
               All plans include
             </p>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-center sm:gap-8">
@@ -435,7 +435,7 @@ export default function PricingSection() {
             </p>
             <a
               href="mailto:business@ciphera.net?subject=Enterprise%20Plan%20Inquiry"
-              className="shrink-0 font-mono text-xs text-primary transition-colors duration-150 hover:text-foreground motion-reduce:transition-none"
+              className="shrink-0 text-xs text-primary transition-colors duration-150 hover:text-foreground motion-reduce:transition-none"
             >
               Let&apos;s talk →
             </a>
@@ -447,7 +447,7 @@ export default function PricingSection() {
       <section className="border-b border-border">
         <div className="px-6 py-16 sm:py-20">
           <Eyebrow label="FAQ" />
-          <h2 className="mt-4 font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          <h2 className="mt-4 font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
             Pricing questions, answered.
           </h2>
           <PricingFAQ />
@@ -458,7 +458,7 @@ export default function PricingSection() {
       <section>
         <div className="flex flex-col items-start justify-between gap-8 px-6 py-20 sm:py-24 lg:flex-row lg:items-center">
           <div className="max-w-xl">
-            <h2 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               Start tracking with privacy.
             </h2>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground">

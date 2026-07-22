@@ -154,7 +154,7 @@ export function Footer({
                   className="h-7 w-7 object-contain"
                   unoptimized
                 />
-                <span className="font-display text-lg font-bold tracking-tight text-foreground">
+                <span className="font-display text-lg font-semibold tracking-tight text-foreground">
                   Pulse
                 </span>
               </Link>
@@ -196,7 +196,7 @@ export function Footer({
             {/* Link columns */}
             {footerColumns.map((column) => (
               <div key={column.heading}>
-                <h3 className="font-mono text-xs text-muted-foreground">
+                <h3 className="text-xs text-muted-foreground">
                   {column.heading}
                 </h3>
                 <ul className="mt-4 space-y-3">
@@ -233,7 +233,7 @@ export function Footer({
                 </a>{' '}
                 product
               </p>
-              <p className="font-mono text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Zero-knowledge · No tracking · Open source
               </p>
             </div>

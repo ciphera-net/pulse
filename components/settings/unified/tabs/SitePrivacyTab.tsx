@@ -631,7 +631,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
             <div className="space-y-3 px-5 py-4">
               <p className="text-xs text-amber-400">This is provided for convenience and is not legal advice. Consult a lawyer for compliance requirements.</p>
               <div className="relative">
-                <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-none border border-border bg-muted px-4 py-3 pr-12 font-mono text-xs text-muted-foreground">
+                <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-none border border-border bg-muted px-4 py-3 pr-12 text-xs text-muted-foreground">
                   {generatePrivacySnippet(site)}
                 </pre>
                 <Button

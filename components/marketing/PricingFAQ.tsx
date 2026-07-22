@@ -70,7 +70,7 @@ export default function PricingFAQ() {
               onClick={() => selectGroup(g.key)}
               onKeyDown={(e) => handleTabKeyDown(e, i)}
               className={cn(
-                'flex items-baseline justify-between gap-3 py-1.5 text-left font-mono text-xs transition-colors duration-150 motion-reduce:transition-none',
+                'flex items-baseline justify-between gap-3 py-1.5 text-left text-xs transition-colors duration-150 motion-reduce:transition-none',
                 isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
               )}
             >
@@ -102,7 +102,7 @@ export default function PricingFAQ() {
                 onClick={() => setOpenId(isOpen ? null : item.n)}
                 className="flex w-full items-center gap-5 px-5 py-4 text-left transition-colors duration-150 hover:bg-accent motion-reduce:transition-none"
               >
-                <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                <span className="text-xs tabular-nums text-muted-foreground">
                   {item.n}
                 </span>
                 <span className="flex-1 text-sm font-medium text-foreground">{item.question}</span>

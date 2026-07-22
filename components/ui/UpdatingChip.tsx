@@ -46,7 +46,7 @@ export function UpdatingChip({ active, className }: UpdatingChipProps) {
       aria-live="polite"
     >
       <CircleNotch className="h-3.5 w-3.5 animate-spin text-neutral-400" />
-      <span className="font-mono text-xs text-neutral-400">Updating…</span>
+      <span className="text-xs text-neutral-400">Updating…</span>
     </motion.div>
   )
 }
