@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next'
 import { integrations } from '@/lib/integrations'
+import { comparisons } from '@/lib/comparisons'
 
 const BASE_URL = 'https://pulse.ciphera.net'
 
@@ -20,6 +21,22 @@ const LAST_MODIFIED: Record<string, string> = {
 }
 
 const INTEGRATIONS_LASTMOD = '2026-07-21'
+// * The category-SEO cluster (/vs, category landing pages, tools) — all shipped
+// * in the 21-07 pass.
+const SEO_LASTMOD = '2026-07-21'
+
+// * Category landing pages — individual routes, each a distinct angle on the
+// * privacy-analytics category queries.
+const CATEGORY_ROUTES = [
+  '/cookieless-analytics',
+  '/gdpr-compliant-analytics',
+  '/google-analytics-alternative',
+  '/analytics-without-cookie-banner',
+  '/eu-web-analytics',
+]
+
+// * Client-side tool pages (no backend), indexable and linked from the cluster.
+const TOOL_ROUTES = ['/tools/utm-builder', '/tools/cookie-banner-loss-calculator']
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const publicRoutes = [
@@ -50,5 +67,35 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.6,
   }))
 
-  return [...staticEntries, ...integrationEntries]
+  // * The /vs/[slug] comparison cluster — one page per competitor.
+  const comparisonEntries: MetadataRoute.Sitemap = comparisons.map((comparison) => ({
+    url: `${BASE_URL}/vs/${comparison.slug}`,
+    lastModified: new Date(SEO_LASTMOD),
+    changeFrequency: 'monthly' as const,
+    priority: 0.8,
+  }))
+
+  // * Category landing pages.
+  const categoryEntries: MetadataRoute.Sitemap = CATEGORY_ROUTES.map((url) => ({
+    url: `${BASE_URL}${url}`,
+    lastModified: new Date(SEO_LASTMOD),
+    changeFrequency: 'monthly' as const,
+    priority: 0.8,
+  }))
+
+  // * Tool pages.
+  const toolEntries: MetadataRoute.Sitemap = TOOL_ROUTES.map((url) => ({
+    url: `${BASE_URL}${url}`,
+    lastModified: new Date(SEO_LASTMOD),
+    changeFrequency: 'monthly' as const,
+    priority: 0.7,
+  }))
+
+  return [
+    ...staticEntries,
+    ...comparisonEntries,
+    ...categoryEntries,
+    ...toolEntries,
+    ...integrationEntries,
+  ]
 }

@@ -7,7 +7,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowRightIcon } from '@ciphera-net/facet'
+import { ArrowRightIcon, ArrowUpRightIcon } from '@ciphera-net/facet'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
 import { TierBadge } from '@/components/integrations/TierBadge'
 import {
@@ -17,6 +17,21 @@ import {
   supportTierDescriptions,
   integrationDocsUrl,
 } from '@/lib/integrations'
+import { getIntegrationDeepDive } from '@/lib/integration-deep-dive'
+
+// Render a paragraph string with `backtick`-delimited inline code as styled
+// <code> spans. Even segments are plain text, odd segments are code.
+function renderInlineCode(text: string, keyPrefix: string): React.ReactNode[] {
+  return text.split('`').map((segment, i) =>
+    i % 2 === 1 ? (
+      <code key={`${keyPrefix}-${i}`} className="font-mono text-sm text-foreground/80">
+        {segment}
+      </code>
+    ) : (
+      <span key={`${keyPrefix}-${i}`}>{segment}</span>
+    ),
+  )
+}
 
 const INSTALL_METHOD_LABEL: Record<string, string> = {
   'script-tag': 'Script tag',
@@ -60,6 +75,7 @@ export default async function IntegrationGuidePage({ params }: { params: Promise
   if (!integration) notFound()
 
   const docsUrl = integrationDocsUrl(integration)
+  const deepDive = getIntegrationDeepDive(slug)
   const related = integration.relatedIds
     .map((id) => getIntegration(id))
     .filter((i): i is NonNullable<typeof i> => Boolean(i))
@@ -185,6 +201,28 @@ export default async function IntegrationGuidePage({ params }: { params: Promise
           </a>
         </div>
       </MarketingSection>
+
+      {/* Stack-specific deep dive — top-10 integrations only. */}
+      {deepDive && (
+        <MarketingSection
+          eyebrowNumber="01"
+          eyebrowLabel={`${integration.name} + Pulse`}
+          heading={deepDive.heading}
+        >
+          <div className="mt-6 max-w-3xl space-y-5 text-base leading-relaxed text-muted-foreground">
+            {deepDive.paragraphs.map((paragraph, i) => (
+              <p key={i}>{renderInlineCode(paragraph, `dd-${i}`)}</p>
+            ))}
+          </div>
+          <Link
+            href={deepDive.link.href}
+            className="mt-6 inline-flex items-center gap-1 font-mono text-xs text-primary transition-colors hover:text-primary/80"
+          >
+            {deepDive.link.label}
+            <ArrowUpRightIcon aria-hidden="true" className="h-3 w-3" />
+          </Link>
+        </MarketingSection>
+      )}
 
       {/* Related integrations. */}
       {related.length > 0 && (

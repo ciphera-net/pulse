@@ -14,6 +14,14 @@ const PUBLIC_ROUTES = new Set([
   '/installation',
   '/demo', // * Public live-demo landing page — links out to the ciphera.net share view
 
+  // * Category-SEO landing pages (21-07). Public marketing surface — must render
+  // * for anonymous visitors and crawlers, same as /features or /pricing.
+  '/cookieless-analytics',
+  '/gdpr-compliant-analytics',
+  '/google-analytics-alternative',
+  '/analytics-without-cookie-banner',
+  '/eu-web-analytics',
+
   '/script.js', // * Tracking script – must load without auth for embedded sites (Shopify, etc.)
   '/script.frustration.js', // * Frustration tracking add-on (rage clicks, dead clicks)
   '/script-sri.json', // * Subresource Integrity manifest (sha384 of both scripts); consumed by ciphera-website build to pin <script integrity="">.
@@ -22,6 +30,8 @@ const PUBLIC_ROUTES = new Set([
 const PUBLIC_PREFIXES = [
   '/share/',
   '/integrations',
+  '/vs/', // * Public /vs/[slug] comparison cluster (Pulse vs <competitor>)
+  '/tools/', // * Public client-side tools (UTM builder, cookie-banner calculator)
   '/docs',
   '/join/',
 ]
