@@ -75,8 +75,17 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   const showOfflineBar = Boolean(auth.user && !isOnline)
   // Site pages use DashboardShell with full sidebar — no Header needed
   const isSitePage = pathname.startsWith('/sites/') && pathname !== '/sites/new'
-  // Pages that use DashboardShell with home sidebar (no site context)
-  const isDashboardPage = pathname === '/' || pathname.startsWith('/integrations') || pathname === '/pricing' || pathname === '/notifications' || pathname === '/sites/new' || pathname.startsWith('/settings')
+  // Pages that use DashboardShell with home sidebar (no site context). `/sites`
+  // is the authenticated home (public `/` server-renders marketing and
+  // redirects signed-in visitors here via middleware).
+  const isDashboardPage = pathname === '/sites' || pathname.startsWith('/integrations') || pathname === '/pricing' || pathname === '/notifications' || pathname === '/sites/new' || pathname.startsWith('/settings')
+  // Public dashboard-shell routes (/pricing, /integrations/*) must SERVER-RENDER
+  // their marketing variant for crawlers, so they are excluded from the
+  // "hold a blank frame while the auth probe runs" guard below. Anonymous
+  // visitors get the marketing shell server-side; a signed-in visitor briefly
+  // sees it on a hard load before the client swaps to DashboardShell (a
+  // client-side navigation, where auth is already resolved, never flashes).
+  const isPublicDashboardPage = pathname === '/pricing' || pathname.startsWith('/integrations')
   // Checkout page has its own minimal layout — no app header/footer
   const isCheckoutPage = pathname.startsWith('/checkout')
   // Auth callback is a transient route that only renders <LoadingOverlay> while
@@ -94,8 +103,10 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     return <>{children}</>
   }
 
-  // While auth is loading on a site or checkout page, render nothing to prevent flash of public header
-  if (auth.loading && (isSitePage || isCheckoutPage || isDashboardPage)) {
+  // While auth is loading on an authed-only chrome page, render nothing to
+  // prevent a flash of the public header. Public dashboard-shell routes are
+  // excluded so they server-render marketing for crawlers.
+  if (auth.loading && (isSitePage || isCheckoutPage || (isDashboardPage && !isPublicDashboardPage))) {
     return null
   }
 

@@ -6,8 +6,11 @@ import { MarketingSection } from '@/components/marketing/system/MarketingSection
 import { ChangelogReleases, type Release } from './ChangelogReleases'
 
 export const metadata: Metadata = {
-  title: 'Changelog - Pulse',
+  title: 'Changelog',
   description: 'Release history and notable changes for Pulse, privacy-first web analytics.',
+  alternates: {
+    canonical: '/changelog',
+  },
 }
 
 // * How many release sections (incl. Unreleased) render expanded; every other
