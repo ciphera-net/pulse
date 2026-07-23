@@ -53,7 +53,7 @@ const footerColumns: { heading: string; links: FooterLink[] }[] = [
       { name: 'FAQ', href: '/faq' },
       { name: 'UTM builder', href: '/tools/utm-builder' },
       { name: 'Cookie-banner calculator', href: '/tools/cookie-banner-loss-calculator' },
-      { name: 'Documentation', href: 'https://help.ciphera.net', external: true },
+      { name: 'Documentation', href: 'https://help.ciphera.net/docs/pulse', external: true },
       { name: 'About', href: '/about' },
     ],
   },

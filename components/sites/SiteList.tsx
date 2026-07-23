@@ -169,7 +169,7 @@ export default function SiteList({ sites, siteStats, loading }: SiteListProps) {
         </div>
         <h3 className="font-semibold text-white">Need help setup?</h3>
         <p className="mb-4 text-sm text-neutral-400">Check our documentation for installation guides.</p>
-        <Link href="https://help.ciphera.net" target="_blank" className="text-sm font-medium text-brand-orange hover:underline">
+        <Link href="https://help.ciphera.net/docs/pulse" target="_blank" className="text-sm font-medium text-brand-orange hover:underline">
           Read Documentation &rarr;
         </Link>
       </div>
