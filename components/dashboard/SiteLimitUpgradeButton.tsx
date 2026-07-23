@@ -23,7 +23,7 @@ export default function SiteLimitUpgradeButton({ used, limit }: SiteLimitUpgrade
       className="group inline-flex h-9 items-stretch rounded-none bg-brand-orange text-sm font-medium text-white transition-colors duration-fast hover:bg-brand-orange-hover"
     >
       <span className="flex items-center pl-4 pr-3">Upgrade for more sites</span>
-      <span className="ml-0.5 flex items-center bg-brand-orange-button px-2.5 font-mono text-xs tabular-nums text-orange-100 transition-colors duration-fast group-hover:bg-brand-orange-button-hover">
+      <span className="ml-0.5 flex items-center bg-brand-orange-button px-2.5 text-xs tabular-nums text-orange-100 transition-colors duration-fast group-hover:bg-brand-orange-button-hover">
         {used}/{limit}
       </span>
     </Link>

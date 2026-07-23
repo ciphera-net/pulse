@@ -1,11 +1,14 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'About | Pulse',
-  description: 'Pulse is built by Ciphera — privacy-first web analytics made in Switzerland.',
+  title: 'About',
+  description: 'Pulse is privacy-first web analytics built by Ciphera BV in Belgium — data hosted in Switzerland/EU.',
+  alternates: {
+    canonical: '/about',
+  },
   openGraph: {
-    title: 'About | Pulse',
-    description: 'Pulse is built by Ciphera — privacy-first web analytics made in Switzerland.',
+    title: 'About',
+    description: 'Pulse is privacy-first web analytics built by Ciphera BV in Belgium — data hosted in Switzerland/EU.',
     siteName: 'Pulse by Ciphera',
   },
 }

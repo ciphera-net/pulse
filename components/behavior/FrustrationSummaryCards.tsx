@@ -17,7 +17,7 @@ function DeltaBadge({ change }: { change: PctChangeResult }) {
   // * the delta's base equals the previous value, so 'new' can never surface.
   if (!change || change.type !== 'pct') return null
   if (change.value === 0) {
-    return <span className="font-mono text-xs tabular-nums text-neutral-500">0%</span>
+    return <span className="text-xs tabular-nums text-neutral-500">0%</span>
   }
   const up = change.value > 0
   return (
@@ -43,7 +43,7 @@ function KpiCard({
   return (
     <div className="rounded-none border border-border bg-card p-4">
       <div className="mb-1.5 flex items-start justify-between gap-2">
-        <span className="font-mono text-xs text-neutral-500">{label}</span>
+        <span className="text-xs text-neutral-500">{label}</span>
         <DeltaBadge change={delta} />
       </div>
       <AnimatedNumber
@@ -51,7 +51,7 @@ function KpiCard({
         format={(v) => formatNumber(Math.round(v))}
         className="text-2xl font-semibold tabular-nums text-white"
       />
-      <p className="mt-1 truncate font-mono text-xs text-neutral-500" title={metaTitle}>
+      <p className="mt-1 truncate text-xs text-neutral-500" title={metaTitle}>
         {meta}
       </p>
     </div>

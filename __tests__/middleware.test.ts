@@ -76,18 +76,18 @@ describe('middleware', () => {
   })
 
   describe('auth-only route redirects', () => {
-    it('redirects authenticated user from /login to /', () => {
+    it('redirects authenticated user from /login to the authed home', () => {
       const res = middleware(createRequest('/login', { access_token: 'tok' }))
       const location = res.headers.get('Location')
       expect(location).not.toBeNull()
-      expect(new URL(location!).pathname).toBe('/')
+      expect(new URL(location!).pathname).toBe('/sites')
     })
 
-    it('redirects authenticated user from /signup to /', () => {
+    it('redirects authenticated user from /signup to the authed home', () => {
       const res = middleware(createRequest('/signup', { access_token: 'tok' }))
       const location = res.headers.get('Location')
       expect(location).not.toBeNull()
-      expect(new URL(location!).pathname).toBe('/')
+      expect(new URL(location!).pathname).toBe('/sites')
     })
 
     it('does NOT redirect from /login with only refresh_token (stale session)', () => {

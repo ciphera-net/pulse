@@ -194,7 +194,7 @@ export default function JourneysPage() {
             />
             {filters.lens && (
               <div className="inline-flex h-10 max-w-64 items-center gap-1.5 rounded-none border border-neutral-800 px-2.5">
-                <span className="font-mono text-xs text-neutral-500">Lens</span>
+                <span className="text-xs text-neutral-500">Lens</span>
                 <span className="truncate text-sm text-white" title={filters.lens}>
                   {filters.lens}
                 </span>

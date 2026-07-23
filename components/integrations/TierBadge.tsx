@@ -12,7 +12,7 @@ const TIER_STYLES: Record<SupportTier, string> = {
 export function TierBadge({ tier, className = '' }: { tier: SupportTier; className?: string }) {
   return (
     <span
-      className={`inline-flex items-center border px-1.5 py-0.5 rounded-none font-mono text-[10px] uppercase tracking-[0.08em] ${TIER_STYLES[tier]} ${className}`}
+      className={`inline-flex items-center border px-1.5 py-0.5 rounded-none text-[10px] uppercase tracking-[0.08em] ${TIER_STYLES[tier]} ${className}`}
     >
       {supportTierLabels[tier]}
     </span>

@@ -14,7 +14,10 @@ import '../styles/globals.css'
 // * canonical) resolves against. Kept as a constant so the OG/Twitter blocks
 // * and metadataBase never drift apart.
 const SITE_URL = 'https://pulse.ciphera.net'
-const SITE_TITLE = 'Pulse - Privacy-First Web Analytics'
+// * Brand-led title (owner decision: "Pulse by Ciphera"). Used as the default
+// * <title> and as the OG/Twitter title; child routes set a bare page name and
+// * the template appends the brand — see `title` below.
+const SITE_TITLE = 'Pulse by Ciphera — Privacy-First Web Analytics'
 const SITE_DESCRIPTION =
   'Simple, privacy-focused web analytics. No cookies, no tracking. GDPR compliant.'
 // * 1200x630 social share card. cdnUrl() prepends NEXT_PUBLIC_CDN_URL
@@ -44,7 +47,10 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: SITE_TITLE,
+  title: {
+    default: SITE_TITLE,
+    template: '%s | Pulse by Ciphera',
+  },
   description: SITE_DESCRIPTION,
   keywords: ['analytics', 'privacy', 'web analytics', 'ciphera', 'GDPR'],
   authors: [{ name: 'Ciphera' }],
@@ -98,6 +104,10 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geist.variable} ${jetbrainsMono.variable} dark`} suppressHydrationWarning>
       <body className="antialiased min-h-screen flex flex-col bg-background text-foreground">
+        {/* Warm up the CDN connection so the LCP hero image (served from
+            cdn.ciphera.net) starts downloading a round-trip earlier. */}
+        <link rel="preconnect" href="https://cdn.ciphera.net" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://cdn.ciphera.net" />
         {/* WCAG 2.1 A: first focusable element; visible only on keyboard focus */}
         <a
           href="#main-content"

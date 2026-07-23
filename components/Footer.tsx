@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { GithubIcon, TwitterIcon, ArrowUpRightIcon } from '@ciphera-net/facet'
+import { LinkedinLogo } from '@phosphor-icons/react/dist/ssr'
 import { cdnUrl } from '@/lib/cdn'
 import { Watermark } from '@/components/marketing/system/Watermark'
 
@@ -25,11 +26,34 @@ const footerColumns: { heading: string; links: FooterLink[] }[] = [
     ],
   },
   {
+    heading: 'Compare',
+    links: [
+      { name: 'vs Google Analytics', href: '/vs/google-analytics' },
+      { name: 'vs Plausible', href: '/vs/plausible' },
+      { name: 'vs Matomo', href: '/vs/matomo' },
+      { name: 'vs Fathom', href: '/vs/fathom' },
+      { name: 'vs Simple Analytics', href: '/vs/simple-analytics' },
+      { name: 'vs Umami', href: '/vs/umami' },
+    ],
+  },
+  {
+    heading: 'Guides',
+    links: [
+      { name: 'Cookieless analytics', href: '/cookieless-analytics' },
+      { name: 'GDPR-compliant analytics', href: '/gdpr-compliant-analytics' },
+      { name: 'GA alternative', href: '/google-analytics-alternative' },
+      { name: 'No cookie banner', href: '/analytics-without-cookie-banner' },
+      { name: 'EU web analytics', href: '/eu-web-analytics' },
+    ],
+  },
+  {
     heading: 'Resources',
     links: [
       { name: 'Installation', href: '/installation' },
       { name: 'FAQ', href: '/faq' },
-      { name: 'Documentation', href: 'https://help.ciphera.net', external: true },
+      { name: 'UTM builder', href: '/tools/utm-builder' },
+      { name: 'Cookie-banner calculator', href: '/tools/cookie-banner-loss-calculator' },
+      { name: 'Documentation', href: 'https://help.ciphera.net/docs/pulse', external: true },
       { name: 'About', href: '/about' },
     ],
   },
@@ -117,9 +141,9 @@ export function Footer({
       <div className="mx-auto w-full max-w-6xl sm:border-x sm:border-border">
         {/* Link grid */}
         <div className="px-6 py-16">
-          <div className="grid gap-12 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
-            {/* Brand column */}
-            <div>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-3 lg:grid-cols-[1.5fr_repeat(5,1fr)]">
+            {/* Brand column — spans the full row on small screens */}
+            <div className="col-span-2 sm:col-span-3 lg:col-span-1">
               <Link href="/" className="flex items-center gap-2">
                 <Image
                   src={cdnUrl('/pulse_icon_no_margins.png')}
@@ -130,7 +154,7 @@ export function Footer({
                   className="h-7 w-7 object-contain"
                   unoptimized
                 />
-                <span className="font-display text-lg font-bold tracking-tight text-foreground">
+                <span className="font-display text-lg font-semibold tracking-tight text-foreground">
                   Pulse
                 </span>
               </Link>
@@ -149,7 +173,7 @@ export function Footer({
                   <GithubIcon className="h-4 w-4" />
                 </a>
                 <a
-                  href="https://x.com/cipheranet"
+                  href="https://x.com/CipheraNET"
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Ciphera on X"
@@ -157,13 +181,22 @@ export function Footer({
                 >
                   <TwitterIcon className="h-4 w-4" />
                 </a>
+                <a
+                  href="https://www.linkedin.com/company/ciphera/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Ciphera on LinkedIn"
+                  className="inline-flex h-9 w-9 items-center justify-center border border-border text-muted-foreground transition-colors duration-fast hover:text-foreground"
+                >
+                  <LinkedinLogo className="h-4 w-4" />
+                </a>
               </div>
             </div>
 
             {/* Link columns */}
             {footerColumns.map((column) => (
               <div key={column.heading}>
-                <h3 className="font-mono text-xs text-muted-foreground">
+                <h3 className="text-xs text-muted-foreground">
                   {column.heading}
                 </h3>
                 <ul className="mt-4 space-y-3">
@@ -188,7 +221,19 @@ export function Footer({
               <p className="text-xs text-muted-foreground">
                 © 2024–{year} Ciphera. All rights reserved.
               </p>
-              <p className="font-mono text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
+                A{' '}
+                <a
+                  href="https://ciphera.net"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-foreground/80 underline decoration-dotted underline-offset-2 transition-colors duration-fast hover:text-foreground"
+                >
+                  Ciphera
+                </a>{' '}
+                product
+              </p>
+              <p className="text-xs text-muted-foreground">
                 Zero-knowledge · No tracking · Open source
               </p>
             </div>

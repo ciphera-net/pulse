@@ -7,7 +7,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowRightIcon } from '@ciphera-net/facet'
+import { ArrowRightIcon, ArrowUpRightIcon } from '@ciphera-net/facet'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
 import { TierBadge } from '@/components/integrations/TierBadge'
 import {
@@ -17,6 +17,21 @@ import {
   supportTierDescriptions,
   integrationDocsUrl,
 } from '@/lib/integrations'
+import { getIntegrationDeepDive } from '@/lib/integration-deep-dive'
+
+// Render a paragraph string with `backtick`-delimited inline code as styled
+// <code> spans. Even segments are plain text, odd segments are code.
+function renderInlineCode(text: string, keyPrefix: string): React.ReactNode[] {
+  return text.split('`').map((segment, i) =>
+    i % 2 === 1 ? (
+      <code key={`${keyPrefix}-${i}`} className="font-mono text-sm text-foreground/80">
+        {segment}
+      </code>
+    ) : (
+      <span key={`${keyPrefix}-${i}`}>{segment}</span>
+    ),
+  )
+}
 
 const INSTALL_METHOD_LABEL: Record<string, string> = {
   'script-tag': 'Script tag',
@@ -34,11 +49,13 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
   const integration = getIntegration(slug)
-  if (!integration) return { title: 'Integration | Pulse' }
-  const title = `${integration.name} analytics — install Pulse | Pulse`
+  if (!integration) return { title: 'Integration' }
+  // Bare page name — the root title template appends "| Pulse by Ciphera".
+  const title = `${integration.name} analytics — install Pulse`
   return {
     title,
     description: integration.description,
+    alternates: { canonical: `/integrations/${slug}` },
     openGraph: { title, description: integration.description, siteName: 'Pulse by Ciphera' },
   }
 }
@@ -58,6 +75,7 @@ export default async function IntegrationGuidePage({ params }: { params: Promise
   if (!integration) notFound()
 
   const docsUrl = integrationDocsUrl(integration)
+  const deepDive = getIntegrationDeepDive(slug)
   const related = integration.relatedIds
     .map((id) => getIntegration(id))
     .filter((i): i is NonNullable<typeof i> => Boolean(i))
@@ -66,13 +84,27 @@ export default async function IntegrationGuidePage({ params }: { params: Promise
   const caveat =
     integration.supportTier === 'plan-gated' || integration.supportTier === 'special-handling'
 
+  const breadcrumb = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://pulse.ciphera.net' },
+      { '@type': 'ListItem', position: 2, name: 'Integrations', item: 'https://pulse.ciphera.net/integrations' },
+      { '@type': 'ListItem', position: 3, name: integration.name },
+    ],
+  }
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
+      />
       <MarketingSection>
         <div className="max-w-3xl">
           <Link
             href="/integrations"
-            className="font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
+            className="text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             ← All integrations
           </Link>
@@ -81,12 +113,12 @@ export default async function IntegrationGuidePage({ params }: { params: Promise
             <div className="shrink-0 [&_svg]:h-10 [&_svg]:w-10">{integration.icon}</div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+                <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
                   {integration.name}
                 </h1>
                 <TierBadge tier={integration.supportTier} />
               </div>
-              <p className="mt-1 font-mono text-xs text-muted-foreground">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {categoryLabels[integration.category]} · {INSTALL_METHOD_LABEL[integration.installMethod]}
               </p>
             </div>
@@ -103,7 +135,7 @@ export default async function IntegrationGuidePage({ params }: { params: Promise
         {/* Caveat banner for plan-gated / special-handling platforms. */}
         {caveat && hasNote && (
           <div className="mt-8 max-w-3xl rounded-none border border-amber-500/25 bg-amber-500/5 p-5">
-            <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.08em] text-amber-400">
+            <p className="mb-1 text-[11px] uppercase tracking-[0.08em] text-amber-400">
               Before you start
             </p>
             <p className="text-sm leading-relaxed text-foreground">{integration.snippet?.note}</p>
@@ -131,7 +163,7 @@ export default async function IntegrationGuidePage({ params }: { params: Promise
             <div className="rounded-none border border-border overflow-hidden">
               <div className="h-1 bg-gradient-to-r from-brand-orange via-brand-orange/60 to-transparent" />
               <div className="bg-neutral-950 p-5">
-                <p className="mb-3 font-mono text-xs text-muted-foreground">
+                <p className="mb-3 text-xs text-muted-foreground">
                   {integration.snippet?.label ?? 'Add to your site’s <head>'}
                 </p>
                 <pre className="overflow-x-auto whitespace-pre-wrap break-all font-mono text-[13px] leading-relaxed text-neutral-300">
@@ -170,10 +202,32 @@ export default async function IntegrationGuidePage({ params }: { params: Promise
         </div>
       </MarketingSection>
 
+      {/* Stack-specific deep dive — top-10 integrations only. */}
+      {deepDive && (
+        <MarketingSection
+          eyebrowNumber="01"
+          eyebrowLabel={`${integration.name} + Pulse`}
+          heading={deepDive.heading}
+        >
+          <div className="mt-6 max-w-3xl space-y-5 text-base leading-relaxed text-muted-foreground">
+            {deepDive.paragraphs.map((paragraph, i) => (
+              <p key={i}>{renderInlineCode(paragraph, `dd-${i}`)}</p>
+            ))}
+          </div>
+          <Link
+            href={deepDive.link.href}
+            className="mt-6 inline-flex items-center gap-1 font-mono text-xs text-primary transition-colors hover:text-primary/80"
+          >
+            {deepDive.link.label}
+            <ArrowUpRightIcon aria-hidden="true" className="h-3 w-3" />
+          </Link>
+        </MarketingSection>
+      )}
+
       {/* Related integrations. */}
       {related.length > 0 && (
         <MarketingSection>
-          <p className="mb-6 font-mono text-xs text-muted-foreground">Related</p>
+          <p className="mb-6 text-xs text-muted-foreground">Related</p>
           <div className="grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
             {related.map((r) => (
               <Link

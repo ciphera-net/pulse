@@ -124,7 +124,7 @@ export function OpportunitiesView({ siteId, dateRange }: RangeProps) {
       <p className="border-b border-border px-3 py-2.5 text-xs text-neutral-500">
         Queries ranking just off the first page where better content or titles can win clicks.
       </p>
-      <div className="flex h-8 items-center border-b border-border px-3 font-mono text-xs text-neutral-500">
+      <div className="flex h-8 items-center border-b border-border px-3 text-xs text-neutral-500">
         <span className="min-w-0 flex-1">Query</span>
         <div className="ml-3 flex shrink-0 items-center gap-3">
           <span className={cn(OPP.position, 'text-right')}>Position</span>
