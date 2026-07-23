@@ -44,7 +44,7 @@ export default function ComparisonCards() {
           />
           <div>
             <h3 className="text-xl font-bold text-foreground">Pulse</h3>
-            <p className="font-mono text-xs text-primary">Privacy-first analytics</p>
+            <p className="text-xs text-primary">Privacy-first analytics</p>
           </div>
         </div>
         <ul className="space-y-4">
@@ -65,7 +65,7 @@ export default function ComparisonCards() {
           </div>
           <div>
             <h3 className="text-xl font-bold text-foreground">Google Analytics</h3>
-            <p className="font-mono text-xs text-muted-foreground">Traditional tracking</p>
+            <p className="text-xs text-muted-foreground">Traditional tracking</p>
           </div>
         </div>
         <ul className="space-y-4">

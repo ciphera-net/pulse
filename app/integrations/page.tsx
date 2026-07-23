@@ -143,8 +143,8 @@ export default function IntegrationsPage() {
       {/* ── HERO + RAIL ── */}
       <MarketingSection>
         <div className="max-w-2xl">
-          <p className="font-mono text-xs text-muted-foreground">Pulse · Integrations</p>
-          <h1 className="mt-6 font-display text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
+          <p className="text-xs text-muted-foreground">Pulse · Integrations</p>
+          <h1 className="mt-6 font-display text-4xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
             Integrations
           </h1>
           <p className="mt-6 text-base leading-relaxed text-muted-foreground sm:text-lg">
@@ -175,7 +175,7 @@ export default function IntegrationsPage() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search integrations…"
               aria-label="Search integrations"
-              className="h-10 w-full border border-border bg-card pl-10 pr-16 font-mono text-sm text-foreground placeholder:font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="h-10 w-full border border-border bg-card pl-10 pr-16 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             />
             {query ? (
               <button
@@ -188,7 +188,7 @@ export default function IntegrationsPage() {
               </button>
             ) : (
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-                <kbd className="hidden items-center border border-border bg-background px-1.5 py-0.5 font-mono text-xs text-muted-foreground sm:inline-flex">
+                <kbd className="hidden items-center border border-border bg-background px-1.5 py-0.5 text-xs text-muted-foreground sm:inline-flex">
                   /
                 </kbd>
               </div>
@@ -196,7 +196,7 @@ export default function IntegrationsPage() {
           </div>
 
           {isFiltering && (
-            <p className="mt-3 font-mono text-xs text-muted-foreground">
+            <p className="mt-3 text-xs text-muted-foreground">
               {totalResults} {totalResults === 1 ? 'integration' : 'integrations'} found
               {query && <> for &ldquo;{query}&rdquo;</>}
             </p>
@@ -223,7 +223,7 @@ export default function IntegrationsPage() {
                   onClick={() => selectCategory(tab.key)}
                   onKeyDown={(e) => handleTabKeyDown(e, i)}
                   className={cn(
-                    'border-b py-1.5 text-left font-mono text-xs transition-colors duration-150 motion-reduce:transition-none',
+                    'border-b py-1.5 text-left text-xs transition-colors duration-150 motion-reduce:transition-none',
                     isActive
                       ? 'border-brand-orange text-foreground'
                       : 'border-transparent text-muted-foreground hover:text-foreground',
@@ -245,7 +245,7 @@ export default function IntegrationsPage() {
                   type="button"
                   onClick={() => setActiveTier(t.key)}
                   className={cn(
-                    'rounded-none border px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.08em] transition-colors duration-150 ease-apple motion-reduce:transition-none',
+                    'rounded-none border px-2.5 py-1 text-[11px] uppercase tracking-[0.08em] transition-colors duration-150 ease-apple motion-reduce:transition-none',
                     isActive
                       ? 'border-brand-orange bg-brand-orange/10 text-brand-orange'
                       : 'border-border text-muted-foreground hover:text-foreground',
@@ -262,7 +262,7 @@ export default function IntegrationsPage() {
       {/* ── FEATURED (Tier-1 verified) ── */}
       {showFeatured && (
         <MarketingSection>
-          <p className="mb-6 font-mono text-xs text-muted-foreground">Verified · first-class support</p>
+          <p className="mb-6 text-xs text-muted-foreground">Verified · first-class support</p>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-px border border-border bg-border">
             {FEATURED.map((integration) => (
               <Link
@@ -277,7 +277,7 @@ export default function IntegrationsPage() {
                 <div>
                   <h3 className="text-base font-semibold text-foreground">{integration.name}</h3>
                   {integration.snippet?.label && (
-                    <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
                       {integration.snippet.label}
                     </p>
                   )}
@@ -294,7 +294,7 @@ export default function IntegrationsPage() {
           <div className="space-y-14">
             {filteredGroups.map((group) => (
               <div key={group.category}>
-                <p className="mb-6 font-mono text-xs text-muted-foreground">
+                <p className="mb-6 text-xs text-muted-foreground">
                   {group.label}
                   <span className="ml-2 tabular-nums text-muted-foreground/60">
                     {String(group.items.length).padStart(2, '0')}
@@ -310,7 +310,7 @@ export default function IntegrationsPage() {
           </div>
         ) : (
           <div className="border border-border bg-card p-10 text-center">
-            <p className="font-mono text-xs text-muted-foreground">No matches</p>
+            <p className="text-xs text-muted-foreground">No matches</p>
             <h3 className="mt-3 text-lg font-semibold text-foreground">
               Nothing found{query && <> for &ldquo;{query}&rdquo;</>}
             </h3>
@@ -332,7 +332,7 @@ export default function IntegrationsPage() {
         <MarketingSection>
           <div className="flex flex-col items-start justify-between gap-6 border border-border bg-card p-8 sm:flex-row sm:items-center">
             <div>
-              <p className="font-mono text-xs text-muted-foreground">Missing something?</p>
+              <p className="text-xs text-muted-foreground">Missing something?</p>
               <p className="mt-3 text-lg font-semibold text-foreground">Request an integration.</p>
               <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
                 Pulse is a single script tag, so it already works anywhere. Tell us the platform

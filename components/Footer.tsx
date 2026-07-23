@@ -26,10 +26,33 @@ const footerColumns: { heading: string; links: FooterLink[] }[] = [
     ],
   },
   {
+    heading: 'Compare',
+    links: [
+      { name: 'vs Google Analytics', href: '/vs/google-analytics' },
+      { name: 'vs Plausible', href: '/vs/plausible' },
+      { name: 'vs Matomo', href: '/vs/matomo' },
+      { name: 'vs Fathom', href: '/vs/fathom' },
+      { name: 'vs Simple Analytics', href: '/vs/simple-analytics' },
+      { name: 'vs Umami', href: '/vs/umami' },
+    ],
+  },
+  {
+    heading: 'Guides',
+    links: [
+      { name: 'Cookieless analytics', href: '/cookieless-analytics' },
+      { name: 'GDPR-compliant analytics', href: '/gdpr-compliant-analytics' },
+      { name: 'GA alternative', href: '/google-analytics-alternative' },
+      { name: 'No cookie banner', href: '/analytics-without-cookie-banner' },
+      { name: 'EU web analytics', href: '/eu-web-analytics' },
+    ],
+  },
+  {
     heading: 'Resources',
     links: [
       { name: 'Installation', href: '/installation' },
       { name: 'FAQ', href: '/faq' },
+      { name: 'UTM builder', href: '/tools/utm-builder' },
+      { name: 'Cookie-banner calculator', href: '/tools/cookie-banner-loss-calculator' },
       { name: 'Documentation', href: 'https://help.ciphera.net', external: true },
       { name: 'About', href: '/about' },
     ],
@@ -118,9 +141,9 @@ export function Footer({
       <div className="mx-auto w-full max-w-6xl sm:border-x sm:border-border">
         {/* Link grid */}
         <div className="px-6 py-16">
-          <div className="grid gap-12 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
-            {/* Brand column */}
-            <div>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-3 lg:grid-cols-[1.5fr_repeat(5,1fr)]">
+            {/* Brand column — spans the full row on small screens */}
+            <div className="col-span-2 sm:col-span-3 lg:col-span-1">
               <Link href="/" className="flex items-center gap-2">
                 <Image
                   src={cdnUrl('/pulse_icon_no_margins.png')}
@@ -131,7 +154,7 @@ export function Footer({
                   className="h-7 w-7 object-contain"
                   unoptimized
                 />
-                <span className="font-display text-lg font-bold tracking-tight text-foreground">
+                <span className="font-display text-lg font-semibold tracking-tight text-foreground">
                   Pulse
                 </span>
               </Link>
@@ -173,7 +196,7 @@ export function Footer({
             {/* Link columns */}
             {footerColumns.map((column) => (
               <div key={column.heading}>
-                <h3 className="font-mono text-xs text-muted-foreground">
+                <h3 className="text-xs text-muted-foreground">
                   {column.heading}
                 </h3>
                 <ul className="mt-4 space-y-3">
@@ -210,7 +233,7 @@ export function Footer({
                 </a>{' '}
                 product
               </p>
-              <p className="font-mono text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Zero-knowledge · No tracking · Open source
               </p>
             </div>

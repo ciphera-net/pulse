@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next'
 
-// * Public marketing paths crawlers may index.
+// * Public marketing paths crawlers may index. `/vs` and `/tools` are prefix
+// * allows covering the whole comparison cluster and both tool pages.
 const PUBLIC_ALLOW = [
   '/',
   '/about',
@@ -11,6 +12,13 @@ const PUBLIC_ALLOW = [
   '/installation',
   '/integrations',
   '/demo',
+  '/vs',
+  '/tools',
+  '/cookieless-analytics',
+  '/gdpr-compliant-analytics',
+  '/google-analytics-alternative',
+  '/analytics-without-cookie-banner',
+  '/eu-web-analytics',
 ]
 
 // * App / auth surfaces kept out of every index (prefix match). `/sites` is the

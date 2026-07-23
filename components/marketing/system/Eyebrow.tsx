@@ -7,14 +7,14 @@ interface EyebrowProps extends React.ComponentProps<'p'> {
 }
 
 /**
- * The mono eyebrow recipe. With a `number`, renders the numbered-section
+ * The eyebrow recipe. With a `number`, renders the numbered-section
  * grammar `NN · Label` (middle dot is U+00B7 with surrounding spaces);
  * without it, the plain label.
  */
 export function Eyebrow({ number, label, className, ...props }: EyebrowProps) {
   return (
     <p
-      className={cn('font-mono text-xs text-muted-foreground', className)}
+      className={cn('text-xs text-muted-foreground', className)}
       {...props}
     >
       {number ? `${number} · ${label}` : label}

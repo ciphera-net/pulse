@@ -44,7 +44,7 @@ export default function FrustrationTrend({ siteId, start, end }: FrustrationTren
     <div className="relative flex h-full flex-col rounded-none border border-border bg-card p-4">
       <UpdatingChip active={isValidating && !!data} />
       <div className="mb-3">
-        <span className="font-mono text-xs text-neutral-500">Daily frustration</span>
+        <span className="text-xs text-neutral-500">Daily frustration</span>
       </div>
 
       <div className="h-64 flex-1">
