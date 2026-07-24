@@ -150,7 +150,6 @@ steps:
     when:
       - event: push
         branch: main
-    failure: ignore
     environment:
       AWS_ACCESS_KEY_ID:
         from_secret: exoscale_cdn_scripts_key
@@ -159,6 +158,8 @@ steps:
       AWS_DEFAULT_REGION: ch-dk-2
       BUNNY_API_KEY:
         from_secret: bunny_api_key
+      BUNNY_STORAGE_PASSWORD:
+        from_secret: bunny_storage_scripts_password
     commands:
       - apk add --no-cache aws-cli curl openssl >/dev/null
       - |
@@ -173,6 +174,21 @@ steps:
         done
         echo '}' >> public/script-sri.json
         cat public/script-sri.json
+      # Primary origin: Bunny Edge Storage (js.ciphera.net reads from the ciphera-cdn-scripts zone).
+      - |
+        for file in script.js script.frustration.js script.interactions.js script-sri.json; do
+          [ -f "public/$file" ] || continue
+          ct="application/javascript"
+          [ "$file" = "script-sri.json" ] && ct="application/json"
+          sha=$(sha256sum "public/$file" | awk '{print toupper($1)}')
+          curl -fsS -X PUT "https://storage.bunnycdn.com/ciphera-cdn-scripts/$file" \
+            -H "AccessKey: $BUNNY_STORAGE_PASSWORD" \
+            -H "Content-Type: $ct" \
+            -H "Checksum: $sha" \
+            --data-binary @"public/$file"
+        done
+        echo "Scripts uploaded to Bunny Edge Storage (ciphera-cdn-scripts)"
+      # Backup origin: Exoscale SOS (write-through durability copy).
       - |
         for file in script.js script.frustration.js script.interactions.js script-sri.json; do
           [ -f "public/$file" ] || continue
@@ -186,6 +202,8 @@ steps:
             --quiet
         done
         echo "Scripts uploaded to CDN"
+      # geo-replicas sync asynchronously; purging early can re-cache a stale replica copy for the full TTL
+      - sleep 30
       - |
         for path in script.js script.frustration.js script.interactions.js script-sri.json; do
           curl -fsS -X POST \
