@@ -150,7 +150,6 @@ steps:
     when:
       - event: push
         branch: main
-    failure: ignore
     environment:
       AWS_ACCESS_KEY_ID:
         from_secret: exoscale_cdn_scripts_key
