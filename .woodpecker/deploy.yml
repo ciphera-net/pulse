@@ -394,18 +394,6 @@ steps:
         cat public/script-sri.json
       # Primary origin: Bunny Edge Storage (js.ciphera.net reads from the ciphera-cdn-scripts zone).
       - |
-        for file in script.js script.frustration.js script.interactions.js script-sri.json; do
-          [ -f "public/$file" ] || continue
-          ct="application/javascript"
-          [ "$file" = "script-sri.json" ] && ct="application/json"
-          sha=$(sha256sum "public/$file" | awk '{print toupper($1)}')
-          curl -fsS -X PUT "https://storage.bunnycdn.com/ciphera-cdn-scripts/$file" \
-            -H "AccessKey: $BUNNY_STORAGE_PASSWORD" \
-            -H "Content-Type: $ct" \
-            -H "Checksum: $sha" \
-            --data-binary @"public/$file"
-        done
-        echo "Scripts uploaded to Bunny Edge Storage (ciphera-cdn-scripts)"
       # Backup origin: Exoscale SOS (write-through durability copy).
       # ⚠️ FIXED 25-07-2026 — THIS UPLOADED ONLY TO A BUCKET NOBODY SERVES.
       # js.ciphera.net is Bunny pull zone 5736065, which has an EMPTY OriginUrl and
