@@ -1,3 +1,25 @@
+# Dual-target deploy: SKS cluster (LIVE) + Nomad (rollback path during the parallel run).
+# Both branches, both targets. Generated from
+# Infra/Kubernetes/workloads/_shared/ci-deploy/deploy.yml.template.
+#
+# ⚠️ WHY THIS CHANGED: all four pulse Bunny zones now point at the SKS cluster. While this
+# pipeline deployed only to Nomad, a push updated a job serving ZERO public traffic and
+# then purged the edge, which re-filled from the CLUSTER origin running the OLD image — a
+# green pipeline that shipped nothing.
+#
+# ⚠️ PURGE NOW GATES ON THE CLUSTER ROLLOUT, not the Nomad one. Purging while the origin
+# is half old / half new re-caches the old build's 404s for the new chunk paths, and
+# /_next/static carries a 30-day max-age — the failure that blanked pulse-staging on
+# 22-07-2026.
+#
+# 🚨 NEVER use the dollar-brace variable form anywhere in this file — not in a command, not
+# in a comment. Woodpecker substitutes over the RAW FILE, comments included, before the YAML
+# is parsed. CI_COMMIT_SHA in the digest steps is the one deliberate exception.
+#
+# Secrets mount as a DIRECTORY: token-sync publishes with an atomic rename, and a
+# single-FILE bind mount stays pinned to the inode that existed at container start — fatal
+# for the 30m kube token.
+
 depends_on:
   - push
 
@@ -8,14 +30,11 @@ when:
     branch: staging
 
 steps:
-  deploy:
+  digest:
     image: alpine:3.20
     when:
       - event: push
         branch: main
-    volumes:
-      - /opt/woodpecker/secrets/nomad-token:/run/ci/nomad-token:ro
-      - /opt/vault-agent/tls/ca.pem:/run/ci/nomad-ca.pem:ro
     environment:
       REGISTRY_USERNAME:
         from_secret: registry_username
@@ -23,69 +42,144 @@ steps:
         from_secret: registry_password
     commands:
       - apk add --no-cache curl jq >/dev/null
-      - export NOMAD_TOKEN=$(cat /run/ci/nomad-token)
       - export DEPLOY_SHA=${CI_COMMIT_SHA:0:7}
       - |
-        DIGEST=$(curl -sfI -u "$REGISTRY_USERNAME:$REGISTRY_PASSWORD" \
+        DIGEST=$(curl -sfI --max-time 60 -u "$REGISTRY_USERNAME:$REGISTRY_PASSWORD" \
           -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json" \
           "https://registry.ops.ciphera.net/v2/ciphera-net/pulse-frontend/manifests/sha-$DEPLOY_SHA" \
           | tr -d '\r' | awk 'tolower($1)=="docker-content-digest:"{print $2}')
-        test -n "$DIGEST"
-      - |
-        curl -sf --cacert /run/ci/nomad-ca.pem -H "X-Nomad-Token: $NOMAD_TOKEN" \
-          https://10.10.0.110:4646/v1/job/pulse-frontend | jq \
-          ".Meta.deploy_sha = \"$DEPLOY_SHA\" |
-           .TaskGroups[0].Tasks[0].Config.image = \"registry.ops.ciphera.net/ciphera-net/pulse-frontend@$DIGEST\" |
-           .TaskGroups[0].Tasks[0].Config.force_pull = true" > /tmp/job.json
-      - |
-        curl -fsS --cacert /run/ci/nomad-ca.pem -X POST -H "X-Nomad-Token: $NOMAD_TOKEN" \
-          -H "Content-Type: application/json" \
-          -d "{\"Job\": $(cat /tmp/job.json)}" \
-          https://10.10.0.110:4646/v1/jobs
-      - echo "Deployed pulse-frontend ($DEPLOY_SHA)"
-
-  # After the rollout converges, purge the immutable /_next/static assets from the
-  # Bunny edge. Chunk hashes change per build; during the rollout window the edge can
-  # cache a 404 for a new-build chunk (pulled from the still-old alloc) and then serve
-  # that 404 for 30 days — blanking the site. Waiting for the deployment to be healthy
-  # before purging guarantees the edge re-populates from the NEW allocation.
-  purge-cdn:
+        case "$DIGEST" in
+          sha256:*) ;;
+          *) echo "digest resolution failed for sha-$DEPLOY_SHA (got [$DIGEST]) — did push finish?"; exit 1 ;;
+        esac
+        echo "$DIGEST"     > /woodpecker/digest
+        echo "$DEPLOY_SHA" > /woodpecker/deploy_sha
+      - echo "resolved sha-$DEPLOY_SHA -> $(cat /woodpecker/digest)"
+  deploy-k8s:
     image: alpine:3.20
+    depends_on: [digest]
     when:
       - event: push
         branch: main
     volumes:
-      - /opt/woodpecker/secrets/nomad-token:/run/ci/nomad-token:ro
-      - /opt/vault-agent/tls/ca.pem:/run/ci/nomad-ca.pem:ro
+      - /opt/woodpecker/secrets:/run/ci:ro
     environment:
-      BUNNY_API_KEY:
-        from_secret: bunny_api_key
+      KUBE_API: https://5d353b06-e84e-4c25-98b7-c0ec883da332.sks-ch-dk-2.exo.io
     commands:
       - apk add --no-cache curl jq >/dev/null
-      - export NOMAD_TOKEN=$(cat /run/ci/nomad-token)
       - |
+        DIGEST=$(cat /woodpecker/digest) || { echo "digest handoff missing"; exit 1; }
+        DEPLOY_SHA=$(cat /woodpecker/deploy_sha) || { echo "deploy_sha handoff missing"; exit 1; }
+        case "$DIGEST" in sha256:*) ;; *) echo "bad digest handoff [$DIGEST]"; exit 1 ;; esac
+        [ -n "$DEPLOY_SHA" ] || { echo "empty deploy_sha handoff"; exit 1; }
+        export DIGEST DEPLOY_SHA
+      - |
+        BODY=$(jq -nc \
+          --arg img "registry.ops.ciphera.net/ciphera-net/pulse-frontend@$DIGEST" \
+          --arg sha "$DEPLOY_SHA" \
+          '{spec:{template:{metadata:{annotations:{"ciphera.net/deploy-sha":$sha}},
+                            spec:{containers:[{name:"nextjs",image:$img}]}}}}')
+        curl -fsS --max-time 30 --cacert /run/ci/kube-ca.pem -X PATCH \
+          -H "Authorization: Bearer $(cat /run/ci/kube-token)" \
+          -H "Content-Type: application/strategic-merge-patch+json" \
+          -d "$BODY" \
+          "$KUBE_API/apis/apps/v1/namespaces/apps/deployments/pulse-frontend?fieldManager=woodpecker-ci" >/dev/null
+      # Convergence gate. status.replicas == updatedReplicas is the load-bearing clause:
+      # availableReplicas sums across ALL ReplicaSets, so without it the gate passes while
+      # an OLD pod is still serving and purge-cdn caches that build's 404s for 30 days.
+      - |
+        CONVERGED=no
+        for i in $(seq 1 90); do
+          S=$(curl -fsS --max-time 15 --cacert /run/ci/kube-ca.pem \
+            -H "Authorization: Bearer $(cat /run/ci/kube-token)" \
+            "$KUBE_API/apis/apps/v1/namespaces/apps/deployments/pulse-frontend") \
+            || { echo "api read failed (iter $i) — retrying"; S=''; }
+          echo "$S" | jq -e '
+            ((.status.observedGeneration // 0) >= .metadata.generation)
+            and ((.status.updatedReplicas // 0) == .spec.replicas)
+            and ((.status.replicas // 0) == (.status.updatedReplicas // 0))
+            and ((.status.availableReplicas // 0) == (.status.updatedReplicas // 0))' >/dev/null \
+            && { echo "k8s rollout converged"; CONVERGED=yes; break; }
+          echo "$S" | jq -e '.status.conditions[]? | select(.type=="Progressing" and .reason=="ProgressDeadlineExceeded")' >/dev/null \
+            && { echo "k8s rollout FAILED (ProgressDeadlineExceeded)"; break; }
+          sleep 4
+        done
+        if [ "$CONVERGED" != "yes" ]; then
+          curl -fsS --max-time 15 --cacert /run/ci/kube-ca.pem \
+            -H "Authorization: Bearer $(cat /run/ci/kube-token)" \
+            "$KUBE_API/api/v1/namespaces/apps/pods" \
+            | jq -r '.items[] | select(.metadata.name | startswith("pulse-frontend")) | "\(.metadata.name) \(.status.phase)"' || true
+          echo "k8s rollout did NOT converge for pulse-frontend"
+          exit 1
+        fi
+      - |
+        O=$(curl -fsS --max-time 15 --retry 3 --retry-all-errors --cacert /run/ci/kube-ca.pem \
+          -H "Authorization: Bearer $(cat /run/ci/kube-token)" \
+          "$KUBE_API/apis/apps/v1/namespaces/apps/deployments/pulse-frontend")
+        echo "$O" | jq -e \
+          --arg img "registry.ops.ciphera.net/ciphera-net/pulse-frontend@$DIGEST" \
+          --arg sha "$DEPLOY_SHA" '
+          ([.spec.template.spec.containers[].name] == ["nextjs"])
+          and ((.spec.template.spec.containers[] | select(.name=="nextjs") | .image) == $img)
+          and (.spec.template.metadata.annotations["ciphera.net/deploy-sha"] == $sha)' >/dev/null \
+          || { echo "POST-DEPLOY MISMATCH — running spec is not what we shipped:"; \
+               echo "$O" | jq '{containers:[.spec.template.spec.containers[]|{name,image}], sha:.spec.template.metadata.annotations["ciphera.net/deploy-sha"]}'; exit 1; }
+      - echo "Deployed pulse-frontend to SKS ($DEPLOY_SHA)"
+  deploy-nomad:
+    image: alpine:3.20
+    depends_on: [digest]
+    when:
+      - event: push
+        branch: main
+    volumes:
+      - /opt/woodpecker/secrets:/run/ci:ro
+      - /opt/vault-agent/tls:/run/vault-tls:ro
+    commands:
+      - apk add --no-cache curl jq >/dev/null
+      - |
+        DIGEST=$(cat /woodpecker/digest) || { echo "digest handoff missing"; exit 1; }
+        DEPLOY_SHA=$(cat /woodpecker/deploy_sha) || { echo "deploy_sha handoff missing"; exit 1; }
+        case "$DIGEST" in sha256:*) ;; *) echo "bad digest handoff [$DIGEST]"; exit 1 ;; esac
+        export DIGEST DEPLOY_SHA
+      - |
+        NOMAD_TOKEN=$(cat /run/ci/nomad-token)
+        J=$(curl -sf --max-time 30 --cacert /run/vault-tls/ca.pem -H "X-Nomad-Token: $NOMAD_TOKEN" \
+          https://10.10.0.110:4646/v1/job/pulse-frontend) \
+          || { echo "ROLLBACK PATH IS STALE — could not read Nomad job pulse-frontend"; exit 1; }
+        echo "$J" | jq -e '.ID' >/dev/null || { echo "ROLLBACK PATH IS STALE — empty job response"; exit 1; }
+        echo "$J" | jq \
+          ".Meta.deploy_sha = \"$DEPLOY_SHA\" |
+           .TaskGroups[0].Tasks[0].Config.image = \"registry.ops.ciphera.net/ciphera-net/pulse-frontend@$DIGEST\" |
+           .TaskGroups[0].Tasks[0].Config.force_pull = true" > /tmp/job.json
+        curl -fsS --max-time 30 --cacert /run/vault-tls/ca.pem -X POST -H "X-Nomad-Token: $NOMAD_TOKEN" \
+          -H "Content-Type: application/json" \
+          -d "{\"Job\": $(cat /tmp/job.json)}" \
+          https://10.10.0.110:4646/v1/jobs >/dev/null
+      - |
+        NOMAD_TOKEN=$(cat /run/ci/nomad-token)
+        NEWV=$(curl -sf --max-time 30 --cacert /run/vault-tls/ca.pem -H "X-Nomad-Token: $NOMAD_TOKEN" \
+          https://10.10.0.110:4646/v1/job/pulse-frontend | jq -r '.Version // empty')
+        [ -n "$NEWV" ] || { echo "ROLLBACK PATH IS STALE — could not read new job Version"; exit 1; }
+        echo "waiting for nomad job version $NEWV"
         for i in $(seq 1 60); do
-          S=$(curl -sf --cacert /run/ci/nomad-ca.pem -H "X-Nomad-Token: $NOMAD_TOKEN" \
-            https://10.10.0.110:4646/v1/job/pulse-frontend/deployment | jq -r '.Status // "none"')
-          echo "deployment: $S"
-          [ "$S" = "successful" ] && break
-          case "$S" in failed|cancelled) echo "deploy not healthy ($S)"; exit 1 ;; esac
+          R=$(curl -sf --max-time 15 --cacert /run/vault-tls/ca.pem -H "X-Nomad-Token: $NOMAD_TOKEN" \
+            https://10.10.0.110:4646/v1/job/pulse-frontend/deployment) || R=''
+          S=$(printf '%s' "$R" | jq -r '.Status // "unreachable"' 2>/dev/null); [ -n "$S" ] || S=unreachable
+          V=$(printf '%s' "$R" | jq -r '.JobVersion // -1' 2>/dev/null)
+          echo "nomad deployment: $S (v$V, want v$NEWV)"
+          [ "$S" = "successful" ] && [ "$V" = "$NEWV" ] && { echo "nomad rollout converged"; break; }
+          if [ "$V" = "$NEWV" ]; then
+            case "$S" in failed|cancelled) echo "ROLLBACK PATH IS STALE — nomad deploy $S"; exit 1 ;; esac
+          fi
+          [ "$i" = "60" ] && { echo "ROLLBACK PATH IS STALE — nomad never converged (last=$S v$V)"; exit 1; }
           sleep 5
         done
-      - |
-        curl -fsS -X POST \
-          "https://api.bunny.net/purge?url=https://pulse.ciphera.net/_next/static/*&async=false" \
-          -H "AccessKey: $BUNNY_API_KEY"
-      - echo "Purged pulse.ciphera.net /_next/static/*"
-
-  deploy-staging:
+      - echo "Deployed pulse-frontend to Nomad (rollback path) ($DEPLOY_SHA)"
+  digest-staging:
     image: alpine:3.20
     when:
       - event: push
         branch: staging
-    volumes:
-      - /opt/woodpecker/secrets/nomad-token:/run/ci/nomad-token:ro
-      - /opt/vault-agent/tls/ca.pem:/run/ci/nomad-ca.pem:ro
     environment:
       REGISTRY_USERNAME:
         from_secret: registry_username
@@ -93,56 +187,180 @@ steps:
         from_secret: registry_password
     commands:
       - apk add --no-cache curl jq >/dev/null
-      - export NOMAD_TOKEN=$(cat /run/ci/nomad-token)
       - export DEPLOY_SHA=${CI_COMMIT_SHA:0:7}
       - |
-        DIGEST=$(curl -sfI -u "$REGISTRY_USERNAME:$REGISTRY_PASSWORD" \
+        DIGEST=$(curl -sfI --max-time 60 -u "$REGISTRY_USERNAME:$REGISTRY_PASSWORD" \
           -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json" \
           "https://registry.ops.ciphera.net/v2/ciphera-net/pulse-frontend-staging/manifests/sha-$DEPLOY_SHA" \
           | tr -d '\r' | awk 'tolower($1)=="docker-content-digest:"{print $2}')
-        test -n "$DIGEST"
-      - |
-        curl -sf --cacert /run/ci/nomad-ca.pem -H "X-Nomad-Token: $NOMAD_TOKEN" \
-          https://10.10.0.110:4646/v1/job/pulse-frontend-staging | jq \
-          ".Meta.deploy_sha = \"$DEPLOY_SHA\" |
-           .TaskGroups[0].Tasks[0].Config.image = \"registry.ops.ciphera.net/ciphera-net/pulse-frontend-staging@$DIGEST\" |
-           .TaskGroups[0].Tasks[0].Config.force_pull = true" > /tmp/job.json
-      - |
-        curl -fsS --cacert /run/ci/nomad-ca.pem -X POST -H "X-Nomad-Token: $NOMAD_TOKEN" \
-          -H "Content-Type: application/json" \
-          -d "{\"Job\": $(cat /tmp/job.json)}" \
-          https://10.10.0.110:4646/v1/jobs
-      - echo "Deployed pulse-frontend-staging ($DEPLOY_SHA)"
-
-  # Same as purge-cdn, for the staging pull zone. (This is exactly the failure that
-  # blanked pulse-staging on 22-07-2026 after the flags-CDN deploy.)
-  purge-cdn-staging:
+        case "$DIGEST" in
+          sha256:*) ;;
+          *) echo "digest resolution failed for sha-$DEPLOY_SHA (got [$DIGEST]) — did push finish?"; exit 1 ;;
+        esac
+        echo "$DIGEST"     > /woodpecker/digest
+        echo "$DEPLOY_SHA" > /woodpecker/deploy_sha
+      - echo "resolved sha-$DEPLOY_SHA -> $(cat /woodpecker/digest)"
+  deploy-k8s-staging:
     image: alpine:3.20
+    depends_on: [digest-staging]
     when:
       - event: push
         branch: staging
     volumes:
-      - /opt/woodpecker/secrets/nomad-token:/run/ci/nomad-token:ro
-      - /opt/vault-agent/tls/ca.pem:/run/ci/nomad-ca.pem:ro
+      - /opt/woodpecker/secrets:/run/ci:ro
+    environment:
+      KUBE_API: https://5d353b06-e84e-4c25-98b7-c0ec883da332.sks-ch-dk-2.exo.io
+    commands:
+      - apk add --no-cache curl jq >/dev/null
+      - |
+        DIGEST=$(cat /woodpecker/digest) || { echo "digest handoff missing"; exit 1; }
+        DEPLOY_SHA=$(cat /woodpecker/deploy_sha) || { echo "deploy_sha handoff missing"; exit 1; }
+        case "$DIGEST" in sha256:*) ;; *) echo "bad digest handoff [$DIGEST]"; exit 1 ;; esac
+        [ -n "$DEPLOY_SHA" ] || { echo "empty deploy_sha handoff"; exit 1; }
+        export DIGEST DEPLOY_SHA
+      - |
+        BODY=$(jq -nc \
+          --arg img "registry.ops.ciphera.net/ciphera-net/pulse-frontend-staging@$DIGEST" \
+          --arg sha "$DEPLOY_SHA" \
+          '{spec:{template:{metadata:{annotations:{"ciphera.net/deploy-sha":$sha}},
+                            spec:{containers:[{name:"nextjs",image:$img}]}}}}')
+        curl -fsS --max-time 30 --cacert /run/ci/kube-ca.pem -X PATCH \
+          -H "Authorization: Bearer $(cat /run/ci/kube-token)" \
+          -H "Content-Type: application/strategic-merge-patch+json" \
+          -d "$BODY" \
+          "$KUBE_API/apis/apps/v1/namespaces/apps/deployments/pulse-frontend-staging?fieldManager=woodpecker-ci" >/dev/null
+      # Convergence gate. status.replicas == updatedReplicas is the load-bearing clause:
+      # availableReplicas sums across ALL ReplicaSets, so without it the gate passes while
+      # an OLD pod is still serving and purge-cdn caches that build's 404s for 30 days.
+      - |
+        CONVERGED=no
+        for i in $(seq 1 90); do
+          S=$(curl -fsS --max-time 15 --cacert /run/ci/kube-ca.pem \
+            -H "Authorization: Bearer $(cat /run/ci/kube-token)" \
+            "$KUBE_API/apis/apps/v1/namespaces/apps/deployments/pulse-frontend-staging") \
+            || { echo "api read failed (iter $i) — retrying"; S=''; }
+          echo "$S" | jq -e '
+            ((.status.observedGeneration // 0) >= .metadata.generation)
+            and ((.status.updatedReplicas // 0) == .spec.replicas)
+            and ((.status.replicas // 0) == (.status.updatedReplicas // 0))
+            and ((.status.availableReplicas // 0) == (.status.updatedReplicas // 0))' >/dev/null \
+            && { echo "k8s rollout converged"; CONVERGED=yes; break; }
+          echo "$S" | jq -e '.status.conditions[]? | select(.type=="Progressing" and .reason=="ProgressDeadlineExceeded")' >/dev/null \
+            && { echo "k8s rollout FAILED (ProgressDeadlineExceeded)"; break; }
+          sleep 4
+        done
+        if [ "$CONVERGED" != "yes" ]; then
+          curl -fsS --max-time 15 --cacert /run/ci/kube-ca.pem \
+            -H "Authorization: Bearer $(cat /run/ci/kube-token)" \
+            "$KUBE_API/api/v1/namespaces/apps/pods" \
+            | jq -r '.items[] | select(.metadata.name | startswith("pulse-frontend-staging")) | "\(.metadata.name) \(.status.phase)"' || true
+          echo "k8s rollout did NOT converge for pulse-frontend-staging"
+          exit 1
+        fi
+      - |
+        O=$(curl -fsS --max-time 15 --retry 3 --retry-all-errors --cacert /run/ci/kube-ca.pem \
+          -H "Authorization: Bearer $(cat /run/ci/kube-token)" \
+          "$KUBE_API/apis/apps/v1/namespaces/apps/deployments/pulse-frontend-staging")
+        echo "$O" | jq -e \
+          --arg img "registry.ops.ciphera.net/ciphera-net/pulse-frontend-staging@$DIGEST" \
+          --arg sha "$DEPLOY_SHA" '
+          ([.spec.template.spec.containers[].name] == ["nextjs"])
+          and ((.spec.template.spec.containers[] | select(.name=="nextjs") | .image) == $img)
+          and (.spec.template.metadata.annotations["ciphera.net/deploy-sha"] == $sha)' >/dev/null \
+          || { echo "POST-DEPLOY MISMATCH — running spec is not what we shipped:"; \
+               echo "$O" | jq '{containers:[.spec.template.spec.containers[]|{name,image}], sha:.spec.template.metadata.annotations["ciphera.net/deploy-sha"]}'; exit 1; }
+      - echo "Deployed pulse-frontend-staging to SKS ($DEPLOY_SHA)"
+  deploy-nomad-staging:
+    image: alpine:3.20
+    depends_on: [digest-staging]
+    when:
+      - event: push
+        branch: staging
+    volumes:
+      - /opt/woodpecker/secrets:/run/ci:ro
+      - /opt/vault-agent/tls:/run/vault-tls:ro
+    commands:
+      - apk add --no-cache curl jq >/dev/null
+      - |
+        DIGEST=$(cat /woodpecker/digest) || { echo "digest handoff missing"; exit 1; }
+        DEPLOY_SHA=$(cat /woodpecker/deploy_sha) || { echo "deploy_sha handoff missing"; exit 1; }
+        case "$DIGEST" in sha256:*) ;; *) echo "bad digest handoff [$DIGEST]"; exit 1 ;; esac
+        export DIGEST DEPLOY_SHA
+      - |
+        NOMAD_TOKEN=$(cat /run/ci/nomad-token)
+        J=$(curl -sf --max-time 30 --cacert /run/vault-tls/ca.pem -H "X-Nomad-Token: $NOMAD_TOKEN" \
+          https://10.10.0.110:4646/v1/job/pulse-frontend-staging) \
+          || { echo "ROLLBACK PATH IS STALE — could not read Nomad job pulse-frontend-staging"; exit 1; }
+        echo "$J" | jq -e '.ID' >/dev/null || { echo "ROLLBACK PATH IS STALE — empty job response"; exit 1; }
+        echo "$J" | jq \
+          ".Meta.deploy_sha = \"$DEPLOY_SHA\" |
+           .TaskGroups[0].Tasks[0].Config.image = \"registry.ops.ciphera.net/ciphera-net/pulse-frontend-staging@$DIGEST\" |
+           .TaskGroups[0].Tasks[0].Config.force_pull = true" > /tmp/job.json
+        curl -fsS --max-time 30 --cacert /run/vault-tls/ca.pem -X POST -H "X-Nomad-Token: $NOMAD_TOKEN" \
+          -H "Content-Type: application/json" \
+          -d "{\"Job\": $(cat /tmp/job.json)}" \
+          https://10.10.0.110:4646/v1/jobs >/dev/null
+      - |
+        NOMAD_TOKEN=$(cat /run/ci/nomad-token)
+        NEWV=$(curl -sf --max-time 30 --cacert /run/vault-tls/ca.pem -H "X-Nomad-Token: $NOMAD_TOKEN" \
+          https://10.10.0.110:4646/v1/job/pulse-frontend-staging | jq -r '.Version // empty')
+        [ -n "$NEWV" ] || { echo "ROLLBACK PATH IS STALE — could not read new job Version"; exit 1; }
+        echo "waiting for nomad job version $NEWV"
+        for i in $(seq 1 60); do
+          R=$(curl -sf --max-time 15 --cacert /run/vault-tls/ca.pem -H "X-Nomad-Token: $NOMAD_TOKEN" \
+            https://10.10.0.110:4646/v1/job/pulse-frontend-staging/deployment) || R=''
+          S=$(printf '%s' "$R" | jq -r '.Status // "unreachable"' 2>/dev/null); [ -n "$S" ] || S=unreachable
+          V=$(printf '%s' "$R" | jq -r '.JobVersion // -1' 2>/dev/null)
+          echo "nomad deployment: $S (v$V, want v$NEWV)"
+          [ "$S" = "successful" ] && [ "$V" = "$NEWV" ] && { echo "nomad rollout converged"; break; }
+          if [ "$V" = "$NEWV" ]; then
+            case "$S" in failed|cancelled) echo "ROLLBACK PATH IS STALE — nomad deploy $S"; exit 1 ;; esac
+          fi
+          [ "$i" = "60" ] && { echo "ROLLBACK PATH IS STALE — nomad never converged (last=$S v$V)"; exit 1; }
+          sleep 5
+        done
+      - echo "Deployed pulse-frontend-staging to Nomad (rollback path) ($DEPLOY_SHA)"
+
+  # Purge AFTER the CLUSTER rollout converges (deploy-k8s asserts only the new ReplicaSet
+  # is serving). Purging mid-rollout re-caches the old build's 404s for the new chunk
+  # paths under a 30-day max-age — exactly what blanked pulse-staging on 22-07-2026.
+  purge-cdn:
+    image: alpine:3.20
+    depends_on: [deploy-k8s]
+    when:
+      - event: push
+        branch: main
     environment:
       BUNNY_API_KEY:
         from_secret: bunny_api_key
     commands:
-      - apk add --no-cache curl jq >/dev/null
-      - export NOMAD_TOKEN=$(cat /run/ci/nomad-token)
+      - apk add --no-cache curl >/dev/null
       - |
-        for i in $(seq 1 60); do
-          S=$(curl -sf --cacert /run/ci/nomad-ca.pem -H "X-Nomad-Token: $NOMAD_TOKEN" \
-            https://10.10.0.110:4646/v1/job/pulse-frontend-staging/deployment | jq -r '.Status // "none"')
-          echo "deployment: $S"
-          [ "$S" = "successful" ] && break
-          case "$S" in failed|cancelled) echo "deploy not healthy ($S)"; exit 1 ;; esac
-          sleep 5
-        done
+        curl -fsS --max-time 300 --retry 3 --retry-delay 10 --retry-all-errors -X POST \
+          "https://api.bunny.net/purge?url=https://pulse.ciphera.net/_next/static/*&async=false" \
+          -H "AccessKey: $BUNNY_API_KEY" \
+          || { echo "DEPLOY SHIPPED; CDN PURGE FAILED — re-run the purge only, do NOT re-deploy"; exit 1; }
+      - echo "Purged pulse.ciphera.net /_next/static/*"
+
+  # Purge AFTER the CLUSTER rollout converges (deploy-k8s asserts only the new ReplicaSet
+  # is serving). Purging mid-rollout re-caches the old build's 404s for the new chunk
+  # paths under a 30-day max-age — exactly what blanked pulse-staging on 22-07-2026.
+  purge-cdn-staging:
+    image: alpine:3.20
+    depends_on: [deploy-k8s-staging]
+    when:
+      - event: push
+        branch: staging
+    environment:
+      BUNNY_API_KEY:
+        from_secret: bunny_api_key
+    commands:
+      - apk add --no-cache curl >/dev/null
       - |
-        curl -fsS -X POST \
+        curl -fsS --max-time 300 --retry 3 --retry-delay 10 --retry-all-errors -X POST \
           "https://api.bunny.net/purge?url=https://pulse-staging.ciphera.net/_next/static/*&async=false" \
-          -H "AccessKey: $BUNNY_API_KEY"
+          -H "AccessKey: $BUNNY_API_KEY" \
+          || { echo "DEPLOY SHIPPED; CDN PURGE FAILED — re-run the purge only, do NOT re-deploy"; exit 1; }
       - echo "Purged pulse-staging.ciphera.net /_next/static/*"
 
   cdn-scripts:
@@ -150,7 +368,6 @@ steps:
     when:
       - event: push
         branch: main
-    failure: ignore
     environment:
       AWS_ACCESS_KEY_ID:
         from_secret: exoscale_cdn_scripts_key
@@ -159,6 +376,8 @@ steps:
       AWS_DEFAULT_REGION: ch-dk-2
       BUNNY_API_KEY:
         from_secret: bunny_api_key
+      BUNNY_STORAGE_PASSWORD:
+        from_secret: bunny_storage_scripts_password
     commands:
       - apk add --no-cache aws-cli curl openssl >/dev/null
       - |
@@ -168,16 +387,54 @@ steps:
           [ -f "public/$file" ] || continue
           hash=$(openssl dgst -sha384 -binary "public/$file" | openssl base64 -A)
           $first || echo -n ',' >> public/script-sri.json
-          echo -n "\"$file\":\"sha384-${hash}\"" >> public/script-sri.json
+          echo -n "\"$file\":\"sha384-$hash\"" >> public/script-sri.json
           first=false
         done
         echo '}' >> public/script-sri.json
         cat public/script-sri.json
+      # Primary origin: Bunny Edge Storage (js.ciphera.net reads from the ciphera-cdn-scripts zone).
       - |
         for file in script.js script.frustration.js script.interactions.js script-sri.json; do
           [ -f "public/$file" ] || continue
           ct="application/javascript"
           [ "$file" = "script-sri.json" ] && ct="application/json"
+          sha=$(sha256sum "public/$file" | awk '{print toupper($1)}')
+          curl -fsS -X PUT "https://storage.bunnycdn.com/ciphera-cdn-scripts/$file" \
+            -H "AccessKey: $BUNNY_STORAGE_PASSWORD" \
+            -H "Content-Type: $ct" \
+            -H "Checksum: $sha" \
+            --data-binary @"public/$file"
+        done
+        echo "Scripts uploaded to Bunny Edge Storage (ciphera-cdn-scripts)"
+      # Backup origin: Exoscale SOS (write-through durability copy).
+      # ⚠️ FIXED 25-07-2026 — THIS UPLOADED ONLY TO A BUCKET NOBODY SERVES.
+      # js.ciphera.net is Bunny pull zone 5736065, which has an EMPTY OriginUrl and
+      # StorageZoneId 1688531: it serves from BUNNY STORAGE (zone ciphera-cdn-scripts),
+      # NOT from Exoscale SOS. Writing only to SOS and then purging meant the purge
+      # re-fetched the same unchanged object out of Bunny Storage — the upload never
+      # reached production.
+      # It stayed hidden because the 24-07-2026 CDN migration bulk-copied SOS into Bunny
+      # Storage (every object there carries LastChanged 2026-07-24T17:23:20) and no script
+      # has changed since, so the two are byte-identical today. Only the NEXT script change
+      # would have silently failed to ship.
+      # Bunny Storage is PRIMARY and SOS the BACKUP leg — the same split
+      # scripts/cdn-env.sh already documents for the assets zone. Primary goes first and
+      # uses -f so a failure fails the step LOUDLY rather than leaving production stale.
+      # ⚠️ If the Bunny leg 401s, `bunny_storage_scripts_password` holds the wrong value:
+      # the working storage password is the one in CDNZ_SCRIPTS_PASSWORD (verified against
+      # storage.bunnycdn.com on 25-07-2026); the .env twin named
+      # BUNNY_STORAGE_SCRIPTS_PASSWORD returns 401.
+      - |
+        for file in script.js script.frustration.js script.interactions.js script-sri.json; do
+          [ -f "public/$file" ] || continue
+          ct="application/javascript"
+          [ "$file" = "script-sri.json" ] && ct="application/json"
+          curl -fsS --max-time 120 -X PUT \
+            -H "AccessKey: $BUNNY_STORAGE_PASSWORD" \
+            -H "Content-Type: $ct" \
+            --data-binary "@public/$file" \
+            "https://storage.bunnycdn.com/ciphera-cdn-scripts/$file" >/dev/null \
+            || { echo "PRIMARY (Bunny Storage) upload FAILED for $file — production would stay stale"; exit 1; }
           aws s3 cp "public/$file" "s3://ciphera-scripts/$file" \
             --endpoint-url https://sos-ch-dk-2.exo.io \
             --content-type "$ct" \
@@ -185,7 +442,9 @@ steps:
             --acl public-read \
             --quiet
         done
-        echo "Scripts uploaded to CDN"
+        echo "Scripts uploaded to Bunny Storage (primary) + SOS (backup)"
+      # geo-replicas sync asynchronously; purging early can re-cache a stale replica copy for the full TTL
+      - sleep 30
       - |
         for path in script.js script.frustration.js script.interactions.js script-sri.json; do
           curl -fsS -X POST \
