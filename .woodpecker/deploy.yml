@@ -1,6 +1,19 @@
-# Dual-target deploy: SKS cluster (LIVE) + Nomad (rollback path during the parallel run).
-# Both branches, both targets. Generated from
+# Cluster-only deploy: SKS. Both branches (main -> prod, staging -> the staging pair).
+# Originally generated from
 # Infra/Kubernetes/workloads/_shared/ci-deploy/deploy.yml.template.
+#
+# BOTH deploy-nomad steps were REMOVED 25-07-2026 — the prod one and the staging one —
+# ending the Phase-2 parallel run for this service. They had to come out BEFORE the Nomad
+# jobs were stopped: a stopped-but-unpurged job still answers GET /v1/job/<id>, so the next
+# deploy would have re-registered and resurrected it. Note there were TWO of them here; a
+# sweep matching only the exact step name `deploy-nomad` would have left the staging half
+# behind, and pulse-frontend-staging writes against the SHARED PRODUCTION database.
+#
+# Rolling back now means re-registering the captured job JSON from
+# Infra/Kubernetes/workloads/_shared/ci-deploy/decommission/wave23-snapshot/ and flipping
+# the Bunny origin back, then purging — Nomad garbage-collects stopped job definitions, so
+# a stopped job is NOT a warm standby, and reverting an origin evicts nothing on its own
+# (30-day max-age on /_next/static).
 #
 # ⚠️ WHY THIS CHANGED: all four pulse Bunny zones now point at the SKS cluster. While this
 # pipeline deployed only to Nomad, a push updated a job serving ZERO public traffic and
@@ -125,56 +138,6 @@ steps:
           || { echo "POST-DEPLOY MISMATCH — running spec is not what we shipped:"; \
                echo "$O" | jq '{containers:[.spec.template.spec.containers[]|{name,image}], sha:.spec.template.metadata.annotations["ciphera.net/deploy-sha"]}'; exit 1; }
       - echo "Deployed pulse-frontend to SKS ($DEPLOY_SHA)"
-  deploy-nomad:
-    image: alpine:3.20
-    depends_on: [digest]
-    when:
-      - event: push
-        branch: main
-    volumes:
-      - /opt/woodpecker/secrets:/run/ci:ro
-      - /opt/vault-agent/tls:/run/vault-tls:ro
-    commands:
-      - apk add --no-cache curl jq >/dev/null
-      - |
-        DIGEST=$(cat /woodpecker/digest) || { echo "digest handoff missing"; exit 1; }
-        DEPLOY_SHA=$(cat /woodpecker/deploy_sha) || { echo "deploy_sha handoff missing"; exit 1; }
-        case "$DIGEST" in sha256:*) ;; *) echo "bad digest handoff [$DIGEST]"; exit 1 ;; esac
-        export DIGEST DEPLOY_SHA
-      - |
-        NOMAD_TOKEN=$(cat /run/ci/nomad-token)
-        J=$(curl -sf --max-time 30 --cacert /run/vault-tls/ca.pem -H "X-Nomad-Token: $NOMAD_TOKEN" \
-          https://10.10.0.110:4646/v1/job/pulse-frontend) \
-          || { echo "ROLLBACK PATH IS STALE — could not read Nomad job pulse-frontend"; exit 1; }
-        echo "$J" | jq -e '.ID' >/dev/null || { echo "ROLLBACK PATH IS STALE — empty job response"; exit 1; }
-        echo "$J" | jq \
-          ".Meta.deploy_sha = \"$DEPLOY_SHA\" |
-           .TaskGroups[0].Tasks[0].Config.image = \"registry.ops.ciphera.net/ciphera-net/pulse-frontend@$DIGEST\" |
-           .TaskGroups[0].Tasks[0].Config.force_pull = true" > /tmp/job.json
-        curl -fsS --max-time 30 --cacert /run/vault-tls/ca.pem -X POST -H "X-Nomad-Token: $NOMAD_TOKEN" \
-          -H "Content-Type: application/json" \
-          -d "{\"Job\": $(cat /tmp/job.json)}" \
-          https://10.10.0.110:4646/v1/jobs >/dev/null
-      - |
-        NOMAD_TOKEN=$(cat /run/ci/nomad-token)
-        NEWV=$(curl -sf --max-time 30 --cacert /run/vault-tls/ca.pem -H "X-Nomad-Token: $NOMAD_TOKEN" \
-          https://10.10.0.110:4646/v1/job/pulse-frontend | jq -r '.Version // empty')
-        [ -n "$NEWV" ] || { echo "ROLLBACK PATH IS STALE — could not read new job Version"; exit 1; }
-        echo "waiting for nomad job version $NEWV"
-        for i in $(seq 1 60); do
-          R=$(curl -sf --max-time 15 --cacert /run/vault-tls/ca.pem -H "X-Nomad-Token: $NOMAD_TOKEN" \
-            https://10.10.0.110:4646/v1/job/pulse-frontend/deployment) || R=''
-          S=$(printf '%s' "$R" | jq -r '.Status // "unreachable"' 2>/dev/null); [ -n "$S" ] || S=unreachable
-          V=$(printf '%s' "$R" | jq -r '.JobVersion // -1' 2>/dev/null)
-          echo "nomad deployment: $S (v$V, want v$NEWV)"
-          [ "$S" = "successful" ] && [ "$V" = "$NEWV" ] && { echo "nomad rollout converged"; break; }
-          if [ "$V" = "$NEWV" ]; then
-            case "$S" in failed|cancelled) echo "ROLLBACK PATH IS STALE — nomad deploy $S"; exit 1 ;; esac
-          fi
-          [ "$i" = "60" ] && { echo "ROLLBACK PATH IS STALE — nomad never converged (last=$S v$V)"; exit 1; }
-          sleep 5
-        done
-      - echo "Deployed pulse-frontend to Nomad (rollback path) ($DEPLOY_SHA)"
   digest-staging:
     image: alpine:3.20
     when:
@@ -270,57 +233,6 @@ steps:
           || { echo "POST-DEPLOY MISMATCH — running spec is not what we shipped:"; \
                echo "$O" | jq '{containers:[.spec.template.spec.containers[]|{name,image}], sha:.spec.template.metadata.annotations["ciphera.net/deploy-sha"]}'; exit 1; }
       - echo "Deployed pulse-frontend-staging to SKS ($DEPLOY_SHA)"
-  deploy-nomad-staging:
-    image: alpine:3.20
-    depends_on: [digest-staging]
-    when:
-      - event: push
-        branch: staging
-    volumes:
-      - /opt/woodpecker/secrets:/run/ci:ro
-      - /opt/vault-agent/tls:/run/vault-tls:ro
-    commands:
-      - apk add --no-cache curl jq >/dev/null
-      - |
-        DIGEST=$(cat /woodpecker/digest) || { echo "digest handoff missing"; exit 1; }
-        DEPLOY_SHA=$(cat /woodpecker/deploy_sha) || { echo "deploy_sha handoff missing"; exit 1; }
-        case "$DIGEST" in sha256:*) ;; *) echo "bad digest handoff [$DIGEST]"; exit 1 ;; esac
-        export DIGEST DEPLOY_SHA
-      - |
-        NOMAD_TOKEN=$(cat /run/ci/nomad-token)
-        J=$(curl -sf --max-time 30 --cacert /run/vault-tls/ca.pem -H "X-Nomad-Token: $NOMAD_TOKEN" \
-          https://10.10.0.110:4646/v1/job/pulse-frontend-staging) \
-          || { echo "ROLLBACK PATH IS STALE — could not read Nomad job pulse-frontend-staging"; exit 1; }
-        echo "$J" | jq -e '.ID' >/dev/null || { echo "ROLLBACK PATH IS STALE — empty job response"; exit 1; }
-        echo "$J" | jq \
-          ".Meta.deploy_sha = \"$DEPLOY_SHA\" |
-           .TaskGroups[0].Tasks[0].Config.image = \"registry.ops.ciphera.net/ciphera-net/pulse-frontend-staging@$DIGEST\" |
-           .TaskGroups[0].Tasks[0].Config.force_pull = true" > /tmp/job.json
-        curl -fsS --max-time 30 --cacert /run/vault-tls/ca.pem -X POST -H "X-Nomad-Token: $NOMAD_TOKEN" \
-          -H "Content-Type: application/json" \
-          -d "{\"Job\": $(cat /tmp/job.json)}" \
-          https://10.10.0.110:4646/v1/jobs >/dev/null
-      - |
-        NOMAD_TOKEN=$(cat /run/ci/nomad-token)
-        NEWV=$(curl -sf --max-time 30 --cacert /run/vault-tls/ca.pem -H "X-Nomad-Token: $NOMAD_TOKEN" \
-          https://10.10.0.110:4646/v1/job/pulse-frontend-staging | jq -r '.Version // empty')
-        [ -n "$NEWV" ] || { echo "ROLLBACK PATH IS STALE — could not read new job Version"; exit 1; }
-        echo "waiting for nomad job version $NEWV"
-        for i in $(seq 1 60); do
-          R=$(curl -sf --max-time 15 --cacert /run/vault-tls/ca.pem -H "X-Nomad-Token: $NOMAD_TOKEN" \
-            https://10.10.0.110:4646/v1/job/pulse-frontend-staging/deployment) || R=''
-          S=$(printf '%s' "$R" | jq -r '.Status // "unreachable"' 2>/dev/null); [ -n "$S" ] || S=unreachable
-          V=$(printf '%s' "$R" | jq -r '.JobVersion // -1' 2>/dev/null)
-          echo "nomad deployment: $S (v$V, want v$NEWV)"
-          [ "$S" = "successful" ] && [ "$V" = "$NEWV" ] && { echo "nomad rollout converged"; break; }
-          if [ "$V" = "$NEWV" ]; then
-            case "$S" in failed|cancelled) echo "ROLLBACK PATH IS STALE — nomad deploy $S"; exit 1 ;; esac
-          fi
-          [ "$i" = "60" ] && { echo "ROLLBACK PATH IS STALE — nomad never converged (last=$S v$V)"; exit 1; }
-          sleep 5
-        done
-      - echo "Deployed pulse-frontend-staging to Nomad (rollback path) ($DEPLOY_SHA)"
-
   # Purge AFTER the CLUSTER rollout converges (deploy-k8s asserts only the new ReplicaSet
   # is serving). Purging mid-rollout re-caches the old build's 404s for the new chunk
   # paths under a 30-day max-age — exactly what blanked pulse-staging on 22-07-2026.
