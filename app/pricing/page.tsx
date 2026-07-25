@@ -4,10 +4,13 @@ import PricingSection from '@/components/PricingSection'
 import { PricingCardsSkeleton } from '@/components/skeletons'
 
 export const metadata: Metadata = {
-  title: 'Pricing | Pulse',
+  title: 'Pricing',
   description: 'Simple, transparent pricing for privacy-first web analytics. Free tier included.',
+  alternates: {
+    canonical: '/pricing',
+  },
   openGraph: {
-    title: 'Pricing | Pulse',
+    title: 'Pricing',
     description: 'Simple, transparent pricing for privacy-first web analytics. Free tier included.',
     siteName: 'Pulse by Ciphera',
   },

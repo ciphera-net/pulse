@@ -162,7 +162,7 @@ export default function FrustrationTable({
   return (
     <div className="flex h-full flex-col rounded-none border border-border bg-card p-4">
       <div className="mb-3 flex h-6 items-center justify-between">
-        <span className="font-mono text-xs text-neutral-500">{title}</span>
+        <span className="text-xs text-neutral-500">{title}</span>
         {showViewAll && (
           <button
             type="button"
@@ -175,7 +175,7 @@ export default function FrustrationTable({
       </div>
 
       {/* Column header */}
-      <div className="flex h-6 items-center justify-between px-2 font-mono text-xs text-neutral-500">
+      <div className="flex h-6 items-center justify-between px-2 text-xs text-neutral-500">
         <span>Element</span>
         <span>Count</span>
       </div>
@@ -226,7 +226,7 @@ export default function FrustrationTable({
           <DialogHeader>
             <DialogTitle className="text-white">{title}</DialogTitle>
             {lensPage && (
-              <DialogDescription className="font-mono text-xs text-neutral-500">
+              <DialogDescription className="text-xs text-neutral-500">
                 On {lensPage}
               </DialogDescription>
             )}

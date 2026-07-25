@@ -17,7 +17,7 @@ interface StepHeaderProps {
 export function StepHeader({ index, visitors, dropOffPercent }: StepHeaderProps) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="font-mono text-xs uppercase tracking-[0.08em] text-neutral-500">
+      <span className="text-xs uppercase tracking-[0.08em] text-neutral-500">
         Step {index + 1}
       </span>
       <div className="flex items-baseline gap-1.5">

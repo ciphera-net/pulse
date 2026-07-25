@@ -39,7 +39,7 @@ export function SyncStatusLine({ status, lastSyncedAt, errorMessage, settingsHre
 
   if (status === 'error') {
     return (
-      <p className="mt-1.5 font-mono text-xs text-red-400">
+      <p className="mt-1.5 text-xs text-red-400">
         Sync failed{errorMessage ? ` — ${errorMessage}` : ''}
         <span aria-hidden="true" className="mx-1.5 text-red-400/50">·</span>
         <Link
@@ -54,7 +54,7 @@ export function SyncStatusLine({ status, lastSyncedAt, errorMessage, settingsHre
 
   if (status === 'syncing') {
     return (
-      <p className="mt-1.5 flex items-center gap-1.5 font-mono text-xs text-neutral-500">
+      <p className="mt-1.5 flex items-center gap-1.5 text-xs text-neutral-500">
         {showSpinner && <CircleNotch className="h-3 w-3 animate-spin" />}
         Syncing…
       </p>
@@ -64,7 +64,7 @@ export function SyncStatusLine({ status, lastSyncedAt, errorMessage, settingsHre
   // * status === 'active' — only a real timestamp is worth showing.
   if (!lastSyncedAt) return null
   return (
-    <p className="mt-1.5 font-mono text-xs text-neutral-500">
+    <p className="mt-1.5 text-xs text-neutral-500">
       Last synced {formatDateTime(new Date(lastSyncedAt))}
     </p>
   )

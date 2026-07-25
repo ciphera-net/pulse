@@ -114,7 +114,7 @@ export default function Header({
               className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300 transform-gpu will-change-transform [backface-visibility:hidden]"
             />
           </div>
-          <span className="font-display text-xl sm:text-2xl font-bold text-foreground tracking-tight group-hover:text-brand-orange transition-colors duration-300">
+          <span className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight group-hover:text-brand-orange transition-colors duration-300">
             {appName}
           </span>
         </Link>

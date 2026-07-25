@@ -123,7 +123,7 @@ const nextConfig: NextConfig = {
       {
         source: '/dashboard',
         destination: '/',
-        permanent: false,
+        permanent: true,
       },
       // NOTE: the former `/integrations/:slug` → docs.ciphera.net redirects were
       // removed. They shadowed the real per-integration guide pages

@@ -119,7 +119,7 @@ export default function BehaviorPage() {
                   type="button"
                   onClick={() => setLensPage(null)}
                   aria-label={`Clear page filter ${lensPage}`}
-                  className="mb-3 inline-flex h-8 max-w-full items-center gap-1.5 rounded-none border border-border bg-card px-2.5 font-mono text-xs text-neutral-400 transition-colors duration-fast ease-apple hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+                  className="mb-3 inline-flex h-8 max-w-full items-center gap-1.5 rounded-none border border-border bg-card px-2.5 text-xs text-neutral-400 transition-colors duration-fast ease-apple hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
                 >
                   <span className="truncate">Page: {lensPage}</span>
                   <span aria-hidden="true" className="text-neutral-600">·</span>

@@ -6,8 +6,11 @@ import { MarketingSection } from '@/components/marketing/system/MarketingSection
 import { ChangelogReleases, type Release } from './ChangelogReleases'
 
 export const metadata: Metadata = {
-  title: 'Changelog - Pulse',
+  title: 'Changelog',
   description: 'Release history and notable changes for Pulse, privacy-first web analytics.',
+  alternates: {
+    canonical: '/changelog',
+  },
 }
 
 // * How many release sections (incl. Unreleased) render expanded; every other
@@ -84,8 +87,8 @@ export default function ChangelogPage() {
   return (
     <MarketingSection>
       <div className="max-w-2xl">
-        <p className="font-mono text-xs text-muted-foreground">Pulse · Changelog</p>
-        <h1 className="mt-6 font-display text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
+        <p className="text-xs text-muted-foreground">Pulse · Changelog</p>
+        <h1 className="mt-6 font-display text-4xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
           Changelog
         </h1>
         <div className={`${PREAMBLE_PROSE} mt-6`}>

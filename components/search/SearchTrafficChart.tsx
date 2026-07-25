@@ -270,7 +270,7 @@ function TooltipRow({ color, label, value }: { color: string; label: string; val
 
 function LegendDot({ color, label }: { color: string; label: string }) {
   return (
-    <span className="flex items-center gap-1.5 font-mono text-xs text-neutral-500">
+    <span className="flex items-center gap-1.5 text-xs text-neutral-500">
       <span className="h-2 w-2 rounded-none" style={{ backgroundColor: color }} />
       {label}
     </span>
@@ -293,7 +293,7 @@ export default function SearchTrafficChart({ siteId, startDate, endDate }: Searc
     <div className="relative rounded-none border border-border bg-card p-4">
       <UpdatingChip active={isValidating && !!data} />
       <div className="mb-3 flex items-center justify-between gap-3">
-        <span className="font-mono text-xs text-neutral-500">Search traffic</span>
+        <span className="text-xs text-neutral-500">Search traffic</span>
         <div className="flex items-center gap-4">
           <LegendDot color={CLICKS} label="Clicks" />
           <LegendDot color={IMPRESSIONS} label="Impressions" />

@@ -47,7 +47,7 @@ export function FunnelTrendChart({ siteId, funnelId, dateRange, filters }: Funne
     <div className="relative rounded-none border border-border bg-card p-4">
       <UpdatingChip active={isValidating && !!trends} />
       <div className="mb-3">
-        <span className="font-mono text-xs text-neutral-500">Conversion trend</span>
+        <span className="text-xs text-neutral-500">Conversion trend</span>
       </div>
 
       {/* Stable-height chart region */}

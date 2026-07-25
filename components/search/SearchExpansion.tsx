@@ -63,7 +63,7 @@ export function QueryExpansion({ siteId, start, end, query }: Range & { query: s
     <div className="border-t border-border bg-neutral-900/40 px-3 py-3">
       <QueryTrendSparkline siteId={siteId} query={query} start={start} end={end} />
       <div className="mt-4">
-        <div className="mb-1.5 font-mono text-xs text-neutral-500">Contributing pages</div>
+        <div className="mb-1.5 text-xs text-neutral-500">Contributing pages</div>
         <PanelBody
           isLoading={isLoading}
           hasData={!!data}
@@ -94,7 +94,7 @@ export function PageExpansion({ siteId, start, end, page }: Range & { page: stri
   const queries = data?.queries ?? []
   return (
     <div className="border-t border-border bg-neutral-900/40 px-3 py-3">
-      <div className="mb-1.5 font-mono text-xs text-neutral-500">Contributing queries</div>
+      <div className="mb-1.5 text-xs text-neutral-500">Contributing queries</div>
       <PanelBody
         isLoading={isLoading}
         hasData={!!data}

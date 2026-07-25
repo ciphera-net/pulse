@@ -66,7 +66,7 @@ function KpiCard({
   return (
     <div className="rounded-none border border-border bg-card p-4">
       <div className="mb-1.5 flex items-start justify-between gap-2">
-        <span className="font-mono text-xs text-neutral-500">{label}</span>
+        <span className="text-xs text-neutral-500">{label}</span>
         {delta != null && <DeltaBadge change={delta} />}
       </div>
       {children}
@@ -234,7 +234,7 @@ export default function FunnelDetailPage() {
             <h1 className="truncate text-lg font-semibold text-white">{funnel.name}</h1>
             <p className="mt-1 text-sm text-neutral-400">
               {funnel.description && <span>{funnel.description} · </span>}
-              <span className="font-mono text-xs text-neutral-500">
+              <span className="text-xs text-neutral-500">
                 {windowLabel} · created {createdLabel}
               </span>
             </p>

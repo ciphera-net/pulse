@@ -38,7 +38,7 @@ const ACTIONS: ShortcutRow[] = [
 
 function Kbd({ label }: { label: string }) {
   return (
-    <kbd className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-none bg-neutral-800/70 border border-neutral-800 text-xs font-medium text-neutral-300 font-mono">
+    <kbd className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-none bg-neutral-800/70 border border-neutral-800 text-xs font-medium text-neutral-300">
       {label}
     </kbd>
   )

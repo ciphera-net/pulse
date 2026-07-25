@@ -128,7 +128,7 @@ export function FunnelSummaryCard({
             {/* Row 1: name + meta chips (actions overlay reserves the right edge) */}
             <div className="flex items-center gap-3 pr-20">
               <h3 className="truncate text-base font-semibold text-white">{funnel.name}</h3>
-              <span className="shrink-0 font-mono text-xs text-neutral-500">
+              <span className="shrink-0 text-xs text-neutral-500">
                 {funnel.steps.length} steps · {windowChip}
               </span>
             </div>

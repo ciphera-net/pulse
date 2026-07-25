@@ -187,7 +187,7 @@ export default function SearchConsolePage() {
 function DeltaBadge({ change, invert = false }: { change: PctChangeResult; invert?: boolean }) {
   if (!change || change.type !== 'pct') return null
   if (change.value === 0) {
-    return <span className="font-mono text-xs tabular-nums text-neutral-500">0%</span>
+    return <span className="text-xs tabular-nums text-neutral-500">0%</span>
   }
   const up = change.value > 0
   const good = invert ? !up : up
@@ -214,7 +214,7 @@ function KpiCard({
   return (
     <div className="rounded-none border border-border bg-card p-4">
       <div className="mb-1.5 flex items-start justify-between gap-2">
-        <span className="font-mono text-xs text-neutral-500">{label}</span>
+        <span className="text-xs text-neutral-500">{label}</span>
         <DeltaBadge change={delta} invert={invert} />
       </div>
       <AnimatedNumber value={value} format={format} className="text-2xl font-semibold tabular-nums text-white" />

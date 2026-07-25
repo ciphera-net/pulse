@@ -32,7 +32,7 @@ export default function TierSlider({ value, onChange, className }: TierSliderPro
               onClick={() => onChange(tier.value)}
               aria-label={`Select ${tier.label} pageviews per month`}
               className={cn(
-                'whitespace-nowrap px-1 py-0.5 font-mono text-xs tabular-nums transition-colors duration-fast ease-apple focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none',
+                'whitespace-nowrap px-1 py-0.5 text-xs tabular-nums transition-colors duration-fast ease-apple focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none',
                 i === index ? 'text-brand-orange' : 'text-neutral-500 hover:text-white',
               )}
             >

@@ -11,7 +11,7 @@ export function SupportWidgetAuth() {
       baseUrl="https://api.help.ciphera.net"
       wsUrl="https://ws.help.ciphera.net"
       websiteToken="p7bUfxMSBmD3xR4T8v9JeUvL"
-      docsUrl="https://help.ciphera.net"
+      docsUrl="https://help.ciphera.net/docs/pulse"
       onShareDetails={user ? () => ({
         email: user.email || undefined,
         name: user.display_name || undefined,

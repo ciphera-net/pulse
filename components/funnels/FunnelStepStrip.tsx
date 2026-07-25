@@ -157,7 +157,7 @@ export function FunnelStepStrip({
       {/* Exits pane */}
       <div className="rounded-none border border-border bg-card p-4">
         <div className="mb-3 flex h-10 items-center justify-between gap-3">
-          <span className="font-mono text-xs text-neutral-500">
+          <span className="text-xs text-neutral-500">
             Where visitors went after dropping off
           </span>
           {step.step.category !== 'event' && step.step.type === 'exact' && (
@@ -198,7 +198,7 @@ export function FunnelStepStrip({
       {/* Breakdown pane */}
       <div className="rounded-none border border-border bg-card p-4">
         <div className="mb-3 flex h-10 items-center justify-between gap-3">
-          <span className="font-mono text-xs text-neutral-500">Breakdown</span>
+          <span className="text-xs text-neutral-500">Breakdown</span>
           <Select
             variant="input"
             className="w-40"

@@ -36,10 +36,10 @@ export interface Release {
   body: string
 }
 
-// * Prose recipe for a release body: mono micro-labels for the ### category
+// * Prose recipe for a release body: micro-labels for the ### category
 // * headings (Added / Improved / Fixed …), orange only on links, tokens throughout.
 const PROSE_CLASSES = `prose prose-invert max-w-none
-  prose-headings:font-mono prose-headings:text-xs prose-headings:font-normal
+  prose-headings:text-xs prose-headings:font-normal
   prose-headings:uppercase prose-headings:tracking-[0.08em]
   prose-headings:text-muted-foreground prose-headings:mt-6 prose-headings:mb-3
   prose-p:text-muted-foreground prose-li:text-muted-foreground
@@ -83,7 +83,7 @@ function ReleaseBlock({ release }: { release: Release }) {
             {release.version}
             {release.date && <> · {release.date}</>}
           </p>
-          <h2 className="mt-2 font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
             {release.version}
           </h2>
         </div>
