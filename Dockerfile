@@ -1,14 +1,20 @@
-# syntax=docker/dockerfile:1.7
-
 # Stage 1: dependencies
 FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json package-lock.json* ./
-# BuildKit secret mount: /tmp/npmrc is provided via --secret npmrc=...
-# The secret exists only during this RUN layer, never written to the image.
-RUN --mount=type=secret,id=npmrc,target=/root/.npmrc \
-    npm ci --prefer-offline --no-audit --progress=false
+# kaniko has NO BuildKit `--mount=type=secret`, so the npm credential is COPY'd
+# in instead of mounted. This is safe because this is NOT the final stage —
+# kaniko publishes only the last stage, so /root/.npmrc never reaches the shipped
+# image — and it is deleted in the same layer that uses it.
+# ⚠️ If this stage is ever made the FINAL stage, the token ships. Check before
+# reordering stages.
+# ⚠️ .npmrc-ci is written by the `write-npmrc` / `write-npmrc-pr` steps in
+# .woodpecker/build.yml, so it always exists in CI. A local `docker build` needs
+# the file present too (`touch .npmrc-ci` if you only need public packages).
+COPY .npmrc-ci /root/.npmrc
+RUN npm ci --prefer-offline --no-audit --progress=false \
+ && rm -f /root/.npmrc
 
 # Stage 2: builder
 FROM node:20-alpine AS builder
