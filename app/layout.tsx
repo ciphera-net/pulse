@@ -1,6 +1,5 @@
 import Script from 'next/script'
 import { Toaster } from '@ciphera-net/facet'
-import { SupportWidgetAuth } from '@/components/support-widget-auth'
 import { AuthProvider } from '@/lib/auth/context'
 import SWRProvider from '@/components/SWRProvider'
 import type { Metadata, Viewport } from 'next'
@@ -128,7 +127,6 @@ export default function RootLayout({
           <AuthProvider>
             <LayoutContent>{children}</LayoutContent>
             <Toaster />
-            <SupportWidgetAuth />
           </AuthProvider>
         </SWRProvider>
       </body>
