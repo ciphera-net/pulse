@@ -49,6 +49,26 @@ ENV NEXT_PUBLIC_CDN_URL=${NEXT_PUBLIC_CDN_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
+# 🔴 CAP V8's HEAP. This build is the largest memory consumer in the estate.
+#
+# Measured 27-07-2026 on the in-cluster Kubernetes CI agent: this step peaked at
+# 2960 MiB of working set. The SKS nodes are standard.medium with 3411 MiB
+# ALLOCATABLE, so one uncapped build is ~88% of a whole node. It twice drove a
+# node to NotReady — taking the Traefik DaemonSet pod on that node down with it,
+# because a starved kubelet stops heartbeating before eviction can rescue it.
+#
+# V8 sizes its old-space from total machine memory, not from the container's
+# cgroup limit, so inside a container it happily grows past what the node can
+# give. --max-old-space-size makes the ceiling explicit. 1280 MiB of heap lands
+# the whole step comfortably under the 1536Mi request==limit that every
+# woodpecker-builds pod now gets (Infra/Kubernetes/workloads/woodpecker-agent).
+#
+# Owner's decision 27-07-2026: cap the build rather than add a sixth node.
+# ⚠️ If this ever fails with "JavaScript heap out of memory", the fix is NOT to
+# raise this alone — raise it together with the LimitRange, or the pod is simply
+# killed at a different boundary.
+ENV NODE_OPTIONS=--max-old-space-size=1280
+
 # prebuild runs validate:env + generate:integrations, then next build --webpack
 RUN npm run build
 
