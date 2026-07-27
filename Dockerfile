@@ -65,16 +65,32 @@ ENV NODE_ENV=production
 # Raising the heap by 384 MB raised RSS by 647 MB — V8 expands to fill what it is
 # allowed, so budget roughly 1.7x any increase, not 1.0x.
 #
-# 1280 -> 2560 on 27-07-2026, with the pool on 4 x standard.large and this step's
-# ceiling raised 3Gi -> 4Gi (.woodpecker/build.yml, push.yml). 1280 was chosen to
-# survive a 1536Mi/3Gi ceiling on a 3411 MiB node; it is not a property of the
-# build. More heap means less GC pressure and a faster `next build`.
+# 🔴 1280 -> 2560 -> BACK TO 1280, all on 27-07-2026. MEASURED, NOT REASONED.
+#
+# When the pool moved to 4 x standard.large this was raised to 2560 on the theory
+# that more heap = less GC pressure = a faster `next build`. The very next build
+# peaked at **4042 MiB against its 4096 MiB (4Gi) ceiling** — it completed, by
+# 54 MiB. That is not headroom, that is luck, and it would have become a flaky
+# OOM-kill the first time a dependency grew.
+#
+# The arithmetic was already on this page and it predicted this: +384 MB of heap
+# had cost +647 MB of RSS (~1.7x), so +1280 MB predicted ~+2150 MB on top of the
+# 2229 MiB baseline. Observed +1813 MB. The heap raise — not the kaniko change
+# shipped alongside it — is what consumed the margin.
+#
+# ⚠️ THE CEILING CANNOT ABSORB IT, SO THE HEAP MUST COME DOWN. 4Gi is pinned by
+# fragmentation, not by preference: 4096 MiB fits on ALL FOUR nodes, while 5Gi
+# (5120 MiB) fits on exactly ONE (measured free/node is 4410-5256 MiB). Raising
+# the ceiling to buy heap room would re-create the single-eligible-node problem
+# the pool migration existed to remove. So 1280 — the known-good value, measured
+# green at 2229 MiB — stays, now against a 4Gi ceiling instead of 3Gi, which is
+# where the real margin comes from.
 #
 # ⚠️ THE TWO NUMBERS ARE COUPLED. If this ever fails with "JavaScript heap out of
 # memory", raising it ALONE is wrong — the pod is then simply killed at the cgroup
-# boundary instead. Raise this and the 4Gi ceiling together, and keep the ceiling
+# boundary instead. Raise this and the ceiling together, and keep the ceiling
 # under the smallest measured free-memory slot across the pool (4410 MiB today).
-ENV NODE_OPTIONS=--max-old-space-size=2560
+ENV NODE_OPTIONS=--max-old-space-size=1280
 
 # prebuild runs validate:env + generate:integrations, then next build --webpack
 RUN npm run build
