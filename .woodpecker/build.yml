@@ -49,21 +49,27 @@ steps:
         from_secret: next_public_cdn_url
     # 🔴 THIS STEP OVERRIDES THE NAMESPACE DEFAULT, AND ONLY THIS STEP.
     #
-    # woodpecker-builds carries a LimitRange of request==limit==1536Mi, which is
-    # what stops any build overcommitting a 3411 MiB node. This build genuinely
-    # does not fit in it, measured three ways on 27-07-2026:
+    # woodpecker-builds carries a LimitRange of request==limit==1536Mi. This build
+    # genuinely does not fit in it — and that is a property of the BUILD (the
+    # largest node_modules in the estate, Next.js + webpack + PWA compile, with
+    # kaniko in the same pod), not of the node size. So the override STAYS.
+    # Measured 27-07-2026 on standard.medium (3411 MiB allocatable):
     #   heap 1280, ceiling 1536Mi -> killed at the ceiling
     #   heap  896, ceiling 1536Mi -> V8 "heap out of memory" at ~900 MB, RSS 1401 MiB
     #   heap 1280, ceiling 2Gi    -> killed at the ceiling, RSS 2048 MiB
-    # Raising the heap 896->1280 (+384 MB) raised RSS by +647 MB: V8 expands to
-    # fill what it is allowed, and this pod holds kaniko AND the node process. No
-    # heap setting both completes the build and fits under 2 GiB, so the ceiling
-    # has to be 3Gi. Nodes are 3411 MiB allocatable, so this build needs a nearly
-    # EMPTY node — the autoscaler adds one for the duration and removes it after.
-    # Owner informed 27-07-2026; the cheaper "cap it to fit 5 nodes" option was
-    # tried first and does not exist.
-    # It is the largest build in the estate (biggest node_modules, Next.js +
-    # webpack + PWA compile).
+    #   heap 1280, ceiling 3Gi    -> GREEN, RSS 2229 MiB
+    #
+    # 3Gi -> 4Gi on 27-07-2026, when the pool moved to 4 x standard.large
+    # (7436 MiB allocatable). WHY RAISE RATHER THAN REMOVE: 3Gi was the tightest
+    # ceiling that would fit a 3411 MiB node — it was sized against the NODE, not
+    # against the build, which is why the build ran permanently within ~800 MiB of
+    # being killed. The node constraint is gone; give it real headroom instead.
+    #
+    # ⚠️ WHY 4Gi AND NOT MORE. Measured free memory per node is 4410-5256 MiB.
+    # 4096 MiB fits on ALL FOUR nodes; 5Gi (5120 MiB) would fit on exactly ONE,
+    # which re-creates the single-eligible-node fragmentation this whole migration
+    # existed to remove. Size a build against measured FREE-per-node, never against
+    # node allocatable.
     #
     # request == limit here too: the point of the namespace default is that the
     # scheduler's arithmetic bounds the node, and an override that only raised the
@@ -74,19 +80,20 @@ steps:
       kubernetes:
         resources:
           requests:
-            memory: 3Gi
+            memory: 4Gi
           limits:
-            memory: 3Gi
+            memory: 4Gi
     settings:
-      # 🔴 kaniko holds every layer COMPRESSED IN MEMORY while snapshotting, on top
-      # of the build's own usage. This repo has the largest node_modules in the
-      # estate, and the step died at `COPY --from=deps /app/node_modules` — in
-      # kaniko's snapshot phase, not in `next build`. Measured 27-07-2026: 2960 MiB
-      # working set against 3411 MiB of node allocatable.
-      # --compressed-caching=false makes kaniko stream layers instead of holding
-      # compressed copies resident. Slower, and the only thing that fits this build
-      # inside the 1536Mi request==limit every woodpecker-builds pod now carries.
-      extra_opts: --compressed-caching=false
+      # `extra_opts: --compressed-caching=false` REMOVED 27-07-2026 with the move to
+      # 4 x standard.large. kaniko holds every layer COMPRESSED IN MEMORY while
+      # snapshotting, on top of the build's own usage; on a 3411 MiB node that took
+      # this step to 2960 MiB and killed it at `COPY --from=deps /app/node_modules`
+      # — in kaniko's snapshot phase, not in `next build`. Disabling compressed
+      # caching made kaniko stream layers instead: it fit, and it COST BUILD TIME.
+      # That was a workaround for the node size, and the node size is now fixed —
+      # the pod has a 4Gi ceiling and every node has 4410+ MiB free.
+      # ⚠️ If this step ever OOMs in the snapshot phase again, restoring the flag is
+      # the fix — but record the measurement, do not restore it on suspicion.
       dry-run: true
       registry: registry.ops.ciphera.net
       repo: ciphera-net/pulse-frontend
@@ -139,21 +146,27 @@ steps:
         from_secret: staging_next_public_cdn_url
     # 🔴 THIS STEP OVERRIDES THE NAMESPACE DEFAULT, AND ONLY THIS STEP.
     #
-    # woodpecker-builds carries a LimitRange of request==limit==1536Mi, which is
-    # what stops any build overcommitting a 3411 MiB node. This build genuinely
-    # does not fit in it, measured three ways on 27-07-2026:
+    # woodpecker-builds carries a LimitRange of request==limit==1536Mi. This build
+    # genuinely does not fit in it — and that is a property of the BUILD (the
+    # largest node_modules in the estate, Next.js + webpack + PWA compile, with
+    # kaniko in the same pod), not of the node size. So the override STAYS.
+    # Measured 27-07-2026 on standard.medium (3411 MiB allocatable):
     #   heap 1280, ceiling 1536Mi -> killed at the ceiling
     #   heap  896, ceiling 1536Mi -> V8 "heap out of memory" at ~900 MB, RSS 1401 MiB
     #   heap 1280, ceiling 2Gi    -> killed at the ceiling, RSS 2048 MiB
-    # Raising the heap 896->1280 (+384 MB) raised RSS by +647 MB: V8 expands to
-    # fill what it is allowed, and this pod holds kaniko AND the node process. No
-    # heap setting both completes the build and fits under 2 GiB, so the ceiling
-    # has to be 3Gi. Nodes are 3411 MiB allocatable, so this build needs a nearly
-    # EMPTY node — the autoscaler adds one for the duration and removes it after.
-    # Owner informed 27-07-2026; the cheaper "cap it to fit 5 nodes" option was
-    # tried first and does not exist.
-    # It is the largest build in the estate (biggest node_modules, Next.js +
-    # webpack + PWA compile).
+    #   heap 1280, ceiling 3Gi    -> GREEN, RSS 2229 MiB
+    #
+    # 3Gi -> 4Gi on 27-07-2026, when the pool moved to 4 x standard.large
+    # (7436 MiB allocatable). WHY RAISE RATHER THAN REMOVE: 3Gi was the tightest
+    # ceiling that would fit a 3411 MiB node — it was sized against the NODE, not
+    # against the build, which is why the build ran permanently within ~800 MiB of
+    # being killed. The node constraint is gone; give it real headroom instead.
+    #
+    # ⚠️ WHY 4Gi AND NOT MORE. Measured free memory per node is 4410-5256 MiB.
+    # 4096 MiB fits on ALL FOUR nodes; 5Gi (5120 MiB) would fit on exactly ONE,
+    # which re-creates the single-eligible-node fragmentation this whole migration
+    # existed to remove. Size a build against measured FREE-per-node, never against
+    # node allocatable.
     #
     # request == limit here too: the point of the namespace default is that the
     # scheduler's arithmetic bounds the node, and an override that only raised the
@@ -164,19 +177,20 @@ steps:
       kubernetes:
         resources:
           requests:
-            memory: 3Gi
+            memory: 4Gi
           limits:
-            memory: 3Gi
+            memory: 4Gi
     settings:
-      # 🔴 kaniko holds every layer COMPRESSED IN MEMORY while snapshotting, on top
-      # of the build's own usage. This repo has the largest node_modules in the
-      # estate, and the step died at `COPY --from=deps /app/node_modules` — in
-      # kaniko's snapshot phase, not in `next build`. Measured 27-07-2026: 2960 MiB
-      # working set against 3411 MiB of node allocatable.
-      # --compressed-caching=false makes kaniko stream layers instead of holding
-      # compressed copies resident. Slower, and the only thing that fits this build
-      # inside the 1536Mi request==limit every woodpecker-builds pod now carries.
-      extra_opts: --compressed-caching=false
+      # `extra_opts: --compressed-caching=false` REMOVED 27-07-2026 with the move to
+      # 4 x standard.large. kaniko holds every layer COMPRESSED IN MEMORY while
+      # snapshotting, on top of the build's own usage; on a 3411 MiB node that took
+      # this step to 2960 MiB and killed it at `COPY --from=deps /app/node_modules`
+      # — in kaniko's snapshot phase, not in `next build`. Disabling compressed
+      # caching made kaniko stream layers instead: it fit, and it COST BUILD TIME.
+      # That was a workaround for the node size, and the node size is now fixed —
+      # the pod has a 4Gi ceiling and every node has 4410+ MiB free.
+      # ⚠️ If this step ever OOMs in the snapshot phase again, restoring the flag is
+      # the fix — but record the measurement, do not restore it on suspicion.
       dry-run: true
       registry: registry.ops.ciphera.net
       repo: ciphera-net/pulse-frontend-staging
