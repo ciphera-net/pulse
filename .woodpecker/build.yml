@@ -48,6 +48,15 @@ steps:
       NEXT_PUBLIC_CDN_URL:
         from_secret: next_public_cdn_url
     settings:
+      # 🔴 kaniko holds every layer COMPRESSED IN MEMORY while snapshotting, on top
+      # of the build's own usage. This repo has the largest node_modules in the
+      # estate, and the step died at `COPY --from=deps /app/node_modules` — in
+      # kaniko's snapshot phase, not in `next build`. Measured 27-07-2026: 2960 MiB
+      # working set against 3411 MiB of node allocatable.
+      # --compressed-caching=false makes kaniko stream layers instead of holding
+      # compressed copies resident. Slower, and the only thing that fits this build
+      # inside the 1536Mi request==limit every woodpecker-builds pod now carries.
+      extra_opts: --compressed-caching=false
       dry-run: true
       registry: registry.ops.ciphera.net
       repo: ciphera-net/pulse-frontend
@@ -99,6 +108,15 @@ steps:
       NEXT_PUBLIC_CDN_URL:
         from_secret: staging_next_public_cdn_url
     settings:
+      # 🔴 kaniko holds every layer COMPRESSED IN MEMORY while snapshotting, on top
+      # of the build's own usage. This repo has the largest node_modules in the
+      # estate, and the step died at `COPY --from=deps /app/node_modules` — in
+      # kaniko's snapshot phase, not in `next build`. Measured 27-07-2026: 2960 MiB
+      # working set against 3411 MiB of node allocatable.
+      # --compressed-caching=false makes kaniko stream layers instead of holding
+      # compressed copies resident. Slower, and the only thing that fits this build
+      # inside the 1536Mi request==limit every woodpecker-builds pod now carries.
+      extra_opts: --compressed-caching=false
       dry-run: true
       registry: registry.ops.ciphera.net
       repo: ciphera-net/pulse-frontend-staging
