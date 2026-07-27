@@ -72,7 +72,7 @@ ENV NODE_ENV=production
 # ⚠️ If this ever fails with "JavaScript heap out of memory", the fix is NOT to
 # raise this alone — raise it together with the LimitRange, or the pod is simply
 # killed at a different boundary.
-ENV NODE_OPTIONS=--max-old-space-size=896
+ENV NODE_OPTIONS=--max-old-space-size=1280
 
 # prebuild runs validate:env + generate:integrations, then next build --webpack
 RUN npm run build

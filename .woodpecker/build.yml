@@ -47,6 +47,29 @@ steps:
         from_secret: next_public_chargebee_publishable_key
       NEXT_PUBLIC_CDN_URL:
         from_secret: next_public_cdn_url
+    # 🔴 THIS STEP OVERRIDES THE NAMESPACE DEFAULT, AND ONLY THIS STEP.
+    #
+    # woodpecker-builds carries a LimitRange of request==limit==1536Mi, which is
+    # what stops any build overcommitting a 3411 MiB node. This build genuinely
+    # does not fit in it, measured three ways on 27-07-2026:
+    #   heap 1280 -> killed at exactly 1536 MiB (the cgroup ceiling)
+    #   heap  896 -> "JavaScript heap out of memory" at ~900 MB, RSS peak 1401 MiB
+    #   => non-heap overhead is ~500 MiB, so a workable ~1.2 GB heap needs ~1.7 GiB
+    # It is the largest build in the estate (biggest node_modules, Next.js +
+    # webpack + PWA compile).
+    #
+    # request == limit here too: the point of the namespace default is that the
+    # scheduler's arithmetic bounds the node, and an override that only raised the
+    # limit would reintroduce exactly the overcommit that took a node down twice.
+    # Raise the DEFAULT for everyone and every node loses that guarantee; raise it
+    # HERE and only this build is expensive.
+    backend_options:
+      kubernetes:
+        resources:
+          requests:
+            memory: 2Gi
+          limits:
+            memory: 2Gi
     settings:
       # 🔴 kaniko holds every layer COMPRESSED IN MEMORY while snapshotting, on top
       # of the build's own usage. This repo has the largest node_modules in the
@@ -107,6 +130,29 @@ steps:
         from_secret: staging_next_public_chargebee_publishable_key
       NEXT_PUBLIC_CDN_URL:
         from_secret: staging_next_public_cdn_url
+    # 🔴 THIS STEP OVERRIDES THE NAMESPACE DEFAULT, AND ONLY THIS STEP.
+    #
+    # woodpecker-builds carries a LimitRange of request==limit==1536Mi, which is
+    # what stops any build overcommitting a 3411 MiB node. This build genuinely
+    # does not fit in it, measured three ways on 27-07-2026:
+    #   heap 1280 -> killed at exactly 1536 MiB (the cgroup ceiling)
+    #   heap  896 -> "JavaScript heap out of memory" at ~900 MB, RSS peak 1401 MiB
+    #   => non-heap overhead is ~500 MiB, so a workable ~1.2 GB heap needs ~1.7 GiB
+    # It is the largest build in the estate (biggest node_modules, Next.js +
+    # webpack + PWA compile).
+    #
+    # request == limit here too: the point of the namespace default is that the
+    # scheduler's arithmetic bounds the node, and an override that only raised the
+    # limit would reintroduce exactly the overcommit that took a node down twice.
+    # Raise the DEFAULT for everyone and every node loses that guarantee; raise it
+    # HERE and only this build is expensive.
+    backend_options:
+      kubernetes:
+        resources:
+          requests:
+            memory: 2Gi
+          limits:
+            memory: 2Gi
     settings:
       # 🔴 kaniko holds every layer COMPRESSED IN MEMORY while snapshotting, on top
       # of the build's own usage. This repo has the largest node_modules in the
