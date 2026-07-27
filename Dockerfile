@@ -59,15 +59,20 @@ ENV NODE_ENV=production
 #
 # V8 sizes its old-space from total machine memory, not from the container's
 # cgroup limit, so inside a container it happily grows past what the node can
-# give. --max-old-space-size makes the ceiling explicit. 1280 MiB of heap lands
-# the whole step comfortably under the 1536Mi request==limit that every
-# woodpecker-builds pod now gets (Infra/Kubernetes/workloads/woodpecker-agent).
+# give. --max-old-space-size makes the ceiling explicit.
+#
+# ⚠️ THIS FLAG CAPS OLD SPACE ONLY. Process RSS = old space + new space + code +
+# native allocations, so the resident set lands roughly 200-300 MiB ABOVE this
+# number. 1280 was tried first and the step was killed at exactly 1536 MiB — the
+# cgroup ceiling — during `next build`. 896 leaves the headroom the rest of the
+# process needs to stay under the 1536Mi request==limit that every
+# woodpecker-builds pod carries (Infra/Kubernetes/workloads/woodpecker-agent).
 #
 # Owner's decision 27-07-2026: cap the build rather than add a sixth node.
 # ⚠️ If this ever fails with "JavaScript heap out of memory", the fix is NOT to
 # raise this alone — raise it together with the LimitRange, or the pod is simply
 # killed at a different boundary.
-ENV NODE_OPTIONS=--max-old-space-size=1280
+ENV NODE_OPTIONS=--max-old-space-size=896
 
 # prebuild runs validate:env + generate:integrations, then next build --webpack
 RUN npm run build
