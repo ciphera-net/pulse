@@ -60,9 +60,16 @@ steps:
     # woodpecker-builds carries a LimitRange of request==limit==1536Mi, which is
     # what stops any build overcommitting a 3411 MiB node. This build genuinely
     # does not fit in it, measured three ways on 27-07-2026:
-    #   heap 1280 -> killed at exactly 1536 MiB (the cgroup ceiling)
-    #   heap  896 -> "JavaScript heap out of memory" at ~900 MB, RSS peak 1401 MiB
-    #   => non-heap overhead is ~500 MiB, so a workable ~1.2 GB heap needs ~1.7 GiB
+    #   heap 1280, ceiling 1536Mi -> killed at the ceiling
+    #   heap  896, ceiling 1536Mi -> V8 "heap out of memory" at ~900 MB, RSS 1401 MiB
+    #   heap 1280, ceiling 2Gi    -> killed at the ceiling, RSS 2048 MiB
+    # Raising the heap 896->1280 (+384 MB) raised RSS by +647 MB: V8 expands to
+    # fill what it is allowed, and this pod holds kaniko AND the node process. No
+    # heap setting both completes the build and fits under 2 GiB, so the ceiling
+    # has to be 3Gi. Nodes are 3411 MiB allocatable, so this build needs a nearly
+    # EMPTY node — the autoscaler adds one for the duration and removes it after.
+    # Owner informed 27-07-2026; the cheaper "cap it to fit 5 nodes" option was
+    # tried first and does not exist.
     # It is the largest build in the estate (biggest node_modules, Next.js +
     # webpack + PWA compile).
     #
@@ -75,9 +82,9 @@ steps:
       kubernetes:
         resources:
           requests:
-            memory: 2Gi
+            memory: 3Gi
           limits:
-            memory: 2Gi
+            memory: 3Gi
     settings:
       # 🔴 kaniko holds every layer COMPRESSED IN MEMORY while snapshotting, on top
       # of the build's own usage. This repo has the largest node_modules in the
@@ -148,9 +155,16 @@ steps:
     # woodpecker-builds carries a LimitRange of request==limit==1536Mi, which is
     # what stops any build overcommitting a 3411 MiB node. This build genuinely
     # does not fit in it, measured three ways on 27-07-2026:
-    #   heap 1280 -> killed at exactly 1536 MiB (the cgroup ceiling)
-    #   heap  896 -> "JavaScript heap out of memory" at ~900 MB, RSS peak 1401 MiB
-    #   => non-heap overhead is ~500 MiB, so a workable ~1.2 GB heap needs ~1.7 GiB
+    #   heap 1280, ceiling 1536Mi -> killed at the ceiling
+    #   heap  896, ceiling 1536Mi -> V8 "heap out of memory" at ~900 MB, RSS 1401 MiB
+    #   heap 1280, ceiling 2Gi    -> killed at the ceiling, RSS 2048 MiB
+    # Raising the heap 896->1280 (+384 MB) raised RSS by +647 MB: V8 expands to
+    # fill what it is allowed, and this pod holds kaniko AND the node process. No
+    # heap setting both completes the build and fits under 2 GiB, so the ceiling
+    # has to be 3Gi. Nodes are 3411 MiB allocatable, so this build needs a nearly
+    # EMPTY node — the autoscaler adds one for the duration and removes it after.
+    # Owner informed 27-07-2026; the cheaper "cap it to fit 5 nodes" option was
+    # tried first and does not exist.
     # It is the largest build in the estate (biggest node_modules, Next.js +
     # webpack + PWA compile).
     #
@@ -163,9 +177,9 @@ steps:
       kubernetes:
         resources:
           requests:
-            memory: 2Gi
+            memory: 3Gi
           limits:
-            memory: 2Gi
+            memory: 3Gi
     settings:
       # 🔴 kaniko holds every layer COMPRESSED IN MEMORY while snapshotting, on top
       # of the build's own usage. This repo has the largest node_modules in the
