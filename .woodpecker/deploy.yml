@@ -33,6 +33,13 @@
 # single-FILE bind mount stays pinned to the inode that existed at container start — fatal
 # for the 30m kube token.
 
+# Routes this workflow to the in-cluster Kubernetes agent, which advertises
+# `!runner=k8s` — a MANDATORY label, so the agent is only eligible when a task
+# asks for it. Deleting this line sends the workflow back to the ci-ops Docker
+# agent; that is the rollback, and it is one line.
+labels:
+  runner: k8s
+
 depends_on:
   - push
 
@@ -43,8 +50,20 @@ when:
     branch: staging
 
 steps:
+  # ⚠️ The Accept list MUST include application/vnd.oci.image.manifest.v1+json.
+  # kaniko INHERITS THE BASE IMAGE'S manifest media type, so the format varies
+  # per REPO, not per tool. With an incomplete Accept the registry can fall back
+  # to legacy schema1 and return a DIFFERENT DIGEST for the same tag — measured
+  # 27-07-2026 — which would pin a Deployment to something that is not the image
+  # that was built, with every gate still green.
   digest:
     image: alpine:3.20
+    # registry.ops.ciphera.net resolves to the cluster's own NLB. A pod dialling
+    # its own cluster's public load balancer hits the Exoscale NLB hairpin, and
+    # ~1/node_count of those connections are black-holed. Pin the name at
+    # Traefik's ClusterIP so the request never leaves the cluster.
+    extra_hosts:
+      - "registry.ops.ciphera.net:10.101.182.27"
     when:
       - event: push
         branch: main
@@ -58,7 +77,7 @@ steps:
       - export DEPLOY_SHA=${CI_COMMIT_SHA:0:7}
       - |
         DIGEST=$(curl -sfI --max-time 60 -u "$REGISTRY_USERNAME:$REGISTRY_PASSWORD" \
-          -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json" \
+          -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json" \
           "https://registry.ops.ciphera.net/v2/ciphera-net/pulse-frontend/manifests/sha-$DEPLOY_SHA" \
           | tr -d '\r' | awk 'tolower($1)=="docker-content-digest:"{print $2}')
         case "$DIGEST" in
@@ -70,14 +89,34 @@ steps:
       - echo "resolved sha-$DEPLOY_SHA -> $(cat /woodpecker/digest)"
   deploy-k8s:
     image: alpine:3.20
+    # registry.ops.ciphera.net resolves to the cluster's own NLB. A pod dialling
+    # its own cluster's public load balancer hits the Exoscale NLB hairpin, and
+    # ~1/node_count of those connections are black-holed. Pin the name at
+    # Traefik's ClusterIP so the request never leaves the cluster.
+    extra_hosts:
+      - "registry.ops.ciphera.net:10.101.182.27"
     depends_on: [digest]
     when:
       - event: push
         branch: main
-    volumes:
-      - /opt/woodpecker/secrets:/run/ci:ro
+    # NO volume, deliberately — this is the whole point of running in-cluster.
+    #
+    # On ci-ops this step bind-mounted /opt/woodpecker/secrets:/run/ci:ro, a host
+    # directory into which the agent's `token-sync` task republished a 30-minute
+    # Vault-issued ServiceAccount token plus the SKS control-plane CA every 30s.
+    # All of that existed only because CI ran OUTSIDE the cluster and had no
+    # Kubernetes identity of its own.
+    #
+    # A step pod has one automatically: the kubelet projects a rotating token and
+    # the API server's CA at /var/run/secrets/kubernetes.io/serviceaccount/, and
+    # the API is reachable in-cluster at kubernetes.default.svc. So the token-sync
+    # mechanism, the host mount and the Vault round trip all disappear, and the
+    # credential is now bound to this pod instead of readable by anything sharing
+    # a VM. Permissions come from the ci-deployer RoleBinding
+    # (Infra/Kubernetes/workloads/_shared/ci-deployer.yaml), which binds
+    # woodpecker-builds/default.
     environment:
-      KUBE_API: https://5d353b06-e84e-4c25-98b7-c0ec883da332.sks-ch-dk-2.exo.io
+      KUBE_API: https://kubernetes.default.svc
     commands:
       - apk add --no-cache curl jq >/dev/null
       - |
@@ -92,8 +131,8 @@ steps:
           --arg sha "$DEPLOY_SHA" \
           '{spec:{template:{metadata:{annotations:{"ciphera.net/deploy-sha":$sha}},
                             spec:{containers:[{name:"nextjs",image:$img}]}}}}')
-        curl -fsS --max-time 30 --cacert /run/ci/kube-ca.pem -X PATCH \
-          -H "Authorization: Bearer $(cat /run/ci/kube-token)" \
+        curl -fsS --max-time 30 --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -X PATCH \
+          -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
           -H "Content-Type: application/strategic-merge-patch+json" \
           -d "$BODY" \
           "$KUBE_API/apis/apps/v1/namespaces/apps/deployments/pulse-frontend?fieldManager=woodpecker-ci" >/dev/null
@@ -103,8 +142,8 @@ steps:
       - |
         CONVERGED=no
         for i in $(seq 1 90); do
-          S=$(curl -fsS --max-time 15 --cacert /run/ci/kube-ca.pem \
-            -H "Authorization: Bearer $(cat /run/ci/kube-token)" \
+          S=$(curl -fsS --max-time 15 --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+            -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
             "$KUBE_API/apis/apps/v1/namespaces/apps/deployments/pulse-frontend") \
             || { echo "api read failed (iter $i) — retrying"; S=''; }
           echo "$S" | jq -e '
@@ -118,16 +157,16 @@ steps:
           sleep 4
         done
         if [ "$CONVERGED" != "yes" ]; then
-          curl -fsS --max-time 15 --cacert /run/ci/kube-ca.pem \
-            -H "Authorization: Bearer $(cat /run/ci/kube-token)" \
+          curl -fsS --max-time 15 --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+            -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
             "$KUBE_API/api/v1/namespaces/apps/pods" \
             | jq -r '.items[] | select(.metadata.name | startswith("pulse-frontend")) | "\(.metadata.name) \(.status.phase)"' || true
           echo "k8s rollout did NOT converge for pulse-frontend"
           exit 1
         fi
       - |
-        O=$(curl -fsS --max-time 15 --retry 3 --retry-all-errors --cacert /run/ci/kube-ca.pem \
-          -H "Authorization: Bearer $(cat /run/ci/kube-token)" \
+        O=$(curl -fsS --max-time 15 --retry 3 --retry-all-errors --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+          -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
           "$KUBE_API/apis/apps/v1/namespaces/apps/deployments/pulse-frontend")
         echo "$O" | jq -e \
           --arg img "registry.ops.ciphera.net/ciphera-net/pulse-frontend@$DIGEST" \
@@ -140,6 +179,12 @@ steps:
       - echo "Deployed pulse-frontend to SKS ($DEPLOY_SHA)"
   digest-staging:
     image: alpine:3.20
+    # registry.ops.ciphera.net resolves to the cluster's own NLB. A pod dialling
+    # its own cluster's public load balancer hits the Exoscale NLB hairpin, and
+    # ~1/node_count of those connections are black-holed. Pin the name at
+    # Traefik's ClusterIP so the request never leaves the cluster.
+    extra_hosts:
+      - "registry.ops.ciphera.net:10.101.182.27"
     when:
       - event: push
         branch: staging
@@ -153,7 +198,7 @@ steps:
       - export DEPLOY_SHA=${CI_COMMIT_SHA:0:7}
       - |
         DIGEST=$(curl -sfI --max-time 60 -u "$REGISTRY_USERNAME:$REGISTRY_PASSWORD" \
-          -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json" \
+          -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json" \
           "https://registry.ops.ciphera.net/v2/ciphera-net/pulse-frontend-staging/manifests/sha-$DEPLOY_SHA" \
           | tr -d '\r' | awk 'tolower($1)=="docker-content-digest:"{print $2}')
         case "$DIGEST" in
@@ -165,14 +210,34 @@ steps:
       - echo "resolved sha-$DEPLOY_SHA -> $(cat /woodpecker/digest)"
   deploy-k8s-staging:
     image: alpine:3.20
+    # registry.ops.ciphera.net resolves to the cluster's own NLB. A pod dialling
+    # its own cluster's public load balancer hits the Exoscale NLB hairpin, and
+    # ~1/node_count of those connections are black-holed. Pin the name at
+    # Traefik's ClusterIP so the request never leaves the cluster.
+    extra_hosts:
+      - "registry.ops.ciphera.net:10.101.182.27"
     depends_on: [digest-staging]
     when:
       - event: push
         branch: staging
-    volumes:
-      - /opt/woodpecker/secrets:/run/ci:ro
+    # NO volume, deliberately — this is the whole point of running in-cluster.
+    #
+    # On ci-ops this step bind-mounted /opt/woodpecker/secrets:/run/ci:ro, a host
+    # directory into which the agent's `token-sync` task republished a 30-minute
+    # Vault-issued ServiceAccount token plus the SKS control-plane CA every 30s.
+    # All of that existed only because CI ran OUTSIDE the cluster and had no
+    # Kubernetes identity of its own.
+    #
+    # A step pod has one automatically: the kubelet projects a rotating token and
+    # the API server's CA at /var/run/secrets/kubernetes.io/serviceaccount/, and
+    # the API is reachable in-cluster at kubernetes.default.svc. So the token-sync
+    # mechanism, the host mount and the Vault round trip all disappear, and the
+    # credential is now bound to this pod instead of readable by anything sharing
+    # a VM. Permissions come from the ci-deployer RoleBinding
+    # (Infra/Kubernetes/workloads/_shared/ci-deployer.yaml), which binds
+    # woodpecker-builds/default.
     environment:
-      KUBE_API: https://5d353b06-e84e-4c25-98b7-c0ec883da332.sks-ch-dk-2.exo.io
+      KUBE_API: https://kubernetes.default.svc
     commands:
       - apk add --no-cache curl jq >/dev/null
       - |
@@ -187,8 +252,8 @@ steps:
           --arg sha "$DEPLOY_SHA" \
           '{spec:{template:{metadata:{annotations:{"ciphera.net/deploy-sha":$sha}},
                             spec:{containers:[{name:"nextjs",image:$img}]}}}}')
-        curl -fsS --max-time 30 --cacert /run/ci/kube-ca.pem -X PATCH \
-          -H "Authorization: Bearer $(cat /run/ci/kube-token)" \
+        curl -fsS --max-time 30 --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -X PATCH \
+          -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
           -H "Content-Type: application/strategic-merge-patch+json" \
           -d "$BODY" \
           "$KUBE_API/apis/apps/v1/namespaces/apps/deployments/pulse-frontend-staging?fieldManager=woodpecker-ci" >/dev/null
@@ -198,8 +263,8 @@ steps:
       - |
         CONVERGED=no
         for i in $(seq 1 90); do
-          S=$(curl -fsS --max-time 15 --cacert /run/ci/kube-ca.pem \
-            -H "Authorization: Bearer $(cat /run/ci/kube-token)" \
+          S=$(curl -fsS --max-time 15 --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+            -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
             "$KUBE_API/apis/apps/v1/namespaces/apps/deployments/pulse-frontend-staging") \
             || { echo "api read failed (iter $i) — retrying"; S=''; }
           echo "$S" | jq -e '
@@ -213,16 +278,16 @@ steps:
           sleep 4
         done
         if [ "$CONVERGED" != "yes" ]; then
-          curl -fsS --max-time 15 --cacert /run/ci/kube-ca.pem \
-            -H "Authorization: Bearer $(cat /run/ci/kube-token)" \
+          curl -fsS --max-time 15 --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+            -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
             "$KUBE_API/api/v1/namespaces/apps/pods" \
             | jq -r '.items[] | select(.metadata.name | startswith("pulse-frontend-staging")) | "\(.metadata.name) \(.status.phase)"' || true
           echo "k8s rollout did NOT converge for pulse-frontend-staging"
           exit 1
         fi
       - |
-        O=$(curl -fsS --max-time 15 --retry 3 --retry-all-errors --cacert /run/ci/kube-ca.pem \
-          -H "Authorization: Bearer $(cat /run/ci/kube-token)" \
+        O=$(curl -fsS --max-time 15 --retry 3 --retry-all-errors --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+          -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
           "$KUBE_API/apis/apps/v1/namespaces/apps/deployments/pulse-frontend-staging")
         echo "$O" | jq -e \
           --arg img "registry.ops.ciphera.net/ciphera-net/pulse-frontend-staging@$DIGEST" \
