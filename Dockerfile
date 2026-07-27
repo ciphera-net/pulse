@@ -49,30 +49,32 @@ ENV NEXT_PUBLIC_CDN_URL=${NEXT_PUBLIC_CDN_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-# 🔴 CAP V8's HEAP. This build is the largest memory consumer in the estate.
+# 🔴 CAP V8's HEAP. KEEP THIS FLAG — IT IS MORE NECESSARY ON BIG NODES, NOT LESS.
 #
-# Measured 27-07-2026 on the in-cluster Kubernetes CI agent: this step peaked at
-# 2960 MiB of working set. The SKS nodes are standard.medium with 3411 MiB
-# ALLOCATABLE, so one uncapped build is ~88% of a whole node. It twice drove a
-# node to NotReady — taking the Traefik DaemonSet pod on that node down with it,
-# because a starved kubelet stops heartbeating before eviction can rescue it.
-#
-# V8 sizes its old-space from total machine memory, not from the container's
-# cgroup limit, so inside a container it happily grows past what the node can
-# give. --max-old-space-size makes the ceiling explicit.
+# V8 sizes its old-space from TOTAL MACHINE MEMORY, not from the container's cgroup
+# limit. That is the whole reason this line exists, and it is why deleting it when
+# the nodes got BIGGER would be a bug rather than a cleanup:
+#   on a 4 GiB standard.medium an uncapped V8 self-selects ~2 GiB of old space
+#   on an 8 GiB standard.large  an uncapped V8 self-selects ~4 GiB of old space
+# i.e. an uncapped build grows to fill whatever node it lands on and would blow the
+# pod ceiling on the larger node it was supposed to be comfortable on.
 #
 # ⚠️ THIS FLAG CAPS OLD SPACE ONLY. Process RSS = old space + new space + code +
-# native allocations, so the resident set lands roughly 200-300 MiB ABOVE this
-# number. 1280 was tried first and the step was killed at exactly 1536 MiB — the
-# cgroup ceiling — during `next build`. 896 leaves the headroom the rest of the
-# process needs to stay under the 1536Mi request==limit that every
-# woodpecker-builds pod carries (Infra/Kubernetes/workloads/woodpecker-agent).
+# native allocations, and this pod holds kaniko too, so RSS lands well above this
+# number. Measured 27-07-2026: heap 896 -> RSS 1401 MiB; heap 1280 -> RSS 2229 MiB.
+# Raising the heap by 384 MB raised RSS by 647 MB — V8 expands to fill what it is
+# allowed, so budget roughly 1.7x any increase, not 1.0x.
 #
-# Owner's decision 27-07-2026: cap the build rather than add a sixth node.
-# ⚠️ If this ever fails with "JavaScript heap out of memory", the fix is NOT to
-# raise this alone — raise it together with the LimitRange, or the pod is simply
-# killed at a different boundary.
-ENV NODE_OPTIONS=--max-old-space-size=1280
+# 1280 -> 2560 on 27-07-2026, with the pool on 4 x standard.large and this step's
+# ceiling raised 3Gi -> 4Gi (.woodpecker/build.yml, push.yml). 1280 was chosen to
+# survive a 1536Mi/3Gi ceiling on a 3411 MiB node; it is not a property of the
+# build. More heap means less GC pressure and a faster `next build`.
+#
+# ⚠️ THE TWO NUMBERS ARE COUPLED. If this ever fails with "JavaScript heap out of
+# memory", raising it ALONE is wrong — the pod is then simply killed at the cgroup
+# boundary instead. Raise this and the 4Gi ceiling together, and keep the ceiling
+# under the smallest measured free-memory slot across the pool (4410 MiB today).
+ENV NODE_OPTIONS=--max-old-space-size=2560
 
 # prebuild runs validate:env + generate:integrations, then next build --webpack
 RUN npm run build
