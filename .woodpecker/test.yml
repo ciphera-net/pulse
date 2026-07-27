@@ -1,3 +1,11 @@
+# Routes to the in-cluster Kubernetes agent. `!runner=k8s` on that agent makes
+# this label MANDATORY for it to be eligible, so a workflow WITHOUT it is
+# ineligible everywhere now that the ci-ops Docker agent is gone — and an
+# ineligible workflow queues PENDING FOREVER rather than failing. Silent, not
+# loud: the pipeline simply never finishes.
+labels:
+  runner: k8s
+
 when:
   - event: push
     branch: [main, staging]
