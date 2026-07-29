@@ -14,6 +14,15 @@ when:
 steps:
   test:
     image: node:22
+    # Resources declared 29-07-2026 — without them the step pod is QoS BestEffort, first
+    # evicted under node memory pressure. Estate-wide sweep after two pulse-backend steps
+    # were SIGKILLed (exit 137) mid-download, presenting as a test failure (see
+    # pulse-backend #147/#148). Sized by step class.
+    backend_options:
+      kubernetes:
+        resources:
+          requests: { memory: 1Gi, cpu: 500m }
+          limits: { memory: 4Gi }
     environment:
       NPM_READ_TOKEN:
         from_secret: npm_read_token
