@@ -58,6 +58,15 @@ steps:
   # that was built, with every gate still green.
   digest:
     image: alpine:3.20
+    # Resources declared 29-07-2026 — without them the step pod is QoS BestEffort, first
+    # evicted under node memory pressure. Estate-wide sweep after two pulse-backend steps
+    # were SIGKILLed (exit 137) mid-download, presenting as a test failure (see
+    # pulse-backend #147/#148). Sized by step class.
+    backend_options:
+      kubernetes:
+        resources:
+          requests: { memory: 128Mi, cpu: 100m }
+          limits: { memory: 512Mi }
     # registry.ops.ciphera.net resolves to the cluster's own NLB. A pod dialling
     # its own cluster's public load balancer hits the Exoscale NLB hairpin, and
     # ~1/node_count of those connections are black-holed. Pin the name at
@@ -89,6 +98,11 @@ steps:
       - echo "resolved sha-$DEPLOY_SHA -> $(cat /woodpecker/digest)"
   deploy-k8s:
     image: alpine:3.20
+    backend_options:
+      kubernetes:
+        resources:
+          requests: { memory: 128Mi, cpu: 100m }
+          limits: { memory: 512Mi }
     # registry.ops.ciphera.net resolves to the cluster's own NLB. A pod dialling
     # its own cluster's public load balancer hits the Exoscale NLB hairpin, and
     # ~1/node_count of those connections are black-holed. Pin the name at
@@ -179,6 +193,11 @@ steps:
       - echo "Deployed pulse-frontend to SKS ($DEPLOY_SHA)"
   digest-staging:
     image: alpine:3.20
+    backend_options:
+      kubernetes:
+        resources:
+          requests: { memory: 128Mi, cpu: 100m }
+          limits: { memory: 512Mi }
     # registry.ops.ciphera.net resolves to the cluster's own NLB. A pod dialling
     # its own cluster's public load balancer hits the Exoscale NLB hairpin, and
     # ~1/node_count of those connections are black-holed. Pin the name at
@@ -210,6 +229,11 @@ steps:
       - echo "resolved sha-$DEPLOY_SHA -> $(cat /woodpecker/digest)"
   deploy-k8s-staging:
     image: alpine:3.20
+    backend_options:
+      kubernetes:
+        resources:
+          requests: { memory: 128Mi, cpu: 100m }
+          limits: { memory: 512Mi }
     # registry.ops.ciphera.net resolves to the cluster's own NLB. A pod dialling
     # its own cluster's public load balancer hits the Exoscale NLB hairpin, and
     # ~1/node_count of those connections are black-holed. Pin the name at
@@ -303,6 +327,11 @@ steps:
   # paths under a 30-day max-age — exactly what blanked pulse-staging on 22-07-2026.
   purge-cdn:
     image: alpine:3.20
+    backend_options:
+      kubernetes:
+        resources:
+          requests: { memory: 128Mi, cpu: 100m }
+          limits: { memory: 512Mi }
     depends_on: [deploy-k8s]
     when:
       - event: push
@@ -324,6 +353,11 @@ steps:
   # paths under a 30-day max-age — exactly what blanked pulse-staging on 22-07-2026.
   purge-cdn-staging:
     image: alpine:3.20
+    backend_options:
+      kubernetes:
+        resources:
+          requests: { memory: 128Mi, cpu: 100m }
+          limits: { memory: 512Mi }
     depends_on: [deploy-k8s-staging]
     when:
       - event: push
@@ -342,6 +376,11 @@ steps:
 
   cdn-scripts:
     image: alpine:3.20
+    backend_options:
+      kubernetes:
+        resources:
+          requests: { memory: 128Mi, cpu: 100m }
+          limits: { memory: 512Mi }
     when:
       - event: push
         branch: main
