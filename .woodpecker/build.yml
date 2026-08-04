@@ -50,10 +50,6 @@ steps:
         from_secret: next_public_id_api_url
       NEXT_PUBLIC_CAPTCHA_API_URL:
         from_secret: next_public_captcha_api_url
-      NEXT_PUBLIC_CHARGEBEE_SITE:
-        from_secret: next_public_chargebee_site
-      NEXT_PUBLIC_CHARGEBEE_PUBLISHABLE_KEY:
-        from_secret: next_public_chargebee_publishable_key
       NEXT_PUBLIC_CDN_URL:
         from_secret: next_public_cdn_url
     # 🔴 THIS STEP OVERRIDES THE NAMESPACE DEFAULT, AND ONLY THIS STEP.
@@ -127,8 +123,6 @@ steps:
         - NEXT_PUBLIC_ID_URL
         - NEXT_PUBLIC_ID_API_URL
         - NEXT_PUBLIC_CAPTCHA_API_URL
-        - NEXT_PUBLIC_CHARGEBEE_SITE
-        - NEXT_PUBLIC_CHARGEBEE_PUBLISHABLE_KEY
         - NEXT_PUBLIC_CDN_URL
 
   build-staging:
@@ -147,10 +141,6 @@ steps:
         from_secret: staging_next_public_id_api_url
       NEXT_PUBLIC_CAPTCHA_API_URL:
         from_secret: staging_next_public_captcha_api_url
-      NEXT_PUBLIC_CHARGEBEE_SITE:
-        from_secret: staging_next_public_chargebee_site
-      NEXT_PUBLIC_CHARGEBEE_PUBLISHABLE_KEY:
-        from_secret: staging_next_public_chargebee_publishable_key
       NEXT_PUBLIC_CDN_URL:
         from_secret: staging_next_public_cdn_url
     # 🔴 THIS STEP OVERRIDES THE NAMESPACE DEFAULT, AND ONLY THIS STEP.
@@ -224,6 +214,4 @@ steps:
         - NEXT_PUBLIC_ID_URL
         - NEXT_PUBLIC_ID_API_URL
         - NEXT_PUBLIC_CAPTCHA_API_URL
-        - NEXT_PUBLIC_CHARGEBEE_SITE
-        - NEXT_PUBLIC_CHARGEBEE_PUBLISHABLE_KEY
         - NEXT_PUBLIC_CDN_URL
