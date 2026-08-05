@@ -17,10 +17,6 @@ import {
   INTEGRATION_COUNT,
 } from '@/components/marketing/FrameworkMarquee'
 
-// The ember floor lives under the website CDN prefix, so it's referenced by
-// absolute URL rather than cdnUrl() (which prepends Pulse's /pulse prefix).
-const HERO_EMBER = 'https://cdn.ciphera.net/website/hero-glyph-ember.jpg'
-
 // * The public marketing homepage — a pure server component so its copy, links
 // * and footer are in the served HTML for crawlers, social scrapers and AI
 // * answer engines (previously the whole page was client-gated behind an auth
@@ -36,15 +32,14 @@ export default function MarketingHome() {
           hero's bottom border crops the mockup — a deliberate teaser, the
           full demo lives one scroll away. */}
       <section className="relative overflow-hidden border-b border-border">
-        <Image
-          src={HERO_EMBER}
-          alt=""
+        {/* Warm floor — a pure CSS glow under the artifact, no texture. The
+            glyph-ember jpg belongs to the WEBSITE's composition (a bold bloom
+            beside the hero copy); behind a product window it only peeked out
+            around the edges as murky glyph noise (05-08-2026 homepage audit).
+            Light under the artifact, nothing competing with it. */}
+        <div
           aria-hidden="true"
-          fill
-          priority
-          unoptimized
-          sizes="100vw"
-          className="object-cover object-bottom opacity-40 [mask-image:radial-gradient(85%_65%_at_50%_100%,#000_25%,transparent_78%)]"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[55%] bg-[radial-gradient(70%_80%_at_50%_100%,rgba(253,94,15,0.16),rgba(253,94,15,0.05)_45%,transparent_75%)]"
         />
 
         {/* Copy block — no eyebrow (logo + H1 already carry it); the dek is
@@ -105,29 +100,33 @@ export default function MarketingHome() {
         <div className="relative mx-auto mt-14 w-full max-w-5xl px-6 pb-16 sm:mt-16 sm:pb-20">
           <MacWindow>
             <Image
-              src={cdnUrl('/marketing/dashboard-hero-deep-2x.png')}
+              src={cdnUrl('/marketing/dashboard-hero-aug-2x.png')}
               alt="The Pulse dashboard for ciphera.net — 30 days of real visitor, pageview and engagement data"
-              width={2304}
-              height={2004}
+              width={2244}
+              height={1922}
               priority
               unoptimized
               className="block w-full"
             />
           </MacWindow>
 
-          {/* The window shows REAL data — say so. Dot mirrors the app's
-              live-visitors control (RealtimeVisitors recipe). */}
-          <Link
-            href="/demo"
-            className="mt-5 flex items-center justify-center gap-2 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground motion-reduce:transition-none"
-          >
-            <span
-              aria-hidden="true"
-              className="h-2 w-2 rounded-full bg-green-500 animate-pulse motion-reduce:animate-none"
-            />
-            Live data — this is our real dashboard
-            <ArrowRightIcon className="h-3 w-3" aria-hidden="true" />
-          </Link>
+          {/* The window shows REAL data — say so, as a visible CONTROL: the
+              hairline-chip button grammar (border bg-card + hover), not a text
+              whisper — a caption styled as prose reads as unclickable. Dot
+              mirrors the app's live-visitors control (RealtimeVisitors recipe). */}
+          <div className="mt-6 flex justify-center">
+            <Link
+              href="/demo"
+              className="inline-flex items-center gap-2.5 rounded-none border border-border bg-card px-4 py-2.5 text-sm text-foreground transition-colors duration-150 ease-apple hover:bg-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
+            >
+              <span
+                aria-hidden="true"
+                className="h-2 w-2 rounded-full bg-green-500 animate-pulse motion-reduce:animate-none"
+              />
+              Live data — explore the full demo
+              <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </div>
         </div>
       </section>
 
