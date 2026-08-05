@@ -32,6 +32,7 @@ import {
   LinkSimple,
   Calculator,
   Info,
+  Tag,
 } from '@phosphor-icons/react/dist/ssr'
 import { comparisons, comparisonLogoUrl } from '@/lib/comparisons'
 
@@ -52,6 +53,7 @@ const DOCS_URL = 'https://help.ciphera.net/docs/pulse'
 // ciphera.net header, with Pulse's own nav content.
 const productLinks: LinkItem[] = [
   { title: 'Features', href: '/features', icon: ChartBar, description: 'Everything Pulse tracks' },
+  { title: 'Pricing', href: '/pricing', icon: Tag, description: 'Plans and the free tier' },
   { title: 'Live demo', href: '/demo', icon: Eye, description: 'Real data, no signup' },
   { title: 'Integrations', href: '/integrations', icon: PlugsConnected, description: '75+ framework guides' },
   { title: 'Changelog', href: '/changelog', icon: ClockCounterClockwise, description: "What's new in Pulse" },
@@ -98,7 +100,7 @@ const resourcesLinks: LinkItem[] = [
 
 // Grouped mobile panel (a flat list at this size would be a wall of links).
 const mobileGroups: { heading: string; links: LinkItem[] }[] = [
-  { heading: 'Product', links: [...productLinks, { title: 'Pricing', href: '/pricing' }] },
+  { heading: 'Product', links: productLinks },
   { heading: 'Compare', links: compareLinks.map(({ title, href }) => ({ title, href })) },
   { heading: 'Guides', links: guidesLinks },
   { heading: 'Resources', links: resourcesLinks },
@@ -166,15 +168,6 @@ export function Header() {
                         </p>
                       </div>
                     </NavigationMenuContent>
-                  </NavigationMenuItem>
-
-                  <NavigationMenuItem>
-                    <NavigationMenuLink
-                      href="/pricing"
-                      className="inline-flex h-9 items-center bg-transparent px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                      Pricing
-                    </NavigationMenuLink>
                   </NavigationMenuItem>
 
                   <NavigationMenuItem>
