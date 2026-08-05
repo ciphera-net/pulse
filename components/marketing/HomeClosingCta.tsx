@@ -17,8 +17,12 @@ import { initiateOAuthFlow } from '@/lib/api/oauth'
 export function HomeClosingCta() {
   return (
     <div className="relative overflow-hidden px-6 py-24 sm:py-32">
-      {/* The bloom — right-anchored, bold, masked so it never sits under the
-          copy. Same asset as the hero floor; opposite treatment. */}
+      {/* The bloom — bottom-anchored, bold, masked so it never sits under the
+          copy. Same asset as the hero floor; opposite treatment. Plain fill:
+          the jpg's brightest rows ARE its bottom rows (measured), so the
+          bloom's core meets the section border exactly — the footer's
+          border-t is the seam (the old 32px gap was the marketing layout's
+          pb-8, fixed separately, not this component's). */}
       <Image
         src="https://cdn.ciphera.net/website/hero-glyph-ember.jpg"
         alt=""
