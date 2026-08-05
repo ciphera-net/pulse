@@ -24,7 +24,8 @@ import {
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
 import { HairlineGrid } from '@/components/marketing/system/HairlineGrid'
-import { PulseFeaturesCarousel } from '@/components/marketing/mockups/pulse-features-carousel'
+import Image from 'next/image'
+import { cdnUrl } from '@/lib/cdn'
 
 type Icon = React.ComponentType<{ className?: string; 'aria-hidden'?: boolean }>
 
@@ -204,11 +205,20 @@ export default function FeaturesPage() {
               <FeatureCell key={f.title} {...f} />
             ))}
           </HairlineGrid>
-          <div className="border border-border bg-card p-6">
+          <div className="border border-border bg-card p-6 lg:w-[380px]">
             <p className="mb-4 text-xs uppercase tracking-[0.08em] text-muted-foreground">
               Live preview
             </p>
-            <PulseFeaturesCarousel />
+            {/* Real capture of the live ciphera.net dashboard's audience panels
+                (the public /demo share) — same asset family as the homepage. */}
+            <Image
+              src={cdnUrl('/marketing/feature-visitors-aug-2x.png')}
+              alt="Pulse audience panels for ciphera.net — countries and browsers breakdowns"
+              width={2244}
+              height={790}
+              unoptimized
+              className="block w-full border border-border"
+            />
           </div>
         </div>
       </MarketingSection>
