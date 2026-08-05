@@ -11,6 +11,11 @@ import ComparisonCards from '@/components/marketing/ComparisonCards'
 import { HomeFAQ } from '@/components/marketing/HomeFAQ'
 import { HomeClosingCta } from '@/components/marketing/HomeClosingCta'
 import { HeroCtas } from '@/components/marketing/HeroCtas'
+import {
+  FrameworkMarquee,
+  FRAMEWORK_COUNT,
+  INTEGRATION_COUNT,
+} from '@/components/marketing/FrameworkMarquee'
 
 // The ember floor lives under the website CDN prefix, so it's referenced by
 // absolute URL rather than cdnUrl() (which prepends Pulse's /pulse prefix).
@@ -162,16 +167,28 @@ export default function MarketingHome() {
         <ComparisonCards />
       </MarketingSection>
 
-      {/* 04 · FAQ — category rail + continuous numbering accordion */}
+      {/* 04 · Works with your stack — three counter-drifting rows of framework
+          pills straight from the integration registry (decorative; the real
+          control is the See-all link inside the component) */}
       <MarketingSection
         eyebrowNumber="04"
+        eyebrowLabel="Works with your stack"
+        heading="Your framework is already supported."
+        dek={`One script tag, the same install everywhere — dedicated guides for ${FRAMEWORK_COUNT} frameworks, ${INTEGRATION_COUNT} integrations in all.`}
+      >
+        <FrameworkMarquee />
+      </MarketingSection>
+
+      {/* 05 · FAQ — category rail + continuous numbering accordion */}
+      <MarketingSection
+        eyebrowNumber="05"
         eyebrowLabel="FAQ"
         heading="Frequently asked questions."
       >
         <HomeFAQ />
       </MarketingSection>
 
-      {/* 05 · Get started — closer (no border-b: the footer's border-t owns it) */}
+      {/* 06 · Get started — closer (no border-b: the footer's border-t owns it) */}
       <section>
         <HomeClosingCta />
       </section>

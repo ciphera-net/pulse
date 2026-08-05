@@ -188,6 +188,27 @@
   .animate-hero-word-1 { animation: heroWordFirst 4.5s var(--ease-apple) both; }
   .animate-hero-word-2 { animation: heroWordSecond 4.5s var(--ease-apple) both; }
   .animate-hero-word-3 { animation: heroWordThird 4.5s var(--ease-apple) both; }
+
+  /* * Framework marquee (homepage · Works with your stack) — rows of pills in
+     a slow seamless drift. Each row renders its list 4× and translates by
+     -50% (two list-widths, a multiple of the content period), so the wrap
+     point is invisible and the row never runs out of content on ultrawide
+     viewports. Linear timing: a conveyor, not an entrance — easing would
+     read as stalling. Reduced-motion is handled HERE (not a motion-reduce:
+     utility in markup) so the off-switch can't lose a cascade-order fight
+     inside the utilities layer: the rows simply sit still. */
+  @keyframes marqueeDrift {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  .animate-marquee-a { animation: marqueeDrift 80s linear infinite; }
+  .animate-marquee-b { animation: marqueeDrift 100s linear infinite reverse; }
+  .animate-marquee-c { animation: marqueeDrift 90s linear infinite; }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-marquee-a,
+    .animate-marquee-b,
+    .animate-marquee-c { animation: none; }
+  }
 }
 
 /* S2-j: facet's Toaster hardcodes sonner's top-right position, whose default

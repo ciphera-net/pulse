@@ -9,6 +9,10 @@ const config: Config = {
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './app/**/*.{js,ts,jsx,tsx,mdx}',
+    // lib/ holds JSX too (the integration registry's inline icons carry
+    // `fill-white`); without this glob those utilities are never generated and
+    // the 21 black-only brand logos silently render fill:black on the dark UI.
+    './lib/**/*.{js,ts,jsx,tsx,mdx}',
     './node_modules/@ciphera-net/facet/dist/**/*.{js,mjs,cjs}',
   ],
   theme: {
