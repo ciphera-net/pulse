@@ -3,11 +3,15 @@
 /**
  * @file Features / Product Tour page.
  *
- * Everything Pulse offers, rebuilt onto the marketing section grammar: mono
- * eyebrows, numbered full-bleed section slabs on the shared rail, the framed
- * HairlineGrid feature-cell recipe (neutral icons, mono proof links). Framer
- * retired — content is visible at first paint; transitions are CSS with
- * `motion-reduce`. Tokens only.
+ * Full quality treatment (06-08-2026, following the homepage audit): the page
+ * SHOWS the product instead of only telling — a live two-up of real capture
+ * slideshows (the same registry of authed/demo captures the homepage uses)
+ * replaces the old illegible 380px thumbnail; the trust grid (the same 3-up
+ * composition the homepage dropped as a website clone) becomes a numbered
+ * receipts ledger where every claim carries the link that proves it; and every
+ * number on the page is measured or sourced (script size measured 06-08; plan
+ * limits from lib/plans.ts — the old hero claimed "less than 1 KB" while the
+ * script ships 5.2 KB gzipped).
  */
 
 import Link from 'next/link'
@@ -24,8 +28,8 @@ import {
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
 import { HairlineGrid } from '@/components/marketing/system/HairlineGrid'
-import Image from 'next/image'
-import { cdnUrl } from '@/lib/cdn'
+import { VisitorsSlideshow } from '@/components/marketing/mockups/visitors-slideshow'
+import { CaptureSlideshow } from '@/components/marketing/mockups/capture-slideshow'
 
 type Icon = React.ComponentType<{ className?: string; 'aria-hidden'?: boolean }>
 
@@ -50,12 +54,13 @@ const pillars: Feature[] = [
     title: 'Simple dashboard',
     description:
       'One clear dashboard with everything you need. Page views, visitors, referral sources, and top pages — no learning curve.',
+    proof: { label: 'Open the live demo', href: '/demo' },
   },
   {
     icon: ZapIcon,
     title: 'Lightweight script',
     description:
-      'Less than 1 KB. Loads in milliseconds with zero impact on your Lighthouse score or Core Web Vitals.',
+      '5 KB gzipped — about 25× lighter than Google Analytics. Loads async with defer, so it never blocks rendering.',
     proof: { label: 'Install guide', href: '/installation' },
   },
 ]
@@ -86,7 +91,7 @@ const UtmIcon: Icon = ({ className, ...props }) => (
   </svg>
 )
 
-// * 02 — core capabilities (framed hairline feature grid)
+// * 01 — core capabilities (framed hairline feature grid)
 const capabilities: Feature[] = [
   {
     icon: RealtimeIcon,
@@ -107,44 +112,72 @@ const capabilities: Feature[] = [
     icon: UtmIcon,
     title: 'UTM campaign tracking',
     description: 'Automatically parse UTM parameters. Built-in link builder for campaigns, sources, and mediums.',
+    proof: { label: 'Open the UTM builder', href: '/tools/utm-builder' },
   },
   {
     icon: Share2Icon,
     title: 'Shared dashboards',
     description: 'Generate a public link to share analytics with clients or teammates — no login required.',
+    proof: { label: 'See a shared dashboard', href: '/demo' },
   },
   {
     icon: GlobeIcon,
     title: 'Geographic insights',
     description: 'Country, region, and city-level breakdowns. IPs are never stored — derived at request time only.',
+  },
+]
+
+// * 02 — trust receipts: every claim carries the link that proves it. (The old
+// * 3-up grid was the same composition the homepage dropped as a website clone;
+// * a numbered ledger literalizes "receipts, not promises".)
+const trustReceipts: { title: string; description: string; proof: { label: string; href: string; external?: boolean } }[] = [
+  {
+    title: 'Open source',
+    description: 'The dashboard and tracking script are public on GitHub — inspect every line.',
+    proof: { label: 'Read the code', href: 'https://github.com/ciphera-net/pulse', external: true },
+  },
+  {
+    title: 'Swiss infrastructure',
+    description: 'Every byte of visitor data is processed and stored in Switzerland.',
+    proof: { label: 'Trust hub', href: 'https://ciphera.net/trust', external: true },
+  },
+  {
+    title: 'No cookie banners',
+    description: 'Cookie-free by architecture, so consent popups are simply unnecessary.',
+    proof: { label: 'How that works', href: '/analytics-without-cookie-banner' },
+  },
+  {
+    title: '100% data ownership',
+    description: 'Your data is yours. We never sell it, share it, or mine it for ads.',
+    proof: { label: 'Privacy policy', href: 'https://ciphera.net/#privacy', external: true },
+  },
+  {
+    title: 'Bot & spam filtering',
+    description: 'Non-human traffic is automatically excluded so your numbers stay honest.',
+    proof: { label: 'Common questions', href: '/faq' },
+  },
+  {
+    title: '75+ integrations',
+    description: 'React, Vue, WordPress, Shopify, and dozens more — a script tag away.',
     proof: { label: 'All integrations', href: '/integrations' },
   },
 ]
 
-// * 03 — trust signals (framed hairline grid, no proof links)
-const trustSignals: { title: string; description: string }[] = [
-  { title: 'Open source', description: 'The dashboard and tracking script are public on GitHub — inspect every line.' },
-  { title: 'Swiss infrastructure', description: 'Every byte of visitor data is processed and stored in Switzerland.' },
-  { title: 'No cookie banners', description: 'Cookie-free by architecture, so consent popups are simply unnecessary.' },
-  { title: '100% data ownership', description: 'Your data is yours. We never sell it, share it, or mine it for ads.' },
-  { title: 'Bot & spam filtering', description: 'Non-human traffic is automatically excluded so your numbers stay honest.' },
-  { title: '75+ integrations', description: 'React, Vue, WordPress, Shopify, and dozens more — a script tag away.' },
-]
-
 const proofLinkClass =
-  'mt-5 inline-flex items-center gap-1 text-xs text-primary transition-colors duration-150 hover:text-primary/80 motion-reduce:transition-none'
+  'inline-flex items-center gap-1 text-xs text-primary transition-colors duration-150 hover:text-primary/80 motion-reduce:transition-none'
 
-function ProofLink({ proof }: { proof: NonNullable<Feature['proof']> }) {
+function ProofLink({ proof, className }: { proof: NonNullable<Feature['proof']>; className?: string }) {
+  const cls = className ? `${proofLinkClass} ${className}` : proofLinkClass
   if (proof.external) {
     return (
-      <a href={proof.href} target="_blank" rel="noopener noreferrer" className={proofLinkClass}>
+      <a href={proof.href} target="_blank" rel="noopener noreferrer" className={cls}>
         {proof.label}
         <ArrowUpRightIcon aria-hidden="true" className="h-3 w-3" />
       </a>
     )
   }
   return (
-    <Link href={proof.href} className={proofLinkClass}>
+    <Link href={proof.href} className={cls}>
       {proof.label}
       <ArrowUpRightIcon aria-hidden="true" className="h-3 w-3" />
     </Link>
@@ -157,8 +190,23 @@ function FeatureCell({ icon: Icon, title, description, proof }: Feature) {
       <Icon aria-hidden={true} className="h-5 w-5 text-muted-foreground" />
       <p className="mt-4 text-sm font-semibold text-foreground">{title}</p>
       <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">{description}</p>
-      {proof && <ProofLink proof={proof} />}
+      {proof && <ProofLink proof={proof} className="mt-5" />}
     </div>
+  )
+}
+
+// Journeys slides — same assets as the homepage row (uniform 2112×1184).
+function JourneysSlides() {
+  return (
+    <CaptureSlideshow
+      width={2112}
+      height={1184}
+      alt="Pulse journeys for ciphera.net, live data"
+      slides={[
+        { key: 'columns', label: 'Columns', file: '/marketing/journeys-columns-b-2x.png' },
+        { key: 'flow', label: 'Flow', file: '/marketing/journeys-flow-b-2x.png' },
+      ]}
+    />
   )
 }
 
@@ -199,65 +247,62 @@ export default function FeaturesPage() {
         heading="Powerful analytics, simplified."
         dek="Everything from real-time dashboards to conversion funnels — without the bloat, and without a cookie in sight."
       >
-        <div className="mt-12 grid gap-12 lg:grid-cols-[1fr_auto] lg:items-start">
-          <HairlineGrid columns={2}>
-            {capabilities.map((f) => (
-              <FeatureCell key={f.title} {...f} />
-            ))}
-          </HairlineGrid>
-          <div className="border border-border bg-card p-6 lg:w-[380px]">
+        {/* The product, live — real captures of the ciphera.net dashboard, the
+            same slideshow device as the homepage, at a width where the data is
+            actually legible (the old 380px thumbnail was not). */}
+        <div className="mt-12 grid gap-10 lg:grid-cols-2">
+          <div>
             <p className="mb-4 text-xs uppercase tracking-[0.08em] text-muted-foreground">
-              Live preview
+              Audience panels — live
             </p>
-            {/* Real capture of the live ciphera.net dashboard's audience panels
-                (the public /demo share) — same asset family as the homepage. */}
-            <Image
-              src={cdnUrl('/marketing/feature-visitors-aug-2x.png')}
-              alt="Pulse audience panels for ciphera.net — countries and browsers breakdowns"
-              width={2244}
-              height={790}
-              unoptimized
-              className="block w-full border border-border"
-            />
+            <VisitorsSlideshow />
+          </div>
+          <div>
+            <p className="mb-4 text-xs uppercase tracking-[0.08em] text-muted-foreground">
+              Visitor journeys — live
+            </p>
+            <JourneysSlides />
           </div>
         </div>
+        <p className="mt-4 text-xs text-muted-foreground">
+          Real data — captures of the live ciphera.net dashboard.{' '}
+          <Link href="/demo" className="text-primary hover:text-primary/80">
+            Explore it yourself →
+          </Link>
+        </p>
+
+        <HairlineGrid columns={3} className="mt-14">
+          {capabilities.map((f) => (
+            <FeatureCell key={f.title} {...f} />
+          ))}
+        </HairlineGrid>
       </MarketingSection>
 
       {/* ── 02 · TRUST ── */}
       <MarketingSection
         eyebrowNumber="02"
         eyebrowLabel="Trust"
-        heading="Built for trust."
-        dek="Open source, Swiss hosted, and designed to keep your visitors' data exactly where it belongs — with them."
+        heading="Guarantees, with receipts."
+        dek="Not claims on a marketing page — each one links to the thing that proves it."
       >
-        <HairlineGrid columns={3} framed className="mt-12">
-          {trustSignals.map((s) => (
-            <div key={s.title} className="flex flex-col bg-card p-6">
-              <p className="text-sm font-semibold text-foreground">{s.title}</p>
-              <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">
-                {s.description}
+        <div className="mt-12 border-t border-border">
+          {trustReceipts.map((r, i) => (
+            <div
+              key={r.title}
+              className="grid grid-cols-[auto_1fr] items-baseline gap-x-6 gap-y-1 border-b border-border py-5 sm:grid-cols-[3rem_14rem_1fr_auto] sm:gap-x-8"
+            >
+              <span className="text-xs tabular-nums text-primary">
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <p className="text-sm font-semibold text-foreground">{r.title}</p>
+              <p className="col-start-2 text-sm leading-relaxed text-muted-foreground sm:col-start-3">
+                {r.description}
               </p>
+              <div className="col-start-2 sm:col-start-4 sm:justify-self-end">
+                <ProofLink proof={r.proof} />
+              </div>
             </div>
           ))}
-        </HairlineGrid>
-
-        <div className="mt-6 flex flex-wrap items-center gap-6">
-          <Link
-            href="/integrations"
-            className="inline-flex items-center gap-1 text-xs text-primary transition-colors duration-150 hover:text-primary/80 motion-reduce:transition-none"
-          >
-            View all integrations
-            <ArrowUpRightIcon aria-hidden="true" className="h-3 w-3" />
-          </Link>
-          <a
-            href="https://github.com/ciphera-net/pulse"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-primary transition-colors duration-150 hover:text-primary/80 motion-reduce:transition-none"
-          >
-            View on GitHub
-            <ArrowUpRightIcon aria-hidden="true" className="h-3 w-3" />
-          </a>
         </div>
       </MarketingSection>
 
@@ -265,7 +310,7 @@ export default function FeaturesPage() {
       <MarketingSection
         eyebrowNumber="03"
         eyebrowLabel="Setup"
-        heading="Up and running in 3 minutes."
+        heading="Up and running in minutes."
         dek="No SDKs to install, no build steps, no configuration files."
       >
         <HairlineGrid columns={3} className="mt-12">
@@ -288,9 +333,10 @@ export default function FeaturesPage() {
             <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               Ready to see it in action?
             </h2>
+            {/* Plan facts from lib/plans.ts (1 site, FREE_PAGEVIEW_LIMIT). */}
             <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-              Start for free — no credit card required, cancel anytime. The Hobby plan includes
-              one site and 5,000 pageviews a month.
+              Start for free — no credit card required. The Hobby plan includes one site and
+              5,000 pageviews a month.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
