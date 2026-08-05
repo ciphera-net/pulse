@@ -32,14 +32,19 @@ export default function MarketingHome() {
           hero's bottom border crops the mockup — a deliberate teaser, the
           full demo lives one scroll away. */}
       <section className="relative overflow-hidden border-b border-border">
-        {/* Warm floor — a pure CSS glow under the artifact, no texture. The
-            glyph-ember jpg belongs to the WEBSITE's composition (a bold bloom
-            beside the hero copy); behind a product window it only peeked out
-            around the edges as murky glyph noise (05-08-2026 homepage audit).
-            Light under the artifact, nothing competing with it. */}
-        <div
+        {/* The glyph-ember floor — the estate's shared hero texture (owner
+            decision 06-08-2026, reversing the 05-08 audit's removal: the ember
+            IS the brand's hero signature, on Pulse as on the website). Faint
+            warm floor behind the artifact, masked to bloom under the window. */}
+        <Image
+          src="https://cdn.ciphera.net/website/hero-glyph-ember.jpg"
+          alt=""
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[55%] bg-[radial-gradient(70%_80%_at_50%_100%,rgba(253,94,15,0.16),rgba(253,94,15,0.05)_45%,transparent_75%)]"
+          fill
+          priority
+          unoptimized
+          sizes="100vw"
+          className="object-cover object-bottom opacity-40 [mask-image:radial-gradient(85%_65%_at_50%_100%,#000_25%,transparent_78%)]"
         />
 
         {/* Copy block — no eyebrow (logo + H1 already carry it); the dek is
