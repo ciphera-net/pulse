@@ -16,7 +16,7 @@ export function HomeClosingCta() {
   return (
     <div className="grid items-center gap-12 px-6 py-20 sm:py-28 lg:grid-cols-[1.3fr_1fr]">
       <div>
-        <p className="text-xs text-muted-foreground">05 · Get started</p>
+        <p className="text-xs text-muted-foreground">06 · Get started</p>
         <h2 className="mt-4 max-w-2xl font-display text-3xl font-semibold tracking-tight text-foreground sm:text-5xl">
           Start tracking with privacy.
         </h2>
@@ -44,14 +44,14 @@ export function HomeClosingCta() {
             aria-hidden="true"
             className="absolute inset-0 bg-gradient-to-b from-background/60 via-transparent to-background/60"
           />
-          <div className="relative w-[80%]">
+          <div className="relative w-[88%]">
             <MacWindow>
               <Image
-                src={cdnUrl('/marketing/dashboard-hero-deep-2x.png')}
+                src={cdnUrl('/marketing/dashboard-hero-aug-2x.png')}
                 alt=""
                 aria-hidden="true"
-                width={2304}
-                height={2004}
+                width={2244}
+                height={1922}
                 unoptimized
                 className="block w-full"
               />
