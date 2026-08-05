@@ -1,85 +1,60 @@
-import Image from 'next/image'
-import { CheckIcon, XIcon } from '@ciphera-net/facet'
-import { cdnUrl } from '@/lib/cdn'
+import Link from 'next/link'
+import { ArrowRightIcon, Button } from '@ciphera-net/facet'
+import { VerdictTable } from '@/components/marketing/seo/VerdictTable'
+import { comparisons, comparisonLogoUrl, getComparison } from '@/lib/comparisons'
 
-// Sentiment kept: a green check reads "yes/good", a red X reads "no/tradeoff".
-// Pulse's own column leads with the primary accent on its top edge.
-const pulseFeatures = [
-  { label: 'No cookies required', has: true },
-  { label: 'GDPR compliant by default', has: true },
-  { label: 'No consent banner needed', has: true },
-  { label: 'Open source client', has: true },
-  { label: 'Script under 6KB', has: true },
-  { label: 'Swiss infrastructure', has: true },
-  { label: 'No cross-site tracking', has: true },
-  { label: 'Free tier available', has: true },
-  { label: 'Real-time dashboard', has: true },
-]
+/**
+ * §02 Compare — the /vs pages' VerdictTable, on the homepage, fed by the same
+ * registry (single source of truth: rows, tones, verdict copy and logos all
+ * come from lib/comparisons). Google Analytics is the headline comparison —
+ * it's the tool people are leaving — with the other competitors as a chip rail
+ * linking to their full /vs pages. Replaced the old hand-built check/X cards,
+ * which were a generic us-vs-them device disconnected from the real
+ * comparison data (05/06-08 homepage audit).
+ */
 
-const gaFeatures = [
-  { label: 'Requires cookies', has: false },
-  { label: 'GDPR requires configuration', has: false },
-  { label: 'Consent banner required', has: false },
-  { label: 'Closed source', has: false },
-  { label: 'Script over 45KB', has: false },
-  { label: 'US infrastructure', has: false },
-  { label: 'Cross-site tracking', has: false },
-  { label: 'Free tier available', has: true },
-  { label: 'Real-time dashboard', has: true },
-]
+const ga = getComparison('google-analytics')!
+const others = comparisons.filter((c) => c.slug !== 'google-analytics')
 
 export default function ComparisonCards() {
   return (
-    <div className="mt-12 grid gap-px border border-border bg-border md:grid-cols-2">
-      {/* Pulse — highlighted with the primary top edge */}
-      <div className="relative bg-card p-8">
-        <div aria-hidden="true" className="absolute inset-x-0 top-0 h-[3px] bg-primary" />
-        <div className="mb-6 flex items-center gap-3">
-          <Image
-            src={cdnUrl('/pulse_icon_no_margins.png')}
-            alt="Pulse"
-            width={40}
-            height={40}
-            unoptimized
-          />
-          <div>
-            <h3 className="text-xl font-bold text-foreground">Pulse</h3>
-            <p className="text-xs text-primary">Privacy-first analytics</p>
-          </div>
-        </div>
-        <ul className="space-y-4">
-          {pulseFeatures.map((f) => (
-            <li key={f.label} className="flex items-center gap-3">
-              <CheckIcon aria-hidden="true" className="h-5 w-5 shrink-0 text-green-500" />
-              <span className="text-sm text-foreground/90">{f.label}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+    <div>
+      <VerdictTable
+        competitor={ga.name}
+        competitorLogo={comparisonLogoUrl(ga.slug)}
+        rows={ga.rows}
+      />
 
-      {/* Google Analytics — muted */}
-      <div className="bg-background p-8">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center border border-border bg-muted text-lg">
-            📊
-          </div>
-          <div>
-            <h3 className="text-xl font-bold text-foreground">Google Analytics</h3>
-            <p className="text-xs text-muted-foreground">Traditional tracking</p>
-          </div>
-        </div>
-        <ul className="space-y-4">
-          {gaFeatures.map((f) => (
-            <li key={f.label} className="flex items-center gap-3">
-              {f.has ? (
-                <CheckIcon aria-hidden="true" className="h-5 w-5 shrink-0 text-green-500" />
-              ) : (
-                <XIcon aria-hidden="true" className="h-5 w-5 shrink-0 text-red-500" />
-              )}
-              <span className="text-sm text-muted-foreground">{f.label}</span>
-            </li>
-          ))}
-        </ul>
+      {/* The honest verdict — same copy the /vs page opens with. */}
+      <p className="mt-6 max-w-3xl text-sm leading-relaxed text-muted-foreground">{ga.verdict}</p>
+
+      <div className="mt-8 flex flex-wrap items-center gap-3">
+        <Button asChild variant="outline" size="lg">
+          <Link href="/vs/google-analytics">
+            Full comparison
+            <ArrowRightIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+          </Link>
+        </Button>
+
+        {/* The rest of the field — hairline chips into their /vs pages. */}
+        {others.map((c) => (
+          <Link
+            key={c.slug}
+            href={`/vs/${c.slug}`}
+            className="inline-flex items-center gap-2 rounded-none border border-border bg-card px-3.5 py-2.5 text-sm text-muted-foreground transition-colors duration-150 ease-apple hover:bg-neutral-900 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={comparisonLogoUrl(c.slug)}
+              alt=""
+              width={16}
+              height={16}
+              className="h-4 w-4 object-contain"
+              loading="lazy"
+            />
+            vs {c.name}
+          </Link>
+        ))}
       </div>
     </div>
   )
