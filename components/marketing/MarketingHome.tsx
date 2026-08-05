@@ -6,7 +6,6 @@ import { MarketingSection } from '@/components/marketing/system/MarketingSection
 import { TrustStrip } from '@/components/marketing/system/TrustStrip'
 import { MacWindow } from '@/components/marketing/system/MacWindow'
 import FeatureSections from '@/components/marketing/FeatureSections'
-import { WhyPulse } from '@/components/marketing/WhyPulse'
 import ComparisonCards from '@/components/marketing/ComparisonCards'
 import { HomeFAQ } from '@/components/marketing/HomeFAQ'
 import { HomeClosingCta } from '@/components/marketing/HomeClosingCta'
@@ -151,19 +150,12 @@ export default function MarketingHome() {
         </div>
       </MarketingSection>
 
-      {/* 02 · Why Pulse — 4-up hairline feature grid */}
+      {/* 02 · Compare — Pulse vs. traditional analytics. (The former "Why
+          Pulse" 4-up grid was dropped 06-08: it was a 1:1 copy of the
+          website's "Built different" composition; the TrustStrip chips and
+          FAQ carry the privacy guarantees.) */}
       <MarketingSection
         eyebrowNumber="02"
-        eyebrowLabel="Why Pulse"
-        heading="Privacy-first doesn't mean less insight."
-        dek="Four guarantees, each backed by something you can verify — not a claim on a marketing page."
-      >
-        <WhyPulse />
-      </MarketingSection>
-
-      {/* 03 · Compare — Pulse vs. traditional analytics */}
-      <MarketingSection
-        eyebrowNumber="03"
         eyebrowLabel="Compare"
         heading="How Pulse compares."
         dek="See how privacy-first analytics stacks up against the tracking-heavy status quo."
@@ -171,11 +163,11 @@ export default function MarketingHome() {
         <ComparisonCards />
       </MarketingSection>
 
-      {/* 04 · Works with your stack — three counter-drifting rows of framework
+      {/* 03 · Works with your stack — three counter-drifting rows of framework
           pills straight from the integration registry (decorative; the real
           control is the See-all link inside the component) */}
       <MarketingSection
-        eyebrowNumber="04"
+        eyebrowNumber="03"
         eyebrowLabel="Works with your stack"
         heading="Your framework is already supported."
         dek={`One script tag, the same install everywhere — dedicated guides for ${FRAMEWORK_COUNT} frameworks, ${INTEGRATION_COUNT} integrations in all.`}
@@ -183,16 +175,16 @@ export default function MarketingHome() {
         <FrameworkMarquee />
       </MarketingSection>
 
-      {/* 05 · FAQ — category rail + continuous numbering accordion */}
+      {/* 04 · FAQ — category rail + continuous numbering accordion */}
       <MarketingSection
-        eyebrowNumber="05"
+        eyebrowNumber="04"
         eyebrowLabel="FAQ"
         heading="Frequently asked questions."
       >
         <HomeFAQ />
       </MarketingSection>
 
-      {/* 06 · Get started — closer (no border-b: the footer's border-t owns it) */}
+      {/* 05 · Get started — closer (no border-b: the footer's border-t owns it) */}
       <section>
         <HomeClosingCta />
       </section>
