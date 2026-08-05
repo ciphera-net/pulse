@@ -146,7 +146,7 @@ const ROWS: FeatureRow[] = [
     description:
       'No npm packages, no build steps, no configuration files. Add a single line to your HTML and start collecting privacy-respecting analytics instantly.',
     features: [
-      'Under 2KB gzipped — 20x smaller than Google Analytics',
+      '5 KB gzipped — 25× lighter than Google Analytics',
       'Async loading with defer — never blocks rendering',
       'Works with any framework or static site',
     ],
@@ -155,13 +155,14 @@ const ROWS: FeatureRow[] = [
   },
 ]
 
-// Static code block in the same MacWindow frame as every other §01 visual —
-// editor-grade: filename bar, line-number gutter, token colors, and the
-// product's install-verification strip as the footer (the real setup flow's
-// "script detected" state), so the window reads as a moment in the real
-// onboarding rather than floating sample code.
+// The install snippet in the estate's plain code-block grammar — filename bar,
+// quiet line numbers, brand-orange for attribute names and nothing else. No
+// invented editor chrome (tabs, copy chips, status cells): restraint IS the
+// quality here. The URL is the canonical loader (js.ciphera.net; the /js/
+// variant 307s) and the size is measured, not claimed — the old block said
+// 1.6 KB while the script shipped 5.2 (curl, 06-08-2026).
 const SCRIPT_LINES: [string, React.ReactNode][] = [
-  ['1', <span key="1" className="text-muted-foreground">{'<!-- Add before </head> -->'}</span>],
+  ['1', <span key="1" className="text-neutral-500">{'<!-- Add before </head> -->'}</span>],
   ['2', <span key="2" className="text-foreground">{'<script'}</span>],
   ['3', <span key="3">{'  '}<span className="text-primary">defer</span></span>],
   [
@@ -177,7 +178,7 @@ const SCRIPT_LINES: [string, React.ReactNode][] = [
     <span key="5">
       {'  '}
       <span className="text-primary">src</span>
-      <span className="text-foreground">=&quot;https://pulse.ciphera.net/js/script.js&quot;</span>
+      <span className="text-foreground">=&quot;https://js.ciphera.net/script.js&quot;</span>
     </span>,
   ],
   ['6', <span key="6" className="text-foreground">{'></script>'}</span>],
@@ -188,15 +189,15 @@ function ScriptMockup() {
     <div className="w-full" aria-hidden="true">
       <MacWindow>
         <div className="bg-card">
-          <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+          <div className="flex items-center border-b border-border px-4 py-2.5">
             <span className="font-mono text-xs text-muted-foreground">index.html</span>
-            <span className="font-mono text-xs text-muted-foreground">html</span>
           </div>
+
           <pre className="overflow-x-auto py-5 pr-6">
-            <code className="font-mono text-sm leading-7 text-muted-foreground">
+            <code className="font-mono text-sm leading-7">
               {SCRIPT_LINES.map(([no, content]) => (
                 <span key={no} className="flex">
-                  <span className="w-12 shrink-0 select-none pr-4 text-right text-xs leading-7 text-neutral-600 tabular-nums">
+                  <span className="w-12 shrink-0 select-none pr-4 text-right text-xs leading-7 tabular-nums text-neutral-600">
                     {no}
                   </span>
                   <span className="whitespace-pre">{content}</span>
@@ -204,12 +205,13 @@ function ScriptMockup() {
               ))}
             </code>
           </pre>
-          <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground">
+
+          <div className="flex items-center justify-between border-t border-border px-4 py-2.5 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 bg-green-500" />
-              Script detected on ciphera.net · first pageview 2 min ago
+              Script detected on ciphera.net
             </span>
-            <span>1.6 KB gzipped</span>
+            <span className="tabular-nums">5.2 KB gzipped</span>
           </div>
         </div>
       </MacWindow>

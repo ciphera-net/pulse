@@ -9,7 +9,7 @@ const pulseFeatures = [
   { label: 'GDPR compliant by default', has: true },
   { label: 'No consent banner needed', has: true },
   { label: 'Open source client', has: true },
-  { label: 'Script under 2KB', has: true },
+  { label: 'Script under 6KB', has: true },
   { label: 'Swiss infrastructure', has: true },
   { label: 'No cross-site tracking', has: true },
   { label: 'Free tier available', has: true },
