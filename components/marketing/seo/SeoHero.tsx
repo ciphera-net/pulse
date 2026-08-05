@@ -19,7 +19,7 @@ export function SeoHero({
   return (
     <MarketingSection>
       <div className="max-w-2xl">
-        <p className="font-mono text-xs text-muted-foreground">{eyebrow}</p>
+        <p className="text-xs text-muted-foreground">{eyebrow}</p>
         <h1 className="mt-6 font-display text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
           {title}
         </h1>

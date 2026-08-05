@@ -120,7 +120,7 @@ export function UtmBuilder() {
             >
               {field.label}
               {!field.required && (
-                <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+                <span className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
                   optional
                 </span>
               )}
@@ -144,7 +144,7 @@ export function UtmBuilder() {
         <div className="border border-border">
           <div className="h-1 bg-gradient-to-r from-brand-orange via-brand-orange/60 to-transparent" />
           <div className="bg-neutral-950 p-5">
-            <p className="mb-3 font-mono text-xs text-muted-foreground">Your tagged URL</p>
+            <p className="mb-3 text-xs text-muted-foreground">Your tagged URL</p>
             {missingRequired ? (
               <p className="font-mono text-[13px] leading-relaxed text-neutral-500">
                 Fill in the website URL, source, medium and campaign to generate a link.
