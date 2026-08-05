@@ -30,6 +30,9 @@ import { MarketingSection } from '@/components/marketing/system/MarketingSection
 import { HairlineGrid } from '@/components/marketing/system/HairlineGrid'
 import { VisitorsSlideshow } from '@/components/marketing/mockups/visitors-slideshow'
 import { CaptureSlideshow } from '@/components/marketing/mockups/capture-slideshow'
+import { MacWindow } from '@/components/marketing/system/MacWindow'
+import Image from 'next/image'
+import { cdnUrl } from '@/lib/cdn'
 
 type Icon = React.ComponentType<{ className?: string; 'aria-hidden'?: boolean }>
 
@@ -123,7 +126,22 @@ const capabilities: Feature[] = [
   {
     icon: GlobeIcon,
     title: 'Geographic insights',
-    description: 'Country, region, and city-level breakdowns. IPs are never stored — derived at request time only.',
+    description: 'Country, region, and city-level breakdowns on a live world map. IPs are never stored — derived at request time only.',
+  },
+  {
+    icon: ZapIcon,
+    title: 'PageSpeed monitoring',
+    description: 'Daily Lighthouse checks with Core Web Vitals, filmstrip timeline, and score trend — mobile and desktop.',
+  },
+  {
+    icon: BarChartIcon,
+    title: 'Email reports',
+    description: 'Weekly or monthly summaries delivered to your inbox — key metrics, top pages, and referrers.',
+  },
+  {
+    icon: GlobeIcon,
+    title: 'CDN analytics',
+    description: 'Bunny CDN bandwidth, cache hit rate, origin latency, and per-country traffic — beside your visitor data.',
   },
 ]
 
@@ -259,9 +277,39 @@ export default function FeaturesPage() {
           </div>
           <div>
             <p className="mb-4 text-xs uppercase tracking-[0.08em] text-muted-foreground">
+              CDN analytics — live
+            </p>
+            <MacWindow>
+              <Image
+                src={cdnUrl('/marketing/cdn-analytics-2x.png')}
+                alt="Pulse CDN analytics for ciphera.net — Bunny bandwidth, cache hit rate and origin latency"
+                width={2465}
+                height={1539}
+                unoptimized
+                className="block w-full"
+              />
+            </MacWindow>
+          </div>
+          <div>
+            <p className="mb-4 text-xs uppercase tracking-[0.08em] text-muted-foreground">
               Visitor journeys — live
             </p>
             <JourneysSlides />
+          </div>
+          <div>
+            <p className="mb-4 text-xs uppercase tracking-[0.08em] text-muted-foreground">
+              PageSpeed — live
+            </p>
+            <MacWindow>
+              <Image
+                src={cdnUrl('/marketing/pagespeed-desktop-tall-2x.png')}
+                alt="Pulse PageSpeed for ciphera.net — desktop Lighthouse scores, filmstrip and Core Web Vitals"
+                width={2468}
+                height={1586}
+                unoptimized
+                className="block w-full"
+              />
+            </MacWindow>
           </div>
         </div>
         <p className="mt-4 text-xs text-muted-foreground">
