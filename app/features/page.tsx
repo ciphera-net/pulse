@@ -28,6 +28,7 @@ import {
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
 import { HairlineGrid } from '@/components/marketing/system/HairlineGrid'
+import { ReceiptsLedger, ProofLink, type Receipt } from '@/components/marketing/ReceiptsLedger'
 import { VisitorsSlideshow } from '@/components/marketing/mockups/visitors-slideshow'
 import { CaptureSlideshow } from '@/components/marketing/mockups/capture-slideshow'
 import { MacWindow } from '@/components/marketing/system/MacWindow'
@@ -148,7 +149,7 @@ const capabilities: Feature[] = [
 // * 02 — trust receipts: every claim carries the link that proves it. (The old
 // * 3-up grid was the same composition the homepage dropped as a website clone;
 // * a numbered ledger literalizes "receipts, not promises".)
-const trustReceipts: { title: string; description: string; proof: { label: string; href: string; external?: boolean } }[] = [
+const trustReceipts: Receipt[] = [
   {
     title: 'Open source',
     description: 'The dashboard and tracking script are public on GitHub — inspect every line.',
@@ -181,26 +182,6 @@ const trustReceipts: { title: string; description: string; proof: { label: strin
   },
 ]
 
-const proofLinkClass =
-  'inline-flex items-center gap-1 text-xs text-primary transition-colors duration-150 hover:text-primary/80 motion-reduce:transition-none'
-
-function ProofLink({ proof, className }: { proof: NonNullable<Feature['proof']>; className?: string }) {
-  const cls = className ? `${proofLinkClass} ${className}` : proofLinkClass
-  if (proof.external) {
-    return (
-      <a href={proof.href} target="_blank" rel="noopener noreferrer" className={cls}>
-        {proof.label}
-        <ArrowUpRightIcon aria-hidden="true" className="h-3 w-3" />
-      </a>
-    )
-  }
-  return (
-    <Link href={proof.href} className={cls}>
-      {proof.label}
-      <ArrowUpRightIcon aria-hidden="true" className="h-3 w-3" />
-    </Link>
-  )
-}
 
 function FeatureCell({ icon: Icon, title, description, proof }: Feature) {
   return (
@@ -333,25 +314,7 @@ export default function FeaturesPage() {
         heading="Guarantees, with receipts."
         dek="Not claims on a marketing page — each one links to the thing that proves it."
       >
-        <div className="mt-12 border-t border-border">
-          {trustReceipts.map((r, i) => (
-            <div
-              key={r.title}
-              className="grid grid-cols-[auto_1fr] items-baseline gap-x-6 gap-y-1 border-b border-border py-5 sm:grid-cols-[3rem_14rem_1fr_auto] sm:gap-x-8"
-            >
-              <span className="text-xs tabular-nums text-primary">
-                {String(i + 1).padStart(2, '0')}
-              </span>
-              <p className="text-sm font-semibold text-foreground">{r.title}</p>
-              <p className="col-start-2 text-sm leading-relaxed text-muted-foreground sm:col-start-3">
-                {r.description}
-              </p>
-              <div className="col-start-2 sm:col-start-4 sm:justify-self-end">
-                <ProofLink proof={r.proof} />
-              </div>
-            </div>
-          ))}
-        </div>
+        <ReceiptsLedger receipts={trustReceipts} />
       </MarketingSection>
 
       {/* ── 03 · SETUP ── */}
