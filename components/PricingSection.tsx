@@ -14,7 +14,14 @@ import Select from '@/components/ui/select'
 import { Eyebrow } from '@/components/marketing/system/Eyebrow'
 import { HairlineGrid } from '@/components/marketing/system/HairlineGrid'
 import useSWR from 'swr'
-import { TRAFFIC_TIERS, FREE_PLAN, PLAN_CATALOG } from '@/lib/plans'
+import {
+  TRAFFIC_TIERS,
+  FREE_PLAN,
+  PLAN_CATALOG,
+  PLAN_FEATURE_MATRIX,
+  FREE_PAGEVIEW_LIMIT,
+} from '@/lib/plans'
+import { PlanComparisonTable } from '@/components/marketing/PlanComparisonTable'
 import { getPrices } from '@/lib/api/billing'
 import { cn } from '@/lib/utils'
 
@@ -60,6 +67,31 @@ export default function PricingSection() {
   }, [searchParams])
 
   const currentTraffic = ALL_SLIDER_TIERS[sliderIndex]
+  const isCustomTraffic = currentTraffic.value === TIER_10M_PLUS.value
+
+  // The comparison table's pageviews row reads the live tier slider — the
+  // static matrix in lib/plans.ts can't know the selection.
+  const paidPageviews = isCustomTraffic ? 'Custom' : `${currentTraffic.label} (selected)`
+  const comparisonGroups = PLAN_FEATURE_MATRIX.map((group) =>
+    group.label === 'Usage'
+      ? {
+          ...group,
+          rows: [
+            group.rows[0],
+            {
+              label: 'Monthly pageviews',
+              values: {
+                free: FREE_PAGEVIEW_LIMIT.toLocaleString('en-US'),
+                solo: paidPageviews,
+                team: paidPageviews,
+                business: paidPageviews,
+              },
+            },
+            ...group.rows.slice(1),
+          ],
+        }
+      : group,
+  )
 
   const getPrice = (planId: string) => {
     if (planId === 'free') return null
@@ -244,7 +276,6 @@ export default function PricingSection() {
               const isCurrent = isFree
                 ? currentPlanId === 'free'
                 : currentPlanId === plan.id && currentLimit === selectedLimit
-              const isCustomTier = currentTraffic.value === TIER_10M_PLUS.value
 
               return (
                 <div
@@ -283,7 +314,7 @@ export default function PricingSection() {
                           Forever free · no credit card
                         </p>
                       </>
-                    ) : isCustomTier ? (
+                    ) : isCustomTraffic ? (
                       <>
                         <div className="flex items-baseline gap-1">
                           <span className="font-display text-4xl font-semibold text-foreground">
@@ -360,21 +391,21 @@ export default function PricingSection() {
                         window.location.href = '/'
                         return
                       }
-                      if (isCustomTier) {
+                      if (isCustomTraffic) {
                         window.location.href =
                           'mailto:business@ciphera.net?subject=Enterprise%20Plan%20Inquiry'
                         return
                       }
                       handleSubscribe(plan.id)
                     }}
-                    disabled={isCurrent || (!isFree && !isCustomTier && !priceDetails)}
+                    disabled={isCurrent || (!isFree && !isCustomTraffic && !priceDetails)}
                     className="mt-auto w-full justify-center"
                   >
                     {isCurrent
                       ? 'Current plan'
                       : isFree
                         ? 'Get started free'
-                        : isCustomTier
+                        : isCustomTraffic
                           ? 'Contact us'
                           : subscription?.subscription_status === 'active'
                             ? 'Switch plan'
@@ -424,6 +455,17 @@ export default function PricingSection() {
               Let&apos;s talk →
             </a>
           </div>
+        </div>
+      </section>
+
+      {/* Plan comparison — the full matrix, VerdictTable anatomy */}
+      <section className="border-b border-border">
+        <div className="px-6 py-16 sm:py-20">
+          <Eyebrow label="Compare plans" />
+          <h2 className="mt-4 font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+            Every plan, line by line.
+          </h2>
+          <PlanComparisonTable groups={comparisonGroups} />
         </div>
       </section>
 
