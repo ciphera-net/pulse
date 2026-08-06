@@ -82,7 +82,7 @@ export function CookieBannerLossCalculator() {
       <div>
         <div className="grid gap-px border border-border bg-border sm:grid-cols-2">
           <div className="bg-card p-6">
-            <p className="font-mono text-xs text-muted-foreground">Invisible / month</p>
+            <p className="text-xs text-muted-foreground">Invisible / month</p>
             <p className="mt-2 font-display text-4xl font-bold tabular-nums text-foreground">
               {result ? fmt(result.invisibleMonthly) : '—'}
             </p>
@@ -92,7 +92,7 @@ export function CookieBannerLossCalculator() {
           </div>
           <div className="relative bg-card p-6">
             <span aria-hidden="true" className="absolute inset-x-0 top-0 h-[3px] bg-primary" />
-            <p className="font-mono text-xs text-primary">Invisible / year</p>
+            <p className="text-xs text-primary">Invisible / year</p>
             <p className="mt-2 font-display text-4xl font-bold tabular-nums text-foreground">
               {result ? fmt(result.invisibleYearly) : '—'}
             </p>
@@ -114,7 +114,7 @@ export function CookieBannerLossCalculator() {
         )}
 
         <div className="mt-6 border border-border bg-card p-5">
-          <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+          <p className="mb-1 text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
             Methodology
           </p>
           <p className="text-sm leading-relaxed text-muted-foreground">

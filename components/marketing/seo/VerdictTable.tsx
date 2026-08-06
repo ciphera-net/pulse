@@ -44,7 +44,7 @@ export function VerdictTable({
       <table className="w-full min-w-[560px] border-collapse text-left">
         <thead>
           <tr className="border-b border-border">
-            <th scope="col" className="w-[28%] px-5 py-4 font-mono text-xs font-normal text-muted-foreground">
+            <th scope="col" className="w-[28%] px-5 py-4 text-xs font-normal text-muted-foreground">
               &nbsp;
             </th>
             <th scope="col" className="relative w-[36%] bg-card px-5 py-4">
@@ -83,7 +83,7 @@ export function VerdictTable({
             <tr key={row.label} className="border-b border-border last:border-b-0 align-top">
               <th
                 scope="row"
-                className="px-5 py-4 font-mono text-xs font-normal text-muted-foreground"
+                className="px-5 py-4 text-xs font-normal text-muted-foreground"
               >
                 {row.label}
               </th>

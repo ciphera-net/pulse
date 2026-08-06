@@ -69,12 +69,12 @@ export default function InstallationPage() {
               <span className="text-foreground">&quot;your-site.com&quot;</span>{' '}
               <span className="text-primary">src</span>
               <span className="text-foreground">=</span>
-              <span className="text-foreground">&quot;https://pulse.ciphera.net/script.js&quot;</span>
+              <span className="text-foreground">&quot;https://js.ciphera.net/script.js&quot;</span>
               <span className="text-foreground">&gt;&lt;/script&gt;</span>
             </code>
           </pre>
           <div className="flex items-center gap-4 border-t border-border px-6 py-3 text-xs text-muted-foreground">
-            <span>1.6 KB gzipped</span>
+            <span>5.2 KB gzipped</span>
             <span className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 bg-green-500" />
               Non-blocking, async

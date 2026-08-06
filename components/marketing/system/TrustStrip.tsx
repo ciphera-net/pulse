@@ -16,7 +16,7 @@ const DEFAULT_BADGES: Badge[] = [
   { icon: EyeOffIcon, label: 'Cookie-free' },
   { icon: GithubIcon, label: 'Open source' },
   { icon: CheckCircleIcon, label: 'GDPR compliant' },
-  { icon: LockClosedIcon, label: 'Under 2 KB script' },
+  { icon: LockClosedIcon, label: '5 KB script' },
 ]
 
 interface TrustStripProps {

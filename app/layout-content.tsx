@@ -219,7 +219,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
       <main
         id="main-content"
         tabIndex={-1}
-        className="mx-auto w-full max-w-6xl flex-1 pb-8 sm:border-x sm:border-border"
+        className="mx-auto w-full max-w-6xl flex-1 sm:border-x sm:border-border"
       >
         {children}
       </main>
