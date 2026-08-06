@@ -2,74 +2,21 @@
 
 import { MotionConfig } from 'framer-motion'
 import { OfflineBanner } from '@/components/OfflineBanner'
-import { CIPHERA_APPS } from '@/lib/ciphera-apps'
 import { Footer } from '@/components/Footer'
-import Header from '@/components/Header'
-import { cdnUrl } from '@/lib/cdn'
 import { Header as MarketingHeader } from '@/components/marketing/Header'
-import NotificationCenter from '@/components/notifications/NotificationCenter'
 import { useAuth } from '@/lib/auth/context'
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { logger } from '@/lib/utils/logger'
-import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
-import { setSessionAction } from '@/app/actions/auth'
-import { LoadingOverlay } from '@ciphera-net/facet'
-import { useRouter } from 'next/navigation'
 import DashboardShell from '@/components/dashboard/DashboardShell'
 import GettingStartedChecklist from '@/components/dashboard/GettingStartedChecklist'
 import { ErrorBoundary } from '@/components/error-boundary'
 import VersionToast from '@/components/VersionToast'
 
-const ORG_SWITCH_KEY = 'pulse_switching_org'
-
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const auth = useAuth()
-  const router = useRouter()
   const pathname = usePathname()
   const isOnline = useOnlineStatus()
-  const [orgs, setOrgs] = useState<OrganizationMember[]>([])
-  const [isSwitchingOrg, setIsSwitchingOrg] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return sessionStorage.getItem(ORG_SWITCH_KEY) === 'true'
-  })
-
-  useEffect(() => {
-    if (isSwitchingOrg) {
-      sessionStorage.removeItem(ORG_SWITCH_KEY)
-      const timer = setTimeout(() => setIsSwitchingOrg(false), 600)
-      return () => clearTimeout(timer)
-    }
-  }, [isSwitchingOrg])
-
-  useEffect(() => {
-    // * Skip on /auth/callback — the session JWT may be stale during code
-    // * exchange and this fetch would 403 with old credentials.
-    if (pathname?.startsWith('/auth/callback')) return
-    if (auth.user) {
-      getUserOrganizations()
-        .then((organizations) => setOrgs(Array.isArray(organizations) ? organizations : []))
-        .catch(err => logger.error('Failed to fetch orgs for header', err))
-    }
-  }, [auth.user, pathname])
-
-  const handleSwitchOrganization = async (orgId: string | null) => {
-    if (!orgId) return
-    try {
-      setIsSwitchingOrg(true)
-      const { access_token } = await switchContext(orgId)
-      await setSessionAction(access_token)
-      // Refresh auth context (re-fetches /auth/user/me with new JWT, updates org_id + SWR cache)
-      await auth.refresh()
-      router.push('/')
-      setTimeout(() => setIsSwitchingOrg(false), 300)
-    } catch (err) {
-      setIsSwitchingOrg(false)
-      logger.error('Failed to switch organization', err)
-    }
-  }
 
   const isAuthenticated = !!auth.user
   const showOfflineBar = Boolean(auth.user && !isOnline)
@@ -78,14 +25,14 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   // Pages that use DashboardShell with home sidebar (no site context). `/sites`
   // is the authenticated home (public `/` server-renders marketing and
   // redirects signed-in visitors here via middleware).
-  const isDashboardPage = pathname === '/sites' || pathname.startsWith('/integrations') || pathname === '/pricing' || pathname === '/notifications' || pathname === '/sites/new' || pathname.startsWith('/settings')
+  const isDashboardPage = pathname === '/sites' || pathname.startsWith('/integrations') || pathname === '/pricing' || pathname === '/installation' || pathname === '/notifications' || pathname === '/sites/new' || pathname.startsWith('/settings') || pathname.startsWith('/admin')
   // Public dashboard-shell routes (/pricing, /integrations/*) must SERVER-RENDER
   // their marketing variant for crawlers, so they are excluded from the
   // "hold a blank frame while the auth probe runs" guard below. Anonymous
   // visitors get the marketing shell server-side; a signed-in visitor briefly
   // sees it on a hard load before the client swaps to DashboardShell (a
   // client-side navigation, where auth is already resolved, never flashes).
-  const isPublicDashboardPage = pathname === '/pricing' || pathname.startsWith('/integrations')
+  const isPublicDashboardPage = pathname === '/pricing' || pathname.startsWith('/integrations') || pathname === '/installation'
   // Checkout page has its own minimal layout — no app header/footer
   const isCheckoutPage = pathname.startsWith('/checkout')
   // Auth callback is a transient route that only renders <LoadingOverlay> while
@@ -94,10 +41,6 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   // UnifiedSettingsModal, organizations) using the stale pre-login session,
   // all of which 403 and create the post-login flicker / slow-load.
   const isAuthCallback = pathname.startsWith('/auth/callback')
-
-  if (isSwitchingOrg) {
-    return <LoadingOverlay logoSrc={cdnUrl('/pulse_icon_no_margins.png')} title="Pulse" portal={false} />
-  }
 
   if (isAuthCallback) {
     return <>{children}</>
@@ -127,8 +70,9 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
         {showOfflineBar && <OfflineBanner isOnline={isOnline} />}
         <DashboardShell siteId={null}>{children}</DashboardShell>
         {/* Onboarding widget is suppressed on /settings/* (spec §2.4): it clipped
-            the Create-role / Delete buttons there. It still shows everywhere else. */}
-        {!pathname.startsWith('/settings') && <GettingStartedChecklist />}
+            the Create-role / Delete buttons there. Also on /admin (owner-only
+            chrome, onboarding is noise). It still shows everywhere else. */}
+        {!pathname.startsWith('/settings') && !pathname.startsWith('/admin') && <GettingStartedChecklist />}
       </>
     )
   }
@@ -143,38 +87,12 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     return <>{children}</>
   }
 
-  // Authenticated non-site pages (sites list, onboarding, etc.): static header
-  if (isAuthenticated) {
-    return (
-      <div className="flex flex-col min-h-screen">
-        {showOfflineBar && <OfflineBanner isOnline={isOnline} />}
-        <Header
-          auth={auth}
-          LinkComponent={Link}
-          logoSrc={cdnUrl('/pulse_icon_no_margins.png')}
-          appName="Pulse"
-          variant="static"
-          orgs={orgs}
-          activeOrgId={auth.user?.org_id}
-          onSwitchOrganization={handleSwitchOrganization}
-          onCreateOrganization={() => router.push('/setup/org?new=1')}
-          allowPersonalOrganization={false}
-          showFaq={false}
-          showSecurity={false}
-          showPricing={false}
-          rightSideActions={<NotificationCenter />}
-          apps={CIPHERA_APPS}
-          currentAppId="pulse"
-          onOpenSettings={() => router.push('/settings/account/profile')}
-        />
-        {/* pb-28 on mobile: scroll clearance for the floating checklist pill
-            + support button, so end-of-page controls are never covered (S2-i) */}
-        <main id="main-content" tabIndex={-1} className="flex-1 pb-28 sm:pb-8">
-          {children}
-        </main>
-      </div>
-    )
-  }
+  // Signed-in visitors on any remaining route (marketing pages: /about, /faq,
+  // /features, the /vs cluster, guides, tools, …) get the same marketing chrome
+  // as anonymous visitors — the legacy pre-Facet app Header that used to render
+  // here was removed 07-08-2026 (it dropped the whole app frame and predated
+  // the marketing overhaul; app surfaces belong to the DashboardShell lists
+  // above).
 
   // Session expired on a protected page — only shown when user HAD a session
   // that expired, not for first-time unauthenticated visitors.
