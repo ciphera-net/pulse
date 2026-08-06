@@ -36,15 +36,6 @@ const TIER_10M_PLUS = { label: '10M+', value: 10000001 }
 // All tiers shown in the slider, including the custom-price 10M+ tier
 const ALL_SLIDER_TIERS = [...TRAFFIC_TIERS, TIER_10M_PLUS] as const
 
-// Each chip links to the page that proves the claim — same targets as the
-// features page's "Guarantees, with receipts" ledger.
-const INCLUDED_EVERYWHERE: { label: string; href: string; external?: boolean }[] = [
-  { label: 'Cookie-free tracking', href: '/analytics-without-cookie-banner' },
-  { label: 'GDPR compliant', href: '/gdpr-compliant-analytics' },
-  { label: 'Swiss infrastructure', href: 'https://ciphera.net/trust', external: true },
-  { label: '100% data ownership', href: 'https://ciphera.net/#privacy', external: true },
-]
-
 export default function PricingSection() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -419,33 +410,10 @@ export default function PricingSection() {
             })}
           </HairlineGrid>
 
-          {/* All plans include — quiet bordered row */}
-          <div className="mt-6 border border-border bg-card px-6 py-5">
-            <p className="mb-4 text-center text-xs uppercase tracking-[0.08em] text-muted-foreground">
-              All plans include
-            </p>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-center sm:gap-8">
-              {INCLUDED_EVERYWHERE.map((item) => (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  {...(item.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                  className="flex items-center gap-2 transition-colors duration-150 motion-reduce:transition-none"
-                >
-                  <CheckIcon
-                    aria-hidden="true"
-                    className="h-4 w-4 shrink-0 text-muted-foreground"
-                  />
-                  <span className="text-sm text-foreground underline decoration-border underline-offset-4 transition-colors duration-150 hover:decoration-foreground motion-reduce:transition-none">
-                    {item.label}
-                  </span>
-                </a>
-              ))}
-            </div>
-          </div>
-
-          {/* Enterprise nudge — bordered row on tokens */}
-          <div className="mt-4 flex flex-col items-start justify-between gap-3 border border-border bg-card px-6 py-4 sm:flex-row sm:items-center">
+          {/* Enterprise nudge — bordered row on tokens. (The old "All plans
+              include" strip is gone: the cards' "Every feature included" line
+              and the table's included-everywhere group already carry it.) */}
+          <div className="mt-6 flex flex-col items-start justify-between gap-3 border border-border bg-card px-6 py-4 sm:flex-row sm:items-center">
             <p className="text-sm text-muted-foreground">
               <span className="font-semibold text-foreground">Need something bigger?</span>{' '}
               We&apos;ll build a custom plan for you — unlimited sites, SLA, managed proxy,
