@@ -170,7 +170,7 @@ export default function PricingSection() {
               </button>
             </div>
             <span className="text-xs text-muted-foreground">
-              Get 1 month free with yearly
+              Get 1 month free with yearly · prices excl. VAT
             </span>
           </div>
 
@@ -278,7 +278,7 @@ export default function PricingSection() {
                           <span className="text-sm text-muted-foreground">/mo</span>
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          5k pageviews · forever free
+                          Forever free · no credit card
                         </p>
                       </>
                     ) : isCustomTier ? (
@@ -300,9 +300,13 @@ export default function PricingSection() {
                           </span>
                           <span className="text-sm text-muted-foreground">/mo</span>
                         </div>
+                        {/* Both states carry the pageview allowance — the tier
+                            must never be visible in only one of the two
+                            toggles. VAT is disclosed once, under the toggle. */}
                         {isYearly ? (
                           <p className="mt-1 text-xs text-muted-foreground">
-                            €{priceDetails.yearlyTotal} billed yearly · excl. VAT
+                            {currentTraffic.label} pageviews · €{priceDetails.yearlyTotal} billed
+                            yearly
                           </p>
                         ) : (
                           <p className="mt-1 text-xs text-muted-foreground">
