@@ -6,6 +6,7 @@ import { cdnUrl } from '@/lib/cdn'
 import { Button } from '@ciphera-net/facet'
 import { cn } from '@/lib/utils'
 import { initiateOAuthFlow, initiateSignupFlow } from '@/lib/api/oauth'
+import { useAuth } from '@/lib/auth/context'
 import { MenuToggleIcon } from '@/components/ui/menu-toggle-icon'
 import { createPortal } from 'react-dom'
 import {
@@ -111,6 +112,10 @@ export function Header() {
   const closeMenu = React.useCallback(() => setOpen(false), [])
   const toggleRef = React.useRef<HTMLButtonElement>(null)
   const scrolled = useScroll(10)
+  // Server-rendered markup always shows the anonymous CTAs (crawlers see a
+  // pure marketing page); the client swaps to "Dashboard" once auth resolves.
+  const { user } = useAuth()
+  const isSignedIn = !!user
 
   React.useEffect(() => {
     if (open) {
@@ -213,16 +218,26 @@ export function Header() {
             </div>
           </div>
           <div className="hidden items-center gap-2 md:flex">
-            <Button variant="outline" asChild>
-              <button type="button" onClick={() => initiateOAuthFlow()}>
-                Sign in
-              </button>
-            </Button>
-            <Button asChild>
-              <button type="button" onClick={() => initiateSignupFlow()}>
-                Get started
-              </button>
-            </Button>
+            {/* Signed-in visitors browsing marketing pages get one honest
+                action — back to the app — instead of Sign in/Get started. */}
+            {isSignedIn ? (
+              <Button asChild>
+                <Link href="/sites">Dashboard</Link>
+              </Button>
+            ) : (
+              <>
+                <Button variant="outline" asChild>
+                  <button type="button" onClick={() => initiateOAuthFlow()}>
+                    Sign in
+                  </button>
+                </Button>
+                <Button asChild>
+                  <button type="button" onClick={() => initiateSignupFlow()}>
+                    Get started
+                  </button>
+                </Button>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-2 md:hidden">
             <Button
@@ -279,16 +294,24 @@ export function Header() {
           ))}
         </div>
         <div className="flex flex-col gap-2">
-          <Button variant="outline" className="w-full" asChild>
-            <button type="button" onClick={() => initiateOAuthFlow()}>
-              Sign in
-            </button>
-          </Button>
-          <Button className="w-full" asChild>
-            <button type="button" onClick={() => initiateSignupFlow()}>
-              Get started
-            </button>
-          </Button>
+          {isSignedIn ? (
+            <Button className="w-full" asChild>
+              <Link href="/sites">Dashboard</Link>
+            </Button>
+          ) : (
+            <>
+              <Button variant="outline" className="w-full" asChild>
+                <button type="button" onClick={() => initiateOAuthFlow()}>
+                  Sign in
+                </button>
+              </Button>
+              <Button className="w-full" asChild>
+                <button type="button" onClick={() => initiateSignupFlow()}>
+                  Get started
+                </button>
+              </Button>
+            </>
+          )}
         </div>
       </MobileMenu>
     </header>
