@@ -124,7 +124,10 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
   const [snippetCopied, setSnippetCopied] = useState(false)
   const [saving, setSaving] = useState(false)
   const [activeSection, setActiveSection] = useState<string>(SECTIONS[0].id)
-  const initialRef = useRef('')
+  // Baseline snapshot is STATE, not a ref: committing it (after save/load)
+  // must re-render so isDirty clears and the beforeunload guard disarms —
+  // the old ref version kept the save bar dirty after a successful save.
+  const [baseline, setBaseline] = useState('')
 
   // Sync form state — only on first load, skip dirty tracking until ready
   const hasInitialized = useRef(false)
@@ -141,7 +144,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
     setAutoGroupDynamic(site.auto_group_dynamic_paths ?? true)
     setPageRules(site.page_rules || [])
     setAllowedQueryParams((site.allowed_query_params || []).join(', '))
-    initialRef.current = JSON.stringify({
+    setBaseline(JSON.stringify({
       collectPagePaths: site.collect_page_paths ?? true,
       collectReferrers: site.collect_referrers ?? true,
       collectDeviceInfo: site.collect_device_info ?? true,
@@ -154,7 +157,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
       pageRules: site.page_rules || [],
       allowedQueryParams: (site.allowed_query_params || []).join(', '),
       psiFrequency: 'weekly',
-    })
+    }))
     hasInitialized.current = true
   }, [site])
 
@@ -165,11 +168,12 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
     const freq = psiConfig.frequency || 'weekly'
     setPsiFrequency(freq)
     // Update the snapshot to include the real PSI frequency so it doesn't show as dirty
-    if (initialRef.current) {
-      const snap = JSON.parse(initialRef.current)
+    setBaseline((prev) => {
+      if (!prev) return prev
+      const snap = JSON.parse(prev)
       snap.psiFrequency = freq
-      initialRef.current = JSON.stringify(snap)
-    }
+      return JSON.stringify(snap)
+    })
     psiInitialized.current = true
   }, [psiConfig])
 
@@ -201,13 +205,13 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
   }, [])
 
   // Track dirty state
-  const isDirty = initialRef.current
-    ? JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency }) !== initialRef.current
+  const isDirty = baseline
+    ? JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency }) !== baseline
     : false
 
   const handleDiscard = () => {
-    if (!initialRef.current) return
-    const snap = JSON.parse(initialRef.current)
+    if (!baseline) return
+    const snap = JSON.parse(baseline)
     setCollectPagePaths(snap.collectPagePaths)
     setCollectReferrers(snap.collectReferrers)
     setCollectDeviceInfo(snap.collectDeviceInfo)
@@ -245,7 +249,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
         await updatePageSpeedConfig(siteId, { enabled: psiConfig.enabled, frequency: psiFrequency })
         await mutatePSIConfig()
       }
-      initialRef.current = JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency })
+      setBaseline(JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency }))
       await mutate()
       toast.success('Privacy settings updated')
     } catch (err) {

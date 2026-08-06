@@ -96,7 +96,10 @@ export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
   const [refreshing, setRefreshing] = useState(false)
   const [retrying, setRetrying] = useState(false)
 
-  const initialRef = useRef('')
+  // Baseline snapshot is STATE, not a ref: committing it (after save/load)
+  // must re-render so isDirty clears and the beforeunload guard disarms —
+  // the old ref version kept the save bar dirty after a successful save.
+  const [baseline, setBaseline] = useState('')
   const hasInitialized = useRef(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const pollCountRef = useRef(0)
@@ -118,7 +121,7 @@ export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
       setFrequency(resolvedFrequency)
       setLastScan(scan)
 
-      initialRef.current = JSON.stringify({ enabled: resolvedEnabled, frequency: resolvedFrequency })
+      setBaseline(JSON.stringify({ enabled: resolvedEnabled, frequency: resolvedFrequency }))
       setError(null)
       setConfigLoaded(true)
     } catch (err) {
@@ -139,13 +142,13 @@ export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
   }, [loadData])
 
   // Track dirty state
-  const isDirty = initialRef.current
-    ? JSON.stringify({ enabled, frequency }) !== initialRef.current
+  const isDirty = baseline
+    ? JSON.stringify({ enabled, frequency }) !== baseline
     : false
 
   const handleDiscard = () => {
-    if (!initialRef.current) return
-    const snap = JSON.parse(initialRef.current)
+    if (!baseline) return
+    const snap = JSON.parse(baseline)
     setEnabled(snap.enabled)
     setFrequency(snap.frequency)
   }
@@ -153,7 +156,7 @@ export default function SitePrivacyScanTab({ siteId }: { siteId: string }) {
   const handleSave = useCallback(async () => {
     try {
       await updatePrivacyScanConfig(siteId, enabled, frequency)
-      initialRef.current = JSON.stringify({ enabled, frequency })
+      setBaseline(JSON.stringify({ enabled, frequency }))
       toast.success('Privacy scan settings updated')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')

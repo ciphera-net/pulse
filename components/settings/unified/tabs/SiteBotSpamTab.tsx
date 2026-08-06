@@ -86,7 +86,10 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
   const { data: botStats, error: botStatsError, isLoading: botStatsLoading, mutate: mutateBotStats } = useQuarantineStats(siteId)
   const { data: domainReputation, error: domainsError, isLoading: domainsLoading, mutate: mutateDomains } = useSiteDomainReputation(siteId)
   const [filterBots, setFilterBots] = useState(false)
-  const initialFilterRef = useRef<boolean | null>(null)
+  // Baseline is STATE (not a ref) so committing it re-renders and isDirty
+  // clears — same fix as the other settings tabs (the ref version only worked
+  // here by accident because handleSave's mutate() forced a re-render).
+  const [filterBaseline, setFilterBaseline] = useState<boolean | null>(null)
 
   const [botView, setBotView] = useState<'review' | 'blocked'>('review')
   const [suspiciousOnly, setSuspiciousOnly] = useState(true)
@@ -123,24 +126,24 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
   useEffect(() => {
     if (!site || hasInitialized.current) return
     setFilterBots(site.filter_bots ?? false)
-    initialFilterRef.current = site.filter_bots ?? false
+    setFilterBaseline(site.filter_bots ?? false)
     hasInitialized.current = true
   }, [site])
 
   // Track dirty state
-  const isDirty = initialFilterRef.current !== null
-    ? filterBots !== initialFilterRef.current
+  const isDirty = filterBaseline !== null
+    ? filterBots !== filterBaseline
     : false
 
   const handleDiscard = () => {
-    if (initialFilterRef.current === null) return
-    setFilterBots(initialFilterRef.current)
+    if (filterBaseline === null) return
+    setFilterBots(filterBaseline)
   }
 
   const handleSave = useCallback(async () => {
     try {
       await updateSite(siteId, { name: site!.name, filter_bots: filterBots })
-      initialFilterRef.current = filterBots
+      setFilterBaseline(filterBots)
       await mutate()
       toast.success('Bot filtering updated')
     } catch (err) {

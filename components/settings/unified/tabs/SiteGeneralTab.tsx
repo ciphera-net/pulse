@@ -58,7 +58,10 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
   const [showResetModal, setShowResetModal] = useState(false)
 
   const canEdit = useCan('sites.edit')
-  const initialRef = useRef('')
+  // Baseline snapshot is STATE, not a ref: committing it (after save/load)
+  // must re-render so isDirty clears and the beforeunload guard disarms —
+  // the old ref version kept the save bar dirty after a successful save.
+  const [baseline, setBaseline] = useState('')
   const hasInitialized = useRef(false)
 
   // A zone whose value isn't in the resolved list (rare — a backend zone the
@@ -76,18 +79,18 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
     setName(site.name || '')
     setTimezone(site.timezone || 'UTC')
     setScriptFeatures(site.script_features || {})
-    initialRef.current = JSON.stringify({ name: site.name || '', timezone: site.timezone || 'UTC', scriptFeatures: JSON.stringify(site.script_features || {}) })
+    setBaseline(JSON.stringify({ name: site.name || '', timezone: site.timezone || 'UTC', scriptFeatures: JSON.stringify(site.script_features || {}) }))
     hasInitialized.current = true
   }, [site])
 
   // Track dirty state
-  const isDirty = initialRef.current
-    ? JSON.stringify({ name, timezone, scriptFeatures: JSON.stringify(scriptFeatures) }) !== initialRef.current
+  const isDirty = baseline
+    ? JSON.stringify({ name, timezone, scriptFeatures: JSON.stringify(scriptFeatures) }) !== baseline
     : false
 
   const handleDiscard = () => {
-    if (!initialRef.current) return
-    const snap = JSON.parse(initialRef.current)
+    if (!baseline) return
+    const snap = JSON.parse(baseline)
     setName(snap.name)
     setTimezone(snap.timezone)
     setScriptFeatures(JSON.parse(snap.scriptFeatures))
@@ -100,7 +103,7 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
       // Partial PUT (B1): only the fields this tab owns — never a full-object
       // resurrection that would clobber server-owned columns.
       await updateSite(siteId, { name, timezone, script_features: scriptFeatures })
-      initialRef.current = JSON.stringify({ name, timezone, scriptFeatures: JSON.stringify(scriptFeatures) })
+      setBaseline(JSON.stringify({ name, timezone, scriptFeatures: JSON.stringify(scriptFeatures) }))
       await mutate()
       toast.success('Site updated')
     } catch (err) {
