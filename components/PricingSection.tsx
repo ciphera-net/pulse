@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
@@ -22,6 +21,7 @@ import {
   FREE_PAGEVIEW_LIMIT,
 } from '@/lib/plans'
 import { PlanComparisonTable } from '@/components/marketing/PlanComparisonTable'
+import { HomeClosingCta } from '@/components/marketing/HomeClosingCta'
 import { getPrices } from '@/lib/api/billing'
 import { cn } from '@/lib/utils'
 
@@ -460,29 +460,12 @@ export default function PricingSection() {
         </div>
       </section>
 
-      {/* Closing CTA — quiet bordered row, facet Buttons */}
+      {/* Closer — the homepage's ember-bloom closer, shared device (no
+          border-b: the footer's border-t owns the seam). Secondary goes to
+          the live demo — this page IS pricing, the homepage default would
+          be circular. */}
       <section>
-        <div className="flex flex-col items-start justify-between gap-8 px-6 py-20 sm:py-24 lg:flex-row lg:items-center">
-          <div className="max-w-xl">
-            <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-              Start tracking with privacy.
-            </h2>
-            <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-              Every plan runs the same 5 KB script — paste it and the first pageview
-              arrives in minutes. Hobby is free forever with no credit card, and paid
-              plans cancel anytime.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button size="lg" onClick={() => initiateOAuthFlow()}>
-              Try Pulse Free
-              <ArrowRightIcon className="ml-2 h-4 w-4" aria-hidden="true" />
-            </Button>
-            <Button asChild variant="outline" size="lg">
-              <Link href="/features">View features</Link>
-            </Button>
-          </div>
-        </div>
+        <HomeClosingCta eyebrow="Get started" secondaryHref="/demo" secondaryLabel="View live demo" />
       </section>
     </>
   )

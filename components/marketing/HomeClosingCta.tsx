@@ -14,7 +14,18 @@ import { initiateOAuthFlow } from '@/lib/api/oauth'
 // mutating a live account (05/06-08 audit). Copy is receipts, not promises —
 // every fact verified (free Hobby tier per /pricing; 5 KB measured;
 // cookieless by architecture).
-export function HomeClosingCta() {
+// Reused beyond the homepage (e.g. /pricing) — the eyebrow and the secondary
+// button are parameterized because the homepage's section number and its
+// "View pricing" target are wrong everywhere else.
+export function HomeClosingCta({
+  eyebrow = '05 · Get started',
+  secondaryHref = '/pricing',
+  secondaryLabel = 'View pricing',
+}: {
+  eyebrow?: string
+  secondaryHref?: string
+  secondaryLabel?: string
+}) {
   return (
     <div className="relative overflow-hidden px-6 py-24 sm:py-32">
       {/* The bloom — bottom-anchored, bold, masked so it never sits under the
@@ -34,7 +45,7 @@ export function HomeClosingCta() {
       />
 
       <div className="relative">
-      <p className="text-xs text-muted-foreground">05 · Get started</p>
+      <p className="text-xs text-muted-foreground">{eyebrow}</p>
       <h2 className="mt-4 max-w-3xl font-display text-4xl font-semibold tracking-tight text-foreground sm:text-6xl">
         Start counting in minutes.
       </h2>
@@ -48,7 +59,7 @@ export function HomeClosingCta() {
           <ArrowRightIcon className="ml-2 h-4 w-4" aria-hidden="true" />
         </Button>
         <Button asChild variant="outline" size="lg">
-          <Link href="/pricing">View pricing</Link>
+          <Link href={secondaryHref}>{secondaryLabel}</Link>
         </Button>
       </div>
       <p className="mt-10 text-xs text-muted-foreground">
