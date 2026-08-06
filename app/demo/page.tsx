@@ -30,7 +30,7 @@ export default function DemoPage() {
   return (
     <MarketingSection>
       <div className="max-w-2xl">
-        <p className="font-mono text-xs text-muted-foreground">Pulse · Live demo</p>
+        <p className="text-xs text-muted-foreground">Pulse · Live demo</p>
         <h1 className="mt-6 font-display text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
           Live demo — see Pulse on real traffic
         </h1>
@@ -54,7 +54,7 @@ export default function DemoPage() {
           </Link>
         </div>
 
-        <p className="mt-6 font-mono text-xs text-muted-foreground">
+        <p className="mt-6 text-xs text-muted-foreground">
           Cookie-free · GDPR compliant · Real data
         </p>
       </div>

@@ -79,7 +79,7 @@ function ReleaseBlock({ release }: { release: Release }) {
         className="flex w-full items-start gap-5 py-6 text-left transition-colors duration-150 hover:bg-accent motion-reduce:transition-none"
       >
         <div className="flex-1">
-          <p className="font-mono text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {release.version}
             {release.date && <> · {release.date}</>}
           </p>
