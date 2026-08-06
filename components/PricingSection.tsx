@@ -14,44 +14,14 @@ import Select from '@/components/ui/select'
 import { Eyebrow } from '@/components/marketing/system/Eyebrow'
 import { HairlineGrid } from '@/components/marketing/system/HairlineGrid'
 import useSWR from 'swr'
-import { TRAFFIC_TIERS } from '@/lib/plans'
+import { TRAFFIC_TIERS, FREE_PLAN, PLAN_CATALOG } from '@/lib/plans'
 import { getPrices } from '@/lib/api/billing'
 import { cn } from '@/lib/utils'
 
-const PLANS = [
-  {
-    id: 'free',
-    name: 'Hobby',
-    description: 'For side projects and exploration',
-    features: ['1 site', '5k pageviews/mo', 'Custom events', 'GDPR compliant'],
-    isFree: true,
-    isPopular: false,
-  },
-  {
-    id: 'solo',
-    name: 'Solo',
-    description: 'For personal sites and freelancers',
-    features: ['1 site', 'Custom events', 'Email reports', 'Responsive design'],
-    isFree: false,
-    isPopular: false,
-  },
-  {
-    id: 'team',
-    name: 'Team',
-    description: 'For startups and growing agencies',
-    features: ['Up to 5 sites', 'Team dashboard', 'Funnels & journeys', 'API access', 'Shared links'],
-    isFree: false,
-    isPopular: true,
-  },
-  {
-    id: 'business',
-    name: 'Business',
-    description: 'For larger organizations',
-    features: ['Up to 10 sites', 'Everything in Team', 'Uptime monitoring', 'Priority support', 'Custom events'],
-    isFree: false,
-    isPopular: false,
-  },
-]
+// One matrix for every surface: the marketing cards render the same catalog
+// the in-app pickers (/setup/plan, /switch) consume — copy edits happen in
+// lib/plans.ts, never here.
+const PLANS = [FREE_PLAN, ...PLAN_CATALOG]
 
 // The "10M+" tier — no price means custom/contact-us
 const TIER_10M_PLUS = { label: '10M+', value: 10000001 }
@@ -266,9 +236,10 @@ export default function PricingSection() {
           <HairlineGrid columns={4}>
             {PLANS.map((plan) => {
               const priceDetails = getPrice(plan.id)
-              const isTeam = plan.id === 'team'
+              const isFree = plan.id === 'free'
+              const isPopular = !!plan.popular
               const selectedLimit = TRAFFIC_TIERS[sliderIndex]?.value
-              const isCurrent = plan.isFree
+              const isCurrent = isFree
                 ? currentPlanId === 'free'
                 : currentPlanId === plan.id && currentLimit === selectedLimit
               const isCustomTier = currentTraffic.value === TIER_10M_PLUS.value
@@ -281,7 +252,7 @@ export default function PricingSection() {
                     // Highlighted tier: an inset primary ring reads cleanly inside
                     // a gap-px grid where cells carry no borders of their own; a
                     // border-t-2 would be swallowed by the 1px gap.
-                    isTeam && 'ring-1 ring-inset ring-primary',
+                    isPopular && 'ring-1 ring-inset ring-primary',
                   )}
                 >
                   {/* Tier name — micro-label; popular tier flags itself */}
@@ -289,7 +260,7 @@ export default function PricingSection() {
                     <span className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
                       {plan.name}
                     </span>
-                    {isTeam && (
+                    {isPopular && (
                       <span className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
                         Most popular
                       </span>
@@ -298,7 +269,7 @@ export default function PricingSection() {
 
                   {/* Price */}
                   <div className="mt-5">
-                    {plan.isFree ? (
+                    {isFree ? (
                       <>
                         <div className="flex items-baseline gap-1">
                           <span className="font-display text-4xl font-semibold tabular-nums text-foreground">
@@ -359,7 +330,7 @@ export default function PricingSection() {
 
                   {/* Feature list */}
                   <ul className="mb-6 flex flex-grow flex-col gap-3">
-                    {plan.features.map((feature) => (
+                    {plan.highlights.map((feature) => (
                       <li key={feature} className="flex items-start gap-2.5">
                         <CheckIcon
                           aria-hidden="true"
@@ -372,10 +343,10 @@ export default function PricingSection() {
 
                   {/* CTA — primary only on the highlighted tier, outline elsewhere */}
                   <Button
-                    variant={isTeam ? 'default' : 'outline'}
+                    variant={isPopular ? 'default' : 'outline'}
                     onClick={() => {
                       if (isCurrent) return
-                      if (plan.isFree) {
+                      if (isFree) {
                         if (!user) {
                           initiateOAuthFlow()
                           return
@@ -390,12 +361,12 @@ export default function PricingSection() {
                       }
                       handleSubscribe(plan.id)
                     }}
-                    disabled={isCurrent || (!plan.isFree && !isCustomTier && !priceDetails)}
+                    disabled={isCurrent || (!isFree && !isCustomTier && !priceDetails)}
                     className="mt-auto w-full justify-center"
                   >
                     {isCurrent
                       ? 'Current plan'
-                      : plan.isFree
+                      : isFree
                         ? 'Get started free'
                         : isCustomTier
                           ? 'Contact us'

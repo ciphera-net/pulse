@@ -60,25 +60,57 @@ export interface PlanCatalogEntry {
   highlights: string[]
 }
 
+/**
+ * The free (Hobby) tier's card, kept beside PLAN_CATALOG so the marketing
+ * pricing page renders every tier from this module. Not part of PLAN_CATALOG
+ * because the in-app pickers (/setup/plan, /switch) only offer paid plans.
+ */
+export const FREE_PLAN: PlanCatalogEntry = {
+  id: 'free',
+  name: 'Hobby',
+  description: 'For side projects and exploration',
+  highlights: [
+    '1 site',
+    `${FREE_PAGEVIEW_LIMIT.toLocaleString('en-US')} pageviews/mo`,
+    'Custom events',
+    '6-month data retention',
+  ],
+}
+
+// Retention highlights mirror getMaxRetentionMonthsForPlan below — the only
+// plan limits besides site count that are actually enforced. Keep in sync.
 export const PLAN_CATALOG: PlanCatalogEntry[] = [
   {
     id: PLAN_ID_SOLO,
     name: 'Solo',
-    description: 'For personal sites',
-    highlights: ['1 site', 'Custom events', 'Email reports'],
+    description: 'For personal sites and freelancers',
+    highlights: ['1 site', 'Custom events', 'Email reports', '1-year data retention'],
   },
   {
     id: PLAN_ID_TEAM,
     name: 'Team',
-    description: 'For startups & agencies',
+    description: 'For startups and growing agencies',
     popular: true,
-    highlights: ['Up to 5 sites', 'Funnels & journeys', 'Team dashboard', 'API access'],
+    highlights: [
+      'Up to 5 sites',
+      'Everything in Solo',
+      'Team dashboard & shared links',
+      'Funnels & journeys',
+      'API access',
+      '2-year data retention',
+    ],
   },
   {
     id: PLAN_ID_BUSINESS,
     name: 'Business',
     description: 'For larger organizations',
-    highlights: ['Up to 10 sites', 'Uptime monitoring', 'Priority support', 'Everything in Team'],
+    highlights: [
+      'Up to 10 sites',
+      'Everything in Team',
+      'Uptime monitoring',
+      'Priority support',
+      '3-year data retention',
+    ],
   },
 ]
 
