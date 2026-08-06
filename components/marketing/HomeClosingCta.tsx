@@ -14,15 +14,20 @@ import { initiateOAuthFlow } from '@/lib/api/oauth'
 // mutating a live account (05/06-08 audit). Copy is receipts, not promises —
 // every fact verified (free Hobby tier per /pricing; 5 KB measured;
 // cookieless by architecture).
-// Reused beyond the homepage (e.g. /pricing) — the eyebrow and the secondary
-// button are parameterized because the homepage's section number and its
-// "View pricing" target are wrong everywhere else.
+// Reused beyond the homepage (/pricing, the /vs compare pages) — the eyebrow,
+// heading/dek and the secondary button are parameterized because the
+// homepage's section number, its copy and its "View pricing" target are wrong
+// everywhere else. Defaults ARE the homepage.
 export function HomeClosingCta({
   eyebrow = '05 · Get started',
+  heading = 'Start counting in minutes.',
+  dek = 'Paste one 5 KB script tag and watch the first pageview arrive — free Hobby tier included, no cookies to configure, nothing to consent to.',
   secondaryHref = '/pricing',
   secondaryLabel = 'View pricing',
 }: {
   eyebrow?: string
+  heading?: string
+  dek?: string
   secondaryHref?: string
   secondaryLabel?: string
 }) {
@@ -47,11 +52,10 @@ export function HomeClosingCta({
       <div className="relative">
       <p className="text-xs text-muted-foreground">{eyebrow}</p>
       <h2 className="mt-4 max-w-3xl font-display text-4xl font-semibold tracking-tight text-foreground sm:text-6xl">
-        Start counting in minutes.
+        {heading}
       </h2>
       <p className="mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-        Paste one 5 KB script tag and watch the first pageview arrive — free Hobby tier
-        included, no cookies to configure, nothing to consent to.
+        {dek}
       </p>
       <div className="mt-10 flex flex-wrap items-center gap-3">
         <Button size="lg" onClick={() => initiateOAuthFlow()}>

@@ -1,10 +1,12 @@
-import { MarketingSection } from '@/components/marketing/system/MarketingSection'
-import { SeoCtaButtons } from './SeoCtaButtons'
+import { HomeClosingCta } from '@/components/marketing/HomeClosingCta'
 
 /**
- * Closing call-to-action slab shared by every SEO page. Quiet bordered card,
- * headline + supporting line + the demo/signup button pair. Copy is passed in
- * so each page can close in its own words without duplicating the layout.
+ * Closing call-to-action shared by every SEO page (/vs, category, tools).
+ * One closer DESIGN across the estate — this is the homepage's ember-bloom
+ * closer (owner decision 06-08-2026); only the copy is per-page. Title/body
+ * are passed through so each page still closes in its own words. Plain
+ * <section> wrapper: the closer carries no border-b — the footer's border-t
+ * owns the seam, same as on the homepage and /pricing.
  */
 export function SeoPageCta({
   title = 'Try privacy-first analytics free',
@@ -14,20 +16,14 @@ export function SeoPageCta({
   body?: string
 }) {
   return (
-    <MarketingSection>
-      <div className="flex flex-col items-start justify-between gap-8 border border-border bg-card p-8 lg:flex-row lg:items-center lg:p-10">
-        <div className="max-w-xl">
-          <p className="text-xs text-muted-foreground">Get started</p>
-          <h2 className="mt-3 font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            {title}
-          </h2>
-          <p className="mt-3 text-base leading-relaxed text-muted-foreground">{body}</p>
-          <p className="mt-6 text-xs text-muted-foreground">
-            Cookie-free · GDPR compliant · EU company
-          </p>
-        </div>
-        <SeoCtaButtons className="flex flex-col gap-3 sm:flex-row lg:flex-col" />
-      </div>
-    </MarketingSection>
+    <section>
+      <HomeClosingCta
+        eyebrow="Get started"
+        heading={title}
+        dek={body}
+        secondaryHref="/demo"
+        secondaryLabel="View live demo"
+      />
+    </section>
   )
 }
