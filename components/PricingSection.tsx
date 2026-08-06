@@ -29,11 +29,13 @@ const TIER_10M_PLUS = { label: '10M+', value: 10000001 }
 // All tiers shown in the slider, including the custom-price 10M+ tier
 const ALL_SLIDER_TIERS = [...TRAFFIC_TIERS, TIER_10M_PLUS] as const
 
-const INCLUDED_EVERYWHERE = [
-  'Cookie-free tracking',
-  'GDPR compliant',
-  'Swiss infrastructure',
-  '100% data ownership',
+// Each chip links to the page that proves the claim — same targets as the
+// features page's "Guarantees, with receipts" ledger.
+const INCLUDED_EVERYWHERE: { label: string; href: string; external?: boolean }[] = [
+  { label: 'Cookie-free tracking', href: '/analytics-without-cookie-banner' },
+  { label: 'GDPR compliant', href: '/gdpr-compliant-analytics' },
+  { label: 'Swiss infrastructure', href: 'https://ciphera.net/trust', external: true },
+  { label: '100% data ownership', href: 'https://ciphera.net/#privacy', external: true },
 ]
 
 export default function PricingSection() {
@@ -390,13 +392,20 @@ export default function PricingSection() {
             </p>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-center sm:gap-8">
               {INCLUDED_EVERYWHERE.map((item) => (
-                <div key={item} className="flex items-center gap-2">
+                <a
+                  key={item.label}
+                  href={item.href}
+                  {...(item.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                  className="flex items-center gap-2 transition-colors duration-150 motion-reduce:transition-none"
+                >
                   <CheckIcon
                     aria-hidden="true"
                     className="h-4 w-4 shrink-0 text-muted-foreground"
                   />
-                  <span className="text-sm text-foreground">{item}</span>
-                </div>
+                  <span className="text-sm text-foreground underline decoration-border underline-offset-4 transition-colors duration-150 hover:decoration-foreground motion-reduce:transition-none">
+                    {item.label}
+                  </span>
+                </a>
               ))}
             </div>
           </div>
