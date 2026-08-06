@@ -28,7 +28,7 @@ export const pricingFaqData: Record<string, FAQItem[]> = {
     {
       question: 'What payment methods do you accept?',
       answer:
-        'We accept credit and debit cards (Visa, Mastercard, American Express), iDEAL, Bancontact, SEPA Direct Debit, and other European payment methods. All payments are securely processed.',
+        'We accept credit and debit cards (Visa, Mastercard, American Express), iDEAL, Bancontact, SEPA Direct Debit, and other European payment methods. Payments are processed by Mollie, our EU payment provider — your card details never touch our servers.',
     },
     {
       question: 'Can I get a refund?',
