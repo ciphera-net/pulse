@@ -61,7 +61,7 @@ const footerColumns: { heading: string; links: FooterLink[] }[] = [
     links: [
       { name: 'Privacy Policy', href: 'https://ciphera.net/privacy', external: true },
       { name: 'Terms of Service', href: 'https://ciphera.net/terms', external: true },
-      { name: 'Contact', href: 'https://ciphera.net/contact', external: true },
+      { name: 'Contact', href: '/contact' },
     ],
   },
 ]

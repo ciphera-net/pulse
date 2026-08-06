@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
@@ -386,8 +387,7 @@ export default function PricingSection() {
                         return
                       }
                       if (isCustomTraffic) {
-                        window.location.href =
-                          'mailto:business@ciphera.net?subject=Enterprise%20Plan%20Inquiry'
+                        router.push('/contact')
                         return
                       }
                       handleSubscribe(plan.id)
@@ -425,10 +425,10 @@ export default function PricingSection() {
               </p>
             </div>
             <Button asChild variant="outline" className="shrink-0">
-              <a href="mailto:business@ciphera.net?subject=Enterprise%20Plan%20Inquiry">
+              <Link href="/contact">
                 Let&apos;s talk
                 <ArrowRightIcon className="ml-2 h-4 w-4" aria-hidden="true" />
-              </a>
+              </Link>
             </Button>
           </div>
         </div>
