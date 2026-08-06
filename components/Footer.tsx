@@ -115,7 +115,7 @@ export function Footer({
             </div>
             <div className="flex gap-6 text-sm font-medium text-foreground/80">
               <Component href="/about" className="transition-colors duration-fast hover:text-foreground">
-                Why {appName}
+                About {appName}
               </Component>
               <Component href="/changelog" className="transition-colors duration-fast hover:text-foreground">
                 Changelog

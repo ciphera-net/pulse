@@ -1,195 +1,172 @@
-'use client'
-
-/**
- * @file About / "Why Pulse?" page.
- *
- * Lightest-touch rebuild onto the marketing section grammar: numbered slabs on
- * the shared rail, comparison tables restyled onto hairline/token treatment
- * (sentiment cell colours kept exactly — green = win, red = loss, neutral =
- * plain), the Plausible callout kept verbatim as a bordered aside. No framer,
- * no scroll-gating: everything is visible at first paint. Tokens only.
- */
-
-import { CheckCircleIcon, XIcon } from '@ciphera-net/facet'
+import type { Metadata } from 'next'
+import Image from 'next/image'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
+import { MacWindow } from '@/components/marketing/system/MacWindow'
+import { ReceiptsLedger, ProofLink, type Receipt } from '@/components/marketing/ReceiptsLedger'
+import { RelatedLinks } from '@/components/marketing/seo/RelatedLinks'
+import { HomeClosingCta } from '@/components/marketing/HomeClosingCta'
+import { Eyebrow } from '@/components/marketing/system/Eyebrow'
+import { cdnUrl } from '@/lib/cdn'
 
-// Boolean cells render ✓/✗ and assume true = good. Where the raw boolean would
-// invert sentiment (e.g. "Cookie Banner Required" — false is the win), use
-// { text, good } so the colour follows the meaning, not the boolean.
-type FeatureValue = boolean | string | { text: string; good: boolean }
+const description =
+  'Pulse is privacy-first web analytics built by Ciphera BV in Belgium — open source, cookie-free, and counted on Swiss infrastructure.'
 
-interface Competitor {
-  name: string
-  isPulse: boolean
-  features: Record<string, FeatureValue>
+export const metadata: Metadata = {
+  title: 'About',
+  description,
+  alternates: {
+    canonical: '/about',
+  },
+  openGraph: {
+    title: 'About',
+    description,
+    siteName: 'Pulse by Ciphera',
+  },
 }
 
-const FEATURE_ROWS = [
-  'Cookie Banner Required',
-  'GDPR Compliant',
-  'Script Size',
-  'Data Ownership',
-  'User Privacy',
-  'UI Simplicity',
-] as const
+// The company facts, each with the link that proves it — the receipts-ledger
+// device from /features. Every value here is verifiable: the KBO entry is the
+// Belgian public company register, the script size is measured, the source is
+// public, and the no-gates claim is the pricing page's published position.
+const companyReceipts: Receipt[] = [
+  {
+    title: 'Belgian company',
+    description:
+      'Ciphera BV · KBO/BCE 1013.721.660 · De Kleetlaan 2, 1831 Diegem — the entity on every invoice, in the public register.',
+    proof: {
+      label: 'KBO register',
+      href: 'https://kbopub.economie.fgov.be/kbopub/toonondernemingps.html?ondernemingsnummer=1013721660',
+      external: true,
+    },
+  },
+  {
+    title: 'Open source',
+    description: 'The dashboard and the tracking script are public — inspect every line before you run it.',
+    proof: { label: 'Read the code', href: 'https://github.com/ciphera-net/pulse', external: true },
+  },
+  {
+    title: 'Swiss infrastructure',
+    description:
+      'Analytics data is processed and stored in Switzerland, protected by the Swiss Federal Act on Data Protection.',
+    proof: { label: 'Trust hub', href: 'https://ciphera.net/trust', external: true },
+  },
+  {
+    title: 'A 5 KB script',
+    description:
+      'Measured, not rounded: 5 KB gzipped — about 25× lighter than Google Analytics. When it shrinks, this number changes.',
+    proof: { label: 'Installation', href: '/installation' },
+  },
+  {
+    title: 'No feature gates',
+    description:
+      'Every plan runs the full product — funnels, journeys, API, uptime monitoring, all of it. Plans differ on scale.',
+    proof: { label: 'Pricing', href: '/pricing' },
+  },
+  {
+    title: 'Cookie-free by architecture',
+    description:
+      'No cookies, no fingerprinting, no persistent identifiers — which is why sites running Pulse need no consent banner.',
+    proof: { label: 'How that works', href: '/analytics-without-cookie-banner' },
+  },
+]
 
-function ComparisonTable({ title, competitors }: { title: string; competitors: Competitor[] }) {
-  return (
-    <div>
-      <h3 className="mb-5 text-lg font-semibold text-foreground">{title}</h3>
-      <div className="overflow-x-auto border border-border bg-card">
-        <table className="w-full border-collapse text-left">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="p-4 text-xs uppercase tracking-[0.08em] text-muted-foreground sm:p-6">
-                Feature
-              </th>
-              {competitors.map((comp) => (
-                <th
-                  key={comp.name}
-                  className={`p-4 text-sm font-semibold sm:p-6 ${
-                    comp.isPulse ? 'text-primary' : 'text-foreground'
-                  }`}
-                >
-                  {comp.name}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {FEATURE_ROWS.map((feature) => (
-              <tr
-                key={feature}
-                className="border-b border-border last:border-b-0 transition-colors duration-150 hover:bg-accent motion-reduce:transition-none"
-              >
-                <td className="p-4 text-sm font-medium text-foreground sm:p-6">{feature}</td>
-                {competitors.map((comp) => {
-                  const val = comp.features[feature]
-                  return (
-                    <td key={comp.name} className="p-4 text-sm sm:p-6">
-                      {typeof val === 'object' ? (
-                        <span className={`font-medium ${val.good ? 'text-green-500' : 'text-red-500'}`}>
-                          {val.text}
-                        </span>
-                      ) : val === true ? (
-                        <CheckCircleIcon aria-hidden="true" className="h-5 w-5 text-green-500" />
-                      ) : val === false ? (
-                        <XIcon aria-hidden="true" className="h-5 w-5 text-red-500" />
-                      ) : (
-                        <span className={comp.isPulse ? 'font-medium text-green-500' : 'text-muted-foreground'}>
-                          {val}
-                        </span>
-                      )}
-                    </td>
-                  )
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-const PULSE_FEATURES: Record<string, FeatureValue> = {
-  'Cookie Banner Required': { text: 'None', good: true },
-  'GDPR Compliant': true,
-  'Script Size': '< 1 KB',
-  'Data Ownership': 'Yours',
-  'User Privacy': '100% Anonymous',
-  'UI Simplicity': 'Simple',
-}
+const vsLinks = [
+  { label: 'vs Google Analytics', description: 'A cookie-based tool versus a cookieless one, side by side.', href: '/vs/google-analytics' },
+  { label: 'vs Plausible', description: 'Two privacy-first tools compared honestly — including where we differ.', href: '/vs/plausible' },
+  { label: 'vs Matomo', description: 'Self-hosted heavyweight versus a 5 KB script.', href: '/vs/matomo' },
+  { label: 'vs Fathom', description: 'Feature gates and pricing models, laid out.', href: '/vs/fathom' },
+  { label: 'vs Simple Analytics', description: 'Two EU-minded tools, measured against each other.', href: '/vs/simple-analytics' },
+  { label: 'vs Umami', description: 'Open-source options compared: hosted, self-hosted, both.', href: '/vs/umami' },
+]
 
 export default function AboutPage() {
   return (
     <>
-      {/* ── HERO ── */}
-      <MarketingSection>
-        <div className="text-center">
-          <p className="text-xs text-muted-foreground">Pulse · Why Pulse</p>
-          <h1 className="mx-auto mt-6 max-w-2xl font-display text-4xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
-            Why Pulse?
+      {/* Header — eyebrow, semantic h1, short dek */}
+      <section className="border-b border-border">
+        <div className="px-6 pb-12 pt-16 text-center sm:pt-20">
+          <Eyebrow label="Pulse · About" className="text-center" />
+          <h1 className="mt-6 font-display text-5xl font-semibold tracking-tight text-foreground sm:text-6xl">
+            About
           </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            We built Pulse because we were tired of complex, invasive analytics tools. Here is
-            how we stack up against the giants.
+          <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+            Pulse is privacy-first web analytics built by Ciphera BV in Belgium —
+            open source, cookie-free, and counted on Swiss infrastructure.
           </p>
         </div>
-      </MarketingSection>
+      </section>
 
-      {/* ── 01 · COMPARED ── */}
+      {/* ── 01 · THE STORY ── */}
       <MarketingSection
         eyebrowNumber="01"
-        eyebrowLabel="Compared"
-        heading="How we stack up."
-        dek="The same privacy-first stance, laid out feature by feature against the tools you already know."
+        eyebrowLabel="The story"
+        heading="Built because we needed it."
       >
-        <div className="mt-12 flex flex-col gap-12">
-          <ComparisonTable
-            title="Pulse vs. Google Analytics"
-            competitors={[
-              { name: 'Pulse', isPulse: true, features: PULSE_FEATURES },
-              {
-                name: 'Google Analytics 4',
-                isPulse: false,
-                features: {
-                  'Cookie Banner Required': { text: 'Required', good: false },
-                  'GDPR Compliant': 'Complex',
-                  'Script Size': '45 KB+',
-                  'Data Ownership': "Google's",
-                  'User Privacy': 'Invasive',
-                  'UI Simplicity': 'Complex',
-                },
-              },
-            ]}
-          />
-          <ComparisonTable
-            title="Pulse vs. Plausible"
-            competitors={[
-              { name: 'Pulse', isPulse: true, features: PULSE_FEATURES },
-              {
-                name: 'Plausible',
-                isPulse: false,
-                features: {
-                  'Cookie Banner Required': { text: 'None', good: true },
-                  'GDPR Compliant': true,
-                  'Script Size': '< 1 KB',
-                  'Data Ownership': 'Yours',
-                  'User Privacy': '100% Anonymous',
-                  'UI Simplicity': 'Simple',
-                },
-              },
-            ]}
-          />
+        <div className="mt-6 max-w-2xl space-y-5 text-base leading-relaxed text-muted-foreground">
+          <p>
+            Ciphera builds privacy tools. When our own products needed analytics, every
+            option came with a catch: either it surveilled visitors into a cookie
+            banner, or the useful parts sat behind an enterprise tier. So we built the
+            analytics we wanted to run ourselves — one small script, no cookies,
+            nothing to consent to — and opened the source.
+          </p>
+          <p>
+            Pulse runs on the same principles as the rest of Ciphera: a European
+            company, Swiss infrastructure, and claims that link to their proof.
+          </p>
         </div>
       </MarketingSection>
 
-      {/* ── 02 · PHILOSOPHY ── */}
+      {/* ── 02 · RECEIPTS ── */}
       <MarketingSection
         eyebrowNumber="02"
-        eyebrowLabel="Philosophy"
-        heading="Only the metrics that matter."
+        eyebrowLabel="The company"
+        heading="Who you're dealing with, with receipts."
+        dek="Not an about-page mood board — each fact links to the thing that proves it."
       >
-        <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
-          Most analytics tools are overkill. They track everything, slow down your site, and
-          require annoying cookie banners. Pulse is different. We focus on the metrics that
-          actually matter — visitors, pageviews, and sources — while respecting user privacy.
-        </p>
-
-        {/* Plausible callout — kept verbatim, framed as a bordered aside */}
-        <aside className="mt-10 max-w-2xl border border-border bg-card p-6">
-          <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
-            On Plausible
-          </p>
-          <p className="mt-4 text-sm font-semibold text-foreground">What about Plausible?</p>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            We love Plausible! They paved the way for privacy-friendly analytics. Pulse offers a
-            similar philosophy but with a focus on even deeper integration with the Ciphera
-            ecosystem and more flexible pricing for developers.
-          </p>
-        </aside>
+        <ReceiptsLedger receipts={companyReceipts} />
       </MarketingSection>
+
+      {/* ── 03 · THE PRODUCT ── */}
+      <MarketingSection
+        eyebrowNumber="03"
+        eyebrowLabel="The product"
+        heading="What Pulse measures today."
+        dek="Visitors, pageviews, referrers, countries and devices — plus custom events, funnels and journeys, PageSpeed, uptime monitoring and email reports. Every feature on every plan, the free one included."
+      >
+        <div className="mt-6 flex flex-wrap items-center gap-5">
+          <ProofLink proof={{ label: 'Tour the features', href: '/features' }} />
+          <ProofLink proof={{ label: 'Open the live demo', href: '/demo' }} />
+        </div>
+
+        {/* Real capture — the LIVE ciphera.net dashboard (same asset and framing
+            as the homepage hero; real data, not a mockup). */}
+        <div className="mx-auto mt-12 w-full max-w-4xl">
+          <MacWindow>
+            <Image
+              src={cdnUrl('/marketing/dashboard-hero-aug-2x.png')}
+              alt="The Pulse dashboard for ciphera.net — 30 days of real visitor, pageview and engagement data"
+              width={2244}
+              height={1922}
+              unoptimized
+              className="block w-full"
+            />
+          </MacWindow>
+        </div>
+      </MarketingSection>
+
+      {/* ── 04 · COMPARE — the tables live on the /vs cluster, not here ── */}
+      <RelatedLinks
+        eyebrowNumber="04"
+        eyebrow="Compare"
+        heading="The comparisons live on the vs pages."
+        links={vsLinks}
+      />
+
+      {/* Closer — shared ember device (no border-b: footer's border-t owns the seam) */}
+      <section>
+        <HomeClosingCta eyebrow="Get started" secondaryHref="/demo" secondaryLabel="View live demo" />
+      </section>
     </>
   )
 }
