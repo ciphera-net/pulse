@@ -16,14 +16,17 @@ export interface RelatedLink {
 export function RelatedLinks({
   links,
   eyebrow = 'Keep reading',
+  eyebrowNumber,
   heading = 'Related',
 }: {
   links: RelatedLink[]
   eyebrow?: string
+  /** Optional section number so the block can join a numbered page. */
+  eyebrowNumber?: string
   heading?: string
 }) {
   return (
-    <MarketingSection eyebrowLabel={eyebrow} heading={heading}>
+    <MarketingSection eyebrowNumber={eyebrowNumber} eyebrowLabel={eyebrow} heading={heading}>
       <div className="mt-10 grid grid-cols-1 gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
         {links.map((link) => (
           <Link

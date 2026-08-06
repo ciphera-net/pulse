@@ -14,57 +14,28 @@ import Select from '@/components/ui/select'
 import { Eyebrow } from '@/components/marketing/system/Eyebrow'
 import { HairlineGrid } from '@/components/marketing/system/HairlineGrid'
 import useSWR from 'swr'
-import { TRAFFIC_TIERS } from '@/lib/plans'
+import {
+  TRAFFIC_TIERS,
+  FREE_PLAN,
+  PLAN_CATALOG,
+  PLAN_FEATURE_MATRIX,
+  FREE_PAGEVIEW_LIMIT,
+} from '@/lib/plans'
+import { PlanComparisonTable } from '@/components/marketing/PlanComparisonTable'
+import { HomeClosingCta } from '@/components/marketing/HomeClosingCta'
 import { getPrices } from '@/lib/api/billing'
 import { cn } from '@/lib/utils'
 
-const PLANS = [
-  {
-    id: 'free',
-    name: 'Hobby',
-    description: 'For side projects and exploration',
-    features: ['1 site', '5k pageviews/mo', 'Custom events', 'GDPR compliant'],
-    isFree: true,
-    isPopular: false,
-  },
-  {
-    id: 'solo',
-    name: 'Solo',
-    description: 'For personal sites and freelancers',
-    features: ['1 site', 'Custom events', 'Email reports', 'Responsive design'],
-    isFree: false,
-    isPopular: false,
-  },
-  {
-    id: 'team',
-    name: 'Team',
-    description: 'For startups and growing agencies',
-    features: ['Up to 5 sites', 'Team dashboard', 'Funnels & journeys', 'API access', 'Shared links'],
-    isFree: false,
-    isPopular: true,
-  },
-  {
-    id: 'business',
-    name: 'Business',
-    description: 'For larger organizations',
-    features: ['Up to 10 sites', 'Everything in Team', 'Uptime monitoring', 'Priority support', 'Custom events'],
-    isFree: false,
-    isPopular: false,
-  },
-]
+// One matrix for every surface: the marketing cards render the same catalog
+// the in-app pickers (/setup/plan, /switch) consume — copy edits happen in
+// lib/plans.ts, never here.
+const PLANS = [FREE_PLAN, ...PLAN_CATALOG]
 
 // The "10M+" tier — no price means custom/contact-us
 const TIER_10M_PLUS = { label: '10M+', value: 10000001 }
 
 // All tiers shown in the slider, including the custom-price 10M+ tier
 const ALL_SLIDER_TIERS = [...TRAFFIC_TIERS, TIER_10M_PLUS] as const
-
-const INCLUDED_EVERYWHERE = [
-  'Cookie-free tracking',
-  'GDPR compliant',
-  'Swiss infrastructure',
-  '100% data ownership',
-]
 
 export default function PricingSection() {
   const searchParams = useSearchParams()
@@ -88,6 +59,34 @@ export default function PricingSection() {
   }, [searchParams])
 
   const currentTraffic = ALL_SLIDER_TIERS[sliderIndex]
+  const isCustomTraffic = currentTraffic.value === TIER_10M_PLUS.value
+
+  // The comparison table's pageviews row reads the live tier slider — the
+  // static matrix in lib/plans.ts can't know the selection. Accent form ties
+  // the cells to the slider's primary-colored selected label.
+  const paidPageviews = isCustomTraffic
+    ? 'Custom'
+    : ({ text: `${currentTraffic.label} (selected)`, accent: true } as const)
+  const comparisonGroups = PLAN_FEATURE_MATRIX.map((group) =>
+    group.label === 'Usage'
+      ? {
+          ...group,
+          rows: [
+            group.rows[0],
+            {
+              label: 'Monthly pageviews',
+              values: {
+                free: FREE_PAGEVIEW_LIMIT.toLocaleString('en-US'),
+                solo: paidPageviews,
+                team: paidPageviews,
+                business: paidPageviews,
+              },
+            },
+            ...group.rows.slice(1),
+          ],
+        }
+      : group,
+  )
 
   const getPrice = (planId: string) => {
     if (planId === 'free') return null
@@ -145,7 +144,7 @@ export default function PricingSection() {
 
   return (
     <>
-      {/* Header — mono eyebrow, semantic h1, short dek */}
+      {/* Header — eyebrow, semantic h1, short dek */}
       <section className="border-b border-border">
         <div className="px-6 pb-12 pt-16 text-center sm:pt-20">
           <Eyebrow label="Pulse · Pricing" className="text-center" />
@@ -153,8 +152,8 @@ export default function PricingSection() {
             Pricing
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Simple, transparent pricing for privacy-first analytics. Start free,
-            scale when you need to — no cookies, no consent banner, ever.
+            Every plan runs the full product — you pay for scale, not features.
+            Start free; no cookies, no consent banner, ever.
           </p>
 
           {/* Billing toggle — segmented control, h-10 bordered container */}
@@ -200,7 +199,7 @@ export default function PricingSection() {
               </button>
             </div>
             <span className="text-xs text-muted-foreground">
-              Get 1 month free with yearly
+              Get 1 month free with yearly · prices excl. VAT
             </span>
           </div>
 
@@ -266,12 +265,12 @@ export default function PricingSection() {
           <HairlineGrid columns={4}>
             {PLANS.map((plan) => {
               const priceDetails = getPrice(plan.id)
-              const isTeam = plan.id === 'team'
+              const isFree = plan.id === 'free'
+              const isPopular = !!plan.popular
               const selectedLimit = TRAFFIC_TIERS[sliderIndex]?.value
-              const isCurrent = plan.isFree
+              const isCurrent = isFree
                 ? currentPlanId === 'free'
                 : currentPlanId === plan.id && currentLimit === selectedLimit
-              const isCustomTier = currentTraffic.value === TIER_10M_PLUS.value
 
               return (
                 <div
@@ -281,7 +280,7 @@ export default function PricingSection() {
                     // Highlighted tier: an inset primary ring reads cleanly inside
                     // a gap-px grid where cells carry no borders of their own; a
                     // border-t-2 would be swallowed by the 1px gap.
-                    isTeam && 'ring-1 ring-inset ring-primary',
+                    isPopular && 'ring-1 ring-inset ring-primary',
                   )}
                 >
                   {/* Tier name — micro-label; popular tier flags itself */}
@@ -289,7 +288,7 @@ export default function PricingSection() {
                     <span className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
                       {plan.name}
                     </span>
-                    {isTeam && (
+                    {isPopular && (
                       <span className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
                         Most popular
                       </span>
@@ -298,7 +297,7 @@ export default function PricingSection() {
 
                   {/* Price */}
                   <div className="mt-5">
-                    {plan.isFree ? (
+                    {isFree ? (
                       <>
                         <div className="flex items-baseline gap-1">
                           <span className="font-display text-4xl font-semibold tabular-nums text-foreground">
@@ -307,10 +306,10 @@ export default function PricingSection() {
                           <span className="text-sm text-muted-foreground">/mo</span>
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          5k pageviews · forever free
+                          Forever free · no credit card
                         </p>
                       </>
-                    ) : isCustomTier ? (
+                    ) : isCustomTraffic ? (
                       <>
                         <div className="flex items-baseline gap-1">
                           <span className="font-display text-4xl font-semibold text-foreground">
@@ -329,9 +328,13 @@ export default function PricingSection() {
                           </span>
                           <span className="text-sm text-muted-foreground">/mo</span>
                         </div>
+                        {/* Both states carry the pageview allowance — the tier
+                            must never be visible in only one of the two
+                            toggles. VAT is disclosed once, under the toggle. */}
                         {isYearly ? (
                           <p className="mt-1 text-xs text-muted-foreground">
-                            €{priceDetails.yearlyTotal} billed yearly · excl. VAT
+                            {currentTraffic.label} pageviews · €{priceDetails.yearlyTotal} billed
+                            yearly
                           </p>
                         ) : (
                           <p className="mt-1 text-xs text-muted-foreground">
@@ -359,7 +362,7 @@ export default function PricingSection() {
 
                   {/* Feature list */}
                   <ul className="mb-6 flex flex-grow flex-col gap-3">
-                    {plan.features.map((feature) => (
+                    {plan.highlights.map((feature) => (
                       <li key={feature} className="flex items-start gap-2.5">
                         <CheckIcon
                           aria-hidden="true"
@@ -372,10 +375,10 @@ export default function PricingSection() {
 
                   {/* CTA — primary only on the highlighted tier, outline elsewhere */}
                   <Button
-                    variant={isTeam ? 'default' : 'outline'}
+                    variant={isPopular ? 'default' : 'outline'}
                     onClick={() => {
                       if (isCurrent) return
-                      if (plan.isFree) {
+                      if (isFree) {
                         if (!user) {
                           initiateOAuthFlow()
                           return
@@ -383,21 +386,20 @@ export default function PricingSection() {
                         window.location.href = '/'
                         return
                       }
-                      if (isCustomTier) {
-                        window.location.href =
-                          'mailto:business@ciphera.net?subject=Enterprise%20Plan%20Inquiry'
+                      if (isCustomTraffic) {
+                        router.push('/contact')
                         return
                       }
                       handleSubscribe(plan.id)
                     }}
-                    disabled={isCurrent || (!plan.isFree && !isCustomTier && !priceDetails)}
+                    disabled={isCurrent || (!isFree && !isCustomTraffic && !priceDetails)}
                     className="mt-auto w-full justify-center"
                   >
                     {isCurrent
                       ? 'Current plan'
-                      : plan.isFree
+                      : isFree
                         ? 'Get started free'
-                        : isCustomTier
+                        : isCustomTraffic
                           ? 'Contact us'
                           : subscription?.subscription_status === 'active'
                             ? 'Switch plan'
@@ -408,38 +410,42 @@ export default function PricingSection() {
             })}
           </HairlineGrid>
 
-          {/* All plans include — quiet bordered row */}
-          <div className="mt-6 border border-border bg-card px-6 py-5">
-            <p className="mb-4 text-center text-xs uppercase tracking-[0.08em] text-muted-foreground">
-              All plans include
-            </p>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-center sm:gap-8">
-              {INCLUDED_EVERYWHERE.map((item) => (
-                <div key={item} className="flex items-center gap-2">
-                  <CheckIcon
-                    aria-hidden="true"
-                    className="h-4 w-4 shrink-0 text-muted-foreground"
-                  />
-                  <span className="text-sm text-foreground">{item}</span>
-                </div>
-              ))}
+          {/* Enterprise — the SeoPageCta card anatomy: micro-label, display
+              heading, receipts body, real Facet button. (The old "All plans
+              include" strip is gone: the cards' "Every feature included" line
+              and the table's included-everywhere group already carry it.) */}
+          <div className="mt-6 flex flex-col items-start justify-between gap-4 border border-border bg-card px-6 py-5 sm:flex-row sm:items-center">
+            <div>
+              <p className="font-display text-lg font-semibold tracking-tight text-foreground">
+                Need something bigger?
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                A custom plan built around your setup — unlimited sites, an uptime SLA,
+                managed proxy, raw data export.
+              </p>
             </div>
+            <Button asChild variant="outline" className="shrink-0">
+              <Link href="/contact">
+                Let&apos;s talk
+                <ArrowRightIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+              </Link>
+            </Button>
           </div>
+        </div>
+      </section>
 
-          {/* Enterprise nudge — bordered row on tokens */}
-          <div className="mt-4 flex flex-col items-start justify-between gap-3 border border-border bg-card px-6 py-4 sm:flex-row sm:items-center">
-            <p className="text-sm text-muted-foreground">
-              <span className="font-semibold text-foreground">Need something bigger?</span>{' '}
-              We&apos;ll build a custom plan for you — unlimited sites, SLA, managed proxy,
-              raw data export.
-            </p>
-            <a
-              href="mailto:business@ciphera.net?subject=Enterprise%20Plan%20Inquiry"
-              className="shrink-0 text-xs text-primary transition-colors duration-150 hover:text-foreground motion-reduce:transition-none"
-            >
-              Let&apos;s talk →
-            </a>
-          </div>
+      {/* Plan comparison — the full matrix, VerdictTable anatomy */}
+      <section className="border-b border-border">
+        <div className="px-6 py-16 sm:py-20">
+          <Eyebrow label="Compare plans" />
+          <h2 className="mt-4 font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+            Every plan, line by line.
+          </h2>
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
+            No feature gates. Plans differ on three things — sites, pageviews and
+            data retention — and everything else ships everywhere, on Hobby too.
+          </p>
+          <PlanComparisonTable groups={comparisonGroups} />
         </div>
       </section>
 
@@ -454,28 +460,12 @@ export default function PricingSection() {
         </div>
       </section>
 
-      {/* Closing CTA — quiet bordered row, facet Buttons */}
+      {/* Closer — the homepage's ember-bloom closer, shared device (no
+          border-b: the footer's border-t owns the seam). Secondary goes to
+          the live demo — this page IS pricing, the homepage default would
+          be circular. */}
       <section>
-        <div className="flex flex-col items-start justify-between gap-8 px-6 py-20 sm:py-24 lg:flex-row lg:items-center">
-          <div className="max-w-xl">
-            <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-              Start tracking with privacy.
-            </h2>
-            <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-              Join the developers who respect their users&apos; privacy while getting the
-              insights they need. No cookies, no consent banner, no compromise.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button size="lg" onClick={() => initiateOAuthFlow()}>
-              Try Pulse Free
-              <ArrowRightIcon className="ml-2 h-4 w-4" aria-hidden="true" />
-            </Button>
-            <Button asChild variant="outline" size="lg">
-              <Link href="/features">View features</Link>
-            </Button>
-          </div>
-        </div>
+        <HomeClosingCta eyebrow="Get started" secondaryHref="/demo" secondaryLabel="View live demo" />
       </section>
     </>
   )

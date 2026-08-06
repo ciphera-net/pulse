@@ -28,7 +28,7 @@ export const pricingFaqData: Record<string, FAQItem[]> = {
     {
       question: 'What payment methods do you accept?',
       answer:
-        'We accept credit and debit cards (Visa, Mastercard, American Express), iDEAL, Bancontact, SEPA Direct Debit, and other European payment methods. All payments are securely processed.',
+        'We accept credit and debit cards (Visa, Mastercard, American Express), iDEAL, Bancontact, SEPA Direct Debit, and other European payment methods. Payments are processed by Mollie, our EU payment provider — your card details never touch our servers.',
     },
     {
       question: 'Can I get a refund?',
@@ -37,6 +37,11 @@ export const pricingFaqData: Record<string, FAQItem[]> = {
     },
   ],
   plans: [
+    {
+      question: 'Do higher plans unlock more features?',
+      answer:
+        'No — every plan runs the full product. Custom events, funnels and journeys, email reports, API access, uptime monitoring, the team dashboard and shared links are included everywhere, on Hobby too. Higher plans scale the limits: more sites, more pageviews, longer data retention — and Business adds priority support.',
+    },
     {
       question: 'Can I change plans anytime?',
       answer:
@@ -50,7 +55,7 @@ export const pricingFaqData: Record<string, FAQItem[]> = {
     {
       question: "What's the difference between Solo and Team?",
       answer:
-        'Solo is for a single website with one team member. Team supports up to 5 sites with unlimited team members, plus features like shared dashboard links, funnels, and uptime monitoring.',
+        'Scale, not features — both run the full product. Team covers up to 5 sites instead of 1 and extends data retention from 1 year to 2. Business steps up again: 10 sites, 3-year retention, and priority support.',
     },
     {
       question: 'Do yearly plans include a discount?',
@@ -62,7 +67,7 @@ export const pricingFaqData: Record<string, FAQItem[]> = {
     {
       question: 'Where is my data stored?',
       answer:
-        'All analytics data is processed and stored on Swiss infrastructure, protected by the Swiss Federal Act on Data Protection (FADP). Data never leaves Swiss jurisdiction.',
+        'All analytics data is processed and stored on Swiss infrastructure, protected by the Swiss Federal Act on Data Protection (FADP).',
     },
     {
       question: 'Do you use cookies?',
@@ -77,7 +82,7 @@ export const pricingFaqData: Record<string, FAQItem[]> = {
     {
       question: 'Can I export my data?',
       answer:
-        'Yes. You own 100% of your data. You can export it anytime from the dashboard or via our API. If you cancel, we keep your data available for 30 days before deletion.',
+        'Yes. You own 100% of your data and can export it anytime from the dashboard as CSV, JSON, or Excel — or via the API on Team and Business. Canceling a paid plan never locks you out: your workspace continues on the free Hobby tier with your data in it.',
     },
   ],
 }
