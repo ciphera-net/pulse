@@ -167,7 +167,7 @@ const trustReceipts: { title: string; description: string; proof: { label: strin
   {
     title: '100% data ownership',
     description: 'Your data is yours. We never sell it, share it, or mine it for ads.',
-    proof: { label: 'Privacy policy', href: 'https://ciphera.net/#privacy', external: true },
+    proof: { label: 'Privacy policy', href: 'https://ciphera.net/privacy', external: true },
   },
   {
     title: 'Bot & spam filtering',

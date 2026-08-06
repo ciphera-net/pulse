@@ -2,8 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { GithubIcon, TwitterIcon, ArrowUpRightIcon } from '@ciphera-net/facet'
-import { LinkedinLogo } from '@phosphor-icons/react/dist/ssr'
+import { GithubIcon, ArrowUpRightIcon } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 import { Watermark } from '@/components/marketing/system/Watermark'
 
@@ -60,8 +59,8 @@ const footerColumns: { heading: string; links: FooterLink[] }[] = [
   {
     heading: 'Legal',
     links: [
-      { name: 'Privacy Policy', href: 'https://ciphera.net/#privacy', external: true },
-      { name: 'Terms of Service', href: 'https://ciphera.net/#terms', external: true },
+      { name: 'Privacy Policy', href: 'https://ciphera.net/privacy', external: true },
+      { name: 'Terms of Service', href: 'https://ciphera.net/terms', external: true },
       { name: 'Contact', href: 'https://ciphera.net/contact', external: true },
     ],
   },
@@ -162,33 +161,40 @@ export function Footer({
                 Simple, privacy-first web analytics. No cookies, no tracking, no
                 consent banners — insight without surveillance.
               </p>
+              {/* Social block mirrors ciphera-website's Footer verbatim: same
+                  order (GitHub, LinkedIn, X), same inline SVG glyphs, same
+                  hover treatment — the estate has ONE social-icon row. */}
               <div className="mt-6 flex items-center gap-2">
                 <a
                   href="https://github.com/ciphera-net"
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label="Pulse on GitHub"
-                  className="inline-flex h-9 w-9 items-center justify-center border border-border text-muted-foreground transition-colors duration-fast hover:text-foreground"
+                  aria-label="Ciphera on GitHub"
+                  className="inline-flex h-9 w-9 items-center justify-center border border-border text-muted-foreground transition-colors duration-fast hover:border-line-hover hover:text-foreground"
                 >
                   <GithubIcon className="h-4 w-4" />
-                </a>
-                <a
-                  href="https://x.com/CipheraNET"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Ciphera on X"
-                  className="inline-flex h-9 w-9 items-center justify-center border border-border text-muted-foreground transition-colors duration-fast hover:text-foreground"
-                >
-                  <TwitterIcon className="h-4 w-4" />
                 </a>
                 <a
                   href="https://www.linkedin.com/company/ciphera/"
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Ciphera on LinkedIn"
-                  className="inline-flex h-9 w-9 items-center justify-center border border-border text-muted-foreground transition-colors duration-fast hover:text-foreground"
+                  className="inline-flex h-9 w-9 items-center justify-center border border-border text-muted-foreground transition-colors duration-fast hover:border-line-hover hover:text-foreground"
                 >
-                  <LinkedinLogo className="h-4 w-4" />
+                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-4 w-4">
+                    <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.8 0 0 .78 0 1.74v20.52C0 23.22.8 24 1.77 24h20.45c.98 0 1.78-.78 1.78-1.74V1.74C24 .78 23.2 0 22.22 0z" />
+                  </svg>
+                </a>
+                <a
+                  href="https://x.com/CipheraNET"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Ciphera on X"
+                  className="inline-flex h-9 w-9 items-center justify-center border border-border text-muted-foreground transition-colors duration-fast hover:border-line-hover hover:text-foreground"
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-4 w-4">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                  </svg>
                 </a>
               </div>
             </div>
@@ -234,7 +240,8 @@ export function Footer({
                 product
               </p>
               <p className="text-xs text-muted-foreground">
-                Zero-knowledge · No tracking · Open source
+                Ciphera BV &middot; KBO/BCE 1013.721.660 &middot; De Kleetlaan 2, 1831 Diegem,
+                Belgium
               </p>
             </div>
           </div>
