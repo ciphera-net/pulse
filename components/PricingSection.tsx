@@ -410,21 +410,26 @@ export default function PricingSection() {
             })}
           </HairlineGrid>
 
-          {/* Enterprise nudge — bordered row on tokens. (The old "All plans
+          {/* Enterprise — the SeoPageCta card anatomy: micro-label, display
+              heading, receipts body, real Facet button. (The old "All plans
               include" strip is gone: the cards' "Every feature included" line
               and the table's included-everywhere group already carry it.) */}
-          <div className="mt-6 flex flex-col items-start justify-between gap-3 border border-border bg-card px-6 py-4 sm:flex-row sm:items-center">
-            <p className="text-sm text-muted-foreground">
-              <span className="font-semibold text-foreground">Need something bigger?</span>{' '}
-              We&apos;ll build a custom plan for you — unlimited sites, SLA, managed proxy,
-              raw data export.
-            </p>
-            <a
-              href="mailto:business@ciphera.net?subject=Enterprise%20Plan%20Inquiry"
-              className="shrink-0 text-xs text-primary transition-colors duration-150 hover:text-foreground motion-reduce:transition-none"
-            >
-              Let&apos;s talk →
-            </a>
+          <div className="mt-6 flex flex-col items-start justify-between gap-4 border border-border bg-card px-6 py-5 sm:flex-row sm:items-center">
+            <div>
+              <p className="font-display text-lg font-semibold tracking-tight text-foreground">
+                Need something bigger?
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                A custom plan built around your setup — unlimited sites, an uptime SLA,
+                managed proxy, raw data export.
+              </p>
+            </div>
+            <Button asChild variant="outline" className="shrink-0">
+              <a href="mailto:business@ciphera.net?subject=Enterprise%20Plan%20Inquiry">
+                Let&apos;s talk
+                <ArrowRightIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+              </a>
+            </Button>
           </div>
         </div>
       </section>
