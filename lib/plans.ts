@@ -65,6 +65,10 @@ export interface PlanCatalogEntry {
  * pricing page renders every tier from this module. Not part of PLAN_CATALOG
  * because the in-app pickers (/setup/plan, /switch) only offer paid plans.
  */
+// Plans differ on SCALE, never on features: every plan runs the full product,
+// and the only real dimensions are sites, pageviews and data retention (the
+// enforced limits below) plus Business's priority-support commitment. Do not
+// reintroduce feature-gate lines here — there are no feature gates.
 export const FREE_PLAN: PlanCatalogEntry = {
   id: 'free',
   name: 'Hobby',
@@ -72,19 +76,18 @@ export const FREE_PLAN: PlanCatalogEntry = {
   highlights: [
     '1 site',
     `${FREE_PAGEVIEW_LIMIT.toLocaleString('en-US')} pageviews/mo`,
-    'Custom events',
     '6-month data retention',
+    'Every feature included',
   ],
 }
 
-// Retention highlights mirror getMaxRetentionMonthsForPlan below — the only
-// plan limits besides site count that are actually enforced. Keep in sync.
+// Retention highlights mirror getMaxRetentionMonthsForPlan below. Keep in sync.
 export const PLAN_CATALOG: PlanCatalogEntry[] = [
   {
     id: PLAN_ID_SOLO,
     name: 'Solo',
     description: 'For personal sites and freelancers',
-    highlights: ['1 site', 'Custom events', 'Email reports', '1-year data retention'],
+    highlights: ['1 site', 'Your pageview tier', '1-year data retention', 'Every feature included'],
   },
   {
     id: PLAN_ID_TEAM,
@@ -93,11 +96,9 @@ export const PLAN_CATALOG: PlanCatalogEntry[] = [
     popular: true,
     highlights: [
       'Up to 5 sites',
-      'Everything in Solo',
-      'Team dashboard & shared links',
-      'Funnels & journeys',
-      'API access',
+      'Your pageview tier',
       '2-year data retention',
+      'Every feature included',
     ],
   },
   {
@@ -106,10 +107,10 @@ export const PLAN_CATALOG: PlanCatalogEntry[] = [
     description: 'For larger organizations',
     highlights: [
       'Up to 10 sites',
-      'Everything in Team',
-      'Uptime monitoring',
-      'Priority support',
+      'Your pageview tier',
       '3-year data retention',
+      'Priority support',
+      'Every feature included',
     ],
   },
 ]
@@ -164,33 +165,26 @@ export const PLAN_FEATURE_MATRIX: PlanFeatureGroup[] = [
     ],
   },
   {
-    label: 'Analytics',
-    rows: [
-      { label: 'Custom events', values: acrossPlans(true) },
-      { label: 'Email reports', values: fromPlan(PLAN_ID_SOLO) },
-      { label: 'Funnels & journeys', values: fromPlan(PLAN_ID_TEAM) },
-      { label: 'Uptime monitoring', values: fromPlan(PLAN_ID_BUSINESS) },
-    ],
-  },
-  {
-    label: 'Collaboration',
-    rows: [
-      { label: 'Team dashboard', values: fromPlan(PLAN_ID_TEAM) },
-      { label: 'Shared dashboard links', values: fromPlan(PLAN_ID_TEAM) },
-      { label: 'API access', values: fromPlan(PLAN_ID_TEAM) },
-    ],
-  },
-  {
     label: 'Support',
     rows: [{ label: 'Priority support', values: fromPlan(PLAN_ID_BUSINESS) }],
   },
+  // Deliberately the longest group: there are no feature gates, and this wall
+  // of identical checks is the claim. Plans scale (Usage above) — the product
+  // never shrinks.
   {
     label: 'Included in every plan',
     rows: [
+      { label: 'Custom events', values: acrossPlans(true) },
+      { label: 'Email reports', values: acrossPlans(true) },
+      { label: 'Funnels & journeys', values: acrossPlans(true) },
+      { label: 'Uptime monitoring', values: acrossPlans(true) },
+      { label: 'Team dashboard', values: acrossPlans(true) },
+      { label: 'Shared dashboard links', values: acrossPlans(true) },
+      { label: 'API access', values: acrossPlans(true) },
+      { label: 'Data export (CSV, JSON, Excel)', values: acrossPlans(true) },
       { label: 'Cookie-free tracking', values: acrossPlans(true) },
       { label: 'GDPR compliant', values: acrossPlans(true) },
       { label: 'Swiss infrastructure', values: acrossPlans(true) },
-      { label: 'Data export (CSV, JSON, Excel)', values: acrossPlans(true) },
       { label: '100% data ownership', values: acrossPlans(true) },
     ],
   },

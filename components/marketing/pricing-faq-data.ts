@@ -38,6 +38,11 @@ export const pricingFaqData: Record<string, FAQItem[]> = {
   ],
   plans: [
     {
+      question: 'Do higher plans unlock more features?',
+      answer:
+        'No — every plan runs the full product. Custom events, funnels and journeys, email reports, API access, uptime monitoring, the team dashboard and shared links are included everywhere, on Hobby too. Higher plans scale the limits: more sites, more pageviews, longer data retention — and Business adds priority support.',
+    },
+    {
       question: 'Can I change plans anytime?',
       answer:
         'Yes. You can upgrade or downgrade your plan at any time from your billing settings. When upgrading, the new price takes effect on your next billing cycle. When downgrading, you keep your current plan until the end of the paid period.',
@@ -50,7 +55,7 @@ export const pricingFaqData: Record<string, FAQItem[]> = {
     {
       question: "What's the difference between Solo and Team?",
       answer:
-        'Solo covers one site. Team covers up to 5 sites and adds the team dashboard, shared dashboard links, funnels and journeys, and API access — plus 2-year data retention instead of 1. Uptime monitoring comes with Business.',
+        'Scale, not features — both run the full product. Team covers up to 5 sites instead of 1 and extends data retention from 1 year to 2. Business steps up again: 10 sites, 3-year retention, and priority support.',
     },
     {
       question: 'Do yearly plans include a discount?',
