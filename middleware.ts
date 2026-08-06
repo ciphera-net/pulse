@@ -13,6 +13,7 @@ const PUBLIC_ROUTES = new Set([
   '/changelog',
   '/installation',
   '/demo', // * Public live-demo landing page — links out to the ciphera.net share view
+  '/contact', // * Public contact page — form posts to pulse-backend /api/contact
 
   // * Category-SEO landing pages (21-07). Public marketing surface — must render
   // * for anonymous visitors and crawlers, same as /features or /pricing.
