@@ -3,15 +3,18 @@ import type { Metadata } from 'next'
 import PricingSection from '@/components/PricingSection'
 import { PricingCardsSkeleton } from '@/components/skeletons'
 
+const description =
+  'Every Pulse plan runs the full product — you pay for scale, not features. Start free with 5,000 pageviews/mo; no cookies, no consent banner.'
+
 export const metadata: Metadata = {
   title: 'Pricing',
-  description: 'Simple, transparent pricing for privacy-first web analytics. Free tier included.',
+  description,
   alternates: {
     canonical: '/pricing',
   },
   openGraph: {
     title: 'Pricing',
-    description: 'Simple, transparent pricing for privacy-first web analytics. Free tier included.',
+    description,
     siteName: 'Pulse by Ciphera',
   },
 }
