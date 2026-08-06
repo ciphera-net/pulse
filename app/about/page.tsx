@@ -1,12 +1,15 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
+import Link from 'next/link'
+import { ArrowRightIcon } from '@ciphera-net/facet'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
 import { MacWindow } from '@/components/marketing/system/MacWindow'
+import { HairlineGrid } from '@/components/marketing/system/HairlineGrid'
 import { ReceiptsLedger, ProofLink, type Receipt } from '@/components/marketing/ReceiptsLedger'
-import { RelatedLinks } from '@/components/marketing/seo/RelatedLinks'
 import { HomeClosingCta } from '@/components/marketing/HomeClosingCta'
 import { Eyebrow } from '@/components/marketing/system/Eyebrow'
 import { cdnUrl } from '@/lib/cdn'
+import { comparisonLogoUrl } from '@/lib/comparisons'
 
 const description =
   'Pulse is privacy-first web analytics built by Ciphera BV in Belgium — open source, cookie-free, and counted on Swiss infrastructure.'
@@ -70,13 +73,15 @@ const companyReceipts: Receipt[] = [
   },
 ]
 
+// The six comparison pages, each with the competitor's logo (the same CDN
+// assets the /vs pages and the website's comparison posts use).
 const vsLinks = [
-  { label: 'vs Google Analytics', description: 'A cookie-based tool versus a cookieless one, side by side.', href: '/vs/google-analytics' },
-  { label: 'vs Plausible', description: 'Two privacy-first tools compared honestly — including where we differ.', href: '/vs/plausible' },
-  { label: 'vs Matomo', description: 'Self-hosted heavyweight versus a 5 KB script.', href: '/vs/matomo' },
-  { label: 'vs Fathom', description: 'Feature gates and pricing models, laid out.', href: '/vs/fathom' },
-  { label: 'vs Simple Analytics', description: 'Two EU-minded tools, measured against each other.', href: '/vs/simple-analytics' },
-  { label: 'vs Umami', description: 'Open-source options compared: hosted, self-hosted, both.', href: '/vs/umami' },
+  { slug: 'google-analytics', label: 'vs Google Analytics', description: 'A cookie-based tool versus a cookieless one, side by side.' },
+  { slug: 'plausible', label: 'vs Plausible', description: 'Two privacy-first tools compared honestly — including where we differ.' },
+  { slug: 'matomo', label: 'vs Matomo', description: 'Self-hosted heavyweight versus a 5 KB script.' },
+  { slug: 'fathom', label: 'vs Fathom', description: 'Feature gates and pricing models, laid out.' },
+  { slug: 'simple-analytics', label: 'vs Simple Analytics', description: 'Two EU-minded tools, measured against each other.' },
+  { slug: 'umami', label: 'vs Umami', description: 'Open-source options compared: hosted, self-hosted, both.' },
 ]
 
 export default function AboutPage() {
@@ -155,13 +160,47 @@ export default function AboutPage() {
         </div>
       </MarketingSection>
 
-      {/* ── 04 · COMPARE — the tables live on the /vs cluster, not here ── */}
-      <RelatedLinks
+      {/* ── 04 · COMPARE — the tables live on the /vs cluster, not here.
+          Integrated hairline grid on the section frame; logo tiles use the
+          header-dropdown ListItem device (bordered size-12 square). ── */}
+      <MarketingSection
         eyebrowNumber="04"
-        eyebrow="Compare"
+        eyebrowLabel="Compare"
         heading="The comparisons live on the vs pages."
-        links={vsLinks}
-      />
+      >
+        <HairlineGrid columns={3} className="mt-12">
+          {vsLinks.map((link) => (
+            <Link
+              key={link.slug}
+              href={`/vs/${link.slug}`}
+              className="group flex items-start gap-4 bg-card p-6 transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
+            >
+              <div className="flex aspect-square size-12 shrink-0 items-center justify-center border border-border bg-card p-2">
+                <Image
+                  src={comparisonLogoUrl(link.slug)}
+                  alt=""
+                  width={32}
+                  height={32}
+                  unoptimized
+                  className="max-h-8 max-w-8 object-contain"
+                />
+              </div>
+              <div>
+                <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  {link.label}
+                  <ArrowRightIcon
+                    aria-hidden="true"
+                    className="h-3.5 w-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
+                  />
+                </span>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                  {link.description}
+                </p>
+              </div>
+            </Link>
+          ))}
+        </HairlineGrid>
+      </MarketingSection>
 
       {/* Closer — shared ember device (no border-b: footer's border-t owns the seam) */}
       <section>
