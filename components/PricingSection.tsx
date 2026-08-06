@@ -157,8 +157,8 @@ export default function PricingSection() {
             Pricing
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Simple, transparent pricing for privacy-first analytics. Start free,
-            scale when you need to — no cookies, no consent banner, ever.
+            Every plan runs the full product — you pay for scale, not features.
+            Start free; no cookies, no consent banner, ever.
           </p>
 
           {/* Billing toggle — segmented control, h-10 bordered container */}
@@ -465,6 +465,10 @@ export default function PricingSection() {
           <h2 className="mt-4 font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
             Every plan, line by line.
           </h2>
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
+            No feature gates. Plans differ on three things — sites, pageviews and
+            data retention — and everything else ships everywhere, on Hobby too.
+          </p>
           <PlanComparisonTable groups={comparisonGroups} />
         </div>
       </section>
