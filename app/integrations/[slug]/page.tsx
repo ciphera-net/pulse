@@ -216,7 +216,7 @@ export default async function IntegrationGuidePage({ params }: { params: Promise
           </div>
           <Link
             href={deepDive.link.href}
-            className="mt-6 inline-flex items-center gap-1 font-mono text-xs text-primary transition-colors hover:text-primary/80"
+            className="mt-6 inline-flex items-center gap-1 text-xs text-primary transition-colors hover:text-primary/80"
           >
             {deepDive.link.label}
             <ArrowUpRightIcon aria-hidden="true" className="h-3 w-3" />
