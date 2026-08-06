@@ -8,7 +8,7 @@ import { SeoCtaButtons } from './SeoCtaButtons'
  */
 export function SeoPageCta({
   title = 'Try privacy-first analytics free',
-  body = 'No cookies, no consent banner, no compromise. Start on the free Hobby tier, or explore the live demo on real traffic first — no signup required.',
+  body = 'One 5 KB script, no cookies to configure, no consent banner to build. Start on the free Hobby tier, or explore the live demo on real traffic first — no signup required.',
 }: {
   title?: string
   body?: string

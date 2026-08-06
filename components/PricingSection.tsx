@@ -117,7 +117,7 @@ export default function PricingSection() {
 
   return (
     <>
-      {/* Header — mono eyebrow, semantic h1, short dek */}
+      {/* Header — eyebrow, semantic h1, short dek */}
       <section className="border-b border-border">
         <div className="px-6 pb-12 pt-16 text-center sm:pt-20">
           <Eyebrow label="Pulse · Pricing" className="text-center" />
@@ -446,8 +446,9 @@ export default function PricingSection() {
               Start tracking with privacy.
             </h2>
             <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-              Join the developers who respect their users&apos; privacy while getting the
-              insights they need. No cookies, no consent banner, no compromise.
+              Every plan runs the same 5 KB script — paste it and the first pageview
+              arrives in minutes. Hobby is free forever with no credit card, and paid
+              plans cancel anytime.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
