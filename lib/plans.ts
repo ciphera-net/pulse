@@ -114,6 +114,88 @@ export const PLAN_CATALOG: PlanCatalogEntry[] = [
   },
 ]
 
+/* ── Plan feature matrix ─────────────────────────────────────────────────
+ * The detailed plan-comparison table on /pricing. Sites and retention are
+ * derived from the enforced limits above; the remaining rows are the same
+ * packaging PLAN_CATALOG sells. One structure, so the cards, the table and
+ * any future enforcement can never drift apart.
+ */
+
+export type PlanFeatureValue = string | boolean
+
+export interface PlanFeatureRow {
+  label: string
+  /** Value per plan id — string renders as text, boolean as included/not. */
+  values: Record<string, PlanFeatureValue>
+}
+
+export interface PlanFeatureGroup {
+  label: string
+  rows: PlanFeatureRow[]
+}
+
+const MATRIX_PLAN_IDS = ['free', PLAN_ID_SOLO, PLAN_ID_TEAM, PLAN_ID_BUSINESS] as const
+
+function acrossPlans(value: PlanFeatureValue): Record<string, PlanFeatureValue> {
+  return Object.fromEntries(MATRIX_PLAN_IDS.map((id) => [id, value]))
+}
+
+function fromPlan(firstPlanWithIt: string): Record<string, PlanFeatureValue> {
+  const start = MATRIX_PLAN_IDS.indexOf(firstPlanWithIt as (typeof MATRIX_PLAN_IDS)[number])
+  return Object.fromEntries(MATRIX_PLAN_IDS.map((id, i) => [id, i >= start]))
+}
+
+export const PLAN_FEATURE_MATRIX: PlanFeatureGroup[] = [
+  {
+    label: 'Usage',
+    rows: [
+      // The pricing page injects a "Monthly pageviews" row after Sites — its
+      // paid-plan cells read the live tier slider, so it can't be static here.
+      {
+        label: 'Sites',
+        values: { free: '1', solo: '1', team: 'Up to 5', business: 'Up to 10' },
+      },
+      {
+        label: 'Data retention',
+        values: Object.fromEntries(
+          MATRIX_PLAN_IDS.map((id) => [id, formatRetentionMonths(getMaxRetentionMonthsForPlan(id))]),
+        ),
+      },
+    ],
+  },
+  {
+    label: 'Analytics',
+    rows: [
+      { label: 'Custom events', values: acrossPlans(true) },
+      { label: 'Email reports', values: fromPlan(PLAN_ID_SOLO) },
+      { label: 'Funnels & journeys', values: fromPlan(PLAN_ID_TEAM) },
+      { label: 'Uptime monitoring', values: fromPlan(PLAN_ID_BUSINESS) },
+    ],
+  },
+  {
+    label: 'Collaboration',
+    rows: [
+      { label: 'Team dashboard', values: fromPlan(PLAN_ID_TEAM) },
+      { label: 'Shared dashboard links', values: fromPlan(PLAN_ID_TEAM) },
+      { label: 'API access', values: fromPlan(PLAN_ID_TEAM) },
+    ],
+  },
+  {
+    label: 'Support',
+    rows: [{ label: 'Priority support', values: fromPlan(PLAN_ID_BUSINESS) }],
+  },
+  {
+    label: 'Included in every plan',
+    rows: [
+      { label: 'Cookie-free tracking', values: acrossPlans(true) },
+      { label: 'GDPR compliant', values: acrossPlans(true) },
+      { label: 'Swiss infrastructure', values: acrossPlans(true) },
+      { label: 'Data export (CSV, JSON, Excel)', values: acrossPlans(true) },
+      { label: '100% data ownership', values: acrossPlans(true) },
+    ],
+  },
+]
+
 export interface PlanPricing {
   /** Price per month on monthly billing, in EUR (excl. VAT). */
   monthly: number
