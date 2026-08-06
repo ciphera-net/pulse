@@ -23,10 +23,29 @@ import {
   ClockCounterClockwise,
   BookOpen,
   Question,
+  Cookie,
+  ShieldCheck,
+  Swap,
+  Prohibit,
+  GlobeHemisphereWest,
+  Wrench,
+  LinkSimple,
+  Calculator,
+  Info,
+  Tag,
 } from '@phosphor-icons/react/dist/ssr'
+import { comparisons, comparisonLogoUrl } from '@/lib/comparisons'
 
 type IconType = React.ComponentType<{ className?: string }>
-type LinkItem = { title: string; href: string; icon?: IconType; description?: string; external?: boolean }
+type LinkItem = {
+  title: string
+  href: string
+  icon?: IconType
+  /** Image logo (e.g. competitor marks) — rendered in the same box as icons. */
+  logo?: string
+  description?: string
+  external?: boolean
+}
 
 const DOCS_URL = 'https://help.ciphera.net/docs/pulse'
 
@@ -34,21 +53,57 @@ const DOCS_URL = 'https://help.ciphera.net/docs/pulse'
 // ciphera.net header, with Pulse's own nav content.
 const productLinks: LinkItem[] = [
   { title: 'Features', href: '/features', icon: ChartBar, description: 'Everything Pulse tracks' },
+  { title: 'Pricing', href: '/pricing', icon: Tag, description: 'Plans and the free tier' },
   { title: 'Live demo', href: '/demo', icon: Eye, description: 'Real data, no signup' },
   { title: 'Integrations', href: '/integrations', icon: PlugsConnected, description: '75+ framework guides' },
   { title: 'Changelog', href: '/changelog', icon: ClockCounterClockwise, description: "What's new in Pulse" },
 ]
 
-const resourcesLinks: LinkItem[] = [
-  { title: 'Documentation', href: DOCS_URL, icon: BookOpen, description: 'Setup, script & API guides', external: true },
-  { title: 'FAQ', href: '/faq', icon: Question, description: 'Common questions answered' },
+// Compare dropdown — one row per comparison page, straight from the registry
+// (single source of truth: a new entry in lib/comparisons surfaces here, in the
+// footer and on /vs automatically). Same ListItem anatomy as every other
+// dropdown; the competitor mark sits where the icon would.
+const COMPARE_DESCRIPTIONS: Record<string, string> = {
+  'google-analytics': 'Leaving the tracking default',
+  plausible: 'Lightweight, EU-hosted rival',
+  matomo: 'The self-hosted veteran',
+  fathom: 'Privacy-first, Canadian-run',
+  'simple-analytics': 'Dutch minimalist analytics',
+  umami: 'Open-source dashboard',
+}
+
+const compareLinks: LinkItem[] = comparisons.map((c) => ({
+  title: `vs ${c.name}`,
+  href: `/vs/${c.slug}`,
+  logo: comparisonLogoUrl(c.slug),
+  description: COMPARE_DESCRIPTIONS[c.slug] ?? 'Honest side-by-side',
+}))
+
+// Guides + Resources mirror the footer's link groups (owner: the header should
+// carry what the footer carries).
+const guidesLinks: LinkItem[] = [
+  { title: 'Cookieless analytics', href: '/cookieless-analytics', icon: Cookie, description: 'Counting without cookies' },
+  { title: 'GDPR-compliant analytics', href: '/gdpr-compliant-analytics', icon: ShieldCheck, description: 'Compliance by architecture' },
+  { title: 'GA alternative', href: '/google-analytics-alternative', icon: Swap, description: 'Switching from Google Analytics' },
+  { title: 'No cookie banner', href: '/analytics-without-cookie-banner', icon: Prohibit, description: 'Analytics with no consent UI' },
+  { title: 'EU web analytics', href: '/eu-web-analytics', icon: GlobeHemisphereWest, description: 'Data that stays in Europe' },
 ]
 
-// Flat mobile list (dropdowns expand in the mobile panel).
-const mobileLinks: LinkItem[] = [
-  ...productLinks,
-  { title: 'Pricing', href: '/pricing' },
-  ...resourcesLinks,
+const resourcesLinks: LinkItem[] = [
+  { title: 'Documentation', href: DOCS_URL, icon: BookOpen, description: 'Setup, script & API guides', external: true },
+  { title: 'Installation', href: '/installation', icon: Wrench, description: 'One script tag, any stack' },
+  { title: 'FAQ', href: '/faq', icon: Question, description: 'Common questions answered' },
+  { title: 'UTM builder', href: '/tools/utm-builder', icon: LinkSimple, description: 'Build campaign URLs' },
+  { title: 'Cookie-banner calculator', href: '/tools/cookie-banner-loss-calculator', icon: Calculator, description: 'What a banner costs you' },
+  { title: 'About', href: '/about', icon: Info, description: 'Who builds Pulse' },
+]
+
+// Grouped mobile panel (a flat list at this size would be a wall of links).
+const mobileGroups: { heading: string; links: LinkItem[] }[] = [
+  { heading: 'Product', links: productLinks },
+  { heading: 'Compare', links: compareLinks.map(({ title, href }) => ({ title, href })) },
+  { heading: 'Guides', links: guidesLinks },
+  { heading: 'Resources', links: resourcesLinks },
 ]
 
 export function Header() {
@@ -116,35 +171,41 @@ export function Header() {
                   </NavigationMenuItem>
 
                   <NavigationMenuItem>
-                    <NavigationMenuLink
-                      href="/pricing"
-                      className="inline-flex h-9 items-center bg-transparent px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                      Pricing
-                    </NavigationMenuLink>
+                    <NavigationMenuTrigger className="bg-transparent">Compare</NavigationMenuTrigger>
+                    <NavigationMenuContent className="bg-transparent p-1 pr-1.5 pb-1.5">
+                      <ul className="grid w-[32rem] grid-cols-2 gap-2 border border-border bg-card p-2">
+                        {compareLinks.map((item) => (
+                          <li key={item.href}>
+                            <ListItem {...item} />
+                          </li>
+                        ))}
+                      </ul>
+                    </NavigationMenuContent>
+                  </NavigationMenuItem>
+
+                  <NavigationMenuItem>
+                    <NavigationMenuTrigger className="bg-transparent">Guides</NavigationMenuTrigger>
+                    <NavigationMenuContent className="bg-transparent p-1 pr-1.5 pb-1.5">
+                      <ul className="grid w-[32rem] grid-cols-2 gap-2 border border-border bg-card p-2">
+                        {guidesLinks.map((item, i) => (
+                          <li key={i} className={i === guidesLinks.length - 1 ? 'col-span-2' : undefined}>
+                            <ListItem {...item} />
+                          </li>
+                        ))}
+                      </ul>
+                    </NavigationMenuContent>
                   </NavigationMenuItem>
 
                   <NavigationMenuItem>
                     <NavigationMenuTrigger className="bg-transparent">Resources</NavigationMenuTrigger>
                     <NavigationMenuContent className="bg-transparent p-1 pr-1.5 pb-1.5">
-                      <div className="grid w-[32rem] grid-cols-2 gap-2">
-                        <ul className="space-y-2 border border-border bg-card p-2">
-                          {resourcesLinks.map((item, i) => (
-                            <li key={i}>
-                              <ListItem {...item} />
-                            </li>
-                          ))}
-                        </ul>
-                        <div className="flex flex-col justify-center gap-3 p-4">
-                          <p className="text-sm font-medium text-foreground">Need a hand?</p>
-                          <p className="text-xs leading-relaxed text-muted-foreground">
-                            Installation guides, the cookieless counting model, and the API — all in the docs.
-                          </p>
-                          <a href={DOCS_URL} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-primary hover:underline">
-                            Read the docs →
-                          </a>
-                        </div>
-                      </div>
+                      <ul className="grid w-[36rem] grid-cols-2 gap-2 border border-border bg-card p-2">
+                        {resourcesLinks.map((item, i) => (
+                          <li key={i}>
+                            <ListItem {...item} />
+                          </li>
+                        ))}
+                      </ul>
                     </NavigationMenuContent>
                   </NavigationMenuItem>
                 </NavigationMenuList>
@@ -186,29 +247,36 @@ export function Header() {
         className="flex flex-col justify-between gap-2 overflow-y-auto"
       >
         <div className="flex w-full flex-col gap-y-1">
-          {mobileLinks.map((link) =>
-            link.external ? (
-              <a
-                key={link.href}
-                href={link.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={closeMenu}
-                className="py-2 text-base text-foreground transition-colors duration-fast motion-reduce:transition-none hover:text-muted-foreground"
-              >
-                {link.title}
-              </a>
-            ) : (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={closeMenu}
-                className="py-2 text-base text-foreground transition-colors duration-fast motion-reduce:transition-none hover:text-muted-foreground"
-              >
-                {link.title}
-              </Link>
-            ),
-          )}
+          {mobileGroups.map((group) => (
+            <React.Fragment key={group.heading}>
+              <p className="mt-4 text-xs uppercase tracking-[0.08em] text-muted-foreground first:mt-0">
+                {group.heading}
+              </p>
+              {group.links.map((link) =>
+                link.external ? (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={closeMenu}
+                    className="py-2 text-base text-foreground transition-colors duration-fast motion-reduce:transition-none hover:text-muted-foreground"
+                  >
+                    {link.title}
+                  </a>
+                ) : (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={closeMenu}
+                    className="py-2 text-base text-foreground transition-colors duration-fast motion-reduce:transition-none hover:text-muted-foreground"
+                  >
+                    {link.title}
+                  </Link>
+                ),
+              )}
+            </React.Fragment>
+          ))}
         </div>
         <div className="flex flex-col gap-2">
           <Button variant="outline" className="w-full" asChild>
@@ -231,6 +299,7 @@ function ListItem({
   title,
   description,
   icon: Icon,
+  logo,
   href,
   external,
   className,
@@ -247,7 +316,12 @@ function ListItem({
     >
       <a href={href} {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
         <div className="flex aspect-square size-12 items-center justify-center border border-border bg-card p-2">
-          {Icon ? <Icon className="size-5 text-foreground" /> : null}
+          {logo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logo} alt="" width={24} height={24} className="size-6 object-contain" loading="lazy" />
+          ) : Icon ? (
+            <Icon className="size-5 text-foreground" />
+          ) : null}
         </div>
         <div className="flex flex-col items-start justify-center">
           <span className="text-sm font-medium">{title}</span>

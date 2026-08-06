@@ -40,7 +40,7 @@ export function FaqBlock({
         {items.map((item, i) => (
           <div key={item.question} className="border-b border-border last:border-b-0">
             <div className="flex gap-5 px-5 py-6">
-              <span className="font-mono text-xs tabular-nums text-muted-foreground">
+              <span className="text-xs tabular-nums text-muted-foreground">
                 {String(i + 1).padStart(2, '0')}
               </span>
               <div>

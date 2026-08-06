@@ -6,7 +6,6 @@ import { MarketingSection } from '@/components/marketing/system/MarketingSection
 import { TrustStrip } from '@/components/marketing/system/TrustStrip'
 import { MacWindow } from '@/components/marketing/system/MacWindow'
 import FeatureSections from '@/components/marketing/FeatureSections'
-import { WhyPulse } from '@/components/marketing/WhyPulse'
 import ComparisonCards from '@/components/marketing/ComparisonCards'
 import { HomeFAQ } from '@/components/marketing/HomeFAQ'
 import { HomeClosingCta } from '@/components/marketing/HomeClosingCta'
@@ -16,10 +15,6 @@ import {
   FRAMEWORK_COUNT,
   INTEGRATION_COUNT,
 } from '@/components/marketing/FrameworkMarquee'
-
-// The ember floor lives under the website CDN prefix, so it's referenced by
-// absolute URL rather than cdnUrl() (which prepends Pulse's /pulse prefix).
-const HERO_EMBER = 'https://cdn.ciphera.net/website/hero-glyph-ember.jpg'
 
 // * The public marketing homepage — a pure server component so its copy, links
 // * and footer are in the served HTML for crawlers, social scrapers and AI
@@ -36,8 +31,12 @@ export default function MarketingHome() {
           hero's bottom border crops the mockup — a deliberate teaser, the
           full demo lives one scroll away. */}
       <section className="relative overflow-hidden border-b border-border">
+        {/* The glyph-ember floor — the estate's shared hero texture (owner
+            decision 06-08-2026, reversing the 05-08 audit's removal: the ember
+            IS the brand's hero signature, on Pulse as on the website). Faint
+            warm floor behind the artifact, masked to bloom under the window. */}
         <Image
-          src={HERO_EMBER}
+          src="https://cdn.ciphera.net/website/hero-glyph-ember.jpg"
           alt=""
           aria-hidden="true"
           fill
@@ -105,29 +104,33 @@ export default function MarketingHome() {
         <div className="relative mx-auto mt-14 w-full max-w-5xl px-6 pb-16 sm:mt-16 sm:pb-20">
           <MacWindow>
             <Image
-              src={cdnUrl('/marketing/dashboard-hero-deep-2x.png')}
+              src={cdnUrl('/marketing/dashboard-hero-aug-2x.png')}
               alt="The Pulse dashboard for ciphera.net — 30 days of real visitor, pageview and engagement data"
-              width={2304}
-              height={2004}
+              width={2244}
+              height={1922}
               priority
               unoptimized
               className="block w-full"
             />
           </MacWindow>
 
-          {/* The window shows REAL data — say so. Dot mirrors the app's
-              live-visitors control (RealtimeVisitors recipe). */}
-          <Link
-            href="/demo"
-            className="mt-5 flex items-center justify-center gap-2 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground motion-reduce:transition-none"
-          >
-            <span
-              aria-hidden="true"
-              className="h-2 w-2 rounded-full bg-green-500 animate-pulse motion-reduce:animate-none"
-            />
-            Live data — this is our real dashboard
-            <ArrowRightIcon className="h-3 w-3" aria-hidden="true" />
-          </Link>
+          {/* The window shows REAL data — say so, as a visible CONTROL: the
+              hairline-chip button grammar (border bg-card + hover), not a text
+              whisper — a caption styled as prose reads as unclickable. Dot
+              mirrors the app's live-visitors control (RealtimeVisitors recipe). */}
+          <div className="mt-6 flex justify-center">
+            <Link
+              href="/demo"
+              className="inline-flex items-center gap-2.5 rounded-none border border-border bg-card px-4 py-2.5 text-sm text-foreground transition-colors duration-150 ease-apple hover:bg-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
+            >
+              <span
+                aria-hidden="true"
+                className="h-2 w-2 rounded-full bg-green-500 animate-pulse motion-reduce:animate-none"
+              />
+              Live data — explore the full demo
+              <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -147,19 +150,12 @@ export default function MarketingHome() {
         </div>
       </MarketingSection>
 
-      {/* 02 · Why Pulse — 4-up hairline feature grid */}
+      {/* 02 · Compare — Pulse vs. traditional analytics. (The former "Why
+          Pulse" 4-up grid was dropped 06-08: it was a 1:1 copy of the
+          website's "Built different" composition; the TrustStrip chips and
+          FAQ carry the privacy guarantees.) */}
       <MarketingSection
         eyebrowNumber="02"
-        eyebrowLabel="Why Pulse"
-        heading="Privacy-first doesn't mean less insight."
-        dek="Four guarantees, each backed by something you can verify — not a claim on a marketing page."
-      >
-        <WhyPulse />
-      </MarketingSection>
-
-      {/* 03 · Compare — Pulse vs. traditional analytics */}
-      <MarketingSection
-        eyebrowNumber="03"
         eyebrowLabel="Compare"
         heading="How Pulse compares."
         dek="See how privacy-first analytics stacks up against the tracking-heavy status quo."
@@ -167,11 +163,11 @@ export default function MarketingHome() {
         <ComparisonCards />
       </MarketingSection>
 
-      {/* 04 · Works with your stack — three counter-drifting rows of framework
+      {/* 03 · Works with your stack — three counter-drifting rows of framework
           pills straight from the integration registry (decorative; the real
           control is the See-all link inside the component) */}
       <MarketingSection
-        eyebrowNumber="04"
+        eyebrowNumber="03"
         eyebrowLabel="Works with your stack"
         heading="Your framework is already supported."
         dek={`One script tag, the same install everywhere — dedicated guides for ${FRAMEWORK_COUNT} frameworks, ${INTEGRATION_COUNT} integrations in all.`}
@@ -179,16 +175,16 @@ export default function MarketingHome() {
         <FrameworkMarquee />
       </MarketingSection>
 
-      {/* 05 · FAQ — category rail + continuous numbering accordion */}
+      {/* 04 · FAQ — category rail + continuous numbering accordion */}
       <MarketingSection
-        eyebrowNumber="05"
+        eyebrowNumber="04"
         eyebrowLabel="FAQ"
         heading="Frequently asked questions."
       >
         <HomeFAQ />
       </MarketingSection>
 
-      {/* 06 · Get started — closer (no border-b: the footer's border-t owns it) */}
+      {/* 05 · Get started — closer (no border-b: the footer's border-t owns it) */}
       <section>
         <HomeClosingCta />
       </section>
