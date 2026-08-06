@@ -122,7 +122,9 @@ export const PLAN_CATALOG: PlanCatalogEntry[] = [
  * any future enforcement can never drift apart.
  */
 
-export type PlanFeatureValue = string | boolean
+/** String renders as text, boolean as included/not; the object form renders
+ *  the text in the primary accent (used for slider-linked "selected" cells). */
+export type PlanFeatureValue = string | boolean | { text: string; accent: true }
 
 export interface PlanFeatureRow {
   label: string

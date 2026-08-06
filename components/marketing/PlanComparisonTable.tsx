@@ -10,9 +10,15 @@ function ValueCell({ value }: { value: PlanFeatureValue }) {
   if (typeof value === 'string') {
     return <span className="text-sm text-foreground">{value}</span>
   }
+  // Accent cells echo the slider's selected-tier label, which is text-primary.
+  if (typeof value === 'object') {
+    return <span className="text-sm text-primary">{value.text}</span>
+  }
+  // Included = primary check, absent = muted dash — color is the signal, same
+  // semantics as VerdictTable's tone dots.
   return value ? (
     <>
-      <CheckIcon aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
+      <CheckIcon aria-hidden="true" className="h-4 w-4 text-primary" />
       <span className="sr-only">Included</span>
     </>
   ) : (
@@ -60,16 +66,23 @@ export function PlanComparisonTable({ groups }: { groups: PlanFeatureGroup[] }) 
           </tr>
         </thead>
         <tbody>
-          {groups.map((group) => (
+          {groups.map((group, groupIndex) => (
             <Fragment key={group.label}>
               {/* Group label keeps per-column cells (not colSpan) so the
-                  popular column's bg-card runs unbroken down the table. */}
+                  popular column's bg-card runs unbroken down the table. The
+                  numbered index is the receipts-ledger grammar from the
+                  features page's guarantees section. */}
               <tr className="border-b border-border">
                 <th
                   scope="colgroup"
                   className="px-5 pb-3 pt-6 text-left text-xs font-normal uppercase tracking-[0.08em] text-muted-foreground"
                 >
-                  {group.label}
+                  <span className="flex items-baseline gap-3">
+                    <span className="tabular-nums text-primary">
+                      {String(groupIndex + 1).padStart(2, '0')}
+                    </span>
+                    {group.label}
+                  </span>
                 </th>
                 {COLUMNS.map((plan) => (
                   <td key={plan.id} aria-hidden="true" className={cn(plan.popular && 'bg-card')} />

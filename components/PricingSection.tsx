@@ -70,8 +70,11 @@ export default function PricingSection() {
   const isCustomTraffic = currentTraffic.value === TIER_10M_PLUS.value
 
   // The comparison table's pageviews row reads the live tier slider — the
-  // static matrix in lib/plans.ts can't know the selection.
-  const paidPageviews = isCustomTraffic ? 'Custom' : `${currentTraffic.label} (selected)`
+  // static matrix in lib/plans.ts can't know the selection. Accent form ties
+  // the cells to the slider's primary-colored selected label.
+  const paidPageviews = isCustomTraffic
+    ? 'Custom'
+    : ({ text: `${currentTraffic.label} (selected)`, accent: true } as const)
   const comparisonGroups = PLAN_FEATURE_MATRIX.map((group) =>
     group.label === 'Usage'
       ? {
