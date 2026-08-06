@@ -146,7 +146,7 @@ export function UtmBuilder() {
           <div className="bg-neutral-950 p-5">
             <p className="mb-3 text-xs text-muted-foreground">Your tagged URL</p>
             {missingRequired ? (
-              <p className="font-mono text-[13px] leading-relaxed text-neutral-500">
+              <p className="text-[13px] leading-relaxed text-neutral-500">
                 Fill in the website URL, source, medium and campaign to generate a link.
               </p>
             ) : (

@@ -111,7 +111,7 @@ export default async function ComparisonPage({
       {/* Hero + above-the-fold verdict table */}
       <MarketingSection>
         <div className="max-w-2xl">
-          <p className="font-mono text-xs text-muted-foreground">Pulse · Compare</p>
+          <p className="text-xs text-muted-foreground">Pulse · Compare</p>
           {/* Logo pair — information design, matching the ciphera.net comparison
               posts: the Pulse mark, a muted "vs", the competitor mark. */}
           <div className="mt-6 flex items-center gap-3">
@@ -123,7 +123,7 @@ export default async function ComparisonPage({
               unoptimized
               className="h-7 w-7 rounded-sm object-contain"
             />
-            <span className="font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+            <span className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
               vs
             </span>
             <Image
