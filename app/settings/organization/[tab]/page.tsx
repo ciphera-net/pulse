@@ -15,6 +15,7 @@ const WorkspaceBillingTab = dynamic(() => import('@/components/settings/unified/
 // * that used to wrap both is retired.
 const WorkspaceNotificationsTab = dynamic(() => import('@/components/settings/notifications/WorkspaceNotificationsTab'))
 const WorkspaceAuditTab   = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceAuditTab'))
+const WorkspaceApiKeysTab = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceApiKeysTab'))
 
 const TAB_COMPONENTS: Record<string, React.ComponentType> = {
   general:       WorkspaceGeneralTab,
@@ -23,6 +24,7 @@ const TAB_COMPONENTS: Record<string, React.ComponentType> = {
   billing:       WorkspaceBillingTab,
   notifications: WorkspaceNotificationsTab,
   audit:         WorkspaceAuditTab,
+  'api-keys':    WorkspaceApiKeysTab,
 }
 
 const TAB_PERMISSIONS: Record<string, Permission> = {
@@ -31,6 +33,9 @@ const TAB_PERMISSIONS: Record<string, Permission> = {
   billing:       'billing.view',
   notifications: 'notification_settings.manage',
   audit:         'audit.view',
+  // * Issuing a credential for an external system is the same class of action as
+  // * connecting one, so it reuses the integrations permission.
+  'api-keys':    'integrations.manage',
 }
 
 function AccessDenied() {
