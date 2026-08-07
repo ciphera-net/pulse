@@ -28,6 +28,7 @@ const SECTION_ROUTES: { path: string; section: string; label: string }[] = [
   { path: '/settings/site/general', section: 'Site', label: 'Site · General' },
   { path: '/settings/organization/general', section: 'Organization', label: 'Organization · General' },
   { path: '/settings/organization/audit', section: 'Organization', label: 'Organization · Audit Log' },
+  { path: '/settings/organization/api-keys', section: 'Organization', label: 'Organization · API Keys' },
   { path: '/settings/account/profile', section: 'Account', label: 'Account · Profile' },
 ]
 
