@@ -18,6 +18,7 @@ import {
   Lock,
   DeviceMobile,
   BellRinging,
+  Terminal,
 } from '@phosphor-icons/react'
 
 /**
@@ -77,6 +78,9 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Roles & Permissions', href: '/settings/organization/roles', icon: Key, requires: 'roles.manage' },
       { label: 'Billing', href: '/settings/organization/billing', icon: CreditCard, requires: 'billing.view' },
       { label: 'Notifications', href: '/settings/organization/notifications', icon: Bell, requires: 'notification_settings.manage' },
+      // * Terminal, not Key — Key is already the Roles metaphor, and an API key is
+      // * a developer-surface credential rather than a permissions concept.
+      { label: 'API Keys', href: '/settings/organization/api-keys', icon: Terminal, requires: 'integrations.manage' },
       { label: 'Audit Log', href: '/settings/organization/audit', icon: ClockCounterClockwise, requires: 'audit.view' },
     ],
   },
