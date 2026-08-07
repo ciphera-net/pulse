@@ -15,7 +15,10 @@ export default function AccountProfileTab() {
   const { user, refresh, logout } = useAuth()
   const { requestReauth, modal } = useReauthModal()
   const [displayName, setDisplayName] = useState('')
-  const initialRef = useRef('')
+  // Baseline snapshot is STATE, not a ref: committing it (after save/load)
+  // must re-render so isDirty clears and the beforeunload guard disarms —
+  // the old ref version kept the save bar dirty after a successful save.
+  const [baseline, setBaseline] = useState('')
   const hasInitialized = useRef(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteText, setDeleteText] = useState('')
@@ -25,23 +28,23 @@ export default function AccountProfileTab() {
   useEffect(() => {
     if (!user || hasInitialized.current) return
     setDisplayName(user.display_name || '')
-    initialRef.current = user.display_name || ''
+    setBaseline(user.display_name || '')
     hasInitialized.current = true
   }, [user])
 
   // Track dirty state
   const isDirty = hasInitialized.current
-    ? displayName !== initialRef.current
+    ? displayName !== baseline
     : false
 
   const handleDiscard = () => {
-    setDisplayName(initialRef.current)
+    setDisplayName(baseline)
   }
 
   const handleSave = useCallback(async () => {
     try {
       await updateDisplayName(displayName.trim())
-      initialRef.current = displayName.trim()
+      setBaseline(displayName.trim())
       await refresh()
       toast.success('Profile updated')
     } catch (err) {

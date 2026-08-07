@@ -18,6 +18,7 @@ import { PERIOD_TO_API, findPreset } from '@/lib/constants/periods'
 import dynamic from 'next/dynamic'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import FilterButton from '@/components/dashboard/FilterButton'
+import RealtimeVisitorsPopover from '@/components/dashboard/RealtimeVisitorsPopover'
 import FilterPills from '@/components/dashboard/FilterPills'
 import FilterBuilder from '@/components/dashboard/filter/FilterBuilder'
 import { useFilterBuilder } from '@/components/dashboard/filter/useFilterBuilder'
@@ -36,7 +37,6 @@ import { type DimensionFilter, serializeFilters, parseFiltersFromURL } from '@/l
 import {
   useDashboard,
   useRealtime,
-  useRealtimePages,
   useStats,
   useDailyStats,
   useCampaigns,
@@ -118,7 +118,6 @@ export default function SiteDashboardPage() {
     () => loadSavedSettings()?.multiDayInterval || 'day'
   )
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
-  const [realtimePagesOpen, setRealtimePagesOpen] = useState(false)
 
   const shiftPeriod = useCallback((direction: -1 | 1) => {
     const shift = (date: string, days: number) => {
@@ -239,7 +238,6 @@ export default function SiteDashboardPage() {
     return { start: prevStart.toISOString().split('T')[0], end: prevEnd.toISOString().split('T')[0] }
   }, [resolvedDateRange])
   const { data: realtimeData } = useRealtime(siteId, 15_000)
-  const { data: realtimePages } = useRealtimePages(siteId)
   const { data: prevStats } = useStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '')
   const { data: prevDailyStats } = useDailyStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '', interval, filtersParam || undefined)
   const { data: campaigns } = useCampaigns(siteId, resolvedDateRange?.start ?? '', resolvedDateRange?.end ?? '', 100, apiPeriod)
@@ -335,32 +333,11 @@ export default function SiteDashboardPage() {
 
   const toolbarControls = () => (
     <>
-      <div className="relative flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setRealtimePagesOpen(p => !p)}
-          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-        >
-          <span className="relative flex h-2 w-2">
-            <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
-          </span>
-          <span className="text-sm text-neutral-400 tabular-nums">{realtime} current visitors</span>
-        </button>
-        {realtimePagesOpen && realtimePages && realtimePages.length > 0 && (
-          <div className="absolute top-full left-0 mt-2 w-72 z-50">
-            <div className="rounded-none border border-neutral-800 bg-neutral-900 p-3 space-y-1">
-              <p className="text-xs font-medium text-neutral-500 mb-2">Active pages</p>
-              {realtimePages.slice(0, 10).map(p => (
-                <div key={p.path} className="flex justify-between items-center text-sm py-0.5">
-                  <span className="text-neutral-300 truncate mr-3">{p.path}</span>
-                  <span className="text-green-400 tabular-nums flex-shrink-0">{p.visitors}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      <RealtimeVisitorsPopover
+        siteId={siteId}
+        count={realtime}
+        onFilterPage={(path) => handleAddFilter({ dimension: 'page', operator: 'is', values: [path] })}
+      />
       <div className="flex-1" />
       <FilterPills
         filters={filters}

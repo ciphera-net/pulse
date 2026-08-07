@@ -6,15 +6,8 @@ import { cn } from '@/lib/utils'
 import { formatRelativeTime } from '@/lib/utils/formatDate'
 import { useActiveSite } from '@/components/settings/active-site'
 import { StatusChip } from '@/components/settings/StatusChip'
+import { SiteFavicon } from '@/components/sites/SiteFavicon'
 import type { Site } from '@/lib/api/sites'
-
-/** 2-letter monogram from a site name (initials of the first two words, else
- *  the first two characters). */
-function monogramOf(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
-  return (name.trim().slice(0, 2) || '?').toUpperCase()
-}
 
 /**
  * SiteStatusChip — the band's one live-state signal, driven by the server's
@@ -105,8 +98,16 @@ export default function SiteContextBand() {
 
   return (
     <div className="mb-8 flex items-center gap-3 rounded-none border border-border bg-muted px-4 py-3">
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-none border border-border bg-accent text-xs font-semibold text-foreground">
-        {monogramOf(activeSite.name)}
+      {/* Same favicon device as the sidebar and site switcher (SiteFavicon
+          carries its own monogram fallback) — the band used to render a bare
+          monogram while every sibling surface showed the real site icon. */}
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-none border border-border bg-accent">
+        <SiteFavicon
+          domain={activeSite.domain}
+          name={activeSite.name}
+          size={20}
+          className="h-5 w-5 rounded-none object-contain"
+        />
       </div>
 
       <div className="min-w-0 flex-1">
@@ -159,6 +160,12 @@ export default function SiteContextBand() {
                         active ? 'bg-accent text-primary' : 'text-foreground hover:bg-muted',
                       )}
                     >
+                      <SiteFavicon
+                        domain={site.domain}
+                        name={site.name}
+                        size={20}
+                        className="h-5 w-5 shrink-0 rounded-none object-contain"
+                      />
                       <span className="flex min-w-0 flex-1 flex-col">
                         <span className="truncate">{site.name}</span>
                         <span className="truncate text-xs text-muted-foreground">{site.domain}</span>

@@ -32,27 +32,44 @@ const ActiveSiteContext = createContext<ActiveSiteValue | null>(null)
 export function ActiveSiteProvider({ children }: { children: ReactNode }) {
   const { sites, isLoading, error, mutate } = useSites()
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  // The resolve effect must not run before hydration: on the first pass both
+  // effects fire in one batch, and resolving against the pre-hydration null
+  // stomped the stored/deep-linked selection with the first site (this is why
+  // settings always opened on the org's first site after a fresh mount).
+  const [hydrated, setHydrated] = useState(false)
 
-  // Hydrate the stored selection on the client (kept out of the initial render
-  // so server and first client render agree — no hydration mismatch).
+  // Hydrate the selection on the client (kept out of the initial render so
+  // server and first client render agree — no hydration mismatch). A ?siteId=
+  // deep link (the site sidebar's Settings entry carries the current site)
+  // outranks the stored selection — read once at mount via window.location so
+  // in-settings switching afterwards is never fought, and no useSearchParams
+  // Suspense boundary is needed. Validity is enforced by the resolve effect
+  // below (an unknown id falls back to the first site).
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const stored = sessionStorage.getItem(ACTIVE_SITE_KEY)
-    if (stored) setSelectedId(stored)
+    const param = new URLSearchParams(window.location.search).get('siteId')
+    if (param) {
+      setSelectedId(param)
+      sessionStorage.setItem(ACTIVE_SITE_KEY, param)
+    } else {
+      const stored = sessionStorage.getItem(ACTIVE_SITE_KEY)
+      if (stored) setSelectedId(stored)
+    }
+    setHydrated(true)
   }, [])
 
   // Resolve: once sites load, if nothing valid is selected, fall back to the
   // first site and persist it. Centralised here so no two surfaces race to set
   // the active site.
   useEffect(() => {
-    if (sites.length === 0) return
+    if (!hydrated || sites.length === 0) return
     const valid = selectedId && sites.some((s) => s.id === selectedId)
     if (!valid) {
       const id = sites[0].id
       setSelectedId(id)
       if (typeof window !== 'undefined') sessionStorage.setItem(ACTIVE_SITE_KEY, id)
     }
-  }, [sites, selectedId])
+  }, [hydrated, sites, selectedId])
 
   const setActiveSiteId = useCallback((id: string) => {
     setSelectedId(id)
