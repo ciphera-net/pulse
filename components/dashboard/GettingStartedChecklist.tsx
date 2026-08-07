@@ -104,7 +104,7 @@ export default function GettingStartedChecklist() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="absolute bottom-full right-0 mb-3 w-72 rounded-none border border-neutral-800 bg-neutral-900"
+            className="absolute bottom-full right-0 mb-3 w-72 rounded-none border border-border bg-popover"
           >
             <div className="p-4 pb-3">
               <div className="flex items-center justify-between mb-1">
@@ -157,7 +157,7 @@ export default function GettingStartedChecklist() {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ delay: 0.5, type: 'spring', stiffness: 300, damping: 20 }}
         aria-label={`Getting started: ${completedCount} of ${items.length} steps completed`}
-        className="flex items-center gap-3 p-2 sm:pl-3 sm:pr-5 sm:py-2.5 rounded-none border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 transition-colors ease-apple"
+        className="flex items-center gap-3 p-2 sm:pl-3 sm:pr-5 sm:py-2.5 rounded-none border border-border bg-popover hover:bg-neutral-800 transition-colors ease-apple"
       >
         <div className="relative flex items-center justify-center">
           <ProgressRing progress={progress} size={36} />

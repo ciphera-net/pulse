@@ -20,8 +20,16 @@ vi.mock('@/lib/api/privacy', () => ({
   triggerPrivacyScan: (...a: unknown[]) => triggerPrivacyScan(...a),
 }))
 
-// SaveBar portals into the shell slot; not under test here.
-vi.mock('@/components/settings/SettingsSaveBar', () => ({ default: () => null }))
+// SaveBar portals into the shell slot; render a probe exposing isDirty so the
+// dirty lifecycle is observable (the null mock hid the stays-dirty-after-save
+// regression this file now guards against).
+vi.mock('@/components/settings/SettingsSaveBar', () => ({
+  default: ({ isDirty, onSave }: any) => (
+    <div data-testid="save-bar" data-dirty={isDirty ? 'true' : 'false'}>
+      <button onClick={() => onSave()}>Save changes</button>
+    </div>
+  ),
+}))
 
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...args: any[]) => args.flat(Infinity).filter(Boolean).join(' '),
@@ -117,5 +125,26 @@ describe('SitePrivacyScanTab (Facet structured panels)', () => {
     await waitFor(() => expect(screen.getByText('Privacy scanner')).toBeInTheDocument())
     expect(screen.getByRole('switch')).toBeDisabled()
     expect(screen.getByRole('button', { name: /Scan now/i })).toBeDisabled()
+  })
+
+  it('clears the dirty state after a successful save — no extra re-render required', async () => {
+    // Regression: the baseline used to live in a ref; saving mutated it without
+    // re-rendering, so the bar stayed "unsaved" and beforeunload stayed armed
+    // even though the write succeeded.
+    const { fireEvent } = await import('@testing-library/react')
+    renderTab()
+    await waitFor(() => expect(screen.getByText('Privacy scanner')).toBeInTheDocument())
+    expect(screen.getByTestId('save-bar')).toHaveAttribute('data-dirty', 'false')
+
+    // Toggle Automatic scanning → dirty
+    fireEvent.click(screen.getByRole('switch'))
+    expect(screen.getByTestId('save-bar')).toHaveAttribute('data-dirty', 'true')
+
+    // Save → persisted AND the bar must clear on its own
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+    await waitFor(() => expect(updatePrivacyScanConfig).toHaveBeenCalledWith('s1', false, 'weekly'))
+    await waitFor(() =>
+      expect(screen.getByTestId('save-bar')).toHaveAttribute('data-dirty', 'false'),
+    )
   })
 })

@@ -62,7 +62,10 @@ const NAV_GROUPS: NavGroup[] = [
 ]
 
 const SETTINGS_ITEM: NavItem = {
-  label: 'Site Settings', href: () => '/settings/site/general', icon: SettingsIcon, matchPrefix: true,
+  // Carry the CURRENT site into settings — ActiveSiteProvider adopts the
+  // ?siteId= deep link; without it, settings opened on whatever site was
+  // stored (or the org's first site) instead of the one being viewed.
+  label: 'Site Settings', href: (id) => `/settings/site/general?siteId=${id}`, icon: SettingsIcon, matchPrefix: true,
 }
 
 const NAV_SHORTCUTS: Record<string, string> = {

@@ -31,7 +31,10 @@ export default function WorkspaceGeneralTab() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteText, setDeleteText] = useState('')
   const [deleting, setDeleting] = useState(false)
-  const initialRef = useRef('')
+  // Baseline snapshot is STATE, not a ref: committing it (after save/load)
+  // must re-render so isDirty clears and the beforeunload guard disarms —
+  // the old ref version kept the save bar dirty after a successful save.
+  const [baseline, setBaseline] = useState('')
   const hasInitialized = useRef(false)
 
   // Transfer ownership state
@@ -52,7 +55,7 @@ export default function WorkspaceGeneralTab() {
         setName(org.name || '')
         setSlug(org.slug || '')
         if (!hasInitialized.current) {
-          initialRef.current = JSON.stringify({ name: org.name || '', slug: org.slug || '' })
+          setBaseline(JSON.stringify({ name: org.name || '', slug: org.slug || '' }))
           hasInitialized.current = true
         }
         // Exclude the current owner (caller) from the transfer target list
@@ -66,13 +69,13 @@ export default function WorkspaceGeneralTab() {
   }, [user?.org_id, user?.id, retryCount])
 
   // Track dirty state
-  const isDirty = initialRef.current
-    ? JSON.stringify({ name, slug }) !== initialRef.current
+  const isDirty = baseline
+    ? JSON.stringify({ name, slug }) !== baseline
     : false
 
   const handleDiscard = () => {
-    if (!initialRef.current) return
-    const snap = JSON.parse(initialRef.current)
+    if (!baseline) return
+    const snap = JSON.parse(baseline)
     setName(snap.name)
     setSlug(snap.slug)
   }
@@ -81,7 +84,7 @@ export default function WorkspaceGeneralTab() {
     if (!user?.org_id) return
     try {
       await updateOrganization(user.org_id, name, slug)
-      initialRef.current = JSON.stringify({ name, slug })
+      setBaseline(JSON.stringify({ name, slug }))
       toast.success('Organization updated')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to update organization')

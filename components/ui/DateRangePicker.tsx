@@ -194,18 +194,18 @@ export default function DateRangePicker({
     : [effectiveEnd, effectiveStart]
 
   function getDayClass(date: string, day: { isCurrentMonth: boolean; isFuture: boolean }): string {
-    if (!day.isCurrentMonth) return 'text-neutral-700'
-    if (day.isFuture) return 'text-neutral-800 cursor-not-allowed'
+    if (!day.isCurrentMonth) return 'text-muted-foreground/40'
+    if (day.isFuture) return 'text-muted-foreground/25 cursor-not-allowed'
 
     const isStart = date === resolvedStart
     const isEnd = date === resolvedEnd
     const isInRange = resolvedStart && resolvedEnd && date > resolvedStart && date < resolvedEnd
     const isToday = date === todayStr
 
-    if (isStart || isEnd) return 'bg-brand-orange text-white'
-    if (isInRange) return 'bg-brand-orange/10 text-neutral-200'
-    if (isToday) return 'ring-1 ring-brand-orange/50 text-neutral-200'
-    return 'text-neutral-300 hover:bg-neutral-800'
+    if (isStart || isEnd) return 'bg-primary text-primary-foreground'
+    if (isInRange) return 'bg-primary/10 text-foreground'
+    if (isToday) return 'ring-1 ring-primary/50 text-foreground'
+    return 'text-foreground hover:bg-accent'
   }
 
   const days = getDaysForMonth(viewMonth.year, viewMonth.month)
@@ -226,13 +226,13 @@ export default function DateRangePicker({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 4, scale: 0.98 }}
           transition={{ duration: 0.15 }}
-          className="fixed z-50 flex rounded-none border border-neutral-800 bg-neutral-900 shadow-lg overflow-hidden"
+          className="fixed z-50 flex rounded-none border border-border bg-popover shadow-lg overflow-hidden"
           style={pos ? { left: pos.left, top: pos.top } : undefined}
         >
-          <div className="w-44 border-r border-neutral-800 py-2 overflow-y-auto max-h-[400px]">
+          <div className="w-44 border-r border-border py-2 overflow-y-auto max-h-[400px]">
             {PERIOD_GROUPS.map((group) => (
               <div key={group}>
-                <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-neutral-600">
+                <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
                   {group}
                 </div>
                 {PERIOD_PRESETS.filter(p => p.group === group).map((preset) => (
@@ -241,8 +241,8 @@ export default function DateRangePicker({
                     onClick={() => handlePresetClick(preset.key)}
                     className={`flex items-center gap-2 w-full text-left px-3 py-1.5 text-sm transition-colors ${
                       period === preset.key
-                        ? 'text-white'
-                        : 'text-neutral-400 hover:text-white hover:bg-neutral-800/50'
+                        ? 'text-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                     }`}
                   >
                     <Check
@@ -255,15 +255,15 @@ export default function DateRangePicker({
               </div>
             ))}
             <div>
-              <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-neutral-600">
+              <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
                 Custom
               </div>
               <button
                 onClick={() => handleCustomClick()}
                 className={`flex items-center gap-2 w-full text-left px-3 py-1.5 text-sm transition-colors ${
                   period === 'custom'
-                    ? 'text-white'
-                    : 'text-neutral-400 hover:text-white hover:bg-neutral-800/50'
+                    ? 'text-foreground'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                 }`}
               >
                 <Check
@@ -279,16 +279,16 @@ export default function DateRangePicker({
             <div className="flex items-center justify-between mb-3">
               <button
                 onClick={prevMonth}
-                className="p-1 rounded-none text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors"
+                className="p-1 rounded-none text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               >
                 <CaretLeft weight="bold" className="w-3.5 h-3.5" />
               </button>
-              <span className="text-sm font-medium text-neutral-300">
+              <span className="text-sm font-medium text-foreground">
                 {monthNames[viewMonth.month]} {viewMonth.year}
               </span>
               <button
                 onClick={nextMonth}
-                className="p-1 rounded-none text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors"
+                className="p-1 rounded-none text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               >
                 <CaretRight weight="bold" className="w-3.5 h-3.5" />
               </button>
@@ -296,7 +296,7 @@ export default function DateRangePicker({
 
             <div className="grid grid-cols-7 mb-1">
               {['Mo','Tu','We','Th','Fr','Sa','Su'].map(d => (
-                <div key={d} className="text-center text-[11px] font-medium text-neutral-600 py-1">{d}</div>
+                <div key={d} className="text-center text-[11px] font-medium text-muted-foreground/70 py-1">{d}</div>
               ))}
             </div>
 
@@ -324,7 +324,7 @@ export default function DateRangePicker({
       {onShift && (
         <button
           onClick={() => onShift(-1)}
-          className="h-10 w-10 flex items-center justify-center rounded-none border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors ease-apple disabled:opacity-30 disabled:cursor-not-allowed"
+          className="h-10 w-10 flex items-center justify-center rounded-none border border-input bg-card text-muted-foreground transition-colors ease-apple hover:border-line-hover hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <CaretLeft weight="bold" className="w-3.5 h-3.5" />
         </button>
@@ -333,18 +333,18 @@ export default function DateRangePicker({
       <button
         ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 h-10 px-4 rounded-none border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-sm text-neutral-300 transition-colors ease-apple"
+        className="flex items-center gap-2 h-10 px-4 rounded-none border border-input bg-card text-sm text-foreground transition-colors ease-apple hover:border-line-hover"
       >
-        <CalendarBlank className="w-4 h-4 text-neutral-500" />
+        <CalendarBlank className="w-4 h-4 text-muted-foreground" />
         <span>{displayLabel}</span>
-        <CaretRight weight="bold" className={`w-3 h-3 text-neutral-600 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+        <CaretRight weight="bold" className={`w-3 h-3 text-muted-foreground/70 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
       </button>
 
       {onShift && (
         <button
           onClick={() => onShift(1)}
           disabled={isForwardDisabled}
-          className="h-10 w-10 flex items-center justify-center rounded-none border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white transition-colors ease-apple disabled:opacity-30 disabled:cursor-not-allowed"
+          className="h-10 w-10 flex items-center justify-center rounded-none border border-input bg-card text-muted-foreground transition-colors ease-apple hover:border-line-hover hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <CaretRight weight="bold" className="w-3.5 h-3.5" />
         </button>

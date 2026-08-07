@@ -39,25 +39,28 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
   // prevents a second submit while a save is running.
   const [saving, setSaving] = useState(false)
   const [retrying, setRetrying] = useState(false)
-  const initialRef = useRef('')
+  // Baseline snapshot is STATE, not a ref: committing it (after save/load)
+  // must re-render so isDirty clears and the beforeunload guard disarms —
+  // the old ref version kept the save bar dirty after a successful save.
+  const [baseline, setBaseline] = useState('')
   const hasInitialized = useRef(false)
 
   useEffect(() => {
     if (!site || hasInitialized.current) return
     setIsPublic(site.is_public ?? false)
     setPasswordEnabled(site.has_password ?? false)
-    initialRef.current = JSON.stringify({ isPublic: site.is_public ?? false, passwordEnabled: site.has_password ?? false })
+    setBaseline(JSON.stringify({ isPublic: site.is_public ?? false, passwordEnabled: site.has_password ?? false }))
     hasInitialized.current = true
   }, [site])
 
   // Track dirty state
-  const isDirty = initialRef.current
-    ? JSON.stringify({ isPublic, passwordEnabled }) !== initialRef.current || password.length > 0
+  const isDirty = baseline
+    ? JSON.stringify({ isPublic, passwordEnabled }) !== baseline || password.length > 0
     : false
 
   const handleDiscard = () => {
-    if (!initialRef.current) return
-    const snap = JSON.parse(initialRef.current)
+    if (!baseline) return
+    const snap = JSON.parse(baseline)
     setIsPublic(snap.isPublic)
     setPasswordEnabled(snap.passwordEnabled)
     setPassword('')
@@ -81,7 +84,7 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
         password: passwordEnabled ? password : undefined,
         clear_password: !passwordEnabled,
       })
-      initialRef.current = JSON.stringify({ isPublic, passwordEnabled })
+      setBaseline(JSON.stringify({ isPublic, passwordEnabled }))
       setPassword('')
       setPwError(false)
       await mutate()
