@@ -94,4 +94,31 @@ test.describe.serial('Settings smoke (read-only, authed)', () => {
       assertClean(route.path)
     })
   }
+  // * The API Keys tab needs more than a render assertion.
+  // *
+  // * On 07-08-2026 this tab shipped to production with its backing table missing
+  // * — GET /api/v1/api-keys returned 500 and the panel showed "Failed to list API
+  // * keys". The suite was green throughout, because asserting the masthead and the
+  // * nav rail only proves the settings SHELL mounted; the tab's own data never
+  // * entered into it. A tab that renders its chrome and then fails to load is
+  // * exactly the shape of bug this suite exists to catch.
+  test('Organization · API Keys actually loads its data', async () => {
+    beginRoute()
+    await page.goto(`${BASE_URL}/settings/organization/api-keys`)
+
+    // The "New key" button lives in the panel header, and the panel only renders
+    // once the request has resolved (a null list renders a spinner instead). So
+    // this is visible exactly when the data loaded — not while loading, and not
+    // when the request failed. Matching on body text would instead pick up the
+    // hidden "API Keys" label in the nav rail and pass regardless.
+    await expect(
+      page.getByRole('button', { name: /New key/i }),
+    ).toBeVisible({ timeout: 15_000 })
+
+    // The failure mode we actually shipped: a toast, not a crash.
+    await expect(page.getByText(/Failed to list API keys/i)).toHaveCount(0)
+    await expect(page.getByText(/Something went wrong/i)).toHaveCount(0)
+
+    assertClean('/settings/organization/api-keys')
+  })
 })
