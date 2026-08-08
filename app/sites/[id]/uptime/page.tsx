@@ -234,7 +234,14 @@ function UptimeStatusBar({
       className="relative"
       onMouseLeave={() => setHoveredDay(null)}
     >
-      <div className="flex items-center gap-0.5 w-full">
+      {/* 90 bars at min-w-[3px] with a 2px gap have a 448px min-content width.
+          A phone card offers ~348px, so the strip ran ~97px off the right edge —
+          the most recent days, the ones you actually care about, were the ones
+          off-screen. Thinner bars and a 1px gap below sm fit all 90 days in
+          ~269px; flex-1 then expands them to fill. sm+ keeps the original 3px/2px.
+          (Staging never showed this: uptime monitoring is disabled there, so the
+          route only ever rendered its empty state.) */}
+      <div className="flex items-center gap-px sm:gap-0.5 w-full">
         {dateRange.map((date) => {
           const stat = statsMap.get(date)
           const barColor = getDayBarColor(stat)
@@ -242,7 +249,7 @@ function UptimeStatusBar({
           return (
             <div
               key={date}
-              className={`flex-1 h-8 rounded-none ${barColor} transition-all duration-fast hover:opacity-80 cursor-pointer min-w-[3px] ease-apple`}
+              className={`flex-1 h-8 rounded-none ${barColor} transition-all duration-fast hover:opacity-80 cursor-pointer min-w-[2px] sm:min-w-[3px] ease-apple`}
               onMouseEnter={(e) => handleMouseEnter(e, date, stat)}
               onMouseLeave={() => setHoveredDay(null)}
             />
