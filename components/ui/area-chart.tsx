@@ -1156,6 +1156,23 @@ ChartTooltip.displayName = "ChartTooltip";
 
 // ─── Grid ────────────────────────────────────────────────────────────────────
 
+/**
+ * How many horizontal ticks actually FIT, capped by the caller's request.
+ *
+ * `numTicks` is an upper bound, not a demand — the same contract XAxis already
+ * applies on the width axis (see its `widthBudget`). Without a height budget a
+ * wide-aspect chart (3.5/1) on a phone is only ~93px of plot area, and 5-6
+ * 12px labels drew on top of each other as an illegible vertical smear on the
+ * public share dashboard. One label per 32px keeps them legibly apart.
+ *
+ * Desktop is unaffected: a 3.5/1 chart in a ~900px column has ~257px of inner
+ * height, a budget of 9, so `min(5, 9)` is still 5.
+ */
+export function fitRowTickCount(numTicks: number, innerHeight: number): number {
+  if (!(innerHeight > 0)) return numTicks;
+  return Math.max(2, Math.min(numTicks, Math.floor(innerHeight / 32) + 1));
+}
+
 export interface GridProps {
   horizontal?: boolean;
   vertical?: boolean;
@@ -1193,9 +1210,11 @@ export function Grid({
     const domain = yScale.domain() as [number, number];
     const min = domain[0];
     const max = domain[1];
-    const step = (max - min) / (numTicksRows - 1);
-    return Array.from({ length: numTicksRows }, (_, i) => min + step * i);
-  }, [yScale, numTicksRows, rowTickValues]);
+    // Same budget as YAxis, so gridlines and labels can never disagree.
+    const count = fitRowTickCount(numTicksRows, innerHeight);
+    const step = (max - min) / (count - 1);
+    return Array.from({ length: count }, (_, i) => min + step * i);
+  }, [yScale, numTicksRows, rowTickValues, innerHeight]);
 
   const isHorizontalBarChart = orientation === "horizontal" && barScale;
   const columnScale = isHorizontalBarChart ? yScale : xScale;
@@ -1475,7 +1494,7 @@ export function YAxis({
   numTicks = 5,
   formatValue,
 }: YAxisProps) {
-  const { yScale, margin, containerRef } = useChart();
+  const { yScale, margin, containerRef, innerHeight } = useChart();
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -1486,9 +1505,11 @@ export function YAxis({
     const domain = yScale.domain() as [number, number];
     const min = domain[0];
     const max = domain[1];
-    const step = (max - min) / (numTicks - 1);
+    // Thin to what the plot height can show without labels colliding.
+    const count = fitRowTickCount(numTicks, innerHeight);
+    const step = (max - min) / (count - 1);
 
-    return Array.from({ length: numTicks }, (_, i) => {
+    return Array.from({ length: count }, (_, i) => {
       const value = min + step * i;
       return {
         value,
@@ -1500,7 +1521,7 @@ export function YAxis({
             : value.toLocaleString(),
       };
     });
-  }, [yScale, margin.top, numTicks, formatValue]);
+  }, [yScale, margin.top, numTicks, formatValue, innerHeight]);
 
   if (!container) {
     return null;

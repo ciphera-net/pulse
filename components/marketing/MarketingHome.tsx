@@ -51,7 +51,10 @@ export default function MarketingHome() {
             the TrustStrip below owns the claims as chips. Forced two-line
             headline so the larger scale never rewraps. */}
         <div className="relative mx-auto max-w-5xl px-6 pt-20 text-center sm:pt-28">
-          <h1 className="font-display text-5xl font-bold leading-[0.95] tracking-tight text-foreground sm:text-7xl lg:text-[5.5rem]">
+          {/* 2.5rem, not text-5xl (3rem), below sm: at 48px "surveillance."
+              only just fits a 390px line, which stranded the orphan word "the"
+              alone on its own line. The sm: and lg: steps are untouched. */}
+          <h1 className="font-display text-[2.5rem] font-bold leading-[0.95] tracking-tight text-foreground sm:text-7xl lg:text-[5.5rem]">
             Analytics without
             <span className="sr-only"> the surveillance.</span>
             {/* Rotates ONCE on load through the three things Pulse removes,

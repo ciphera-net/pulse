@@ -185,12 +185,17 @@ export default function JourneysPage() {
               onChange={filters.setDensity}
             />
           </div>
-          <div className="flex min-w-[280px] flex-1 items-center gap-2">
+          {/* Below sm this group takes a FULL row of its own and wraps inside
+              itself. As a `flex-1 min-w-[280px]` sibling it was ~294px wide but
+              held ~325px of shrink-0 controls, so the Columns/Flow segmented
+              control was pushed past the card edge. sm+ keeps the original
+              single-row, 280px-floor behaviour exactly. */}
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:min-w-[280px] sm:flex-1 sm:flex-nowrap">
             <EntryCombobox
               value={filters.entryPath}
               onChange={filters.setEntryPath}
               entries={entryPoints ?? []}
-              className="min-w-0 flex-1 sm:w-64 sm:flex-none"
+              className="w-full min-w-0 sm:w-64 sm:flex-none"
             />
             {filters.lens && (
               <div className="inline-flex h-10 max-w-64 items-center gap-1.5 rounded-none border border-neutral-800 px-2.5">
@@ -226,9 +231,13 @@ export default function JourneysPage() {
             <button
               onClick={filters.resetFilters}
               disabled={filters.isDefault}
+              /* The opacity-0 trick keeps the desktop row from shifting when
+                 Reset appears — but it still RESERVES ~62px, which on a wrapped
+                 mobile toolbar is a visible dead gap. Below md take it out of
+                 layout entirely; md+ keeps the no-shift behaviour. */
               className={`text-sm whitespace-nowrap transition-all duration-fast px-3 py-2 ${
                 filters.isDefault
-                  ? 'opacity-0 pointer-events-none'
+                  ? 'hidden md:inline-block opacity-0 pointer-events-none'
                   : 'opacity-100 text-neutral-500 hover:text-white'
               } ease-apple`}
             >

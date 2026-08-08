@@ -323,7 +323,7 @@ export default function Chart({
               {onExport && (
                 <button
                   onClick={onExport}
-                  className="w-7 h-7 flex items-center justify-center text-neutral-500 hover:text-white hover:bg-white/[0.06] rounded-none transition-colors ease-apple"
+                  className="h-11 w-11 sm:h-7 sm:w-7 flex items-center justify-center text-neutral-500 hover:text-white hover:bg-white/[0.06] rounded-none transition-colors ease-apple"
                   aria-label="Export"
                 >
                   <DownloadIcon className="w-3.5 h-3.5" />

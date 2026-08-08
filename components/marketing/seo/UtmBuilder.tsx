@@ -150,7 +150,7 @@ export function UtmBuilder() {
                 Fill in the website URL, source, medium and campaign to generate a link.
               </p>
             ) : (
-              <pre className="overflow-x-auto whitespace-pre-wrap break-all font-mono text-[13px] leading-relaxed text-neutral-200">
+              <pre className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-[13px] leading-relaxed text-neutral-200">
                 {result}
               </pre>
             )}

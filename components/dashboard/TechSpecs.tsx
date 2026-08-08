@@ -133,14 +133,14 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
     <>
       <div className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1" role="tablist" aria-label="Technology view tabs" onKeyDown={handleTabKeyDown}>
+          <div className="flex gap-1 min-w-0 overflow-x-auto scrollbar-hide pb-1 max-md:[mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)]" role="tablist" aria-label="Technology view tabs" onKeyDown={handleTabKeyDown}>
             {(['browsers', 'os', 'devices', 'screens'] as Tab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 role="tab"
                 aria-selected={activeTab === tab}
-                className={`relative px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-none cursor-pointer ${
+                className={`relative px-2.5 py-3 sm:py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-none cursor-pointer ${
                   activeTab === tab
                     ? 'text-white'
                     : 'text-neutral-500 hover:text-neutral-300'
@@ -158,7 +158,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
           {showViewAll && (
             <button
               onClick={() => setIsModalOpen(true)}
-              className="p-1.5 text-neutral-500 hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-none ease-apple"
+              className="p-3 md:p-1.5 text-neutral-500 hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-none ease-apple"
               aria-label="View all technology"
             >
               <FrameCornersIcon className="w-4 h-4" weight="bold" />
@@ -193,7 +193,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
                       <span className="truncate">{capitalize(item.name)}</span>
                     </div>
                     <div className="relative flex items-center gap-2 ml-4">
-                      <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
+                      <span className="text-xs font-medium text-brand-orange opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
                         {totalPageviews > 0 ? `${Math.round((item.pageviews / totalPageviews) * 100)}%` : ''}
                       </span>
                       <span className="text-sm font-semibold text-neutral-400">
@@ -260,7 +260,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
                         <span className="truncate">{capitalize(item.name)}</span>
                       </div>
                       <div className="flex items-center gap-2 ml-4">
-                        <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
+                        <span className="text-xs font-medium text-brand-orange opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
                           {modalTotal > 0 ? `${Math.round((item.pageviews / modalTotal) * 100)}%` : ''}
                         </span>
                         <span className="text-sm font-semibold text-neutral-400">

@@ -414,7 +414,7 @@ export default function UptimePage() {
         </div>
 
         {/* Empty state */}
-        <div className="glass-surface rounded-none p-12 text-center">
+        <div className="glass-surface rounded-none p-6 md:p-12 text-center">
           <div className="rounded-none bg-neutral-800 p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
             <svg className="w-8 h-8 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

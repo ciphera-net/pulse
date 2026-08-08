@@ -67,6 +67,28 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+
+  /*
+   * iOS Safari auto-zoom guard.
+   *
+   * When a text field's computed font-size is below 16px, iOS Safari zooms the
+   * whole viewport on focus and does NOT zoom back out. Every form in the app
+   * uses Tailwind's `text-sm` (14px), so tapping any input — the login email,
+   * the contact form, site settings, the funnel builder, the UTM tool — yanked
+   * the page to a magnified, horizontally-scrolled state the visitor then had
+   * to pinch out of.
+   *
+   * 16px below the md breakpoint only. Desktop keeps 14px exactly, so no
+   * >=768px rendering changes. Fields opt out with `.allow-small-text` if a
+   * genuinely dense control ever needs it.
+   */
+  @media (max-width: 767px) {
+    input:not([type='checkbox']):not([type='radio']):not(.allow-small-text),
+    select:not(.allow-small-text),
+    textarea:not(.allow-small-text) {
+      font-size: 16px;
+    }
+  }
 }
 
 @layer components {

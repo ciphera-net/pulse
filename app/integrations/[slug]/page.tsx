@@ -166,7 +166,7 @@ export default async function IntegrationGuidePage({ params }: { params: Promise
                 <p className="mb-3 text-xs text-muted-foreground">
                   {integration.snippet?.label ?? 'Add to your site’s <head>'}
                 </p>
-                <pre className="overflow-x-auto whitespace-pre-wrap break-all font-mono text-[13px] leading-relaxed text-neutral-300">
+                <pre className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-[13px] leading-relaxed text-neutral-300">
                   {renderSnippet(integration.snippet?.code)}
                 </pre>
               </div>

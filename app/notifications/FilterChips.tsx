@@ -48,7 +48,10 @@ export default function FilterChips({ unreadCount, totalCount }: FilterChipsProp
     <button
       type="button"
       onClick={onClick}
-      className={`px-3 py-1 rounded-none text-xs transition-colors ${
+      /* These chips are this page's only control, and at py-1 they were 24px
+         tall. min-h-11 gives a 44px touch target below md without changing the
+         compact desktop row. */
+      className={`px-3 py-1 min-h-11 md:min-h-0 rounded-none text-xs transition-colors ${
         active
           ? 'bg-brand-orange/15 text-brand-orange'
           : 'bg-white/[0.05] text-neutral-400 hover:text-white hover:bg-white/[0.08]'

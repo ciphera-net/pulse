@@ -338,7 +338,10 @@ export default function SiteDashboardPage() {
         count={realtime}
         onFilterPage={(path) => handleAddFilter({ dimension: 'page', operator: 'is', values: [path] })}
       />
-      <div className="flex-1" />
+      {/* The spacer pushes the filter/date cluster to the right edge on desktop.
+          In a wrapped mobile row a flex-1 spacer would claim a whole line and
+          strand the controls, so it only exists at sm+. */}
+      <div className="hidden flex-1 sm:block" />
       <FilterPills
         filters={filters}
         onEdit={(index, anchor) => filterBuilder.openEdit(filters[index], index, anchor)}
@@ -377,7 +380,12 @@ export default function SiteDashboardPage() {
   return (
     <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
       <div className="mb-3">
-        <div className="flex items-center gap-3">
+        {/* flex-wrap, not a single row: the five controls measure ~414px of
+            intrinsic width, so on a 390px phone the row overflowed and the
+            content panel's overflow-x-hidden SLICED the date picker in half —
+            its forward-shift arrow was unreachable. Wrapping costs desktop
+            nothing (there the row has ~1100px and never wraps). */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {toolbarControls()}
         </div>
       </div>

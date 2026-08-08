@@ -570,7 +570,12 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
                 href={`https://${site.domain}?pulse-ignore`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex h-9 items-center gap-1.5 rounded-none border border-input bg-card px-3 text-sm font-medium text-foreground transition-colors ease-apple hover:bg-muted"
+                /* min-h-9 + py-2, not a fixed h-9: the label embeds the site
+                   domain, so on a phone it wraps to two lines and a fixed-height
+                   box let the text escape its own border. A single line still
+                   computes to exactly 36px (20px text + 16px padding), so this
+                   is pixel-identical wherever the label fits on one line. */
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-none border border-input bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors ease-apple hover:bg-muted"
               >
                 <EyeSlash weight="bold" className="h-4 w-4" />
                 Toggle exclusion on {site.domain}

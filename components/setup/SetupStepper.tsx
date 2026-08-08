@@ -26,6 +26,7 @@ interface SetupStepperProps {
 export default function SetupStepper({ completedSteps }: SetupStepperProps) {
   const pathname = usePathname()
   const currentIndex = steps.findIndex(s => pathname.startsWith(s.path))
+  const currentStep = currentIndex >= 0 ? steps[currentIndex] : null
 
   return (
     <div className="w-full max-w-2xl mx-auto mb-10">
@@ -51,24 +52,38 @@ export default function SetupStepper({ completedSteps }: SetupStepperProps) {
 
           return (
             <Fragment key={step.key}>
+              {/* Below sm the five `whitespace-nowrap` labels ("Create workspace",
+                  "Install script", …) sum to ~480px on shrink-0 columns — 51px
+                  wider than a 390px phone, which pushed step 5 off the screen
+                  entirely. On mobile we keep the numbered circles + connectors
+                  (the visual device) and print the CURRENT step's label once,
+                  centred, below the rail. sm+ is untouched. */}
               <div className="flex flex-col items-center shrink-0">
                 <div className={circleClasses}>
                   {isCompleted ? <CheckIcon /> : i + 1}
                 </div>
-                <span className={`text-xs font-medium ${labelColor} mt-2.5 whitespace-nowrap`}>
+                <span className={`hidden sm:block text-xs font-medium ${labelColor} mt-2.5 whitespace-nowrap`}>
                   {step.label}
                 </span>
-                <span className={`text-[10px] mt-0.5 ${step.optional ? 'text-neutral-600' : 'invisible'}`}>
+                <span className={`hidden sm:block text-[10px] mt-0.5 ${step.optional ? 'text-neutral-600' : 'invisible'}`}>
                   Optional
                 </span>
               </div>
               {i < steps.length - 1 && (
-                <div className={`h-px flex-1 mx-3 mt-3.5 sm:mt-4 ${lineCompleted ? 'bg-brand-orange' : 'bg-neutral-700'}`} />
+                <div className={`h-px flex-1 mx-2 sm:mx-3 mt-3.5 sm:mt-4 ${lineCompleted ? 'bg-brand-orange' : 'bg-neutral-700'}`} />
               )}
             </Fragment>
           )
         })}
       </div>
+
+      {/* Mobile-only label for the step you are actually on. */}
+      {currentStep && (
+        <p className="mt-3 text-center text-xs font-medium text-white sm:hidden">
+          Step {currentIndex + 1} of {steps.length} · {currentStep.label}
+          {currentStep.optional && <span className="text-neutral-500"> (optional)</span>}
+        </p>
+      )}
     </div>
   )
 }

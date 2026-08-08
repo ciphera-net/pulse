@@ -46,7 +46,12 @@ export function HomeClosingCta({
         fill
         unoptimized
         sizes="100vw"
-        className="object-cover object-bottom opacity-80 [mask-image:linear-gradient(to_left,#000_15%,rgba(0,0,0,0.5)_45%,transparent_72%)]"
+        /* The mask is a PERCENTAGE gradient, so it scales with the container.
+           On a ~1200px desktop the 45% mid-stop sits far right of the copy; at
+           390px that same 45% lands at x≈176 — directly under the trust line,
+           dropping "GDPR compliant" to roughly 1.6:1 contrast. Below md the
+           bloom is pushed clear and dimmed; md+ keeps the original values. */
+        className="object-cover object-bottom opacity-50 [mask-image:linear-gradient(to_left,#000_0%,transparent_40%)] md:opacity-80 md:[mask-image:linear-gradient(to_left,#000_15%,rgba(0,0,0,0.5)_45%,transparent_72%)]"
       />
 
       <div className="relative">

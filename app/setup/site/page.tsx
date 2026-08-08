@@ -89,7 +89,7 @@ export default function SetupSitePage() {
           <p className="text-sm text-red-400 text-center">{error}</p>
         )}
 
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button type="submit" className="w-full h-11 md:h-9" disabled={loading}>
           {loading ? 'Adding...' : 'Add site'}
         </Button>
       </form>
@@ -97,7 +97,7 @@ export default function SetupSitePage() {
       <button
         type="button"
         onClick={handleSkip}
-        className="mt-4 w-full text-center text-sm text-neutral-500 hover:text-neutral-400 transition-colors"
+        className="mt-4 w-full min-h-11 md:min-h-0 text-center text-sm text-neutral-500 hover:text-neutral-400 transition-colors"
       >
         Skip for now
       </button>

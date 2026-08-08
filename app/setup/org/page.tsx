@@ -98,7 +98,7 @@ export default function SetupOrgPage() {
           <p className="text-sm text-red-400 text-center">{error}</p>
         )}
 
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button type="submit" className="w-full h-11 md:h-9" disabled={loading}>
           {loading ? 'Creating...' : 'Create workspace'}
         </Button>
       </form>
