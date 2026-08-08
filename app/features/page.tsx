@@ -249,7 +249,7 @@ export default function FeaturesPage() {
         {/* The product, live — real captures of the ciphera.net dashboard, the
             same slideshow device as the homepage, at a width where the data is
             actually legible (the old 380px thumbnail was not). */}
-        <div className="mt-12 grid gap-10 lg:grid-cols-2">
+        <div className="mt-12 grid gap-10 lg:grid-cols-2 [&>*]:min-w-0">
           <div>
             <p className="mb-4 text-xs uppercase tracking-[0.08em] text-muted-foreground">
               Audience panels — live

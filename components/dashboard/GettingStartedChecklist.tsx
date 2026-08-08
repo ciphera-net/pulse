@@ -96,7 +96,13 @@ export default function GettingStartedChecklist() {
   const nextItem = items.find(i => !i.completed)
 
   return (
-    <div className="fixed bottom-24 right-5 z-[100]">
+    // bottom-24 is a desktop offset. On a phone it parked the pill in the
+    // MIDDLE of the visible content (the shell scrolls an inner main, so a
+    // fixed element floats over whatever is on screen) — it landed on top of
+    // the /sites empty-state card. DashboardShell's main already reserves
+    // `pb-24` of scroll clearance below sm, so docking to bottom-4 puts the
+    // pill in genuinely free space instead of over content. md+ unchanged.
+    <div className="fixed bottom-4 right-4 md:bottom-24 md:right-5 z-[100]">
       <AnimatePresence>
         {expanded && (
           <motion.div

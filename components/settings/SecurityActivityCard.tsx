@@ -222,7 +222,10 @@ export default function SecurityActivityCard() {
                             weight="regular"
                             className={`shrink-0 ${tone === 'danger' ? 'text-destructive' : 'text-muted-foreground'}`}
                           />
-                          <span className="font-medium text-foreground">{label}</span>
+                          {/* nowrap: the crushed EVENT column broke "Sign in"
+                              across two lines, doubling every row's height and
+                              reading as two separate events. */}
+                          <span className="whitespace-nowrap font-medium text-foreground">{label}</span>
                           {entry.outcome === 'failure' && (
                             <StatusChip tone="danger" className="shrink-0">Failed</StatusChip>
                           )}

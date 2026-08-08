@@ -220,7 +220,7 @@ export default function SetupDonePage() {
         </a>
       </div>
 
-      <Button onClick={() => router.push('/')} className="w-full">
+      <Button onClick={() => router.push('/')} className="w-full h-11 md:h-9">
         Go to dashboard
       </Button>
     </motion.div>

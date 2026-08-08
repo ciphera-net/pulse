@@ -85,7 +85,10 @@ export default function RealtimeVisitorsPopover({ siteId, count, onFilterPage }:
             )}
           />
         </span>
-        <span className="tabular-nums">
+        {/* whitespace-nowrap: the chip is a fixed h-10 box, so when the label was
+            allowed to wrap on a narrow toolbar the three lines overflowed the
+            button's own border box and the count rendered ABOVE the chip. */}
+        <span className="whitespace-nowrap tabular-nums">
           {count} current {count === 1 ? 'visitor' : 'visitors'}
         </span>
       </button>

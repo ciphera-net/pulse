@@ -23,7 +23,13 @@ export function MacWindow({
   return (
     <div
       className={cn(
-        'overflow-hidden border-white/10 bg-[#161616] shadow-[0_32px_80px_-12px_rgba(0,0,0,0.9)]',
+        // min-w-0 is required by the pannable body below: the inner scroller's
+        // 700px min-content propagates up through `min-width:auto` ancestors.
+        // (A `contain:inline-size` variant of this fix was tried and REVERTED —
+        // it sent /features into a "Maximum update depth exceeded" loop by
+        // fighting a ResizeObserver child. Consumers that place a MacWindow in a
+        // grid/flex track add their own min-w-0 instead.)
+        'min-w-0 overflow-hidden border-white/10 bg-[#161616] shadow-[0_32px_80px_-12px_rgba(0,0,0,0.9)]',
         docked ? 'rounded-t-[10px] border border-b-0' : 'rounded-[10px] border',
         className,
       )}
@@ -36,7 +42,24 @@ export function MacWindow({
         <span className="h-3 w-3 rounded-full bg-[#febc2e] ring-1 ring-inset ring-black/20" />
         <span className="h-3 w-3 rounded-full bg-[#28c840] ring-1 ring-inset ring-black/20" />
       </div>
-      {children}
+      {/*
+       * Below md the capture PANS instead of shrinking.
+       *
+       * These are 2244-2468px retina screenshots of the real product — the
+       * "receipts, not promises" proof. Scaled into a ~342px phone column their
+       * baked-in text lands at 3-5px: page paths, the chart's date axis and the
+       * stat captions all render as grey noise, so the proof proves nothing.
+       * A 700px min-width roughly doubles the legible size and the right-edge
+       * mask advertises that there is more to see.
+       *
+       * The titlebar deliberately sits OUTSIDE this scroller: the window chrome
+       * stays at container width while its content pans, which reads as a real
+       * window rather than a broken image. Both properties reset at md, so the
+       * >=768px rendering is unchanged.
+       */}
+      <div className="overflow-x-auto md:overflow-x-visible max-md:[mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)]">
+        <div className="min-w-[700px] md:min-w-0">{children}</div>
+      </div>
     </div>
   )
 }

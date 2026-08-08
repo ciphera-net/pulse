@@ -177,7 +177,7 @@ export default async function ComparisonPage({
 
       {/* Required honest section: when the competitor wins */}
       <MarketingSection eyebrowNumber="02" eyebrowLabel="The honest case">
-        <div className="max-w-3xl border border-border bg-card p-8">
+        <div className="max-w-3xl border border-border bg-card p-6 md:p-8">
           <h2 className="font-display text-2xl font-bold tracking-tight text-foreground">
             {comparison.whenBetter.heading}
           </h2>

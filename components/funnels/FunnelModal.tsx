@@ -169,8 +169,12 @@ function SuggestInput({
     }
   }
 
+  // w-full below sm so the value field claims its own line in the wrapped step
+  // row. Inline (Segmented + matcher Select + this input) needs ~340px; a phone
+  // leaves ~248px, which squeezed THIS field — the one you actually type in —
+  // down to a ~4px sliver.
   return (
-    <div className="relative min-w-0 flex-1">
+    <div className="relative w-full min-w-0 sm:w-auto sm:flex-1">
       <input
         ref={registerRef}
         value={value}
@@ -544,7 +548,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
 
                           {/* Type + matcher + value on one line; filters below */}
                           <div className="min-w-0 flex-1 space-y-1.5">
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                               <Segmented
                                 ariaLabel={`Step ${i + 1} type`}
                                 value={cat}
@@ -599,13 +603,13 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                             {cat === 'event' && filters.length > 0 && (
                               <div className="space-y-1.5">
                                 {filters.map((f, fi) => (
-                                  <div key={fi} className="flex items-center gap-1.5">
+                                  <div key={fi} className="flex flex-wrap items-center gap-1.5">
                                     <input
                                       value={f.key}
                                       onChange={(e) => updateFilter(i, fi, 'key', e.target.value)}
                                       placeholder="property"
                                       aria-label={`Step ${i + 1} filter ${fi + 1} key`}
-                                      className={`${inputClass} flex-1`}
+                                      className={`${inputClass} w-full sm:w-auto sm:flex-1`}
                                     />
                                     <Select
                                       variant="input"
@@ -624,7 +628,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                                       onChange={(e) => updateFilter(i, fi, 'value', e.target.value)}
                                       placeholder="value"
                                       aria-label={`Step ${i + 1} filter ${fi + 1} value`}
-                                      className={`${inputClass} flex-1`}
+                                      className={`${inputClass} min-w-0 flex-1`}
                                     />
                                     <button
                                       type="button"
@@ -658,7 +662,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                                 aria-label={`Move step ${i + 1} up`}
                                 onClick={() => moveStep(i, -1)}
                                 disabled={i === 0}
-                                className="flex h-4 w-6 items-center justify-center rounded-none text-neutral-500 transition-colors duration-fast ease-apple hover:text-neutral-200 disabled:opacity-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+                                className="flex h-6 w-9 md:h-4 md:w-6 items-center justify-center rounded-none text-neutral-500 transition-colors duration-fast ease-apple hover:text-neutral-200 disabled:opacity-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
                               >
                                 <CaretUp className="h-3 w-3" />
                               </button>
@@ -667,7 +671,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                                 aria-label={`Move step ${i + 1} down`}
                                 onClick={() => moveStep(i, 1)}
                                 disabled={i === steps.length - 1}
-                                className="flex h-4 w-6 items-center justify-center rounded-none text-neutral-500 transition-colors duration-fast ease-apple hover:text-neutral-200 disabled:opacity-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+                                className="flex h-6 w-9 md:h-4 md:w-6 items-center justify-center rounded-none text-neutral-500 transition-colors duration-fast ease-apple hover:text-neutral-200 disabled:opacity-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
                               >
                                 <CaretDown className="h-3 w-3" />
                               </button>
@@ -727,7 +731,11 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                     { value: 'days', label: 'Days' },
                   ]}
                 />
-                <div className="mx-1 h-6 w-px bg-border" aria-hidden="true" />
+                {/* Purely decorative rule between the numeric window and the
+                    preset chips. Once the row wraps on a phone it becomes a
+                    dangling vertical tick at the end of a line, so it is
+                    display:none below md. */}
+                <div className="hidden md:block mx-1 h-6 w-px bg-border" aria-hidden="true" />
                 <div className="flex items-center gap-1">
                   {WINDOW_PRESETS.map((preset) => {
                     const active = windowValue === preset.value && windowUnit === preset.unit

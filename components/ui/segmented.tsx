@@ -35,11 +35,18 @@ export function Segmented<T extends string>({ value, onChange, options, ariaLabe
     refs.current[target]?.focus()
   }
 
+  // `shrink-0` below is load-bearing. As a flex item this control defaulted to
+  // flex-shrink:1, so a narrow row squeezed it — and its own `overflow-hidden`
+  // then SILENTLY ATE the labels rather than overflowing visibly. That is how
+  // "Columns/Flow" lost 75px on Journeys and "Page/Event" lost 43px in the funnel
+  // step row on a phone. Refusing to shrink makes the parent row wrap instead
+  // (both callers are flex-wrap). No effect at desktop widths, where the row has
+  // room and never shrinks anything.
   return (
     <div
       role="tablist"
       aria-label={ariaLabel}
-      className={cn('inline-flex h-10 items-stretch overflow-hidden rounded-none border border-neutral-800', className)}
+      className={cn('inline-flex h-10 shrink-0 items-stretch overflow-hidden rounded-none border border-neutral-800', className)}
     >
       {options.map((opt, i) => {
         const active = opt.value === value
@@ -54,7 +61,7 @@ export function Segmented<T extends string>({ value, onChange, options, ariaLabe
             onClick={() => onChange(opt.value)}
             onKeyDown={(e) => onKeyDown(e, i)}
             className={cn(
-              'flex items-center gap-1.5 px-3 text-sm font-medium transition-colors duration-fast ease-apple rounded-none',
+              'flex items-center gap-1.5 whitespace-nowrap px-3 text-sm font-medium transition-colors duration-fast ease-apple rounded-none',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange',
               i > 0 && 'border-l border-neutral-800',
               active ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-neutral-300',

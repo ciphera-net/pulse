@@ -52,7 +52,10 @@ function SiteCard({ site, stats, statsLoading }: SiteCardProps) {
                 href={`https://${site.domain}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-neutral-400 hover:text-neutral-300"
+                /* A bare 12x12 glyph was the smallest real target in the app.
+                   The negative margin cancels the hit padding so the icon stays
+                   optically where it was; only the tappable box grows. */
+                className="-m-2.5 p-2.5 md:m-0 md:p-0 text-neutral-400 hover:text-neutral-300"
                 onClick={(e) => e.stopPropagation()}
               >
                 <ExternalLinkIcon className="h-3 w-3" />

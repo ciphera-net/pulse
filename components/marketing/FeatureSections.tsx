@@ -193,7 +193,7 @@ function ScriptMockup() {
             <span className="font-mono text-xs text-muted-foreground">index.html</span>
           </div>
 
-          <pre className="overflow-x-auto py-5 pr-6">
+          <pre className="overflow-x-auto py-5 pr-6 whitespace-pre-wrap [overflow-wrap:anywhere] md:whitespace-pre md:[overflow-wrap:normal]">
             <code className="font-mono text-sm leading-7">
               {SCRIPT_LINES.map(([no, content]) => (
                 <span key={no} className="flex">

@@ -138,15 +138,17 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
   return (
     <>
       <div className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex gap-1 pb-1" role="tablist" aria-label="Referrers view tabs">
+        <div className="flex items-center justify-between gap-2 mb-4">
+          {/* Matches the scrolling tab row every other dimension card uses, so a
+              narrow card can never push the header action off its right edge. */}
+          <div className="flex gap-1 min-w-0 overflow-x-auto scrollbar-hide pb-1 max-md:[mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)]" role="tablist" aria-label="Referrers view tabs">
             {(['referrers', 'channels'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setView(tab)}
                 role="tab"
                 aria-selected={view === tab}
-                className={`relative px-2.5 py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-none cursor-pointer ${
+                className={`relative px-2.5 py-3 sm:py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-none cursor-pointer ${
                   view === tab
                     ? 'text-white'
                     : 'text-neutral-500 hover:text-neutral-300'
@@ -164,7 +166,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
           {view === 'referrers' && showViewAll && (
             <button
               onClick={() => setIsModalOpen(true)}
-              className="p-1.5 text-neutral-500 hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-none ease-apple"
+              className="shrink-0 p-1.5 text-neutral-500 hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-none ease-apple"
               aria-label="View all referrers"
             >
               <FrameCornersIcon className="w-4 h-4" weight="bold" />
@@ -199,7 +201,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                         <span className="truncate" title={getReferrerDisplayName(ref.referrer)}>{getReferrerDisplayName(ref.referrer)}</span>
                       </div>
                       <div className="relative flex items-center gap-2 ml-4">
-                        <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
+                        <span className="text-xs font-medium text-brand-orange opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
                           {totalPageviews > 0 ? `${Math.round((ref.pageviews / totalPageviews) * 100)}%` : ''}
                         </span>
                         <span className="text-sm font-semibold text-neutral-400">
@@ -243,7 +245,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                         <span className="truncate" title={ch.channel}>{ch.channel}</span>
                       </div>
                       <div className="relative flex items-center gap-2 ml-4">
-                        <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
+                        <span className="text-xs font-medium text-brand-orange opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
                           {channelTotal > 0 ? `${Math.round((ch.pageviews / channelTotal) * 100)}%` : ''}
                         </span>
                         <span className="text-sm font-semibold text-neutral-400">
@@ -307,7 +309,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                       <span className="truncate" title={getReferrerDisplayName(ref.referrer)}>{getReferrerDisplayName(ref.referrer)}</span>
                     </div>
                     <div className="flex items-center gap-2 ml-4">
-                      <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
+                      <span className="text-xs font-medium text-brand-orange opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
                         {modalTotal > 0 ? `${Math.round((ref.pageviews / modalTotal) * 100)}%` : ''}
                       </span>
                       <span className="text-sm font-semibold text-neutral-400">

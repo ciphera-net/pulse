@@ -393,7 +393,7 @@ export default function ScriptSetupBlock({
               )}
             </button>
           </div>
-          <pre className="px-4 py-4 text-[13px] leading-relaxed font-mono text-muted-foreground whitespace-pre-wrap break-all overflow-x-auto selection:bg-primary/30">
+          <pre className="px-4 py-4 text-[13px] leading-relaxed font-mono text-muted-foreground whitespace-pre-wrap break-words overflow-x-auto selection:bg-primary/30">
             {scriptSnippet}
           </pre>
         </div>
@@ -415,7 +415,7 @@ export default function ScriptSetupBlock({
             Copy directives
           </button>
         </div>
-        <code className="block text-[11px] font-mono text-muted-foreground break-all">{CSP_DIRECTIVES}</code>
+        <code className="block text-[11px] font-mono text-muted-foreground break-words">{CSP_DIRECTIVES}</code>
         <a
           href="https://help.ciphera.net/docs/pulse/csp"
           target="_blank"

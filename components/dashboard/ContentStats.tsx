@@ -182,7 +182,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
         </div>
         {/* Score badge + details on hover */}
         <div className="relative flex items-center gap-2 ml-4">
-          <span className="opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0 transition-all duration-150 text-[10px] font-medium text-neutral-500 whitespace-nowrap">
+          <span className="opacity-100 translate-x-0 md:opacity-0 md:group-hover:opacity-100 md:translate-x-2 md:group-hover:translate-x-0 transition-all duration-150 text-[10px] font-medium text-neutral-500 whitespace-nowrap">
             {Math.round(item.avg_scroll_depth)}% scroll · {readTime} read
           </span>
           <span className={`inline-flex items-center justify-center w-8 h-5 rounded-none text-[10px] font-bold tabular-nums ${scoreColor.badge}`}>
@@ -197,14 +197,14 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
     <>
       <div className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1" role="tablist" aria-label="Pages view tabs" onKeyDown={handleTabKeyDown}>
+          <div className="flex gap-1 min-w-0 overflow-x-auto scrollbar-hide pb-1 max-md:[mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)]" role="tablist" aria-label="Pages view tabs" onKeyDown={handleTabKeyDown}>
             {(['top_pages', 'entry_pages', 'exit_pages', 'engagement'] as Tab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 role="tab"
                 aria-selected={activeTab === tab}
-                className={`relative px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-none cursor-pointer ${
+                className={`relative px-2.5 py-3 sm:py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-none cursor-pointer ${
                   activeTab === tab
                     ? 'text-white'
                     : 'text-neutral-500 hover:text-neutral-300'
@@ -222,7 +222,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
           {showViewAll && (
             <button
               onClick={() => setIsModalOpen(true)}
-              className="p-1.5 text-neutral-500 hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-none ease-apple"
+              className="p-3 md:p-1.5 text-neutral-500 hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-none ease-apple"
               aria-label="View all pages"
             >
               <FrameCornersIcon className="w-4 h-4" weight="bold" />
@@ -282,11 +282,15 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                         onClick={e => e.stopPropagation()}
                         className="ml-2 flex-shrink-0"
                       >
-                        <ArrowUpRightIcon className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-brand-orange ease-apple" />
+                        {/* Visible by default on touch: a phone has no hover, so
+                            this open-page link was permanently invisible yet
+                            still tappable. Bigger and dimmed on mobile, restored
+                            to the hover-reveal treatment at md+. */}
+                        <ArrowUpRightIcon className="w-4 h-4 opacity-60 md:w-3 md:h-3 md:opacity-0 text-neutral-400 md:group-hover:opacity-100 transition-opacity hover:text-brand-orange ease-apple" />
                       </a>
                     </div>
                     <div className="relative flex items-center gap-2 ml-4">
-                      <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
+                      <span className="text-xs font-medium text-brand-orange opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
                         {totalPageviews > 0 ? `${Math.round((page.pageviews / totalPageviews) * 100)}%` : ''}
                       </span>
                       <span className="text-sm font-semibold text-neutral-400">
@@ -373,7 +377,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                         <span className="truncate">{page.path}</span>
                       </div>
                       <div className="flex items-center gap-2 ml-4">
-                        <span className="text-xs font-medium text-brand-orange opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
+                        <span className="text-xs font-medium text-brand-orange opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
                           {modalTotal > 0 ? `${Math.round((page.pageviews / modalTotal) * 100)}%` : ''}
                         </span>
                         <span className="text-sm font-semibold text-neutral-400">

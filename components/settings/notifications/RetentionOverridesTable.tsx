@@ -33,7 +33,7 @@ export default function RetentionOverridesTable({ prefs, onChange }: Props) {
         <THead>
           <TR>
             <TH>Category</TH>
-            <TH>Default</TH>
+            <TH className="hidden md:table-cell">Default</TH>
             <TH>Purge my read items after</TH>
           </TR>
         </THead>
@@ -45,9 +45,9 @@ export default function RetentionOverridesTable({ prefs, onChange }: Props) {
             return (
               <TR key={c.id}>
                 <TD className="font-medium text-foreground">{c.label}</TD>
-                <TD className="tabular-nums text-muted-foreground">{def} days</TD>
+                <TD className="hidden md:table-cell tabular-nums text-muted-foreground">{def} days</TD>
                 <TD>
-                  <div className="w-full min-w-0 max-w-[12rem]">
+                  <div className="w-full min-w-0 md:max-w-[12rem]">
                     <Select
                       aria-label={`Read retention override for ${c.label}`}
                       size="sm"
