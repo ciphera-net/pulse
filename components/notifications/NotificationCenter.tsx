@@ -203,7 +203,11 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
         aria-controls={open ? 'notification-dropdown' : undefined}
         className={isSidebar
           ? 'relative flex items-center gap-2.5 rounded-none px-2.5 py-2 text-sm font-medium text-neutral-400 hover:text-white hover:bg-neutral-800 w-full overflow-hidden transition-colors'
-          : 'relative p-2 text-neutral-400 hover:text-white rounded-none hover:bg-white/[0.06] transition-colors'
+          // p-2 around a 20px icon is a 36x36 hit area. That is fine for a
+          // mouse but under the 44px touch minimum, and this same button is the
+          // notifications entry point in the MOBILE ContentHeader. Widen the box
+          // below md only; md:h-auto/w-auto hands desktop back to p-2 unchanged.
+          : 'relative flex h-11 w-11 items-center justify-center p-2 text-neutral-400 hover:text-white rounded-none hover:bg-white/[0.06] transition-colors md:h-auto md:w-auto'
         }
         aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
       >
@@ -221,7 +225,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
           <>
             <BellIcon />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-brand-orange rounded-full" aria-hidden="true" />
+              <span className="absolute top-3 right-3 md:top-1 md:right-1 w-2 h-2 bg-brand-orange rounded-full" aria-hidden="true" />
             )}
           </>
         )}

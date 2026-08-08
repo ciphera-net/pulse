@@ -118,7 +118,7 @@ export function StepperControl({ label, value, min, max, step = 1, onChange, for
         onPointerUp={stopHold}
         onPointerLeave={stopHold}
         onPointerCancel={stopHold}
-        className="p-1 rounded-none text-neutral-500 transition-colors duration-fast ease-apple hover:text-white disabled:pointer-events-none disabled:opacity-30"
+        className="relative p-1 rounded-none text-neutral-500 transition-colors duration-fast ease-apple hover:text-white disabled:pointer-events-none disabled:opacity-30 before:absolute before:-inset-2.5 before:content-[''] md:before:hidden"
       >
         <Minus className="h-3.5 w-3.5" />
       </button>
@@ -145,7 +145,7 @@ export function StepperControl({ label, value, min, max, step = 1, onChange, for
         onPointerUp={stopHold}
         onPointerLeave={stopHold}
         onPointerCancel={stopHold}
-        className="p-1 rounded-none text-neutral-500 transition-colors duration-fast ease-apple hover:text-white disabled:pointer-events-none disabled:opacity-30"
+        className="relative p-1 rounded-none text-neutral-500 transition-colors duration-fast ease-apple hover:text-white disabled:pointer-events-none disabled:opacity-30 before:absolute before:-inset-2.5 before:content-[''] md:before:hidden"
       >
         <Plus className="h-3.5 w-3.5" />
       </button>

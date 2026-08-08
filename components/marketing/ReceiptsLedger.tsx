@@ -21,7 +21,7 @@ export interface Receipt {
 }
 
 const proofLinkClass =
-  'inline-flex items-center gap-1 text-xs text-primary transition-colors duration-150 hover:text-primary/80 motion-reduce:transition-none'
+  '-my-2.5 py-2.5 md:my-0 md:py-0 inline-flex items-center gap-1 text-xs text-primary transition-colors duration-150 hover:text-primary/80 motion-reduce:transition-none'
 
 export function ProofLink({ proof, className }: { proof: ReceiptProof; className?: string }) {
   const cls = className ? `${proofLinkClass} ${className}` : proofLinkClass

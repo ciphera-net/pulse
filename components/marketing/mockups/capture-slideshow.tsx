@@ -100,7 +100,7 @@ export function CaptureSlideshow({
             type="button"
             onClick={() => step(-1)}
             aria-label="Previous"
-            className="flex h-9 w-9 items-center justify-center rounded-none border border-border bg-card text-muted-foreground transition-colors duration-150 ease-apple hover:bg-neutral-900 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
+            className="flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-none border border-border bg-card text-muted-foreground transition-colors duration-150 ease-apple hover:bg-neutral-900 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
           >
             <ArrowLeftIcon className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -108,7 +108,7 @@ export function CaptureSlideshow({
             type="button"
             onClick={() => step(1)}
             aria-label="Next"
-            className="flex h-9 w-9 items-center justify-center rounded-none border border-border bg-card text-muted-foreground transition-colors duration-150 ease-apple hover:bg-neutral-900 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
+            className="flex h-11 w-11 md:h-9 md:w-9 items-center justify-center rounded-none border border-border bg-card text-muted-foreground transition-colors duration-150 ease-apple hover:bg-neutral-900 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
           >
             <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
           </button>

@@ -393,7 +393,7 @@ export default function PricingSection() {
                       handleSubscribe(plan.id)
                     }}
                     disabled={isCurrent || (!isFree && !isCustomTraffic && !priceDetails)}
-                    className="mt-auto w-full justify-center"
+                    className="mt-auto w-full justify-center h-11 md:h-9"
                   >
                     {isCurrent
                       ? 'Current plan'

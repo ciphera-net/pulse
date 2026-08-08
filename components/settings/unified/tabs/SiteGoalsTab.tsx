@@ -211,7 +211,7 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-11 w-11 md:h-8 md:w-8"
                       aria-label={`Edit ${goal.name}`}
                       onClick={() => startEdit(goal)}
                       disabled={deletingId === goal.id}
@@ -221,7 +221,7 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      className="h-11 w-11 md:h-8 md:w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
                       aria-label={`Delete ${goal.name}`}
                       onClick={() => setConfirmDeleteId(goal.id)}
                       disabled={deletingId === goal.id}

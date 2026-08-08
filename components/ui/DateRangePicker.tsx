@@ -97,7 +97,12 @@ export default function DateRangePicker({
   const updatePosition = useCallback(() => {
     if (!triggerRef.current) return
     const rect = triggerRef.current.getBoundingClientRect()
-    const dropdownWidth = 460
+    // The panel is 460px wide side-by-side, but below sm it stacks and shrinks to
+    // the viewport (see the `w-[min(...)]` on the panel). Clamping against a
+    // hard-coded 460 on a 390px phone yielded left=8 for a 456px-wide panel —
+    // i.e. ~74px of the calendar hanging off-screen, unreachable. Measure the
+    // width the panel can ACTUALLY take before clamping.
+    const dropdownWidth = Math.min(460, window.innerWidth - 16)
     let left = align === 'right' ? rect.right - dropdownWidth : rect.left
     left = Math.max(8, Math.min(left, window.innerWidth - dropdownWidth - 8))
     let top = rect.bottom + 6
@@ -226,10 +231,10 @@ export default function DateRangePicker({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 4, scale: 0.98 }}
           transition={{ duration: 0.15 }}
-          className="fixed z-50 flex rounded-none border border-border bg-popover shadow-lg overflow-hidden"
+          className="fixed z-50 flex w-[min(460px,calc(100vw-16px))] flex-col rounded-none border border-border bg-popover shadow-lg overflow-hidden sm:w-auto sm:flex-row"
           style={pos ? { left: pos.left, top: pos.top } : undefined}
         >
-          <div className="w-44 border-r border-border py-2 overflow-y-auto max-h-[400px]">
+          <div className="w-full max-h-[240px] border-b border-border py-2 overflow-y-auto sm:max-h-[400px] sm:w-44 sm:border-b-0 sm:border-r">
             {PERIOD_GROUPS.map((group) => (
               <div key={group}>
                 <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
@@ -275,7 +280,7 @@ export default function DateRangePicker({
             </div>
           </div>
 
-          <div className="w-[280px] p-3">
+          <div className="w-full p-3 sm:w-[280px]">
             <div className="flex items-center justify-between mb-3">
               <button
                 onClick={prevMonth}
@@ -307,7 +312,7 @@ export default function DateRangePicker({
                   disabled={day.isFuture || !day.isCurrentMonth}
                   onClick={() => handleDayClick(day.date)}
                   onMouseEnter={() => rangeStart && setHoverDate(day.date)}
-                  className={`w-9 h-9 flex items-center justify-center text-sm transition-colors ${getDayClass(day.date, day)}`}
+                  className={`flex h-11 w-full items-center justify-center text-sm transition-colors sm:h-9 sm:w-9 ${getDayClass(day.date, day)}`}
                 >
                   {day.day}
                 </button>

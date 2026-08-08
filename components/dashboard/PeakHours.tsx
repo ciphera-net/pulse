@@ -191,7 +191,7 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
               key={m.key}
               type="button"
               onClick={() => setMetric(m.key)}
-              className={`relative px-2.5 py-1 text-xs font-medium transition-colors duration-fast rounded-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
+              className={`relative px-2.5 py-3 sm:py-1 text-xs font-medium transition-colors duration-fast rounded-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
                 metric === m.key ? 'text-white' : 'text-neutral-400 hover:text-neutral-200'
               } ease-apple`}
             >

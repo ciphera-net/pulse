@@ -85,10 +85,10 @@ export default function SetupInstallPage() {
 
       {verifyState === 'idle' && site && (
         <div className="flex gap-3">
-          <Button onClick={startVerification} variant="secondary" className="flex-1">
+          <Button onClick={startVerification} variant="secondary" className="flex-1 h-11 md:h-9">
             Verify installation
           </Button>
-          <Button onClick={handleContinue} className="flex-1">
+          <Button onClick={handleContinue} className="flex-1 h-11 md:h-9">
             Continue
           </Button>
         </div>
@@ -109,7 +109,7 @@ export default function SetupInstallPage() {
       {verifyState === 'success' && (
         <div className="text-center space-y-4">
           <p className="text-sm text-emerald-400 font-medium">Script verified — data is flowing!</p>
-          <Button onClick={handleContinue} className="w-full">Continue</Button>
+          <Button onClick={handleContinue} className="w-full h-11 md:h-9">Continue</Button>
         </div>
       )}
 
@@ -119,10 +119,10 @@ export default function SetupInstallPage() {
             No data received yet. You can continue and check back later.
           </p>
           <div className="flex gap-3">
-            <Button onClick={startVerification} variant="secondary" className="flex-1">
+            <Button onClick={startVerification} variant="secondary" className="flex-1 h-11 md:h-9">
               Try again
             </Button>
-            <Button onClick={handleContinue} className="flex-1">
+            <Button onClick={handleContinue} className="flex-1 h-11 md:h-9">
               Continue anyway
             </Button>
           </div>
@@ -140,10 +140,10 @@ export default function SetupInstallPage() {
               show yet. Create your site first and the snippet will appear here.
             </p>
           </div>
-          <Button onClick={() => router.push('/setup')} variant="secondary" className="w-full">
+          <Button onClick={() => router.push('/setup')} variant="secondary" className="w-full h-11 md:h-9">
             Back to site setup
           </Button>
-          <Button onClick={handleContinue} className="w-full">
+          <Button onClick={handleContinue} className="w-full h-11 md:h-9">
             Continue anyway
           </Button>
         </div>
@@ -152,7 +152,7 @@ export default function SetupInstallPage() {
       <button
         type="button"
         onClick={handleContinue}
-        className="mt-4 w-full text-center text-sm text-neutral-500 hover:text-neutral-400 transition-colors"
+        className="mt-4 w-full min-h-11 md:min-h-0 text-center text-sm text-neutral-500 hover:text-neutral-400 transition-colors"
       >
         Skip for now
       </button>

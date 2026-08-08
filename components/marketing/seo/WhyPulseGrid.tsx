@@ -48,7 +48,7 @@ const DIFFERENTIATORS: Differentiator[] = [
 ]
 
 const proofLinkClass =
-  'mt-5 inline-flex items-center gap-1 text-xs text-primary transition-colors duration-150 hover:text-primary/80 motion-reduce:transition-none'
+  'mt-5 -mb-2.5 py-2.5 md:mb-0 md:py-0 inline-flex items-center gap-1 text-xs text-primary transition-colors duration-150 hover:text-primary/80 motion-reduce:transition-none'
 
 /**
  * The "Why teams pick Pulse" grid used on every /vs page — the four constant,

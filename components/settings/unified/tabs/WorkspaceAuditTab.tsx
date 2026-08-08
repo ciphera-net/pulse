@@ -253,9 +253,14 @@ export default function WorkspaceAuditTab() {
                         </span>
                       </TD>
                       <TD title={ACTION_LABELS[entry.action] || humanizeAction(entry.action)}>
+                        {/* overflow-wrap:anywhere below md. Action labels are
+                            single long tokens ("SUBSCRIPTION_UPDATED"); with
+                            whitespace-normal alone they cannot break, so they
+                            pushed the row past the scroller and rendered cut
+                            mid-word ("SUBSCRIPTIOI"), reading as data loss. */}
                         <StatusChip
                           tone={actionTone(entry.action)}
-                          className="whitespace-normal font-semibold uppercase text-[11px] tracking-[0.08em]"
+                          className="whitespace-normal [overflow-wrap:anywhere] md:[overflow-wrap:normal] font-semibold uppercase text-[11px] tracking-[0.08em]"
                         >
                           {ACTION_LABELS[entry.action] || humanizeAction(entry.action)}
                         </StatusChip>

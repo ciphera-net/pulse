@@ -175,7 +175,7 @@ export default function IntegrationsPage() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search integrations…"
               aria-label="Search integrations"
-              className="h-10 w-full border border-border bg-card pl-10 pr-16 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="h-11 md:h-10 w-full border border-border bg-card pl-10 pr-16 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             />
             {query ? (
               <button

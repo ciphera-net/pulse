@@ -70,7 +70,7 @@ export default function PricingFAQ() {
               onClick={() => selectGroup(g.key)}
               onKeyDown={(e) => handleTabKeyDown(e, i)}
               className={cn(
-                'flex items-baseline justify-between gap-3 py-1.5 text-left text-xs transition-colors duration-150 motion-reduce:transition-none',
+                'flex min-h-11 items-baseline justify-between gap-3 py-3 text-left text-xs transition-colors lg:min-h-0 lg:py-1.5 duration-150 motion-reduce:transition-none',
                 isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
               )}
             >

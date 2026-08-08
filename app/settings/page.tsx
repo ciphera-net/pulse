@@ -123,10 +123,17 @@ export default function SettingsLandingPage() {
             />
           ) : (
             <>
+              {/* Name and domain share a single row on desktop. On a phone that
+                  row is ~230px wide once the status chip is placed, so BOTH
+                  truncated into uselessness ("[QA] Settings…" over
+                  "qa-settings-drive.exa…"). Stack them below sm; sm+ is the
+                  original single row. */}
               {activeSite && (
                 <div className="flex min-w-0 items-center gap-2 border-b border-border bg-muted/40 px-5 py-3">
-                  <span className="min-w-0 truncate text-sm font-medium text-foreground">{activeSite.name}</span>
-                  <span className="min-w-0 truncate text-xs text-muted-foreground">{activeSite.domain}</span>
+                  <div className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-center sm:gap-2">
+                    <span className="min-w-0 truncate text-sm font-medium text-foreground">{activeSite.name}</span>
+                    <span className="min-w-0 truncate text-xs text-muted-foreground">{activeSite.domain}</span>
+                  </div>
                   <StatusChip
                     tone={activeSite.is_verified ? 'success' : 'warning'}
                     className="ml-auto shrink-0"

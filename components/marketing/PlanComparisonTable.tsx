@@ -35,12 +35,67 @@ function ValueCell({ value }: { value: PlanFeatureValue }) {
  * The detailed plan-comparison grid under the pricing cards — VerdictTable's
  * anatomy at four plan columns: hairline table, muted feature rail, the
  * popular plan's column emphasized with bg-card and a primary top edge.
- * Scrolls horizontally inside its own container on narrow screens so the
- * page body never scrolls sideways.
+ *
+ * TWO renderings. Five columns cannot fit a phone: the table is min-w-[720px]
+ * inside a ~340px box, so Solo, Team (the "popular" one) and Business were all
+ * 100% off-screen with no scrollbar or fade to suggest otherwise, and the 720px
+ * min-content made /pricing the only route in the estate with document-level
+ * horizontal overflow. Below md we render the same `groups` data as one card per
+ * plan; `display:none` on the table also removes its min-content from layout,
+ * which is what actually kills the page overflow. md+ is unchanged.
  */
 export function PlanComparisonTable({ groups }: { groups: PlanFeatureGroup[] }) {
   return (
-    <div className="mt-10 overflow-x-auto border border-border">
+    <>
+      {/* ── phone: one card per plan ── */}
+      <div className="mt-10 space-y-4 md:hidden">
+        {COLUMNS.map((plan) => (
+          <div
+            key={plan.id}
+            className={cn('relative border border-border', plan.popular && 'bg-card')}
+          >
+            {plan.popular && (
+              <span aria-hidden="true" className="absolute inset-x-0 top-0 h-[3px] bg-primary" />
+            )}
+            <div className="border-b border-border px-5 py-4">
+              <span
+                className={cn(
+                  'text-xs uppercase tracking-[0.08em]',
+                  plan.popular ? 'text-foreground' : 'text-muted-foreground',
+                )}
+              >
+                {plan.name}
+              </span>
+            </div>
+            {groups.map((group, groupIndex) => (
+              <div key={group.label} className="border-b border-border last:border-b-0">
+                <p className="flex items-baseline gap-3 px-5 pb-2 pt-4 text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                  <span className="tabular-nums text-primary">
+                    {String(groupIndex + 1).padStart(2, '0')}
+                  </span>
+                  {group.label}
+                </p>
+                <dl>
+                  {group.rows.map((row) => (
+                    <div
+                      key={`${plan.id}-${group.label}-${row.label}`}
+                      className="flex items-center justify-between gap-4 px-5 py-2.5"
+                    >
+                      <dt className="text-sm text-muted-foreground">{row.label}</dt>
+                      <dd className="flex shrink-0 items-center text-right">
+                        <ValueCell value={row.values[plan.id] ?? false} />
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      {/* ── md+: the original table, untouched ── */}
+      <div className="mt-10 hidden overflow-x-auto border border-border md:block">
       <table className="w-full min-w-[720px] border-collapse text-left">
         <caption className="sr-only">Feature comparison across all Pulse plans</caption>
         <thead>
@@ -104,6 +159,7 @@ export function PlanComparisonTable({ groups }: { groups: PlanFeatureGroup[] }) 
           ))}
         </tbody>
       </table>
-    </div>
+      </div>
+    </>
   )
 }

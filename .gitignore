@@ -54,6 +54,7 @@ playwright-report/
 # other local *.test.ts / *.spec.ts experiments under tests/ untracked.
 tests/*
 !tests/settings-smoke.spec.ts
+!tests/site-settings-save.spec.ts
 !tests/support/
 tests/support/*
 !tests/support/login.ts

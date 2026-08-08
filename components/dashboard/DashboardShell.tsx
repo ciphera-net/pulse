@@ -553,7 +553,12 @@ export default function DashboardShell({
       />
       <ShortcutsOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} currentSiteId={siteId ?? undefined} />
-      <div className="flex h-screen overflow-hidden bg-neutral-950">
+      {/* h-[100dvh], not h-screen: on mobile Safari/Chrome `100vh` is the
+          LARGEST viewport (toolbars retracted), so a h-screen app shell puts its
+          bottom edge permanently underneath the browser chrome — the last row of
+          any page is unreachable. `dvh` tracks the visible viewport. On desktop
+          dvh === vh, so this is a no-op there. */}
+      <div className="flex h-[100dvh] overflow-hidden bg-neutral-950">
         <Sidebar
           siteId={siteId}
           mobileOpen={mobileOpen}
@@ -564,11 +569,16 @@ export default function DashboardShell({
         <div className="flex-1 flex flex-col min-w-0">
           {/* Glass top bar — above content only, collapse icon reaches back into sidebar column */}
           <GlassTopBar siteId={siteId} />
-          {/* Content panel — elevated: inset top highlight + outer shadow for perceived depth */}
+          {/* Content panel — elevated: inset top highlight + outer shadow for perceived depth.
+              The mr-3/mb-3 gutter is a DESKTOP inset: it balances the sidebar
+              column on the left. Below md there is no sidebar, so the same
+              margins made the panel visibly lopsided (flush left, 12px gap
+              right) and ate horizontal space the phone cannot spare — hence
+              md: only. */}
           <div
-            className="flex-1 flex flex-col min-w-0 mr-3 mb-3 rounded-none bg-neutral-950 border border-neutral-800 overflow-hidden relative"
+            className="flex-1 flex flex-col min-w-0 md:mr-3 md:mb-3 rounded-none bg-neutral-950 border border-neutral-800 overflow-hidden relative"
           >
-            <ContentHeader onMobileMenuOpen={openMobile} />
+            <ContentHeader onMobileMenuOpen={openMobile} siteId={siteId} />
             {/* pb-24 on mobile: scroll clearance for the floating checklist
                 pill + support button (S2-i) */}
             <main

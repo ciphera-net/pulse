@@ -60,7 +60,7 @@ export default function InstallationPage() {
               layout.tsx / index.html
             </span>
           </div>
-          <pre className="overflow-x-auto p-6">
+          <pre className="overflow-x-auto p-6 whitespace-pre-wrap [overflow-wrap:anywhere] md:whitespace-pre md:[overflow-wrap:normal]">
             <code className="font-mono text-sm text-muted-foreground">
               <span className="text-foreground">&lt;script</span>{' '}
               <span className="text-primary">defer</span>{' '}
@@ -105,7 +105,7 @@ export default function InstallationPage() {
               e.g. button click handler
             </span>
           </div>
-          <pre className="overflow-x-auto p-6">
+          <pre className="overflow-x-auto p-6 whitespace-pre-wrap [overflow-wrap:anywhere] md:whitespace-pre md:[overflow-wrap:normal]">
             <code className="font-mono text-sm text-muted-foreground">
               <span className="text-primary">pulse</span>
               <span className="text-foreground">.</span>

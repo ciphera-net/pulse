@@ -161,7 +161,9 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                   here (it's a panel footer in the content column), so this row
                   stays a plain, non-sticky header — the tab's primary CTA is the
                   only thing that portals into the action area. */}
-              <div className="flex items-start justify-between gap-4">
+              {/* Stacks below md: the action slot is shrink-0, so on a phone it
+                  squeezed the lede to under half the viewport. md+ unchanged. */}
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div className="min-w-0">
                   {masthead && (
                     <p className="mb-2 font-semibold text-micro-label uppercase text-muted-foreground">

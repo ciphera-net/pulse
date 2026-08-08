@@ -55,7 +55,12 @@ export function SettingsPanel({
       {hasHeader && (
         <header
           className={cn(
-            'flex items-start justify-between gap-4 px-5 py-4',
+            // Column below md. This header is the house recipe across every
+            // settings tab: a text block beside a `shrink-0` action. On a phone
+            // the action claimed its full intrinsic width and crushed the
+            // description to 40-50% of the viewport, breaking it over 3-4 lines.
+            // Stacking gives the copy the full width; md+ is the original row.
+            'flex flex-col gap-3 px-5 py-4 md:flex-row md:items-start md:justify-between md:gap-4',
             // The hairline only appears once the panel is actually titled — an
             // action-only header floats over the body without a rule.
             kicker && 'border-b border-border',
