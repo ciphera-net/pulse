@@ -18,7 +18,7 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
-    "@ciphera-net/facet": "^0.4.4",
+    "@ciphera-net/facet": "^0.4.5",
     "@ciphera-net/facet-tailwind": "^0.2.0",
     "@ciphera-net/facet-tokens": "^0.1.0",
     "@ciphera-net/tessera": "^0.1.3",
