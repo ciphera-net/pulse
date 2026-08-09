@@ -197,6 +197,7 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
             siteId={siteId}
             showFrameworkPicker
             onFeaturesChange={(features) => setScriptFeatures(features)}
+            onFrameworkPersisted={() => mutate()}
             disabled={!canEdit || saving}
           />
         </div>

@@ -139,6 +139,20 @@ export async function verifySite(id: string): Promise<void> {
   })
 }
 
+/**
+ * Record which platform a site is installed on.
+ *
+ * Detection (`detectFramework`) only fingerprints what it can reach and never
+ * clears a stale answer, so the customer's own pick is the authoritative one.
+ * Pass an empty string to clear it back to unknown.
+ */
+export async function setSiteFramework(id: string, framework: string): Promise<{ detected_framework: string | null }> {
+  return apiRequest<{ detected_framework: string | null }>(`/sites/${id}/framework`, {
+    method: 'PUT',
+    body: JSON.stringify({ framework }),
+  })
+}
+
 export async function restoreSite(id: string): Promise<void> {
   await apiRequest(`/sites/${id}/restore`, {
     method: 'POST',

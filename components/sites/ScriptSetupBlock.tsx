@@ -21,6 +21,7 @@ import {
 } from '@/lib/integrations'
 import {
   toast,
+  getAuthErrorMessage,
   Toggle,
   Input,
   RailGrid,
@@ -33,6 +34,7 @@ import Select from '@/components/ui/select'
 import { TierBadge } from '@/components/integrations/TierBadge'
 import { PanelRow, PanelRows } from '@/components/settings/panels'
 import { useInstallStatus } from '@/lib/swr/dashboard'
+import { setSiteFramework } from '@/lib/api/sites'
 import scriptVersions from '@/public/script-versions.json'
 
 // * Immutable versioned manifest — SRI is pinned ONLY against these URLs, never
@@ -94,6 +96,8 @@ interface ScriptSetupBlockProps {
   onScriptCopy?: () => void
   /** Called when features change so the parent can save to backend. */
   onFeaturesChange?: (features: Record<string, unknown>) => void
+  /** Called after the platform has been persisted, so the parent can revalidate. */
+  onFrameworkPersisted?: () => void
   /** Show framework picker. Default true. */
   showFrameworkPicker?: boolean
   /** Optional class for the root wrapper. */
@@ -109,6 +113,7 @@ export default function ScriptSetupBlock({
   siteId,
   onScriptCopy,
   onFeaturesChange,
+  onFrameworkPersisted,
   showFrameworkPicker = true,
   className = '',
   disabled = false,
@@ -242,6 +247,23 @@ export default function ScriptSetupBlock({
     setTimeout(() => setCspCopied(false), 2000)
   }, [])
 
+  // Picking a platform persists immediately rather than joining the save bar's
+  // dirty buffer: it rewrites the snippet on screen, so a pick that needed a
+  // separate Save would show one platform's instructions while the site still
+  // recorded another. Local state leads so the UI never lags the click; a
+  // failed write is surfaced and rolled back rather than silently kept.
+  const selectFramework = useCallback((next: string) => {
+    const previous = framework
+    setFramework(next)
+    if (!siteId) return
+    setSiteFramework(siteId, next)
+      .then(() => onFrameworkPersisted?.())
+      .catch((err) => {
+        setFramework(previous)
+        toast.error(getAuthErrorMessage(err as Error) || 'Could not save your platform')
+      })
+  }, [framework, siteId, onFrameworkPersisted])
+
   const toggleFeature = (key: FeatureKey) => {
     setFeatures((prev) => {
       const next = { ...prev, [key]: !prev[key] }
@@ -265,8 +287,11 @@ export default function ScriptSetupBlock({
 
   return (
     <div className={className}>
-      {/* ── 1. Platform picker drives the panel ─────────────────────────────── */}
-      {/* ── 0. Resolved header — the whole panel for an installed site ───────── */}
+      {/* ── 0. Resolved header — the whole panel for an installed site ─────────
+             When no platform is on record the row says so and offers to set
+             one, rather than printing a generic title as if nothing were
+             missing: the platform is what makes the snippet and the paste
+             location specific, so an unset one is worth naming. */}
       {isInstalled && !changingPlatform && (
         <div className="mb-4 flex flex-wrap items-center gap-3">
           {selected ? (
@@ -277,15 +302,17 @@ export default function ScriptSetupBlock({
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold text-foreground">
-                {selected?.name ?? 'Tracking script'}
+                {selected?.name ?? 'Platform not set'}
               </span>
               {selected && <TierBadge tier={selected.supportTier} />}
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {selected?.snippet?.label ? (
                 <>Installed in <span className="font-mono">{selected.snippet.label}</span></>
-              ) : (
+              ) : selected ? (
                 'Installed and reporting'
+              ) : (
+                'Set it to get the exact snippet and where it goes'
               )}
               {installData?.last_event_at && <> · last event {relativeTime(installData.last_event_at)}</>}
             </p>
@@ -303,9 +330,14 @@ export default function ScriptSetupBlock({
                 type="button"
                 onClick={() => setChangingPlatform(true)}
                 disabled={disabled}
-                className="border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors ease-apple disabled:opacity-50"
+                className={cn(
+                  'border px-3 py-1.5 text-xs font-medium transition-colors ease-apple disabled:opacity-50',
+                  selected
+                    ? 'border-border text-muted-foreground hover:text-foreground'
+                    : 'border-primary text-primary hover:bg-primary/10',
+                )}
               >
-                Change platform
+                {selected ? 'Change platform' : 'Set platform'}
               </button>
             )}
           </div>
@@ -351,7 +383,7 @@ export default function ScriptSetupBlock({
                   <button
                     key={fw.id}
                     type="button"
-                    onClick={() => setFramework(isSelected ? '' : fw.id)}
+                    onClick={() => selectFramework(isSelected ? '' : fw.id)}
                     aria-pressed={isSelected}
                     disabled={disabled}
                     className={cn(
