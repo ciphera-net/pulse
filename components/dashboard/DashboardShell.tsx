@@ -11,6 +11,7 @@ import { formatUpdatedAgo } from '@/lib/utils/format'
 import { useFunnelDetail } from '@/lib/swr/dashboard'
 import { useAuth } from '@/lib/auth/context'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
+import OnboardingChip from '@/components/onboarding/OnboardingChip'
 import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
 import { setSessionAction } from '@/app/actions/auth'
 import { logger } from '@/lib/utils/logger'
@@ -511,6 +512,7 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
             Live · <LiveAgo lastUpdatedAt={lastUpdatedAt} />
           </div>
         )}
+        <OnboardingChip />
         <NotificationCenter anchor="bottom" variant="default" />
         <UserMenu
           auth={auth}
@@ -579,12 +581,10 @@ export default function DashboardShell({
             className="flex-1 flex flex-col min-w-0 md:mr-3 md:mb-3 rounded-none bg-neutral-950 border border-neutral-800 overflow-hidden relative"
           >
             <ContentHeader onMobileMenuOpen={openMobile} siteId={siteId} />
-            {/* pb-24 on mobile: scroll clearance for the floating checklist
-                pill + support button (S2-i) */}
             <main
               id="main-content"
               tabIndex={-1}
-              className="relative flex-1 overflow-y-auto overflow-x-hidden pb-24 sm:pb-0"
+              className="relative flex-1 overflow-y-auto overflow-x-hidden"
             >
               {/* * Top spacing lives INSIDE the scrolled content, never as padding on
                * the scroll container — sticky children pin below a scroller's

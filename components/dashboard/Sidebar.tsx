@@ -24,7 +24,7 @@ import {
   XIcon,
   BookOpenIcon,
 } from '@ciphera-net/facet'
-import { ReportIssueButton } from '@/components/support/ReportIssueButton'
+import { HelpSupportButton } from '@/components/support/HelpSupportButton'
 
 const EXPANDED = 256
 const COLLAPSED = 64
@@ -377,16 +377,16 @@ function SidebarContent({
         </nav>
       )}
 
-      {/* Report Issue — sidebar bottom */}
+      {/* Help & Support — sidebar bottom */}
       <div className="shrink-0 px-2 pb-3 pt-2 border-t border-neutral-800/60">
         {c ? (
-          <SidebarTooltip label="Report Issue">
+          <SidebarTooltip label="Help & Support">
             <div className="flex justify-center">
-              <ReportIssueButton siteId={siteId ?? undefined} collapsed />
+              <HelpSupportButton collapsed />
             </div>
           </SidebarTooltip>
         ) : (
-          <ReportIssueButton siteId={siteId ?? undefined} />
+          <HelpSupportButton />
         )}
       </div>
 
