@@ -9,7 +9,6 @@ import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import DashboardShell from '@/components/dashboard/DashboardShell'
-import GettingStartedChecklist from '@/components/dashboard/GettingStartedChecklist'
 import { ErrorBoundary } from '@/components/error-boundary'
 import VersionToast from '@/components/VersionToast'
 
@@ -69,10 +68,6 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
       <>
         {showOfflineBar && <OfflineBanner isOnline={isOnline} />}
         <DashboardShell siteId={null}>{children}</DashboardShell>
-        {/* Onboarding widget is suppressed on /settings/* (spec §2.4): it clipped
-            the Create-role / Delete buttons there. Also on /admin (owner-only
-            chrome, onboarding is noise). It still shows everywhere else. */}
-        {!pathname.startsWith('/settings') && !pathname.startsWith('/admin') && <GettingStartedChecklist />}
       </>
     )
   }

@@ -1,0 +1,91 @@
+'use client'
+
+import { useCallback } from 'react'
+import useSWR from 'swr'
+import { useAuth } from '@/lib/auth/context'
+import { useSites } from '@/lib/swr/sites'
+import { useMembers } from '@/lib/swr/members'
+import { listGoals, type Goal } from '@/lib/api/goals'
+import { listReportSchedules, type ReportSchedule } from '@/lib/api/report-schedules'
+
+const DISMISSED_PREFIX = 'pulse_checklist_dismissed_'
+
+export interface OnboardingItem {
+  key: string
+  label: string
+  href?: string
+  completed: boolean
+}
+
+/**
+ * Single source of truth for the Getting Started checklist. The chip renders
+ * TWICE (desktop GlassTopBar is hidden below md, mobile ContentHeader is
+ * md:hidden), so all state — including dismissal — must live in a store both
+ * mounts share. SWR is that store; localStorage is only the persistence layer
+ * behind the dismissed key.
+ */
+export function useOnboarding() {
+  const { user } = useAuth()
+  const orgId = user?.org_id
+  const { sites, isLoading: sitesLoading } = useSites()
+  const { members } = useMembers()
+  const firstSiteId = sites[0]?.id ?? ''
+
+  // Same SWR keys as the dashboard's useGoals/useReportSchedules so the cache
+  // is shared, but with refreshInterval: 0 — onboarding completion changes on
+  // user action, never in the background, and this hook mounts in the shell on
+  // every page. The dashboard's 60s poll must not ride along app-wide.
+  const { data: goals } = useSWR<Goal[]>(
+    firstSiteId ? ['goals', firstSiteId] : null,
+    () => listGoals(firstSiteId),
+    { refreshInterval: 0, revalidateOnFocus: false, dedupingInterval: 30_000 }
+  )
+  const { data: schedules } = useSWR<ReportSchedule[]>(
+    firstSiteId ? ['reportSchedules', firstSiteId] : null,
+    () => listReportSchedules(firstSiteId),
+    { refreshInterval: 0, revalidateOnFocus: false, dedupingInterval: 30_000 }
+  )
+
+  // Dismissal in SWR keyed by org: dismiss() in one mount mutates the shared
+  // cache, so the other mount hides in the same render pass. `undefined` means
+  // "not read yet" and keeps the chip hidden — no flash before hydration.
+  const { data: dismissed, mutate: mutateDismissed } = useSWR(
+    orgId ? ['onboarding-dismissed', orgId] : null,
+    ([, id]: [string, string]) => localStorage.getItem(`${DISMISSED_PREFIX}${id}`) === 'true',
+    { revalidateOnFocus: false }
+  )
+
+  const dismiss = useCallback(() => {
+    if (!orgId) return
+    localStorage.setItem(`${DISMISSED_PREFIX}${orgId}`, 'true')
+    mutateDismissed(true, false)
+  }, [orgId, mutateDismissed])
+
+  const items: OnboardingItem[] = [
+    { key: 'site', label: 'Add your first site', href: '/sites/new', completed: sites.length > 0 },
+    // Point directly at the settings tabs. The old `/sites/{id}/settings` /
+    // `/sites/{id}/goals` targets were a deprecated redirect shim and a dead
+    // 404 respectively; "Enable email reports" also landed on General, not
+    // Reports. The site-settings page resolves the active site from
+    // sessionStorage, falling back to the first site (firstSiteId here).
+    { key: 'script', label: 'Install tracking script', href: firstSiteId ? '/settings/site/general' : undefined, completed: sites.some(s => s.is_verified) },
+    { key: 'teammate', label: 'Invite a teammate', href: '/settings/organization/members', completed: members.length > 1 },
+    { key: 'goal', label: 'Set up a goal', href: firstSiteId ? '/settings/site/goals' : undefined, completed: (goals?.length ?? 0) > 0 },
+    { key: 'reports', label: 'Enable email reports', href: firstSiteId ? '/settings/site/reports' : undefined, completed: schedules?.some(s => s.channel === 'email' && s.enabled) ?? false },
+  ]
+
+  const completedCount = items.filter(i => i.completed).length
+  const total = items.length
+  const allDone = completedCount === total
+  const nextItem = items.find(i => !i.completed)
+
+  // Gate visibility on the data actually being there. The chip is top-bar
+  // chrome: appearing with a provisional 0/5 and then settling (or vanishing
+  // at allDone) would visibly shift the bell/avatar cluster on every load.
+  const dataReady =
+    !sitesLoading &&
+    (firstSiteId === '' || (goals !== undefined && schedules !== undefined))
+  const visible = Boolean(orgId) && dismissed === false && dataReady && !allDone
+
+  return { items, completedCount, total, allDone, nextItem, visible, dismiss }
+}
