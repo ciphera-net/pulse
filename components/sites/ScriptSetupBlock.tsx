@@ -31,6 +31,7 @@ import {
 } from '@ciphera-net/facet'
 import Select from '@/components/ui/select'
 import { TierBadge } from '@/components/integrations/TierBadge'
+import { PanelRow, PanelRows } from '@/components/settings/panels'
 import { useInstallStatus } from '@/lib/swr/dashboard'
 import scriptVersions from '@/public/script-versions.json'
 
@@ -131,6 +132,18 @@ export default function ScriptSetupBlock({
   const [customizeOpen, setCustomizeOpen] = useState(false)
   const [showAllPlatforms, setShowAllPlatforms] = useState(false)
   const [platformSearch, setPlatformSearch] = useState('')
+  const [snippetOpen, setSnippetOpen] = useState(false)
+  const [changingPlatform, setChangingPlatform] = useState(false)
+
+  // The panel serves two populations that want opposite things. Someone whose
+  // script is live wants to re-copy one line or change a setting; someone who
+  // has not installed yet wants the picker and the snippet. `install_status` is
+  // the server's own answer — derived from events actually received — so the
+  // branch costs nothing and cannot disagree with reality.
+  const { data: installData } = useInstallStatus(siteId, { poll: true })
+  const installStatus = installData?.install_status
+  const isInstalled = Boolean(siteId) && installStatus === 'active'
+  const showSetupFlow = !isInstalled || changingPlatform
 
   // The registry's own curated picker selection, ranked — NOT every entry.
   // `showInPicker: false` marks platforms that cannot take a script tag at all
@@ -253,7 +266,53 @@ export default function ScriptSetupBlock({
   return (
     <div className={className}>
       {/* ── 1. Platform picker drives the panel ─────────────────────────────── */}
-      {showFrameworkPicker && (
+      {/* ── 0. Resolved header — the whole panel for an installed site ───────── */}
+      {isInstalled && !changingPlatform && (
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          {selected ? (
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center border border-border bg-card [&_svg]:h-5 [&_svg]:w-5">
+              {selected.icon}
+            </span>
+          ) : null}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-foreground">
+                {selected?.name ?? 'Tracking script'}
+              </span>
+              {selected && <TierBadge tier={selected.supportTier} />}
+            </div>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {selected?.snippet?.label ? (
+                <>Installed in <span className="font-mono">{selected.snippet.label}</span></>
+              ) : (
+                'Installed and reporting'
+              )}
+              {installData?.last_event_at && <> · last event {relativeTime(installData.last_event_at)}</>}
+            </p>
+          </div>
+          <div className="ml-auto flex shrink-0 flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setSnippetOpen((v) => !v)}
+              className="border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors ease-apple"
+            >
+              {snippetOpen ? 'Hide snippet' : 'Show snippet'}
+            </button>
+            {showFrameworkPicker && (
+              <button
+                type="button"
+                onClick={() => setChangingPlatform(true)}
+                disabled={disabled}
+                className="border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors ease-apple disabled:opacity-50"
+              >
+                Change platform
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showFrameworkPicker && showSetupFlow && (
         <div className="mb-4">
           {/* The grid IS the picker. It used to sit behind a "Browse all
               platforms" disclosure with an empty Select in front of it, so the
@@ -333,21 +392,32 @@ export default function ScriptSetupBlock({
             </RailGrid>
           )}
 
-          {!platformSearch.trim() && pickerIntegrations.length > RANKED_COUNT && (
-            <button
-              type="button"
-              onClick={() => setShowAllPlatforms((v) => !v)}
-              className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors ease-apple"
-            >
-              <CaretDown className={cn('w-3.5 h-3.5 transition-transform ease-apple', showAllPlatforms && 'rotate-180')} />
-              {showAllPlatforms ? 'Show fewer platforms' : `Show all ${pickerIntegrations.length} platforms`}
-            </button>
-          )}
+          <div className="mt-2 flex flex-wrap items-center gap-4">
+            {!platformSearch.trim() && pickerIntegrations.length > RANKED_COUNT && (
+              <button
+                type="button"
+                onClick={() => setShowAllPlatforms((v) => !v)}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors ease-apple"
+              >
+                <CaretDown className={cn('w-3.5 h-3.5 transition-transform ease-apple', showAllPlatforms && 'rotate-180')} />
+                {showAllPlatforms ? 'Show fewer platforms' : `Show all ${pickerIntegrations.length} platforms`}
+              </button>
+            )}
+            {changingPlatform && (
+              <button
+                type="button"
+                onClick={() => setChangingPlatform(false)}
+                className="text-xs font-medium text-primary hover:text-primary/80 transition-colors ease-apple"
+              >
+                Done
+              </button>
+            )}
+          </div>
         </div>
       )}
 
       {/* ── 2. Tier-aware caveat banner (plan-gated / special) ───────────────── */}
-      {needsCaveat && selected?.snippet?.note && (
+      {(showSetupFlow || snippetOpen) && needsCaveat && selected?.snippet?.note && (
         <div className="rounded-none border border-amber-500/25 bg-amber-500/5 p-4 mb-3">
           <div className="flex items-center gap-2 mb-1.5">
             <TierBadge tier={selected.supportTier} />
@@ -358,7 +428,9 @@ export default function ScriptSetupBlock({
       )}
 
       {/* ── 3. The snippet + where to paste it ───────────────────────────────── */}
-      {isPlugin && selected?.snippet ? (
+      {/* An installed site does not need the code on screen by default — it is
+          one click away behind "Show snippet". */}
+      {(showSetupFlow || snippetOpen) && (isPlugin && selected?.snippet ? (
         <div className="rounded-none border border-border bg-muted p-4">
           <p className="text-sm text-muted-foreground">{selected.snippet.note}</p>
           {selected.snippet.cta && (
@@ -404,12 +476,13 @@ export default function ScriptSetupBlock({
             {scriptSnippet}
           </pre>
         </div>
-      )}
+      ))}
 
-      {/* ── 4. Inline verify (only with a persisted site) ────────────────────── */}
-      {siteId && <InstallVerify siteId={siteId} domain={site.domain} />}
+      {/* ── 4. Install state — ONE signal, the server's own ──────────────────── */}
+      {siteId && <InstallVerify siteId={siteId} domain={site.domain} compact={isInstalled} />}
 
       {/* ── 5. CSP + docs one-liners ─────────────────────────────────────────── */}
+      {(showSetupFlow || snippetOpen) && (
       <div className="mt-4 rounded-none border border-border bg-muted/50 p-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-semibold text-foreground">Behind a Content Security Policy?</span>
@@ -432,89 +505,67 @@ export default function ScriptSetupBlock({
           CSP &amp; ad-blocker guide →
         </a>
       </div>
+      )}
 
-      {/* ── 6. Customize (collapsed by default; refinements, not the main path) ─ */}
+      {/* ── 6. Customize — the reason an installed site opens this panel, so it
+             is not hidden behind a disclosure once the script is live. ───────── */}
       <div className="mt-4 rounded-none border border-border">
-        <button
-          type="button"
-          onClick={() => setCustomizeOpen((v) => !v)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-foreground cursor-pointer"
-        >
-          Customize tracking
-          <CaretDown
-            className={`w-4 h-4 text-muted-foreground transition-transform ease-apple ${customizeOpen ? 'rotate-180' : ''}`}
-          />
-        </button>
-        {customizeOpen && (
-          <div className="px-4 pb-4 border-t border-border pt-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {FEATURES.map((f) => (
-                <div
-                  key={f.key}
-                  className="bg-card border border-border flex items-center justify-between rounded-none px-4 py-3"
-                >
-                  <div className="min-w-0 mr-3">
-                    <span className="text-sm font-medium text-foreground block">{f.label}</span>
-                    <span className="text-xs text-muted-foreground">{f.description}</span>
-                  </div>
-                  <Toggle checked={features[f.key]} onChange={() => toggleFeature(f.key)} disabled={disabled} />
-                </div>
-              ))}
-            </div>
-
-            {/* Add-ons */}
-            <div className="mt-3 flex items-center justify-between rounded-none border border-dashed border-input bg-muted px-4 py-3">
-              <div className="min-w-0 mr-3">
-                <span className="text-sm font-medium text-foreground block">Frustration tracking</span>
-                <span className="text-xs text-muted-foreground">
-                  Rage &amp; dead clicks &middot; Loads a separate add-on script
-                </span>
-              </div>
-              <Toggle checked={features.frustration} onChange={() => toggleFeature('frustration')} disabled={disabled} />
-            </div>
-            <div className="mt-2 flex items-center justify-between rounded-none border border-dashed border-input bg-muted px-4 py-3">
-              <div className="min-w-0 mr-3">
-                <span className="text-sm font-medium text-foreground block">Interaction tracking</span>
-                <span className="text-xs text-muted-foreground">
-                  Copy, print &amp; video events &middot; Loads a separate add-on script
-                </span>
-              </div>
-              <Toggle checked={features.interactions} onChange={() => toggleFeature('interactions')} disabled={disabled} />
-            </div>
-
+        {!isInstalled || changingPlatform ? (
+          <button
+            type="button"
+            onClick={() => setCustomizeOpen((v) => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-foreground cursor-pointer"
+          >
+            Customize tracking
+            <CaretDown
+              className={`w-4 h-4 text-muted-foreground transition-transform ease-apple ${customizeOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
+        ) : (
+          <div className="px-4 py-3 text-sm font-semibold text-foreground">Customize tracking</div>
+        )}
+        {(customizeOpen || (isInstalled && !changingPlatform)) && (
+          <PanelRows className="border-t border-border">
+            {FEATURES.map((f) => (
+              <PanelRow
+                key={f.key}
+                label={f.label}
+                caption={f.description}
+                control={<Toggle checked={features[f.key]} onChange={() => toggleFeature(f.key)} disabled={disabled} />}
+              />
+            ))}
+            <PanelRow
+              label="Frustration tracking"
+              caption="Rage & dead clicks · Loads a separate add-on script"
+              control={<Toggle checked={features.frustration} onChange={() => toggleFeature('frustration')} disabled={disabled} />}
+            />
+            <PanelRow
+              label="Interaction tracking"
+              caption="Copy, print & video events · Loads a separate add-on script"
+              control={<Toggle checked={features.interactions} onChange={() => toggleFeature('interactions')} disabled={disabled} />}
+            />
             {/* SRI — emits the immutable versioned URL (never the rolling one) */}
-            <div className="mt-3 flex items-center justify-between rounded-none border border-dashed border-input bg-muted px-4 py-3">
-              <div className="min-w-0 mr-3">
-                <span className="text-sm font-medium text-foreground block">Subresource Integrity (SRI)</span>
-                <span className="text-xs text-muted-foreground">
-                  Pins the script to version {VERSION_MANIFEST.version} with an integrity hash &middot; you update the
-                  tag to adopt new versions
-                </span>
-              </div>
-              <Toggle checked={showSRI} onChange={toggleSRI} disabled={disabled} />
-            </div>
-
-            {/* Visitor identity */}
-            <div className="mt-4">
-              <h4 className="text-sm font-semibold text-foreground mb-1">Visitor identity</h4>
-              <p className="text-xs text-muted-foreground mb-3">
-                How returning visitors are recognized. Stricter settings increase privacy but may raise unique visitor
-                counts.
-              </p>
-              <div className="flex items-end gap-3">
-                <div className="min-w-0">
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Recognition</label>
-                  <Select
-                    variant="input"
-                    value={storage}
-                    onChange={(v: string) => {
-                      setStorage(v)
-                      onFeaturesChange?.({ ...features, storage: v, ttl, sri: showSRI })
-                    }}
-                    options={STORAGE_OPTIONS}
-                    disabled={disabled}
-                  />
-                </div>
+            <PanelRow
+              label="Subresource Integrity (SRI)"
+              caption={`Pins the script to version ${VERSION_MANIFEST.version} with an integrity hash · you update the tag to adopt new versions`}
+              control={<Toggle checked={showSRI} onChange={toggleSRI} disabled={disabled} />}
+            />
+            <PanelRow
+              label="Visitor recognition"
+              caption="How returning visitors are recognized. Stricter settings increase privacy but may raise unique visitor counts."
+            >
+              <div className="flex flex-wrap items-end gap-3">
+                <Select
+                  variant="input"
+                  value={storage}
+                  onChange={(v: string) => {
+                    setStorage(v)
+                    onFeaturesChange?.({ ...features, storage: v, ttl, sri: showSRI })
+                  }}
+                  options={STORAGE_OPTIONS}
+                  disabled={disabled}
+                  aria-label="Visitor recognition"
+                />
                 {storage === 'local' && (
                   <div>
                     <label className="text-xs font-medium text-muted-foreground mb-1 block">Reset after</label>
@@ -531,8 +582,8 @@ export default function ScriptSetupBlock({
                   </div>
                 )}
               </div>
-            </div>
-          </div>
+            </PanelRow>
+          </PanelRows>
         )}
       </div>
 
@@ -552,7 +603,10 @@ export default function ScriptSetupBlock({
 }
 
 // * ─── Inline install-health verify loop (Stage 1.1 telemetry) ────────────────
-function InstallVerify({ siteId, domain }: { siteId: string; domain: string }) {
+// `compact` is the installed case: the headline state already reads on the
+// panel header chip, so repeating it as a full card here would recreate exactly
+// the two-signals-one-truth problem this panel was rebuilt to remove.
+function InstallVerify({ siteId, domain, compact }: { siteId: string; domain: string; compact?: boolean }) {
   const { data, isLoading, error } = useInstallStatus(siteId, { poll: true })
 
   // * Degrade quietly if the install-status endpoint isn't available yet (e.g. a
@@ -561,6 +615,9 @@ function InstallVerify({ siteId, domain }: { siteId: string; domain: string }) {
   if (error && !data) return null
 
   const status = data?.install_status
+
+  // Healthy and installed: the header chip is saying it. Stay silent.
+  if (compact && status === 'active') return null
   const lastSeen = data?.last_event_at ? relativeTime(data.last_event_at) : null
 
   let tone = 'border-border bg-muted text-muted-foreground'

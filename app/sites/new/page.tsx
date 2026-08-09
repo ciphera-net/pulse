@@ -14,7 +14,6 @@ import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { Button, Input } from '@ciphera-net/facet'
 import { CheckCircleIcon } from '@ciphera-net/facet'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
-import VerificationModal from '@/components/sites/VerificationModal'
 
 const LAST_CREATED_SITE_KEY = 'pulse_last_created_site'
 
@@ -26,7 +25,6 @@ export default function NewSitePage() {
     domain: '',
   })
   const [createdSite, setCreatedSite] = useState<Site | null>(null)
-  const [showVerificationModal, setShowVerificationModal] = useState(false)
   const { sites, isLoading: sitesLoading } = useSites()
   const [atLimit, setAtLimit] = useState(false)
   const [limitsChecked, setLimitsChecked] = useState(false)
@@ -122,24 +120,18 @@ export default function NewSitePage() {
           </div>
 
           <div className="mt-6 pt-6 border-t border-neutral-700">
+            {/* The site exists by now, so pass its id: the block's own live
+                install indicator confirms the first pageview by itself. That
+                replaces the hand-rolled "Verify installation" button that used
+                to sit here — it opened a modal which polled a different
+                endpoint and then POSTed a verify the backend already performs
+                automatically on the first event received. */}
             <ScriptSetupBlock
               site={{ domain: createdSite.domain, name: createdSite.name }}
+              siteId={createdSite.id}
               onScriptCopy={trackSiteCreatedScriptCopied}
               showFrameworkPicker
             />
-          </div>
-
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowVerificationModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-neutral-800 border border-neutral-700 text-neutral-300 rounded-none hover:bg-neutral-700 transition-all text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2 ease-apple"
-            >
-              <span className="text-brand-orange">Verify installation</span>
-            </button>
-            <p className="text-xs text-neutral-400">
-              Check if your site is sending data correctly.
-            </p>
           </div>
 
           <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -161,12 +153,6 @@ export default function NewSitePage() {
             </Button>
           </div>
         </div>
-
-        <VerificationModal
-          isOpen={showVerificationModal}
-          onClose={() => setShowVerificationModal(false)}
-          site={createdSite}
-        />
       </div>
     )
   }
