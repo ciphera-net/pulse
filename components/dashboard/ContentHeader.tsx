@@ -6,6 +6,7 @@ import { MenuIcon, UserMenu } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
 import { useSites } from '@/lib/swr/sites'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
+import OnboardingChip from '@/components/onboarding/OnboardingChip'
 
 export default function ContentHeader({
   onMobileMenuOpen,
@@ -47,6 +48,7 @@ export default function ContentHeader({
       )}
 
       <div className="flex shrink-0 items-center gap-1">
+        <OnboardingChip />
         <NotificationCenter anchor="bottom" variant="default" />
         <UserMenu
           auth={auth}
