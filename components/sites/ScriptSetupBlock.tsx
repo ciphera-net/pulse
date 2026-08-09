@@ -14,7 +14,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { ArrowUpRight, CaretDown, MagnifyingGlass } from '@phosphor-icons/react'
 import {
   getIntegration,
-  getGroupedIntegrations,
+  getPickerIntegrations,
   categoryLabels,
   integrationDocsUrl,
   type Integration,
@@ -23,7 +23,6 @@ import {
   toast,
   Toggle,
   Input,
-  Select as FacetSelect,
   RailGrid,
   CheckIcon,
   CopyIcon,
@@ -130,37 +129,42 @@ export default function ScriptSetupBlock({
   const [copied, setCopied] = useState(false)
   const [cspCopied, setCspCopied] = useState(false)
   const [customizeOpen, setCustomizeOpen] = useState(false)
-  const [browseOpen, setBrowseOpen] = useState(false)
+  const [showAllPlatforms, setShowAllPlatforms] = useState(false)
   const [platformSearch, setPlatformSearch] = useState('')
 
-  // Every platform, flattened in category order — feeds both the primary Select
-  // and the "Browse all platforms" logo grid so a pick from either stays in sync.
-  const allIntegrations = useMemo(
-    () => getGroupedIntegrations().flatMap((g) => g.items),
-    [],
-  )
+  // The registry's own curated picker selection, ranked — NOT every entry.
+  // `showInPicker: false` marks platforms that cannot take a script tag at all
+  // (link-in-bio hosts and the like); offering them here would be a dead end.
+  const pickerIntegrations = useMemo(() => getPickerIntegrations(), [])
+  // The ranked head is what the grid opens on. The registry ranks exactly the
+  // twelve most common stacks, so this is its judgement, not a magic number.
+  const RANKED_COUNT = 12
   const selected: Integration | undefined = framework ? getIntegration(framework) : undefined
 
-  const platformOptions = useMemo(
-    () =>
-      allIntegrations.map((fw) => ({
-        value: fw.id,
-        label: fw.name,
-        description: site.detected_framework === fw.id ? 'Detected on your site' : categoryLabels[fw.category],
-      })),
-    [allIntegrations, site.detected_framework],
-  )
-
-  const browseResults = useMemo(() => {
+  const platformResults = useMemo(() => {
     const q = platformSearch.trim().toLowerCase()
-    if (!q) return allIntegrations
-    return allIntegrations.filter(
-      (fw) =>
-        fw.name.toLowerCase().includes(q) ||
-        fw.id.toLowerCase().includes(q) ||
-        categoryLabels[fw.category].toLowerCase().includes(q),
-    )
-  }, [allIntegrations, platformSearch])
+    if (q) {
+      // Searching always looks across the whole curated set, whether or not
+      // the grid is currently expanded.
+      return pickerIntegrations.filter(
+        (fw) =>
+          fw.name.toLowerCase().includes(q) ||
+          fw.id.toLowerCase().includes(q) ||
+          categoryLabels[fw.category].toLowerCase().includes(q),
+      )
+    }
+    return showAllPlatforms ? pickerIntegrations : pickerIntegrations.slice(0, RANKED_COUNT)
+  }, [pickerIntegrations, platformSearch, showAllPlatforms])
+
+  // A selection made via search must stay visible after the query is cleared,
+  // otherwise the tile the user just clicked vanishes from under them.
+  const selectedOutsideRanked = Boolean(
+    selected && pickerIntegrations.slice(0, RANKED_COUNT).every((fw) => fw.id !== selected.id),
+  )
+  const visiblePlatforms = useMemo(() => {
+    if (platformSearch.trim() || showAllPlatforms || !selectedOutsideRanked || !selected) return platformResults
+    return [selected, ...platformResults]
+  }, [platformResults, platformSearch, showAllPlatforms, selectedOutsideRanked, selected])
 
   // * Defense-in-depth: the snippet is COPIED and pasted into the customer's
   // * <head>, so a domain value carrying a double-quote could break out of the
@@ -251,90 +255,93 @@ export default function ScriptSetupBlock({
       {/* ── 1. Platform picker drives the panel ─────────────────────────────── */}
       {showFrameworkPicker && (
         <div className="mb-4">
-          <h4 className="text-sm font-semibold text-foreground mb-1">Your platform</h4>
-          <p className="text-xs text-muted-foreground mb-3">
-            Pick where you&apos;re installing Pulse for the exact snippet and steps.
-          </p>
-          <FacetSelect
-            value={framework}
-            onChange={(v) => setFramework(v)}
-            options={platformOptions}
-            placeholder="Select your platform…"
-            disabled={disabled}
-            className="w-full"
-            aria-label="Your platform"
-          />
-
-          {/* Progressive disclosure: the full logo wall lives here, behind a
-              search, instead of always occupying the panel. */}
-          <button
-            type="button"
-            onClick={() => setBrowseOpen((v) => !v)}
-            className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors ease-apple"
-          >
-            <CaretDown className={cn('w-3.5 h-3.5 transition-transform ease-apple', browseOpen && 'rotate-180')} />
-            Browse all platforms
-          </button>
-
-          {browseOpen && (
-            <div className="mt-3">
-              <div className="relative mb-px">
-                <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  value={platformSearch}
-                  onChange={(e) => setPlatformSearch(e.target.value)}
-                  placeholder="Search platforms…"
-                  className="pl-9"
-                  aria-label="Search platforms"
-                />
-              </div>
-              {browseResults.length === 0 ? (
-                <p className="px-1 py-6 text-sm text-muted-foreground">No platforms match &ldquo;{platformSearch}&rdquo;.</p>
-              ) : (
-                <RailGrid minTileWidth={104} className="mt-3">
-                  {browseResults.map((fw) => {
-                    const isSelected = framework === fw.id
-                    const isDetected = site.detected_framework === fw.id
-                    return (
-                      <button
-                        key={fw.id}
-                        type="button"
-                        onClick={() => setFramework(isSelected ? '' : fw.id)}
-                        aria-pressed={isSelected}
-                        className={cn(
-                          'group relative flex flex-col items-center justify-center gap-2 bg-card px-2 py-4 text-center transition-colors ease-apple cursor-pointer',
-                          isSelected ? 'bg-accent' : 'hover:bg-muted',
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            'flex items-center justify-center transition duration-200 [&_svg]:h-7 [&_svg]:w-7',
-                            isSelected
-                              ? 'grayscale-0 opacity-100'
-                              : 'grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100',
-                          )}
-                        >
-                          {fw.icon}
-                        </span>
-                        <span
-                          className={cn(
-                            'text-[11px] font-medium leading-tight',
-                            isSelected ? 'text-foreground' : 'text-muted-foreground',
-                          )}
-                        >
-                          {fw.name}
-                        </span>
-                        {isDetected && (
-                          <span className="absolute right-1 top-1 text-[8px] uppercase tracking-[0.08em] text-muted-foreground">
-                            Detected
-                          </span>
-                        )}
-                      </button>
-                    )
-                  })}
-                </RailGrid>
-              )}
+          {/* The grid IS the picker. It used to sit behind a "Browse all
+              platforms" disclosure with an empty Select in front of it, so the
+              panel opened on an unfilled form control and the artwork — the one
+              part of this surface with any character — was never seen. */}
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h4 className="text-sm font-semibold text-foreground">Where are you installing Pulse?</h4>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Pick your platform for the exact snippet and where it goes.
+              </p>
             </div>
+            <div className="relative w-full sm:w-56">
+              <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                value={platformSearch}
+                onChange={(e) => setPlatformSearch(e.target.value)}
+                placeholder={`Search ${pickerIntegrations.length} platforms…`}
+                className="pl-9"
+                aria-label="Search platforms"
+              />
+            </div>
+          </div>
+
+          {visiblePlatforms.length === 0 ? (
+            <p className="px-1 py-6 text-sm text-muted-foreground">
+              No platforms match &ldquo;{platformSearch}&rdquo;. The universal snippet below works
+              anywhere you can add a <code className="font-mono">&lt;script&gt;</code> tag.
+            </p>
+          ) : (
+            <RailGrid minTileWidth={104}>
+              {visiblePlatforms.map((fw) => {
+                const isSelected = framework === fw.id
+                const isDetected = site.detected_framework === fw.id
+                return (
+                  <button
+                    key={fw.id}
+                    type="button"
+                    onClick={() => setFramework(isSelected ? '' : fw.id)}
+                    aria-pressed={isSelected}
+                    disabled={disabled}
+                    className={cn(
+                      'group relative flex flex-col items-center justify-center gap-2 bg-card px-2 py-4 text-center transition-colors ease-apple cursor-pointer disabled:cursor-default',
+                      // The tiles are separated by RailGrid's hairline bleed, so a
+                      // background shift alone is too quiet to read as "chosen" —
+                      // an inset brand ring is the only unambiguous marker here.
+                      isSelected
+                        ? 'bg-accent ring-1 ring-inset ring-primary'
+                        : 'hover:bg-muted',
+                    )}
+                  >
+                    {/* Full-strength artwork, always. The registry gives every
+                        black-on-black mark `fill-white`, so nothing needs
+                        dimming to stay legible — and `grayscale opacity-60` is
+                        this app's "not connected" treatment (see LogoTile),
+                        which is the wrong thing to say about a platform you
+                        simply have not picked yet. */}
+                    <span className="flex items-center justify-center [&_svg]:h-7 [&_svg]:w-7">
+                      {fw.icon}
+                    </span>
+                    <span
+                      className={cn(
+                        'text-[11px] font-medium leading-tight',
+                        isSelected ? 'text-foreground' : 'text-muted-foreground',
+                      )}
+                    >
+                      {fw.name}
+                    </span>
+                    {isDetected && !isSelected && (
+                      <span className="absolute right-1 top-1 text-[8px] uppercase tracking-[0.08em] text-muted-foreground">
+                        Detected
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </RailGrid>
+          )}
+
+          {!platformSearch.trim() && pickerIntegrations.length > RANKED_COUNT && (
+            <button
+              type="button"
+              onClick={() => setShowAllPlatforms((v) => !v)}
+              className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors ease-apple"
+            >
+              <CaretDown className={cn('w-3.5 h-3.5 transition-transform ease-apple', showAllPlatforms && 'rotate-180')} />
+              {showAllPlatforms ? 'Show fewer platforms' : `Show all ${pickerIntegrations.length} platforms`}
+            </button>
           )}
         </div>
       )}
