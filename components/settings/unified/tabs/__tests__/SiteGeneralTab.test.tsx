@@ -13,10 +13,16 @@ vi.mock('next/navigation', () => ({
 }))
 
 const useSite = vi.fn()
+// The panel's status chip is driven by the SERVER's install status, so the tests
+// steer it directly rather than through the (stubbed) ScriptSetupBlock.
+let mockInstallStatus: string | undefined
 vi.mock('@/lib/swr/dashboard', () => ({
   useSite: (...a: unknown[]) => useSite(...a),
-  // ScriptSetupBlock (stubbed below) would use this; keep it defined for safety.
-  useInstallStatus: () => ({ data: undefined, isLoading: false, error: undefined }),
+  useInstallStatus: () => ({
+    data: mockInstallStatus ? { install_status: mockInstallStatus } : undefined,
+    isLoading: false,
+    error: undefined,
+  }),
 }))
 
 const updateSite = vi.fn().mockResolvedValue(undefined)
@@ -35,9 +41,6 @@ vi.mock('@/components/settings/unified/ResetDataModal', () => ({
 }))
 vi.mock('@/components/sites/DeleteSiteModal', () => ({
   default: ({ open }: { open: boolean }) => (open ? <div data-testid="delete-modal" /> : null),
-}))
-vi.mock('@/components/sites/VerificationModal', () => ({
-  default: ({ isOpen }: { isOpen: boolean }) => (isOpen ? <div data-testid="verify-modal" /> : null),
 }))
 
 // SaveBar is portal + shell-slot machinery — stub it to a marker that also
@@ -85,6 +88,7 @@ function siteState(over: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   mockCanEdit = true
+  mockInstallStatus = undefined
   useSite.mockReset().mockReturnValue(siteState())
   updateSite.mockClear()
   mutate.mockClear()
@@ -108,10 +112,30 @@ describe('SiteGeneralTab (Facet structured panels)', () => {
     expect(domain).toBeDisabled()
   })
 
-  it('shows the unverified chip + Verify action when the site is not verified', async () => {
+  it('reports install state from the SERVER status, not the manual verified flag', async () => {
+    mockInstallStatus = 'active'
     render(<SiteGeneralTab siteId="s1" />)
-    await waitFor(() => expect(screen.getByText('Not verified')).toBeInTheDocument())
-    expect(screen.getByRole('button', { name: /Verify installation/i })).toBeInTheDocument()
+    // siteState() is deliberately is_verified: false — the flag a manual modal
+    // used to flip. A site that is demonstrably receiving events must not be
+    // labelled "Not verified" because nobody clicked a button.
+    await waitFor(() => expect(screen.getByText('Receiving data')).toBeInTheDocument())
+    expect(screen.queryByText('Not verified')).not.toBeInTheDocument()
+  })
+
+  it('distinguishes never-installed from stalled', async () => {
+    const { unmount } = render(<SiteGeneralTab siteId="s1" />)
+    await waitFor(() => expect(screen.getByText('No data yet')).toBeInTheDocument())
+    unmount()
+
+    mockInstallStatus = 'stalled'
+    render(<SiteGeneralTab siteId="s1" />)
+    await waitFor(() => expect(screen.getByText('No recent data')).toBeInTheDocument())
+  })
+
+  it('offers no manual verify action — the backend verifies on the first event', async () => {
+    render(<SiteGeneralTab siteId="s1" />)
+    await waitFor(() => expect(screen.getByText('Tracking script')).toBeInTheDocument())
+    expect(screen.queryByRole('button', { name: /verify/i })).not.toBeInTheDocument()
   })
 
   it('sends a PARTIAL PUT (name/timezone/script_features only — B1) on save', async () => {

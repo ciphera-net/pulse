@@ -2,15 +2,14 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Input, Button, Select, toast, Spinner, CheckIcon, ZapIcon, getAuthErrorMessage } from '@ciphera-net/facet'
-import { useSite } from '@/lib/swr/dashboard'
+import { Input, Select, toast, Spinner, CheckIcon, getAuthErrorMessage } from '@ciphera-net/facet'
+import { useSite, useInstallStatus } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { useCan } from '@/lib/auth/permissions'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 import ResetDataModal from '@/components/settings/unified/ResetDataModal'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
-import VerificationModal from '@/components/sites/VerificationModal'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
@@ -54,10 +53,20 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
   const [scriptFeatures, setScriptFeatures] = useState<Record<string, unknown>>({})
   const [saving, setSaving] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [showVerificationModal, setShowVerificationModal] = useState(false)
   const [showResetModal, setShowResetModal] = useState(false)
 
   const canEdit = useCan('sites.edit')
+
+  // The panel's single status object. Shares the SWR key with the block's own
+  // read, so the header chip and the block can never report different things.
+  const { data: installData } = useInstallStatus(siteId, { poll: true })
+  const installStatus = installData?.install_status
+  const installTone = installStatus === 'active' ? 'success' : installStatus === 'stalled' ? 'warning' : 'neutral'
+  const installLabel =
+    installStatus === 'active' ? 'Receiving data'
+      : installStatus === 'stalled' ? 'No recent data'
+        : 'No data yet'
+
   // Baseline snapshot is STATE, not a ref: committing it (after save/load)
   // must re-render so isDirty clears and the beforeunload guard disarms —
   // the old ref version kept the save bar dirty after a successful save.
@@ -166,11 +175,23 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
       </SettingsPanel>
 
       {/* ── Tracking script ──────────────────────────────────────────────── */}
+      {/* ONE status object for this panel, and it is the server's: install
+          status is derived from events actually received. The old row here
+          reported `is_verified` — a flag only ever flipped by a manual
+          "Verify installation" modal — so a site that was demonstrably live
+          could read "Active" in the block and "Not verified" directly beneath
+          it. The backend already auto-verifies on the first event, so that
+          manual round-trip was re-doing work that happens by itself. */}
       <SettingsPanel
         kicker="Tracking script"
         description="Add this to your site to start collecting privacy-first analytics."
+        action={
+          <StatusChip tone={installTone} dot pulse={installStatus === 'active'}>
+            {installLabel}
+          </StatusChip>
+        }
       >
-        <div className="space-y-5 p-5">
+        <div className="p-5">
           <ScriptSetupBlock
             site={{ domain: site.domain, name: site.name, script_features: scriptFeatures, detected_framework: site.detected_framework }}
             siteId={siteId}
@@ -178,23 +199,6 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
             onFeaturesChange={(features) => setScriptFeatures(features)}
             disabled={!canEdit || saving}
           />
-
-          {/* Verification status + action */}
-          <div className="flex flex-wrap items-center gap-3 border-t border-border pt-5">
-            <StatusChip
-              tone={site.is_verified ? 'success' : 'neutral'}
-              icon={site.is_verified ? <CheckIcon className="w-3 h-3" /> : undefined}
-            >
-              {site.is_verified ? 'Verified' : 'Not verified'}
-            </StatusChip>
-            <span className="text-xs text-muted-foreground">
-              {site.is_verified ? 'Your site is sending data correctly.' : 'Check if your site is sending data correctly.'}
-            </span>
-            <Button variant="secondary" size="sm" className="ml-auto" onClick={() => setShowVerificationModal(true)}>
-              <ZapIcon className="w-4 h-4" />
-              {site.is_verified ? 'Re-verify' : 'Verify installation'}
-            </Button>
-          </div>
         </div>
       </SettingsPanel>
 
@@ -235,13 +239,6 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
         siteName={site?.name || ''}
         siteDomain={site?.domain || ''}
         siteId={siteId}
-      />
-
-      <VerificationModal
-        isOpen={showVerificationModal}
-        onClose={() => setShowVerificationModal(false)}
-        site={site}
-        onVerified={() => mutate()}
       />
 
       {canEdit && (
