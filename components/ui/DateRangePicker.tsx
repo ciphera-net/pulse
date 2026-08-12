@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { CaretLeft, CaretRight, CalendarBlank, Check } from '@phosphor-icons/react'
-import { PERIOD_PRESETS, PERIOD_GROUPS, findPreset } from '@/lib/constants/periods'
+import { PERIOD_PRESETS, PERIOD_GROUPS, findPreset, type PeriodPreset } from '@/lib/constants/periods'
 
 interface DateRangePickerProps {
   period: string
@@ -13,6 +13,10 @@ interface DateRangePickerProps {
   onDateRangeChange: (range: { start: string; end: string }) => void
   onShift?: (direction: -1 | 1) => void
   align?: 'left' | 'right'
+  // * Page-scoped presets (e.g. the Search page's GSC ranges) rendered as
+  // * their own group ABOVE the global ones, and resolved for the trigger
+  // * label + checkmark — without leaking into every other page's picker.
+  extraPresets?: { group: string; presets: PeriodPreset[] }
 }
 
 function formatRangeDisplay(start: string, end: string): string {
@@ -78,6 +82,7 @@ export default function DateRangePicker({
   onDateRangeChange,
   onShift,
   align = 'left',
+  extraPresets,
 }: DateRangePickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -158,8 +163,11 @@ export default function DateRangePicker({
     })
   }
 
+  const resolvePreset = (key: string) =>
+    extraPresets?.presets.find((p) => p.key === key) ?? findPreset(key)
+
   function handlePresetClick(key: string) {
-    const preset = findPreset(key)
+    const preset = resolvePreset(key)
     if (!preset) return
     const range = preset.resolve()
     setRangeStart(null)
@@ -216,7 +224,7 @@ export default function DateRangePicker({
   const days = getDaysForMonth(viewMonth.year, viewMonth.month)
 
   const displayLabel = period !== 'custom'
-    ? (findPreset(period)?.label ?? 'Custom')
+    ? (resolvePreset(period)?.label ?? 'Custom')
     : formatRangeDisplay(dateRange.start, dateRange.end)
 
   const endDate = new Date(dateRange.end + 'T00:00:00')
@@ -235,6 +243,30 @@ export default function DateRangePicker({
           style={pos ? { left: pos.left, top: pos.top } : undefined}
         >
           <div className="w-full max-h-[240px] border-b border-border py-2 overflow-y-auto sm:max-h-[400px] sm:w-44 sm:border-b-0 sm:border-r">
+            {extraPresets && (
+              <div>
+                <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                  {extraPresets.group}
+                </div>
+                {extraPresets.presets.map((preset) => (
+                  <button
+                    key={preset.key}
+                    onClick={() => handlePresetClick(preset.key)}
+                    className={`flex items-center gap-2 w-full text-left px-3 py-1.5 text-sm transition-colors ${
+                      period === preset.key
+                        ? 'text-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                    }`}
+                  >
+                    <Check
+                      weight="bold"
+                      className={`w-3.5 h-3.5 shrink-0 ${period === preset.key ? 'opacity-100' : 'opacity-0'}`}
+                    />
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            )}
             {PERIOD_GROUPS.map((group) => (
               <div key={group}>
                 <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">

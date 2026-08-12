@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useMemo } from 'react'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import {
   DEFAULT_PERIOD,
   isValidDateString,
@@ -10,6 +10,7 @@ import {
   shiftDateRange,
   type Period,
 } from './periodUrl'
+import { useQueryParamsWriter } from './useQueryParamsWriter'
 
 export type { Period }
 
@@ -28,9 +29,8 @@ export interface UrlDateRange {
 }
 
 export function useUrlDateRange(): UrlDateRange {
-  const router = useRouter()
-  const pathname = usePathname()
   const searchParams = useSearchParams()
+  const write = useQueryParamsWriter()
 
   const rawPeriod = parsePeriod(searchParams.get('period'))
   const rawStart = searchParams.get('start')
@@ -52,16 +52,11 @@ export function useUrlDateRange(): UrlDateRange {
 
   const updateUrl = useCallback(
     (updates: Record<string, string | null>) => {
-      const params = new URLSearchParams(searchParams.toString())
-      for (const [key, value] of Object.entries(updates)) {
-        if (value === null || value === '') params.delete(key)
-        else params.set(key, value)
-      }
-      if (params.get('period') === DEFAULT_PERIOD) params.delete('period')
-      const qs = params.toString()
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+      // * Defaults stay out of the URL (the shared writer applies the rest).
+      if (updates.period === DEFAULT_PERIOD) updates = { ...updates, period: null }
+      write(updates)
     },
-    [router, pathname, searchParams],
+    [write],
   )
 
   const setPeriod = useCallback(

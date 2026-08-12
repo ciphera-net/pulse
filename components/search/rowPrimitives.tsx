@@ -56,7 +56,9 @@ interface StandardMetricsProps {
   clicks: number
   impressions: number
   ctr: number
-  position: number
+  // * null = position unknown for this row (e.g. Days rows before the daily
+  // * backfill lands) — rendered as an em dash, never a fabricated number.
+  position: number | null
 }
 
 export function StandardMetrics({ clicks, impressions, ctr, position }: StandardMetricsProps) {
@@ -67,20 +69,83 @@ export function StandardMetrics({ clicks, impressions, ctr, position }: Standard
       <span className={cn(W.clicks, 'text-right text-neutral-300')}>{formatNumber(clicks)}</span>
       <span className={cn('hidden sm:inline-block', W.impressions, 'text-right text-neutral-400')}>{formatNumber(impressions)}</span>
       <span className={cn('hidden sm:inline-block', W.ctr, 'text-right text-neutral-400')}>{formatCTR(ctr)}</span>
-      <span className={cn(W.position, 'flex justify-end')}><PositionBadge position={position} /></span>
+      <span className={cn(W.position, 'flex justify-end')}>
+        {position == null ? <span className="text-neutral-600">&mdash;</span> : <PositionBadge position={position} />}
+      </span>
     </span>
   )
 }
 
-export function StandardHeader({ label }: { label: string }) {
+// ─── Column sorting (client-side, over the fetched rows) ─────────
+
+// Pure sort logic lives in tableSort.ts; re-exported here so every view keeps
+// one import site for the table grammar.
+export { parseSort, serializeSort, sortRows, SORT_FETCH, type SortCol, type SortState } from './tableSort'
+import { SORT_FETCH, type SortCol, type SortState } from './tableSort'
+
+// * Footnote shown when a sort is active but the period holds more rows than
+// * the API returns in one page — the sort is honest about its horizon.
+export function SortHorizonNote({ total, label }: { total: number; label: string }) {
+  if (total <= SORT_FETCH) return null
+  return (
+    <p className="border-t border-border px-3 py-2 text-xs text-neutral-500">
+      Sorted across the top {SORT_FETCH} {label} by clicks — narrow the range to reach the rest.
+    </p>
+  )
+}
+
+function HeaderCell({
+  col,
+  label,
+  width,
+  hideBelowSm,
+  sort,
+  onSort,
+}: {
+  col: SortCol
+  label: string
+  width: string
+  hideBelowSm?: boolean
+  sort?: SortState | null
+  onSort?: (col: SortCol) => void
+}) {
+  const base = cn(hideBelowSm && 'hidden sm:inline-block', width, 'text-right')
+  if (!onSort) return <span className={base}>{label}</span>
+  const active = sort?.col === col
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(col)}
+      aria-sort={active ? (sort?.dir === 'asc' ? 'ascending' : 'descending') : undefined}
+      className={cn(
+        base,
+        'rounded-none transition-colors duration-fast ease-apple hover:text-neutral-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange',
+        active && 'text-neutral-200',
+      )}
+    >
+      {label}
+      {active && <span aria-hidden="true"> {sort?.dir === 'asc' ? '↑' : '↓'}</span>}
+    </button>
+  )
+}
+
+export function StandardHeader({
+  label,
+  sort,
+  onSort,
+}: {
+  label: string
+  sort?: SortState | null
+  onSort?: (col: SortCol) => void
+}) {
   return (
     <div className="flex h-8 items-center border-b border-border px-3 text-xs text-neutral-500">
       <span className="min-w-0 flex-1">{label}</span>
       <div className="ml-3 flex shrink-0 items-center gap-3">
-        <span className={cn(W.clicks, 'text-right')}>Clicks</span>
-        <span className={cn('hidden sm:inline-block', W.impressions, 'text-right')}>Impressions</span>
-        <span className={cn('hidden sm:inline-block', W.ctr, 'text-right')}>CTR</span>
-        <span className={cn(W.position, 'text-right')}>Position</span>
+        <HeaderCell col="clicks" label="Clicks" width={W.clicks} sort={sort} onSort={onSort} />
+        <HeaderCell col="impressions" label="Impressions" width={W.impressions} hideBelowSm sort={sort} onSort={onSort} />
+        <HeaderCell col="ctr" label="CTR" width={W.ctr} hideBelowSm sort={sort} onSort={onSort} />
+        <HeaderCell col="position" label="Position" width={W.position} sort={sort} onSort={onSort} />
       </div>
     </div>
   )
