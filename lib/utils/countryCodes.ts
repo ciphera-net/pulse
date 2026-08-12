@@ -1,6 +1,6 @@
 // Country code helpers shared by the Search Console views (GSC returns alpha-3
 // codes; the flag icon set and display names key on alpha-2). Extracted from the
-// dashboard SearchPerformance widget's proven logic so both surfaces agree —
+// Search page country view's proven logic so all surfaces agree —
 // full ISO 3166-1 coverage via i18n-iso-countries, names via Intl.DisplayNames.
 
 import countries from 'i18n-iso-countries'

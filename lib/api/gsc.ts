@@ -82,6 +82,10 @@ export interface GSCDailyTotal {
   date: string
   clicks: number
   impressions: number
+  ctr: number
+  // * null on legacy-fallback rows (site's gsc_daily backfill not landed yet) —
+  // * treat as "no position series", never as 0.
+  position: number | null
 }
 
 export interface GSCNewQueries {

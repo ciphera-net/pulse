@@ -16,6 +16,11 @@ import {
   Pagination,
   ViewBody,
   formatCompact,
+  sortRows,
+  SortHorizonNote,
+  SORT_FETCH,
+  type SortCol,
+  type SortState,
 } from './rowPrimitives'
 
 // ---------------------------------------------------------------------------
@@ -32,7 +37,11 @@ interface RangeProps {
   siteId: string
   dateRange: { start: string; end: string }
 }
-interface PagedProps extends RangeProps {
+interface SortProps {
+  sort: SortState | null
+  onSort: (col: SortCol) => void
+}
+interface PagedProps extends RangeProps, SortProps {
   page: number
   setPage: (p: number) => void
 }
@@ -47,20 +56,32 @@ function StaticRow({ children, share }: { children: React.ReactNode; share: numb
   )
 }
 
-export function CountriesView({ siteId, dateRange, page, setPage }: PagedProps) {
-  const { data, error, isLoading, mutate } = useGSCTopCountries(siteId, dateRange.start, dateRange.end, PAGE_SIZE, page * PAGE_SIZE)
-  const rows = data?.countries ?? []
+export function CountriesView({ siteId, dateRange, page, setPage, sort, onSort }: PagedProps) {
+  const sorted = sort != null
+  const { data, error, isLoading, mutate } = useGSCTopCountries(
+    siteId, dateRange.start, dateRange.end,
+    sorted ? SORT_FETCH : PAGE_SIZE,
+    sorted ? 0 : page * PAGE_SIZE,
+  )
+  const allRows = data?.countries ?? []
+  const rows = sorted ? sortRows(allRows, sort).slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE) : allRows
+  const total = data?.total ?? 0
   const maxClicks = Math.max(...rows.map((r) => r.clicks), 0)
   return (
     <>
-      <StandardHeader label="Country" />
+      <StandardHeader label="Country" sort={sort} onSort={onSort} />
       <ViewBody
         isLoading={isLoading}
         hasData={!!data}
         error={error}
         isEmpty={rows.length === 0}
         emptyNode={<EmptyState icon={<GlobeHemisphereWest />} title="No country data in this period" description="Country breakdowns appear once Search Console reports impressions by region." className="py-10" />}
-        footer={<Pagination page={page} pageSize={PAGE_SIZE} total={data?.total ?? 0} onPage={setPage} />}
+        footer={
+          <>
+            {sorted && <SortHorizonNote total={total} label="countries" />}
+            <Pagination page={page} pageSize={PAGE_SIZE} total={sorted ? Math.min(total, SORT_FETCH) : total} onPage={setPage} />
+          </>
+        }
         onRetry={() => { void mutate() }}
       >
         {rows.map((row) => {
@@ -80,13 +101,14 @@ export function CountriesView({ siteId, dateRange, page, setPage }: PagedProps) 
   )
 }
 
-export function DevicesView({ siteId, dateRange }: RangeProps) {
+export function DevicesView({ siteId, dateRange, sort, onSort }: RangeProps & SortProps) {
   const { data, error, isLoading, mutate } = useGSCTopDevices(siteId, dateRange.start, dateRange.end)
-  const rows = data?.devices ?? []
+  // * Three rows at most — the sort is purely local.
+  const rows = sortRows(data?.devices ?? [], sort)
   const maxClicks = Math.max(...rows.map((r) => r.clicks), 0)
   return (
     <>
-      <StandardHeader label="Device" />
+      <StandardHeader label="Device" sort={sort} onSort={onSort} />
       <ViewBody
         isLoading={isLoading}
         hasData={!!data}

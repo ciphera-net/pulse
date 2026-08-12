@@ -151,7 +151,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
         <div className="flex items-center justify-between gap-2 mb-4">
           {/* The five dimension tabs measure ~319px; on a phone that left no room
               for "Build URL", which was pushed 12px off the card. Every other
-              dimension card (ContentStats, Locations, TechSpecs, SearchPerformance)
+              dimension card (ContentStats, Locations, TechSpecs)
               already scrolls its tab row — this one and TopReferrers were the two
               that missed the pattern. */}
           <div className="flex gap-1 min-w-0 overflow-x-auto scrollbar-hide pb-1 max-md:[mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)]" role="tablist" aria-label="Campaign dimension tabs">
