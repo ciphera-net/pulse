@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
+import { useQueryParamsWriter } from '@/lib/hooks/useQueryParamsWriter'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CaretDown, MagnifyingGlass, FileText, GlobeHemisphereWest, Monitor, CalendarBlank, Target } from '@phosphor-icons/react'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
@@ -256,7 +257,14 @@ function DaysView({ siteId, dateRange, page, setPage, sort, onSort }: DaysProps)
   const { data, error, isLoading, mutate } = useGSCDailyTotals(siteId, dateRange.start, dateRange.end)
 
   const rows = useMemo(() => {
-    const daily = data?.daily_totals ?? []
+    // * Normalize at the boundary: CTR derives exactly from the two count
+    // * fields (immune to an older backend that omits it — undefined would
+    // * render NaN%), and a missing position becomes an explicit null.
+    const daily = (data?.daily_totals ?? []).map((r) => ({
+      ...r,
+      ctr: r.impressions > 0 ? r.clicks / r.impressions : 0,
+      position: r.position ?? null,
+    }))
     // * Default order: most recent day first, like Search Console's own table.
     const base = [...daily].reverse()
     return sortRows(base, sort)
@@ -302,9 +310,10 @@ function DaysView({ siteId, dateRange, page, setPage, sort, onSort }: DaysProps)
 // ─── Orchestrator ────────────────────────────────────────────────
 
 export default function SearchViews({ siteId, dateRange }: RangeProps) {
-  const router = useRouter()
-  const pathname = usePathname()
   const searchParams = useSearchParams()
+  // * Shared writer — ?view=/?p=/?expand=/?s= must not clobber the page's
+  // * ?period=/?g= or the panel's ?m= when two writes race one router commit.
+  const updateParams = useQueryParamsWriter()
 
   const view = parseView(searchParams.get('view'))
   const page = parsePageIndex(searchParams.get('p'))
@@ -312,19 +321,6 @@ export default function SearchViews({ siteId, dateRange }: RangeProps) {
   // query/page string — compared directly against a row's key.
   const expand = searchParams.get('expand')
   const sort = parseSort(searchParams.get('s'))
-
-  const updateParams = useCallback(
-    (updates: Record<string, string | null>) => {
-      const next = new URLSearchParams(searchParams.toString())
-      for (const [key, value] of Object.entries(updates)) {
-        if (value === null || value === '') next.delete(key)
-        else next.set(key, value)
-      }
-      const qs = next.toString()
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
-    },
-    [router, pathname, searchParams],
-  )
 
   const setView = useCallback((v: View) => updateParams({ view: v === 'queries' ? null : v, p: null, expand: null }), [updateParams])
   const setPage = useCallback((p: number) => updateParams({ p: p <= 0 ? null : String(p) }), [updateParams])

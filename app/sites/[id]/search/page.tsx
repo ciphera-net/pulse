@@ -4,9 +4,12 @@ import { useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import Link from 'next/link'
-import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
+import { useQueryParamsWriter } from '@/lib/hooks/useQueryParamsWriter'
+import { getDateRange } from '@/lib/utils/format'
+import type { PeriodPreset } from '@/lib/constants/periods'
 import { MagnifyingGlass, ArrowSquareOut } from '@phosphor-icons/react'
 import { useSite, useGSCStatus, useGSCOverview } from '@/lib/swr/dashboard'
 import { SearchSkeleton } from '@/components/skeletons'
@@ -43,6 +46,21 @@ const RANGE_PILLS: { key: Period; label: string }[] = [
   { key: '16m', label: '16m' },
 ]
 
+// * The same vocabulary, spelled out for the DateRangePicker beside the pills —
+// * without this the picker labels every pill period "Custom" and check-marks
+// * nothing. Page-scoped on purpose: these ranges belong to GSC, not to every
+// * picker in the product.
+const GSC_PICKER_PRESETS: { group: string; presets: PeriodPreset[] } = {
+  group: 'Search ranges',
+  presets: [
+    { key: '28', label: 'Last 28 days', group: 'Search ranges', resolve: () => getDateRange(28) },
+    { key: '3m', label: 'Last 3 months', group: 'Search ranges', resolve: () => getDateRange(90) },
+    { key: '6m', label: 'Last 6 months', group: 'Search ranges', resolve: () => getDateRange(180) },
+    { key: '12m', label: 'Last 12 months', group: 'Search ranges', resolve: () => getDateRange(365) },
+    { key: '16m', label: 'Last 16 months', group: 'Search ranges', resolve: () => getDateRange(480) },
+  ],
+}
+
 const GRANULARITY_OPTIONS: SegmentedOption<Granularity>[] = [
   { value: 'daily', label: 'Daily' },
   { value: 'weekly', label: 'Weekly' },
@@ -76,22 +94,15 @@ function RangePills({ period, onPeriod }: { period: Period; onPeriod: (p: Period
 export default function SearchConsolePage() {
   const params = useParams()
   const siteId = params.id as string
-  const router = useRouter()
-  const pathname = usePathname()
   const searchParams = useSearchParams()
+  const write = useQueryParamsWriter()
 
   const { period, dateRange, setPeriod, shiftPeriod } = useUrlDateRange()
   const granularity = parseGranularity(searchParams.get('g'))
 
   const setGranularity = useCallback(
-    (g: Granularity) => {
-      const next = new URLSearchParams(searchParams.toString())
-      if (g === 'daily') next.delete('g')
-      else next.set('g', g)
-      const qs = next.toString()
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
-    },
-    [searchParams, router, pathname],
+    (g: Granularity) => write({ g: g === 'daily' ? null : g }),
+    [write],
   )
 
   const { data: gscStatus } = useGSCStatus(siteId)
@@ -188,6 +199,7 @@ export default function SearchConsolePage() {
             onPeriodChange={(p) => setPeriod(p as Period)}
             onDateRangeChange={(range) => setPeriod('custom', range)}
             onShift={shiftPeriod}
+            extraPresets={GSC_PICKER_PRESETS}
           />
         </div>
       </div>

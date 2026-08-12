@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useMemo, useState } from 'react'
-import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
+import { useQueryParamsWriter } from '@/lib/hooks/useQueryParamsWriter'
 import { scaleLinear, scaleTime } from 'd3-scale'
 import { curveMonotoneX } from 'd3-shape'
 import { AreaClosed, LinePath, ParentSize, localPoint } from '@/lib/charts/primitives'
@@ -105,15 +106,27 @@ function Strip({
     [max, inverted, innerH],
   )
 
+  // * Resolve hover through the SAME scale that places the marks — buckets are
+  // * not uniformly spaced (Google omits zero-impression days; months differ
+  // * in length), so a uniform-index mapping puts the crosshair on the wrong
+  // * bucket. Invert to a time, then take the nearest bucket by date.
   const handleMove = useCallback(
     (event: React.MouseEvent<SVGRectElement>) => {
       const point = localPoint(event)
       if (!point) return
-      const frac = (point.x - PAD.l) / innerW
-      const idx = Math.round(frac * (series.length - 1))
-      onHover(Math.max(0, Math.min(series.length - 1, idx)))
+      const t = xScale.invert(point.x - PAD.l).getTime()
+      let best = 0
+      let bestDist = Number.POSITIVE_INFINITY
+      for (let i = 0; i < series.length; i++) {
+        const d = Math.abs(series[i].date.getTime() - t)
+        if (d < bestDist) {
+          bestDist = d
+          best = i
+        }
+      }
+      onHover(best)
     },
-    [innerW, series.length, onHover],
+    [xScale, series, onHover],
   )
 
   if (innerW <= 0) return null
@@ -208,26 +221,27 @@ function bucketLabel(p: SeriesPoint, granularity: Granularity): string {
 function XAxis({ width, series, granularity }: { width: number; series: SeriesPoint[]; granularity: Granularity }) {
   const innerW = width - PAD.l - PAD.r
   if (innerW <= 0 || series.length === 0) return null
+  // * Tick indices are chosen uniformly, but each label sits at the SAME time
+  // * scale the strips draw with — sparse dates would otherwise drift the
+  // * labels off the marks above them.
+  const xScale = scaleTime().domain([series[0].date, series[series.length - 1].date]).range([0, innerW])
   const n = Math.min(5, series.length)
   const ticks =
     n <= 1 ? [0] : Array.from({ length: n }, (_, k) => Math.round((k * (series.length - 1)) / (n - 1)))
   return (
     <svg aria-hidden="true" width={width} height={20} style={{ display: 'block' }}>
-      {ticks.map((idx) => {
-        const frac = series.length <= 1 ? 0 : idx / (series.length - 1)
-        return (
-          <text
-            key={idx}
-            x={PAD.l + frac * innerW}
-            y={13}
-            textAnchor={idx === 0 ? 'start' : idx === series.length - 1 ? 'end' : 'middle'}
-            fontSize={11}
-            fill="var(--chart-axis)"
-          >
-            {bucketLabel(series[idx], granularity)}
-          </text>
-        )
-      })}
+      {ticks.map((idx) => (
+        <text
+          key={idx}
+          x={PAD.l + xScale(series[idx].date)}
+          y={13}
+          textAnchor={idx === 0 ? 'start' : idx === series.length - 1 ? 'end' : 'middle'}
+          fontSize={11}
+          fill="var(--chart-axis)"
+        >
+          {bucketLabel(series[idx], granularity)}
+        </text>
+      ))}
     </svg>
   )
 }
@@ -235,9 +249,8 @@ function XAxis({ width, series, granularity }: { width: number; series: SeriesPo
 // ─── Panel ───────────────────────────────────────────────────────
 
 export default function InstrumentPanel({ siteId, dateRange, overview, granularity }: InstrumentPanelProps) {
-  const router = useRouter()
-  const pathname = usePathname()
   const searchParams = useSearchParams()
+  const write = useQueryParamsWriter()
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
 
   const active = parseActiveMetrics(searchParams.get('m'))
@@ -246,14 +259,9 @@ export default function InstrumentPanel({ siteId, dateRange, overview, granulari
     (key: MetricKey) => {
       const next = active.includes(key) ? active.filter((k) => k !== key) : [...active, key]
       if (next.length === 0) return // at least one strip stays
-      const params = new URLSearchParams(searchParams.toString())
-      const serialized = serializeActiveMetrics(next)
-      if (serialized === null) params.delete('m')
-      else params.set('m', serialized)
-      const qs = params.toString()
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+      write({ m: serializeActiveMetrics(next) })
     },
-    [active, searchParams, router, pathname],
+    [active, write],
   )
 
   const { data, error, isLoading, isValidating, mutate } = useGSCDailyTotals(siteId, dateRange.start, dateRange.end)
