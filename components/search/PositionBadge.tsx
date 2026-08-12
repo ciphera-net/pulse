@@ -1,9 +1,10 @@
 import { cn } from '@/lib/utils'
 
-// Average search position, mono + tabular so digits align down a column. Top of
-// the first page (the displayed 1-decimal value ≤ 10.4, i.e. position < 10.5)
-// earns brand orange; everything else stays neutral chrome. No emerald/red —
-// distance from #1 is data, not a good/bad delta.
+// Average search position, tabular-nums so digits align down a column (sans per
+// the type rules — position is a metric, not machine data). Top of the first
+// page (the displayed 1-decimal value ≤ 10.4, i.e. position < 10.5) earns brand
+// orange; everything else stays neutral chrome. No emerald/red — distance from
+// #1 is data, not a good/bad delta.
 export function PositionBadge({ position }: { position: number }) {
   const topPage = position < 10.5
   return (

@@ -1,30 +1,50 @@
 'use client'
 
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CaretDown, MagnifyingGlass, FileText, GlobeHemisphereWest, Monitor, Target } from '@phosphor-icons/react'
+import { CaretDown, MagnifyingGlass, FileText, GlobeHemisphereWest, Monitor, CalendarBlank, Target } from '@phosphor-icons/react'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { cn } from '@/lib/utils'
-import { useGSCTopQueries, useGSCTopPages } from '@/lib/swr/dashboard'
+import { useGSCTopQueries, useGSCTopPages, useGSCDailyTotals } from '@/lib/swr/dashboard'
 import { Segmented, type SegmentedOption } from '@/components/ui/segmented'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { NewQueriesChip } from './NewQueriesChip'
 import { QueryExpansion, PageExpansion } from './SearchExpansion'
 import { CountriesView, DevicesView, OpportunitiesView } from './SearchSimpleViews'
-import { RowBar, StandardMetrics, StandardHeader, Pagination, ViewBody, stripProtocol } from './rowPrimitives'
+import {
+  RowBar,
+  StandardMetrics,
+  StandardHeader,
+  Pagination,
+  ViewBody,
+  stripProtocol,
+  parseSort,
+  serializeSort,
+  sortRows,
+  SortHorizonNote,
+  SORT_FETCH,
+  type SortCol,
+  type SortState,
+} from './rowPrimitives'
 
 // ---------------------------------------------------------------------------
-// Five views, one table system. Queries · Pages · Countries · Devices ·
+// Six views, one table system. Queries · Pages · Countries · Devices · Days ·
 // Opportunities behind a single Segmented control, URL-synced (?view=/?p=/
-// ?expand=). Queries/Pages rows expand (aria-expanded, Enter/Space, ↑/↓, focus
-// ring); each expanded row's drill-down is SWR-keyed on its own key so the old
-// shared-state race is gone. ?p= and ?expand= drop on any range or view change.
+// ?expand=/?s=). Queries/Pages rows expand (aria-expanded, Enter/Space, ↑/↓,
+// focus ring); each expanded row's drill-down is SWR-keyed on its own key so
+// the old shared-state race is gone. ?p= and ?expand= drop on any range or
+// view change; ?s= (column sort) survives view switches since every view
+// shares the metric columns.
+//
+// Sorting is client-side over the top SORT_FETCH rows (the API caps limit at
+// 200 and only orders by clicks) — an active sort switches the fetch to one
+// 200-row page and paginates the sorted slice locally.
 // ---------------------------------------------------------------------------
 
 const PAGE_SIZE = 50
 
-const VIEWS = ['queries', 'pages', 'countries', 'devices', 'opportunities'] as const
+const VIEWS = ['queries', 'pages', 'countries', 'devices', 'days', 'opportunities'] as const
 type View = (typeof VIEWS)[number]
 
 const VIEW_OPTIONS: SegmentedOption<View>[] = [
@@ -32,6 +52,7 @@ const VIEW_OPTIONS: SegmentedOption<View>[] = [
   { value: 'pages', label: 'Pages', icon: <FileText className="h-4 w-4" /> },
   { value: 'countries', label: 'Countries', icon: <GlobeHemisphereWest className="h-4 w-4" /> },
   { value: 'devices', label: 'Devices', icon: <Monitor className="h-4 w-4" /> },
+  { value: 'days', label: 'Days', icon: <CalendarBlank className="h-4 w-4" /> },
   { value: 'opportunities', label: 'Opportunities', icon: <Target className="h-4 w-4" /> },
 ]
 
@@ -48,7 +69,11 @@ interface RangeProps {
   siteId: string
   dateRange: { start: string; end: string }
 }
-interface ExpandableProps extends RangeProps {
+export interface SortProps {
+  sort: SortState | null
+  onSort: (col: SortCol) => void
+}
+interface ExpandableProps extends RangeProps, SortProps {
   page: number
   setPage: (p: number) => void
   expand: string | null
@@ -140,21 +165,33 @@ function ExpandableRows({
   )
 }
 
-function QueriesView({ siteId, dateRange, page, setPage, expand, toggleExpand }: ExpandableProps) {
-  const { data, error, isLoading, mutate } = useGSCTopQueries(siteId, dateRange.start, dateRange.end, PAGE_SIZE, page * PAGE_SIZE)
-  const rows: ExpRow[] = (data?.queries ?? []).map((r) => ({
+function QueriesView({ siteId, dateRange, page, setPage, expand, toggleExpand, sort, onSort }: ExpandableProps) {
+  const sorted = sort != null
+  const { data, error, isLoading, mutate } = useGSCTopQueries(
+    siteId, dateRange.start, dateRange.end,
+    sorted ? SORT_FETCH : PAGE_SIZE,
+    sorted ? 0 : page * PAGE_SIZE,
+  )
+  const allRows: ExpRow[] = (data?.queries ?? []).map((r) => ({
     key: r.query, label: r.query, title: r.query, clicks: r.clicks, impressions: r.impressions, ctr: r.ctr, position: r.position,
   }))
+  const rows = sorted ? sortRows(allRows, sort).slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE) : allRows
+  const total = data?.total ?? 0
   return (
     <>
-      <StandardHeader label="Query" />
+      <StandardHeader label="Query" sort={sort} onSort={onSort} />
       <ViewBody
         isLoading={isLoading}
         hasData={!!data}
         error={error}
         isEmpty={rows.length === 0}
         emptyNode={<EmptyState icon={<MagnifyingGlass />} title="No queries in this period" description="Try a wider date range once Search Console has synced more data." className="py-10" />}
-        footer={<Pagination page={page} pageSize={PAGE_SIZE} total={data?.total ?? 0} onPage={setPage} />}
+        footer={
+          <>
+            {sorted && <SortHorizonNote total={total} label="queries" />}
+            <Pagination page={page} pageSize={PAGE_SIZE} total={sorted ? Math.min(total, SORT_FETCH) : total} onPage={setPage} />
+          </>
+        }
         onRetry={() => { void mutate() }}
       >
         <ExpandableRows
@@ -168,21 +205,33 @@ function QueriesView({ siteId, dateRange, page, setPage, expand, toggleExpand }:
   )
 }
 
-function PagesView({ siteId, dateRange, page, setPage, expand, toggleExpand }: ExpandableProps) {
-  const { data, error, isLoading, mutate } = useGSCTopPages(siteId, dateRange.start, dateRange.end, PAGE_SIZE, page * PAGE_SIZE)
-  const rows: ExpRow[] = (data?.pages ?? []).map((r) => ({
+function PagesView({ siteId, dateRange, page, setPage, expand, toggleExpand, sort, onSort }: ExpandableProps) {
+  const sorted = sort != null
+  const { data, error, isLoading, mutate } = useGSCTopPages(
+    siteId, dateRange.start, dateRange.end,
+    sorted ? SORT_FETCH : PAGE_SIZE,
+    sorted ? 0 : page * PAGE_SIZE,
+  )
+  const allRows: ExpRow[] = (data?.pages ?? []).map((r) => ({
     key: r.page, label: stripProtocol(r.page), title: stripProtocol(r.page), clicks: r.clicks, impressions: r.impressions, ctr: r.ctr, position: r.position,
   }))
+  const rows = sorted ? sortRows(allRows, sort).slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE) : allRows
+  const total = data?.total ?? 0
   return (
     <>
-      <StandardHeader label="Page" />
+      <StandardHeader label="Page" sort={sort} onSort={onSort} />
       <ViewBody
         isLoading={isLoading}
         hasData={!!data}
         error={error}
         isEmpty={rows.length === 0}
         emptyNode={<EmptyState icon={<FileText />} title="No pages in this period" description="Try a wider date range once Search Console has synced more data." className="py-10" />}
-        footer={<Pagination page={page} pageSize={PAGE_SIZE} total={data?.total ?? 0} onPage={setPage} />}
+        footer={
+          <>
+            {sorted && <SortHorizonNote total={total} label="pages" />}
+            <Pagination page={page} pageSize={PAGE_SIZE} total={sorted ? Math.min(total, SORT_FETCH) : total} onPage={setPage} />
+          </>
+        }
         onRetry={() => { void mutate() }}
       >
         <ExpandableRows
@@ -191,6 +240,60 @@ function PagesView({ siteId, dateRange, page, setPage, expand, toggleExpand }: E
           toggleExpand={toggleExpand}
           renderExpansion={(row) => <PageExpansion siteId={siteId} start={dateRange.start} end={dateRange.end} page={row.key} />}
         />
+      </ViewBody>
+    </>
+  )
+}
+
+// ─── Days (the per-date dimension — GSC's "Dates" table) ─────────
+
+interface DaysProps extends RangeProps, SortProps {
+  page: number
+  setPage: (p: number) => void
+}
+
+function DaysView({ siteId, dateRange, page, setPage, sort, onSort }: DaysProps) {
+  const { data, error, isLoading, mutate } = useGSCDailyTotals(siteId, dateRange.start, dateRange.end)
+
+  const rows = useMemo(() => {
+    const daily = data?.daily_totals ?? []
+    // * Default order: most recent day first, like Search Console's own table.
+    const base = [...daily].reverse()
+    return sortRows(base, sort)
+  }, [data, sort])
+
+  const pageRows = rows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  const maxImpr = Math.max(...rows.map((r) => r.impressions), 0)
+
+  return (
+    <>
+      <StandardHeader label="Date" sort={sort} onSort={onSort} />
+      <ViewBody
+        isLoading={isLoading}
+        hasData={!!data}
+        error={error}
+        isEmpty={rows.length === 0}
+        emptyNode={<EmptyState icon={<CalendarBlank />} title="No days in this period" description="Google reports Search data with a ~2-day delay — try a wider range." className="py-10" />}
+        footer={<Pagination page={page} pageSize={PAGE_SIZE} total={rows.length} onPage={setPage} />}
+        onRetry={() => { void mutate() }}
+      >
+        {pageRows.map((row) => {
+          const label = new Date(row.date + 'T00:00:00').toLocaleDateString('en-GB', {
+            weekday: 'short', day: 'numeric', month: 'short',
+          })
+          return (
+            <div
+              key={row.date}
+              className="relative flex h-9 items-center px-3 transition-colors duration-fast ease-apple hover:bg-neutral-800/60"
+            >
+              <RowBar share={maxImpr > 0 ? row.impressions / maxImpr : 0} />
+              <span className="relative min-w-0 flex-1 truncate text-sm text-white" title={row.date}>
+                {label}
+              </span>
+              <StandardMetrics clicks={row.clicks} impressions={row.impressions} ctr={row.ctr} position={row.position} />
+            </div>
+          )
+        })}
       </ViewBody>
     </>
   )
@@ -208,6 +311,7 @@ export default function SearchViews({ siteId, dateRange }: RangeProps) {
   // URLSearchParams decodes on read and encodes on write, so this is the raw
   // query/page string — compared directly against a row's key.
   const expand = searchParams.get('expand')
+  const sort = parseSort(searchParams.get('s'))
 
   const updateParams = useCallback(
     (updates: Record<string, string | null>) => {
@@ -226,6 +330,19 @@ export default function SearchViews({ siteId, dateRange }: RangeProps) {
   const setPage = useCallback((p: number) => updateParams({ p: p <= 0 ? null : String(p) }), [updateParams])
   const toggleExpand = useCallback((key: string) => updateParams({ expand: expand === key ? null : key }), [updateParams, expand])
   const pickNewQuery = useCallback((query: string) => updateParams({ view: null, expand: query, p: null }), [updateParams])
+
+  // * Header click cycles a column: desc → asc → off; a different column
+  // * starts fresh at desc. Sorting re-ranks the whole fetch, so ?p= resets.
+  const onSort = useCallback(
+    (col: SortCol) => {
+      let next: SortState | null
+      if (sort?.col !== col) next = { col, dir: 'desc' }
+      else if (sort.dir === 'desc') next = { col, dir: 'asc' }
+      else next = null
+      updateParams({ s: serializeSort(next), p: null })
+    },
+    [sort, updateParams],
+  )
 
   // The range is owned by the page's useUrlDateRange and preserves other params
   // on change, so drop ?p= / ?expand= here when the range actually changes.
@@ -247,10 +364,11 @@ export default function SearchViews({ siteId, dateRange }: RangeProps) {
       </div>
 
       <div className="overflow-hidden rounded-none border border-border bg-card">
-        {view === 'queries' && <QueriesView siteId={siteId} dateRange={dateRange} page={page} setPage={setPage} expand={expand} toggleExpand={toggleExpand} />}
-        {view === 'pages' && <PagesView siteId={siteId} dateRange={dateRange} page={page} setPage={setPage} expand={expand} toggleExpand={toggleExpand} />}
-        {view === 'countries' && <CountriesView siteId={siteId} dateRange={dateRange} page={page} setPage={setPage} />}
-        {view === 'devices' && <DevicesView siteId={siteId} dateRange={dateRange} />}
+        {view === 'queries' && <QueriesView siteId={siteId} dateRange={dateRange} page={page} setPage={setPage} expand={expand} toggleExpand={toggleExpand} sort={sort} onSort={onSort} />}
+        {view === 'pages' && <PagesView siteId={siteId} dateRange={dateRange} page={page} setPage={setPage} expand={expand} toggleExpand={toggleExpand} sort={sort} onSort={onSort} />}
+        {view === 'countries' && <CountriesView siteId={siteId} dateRange={dateRange} page={page} setPage={setPage} sort={sort} onSort={onSort} />}
+        {view === 'devices' && <DevicesView siteId={siteId} dateRange={dateRange} sort={sort} onSort={onSort} />}
+        {view === 'days' && <DaysView siteId={siteId} dateRange={dateRange} page={page} setPage={setPage} sort={sort} onSort={onSort} />}
         {view === 'opportunities' && <OpportunitiesView siteId={siteId} dateRange={dateRange} />}
       </div>
     </div>

@@ -1,25 +1,32 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
 import { MagnifyingGlass, ArrowSquareOut } from '@phosphor-icons/react'
 import { useSite, useGSCStatus, useGSCOverview } from '@/lib/swr/dashboard'
 import { SearchSkeleton } from '@/components/skeletons'
-import SearchTrafficChart from '@/components/search/SearchTrafficChart'
+import InstrumentPanel from '@/components/search/InstrumentPanel'
 import SearchViews from '@/components/search/SearchViews'
 import { SyncStatusLine } from '@/components/integrations/SyncStatusLine'
-import { AnimatedNumber } from '@/components/ui/animated-number'
 import { UpdatingChip } from '@/components/ui/UpdatingChip'
 import { ErrorCard } from '@/components/ui/ErrorCard'
-import { guardedPctChange, type PctChangeResult } from '@/lib/utils/pctChange'
-import { formatNumber } from '@/lib/utils/format'
+import { Segmented, type SegmentedOption } from '@/components/ui/segmented'
+import { METRIC_ORDER, METRIC_LABEL, parseGranularity, type Granularity } from '@/components/search/searchMetrics'
+import { cn } from '@/lib/utils'
 
-// ─── Helpers ────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// Search Console — the instrument-panel layout. Range pills in GSC's own
+// vocabulary (7d/28d/3m/6m/12m/16m; 16m is Google's ~480-day retention cap,
+// no 24h because the API is daily-only with a ~2-day lag), a granularity
+// control that rolls the daily series up client-side, and the InstrumentPanel
+// where each metric row is both the KPI tile and the chart strip. Table views
+// live in SearchViews below, sharing the same URL-synced date state.
+// ---------------------------------------------------------------------------
 
 const cascade = (delay: number) => ({
   initial: { opacity: 0, y: 8 },
@@ -27,13 +34,65 @@ const cascade = (delay: number) => ({
   transition: { duration: DURATION_BASE, ease: EASE_APPLE, delay },
 })
 
-// ─── Page ───────────────────────────────────────────────────────
+const RANGE_PILLS: { key: Period; label: string }[] = [
+  { key: '7', label: '7d' },
+  { key: '28', label: '28d' },
+  { key: '3m', label: '3m' },
+  { key: '6m', label: '6m' },
+  { key: '12m', label: '12m' },
+  { key: '16m', label: '16m' },
+]
+
+const GRANULARITY_OPTIONS: SegmentedOption<Granularity>[] = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+]
+
+function RangePills({ period, onPeriod }: { period: Period; onPeriod: (p: Period) => void }) {
+  return (
+    <div role="group" aria-label="Date range" className="inline-flex h-10 shrink-0 items-stretch divide-x divide-neutral-800 overflow-hidden rounded-none border border-neutral-800">
+      {RANGE_PILLS.map(({ key, label }) => {
+        const active = period === key
+        return (
+          <button
+            key={key}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onPeriod(key)}
+            className={cn(
+              'px-3 text-sm font-medium transition-colors duration-fast ease-apple focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange',
+              active ? 'bg-neutral-800/60 text-white' : 'text-neutral-500 hover:text-neutral-300',
+            )}
+          >
+            {label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 export default function SearchConsolePage() {
   const params = useParams()
   const siteId = params.id as string
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
 
   const { period, dateRange, setPeriod, shiftPeriod } = useUrlDateRange()
+  const granularity = parseGranularity(searchParams.get('g'))
+
+  const setGranularity = useCallback(
+    (g: Granularity) => {
+      const next = new URLSearchParams(searchParams.toString())
+      if (g === 'daily') next.delete('g')
+      else next.set('g', g)
+      const qs = next.toString()
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    },
+    [searchParams, router, pathname],
+  )
 
   const { data: gscStatus } = useGSCStatus(siteId)
   const connected = gscStatus?.connected
@@ -57,38 +116,45 @@ export default function SearchConsolePage() {
     return <SearchSkeleton />
   }
 
-  // ─── Not connected state ──────────────────────────────────
+  // ─── Not connected — the panel's shape, ghosted, with the CTA ──
 
   if (gscStatus && !gscStatus.connected) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-8">
-        {/* * Same page header as the connected view — without it this tab was
-         * the only one with no h1 and read as a different app. */}
-        <div className="mb-8">
-          <h1 className="text-lg font-semibold text-white mb-1">
-            Search Console
-          </h1>
+        <div className="mb-6">
+          <h1 className="text-lg font-semibold text-white mb-1">Search Console</h1>
           <p className="text-sm text-neutral-400">
             Google Search performance, queries, and page rankings
           </p>
         </div>
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="rounded-none bg-neutral-800 p-5 mb-6">
-            <MagnifyingGlass size={40} className="text-neutral-500" />
+        <div className="flex rounded-none border border-border bg-card">
+          {/* Ghost rails — what the page becomes once connected */}
+          <div className="hidden w-48 shrink-0 flex-col border-r border-border sm:flex" aria-hidden="true">
+            {METRIC_ORDER.map((key) => (
+              <div key={key} className="flex flex-1 flex-col justify-center border-t border-border px-4 py-4 first:border-t-0">
+                <span className="text-sm text-neutral-600">{METRIC_LABEL[key]}</span>
+                <span className="mt-0.5 text-xl font-semibold text-neutral-700">&mdash;</span>
+              </div>
+            ))}
           </div>
-          <h2 className="text-xl font-semibold text-white mb-2">
-            Connect Google Search Console
-          </h2>
-          <p className="text-sm text-neutral-400 max-w-md mb-6">
-            See how your site performs in Google Search. View top queries, pages, click-through rates, and average position data.
-          </p>
-          <Link
-            href="/settings/site/integrations"
-            className="inline-flex h-10 items-center gap-2 rounded-none bg-brand-orange-button px-5 text-sm font-medium text-white transition-colors ease-apple hover:bg-brand-orange-button-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
-          >
-            Connect in Settings
-            <ArrowSquareOut size={16} weight="bold" />
-          </Link>
+          <div className="flex min-h-[360px] flex-1 flex-col items-center justify-center px-6 py-12 text-center">
+            <div className="rounded-none bg-neutral-800 p-5 mb-6">
+              <MagnifyingGlass size={40} className="text-neutral-500" />
+            </div>
+            <h2 className="text-xl font-semibold text-white mb-2">
+              Connect Google Search Console
+            </h2>
+            <p className="text-sm text-neutral-400 max-w-md mb-6">
+              See how your site performs in Google Search. View top queries, pages, click-through rates, and average position data.
+            </p>
+            <Link
+              href="/settings/site/integrations"
+              className="inline-flex h-10 items-center gap-2 rounded-none bg-brand-orange-button px-5 text-sm font-medium text-white transition-colors ease-apple hover:bg-brand-orange-button-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+            >
+              Connect in Settings
+              <ArrowSquareOut size={16} weight="bold" />
+            </Link>
+          </div>
         </div>
       </div>
     )
@@ -99,7 +165,7 @@ export default function SearchConsolePage() {
   return (
     <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-8">
       {/* Header */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <h1 className="text-lg font-semibold text-white">Search Console</h1>
           <p className="mt-1 text-sm text-neutral-400">
@@ -114,13 +180,16 @@ export default function SearchConsolePage() {
             />
           )}
         </div>
-        <DateRangePicker
-          period={period}
-          dateRange={dateRange}
-          onPeriodChange={(p) => setPeriod(p as Period)}
-          onDateRangeChange={(range) => setPeriod('custom', range)}
-          onShift={shiftPeriod}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <RangePills period={period} onPeriod={(p) => setPeriod(p)} />
+          <DateRangePicker
+            period={period}
+            dateRange={dateRange}
+            onPeriodChange={(p) => setPeriod(p as Period)}
+            onDateRangeChange={(range) => setPeriod('custom', range)}
+            onShift={shiftPeriod}
+          />
+        </div>
       </div>
 
       {/* Content — the chip covers range changes, the ErrorCard covers failures */}
@@ -134,90 +203,28 @@ export default function SearchConsolePage() {
           />
         ) : overview ? (
           <>
-            {/* KPI band */}
-            <motion.div {...cascade(0)} className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <KpiCard
-                label="Clicks"
-                value={overview.total_clicks}
-                format={(v) => formatNumber(Math.round(v))}
-                delta={guardedPctChange(overview.total_clicks, overview.prev_clicks, overview.prev_clicks)}
-              />
-              <KpiCard
-                label="Impressions"
-                value={overview.total_impressions}
-                format={(v) => formatNumber(Math.round(v))}
-                delta={guardedPctChange(overview.total_impressions, overview.prev_impressions, overview.prev_impressions)}
-              />
-              <KpiCard
-                label="Avg CTR"
-                value={overview.avg_ctr}
-                format={(v) => `${(v * 100).toFixed(1)}%`}
-                delta={guardedPctChange(overview.avg_ctr, overview.prev_avg_ctr, overview.prev_impressions)}
-              />
-              <KpiCard
-                label="Avg position"
-                value={overview.avg_position}
-                format={(v) => v.toFixed(1)}
-                delta={guardedPctChange(overview.avg_position, overview.prev_avg_position, overview.prev_impressions)}
-                invert
-              />
+            {/* Instrument panel — each metric row is tile and strip at once */}
+            <motion.div {...cascade(0)}>
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <span className="text-xs text-neutral-500">Search traffic</span>
+                <Segmented
+                  ariaLabel="Chart granularity"
+                  value={granularity}
+                  onChange={setGranularity}
+                  options={GRANULARITY_OPTIONS}
+                  className="h-8"
+                />
+              </div>
+              <InstrumentPanel siteId={siteId} dateRange={dateRange} overview={overview} granularity={granularity} />
             </motion.div>
 
-            {/* Traffic chart — dual-scale clicks (left) / impressions (right) */}
-            <motion.div {...cascade(0.05)} className="mt-6">
-              <SearchTrafficChart siteId={siteId} startDate={dateRange.start} endDate={dateRange.end} />
-            </motion.div>
-
-            {/* Five-view table system — queries / pages / countries / devices / opportunities */}
-            <motion.div {...cascade(0.1)} className="mt-6">
+            {/* Six-view table system — queries / pages / countries / devices / days / opportunities */}
+            <motion.div {...cascade(0.08)} className="mt-6">
               <SearchViews siteId={siteId} dateRange={dateRange} />
             </motion.div>
           </>
         ) : null}
       </div>
-    </div>
-  )
-}
-
-// ─── Sub-components ─────────────────────────────────────────────
-
-// KPI band — dashboard KPI language (mono micro label, tabular AnimatedNumber,
-// guarded delta). Position is an INVERTED metric: lower is better, so a drop is
-// green. The guard (min base 10) silences noisy -100%-on-tiny-base deltas.
-function DeltaBadge({ change, invert = false }: { change: PctChangeResult; invert?: boolean }) {
-  if (!change || change.type !== 'pct') return null
-  if (change.value === 0) {
-    return <span className="text-xs tabular-nums text-neutral-500">0%</span>
-  }
-  const up = change.value > 0
-  const good = invert ? !up : up
-  return (
-    <span className={`text-xs font-medium tabular-nums ${good ? 'text-green-400' : 'text-red-400'}`}>
-      {up ? '↑' : '↓'} {Math.abs(change.value)}%
-    </span>
-  )
-}
-
-function KpiCard({
-  label,
-  value,
-  format,
-  delta,
-  invert = false,
-}: {
-  label: string
-  value: number
-  format: (v: number) => string
-  delta: PctChangeResult
-  invert?: boolean
-}) {
-  return (
-    <div className="rounded-none border border-border bg-card p-4">
-      <div className="mb-1.5 flex items-start justify-between gap-2">
-        <span className="text-xs text-neutral-500">{label}</span>
-        <DeltaBadge change={delta} invert={invert} />
-      </div>
-      <AnimatedNumber value={value} format={format} className="text-2xl font-semibold tabular-nums text-white" />
     </div>
   )
 }

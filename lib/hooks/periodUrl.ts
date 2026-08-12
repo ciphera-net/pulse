@@ -21,7 +21,12 @@ export type Period =
   | 'today'
   | 'yesterday'
   | '7'
+  | '28'
   | '30'
+  | '3m'
+  | '6m'
+  | '12m'
+  | '16m'
   | 'week'
   | 'month'
   | 'year'
@@ -35,7 +40,12 @@ const PERIODS: ReadonlySet<Period> = new Set([
   'today',
   'yesterday',
   '7',
+  '28',
   '30',
+  '3m',
+  '6m',
+  '12m',
+  '16m',
   'week',
   'month',
   'year',
@@ -66,8 +76,19 @@ export function periodToDateRange(period: Period): { start: string; end: string 
       return getYesterdayRange()
     case '7':
       return getDateRange(7)
+    case '28':
+      return getDateRange(28)
     case '30':
       return getDateRange(30)
+    // * GSC pill ranges (Search page). 16m = Google's ~480-day retention cap.
+    case '3m':
+      return getDateRange(90)
+    case '6m':
+      return getDateRange(180)
+    case '12m':
+      return getDateRange(365)
+    case '16m':
+      return getDateRange(480)
     case 'week':
       return getThisWeekRange()
     case 'month':
