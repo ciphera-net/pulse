@@ -16,7 +16,12 @@ interface DateRangePickerProps {
   // * Page-scoped presets (e.g. the Search page's GSC ranges) rendered as
   // * their own group ABOVE the global ones, and resolved for the trigger
   // * label + checkmark — without leaking into every other page's picker.
-  extraPresets?: { group: string; presets: PeriodPreset[] }
+  // * With `exclusive`, the global preset groups are NOT rendered at all —
+  // * for pages whose data source has its own vocabulary and where global
+  // * presets are dishonest (e.g. "Today" on a daily-only, 2-day-lagged
+  // * source). Custom and the calendar always remain; an inherited URL
+  // * period outside the list still resolves for the trigger label.
+  extraPresets?: { group: string; presets: PeriodPreset[]; exclusive?: boolean }
 }
 
 function formatRangeDisplay(start: string, end: string): string {
@@ -267,7 +272,7 @@ export default function DateRangePicker({
                 ))}
               </div>
             )}
-            {PERIOD_GROUPS.map((group) => (
+            {!extraPresets?.exclusive && PERIOD_GROUPS.map((group) => (
               <div key={group}>
                 <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
                   {group}
