@@ -370,8 +370,8 @@ steps:
       # would be a miss stampede against the origin.
       - |
         FAILED=""
-        for P in /pricing /features /demo /faq /about /installation /changelog \
-                 "/integrations*" "/vs/*" "/tools/*"; do
+        for P in "/pricing*" "/features*" "/demo*" "/faq*" "/about*" "/installation*" \
+                 "/changelog*" "/integrations*" "/vs/*" "/tools/*"; do
           curl -fsS --max-time 300 --retry 3 --retry-delay 10 --retry-all-errors -X POST \
             "https://api.bunny.net/purge?url=https://pulse.ciphera.net$P&async=false" \
             -H "AccessKey: $BUNNY_API_KEY" >/dev/null \
@@ -415,8 +415,8 @@ steps:
       # See the production step above for why '/' is absent.
       - |
         FAILED=""
-        for P in /pricing /features /demo /faq /about /installation /changelog \
-                 "/integrations*" "/vs/*" "/tools/*"; do
+        for P in "/pricing*" "/features*" "/demo*" "/faq*" "/about*" "/installation*" \
+                 "/changelog*" "/integrations*" "/vs/*" "/tools/*"; do
           curl -fsS --max-time 300 --retry 3 --retry-delay 10 --retry-all-errors -X POST \
             "https://api.bunny.net/purge?url=https://pulse-staging.ciphera.net$P&async=false" \
             -H "AccessKey: $BUNNY_API_KEY" >/dev/null \
