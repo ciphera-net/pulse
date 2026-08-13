@@ -11,10 +11,11 @@ import { useQueryParamsWriter } from '@/lib/hooks/useQueryParamsWriter'
 import { getDateRange } from '@/lib/utils/format'
 import type { PeriodPreset } from '@/lib/constants/periods'
 import { MagnifyingGlass, ArrowSquareOut } from '@phosphor-icons/react'
-import { useSite, useGSCStatus, useGSCOverview } from '@/lib/swr/dashboard'
+import { useSite, useGSCStatus, useGSCOverview, useBingStatus } from '@/lib/swr/dashboard'
 import { SearchSkeleton } from '@/components/skeletons'
 import InstrumentPanel from '@/components/search/InstrumentPanel'
 import SearchViews from '@/components/search/SearchViews'
+import BingPanel from '@/components/search/BingPanel'
 import { SyncStatusLine } from '@/components/integrations/SyncStatusLine'
 import { UpdatingChip } from '@/components/ui/UpdatingChip'
 import { ErrorCard } from '@/components/ui/ErrorCard'
@@ -106,7 +107,24 @@ export default function SearchConsolePage() {
   )
 
   const { data: gscStatus } = useGSCStatus(siteId)
+  const { data: bingStatus } = useBingStatus(siteId)
   const connected = gscStatus?.connected
+
+  // * Engine lives in the URL like granularity does, so a Bing view survives a refresh and can be
+  // * linked to. 'google' is the default and writes no param.
+  const bingConnected = bingStatus?.connected ?? false
+  const engineParam = searchParams.get('engine')
+  // * Falls back to Google whenever Bing is not connected, so a stale ?engine=bing link after a
+  // * disconnect renders the Google view instead of an empty panel with no explanation.
+  const engine: 'google' | 'bing' = engineParam === 'bing' && bingConnected ? 'bing' : 'google'
+  const setEngine = useCallback(
+    (e: string) => write({ engine: e === 'google' ? null : e }),
+    [write],
+  )
+  const ENGINE_OPTIONS: SegmentedOption<'google' | 'bing'>[] = [
+    { value: 'google', label: 'Google' },
+    { value: 'bing', label: 'Bing' },
+  ]
   const { data: site } = useSite(siteId)
   const {
     data: overview,
@@ -123,13 +141,13 @@ export default function SearchConsolePage() {
   }, [site?.domain])
 
   // ─── Route-level state: skeleton only on the very first load ──
-  if (gscStatus === undefined || (connected && overview === undefined && overviewLoading)) {
+  if (gscStatus === undefined || bingStatus === undefined || (connected && engine === 'google' && overview === undefined && overviewLoading)) {
     return <SearchSkeleton />
   }
 
   // ─── Not connected — the panel's shape, ghosted, with the CTA ──
 
-  if (gscStatus && !gscStatus.connected) {
+  if (gscStatus && !gscStatus.connected && !bingConnected) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-8">
         <div className="mb-6">
@@ -180,18 +198,41 @@ export default function SearchConsolePage() {
         <div className="min-w-0">
           <h1 className="text-lg font-semibold text-white">Search Console</h1>
           <p className="mt-1 text-sm text-neutral-400">
-            Google Search performance, queries, and page rankings
+            {engine === 'bing'
+              ? 'Bing, Yahoo and DuckDuckGo — daily clicks and impressions'
+              : 'Google Search performance, queries, and page rankings'}
           </p>
-          {gscStatus && (
-            <SyncStatusLine
-              status={gscStatus.status}
-              lastSyncedAt={gscStatus.last_synced_at}
-              errorMessage={gscStatus.error_message}
-              settingsHref="/settings/site/integrations"
-            />
-          )}
+          {/* The sync line follows the selected engine: showing Google's freshness beside Bing's
+              numbers would attribute one engine's staleness to the other. */}
+          {engine === 'bing'
+            ? bingStatus && (
+                <SyncStatusLine
+                  status={bingStatus.status}
+                  lastSyncedAt={bingStatus.last_synced_at}
+                  errorMessage={bingStatus.error_message}
+                  settingsHref="/settings/site/integrations"
+                />
+              )
+            : gscStatus && (
+                <SyncStatusLine
+                  status={gscStatus.status}
+                  lastSyncedAt={gscStatus.last_synced_at}
+                  errorMessage={gscStatus.error_message}
+                  settingsHref="/settings/site/integrations"
+                />
+              )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {/* Only when there is genuinely a choice. A one-option toggle is furniture. */}
+          {bingConnected && connected && (
+            <Segmented
+              ariaLabel="Search engine"
+              value={engine}
+              onChange={setEngine}
+              options={ENGINE_OPTIONS}
+              className="h-8"
+            />
+          )}
           <RangePills period={period} onPeriod={(p) => setPeriod(p)} />
           <DateRangePicker
             period={period}
@@ -204,7 +245,11 @@ export default function SearchConsolePage() {
         </div>
       </div>
 
-      {/* Content — the chip covers range changes, the ErrorCard covers failures */}
+      {/* Bing: a deliberately smaller panel. Three metrics, no query tables — see BingPanel. */}
+      {engine === 'bing' ? (
+        <BingPanel siteId={siteId} dateRange={dateRange} />
+      ) : (
+      /* Content — the chip covers range changes, the ErrorCard covers failures */
       <div className="relative">
         <UpdatingChip active={overviewValidating && !!overview} className="-top-1 right-0" />
         {overviewError ? (
@@ -237,6 +282,7 @@ export default function SearchConsolePage() {
           </>
         ) : null}
       </div>
+      )}
     </div>
   )
 }
