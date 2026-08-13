@@ -375,6 +375,29 @@ function XAxis({ width, series, granularity }: { width: number; series: UptimePo
   )
 }
 
+// ─── Spec-plate certificate note ─────────────────────────────────
+
+function TLSNote({ monitor }: { monitor: UptimeMonitor }) {
+  // * Day-precision snapshot; drifting across a midnight while the page sits
+  // * open is not worth an impure call in render.
+  const [now] = useState(() => Date.now())
+  if (!monitor.tls_expires_at) return <span className="shrink-0 text-xs text-neutral-600">—</span>
+  const days = Math.ceil((new Date(monitor.tls_expires_at).getTime() - now) / 86_400_000)
+  if (days < 0) {
+    return (
+      <span className="shrink-0 text-xs tabular-nums" style={{ color: NEG }}>
+        certificate expired {Math.abs(days)} d ago
+      </span>
+    )
+  }
+  const tone = days < 14 ? { color: DEGRADED } : undefined
+  return (
+    <span className="shrink-0 text-xs tabular-nums text-neutral-500" style={tone}>
+      certificate renews in {days} d
+    </span>
+  )
+}
+
 // ─── Panel ───────────────────────────────────────────────────────
 
 export default function UptimePanel({ siteId, monitor, dateRange, incidents }: UptimePanelProps) {
@@ -550,6 +573,15 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents }: U
         <span className="flex h-7 shrink-0 items-center pr-3 text-xs text-neutral-600">
           {granularity === 'hour' ? 'hours are UTC' : 'days are UTC'}
         </span>
+      </div>
+
+      {/* Spec plate — the instrument carries its own credentials (trim
+          decision, 14-08): endpoint quiet-mono left, certificate state right.
+          Replaces the five-cell monitor strip; interval lives in the header
+          status line, expects/timeout are auto-managed constants. */}
+      <div className="flex h-8 items-center justify-between gap-4 border-t border-border px-4">
+        <span className="truncate font-mono text-xs text-neutral-600">{monitor.url}</span>
+        <TLSNote monitor={monitor} />
       </div>
 
       {/* Empty / error states cover the band area, rails stay visible */}

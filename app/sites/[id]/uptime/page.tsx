@@ -17,7 +17,6 @@ import { getDateRange } from '@/lib/utils/format'
 import type { PeriodPreset } from '@/lib/constants/periods'
 import UptimePanel from '@/components/uptime/UptimePanel'
 import IncidentsTable from '@/components/uptime/IncidentsTable'
-import MonitorStrip from '@/components/uptime/MonitorStrip'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import {
   UPTIME_METRIC_ORDER,
@@ -112,7 +111,7 @@ function RecentChecks({ siteId, monitorId }: { siteId: string; monitorId: string
     <div className="rounded-none border border-border bg-card">
       <div className="flex h-10 items-center justify-between border-b border-border px-4">
         <span className="text-sm font-medium text-white">Recent checks</span>
-        <span className="text-xs text-neutral-500">last {checks.length} · times are UTC</span>
+        <span className="text-xs text-neutral-500">last {checks.length}</span>
       </div>
       <div className="max-h-64 overflow-y-auto">
         {checks.map((c) => (
@@ -286,12 +285,11 @@ export default function UptimePage() {
             <IncidentsTable
               incidents={incidentsError ? undefined : incidentsData?.incidents}
               error={!!incidentsError}
-              dateRange={apiRange}
+              timeoutSeconds={monitor.timeout_seconds}
             />
           </motion.div>
 
-          <motion.div {...cascade(0.14)} className="mt-6 space-y-6">
-            <MonitorStrip monitor={monitor} />
+          <motion.div {...cascade(0.14)} className="mt-6">
             <RecentChecks siteId={siteId} monitorId={monitor.id} />
           </motion.div>
         </>

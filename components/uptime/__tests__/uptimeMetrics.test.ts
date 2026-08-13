@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  humanizeCause,
   parseUptimeMetrics,
   serializeUptimeMetrics,
   toUptimeSeries,
@@ -121,6 +122,23 @@ describe('presetUtcRange', () => {
     const nowUtc = new Date('2026-08-13T12:00:00Z')
     expect(presetUtcRange({ start: '2026-08-07', end: '2026-08-13' }, nowUtc))
       .toEqual({ start: '2026-08-07', end: '2026-08-13' })
+  })
+})
+
+describe('humanizeCause', () => {
+  it('maps the real failure modes to human copy', () => {
+    expect(humanizeCause('request failed: Get "https://x": context deadline exceeded', null, 30)).toBe('Timed out after 30 s')
+    expect(humanizeCause('request failed: context deadline exceeded', null, undefined)).toBe('Timed out')
+    expect(humanizeCause('request failed: dial tcp: connection refused', null, 30)).toBe('Connection refused')
+    expect(humanizeCause('request failed: dial tcp: lookup x: no such host', null, 30)).toBe('DNS lookup failed')
+    expect(humanizeCause('request failed: x509: certificate has expired', null, 30)).toBe('TLS handshake failed')
+    expect(humanizeCause('slow response: 6000ms', null, 30)).toBe('Slow response (6.00 s)')
+    expect(humanizeCause('unexpected status code: 502 (expected 200)', 502, 30)).toBe('Status 502 (expected 200)')
+  })
+  it('falls back honestly', () => {
+    expect(humanizeCause('something novel went wrong', null, 30)).toBe('something novel went wrong')
+    expect(humanizeCause(null, 503, 30)).toBe('Status 503')
+    expect(humanizeCause(null, null, 30)).toBeNull()
   })
 })
 
