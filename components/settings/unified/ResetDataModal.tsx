@@ -46,9 +46,9 @@ const RESET_MODULES: ResetModuleOption[] = [
   {
     id: 'uptime',
     label: 'Uptime',
-    description: 'Uptime check results and daily uptime stats. Monitors are kept.',
+    description: 'Uptime check results, daily uptime stats and incident history. Monitors are kept.',
     icon: Heartbeat,
-    tables: ['uptime_checks', 'uptime_daily_stats'],
+    tables: ['uptime_checks', 'uptime_daily_stats', 'uptime_incidents'],
   },
   {
     id: 'pagespeed',

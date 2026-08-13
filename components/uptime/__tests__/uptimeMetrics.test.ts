@@ -4,11 +4,16 @@ import {
   serializeUptimeMetrics,
   toUptimeSeries,
   seriesUptimePct,
+  seriesSpansMultipleDays,
   incidentDurationSeconds,
+  clippedDurationSeconds,
   totalDowntimeSeconds,
+  presetUtcRange,
+  rangeWindowMs,
   fmtMs,
   fmtUptimePct,
   fmtDurationSeconds,
+  fmtCheckTimeUTC,
   bucketLabelUTC,
   UPTIME_DEFAULT_ACTIVE,
 } from '../uptimeMetrics'
@@ -71,12 +76,51 @@ describe('incident math', () => {
     started_at: '2026-07-27T09:20:00Z', ended_at: '2026-07-27T09:52:00Z',
     first_error_message: null, first_status_code: null, failed_checks: 6,
   }
+  const now = new Date('2026-07-27T10:00:00Z').getTime()
+
   it('computes closed durations from the episode, ongoing from now', () => {
     expect(incidentDurationSeconds(closed)).toBe(32 * 60)
     const ongoing = { ...closed, id: 'b', ended_at: null }
-    const now = new Date('2026-07-27T10:00:00Z').getTime()
     expect(incidentDurationSeconds(ongoing, now)).toBe(40 * 60)
-    expect(totalDowntimeSeconds([closed, ongoing], now)).toBe(72 * 60)
+  })
+
+  it('clips range downtime to the window — an old long outage cannot charge a short range more time than it contains', () => {
+    const wideStart = Date.parse('2026-07-20T00:00:00Z')
+    const wideEnd = Date.parse('2026-07-28T00:00:00Z')
+    expect(totalDowntimeSeconds([closed], wideStart, wideEnd, now)).toBe(32 * 60)
+
+    // * Window opens mid-episode: only the overlap counts.
+    const midStart = Date.parse('2026-07-27T09:30:00Z')
+    expect(clippedDurationSeconds(closed, midStart, wideEnd, now)).toBe(22 * 60)
+
+    // * Episode entirely before the window: zero, never negative.
+    const lateStart = Date.parse('2026-07-27T09:55:00Z')
+    expect(clippedDurationSeconds(closed, lateStart, wideEnd, now)).toBe(0)
+
+    // * Ongoing episode clips at the window end (= now for a live range).
+    const ongoing = { ...closed, id: 'b', ended_at: null }
+    expect(clippedDurationSeconds(ongoing, midStart, now, now)).toBe(30 * 60)
+  })
+
+  it('derives the range window from UTC day strings, capped at now', () => {
+    const { startMs, endMs } = rangeWindowMs({ start: '2026-07-26', end: '2026-07-27' }, now)
+    expect(startMs).toBe(Date.parse('2026-07-26T00:00:00Z'))
+    expect(endMs).toBe(now) // 27 Jul 24:00Z is in the future at 10:00Z
+  })
+})
+
+describe('presetUtcRange', () => {
+  it('re-anchors a preset window to the CURRENT UTC day, keeping its length', () => {
+    // * 21:00 New York on 12 Aug = 01:00 UTC on 13 Aug: local strings say
+    // * 14 Jul – 12 Aug; the UTC-anchored range must end on the 13th.
+    const nowUtc = new Date('2026-08-13T01:00:00Z')
+    const local30d = { start: '2026-07-14', end: '2026-08-12' }
+    expect(presetUtcRange(local30d, nowUtc)).toEqual({ start: '2026-07-15', end: '2026-08-13' })
+  })
+  it('is a no-op when local and UTC agree on today', () => {
+    const nowUtc = new Date('2026-08-13T12:00:00Z')
+    expect(presetUtcRange({ start: '2026-08-07', end: '2026-08-13' }, nowUtc))
+      .toEqual({ start: '2026-08-07', end: '2026-08-13' })
   })
 })
 
@@ -86,6 +130,19 @@ describe('formatters', () => {
     expect(fmtMs(30001)).toBe('30.00 s')
     expect(fmtUptimePct(100)).toBe('100%')
     expect(fmtUptimePct(97.694)).toBe('97.69%')
+    // * FLOORS: a range with real failures must never present as 100%.
+    expect(fmtUptimePct(99.9996)).toBe('99.99%')
+  })
+  it('labels hourly buckets with their day on multi-day series, and check times in UTC', () => {
+    const d = new Date('2026-08-10T14:00:00Z')
+    expect(bucketLabelUTC(d, 'hour')).toBe('14:00')
+    expect(bucketLabelUTC(d, 'hour', true)).toBe('10/08 14:00')
+    expect(fmtCheckTimeUTC('2026-08-13T12:43:18Z')).toBe('13/08 12:43')
+    const series = toUptimeSeries([
+      bucket({ bucket_start: '2026-08-10T22:00:00Z' }),
+      bucket({ bucket_start: '2026-08-11T02:00:00Z' }),
+    ])
+    expect(seriesSpansMultipleDays(series)).toBe(true)
   })
   it('formats durations across the s/m/h breakpoints', () => {
     expect(fmtDurationSeconds(45)).toBe('45 s')

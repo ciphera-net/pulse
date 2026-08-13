@@ -1,6 +1,7 @@
 'use client'
 
 import type { UptimeMonitor } from '@/lib/api/uptime'
+import { UPTIME_NEG, UPTIME_DEGRADED } from './uptimeMetrics'
 
 // ---------------------------------------------------------------------------
 // The monitor strip — the check's configuration stated honestly in one
@@ -8,17 +9,23 @@ import type { UptimeMonitor } from '@/lib/api/uptime'
 // (URL, status code) is mono; labels are sans, per the house typography rule.
 // ---------------------------------------------------------------------------
 
-const DEGRADED = '#fbbf24'
-
-function tlsCell(m: UptimeMonitor): { value: React.ReactNode; tone?: string } {
+function tlsCell(m: UptimeMonitor): { value: React.ReactNode } {
   if (!m.tls_expires_at) return { value: <span className="text-neutral-500">—</span> }
   const days = Math.ceil((new Date(m.tls_expires_at).getTime() - Date.now()) / 86_400_000)
-  const label = days < 0 ? 'expired' : `${days} d left`
-  const tone = days < 14 ? DEGRADED : undefined
+  if (days < 0) {
+    return {
+      value: (
+        <span className="text-sm tabular-nums" style={{ color: UPTIME_NEG }}>
+          expired {Math.abs(days)} d ago
+        </span>
+      ),
+    }
+  }
+  const tone = days < 14 ? UPTIME_DEGRADED : undefined
   return {
     value: (
       <span className="text-sm tabular-nums text-neutral-200" style={tone ? { color: tone } : undefined}>
-        valid · {label}
+        valid · {days} d left
         {m.tls_issuer ? <span className="text-neutral-500"> · {m.tls_issuer}</span> : null}
       </span>
     ),

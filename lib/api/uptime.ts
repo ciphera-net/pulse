@@ -129,9 +129,11 @@ export async function getUptimeStatus(siteId: string, startDate?: string, endDat
 }
 
 /**
- * Fetches incident episodes overlapping the range, newest first.
+ * Fetches incident episodes overlapping the range, newest first. The default
+ * limit is the API's maximum — the ledger states its count as fact, so it
+ * fetches as much fact as the API allows and labels the cutoff if it hits it.
  */
-export async function getUptimeIncidents(siteId: string, startDate: string, endDate: string, limit = 50): Promise<UptimeIncidentsResponse> {
+export async function getUptimeIncidents(siteId: string, startDate: string, endDate: string, limit = 200): Promise<UptimeIncidentsResponse> {
   const params = new URLSearchParams({ start_date: startDate, end_date: endDate, limit: String(limit) })
   return apiRequest<UptimeIncidentsResponse>(`/sites/${siteId}/uptime/incidents?${params.toString()}`)
 }

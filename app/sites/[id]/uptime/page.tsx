@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
@@ -13,11 +13,20 @@ import DateRangePicker from '@/components/ui/DateRangePicker'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
 import { getDateRange } from '@/lib/utils/format'
 import type { PeriodPreset } from '@/lib/constants/periods'
-import { formatDateTimeShort } from '@/lib/utils/formatDate'
 import UptimePanel from '@/components/uptime/UptimePanel'
 import IncidentsTable from '@/components/uptime/IncidentsTable'
 import MonitorStrip from '@/components/uptime/MonitorStrip'
-import { UPTIME_METRIC_ORDER, UPTIME_METRIC_LABEL, fmtMs } from '@/components/uptime/uptimeMetrics'
+import { ErrorCard } from '@/components/ui/ErrorCard'
+import {
+  UPTIME_METRIC_ORDER,
+  UPTIME_METRIC_LABEL,
+  UPTIME_POS,
+  UPTIME_NEG,
+  UPTIME_DEGRADED,
+  fmtMs,
+  fmtCheckTimeUTC,
+  presetUtcRange,
+} from '@/components/uptime/uptimeMetrics'
 import { cn } from '@/lib/utils'
 
 // ---------------------------------------------------------------------------
@@ -34,8 +43,11 @@ const cascade = (delay: number) => ({
   transition: { duration: DURATION_BASE, ease: EASE_APPLE, delay },
 })
 
+// * No 24h pill on purpose: the API is UTC-day-granular, so a "24h" shortcut
+// * would really be an up-to-48-hour window wearing a 24h label. 7d is the
+// * smallest pill and still renders at HOURLY resolution (the server serves
+// * hourly buckets for ranges ≤ 8 days).
 const RANGE_PILLS: { key: Period; label: string }[] = [
-  { key: '24h', label: '24h' },
   { key: '7', label: '7d' },
   { key: '30', label: '30d' },
   { key: '3m', label: '3m' },
@@ -82,9 +94,9 @@ function RangePills({ period, onPeriod }: { period: Period; onPeriod: (p: Period
 // ─── Recent checks (compact log under the ledger) ─────────────────
 
 const CHECK_DOT: Record<string, string> = {
-  up: '#3ECF8E',
-  degraded: '#fbbf24',
-  down: '#F8836B',
+  up: UPTIME_POS,
+  degraded: UPTIME_DEGRADED,
+  down: UPTIME_NEG,
 }
 
 function RecentChecks({ siteId, monitorId }: { siteId: string; monitorId: string | undefined }) {
@@ -94,13 +106,20 @@ function RecentChecks({ siteId, monitorId }: { siteId: string; monitorId: string
     <div className="rounded-none border border-border bg-card">
       <div className="flex h-10 items-center justify-between border-b border-border px-4">
         <span className="text-sm font-medium text-white">Recent checks</span>
-        <span className="text-xs text-neutral-500">last {checks.length}</span>
+        <span className="text-xs text-neutral-500">last {checks.length} · times are UTC</span>
       </div>
       <div className="max-h-64 overflow-y-auto">
         {checks.map((c) => (
           <div key={c.id} className="flex h-8 items-center px-3 text-xs hover:bg-neutral-800/40">
-            <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: CHECK_DOT[c.status] ?? '#737373' }} />
-            <span className="ml-2.5 shrink-0 tabular-nums text-neutral-300">{formatDateTimeShort(new Date(c.checked_at))}</span>
+            {/* Dot = CONFIRMED status, same convention as every aggregate on
+                the page; a grace-period blip must not show red against a
+                100% availability rail. */}
+            <span
+              aria-hidden="true"
+              className="h-1.5 w-1.5 shrink-0 rounded-full"
+              style={{ background: CHECK_DOT[c.effective_status ?? c.status] ?? '#737373' }}
+            />
+            <span className="ml-2.5 shrink-0 tabular-nums text-neutral-300">{fmtCheckTimeUTC(c.checked_at)}</span>
             {/* A failed check finally shows WHY — the error was always fetched, never rendered */}
             {c.error_message && (
               <span className="ml-3 min-w-0 flex-1 truncate font-mono text-neutral-500">{c.error_message}</span>
@@ -126,9 +145,23 @@ export default function UptimePage() {
 
   const { period, dateRange, setPeriod, shiftPeriod } = useUrlDateRange()
 
+  // * The API reads UTC calendar days; useUrlDateRange builds LOCAL ones.
+  // * Preset windows re-anchor to the current UTC day so the newest checks
+  // * never fall off the range west of UTC; a custom pick passes through —
+  // * an explicitly chosen calendar day IS the UTC day, as labeled.
+  const apiRange = useMemo(
+    () => (period === 'custom' ? dateRange : presetUtcRange(dateRange)),
+    [period, dateRange],
+  )
+
   const { data: site, mutate: mutateSite } = useSite(siteId)
-  const { data: uptimeData, isLoading, mutate: mutateUptime } = useUptimeStatus(siteId, dateRange.start, dateRange.end)
-  const { data: incidentsData } = useUptimeIncidents(siteId, dateRange.start, dateRange.end)
+  const {
+    data: uptimeData,
+    isLoading,
+    error: uptimeError,
+    mutate: mutateUptime,
+  } = useUptimeStatus(siteId, apiRange.start, apiRange.end)
+  const { data: incidentsData, error: incidentsError } = useUptimeIncidents(siteId, apiRange.start, apiRange.end)
   const [toggling, setToggling] = useState(false)
 
   // * Single monitor from the auto-managed uptime system
@@ -252,14 +285,18 @@ export default function UptimePage() {
             <UptimePanel
               siteId={siteId}
               monitor={monitor}
-              dateRange={dateRange}
-              incidents={incidentsData?.incidents}
+              dateRange={apiRange}
+              incidents={incidentsError ? undefined : incidentsData?.incidents}
               status={overallStatus}
             />
           </motion.div>
 
           <motion.div {...cascade(0.08)} className="mt-6">
-            <IncidentsTable incidents={incidentsData?.incidents} />
+            <IncidentsTable
+              incidents={incidentsError ? undefined : incidentsData?.incidents}
+              error={!!incidentsError}
+              dateRange={apiRange}
+            />
           </motion.div>
 
           <motion.div {...cascade(0.14)} className="mt-6 space-y-6">
@@ -267,6 +304,14 @@ export default function UptimePage() {
             <RecentChecks siteId={siteId} monitorId={monitor.id} />
           </motion.div>
         </>
+      ) : uptimeError && !uptimeData ? (
+        // * A failed status request is an ERROR, not a setup state — reporting
+        // * it as "setting up" would be a false success (review finding).
+        <ErrorCard
+          title="Couldn't load uptime status"
+          description="The uptime request failed. Your monitoring is unaffected — this is a loading problem."
+          onRetry={() => { void mutateUptime() }}
+        />
       ) : (
         // * Enabled moments ago — the monitor row exists after the toggle's
         // * auto-create, but a fresh SWR read may not carry it yet.

@@ -67,6 +67,30 @@ export function seriesUptimePct(series: UptimePoint[]): number | null {
   return (up / total) * 100
 }
 
+// ─── Range anchoring ─────────────────────────────────────────────
+
+// * The uptime API reads start_date/end_date as UTC calendar days (decision
+// * D5). useUrlDateRange builds its strings from LOCAL date parts — correct
+// * for the analytics pages, where the server re-resolves in the site's
+// * timezone, but WRONG here: west of UTC "local today" is a UTC day that
+// * ended hours ago, and the newest checks silently vanish from every strip
+// * while the live status beside them still shows them (review finding,
+// * 13-08-2026). For preset (trailing-window) periods we therefore keep the
+// * window's LENGTH and re-anchor its end to the CURRENT UTC day. Custom
+// * ranges pass through: an explicitly picked calendar day IS the UTC day,
+// * per the page's stated convention.
+export function presetUtcRange(dateRange: { start: string; end: string }, now = new Date()): { start: string; end: string } {
+  const spanDays = Math.max(
+    0,
+    Math.round((Date.parse(dateRange.end) - Date.parse(dateRange.start)) / 86_400_000),
+  )
+  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+  const start = new Date(end.getTime() - spanDays * 86_400_000)
+  const fmt = (d: Date) =>
+    `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+  return { start: fmt(start), end: fmt(end) }
+}
+
 // ─── Incident math ───────────────────────────────────────────────
 
 export function incidentDurationSeconds(i: UptimeIncident, now = Date.now()): number {
@@ -75,8 +99,27 @@ export function incidentDurationSeconds(i: UptimeIncident, now = Date.now()): nu
   return Math.max(0, Math.round((end - start) / 1000))
 }
 
-export function totalDowntimeSeconds(incidents: UptimeIncident[], now = Date.now()): number {
-  return incidents.reduce((n, i) => n + incidentDurationSeconds(i, now), 0)
+// * Downtime ATTRIBUTABLE TO THE RANGE: episode time is clipped to the window
+// * before summing, so a 3-day-old outage doesn't report 72 h of downtime
+// * under a 7-day view's "in this range" label. Rows still show their full
+// * episode durations — the episode is a fact; the clipping is about what the
+// * RANGE gets charged.
+export function clippedDurationSeconds(i: UptimeIncident, rangeStartMs: number, rangeEndMs: number, now = Date.now()): number {
+  const start = Math.max(new Date(i.started_at).getTime(), rangeStartMs)
+  const end = Math.min(i.ended_at ? new Date(i.ended_at).getTime() : now, rangeEndMs)
+  return Math.max(0, Math.round((end - start) / 1000))
+}
+
+export function totalDowntimeSeconds(incidents: UptimeIncident[], rangeStartMs: number, rangeEndMs: number, now = Date.now()): number {
+  return incidents.reduce((n, i) => n + clippedDurationSeconds(i, rangeStartMs, rangeEndMs, now), 0)
+}
+
+// * The API range strings are UTC calendar days: the window is
+// * [start 00:00Z, end 24:00Z), capped at now for clipping purposes.
+export function rangeWindowMs(dateRange: { start: string; end: string }, now = Date.now()): { startMs: number; endMs: number } {
+  const startMs = Date.parse(dateRange.start + 'T00:00:00Z')
+  const endMs = Math.min(Date.parse(dateRange.end + 'T00:00:00Z') + 86_400_000, now)
+  return { startMs, endMs }
 }
 
 // ─── Formatters ──────────────────────────────────────────────────
@@ -86,8 +129,11 @@ export function fmtMs(v: number): string {
   return `${Math.round(v)} ms`
 }
 
+// * Floors, never rounds: 99.9996% with real failures must not present as
+// * "100%" — that number is a claim the incidents ledger would contradict.
 export function fmtUptimePct(v: number): string {
-  return v >= 100 ? '100%' : `${v.toFixed(2)}%`
+  if (v >= 100) return '100%'
+  return `${(Math.floor(v * 100) / 100).toFixed(2)}%`
 }
 
 export function fmtDurationSeconds(s: number): string {
@@ -100,9 +146,33 @@ export function fmtDurationSeconds(s: number): string {
 
 // * Bucket label in UTC — the uptime subsystem's deliberate day convention
 // * (decision D5); labeling in local time would shift bars off their days.
-export function bucketLabelUTC(d: Date, granularity: 'hour' | 'day'): string {
+// * Hourly buckets carry their DAY when the series spans more than one —
+// * the server serves hourly granularity for ranges up to 8 days, and a bare
+// * "14:00" axis across a week is eight identical days of labels.
+export function bucketLabelUTC(d: Date, granularity: 'hour' | 'day', withDay = false): string {
+  const dayPart = `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`
   if (granularity === 'hour') {
-    return `${String(d.getUTCHours()).padStart(2, '0')}:00`
+    const hour = `${String(d.getUTCHours()).padStart(2, '0')}:00`
+    return withDay ? `${dayPart} ${hour}` : hour
   }
-  return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`
+  return dayPart
 }
+
+export function seriesSpansMultipleDays(series: UptimePoint[]): boolean {
+  if (series.length < 2) return false
+  const first = series[0].date
+  const last = series[series.length - 1].date
+  return first.getUTCDate() !== last.getUTCDate() || first.getUTCMonth() !== last.getUTCMonth()
+}
+
+// * Check timestamps in UTC ("dd/MM HH:mm") — the page's one time convention.
+export function fmtCheckTimeUTC(iso: string): string {
+  const d = new Date(iso)
+  return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
+}
+
+// ─── State colors (one place; semantic, not decoration) ──────────
+
+export const UPTIME_POS = '#3ECF8E'
+export const UPTIME_NEG = '#F8836B'
+export const UPTIME_DEGRADED = '#fbbf24'

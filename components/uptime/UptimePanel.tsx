@@ -16,11 +16,16 @@ import type { UptimeIncident, UptimeMonitor } from '@/lib/api/uptime'
 import {
   UPTIME_METRIC_ORDER,
   UPTIME_METRIC_LABEL,
+  UPTIME_POS,
+  UPTIME_NEG,
+  UPTIME_DEGRADED,
   parseUptimeMetrics,
   serializeUptimeMetrics,
   toUptimeSeries,
   seriesUptimePct,
+  seriesSpansMultipleDays,
   totalDowntimeSeconds,
+  rangeWindowMs,
   fmtMs,
   fmtUptimePct,
   fmtDurationSeconds,
@@ -41,9 +46,9 @@ import {
 const INK = '#b3b1ad'
 const INK_FILL = 'rgba(255, 255, 255, 0.045)'
 const MARKER = '#FD5E0F'
-const POS = '#3ECF8E'
-const NEG = '#F8836B'
-const DEGRADED = '#fbbf24'
+const POS = UPTIME_POS
+const NEG = UPTIME_NEG
+const DEGRADED = UPTIME_DEGRADED
 const STRIP_H = 92
 const PAD = { l: 8, r: 52 }
 const RAIL_W = 'w-40 sm:w-48'
@@ -165,7 +170,23 @@ function ResponseStrip({
   const innerH = STRIP_H - padT - padB
   const xScale = useXScale(series, innerW)
 
-  const timed = series.filter((p) => p.avgMs != null)
+  // * The line breaks over buckets with no timed samples (a full-outage hour)
+  // * instead of bridging them — a straight stroke across an outage is drawn
+  // * data that never existed. Consecutive timed points form segments.
+  const segments = useMemo(() => {
+    const out: UptimePoint[][] = []
+    let run: UptimePoint[] = []
+    for (const p of series) {
+      if (p.avgMs != null) {
+        run.push(p)
+      } else if (run.length > 0) {
+        out.push(run)
+        run = []
+      }
+    }
+    if (run.length > 0) out.push(run)
+    return out
+  }, [series])
   const hasP95 = series.some((p) => p.p95Ms != null)
   const max = Math.max(1e-9, ...series.map((p) => Math.max(p.avgMs ?? 0, p.p95Ms ?? 0))) * 1.12
   const yScale = useMemo(() => scaleLinear().domain([0, max]).range([padT + innerH, padT]), [max, innerH])
@@ -187,26 +208,37 @@ function ResponseStrip({
       <line x1={PAD.l} x2={width - PAD.r} y1={padT} y2={padT} stroke="var(--chart-grid)" strokeWidth={1} />
       <line x1={PAD.l} x2={width - PAD.r} y1={padT + innerH} y2={padT + innerH} stroke="var(--chart-grid)" strokeWidth={1} />
       <g transform={`translate(${PAD.l},0)`}>
-        {timed.length > 1 && (
-          <>
-            <AreaClosed
-              data={timed}
-              x={(p) => xScale(p.date)}
-              y={(p) => yScale(p.avgMs as number)}
-              yScale={yScale}
-              curve={curveMonotoneX}
-              fill={INK_FILL}
+        {segments.map((seg) =>
+          seg.length > 1 ? (
+            <g key={seg[0].date.getTime()}>
+              <AreaClosed
+                data={seg}
+                x={(p) => xScale(p.date)}
+                y={(p) => yScale(p.avgMs as number)}
+                yScale={yScale}
+                curve={curveMonotoneX}
+                fill={INK_FILL}
+              />
+              <LinePath
+                data={seg}
+                x={(p) => xScale(p.date)}
+                y={(p) => yScale(p.avgMs as number)}
+                curve={curveMonotoneX}
+                stroke={INK}
+                strokeWidth={1.5}
+                strokeLinecap="round"
+              />
+            </g>
+          ) : (
+            // * An isolated timed bucket between gaps still deserves a mark.
+            <circle
+              key={seg[0].date.getTime()}
+              cx={xScale(seg[0].date)}
+              cy={yScale(seg[0].avgMs as number)}
+              r={1.5}
+              fill={INK}
             />
-            <LinePath
-              data={timed}
-              x={(p) => xScale(p.date)}
-              y={(p) => yScale(p.avgMs as number)}
-              curve={curveMonotoneX}
-              stroke={INK}
-              strokeWidth={1.5}
-              strokeLinecap="round"
-            />
-          </>
+          ),
         )}
         {/* p95 as a second, quieter trace — only where the server has it */}
         {hasP95 && (
@@ -324,6 +356,9 @@ function XAxis({ width, series, granularity }: { width: number; series: UptimePo
   const xScale = scaleTime().domain([series[0].date, series[series.length - 1].date]).range([0, innerW])
   const n = Math.min(5, series.length)
   const ticks = n <= 1 ? [0] : Array.from({ length: n }, (_, k) => Math.round((k * (series.length - 1)) / (n - 1)))
+  // * A 7-day range serves ~168 HOURLY buckets — a bare "14:00" axis would be
+  // * seven identical days of labels, so multi-day hourly axes carry the day.
+  const withDay = granularity === 'hour' && seriesSpansMultipleDays(series)
   return (
     <svg aria-hidden="true" width={width} height={20} style={{ display: 'block' }}>
       {ticks.map((idx) => (
@@ -335,7 +370,7 @@ function XAxis({ width, series, granularity }: { width: number; series: UptimePo
           fontSize={11}
           fill="var(--chart-axis)"
         >
-          {bucketLabelUTC(series[idx].date, granularity)}
+          {bucketLabelUTC(series[idx].date, granularity, withDay)}
         </text>
       ))}
     </svg>
@@ -353,7 +388,12 @@ const STATUS_TEXT: Record<UptimePanelProps['status'], { label: string; color: st
 export default function UptimePanel({ siteId, monitor, dateRange, incidents, status }: UptimePanelProps) {
   const searchParams = useSearchParams()
   const write = useQueryParamsWriter()
-  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
+
+  // * Hover state is keyed to the series payload: a range switch replaces the
+  // * buckets, and a surviving index would pin the crosshair to whatever
+  // * bucket now happens to share it. Render-time adjustment (not an effect)
+  // * per the React "adjusting state when props change" pattern.
+  const [hoverState, setHoverState] = useState<{ key: unknown; idx: number | null }>({ key: null, idx: null })
 
   const active = parseUptimeMetrics(searchParams.get('m'))
   const toggleMetric = useCallback(
@@ -375,13 +415,24 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, sta
   const series = useMemo(() => toUptimeSeries(data?.buckets ?? []), [data])
   const summary = data?.summary ?? null
 
+  if (hoverState.key !== data) {
+    setHoverState({ key: data, idx: null })
+  }
+  const hoverIdx = hoverState.key === data ? hoverState.idx : null
+  const setHoverIdx = useCallback((i: number | null) => setHoverState({ key: data, idx: i }), [data])
+
   const uptimePct = seriesUptimePct(series)
   const totalChecks = series.reduce((n, p) => n + p.samples, 0)
-  const closedOrOpen = incidents ?? []
-  const downtime = totalDowntimeSeconds(closedOrOpen)
+  // * Downtime attributed to the range is CLIPPED to it — an old multi-day
+  // * episode overlapping the window must not report more downtime than the
+  // * window contains.
+  const { startMs, endMs } = rangeWindowMs(dateRange)
+  const downtime = incidents ? totalDowntimeSeconds(incidents, startMs, endMs) : 0
 
   const hovered = hoverIdx != null && hoverIdx < series.length ? series[hoverIdx] : null
+  const firstCheckPending = monitor.last_status === 'unknown'
   const st = STATUS_TEXT[status]
+  const hourWithDay = granularity === 'hour' && seriesSpansMultipleDays(series)
 
   // * Rail primary for response time: exact p50 where the server has it
   // * (hourly source), the exact weighted avg otherwise — always labeled.
@@ -393,10 +444,14 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, sta
       case 'availability':
         return {
           text: uptimePct == null ? '—' : fmtUptimePct(uptimePct),
+          // * undefined incidents = not loaded (or failed) — that is "unknown",
+          // * never presented as the claim "no incidents".
           sub:
-            closedOrOpen.length === 0
-              ? 'no incidents'
-              : `${closedOrOpen.length} incident${closedOrOpen.length === 1 ? '' : 's'} · ${fmtDurationSeconds(downtime)} down`,
+            incidents === undefined
+              ? '—'
+              : incidents.length === 0
+                ? 'no incidents'
+                : `${incidents.length} incident${incidents.length === 1 ? '' : 's'} · ${fmtDurationSeconds(downtime)} down`,
         }
       case 'response':
         return {
@@ -407,7 +462,11 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, sta
               : 'range avg',
         }
       case 'checks':
-        return { text: totalChecks.toLocaleString('en-US'), sub: `every ${Math.round(monitor.check_interval_seconds / 60)} m` }
+        // * No series loaded is "—", not a fabricated hard zero.
+        return {
+          text: data == null ? '—' : totalChecks.toLocaleString('en-US'),
+          sub: `every ${Math.round(monitor.check_interval_seconds / 60)} m`,
+        }
     }
   }
 
@@ -426,19 +485,29 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, sta
     <div className="relative rounded-none border border-border bg-card">
       <UpdatingChip active={isValidating && !!data} className="right-2 top-2" />
 
-      {/* Status strip — current state, latest check, bucket convention */}
-      <div className="flex h-10 items-center justify-between border-b border-border px-4">
+      {/* Status strip — current state, latest check, bucket convention.
+          No bottom border: the first metric row's border-t is the rule. */}
+      <div className="flex h-10 items-center justify-between px-4">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full" style={{ background: st.color }} />
-          <span className="text-sm font-medium" style={{ color: status === 'operational' ? '#fff' : st.color }}>
-            {st.label}
-          </span>
-          {monitor.last_response_time_ms != null && (
-            <span className="hidden items-center gap-1.5 text-xs text-neutral-500 sm:flex">
-              <span>last check</span>
-              <span className="font-mono">{monitor.last_status === 'up' ? monitor.expected_status_code : ''} {fmtMs(monitor.last_response_time_ms)}</span>
-              {monitor.last_checked_at && <span>· {formatRelativeTime(monitor.last_checked_at)}</span>}
-            </span>
+          {firstCheckPending ? (
+            <>
+              <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-neutral-600" />
+              <span className="text-sm font-medium text-neutral-400">Waiting for the first check</span>
+            </>
+          ) : (
+            <>
+              <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full" style={{ background: st.color }} />
+              <span className="text-sm font-medium" style={{ color: status === 'operational' ? '#fff' : st.color }}>
+                {st.label}
+              </span>
+              {monitor.last_response_time_ms != null && (
+                <span className="hidden items-center gap-1.5 text-xs text-neutral-500 sm:flex">
+                  <span>last check</span>
+                  <span className="tabular-nums text-neutral-400">{fmtMs(monitor.last_response_time_ms)}</span>
+                  {monitor.last_checked_at && <span>· {formatRelativeTime(monitor.last_checked_at)}</span>}
+                </span>
+              )}
+            </>
           )}
         </div>
         <span className="shrink-0 text-xs text-neutral-500">{granularity === 'hour' ? 'hours are UTC' : 'days are UTC'}</span>
@@ -535,19 +604,23 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, sta
         <div className="pointer-events-none absolute left-1/2 top-12 z-10 -translate-x-1/2">
           <div className="min-w-[170px] rounded-none border border-border bg-popover px-3 py-2.5 text-white">
             <div className="mb-2 text-xs font-medium text-neutral-400">
-              {bucketLabelUTC(hovered.date, granularity)} · UTC
+              {bucketLabelUTC(hovered.date, granularity, hourWithDay)} · UTC
             </div>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between gap-4">
                 <span className="text-sm text-neutral-400">Checks</span>
                 <span className="text-sm font-medium tabular-nums text-white">{hovered.samples}</span>
               </div>
-              {(hovered.failed > 0 || hovered.degraded > 0) && (
+              {hovered.failed > 0 && (
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-sm text-neutral-400">Failed</span>
-                  <span className="text-sm font-medium tabular-nums" style={{ color: hovered.failed > 0 ? NEG : DEGRADED }}>
-                    {hovered.failed > 0 ? hovered.failed : `${hovered.degraded} degraded`}
-                  </span>
+                  <span className="text-sm font-medium tabular-nums" style={{ color: NEG }}>{hovered.failed}</span>
+                </div>
+              )}
+              {hovered.degraded > 0 && (
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-sm text-neutral-400">Degraded</span>
+                  <span className="text-sm font-medium tabular-nums" style={{ color: DEGRADED }}>{hovered.degraded}</span>
                 </div>
               )}
               <div className="flex items-center justify-between gap-4">
