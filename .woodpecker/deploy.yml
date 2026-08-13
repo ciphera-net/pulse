@@ -347,6 +347,42 @@ steps:
           -H "AccessKey: $BUNNY_API_KEY" \
           || { echo "DEPLOY SHIPPED; CDN PURGE FAILED — re-run the purge only, do NOT re-deploy"; exit 1; }
       - echo "Purged pulse.ciphera.net /_next/static/*"
+      # ═══ HTML PURGE — REQUIRED SINCE 13-08-2026, NOT AN OPTIMISATION ═══
+      # Public marketing HTML is now edge-cached at 300s (Bunny zone 5440585, rule
+      # "HTML edge caching 300s — EXPLICIT PATH ALLOWLIST"). Purging only
+      # /_next/static/* would leave up to five minutes of STALE HTML referencing
+      # chunk hashes this deploy just evicted — the blanking failure that hit
+      # pulse-staging on 22-07-2026, now reachable on production too.
+      #
+      # 🔴 THIS LIST AND THE EDGE RULE'S ALLOWLIST ARE ONE THING IN TWO PLACES.
+      # Add a path to the rule and it stays stale for 300s after every deploy until
+      # it is added here. Remove one here and it silently rots. They were verified
+      # in step on 13-08-2026; check both when either changes.
+      #
+      # '/' is ABSENT on purpose and is not an oversight: it is not edge-cached,
+      # because middleware.ts:86 redirects signed-in visitors to /sites and Bunny's
+      # cache key ignores cookies, so a logged-in request can cache a 307 that
+      # bounces every anonymous visitor off the marketing homepage. Reproduced live.
+      # If '/' ever becomes cacheable, add it here in the same change.
+      #
+      # Deliberately NOT a single /* wildcard: images and fonts on this zone carry a
+      # 30-day TTL and are purged by nothing today, so evicting them every deploy
+      # would be a miss stampede against the origin.
+      - |
+        FAILED=""
+        for P in "/pricing*" "/features*" "/demo*" "/faq*" "/about*" "/installation*" \
+                 "/changelog*" "/integrations*" "/vs/*" "/tools/*"; do
+          curl -fsS --max-time 300 --retry 3 --retry-delay 10 --retry-all-errors -X POST \
+            "https://api.bunny.net/purge?url=https://pulse.ciphera.net$P&async=false" \
+            -H "AccessKey: $BUNNY_API_KEY" >/dev/null \
+            && echo "  purged $P" \
+            || FAILED="$FAILED $P"
+        done
+        if [ -n "$FAILED" ]; then
+          echo "DEPLOY SHIPPED; HTML PURGE FAILED for:$FAILED — re-run the purge only, do NOT re-deploy"
+          exit 1
+        fi
+      - echo "Purged pulse.ciphera.net cached HTML (10 patterns)"
 
   # Purge AFTER the CLUSTER rollout converges (deploy-k8s asserts only the new ReplicaSet
   # is serving). Purging mid-rollout re-caches the old build's 404s for the new chunk
@@ -373,6 +409,25 @@ steps:
           -H "AccessKey: $BUNNY_API_KEY" \
           || { echo "DEPLOY SHIPPED; CDN PURGE FAILED — re-run the purge only, do NOT re-deploy"; exit 1; }
       - echo "Purged pulse-staging.ciphera.net /_next/static/*"
+      # HTML purge — staging mirrors production exactly (zone 5440501). Keeping the
+      # two lists identical is the point: staging can only rehearse a production
+      # deploy if it carries production's caching rules AND production's purge set.
+      # See the production step above for why '/' is absent.
+      - |
+        FAILED=""
+        for P in "/pricing*" "/features*" "/demo*" "/faq*" "/about*" "/installation*" \
+                 "/changelog*" "/integrations*" "/vs/*" "/tools/*"; do
+          curl -fsS --max-time 300 --retry 3 --retry-delay 10 --retry-all-errors -X POST \
+            "https://api.bunny.net/purge?url=https://pulse-staging.ciphera.net$P&async=false" \
+            -H "AccessKey: $BUNNY_API_KEY" >/dev/null \
+            && echo "  purged $P" \
+            || FAILED="$FAILED $P"
+        done
+        if [ -n "$FAILED" ]; then
+          echo "DEPLOY SHIPPED; HTML PURGE FAILED for:$FAILED — re-run the purge only, do NOT re-deploy"
+          exit 1
+        fi
+      - echo "Purged pulse-staging.ciphera.net cached HTML (10 patterns)"
 
   cdn-scripts:
     image: alpine:3.20
