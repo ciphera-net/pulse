@@ -3,9 +3,10 @@
 import { useState } from 'react'
 import { Button, Input, Select, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/facet'
 import { Plugs, LinkBreak, ShieldCheck } from '@phosphor-icons/react'
-import { useGSCStatus, useBunnyStatus } from '@/lib/swr/dashboard'
+import { useGSCStatus, useBunnyStatus, useBingStatus } from '@/lib/swr/dashboard'
 import { disconnectGSC, getGSCAuthURL, type GSCStatus } from '@/lib/api/gsc'
 import { disconnectBunny, getBunnyPullZones, connectBunny, type BunnyPullZone, type BunnyStatus } from '@/lib/api/bunny'
+import { disconnectBing, listBingSites, connectBing, type BingVerifiedSite, type BingStatus } from '@/lib/api/bing'
 import { formatDateTime } from '@/lib/utils/formatDate'
 import { useCan } from '@/lib/auth/permissions'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -321,17 +322,167 @@ function BunnySetupForm({ siteId, onConnected }: { siteId: string; onConnected: 
   )
 }
 
+/**
+ * BingIcon — official Microsoft Bing mark (simple-icons), single-colour so it
+ * desaturates through LogoTile like every other integration.
+ */
+function BingIcon() {
+  return (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M20.176 15.406a6.48 6.48 0 01-1.736 4.414c1.338-1.47.803-3.869-1.003-4.635-.862-.305-2.488-.85-3.367-1.158a1.834 1.834 0 01-.932-.818c-.381-.975-1.163-2.968-1.548-3.948-.095-.285-.31-.625-.265-.938.046-.598.724-1.003 1.276-.754l3.682 1.888c.621.292 1.305.692 1.796 1.172a6.486 6.486 0 012.097 4.777zm-1.44 1.888c-.264-1.194-1.135-1.744-2.216-2.028-1.527.902-4.853 2.878-6.952 4.13-1.103.68-2.13 1.35-2.919 1.242a2.866 2.866 0 01-2.77-2.325c-.012-.048-.008-.03-.001.01a6.4 6.4 0 00.947 2.653 6.498 6.498 0 005.486 3.022c1.908.062 3.536-1.153 5.099-2.096.292-.188.804-.496 1.332-.831l1.423-1.51c.553-.577.764-1.426.571-2.267zm-12.04 2.97c.422 0 .822-.1 1.173-.29.355-.215.964-.579 1.7-1.018L9.57 4.502c0-.99-.497-1.864-1.257-2.382-.08-.059-2.91-1.901-2.99-1.956-.605-.432-1.523.045-1.5.797v14.887l.417 2.36a2.488 2.488 0 002.455 2.056z" />
+    </svg>
+  )
+}
+
+function BingDetails({ bingStatus }: { bingStatus: BingStatus }) {
+  return (
+    <>
+      <DetailRows
+        rows={[
+          // The full URL including scheme, because that IS the identity of the property to Bing:
+          // http/https/www are three different properties and showing a bare domain would hide
+          // which one is actually connected.
+          { label: 'Bing property', value: bingStatus.site_url || 'Unknown', mono: true },
+          { label: 'Last synced', value: bingStatus.last_synced_at ? formatDateTime(new Date(bingStatus.last_synced_at)) : 'Never', mono: true },
+          { label: 'Connected since', value: bingStatus.created_at ? formatDateTime(new Date(bingStatus.created_at)) : 'Unknown', mono: true },
+        ]}
+      />
+      {bingStatus.error_message && <IntegrationErrorMessage message={bingStatus.error_message} />}
+    </>
+  )
+}
+
+/**
+ * BingSetupForm — paste key, load properties, pick one, connect.
+ *
+ * Two steps rather than one because the property cannot be derived: Bing treats
+ * http://example.com, https://example.com and https://www.example.com as different
+ * properties, and querying an unverified one returns an empty result set that looks
+ * exactly like a verified property with no traffic. Guessing would produce a connection
+ * that reports zero forever with nothing visibly wrong.
+ */
+function BingSetupForm({ siteId, onConnected }: { siteId: string; onConnected: () => void }) {
+  const [apiKey, setApiKey] = useState('')
+  const [sites, setSites] = useState<BingVerifiedSite[]>([])
+  const [selectedUrl, setSelectedUrl] = useState('')
+  const [loadingSites, setLoadingSites] = useState(false)
+  const [connecting, setConnecting] = useState(false)
+  const [sitesLoaded, setSitesLoaded] = useState(false)
+
+  const handleLoadSites = async () => {
+    if (!apiKey.trim()) {
+      toast.error('Please enter your Bing Webmaster API key')
+      return
+    }
+    setLoadingSites(true)
+    try {
+      const data = await listBingSites(siteId, apiKey.trim())
+      setSites(data.sites || [])
+      setSitesLoaded(true)
+      if (!data.sites?.length) {
+        toast.error('That Bing account has no properties.')
+      } else if (!data.sites.some(x => x.is_verified)) {
+        // Distinct from "no properties": the user has some, none are usable yet, and the
+        // fix is in Bing rather than here. Saying so beats an empty dropdown.
+        toast.error('None of the properties on that account are verified in Bing yet.')
+      }
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to load Bing properties')
+    } finally {
+      setLoadingSites(false)
+    }
+  }
+
+  const handleConnect = async () => {
+    if (!selectedUrl) return
+    setConnecting(true)
+    try {
+      await connectBing(siteId, apiKey.trim(), selectedUrl)
+      toast.success('Bing Webmaster Tools connected')
+      onConnected()
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to connect Bing Webmaster Tools')
+    } finally {
+      setConnecting(false)
+    }
+  }
+
+  // Unverified properties are listed but not selectable: hiding them entirely would make a
+  // user who expects to see their site think Pulse lost it.
+  const verified = sites.filter(x => x.is_verified)
+  const sitesReady = sitesLoaded && verified.length > 0
+
+  return (
+    <div className="space-y-4 border-t border-border px-5 py-4">
+      <div className="space-y-1.5">
+        <label htmlFor="bing-api-key" className="block font-semibold text-micro-label uppercase text-muted-foreground">
+          API key
+        </label>
+        <div className="flex gap-2">
+          <Input
+            id="bing-api-key"
+            type="password"
+            value={apiKey}
+            onChange={e => setApiKey(e.target.value)}
+            placeholder="Enter your Bing Webmaster API key"
+            className="flex-1"
+          />
+          <Button
+            onClick={handleLoadSites}
+            variant="secondary"
+            className="shrink-0"
+            disabled={loadingSites || !apiKey.trim()}
+          >
+            {loadingSites ? <Spinner className="w-4 h-4" /> : 'Load properties'}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Bing Webmaster Tools &rarr; Settings &rarr; API Access &rarr; Generate API key.
+        </p>
+      </div>
+
+      {sitesReady && (
+        <div className="space-y-1.5">
+          <label className="block font-semibold text-micro-label uppercase text-muted-foreground">Property</label>
+          <Select
+            value={selectedUrl}
+            onChange={(v) => setSelectedUrl(String(v))}
+            placeholder="Select a verified property"
+            options={verified.map(x => ({ value: x.url, label: x.url }))}
+            className="w-full"
+            aria-label="Bing property"
+          />
+        </div>
+      )}
+
+      {sitesReady && (
+        <Button
+          onClick={handleConnect}
+          variant="default"
+          className="w-full"
+          disabled={connecting || !selectedUrl}
+        >
+          {connecting ? <Spinner className="w-4 h-4" /> : 'Connect Bing'}
+        </Button>
+      )}
+    </div>
+  )
+}
+
 export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
   const canManage = useCan('integrations.manage')
   const { data: gscStatus, error: gscError, isLoading: gscLoading, mutate: mutateGSC } = useGSCStatus(siteId)
   const { data: bunnyStatus, error: bunnyError, isLoading: bunnyLoading, mutate: mutateBunny } = useBunnyStatus(siteId)
+  const { data: bingStatus, error: bingError, isLoading: bingLoading, mutate: mutateBing } = useBingStatus(siteId)
   const [showBunnySetup, setShowBunnySetup] = useState(false)
-  const [confirmDisconnect, setConfirmDisconnect] = useState<'gsc' | 'bunny' | null>(null)
+  const [showBingSetup, setShowBingSetup] = useState(false)
+  const [confirmDisconnect, setConfirmDisconnect] = useState<'gsc' | 'bunny' | 'bing' | null>(null)
   const [connectingGSC, setConnectingGSC] = useState(false)
   const [retryingGSC, setRetryingGSC] = useState(false)
   const [retryingBunny, setRetryingBunny] = useState(false)
+  const [retryingBing, setRetryingBing] = useState(false)
 
-  if (gscLoading || bunnyLoading) {
+  if (gscLoading || bunnyLoading || bingLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Spinner className="w-6 h-6 text-muted-foreground" />
@@ -403,7 +554,28 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
     toast.success('BunnyCDN disconnected')
   }
 
+  const retryBing = () => {
+    setRetryingBing(true)
+    Promise.resolve(mutateBing()).finally(() => setRetryingBing(false))
+  }
+
+  const handleConnectBing = () => {
+    setShowBingSetup(true)
+  }
+
+  const handleDisconnectBing = () => {
+    setConfirmDisconnect('bing')
+  }
+
+  const doDisconnectBing = async () => {
+    await disconnectBing(siteId)
+    await mutateBing()
+    setShowBingSetup(false)
+    toast.success('Bing Webmaster Tools disconnected')
+  }
+
   const bunnyConnected = bunnyStatus?.connected ?? false
+  const bingConnected = bingStatus?.connected ?? false
 
   return (
     <div className="space-y-8">
@@ -432,6 +604,40 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
           >
             {gscStatus?.connected && <GSCDetails gscStatus={gscStatus} />}
             <SecurityNote text="Pulse only requests read-only access. Your tokens are encrypted at rest." />
+          </IntegrationRow>
+
+          <IntegrationRow
+            icon={<BingIcon />}
+            name="Bing Webmaster Tools"
+            description="Daily clicks and impressions from Bing, Yahoo and DuckDuckGo."
+            connected={bingConnected}
+            status={bingStatus?.status}
+            error={bingError ? (
+              <SettingsErrorState
+                variant="banner"
+                message="Couldn't load your Bing Webmaster connection status. This is usually temporary — your connection isn't affected."
+                onRetry={retryBing}
+                retrying={retryingBing}
+              />
+            ) : undefined}
+            onConnect={handleConnectBing}
+            onDisconnect={handleDisconnectBing}
+            canManage={canManage}
+          >
+            {bingConnected && bingStatus && <BingDetails bingStatus={bingStatus} />}
+            {!bingConnected && showBingSetup && canManage && (
+              <BingSetupForm
+                siteId={siteId}
+                onConnected={() => {
+                  mutateBing()
+                  setShowBingSetup(false)
+                }}
+              />
+            )}
+            {/* Says what it does NOT do, deliberately. Bing's query endpoint has no date range,
+                so it cannot honour this app's date picker — better to state the limit than to
+                let someone hunt for a query table that was never going to be there. */}
+            <SecurityNote text="Site-level daily totals only — Bing's API does not expose per-query data by date. Your API key is encrypted at rest and grants access to every property on your Bing account, so it is used solely to read search statistics." />
           </IntegrationRow>
 
           <IntegrationRow
@@ -475,6 +681,16 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
         confirmLabel="Disconnect"
         variant="danger"
         onConfirm={doDisconnectGSC}
+      />
+
+      <ConfirmDialog
+        open={confirmDisconnect === 'bing'}
+        onOpenChange={(open) => { if (!open) setConfirmDisconnect(null) }}
+        title="Disconnect Bing Webmaster Tools"
+        description="This will remove all synced Bing search data."
+        confirmLabel="Disconnect"
+        variant="danger"
+        onConfirm={doDisconnectBing}
       />
 
       <ConfirmDialog

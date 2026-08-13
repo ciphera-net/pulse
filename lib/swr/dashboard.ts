@@ -2,6 +2,7 @@
 // * Implements stale-while-revalidate pattern for efficient data updates
 
 import useSWR from 'swr'
+import { getBingStatus, getBingOverview, getBingDailyTotals, type BingStatus, type BingOverview, type BingDailyRow, type BingDateBasis } from '@/lib/api/bing'
 import { useAuth } from '@/lib/auth/context'
 import { toast } from '@ciphera-net/facet'
 import {
@@ -99,6 +100,7 @@ const fetchers = {
   reportSchedules: (siteId: string) => listReportSchedules(siteId),
   alertSchedules: (siteId: string) => listAlertSchedules(siteId),
   gscStatus: (siteId: string) => getGSCStatus(siteId),
+  bingStatus: (siteId: string) => getBingStatus(siteId),
   gscOverview: (siteId: string, start: string, end: string) => getGSCOverview(siteId, start, end),
   gscTopQueries: (siteId: string, start: string, end: string, limit: number, offset: number) => getGSCTopQueries(siteId, start, end, limit, offset),
   gscTopPages: (siteId: string, start: string, end: string, limit: number, offset: number) => getGSCTopPages(siteId, start, end, limit, offset),
@@ -813,3 +815,46 @@ export function usePageSpeedHistory(siteId: string, strategy: 'mobile' | 'deskto
 
 // * Re-export for convenience
 export { fetchers }
+
+// ─── Bing Webmaster Tools ────────────────────────────────────────────────────
+//
+// * Daily totals only. Bing's per-query endpoint refreshes weekly and takes no date range, so it
+// * cannot honour the Search tab's date picker — see pulse-backend migration 134.
+
+// * Hook for Bing connection status. Same cadence as GSC: a connect or a sync failure should
+// * appear on the settings card without a manual refresh.
+export function useBingStatus(siteId: string) {
+  return useSWR<BingStatus>(
+    siteId ? ['bingStatus', siteId] : null,
+    () => fetchers.bingStatus(siteId),
+    {
+      ...dashboardSWRConfig,
+      refreshInterval: 60 * 1000,
+      dedupingInterval: 30 * 1000,
+    }
+  )
+}
+
+// * Hook for Bing period totals.
+// *
+// * 🔑 GATED ON status?.connected, matching every GSC data hook. Without the gate every site
+// * without a Bing connection would issue two requests per date change forever, and the endpoint
+// * would answer with empty rows that are indistinguishable from "connected, no traffic".
+export function useBingOverview(siteId: string, start: string, end: string) {
+  const { data: status } = useBingStatus(siteId)
+  return useSWR<{ overview: BingOverview; date_basis: BingDateBasis }>(
+    status?.connected ? ['bing-overview', siteId, start, end] : null,
+    () => getBingOverview(siteId, start, end),
+    { ...dashboardSWRConfig, keepPreviousData: true }
+  )
+}
+
+// * Hook for the Bing daily series that backs the chart.
+export function useBingDailyTotals(siteId: string, start: string, end: string) {
+  const { data: status } = useBingStatus(siteId)
+  return useSWR<{ daily_totals: BingDailyRow[]; date_basis: BingDateBasis }>(
+    status?.connected ? ['bing-daily-totals', siteId, start, end] : null,
+    () => getBingDailyTotals(siteId, start, end),
+    { ...dashboardSWRConfig, keepPreviousData: true }
+  )
+}
