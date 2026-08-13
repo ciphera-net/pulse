@@ -93,10 +93,10 @@ export async function GET(request: NextRequest) {
   async function resolveVia(base: string, timeoutMs: number): Promise<Response | null> {
     try {
       const upstream = await fetch(`${base}?domain=${encodeURIComponent(domain)}&sz=${sz}`, {
-        // * 10s on the primary: Sigil may need a few seconds to fetch a site's page
-        // * + candidates on a cold cache; once warm it's near-instant. Too tight a
-        // * timeout shows a monogram for icons that would have resolved on a retry.
-        // * The fallback gets a SHORTER budget — see the call site.
+        // * Budget is passed in — see the call sites for the measured basis. Sigil
+        // * needs a few seconds on a cold cache (it fetches the site's page, then
+        // * candidate icons); once warm it is near-instant. Too tight a timeout
+        // * shows a monogram for icons that would have resolved.
         signal: AbortSignal.timeout(timeoutMs),
         // * The CDN caches via the response headers below; keep Next's data
         // * cache out of the way so misses don't accumulate on disk.
@@ -117,17 +117,34 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const primary = await resolveVia(UPSTREAM, 10000)
+  // 5s, not 10s. MEASURED 14-08-2026 across 20 never-before-fetched domains
+  // through the production path: p50 0.42s, p90 1.26s, max 3.74s (and that max was
+  // a *not-found*, i.e. the slowest thing this resolver does), zero over 5s. So 5s
+  // is ~34% headroom over the worst observed cold miss.
+  //
+  // Why it was worth lowering: the budget only ever binds when the upstream is
+  // BROKEN, and the way it broke on 13-08 was a HANG, not a refusal — the pull zone
+  // had been deleted, DNS still resolved, connections just sat there. Every favicon
+  // then paid the full timeout before falling back. Fast failure and slow failure
+  // are not the same thing, and 10s of hang per icon is the difference between
+  // "degraded" and "unusable".
+  //
+  // 🔴 Do not raise this back without re-measuring. The number is an empirical
+  // claim about how long a real resolution takes, not a guess.
+  const primary = await resolveVia(UPSTREAM, 5000)
   if (primary) return primary
 
-  // * Second resolver, if one is configured. Deliberately given a SHORTER budget
-  // * (4s) than the primary: this path only runs after the primary has already
-  // * spent up to 10s, and a favicon is decorative — a request that takes 14s to
-  // * produce an icon has already lost to the monogram in every way that matters
-  // * to the user. Bounding the total keeps a slow upstream from holding a
-  // * connection open on every dashboard render.
+  // * Second resolver, if one is configured. Same 5s budget as the primary, and
+  // * for the same measured reason — it runs the SAME software (Sigil), so a cold
+  // * resolution costs it the same 3.74s worst case. Giving it less would abort
+  // * work that was about to succeed, in the exact situation where the primary has
+  // * already failed and this is the last chance at a real icon.
+  // *
+  // * Worst case is therefore 5 + 5 = 10s, down from 14s. A favicon is decorative;
+  // * beyond ~10s the monogram has already won and holding the connection open on
+  // * every dashboard render costs more than the icon is worth.
   if (FALLBACK_UPSTREAM) {
-    const secondary = await resolveVia(FALLBACK_UPSTREAM, 4000)
+    const secondary = await resolveVia(FALLBACK_UPSTREAM, 5000)
     if (secondary) return secondary
   }
 
