@@ -1,6 +1,8 @@
 'use client'
 
 import { MagnifyingGlass } from '@phosphor-icons/react'
+import { buttonVariants } from '@ciphera-net/facet'
+import { cn } from '@/lib/utils'
 
 // ---------------------------------------------------------------------------
 // FilterButton — the toolbar trigger for the filter popover. The old inline
@@ -22,11 +24,13 @@ export default function FilterButton({ hasActiveFilters, active, onClick }: Filt
       aria-haspopup="dialog"
       aria-expanded={active}
       onClick={e => onClick(e.currentTarget)}
-      className={`inline-flex items-center gap-2 h-10 px-4 text-sm font-medium rounded-none border transition-[color,background-color,border-color,transform] active:scale-[0.97] cursor-pointer ${
-        hasActiveFilters || active
-          ? 'bg-brand-orange/10 text-brand-orange border-brand-orange/30'
-          : 'bg-card text-foreground border-input hover:border-line-hover'
-      } ease-apple`}
+      className={cn(
+        // * Facet's header chrome is the base (h-10 hairline, focus ring);
+        // * the engaged state overlays the brand tint on top of it.
+        buttonVariants({ variant: 'chrome', size: 'toolbar' }),
+        'active:scale-[0.97] transition-[color,background-color,border-color,transform] ease-apple',
+        (hasActiveFilters || active) && 'border-brand-orange/30 bg-brand-orange/10 text-brand-orange hover:border-brand-orange/30',
+      )}
     >
       <MagnifyingGlass className="w-3.5 h-3.5" weight="bold" />
       Filter

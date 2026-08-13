@@ -111,7 +111,7 @@ export default function FunnelsPage() {
           {/* * The empty state below carries its own create CTA — showing this
            * header button too meant two identical orange CTAs on one screen. */}
           {canManageFunnels && list.length > 0 && (
-            <Button variant="default" onClick={() => { setEditingFunnel(null); setModalOpen(true) }}>
+            <Button variant="default" size="toolbar" onClick={() => { setEditingFunnel(null); setModalOpen(true) }}>
               <PlusIcon className="w-4 h-4" />
               Create funnel
             </Button>

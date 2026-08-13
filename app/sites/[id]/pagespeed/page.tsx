@@ -400,19 +400,13 @@ export default function PageSpeedPage() {
 
           {canEdit && (
             <>
-              <Button
-                onClick={handleRunCheck}
-                disabled={running}
-              >
-                {running ? 'Running...' : 'Run Check'}
+              <Button size="toolbar" onClick={handleRunCheck} isLoading={running}>
+                {running ? 'Running…' : 'Run Check'}
               </Button>
-              <Button
-                variant="secondary"
-                onClick={() => handleToggle(false)}
-                disabled={toggling}
-                className="text-sm"
-              >
-                {toggling ? 'Disabling...' : 'Disable'}
+              {/* "Turn the feature off" is a quiet chrome action, not a filled
+                  secondary — same treatment as Uptime's Disable monitoring. */}
+              <Button variant="chrome" size="toolbar" onClick={() => handleToggle(false)} isLoading={toggling}>
+                Disable
               </Button>
             </>
           )}

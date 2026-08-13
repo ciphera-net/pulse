@@ -46,7 +46,7 @@ export function Segmented<T extends string>({ value, onChange, options, ariaLabe
     <div
       role="tablist"
       aria-label={ariaLabel}
-      className={cn('inline-flex h-10 shrink-0 items-stretch overflow-hidden rounded-none border border-neutral-800', className)}
+      className={cn('inline-flex h-10 shrink-0 items-stretch overflow-hidden rounded-none border border-input', className)}
     >
       {options.map((opt, i) => {
         const active = opt.value === value
@@ -63,7 +63,7 @@ export function Segmented<T extends string>({ value, onChange, options, ariaLabe
             className={cn(
               'flex items-center gap-1.5 whitespace-nowrap px-3 text-sm font-medium transition-colors duration-fast ease-apple rounded-none',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange',
-              i > 0 && 'border-l border-neutral-800',
+              i > 0 && 'border-l border-input',
               active ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-neutral-300',
             )}
           >
