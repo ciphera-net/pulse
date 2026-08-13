@@ -17,13 +17,18 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 const REAL_ENV = process.env.FAVICON_UPSTREAM_URL
 
 /** Import the route fresh, with `FAVICON_UPSTREAM_URL` set to `upstream` (or unset). */
-async function loadRoute(upstream: string | undefined) {
+async function loadRoute(upstream: string | undefined, fallback?: string) {
   vi.resetModules()
   if (upstream === undefined) delete process.env.FAVICON_UPSTREAM_URL
   else process.env.FAVICON_UPSTREAM_URL = upstream
+  if (fallback === undefined) delete process.env.FAVICON_FALLBACK_UPSTREAM_URL
+  else process.env.FAVICON_FALLBACK_UPSTREAM_URL = fallback
   const mod = await import('../route')
   return mod.GET
 }
+
+const MC = 'https://icons.ciphera.net/icon'
+const INCLUSTER = 'http://sigil.apps.svc.cluster.local/icon'
 
 function req(qs: string) {
   const { NextRequest } = require('next/server')
@@ -99,5 +104,71 @@ describe('GET /api/favicon', () => {
     const GET = await loadRoute('http://sigil.apps.svc.cluster.local/icon')
     const res = await GET(req('?domain=github.com&sz=32'))
     expect(res.status).toBe(404)
+  })
+
+  // ── fallback resolver ─────────────────────────────────────────────────────
+  // Production runs primary = Sigil on Magic Containers, fallback = the same
+  // binary in-cluster. These lock the property that made the cutover safe.
+
+  it('does NOT touch the fallback when the primary succeeds', async () => {
+    const GET = await loadRoute(MC, INCLUSTER)
+    const res = await GET(req('?domain=github.com&sz=32'))
+
+    expect(res.status).toBe(200)
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    expect(String(fetchSpy.mock.calls[0][0])).toContain('icons.ciphera.net')
+  })
+
+  it('falls back to the in-cluster resolver when the primary 404s', async () => {
+    // This is the stripe.com case: the primary answers, but with no icon.
+    fetchSpy
+      .mockResolvedValueOnce(new Response(null, { status: 404 }))
+      .mockResolvedValueOnce(pngResponse())
+
+    const GET = await loadRoute(MC, INCLUSTER)
+    const res = await GET(req('?domain=stripe.com&sz=32'))
+
+    expect(res.status).toBe(200)
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+    expect(String(fetchSpy.mock.calls[0][0])).toContain('icons.ciphera.net')
+    expect(String(fetchSpy.mock.calls[1][0])).toContain('sigil.apps.svc.cluster.local')
+  })
+
+  it('falls back when the primary throws — an MC outage is a slower icon, not a missing one', async () => {
+    fetchSpy
+      .mockRejectedValueOnce(new Error('connect ETIMEDOUT'))
+      .mockResolvedValueOnce(pngResponse())
+
+    const GET = await loadRoute(MC, INCLUSTER)
+    expect((await GET(req('?domain=github.com&sz=32'))).status).toBe(200)
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it('404s when BOTH resolvers fail, and does not retry beyond the two', async () => {
+    fetchSpy.mockResolvedValue(new Response(null, { status: 404 }))
+
+    const GET = await loadRoute(MC, INCLUSTER)
+    const res = await GET(req('?domain=nope.example&sz=32'))
+
+    expect(res.status).toBe(404)
+    expect(res.headers.get('Cache-Control')).toBe('public, max-age=300')
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it('works with no fallback configured — the fallback is optional, the primary is not', async () => {
+    fetchSpy.mockResolvedValue(new Response(null, { status: 404 }))
+
+    const GET = await loadRoute(MC, undefined)
+    expect((await GET(req('?domain=nope.example&sz=32'))).status).toBe(404)
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('never dials google, on either leg', async () => {
+    fetchSpy.mockResolvedValue(new Response(null, { status: 404 }))
+    const GET = await loadRoute(MC, INCLUSTER)
+    await GET(req('?domain=github.com&sz=32'))
+    for (const call of fetchSpy.mock.calls) {
+      expect(String(call[0])).not.toContain('google')
+    }
   })
 })

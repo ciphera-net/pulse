@@ -34,6 +34,28 @@ import { NextRequest, NextResponse } from 'next/server'
 // * which is correct — it is deployment configuration, not a request input.
 const UPSTREAM: string | null = process.env.FAVICON_UPSTREAM_URL ?? null
 
+// * OPTIONAL second resolver, tried only when the primary fails or has no icon.
+// * Unlike UPSTREAM this one may legitimately be absent — absent means "no
+// * fallback configured", which is a supported deployment, not a misconfiguration.
+// *
+// * Production runs primary = Sigil on Bunny Magic Containers (42 regions, via
+// * icons.ciphera.net), fallback = the SAME Sigil binary in-cluster. Two reasons
+// * that pairing is worth the extra hop:
+// *
+// *   1. MC resolution is REGION-DEPENDENT. Measured 13-08-2026: stripe.com
+// *      resolves through Bunny's CH PoP and 404s through DE1 — a bot-protection
+// *      challenge served to some Bunny egress IPs and not others. Production
+// *      only ever sees one PoP today (this route is a server-side proxy, so
+// *      every fetch originates from the cluster), but Bunny can and does
+// *      reroute, and the day it does the failure would look like "some icons
+// *      randomly stopped working".
+// *   2. It removes MC from the critical path entirely. An MC outage becomes a
+// *      slower favicon, not a missing one.
+// *
+// * 🔴 The fallback must NOT share the primary's failure modes. Pointing both at
+// * Bunny would make this decorative.
+const FALLBACK_UPSTREAM: string | null = process.env.FAVICON_FALLBACK_UPSTREAM_URL ?? null
+
 // * Sizes actually used by the app (see FAVICON_SERVICE_URL consumers).
 const ALLOWED_SIZES = new Set(['16', '32', '64', '128'])
 
@@ -64,39 +86,56 @@ export async function GET(request: NextRequest) {
     return new NextResponse(null, { status: 400 })
   }
 
-  try {
-    const upstream = await fetch(`${UPSTREAM}?domain=${encodeURIComponent(domain)}&sz=${sz}`, {
-      // * 10s: Sigil may need a few seconds to fetch a site's page + candidates
-      // * on a cold cache (the third-party service it replaced answered from a
-      // * warm global index instantly, so this is a real regression in tail
-      // * latency and an accepted one);
-      // * once warm it's near-instant. Too tight a timeout shows a monogram for
-      // * icons that would have resolved on a retry.
-      signal: AbortSignal.timeout(10000),
-      // * The CDN caches via the response headers below; keep Next's data
-      // * cache out of the way so misses don't accumulate on disk.
-      cache: 'no-store',
-    })
-    const contentType = upstream.headers.get('content-type') ?? ''
-    if (!upstream.ok || !contentType.startsWith('image/')) {
-      return new NextResponse(null, {
-        status: 404,
-        headers: { 'Cache-Control': 'public, max-age=3600' },
+  // * Returns the image bytes, or null for "this resolver had no icon / failed".
+  // * Null is the ONLY failure signal on purpose: the caller must not be able to
+  // * tell a 404 from a timeout, because it treats them identically — both mean
+  // * "ask the next resolver".
+  async function resolveVia(base: string, timeoutMs: number): Promise<Response | null> {
+    try {
+      const upstream = await fetch(`${base}?domain=${encodeURIComponent(domain)}&sz=${sz}`, {
+        // * 10s on the primary: Sigil may need a few seconds to fetch a site's page
+        // * + candidates on a cold cache; once warm it's near-instant. Too tight a
+        // * timeout shows a monogram for icons that would have resolved on a retry.
+        // * The fallback gets a SHORTER budget — see the call site.
+        signal: AbortSignal.timeout(timeoutMs),
+        // * The CDN caches via the response headers below; keep Next's data
+        // * cache out of the way so misses don't accumulate on disk.
+        cache: 'no-store',
       })
+      const contentType = upstream.headers.get('content-type') ?? ''
+      if (!upstream.ok || !contentType.startsWith('image/')) return null
+      const body = await upstream.arrayBuffer()
+      return new NextResponse(body, {
+        headers: {
+          'Content-Type': contentType,
+          'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800',
+          'X-Content-Type-Options': 'nosniff',
+        },
+      })
+    } catch {
+      return null
     }
-    const body = await upstream.arrayBuffer()
-    return new NextResponse(body, {
-      headers: {
-        'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800',
-        'X-Content-Type-Options': 'nosniff',
-      },
-    })
-  } catch {
-    // * Upstream unreachable/timed out — short-cache the miss to absorb storms.
-    return new NextResponse(null, {
-      status: 404,
-      headers: { 'Cache-Control': 'public, max-age=300' },
-    })
   }
+
+  const primary = await resolveVia(UPSTREAM, 10000)
+  if (primary) return primary
+
+  // * Second resolver, if one is configured. Deliberately given a SHORTER budget
+  // * (4s) than the primary: this path only runs after the primary has already
+  // * spent up to 10s, and a favicon is decorative — a request that takes 14s to
+  // * produce an icon has already lost to the monogram in every way that matters
+  // * to the user. Bounding the total keeps a slow upstream from holding a
+  // * connection open on every dashboard render.
+  if (FALLBACK_UPSTREAM) {
+    const secondary = await resolveVia(FALLBACK_UPSTREAM, 4000)
+    if (secondary) return secondary
+  }
+
+  // * Neither resolver produced an icon. Short-cache it: at 3600s a domain that
+  // * gains a favicon tomorrow keeps showing a monogram for an hour, and at 0 a
+  // * genuinely icon-less domain re-queries both resolvers on every render.
+  return new NextResponse(null, {
+    status: 404,
+    headers: { 'Cache-Control': 'public, max-age=300' },
+  })
 }
