@@ -235,14 +235,9 @@ export default function UptimePage() {
             extraPresets={UPTIME_PICKER_PRESETS}
           />
           {canEdit && (
-            <button
-              type="button"
-              onClick={() => handleToggleUptime(false)}
-              disabled={toggling}
-              className="h-10 rounded-none border border-neutral-800 px-3 text-sm text-neutral-500 transition-colors duration-fast ease-apple hover:text-neutral-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
-            >
-              {toggling ? 'Disabling…' : 'Disable monitoring'}
-            </button>
+            <Button variant="chrome" size="toolbar" onClick={() => handleToggleUptime(false)} isLoading={toggling}>
+              Disable monitoring
+            </Button>
           )}
         </div>
       </div>

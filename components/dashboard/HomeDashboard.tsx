@@ -149,7 +149,7 @@ export default function HomeDashboard() {
         ) : null
         })() ?? (
           canCreateSite ? <Link href="/sites/new">
-            <Button variant="default" className="text-sm whitespace-nowrap">
+            <Button variant="default" size="toolbar" className="text-sm whitespace-nowrap">
               Add New Site
             </Button>
           </Link> : null
