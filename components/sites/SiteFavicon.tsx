@@ -16,8 +16,8 @@ interface SiteFaviconProps {
 /**
  * Site favicon with a graceful fallback — the ONLY way to render a site's
  * favicon. The same-origin `/api/favicon` proxy 404s whenever the upstream has
- * no favicon for a domain (new sites, internal hosts, anything Google hasn't
- * crawled — id.ciphera.net is a live example). Without a fallback that
+ * no favicon for a domain (new sites, internal hosts, anything Sigil cannot
+ * resolve — id.ciphera.net is a live example). Without a fallback that
  * surfaces as the browser's broken-image box, so every render site must go
  * through this component; never render the proxy URL with a raw <img>. On
  * error we swap to a neutral monogram sized to `size`. `alt` is intentionally

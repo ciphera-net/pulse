@@ -71,11 +71,12 @@ const nextConfig: NextConfig = {
   },
   images: {
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'www.google.com',
-        pathname: '/s2/favicons**',
-      },
+      // * `www.google.com/s2/favicons**` was removed 13-08-2026. It was the last
+      // * standing permission for Google in this app: favicons have gone through
+      // * the same-origin `/api/favicon` proxy (rendered `unoptimized`) for
+      // * months, so the pattern granted nothing that was in use — but it left
+      // * the door open for an <Image src> pointing straight at Google to start
+      // * working again without tripping CSP review. See app/api/favicon/route.ts.
       {
         protocol: 'https',
         hostname: 'ciphera.net',
