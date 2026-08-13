@@ -1,377 +1,172 @@
 'use client'
 
-import { useCan } from '@/lib/auth/permissions'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { useSite, useUptimeStatus } from '@/lib/swr/dashboard'
-import { updateSite, type Site } from '@/lib/api/sites'
+import { motion } from 'framer-motion'
+import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
+import { useCan } from '@/lib/auth/permissions'
+import { useSite, useUptimeStatus, useUptimeIncidents, useUptimeChecks } from '@/lib/swr/dashboard'
+import { updateSite } from '@/lib/api/sites'
+import { toast, Button } from '@ciphera-net/facet'
+import { UptimeSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
+import DateRangePicker from '@/components/ui/DateRangePicker'
+import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
+import { getDateRange } from '@/lib/utils/format'
+import type { PeriodPreset } from '@/lib/constants/periods'
+import UptimePanel from '@/components/uptime/UptimePanel'
+import IncidentsTable from '@/components/uptime/IncidentsTable'
+import MonitorStrip from '@/components/uptime/MonitorStrip'
+import { ErrorCard } from '@/components/ui/ErrorCard'
 import {
-  getMonitorChecks,
-  type UptimeStatusResponse,
-  type MonitorStatus,
-  type UptimeCheck,
-  type UptimeDailyStat,
-} from '@/lib/api/uptime'
-import { toast } from '@ciphera-net/facet'
-import { Button } from '@ciphera-net/facet'
-import { UptimeSkeleton, ChecksSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
-import { formatDateFull, formatTime, formatDateTimeShort } from '@/lib/utils/formatDate'
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-} from 'recharts'
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/charts'
+  UPTIME_METRIC_ORDER,
+  UPTIME_METRIC_LABEL,
+  UPTIME_POS,
+  UPTIME_NEG,
+  UPTIME_DEGRADED,
+  fmtMs,
+  fmtCheckTimeUTC,
+  presetUtcRange,
+} from '@/components/uptime/uptimeMetrics'
+import { cn } from '@/lib/utils'
 
-const responseTimeChartConfig = {
-  ms: {
-    label: 'Response Time',
-    color: 'var(--chart-1)',
-  },
-} satisfies ChartConfig
+// ---------------------------------------------------------------------------
+// Uptime — the instrument-panel layout. Range pills in uptime's own vocabulary
+// (24h gets hourly buckets from raw checks; 12m is bounded by the API's
+// 366-day range cap), the UptimePanel where each metric row is tile and strip
+// at once, the incident ledger, and the monitor strip. All day/hour bucketing
+// is the server's, in UTC — deliberately (decision D5).
+// ---------------------------------------------------------------------------
 
-// * Status color mapping
-function getStatusColor(status: string): string {
-  switch (status) {
-    case 'up':
-    case 'operational':
-      return 'bg-emerald-500'
-    case 'degraded':
-      return 'bg-amber-500'
-    case 'down':
-      return 'bg-red-500'
-    default:
-      return 'bg-neutral-600'
-  }
+const cascade = (delay: number) => ({
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: DURATION_BASE, ease: EASE_APPLE, delay },
+})
+
+// * No 24h pill on purpose: the API is UTC-day-granular, so a "24h" shortcut
+// * would really be an up-to-48-hour window wearing a 24h label. 7d is the
+// * smallest pill and still renders at HOURLY resolution (the server serves
+// * hourly buckets for ranges ≤ 8 days).
+const RANGE_PILLS: { key: Period; label: string }[] = [
+  { key: '7', label: '7d' },
+  { key: '30', label: '30d' },
+  { key: '3m', label: '3m' },
+  { key: '6m', label: '6m' },
+  { key: '12m', label: '12m' },
+]
+
+// * The same vocabulary, spelled out for the DateRangePicker beside the pills —
+// * without this the picker labels the month-scale pills "Custom" and
+// * check-marks nothing. Page-scoped on purpose (same pattern as Search).
+const UPTIME_PICKER_PRESETS: { group: string; presets: PeriodPreset[] } = {
+  group: 'Uptime ranges',
+  presets: [
+    { key: '3m', label: 'Last 3 months', group: 'Uptime ranges', resolve: () => getDateRange(90) },
+    { key: '6m', label: 'Last 6 months', group: 'Uptime ranges', resolve: () => getDateRange(180) },
+    { key: '12m', label: 'Last 12 months', group: 'Uptime ranges', resolve: () => getDateRange(365) },
+  ],
 }
 
-function getStatusDotColor(status: string): string {
-  switch (status) {
-    case 'up':
-    case 'operational':
-      return 'bg-emerald-500'
-    case 'degraded':
-      return 'bg-amber-500'
-    case 'down':
-      return 'bg-red-500'
-    default:
-      return 'bg-neutral-400'
-  }
-}
-
-function getStatusLabel(status: string): string {
-  switch (status) {
-    case 'up':
-    case 'operational':
-      return 'Operational'
-    case 'degraded':
-      return 'Degraded'
-    case 'down':
-      return 'Down'
-    default:
-      return 'Unknown'
-  }
-}
-
-// * Overall status text for the top card
-function getOverallStatusText(status: string): string {
-  switch (status) {
-    case 'up':
-    case 'operational':
-      return 'All Systems Operational'
-    case 'degraded':
-      return 'Partial Outage'
-    case 'down':
-      return 'Major Outage'
-    default:
-      return 'Unknown Status'
-  }
-}
-
-function getOverallStatusTextColor(status: string): string {
-  switch (status) {
-    case 'up':
-    case 'operational':
-      return 'text-emerald-400'
-    case 'degraded':
-      return 'text-amber-400'
-    case 'down':
-      return 'text-red-400'
-    default:
-      return 'text-neutral-400'
-  }
-}
-
-function getDayBarColor(stat: UptimeDailyStat | undefined): string {
-  if (!stat || stat.total_checks === 0) return 'bg-neutral-600'
-  if (stat.failed_checks > 0) return 'bg-red-500'
-  if (stat.degraded_checks > 0) return 'bg-amber-500'
-  return 'bg-emerald-500'
-}
-
-function formatUptime(pct: number): string {
-  return pct.toFixed(2) + '%'
-}
-
-function formatMs(ms: number | null): string {
-  if (ms === null) return '-'
-  if (ms < 1000) return `${ms}ms`
-  return `${(ms / 1000).toFixed(1)}s`
-}
-
-function formatTimeAgo(dateString: string | null): string {
-  if (!dateString) return 'Never'
-  const date = new Date(dateString)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffSec = Math.floor(diffMs / 1000)
-
-  if (diffSec < 60) return 'just now'
-  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`
-  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`
-  return `${Math.floor(diffSec / 86400)}d ago`
-}
-
-// * Generate array of dates for the last N days
-function generateDateRange(days: number): string[] {
-  const dates: string[] = []
-  const now = new Date()
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(now)
-    d.setDate(d.getDate() - i)
-    dates.push(d.toISOString().split('T')[0])
-  }
-  return dates
-}
-
-// * Component: Styled tooltip for status bar
-function StatusBarTooltip({
-  stat,
-  date,
-  visible,
-  position,
-}: {
-  stat: UptimeDailyStat | undefined
-  date: string
-  visible: boolean
-  position: { x: number; y: number }
-}) {
-  if (!visible) return null
-
-  const formattedDate = formatDateFull(new Date(date + 'T00:00:00'))
-
+function RangePills({ period, onPeriod }: { period: Period; onPeriod: (p: Period) => void }) {
   return (
-    <div
-      className="fixed z-[200] pointer-events-none"
-      style={{ left: position.x, top: position.y - 10, transform: 'translate(-50%, -100%)' }}
-    >
-      <div className="bg-neutral-800 border border-neutral-700 rounded-none transition-shadow duration-slow px-3 py-2.5 text-xs min-w-40 ease-apple">
-        <div className="font-semibold text-white mb-1.5">{formattedDate}</div>
-        {stat && stat.total_checks > 0 ? (
-          <div className="space-y-1">
-            <div className="flex justify-between gap-4">
-              <span className="text-neutral-400">Uptime</span>
-              <span className="font-medium text-white">
-                {formatUptime(stat.uptime_percentage)}
-              </span>
-            </div>
-            <div className="flex justify-between gap-4">
-              <span className="text-neutral-400">Checks</span>
-              <span className="font-medium text-white">{stat.total_checks}</span>
-            </div>
-            <div className="flex justify-between gap-4">
-              <span className="text-neutral-400">Avg Response</span>
-              <span className="font-medium text-white">
-                {formatMs(Math.round(stat.avg_response_time_ms))}
-              </span>
-            </div>
-            {stat.failed_checks > 0 && (
-              <div className="flex justify-between gap-4">
-                <span className="text-red-500">Failed</span>
-                <span className="font-medium text-red-500">{stat.failed_checks}</span>
-              </div>
+    <div role="group" aria-label="Date range" className="inline-flex h-10 shrink-0 items-stretch divide-x divide-neutral-800 overflow-hidden rounded-none border border-neutral-800">
+      {RANGE_PILLS.map(({ key, label }) => {
+        const active = period === key
+        return (
+          <button
+            key={key}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onPeriod(key)}
+            className={cn(
+              'px-3 text-sm font-medium transition-colors duration-fast ease-apple focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange',
+              active ? 'bg-neutral-800/60 text-white' : 'text-neutral-500 hover:text-neutral-300',
             )}
-          </div>
-        ) : (
-          <div className="text-neutral-500">No data</div>
-        )}
-        {/* Tooltip arrow */}
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-[-5px] w-2.5 h-2.5 bg-neutral-800 border-r border-b border-neutral-700 rotate-45" />
-      </div>
+          >
+            {label}
+          </button>
+        )
+      })}
     </div>
   )
 }
 
-// * Component: Uptime status bar (the colored bars visualization)
-function UptimeStatusBar({
-  dailyStats,
-  days = 90,
-}: {
-  dailyStats: UptimeDailyStat[] | null
-  days?: number
-}) {
-  const dateRange = generateDateRange(days)
-  const statsMap = new Map<string, UptimeDailyStat>()
-  if (dailyStats) {
-    for (const s of dailyStats) {
-      statsMap.set(s.date, s)
-    }
-  }
+// ─── Recent checks (compact log under the ledger) ─────────────────
 
-  const [hoveredDay, setHoveredDay] = useState<{ date: string; stat: UptimeDailyStat | undefined } | null>(null)
-  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 })
+const CHECK_DOT: Record<string, string> = {
+  up: UPTIME_POS,
+  degraded: UPTIME_DEGRADED,
+  down: UPTIME_NEG,
+}
 
-  const handleMouseEnter = (e: React.MouseEvent, date: string, stat: UptimeDailyStat | undefined) => {
-    const rect = (e.target as HTMLElement).getBoundingClientRect()
-    setTooltipPos({ x: rect.left + rect.width / 2, y: rect.top })
-    setHoveredDay({ date, stat })
-  }
-
+function RecentChecks({ siteId, monitorId }: { siteId: string; monitorId: string | undefined }) {
+  const { data: checks } = useUptimeChecks(siteId, monitorId, 20)
+  if (!checks || checks.length === 0) return null
   return (
-    <div
-      className="relative"
-      onMouseLeave={() => setHoveredDay(null)}
-    >
-      {/* 90 bars at min-w-[3px] with a 2px gap have a 448px min-content width.
-          A phone card offers ~348px, so the strip ran ~97px off the right edge —
-          the most recent days, the ones you actually care about, were the ones
-          off-screen. Thinner bars and a 1px gap below sm fit all 90 days in
-          ~269px; flex-1 then expands them to fill. sm+ keeps the original 3px/2px.
-          (Staging never showed this: uptime monitoring is disabled there, so the
-          route only ever rendered its empty state.) */}
-      <div className="flex items-center gap-px sm:gap-0.5 w-full">
-        {dateRange.map((date) => {
-          const stat = statsMap.get(date)
-          const barColor = getDayBarColor(stat)
-
-          return (
-            <div
-              key={date}
-              className={`flex-1 h-8 rounded-none ${barColor} transition-all duration-fast hover:opacity-80 cursor-pointer min-w-[2px] sm:min-w-[3px] ease-apple`}
-              onMouseEnter={(e) => handleMouseEnter(e, date, stat)}
-              onMouseLeave={() => setHoveredDay(null)}
+    <div className="rounded-none border border-border bg-card">
+      <div className="flex h-10 items-center justify-between border-b border-border px-4">
+        <span className="text-sm font-medium text-white">Recent checks</span>
+        <span className="text-xs text-neutral-500">last {checks.length} · times are UTC</span>
+      </div>
+      <div className="max-h-64 overflow-y-auto">
+        {checks.map((c) => (
+          <div key={c.id} className="flex h-8 items-center px-3 text-xs hover:bg-neutral-800/40">
+            {/* Dot = CONFIRMED status, same convention as every aggregate on
+                the page; a grace-period blip must not show red against a
+                100% availability rail. */}
+            <span
+              aria-hidden="true"
+              className="h-1.5 w-1.5 shrink-0 rounded-full"
+              style={{ background: CHECK_DOT[c.effective_status ?? c.status] ?? '#737373' }}
             />
-          )
-        })}
+            <span className="ml-2.5 shrink-0 tabular-nums text-neutral-300">{fmtCheckTimeUTC(c.checked_at)}</span>
+            {/* A failed check finally shows WHY — the error was always fetched, never rendered */}
+            {c.error_message && (
+              <span className="ml-3 min-w-0 flex-1 truncate font-mono text-neutral-500">{c.error_message}</span>
+            )}
+            {!c.error_message && <span className="min-w-0 flex-1" />}
+            <span className="ml-3 w-12 shrink-0 text-right font-mono text-neutral-400">{c.status_code ?? '—'}</span>
+            <span className="ml-3 w-16 shrink-0 text-right tabular-nums text-neutral-300">
+              {c.response_time_ms == null ? '—' : fmtMs(c.response_time_ms)}
+            </span>
+          </div>
+        ))}
       </div>
-      <StatusBarTooltip
-        stat={hoveredDay?.stat}
-        date={hoveredDay?.date ?? ''}
-        visible={hoveredDay !== null}
-        position={tooltipPos}
-      />
     </div>
   )
 }
 
-// * Component: Response time chart (Recharts area chart)
-function ResponseTimeChart({ checks }: { checks: UptimeCheck[] }) {
-  // * Prepare data in chronological order (oldest first)
-  const data = [...checks]
-    .reverse()
-    .filter((c) => c.response_time_ms !== null)
-    .map((c) => ({
-      time: formatTime(new Date(c.checked_at)),
-      ms: c.response_time_ms as number,
-      status: c.status,
-    }))
+// ─── Page ─────────────────────────────────────────────────────────
 
-  if (data.length < 2) return null
-
-  return (
-    <div className="mt-4">
-      <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">
-        Response Time
-      </h4>
-      <ChartContainer config={responseTimeChartConfig} className="h-40">
-        <AreaChart accessibilityLayer data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-          <defs>
-            <linearGradient id="responseTimeGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--color-ms)" stopOpacity={0.3} />
-              <stop offset="100%" stopColor="var(--color-ms)" stopOpacity={0.02} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid
-            strokeDasharray="3 3"
-            stroke="var(--chart-grid)"
-            strokeOpacity={0.5}
-            vertical={false}
-          />
-          <XAxis
-            dataKey="time"
-            tick={{ fontSize: 10, fill: 'var(--chart-axis)' }}
-            tickLine={false}
-            axisLine={false}
-            interval="preserveStartEnd"
-          />
-          <YAxis
-            tick={{ fontSize: 10, fill: 'var(--chart-axis)' }}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(v: number) => `${v}ms`}
-          />
-          <ChartTooltip
-            content={
-              <ChartTooltipContent
-                className="text-xs"
-                labelKey="time"
-                formatter={(value) => <span className="font-semibold">{value}ms</span>}
-              />
-            }
-          />
-          <Area
-            type="monotone"
-            dataKey="ms"
-            stroke="var(--color-ms)"
-            strokeWidth={2}
-            fill="url(#responseTimeGradient)"
-            dot={false}
-            activeDot={{ r: 4, fill: 'var(--color-ms)', strokeWidth: 0 }}
-          />
-        </AreaChart>
-      </ChartContainer>
-    </div>
-  )
-}
-
-// * Main uptime page
 export default function UptimePage() {
   const canEdit = useCan('uptime.manage')
   const params = useParams()
   const siteId = params.id as string
 
+  const { period, dateRange, setPeriod, shiftPeriod } = useUrlDateRange()
+
+  // * The API reads UTC calendar days; useUrlDateRange builds LOCAL ones.
+  // * Preset windows re-anchor to the current UTC day so the newest checks
+  // * never fall off the range west of UTC; a custom pick passes through —
+  // * an explicitly chosen calendar day IS the UTC day, as labeled.
+  const apiRange = useMemo(
+    () => (period === 'custom' ? dateRange : presetUtcRange(dateRange)),
+    [period, dateRange],
+  )
+
   const { data: site, mutate: mutateSite } = useSite(siteId)
-  const { data: uptimeData, isLoading, mutate: mutateUptime } = useUptimeStatus(siteId)
+  const {
+    data: uptimeData,
+    isLoading,
+    error: uptimeError,
+    mutate: mutateUptime,
+  } = useUptimeStatus(siteId, apiRange.start, apiRange.end)
+  const { data: incidentsData, error: incidentsError } = useUptimeIncidents(siteId, apiRange.start, apiRange.end)
   const [toggling, setToggling] = useState(false)
-  const [checks, setChecks] = useState<UptimeCheck[]>([])
-  const [loadingChecks, setLoadingChecks] = useState(false)
 
   // * Single monitor from the auto-managed uptime system
-  const monitor = uptimeData?.monitors?.[0] ?? null
-  const overallUptime = uptimeData?.overall_uptime ?? 100
+  const monitor = uptimeData?.monitors?.[0]?.monitor ?? null
   const overallStatus = uptimeData?.status ?? 'operational'
-
-  // * Fetch recent checks when we have a monitor
-  useEffect(() => {
-    if (!monitor) {
-      setChecks([])
-      return
-    }
-    const fetchChecks = async () => {
-      setLoadingChecks(true)
-      try {
-        const data = await getMonitorChecks(siteId, monitor.monitor.id, 20)
-        setChecks(data)
-      } catch {
-        // * Silent fail for check details
-      } finally {
-        setLoadingChecks(false)
-      }
-    }
-    fetchChecks()
-  }, [siteId, monitor?.monitor.id])
 
   const handleToggleUptime = async (enabled: boolean) => {
     if (!site) return
@@ -404,198 +199,125 @@ export default function UptimePage() {
   if (showSkeleton) return <UptimeSkeleton />
   if (!site) return <div className="p-8 text-neutral-500">Site not found</div>
 
-  const uptimeEnabled = site.uptime_enabled
+  // ─── Disabled — the panel's shape, ghosted, with the CTA ──────
 
-  // * Disabled state — show empty state with enable toggle
-  if (!uptimeEnabled) {
+  if (!site.uptime_enabled) {
     return (
-      <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-lg font-semibold text-neutral-200 mb-1">
-            Uptime
-          </h1>
-          <p className="text-sm text-neutral-400">
-            Monitor your site&apos;s availability and response time
-          </p>
+      <div className={`mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 ${fadeClass}`}>
+        <div className="mb-6">
+          <h1 className="mb-1 text-lg font-semibold text-neutral-200">Uptime</h1>
+          <p className="text-sm text-neutral-400">Availability, response time and incident history</p>
         </div>
-
-        {/* Empty state */}
-        <div className="glass-surface rounded-none p-6 md:p-12 text-center">
-          <div className="rounded-none bg-neutral-800 p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-            <svg className="w-8 h-8 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+        <div className="flex rounded-none border border-border bg-card">
+          {/* Ghost rails — what the page becomes once enabled */}
+          <div className="hidden w-48 shrink-0 flex-col border-r border-border sm:flex" aria-hidden="true">
+            {UPTIME_METRIC_ORDER.map((key) => (
+              <div key={key} className="flex flex-1 flex-col justify-center border-t border-border px-4 py-4 first:border-t-0">
+                <span className="text-sm text-neutral-600">{UPTIME_METRIC_LABEL[key]}</span>
+                <span className="mt-0.5 text-xl font-semibold text-neutral-700">&mdash;</span>
+              </div>
+            ))}
           </div>
-          <h3 className="font-semibold text-white mb-2">
-            Uptime monitoring is disabled
-          </h3>
-          <p className="text-sm text-neutral-400 mb-6 max-w-md mx-auto">
-            Enable uptime monitoring to track your site&apos;s availability and response time around the clock.
-          </p>
-          {canEdit && (
-            <Button
-              onClick={() => handleToggleUptime(true)}
-              disabled={toggling}
-            >
-              {toggling ? 'Enabling...' : 'Enable Uptime Monitoring'}
-            </Button>
-          )}
+          <div className="flex min-h-[320px] flex-1 flex-col items-center justify-center px-6 py-12 text-center">
+            <h2 className="mb-2 text-xl font-semibold text-white">Uptime monitoring is off</h2>
+            <p className="mb-6 max-w-md text-sm text-neutral-400">
+              Check <span className="font-mono text-neutral-300">https://{site.domain}</span> every 5 minutes —
+              availability, response time and incident history, with alerts by email, Slack, Discord or webhook.
+            </p>
+            {canEdit ? (
+              <Button onClick={() => handleToggleUptime(true)} disabled={toggling}>
+                {toggling ? 'Enabling…' : 'Enable uptime monitoring'}
+              </Button>
+            ) : (
+              <p className="text-xs text-neutral-500">An owner or admin can enable it.</p>
+            )}
+          </div>
         </div>
       </div>
     )
   }
 
-  // * Enabled state — show uptime dashboard
+  // ─── Enabled — the instrument ─────────────────────────────────
+
   return (
-    <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
-      {/* Header + action */}
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-lg font-semibold text-neutral-200 mb-1">
-            Uptime
-          </h1>
-          <p className="text-sm text-neutral-400">
-            Monitor your site&apos;s availability and response time
+    <div className={`mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 ${fadeClass}`}>
+      {/* Header */}
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold text-neutral-200">Uptime</h1>
+          <p className="mt-1 text-sm text-neutral-400">
+            {monitor ? (
+              <>
+                <span className="font-mono text-neutral-300">{monitor.url}</span>
+                {' · '}checked every {Math.round(monitor.check_interval_seconds / 60)} minutes
+              </>
+            ) : (
+              'Availability, response time and incident history'
+            )}
           </p>
         </div>
-        {canEdit && (
-          <Button
-            variant="secondary"
-            onClick={() => handleToggleUptime(false)}
-            disabled={toggling}
-            className="text-sm"
-          >
-            {toggling ? 'Disabling...' : 'Disable Monitoring'}
-          </Button>
-        )}
-      </div>
-
-      {/* Overall status card */}
-      <div className="glass-surface rounded-none p-5 mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`w-3.5 h-3.5 rounded-full ${getStatusDotColor(overallStatus)}`} />
-            <div>
-              <span className="font-semibold text-white text-lg">
-                {site.name}
-              </span>
-              <span className={`text-sm font-medium ml-3 ${getOverallStatusTextColor(overallStatus)}`}>
-                {getOverallStatusText(overallStatus)}
-              </span>
-            </div>
-          </div>
-          <div className="text-right">
-            <span className="text-sm font-semibold text-white">
-              {formatUptime(overallUptime)} uptime
-            </span>
-            {monitor && (
-              <div className="text-xs text-neutral-400">
-                Last checked {formatTimeAgo(monitor.monitor.last_checked_at)}
-              </div>
-            )}
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <RangePills period={period} onPeriod={(p) => setPeriod(p)} />
+          <DateRangePicker
+            period={period}
+            dateRange={dateRange}
+            onPeriodChange={(p) => setPeriod(p as Period)}
+            onDateRangeChange={(range) => setPeriod('custom', range)}
+            onShift={shiftPeriod}
+            extraPresets={UPTIME_PICKER_PRESETS}
+          />
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => handleToggleUptime(false)}
+              disabled={toggling}
+              className="h-10 rounded-none border border-neutral-800 px-3 text-sm text-neutral-500 transition-colors duration-fast ease-apple hover:text-neutral-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+            >
+              {toggling ? 'Disabling…' : 'Disable monitoring'}
+            </button>
+          )}
         </div>
       </div>
 
-      {/* 90-day uptime bar */}
-      {monitor && (
-        <div className="glass-surface rounded-none p-5 mb-6">
-          <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">
-            90-Day Availability
-          </h3>
-          <UptimeStatusBar dailyStats={monitor.daily_stats} />
-          <div className="flex justify-between mt-1.5 text-xs text-neutral-500">
-            <span>90 days ago</span>
-            <span>Today</span>
-          </div>
-        </div>
-      )}
+      {monitor ? (
+        <>
+          <motion.div {...cascade(0)}>
+            <UptimePanel
+              siteId={siteId}
+              monitor={monitor}
+              dateRange={apiRange}
+              incidents={incidentsError ? undefined : incidentsData?.incidents}
+              status={overallStatus}
+            />
+          </motion.div>
 
-      {/* Response time chart + Recent checks */}
-      {monitor && (
-        <div className="glass-surface rounded-none p-5">
-          {/* Monitor details grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
-            <div>
-              <div className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-1">
-                Status
-              </div>
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${getStatusDotColor(monitor.monitor.last_status)}`} />
-                <span className="text-sm font-medium text-white">
-                  {getStatusLabel(monitor.monitor.last_status)}
-                </span>
-              </div>
-            </div>
-            <div>
-              <div className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-1">
-                Response Time
-              </div>
-              <span className="text-sm font-medium text-white">
-                {formatMs(monitor.monitor.last_response_time_ms)}
-              </span>
-            </div>
-            <div>
-              <div className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-1">
-                Check Interval
-              </div>
-              <span className="text-sm font-medium text-white">
-                {monitor.monitor.check_interval_seconds >= 60
-                  ? `${Math.floor(monitor.monitor.check_interval_seconds / 60)}m`
-                  : `${monitor.monitor.check_interval_seconds}s`}
-              </span>
-            </div>
-            <div>
-              <div className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-1">
-                Overall Uptime
-              </div>
-              <span className="text-sm font-medium text-white">
-                {formatUptime(monitor.overall_uptime)}
-              </span>
-            </div>
-          </div>
+          <motion.div {...cascade(0.08)} className="mt-6">
+            <IncidentsTable
+              incidents={incidentsError ? undefined : incidentsData?.incidents}
+              error={!!incidentsError}
+              dateRange={apiRange}
+            />
+          </motion.div>
 
-          {/* Response time chart */}
-          {loadingChecks ? (
-            <ChecksSkeleton />
-          ) : checks.length > 0 ? (
-            <>
-              <ResponseTimeChart checks={checks} />
-
-              {/* Recent checks */}
-              <div className="mt-5">
-                <h4 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-3">
-                  Recent Checks
-                </h4>
-                <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                  {checks.slice(0, 20).map((check) => (
-                    <div
-                      key={check.id}
-                      className="flex items-center justify-between py-1.5 px-2 rounded-none hover:bg-neutral-800 text-sm"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${getStatusDotColor(check.status)}`} />
-                        <span className="text-neutral-300 text-xs">
-                          {formatDateTimeShort(new Date(check.checked_at))}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {check.status_code && (
-                          <span className="text-xs text-neutral-400">
-                            {check.status_code}
-                          </span>
-                        )}
-                        <span className="text-xs font-medium text-neutral-300">
-                          {formatMs(check.response_time_ms)}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          ) : null}
+          <motion.div {...cascade(0.14)} className="mt-6 space-y-6">
+            <MonitorStrip monitor={monitor} />
+            <RecentChecks siteId={siteId} monitorId={monitor.id} />
+          </motion.div>
+        </>
+      ) : uptimeError && !uptimeData ? (
+        // * A failed status request is an ERROR, not a setup state — reporting
+        // * it as "setting up" would be a false success (review finding).
+        <ErrorCard
+          title="Couldn't load uptime status"
+          description="The uptime request failed. Your monitoring is unaffected — this is a loading problem."
+          onRetry={() => { void mutateUptime() }}
+        />
+      ) : (
+        // * Enabled moments ago — the monitor row exists after the toggle's
+        // * auto-create, but a fresh SWR read may not carry it yet.
+        <div className="rounded-none border border-border bg-card px-6 py-10 text-center">
+          <p className="text-sm text-neutral-400">Setting up the monitor…</p>
+          <p className="mt-1 text-xs text-neutral-500">The first check lands within a minute.</p>
         </div>
       )}
     </div>
