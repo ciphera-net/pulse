@@ -171,6 +171,36 @@ export function fmtCheckTimeUTC(iso: string): string {
   return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
 }
 
+// ─── Cause humanization ──────────────────────────────────────────
+
+// * The checker records Go error strings verbatim ("request failed: Get
+// * \"https://…\": context deadline exceeded") — debugging gold, terrible UI
+// * copy. The ledger shows the handful of real failure modes in words a
+// * human recognizes; the verbatim string survives on the row's tooltip.
+export function humanizeCause(
+  errorMessage: string | null,
+  statusCode: number | null,
+  timeoutSeconds?: number,
+): string | null {
+  if (errorMessage) {
+    const m = errorMessage
+    if (m.includes('context deadline exceeded') || m.includes('Client.Timeout')) {
+      return timeoutSeconds ? `Timed out after ${timeoutSeconds} s` : 'Timed out'
+    }
+    if (m.includes('connection refused')) return 'Connection refused'
+    if (m.includes('no such host')) return 'DNS lookup failed'
+    if (m.includes('connection reset')) return 'Connection reset'
+    if (m.includes('certificate') || m.includes('tls:') || m.includes('x509')) return 'TLS handshake failed'
+    const slow = m.match(/slow response: (\d+)ms/)
+    if (slow) return `Slow response (${fmtMs(Number(slow[1]))})`
+    const code = m.match(/unexpected status code: (\d+) \(expected (\d+)\)/)
+    if (code) return `Status ${code[1]} (expected ${code[2]})`
+    return m
+  }
+  if (statusCode != null) return `Status ${statusCode}`
+  return null
+}
+
 // ─── State colors (one place; semantic, not decoration) ──────────
 
 export const UPTIME_POS = '#3ECF8E'
