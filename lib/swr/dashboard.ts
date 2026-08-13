@@ -33,7 +33,16 @@ import {
 import { getSite, getInstallStatus } from '@/lib/api/sites'
 import type { Site, InstallStatusResponse } from '@/lib/api/sites'
 import { listFunnels, getFunnel, getFunnelStats, getFunnelTrends, getFunnelBreakdown, type Funnel, type FunnelStats, type FunnelTrends, type FunnelBreakdown } from '@/lib/api/funnels'
-import { getUptimeStatus, type UptimeStatusResponse } from '@/lib/api/uptime'
+import {
+  getUptimeStatus,
+  getUptimeIncidents,
+  getUptimeResponseTimes,
+  getMonitorChecks,
+  type UptimeStatusResponse,
+  type UptimeIncidentsResponse,
+  type UptimeResponseTimesResponse,
+  type UptimeCheck,
+} from '@/lib/api/uptime'
 import { getPageSpeedConfig, getPageSpeedLatest, getPageSpeedHistory, type PageSpeedConfig, type PageSpeedCheck } from '@/lib/api/pagespeed'
 import { listGoals, type Goal } from '@/lib/api/goals'
 import { listReportSchedules, listAlertSchedules, type ReportSchedule } from '@/lib/api/report-schedules'
@@ -92,7 +101,11 @@ const fetchers = {
   journeyEntryPoints: (siteId: string, start: string, end: string, filters?: string) =>
     getJourneyEntryPoints(siteId, start, end, filters),
   funnels: (siteId: string) => listFunnels(siteId),
-  uptimeStatus: (siteId: string) => getUptimeStatus(siteId),
+  uptimeStatus: (siteId: string, start?: string, end?: string) => getUptimeStatus(siteId, start, end),
+  uptimeIncidents: (siteId: string, start: string, end: string) => getUptimeIncidents(siteId, start, end),
+  uptimeResponseTimes: (siteId: string, monitorId: string, start: string, end: string) =>
+    getUptimeResponseTimes(siteId, monitorId, start, end),
+  uptimeChecks: (siteId: string, monitorId: string, limit: number) => getMonitorChecks(siteId, monitorId, limit),
   pageSpeedConfig: (siteId: string) => getPageSpeedConfig(siteId),
   pageSpeedLatest: (siteId: string) => getPageSpeedLatest(siteId),
   pageSpeedHistory: (siteId: string, strategy: 'mobile' | 'desktop', days: number) => getPageSpeedHistory(siteId, strategy, days),
@@ -520,11 +533,56 @@ export function useFunnelBreakdown(
   )
 }
 
-// * Hook for uptime status (refreshes every 30s to match original polling)
-export function useUptimeStatus(siteId: string) {
+// * Hook for uptime status (refreshes every 30s to match original polling).
+// * start/end are UTC calendar days; omitted = the API's 90-day default.
+export function useUptimeStatus(siteId: string, start?: string, end?: string) {
   return useSWR<UptimeStatusResponse>(
-    siteId ? ['uptimeStatus', siteId] : null,
-    () => fetchers.uptimeStatus(siteId),
+    siteId ? ['uptimeStatus', siteId, start ?? '', end ?? ''] : null,
+    () => fetchers.uptimeStatus(siteId, start, end),
+    {
+      ...dashboardSWRConfig,
+      refreshInterval: 30 * 1000,
+      dedupingInterval: 10 * 1000,
+      keepPreviousData: true,
+    }
+  )
+}
+
+// * Hook for uptime incident episodes overlapping the range
+export function useUptimeIncidents(siteId: string, start: string, end: string) {
+  return useSWR<UptimeIncidentsResponse>(
+    siteId ? ['uptimeIncidents', siteId, start, end] : null,
+    () => fetchers.uptimeIncidents(siteId, start, end),
+    {
+      ...dashboardSWRConfig,
+      refreshInterval: 60 * 1000,
+      dedupingInterval: 10 * 1000,
+      keepPreviousData: true,
+    }
+  )
+}
+
+// * Hook for the server-bucketed latency series (the server owns hour/day
+// * granularity and echoes it — never re-bucket client-side)
+export function useUptimeResponseTimes(siteId: string, monitorId: string | undefined, start: string, end: string) {
+  return useSWR<UptimeResponseTimesResponse>(
+    siteId && monitorId ? ['uptimeResponseTimes', siteId, monitorId, start, end] : null,
+    () => fetchers.uptimeResponseTimes(siteId, monitorId as string, start, end),
+    {
+      ...dashboardSWRConfig,
+      refreshInterval: 60 * 1000,
+      dedupingInterval: 10 * 1000,
+      keepPreviousData: true,
+    }
+  )
+}
+
+// * Hook for a monitor's recent raw checks (replaces the page's imperative
+// * useEffect fetch — same SWR error/retry semantics as everything else)
+export function useUptimeChecks(siteId: string, monitorId: string | undefined, limit = 50) {
+  return useSWR<UptimeCheck[]>(
+    siteId && monitorId ? ['uptimeChecks', siteId, monitorId, limit] : null,
+    () => fetchers.uptimeChecks(siteId, monitorId as string, limit),
     {
       ...dashboardSWRConfig,
       refreshInterval: 30 * 1000,
