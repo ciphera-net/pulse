@@ -27,14 +27,13 @@ import {
   fmtCheckTimeUTC,
   presetUtcRange,
 } from '@/components/uptime/uptimeMetrics'
-import { cn } from '@/lib/utils'
 
 // ---------------------------------------------------------------------------
-// Uptime — the instrument-panel layout. Range pills in uptime's own vocabulary
-// (24h gets hourly buckets from raw checks; 12m is bounded by the API's
-// 366-day range cap), the UptimePanel where each metric row is tile and strip
-// at once, the incident ledger, and the monitor strip. All day/hour bucketing
-// is the server's, in UTC — deliberately (decision D5).
+// Uptime — the instrument-panel layout. One range control (the picker, with
+// uptime's page-scoped presets; 12m is bounded by the API's 366-day cap), the
+// UptimePanel where each metric row is tile and strip at once, the incident
+// ledger, and the monitor strip. All day/hour bucketing is the server's, in
+// UTC — deliberately (decision D5).
 // ---------------------------------------------------------------------------
 
 const cascade = (delay: number) => ({
@@ -43,21 +42,15 @@ const cascade = (delay: number) => ({
   transition: { duration: DURATION_BASE, ease: EASE_APPLE, delay },
 })
 
-// * No 24h pill on purpose: the API is UTC-day-granular, so a "24h" shortcut
-// * would really be an up-to-48-hour window wearing a 24h label. 7d is the
-// * smallest pill and still renders at HOURLY resolution (the server serves
-// * hourly buckets for ranges ≤ 8 days).
-const RANGE_PILLS: { key: Period; label: string }[] = [
-  { key: '7', label: '7d' },
-  { key: '30', label: '30d' },
-  { key: '3m', label: '3m' },
-  { key: '6m', label: '6m' },
-  { key: '12m', label: '12m' },
-]
-
-// * The same vocabulary, spelled out for the DateRangePicker beside the pills —
-// * without this the picker labels the month-scale pills "Custom" and
-// * check-marks nothing. Page-scoped on purpose (same pattern as Search).
+// * The DateRangePicker is the ONE range control on this page (owner call,
+// * 13-08: a pill row beside the picker was two controls for one job). These
+// * page-scoped presets keep the uptime vocabulary one click away in the
+// * picker — 7d/30d are global presets already; without this group the
+// * month-scale ranges would label as "Custom" and check-mark nothing.
+// * No 24h preset on purpose: the API is UTC-day-granular, so a "24h"
+// * shortcut would really be an up-to-48-hour window wearing a 24h label —
+// * 7d is the smallest preset and still renders at HOURLY resolution (the
+// * server serves hourly buckets for ranges ≤ 8 days).
 const UPTIME_PICKER_PRESETS: { group: string; presets: PeriodPreset[] } = {
   group: 'Uptime ranges',
   presets: [
@@ -65,30 +58,6 @@ const UPTIME_PICKER_PRESETS: { group: string; presets: PeriodPreset[] } = {
     { key: '6m', label: 'Last 6 months', group: 'Uptime ranges', resolve: () => getDateRange(180) },
     { key: '12m', label: 'Last 12 months', group: 'Uptime ranges', resolve: () => getDateRange(365) },
   ],
-}
-
-function RangePills({ period, onPeriod }: { period: Period; onPeriod: (p: Period) => void }) {
-  return (
-    <div role="group" aria-label="Date range" className="inline-flex h-10 shrink-0 items-stretch divide-x divide-neutral-800 overflow-hidden rounded-none border border-neutral-800">
-      {RANGE_PILLS.map(({ key, label }) => {
-        const active = period === key
-        return (
-          <button
-            key={key}
-            type="button"
-            aria-pressed={active}
-            onClick={() => onPeriod(key)}
-            className={cn(
-              'px-3 text-sm font-medium transition-colors duration-fast ease-apple focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange',
-              active ? 'bg-neutral-800/60 text-white' : 'text-neutral-500 hover:text-neutral-300',
-            )}
-          >
-            {label}
-          </button>
-        )
-      })}
-    </div>
-  )
 }
 
 // ─── Recent checks (compact log under the ledger) ─────────────────
@@ -257,7 +226,6 @@ export default function UptimePage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <RangePills period={period} onPeriod={(p) => setPeriod(p)} />
           <DateRangePicker
             period={period}
             dateRange={dateRange}
