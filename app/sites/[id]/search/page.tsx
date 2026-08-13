@@ -21,13 +21,12 @@ import { UpdatingChip } from '@/components/ui/UpdatingChip'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { Segmented, type SegmentedOption } from '@/components/ui/segmented'
 import { METRIC_ORDER, METRIC_LABEL, parseGranularity, type Granularity } from '@/components/search/searchMetrics'
-import { cn } from '@/lib/utils'
 
 // ---------------------------------------------------------------------------
-// Search Console — the instrument-panel layout. Range pills in GSC's own
-// vocabulary (7d/28d/3m/6m/12m/16m; 16m is Google's ~480-day retention cap,
-// no 24h because the API is daily-only with a ~2-day lag), a granularity
-// control that rolls the daily series up client-side, and the InstrumentPanel
+// Search Console — the instrument-panel layout. One range control (the
+// picker, exclusively in the search providers' own vocabulary — see
+// GSC_PICKER_PRESETS), a granularity control that rolls the daily series up
+// client-side, and the InstrumentPanel
 // where each metric row is both the KPI tile and the chart strip. Table views
 // live in SearchViews below, sharing the same URL-synced date state.
 // ---------------------------------------------------------------------------
@@ -38,23 +37,22 @@ const cascade = (delay: number) => ({
   transition: { duration: DURATION_BASE, ease: EASE_APPLE, delay },
 })
 
-const RANGE_PILLS: { key: Period; label: string }[] = [
-  { key: '7', label: '7d' },
-  { key: '28', label: '28d' },
-  { key: '3m', label: '3m' },
-  { key: '6m', label: '6m' },
-  { key: '12m', label: '12m' },
-  { key: '16m', label: '16m' },
-]
-
-// * The same vocabulary, spelled out for the DateRangePicker beside the pills —
-// * without this the picker labels every pill period "Custom" and check-marks
-// * nothing. Page-scoped on purpose: these ranges belong to GSC, not to every
-// * picker in the product.
-const GSC_PICKER_PRESETS: { group: string; presets: PeriodPreset[] } = {
+// * The DateRangePicker is the ONE range control on this page (owner call,
+// * 13-08: the pill row beside it was two controls for one job), and its
+// * preset list is EXCLUSIVELY the search providers' own vocabulary — the
+// * union of what Google Search Console (7d/28d/3m/6m/12m/16m; 16m is
+// * Google's ~480-day retention cap) and Bing Webmaster Tools (7d/30d/3m/6m)
+// * offer, plus Custom. Pulse's global presets are deliberately absent:
+// * "Today"/"24h" on a daily-only source with a ~2-day reporting lag is a
+// * promise the data cannot keep. Each provider's data simply ends where its
+// * retention ends (as-built decision D4).
+const GSC_PICKER_PRESETS: { group: string; presets: PeriodPreset[]; exclusive: boolean } = {
   group: 'Search ranges',
+  exclusive: true,
   presets: [
+    { key: '7', label: 'Last 7 days', group: 'Search ranges', resolve: () => getDateRange(7) },
     { key: '28', label: 'Last 28 days', group: 'Search ranges', resolve: () => getDateRange(28) },
+    { key: '30', label: 'Last 30 days', group: 'Search ranges', resolve: () => getDateRange(30) },
     { key: '3m', label: 'Last 3 months', group: 'Search ranges', resolve: () => getDateRange(90) },
     { key: '6m', label: 'Last 6 months', group: 'Search ranges', resolve: () => getDateRange(180) },
     { key: '12m', label: 'Last 12 months', group: 'Search ranges', resolve: () => getDateRange(365) },
@@ -67,30 +65,6 @@ const GRANULARITY_OPTIONS: SegmentedOption<Granularity>[] = [
   { value: 'weekly', label: 'Weekly' },
   { value: 'monthly', label: 'Monthly' },
 ]
-
-function RangePills({ period, onPeriod }: { period: Period; onPeriod: (p: Period) => void }) {
-  return (
-    <div role="group" aria-label="Date range" className="inline-flex h-10 shrink-0 items-stretch divide-x divide-neutral-800 overflow-hidden rounded-none border border-neutral-800">
-      {RANGE_PILLS.map(({ key, label }) => {
-        const active = period === key
-        return (
-          <button
-            key={key}
-            type="button"
-            aria-pressed={active}
-            onClick={() => onPeriod(key)}
-            className={cn(
-              'px-3 text-sm font-medium transition-colors duration-fast ease-apple focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange',
-              active ? 'bg-neutral-800/60 text-white' : 'text-neutral-500 hover:text-neutral-300',
-            )}
-          >
-            {label}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
 
 export default function SearchConsolePage() {
   const params = useParams()
@@ -233,7 +207,6 @@ export default function SearchConsolePage() {
               className="h-8"
             />
           )}
-          <RangePills period={period} onPeriod={(p) => setPeriod(p)} />
           <DateRangePicker
             period={period}
             dateRange={dateRange}

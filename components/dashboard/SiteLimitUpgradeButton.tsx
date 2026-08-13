@@ -20,7 +20,7 @@ export default function SiteLimitUpgradeButton({ used, limit }: SiteLimitUpgrade
     <Link
       href="/switch"
       aria-label={`${used} of ${limit} sites used — upgrade for more`}
-      className="group inline-flex h-9 items-stretch rounded-none bg-brand-orange text-sm font-medium text-white transition-colors duration-fast hover:bg-brand-orange-hover"
+      className="group inline-flex h-10 items-stretch rounded-none bg-brand-orange text-sm font-medium text-white transition-colors duration-fast hover:bg-brand-orange-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
     >
       <span className="flex items-center pl-4 pr-3">Upgrade for more sites</span>
       <span className="ml-0.5 flex items-center bg-brand-orange-button px-2.5 text-xs tabular-nums text-orange-100 transition-colors duration-fast group-hover:bg-brand-orange-button-hover">

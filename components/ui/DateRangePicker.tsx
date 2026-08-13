@@ -5,6 +5,8 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { CaretLeft, CaretRight, CalendarBlank, Check } from '@phosphor-icons/react'
 import { PERIOD_PRESETS, PERIOD_GROUPS, findPreset, type PeriodPreset } from '@/lib/constants/periods'
+import { buttonVariants } from '@ciphera-net/facet'
+import { cn } from '@/lib/utils'
 
 interface DateRangePickerProps {
   period: string
@@ -16,7 +18,12 @@ interface DateRangePickerProps {
   // * Page-scoped presets (e.g. the Search page's GSC ranges) rendered as
   // * their own group ABOVE the global ones, and resolved for the trigger
   // * label + checkmark — without leaking into every other page's picker.
-  extraPresets?: { group: string; presets: PeriodPreset[] }
+  // * With `exclusive`, the global preset groups are NOT rendered at all —
+  // * for pages whose data source has its own vocabulary and where global
+  // * presets are dishonest (e.g. "Today" on a daily-only, 2-day-lagged
+  // * source). Custom and the calendar always remain; an inherited URL
+  // * period outside the list still resolves for the trigger label.
+  extraPresets?: { group: string; presets: PeriodPreset[]; exclusive?: boolean }
 }
 
 function formatRangeDisplay(start: string, end: string): string {
@@ -267,7 +274,7 @@ export default function DateRangePicker({
                 ))}
               </div>
             )}
-            {PERIOD_GROUPS.map((group) => (
+            {!extraPresets?.exclusive && PERIOD_GROUPS.map((group) => (
               <div key={group}>
                 <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
                   {group}
@@ -358,32 +365,37 @@ export default function DateRangePicker({
 
   return (
     <div className="flex items-center gap-1.5">
+      {/* Facet's chrome/toolbar classes are the base for all three controls —
+          one source for the hairline look, and they finally get the system
+          focus ring (these buttons had NO keyboard focus state before). */}
       {onShift && (
         <button
           onClick={() => onShift(-1)}
-          className="h-10 w-10 flex items-center justify-center rounded-none border border-input bg-card text-muted-foreground transition-colors ease-apple hover:border-line-hover hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+          aria-label="Shift range back"
+          className={cn(buttonVariants({ variant: 'chrome', size: 'toolbar-icon' }), 'text-muted-foreground ease-apple hover:text-foreground')}
         >
-          <CaretLeft weight="bold" className="w-3.5 h-3.5" />
+          <CaretLeft weight="bold" />
         </button>
       )}
 
       <button
         ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 h-10 px-4 rounded-none border border-input bg-card text-sm text-foreground transition-colors ease-apple hover:border-line-hover"
+        className={cn(buttonVariants({ variant: 'chrome', size: 'toolbar' }), 'font-normal ease-apple')}
       >
-        <CalendarBlank className="w-4 h-4 text-muted-foreground" />
+        <CalendarBlank className="text-muted-foreground" />
         <span>{displayLabel}</span>
-        <CaretRight weight="bold" className={`w-3 h-3 text-muted-foreground/70 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+        <CaretRight weight="bold" className={`text-muted-foreground/70 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
       </button>
 
       {onShift && (
         <button
           onClick={() => onShift(1)}
           disabled={isForwardDisabled}
-          className="h-10 w-10 flex items-center justify-center rounded-none border border-input bg-card text-muted-foreground transition-colors ease-apple hover:border-line-hover hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+          aria-label="Shift range forward"
+          className={cn(buttonVariants({ variant: 'chrome', size: 'toolbar-icon' }), 'text-muted-foreground ease-apple hover:text-foreground')}
         >
-          <CaretRight weight="bold" className="w-3.5 h-3.5" />
+          <CaretRight weight="bold" />
         </button>
       )}
 
