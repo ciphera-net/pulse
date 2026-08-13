@@ -7,6 +7,8 @@ import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { useCan } from '@/lib/auth/permissions'
 import { useSite, useUptimeStatus, useUptimeIncidents, useUptimeChecks } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
+import type { UptimeMonitor } from '@/lib/api/uptime'
+import { formatRelativeTime } from '@/lib/utils/formatDate'
 import { toast, Button } from '@ciphera-net/facet'
 import { UptimeSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import DateRangePicker from '@/components/ui/DateRangePicker'
@@ -58,6 +60,41 @@ const UPTIME_PICKER_PRESETS: { group: string; presets: PeriodPreset[] } = {
     { key: '6m', label: 'Last 6 months', group: 'Uptime ranges', resolve: () => getDateRange(180) },
     { key: '12m', label: 'Last 12 months', group: 'Uptime ranges', resolve: () => getDateRange(365) },
   ],
+}
+
+// ─── Header status line (the SyncStatusLine grammar, for the checker) ──
+
+const STATUS_LINE: Record<string, { label: string; color: string; tone?: string }> = {
+  operational: { label: 'Operational', color: UPTIME_POS },
+  degraded: { label: 'Degraded', color: UPTIME_DEGRADED, tone: UPTIME_DEGRADED },
+  down: { label: 'Down', color: UPTIME_NEG, tone: UPTIME_NEG },
+}
+
+function UptimeStatusLine({ monitor, status }: { monitor: UptimeMonitor; status: 'operational' | 'degraded' | 'down' }) {
+  const cadence = `checked every ${Math.round(monitor.check_interval_seconds / 60)} minutes`
+  if (monitor.last_status === 'unknown') {
+    return (
+      <p className="mt-1.5 flex items-center gap-1.5 text-xs text-neutral-500">
+        <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-600" />
+        Waiting for the first check · {cadence}
+      </p>
+    )
+  }
+  const s = STATUS_LINE[status]
+  return (
+    <p className="mt-1.5 flex items-center gap-1.5 text-xs text-neutral-500">
+      <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: s.color }} />
+      <span style={s.tone ? { color: s.tone } : undefined} className={s.tone ? undefined : 'text-neutral-400'}>
+        {s.label}
+      </span>
+      {monitor.last_response_time_ms != null && monitor.last_checked_at && (
+        <span className="tabular-nums">
+          · last check {fmtMs(monitor.last_response_time_ms)}, {formatRelativeTime(monitor.last_checked_at)}
+        </span>
+      )}
+      <span>· {cadence}</span>
+    </p>
+  )
 }
 
 // ─── Recent checks (compact log under the ledger) ─────────────────
@@ -214,16 +251,8 @@ export default function UptimePage() {
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <h1 className="text-lg font-semibold text-neutral-200">Uptime</h1>
-          <p className="mt-1 text-sm text-neutral-400">
-            {monitor ? (
-              <>
-                <span className="font-mono text-neutral-300">{monitor.url}</span>
-                {' · '}checked every {Math.round(monitor.check_interval_seconds / 60)} minutes
-              </>
-            ) : (
-              'Availability, response time and incident history'
-            )}
-          </p>
+          <p className="mt-1 text-sm text-neutral-400">Availability, response time and incident history</p>
+          {monitor && <UptimeStatusLine monitor={monitor} status={overallStatus} />}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <DateRangePicker
@@ -250,7 +279,6 @@ export default function UptimePage() {
               monitor={monitor}
               dateRange={apiRange}
               incidents={incidentsError ? undefined : incidentsData?.incidents}
-              status={overallStatus}
             />
           </motion.div>
 

@@ -11,7 +11,6 @@ import { UpdatingChip } from '@/components/ui/UpdatingChip'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { cn } from '@/lib/utils'
-import { formatRelativeTime } from '@/lib/utils/formatDate'
 import type { UptimeIncident, UptimeMonitor } from '@/lib/api/uptime'
 import {
   UPTIME_METRIC_ORDER,
@@ -58,7 +57,6 @@ interface UptimePanelProps {
   monitor: UptimeMonitor
   dateRange: { start: string; end: string }
   incidents: UptimeIncident[] | undefined
-  status: 'operational' | 'degraded' | 'down'
 }
 
 // ─── Shared x placement ──────────────────────────────────────────
@@ -379,13 +377,7 @@ function XAxis({ width, series, granularity }: { width: number; series: UptimePo
 
 // ─── Panel ───────────────────────────────────────────────────────
 
-const STATUS_TEXT: Record<UptimePanelProps['status'], { label: string; color: string }> = {
-  operational: { label: 'Operational', color: POS },
-  degraded: { label: 'Degraded', color: DEGRADED },
-  down: { label: 'Down', color: NEG },
-}
-
-export default function UptimePanel({ siteId, monitor, dateRange, incidents, status }: UptimePanelProps) {
+export default function UptimePanel({ siteId, monitor, dateRange, incidents }: UptimePanelProps) {
   const searchParams = useSearchParams()
   const write = useQueryParamsWriter()
 
@@ -430,8 +422,6 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, sta
   const downtime = incidents ? totalDowntimeSeconds(incidents, startMs, endMs) : 0
 
   const hovered = hoverIdx != null && hoverIdx < series.length ? series[hoverIdx] : null
-  const firstCheckPending = monitor.last_status === 'unknown'
-  const st = STATUS_TEXT[status]
   const hourWithDay = granularity === 'hour' && seriesSpansMultipleDays(series)
 
   // * Rail primary for response time: exact p50 where the server has it
@@ -485,34 +475,6 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, sta
     <div className="relative rounded-none border border-border bg-card">
       <UpdatingChip active={isValidating && !!data} className="right-2 top-2" />
 
-      {/* Status strip — current state, latest check, bucket convention.
-          No bottom border: the first metric row's border-t is the rule. */}
-      <div className="flex h-10 items-center justify-between px-4">
-        <div className="flex min-w-0 items-center gap-2.5">
-          {firstCheckPending ? (
-            <>
-              <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-neutral-600" />
-              <span className="text-sm font-medium text-neutral-400">Waiting for the first check</span>
-            </>
-          ) : (
-            <>
-              <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full" style={{ background: st.color }} />
-              <span className="text-sm font-medium" style={{ color: status === 'operational' ? '#fff' : st.color }}>
-                {st.label}
-              </span>
-              {monitor.last_response_time_ms != null && (
-                <span className="hidden items-center gap-1.5 text-xs text-neutral-500 sm:flex">
-                  <span>last check</span>
-                  <span className="tabular-nums text-neutral-400">{fmtMs(monitor.last_response_time_ms)}</span>
-                  {monitor.last_checked_at && <span>· {formatRelativeTime(monitor.last_checked_at)}</span>}
-                </span>
-              )}
-            </>
-          )}
-        </div>
-        <span className="shrink-0 text-xs text-neutral-500">{granularity === 'hour' ? 'hours are UTC' : 'days are UTC'}</span>
-      </div>
-
       {UPTIME_METRIC_ORDER.map((key) => {
         const isOn = active.includes(key)
         const rail = railValue(key)
@@ -524,7 +486,7 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, sta
               type="button"
               aria-pressed={false}
               onClick={() => toggleMetric(key)}
-              className="group flex h-11 w-full items-stretch border-t border-border text-left transition-colors duration-fast ease-apple hover:bg-neutral-800/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange"
+              className="group flex h-11 w-full items-stretch border-t border-border first:border-t-0 text-left transition-colors duration-fast ease-apple hover:bg-neutral-800/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange"
             >
               <span className={cn(RAIL_W, 'flex shrink-0 items-center justify-between gap-2 border-r border-border px-4')}>
                 <span className="truncate text-sm text-neutral-500">{UPTIME_METRIC_LABEL[key]}</span>
@@ -538,7 +500,7 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, sta
         }
 
         return (
-          <div key={key} className="flex items-stretch border-t border-border">
+          <div key={key} className="flex items-stretch border-t border-border first:border-t-0">
             <button
               type="button"
               aria-pressed={true}
@@ -585,6 +547,9 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, sta
             </ParentSize>
           )}
         </div>
+        <span className="flex h-7 shrink-0 items-center pr-3 text-xs text-neutral-600">
+          {granularity === 'hour' ? 'hours are UTC' : 'days are UTC'}
+        </span>
       </div>
 
       {/* Empty / error states cover the band area, rails stay visible */}
