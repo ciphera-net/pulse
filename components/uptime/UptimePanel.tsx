@@ -98,9 +98,10 @@ function AvailabilityStrip({
   const barH = 56
   const barY = (STRIP_H - barH) / 2
   // * Bars sit at the same time positions the line strips use, so the shared
-  // * crosshair lands on the same bucket in every strip.
+  // * crosshair lands on the same bucket in every strip. The width cap scales
+  // * with bucket count: 91 day-slots stay slim, 24 hour-slots read solid.
   const slot = series.length > 1 ? innerW / (series.length - 1) : innerW
-  const barW = Math.max(2, Math.min(10, slot * 0.72))
+  const barW = Math.max(2, Math.min(series.length <= 40 ? 22 : 10, slot * 0.72))
 
   const handleMove = (event: React.MouseEvent<SVGRectElement>) => {
     const point = localPoint(event)
@@ -403,7 +404,7 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, sta
           sub:
             summary?.p95_response_time_ms != null
               ? `${respLabel} · p95 ${fmtMs(summary.p95_response_time_ms)}`
-              : `${respLabel} · hourly detail on ranges ≤ 7 d`,
+              : 'range avg',
         }
       case 'checks':
         return { text: totalChecks.toLocaleString('en-US'), sub: `every ${Math.round(monitor.check_interval_seconds / 60)} m` }
