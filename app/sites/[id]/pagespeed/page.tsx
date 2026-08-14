@@ -2,167 +2,230 @@
 
 import { useCan } from '@/lib/auth/permissions'
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { useSite, usePageSpeedConfig, usePageSpeedLatest, usePageSpeedHistory } from '@/lib/swr/dashboard'
-import { updatePageSpeedConfig, triggerPageSpeedCheck, getPageSpeedLatest, getPageSpeedCheck, type PageSpeedCheck, type AuditSummary } from '@/lib/api/pagespeed'
+import {
+  updatePageSpeedConfig,
+  triggerPageSpeedCheck,
+  getPageSpeedLatest,
+  getPageSpeedCheck,
+  type PageSpeedCheck,
+  type AuditSummary,
+} from '@/lib/api/pagespeed'
+import { useQueryParamsWriter } from '@/lib/hooks/useQueryParamsWriter'
 import { toast, Button } from '@ciphera-net/facet'
 import Select from '@/components/ui/select'
 import { motion } from 'framer-motion'
 import ScoreGauge from '@/components/pagespeed/ScoreGauge'
+import { PageSpeedStatusLine } from '@/components/pagespeed/PageSpeedStatusLine'
+import { PerformanceTrend } from '@/components/pagespeed/PerformanceTrend'
+import { auditDescription } from '@/lib/pagespeed/descriptions'
 import { remapLearnUrl } from '@/lib/learn-links'
-import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip } from '@/components/ui/area-chart'
-import { useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
+import { ErrorCard } from '@/components/ui/ErrorCard'
+import { useMinimumLoading } from '@/components/skeletons'
 
-// * Metric status thresholds (Google's Core Web Vitals thresholds)
-function getMetricStatus(metric: string, value: number | null): { label: string; color: string } {
-  if (value === null) return { label: '--', color: 'text-neutral-400' }
-  const thresholds: Record<string, [number, number]> = {
-    lcp: [2500, 4000],
-    cls: [0.1, 0.25],
-    tbt: [200, 600],
-    fcp: [1800, 3000],
-    si: [3400, 5800],
-    tti: [3800, 7300],
-  }
-  const [good, poor] = thresholds[metric] ?? [0, 0]
-  if (value <= good) return { label: 'Good', color: 'text-emerald-400' }
-  if (value <= poor) return { label: 'Needs Improvement', color: 'text-amber-400' }
-  return { label: 'Poor', color: 'text-red-400' }
+type Strategy = 'mobile' | 'desktop'
+
+// 🔴 `min-w-0` IS LOAD-BEARING, not tidiness. These cards are grid items, and a
+// grid item defaults to `min-width: auto` — so the TRACK is sized by the widest
+// item's min-content, and one card that cannot shrink widens every card on the
+// page. Measured at 375 px before this was added: main scrollWidth 578 against
+// a 373 px client width, i.e. 205 px of the page silently cut off, because the
+// shell's `overflow-x-hidden` DELETES what it clips instead of letting it
+// scroll. /uptime and /cdn measured 373/373 in the same harness, which is what
+// identified this as the page's fault rather than the shell's.
+const CARD = 'min-w-0 rounded-none border border-border bg-card'
+const SECTION_LABEL = 'text-xs font-semibold uppercase tracking-wider text-neutral-400'
+
+// * Google's Core Web Vitals thresholds: [good, needs-improvement] boundaries.
+const METRIC_THRESHOLDS: Record<string, [number, number]> = {
+  lcp: [2500, 4000],
+  cls: [0.1, 0.25],
+  tbt: [200, 600],
+  fcp: [1800, 3000],
+  si: [3400, 5800],
+  tti: [3800, 7300],
 }
 
-// * Format metric values for display
+// * The "good" boundary, spelled out under each metric. A number with no
+// * threshold beside it asks the reader to already know what good looks like.
+const METRIC_GOOD_LABEL: Record<string, string> = {
+  fcp: '< 1.8s',
+  lcp: '< 2.5s',
+  tbt: '< 200ms',
+  cls: '< 0.1',
+  si: '< 3.4s',
+  tti: '< 3.8s',
+}
+
+function metricBand(metric: string, value: number | null): 'good' | 'warn' | 'poor' | 'unknown' {
+  if (value === null) return 'unknown'
+  const [good, poor] = METRIC_THRESHOLDS[metric] ?? [0, 0]
+  if (value <= good) return 'good'
+  if (value <= poor) return 'warn'
+  return 'poor'
+}
+
+const BAND_DOT: Record<string, string> = {
+  good: 'bg-emerald-500',
+  warn: 'bg-amber-500',
+  poor: 'bg-red-500',
+  unknown: 'bg-neutral-600',
+}
+
+// * An em dash, never a zero. A metric Lighthouse did not produce is not a
+// * measurement of zero — that conflation is what made five months of stored
+// * history untrustworthy.
 function formatMetricValue(metric: string, value: number | null): string {
-  if (value === null) return '--'
+  if (value === null) return '—'
   if (metric === 'cls') return value.toFixed(3)
-  if (value < 1000) return `${value}ms`
+  if (value < 1000) return `${Math.round(value)}ms`
   return `${(value / 1000).toFixed(1)}s`
 }
 
-// * Format time ago for last checked display
-function formatTimeAgo(dateString: string | null): string {
-  if (!dateString) return 'Never'
-  const date = new Date(dateString)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffSec = Math.floor(diffMs / 1000)
-
-  if (diffSec < 60) return 'just now'
-  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`
-  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`
-  return `${Math.floor(diffSec / 86400)}d ago`
+function formatMs(ms: number): string {
+  return ms < 1000 ? `${Math.round(ms)}ms` : `${(ms / 1000).toFixed(1)}s`
 }
 
-// * Get dot color for audit items based on score
-function getAuditDotColor(score: number | null): string {
-  if (score === null) return 'bg-neutral-400'
-  if (score >= 0.9) return 'bg-emerald-500'
-  if (score >= 0.5) return 'bg-amber-500'
-  return 'bg-red-500'
+// * A short UTC stamp for the check navigator — the header already carries the
+// * full one, so this stays compact.
+function formatShortUtc(iso: string): string {
+  const d = new Date(iso)
+  const date = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+  const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' })
+  return `${date}, ${time} UTC`
 }
 
-// * Main PageSpeed page
 export default function PageSpeedPage() {
   const canEdit = useCan('pagespeed.manage')
   const params = useParams()
+  const searchParams = useSearchParams()
+  const write = useQueryParamsWriter()
   const siteId = params.id as string
 
-  const { data: site } = useSite(siteId)
-  const { data: config, mutate: mutateConfig } = usePageSpeedConfig(siteId)
-  const { data: latestChecks, isLoading, mutate: mutateLatest } = usePageSpeedLatest(siteId)
+  // * ?strategy= — mobile is the default and is kept OUT of the URL, matching
+  // * the ?engine= convention on the Search page.
+  const strategy: Strategy = searchParams.get('strategy') === 'desktop' ? 'desktop' : 'mobile'
 
-  const [strategy, setStrategy] = useState<'mobile' | 'desktop'>('mobile')
+  const { data: site } = useSite(siteId)
+  const { data: config, error: configError, isLoading: configLoading, mutate: mutateConfig } = usePageSpeedConfig(siteId)
+  const { data: latest, error: latestError, isLoading: latestLoading, mutate: mutateLatest } = usePageSpeedLatest(siteId)
+
   const [running, setRunning] = useState(false)
   const [toggling, setToggling] = useState(false)
   const [frequency, setFrequency] = useState<string>('weekly')
 
-  const { data: historyChecks } = usePageSpeedHistory(siteId, strategy)
+  const { data: historyChecks, error: historyError } = usePageSpeedHistory(siteId, strategy)
 
-  // * Check history navigation — build unique check timestamps from history data
   const [selectedCheckId, setSelectedCheckId] = useState<string | null>(null)
   const [selectedCheckData, setSelectedCheckData] = useState<PageSpeedCheck | null>(null)
   const [loadingCheck, setLoadingCheck] = useState(false)
+  const [checkFetchFailed, setCheckFetchFailed] = useState(false)
 
-  // * Build unique check timestamps (each check has mobile+desktop at the same time)
-  const checkTimestamps = useMemo(() => {
-    if (!historyChecks?.length) return []
-    const seen = new Set<string>()
-    const timestamps: { id: string; checked_at: string }[] = []
-    // * History is sorted ASC by checked_at, reverse for newest first
-    for (let i = historyChecks.length - 1; i >= 0; i--) {
-      const c = historyChecks[i]
-      // * Group by minute to deduplicate mobile+desktop pairs
-      const key = c.checked_at.slice(0, 16)
-      if (!seen.has(key)) {
-        seen.add(key)
-        timestamps.push({ id: c.id, checked_at: c.checked_at })
-      }
-    }
-    return timestamps
-  }, [historyChecks])
+  const setStrategy = useCallback(
+    (next: Strategy) => {
+      write({ strategy: next === 'mobile' ? null : next })
+      setSelectedCheckId(null)
+      setSelectedCheckData(null)
+      setCheckFetchFailed(false)
+    },
+    [write],
+  )
 
-  const selectedIndex = selectedCheckId
-    ? checkTimestamps.findIndex(t => t.id === selectedCheckId)
-    : 0 // * 0 = latest
+  // * The check timeline for the visible strategy. History returns only
+  // * successful checks, so this navigates between checks that HAVE numbers.
+  const checkTimeline = useMemo(() => {
+    if (!historyChecks?.length) return [] as { id: string; checked_at: string }[]
+    // * ⚠️ keepPreviousData means historyChecks is briefly the OTHER strategy's
+    // * data straight after a tab switch. Navigating that timeline would fetch a
+    // * mobile check and render it under the Desktop tab, and then wedge at
+    // * selectedIndex === -1 once the real data arrived and the id was no longer
+    // * in the list. Only navigate a timeline that belongs to the visible tab.
+    if (historyChecks[0]?.strategy !== strategy) return [] as { id: string; checked_at: string }[]
+    return [...historyChecks]
+      .sort((a, b) => new Date(b.checked_at).getTime() - new Date(a.checked_at).getTime())
+      .map(c => ({ id: c.id, checked_at: c.checked_at }))
+  }, [historyChecks, strategy])
 
-  const canGoPrev = selectedIndex < checkTimestamps.length - 1
+  const selectedIndex = selectedCheckId ? checkTimeline.findIndex(t => t.id === selectedCheckId) : 0
+  const canGoPrev = selectedIndex >= 0 && selectedIndex < checkTimeline.length - 1
   const canGoNext = selectedIndex > 0
 
-  const handlePrevCheck = () => {
-    if (!canGoPrev) return
-    const next = checkTimestamps[selectedIndex + 1]
-    setSelectedCheckId(next.id)
-  }
-
-  const handleNextCheck = () => {
-    if (selectedIndex <= 1) {
-      // * Going back to latest
+  const goToCheck = (index: number) => {
+    const target = checkTimeline[index]
+    if (!target) return
+    setCheckFetchFailed(false)
+    if (index === 0) {
       setSelectedCheckId(null)
       setSelectedCheckData(null)
       return
     }
-    const next = checkTimestamps[selectedIndex - 1]
-    setSelectedCheckId(next.id)
+    setSelectedCheckId(target.id)
   }
 
-  // * Fetch full check data when navigating to a historical check
+  const retryCheckFetch = useCallback(() => {
+    if (!selectedCheckId) return
+    setCheckFetchFailed(false)
+    setLoadingCheck(true)
+    getPageSpeedCheck(siteId, selectedCheckId)
+      .then(data => {
+        setSelectedCheckData(data)
+        setLoadingCheck(false)
+      })
+      .catch(() => {
+        setCheckFetchFailed(true)
+        setLoadingCheck(false)
+      })
+  }, [selectedCheckId, siteId])
+
   useEffect(() => {
     if (!selectedCheckId || !siteId) {
       setSelectedCheckData(null)
+      setCheckFetchFailed(false)
       return
     }
     let cancelled = false
     setLoadingCheck(true)
-    getPageSpeedCheck(siteId, selectedCheckId).then(data => {
-      if (!cancelled) {
+    setCheckFetchFailed(false)
+    getPageSpeedCheck(siteId, selectedCheckId)
+      .then(data => {
+        if (cancelled) return
         setSelectedCheckData(data)
         setLoadingCheck(false)
-      }
-    }).catch(() => {
-      if (!cancelled) setLoadingCheck(false)
-    })
-    return () => { cancelled = true }
+      })
+      .catch(() => {
+        if (cancelled) return
+        // * The failure is SURFACED, not swallowed. Previously this cleared the
+        // * spinner and let displayCheck silently fall back to the latest check —
+        // * so the page showed today's numbers under the historical date the
+        // * user had selected.
+        setCheckFetchFailed(true)
+        setLoadingCheck(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [selectedCheckId, siteId])
 
-  // * Determine which check to display — selected historical or latest
-  const displayCheck = selectedCheckId && selectedCheckData
-    ? selectedCheckData
-    : latestChecks?.find(c => c.strategy === strategy) ?? null
+  const latestForStrategy = latest?.checks.find(c => c.strategy === strategy) ?? null
+  const attemptForStrategy = latest?.attempts.find(a => a.strategy === strategy) ?? null
 
-  // * When viewing a historical check, we need both strategies — fetch the other one too
-  // * For simplicity, historical view shows the selected strategy's check
-  const currentCheck = displayCheck
+  // * When a historical fetch fails we render NOTHING for the check body rather
+  // * than substituting the latest one under the wrong timestamp.
+  const currentCheck: PageSpeedCheck | null = selectedCheckId
+    ? checkFetchFailed
+      ? null
+      : selectedCheckData
+    : latestForStrategy
 
-  // * Set document title
   useEffect(() => {
     if (site?.domain) document.title = `PageSpeed · ${site.domain} | Pulse`
   }, [site?.domain])
 
-  // * Sync frequency from config when loaded
   useEffect(() => {
     if (config?.frequency) setFrequency(config.frequency)
   }, [config?.frequency])
 
-  // * Toggle PageSpeed monitoring on/off
   const handleToggle = async (enabled: boolean) => {
     setToggling(true)
     try {
@@ -177,7 +240,6 @@ export default function PageSpeedPage() {
     }
   }
 
-  // * Trigger a manual PageSpeed check
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -185,23 +247,23 @@ export default function PageSpeedPage() {
       pollRef.current = null
     }
   }, [])
-
   useEffect(() => () => stopPolling(), [stopPolling])
 
-  const handleRunCheck = async () => {
+  const handleRunCheck = useCallback(async () => {
     setRunning(true)
     try {
       await triggerPageSpeedCheck(siteId)
-      toast.success('PageSpeed check started — results will appear in 30-60 seconds')
+      toast.success('PageSpeed check started — three runs per device, so this takes a few minutes')
 
-      // * Poll silently without triggering SWR re-renders.
-      // * Fetch latest directly and only update SWR cache once when new data arrives.
-      const initialCheckedAt = latestChecks?.[0]?.checked_at
+      const initialAttempt = latest?.attempts.find(a => a.strategy === strategy)?.checked_at
       const startedAt = Date.now()
 
       stopPolling()
       pollRef.current = setInterval(async () => {
-        if (Date.now() - startedAt > 120_000) {
+        // * A check is now three runs per strategy. The old 2-minute ceiling
+        // * expired before the work could possibly finish and told the user it
+        // * had "taken longer than expected" every single time.
+        if (Date.now() - startedAt > 12 * 60_000) {
           stopPolling()
           setRunning(false)
           toast.error('Check is taking longer than expected. Results will appear when ready.')
@@ -209,66 +271,88 @@ export default function PageSpeedPage() {
         }
         try {
           const fresh = await getPageSpeedLatest(siteId)
-          if (fresh?.[0]?.checked_at && fresh[0].checked_at !== initialCheckedAt) {
+          const freshAttempt = fresh?.attempts.find(a => a.strategy === strategy)
+          if (freshAttempt && freshAttempt.checked_at !== initialAttempt) {
             stopPolling()
             setRunning(false)
-            mutateLatest() // * Single SWR revalidation when new data is ready
-            toast.success('PageSpeed check complete')
+            mutateLatest()
+            // * A new ATTEMPT is not the same thing as a new RESULT. An error
+            // * row also lands here, and reporting "check complete" over a
+            // * failure is the same silent-success the status line exists to
+            // * stop — the customer would get a green toast and then wonder why
+            // * the numbers did not move.
+            if (freshAttempt.status === 'error') {
+              toast.error(
+                freshAttempt.error
+                  ? `PageSpeed check failed — ${freshAttempt.error}`
+                  : 'PageSpeed check failed',
+              )
+            } else {
+              toast.success('PageSpeed check complete')
+            }
           }
         } catch {
-          // * Silent — keep polling
+          // * Silent — keep polling. A transient poll failure is not the check failing.
         }
       }, 5000)
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to start check')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to start check'
+      toast.error(message)
       setRunning(false)
     }
-  }
+  }, [siteId, strategy, latest, mutateLatest, stopPolling])
 
-  // * Loading state with minimum display time (consistent with other pages)
-  const showSkeleton = useMinimumLoading(isLoading && !latestChecks)
-  const fadeClass = useSkeletonFade(showSkeleton)
+  // * Hold the skeleton until BOTH requests have landed. `!config && !latest`
+  // * clears as soon as EITHER arrives, and the two states that read off the
+  // * missing one are the confident-but-wrong ones: an established site flashes
+  // * "monitoring is off" (config still in flight) or "First check queued"
+  // * (latest still in flight) before the real page appears.
+  const showSkeleton = useMinimumLoading((configLoading || latestLoading) && (!config || !latest))
   if (showSkeleton) return <PageSpeedSkeleton />
   if (!site) return <div className="p-8 text-neutral-500">Site not found</div>
 
+  // ── State: the config request FAILED ──────────────────────────────────────
+  // This must never be confused with "monitoring is disabled". `config?.enabled
+  // ?? false` used to collapse the two, so a 500 on the settings endpoint
+  // rendered a confident "PageSpeed monitoring is disabled" screen complete with
+  // an Enable button, for a site where it was switched on.
+  if (configError && !config) {
+    return (
+      <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
+        <PageHeader domain={site.domain} frequency={null} />
+        <ErrorCard
+          title="Couldn't load PageSpeed settings"
+          description="The settings request failed, so we can't tell whether monitoring is on. Your checks are unaffected — this is a loading problem."
+          onRetry={() => {
+            void mutateConfig()
+          }}
+        />
+      </div>
+    )
+  }
+
   const enabled = config?.enabled ?? false
 
-  // * Disabled state — show empty state with enable toggle
+  // ── State: not configured ─────────────────────────────────────────────────
   if (!enabled) {
     return (
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-lg font-semibold text-neutral-200 mb-1">
-            PageSpeed
-          </h1>
-          <p className="text-sm text-neutral-400">
-            Monitor your site&apos;s performance and Core Web Vitals
+      <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
+        <PageHeader domain={site.domain} frequency={null} />
+        <div className={`${CARD} p-6 text-center md:p-12`}>
+          <h3 className="mb-2 font-semibold text-white">PageSpeed monitoring is off</h3>
+          <p className="mx-auto mb-6 max-w-md text-sm text-neutral-400">
+            Turn it on to run Lighthouse against {site.domain} on a schedule and track how the scores move.
+            Each check is the median of three runs, so the trend reflects the page rather than run-to-run noise.
           </p>
-        </div>
-
-        {/* Empty state */}
-        <div className="glass-surface rounded-none p-6 md:p-12 text-center">
-          <div className="rounded-none bg-neutral-800 p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-            <svg className="w-8 h-8 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <h3 className="font-semibold text-white mb-2">
-            PageSpeed monitoring is disabled
-          </h3>
-          <p className="text-sm text-neutral-400 mb-6 max-w-md mx-auto">
-            Enable PageSpeed monitoring to track your site&apos;s performance scores, Core Web Vitals, and get actionable improvement suggestions.
-          </p>
-
-          {/* Frequency selector */}
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <label className="text-sm text-neutral-400">Check frequency:</label>
+          <div className="mb-6 flex items-center justify-center gap-3">
+            <label className="text-sm text-neutral-400" htmlFor="pagespeed-frequency">
+              Check frequency
+            </label>
             <Select
               variant="input"
               className="min-w-[120px]"
               value={frequency}
-              onChange={(value) => setFrequency(value)}
+              onChange={value => setFrequency(value)}
               options={[
                 { value: 'daily', label: 'Daily' },
                 { value: 'weekly', label: 'Weekly' },
@@ -276,13 +360,9 @@ export default function PageSpeedPage() {
               ]}
             />
           </div>
-
           {canEdit && (
-            <Button
-              onClick={() => handleToggle(true)}
-              disabled={toggling}
-            >
-              {toggling ? 'Enabling...' : 'Enable PageSpeed Monitoring'}
+            <Button onClick={() => handleToggle(true)} disabled={toggling}>
+              {toggling ? 'Enabling…' : 'Enable PageSpeed monitoring'}
             </Button>
           )}
         </div>
@@ -290,13 +370,6 @@ export default function PageSpeedPage() {
     )
   }
 
-  // * Prepare chart data from history (visx needs Date objects for x-axis)
-  const chartData = (historyChecks ?? []).map(c => ({
-    dateObj: new Date(c.checked_at),
-    score: c.performance_score ?? 0,
-  }))
-
-  // * Parse audits into groups by Lighthouse category
   const audits = currentCheck?.audits ?? []
   const passed = audits.filter(a => a.category === 'passed')
 
@@ -307,9 +380,8 @@ export default function PageSpeedPage() {
     { key: 'seo', label: 'SEO' },
   ]
 
-  // * Build per-category failing audits, sorted by impact
-  const auditsByGroup: Record<string, typeof audits> = {}
-  const manualByGroup: Record<string, typeof audits> = {}
+  const auditsByGroup: Record<string, AuditSummary[]> = {}
+  const manualByGroup: Record<string, AuditSummary[]> = {}
   for (const group of categoryGroups) {
     auditsByGroup[group.key] = audits
       .filter(a => a.category !== 'passed' && a.category !== 'manual' && a.group === group.key)
@@ -324,7 +396,6 @@ export default function PageSpeedPage() {
     manualByGroup[group.key] = audits.filter(a => a.category === 'manual' && a.group === group.key)
   }
 
-  // * Core Web Vitals metrics
   const metrics = [
     { key: 'fcp', label: 'First Contentful Paint', value: currentCheck?.fcp_ms ?? null },
     { key: 'lcp', label: 'Largest Contentful Paint', value: currentCheck?.lcp_ms ?? null },
@@ -334,7 +405,6 @@ export default function PageSpeedPage() {
     { key: 'tti', label: 'Time to Interactive', value: currentCheck?.tti_ms ?? null },
   ]
 
-  // * All 4 category scores for the hero row
   const allScores = [
     { key: 'performance', label: 'Performance', score: currentCheck?.performance_score ?? null },
     { key: 'accessibility', label: 'Accessibility', score: currentCheck?.accessibility_score ?? null },
@@ -342,49 +412,43 @@ export default function PageSpeedPage() {
     { key: 'seo', label: 'SEO', score: currentCheck?.seo_score ?? null },
   ]
 
-  // * Map category key to score for diagnostics section
   const scoreByGroup: Record<string, number | null> = {
-    'performance': currentCheck?.performance_score ?? null,
-    'accessibility': currentCheck?.accessibility_score ?? null,
+    performance: currentCheck?.performance_score ?? null,
+    accessibility: currentCheck?.accessibility_score ?? null,
     'best-practices': currentCheck?.best_practices_score ?? null,
-    'seo': currentCheck?.seo_score ?? null,
+    seo: currentCheck?.seo_score ?? null,
   }
 
-  function getMetricDotColor(metric: string, value: number | null): string {
-    if (value === null) return 'bg-neutral-400'
-    const status = getMetricStatus(metric, value)
-    if (status.label === 'Good') return 'bg-emerald-500'
-    if (status.label === 'Needs Improvement') return 'bg-amber-500'
-    return 'bg-red-500'
-  }
+  const lcpMs = currentCheck?.lcp_ms ?? null
+  const noChecksYet = (latest?.attempts.length ?? 0) === 0
 
-  // * Enabled state — show full PageSpeed dashboard
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-      {/* Header */}
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-lg font-semibold text-neutral-200 mb-1">
-            PageSpeed
-          </h1>
-          <p className="text-sm text-neutral-400">
-            Performance scores and Core Web Vitals for {site.domain}
-          </p>
+    <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <PageHeader domain={site.domain} frequency={config?.frequency ?? null} />
+          <PageSpeedStatusLine
+            attempt={attemptForStrategy}
+            displayed={latestForStrategy}
+            nextCheckAt={config?.next_check_at ?? null}
+            onRunCheck={canEdit ? handleRunCheck : undefined}
+            runInFlight={running}
+          />
         </div>
-        <div className="flex items-center gap-3">
-          {/* Mobile / Desktop toggle */}
-          <div className="flex gap-1" role="tablist" aria-label="Strategy tabs">
+
+        <div className="flex flex-shrink-0 items-center gap-3">
+          {/* The page's own switcher, kept verbatim: text tabs with a motion
+              underline, not a boxed segmented control. */}
+          <div className="flex gap-1" role="tablist" aria-label="Strategy">
             {(['mobile', 'desktop'] as const).map(tab => (
               <button
                 key={tab}
-                onClick={() => { setStrategy(tab); setSelectedCheckId(null); setSelectedCheckData(null) }}
+                onClick={() => setStrategy(tab)}
                 role="tab"
                 aria-selected={strategy === tab}
-                className={`relative px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-none cursor-pointer ${
-                  strategy === tab
-                    ? 'text-white'
-                    : 'text-neutral-500 hover:text-neutral-300'
-                } ease-apple`}
+                className={`relative cursor-pointer rounded-none px-3 py-1.5 text-sm font-medium transition-colors ease-apple focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
+                  strategy === tab ? 'text-white' : 'text-neutral-500 hover:text-neutral-300'
+                }`}
               >
                 {tab === 'mobile' ? 'Mobile' : 'Desktop'}
                 {strategy === tab && (
@@ -403,8 +467,6 @@ export default function PageSpeedPage() {
               <Button size="toolbar" onClick={handleRunCheck} isLoading={running}>
                 {running ? 'Running…' : 'Run Check'}
               </Button>
-              {/* "Turn the feature off" is a quiet chrome action, not a filled
-                  secondary — same treatment as Uptime's Disable monitoring. */}
               <Button variant="chrome" size="toolbar" onClick={() => handleToggle(false)} isLoading={toggling}>
                 Disable
               </Button>
@@ -413,285 +475,355 @@ export default function PageSpeedPage() {
         </div>
       </div>
 
-      {/* Section 1 — Score Overview: 4 equal gauges + screenshot */}
-      <div className="glass-surface rounded-none p-6 sm:p-8 mb-6">
-        <div className="flex flex-col lg:flex-row items-center gap-8">
-          {/* 4 equal gauges — click to scroll to diagnostics */}
-          <div className="flex-1 flex items-center justify-center gap-6 sm:gap-8 flex-wrap">
-            {allScores.map(({ key, label, score }) => (
-              <button
-                key={key}
-                onClick={() => document.getElementById(`diag-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                className="cursor-pointer hover:opacity-80 transition-opacity ease-apple"
-              >
-                <ScoreGauge score={score} label={label} size={90} />
-              </button>
-            ))}
+      {latestError && !latest ? (
+        <ErrorCard
+          title="Couldn't load the latest check"
+          description="The request failed. Your scheduled checks are unaffected — this is a loading problem."
+          onRetry={() => {
+            void mutateLatest()
+          }}
+        />
+      ) : noChecksYet ? (
+        <div className={`${CARD} p-6 text-center md:p-12`}>
+          <h3 className="mb-2 font-semibold text-white">First check queued</h3>
+          <p className="mx-auto max-w-md text-sm text-neutral-400">
+            Results appear within a few minutes. Each check runs Lighthouse three times per device and stores the
+            median.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {/* ── Hero: scores + screenshot + check navigator ── */}
+          <div className={`${CARD} p-6 sm:p-8`}>
+            {checkFetchFailed ? (
+              <div className="py-6 text-center">
+                <p className="text-sm text-red-400">Couldn&apos;t load that check.</p>
+                <button
+                  type="button"
+                  onClick={retryCheckFetch}
+                  className="mt-2 text-xs text-red-300 underline-offset-2 transition-colors ease-apple hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+                >
+                  Try again
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-6 sm:flex-row sm:flex-wrap sm:justify-between">
+                {/* A GRID below sm, a flex row above it. Left as a wrapping flex
+                    row, the four gauges go 4×1 at 375 px, because "Best
+                    Practices" sets a ~100 px minimum per item and two of those
+                    plus the gap no longer fit beside the screenshot. A 2-column
+                    grid gets the 2×2 the design calls for regardless of how long
+                    a label happens to be. */}
+                <div className="grid w-full min-w-0 grid-cols-2 gap-y-6 sm:flex sm:w-auto sm:flex-1 sm:flex-wrap sm:items-center sm:justify-center sm:gap-10">
+                  {allScores.map(({ key, label, score }) => (
+                    <button
+                      key={key}
+                      onClick={() =>
+                        document.getElementById(`diag-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                      }
+                      className="cursor-pointer transition-opacity ease-apple hover:opacity-80"
+                    >
+                      <ScoreGauge score={score} label={label} size={92} />
+                    </button>
+                  ))}
+                </div>
+                {currentCheck?.screenshot && (
+                  <img
+                    src={currentCheck.screenshot}
+                    alt={`${strategy} render of ${site.domain}`}
+                    className="h-auto w-24 flex-none rounded-none border border-border object-contain"
+                  />
+                )}
+              </div>
+            )}
+
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-t border-border pt-4">
+              <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-neutral-400">
+                {checkTimeline.length > 1 && (
+                  <button
+                    onClick={() => goToCheck(selectedIndex + 1)}
+                    disabled={!canGoPrev}
+                    className="rounded-none p-1 transition-colors ease-apple hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-30"
+                    aria-label="Previous check"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                )}
+                {currentCheck?.checked_at ? (
+                  <span className="tabular-nums text-neutral-200">{formatShortUtc(currentCheck.checked_at)}</span>
+                ) : (
+                  <span className="text-neutral-500">—</span>
+                )}
+                {checkTimeline.length > 1 && (
+                  <button
+                    onClick={() => goToCheck(selectedIndex - 1)}
+                    disabled={!canGoNext}
+                    className="rounded-none p-1 transition-colors ease-apple hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-30"
+                    aria-label="Next check"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                )}
+                {config?.frequency && <Chip>{config.frequency}</Chip>}
+                {/* The provenance chip reads the row, never a constant: a
+                    pre-cutover check really was a single run and must not be
+                    labelled "median of 3". */}
+                {currentCheck && (
+                  <Chip>{currentCheck.runs ? `median of ${currentCheck.runs}` : 'single run'}</Chip>
+                )}
+                {loadingCheck && <span className="text-xs text-neutral-500">Loading…</span>}
+              </div>
+              <div className="flex flex-wrap items-center gap-x-3 text-caption text-neutral-500">
+                <LegendSwatch color="#ff4e42" label="0–49" />
+                <LegendSwatch color="#ffa400" label="50–89" />
+                <LegendSwatch color="#0cce6b" label="90–100" />
+              </div>
+            </div>
           </div>
 
-          {/* Screenshot */}
-          {currentCheck?.screenshot && (
-            <div className="flex-shrink-0 flex items-center justify-center">
-              <img
-                src={currentCheck.screenshot}
-                alt={`${strategy} screenshot`}
-                className="rounded-none max-h-44 w-auto border border-neutral-700 object-contain"
-              />
+          {/* ── Filmstrip ── */}
+          {currentCheck?.filmstrip && currentCheck.filmstrip.length > 0 && (
+            <div className={`${CARD} p-6 sm:p-8`}>
+              <h3 className={`${SECTION_LABEL} mb-4`}>Page load timeline</h3>
+              {/* min-w-0 so the strip scrolls inside its own box instead of
+                  forcing the app shell to scroll — the shell's overflow-x-hidden
+                  DELETES clipped content rather than revealing it. */}
+              <div className="flex min-w-0 items-start gap-2.5 overflow-x-auto pb-1">
+                {currentCheck.filmstrip.map((frame, idx) => (
+                  <div key={idx} className="flex-none text-center">
+                    <img
+                      src={frame.data}
+                      alt=""
+                      className="block h-28 w-16 rounded-none border border-border object-cover object-top"
+                    />
+                    <div className="mt-1 text-micro-label tabular-nums text-neutral-500">{formatMs(frame.timing)}</div>
+                  </div>
+                ))}
+                {lcpMs !== null && (
+                  <div className="flex-none self-center border-l border-red-500 pl-2 text-xs text-neutral-500">
+                    LCP lands
+                    <br />
+                    <span className="font-semibold tabular-nums text-neutral-200">{formatMs(lcpMs)}</span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
-        </div>
 
-        {/* Check navigator + frequency + legend */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-6 pt-4 border-t border-neutral-800">
-          <div className="flex items-center gap-2 text-sm text-neutral-400">
-            {/* Prev/Next arrows */}
-            {checkTimestamps.length > 1 && (
-              <button
-                onClick={handlePrevCheck}
-                disabled={!canGoPrev}
-                className="p-1 rounded-none hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors ease-apple"
-                aria-label="Previous check"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-            )}
-            {currentCheck?.checked_at && (
-              <span className="tabular-nums">
-                {selectedCheckId
-                  ? new Date(currentCheck.checked_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-                  : `Last checked ${formatTimeAgo(currentCheck.checked_at)}`
-                }
-              </span>
-            )}
-            {checkTimestamps.length > 1 && (
-              <button
-                onClick={handleNextCheck}
-                disabled={!canGoNext}
-                className="p-1 rounded-none hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors ease-apple"
-                aria-label="Next check"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            )}
-            {config?.frequency && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-none text-xs font-medium bg-neutral-800 text-neutral-400">
-                {config.frequency}
-              </span>
-            )}
-            {loadingCheck && (
-              <span className="text-xs text-neutral-400 animate-pulse">Loading...</span>
-            )}
-          </div>
-          <div className="flex items-center gap-x-3 text-caption text-neutral-500 ml-auto">
-            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-red-500" />0&ndash;49</span>
-            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-amber-500" />50&ndash;89</span>
-            <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />90&ndash;100</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Filmstrip — page load progression */}
-      {currentCheck?.filmstrip && currentCheck.filmstrip.length > 0 && (
-        <div className="glass-surface rounded-none p-6 sm:p-8 mb-6 relative">
-          <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-4">
-            Page Load Timeline
-          </h3>
-          <div className="flex items-center overflow-x-auto gap-1 scrollbar-none">
-            {currentCheck.filmstrip.map((frame, idx) => (
-              <div key={idx} className="flex-shrink-0 text-center">
-                <img
-                  src={frame.data}
-                  alt={`${frame.timing}ms`}
-                  className="h-24 rounded-none border border-neutral-700 object-contain bg-neutral-800"
-                />
-                <span className="text-micro-label text-neutral-400 mt-1 block">
-                  {frame.timing < 1000 ? `${frame.timing}ms` : `${(frame.timing / 1000).toFixed(1)}s`}
-                </span>
-              </div>
-            ))}
-          </div>
-          {/* Fade indicator for horizontal scroll */}
-          <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-neutral-900 to-transparent pointer-events-none" />
-        </div>
-      )}
-
-      {/* Section 2 — Metrics Card */}
-      <div className="glass-surface rounded-none p-6 sm:p-8 mb-6">
-        <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-5">
-          Metrics
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
-          {metrics.map(({ key, label, value }) => (
-            <div key={key} className="flex items-start gap-3">
-              <span className={`mt-1.5 inline-block w-2.5 h-2.5 rounded-full flex-shrink-0 ${getMetricDotColor(key, value)}`} />
-              <div>
-                <div className="text-sm text-neutral-400">
-                  {label}
-                </div>
-                <div className="text-2xl font-semibold text-white tabular-nums">
-                  {formatMetricValue(key, value)}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Section 3 — Score Trend Chart (visx) */}
-      {chartData.length >= 2 && (
-        <div className="glass-surface rounded-none p-6 sm:p-8 mb-6 overflow-hidden">
-          <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-4">
-            Performance Score Trend
-          </h3>
-          <div>
-            <VisxAreaChart
-              data={chartData as Record<string, unknown>[]}
-              xDataKey="dateObj"
-              aspectRatio="4 / 1"
-              margin={{ top: 10, right: 10, bottom: 30, left: 40 }}
-            >
-              <VisxGrid horizontal vertical={false} stroke="var(--chart-grid)" strokeDasharray="4,4" />
-              <VisxArea
-                dataKey="score"
-                fill="var(--chart-line-primary)"
-                fillOpacity={0.15}
-                stroke="var(--chart-line-primary)"
-                strokeWidth={2}
-                gradientToOpacity={0}
-              />
-              <VisxXAxis
-                numTicks={5}
-                formatLabel={(d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-              />
-              <VisxYAxis
-                numTicks={5}
-                formatValue={(v: number) => String(Math.round(v))}
-              />
-              <VisxChartTooltip
-                rows={(point: Record<string, unknown>) => [{
-                  label: 'Score',
-                  value: String(Math.round(point.score as number)),
-                  color: 'var(--chart-line-primary)',
-                }]}
-              />
-            </VisxAreaChart>
-          </div>
-        </div>
-      )}
-
-      {/* Section 4 — Diagnostics by Category */}
-      {audits.length > 0 && (
-        <div className="space-y-6">
-          {categoryGroups.map(group => {
-            const groupAudits = auditsByGroup[group.key] ?? []
-            const groupPassed = passed.filter(a => a.group === group.key)
-            const groupManual = manualByGroup[group.key] ?? []
-            if (groupAudits.length === 0 && groupPassed.length === 0 && groupManual.length === 0) return null
-            return (
-              <div key={group.key} id={`diag-${group.key}`} className="glass-surface scroll-mt-6 rounded-none p-6 sm:p-8">
-                {/* Category header with gauge */}
-                <div className="flex items-center gap-5 mb-6">
-                  <ScoreGauge score={scoreByGroup[group.key]} label="" size={56} />
-                  <div>
-                    <h3 className="text-lg font-semibold text-white">
-                      {group.label}
-                    </h3>
-                    <p className="text-xs text-neutral-400">
-                      {(() => {
-                        const realIssues = groupAudits.filter(a => a.score !== null && a.score !== undefined).length
-                        return realIssues === 0 ? 'No issues found' : `${realIssues} issue${realIssues !== 1 ? 's' : ''} found`
-                      })()}
-                    </p>
+          {/* ── Metrics ── */}
+          <div className={`${CARD} p-6 sm:p-8`}>
+            <h3 className={`${SECTION_LABEL} mb-5`}>Metrics</h3>
+            <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-3">
+              {metrics.map(({ key, label, value }) => (
+                <div key={key} className="flex min-w-0 items-start gap-3">
+                  <span
+                    className={`mt-1.5 inline-block h-2.5 w-2.5 flex-none rounded-full ${BAND_DOT[metricBand(key, value)]}`}
+                  />
+                  <div className="min-w-0">
+                    <div className="text-sm text-neutral-400">{label}</div>
+                    <div className="text-2xl font-semibold tabular-nums text-white">
+                      {formatMetricValue(key, value)}
+                    </div>
+                    <div className="text-caption text-neutral-500">good {METRIC_GOOD_LABEL[key]}</div>
                   </div>
                 </div>
+              ))}
+            </div>
+          </div>
 
-                {groupAudits.length > 0 && (
-                  <AuditsBySubGroup audits={groupAudits} />
-                )}
-
-                {groupManual.length > 0 && (
-                  <details className="mt-4">
-                    <summary className="cursor-pointer text-sm font-medium text-neutral-400 select-none hover:text-neutral-300 transition-colors ease-apple">
-                      <span className="ml-1">Additional items to manually check ({groupManual.length})</span>
-                    </summary>
-                    <div className="mt-2 divide-y divide-neutral-800">
-                      {groupManual.map(audit => <AuditRow key={audit.id} audit={audit} />)}
-                    </div>
-                  </details>
-                )}
-
-                {groupPassed.length > 0 && (
-                  <details className="mt-4">
-                    <summary className="cursor-pointer text-sm font-medium text-neutral-400 select-none hover:text-neutral-300 transition-colors ease-apple">
-                      <span className="ml-1">{groupPassed.length} passed audit{groupPassed.length !== 1 ? 's' : ''}</span>
-                    </summary>
-                    <div className="mt-2 divide-y divide-neutral-800">
-                      {groupPassed.map(audit => <AuditRow key={audit.id} audit={audit} />)}
-                    </div>
-                  </details>
-                )}
+          {/* ── Trend ── */}
+          {historyError && !historyChecks ? (
+            <ErrorCard
+              title="Couldn't load the score history"
+              description="The trend request failed. The latest check above is unaffected."
+            />
+          ) : (
+            historyChecks &&
+            historyChecks.length >= 2 && (
+              <div className={`${CARD} p-6 sm:p-8`}>
+                <h3 className={`${SECTION_LABEL} mb-4`}>Performance score trend</h3>
+                <PerformanceTrend checks={historyChecks} />
               </div>
             )
-          })}
+          )}
+
+          {/* ── Category accordions ── */}
+          {audits.length > 0 &&
+            categoryGroups.map(group => {
+              const groupAudits = auditsByGroup[group.key] ?? []
+              const groupPassed = passed.filter(a => a.group === group.key)
+              const groupManual = manualByGroup[group.key] ?? []
+              if (groupAudits.length === 0 && groupPassed.length === 0 && groupManual.length === 0) return null
+              const realIssues = groupAudits.filter(a => a.score !== null && a.score !== undefined).length
+              return (
+                <div key={group.key} id={`diag-${group.key}`} className={`${CARD} scroll-mt-6 p-6 sm:p-8`}>
+                  <div className="mb-5 flex items-center gap-4">
+                    <ScoreGauge score={scoreByGroup[group.key]} label="" size={40} />
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-white">{group.label}</h3>
+                      <p className="text-xs text-neutral-500">
+                        {realIssues === 0 ? 'No issues found' : `${realIssues} issue${realIssues !== 1 ? 's' : ''} found`}
+                      </p>
+                    </div>
+                  </div>
+
+                  {groupAudits.length > 0 && <AuditsBySubGroup audits={groupAudits} />}
+
+                  {groupManual.length > 0 && (
+                    <details className="mt-4">
+                      <summary className="cursor-pointer select-none text-sm font-medium text-neutral-400 transition-colors ease-apple hover:text-neutral-300">
+                        <span className="ml-1">Additional items to manually check ({groupManual.length})</span>
+                      </summary>
+                      <div className="mt-2 divide-y divide-border">
+                        {groupManual.map(audit => (
+                          <AuditRow key={audit.id} audit={audit} />
+                        ))}
+                      </div>
+                    </details>
+                  )}
+
+                  {groupPassed.length > 0 && (
+                    <details className="mt-4">
+                      <summary className="cursor-pointer select-none text-sm font-medium text-neutral-400 transition-colors ease-apple hover:text-neutral-300">
+                        <span className="ml-1">
+                          {groupPassed.length} passed audit{groupPassed.length !== 1 ? 's' : ''}
+                        </span>
+                      </summary>
+                      <div className="mt-2 divide-y divide-border">
+                        {groupPassed.map(audit => (
+                          <AuditRow key={audit.id} audit={audit} />
+                        ))}
+                      </div>
+                    </details>
+                  )}
+                </div>
+              )
+            })}
+
+          {/* ── Spec plate ── */}
+          <SpecPlate domain={site.domain} check={currentCheck} attempt={attemptForStrategy} />
         </div>
       )}
     </div>
   )
 }
 
-// * Sort audits by severity: red (< 0.5) → orange (0.5-0.89) → empty (null) → green (>= 0.9)
+function PageHeader({ domain, frequency }: { domain: string; frequency: string | null }) {
+  // * "Lab" is load-bearing, and "Core Web Vitals" is gone. These are Lighthouse
+  // * lab measurements from our own runner; CrUX field data was probed live for
+  // * every site on the platform and came back EMPTY for all of them, so the old
+  // * copy promised something the page has never once shown.
+  const cadence = frequency ? `checked ${frequency}` : 'checked on a schedule'
+  return (
+    <div>
+      <h1 className="text-lg font-semibold text-white">PageSpeed</h1>
+      <p className="mt-1 text-sm text-neutral-400">
+        Lab performance scores for {domain} — {cadence}, mobile and desktop.
+      </p>
+    </div>
+  )
+}
+
+function Chip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center rounded-none border border-border px-2 py-0.5 text-xs text-neutral-400">
+      {children}
+    </span>
+  )
+}
+
+function LegendSwatch({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: color }} />
+      {label}
+    </span>
+  )
+}
+
+// * The spec plate: what produced these numbers. Mono here is correct — a URL, a
+// * version string and an engine name are machine data, not chrome.
+function SpecPlate({
+  domain,
+  check,
+  attempt,
+}: {
+  domain: string
+  check: PageSpeedCheck | null
+  attempt: { lighthouse_version: string | null; source: string } | null
+}) {
+  const version = check?.lighthouse_version ?? attempt?.lighthouse_version ?? null
+  const source = check?.source ?? attempt?.source ?? null
+  const engine =
+    source === 'lighthouse'
+      ? `lighthouse ${version ?? 'unknown'} (pinned)`
+      : source === 'psi'
+        ? 'pagespeed insights (version not recorded)'
+        : null
+  const runs = check?.runs ? `median of ${check.runs} runs` : check ? 'single run' : null
+
+  return (
+    <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-border pt-3 text-caption text-neutral-500">
+      <span className="min-w-0 break-all font-mono">
+        {[`https://${domain}`, engine, runs].filter(Boolean).join(' · ')}
+      </span>
+      <span>runs are UTC</span>
+    </div>
+  )
+}
+
 function sortBySeverity(audits: AuditSummary[]): AuditSummary[] {
   return [...audits].sort((a, b) => {
     const rank = (s: number | null | undefined) => {
-      if (s === null || s === undefined) return 2 // empty circle
-      if (s < 0.5) return 0 // red
-      if (s < 0.9) return 1 // orange
-      return 3 // green
+      if (s === null || s === undefined) return 2
+      if (s < 0.5) return 0
+      if (s < 0.9) return 1
+      return 3
     }
     return rank(a.score) - rank(b.score)
   })
 }
 
-// * Known sub-group ordering: insights-type groups come before diagnostics-type groups
 const subGroupPriority: Record<string, number> = {
-  // * Performance
-  'budgets': 0, 'load-opportunities': 0, 'diagnostics': 1,
-  // * Accessibility
-  'a11y-names-labels': 0, 'a11y-contrast': 1, 'a11y-best-practices': 2,
-  'a11y-color-contrast': 1, 'a11y-aria': 3, 'a11y-navigation': 4,
-  'a11y-language': 5, 'a11y-audio-video': 6, 'a11y-tables-lists': 7,
-  // * SEO
-  'seo-mobile': 0, 'seo-content': 1, 'seo-crawl': 2,
+  budgets: 0,
+  'load-opportunities': 0,
+  diagnostics: 1,
+  'a11y-names-labels': 0,
+  'a11y-contrast': 1,
+  'a11y-best-practices': 2,
+  'a11y-color-contrast': 1,
+  'a11y-aria': 3,
+  'a11y-navigation': 4,
+  'a11y-language': 5,
+  'a11y-audio-video': 6,
+  'a11y-tables-lists': 7,
+  'seo-mobile': 0,
+  'seo-content': 1,
+  'seo-crawl': 2,
 }
 
-// * Group audits by sub-group within a category (e.g., "Names and Labels", "Contrast")
 function AuditsBySubGroup({ audits }: { audits: AuditSummary[] }) {
-  // * Collect unique sub-groups
   const bySubGroup: Record<string, AuditSummary[]> = {}
-
   for (const audit of audits) {
     const key = audit.sub_group || '__none__'
-    if (!bySubGroup[key]) {
-      bySubGroup[key] = []
-    }
+    if (!bySubGroup[key]) bySubGroup[key] = []
     bySubGroup[key].push(audit)
   }
 
-  const subGroupOrder = Object.keys(bySubGroup).sort((a, b) => {
-    const pa = subGroupPriority[a] ?? 0
-    const pb = subGroupPriority[b] ?? 0
-    return pa - pb
-  })
+  const subGroupOrder = Object.keys(bySubGroup).sort(
+    (a, b) => (subGroupPriority[a] ?? 0) - (subGroupPriority[b] ?? 0),
+  )
 
-  // * If no sub-groups exist, render flat list sorted by severity
   if (subGroupOrder.length === 1 && subGroupOrder[0] === '__none__') {
     return (
-      <div className="divide-y divide-neutral-800">
-        {sortBySeverity(audits).map(audit => <AuditRow key={audit.id} audit={audit} />)}
+      <div className="divide-y divide-border">
+        {sortBySeverity(audits).map(audit => (
+          <AuditRow key={audit.id} audit={audit} />
+        ))}
       </div>
     )
   }
@@ -704,12 +836,12 @@ function AuditsBySubGroup({ audits }: { audits: AuditSummary[] }) {
         return (
           <div key={key}>
             {title && (
-              <h4 className="text-caption font-semibold text-neutral-500 uppercase tracking-wider mb-2">
-                {title}
-              </h4>
+              <h4 className="mb-2 text-caption font-semibold uppercase tracking-wider text-neutral-500">{title}</h4>
             )}
-            <div className="divide-y divide-neutral-800">
-              {items.map(audit => <AuditRow key={audit.id} audit={audit} />)}
+            <div className="divide-y divide-border">
+              {items.map(audit => (
+                <AuditRow key={audit.id} audit={audit} />
+              ))}
             </div>
           </div>
         )
@@ -718,54 +850,63 @@ function AuditsBySubGroup({ audits }: { audits: AuditSummary[] }) {
   )
 }
 
-// * Severity indicator based on audit score (pagespeed.web.dev style)
-function AuditSeverityIcon({ score }: { score: number | null }) {
-  if (score === null) {
-    return <span className="inline-block w-2.5 h-2.5 rounded-full border-2 border-neutral-400 flex-shrink-0" aria-label="Informative" />
+function AuditSeverityIcon({ score }: { score: number | null | undefined }) {
+  if (score === null || score === undefined) {
+    return (
+      <span
+        className="inline-block h-2.5 w-2.5 flex-none rounded-full border-2 border-neutral-500"
+        aria-label="Informative"
+      />
+    )
   }
-  if (score < 0.5) {
-    return <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0" aria-label="Poor" />
-  }
-  if (score < 0.9) {
-    return <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500 flex-shrink-0" aria-label="Needs Improvement" />
-  }
-  return <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0" aria-label="Good" />
+  if (score < 0.5) return <span className="inline-block h-2.5 w-2.5 flex-none rounded-full bg-red-500" aria-label="Poor" />
+  if (score < 0.9)
+    return <span className="inline-block h-2.5 w-2.5 flex-none rounded-full bg-amber-500" aria-label="Needs improvement" />
+  return <span className="inline-block h-2.5 w-2.5 flex-none rounded-full bg-emerald-500" aria-label="Good" />
 }
 
-// * Expandable audit row with description and detail items
 function AuditRow({ audit }: { audit: AuditSummary }) {
+  // * Description prose comes from the bundled catalogue, not the stored row.
+  // * A null here means this Lighthouse version has no entry for the id, which
+  // * is the correct degradation for a check from an older engine — better a
+  // * title alone than another version's guidance attributed to this run.
+  const description = auditDescription(audit.id)
   return (
     <details className="group">
-      <summary className="flex items-center gap-3 py-3 px-2 rounded-none hover:bg-neutral-800/50 cursor-pointer list-none">
+      <summary className="flex cursor-pointer list-none items-center gap-3 rounded-none px-2 py-3 hover:bg-neutral-800/50">
         <AuditSeverityIcon score={audit.score} />
-        <span className="font-medium text-sm text-white flex-1 min-w-0 truncate">{audit.title}</span>
+        <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">{audit.title}</span>
         {audit.display_value && (
-          <span className="text-xs text-neutral-500 flex-shrink-0 tabular-nums">{audit.display_value}</span>
+          <span className="flex-none tabular-nums text-xs text-neutral-500">{audit.display_value}</span>
         )}
         {audit.savings_ms != null && audit.savings_ms > 0 && !audit.display_value && (
-          <span className="text-sm font-medium text-amber-400 flex-shrink-0 tabular-nums">
-            {audit.savings_ms < 1000 ? `${Math.round(audit.savings_ms)}ms` : `${(audit.savings_ms / 1000).toFixed(1)}s`}
+          <span className="flex-none tabular-nums text-sm font-medium text-amber-400">
+            {formatMs(audit.savings_ms)}
           </span>
         )}
-        <svg className="w-4 h-4 text-neutral-400 transition-transform group-open:rotate-180 flex-shrink-0 ease-apple" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg
+          className="h-4 w-4 flex-none text-neutral-500 transition-transform ease-apple group-open:rotate-180"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </summary>
-      <div className="pl-8 pr-2 pb-3 pt-1">
-        {/* Description with parsed markdown links */}
-        {audit.description && (
-          <p className="text-xs text-neutral-400 mb-3 leading-relaxed">
-            <AuditDescription text={audit.description} />
+      <div className="pb-3 pl-8 pr-2 pt-1">
+        {description && (
+          <p className="mb-3 text-xs leading-relaxed text-neutral-400">
+            <AuditDescription text={description} />
           </p>
         )}
-        {/* Items list */}
         {audit.details && Array.isArray(audit.details) && audit.details.length > 0 && (
           <div className="space-y-2">
-            {audit.details.slice(0, 10).map((item: Record<string, any>, idx: number) => (
+            {audit.details.slice(0, 10).map((item, idx) => (
               <AuditItem key={idx} item={item} />
             ))}
             {audit.details.length > 10 && (
-              <p className="text-xs text-neutral-400 mt-1">+ {audit.details.length - 10} more items</p>
+              <p className="mt-1 text-xs text-neutral-500">+ {audit.details.length - 10} more items</p>
             )}
           </div>
         )}
@@ -774,16 +915,23 @@ function AuditRow({ audit }: { audit: AuditSummary }) {
   )
 }
 
-// * Parse markdown-style links [text](url) into clickable <a> tags
+// * Renders Lighthouse's own markdown: [text](url) links, remapped to our
+// * /learn articles where we have one, and `code` spans. The backticks are real
+// * markdown in the source strings — PSI's renderer used to strip them before we
+// * ever saw them, so they are new here, and they wrap identifiers like
+// * `offsetWidth`, which is exactly what font-mono is FOR.
 function AuditDescription({ text }: { text: string }) {
-  const parts = text.split(/(\[[^\]]+\]\([^)]+\))/g)
+  const parts = text.split(/(\[[^\]]+\]\([^)]+\)|`[^`]+`)/g)
   return (
     <>
       {parts.map((part, i) => {
-        const match = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/)
-        if (match) {
-          const href = remapLearnUrl(match[2])
-          const isInternal = href.startsWith('https://ciphera.net') || href.startsWith('https://pulse.ciphera.net') || href.startsWith('https://pulse-staging.ciphera.net')
+        const link = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/)
+        if (link) {
+          const href = remapLearnUrl(link[2])
+          const isInternal =
+            href.startsWith('https://ciphera.net') ||
+            href.startsWith('https://pulse.ciphera.net') ||
+            href.startsWith('https://pulse-staging.ciphera.net')
           return (
             <a
               key={i}
@@ -792,8 +940,16 @@ function AuditDescription({ text }: { text: string }) {
               rel={isInternal ? 'noopener' : 'noopener noreferrer'}
               className="text-brand-orange hover:underline"
             >
-              {match[1]}
+              {link[1]}
             </a>
+          )
+        }
+        const code = part.match(/^`([^`]+)`$/)
+        if (code) {
+          return (
+            <code key={i} className="rounded-none bg-neutral-800 px-1 py-0.5 font-mono text-[0.95em] text-neutral-300">
+              {code[1]}
+            </code>
           )
         }
         return <span key={i}>{part}</span>
@@ -802,131 +958,100 @@ function AuditDescription({ text }: { text: string }) {
   )
 }
 
-// * Render a single audit detail item — handles various field types from the PSI API
-function AuditItem({ item }: { item: Record<string, any> }) {
-  // * Determine the primary label
-  const label = item.node?.nodeLabel || item.label || item.groupLabel || item.source?.url || null
-  // * URL can be in item.url or item.href
-  const url = item.url || item.href || null
-  // * Text content (used by SEO audits like "link text")
-  const text = item.text || item.linkText || null
+function AuditItem({ item }: { item: Record<string, unknown> }) {
+  const node = item.node as Record<string, unknown> | undefined
+  const source = item.source as Record<string, unknown> | undefined
+  const label =
+    (node?.nodeLabel as string) || (item.label as string) || (item.groupLabel as string) || (source?.url as string) || null
+  const url = (item.url as string) || (item.href as string) || null
+  const text = (item.text as string) || (item.linkText as string) || null
+  const screenshot = (node?.screenshot as Record<string, unknown> | undefined)?.data as string | undefined
+  const wastedBytes = item.wastedBytes as number | undefined
+  const totalBytes = item.totalBytes as number | undefined
+  const wastedMs = item.wastedMs as number | undefined
+
+  const bytes = (n: number) => (n < 1024 ? `${n} B` : `${(n / 1024).toFixed(1)} KiB`)
 
   return (
-    <div className="flex items-start gap-3 py-2 border-b border-neutral-800 last:border-0 text-xs text-neutral-400">
-      {/* Element screenshot */}
-      {item.node?.screenshot?.data && (
+    <div className="flex items-start gap-3 border-b border-border py-2 text-xs text-neutral-400 last:border-0">
+      {screenshot && (
         <img
-          src={item.node.screenshot.data}
+          src={screenshot}
           alt=""
-          className="w-20 h-14 object-contain rounded-none border border-neutral-700 flex-shrink-0 bg-neutral-800"
+          className="h-14 w-20 flex-none rounded-none border border-border object-contain"
         />
       )}
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        {label && (
-          <div className="font-medium text-white text-xs mb-0.5">
-            {label}
-          </div>
-        )}
-        {url && (
-          <div className="font-mono text-xs text-neutral-400 break-all">{url}</div>
-        )}
-        {text && (
-          <div className="text-xs text-neutral-400 mt-0.5">{text}</div>
-        )}
-        {item.node?.snippet && (
-          <code className="text-xs bg-neutral-800 px-1.5 py-0.5 rounded-none break-all mt-1 inline-block">{item.node.snippet}</code>
-        )}
-        {/* Fallback for items with only string values we haven't handled */}
-        {!label && !url && !text && !item.node && item.statistic && (
-          <span>{item.statistic}</span>
+      <div className="min-w-0 flex-1">
+        {label && <div className="mb-0.5 text-xs font-medium text-white">{label}</div>}
+        {url && <div className="break-all font-mono text-xs text-neutral-500">{url}</div>}
+        {text && <div className="mt-0.5 text-xs text-neutral-400">{text}</div>}
+        {typeof node?.snippet === 'string' && (
+          <code className="mt-1 inline-block break-all rounded-none bg-neutral-800 px-1.5 py-0.5 font-mono text-xs">
+            {node.snippet}
+          </code>
         )}
       </div>
-      {/* Metrics on the right */}
-      <div className="flex-shrink-0 text-right space-y-0.5">
-        {item.wastedBytes != null && (
-          <div className="text-amber-400 whitespace-nowrap">
-            {item.wastedBytes < 1024 ? `${item.wastedBytes} B` : `${(item.wastedBytes / 1024).toFixed(1)} KiB`}
-          </div>
-        )}
-        {item.totalBytes != null && !item.wastedBytes && (
-          <div className="whitespace-nowrap">
-            {item.totalBytes < 1024 ? `${item.totalBytes} B` : `${(item.totalBytes / 1024).toFixed(1)} KiB`}
-          </div>
-        )}
-        {item.wastedMs != null && (
-          <div className="text-amber-400 whitespace-nowrap">
-            {item.wastedMs < 1000 ? `${Math.round(item.wastedMs)}ms` : `${(item.wastedMs / 1000).toFixed(1)}s`}
-          </div>
-        )}
+      <div className="flex-none space-y-0.5 text-right tabular-nums">
+        {wastedBytes != null && <div className="whitespace-nowrap text-amber-400">{bytes(wastedBytes)}</div>}
+        {totalBytes != null && wastedBytes == null && <div className="whitespace-nowrap">{bytes(totalBytes)}</div>}
+        {wastedMs != null && <div className="whitespace-nowrap text-amber-400">{formatMs(wastedMs)}</div>}
       </div>
     </div>
   )
 }
 
-// * Skeleton loading state
 function PageSpeedSkeleton() {
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 space-y-6 animate-pulse">
-      {/* Header — title + subtitle + toggle buttons */}
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="mx-auto w-full max-w-7xl animate-pulse px-4 pb-8 sm:px-6">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2">
-          <div className="h-8 w-36 bg-neutral-700 rounded-none" />
-          <div className="h-4 w-72 bg-neutral-700 rounded-none" />
+          <div className="h-6 w-36 bg-neutral-800" />
+          <div className="h-4 w-80 bg-neutral-800" />
+          <div className="h-3 w-56 bg-neutral-800" />
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex gap-1">
-            <div className="h-8 w-16 bg-neutral-700 rounded-none" />
-            <div className="h-8 w-20 bg-neutral-700 rounded-none" />
-          </div>
-          <div className="h-9 w-24 bg-neutral-700 rounded-none" />
+          <div className="h-8 w-16 bg-neutral-800" />
+          <div className="h-8 w-20 bg-neutral-800" />
+          <div className="h-9 w-24 bg-neutral-800" />
         </div>
       </div>
 
-      {/* Score overview — 4 gauge circles + screenshot */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-none p-6 sm:p-8">
-        <div className="flex flex-col lg:flex-row items-center gap-8">
-          <div className="flex-1 flex items-center justify-center gap-6 sm:gap-8 flex-wrap">
+      <div className="grid gap-4">
+        <div className={`${CARD} p-6 sm:p-8`}>
+          <div className="flex flex-wrap items-center justify-center gap-10">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="flex flex-col items-center gap-2">
-                <div className="w-[90px] h-[90px] rounded-full border-[6px] border-neutral-700 bg-transparent" />
-                <div className="h-3 w-16 bg-neutral-700 rounded-none" />
+                <div className="h-[92px] w-[92px] rounded-full border-[5px] border-neutral-800" />
+                <div className="h-3 w-16 bg-neutral-800" />
               </div>
             ))}
           </div>
-          <div className="w-48 h-44 bg-neutral-700 rounded-none flex-shrink-0 hidden md:block" />
-        </div>
-        {/* Legend bar */}
-        <div className="flex items-center gap-4 mt-6 pt-4 border-t border-neutral-800">
-          <div className="h-3 w-32 bg-neutral-700 rounded-none" />
-          <div className="ml-auto flex items-center gap-3">
-            <div className="h-2 w-10 bg-neutral-700 rounded-none" />
-            <div className="h-2 w-10 bg-neutral-700 rounded-none" />
-            <div className="h-2 w-10 bg-neutral-700 rounded-none" />
+          <div className="mt-5 flex items-center gap-4 border-t border-border pt-4">
+            <div className="h-3 w-40 bg-neutral-800" />
+            <div className="ml-auto h-2 w-32 bg-neutral-800" />
           </div>
         </div>
-      </div>
 
-      {/* Metrics card — 6 metrics in 3-col grid */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-none p-6 sm:p-8">
-        <div className="h-3 w-16 bg-neutral-700 rounded-none mb-5" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="flex items-start gap-3">
-              <div className="mt-1.5 w-2.5 h-2.5 rounded-full bg-neutral-700 flex-shrink-0" />
-              <div className="space-y-2">
-                <div className="h-3 w-32 bg-neutral-700 rounded-none" />
-                <div className="h-7 w-20 bg-neutral-700 rounded-none" />
+        <div className={`${CARD} p-6 sm:p-8`}>
+          <div className="mb-5 h-3 w-16 bg-neutral-800" />
+          <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-3">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="flex items-start gap-3">
+                <div className="mt-1.5 h-2.5 w-2.5 flex-none rounded-full bg-neutral-800" />
+                <div className="space-y-2">
+                  <div className="h-3 w-32 bg-neutral-800" />
+                  <div className="h-7 w-20 bg-neutral-800" />
+                  <div className="h-2 w-16 bg-neutral-800" />
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Score trend chart placeholder */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-none p-6 sm:p-8">
-        <div className="h-3 w-40 bg-neutral-700 rounded-none mb-5" />
-        <div className="h-48 w-full bg-neutral-800 rounded-none" />
+        <div className={`${CARD} p-6 sm:p-8`}>
+          <div className="mb-5 h-3 w-40 bg-neutral-800" />
+          <div className="h-48 w-full bg-neutral-800/60" />
+        </div>
       </div>
     </div>
   )

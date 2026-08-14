@@ -39,7 +39,7 @@ import {
   type UptimeResponseTimesResponse,
   type UptimeCheck,
 } from '@/lib/api/uptime'
-import { getPageSpeedConfig, getPageSpeedLatest, getPageSpeedHistory, type PageSpeedConfig, type PageSpeedCheck } from '@/lib/api/pagespeed'
+import { getPageSpeedConfig, getPageSpeedLatest, getPageSpeedHistory, type PageSpeedConfig, type PageSpeedCheck, type PageSpeedLatest } from '@/lib/api/pagespeed'
 import { listGoals, type Goal } from '@/lib/api/goals'
 import { listReportSchedules, listAlertSchedules, type ReportSchedule } from '@/lib/api/report-schedules'
 import {
@@ -819,9 +819,13 @@ export function usePageSpeedConfig(siteId: string) {
   )
 }
 
-// * Hook for latest PageSpeed checks (mobile + desktop)
+// * Hook for the latest PageSpeed checks. Returns BOTH the newest successful
+// * check per strategy (`checks` — the numbers to render) and the newest attempt
+// * per strategy whatever its outcome (`attempts` — what the status line
+// * reports). They are not the same thing after a failed check, and treating
+// * them as one is how a stale check used to be presented as current.
 export function usePageSpeedLatest(siteId: string) {
-  return useSWR<PageSpeedCheck[]>(
+  return useSWR<PageSpeedLatest>(
     siteId ? ['pageSpeedLatest', siteId] : null,
     () => fetchers.pageSpeedLatest(siteId),
     { ...dashboardSWRConfig, refreshInterval: 60 * 1000, dedupingInterval: 10 * 1000, keepPreviousData: true }
