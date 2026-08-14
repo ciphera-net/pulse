@@ -436,7 +436,16 @@ export default function PageSpeedPage() {
           />
         </div>
 
-        <div className="flex flex-shrink-0 items-center gap-3">
+        {/* flex-wrap, and NOT flex-shrink-0 below sm. At 375 px this row holds the
+            two tabs plus Run Check plus Disable, which is wider than the
+            container — flex-shrink-0 meant it could neither shrink nor wrap and
+            it overflowed by 5 px, which the shell's overflow-x-hidden then CUT
+            rather than scrolled.
+            ⚠️ It was invisible in the local render harness because both buttons
+            are gated on useCan('pagespeed.manage'), and the harness has no real
+            auth — so the row it measured was missing exactly the elements that
+            overflow. Authed geometry has to be checked in an authed browser. */}
+        <div className="flex flex-wrap items-center gap-3 sm:flex-shrink-0">
           {/* The page's own switcher, kept verbatim: text tabs with a motion
               underline, not a boxed segmented control. */}
           <div className="flex gap-1" role="tablist" aria-label="Strategy">

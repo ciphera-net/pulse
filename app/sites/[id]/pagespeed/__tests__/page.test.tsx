@@ -223,6 +223,23 @@ describe('PageSpeed page — states that used to fail silently', () => {
     expect(container.textContent).toContain('First check queued')
   })
 
+
+  it('lets the header actions wrap instead of overflowing at 375px', () => {
+    // Caught in PRODUCTION, not here, and the reason is worth keeping: the
+    // local render harness has no real auth, so `canEdit` was false and the row
+    // it measured was missing the very buttons that overflow. jsdom does no
+    // layout, so this asserts the CLASS CONTRACT instead — the row must be able
+    // to wrap, and must not be unconditionally flex-shrink-0, or tabs +
+    // Run Check + Disable exceed the container and the shell's
+    // overflow-x-hidden CUTS the excess rather than scrolling it.
+    const { getByRole } = render(<PageSpeedPage />)
+    const disable = getByRole('button', { name: 'Disable' })
+    const row = disable.parentElement as HTMLElement
+    expect(row.className).toContain('flex-wrap')
+    expect(row.className).not.toMatch(/(^|\s)flex-shrink-0(\s|$)/)
+    expect(row.className).toContain('sm:flex-shrink-0')
+  })
+
   it('never says "Core Web Vitals" — the page has only ever shown lab data', () => {
     // CrUX field data was probed live for every site on the platform and came
     // back EMPTY for all of them. The old copy promised something the page has
