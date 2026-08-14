@@ -119,10 +119,6 @@ export default function RootLayout({
           data-domain="pulse.ciphera.net"
           src="https://js.ciphera.net/script.js"
         />
-        <Script
-          defer
-          src="https://js.ciphera.net/script.frustration.js"
-        />
         <SWRProvider>
           <AuthProvider>
             <LayoutContent>{children}</LayoutContent>

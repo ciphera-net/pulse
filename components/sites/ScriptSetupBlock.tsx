@@ -57,7 +57,7 @@ const FEATURES = [
   { key: 'downloads', label: 'File downloads', description: 'Track PDF, ZIP, and more', attr: 'data-no-downloads' },
 ] as const
 
-type FeatureKey = (typeof FEATURES)[number]['key'] | 'frustration' | 'interactions'
+type FeatureKey = (typeof FEATURES)[number]['key']
 
 const STORAGE_OPTIONS = [
   { value: 'local', label: 'Across all tabs' },
@@ -75,8 +75,6 @@ const DEFAULT_FEATURES: Record<FeatureKey, boolean> = {
   scroll: true,
   outbound: true,
   downloads: true,
-  frustration: false,
-  interactions: false,
 }
 
 export interface ScriptSetupBlockSite {
@@ -123,8 +121,6 @@ export default function ScriptSetupBlock({
     scroll: sf.scroll != null ? Boolean(sf.scroll) : DEFAULT_FEATURES.scroll,
     outbound: sf.outbound != null ? Boolean(sf.outbound) : DEFAULT_FEATURES.outbound,
     downloads: sf.downloads != null ? Boolean(sf.downloads) : DEFAULT_FEATURES.downloads,
-    frustration: sf.frustration != null ? Boolean(sf.frustration) : DEFAULT_FEATURES.frustration,
-    interactions: sf.interactions != null ? Boolean(sf.interactions) : DEFAULT_FEATURES.interactions,
   })
   const [storage, setStorage] = useState(typeof sf.storage === 'string' ? sf.storage : 'local')
   const [ttl, setTtl] = useState(typeof sf.ttl === 'string' ? sf.ttl : '24')
@@ -192,18 +188,16 @@ export default function ScriptSetupBlock({
   // * hostname on create; this guarantees a safe snippet regardless.)
   const safeDomain = site.domain.replace(/[^a-zA-Z0-9.-]/g, '')
 
-  // * Build a script tag. Core tag carries the config attributes; add-on tags
-  // * are minimal. SRI ⇒ the immutable versioned URL + integrity + crossorigin,
-  // * never the rolling URL.
+  // * Build the tracking tag. Pulse ships exactly one script — the add-on
+  // * variants were retired, so there is no longer a "minimal tag" form.
+  // * SRI ⇒ the immutable versioned URL + integrity + crossorigin, never the
+  // * rolling URL.
   const buildTag = useCallback(
-    (file: string, isCore: boolean): string => {
-      const attrs: string[] = ['defer']
-      if (isCore) {
-        attrs.push(`data-domain="${safeDomain}"`)
-        if (storage === 'session') attrs.push('data-storage="session"')
-        if (storage === 'local' && ttl !== '24') attrs.push(`data-storage-ttl="${ttl}"`)
-        for (const f of FEATURES) if (!features[f.key]) attrs.push(f.attr)
-      }
+    (file: string): string => {
+      const attrs: string[] = ['defer', `data-domain="${safeDomain}"`]
+      if (storage === 'session') attrs.push('data-storage="session"')
+      if (storage === 'local' && ttl !== '24') attrs.push(`data-storage-ttl="${ttl}"`)
+      for (const f of FEATURES) if (!features[f.key]) attrs.push(f.attr)
       const meta = VERSION_MANIFEST.files[file]
       if (showSRI && meta) {
         attrs.push(`src="${VERSION_MANIFEST.baseUrl}${meta.path}"`)
@@ -221,16 +215,10 @@ export default function ScriptSetupBlock({
     // Idiomatic framework wiring (e.g. next/script) — only when NOT using SRI,
     // since SRI requires the literal tag form with an integrity attribute.
     if (selected?.snippet?.code && !showSRI) {
-      let snippet = selected.snippet.code.replace(/DOMAIN/g, safeDomain)
-      if (features.frustration) snippet += `\n${buildTag('script.frustration.js', false)}`
-      if (features.interactions) snippet += `\n${buildTag('script.interactions.js', false)}`
-      return snippet
+      return selected.snippet.code.replace(/DOMAIN/g, safeDomain)
     }
-    let snippet = buildTag('script.js', true)
-    if (features.frustration) snippet += `\n${buildTag('script.frustration.js', false)}`
-    if (features.interactions) snippet += `\n${buildTag('script.interactions.js', false)}`
-    return snippet
-  }, [selected, showSRI, safeDomain, features, buildTag])
+    return buildTag('script.js')
+  }, [selected, showSRI, safeDomain, buildTag])
 
   const copyScript = useCallback(() => {
     navigator.clipboard.writeText(scriptSnippet)
@@ -566,16 +554,6 @@ export default function ScriptSetupBlock({
                 control={<Toggle checked={features[f.key]} onChange={() => toggleFeature(f.key)} disabled={disabled} />}
               />
             ))}
-            <PanelRow
-              label="Frustration tracking"
-              caption="Rage & dead clicks · Loads a separate add-on script"
-              control={<Toggle checked={features.frustration} onChange={() => toggleFeature('frustration')} disabled={disabled} />}
-            />
-            <PanelRow
-              label="Interaction tracking"
-              caption="Copy, print & video events · Loads a separate add-on script"
-              control={<Toggle checked={features.interactions} onChange={() => toggleFeature('interactions')} disabled={disabled} />}
-            />
             {/* SRI — emits the immutable versioned URL (never the rolling one) */}
             <PanelRow
               label="Subresource Integrity (SRI)"
