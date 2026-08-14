@@ -48,7 +48,6 @@ const SITE_PAGES = [
   { label: 'Dashboard', path: '', icon: SquaresFour, shortcut: 'g d' },
   { label: 'Journeys', path: '/journeys', icon: Path, shortcut: 'g j' },
   { label: 'Funnels', path: '/funnels', icon: Funnel, shortcut: 'g f' },
-  { label: 'Behavior', path: '/behavior', icon: CursorClick, shortcut: 'g b' },
   { label: 'Search', path: '/search', icon: MagnifyingGlass, shortcut: 'g s' },
   { label: 'CDN', path: '/cdn', icon: CloudArrowUp, shortcut: 'g c' },
   { label: 'Uptime', path: '/uptime', icon: Heartbeat, shortcut: 'g u' },
