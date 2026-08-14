@@ -164,10 +164,29 @@ export default function PageSpeedPage() {
   // * goToCheck(0) is then correctly the previous one.
   const displayedCheckId = selectedCheckId ?? latestForStrategy?.id ?? null
   const selectedIndex = displayedCheckId ? checkTimeline.findIndex(t => t.id === displayedCheckId) : -1
+  // * Is the newest check we can DISPLAY newer than everything the timeline
+  // * knows about? That is the whole lagging-history case: after a manual run
+  // * `latest` has the new check and `history` has not caught up.
+  const latestIsNewerThanTimeline =
+    latestForStrategy != null && checkTimeline.length > 0 && checkTimeline[0].id !== latestForStrategy.id
   const canGoPrev = checkTimeline.length > 0 && selectedIndex < checkTimeline.length - 1
-  const canGoNext = selectedIndex > 0
+  // * index -1 is "showing something newer than the timeline", so stepping
+  // * FORWARD from index 0 has somewhere to go precisely when that is true.
+  // * Without the second clause a user who stepped back one check while the
+  // * timeline lagged could never return to the latest one — the arrow was
+  // * disabled and goToCheck(-1) fell off the end of the array.
+  const canGoNext = selectedIndex > 0 || (selectedIndex === 0 && latestIsNewerThanTimeline)
 
   const goToCheck = (index: number) => {
+    // * Negative index means the latest check, which by definition is not in the
+    // * timeline when the timeline is stale.
+    if (index < 0) {
+      if (!latestIsNewerThanTimeline) return
+      setCheckFetchFailed(false)
+      setSelectedCheckId(null)
+      setSelectedCheckData(null)
+      return
+    }
     const target = checkTimeline[index]
     if (!target) return
     setCheckFetchFailed(false)

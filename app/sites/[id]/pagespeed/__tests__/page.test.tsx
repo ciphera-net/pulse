@@ -274,6 +274,23 @@ describe('PageSpeed page — the check navigator and the trend card', () => {
     expect(container.textContent ?? '').not.toContain('Performance score trend')
   })
 
+  it('does NOT render the trend card with exactly ONE scored check — the boundary', () => {
+    // The chart needs TWO points; with one it returns null and the card is empty
+    // again. Without this case, mutating the gate from >= 2 to >= 1 restores the
+    // exact bug the gate exists to prevent and both other tests stay green.
+    mockHistory.mockReturnValue({
+      data: [
+        check({ id: 'h1', performance_score: 70, checked_at: '2026-08-11T09:00:00Z' }),
+        check({ id: 'h2', performance_score: null, checked_at: '2026-08-12T09:00:00Z' }),
+        check({ id: 'h3', performance_score: null, checked_at: '2026-08-13T09:00:00Z' }),
+      ],
+      error: undefined,
+      mutate: vi.fn(),
+    })
+    const { container } = render(<PageSpeedPage />)
+    expect(container.textContent ?? '').not.toContain('Performance score trend')
+  })
+
   it('DOES render the trend card once two checks carry a score — the positive control', () => {
     // Without this, the assertion above also passes if the card were deleted.
     mockHistory.mockReturnValue({
@@ -333,6 +350,52 @@ describe('PageSpeed page — the check navigator and the trend card', () => {
 
     expect(getPageSpeedCheck).toHaveBeenCalledWith('site-1', 'h-13aug')
     expect(getPageSpeedCheck).not.toHaveBeenCalledWith('site-1', 'h-12aug')
+  })
+
+  it('can get BACK to the latest check after stepping into the lagging timeline', async () => {
+    // The other half of the same state, and a bug the first version of the fix
+    // introduced: with the latest check absent from the timeline, selectedIndex
+    // is -1; stepping back lands on index 0, and `canGoNext = selectedIndex > 0`
+    // is then false. The arrow was disabled and goToCheck(-1) fell off the end of
+    // the array, so the user was stuck one check behind the newest one with no
+    // control that could return them to it.
+    mockLatest.mockReturnValue({
+      data: {
+        checks: [check({ id: 'chk-new', performance_score: 55, checked_at: '2026-08-14T12:03:00Z' })],
+        attempts: [attempt({ id: 'chk-new', checked_at: '2026-08-14T12:03:00Z' })],
+      },
+      error: undefined,
+      isLoading: false,
+      mutate: vi.fn(),
+    })
+    mockHistory.mockReturnValue({
+      data: [
+        check({ id: 'h-12aug', checked_at: '2026-08-12T09:00:00Z' }),
+        check({ id: 'h-13aug', checked_at: '2026-08-13T09:00:00Z' }),
+      ],
+      error: undefined,
+      mutate: vi.fn(),
+    })
+
+    vi.mocked(getPageSpeedCheck).mockResolvedValue(check({ id: 'h-13aug', performance_score: 88 }))
+    const { container } = render(<PageSpeedPage />)
+    const prev = [...container.querySelectorAll('button')].find(
+      b => b.getAttribute('aria-label') === 'Previous check',
+    )!
+    await act(async () => {
+      fireEvent.click(prev)
+    })
+    expect(container.textContent ?? '', 'the step back did not land on the historical check').toContain('88')
+
+    const next = [...container.querySelectorAll('button')].find(
+      b => b.getAttribute('aria-label') === 'Next check',
+    )!
+    expect(next.hasAttribute('disabled'), 'Next check is disabled; the latest check is unreachable').toBe(false)
+    await act(async () => {
+      fireEvent.click(next)
+    })
+    // Back on the latest check, which is served from `latest` rather than fetched.
+    expect(container.textContent ?? '').toContain('55')
   })
 })
 
