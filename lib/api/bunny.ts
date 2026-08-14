@@ -12,13 +12,18 @@ export interface BunnyStatus {
   created_at?: string
 }
 
+// * total_errors counts 4xx+5xx ONLY — 3xx are redirects, reported separately
+// * (total_3xx) so a redirect-heavy site never reads as an error storm.
 export interface BunnyOverview {
   total_bandwidth: number
+  total_bandwidth_cached: number
   total_requests: number
   cache_hit_rate: number
   avg_origin_response: number
   total_errors: number
+  total_3xx: number
   prev_total_bandwidth: number
+  prev_total_bandwidth_cached: number
   prev_total_requests: number
   prev_cache_hit_rate: number
   prev_avg_origin_response: number
@@ -42,10 +47,19 @@ export interface BunnyPullZone {
   name: string
 }
 
-export interface BunnyGeoRow {
-  country_code: string
+// * A Bunny edge region ("EU: Zurich, CH") with bandwidth served from it over
+// * the requested range — fetched LIVE from Bunny by the backend, never stored
+// * (the old bunny_geo_data table multiply-counted overlapping sync windows
+// * and labeled POPs as countries; migration 137 dropped it).
+export interface BunnyRegionEntry {
+  region: string
   bandwidth: number
-  requests: number
+}
+
+export interface BunnyRegionsResponse {
+  regions: BunnyRegionEntry[]
+  total_bandwidth: number
+  range: { start: string; end: string }
 }
 
 // ─── API Functions ──────────────────────────────────────────────────
@@ -80,6 +94,6 @@ export async function getBunnyDailyStats(siteId: string, startDate: string, endD
   return apiRequest<{ daily_stats: BunnyDailyRow[] }>(`/sites/${siteId}/bunny/daily-stats?start_date=${startDate}&end_date=${endDate}`)
 }
 
-export async function getBunnyTopCountries(siteId: string, startDate: string, endDate: string, limit = 20): Promise<{ countries: BunnyGeoRow[] }> {
-  return apiRequest<{ countries: BunnyGeoRow[] }>(`/sites/${siteId}/bunny/top-countries?start_date=${startDate}&end_date=${endDate}&limit=${limit}`)
+export async function getBunnyRegions(siteId: string, startDate: string, endDate: string): Promise<BunnyRegionsResponse> {
+  return apiRequest<BunnyRegionsResponse>(`/sites/${siteId}/bunny/regions?start_date=${startDate}&end_date=${endDate}`)
 }

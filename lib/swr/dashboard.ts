@@ -59,8 +59,8 @@ import {
 } from '@/lib/api/quarantine'
 import { getGSCStatus, getGSCOverview, getGSCTopQueries, getGSCTopPages, getGSCDailyTotals, getGSCNewQueries, getGSCTopCountries, getGSCTopDevices, getGSCOpportunities, getGSCQueryPages, getGSCPageQueries, getGSCQueryTrend } from '@/lib/api/gsc'
 import type { GSCStatus, GSCOverview, GSCQueryResponse, GSCPageResponse, GSCDailyTotal, GSCNewQueries, GSCCountryResponse, GSCDeviceResponse, GSCOpportunityResponse, GSCQueryTrendPoint } from '@/lib/api/gsc'
-import { getBunnyStatus, getBunnyOverview, getBunnyDailyStats, getBunnyTopCountries } from '@/lib/api/bunny'
-import type { BunnyStatus, BunnyOverview, BunnyDailyRow, BunnyGeoRow } from '@/lib/api/bunny'
+import { getBunnyStatus, getBunnyOverview, getBunnyDailyStats, getBunnyRegions } from '@/lib/api/bunny'
+import type { BunnyStatus, BunnyOverview, BunnyDailyRow, BunnyRegionsResponse } from '@/lib/api/bunny'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import type {
   Stats,
@@ -125,7 +125,7 @@ const fetchers = {
   bunnyStatus: (siteId: string) => getBunnyStatus(siteId),
   bunnyOverview: (siteId: string, start: string, end: string) => getBunnyOverview(siteId, start, end),
   bunnyDailyStats: (siteId: string, start: string, end: string) => getBunnyDailyStats(siteId, start, end),
-  bunnyTopCountries: (siteId: string, start: string, end: string) => getBunnyTopCountries(siteId, start, end),
+  bunnyRegions: (siteId: string, start: string, end: string) => getBunnyRegions(siteId, start, end),
   subscription: () => getSubscription(),
 }
 
@@ -778,12 +778,15 @@ export function useBunnyDailyStats(siteId: string, startDate: string, endDate: s
   )
 }
 
-// * Hook for BunnyCDN top countries by bandwidth
-export function useBunnyTopCountries(siteId: string, startDate: string, endDate: string) {
-  return useSWR<{ countries: BunnyGeoRow[] }>(
-    siteId && startDate && endDate ? ['bunnyTopCountries', siteId, startDate, endDate] : null,
-    () => fetchers.bunnyTopCountries(siteId, startDate, endDate),
-    { ...dashboardSWRConfig, keepPreviousData: true }
+// * Hook for the live edge-region distribution. The backend proxies Bunny's
+// * statistics API at request time (there is no stored geo table any more —
+// * migration 137), so a slightly longer dedupe keeps a tab-refocus from
+// * re-spending the customer's API budget inside the backend's own 2-min cache.
+export function useBunnyRegions(siteId: string, startDate: string, endDate: string) {
+  return useSWR<BunnyRegionsResponse>(
+    siteId && startDate && endDate ? ['bunnyRegions', siteId, startDate, endDate] : null,
+    () => fetchers.bunnyRegions(siteId, startDate, endDate),
+    { ...dashboardSWRConfig, keepPreviousData: true, dedupingInterval: 60 * 1000 }
   )
 }
 
