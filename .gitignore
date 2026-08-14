@@ -45,6 +45,11 @@ public/sw 2.js
 public/workbox-*.js
 public/swe-worker-*.js
 
+# git worktrees. pulse-backend ignores these (its .gitignore:38); this repo did
+# not, so a worktree created here showed up as untracked noise and a `git add -A`
+# could commit an entire second checkout of the repo into itself.
+.worktrees/
+
 # Local brainstorm mockups — never tracked
 .superpowers/
 test-results/
