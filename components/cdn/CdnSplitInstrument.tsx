@@ -356,25 +356,32 @@ function CdnXAxis({ width, series }: { width: number; series: CdnPoint[] }) {
 
 // ─── Rail (fixed rows — no toggling in the split layout) ─────────
 
-function Rail({
+// * Shared with CdnLiveCard — the live card's rails are the same device.
+// * widthClass overrides the fixed rail width for layouts where the rails
+// * must shrink (the live card's 3-across mobile grid; three fixed rails
+// * would overflow the shell's overflow-x-hidden clip and be DELETED, not
+// * scrolled — the 08-08 mobile-audit failure mode).
+export function Rail({
   label,
   value,
   delta,
   context,
   ghost = false,
+  widthClass,
 }: {
   label: string
   value: string | number
   delta?: React.ReactNode
   context?: string
   ghost?: boolean
+  widthClass?: string
 }) {
   // * A rail showing an em dash has NO measurement this window — a delta or
   // * context line beside it would grade something that does not exist
   // * (an outage would read as a green improvement).
   const isDash = ghost || value === '—'
   return (
-    <div className={cn(RAIL_W, 'relative flex shrink-0 flex-col justify-center border-r border-border px-4 py-3')}>
+    <div className={cn(widthClass ?? RAIL_W, 'relative flex shrink-0 flex-col justify-center border-r border-border px-4 py-3')}>
       {!ghost && <span aria-hidden="true" className="absolute bottom-0 left-0 top-0 w-[2px] bg-brand-orange" />}
       <span className="text-sm text-neutral-400">{label}</span>
       {ghost ? (
