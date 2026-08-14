@@ -96,6 +96,20 @@ export default function BehaviorPage() {
         />
       </div>
 
+      {/* Retirement notice. Frustration collection is being withdrawn; the
+          reports stay readable through the deprecation window so anyone with
+          historical data can still see (and export) it before it goes. Scroll
+          depth is NOT affected — it comes from the core script and moves to the
+          main dashboard when this page is removed. */}
+      <div className="mb-6 rounded-none border border-border bg-card p-4">
+        <p className="text-sm font-medium text-foreground">Frustration tracking is being retired</p>
+        <p className="mt-1 text-sm text-neutral-400">
+          Rage and dead click collection is being withdrawn, and the add-on script is no longer offered.
+          These reports stay readable for now so you can review or export existing data. Scroll depth is
+          unaffected — it is collected by the core script and moves to your main dashboard.
+        </p>
+      </div>
+
       {/* Content — the chip covers range changes, the ErrorCard covers failures */}
       <div className="relative">
         <UpdatingChip active={isValidating && !!behavior} className="-top-1 right-0" />

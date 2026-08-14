@@ -63,6 +63,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Removed
 
+- **Frustration and interaction tracking are being retired.** The "Frustration tracking" and "Interaction tracking" toggles are gone from your site's tracking settings, and neither add-on script is offered any more. Pulse now ships a single tracking script. Frustration tracking recorded a CSS selector and click coordinates for the element you clicked — the most identifying thing Pulse collected — and it is going away. The Behavior page still shows existing data for now, and carries a notice. **Scroll depth is not affected**: it comes from the core script, stays exactly as it is, and moves to your main dashboard when the Behavior page is retired.
 - **Performance insights removed.** The Performance tab, Core Web Vitals tracking (LCP, CLS, INP), and the "Enable performance insights" toggle in Settings have been removed. The tracking script no longer collects Web Vitals data. Visit duration tracking continues to work as before.
 
 ### Fixed
