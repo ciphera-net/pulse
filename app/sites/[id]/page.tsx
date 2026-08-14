@@ -24,6 +24,7 @@ import FilterBuilder from '@/components/dashboard/filter/FilterBuilder'
 import { useFilterBuilder } from '@/components/dashboard/filter/useFilterBuilder'
 const Chart = dynamic(() => import('@/components/dashboard/Chart'), { ssr: false })
 import ContentStats from '@/components/dashboard/ContentStats'
+import ScrollDepthBars from '@/components/dashboard/ScrollDepthBars'
 import TopReferrers from '@/components/dashboard/TopReferrers'
 import Audience from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
@@ -463,6 +464,12 @@ export default function SiteDashboardPage() {
           siteId={siteId}
           dateRange={resolvedDateRange}
         />
+        {/* Scroll depth moved here when the Behavior page was retired. The
+            distribution has always arrived on the dashboard payload — the
+            backend computes it in GetDashboardHandler's query fan-out and it
+            rides on `dashboard.scroll_depth` — it simply was not rendered
+            anywhere but that page. No extra request. */}
+        <ScrollDepthBars scrollDepth={dashboard?.scroll_depth} />
       </div></>}
 
       <ExportModal

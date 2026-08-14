@@ -10,9 +10,9 @@ const fs = require('fs');
 const path = require('path');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
-// * All three tracking scripts must be hashed — the interactions add-on was
-// * previously omitted, so enabling SRI silently emitted no integrity for it.
-const SCRIPTS = ['script.js', 'script.frustration.js', 'script.interactions.js'];
+// * Pulse ships exactly one tracking script. The frustration and interactions
+// * add-ons were retired (14-08-2026) and their hashes removed with them.
+const SCRIPTS = ['script.js'];
 
 const out = {};
 for (const name of SCRIPTS) {

@@ -36,14 +36,12 @@ const DIST_ROOT = join(ROOT, 'dist', 'scripts')
 const SCRIPT_VERSION = '1.0.0'
 const BASE_URL = 'https://js.ciphera.net'
 
-const SCRIPTS = ['script.js', 'script.frustration.js', 'script.interactions.js']
+const SCRIPTS = ['script.js']
 
 // * Gzip size budget per file (bytes). The core script is the one customers pay
 // * for on every page load; keep it lean. Fail the build if it regresses.
 const GZIP_BUDGET = {
   'script.js': 3072, // ~3 KB gzipped
-  'script.frustration.js': 3072,
-  'script.interactions.js': 2048,
 }
 
 function sri(algo, bytes) {

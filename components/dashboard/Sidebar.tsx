@@ -47,7 +47,6 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Dashboard', href: (id) => `/sites/${id}`, icon: LayoutDashboardIcon },
       { label: 'Journeys', href: (id) => `/sites/${id}/journeys`, icon: PathIcon, matchPrefix: true },
       { label: 'Funnels', href: (id) => `/sites/${id}/funnels`, icon: FunnelIcon, matchPrefix: true },
-      { label: 'Behavior', href: (id) => `/sites/${id}/behavior`, icon: CursorClickIcon, matchPrefix: true },
       { label: 'Search', href: (id) => `/sites/${id}/search`, icon: SearchIcon, matchPrefix: true },
     ],
   },
@@ -69,7 +68,7 @@ const SETTINGS_ITEM: NavItem = {
 }
 
 const NAV_SHORTCUTS: Record<string, string> = {
-  Dashboard: 'G D', Journeys: 'G J', Funnels: 'G F', Behavior: 'G B', Search: 'G S',
+  Dashboard: 'G D', Journeys: 'G J', Funnels: 'G F', Search: 'G S',
   CDN: 'G C', Uptime: 'G U', PageSpeed: 'G P', 'Site Settings': ',',
 }
 
