@@ -24,8 +24,7 @@ const PUBLIC_ROUTES = new Set([
   '/eu-web-analytics',
 
   '/script.js', // * Tracking script – must load without auth for embedded sites (Shopify, etc.)
-  '/script.frustration.js', // * Frustration tracking add-on (rage clicks, dead clicks)
-  '/script-sri.json', // * Subresource Integrity manifest (sha384 of both scripts); consumed by ciphera-website build to pin <script integrity="">.
+  '/script-sri.json', // * Subresource Integrity manifest (sha384 of the tracking script); consumed by ciphera-website build to pin <script integrity="">.
 ])
 
 const PUBLIC_PREFIXES = [

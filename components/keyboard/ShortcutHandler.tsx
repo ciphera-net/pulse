@@ -3,13 +3,12 @@
 import { useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 
-type SitePage = 'dashboard' | 'journeys' | 'funnels' | 'behavior' | 'search' | 'cdn' | 'uptime' | 'pagespeed'
+type SitePage = 'dashboard' | 'journeys' | 'funnels' | 'search' | 'cdn' | 'uptime' | 'pagespeed'
 
 const SITE_KEY_MAP: Record<string, SitePage> = {
   d: 'dashboard',
   j: 'journeys',
   f: 'funnels',
-  b: 'behavior',
   s: 'search',
   c: 'cdn',
   u: 'uptime',

@@ -18,10 +18,6 @@ import {
   getRealtimePages,
   getStats,
   getDailyStats,
-  getBehavior,
-  getRageClicks,
-  getDeadClicks,
-  getFrustrationDaily,
   type RealtimePageVisitors,
 } from '@/lib/api/stats'
 import {
@@ -73,9 +69,6 @@ import type {
   DashboardDevicesData,
   DashboardReferrersData,
   DashboardGoalsData,
-  BehaviorData,
-  FrustrationElement,
-  FrustrationDailyPoint,
 } from '@/lib/api/stats'
 
 // * SWR fetcher functions
@@ -95,7 +88,6 @@ const fetchers = {
   realtime: (siteId: string) => getRealtime(siteId),
   campaigns: (siteId: string, start: string, end: string, limit: number) =>
     getCampaigns(siteId, start, end, limit),
-  behavior: (siteId: string, start: string, end: string) => getBehavior(siteId, start, end),
   journeyTransitions: (siteId: string, start: string, end: string, depth?: number, minSessions?: number, entryPath?: string, filters?: string) =>
     getJourneyTransitions(siteId, start, end, { depth, minSessions, entryPath, filters }),
   journeyEntryPoints: (siteId: string, start: string, end: string, filters?: string) =>
@@ -366,63 +358,6 @@ export function useCampaigns(siteId: string, start: string, end: string, limit =
       refreshInterval: 60 * 1000,
       dedupingInterval: 10 * 1000,
     }
-  )
-}
-
-// * Hook for bundled behavior data (all frustration signals in one request)
-export function useBehavior(siteId: string, start: string, end: string, period?: string) {
-  return useSWR<BehaviorData>(
-    siteId && (period || (start && end)) ? ['behavior', siteId, period || `${start}-${end}`] : null,
-    () => getBehavior(siteId, period ? undefined : start, period ? undefined : end, 7, period),
-    {
-      ...dashboardSWRConfig,
-      refreshInterval: 60 * 1000,
-      dedupingInterval: 10 * 1000,
-      keepPreviousData: true,
-    }
-  )
-}
-
-// * Hook for the daily rage/dead frustration series (behavior trend chart).
-export function useFrustrationDaily(siteId: string, start: string, end: string) {
-  return useSWR<{ days: FrustrationDailyPoint[] }>(
-    siteId && start && end ? ['frustrationDaily', siteId, start, end] : null,
-    () => getFrustrationDaily(siteId, start, end),
-    { ...dashboardSWRConfig, keepPreviousData: true },
-  )
-}
-
-// * Lens/dialog hooks for FILTERED frustration elements (behavior page ?page= lens
-// * and the view-all dialog). `enabled` gates the fetch so the un-lensed tables
-// * render the useBehavior payload with no extra request; keepPreviousData holds
-// * the previous page's rows while a new lens loads.
-export function useRageClicks(
-  siteId: string,
-  start: string,
-  end: string,
-  limit: number,
-  pagePath?: string,
-  enabled: boolean = true,
-) {
-  return useSWR<{ items: FrustrationElement[]; total: number }>(
-    enabled && siteId && start && end ? ['rageClicks', siteId, start, end, limit, pagePath ?? ''] : null,
-    () => getRageClicks(siteId, start, end, limit, pagePath),
-    { ...dashboardSWRConfig, keepPreviousData: true },
-  )
-}
-
-export function useDeadClicks(
-  siteId: string,
-  start: string,
-  end: string,
-  limit: number,
-  pagePath?: string,
-  enabled: boolean = true,
-) {
-  return useSWR<{ items: FrustrationElement[]; total: number }>(
-    enabled && siteId && start && end ? ['deadClicks', siteId, start, end, limit, pagePath ?? ''] : null,
-    () => getDeadClicks(siteId, start, end, limit, pagePath),
-    { ...dashboardSWRConfig, keepPreviousData: true },
   )
 }
 
