@@ -77,9 +77,12 @@ export function statusMix(series: CdnPoint[]): StatusMix {
 
 /** Bytes → "1.5 GB". */
 export function fmtBytes(bytes: number): string {
-  if (bytes <= 0) return '0 B'
+  // * Total for ALL inputs: sub-1 positives (axis headroom on an all-zero
+  // * strip is 1.12e-9) would drive the exponent negative and index
+  // * units[-n] as "undefined" without the lower clamp.
+  if (bytes < 1) return '0 B'
   const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)))
+  const i = Math.max(0, Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024))))
   const value = bytes / Math.pow(1024, i)
   return value.toFixed(i === 0 ? 0 : 1) + ' ' + units[i]
 }

@@ -65,6 +65,10 @@ describe('formatters', () => {
     expect(fmtBytes(0)).toBe('0 B')
     expect(fmtBytes(1024 ** 3 * 1.5)).toBe('1.5 GB')
   })
+  it('is total for sub-1 positives (axis headroom on an all-zero strip)', () => {
+    expect(fmtBytes(1.12e-9)).toBe('0 B')
+    expect(fmtBytes(0.5)).toBe('0 B')
+  })
   it('labels days in UTC regardless of local timezone', () => {
     const [p] = toCdnSeries([row({ date: '2026-08-01' })])
     expect(cdnDayLabel(p.date)).toBe('01/08')

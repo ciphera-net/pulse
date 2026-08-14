@@ -369,6 +369,10 @@ function Rail({
   context?: string
   ghost?: boolean
 }) {
+  // * A rail showing an em dash has NO measurement this window — a delta or
+  // * context line beside it would grade something that does not exist
+  // * (an outage would read as a green improvement).
+  const isDash = ghost || value === '—'
   return (
     <div className={cn(RAIL_W, 'relative flex shrink-0 flex-col justify-center border-r border-border px-4 py-3')}>
       {!ghost && <span aria-hidden="true" className="absolute bottom-0 left-0 top-0 w-[2px] bg-brand-orange" />}
@@ -380,8 +384,8 @@ function Rail({
       ) : (
         <span className="mt-0.5 text-xl font-semibold tabular-nums text-white">{value}</span>
       )}
-      {!ghost && delta}
-      {!ghost && context && <span className="mt-0.5 text-xs text-neutral-500">{context}</span>}
+      {!isDash && delta}
+      {!isDash && context && <span className="mt-0.5 text-xs text-neutral-500">{context}</span>}
     </div>
   )
 }
@@ -690,7 +694,7 @@ export function EdgeCard({ series, overview, regions, regionsTotal, regionsError
           </div>
         ) : (
           <>
-            <MapView data={mapData} />
+            <MapView data={mapData} formatValue={fmtBytes} valueLabel={() => ''} />
             <RegionRows regions={regions} total={regionsTotal} />
           </>
         )}
