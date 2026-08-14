@@ -1,4 +1,4 @@
-import type { BunnyDailyRow } from '@/lib/api/bunny'
+import type { BunnyDailyRow, BunnyLiveResponse } from '@/lib/api/bunny'
 import type { PeriodPreset } from '@/lib/constants/periods'
 
 // ---------------------------------------------------------------------------
@@ -71,6 +71,30 @@ export function statusMix(series: CdnPoint[]): StatusMix {
     c5xx += p.e5xx
   }
   return { total, c2xx: Math.max(0, total - c3xx - c4xx - c5xx), c3xx, c4xx, c5xx }
+}
+
+// ─── Live card (D3) ─────────────────────────────────────────────────
+
+// * Derived model for the Last-24-hours live card. hitRate is null when the
+// * window served no requests — an em dash, never a fabricated 0%. bars carry
+// * only the COMPLETE hours (the backend excludes the in-progress bucket from
+// * totals; plotting it would show a fake dip that fills in as the hour ages).
+export interface LiveCardModel {
+  requests: number
+  hitRate: number | null
+  errors: number
+  bars: number[]
+}
+
+export function deriveLiveCard(data: BunnyLiveResponse | undefined): LiveCardModel | null {
+  if (!data || data.hours.length === 0) return null
+  const t = data.totals
+  return {
+    requests: t.requests,
+    hitRate: t.requests > 0 ? (t.requests_cached / t.requests) * 100 : null,
+    errors: t.error_4xx + t.error_5xx,
+    bars: data.hours.map((h) => h.requests),
+  }
 }
 
 // ─── Formatters ─────────────────────────────────────────────────────
