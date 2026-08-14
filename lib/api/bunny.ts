@@ -62,6 +62,38 @@ export interface BunnyRegionsResponse {
   range: { start: string; end: string }
 }
 
+// * One UTC hour bucket from the live proxy. origin_response_ms is null when
+// * the hour had no origin pulls — absence, never a 0ms origin.
+export interface BunnyLiveHour {
+  hour: string
+  bandwidth: number
+  bandwidth_cached: number
+  requests: number
+  requests_cached: number
+  error_3xx: number
+  error_4xx: number
+  error_5xx: number
+  origin_response_ms: number | null
+}
+
+// * Trailing-window hourly stats, proxied LIVE from Bunny (nothing stored —
+// * the daily instrument is the durable record). hours are the COMPLETE UTC
+// * hours; the in-progress hour rides separately and is excluded from totals,
+// * so a mid-hour read never grades a bucket that is still filling.
+export interface BunnyLiveResponse {
+  hours: BunnyLiveHour[]
+  in_progress: BunnyLiveHour | null
+  totals: {
+    requests: number
+    requests_cached: number
+    bandwidth: number
+    bandwidth_cached: number
+    error_4xx: number
+    error_5xx: number
+  }
+  range: { start: string; end: string }
+}
+
 // ─── API Functions ──────────────────────────────────────────────────
 
 export async function getBunnyPullZones(siteId: string, apiKey: string): Promise<{ pull_zones: BunnyPullZone[], message?: string }> {
@@ -96,4 +128,8 @@ export async function getBunnyDailyStats(siteId: string, startDate: string, endD
 
 export async function getBunnyRegions(siteId: string, startDate: string, endDate: string): Promise<BunnyRegionsResponse> {
   return apiRequest<BunnyRegionsResponse>(`/sites/${siteId}/bunny/regions?start_date=${startDate}&end_date=${endDate}`)
+}
+
+export async function getBunnyLive(siteId: string): Promise<BunnyLiveResponse> {
+  return apiRequest<BunnyLiveResponse>(`/sites/${siteId}/bunny/live`)
 }

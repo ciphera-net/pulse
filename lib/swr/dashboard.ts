@@ -59,8 +59,8 @@ import {
 } from '@/lib/api/quarantine'
 import { getGSCStatus, getGSCOverview, getGSCTopQueries, getGSCTopPages, getGSCDailyTotals, getGSCNewQueries, getGSCTopCountries, getGSCTopDevices, getGSCOpportunities, getGSCQueryPages, getGSCPageQueries, getGSCQueryTrend } from '@/lib/api/gsc'
 import type { GSCStatus, GSCOverview, GSCQueryResponse, GSCPageResponse, GSCDailyTotal, GSCNewQueries, GSCCountryResponse, GSCDeviceResponse, GSCOpportunityResponse, GSCQueryTrendPoint } from '@/lib/api/gsc'
-import { getBunnyStatus, getBunnyOverview, getBunnyDailyStats, getBunnyRegions } from '@/lib/api/bunny'
-import type { BunnyStatus, BunnyOverview, BunnyDailyRow, BunnyRegionsResponse } from '@/lib/api/bunny'
+import { getBunnyStatus, getBunnyOverview, getBunnyDailyStats, getBunnyRegions, getBunnyLive } from '@/lib/api/bunny'
+import type { BunnyStatus, BunnyOverview, BunnyDailyRow, BunnyRegionsResponse, BunnyLiveResponse } from '@/lib/api/bunny'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import type {
   Stats,
@@ -126,6 +126,7 @@ const fetchers = {
   bunnyOverview: (siteId: string, start: string, end: string) => getBunnyOverview(siteId, start, end),
   bunnyDailyStats: (siteId: string, start: string, end: string) => getBunnyDailyStats(siteId, start, end),
   bunnyRegions: (siteId: string, start: string, end: string) => getBunnyRegions(siteId, start, end),
+  bunnyLive: (siteId: string) => getBunnyLive(siteId),
   subscription: () => getSubscription(),
 }
 
@@ -787,6 +788,33 @@ export function useBunnyRegions(siteId: string, startDate: string, endDate: stri
     siteId && startDate && endDate ? ['bunnyRegions', siteId, startDate, endDate] : null,
     () => fetchers.bunnyRegions(siteId, startDate, endDate),
     { ...dashboardSWRConfig, keepPreviousData: true, dedupingInterval: 60 * 1000 }
+  )
+}
+
+// * Live trailing-24h hourly stats. 60s refresh matches the backend's own
+// * per-replica cache TTL — polling faster only re-reads the cache.
+// *
+// * A live surface must SELF-HEAL: SWR's poller refuses to revalidate while
+// * an error sits in the cache, and the base config's onErrorRetry gives up
+// * after three attempts — together they freeze the card for the whole page
+// * session after one transient 502. So errors keep retrying on the same 60s
+// * cadence indefinitely (auth failures excepted — retrying those makes it
+// * worse), and returning to the tab revalidates, same as useRealtime.
+export function useBunnyLive(siteId: string) {
+  return useSWR<BunnyLiveResponse>(
+    siteId ? ['bunnyLive', siteId] : null,
+    () => fetchers.bunnyLive(siteId),
+    {
+      ...dashboardSWRConfig,
+      keepPreviousData: true,
+      dedupingInterval: 60 * 1000,
+      refreshInterval: 60 * 1000,
+      revalidateOnFocus: true,
+      onErrorRetry: (error: any, _key, _config, revalidate, { retryCount }) => {
+        if (error?.status === 401 || error?.status === 403) return
+        setTimeout(() => void revalidate({ retryCount }), 60 * 1000)
+      },
+    }
   )
 }
 

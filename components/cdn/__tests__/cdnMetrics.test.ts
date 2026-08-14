@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { toCdnSeries, statusMix, fmtBytes, fmtHitRate, fmtOriginMs, cdnDayLabel, CDN_PICKER_PRESETS } from '../cdnMetrics'
+import { toCdnSeries, statusMix, fmtBytes, fmtHitRate, fmtOriginMs, cdnDayLabel, deriveLiveCard, CDN_PICKER_PRESETS } from '../cdnMetrics'
 import type { BunnyDailyRow } from '@/lib/api/bunny'
 
 function row(overrides: Partial<BunnyDailyRow> = {}): BunnyDailyRow {
@@ -88,5 +88,52 @@ describe('CDN_PICKER_PRESETS', () => {
     expect(keys).not.toContain('today')
     expect(keys).not.toContain('24h')
     expect(keys).not.toContain('1h')
+  })
+})
+
+describe('deriveLiveCard', () => {
+  const hour = (requests: number, cached = 0): import('@/lib/api/bunny').BunnyLiveHour => ({
+    hour: '2026-08-14T05:00:00Z',
+    bandwidth: 0,
+    bandwidth_cached: 0,
+    requests,
+    requests_cached: cached,
+    error_3xx: 0,
+    error_4xx: 0,
+    error_5xx: 0,
+    origin_response_ms: null,
+  })
+  const base = {
+    in_progress: null,
+    range: { start: '2026-08-13T06:00:00Z', end: '2026-08-14T06:00:00Z' },
+  }
+
+  it('returns null while data is absent — the card ghosts, never zeros', () => {
+    expect(deriveLiveCard(undefined)).toBeNull()
+  })
+
+  it('returns null for an empty hours array (upstream anomaly shape)', () => {
+    expect(
+      deriveLiveCard({ ...base, hours: [], totals: { requests: 0, requests_cached: 0, bandwidth: 0, bandwidth_cached: 0, error_4xx: 0, error_5xx: 0 } })
+    ).toBeNull()
+  })
+
+  it('derives rails from totals and bars from the complete hours only', () => {
+    const model = deriveLiveCard({
+      ...base,
+      hours: [hour(100), hour(300)],
+      totals: { requests: 400, requests_cached: 300, bandwidth: 9, bandwidth_cached: 8, error_4xx: 5, error_5xx: 2 },
+    })
+    expect(model).toEqual({ requests: 400, hitRate: 75, errors: 7, bars: [100, 300] })
+  })
+
+  it('hitRate is null when the window served no requests — em dash, not 0%', () => {
+    const model = deriveLiveCard({
+      ...base,
+      hours: [hour(0)],
+      totals: { requests: 0, requests_cached: 0, bandwidth: 0, bandwidth_cached: 0, error_4xx: 0, error_5xx: 0 },
+    })
+    expect(model?.hitRate).toBeNull()
+    expect(model?.requests).toBe(0)
   })
 })

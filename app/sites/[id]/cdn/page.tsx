@@ -16,6 +16,7 @@ import { ErrorCard } from '@/components/ui/ErrorCard'
 import { SyncStatusLine } from '@/components/integrations/SyncStatusLine'
 import { CDNSkeleton } from '@/components/skeletons'
 import { EdgeCard, OriginCard } from '@/components/cdn/CdnSplitInstrument'
+import { CdnLiveCard } from '@/components/cdn/CdnLiveCard'
 import { toCdnSeries, statusMix, cdnDayLabel, CDN_PICKER_PRESETS } from '@/components/cdn/cdnMetrics'
 
 export default function CDNPage() {
@@ -143,6 +144,10 @@ export default function CDNPage() {
           />
         </div>
       )}
+
+      {/* The live now-view (D3): trailing 24 complete UTC hours, fetched live
+          per request — the daily instrument above stays the durable record. */}
+      {connected && <CdnLiveCard siteId={siteId} />}
 
       {/* Spec plate — zone identity, one hairline row below the instrument.
           The right side states the coverage boundary only when the loaded
