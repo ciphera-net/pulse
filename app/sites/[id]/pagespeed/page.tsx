@@ -136,10 +136,16 @@ export default function PageSpeedPage() {
   // * successful checks, so this navigates between checks that HAVE numbers.
   const checkTimeline = useMemo(() => {
     if (!historyChecks?.length) return [] as { id: string; checked_at: string }[]
+    // * ⚠️ keepPreviousData means historyChecks is briefly the OTHER strategy's
+    // * data straight after a tab switch. Navigating that timeline would fetch a
+    // * mobile check and render it under the Desktop tab, and then wedge at
+    // * selectedIndex === -1 once the real data arrived and the id was no longer
+    // * in the list. Only navigate a timeline that belongs to the visible tab.
+    if (historyChecks[0]?.strategy !== strategy) return [] as { id: string; checked_at: string }[]
     return [...historyChecks]
       .sort((a, b) => new Date(b.checked_at).getTime() - new Date(a.checked_at).getTime())
       .map(c => ({ id: c.id, checked_at: c.checked_at }))
-  }, [historyChecks])
+  }, [historyChecks, strategy])
 
   const selectedIndex = selectedCheckId ? checkTimeline.findIndex(t => t.id === selectedCheckId) : 0
   const canGoPrev = selectedIndex >= 0 && selectedIndex < checkTimeline.length - 1
@@ -265,12 +271,25 @@ export default function PageSpeedPage() {
         }
         try {
           const fresh = await getPageSpeedLatest(siteId)
-          const freshAttempt = fresh?.attempts.find(a => a.strategy === strategy)?.checked_at
-          if (freshAttempt && freshAttempt !== initialAttempt) {
+          const freshAttempt = fresh?.attempts.find(a => a.strategy === strategy)
+          if (freshAttempt && freshAttempt.checked_at !== initialAttempt) {
             stopPolling()
             setRunning(false)
             mutateLatest()
-            toast.success('PageSpeed check complete')
+            // * A new ATTEMPT is not the same thing as a new RESULT. An error
+            // * row also lands here, and reporting "check complete" over a
+            // * failure is the same silent-success the status line exists to
+            // * stop — the customer would get a green toast and then wonder why
+            // * the numbers did not move.
+            if (freshAttempt.status === 'error') {
+              toast.error(
+                freshAttempt.error
+                  ? `PageSpeed check failed — ${freshAttempt.error}`
+                  : 'PageSpeed check failed',
+              )
+            } else {
+              toast.success('PageSpeed check complete')
+            }
           }
         } catch {
           // * Silent — keep polling. A transient poll failure is not the check failing.
@@ -283,7 +302,12 @@ export default function PageSpeedPage() {
     }
   }, [siteId, strategy, latest, mutateLatest, stopPolling])
 
-  const showSkeleton = useMinimumLoading((configLoading || latestLoading) && !config && !latest)
+  // * Hold the skeleton until BOTH requests have landed. `!config && !latest`
+  // * clears as soon as EITHER arrives, and the two states that read off the
+  // * missing one are the confident-but-wrong ones: an established site flashes
+  // * "monitoring is off" (config still in flight) or "First check queued"
+  // * (latest still in flight) before the real page appears.
+  const showSkeleton = useMinimumLoading((configLoading || latestLoading) && (!config || !latest))
   if (showSkeleton) return <PageSpeedSkeleton />
   if (!site) return <div className="p-8 text-neutral-500">Site not found</div>
 
