@@ -24,9 +24,29 @@ function hm(d: Date): string {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-/** 14/03/2025 — tables, lists, general display */
+/** 14/03/2025 — tables, lists, general display.
+ *
+ * ⚠️ LOCAL-DAY, and that is correct for what it is used for: a date the USER
+ * chose or is choosing (date-range pickers, "today"). It is the wrong function
+ * for an instant the SERVER decided — see formatDateUTC.
+ */
 export function formatDate(d: Date): string {
   return dmy(d)
+}
+
+/** 14/03/2025, in UTC — for a calendar date the SERVER decided.
+ *
+ * A billing date, a renewal date or a retry date is not a fact about where the
+ * reader is sitting; it is a date chosen server-side and stored as a UTC
+ * instant. Rendering one with formatDate() reads the LOCAL day, so every viewer
+ * west of UTC sees a midnight-UTC date one day early — a customer in New York
+ * was shown 14/05 for a plan that renews on 15/05.
+ *
+ * Found by pinning a negative-offset timezone in vitest.setup.ts; under the UTC
+ * that CI inherited, the bug and the fix are indistinguishable.
+ */
+export function formatDateUTC(d: Date): string {
+  return `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`
 }
 
 /** 14/03 — charts, compact spaces. Adds year if different from current. */
