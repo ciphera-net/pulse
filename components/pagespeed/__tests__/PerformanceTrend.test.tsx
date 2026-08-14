@@ -48,11 +48,45 @@ const series = (scores: (number | null)[], source: 'psi' | 'lighthouse' | ((i: n
 describe('trailingMedian', () => {
   it('smooths a single outlier instead of plotting it as the trend', () => {
     // The real measurement: three desktop runs of an unchanged page, 95/89/95.
-    expect(trailingMedian([95, 89, 95], 7)).toEqual([95, 89, 95].map((_, i) => [95, 89, 95].slice(0, i + 1).sort((a, b) => a - b)[Math.floor(i / 2)]))
+    //
+    // The expected array is written out BY HAND. It used to be computed with the
+    // same slice-sort-lower-median expression the implementation uses, so it
+    // could only confirm the code agreed with a copy of itself — an
+    // implementation that returned its input unchanged satisfied it exactly.
+    // (It also evaluates to the input unchanged here, which is why the second
+    // half of this test, not the first, is what earns the title.)
+    expect(trailingMedian([95, 89, 95], 7)).toEqual([95, 89, 95])
+
     // Concretely: a lone 20-point dip does not drag the line down by 20.
     const line = trailingMedian([80, 80, 80, 80, 80, 60, 80], 7)
     expect(line[5]).toBe(80)
     expect(line[6]).toBe(80)
+  })
+
+  it('FORGETS values older than the window', () => {
+    // 🔴 THE WINDOW WAS NEVER EXERCISED. Every input in this block used to be 7
+    // values or fewer, so Math.max(0, i - window + 1) was always 0 and the slice
+    // was always the whole prefix. Replacing it with a cumulative
+    // `values.slice(0, i + 1)` — an all-history median — left the suite GREEN.
+    //
+    // usePageSpeedHistory defaults to 90 days, so the real chart plots ~90
+    // points. With the window regressed to cumulative, a site that genuinely
+    // drops from 90 to 45 and stays there keeps drawing a line near 90 for about
+    // six more weeks: the chart bills itself as a 7-check median and silently
+    // reports a stale trend, hiding exactly the regression the redesign exists
+    // to make visible.
+    const line = trailingMedian([90, 90, 90, 90, 90, 90, 90, 40, 40, 40, 40], 7)
+
+    expect(line[6]).toBe(90) // still entirely inside the flat stretch
+
+    // The exact crossing, which is what proves the window is a WINDOW:
+    //   i=9  → indices 3..9  = [90,90,90,90,40,40,40] → four 90s → median 90
+    //   i=10 → indices 4..10 = [90,90,90,40,40,40,40] → four 40s → median 40
+    // The oldest 90 falls out of the window between those two points, and that
+    // is the only reason the value moves. A cumulative median over all eleven
+    // values is 90 at BOTH indices, so this pair is what kills the mutation.
+    expect(line[9]).toBe(90)
+    expect(line[10]).toBe(40)
   })
 
   it('takes the LOWER median, matching the backend rule', () => {
@@ -63,6 +97,13 @@ describe('trailingMedian', () => {
 
   it('only looks backwards — the first point is its own median', () => {
     expect(trailingMedian([73, 10, 10, 10], 7)[0]).toBe(73)
+  })
+
+  it('honours the window argument rather than a hardcoded 7', () => {
+    // A window of 3 forgets faster than a window of 7 on the same input.
+    const input = [90, 90, 90, 90, 40, 40]
+    expect(trailingMedian(input, 3)[5]).toBe(40)
+    expect(trailingMedian(input, 7)[5]).toBe(90)
   })
 })
 
@@ -108,6 +149,37 @@ describe('PerformanceTrend', () => {
     const gap = Math.abs(cys[0] - cys[1])
     expect(gap).toBeGreaterThan(30)
     expect(gap).toBeLessThan(50)
+  })
+
+  it('draws the LINE from the median and the DOTS from the raw scores', () => {
+    // Every other test in this file reads <circle> cy, which is y(p.score) — the
+    // raw check. NOTHING read the line's own geometry, so the component could
+    // have plotted raw scores as the trend line and the whole suite would still
+    // have passed: the caption says "line = 7-check median", and no test held it
+    // to that.
+    //
+    // Seven points, one 20-point dip at index 5. The dot must follow the dip and
+    // the line must not.
+    const { container } = render(<PerformanceTrend checks={series([80, 80, 80, 80, 80, 60, 80])} />)
+
+    const linePath = container.querySelector('path[fill="none"]')
+    expect(linePath).toBeTruthy()
+    const ys = (linePath!.getAttribute('d') ?? '')
+      .replace(/^M/, '')
+      .split('L')
+      .map(pair => Number(pair.split(',')[1]))
+    expect(ys.length).toBe(7)
+
+    const dots = [...container.querySelectorAll('circle')] as SVGCircleElement[]
+    const dotYs = dots.map(d => Number(d.getAttribute('cy')))
+
+    // y is pinned 0-100 over the plot: padT=12, plot height 202, so a LOWER
+    // score sits FURTHER DOWN (a larger y).
+    expect(dotYs[5]).toBeGreaterThan(dotYs[4]) // the dot shows the dip
+    expect(ys[5]).toBeCloseTo(ys[4], 1) // the line does not
+    // And the line is genuinely above the dipped dot, by roughly the 20 points
+    // the median smoothed away.
+    expect(dotYs[5] - ys[5]).toBeGreaterThan(30)
   })
 
   it('draws one dot per check — the spread, not just the trend', () => {
