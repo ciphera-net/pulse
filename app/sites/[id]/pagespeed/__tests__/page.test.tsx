@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, fireEvent, act } from '@testing-library/react'
 import type { PageSpeedCheck, PageSpeedAttempt, PageSpeedConfig } from '@/lib/api/pagespeed'
 
 // Page-level tests for the states that used to fail SILENTLY. Each one pins a
@@ -52,6 +52,7 @@ vi.mock('@/lib/api/pagespeed', async importOriginal => {
 })
 
 import PageSpeedPage from '../page'
+import { getPageSpeedCheck } from '@/lib/api/pagespeed'
 
 const config = (over: Partial<PageSpeedConfig> = {}): PageSpeedConfig => ({
   site_id: 'site-1',
@@ -112,7 +113,7 @@ beforeEach(() => {
     isLoading: false,
     mutate: vi.fn(),
   })
-  mockHistory.mockReturnValue({ data: [], error: undefined })
+  mockHistory.mockReturnValue({ data: [], error: undefined, mutate: vi.fn() })
 })
 
 describe('PageSpeed page — states that used to fail silently', () => {
@@ -247,5 +248,229 @@ describe('PageSpeed page — states that used to fail silently', () => {
     const { container } = render(<PageSpeedPage />)
     expect(container.textContent).not.toContain('Core Web Vitals')
     expect(container.textContent).toContain('Lab performance scores')
+  })
+})
+
+describe('PageSpeed page — the check navigator and the trend card', () => {
+  it('does NOT render an empty trend card when no check in the window has a score', () => {
+    // The card wrapper was gated on `historyChecks.length >= 2`, but
+    // PerformanceTrend filters to performance_score !== null and renders nothing
+    // below two points. Those are different sets: a status='ok' row can carry a
+    // NULL performance score, because the parser returns nil when the
+    // performance category is absent or unscored while the check itself still
+    // succeeds. A site whose page never stabilises accumulates exactly these
+    // rows, so the user got a bordered box containing the heading
+    // "Performance score trend" and nothing else, on every single load.
+    mockHistory.mockReturnValue({
+      data: [
+        check({ id: 'h1', performance_score: null, checked_at: '2026-08-11T09:00:00Z' }),
+        check({ id: 'h2', performance_score: null, checked_at: '2026-08-12T09:00:00Z' }),
+        check({ id: 'h3', performance_score: null, checked_at: '2026-08-13T09:00:00Z' }),
+      ],
+      error: undefined,
+      mutate: vi.fn(),
+    })
+    const { container } = render(<PageSpeedPage />)
+    expect(container.textContent ?? '').not.toContain('Performance score trend')
+  })
+
+  it('does NOT render the trend card with exactly ONE scored check — the boundary', () => {
+    // The chart needs TWO points; with one it returns null and the card is empty
+    // again. Without this case, mutating the gate from >= 2 to >= 1 restores the
+    // exact bug the gate exists to prevent and both other tests stay green.
+    mockHistory.mockReturnValue({
+      data: [
+        check({ id: 'h1', performance_score: 70, checked_at: '2026-08-11T09:00:00Z' }),
+        check({ id: 'h2', performance_score: null, checked_at: '2026-08-12T09:00:00Z' }),
+        check({ id: 'h3', performance_score: null, checked_at: '2026-08-13T09:00:00Z' }),
+      ],
+      error: undefined,
+      mutate: vi.fn(),
+    })
+    const { container } = render(<PageSpeedPage />)
+    expect(container.textContent ?? '').not.toContain('Performance score trend')
+  })
+
+  it('DOES render the trend card once two checks carry a score — the positive control', () => {
+    // Without this, the assertion above also passes if the card were deleted.
+    mockHistory.mockReturnValue({
+      data: [
+        check({ id: 'h1', performance_score: 70, checked_at: '2026-08-11T09:00:00Z' }),
+        check({ id: 'h2', performance_score: null, checked_at: '2026-08-12T09:00:00Z' }),
+        check({ id: 'h3', performance_score: 80, checked_at: '2026-08-13T09:00:00Z' }),
+      ],
+      error: undefined,
+      mutate: vi.fn(),
+    })
+    const { container } = render(<PageSpeedPage />)
+    expect(container.textContent ?? '').toContain('Performance score trend')
+  })
+
+  it('does not skip a check when the timeline lags the latest check', () => {
+    // 🔴 THE STALE-TIMELINE CASE. After a manual check completes the page mutates
+    // `latest` — a different SWR key from `history` — so for one refresh interval
+    // the timeline is exactly one row behind. The navigator used to assume
+    // `checkTimeline[0]` WAS the displayed check and mapped index 0 to "show
+    // latest", so "Previous check" stepped to timeline[1] and the newest
+    // historical check was unreachable by any button.
+    //
+    // Here `latest` is chk-new (12:03 today) and the timeline does not contain
+    // it. "Previous check" must reach the timeline's newest entry, h-13aug.
+    mockLatest.mockReturnValue({
+      data: {
+        checks: [check({ id: 'chk-new', checked_at: '2026-08-14T12:03:00Z' })],
+        attempts: [attempt({ id: 'chk-new', checked_at: '2026-08-14T12:03:00Z' })],
+      },
+      error: undefined,
+      isLoading: false,
+      mutate: vi.fn(),
+    })
+    mockHistory.mockReturnValue({
+      data: [
+        check({ id: 'h-11aug', checked_at: '2026-08-11T09:00:00Z' }),
+        check({ id: 'h-12aug', checked_at: '2026-08-12T09:00:00Z' }),
+        check({ id: 'h-13aug', checked_at: '2026-08-13T09:00:00Z' }),
+      ],
+      error: undefined,
+      mutate: vi.fn(),
+    })
+
+    const { container } = render(<PageSpeedPage />)
+    const prev = [...container.querySelectorAll('button')].find(b =>
+      (b.getAttribute('aria-label') ?? b.textContent ?? '').toLowerCase().includes('previous'),
+    )
+    expect(prev, 'no "previous check" control was rendered').toBeTruthy()
+    expect(prev!.hasAttribute('disabled')).toBe(false)
+
+    // The decisive assertion: WHICH check it navigates to. Merely being enabled
+    // does not distinguish the fix — the old code enabled it too, and then
+    // stepped one check too far.
+    vi.mocked(getPageSpeedCheck).mockResolvedValue(check({ id: 'h-13aug' }))
+    fireEvent.click(prev!)
+
+    expect(getPageSpeedCheck).toHaveBeenCalledWith('site-1', 'h-13aug')
+    expect(getPageSpeedCheck).not.toHaveBeenCalledWith('site-1', 'h-12aug')
+  })
+
+  it('can get BACK to the latest check after stepping into the lagging timeline', async () => {
+    // The other half of the same state, and a bug the first version of the fix
+    // introduced: with the latest check absent from the timeline, selectedIndex
+    // is -1; stepping back lands on index 0, and `canGoNext = selectedIndex > 0`
+    // is then false. The arrow was disabled and goToCheck(-1) fell off the end of
+    // the array, so the user was stuck one check behind the newest one with no
+    // control that could return them to it.
+    mockLatest.mockReturnValue({
+      data: {
+        checks: [check({ id: 'chk-new', performance_score: 55, checked_at: '2026-08-14T12:03:00Z' })],
+        attempts: [attempt({ id: 'chk-new', checked_at: '2026-08-14T12:03:00Z' })],
+      },
+      error: undefined,
+      isLoading: false,
+      mutate: vi.fn(),
+    })
+    mockHistory.mockReturnValue({
+      data: [
+        check({ id: 'h-12aug', checked_at: '2026-08-12T09:00:00Z' }),
+        check({ id: 'h-13aug', checked_at: '2026-08-13T09:00:00Z' }),
+      ],
+      error: undefined,
+      mutate: vi.fn(),
+    })
+
+    vi.mocked(getPageSpeedCheck).mockResolvedValue(check({ id: 'h-13aug', performance_score: 88 }))
+    const { container } = render(<PageSpeedPage />)
+    const prev = [...container.querySelectorAll('button')].find(
+      b => b.getAttribute('aria-label') === 'Previous check',
+    )!
+    await act(async () => {
+      fireEvent.click(prev)
+    })
+    expect(container.textContent ?? '', 'the step back did not land on the historical check').toContain('88')
+
+    const next = [...container.querySelectorAll('button')].find(
+      b => b.getAttribute('aria-label') === 'Next check',
+    )!
+    expect(next.hasAttribute('disabled'), 'Next check is disabled; the latest check is unreachable').toBe(false)
+    await act(async () => {
+      fireEvent.click(next)
+    })
+    // Back on the latest check, which is served from `latest` rather than fetched.
+    expect(container.textContent ?? '').toContain('55')
+  })
+})
+
+describe('PageSpeed page — the retry race (F19)', () => {
+  it('a late retry response does not overwrite the check the user navigated to', async () => {
+    // 🔴 THE ORDERING BUG. retryCheckFetch used to fire its own unguarded
+    // promise, while the main effect had a `cancelled` flag. Both could be in
+    // flight at once and resolve in either order:
+    //
+    //   select X -> fetch fails -> "Couldn't load that check"
+    //   click "Try again"       -> retry for X starts (no ownership guard)
+    //   click "Previous check"  -> effect starts a fetch for Y
+    //   Y resolves, renders
+    //   X's retry resolves LAST -> setSelectedCheckData(X)
+    //
+    // The page then rendered X's scores under Y's navigator position, with the
+    // spinner already cleared, so nothing on screen suggested anything was
+    // wrong. Routing retry through the same cancellable effect (via a nonce)
+    // means the switch to Y cancels X.
+    mockLatest.mockReturnValue({
+      data: {
+        checks: [check({ id: 'chk-latest', checked_at: '2026-08-14T12:03:00Z' })],
+        attempts: [attempt({ id: 'chk-latest', checked_at: '2026-08-14T12:03:00Z' })],
+      },
+      error: undefined,
+      isLoading: false,
+      mutate: vi.fn(),
+    })
+    mockHistory.mockReturnValue({
+      data: [
+        check({ id: 'h-Y', performance_score: 41, checked_at: '2026-08-12T09:00:00Z' }),
+        check({ id: 'h-X', performance_score: 88, checked_at: '2026-08-13T09:00:00Z' }),
+      ],
+      error: undefined,
+      mutate: vi.fn(),
+    })
+
+    const api = vi.mocked(getPageSpeedCheck)
+
+    // 1. Navigate to X; that fetch fails.
+    api.mockRejectedValueOnce(new Error('boom'))
+    const { container } = render(<PageSpeedPage />)
+    const prev = [...container.querySelectorAll('button')].find(
+      b => b.getAttribute('aria-label') === 'Previous check',
+    )!
+    await act(async () => {
+      fireEvent.click(prev)
+    })
+    expect(container.textContent ?? '').toContain("Couldn't load that check")
+
+    // 2. Click "Try again" — X's retry is deferred and will resolve LAST.
+    let resolveX: (v: PageSpeedCheck) => void = () => {}
+    api.mockImplementationOnce(() => new Promise<PageSpeedCheck>(res => { resolveX = res }))
+    const retry = [...container.querySelectorAll('button')].find(b => b.textContent === 'Try again')!
+    await act(async () => {
+      fireEvent.click(retry)
+    })
+
+    // 3. Navigate to Y while X's retry is still in flight; Y resolves at once.
+    api.mockResolvedValueOnce(check({ id: 'h-Y', performance_score: 41 }))
+    const prev2 = [...container.querySelectorAll('button')].find(
+      b => b.getAttribute('aria-label') === 'Previous check',
+    )!
+    await act(async () => {
+      fireEvent.click(prev2)
+    })
+
+    // 4. X's retry finally resolves — and must be discarded.
+    await act(async () => {
+      resolveX(check({ id: 'h-X', performance_score: 88 }))
+      await Promise.resolve()
+    })
+
+    const text = container.textContent ?? ''
+    expect(text, 'the abandoned retry overwrote the check the user asked for').toContain('41')
+    expect(text, "check X's score is on screen although the user navigated to Y").not.toContain('88')
   })
 })
