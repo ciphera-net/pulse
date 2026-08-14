@@ -39,6 +39,12 @@ interface MapViewProps {
   data: Array<{ country: string; pageviews: number }>
   className?: string
   formatValue?: (value: number) => string
+  /**
+   * Unit noun after the formatted value ('' for self-describing units like
+   * bytes). Defaults to the visitors wording so existing consumers keep
+   * their tooltip — the CDN map passes bandwidth, not people.
+   */
+  valueLabel?: (value: number) => string
 }
 
 type CountryFeature = { properties: { name: string; a3: string }; id: string }
@@ -48,7 +54,7 @@ function getCountryFeatures(): CountryFeature[] {
   return (collection as unknown as GeoJSON.FeatureCollection).features as unknown as CountryFeature[]
 }
 
-function MapView({ data, className, formatValue = formatNumber }: MapViewProps) {
+function MapView({ data, className, formatValue = formatNumber, valueLabel = (v) => (v === 1 ? 'visitor' : 'visitors') }: MapViewProps) {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const highlightRef = useRef<d3.Selection<SVGPathElement, unknown, null, undefined> | null>(null)
   const [tooltip, setTooltip] = useState<{ x: number; y: number; name: string; value: number } | null>(null)
@@ -155,7 +161,7 @@ function MapView({ data, className, formatValue = formatNumber }: MapViewProps) 
             style={{ left: tooltip.x, top: tooltip.y - 36 }}
           >
             <span>{tooltip.name}</span>
-            <span className="ml-2 text-brand-orange font-bold">{formatValue(tooltip.value)} {tooltip.value === 1 ? 'visitor' : 'visitors'}</span>
+            <span className="ml-2 text-brand-orange font-bold">{[formatValue(tooltip.value), valueLabel(tooltip.value)].filter(Boolean).join(' ')}</span>
           </div>
         )}
       </div>
