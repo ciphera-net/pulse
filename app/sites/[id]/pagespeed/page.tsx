@@ -115,7 +115,7 @@ export default function PageSpeedPage() {
   const [toggling, setToggling] = useState(false)
   const [frequency, setFrequency] = useState<string>('weekly')
 
-  const { data: historyChecks, error: historyError } = usePageSpeedHistory(siteId, strategy)
+  const { data: historyChecks, error: historyError, mutate: mutateHistory } = usePageSpeedHistory(siteId, strategy)
 
   const [selectedCheckId, setSelectedCheckId] = useState<string | null>(null)
   const [selectedCheckData, setSelectedCheckData] = useState<PageSpeedCheck | null>(null)
@@ -132,6 +132,9 @@ export default function PageSpeedPage() {
     [write],
   )
 
+  const latestForStrategy = latest?.checks.find(c => c.strategy === strategy) ?? null
+  const attemptForStrategy = latest?.attempts.find(a => a.strategy === strategy) ?? null
+
   // * The check timeline for the visible strategy. History returns only
   // * successful checks, so this navigates between checks that HAVE numbers.
   const checkTimeline = useMemo(() => {
@@ -147,15 +150,32 @@ export default function PageSpeedPage() {
       .map(c => ({ id: c.id, checked_at: c.checked_at }))
   }, [historyChecks, strategy])
 
-  const selectedIndex = selectedCheckId ? checkTimeline.findIndex(t => t.id === selectedCheckId) : 0
-  const canGoPrev = selectedIndex >= 0 && selectedIndex < checkTimeline.length - 1
+  // * The navigator mixes two independent sources: the DISPLAYED check comes
+  // * from `latest`, the index space comes from `history`, and they are separate
+  // * SWR keys. Straight after a manual check completes we mutate `latest`, so
+  // * for up to one history refresh interval the timeline is exactly one row
+  // * behind — and index 0 is then NOT the displayed check.
+  // *
+  // * Assuming it was (`selectedCheckId ? findIndex(...) : 0`) made "Previous
+  // * check" step to timeline[1] and SKIP timeline[0] entirely: the check the
+  // * user actually wanted was unreachable by any button until the next refresh.
+  // * Reconciling by ID removes the assumption. -1 is meaningful here — it means
+  // * "the displayed check is newer than everything in the timeline", and
+  // * goToCheck(0) is then correctly the previous one.
+  const displayedCheckId = selectedCheckId ?? latestForStrategy?.id ?? null
+  const selectedIndex = displayedCheckId ? checkTimeline.findIndex(t => t.id === displayedCheckId) : -1
+  const canGoPrev = checkTimeline.length > 0 && selectedIndex < checkTimeline.length - 1
   const canGoNext = selectedIndex > 0
 
   const goToCheck = (index: number) => {
     const target = checkTimeline[index]
     if (!target) return
     setCheckFetchFailed(false)
-    if (index === 0) {
+    // * Selecting the check that IS the latest returns to the un-selected state,
+    // * so the page renders `latest` (which carries the blobs) rather than
+    // * re-fetching the same row. Keyed on identity, not on index 0 — after a
+    // * manual run the newest timeline entry is not the latest check.
+    if (target.id === latestForStrategy?.id) {
       setSelectedCheckId(null)
       setSelectedCheckData(null)
       return
@@ -163,20 +183,20 @@ export default function PageSpeedPage() {
     setSelectedCheckId(target.id)
   }
 
+  // * Retry does NOT fetch. It bumps a nonce the effect below depends on, so the
+  // * single already-cancellable effect owns every request for a check.
+  // *
+  // * It used to fire its own unguarded promise. That request and the effect's
+  // * could be in flight together and resolve in either order, so: fail on check
+  // * X, click "Try again", then click "Previous check" (which selects Y and
+  // * starts the effect's fetch) — Y resolves and renders, then X's retry
+  // * resolves and overwrites it. The page then showed check X's scores and
+  // * timestamp while the navigator arrows were computed from Y's index, with no
+  // * spinner left to suggest anything was in flight.
+  const [retryNonce, setRetryNonce] = useState(0)
   const retryCheckFetch = useCallback(() => {
-    if (!selectedCheckId) return
-    setCheckFetchFailed(false)
-    setLoadingCheck(true)
-    getPageSpeedCheck(siteId, selectedCheckId)
-      .then(data => {
-        setSelectedCheckData(data)
-        setLoadingCheck(false)
-      })
-      .catch(() => {
-        setCheckFetchFailed(true)
-        setLoadingCheck(false)
-      })
-  }, [selectedCheckId, siteId])
+    setRetryNonce(n => n + 1)
+  }, [])
 
   useEffect(() => {
     if (!selectedCheckId || !siteId) {
@@ -205,10 +225,7 @@ export default function PageSpeedPage() {
     return () => {
       cancelled = true
     }
-  }, [selectedCheckId, siteId])
-
-  const latestForStrategy = latest?.checks.find(c => c.strategy === strategy) ?? null
-  const attemptForStrategy = latest?.attempts.find(a => a.strategy === strategy) ?? null
+  }, [selectedCheckId, siteId, retryNonce])
 
   // * When a historical fetch fails we render NOTHING for the check body rather
   // * than substituting the latest one under the wrong timestamp.
@@ -232,6 +249,7 @@ export default function PageSpeedPage() {
       await updatePageSpeedConfig(siteId, { enabled, frequency })
       mutateConfig()
       mutateLatest()
+      void mutateHistory()
       toast.success(enabled ? 'PageSpeed monitoring enabled' : 'PageSpeed monitoring disabled')
     } catch {
       toast.error('Failed to update PageSpeed monitoring')
@@ -275,7 +293,12 @@ export default function PageSpeedPage() {
           if (freshAttempt && freshAttempt.checked_at !== initialAttempt) {
             stopPolling()
             setRunning(false)
+            // * BOTH sources. They are separate SWR keys, and refreshing only
+            // * `latest` leaves the check navigator's index space one row behind
+            // * until the history hook's own interval fires — during which the
+            // * newest historical check is unreachable by any button.
             mutateLatest()
+            void mutateHistory()
             // * A new ATTEMPT is not the same thing as a new RESULT. An error
             // * row also lands here, and reporting "check complete" over a
             // * failure is the same silent-success the status line exists to
@@ -300,7 +323,7 @@ export default function PageSpeedPage() {
       toast.error(message)
       setRunning(false)
     }
-  }, [siteId, strategy, latest, mutateLatest, stopPolling])
+  }, [siteId, strategy, latest, mutateLatest, mutateHistory, stopPolling])
 
   // * Hold the skeleton until BOTH requests have landed. `!config && !latest`
   // * clears as soon as EITHER arrives, and the two states that read off the
@@ -330,6 +353,10 @@ export default function PageSpeedPage() {
       </div>
     )
   }
+
+  // * How many history rows the trend chart can actually plot — the same filter
+  // * PerformanceTrend applies internally.
+  const scoredHistoryCount = historyChecks?.filter(c => c.performance_score !== null).length ?? 0
 
   const enabled = config?.enabled ?? false
 
@@ -651,11 +678,20 @@ export default function PageSpeedPage() {
               description="The trend request failed. The latest check above is unaffected."
             />
           ) : (
-            historyChecks &&
-            historyChecks.length >= 2 && (
+            // * Gate on SCORED checks, not on rows. PerformanceTrend filters to
+            // * performance_score !== null and renders nothing below two points,
+            // * and the two conditions are not the same set: a status='ok' row
+            // * can carry a NULL performance score, because categoryScore returns
+            // * nil when the performance category is absent or unscored while the
+            // * check itself still succeeds. A site whose page never stabilises
+            // * (an NO_LCP-class result) therefore accumulated ok rows with no
+            // * score, the card mounted, the chart returned null, and the user
+            // * got a bordered box containing a heading and nothing else on every
+            // * load.
+            scoredHistoryCount >= 2 && (
               <div className={`${CARD} p-6 sm:p-8`}>
                 <h3 className={`${SECTION_LABEL} mb-4`}>Performance score trend</h3>
-                <PerformanceTrend checks={historyChecks} />
+                <PerformanceTrend checks={historyChecks ?? []} />
               </div>
             )
           )}
