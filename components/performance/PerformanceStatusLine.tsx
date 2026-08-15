@@ -1,9 +1,9 @@
 'use client'
 
-import type { PageSpeedAttempt, PageSpeedCheck } from '@/lib/api/pagespeed'
+import type { PerformanceAttempt, PerformanceCheck } from '@/lib/api/performance'
 
 // ---------------------------------------------------------------------------
-// PageSpeed status line — the meta line under the page subtitle, in the same
+// Performance status line — the meta line under the page subtitle, in the same
 // grammar and treatment as SyncStatusLine on the Search and CDN pages
 // (text-xs neutral-500 when healthy, text-red-400 with an inline action when
 // not).
@@ -15,11 +15,11 @@ import type { PageSpeedAttempt, PageSpeedCheck } from '@/lib/api/pagespeed'
 // it says out loud when those are not the same check.
 // ---------------------------------------------------------------------------
 
-interface PageSpeedStatusLineProps {
+interface PerformanceStatusLineProps {
   /** The most recent attempt for the visible strategy, whatever its outcome. */
-  attempt: PageSpeedAttempt | null
+  attempt: PerformanceAttempt | null
   /** The check whose numbers are actually on screen. */
-  displayed: PageSpeedCheck | null
+  displayed: PerformanceCheck | null
   /** From the site's config — when the next scheduled check is due. */
   nextCheckAt: string | null
   /** Rerun action, shown inline on the failure line. Omitted without permission. */
@@ -63,13 +63,13 @@ export function formatCountdown(target: string, now: Date = new Date()): string 
   return `in ${Math.round(hours / 24)}d`
 }
 
-export function PageSpeedStatusLine({
+export function PerformanceStatusLine({
   attempt,
   displayed,
   nextCheckAt,
   onRunCheck,
   runInFlight,
-}: PageSpeedStatusLineProps) {
+}: PerformanceStatusLineProps) {
   // No attempt at all: monitoring is on but nothing has run yet. Say that
   // rather than rendering an empty line that reads like a loading failure.
   if (!attempt) {

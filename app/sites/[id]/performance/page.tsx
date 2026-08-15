@@ -3,23 +3,23 @@
 import { useCan } from '@/lib/auth/permissions'
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
-import { useSite, usePageSpeedConfig, usePageSpeedLatest, usePageSpeedHistory } from '@/lib/swr/dashboard'
+import { useSite, usePerformanceConfig, usePerformanceLatest, usePerformanceHistory } from '@/lib/swr/dashboard'
 import {
-  updatePageSpeedConfig,
-  triggerPageSpeedCheck,
-  getPageSpeedLatest,
-  getPageSpeedCheck,
-  type PageSpeedCheck,
+  updatePerformanceConfig,
+  triggerPerformanceCheck,
+  getPerformanceLatest,
+  getPerformanceCheck,
+  type PerformanceCheck,
   type AuditSummary,
-} from '@/lib/api/pagespeed'
+} from '@/lib/api/performance'
 import { useQueryParamsWriter } from '@/lib/hooks/useQueryParamsWriter'
 import { toast, Button } from '@ciphera-net/facet'
 import Select from '@/components/ui/select'
 import { motion } from 'framer-motion'
-import ScoreGauge from '@/components/pagespeed/ScoreGauge'
-import { PageSpeedStatusLine } from '@/components/pagespeed/PageSpeedStatusLine'
-import { PerformanceTrend } from '@/components/pagespeed/PerformanceTrend'
-import { auditDescription } from '@/lib/pagespeed/descriptions'
+import ScoreGauge from '@/components/performance/ScoreGauge'
+import { PerformanceStatusLine } from '@/components/performance/PerformanceStatusLine'
+import { PerformanceTrend } from '@/components/performance/PerformanceTrend'
+import { auditDescription } from '@/lib/performance/descriptions'
 import { remapLearnUrl } from '@/lib/learn-links'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { useMinimumLoading } from '@/components/skeletons'
@@ -108,17 +108,17 @@ export default function PerformancePage() {
   const strategy: Strategy = searchParams.get('strategy') === 'desktop' ? 'desktop' : 'mobile'
 
   const { data: site } = useSite(siteId)
-  const { data: config, error: configError, isLoading: configLoading, mutate: mutateConfig } = usePageSpeedConfig(siteId)
-  const { data: latest, error: latestError, isLoading: latestLoading, mutate: mutateLatest } = usePageSpeedLatest(siteId)
+  const { data: config, error: configError, isLoading: configLoading, mutate: mutateConfig } = usePerformanceConfig(siteId)
+  const { data: latest, error: latestError, isLoading: latestLoading, mutate: mutateLatest } = usePerformanceLatest(siteId)
 
   const [running, setRunning] = useState(false)
   const [toggling, setToggling] = useState(false)
   const [frequency, setFrequency] = useState<string>('weekly')
 
-  const { data: historyChecks, error: historyError, mutate: mutateHistory } = usePageSpeedHistory(siteId, strategy)
+  const { data: historyChecks, error: historyError, mutate: mutateHistory } = usePerformanceHistory(siteId, strategy)
 
   const [selectedCheckId, setSelectedCheckId] = useState<string | null>(null)
-  const [selectedCheckData, setSelectedCheckData] = useState<PageSpeedCheck | null>(null)
+  const [selectedCheckData, setSelectedCheckData] = useState<PerformanceCheck | null>(null)
   const [loadingCheck, setLoadingCheck] = useState(false)
   const [checkFetchFailed, setCheckFetchFailed] = useState(false)
 
@@ -226,7 +226,7 @@ export default function PerformancePage() {
     let cancelled = false
     setLoadingCheck(true)
     setCheckFetchFailed(false)
-    getPageSpeedCheck(siteId, selectedCheckId)
+    getPerformanceCheck(siteId, selectedCheckId)
       .then(data => {
         if (cancelled) return
         setSelectedCheckData(data)
@@ -248,7 +248,7 @@ export default function PerformancePage() {
 
   // * When a historical fetch fails we render NOTHING for the check body rather
   // * than substituting the latest one under the wrong timestamp.
-  const currentCheck: PageSpeedCheck | null = selectedCheckId
+  const currentCheck: PerformanceCheck | null = selectedCheckId
     ? checkFetchFailed
       ? null
       : selectedCheckData
@@ -265,7 +265,7 @@ export default function PerformancePage() {
   const handleToggle = async (enabled: boolean) => {
     setToggling(true)
     try {
-      await updatePageSpeedConfig(siteId, { enabled, frequency })
+      await updatePerformanceConfig(siteId, { enabled, frequency })
       mutateConfig()
       mutateLatest()
       void mutateHistory()
@@ -289,7 +289,7 @@ export default function PerformancePage() {
   const handleRunCheck = useCallback(async () => {
     setRunning(true)
     try {
-      await triggerPageSpeedCheck(siteId)
+      await triggerPerformanceCheck(siteId)
       toast.success('Performance check started — three runs per device, so this takes a few minutes')
 
       const initialAttempt = latest?.attempts.find(a => a.strategy === strategy)?.checked_at
@@ -307,7 +307,7 @@ export default function PerformancePage() {
           return
         }
         try {
-          const fresh = await getPageSpeedLatest(siteId)
+          const fresh = await getPerformanceLatest(siteId)
           const freshAttempt = fresh?.attempts.find(a => a.strategy === strategy)
           if (freshAttempt && freshAttempt.checked_at !== initialAttempt) {
             stopPolling()
@@ -473,7 +473,7 @@ export default function PerformancePage() {
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <PageHeader domain={site.domain} frequency={config?.frequency ?? null} />
-          <PageSpeedStatusLine
+          <PerformanceStatusLine
             attempt={attemptForStrategy}
             displayed={latestForStrategy}
             nextCheckAt={config?.next_check_at ?? null}
@@ -840,7 +840,7 @@ function SpecPlate({
   attempt,
 }: {
   domain: string
-  check: PageSpeedCheck | null
+  check: PerformanceCheck | null
   attempt: { lighthouse_version: string | null; source: string } | null
 }) {
   const version = check?.lighthouse_version ?? attempt?.lighthouse_version ?? null

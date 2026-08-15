@@ -69,7 +69,7 @@ const SETTINGS_ITEM: NavItem = {
 
 const NAV_SHORTCUTS: Record<string, string> = {
   Dashboard: 'G D', Journeys: 'G J', Funnels: 'G F', Search: 'G S',
-  CDN: 'G C', Uptime: 'G U', PageSpeed: 'G P', 'Site Settings': ',',
+  CDN: 'G C', Uptime: 'G U', Performance: 'G P', 'Site Settings': ',',
 }
 
 // Label that fades with the sidebar — always in the DOM, never removed

@@ -1,12 +1,12 @@
 import apiRequest from './client'
 
-// * Types for PageSpeed monitoring.
+// * Types for Performance monitoring.
 // *
 // * Checks are produced by a self-hosted Lighthouse runner (since 14-08-2026),
 // * not the Google PageSpeed Insights API. One stored check is the MEDIAN of
 // * three runs, selected as one coherent run — see `runs` / `runs_detail`.
 
-export interface PageSpeedConfig {
+export interface PerformanceConfig {
   site_id: string
   enabled: boolean
   frequency: 'daily' | 'weekly' | 'monthly'
@@ -50,10 +50,10 @@ export interface RunSummary {
   selected: boolean
 }
 
-export type PageSpeedStatus = 'ok' | 'error'
-export type PageSpeedSource = 'psi' | 'lighthouse'
+export type PerformanceStatus = 'ok' | 'error'
+export type PerformanceSource = 'psi' | 'lighthouse'
 
-export interface PageSpeedCheck {
+export interface PerformanceCheck {
   id: string
   site_id: string
   strategy: 'mobile' | 'desktop'
@@ -61,8 +61,8 @@ export interface PageSpeedCheck {
   // * Provenance. `lighthouse_version` and `runs` are null on every row written
   // * before the cutover — unknown is the honest value there, not a guess, and
   // * the trend chart draws its boundary annotation off exactly these fields.
-  source: PageSpeedSource
-  status: PageSpeedStatus
+  source: PerformanceSource
+  status: PerformanceStatus
   error: string | null
   lighthouse_version: string | null
   runs: number | null
@@ -91,11 +91,11 @@ export interface PageSpeedCheck {
 // * distinction is the whole point: the status line reports what happened last,
 // * while the gauges show the last numbers that actually exist. Conflating them
 // * is how the page used to present a stale check as current.
-export interface PageSpeedAttempt {
+export interface PerformanceAttempt {
   id: string
   strategy: 'mobile' | 'desktop'
-  source: PageSpeedSource
-  status: PageSpeedStatus
+  source: PerformanceSource
+  status: PerformanceStatus
   error: string | null
   lighthouse_version: string | null
   runs: number | null
@@ -103,49 +103,49 @@ export interface PageSpeedAttempt {
   checked_at: string
 }
 
-export interface PageSpeedLatest {
+export interface PerformanceLatest {
   /** Most recent SUCCESSFUL check per strategy — the numbers to render. */
-  checks: PageSpeedCheck[]
+  checks: PerformanceCheck[]
   /** Most recent attempt per strategy, successful or failed. */
-  attempts: PageSpeedAttempt[]
+  attempts: PerformanceAttempt[]
 }
 
-export async function getPageSpeedConfig(siteId: string): Promise<PageSpeedConfig> {
-  return apiRequest<PageSpeedConfig>(`/sites/${siteId}/pagespeed/config`)
+export async function getPerformanceConfig(siteId: string): Promise<PerformanceConfig> {
+  return apiRequest<PerformanceConfig>(`/sites/${siteId}/performance/config`)
 }
 
-export async function updatePageSpeedConfig(
+export async function updatePerformanceConfig(
   siteId: string,
   config: { enabled: boolean; frequency: string }
-): Promise<PageSpeedConfig> {
-  return apiRequest<PageSpeedConfig>(`/sites/${siteId}/pagespeed/config`, {
+): Promise<PerformanceConfig> {
+  return apiRequest<PerformanceConfig>(`/sites/${siteId}/performance/config`, {
     method: 'PUT',
     body: JSON.stringify(config),
   })
 }
 
-export async function getPageSpeedLatest(siteId: string): Promise<PageSpeedLatest> {
-  const res = await apiRequest<PageSpeedLatest>(`/sites/${siteId}/pagespeed/latest`)
+export async function getPerformanceLatest(siteId: string): Promise<PerformanceLatest> {
+  const res = await apiRequest<PerformanceLatest>(`/sites/${siteId}/performance/latest`)
   return { checks: res?.checks ?? [], attempts: res?.attempts ?? [] }
 }
 
-export async function getPageSpeedHistory(
+export async function getPerformanceHistory(
   siteId: string,
   strategy: 'mobile' | 'desktop' = 'mobile',
   days = 90
-): Promise<PageSpeedCheck[]> {
-  const res = await apiRequest<{ checks: PageSpeedCheck[] }>(
-    `/sites/${siteId}/pagespeed/history?strategy=${strategy}&days=${days}`
+): Promise<PerformanceCheck[]> {
+  const res = await apiRequest<{ checks: PerformanceCheck[] }>(
+    `/sites/${siteId}/performance/history?strategy=${strategy}&days=${days}`
   )
   return res?.checks ?? []
 }
 
-export async function getPageSpeedCheck(siteId: string, checkId: string): Promise<PageSpeedCheck> {
-  return apiRequest<PageSpeedCheck>(`/sites/${siteId}/pagespeed/checks/${checkId}`)
+export async function getPerformanceCheck(siteId: string, checkId: string): Promise<PerformanceCheck> {
+  return apiRequest<PerformanceCheck>(`/sites/${siteId}/performance/checks/${checkId}`)
 }
 
-// * Triggers an async PageSpeed check. Returns immediately (202).
-// * Caller should poll getPageSpeedLatest() for results.
-export async function triggerPageSpeedCheck(siteId: string): Promise<void> {
-  await apiRequest(`/sites/${siteId}/pagespeed/check`, { method: 'POST' })
+// * Triggers an async Performance check. Returns immediately (202).
+// * Caller should poll getPerformanceLatest() for results.
+export async function triggerPerformanceCheck(siteId: string): Promise<void> {
+  await apiRequest(`/sites/${siteId}/performance/check`, { method: 'POST' })
 }

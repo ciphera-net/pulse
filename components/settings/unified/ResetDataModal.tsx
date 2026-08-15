@@ -52,8 +52,8 @@ const RESET_MODULES: ResetModuleOption[] = [
   },
   {
     id: 'pagespeed',
-    label: 'PageSpeed',
-    description: 'PageSpeed Insights check history. Configuration is kept.',
+    label: 'Performance',
+    description: 'Performance check history. Configuration is kept.',
     icon: Gauge,
     tables: ['pagespeed_checks'],
   },

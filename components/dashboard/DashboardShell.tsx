@@ -66,7 +66,7 @@ const PAGE_META: Record<string, PageMeta> = {
   search:     { title: 'Search',        icon: SearchIcon },
   cdn:        { title: 'CDN',           icon: CloudUploadIcon },
   uptime:     { title: 'Uptime',        icon: HeartbeatIcon },
-  pagespeed:  { title: 'PageSpeed',     icon: GaugeIcon },
+  pagespeed:  { title: 'Performance',     icon: GaugeIcon },
   settings:   { title: 'Site Settings', icon: SettingsIcon },
 }
 

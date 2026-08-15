@@ -16,9 +16,9 @@ import {
   Spinner,
   getAuthErrorMessage,
 } from '@ciphera-net/facet'
-import { useSite, useSubscription, usePageSpeedConfig } from '@/lib/swr/dashboard'
+import { useSite, useSubscription, usePerformanceConfig } from '@/lib/swr/dashboard'
 import { updateSite, type PageRule } from '@/lib/api/sites'
-import { updatePageSpeedConfig } from '@/lib/api/pagespeed'
+import { updatePerformanceConfig } from '@/lib/api/performance'
 import { getRetentionOptionsForPlan, formatRetentionMonths, formatPlanName } from '@/lib/plans'
 import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
 import {
@@ -55,7 +55,7 @@ const SECTIONS = [
   { id: 'section-path-grouping', label: 'Path Grouping' },
   { id: 'section-query-params', label: 'Query Parameters' },
   { id: 'section-exclude-self', label: 'Exclude Self' },
-  { id: 'section-pagespeed', label: 'PageSpeed' },
+  { id: 'section-pagespeed', label: 'Performance' },
   { id: 'section-privacy-policy', label: 'Privacy Policy' },
 ] as const
 
@@ -108,7 +108,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
   const canEdit = useCan('sites.edit')
   const { data: site, error: siteError, mutate } = useSite(siteId)
   const { data: subscription, error: subscriptionError, mutate: mutateSubscription } = useSubscription()
-  const { data: psiConfig, error: psiConfigError, mutate: mutatePSIConfig } = usePageSpeedConfig(siteId)
+  const { data: psiConfig, error: psiConfigError, mutate: mutatePSIConfig } = usePerformanceConfig(siteId)
   const [collectPagePaths, setCollectPagePaths] = useState(true)
   const [collectReferrers, setCollectReferrers] = useState(true)
   const [collectDeviceInfo, setCollectDeviceInfo] = useState(true)
@@ -246,7 +246,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
       })
       // Save PSI frequency separately if it changed
       if (psiConfig?.enabled && psiFrequency !== (psiConfig.frequency || 'weekly')) {
-        await updatePageSpeedConfig(siteId, { enabled: psiConfig.enabled, frequency: psiFrequency })
+        await updatePerformanceConfig(siteId, { enabled: psiConfig.enabled, frequency: psiFrequency })
         await mutatePSIConfig()
       }
       setBaseline(JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency }))
@@ -585,20 +585,20 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
           </SettingsPanel>
         </section>
 
-        {/* PageSpeed Monitoring (spec §6). */}
+        {/* Performance Monitoring (spec §6). */}
         <section id="section-pagespeed" className="scroll-mt-24 space-y-4">
           {psiConfigError && (
             <SettingsErrorState
               variant="banner"
-              message="PageSpeed configuration could not be loaded."
+              message="Performance configuration could not be loaded."
               onRetry={() => mutatePSIConfig()}
             />
           )}
-          <SettingsPanel kicker="PageSpeed monitoring">
+          <SettingsPanel kicker="Performance monitoring">
             <PanelRows>
               <PanelRow
                 label="Check frequency"
-                caption="How often PageSpeed Insights runs automated checks."
+                caption="How often performance checks run automatically."
                 control={
                   psiConfigError ? (
                     <StatusChip tone="neutral">Unavailable</StatusChip>
@@ -615,7 +615,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
                       ]}
                       className="w-56"
                       disabled={!canEdit}
-                      aria-label="PageSpeed check frequency"
+                      aria-label="Performance check frequency"
                     />
                   ) : (
                     <div className="flex flex-col items-end gap-1.5">
