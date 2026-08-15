@@ -19,9 +19,16 @@ vi.mock('@/lib/swr/dashboard', () => ({
   usePageSpeedHistory: () => mockHistory(),
 }))
 
+// The visible strategy comes from ?strategy=. It has to be settable, because
+// the desktop tab is where the filmstrip aspect regression lived — a harness
+// pinned to mobile cannot see a desktop-only defect at all.
+let searchParams = new URLSearchParams()
+const setStrategyParam = (v?: 'mobile' | 'desktop') => {
+  searchParams = new URLSearchParams(v === 'desktop' ? 'strategy=desktop' : '')
+}
 vi.mock('next/navigation', () => ({
   useParams: () => ({ id: 'site-1' }),
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => searchParams,
 }))
 
 vi.mock('@/lib/auth/permissions', () => ({ useCan: () => true }))
@@ -114,6 +121,7 @@ beforeEach(() => {
     mutate: vi.fn(),
   })
   mockHistory.mockReturnValue({ data: [], error: undefined, mutate: vi.fn() })
+  setStrategyParam()
 })
 
 describe('PageSpeed page — states that used to fail silently', () => {
@@ -473,4 +481,51 @@ describe('PageSpeed page — the retry race (F19)', () => {
     expect(text, 'the abandoned retry overwrote the check the user asked for').toContain('41')
     expect(text, "check X's score is on screen although the user navigated to Y").not.toContain('88')
   })
+})
+
+describe('PageSpeed page — the filmstrip must not impose a device shape', () => {
+  // ⚠️ jsdom does no layout, so this asserts the CLASS CONTRACT, not geometry.
+  // That is the same limitation the 375px header regression test has, and it is
+  // stated rather than implied: the real proof is a browser measurement, which is
+  // how this bug was found in the first place.
+  const withFilmstrip = (strategy: 'mobile' | 'desktop') =>
+    check({
+      strategy,
+      filmstrip: [
+        { timing: 375, data: 'data:image/jpeg;base64,AAA' },
+        { timing: 750, data: 'data:image/jpeg;base64,BBB' },
+      ],
+    } as Partial<PageSpeedCheck>)
+
+  for (const strategy of ['mobile', 'desktop'] as const) {
+    it(`does not constrain the ${strategy} frame's width to a fixed portrait box`, () => {
+      // 🔴 THE BUG. The frame was `h-28 w-16` (112x64, aspect 0.57) with
+      // object-cover, which CROPS to fill. Measured from production rows: a
+      // desktop frame is 500x348 (aspect 1.44, landscape) and a mobile one is
+      // 250x498 (0.50). So desktop lost ~60% of its width — the hero heading
+      // rendered as "ata is yours." with both edges gone, on the one panel whose
+      // whole job is showing what the page looked like while loading.
+      setStrategyParam(strategy)
+      mockLatest.mockReturnValue({
+        data: { checks: [withFilmstrip(strategy)], attempts: [attempt({ strategy })] },
+        error: undefined,
+        isLoading: false,
+        mutate: vi.fn(),
+      })
+      const { container } = render(<PageSpeedPage />)
+      const imgs = [...container.querySelectorAll('img')].filter(i =>
+        (i.getAttribute('src') ?? '').startsWith('data:image/jpeg'),
+      )
+      expect(imgs.length, 'no filmstrip frames rendered').toBeGreaterThan(0)
+
+      for (const img of imgs) {
+        const cls = img.className
+        // The height is fixed so the strip lines up; the WIDTH must follow the
+        // image, or the box is asserting a device shape the image may not have.
+        expect(cls, `frame pins a fixed width: ${cls}`).not.toMatch(/\bw-\d+\b/)
+        expect(cls, `frame crops to fill: ${cls}`).not.toContain('object-cover')
+        expect(cls).toContain('w-auto')
+      }
+    })
+  }
 })
