@@ -18,7 +18,21 @@
 // Set here rather than in the npm script so it holds for `npx vitest run` and
 // for an IDE runner too. Verified effective: Intl resolves to America/New_York
 // inside the workers, not merely in process.env.
-process.env.TZ = 'America/New_York'
+//
+// 🔴 ONE PINNED SIGN IS HALF A GUARD (added 15-08-2026). The negative offset above
+// catches a date rendered a day EARLY, which is the failure recorded in
+// formatDate.ts. It CANNOT catch the opposite: a late-in-day UTC instant shifting
+// FORWARD under a positive offset — which is exactly the defect that reached a
+// customer's screen on 15-08-2026, where 2026-08-15T23:24:01Z rendered as
+// "Sun, 16/08/2026". Under America/New_York that same instant renders 15/08 and the
+// bug is invisible.
+//
+// So the date-sensitive suites run a SECOND time under a maximal POSITIVE offset:
+// `npm run test:tz-positive` (PULSE_TEST_TZ=Pacific/Kiritimati, UTC+14). A dedicated
+// variable rather than reading TZ directly, because a CI image that happens to set
+// TZ=UTC would otherwise silently defeat the pin — which is the state this file was
+// written to end.
+process.env.TZ = process.env.PULSE_TEST_TZ || 'America/New_York'
 
 // Vitest setup file — runs once before test collection, so any module-level
 // code in imported files (lib/env.ts, lib/api/client.ts, etc.) sees these env
