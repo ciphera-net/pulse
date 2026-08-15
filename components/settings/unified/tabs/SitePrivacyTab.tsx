@@ -620,7 +620,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
                   ) : (
                     <div className="flex flex-col items-end gap-1.5">
                       <StatusChip tone="neutral">Not enabled</StatusChip>
-                      <Link href={`/sites/${siteId}/pagespeed`} className={cn(LINK_CLS, 'text-xs')}>
+                      <Link href={`/sites/${siteId}/performance`} className={cn(LINK_CLS, 'text-xs')}>
                         Enable monitoring
                       </Link>
                     </div>

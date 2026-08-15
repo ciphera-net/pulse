@@ -138,6 +138,24 @@ const nextConfig: NextConfig = {
         destination: '/',
         permanent: true,
       },
+      // PageSpeed became Performance. The old path is BOOKMARKABLE and is linked
+      // from notification emails already delivered, so it has to keep resolving —
+      // a rename that 404s the previous URL is a rename that loses the reader.
+      //
+      // The name went because it was Google's: "PageSpeed" IS PageSpeed Insights,
+      // and this instrument stopped calling Google's API at the 14-08-2026 cutover
+      // to a self-hosted Lighthouse. It also described one of the four categories
+      // it reports (performance, accessibility, best practices, SEO).
+      {
+        source: '/sites/:id/pagespeed',
+        destination: '/sites/:id/performance',
+        permanent: true,
+      },
+      {
+        source: '/sites/:id/pagespeed/:path*',
+        destination: '/sites/:id/performance/:path*',
+        permanent: true,
+      },
       // NOTE: the former `/integrations/:slug` → docs.ciphera.net redirects were
       // removed. They shadowed the real per-integration guide pages
       // (app/integrations/[slug]) and pointed at a defunct host (docs moved to

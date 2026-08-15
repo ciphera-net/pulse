@@ -137,7 +137,7 @@ export default function AboutPage() {
         eyebrowNumber="03"
         eyebrowLabel="The product"
         heading="What Pulse measures today."
-        dek="Visitors, pageviews, referrers, countries and devices — plus custom events, funnels and journeys, PageSpeed, uptime monitoring and email reports. Every feature on every plan, the free one included."
+        dek="Visitors, pageviews, referrers, countries and devices — plus custom events, funnels and journeys, performance, uptime monitoring and email reports. Every feature on every plan, the free one included."
       >
         <div className="mt-6 flex flex-wrap items-center gap-5">
           <ProofLink proof={{ label: 'Tour the features', href: '/features' }} />

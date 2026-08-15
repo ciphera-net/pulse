@@ -124,7 +124,7 @@ beforeEach(() => {
   setStrategyParam()
 })
 
-describe('PageSpeed page — states that used to fail silently', () => {
+describe('Performance page — states that used to fail silently', () => {
   it('a FAILED CONFIG FETCH renders an error, not "monitoring is off"', () => {
     // `config?.enabled ?? false` collapsed these two: a 500 on the settings
     // endpoint produced a confident "monitoring is disabled" screen, complete
@@ -137,9 +137,9 @@ describe('PageSpeed page — states that used to fail silently', () => {
     })
     const { container } = render(<PageSpeedPage />)
     const text = container.textContent ?? ''
-    expect(text).toContain("Couldn't load PageSpeed settings")
-    expect(text).not.toContain('PageSpeed monitoring is off')
-    expect(text).not.toContain('Enable PageSpeed monitoring')
+    expect(text).toContain("Couldn't load performance settings")
+    expect(text).not.toContain('Performance monitoring is off')
+    expect(text).not.toContain('Enable performance monitoring')
   })
 
   it('a genuinely disabled site still gets the enable state — the positive control', () => {
@@ -152,7 +152,7 @@ describe('PageSpeed page — states that used to fail silently', () => {
       mutate: vi.fn(),
     })
     const { container } = render(<PageSpeedPage />)
-    expect(container.textContent).toContain('PageSpeed monitoring is off')
+    expect(container.textContent).toContain('Performance monitoring is off')
   })
 
   it('reports the last check as FAILED while showing the last good numbers', () => {
@@ -259,7 +259,7 @@ describe('PageSpeed page — states that used to fail silently', () => {
   })
 })
 
-describe('PageSpeed page — the check navigator and the trend card', () => {
+describe('Performance page — the check navigator and the trend card', () => {
   it('does NOT render an empty trend card when no check in the window has a score', () => {
     // The card wrapper was gated on `historyChecks.length >= 2`, but
     // PerformanceTrend filters to performance_score !== null and renders nothing
@@ -407,7 +407,7 @@ describe('PageSpeed page — the check navigator and the trend card', () => {
   })
 })
 
-describe('PageSpeed page — the retry race (F19)', () => {
+describe('Performance page — the retry race (F19)', () => {
   it('a late retry response does not overwrite the check the user navigated to', async () => {
     // 🔴 THE ORDERING BUG. retryCheckFetch used to fire its own unguarded
     // promise, while the main effect had a `cancelled` flag. Both could be in
@@ -483,7 +483,7 @@ describe('PageSpeed page — the retry race (F19)', () => {
   })
 })
 
-describe('PageSpeed page — the filmstrip must not impose a device shape', () => {
+describe('Performance page — the filmstrip must not impose a device shape', () => {
   // ⚠️ jsdom does no layout, so this asserts the CLASS CONTRACT, not geometry.
   // That is the same limitation the 375px header regression test has, and it is
   // stated rather than implied: the real proof is a browser measurement, which is
