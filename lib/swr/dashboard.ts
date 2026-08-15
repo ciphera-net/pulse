@@ -39,7 +39,7 @@ import {
   type UptimeResponseTimesResponse,
   type UptimeCheck,
 } from '@/lib/api/uptime'
-import { getPageSpeedConfig, getPageSpeedLatest, getPageSpeedHistory, type PageSpeedConfig, type PageSpeedCheck, type PageSpeedLatest } from '@/lib/api/pagespeed'
+import { getPerformanceConfig, getPerformanceLatest, getPerformanceHistory, type PerformanceConfig, type PerformanceCheck, type PerformanceLatest } from '@/lib/api/performance'
 import { listGoals, type Goal } from '@/lib/api/goals'
 import { listReportSchedules, listAlertSchedules, type ReportSchedule } from '@/lib/api/report-schedules'
 import {
@@ -98,9 +98,9 @@ const fetchers = {
   uptimeResponseTimes: (siteId: string, monitorId: string, start: string, end: string) =>
     getUptimeResponseTimes(siteId, monitorId, start, end),
   uptimeChecks: (siteId: string, monitorId: string, limit: number) => getMonitorChecks(siteId, monitorId, limit),
-  pageSpeedConfig: (siteId: string) => getPageSpeedConfig(siteId),
-  pageSpeedLatest: (siteId: string) => getPageSpeedLatest(siteId),
-  pageSpeedHistory: (siteId: string, strategy: 'mobile' | 'desktop', days: number) => getPageSpeedHistory(siteId, strategy, days),
+  performanceConfig: (siteId: string) => getPerformanceConfig(siteId),
+  performanceLatest: (siteId: string) => getPerformanceLatest(siteId),
+  performanceHistory: (siteId: string, strategy: 'mobile' | 'desktop', days: number) => getPerformanceHistory(siteId, strategy, days),
   goals: (siteId: string) => listGoals(siteId),
   reportSchedules: (siteId: string) => listReportSchedules(siteId),
   alertSchedules: (siteId: string) => listAlertSchedules(siteId),
@@ -810,33 +810,33 @@ export function useSiteDomainReputation(siteId: string | undefined) {
   )
 }
 
-// * Hook for PageSpeed config
-export function usePageSpeedConfig(siteId: string) {
-  return useSWR<PageSpeedConfig>(
-    siteId ? ['pageSpeedConfig', siteId] : null,
-    () => fetchers.pageSpeedConfig(siteId),
+// * Hook for Performance config
+export function usePerformanceConfig(siteId: string) {
+  return useSWR<PerformanceConfig>(
+    siteId ? ['performanceConfig', siteId] : null,
+    () => fetchers.performanceConfig(siteId),
     { ...dashboardSWRConfig, refreshInterval: 0, dedupingInterval: 10 * 1000 }
   )
 }
 
-// * Hook for the latest PageSpeed checks. Returns BOTH the newest successful
+// * Hook for the latest Performance checks. Returns BOTH the newest successful
 // * check per strategy (`checks` — the numbers to render) and the newest attempt
 // * per strategy whatever its outcome (`attempts` — what the status line
 // * reports). They are not the same thing after a failed check, and treating
 // * them as one is how a stale check used to be presented as current.
-export function usePageSpeedLatest(siteId: string) {
-  return useSWR<PageSpeedLatest>(
-    siteId ? ['pageSpeedLatest', siteId] : null,
-    () => fetchers.pageSpeedLatest(siteId),
+export function usePerformanceLatest(siteId: string) {
+  return useSWR<PerformanceLatest>(
+    siteId ? ['performanceLatest', siteId] : null,
+    () => fetchers.performanceLatest(siteId),
     { ...dashboardSWRConfig, refreshInterval: 60 * 1000, dedupingInterval: 10 * 1000, keepPreviousData: true }
   )
 }
 
-// * Hook for PageSpeed score history (trend chart)
-export function usePageSpeedHistory(siteId: string, strategy: 'mobile' | 'desktop', days = 90) {
-  return useSWR<PageSpeedCheck[]>(
-    siteId ? ['pageSpeedHistory', siteId, strategy, days] : null,
-    () => fetchers.pageSpeedHistory(siteId, strategy, days),
+// * Hook for Performance score history (trend chart)
+export function usePerformanceHistory(siteId: string, strategy: 'mobile' | 'desktop', days = 90) {
+  return useSWR<PerformanceCheck[]>(
+    siteId ? ['performanceHistory', siteId, strategy, days] : null,
+    () => fetchers.performanceHistory(siteId, strategy, days),
     { ...dashboardSWRConfig, refreshInterval: 60 * 1000, dedupingInterval: 10 * 1000, keepPreviousData: true }
   )
 }

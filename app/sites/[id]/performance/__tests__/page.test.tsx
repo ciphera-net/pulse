@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, fireEvent, act } from '@testing-library/react'
-import type { PageSpeedCheck, PageSpeedAttempt, PageSpeedConfig } from '@/lib/api/pagespeed'
+import type { PerformanceCheck, PerformanceAttempt, PerformanceConfig } from '@/lib/api/performance'
 
 // Page-level tests for the states that used to fail SILENTLY. Each one pins a
 // distinction the old page collapsed, and in every case the wrong behaviour
@@ -14,9 +14,9 @@ const mockHistory = vi.fn()
 
 vi.mock('@/lib/swr/dashboard', () => ({
   useSite: () => mockSite(),
-  usePageSpeedConfig: () => mockConfig(),
-  usePageSpeedLatest: () => mockLatest(),
-  usePageSpeedHistory: () => mockHistory(),
+  usePerformanceConfig: () => mockConfig(),
+  usePerformanceLatest: () => mockLatest(),
+  usePerformanceHistory: () => mockHistory(),
 }))
 
 // The visible strategy comes from ?strategy=. It has to be settable, because
@@ -53,15 +53,15 @@ vi.mock('@ciphera-net/facet', () => ({
   cn: (...parts: unknown[]) => parts.filter(Boolean).join(' '),
 }))
 vi.mock('@/components/ui/select', () => ({ default: () => <select /> }))
-vi.mock('@/lib/api/pagespeed', async importOriginal => {
-  const actual = await importOriginal<typeof import('@/lib/api/pagespeed')>()
-  return { ...actual, getPageSpeedCheck: vi.fn(), getPageSpeedLatest: vi.fn(), triggerPageSpeedCheck: vi.fn(), updatePageSpeedConfig: vi.fn() }
+vi.mock('@/lib/api/performance', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/lib/api/performance')>()
+  return { ...actual, getPerformanceCheck: vi.fn(), getPerformanceLatest: vi.fn(), triggerPerformanceCheck: vi.fn(), updatePerformanceConfig: vi.fn() }
 })
 
-import PageSpeedPage from '../page'
-import { getPageSpeedCheck } from '@/lib/api/pagespeed'
+import PerformancePage from '../page'
+import { getPerformanceCheck } from '@/lib/api/performance'
 
-const config = (over: Partial<PageSpeedConfig> = {}): PageSpeedConfig => ({
+const config = (over: Partial<PerformanceConfig> = {}): PerformanceConfig => ({
   site_id: 'site-1',
   enabled: true,
   frequency: 'daily',
@@ -71,7 +71,7 @@ const config = (over: Partial<PageSpeedConfig> = {}): PageSpeedConfig => ({
   ...over,
 })
 
-const check = (over: Partial<PageSpeedCheck> = {}): PageSpeedCheck =>
+const check = (over: Partial<PerformanceCheck> = {}): PerformanceCheck =>
   ({
     id: 'chk-1',
     site_id: 'site-1',
@@ -95,9 +95,9 @@ const check = (over: Partial<PageSpeedCheck> = {}): PageSpeedCheck =>
     triggered_by: 'scheduled',
     checked_at: '2026-08-13T21:15:00Z',
     ...over,
-  }) as PageSpeedCheck
+  }) as PerformanceCheck
 
-const attempt = (over: Partial<PageSpeedAttempt> = {}): PageSpeedAttempt => ({
+const attempt = (over: Partial<PerformanceAttempt> = {}): PerformanceAttempt => ({
   id: 'chk-1',
   strategy: 'mobile',
   source: 'lighthouse',
@@ -124,7 +124,7 @@ beforeEach(() => {
   setStrategyParam()
 })
 
-describe('PageSpeed page — states that used to fail silently', () => {
+describe('Performance page — states that used to fail silently', () => {
   it('a FAILED CONFIG FETCH renders an error, not "monitoring is off"', () => {
     // `config?.enabled ?? false` collapsed these two: a 500 on the settings
     // endpoint produced a confident "monitoring is disabled" screen, complete
@@ -135,11 +135,11 @@ describe('PageSpeed page — states that used to fail silently', () => {
       isLoading: false,
       mutate: vi.fn(),
     })
-    const { container } = render(<PageSpeedPage />)
+    const { container } = render(<PerformancePage />)
     const text = container.textContent ?? ''
-    expect(text).toContain("Couldn't load PageSpeed settings")
-    expect(text).not.toContain('PageSpeed monitoring is off')
-    expect(text).not.toContain('Enable PageSpeed monitoring')
+    expect(text).toContain("Couldn't load performance settings")
+    expect(text).not.toContain('Performance monitoring is off')
+    expect(text).not.toContain('Enable performance monitoring')
   })
 
   it('a genuinely disabled site still gets the enable state — the positive control', () => {
@@ -151,8 +151,8 @@ describe('PageSpeed page — states that used to fail silently', () => {
       isLoading: false,
       mutate: vi.fn(),
     })
-    const { container } = render(<PageSpeedPage />)
-    expect(container.textContent).toContain('PageSpeed monitoring is off')
+    const { container } = render(<PerformancePage />)
+    expect(container.textContent).toContain('Performance monitoring is off')
   })
 
   it('reports the last check as FAILED while showing the last good numbers', () => {
@@ -165,7 +165,7 @@ describe('PageSpeed page — states that used to fail silently', () => {
       isLoading: false,
       mutate: vi.fn(),
     })
-    const { container } = render(<PageSpeedPage />)
+    const { container } = render(<PerformancePage />)
     const text = container.textContent ?? ''
     expect(text).toContain('Check failed')
     expect(text).toContain('chrome timeout')
@@ -186,7 +186,7 @@ describe('PageSpeed page — states that used to fail silently', () => {
       isLoading: false,
       mutate: vi.fn(),
     })
-    const { container } = render(<PageSpeedPage />)
+    const { container } = render(<PerformancePage />)
     const text = container.textContent ?? ''
     expect(text).toContain('single run')
     expect(text).not.toContain('median of 3')
@@ -195,7 +195,7 @@ describe('PageSpeed page — states that used to fail silently', () => {
   })
 
   it('labels a self-hosted check with its real run count', () => {
-    const { container } = render(<PageSpeedPage />)
+    const { container } = render(<PerformancePage />)
     const text = container.textContent ?? ''
     expect(text).toContain('median of 3')
     expect(text).toContain('lighthouse 13.4.1 (pinned)')
@@ -208,7 +208,7 @@ describe('PageSpeed page — states that used to fail silently', () => {
       isLoading: false,
       mutate: vi.fn(),
     })
-    const { container } = render(<PageSpeedPage />)
+    const { container } = render(<PerformancePage />)
     const text = container.textContent ?? ''
     // Assert on the VALUE next to its label. A bare substring sweep for "0ms"
     // matches the "good < 200ms" threshold caption and would pass either way —
@@ -228,7 +228,7 @@ describe('PageSpeed page — states that used to fail silently', () => {
       isLoading: false,
       mutate: vi.fn(),
     })
-    const { container } = render(<PageSpeedPage />)
+    const { container } = render(<PerformancePage />)
     expect(container.textContent).toContain('First check queued')
   })
 
@@ -241,7 +241,7 @@ describe('PageSpeed page — states that used to fail silently', () => {
     // to wrap, and must not be unconditionally flex-shrink-0, or tabs +
     // Run Check + Disable exceed the container and the shell's
     // overflow-x-hidden CUTS the excess rather than scrolling it.
-    const { getByRole } = render(<PageSpeedPage />)
+    const { getByRole } = render(<PerformancePage />)
     const disable = getByRole('button', { name: 'Disable' })
     const row = disable.parentElement as HTMLElement
     expect(row.className).toContain('flex-wrap')
@@ -253,13 +253,13 @@ describe('PageSpeed page — states that used to fail silently', () => {
     // CrUX field data was probed live for every site on the platform and came
     // back EMPTY for all of them. The old copy promised something the page has
     // never once rendered.
-    const { container } = render(<PageSpeedPage />)
+    const { container } = render(<PerformancePage />)
     expect(container.textContent).not.toContain('Core Web Vitals')
     expect(container.textContent).toContain('Lab performance scores')
   })
 })
 
-describe('PageSpeed page — the check navigator and the trend card', () => {
+describe('Performance page — the check navigator and the trend card', () => {
   it('does NOT render an empty trend card when no check in the window has a score', () => {
     // The card wrapper was gated on `historyChecks.length >= 2`, but
     // PerformanceTrend filters to performance_score !== null and renders nothing
@@ -278,7 +278,7 @@ describe('PageSpeed page — the check navigator and the trend card', () => {
       error: undefined,
       mutate: vi.fn(),
     })
-    const { container } = render(<PageSpeedPage />)
+    const { container } = render(<PerformancePage />)
     expect(container.textContent ?? '').not.toContain('Performance score trend')
   })
 
@@ -295,7 +295,7 @@ describe('PageSpeed page — the check navigator and the trend card', () => {
       error: undefined,
       mutate: vi.fn(),
     })
-    const { container } = render(<PageSpeedPage />)
+    const { container } = render(<PerformancePage />)
     expect(container.textContent ?? '').not.toContain('Performance score trend')
   })
 
@@ -310,7 +310,7 @@ describe('PageSpeed page — the check navigator and the trend card', () => {
       error: undefined,
       mutate: vi.fn(),
     })
-    const { container } = render(<PageSpeedPage />)
+    const { container } = render(<PerformancePage />)
     expect(container.textContent ?? '').toContain('Performance score trend')
   })
 
@@ -343,7 +343,7 @@ describe('PageSpeed page — the check navigator and the trend card', () => {
       mutate: vi.fn(),
     })
 
-    const { container } = render(<PageSpeedPage />)
+    const { container } = render(<PerformancePage />)
     const prev = [...container.querySelectorAll('button')].find(b =>
       (b.getAttribute('aria-label') ?? b.textContent ?? '').toLowerCase().includes('previous'),
     )
@@ -353,11 +353,11 @@ describe('PageSpeed page — the check navigator and the trend card', () => {
     // The decisive assertion: WHICH check it navigates to. Merely being enabled
     // does not distinguish the fix — the old code enabled it too, and then
     // stepped one check too far.
-    vi.mocked(getPageSpeedCheck).mockResolvedValue(check({ id: 'h-13aug' }))
+    vi.mocked(getPerformanceCheck).mockResolvedValue(check({ id: 'h-13aug' }))
     fireEvent.click(prev!)
 
-    expect(getPageSpeedCheck).toHaveBeenCalledWith('site-1', 'h-13aug')
-    expect(getPageSpeedCheck).not.toHaveBeenCalledWith('site-1', 'h-12aug')
+    expect(getPerformanceCheck).toHaveBeenCalledWith('site-1', 'h-13aug')
+    expect(getPerformanceCheck).not.toHaveBeenCalledWith('site-1', 'h-12aug')
   })
 
   it('can get BACK to the latest check after stepping into the lagging timeline', async () => {
@@ -385,8 +385,8 @@ describe('PageSpeed page — the check navigator and the trend card', () => {
       mutate: vi.fn(),
     })
 
-    vi.mocked(getPageSpeedCheck).mockResolvedValue(check({ id: 'h-13aug', performance_score: 88 }))
-    const { container } = render(<PageSpeedPage />)
+    vi.mocked(getPerformanceCheck).mockResolvedValue(check({ id: 'h-13aug', performance_score: 88 }))
+    const { container } = render(<PerformancePage />)
     const prev = [...container.querySelectorAll('button')].find(
       b => b.getAttribute('aria-label') === 'Previous check',
     )!
@@ -407,7 +407,7 @@ describe('PageSpeed page — the check navigator and the trend card', () => {
   })
 })
 
-describe('PageSpeed page — the retry race (F19)', () => {
+describe('Performance page — the retry race (F19)', () => {
   it('a late retry response does not overwrite the check the user navigated to', async () => {
     // 🔴 THE ORDERING BUG. retryCheckFetch used to fire its own unguarded
     // promise, while the main effect had a `cancelled` flag. Both could be in
@@ -441,11 +441,11 @@ describe('PageSpeed page — the retry race (F19)', () => {
       mutate: vi.fn(),
     })
 
-    const api = vi.mocked(getPageSpeedCheck)
+    const api = vi.mocked(getPerformanceCheck)
 
     // 1. Navigate to X; that fetch fails.
     api.mockRejectedValueOnce(new Error('boom'))
-    const { container } = render(<PageSpeedPage />)
+    const { container } = render(<PerformancePage />)
     const prev = [...container.querySelectorAll('button')].find(
       b => b.getAttribute('aria-label') === 'Previous check',
     )!
@@ -455,8 +455,8 @@ describe('PageSpeed page — the retry race (F19)', () => {
     expect(container.textContent ?? '').toContain("Couldn't load that check")
 
     // 2. Click "Try again" — X's retry is deferred and will resolve LAST.
-    let resolveX: (v: PageSpeedCheck) => void = () => {}
-    api.mockImplementationOnce(() => new Promise<PageSpeedCheck>(res => { resolveX = res }))
+    let resolveX: (v: PerformanceCheck) => void = () => {}
+    api.mockImplementationOnce(() => new Promise<PerformanceCheck>(res => { resolveX = res }))
     const retry = [...container.querySelectorAll('button')].find(b => b.textContent === 'Try again')!
     await act(async () => {
       fireEvent.click(retry)
@@ -483,7 +483,7 @@ describe('PageSpeed page — the retry race (F19)', () => {
   })
 })
 
-describe('PageSpeed page — the filmstrip must not impose a device shape', () => {
+describe('Performance page — the filmstrip must not impose a device shape', () => {
   // ⚠️ jsdom does no layout, so this asserts the CLASS CONTRACT, not geometry.
   // That is the same limitation the 375px header regression test has, and it is
   // stated rather than implied: the real proof is a browser measurement, which is
@@ -495,7 +495,7 @@ describe('PageSpeed page — the filmstrip must not impose a device shape', () =
         { timing: 375, data: 'data:image/jpeg;base64,AAA' },
         { timing: 750, data: 'data:image/jpeg;base64,BBB' },
       ],
-    } as Partial<PageSpeedCheck>)
+    } as Partial<PerformanceCheck>)
 
   for (const strategy of ['mobile', 'desktop'] as const) {
     it(`does not constrain the ${strategy} frame's width to a fixed portrait box`, () => {
@@ -512,7 +512,7 @@ describe('PageSpeed page — the filmstrip must not impose a device shape', () =
         isLoading: false,
         mutate: vi.fn(),
       })
-      const { container } = render(<PageSpeedPage />)
+      const { container } = render(<PerformancePage />)
       const imgs = [...container.querySelectorAll('img')].filter(i =>
         (i.getAttribute('src') ?? '').startsWith('data:image/jpeg'),
       )

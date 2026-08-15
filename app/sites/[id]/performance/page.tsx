@@ -3,23 +3,23 @@
 import { useCan } from '@/lib/auth/permissions'
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
-import { useSite, usePageSpeedConfig, usePageSpeedLatest, usePageSpeedHistory } from '@/lib/swr/dashboard'
+import { useSite, usePerformanceConfig, usePerformanceLatest, usePerformanceHistory } from '@/lib/swr/dashboard'
 import {
-  updatePageSpeedConfig,
-  triggerPageSpeedCheck,
-  getPageSpeedLatest,
-  getPageSpeedCheck,
-  type PageSpeedCheck,
+  updatePerformanceConfig,
+  triggerPerformanceCheck,
+  getPerformanceLatest,
+  getPerformanceCheck,
+  type PerformanceCheck,
   type AuditSummary,
-} from '@/lib/api/pagespeed'
+} from '@/lib/api/performance'
 import { useQueryParamsWriter } from '@/lib/hooks/useQueryParamsWriter'
 import { toast, Button } from '@ciphera-net/facet'
 import Select from '@/components/ui/select'
 import { motion } from 'framer-motion'
-import ScoreGauge from '@/components/pagespeed/ScoreGauge'
-import { PageSpeedStatusLine } from '@/components/pagespeed/PageSpeedStatusLine'
-import { PerformanceTrend } from '@/components/pagespeed/PerformanceTrend'
-import { auditDescription } from '@/lib/pagespeed/descriptions'
+import ScoreGauge from '@/components/performance/ScoreGauge'
+import { PerformanceStatusLine } from '@/components/performance/PerformanceStatusLine'
+import { PerformanceTrend } from '@/components/performance/PerformanceTrend'
+import { auditDescription } from '@/lib/performance/descriptions'
 import { remapLearnUrl } from '@/lib/learn-links'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { useMinimumLoading } from '@/components/skeletons'
@@ -96,7 +96,7 @@ function formatShortUtc(iso: string): string {
   return `${date}, ${time} UTC`
 }
 
-export default function PageSpeedPage() {
+export default function PerformancePage() {
   const canEdit = useCan('pagespeed.manage')
   const params = useParams()
   const searchParams = useSearchParams()
@@ -108,17 +108,17 @@ export default function PageSpeedPage() {
   const strategy: Strategy = searchParams.get('strategy') === 'desktop' ? 'desktop' : 'mobile'
 
   const { data: site } = useSite(siteId)
-  const { data: config, error: configError, isLoading: configLoading, mutate: mutateConfig } = usePageSpeedConfig(siteId)
-  const { data: latest, error: latestError, isLoading: latestLoading, mutate: mutateLatest } = usePageSpeedLatest(siteId)
+  const { data: config, error: configError, isLoading: configLoading, mutate: mutateConfig } = usePerformanceConfig(siteId)
+  const { data: latest, error: latestError, isLoading: latestLoading, mutate: mutateLatest } = usePerformanceLatest(siteId)
 
   const [running, setRunning] = useState(false)
   const [toggling, setToggling] = useState(false)
   const [frequency, setFrequency] = useState<string>('weekly')
 
-  const { data: historyChecks, error: historyError, mutate: mutateHistory } = usePageSpeedHistory(siteId, strategy)
+  const { data: historyChecks, error: historyError, mutate: mutateHistory } = usePerformanceHistory(siteId, strategy)
 
   const [selectedCheckId, setSelectedCheckId] = useState<string | null>(null)
-  const [selectedCheckData, setSelectedCheckData] = useState<PageSpeedCheck | null>(null)
+  const [selectedCheckData, setSelectedCheckData] = useState<PerformanceCheck | null>(null)
   const [loadingCheck, setLoadingCheck] = useState(false)
   const [checkFetchFailed, setCheckFetchFailed] = useState(false)
 
@@ -226,7 +226,7 @@ export default function PageSpeedPage() {
     let cancelled = false
     setLoadingCheck(true)
     setCheckFetchFailed(false)
-    getPageSpeedCheck(siteId, selectedCheckId)
+    getPerformanceCheck(siteId, selectedCheckId)
       .then(data => {
         if (cancelled) return
         setSelectedCheckData(data)
@@ -248,14 +248,14 @@ export default function PageSpeedPage() {
 
   // * When a historical fetch fails we render NOTHING for the check body rather
   // * than substituting the latest one under the wrong timestamp.
-  const currentCheck: PageSpeedCheck | null = selectedCheckId
+  const currentCheck: PerformanceCheck | null = selectedCheckId
     ? checkFetchFailed
       ? null
       : selectedCheckData
     : latestForStrategy
 
   useEffect(() => {
-    if (site?.domain) document.title = `PageSpeed · ${site.domain} | Pulse`
+    if (site?.domain) document.title = `Performance · ${site.domain} | Pulse`
   }, [site?.domain])
 
   useEffect(() => {
@@ -265,13 +265,13 @@ export default function PageSpeedPage() {
   const handleToggle = async (enabled: boolean) => {
     setToggling(true)
     try {
-      await updatePageSpeedConfig(siteId, { enabled, frequency })
+      await updatePerformanceConfig(siteId, { enabled, frequency })
       mutateConfig()
       mutateLatest()
       void mutateHistory()
-      toast.success(enabled ? 'PageSpeed monitoring enabled' : 'PageSpeed monitoring disabled')
+      toast.success(enabled ? 'Performance monitoring enabled' : 'Performance monitoring disabled')
     } catch {
-      toast.error('Failed to update PageSpeed monitoring')
+      toast.error('Failed to update performance monitoring')
     } finally {
       setToggling(false)
     }
@@ -289,8 +289,8 @@ export default function PageSpeedPage() {
   const handleRunCheck = useCallback(async () => {
     setRunning(true)
     try {
-      await triggerPageSpeedCheck(siteId)
-      toast.success('PageSpeed check started — three runs per device, so this takes a few minutes')
+      await triggerPerformanceCheck(siteId)
+      toast.success('Performance check started — three runs per device, so this takes a few minutes')
 
       const initialAttempt = latest?.attempts.find(a => a.strategy === strategy)?.checked_at
       const startedAt = Date.now()
@@ -307,7 +307,7 @@ export default function PageSpeedPage() {
           return
         }
         try {
-          const fresh = await getPageSpeedLatest(siteId)
+          const fresh = await getPerformanceLatest(siteId)
           const freshAttempt = fresh?.attempts.find(a => a.strategy === strategy)
           if (freshAttempt && freshAttempt.checked_at !== initialAttempt) {
             stopPolling()
@@ -326,11 +326,11 @@ export default function PageSpeedPage() {
             if (freshAttempt.status === 'error') {
               toast.error(
                 freshAttempt.error
-                  ? `PageSpeed check failed — ${freshAttempt.error}`
-                  : 'PageSpeed check failed',
+                  ? `Performance check failed — ${freshAttempt.error}`
+                  : 'Performance check failed',
               )
             } else {
-              toast.success('PageSpeed check complete')
+              toast.success('Performance check complete')
             }
           }
         } catch {
@@ -350,20 +350,20 @@ export default function PageSpeedPage() {
   // * "monitoring is off" (config still in flight) or "First check queued"
   // * (latest still in flight) before the real page appears.
   const showSkeleton = useMinimumLoading((configLoading || latestLoading) && (!config || !latest))
-  if (showSkeleton) return <PageSpeedSkeleton />
+  if (showSkeleton) return <PerformanceSkeleton />
   if (!site) return <div className="p-8 text-neutral-500">Site not found</div>
 
   // ── State: the config request FAILED ──────────────────────────────────────
   // This must never be confused with "monitoring is disabled". `config?.enabled
   // ?? false` used to collapse the two, so a 500 on the settings endpoint
-  // rendered a confident "PageSpeed monitoring is disabled" screen complete with
+  // rendered a confident "Performance monitoring is disabled" screen complete with
   // an Enable button, for a site where it was switched on.
   if (configError && !config) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
         <PageHeader domain={site.domain} frequency={null} />
         <ErrorCard
-          title="Couldn't load PageSpeed settings"
+          title="Couldn't load performance settings"
           description="The settings request failed, so we can't tell whether monitoring is on. Your checks are unaffected — this is a loading problem."
           onRetry={() => {
             void mutateConfig()
@@ -385,7 +385,7 @@ export default function PageSpeedPage() {
       <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
         <PageHeader domain={site.domain} frequency={null} />
         <div className={`${CARD} p-6 text-center md:p-12`}>
-          <h3 className="mb-2 font-semibold text-white">PageSpeed monitoring is off</h3>
+          <h3 className="mb-2 font-semibold text-white">Performance monitoring is off</h3>
           <p className="mx-auto mb-6 max-w-md text-sm text-neutral-400">
             Turn it on to run Lighthouse against {site.domain} on a schedule and track how the scores move.
             Each check is the median of three runs, so the trend reflects the page rather than run-to-run noise.
@@ -408,7 +408,7 @@ export default function PageSpeedPage() {
           </div>
           {canEdit && (
             <Button onClick={() => handleToggle(true)} disabled={toggling}>
-              {toggling ? 'Enabling…' : 'Enable PageSpeed monitoring'}
+              {toggling ? 'Enabling…' : 'Enable performance monitoring'}
             </Button>
           )}
         </div>
@@ -473,7 +473,7 @@ export default function PageSpeedPage() {
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <PageHeader domain={site.domain} frequency={config?.frequency ?? null} />
-          <PageSpeedStatusLine
+          <PerformanceStatusLine
             attempt={attemptForStrategy}
             displayed={latestForStrategy}
             nextCheckAt={config?.next_check_at ?? null}
@@ -562,6 +562,15 @@ export default function PageSpeedPage() {
                 </button>
               </div>
             ) : (
+              <>
+                {/* 🔑 THE HIERARCHY HAS TO BE SAID OUT LOUD, because the page is
+                    called Performance and one of the four gauges below is ALSO
+                    called Performance. That is Lighthouse's category name, not
+                    ours, so the gauge keeps it — this label is what stops the
+                    same word at two levels from reading as the same thing. Every
+                    other section on this page already carries a SECTION_LABEL;
+                    the hero was the one that did not. */}
+                <h3 className={`${SECTION_LABEL} mb-5`}>Category scores</h3>
               <div className="flex flex-col items-center gap-6 sm:flex-row sm:flex-wrap sm:justify-between">
                 {/* A GRID below sm, a flex row above it. Left as a wrapping flex
                     row, the four gauges go 4×1 at 375 px, because "Best
@@ -590,6 +599,7 @@ export default function PageSpeedPage() {
                   />
                 )}
               </div>
+              </>
             )}
 
             <div className="mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-t border-border pt-4">
@@ -797,7 +807,7 @@ function PageHeader({ domain, frequency }: { domain: string; frequency: string |
   const cadence = frequency ? `checked ${frequency}` : 'checked on a schedule'
   return (
     <div>
-      <h1 className="text-lg font-semibold text-white">PageSpeed</h1>
+      <h1 className="text-lg font-semibold text-white">Performance</h1>
       <p className="mt-1 text-sm text-neutral-400">
         Lab performance scores for {domain} — {cadence}, mobile and desktop.
       </p>
@@ -830,7 +840,7 @@ function SpecPlate({
   attempt,
 }: {
   domain: string
-  check: PageSpeedCheck | null
+  check: PerformanceCheck | null
   attempt: { lighthouse_version: string | null; source: string } | null
 }) {
   const version = check?.lighthouse_version ?? attempt?.lighthouse_version ?? null
@@ -1077,7 +1087,7 @@ function AuditItem({ item }: { item: Record<string, unknown> }) {
   )
 }
 
-function PageSpeedSkeleton() {
+function PerformanceSkeleton() {
   return (
     <div className="mx-auto w-full max-w-7xl animate-pulse px-4 pb-8 sm:px-6">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

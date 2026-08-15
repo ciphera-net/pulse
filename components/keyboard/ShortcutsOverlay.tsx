@@ -24,7 +24,7 @@ const NAVIGATION: ShortcutRow[] = [
   { keys: ['g', 's'], label: 'Search' },
   { keys: ['g', 'c'], label: 'CDN' },
   { keys: ['g', 'u'], label: 'Uptime' },
-  { keys: ['g', 'p'], label: 'PageSpeed' },
+  { keys: ['g', 'p'], label: 'Performance' },
   { keys: ['g', 'i'], label: 'Integrations' },
   { keys: ['g', 'n'], label: 'Notifications' },
 ]

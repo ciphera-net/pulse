@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
 import { PerformanceTrend, trailingMedian, provenanceBoundary } from '../PerformanceTrend'
-import type { PageSpeedCheck } from '@/lib/api/pagespeed'
+import type { PerformanceCheck } from '@/lib/api/performance'
 
 // The old chart auto-scaled its y axis, so a 71→91 swing between two single
 // runs of an UNCHANGED page filled the plot and read as a collapse. These tests
@@ -10,7 +10,7 @@ import type { PageSpeedCheck } from '@/lib/api/pagespeed'
 // instrument changed.
 
 let seq = 0
-const chk = (over: Partial<PageSpeedCheck>): PageSpeedCheck =>
+const chk = (over: Partial<PerformanceCheck>): PerformanceCheck =>
   ({
     id: `c${seq++}`,
     site_id: 's1',
@@ -34,7 +34,7 @@ const chk = (over: Partial<PageSpeedCheck>): PageSpeedCheck =>
     triggered_by: 'scheduled',
     checked_at: '2026-08-01T00:00:00Z',
     ...over,
-  }) as PageSpeedCheck
+  }) as PerformanceCheck
 
 const series = (scores: (number | null)[], source: 'psi' | 'lighthouse' | ((i: number) => 'psi' | 'lighthouse') = 'lighthouse') =>
   scores.map((s, i) =>
@@ -69,7 +69,7 @@ describe('trailingMedian', () => {
     // was always the whole prefix. Replacing it with a cumulative
     // `values.slice(0, i + 1)` — an all-history median — left the suite GREEN.
     //
-    // usePageSpeedHistory defaults to 90 days, so the real chart plots ~90
+    // usePerformanceHistory defaults to 90 days, so the real chart plots ~90
     // points. With the window regressed to cumulative, a site that genuinely
     // drops from 90 to 45 and stays there keeps drawing a line near 90 for about
     // six more weeks: the chart bills itself as a 7-check median and silently

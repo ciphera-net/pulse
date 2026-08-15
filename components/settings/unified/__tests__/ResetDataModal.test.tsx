@@ -74,7 +74,7 @@ describe('ResetDataModal (Facet danger panel)', () => {
   it('escalates the confirmation to the site domain when ALL modules are selected', () => {
     renderModal()
     // Toggle every module row on.
-    for (const label of ['Analytics', 'Journeys', 'Funnels', 'Uptime', 'PageSpeed', 'CDN', 'Search Console']) {
+    for (const label of ['Analytics', 'Journeys', 'Funnels', 'Uptime', 'Performance', 'CDN', 'Search Console']) {
       fireEvent.click(screen.getByRole('button', { name: new RegExp(label) }))
     }
     // Full wipe demands the domain, not the RESET keyword.

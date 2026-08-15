@@ -131,7 +131,7 @@ const capabilities: Feature[] = [
   },
   {
     icon: ZapIcon,
-    title: 'PageSpeed monitoring',
+    title: 'Performance monitoring',
     description: 'Daily Lighthouse checks with Core Web Vitals, filmstrip timeline, and score trend — mobile and desktop.',
   },
   {
@@ -279,12 +279,12 @@ export default function FeaturesPage() {
           </div>
           <div>
             <p className="mb-4 text-xs uppercase tracking-[0.08em] text-muted-foreground">
-              PageSpeed — live
+              Performance — live
             </p>
             <MacWindow>
               <Image
                 src={cdnUrl('/marketing/pagespeed-desktop-tall-2x.png')}
-                alt="Pulse PageSpeed for ciphera.net — desktop Lighthouse scores, filmstrip and Core Web Vitals"
+                alt="Pulse Performance for ciphera.net — desktop Lighthouse scores and page-load filmstrip"
                 width={2468}
                 height={1586}
                 unoptimized

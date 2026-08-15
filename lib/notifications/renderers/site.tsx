@@ -74,9 +74,9 @@ export const siteRenderers = {
       .join(' ')
     return {
       icon: <ChartLineDown className="w-5 h-5" />,
-      title: 'PageSpeed score dropped',
+      title: 'Performance score dropped',
       body: `${category} score fell from ${p.score_before} to ${p.score_after}.`,
-      linkLabel: 'View PageSpeed',
+      linkLabel: 'View Performance',
     }
   },
   site_pagespeed_recovered: (r: Receipt, _resolvers?: Resolvers): Rendered => {
@@ -87,9 +87,9 @@ export const siteRenderers = {
       .join(' ')
     return {
       icon: <ChartLineUp className="w-5 h-5" />,
-      title: 'PageSpeed score recovered',
+      title: 'Performance score recovered',
       body: `${category} score improved from ${p.score_before} to ${p.score_after}.`,
-      linkLabel: 'View PageSpeed',
+      linkLabel: 'View Performance',
     }
   },
 }

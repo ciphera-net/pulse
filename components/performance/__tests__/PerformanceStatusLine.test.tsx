@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
-import { PageSpeedStatusLine, formatCountdown, formatUtcStamp } from '../PageSpeedStatusLine'
-import type { PageSpeedAttempt, PageSpeedCheck } from '@/lib/api/pagespeed'
+import { PerformanceStatusLine, formatCountdown, formatUtcStamp } from '../PerformanceStatusLine'
+import type { PerformanceAttempt, PerformanceCheck } from '@/lib/api/performance'
 
 // The status line is the only place a failed check can be SAID. Before the
 // rebuild a failure wrote no row at all, so the page silently re-rendered the
 // previous check's numbers under the current date — these tests pin the
 // distinction between "what happened last" and "what is on screen".
 
-const attempt = (over: Partial<PageSpeedAttempt> = {}): PageSpeedAttempt => ({
+const attempt = (over: Partial<PerformanceAttempt> = {}): PerformanceAttempt => ({
   id: 'a1',
   strategy: 'mobile',
   source: 'lighthouse',
@@ -21,7 +21,7 @@ const attempt = (over: Partial<PageSpeedAttempt> = {}): PageSpeedAttempt => ({
   ...over,
 })
 
-const check = (over: Partial<PageSpeedCheck> = {}): PageSpeedCheck =>
+const check = (over: Partial<PerformanceCheck> = {}): PerformanceCheck =>
   ({
     id: 'c1',
     site_id: 's1',
@@ -45,12 +45,12 @@ const check = (over: Partial<PageSpeedCheck> = {}): PageSpeedCheck =>
     triggered_by: 'scheduled',
     checked_at: '2026-08-12T01:23:00Z',
     ...over,
-  }) as PageSpeedCheck
+  }) as PerformanceCheck
 
-describe('PageSpeedStatusLine', () => {
+describe('PerformanceStatusLine', () => {
   it('reports the last check in UTC, never a localised stamp', () => {
     const { container } = render(
-      <PageSpeedStatusLine attempt={attempt()} displayed={check()} nextCheckAt={null} />,
+      <PerformanceStatusLine attempt={attempt()} displayed={check()} nextCheckAt={null} />,
     )
     const text = container.textContent ?? ''
     expect(text).toContain('Last checked')
@@ -62,7 +62,7 @@ describe('PageSpeedStatusLine', () => {
 
   it('names the CAUSE of a failure and says the numbers on screen are stale', () => {
     const { container, getByRole } = render(
-      <PageSpeedStatusLine
+      <PerformanceStatusLine
         attempt={attempt({ status: 'error', error: 'lighthouse run exceeded 120000ms', runs: 0 })}
         displayed={check()}
         nextCheckAt={null}
@@ -81,7 +81,7 @@ describe('PageSpeedStatusLine', () => {
 
   it('does not claim stale data is on screen when there is none to show', () => {
     const { container } = render(
-      <PageSpeedStatusLine
+      <PerformanceStatusLine
         attempt={attempt({ status: 'error', error: 'dns failure' })}
         displayed={null}
         nextCheckAt={null}
@@ -94,14 +94,14 @@ describe('PageSpeedStatusLine', () => {
 
   it('says a first check is queued rather than rendering an empty line', () => {
     const { container } = render(
-      <PageSpeedStatusLine attempt={null} displayed={null} nextCheckAt={null} />,
+      <PerformanceStatusLine attempt={null} displayed={null} nextCheckAt={null} />,
     )
     expect(container.textContent).toContain('First check queued')
   })
 
   it('omits the rerun action without permission', () => {
     const { queryByRole } = render(
-      <PageSpeedStatusLine
+      <PerformanceStatusLine
         attempt={attempt({ status: 'error', error: 'boom' })}
         displayed={check()}
         nextCheckAt={null}
