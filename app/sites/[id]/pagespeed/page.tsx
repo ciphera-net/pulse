@@ -650,10 +650,23 @@ export default function PageSpeedPage() {
               <div className="flex min-w-0 items-start gap-2.5 overflow-x-auto pb-1">
                 {currentCheck.filmstrip.map((frame, idx) => (
                   <div key={idx} className="flex-none text-center">
+                    {/* 🔴 FIX THE HEIGHT, LET THE WIDTH FOLLOW THE IMAGE.
+                        This was `h-28 w-16` — a hardcoded 112x64 PORTRAIT box with
+                        object-cover, which crops to fill. Measured from production
+                        rows: a desktop filmstrip frame is 500x348 (aspect 1.44,
+                        LANDSCAPE) and a mobile one is 250x498 (aspect 0.50). So the
+                        desktop timeline was having ~60% of its WIDTH cropped away —
+                        the hero heading rendered as "ata is yours." with both edges
+                        gone, on the one panel whose entire job is showing what the
+                        page looked like as it loaded.
+                        w-auto derives the box from the image instead of asserting a
+                        device shape, so it is correct for both strategies with no
+                        branching and stays correct if Lighthouse's viewport presets
+                        ever change. */}
                     <img
                       src={frame.data}
                       alt=""
-                      className="block h-28 w-16 rounded-none border border-border object-cover object-top"
+                      className="block h-28 w-auto rounded-none border border-border"
                     />
                     <div className="mt-1 text-micro-label tabular-nums text-neutral-500">{formatMs(frame.timing)}</div>
                   </div>
