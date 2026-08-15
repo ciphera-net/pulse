@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import type { PageSpeedCheck } from '@/lib/api/pagespeed'
+import type { PerformanceCheck } from '@/lib/api/performance'
 
 // ---------------------------------------------------------------------------
 // Performance score trend.
@@ -32,7 +32,7 @@ import type { PageSpeedCheck } from '@/lib/api/pagespeed'
 const MEDIAN_WINDOW = 7
 
 interface PerformanceTrendProps {
-  checks: PageSpeedCheck[]
+  checks: PerformanceCheck[]
   className?: string
 }
 
@@ -40,7 +40,7 @@ interface Point {
   t: number
   score: number
   median: number
-  source: PageSpeedCheck['source']
+  source: PerformanceCheck['source']
 }
 
 /** Trailing median over the last `window` values, inclusive of the current one. */

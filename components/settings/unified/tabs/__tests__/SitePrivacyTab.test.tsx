@@ -5,12 +5,12 @@ import { render, screen, fireEvent, within } from '@testing-library/react'
 
 const useSiteMock = vi.fn()
 const useSubscriptionMock = vi.fn()
-const usePageSpeedConfigMock = vi.fn()
+const usePerformanceConfigMock = vi.fn()
 
 vi.mock('@/lib/swr/dashboard', () => ({
   useSite: () => useSiteMock(),
   useSubscription: () => useSubscriptionMock(),
-  usePageSpeedConfig: () => usePageSpeedConfigMock(),
+  usePerformanceConfig: () => usePerformanceConfigMock(),
 }))
 
 vi.mock('@/lib/auth/permissions', () => ({
@@ -18,7 +18,7 @@ vi.mock('@/lib/auth/permissions', () => ({
 }))
 
 vi.mock('@/lib/api/sites', () => ({ updateSite: vi.fn() }))
-vi.mock('@/lib/api/pagespeed', () => ({ updatePageSpeedConfig: vi.fn() }))
+vi.mock('@/lib/api/performance', () => ({ updatePerformanceConfig: vi.fn() }))
 
 vi.mock('next/link', () => ({
   default: ({ children, href, ...props }: any) => <a href={href} {...props}>{children}</a>,
@@ -77,7 +77,7 @@ const makeSite = (over: Record<string, unknown> = {}) => ({
 beforeEach(() => {
   useSiteMock.mockReturnValue({ data: makeSite(), error: undefined, mutate: vi.fn() })
   useSubscriptionMock.mockReturnValue({ data: { plan_id: 'solo' }, error: undefined, mutate: vi.fn() })
-  usePageSpeedConfigMock.mockReturnValue({ data: { enabled: false, frequency: 'weekly' }, error: undefined, mutate: vi.fn() })
+  usePerformanceConfigMock.mockReturnValue({ data: { enabled: false, frequency: 'weekly' }, error: undefined, mutate: vi.fn() })
 })
 
 describe('SitePrivacyTab', () => {

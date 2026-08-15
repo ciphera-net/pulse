@@ -51,7 +51,7 @@ const SITE_PAGES = [
   { label: 'Search', path: '/search', icon: MagnifyingGlass, shortcut: 'g s' },
   { label: 'CDN', path: '/cdn', icon: CloudArrowUp, shortcut: 'g c' },
   { label: 'Uptime', path: '/uptime', icon: Heartbeat, shortcut: 'g u' },
-  { label: 'PageSpeed', path: '/pagespeed', icon: Gauge, shortcut: 'g p' },
+  { label: 'Performance', path: '/performance', icon: Gauge, shortcut: 'g p' },
 ] as const
 
 interface CommandPaletteProps {

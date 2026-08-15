@@ -31,12 +31,12 @@ function JourneysSlideshow() {
   )
 }
 
-function PageSpeedCapture() {
+function PerformanceCapture() {
   return (
     <MacWindow>
       <Image
         src={cdnUrl('/marketing/pagespeed-desktop-tall-2x.png')}
-        alt="Pulse PageSpeed for ciphera.net — desktop Lighthouse scores, page-load filmstrip and Core Web Vitals"
+        alt="Pulse Performance for ciphera.net — desktop Lighthouse scores, page-load filmstrip and Core Web Vitals"
         width={2468}
         height={1586}
         unoptimized
@@ -125,7 +125,7 @@ const ROWS: FeatureRow[] = [
   },
   {
     id: 'pagespeed',
-    label: 'PageSpeed',
+    label: 'Performance',
     heading: 'Performance monitoring built in.',
     description:
       'Lighthouse scores and Core Web Vitals for your site, tracked daily — no separate tooling, no extra tab.',
@@ -136,7 +136,7 @@ const ROWS: FeatureRow[] = [
       'Page-load filmstrip timeline',
       'Score trend over time',
     ],
-    mockup: <PageSpeedCapture />,
+    mockup: <PerformanceCapture />,
     reverse: true,
   },
   {
