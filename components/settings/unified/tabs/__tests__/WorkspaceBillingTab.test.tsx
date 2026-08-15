@@ -92,7 +92,7 @@ function renderTab() {
 const base: SubscriptionDetails = {
   plan_id: 'team',
   subscription_status: 'active',
-  current_period_end: '2026-08-15T00:00:00Z',
+  next_charge_on: '2026-08-15',
   billing_interval: 'month',
   pageview_limit: 10000,
   has_payment_method: true,
@@ -189,7 +189,7 @@ describe('WorkspaceBillingTab banners & states', () => {
     mockSubscription = {
       plan_id: 'free',
       subscription_status: '',
-      current_period_end: '',
+      next_charge_on: null,
       billing_interval: '',
       pageview_limit: 5000,
       has_payment_method: false,
@@ -203,8 +203,8 @@ describe('WorkspaceBillingTab banners & states', () => {
     expect(screen.getByText(/still collecting your data — up to 10,000 pageviews/i)).toBeTruthy()
   })
 
-  it('cancel modal uses fallback copy when current_period_end is missing', async () => {
-    mockSubscription = { ...base, current_period_end: '' }
+  it('cancel modal uses fallback copy when there is no scheduled charge', async () => {
+    mockSubscription = { ...base, next_charge_on: null }
     renderTab()
     const cancelBtn = await screen.findByRole('button', { name: 'Cancel subscription' })
     fireEvent.click(cancelBtn)
