@@ -133,13 +133,74 @@ describe('WorkspaceBillingTab banners & states', () => {
     expect(screen.getByText('Past due')).toBeTruthy()
   })
 
-  it('shows the over-limit warning with an upgrade CTA when usage exceeds the limit', async () => {
+  // Over the PLAN limit is a billing event, not a cut-off: every pageview above it
+  // is still stored and served, up to the hard ceiling. The banner said "Upgrade to
+  // keep collecting data" until 15-08-2026, which told the customer their data was
+  // being lost when it was not — the mirror image of the bug that actually did lose
+  // it, and just as untrue.
+  it('over the plan limit but under the ceiling: says collection CONTINUES, and names the ceiling', async () => {
+    mockSubscription = {
+      ...base,
+      pageview_usage: 15000,
+      pageview_limit: 10000,
+      pageview_hard_ceiling: 20000,
+    }
+    renderTab()
+    await waitFor(() =>
+      expect(screen.getByText(/You're over your plan's pageview limit \(15,000 of 10,000\)/i)).toBeTruthy(),
+    )
+    expect(screen.getByText(/still collecting your data — up to 20,000 pageviews/i)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Upgrade your plan/i })).toBeTruthy()
+    // The stop-collecting banner must NOT be showing at the same time.
+    expect(screen.queryByText(/Collection has stopped/i)).toBeNull()
+  })
+
+  it('at the hard ceiling: says collection has STOPPED', async () => {
+    mockSubscription = {
+      ...base,
+      pageview_usage: 20000,
+      pageview_limit: 10000,
+      pageview_hard_ceiling: 20000,
+    }
+    renderTab()
+    await waitFor(() =>
+      expect(screen.getByText(/Collection has stopped: you've reached the 20,000 pageview ceiling/i)).toBeTruthy(),
+    )
+    expect(screen.getByText(/no longer being recorded/i)).toBeTruthy()
+    // The softer "still collecting" banner must not contradict it.
+    expect(screen.queryByText(/still collecting your data/i)).toBeNull()
+  })
+
+  // A backend older than 15-08-2026 sends no ceiling. Absence must read as
+  // "unknown", never as 0 — a 0 ceiling would render every org as blocked.
+  it('a missing hard ceiling never renders as a stopped-collection state', async () => {
     mockSubscription = { ...base, pageview_usage: 15000, pageview_limit: 10000 }
     renderTab()
     await waitFor(() =>
-      expect(screen.getByText(/exceeded your monthly pageview limit/i)).toBeTruthy(),
+      expect(screen.getByText(/You're over your plan's pageview limit/i)).toBeTruthy(),
     )
-    expect(screen.getByRole('button', { name: /Upgrade your plan/i })).toBeTruthy()
+    expect(screen.queryByText(/Collection has stopped/i)).toBeNull()
+    expect(screen.queryByText(/up to 0 pageviews/i)).toBeNull()
+  })
+
+  // The free tier's usage used to be hardcoded to 0 by the API, so this banner was
+  // literally unreachable for the population most likely to hit a cap.
+  it('a free-tier org over its cap sees the banner too', async () => {
+    mockSubscription = {
+      plan_id: 'free',
+      subscription_status: '',
+      current_period_end: '',
+      billing_interval: '',
+      pageview_limit: 5000,
+      has_payment_method: false,
+      pageview_usage: 6200,
+      pageview_hard_ceiling: 10000,
+    }
+    renderTab()
+    await waitFor(() =>
+      expect(screen.getByText(/You're over your plan's pageview limit \(6,200 of 5,000\)/i)).toBeTruthy(),
+    )
+    expect(screen.getByText(/still collecting your data — up to 10,000 pageviews/i)).toBeTruthy()
   })
 
   it('cancel modal uses fallback copy when current_period_end is missing', async () => {

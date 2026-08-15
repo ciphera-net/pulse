@@ -25,8 +25,16 @@ export interface SubscriptionDetails {
   cancel_effective_at?: string
   /** Number of sites for the org (billing usage). Present when backend supports usage API. */
   sites_count?: number
-  /** Pageviews in current billing period (when pageview_limit > 0). Present when backend supports usage API. */
+  /** Pageviews in the current metering window. Sent for EVERY org, including
+   *  free-tier ones and orgs with no billing row — it used to be hardcoded to 0
+   *  for those, which made the over-cap banner unreachable for exactly the
+   *  population most likely to hit a cap. */
   pageview_usage?: number
+  /** The runaway backstop: 2x pageview_limit. Crossing pageview_limit costs money
+   *  and nothing else — data keeps being collected. Only crossing THIS stops
+   *  ingestion. Optional because a backend older than 15-08-2026 does not send it;
+   *  treat its absence as "unknown", never as 0 (0 would read as "already over"). */
+  pageview_hard_ceiling?: number
   /** Business name from billing (optional). */
   business_name?: string
   /** Tax ID collected on the billing customer (VAT, EIN, etc.). */
