@@ -12,6 +12,13 @@ import type { Metadata } from 'next'
 // * title/description card with zero runtime dependency on the API being
 // * reachable.
 export const metadata: Metadata = {
+  // 🔴 noindex, and it is not belt-and-braces with robots.txt — it is the half that
+  // works. app/robots.ts already sends `Disallow: /share/`, but robots.txt is an
+  // instruction only well-behaved crawlers follow, and anything that fetches the page
+  // regardless — an archiver, a link-preview bot, a crawler that ignores robots.txt —
+  // was reading the app's default `index, follow` and being told to index a customer
+  // dashboard. The two directives disagreed; now they agree.
+  robots: { index: false, follow: false, nocache: true },
   title: 'Public Dashboard | Pulse',
   description: 'Privacy-first web analytics — view this site\'s public stats.',
   openGraph: {

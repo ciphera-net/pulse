@@ -249,6 +249,14 @@ export default function WorkspaceBillingTab() {
   // fabricated date.
   const nextChargeLabel = formatCalendarDateFull(subscription.next_charge_on)
 
+  // A GRANT's end date, which is a different fact from a charge date and now lives
+  // in a different column (backend migration 142). Before the split, the admin grant
+  // path wrote a grant's end into next_charge_on, so a granted org's billing page
+  // said "RENEWS" about a date on which nothing would be charged. Rendered with the
+  // same calendar-date formatter for the same reason: no Date is constructed, so
+  // there is no instant to shift.
+  const grantEndsLabel = formatCalendarDateFull(subscription.grant_expires_on)
+
   const usageRatio =
     subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number'
       ? subscription.pageview_usage / subscription.pageview_limit
@@ -311,7 +319,19 @@ export default function WorkspaceBillingTab() {
             {FREE_PAGEVIEW_LIMIT.toLocaleString()} pageviews/month on the free tier.
           </p>
         ) : (
-          <RailGrid minTileWidth={150} className="border-0">
+          <RailGrid
+            minTileWidth={150}
+            className="border-0"
+            // auto-FIT, not Facet's default auto-FILL. auto-fill keeps the empty
+            // tracks at the end of a row, and because RailGrid paints bg-border
+            // behind its 1px gaps, an empty track renders as a bordered ghost cell —
+            // visible on this tab at desktop widths whenever the tile count is short
+            // of the column count. auto-fit collapses those tracks so the real tiles
+            // stretch instead. `style` is the component's documented override slot;
+            // changing Facet's default is the better fix and is a separate change,
+            // since it moves layout in every consumer of the design system.
+            style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}
+          >
             {typeof subscription.sites_count === 'number' && (
               <StatTile label="Sites" value={subscription.sites_count} />
             )}
@@ -339,6 +359,9 @@ export default function WorkspaceBillingTab() {
                 label={subscription.cancel_at_period_end ? 'Ends' : isTrialing ? 'Trial ends' : 'Renews'}
                 value={nextChargeLabel}
               />
+            )}
+            {grantEndsLabel && (
+              <StatTile label="Grant ends" value={grantEndsLabel} />
             )}
             {planPricing && !isFree ? (
               <StatTile

@@ -331,6 +331,66 @@ describe('WorkspaceBillingTab invoice amount formatting', () => {
   })
 })
 
+describe('WorkspaceBillingTab grant expiry', () => {
+  // A grant and a subscription are different facts and now travel in different
+  // fields (backend migration 142). Until then the admin grant path wrote a grant's
+  // end date into next_charge_on, so a granted org's page announced a RENEWAL for a
+  // date on which no money would move. These tests hold the two apart in the UI.
+
+  it('labels a grant "Grant ends", never "Renews"', async () => {
+    mockSubscription = {
+      ...base,
+      plan_id: 'pioneer',
+      next_charge_on: null,
+      grant_expires_on: '2027-04-27',
+    }
+    renderTab()
+
+    await waitFor(() => expect(screen.getByText('Grant ends')).toBeTruthy())
+    // The weekday is computed from the calendar date itself; 27-04-2027 is a Tuesday.
+    expect(screen.getByText('Tue, 27/04/2027')).toBeTruthy()
+    // The paired negative: without it, a tile labelled BOTH would still pass above.
+    expect(screen.queryByText('Renews')).toBeNull()
+  })
+
+  it('shows a renewal and no grant tile for a paying subscription', async () => {
+    mockSubscription = { ...base, grant_expires_on: null }
+    renderTab()
+
+    await waitFor(() => expect(screen.getByText('Renews')).toBeTruthy())
+    expect(screen.queryByText('Grant ends')).toBeNull()
+  })
+
+  it('shows both when a granted org also carries a live subscription schedule', async () => {
+    // AdminGrantPlan deliberately does NOT clear next_charge_on: an org with a live
+    // Mollie subscription still gets charged, and blanking our record of when would
+    // misstate the provider. So both tiles can legitimately be present, and the page
+    // has to say which date means what rather than picking one.
+    mockSubscription = {
+      ...base,
+      plan_id: 'pioneer',
+      next_charge_on: '2026-09-15',
+      grant_expires_on: '2027-04-27',
+    }
+    renderTab()
+
+    await waitFor(() => expect(screen.getByText('Grant ends')).toBeTruthy())
+    expect(screen.getByText('Renews')).toBeTruthy()
+    expect(screen.getByText('Tue, 15/09/2026')).toBeTruthy()
+    expect(screen.getByText('Tue, 27/04/2027')).toBeTruthy()
+  })
+
+  it('renders no grant tile when the grant is perpetual', async () => {
+    mockSubscription = { ...base, plan_id: 'pioneer', next_charge_on: null, grant_expires_on: null }
+    renderTab()
+
+    await waitFor(() => expect(screen.getByText('Pioneer Plan')).toBeTruthy())
+    // A perpetual grant has no end date. An absent tile is honest; a fabricated
+    // "never" or an epoch would not be.
+    expect(screen.queryByText('Grant ends')).toBeNull()
+  })
+})
+
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
