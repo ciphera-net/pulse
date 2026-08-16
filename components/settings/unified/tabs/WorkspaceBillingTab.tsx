@@ -227,6 +227,20 @@ export default function WorkspaceBillingTab() {
     typeof subscription.pageview_usage === 'number' &&
     subscription.pageview_usage > subscription.pageview_limit
 
+  // The hard ceiling is the ONLY point at which collection actually stops. Absence
+  // is "unknown" (a backend older than 15-08-2026), which must never be read as 0 —
+  // a 0 ceiling would render every org as blocked. Hence the explicit typeof guard
+  // rather than `subscription.pageview_hard_ceiling ?? 0`.
+  const hardCeiling =
+    typeof subscription.pageview_hard_ceiling === 'number' && subscription.pageview_hard_ceiling > 0
+      ? subscription.pageview_hard_ceiling
+      : null
+
+  const atCeiling =
+    hardCeiling !== null &&
+    typeof subscription.pageview_usage === 'number' &&
+    subscription.pageview_usage >= hardCeiling
+
   const usageRatio =
     subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number'
       ? subscription.pageview_usage / subscription.pageview_limit
@@ -391,11 +405,42 @@ export default function WorkspaceBillingTab() {
           </Banner>
         )}
 
-        {/* Over-limit usage warning */}
-        {!isCanceled && overLimit && (
+        {/* Over the plan limit — but still collecting.
+            The old copy here said "Upgrade to keep collecting data", which is no
+            longer true and was never quite honest: going over the plan limit is a
+            billing event, and every pageview above it is still stored and served.
+            Collection stops only at the hard ceiling, which gets its own banner
+            below. Saying "we stopped" when we did not is the same class of mistake
+            as saying "you're fine" when we had. */}
+        {!isCanceled && overLimit && !atCeiling && (
           <Banner
             tone="warning"
-            title={`You've exceeded your monthly pageview limit (${subscription.pageview_usage!.toLocaleString()} of ${subscription.pageview_limit.toLocaleString()}).`}
+            title={`You're over your plan's pageview limit (${subscription.pageview_usage!.toLocaleString()} of ${subscription.pageview_limit.toLocaleString()}).`}
+            action={
+              canManageBilling ? (
+                <Button variant="secondary" size="sm" onClick={() => router.push('/switch')}>
+                  Upgrade your plan
+                </Button>
+              ) : undefined
+            }
+          >
+            {hardCeiling !== null
+              ? `We're still collecting your data — up to ${hardCeiling.toLocaleString()} pageviews. ${
+                  canManageBilling
+                    ? 'Upgrade to raise the limit.'
+                    : 'Contact your workspace owner to upgrade the plan.'
+                }`
+              : canManageBilling
+                ? 'Upgrade to raise the limit.'
+                : 'Contact your workspace owner to upgrade the plan.'}
+          </Banner>
+        )}
+
+        {/* At the hard ceiling — collection has actually stopped. */}
+        {!isCanceled && atCeiling && (
+          <Banner
+            tone="danger"
+            title={`Collection has stopped: you've reached the ${hardCeiling!.toLocaleString()} pageview ceiling.`}
             action={
               canManageBilling ? (
                 <Button variant="secondary" size="sm" onClick={() => router.push('/switch')}>
@@ -405,8 +450,8 @@ export default function WorkspaceBillingTab() {
             }
           >
             {canManageBilling
-              ? 'Upgrade to keep collecting data.'
-              : 'Contact your workspace owner to upgrade the plan.'}
+              ? 'New pageviews are no longer being recorded. Upgrading restores collection immediately.'
+              : 'New pageviews are no longer being recorded. Contact your workspace owner to upgrade the plan.'}
           </Banner>
         )}
 
