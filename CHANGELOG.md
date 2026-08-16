@@ -2,12 +2,35 @@
 
 All notable changes to Pulse (frontend and product) are documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and Pulse uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with a **0.x.y** version scheme while in initial development. The leading `0` indicates that the public API and behaviour may change until we release **1.0.0**.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and Pulse uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+**1.0.0** was released on 16-08-2026. The stability guarantee it carries is the
+public read API's — see that entry for what it does and does not cover.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-08-16
+
+
+Pulse is 1.0 because its most public promise already was: the read API behind the
+CLI has been frozen additive-only for a minimum of 24 months since 07-08-2026,
+while the version string still said `0.15.0-alpha` — which conventionally means the
+opposite. The version now agrees with the contract.
+
+Not a feature release. Everything below has been in production and serving
+customers; this is the version number catching up with five months of work.
+
+⚠️ The stability guarantee is the **public read API's**. The dashboard, its
+internal endpoints and the schema continue to change.
+
+
 ### Added
 
+- **Pulse CLI and a public read API.** A signed, Homebrew-installable client (`brew install ciphera-net/tap/pulse`) over an API-key read API whose wire format is frozen additive-only for 24 months.
+- **Uptime.** Monitors, incident history and per-monitor latency, on UTC calendar days — labelled as such, because re-bucketing frozen daily rows on a timezone change is a defect this product has already paid for once. Latency percentiles read as an em dash where the raw checks have been purged, never as a zero.
+- **Search.** Search Console rebuilt on daily totals that match Google's own chart, plus Bing daily clicks and impressions.
+- **CDN.** Bunny bandwidth, requests, cache hit ratio and errors, with a live hourly view.
+- **Performance.** Lighthouse measurement Pulse runs itself, with a visible provenance boundary at the point the instrument changed, and failed checks shown as failures rather than as stale numbers.
 - **Page Rules — control which pages appear in your analytics.** A new "Page Rules" section in Settings > Privacy lets you exclude pages you don't want tracked (like `/admin/*` or `/staging/*`) and group dynamic pages into clean labels (like turning hundreds of `/sites/abc-123-def` entries into a single `/sites/:id` row). Rules are evaluated top-to-bottom — first match wins — and you can reorder them with up/down arrows. Excluded pages are hidden from all stats but never permanently deleted, so you can change your mind and bring them back anytime.
 - **Automatic grouping of dynamic paths.** Enabled by default, Pulse now automatically detects UUIDs, numeric IDs, and long tokens in your page paths and replaces them with `:id`. Instead of seeing 500 separate entries like `/posts/12345` and `/posts/67890`, you see one clean `/posts/:id` row with the combined total. Works out of the box — no setup needed. You can toggle it off in Settings > Privacy if you prefer to see the raw paths.
 - **Cleaner page paths by default.** Query parameters like session tokens, auth codes, and cache busters are now automatically stripped from your page stats. Instead of seeing `/search?q=shoes&session=abc123` cluttering your Top Pages, you see just `/search`. If you need specific parameters (like `q` for search queries), add them to the allowlist in Settings > Privacy — everything else is removed automatically.
@@ -25,11 +48,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Free plan now visible on the Pricing page.** The free tier is no longer hidden — it's displayed as the first option on the Pricing page so you can see exactly what you get before signing up: 1 site, 5,000 monthly pageviews, and 6 months of data retention, completely free.
 - **Free plan limited to 1 site.** Free accounts are now limited to a single site. If you need more, you can upgrade to Solo or above from the Pricing page.
 
+
+### Changed
+
+- **A shared dashboard shows aggregates only.** Breakdown rows describing fewer than five visitors are withheld, and the page says how many were withheld so the numbers still add up. Shared dashboards are also `noindex` now: `robots.txt` already disallowed them, but the page itself was emitting the app's default `index, follow`, and the two directives disagreed.
+- **A granted plan says "Grant ends", not "Renews".** A grant's end date and a charge date are different facts and now travel in different fields; the billing page had been announcing a renewal for a date on which no money would move.
+
+
 ### Improved
 
 - **PageSpeed scores you can actually trust.** Every check now runs Lighthouse three times and stores the middle result, instead of reporting a single run. A single run of an unchanged page moves by 20 points or more, which meant the trend chart was largely drawing noise and score-drop emails were sometimes triggered by it. The chart itself now has a fixed 0–100 scale, shows each individual check as a dot alongside the trend line, and marks the date the measurement method changed — so older, single-run history is visibly labelled as such rather than silently mixed in. Checks also run on Ciphera's own infrastructure now, so your site's address is no longer sent to a third-party API on a schedule.
 - **PageSpeed tells you when a check fails.** A failed check used to leave no trace at all: the page simply kept showing the previous result under today's date. Now the header says the check failed, why, and that the numbers below are from the last successful run — with a button to try again. The same is true if the page can't load your settings: it says so, instead of showing "monitoring is off" for a site where it is switched on. A measurement that was never taken shows a dash rather than a zero.
-
 - **The marketing site got a redesign.** The homepage, pricing, features, about, FAQ, installation, integrations, and changelog pages now share the same bordered layout as ciphera.net, with numbered sections so you always know where you are on a long page. Pages load faster and calmer — content is visible the moment the page loads instead of fading in as you scroll, and every page has a real, readable heading. The changelog itself is now collapsible with working links straight to a specific release, the pricing toggle can be operated fully from the keyboard, and the FAQ's category filters and accordions are too.
 - **The Behavior page now tells you where the frustration is.** Click any row in "Frustration by page" to focus the whole page on it — the rage click and dead click tables instantly narrow to that page's elements, and the filter lives in the URL so you can share a link straight to "here's what's broken on /pricing". The old donut chart is replaced by a real day-by-day trend of rage and dead clicks, and scroll depth is now four clean bars instead of a radar chart. Stat changes versus the previous period only appear when there's enough history to compare against, so you'll no longer see a meaningless "-100%" on a brand-new site.
 - **The Search page is now the full Search Console experience.** Alongside top queries and pages you can now browse clicks by country, by device, and — most usefully — an Opportunities view: queries ranking just off the first page where a better title or snippet could win real clicks, with the potential shown next to each. Expanding a query now also charts how its ranking position moved over the period. Clicks and impressions finally get their own scales on the traffic chart, so clicks no longer flatline against the impression counts. A "new queries" chip lists exactly which searches appeared this period, the page shows when your data last synced, and the view, page number, and expanded row all live in the URL.
@@ -64,11 +93,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Smoother loading transitions.** When your data finishes loading, the page now fades in smoothly instead of appearing all at once. This applies across Dashboard, Journeys, Funnels, Behavior, Uptime, Settings, Notifications, and shared dashboards. If your data was already cached from a previous visit, it still loads instantly with no animation — the fade only kicks in when you're actually waiting for fresh data.
 - **Faster tab switching across the board.** Switching between Settings, Funnels, Uptime, and other tabs now shows your data instantly instead of flashing a loading skeleton every time. Previously visited tabs remember their data and show it right away, while quietly refreshing in the background so you always see the latest numbers without the wait.
 
+
 ### Removed
 
 - **The Behavior page is gone, and scroll depth moved to your dashboard.** Frustration tracking is fully retired, so the Behavior page has been removed along with the rage-click and dead-click reports. **Scroll depth is not going anywhere** — the 25 / 50 / 75 / 100% distribution now sits on your main dashboard alongside the other breakdowns, where it responds to your filters like everything else. Per-page scroll depth on Top Pages, the Engagement score, exports and the public API are all unchanged. The `G B` shortcut is retired with the page.
 - **Frustration and interaction tracking are being retired.** The "Frustration tracking" and "Interaction tracking" toggles are gone from your site's tracking settings, and neither add-on script is offered any more. Pulse now ships a single tracking script. Frustration tracking recorded a CSS selector and click coordinates for the element you clicked — the most identifying thing Pulse collected — and it is going away. The Behavior page still shows existing data for now, and carries a notice. **Scroll depth is not affected**: it comes from the core script, stays exactly as it is, and moves to your main dashboard when the Behavior page is retired.
 - **Performance insights removed.** The Performance tab, Core Web Vitals tracking (LCP, CLS, INP), and the "Enable performance insights" toggle in Settings have been removed. The tracking script no longer collects Web Vitals data. Visit duration tracking continues to work as before.
+
 
 ### Fixed
 
