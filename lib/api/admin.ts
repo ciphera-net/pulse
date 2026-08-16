@@ -9,7 +9,9 @@ export interface AdminOrgSummary {
   billing_interval: string
   pageview_limit: number
   subscription_status: string
-  current_period_end: string
+  /** Calendar date of the next scheduled charge, "YYYY-MM-DD", or null when there
+   *  is none. Replaced current_period_end (a timestamp) on 15-08-2026. */
+  next_charge_on: string | null
   business_name: string
   last_payment_at?: string
   created_at: string

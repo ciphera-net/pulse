@@ -8,7 +8,7 @@ import Select from '@/components/ui/select'
 import { cdnUrl } from '@/lib/cdn'
 import { Globe } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { formatDate, formatDateTime } from '@/lib/utils/formatDate'
+import { formatDate } from '@/lib/utils/formatDate'
 function addMonths(d: Date, months: number) {
   const out = new Date(d)
   out.setMonth(out.getMonth() + months)
@@ -65,12 +65,15 @@ export default function AdminOrgDetailPage() {
           setInterval(data.billing.billing_interval || 'month')
           setLimit(data.billing.pageview_limit.toString())
           
-          // Format date for input type="datetime-local" or similar
-          if (data.billing.current_period_end) {
-            setPeriodEnd(new Date(data.billing.current_period_end).toISOString().slice(0, 16))
+          // A grant runs to a calendar DATE, not an instant. It used to be a
+          // datetime-local input, so an admin was choosing a time-of-day they had
+          // no way to reason about — and that time-of-day went straight into the
+          // column the renewal guard compared against, which is how a charge
+          // arriving on the right DAY was refused for being ~21h "early".
+          if (data.billing.next_charge_on) {
+            setPeriodEnd(data.billing.next_charge_on)
           } else {
-            // Default to 1 month from now
-            setPeriodEnd(addMonths(new Date(), 1).toISOString().slice(0, 16))
+            setPeriodEnd(addMonths(new Date(), 1).toISOString().slice(0, 10))
           }
         })
         .catch(() => {
@@ -91,7 +94,7 @@ export default function AdminOrgDetailPage() {
         plan_id: planId,
         billing_interval: interval,
         pageview_limit: parseInt(limit),
-        period_end: new Date(periodEnd).toISOString(),
+        period_end: periodEnd,
       })
       toast.success('Plan granted successfully')
       router.refresh()
@@ -134,9 +137,12 @@ export default function AdminOrgDetailPage() {
               <span className="text-neutral-500">Interval:</span>
               <span className="font-medium">{org.billing_interval}</span>
               
-              <span className="text-neutral-500">Period End:</span>
+              <span className="text-neutral-500">Next charge:</span>
               <span className="font-medium">
-                {org.current_period_end ? formatDateTime(new Date(org.current_period_end)) : '—'}
+                {/* Rendered verbatim from the wire date — no Date is constructed, so
+                    there is no instant to shift. An em dash means "no scheduled
+                    charge", a real state for a grant or the free tier. */}
+                {org.next_charge_on ?? '—'}
               </span>
 
               <span className="text-neutral-500">Customer ID:</span>
@@ -195,9 +201,9 @@ export default function AdminOrgDetailPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Period End Date (UTC)</label>
+                <label className="text-sm font-medium">Next charge date</label>
                 <input
-                  type="datetime-local"
+                  type="date"
                   value={periodEnd}
                   onChange={(e) => setPeriodEnd(e.target.value)}
                   className="w-full px-4 py-2 border border-neutral-800 rounded-none bg-neutral-900 text-white focus:outline-none focus:ring-2 focus:ring-brand-orange focus:ring-offset-2"
@@ -206,7 +212,7 @@ export default function AdminOrgDetailPage() {
                 <div className="flex gap-2 mt-1">
                   <button
                     type="button"
-                    onClick={() => setPeriodEnd(addMonths(new Date(), 1).toISOString().slice(0, 16))}
+                    onClick={() => setPeriodEnd(addMonths(new Date(), 1).toISOString().slice(0, 10))}
                     className="text-xs text-brand-orange hover:underline"
                   >
                     +1 Month

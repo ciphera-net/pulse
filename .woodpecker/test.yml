@@ -37,3 +37,11 @@ steps:
       # one. Runs before `npm test` because it is the cheaper signal.
       - npm run type-check
       - npm test
+      # 🔴 The date-sensitive suites, a SECOND time, under a maximal POSITIVE
+      # offset (Pacific/Kiritimati, UTC+14). vitest.setup.ts pins
+      # America/New_York, which catches a date rendered a day EARLY but is blind
+      # to the opposite sign — and the opposite sign is the defect that reached a
+      # customer on 15-08-2026 (a 23:24Z renewal date shown as the NEXT day). One
+      # pinned sign is half a guard, and the half that was missing is the half
+      # that shipped.
+      - npm run test:tz-positive
