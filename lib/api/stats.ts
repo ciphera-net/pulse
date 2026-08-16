@@ -232,10 +232,6 @@ export function getPublicDailyStats(siteId: string, startDate?: string, endDate?
 
 // ─── Public Campaigns ───────────────────────────────────────────────
 
-export function getPublicCampaigns(siteId: string, startDate?: string, endDate?: string, limit = 10, auth?: AuthParams): Promise<CampaignStat[]> {
-  return apiRequest<{ campaigns: CampaignStat[] }>(`/public/sites/${siteId}/campaigns${buildQuery({ startDate, endDate, limit }, auth)}`)
-    .then(r => r?.campaigns || [])
-}
 
 // ─── Full Dashboard ─────────────────────────────────────────────────
 
@@ -261,6 +257,22 @@ export interface DashboardData {
   goal_counts?: GoalCountStat[]
   scroll_depth?: ScrollDepthDistribution
   date_range?: { start: string; end: string }
+  /** What the minimum-cell-size floor withheld. Present ONLY on a shared dashboard
+   *  and ONLY when something was withheld, so its presence is itself the signal that
+   *  this payload was served anonymously.
+   *
+   *  A shared dashboard drops every dimension row describing fewer than
+   *  `min_cell_size` people, because the payload carries fifteen dimensions computed
+   *  over the same sessions and small cells in several of them join into one person.
+   *  The counts are reported rather than silently applied so a viewer can see that
+   *  the rows do not sum to the total on purpose. */
+  suppression?: DashboardSuppression
+}
+
+export interface DashboardSuppression {
+  min_cell_size: number
+  rows_withheld: number
+  pageviews_withheld: number
 }
 
 export interface ScrollDepthDistribution {
@@ -334,67 +346,31 @@ export function getDashboardOverview(siteId: string, startDate?: string, endDate
   return apiRequest<DashboardOverviewData>(`/sites/${siteId}/dashboard/overview${buildQuery({ startDate, endDate, interval, filters })}`)
 }
 
-export function getPublicDashboardOverview(
-  siteId: string, startDate?: string, endDate?: string, interval?: string,
-  password?: string, captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
-): Promise<DashboardOverviewData> {
-  return apiRequest<DashboardOverviewData>(`/public/sites/${siteId}/dashboard/overview${buildQuery({ startDate, endDate, interval }, { password, captcha })}`)
-}
 
 export function getDashboardPages(siteId: string, startDate?: string, endDate?: string, limit = 10, filters?: string): Promise<DashboardPagesData> {
   return apiRequest<DashboardPagesData>(`/sites/${siteId}/dashboard/pages${buildQuery({ startDate, endDate, limit, filters })}`)
 }
 
-export function getPublicDashboardPages(
-  siteId: string, startDate?: string, endDate?: string, limit = 10,
-  password?: string, captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
-): Promise<DashboardPagesData> {
-  return apiRequest<DashboardPagesData>(`/public/sites/${siteId}/dashboard/pages${buildQuery({ startDate, endDate, limit }, { password, captcha })}`)
-}
 
 export function getDashboardLocations(siteId: string, startDate?: string, endDate?: string, limit = 10, countryLimit = 250, filters?: string): Promise<DashboardLocationsData> {
   return apiRequest<DashboardLocationsData>(`/sites/${siteId}/dashboard/locations${buildQuery({ startDate, endDate, limit, countryLimit, filters })}`)
 }
 
-export function getPublicDashboardLocations(
-  siteId: string, startDate?: string, endDate?: string, limit = 10, countryLimit = 250,
-  password?: string, captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
-): Promise<DashboardLocationsData> {
-  return apiRequest<DashboardLocationsData>(`/public/sites/${siteId}/dashboard/locations${buildQuery({ startDate, endDate, limit, countryLimit }, { password, captcha })}`)
-}
 
 export function getDashboardDevices(siteId: string, startDate?: string, endDate?: string, limit = 10, filters?: string): Promise<DashboardDevicesData> {
   return apiRequest<DashboardDevicesData>(`/sites/${siteId}/dashboard/devices${buildQuery({ startDate, endDate, limit, filters })}`)
 }
 
-export function getPublicDashboardDevices(
-  siteId: string, startDate?: string, endDate?: string, limit = 10,
-  password?: string, captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
-): Promise<DashboardDevicesData> {
-  return apiRequest<DashboardDevicesData>(`/public/sites/${siteId}/dashboard/devices${buildQuery({ startDate, endDate, limit }, { password, captcha })}`)
-}
 
 export function getDashboardReferrers(siteId: string, startDate?: string, endDate?: string, limit = 10, filters?: string): Promise<DashboardReferrersData> {
   return apiRequest<DashboardReferrersData>(`/sites/${siteId}/dashboard/referrers${buildQuery({ startDate, endDate, limit, filters })}`)
 }
 
-export function getPublicDashboardReferrers(
-  siteId: string, startDate?: string, endDate?: string, limit = 10,
-  password?: string, captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
-): Promise<DashboardReferrersData> {
-  return apiRequest<DashboardReferrersData>(`/public/sites/${siteId}/dashboard/referrers${buildQuery({ startDate, endDate, limit }, { password, captcha })}`)
-}
 
 export function getDashboardGoals(siteId: string, startDate?: string, endDate?: string, limit = 10, filters?: string): Promise<DashboardGoalsData> {
   return apiRequest<DashboardGoalsData>(`/sites/${siteId}/dashboard/goals${buildQuery({ startDate, endDate, limit, filters })}`)
 }
 
-export function getPublicDashboardGoals(
-  siteId: string, startDate?: string, endDate?: string, limit = 10,
-  password?: string, captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
-): Promise<DashboardGoalsData> {
-  return apiRequest<DashboardGoalsData>(`/public/sites/${siteId}/dashboard/goals${buildQuery({ startDate, endDate, limit }, { password, captcha })}`)
-}
 
 // ─── Engagement Percentiles ──────────────────────────────────────────
 
@@ -422,13 +398,6 @@ export function getEngagementPercentiles(siteId: string, startDate?: string, end
     .then(r => r ?? { summary: { score: 0, scroll_pctl: 0, time_pctl: 0, depth_pctl: 0, bounce_pctl: 0 }, daily: [], data_days: 0 })
 }
 
-export function getPublicEngagementPercentiles(
-  siteId: string, startDate?: string, endDate?: string,
-  auth?: AuthParams
-): Promise<EngagementPercentilesData> {
-  return apiRequest<EngagementPercentilesData>(`/public/sites/${siteId}/engagement/percentiles${buildQuery({ startDate, endDate }, auth)}`)
-    .then(r => r ?? { summary: { score: 0, scroll_pctl: 0, time_pctl: 0, depth_pctl: 0, bounce_pctl: 0 }, daily: [], data_days: 0 })
-}
 
 // ─── Event Properties ────────────────────────────────────────────────
 

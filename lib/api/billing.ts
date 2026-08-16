@@ -28,6 +28,17 @@ export interface SubscriptionDetails {
    *  Optional because a backend older than 15-08-2026 does not send it; absence is
    *  "unknown", to be rendered as an explicit absent state. */
   next_charge_on?: string | null
+  /** The calendar date a MANUAL GRANT ends, "YYYY-MM-DD", or null when the org is
+   *  not on a grant (every paying subscription, the free tier) or the grant is
+   *  perpetual.
+   *
+   *  A DIFFERENT FACT from next_charge_on, and deliberately a different field
+   *  (backend migration 142). Until then the admin grant path wrote a grant's end
+   *  date into next_charge_on — the column that means "Mollie will charge here" —
+   *  so a granted org's page announced a renewal for a date on which no money would
+   *  move. Same rendering rule: pass it to formatCalendarDateFull, NEVER to
+   *  `new Date(...)`. */
+  grant_expires_on?: string | null
   billing_interval: string
   pageview_limit: number
   has_payment_method: boolean

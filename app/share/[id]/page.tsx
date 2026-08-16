@@ -355,6 +355,23 @@ export default function PublicDashboardPage() {
           />
         </div>
 
+        {/* What the minimum-cell-size floor withheld.
+            Stated rather than applied silently: a shared dashboard drops every
+            dimension row describing fewer than min_cell_size people, so the rows
+            below deliberately do not sum to the totals above. Without this line the
+            gap reads as a bug in the numbers — and the first person to notice would
+            be right to report it. The block is absent entirely when nothing was
+            withheld, so it never appears as a reassuring zero. */}
+        {data.suppression && data.suppression.rows_withheld > 0 && (
+          <p className="mb-6 text-xs text-neutral-500">
+            {data.suppression.rows_withheld.toLocaleString()}{' '}
+            {data.suppression.rows_withheld === 1 ? 'row is' : 'rows are'} hidden below,
+            covering {data.suppression.pageviews_withheld.toLocaleString()} pageviews. A shared
+            dashboard only shows breakdown rows with at least {data.suppression.min_cell_size}{' '}
+            visitors, so no row can describe one person. Site totals are unaffected.
+          </p>
+        )}
+
         {/* Details Grid */}
         <div className="grid gap-6 lg:grid-cols-2 mb-8">
           <TopPages
