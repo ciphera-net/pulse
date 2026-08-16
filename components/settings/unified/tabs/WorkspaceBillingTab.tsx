@@ -28,7 +28,7 @@ import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { updatePaymentMethod, cancelSubscription, resumeSubscription, getInvoices, getPrices, downloadInvoicePDF, updateBillingSettings } from '@/lib/api/billing'
-import { formatDate, formatDateFull } from '@/lib/utils/formatDate'
+import { formatCalendarDateFull, formatDateUTC } from '@/lib/utils/formatDate'
 import { cdnUrl } from '@/lib/cdn'
 import { useCan } from '@/lib/auth/permissions'
 import { formatPlanName, getPlanPricing, FREE_PAGEVIEW_LIMIT } from '@/lib/plans'
@@ -227,6 +227,28 @@ export default function WorkspaceBillingTab() {
     typeof subscription.pageview_usage === 'number' &&
     subscription.pageview_usage > subscription.pageview_limit
 
+  // The hard ceiling is the ONLY point at which collection actually stops. Absence
+  // is "unknown" (a backend older than 15-08-2026), which must never be read as 0 —
+  // a 0 ceiling would render every org as blocked. Hence the explicit typeof guard
+  // rather than `subscription.pageview_hard_ceiling ?? 0`.
+  const hardCeiling =
+    typeof subscription.pageview_hard_ceiling === 'number' && subscription.pageview_hard_ceiling > 0
+      ? subscription.pageview_hard_ceiling
+      : null
+
+  const atCeiling =
+    hardCeiling !== null &&
+    typeof subscription.pageview_usage === 'number' &&
+    subscription.pageview_usage >= hardCeiling
+
+  // The renewal date, rendered from the calendar date VERBATIM. No Date is
+  // constructed from it, so there is no instant to shift and no timezone that can
+  // move it — the display defect is unrepresentable rather than merely avoided.
+  // null means "no scheduled charge", which is a real state for a grant, the free
+  // tier or a cancelled subscription, and renders as an absent tile rather than a
+  // fabricated date.
+  const nextChargeLabel = formatCalendarDateFull(subscription.next_charge_on)
+
   const usageRatio =
     subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number'
       ? subscription.pageview_usage / subscription.pageview_limit
@@ -312,10 +334,10 @@ export default function WorkspaceBillingTab() {
                 }
               />
             )}
-            {subscription.current_period_end && (
+            {nextChargeLabel && (
               <StatTile
                 label={subscription.cancel_at_period_end ? 'Ends' : isTrialing ? 'Trial ends' : 'Renews'}
-                value={formatDateFull(new Date(subscription.current_period_end))}
+                value={nextChargeLabel}
               />
             )}
             {planPricing && !isFree ? (
@@ -391,11 +413,42 @@ export default function WorkspaceBillingTab() {
           </Banner>
         )}
 
-        {/* Over-limit usage warning */}
-        {!isCanceled && overLimit && (
+        {/* Over the plan limit — but still collecting.
+            The old copy here said "Upgrade to keep collecting data", which is no
+            longer true and was never quite honest: going over the plan limit is a
+            billing event, and every pageview above it is still stored and served.
+            Collection stops only at the hard ceiling, which gets its own banner
+            below. Saying "we stopped" when we did not is the same class of mistake
+            as saying "you're fine" when we had. */}
+        {!isCanceled && overLimit && !atCeiling && (
           <Banner
             tone="warning"
-            title={`You've exceeded your monthly pageview limit (${subscription.pageview_usage!.toLocaleString()} of ${subscription.pageview_limit.toLocaleString()}).`}
+            title={`You're over your plan's pageview limit (${subscription.pageview_usage!.toLocaleString()} of ${subscription.pageview_limit.toLocaleString()}).`}
+            action={
+              canManageBilling ? (
+                <Button variant="secondary" size="sm" onClick={() => router.push('/switch')}>
+                  Upgrade your plan
+                </Button>
+              ) : undefined
+            }
+          >
+            {hardCeiling !== null
+              ? `We're still collecting your data — up to ${hardCeiling.toLocaleString()} pageviews. ${
+                  canManageBilling
+                    ? 'Upgrade to raise the limit.'
+                    : 'Contact your workspace owner to upgrade the plan.'
+                }`
+              : canManageBilling
+                ? 'Upgrade to raise the limit.'
+                : 'Contact your workspace owner to upgrade the plan.'}
+          </Banner>
+        )}
+
+        {/* At the hard ceiling — collection has actually stopped. */}
+        {!isCanceled && atCeiling && (
+          <Banner
+            tone="danger"
+            title={`Collection has stopped: you've reached the ${hardCeiling!.toLocaleString()} pageview ceiling.`}
             action={
               canManageBilling ? (
                 <Button variant="secondary" size="sm" onClick={() => router.push('/switch')}>
@@ -405,8 +458,8 @@ export default function WorkspaceBillingTab() {
             }
           >
             {canManageBilling
-              ? 'Upgrade to keep collecting data.'
-              : 'Contact your workspace owner to upgrade the plan.'}
+              ? 'New pageviews are no longer being recorded. Upgrading restores collection immediately.'
+              : 'New pageviews are no longer being recorded. Contact your workspace owner to upgrade the plan.'}
           </Banner>
         )}
 
@@ -422,8 +475,8 @@ export default function WorkspaceBillingTab() {
                   ? ` (${subscription.pending_limit.toLocaleString()} pageviews/${subscription.pending_interval === 'month' ? 'mo' : 'yr'})`
                   : ''}{' '}
                 pending
-                {subscription.current_period_end
-                  ? ` — applies ${formatDateFull(new Date(subscription.current_period_end))}`
+                {nextChargeLabel
+                  ? ` — applies ${nextChargeLabel}`
                   : ''}
               </>
             }
@@ -495,8 +548,8 @@ export default function WorkspaceBillingTab() {
           Are you sure you want to cancel your subscription?
         </p>
         <p className="mb-1 text-sm text-muted-foreground">
-          {subscription.current_period_end
-            ? <>Your {planLabel} plan stays fully active until <span className="text-foreground">{formatDateFull(new Date(subscription.current_period_end))}</span> — you won&apos;t be charged again.</>
+          {nextChargeLabel
+            ? <>Your {planLabel} plan stays fully active until <span className="text-foreground">{nextChargeLabel}</span> — you won&apos;t be charged again.</>
             : <>You&apos;ll keep access until the end of your current billing period and won&apos;t be charged again.</>}
         </p>
         <p className="mb-5 text-sm text-muted-foreground">
@@ -676,7 +729,11 @@ export default function WorkspaceBillingTab() {
                     <TD>
                       <span className="font-mono text-xs text-muted-foreground">{invoice.invoice_number ?? '—'}</span>
                     </TD>
-                    <TD className="hidden sm:table-cell">{formatDate(new Date(invoice.created_at))}</TD>
+                    {/* An invoice date is a pinned document date — the instant the
+                        server issued it — so it renders as its UTC day. formatDate
+                        read the LOCAL day and dated the one real invoice on the
+                        estate 16/07 for a document the database dates 15-07. */}
+                    <TD className="hidden sm:table-cell">{formatDateUTC(new Date(invoice.created_at))}</TD>
                     <TD numeric>
                       <span className="text-foreground">
                         {isCreditNote ? '−' : ''}{fmt.format(Math.abs(invoice.total_cents) / 100)}

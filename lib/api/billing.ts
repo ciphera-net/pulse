@@ -15,7 +15,19 @@ export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'canceled'
 export interface SubscriptionDetails {
   plan_id: string
   subscription_status: SubscriptionStatus
-  current_period_end: string
+  /** The calendar date Mollie will next charge, "YYYY-MM-DD", or null when there
+   *  is no scheduled charge (a grant, the free tier, a cancelled subscription).
+   *
+   *  A DATE STRING, never an instant. It replaced current_period_end on 15-08-2026:
+   *  that field was a timestamp carrying the checkout's time-of-day, which rendered
+   *  as a different day for viewers in different timezones — the billing page showed
+   *  "RENEWS Sun, 16/08/2026" for a charge Mollie took on the 15th. A value with no
+   *  time-of-day cannot render on the wrong day, so pass it to
+   *  formatCalendarDateFull and NEVER to `new Date(...)`.
+   *
+   *  Optional because a backend older than 15-08-2026 does not send it; absence is
+   *  "unknown", to be rendered as an explicit absent state. */
+  next_charge_on?: string | null
   billing_interval: string
   pageview_limit: number
   has_payment_method: boolean
@@ -25,8 +37,16 @@ export interface SubscriptionDetails {
   cancel_effective_at?: string
   /** Number of sites for the org (billing usage). Present when backend supports usage API. */
   sites_count?: number
-  /** Pageviews in current billing period (when pageview_limit > 0). Present when backend supports usage API. */
+  /** Pageviews in the current metering window. Sent for EVERY org, including
+   *  free-tier ones and orgs with no billing row — it used to be hardcoded to 0
+   *  for those, which made the over-cap banner unreachable for exactly the
+   *  population most likely to hit a cap. */
   pageview_usage?: number
+  /** The runaway backstop: 2x pageview_limit. Crossing pageview_limit costs money
+   *  and nothing else — data keeps being collected. Only crossing THIS stops
+   *  ingestion. Optional because a backend older than 15-08-2026 does not send it;
+   *  treat its absence as "unknown", never as 0 (0 would read as "already over"). */
+  pageview_hard_ceiling?: number
   /** Business name from billing (optional). */
   business_name?: string
   /** Tax ID collected on the billing customer (VAT, EIN, etc.). */
