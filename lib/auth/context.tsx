@@ -10,6 +10,7 @@ import { logoutAction, getSessionAction, setSessionAction } from '@/app/actions/
 import { getUserOrganizations, switchContext, getOrganization } from '@/lib/api/organization'
 import { logger } from '@/lib/utils/logger'
 import { cleanupStaleStorage } from '@/lib/utils/storage-cleanup'
+import { forgetAllPendingAuth } from '@/lib/api/oauth-store'
 
 /** Read vault PII from the cross-subdomain cookie set by id-frontend. */
 function getVaultPII(): { email?: string; display_name?: string } {
@@ -139,6 +140,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('user')
     localStorage.removeItem('ciphera_token_refreshed_at')
     localStorage.removeItem('ciphera_last_activity')
+    // * Logout ends with a full navigation to /login, which starts a fresh
+    // * attempt. Anything still pending belongs to the session being ended.
+    forgetAllPendingAuth()
     document.cookie = 'csrf_token=; Max-Age=0; path=/;'
     document.cookie = 'csrf_token=; Max-Age=0; path=/; domain=.ciphera.net;'
     document.cookie = 'ciphera_pii=; Max-Age=0; path=/;'
