@@ -1,6 +1,6 @@
 {
   "name": "pulse-frontend",
-  "version": "0.15.0-alpha",
+  "version": "1.0.0",
   "license": "AGPL-3.0-only",
   "private": true,
   "scripts": {
