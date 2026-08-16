@@ -106,8 +106,12 @@ const nextConfig: NextConfig = {
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           {
+            // * `browsing-topics=()` is the current opt-out. It replaced
+            // * `interest-cohort=()`, which named the withdrawn FLoC proposal — no
+            // * browser has recognised that feature since, and Chrome logged
+            // * "Unrecognized feature: 'interest-cohort'" on every page load.
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+            value: 'camera=(), microphone=(), geolocation=(), browsing-topics=()',
           },
           { key: 'X-XSS-Protection', value: '1; mode=block' },
           // ⚠️ AUTHORITATIVE COPY IS AT THE EDGE, NOT HERE.

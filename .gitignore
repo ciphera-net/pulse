@@ -61,6 +61,7 @@ tests/*
 !tests/settings-smoke.spec.ts
 !tests/site-settings-save.spec.ts
 !tests/behavior-removal.spec.ts
+!tests/oauth-state-clobber.spec.ts
 !tests/support/
 tests/support/*
 !tests/support/login.ts

@@ -25,6 +25,12 @@ const PUBLIC_ROUTES = new Set([
 
   '/script.js', // * Tracking script – must load without auth for embedded sites (Shopify, etc.)
   '/script-sri.json', // * Subresource Integrity manifest (sha384 of the tracking script); consumed by ciphera-website build to pin <script integrity="">.
+  // * Static file in public/, so next-pwa precaches it. A 307 to /login here fails
+  // * the WHOLE service worker install (workbox aborts on one bad precache
+  // * response), so the PWA never installed for signed-out visitors and every page
+  // * load logged a fetch error. Same reason sw.js/workbox-*.js are excluded from
+  // * the matcher below.
+  '/script-versions.json',
 ])
 
 const PUBLIC_PREFIXES = [
