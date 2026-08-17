@@ -171,11 +171,8 @@ export function FunnelSummaryCard({
                 label: stepLabel(s.step),
                 value: s.visitors,
               }))}
-              edges="straight"
-              layers={3}
-              showLabels={false}
+              compact
               staggerDelay={0.06}
-              style={{ aspectRatio: '8 / 1' }}
             />
           </div>
         )}

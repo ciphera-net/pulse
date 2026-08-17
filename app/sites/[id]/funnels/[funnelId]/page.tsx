@@ -28,6 +28,7 @@ import { FunnelDetailSkeleton } from '@/components/skeletons'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import FunnelModal from '@/components/funnels/FunnelModal'
 import { FunnelChart } from '@/components/ui/funnel-chart'
+import { FileText, House, Lightning } from '@phosphor-icons/react'
 import { FunnelStepStrip } from '@/components/funnels/FunnelStepStrip'
 import { FunnelTrendChart } from '@/components/funnels/FunnelTrendChart'
 import { useCan } from '@/lib/auth/permissions'
@@ -354,9 +355,16 @@ export default function FunnelDetailPage() {
                   label: s.step.value,
                   value: s.visitors,
                   displayValue: formatNumber(s.visitors),
+                  icon:
+                    s.step.category === 'event' ? (
+                      <Lightning className="h-3.5 w-3.5 text-neutral-500" />
+                    ) : s.step.value === '/' ? (
+                      <House className="h-3.5 w-3.5 text-neutral-500" />
+                    ) : (
+                      <FileText className="h-3.5 w-3.5 text-neutral-500" />
+                    ),
+                  medianToNextSeconds: s.median_step_seconds ?? null,
                 }))}
-                edges="straight"
-                layers={3}
                 selectedIndex={selectedStep - 1}
                 onStageSelect={(i) => setSelectedStep(i + 1)}
                 formatPercentage={(p) => `${p >= 10 || p === 0 ? Math.round(p) : p.toFixed(1)}%`}
