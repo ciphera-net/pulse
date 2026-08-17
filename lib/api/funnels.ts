@@ -110,6 +110,17 @@ export async function deleteFunnel(siteId: string, funnelId: string): Promise<vo
   })
 }
 
+/** Chained stats for EVERY funnel on the site in one request — the list surface. */
+export async function getAllFunnelStats(siteId: string, startDate?: string, endDate?: string, filters?: string): Promise<Record<string, FunnelStats>> {
+  const params = new URLSearchParams()
+  if (startDate) params.append('start_date', startDate)
+  if (endDate) params.append('end_date', endDate)
+  if (filters) params.append('filters', filters)
+  const queryString = params.toString() ? `?${params.toString()}` : ''
+  const response = await apiRequest<{ stats: Record<string, FunnelStats> }>(`/sites/${siteId}/funnels/stats${queryString}`)
+  return response?.stats ?? {}
+}
+
 export async function getFunnelStats(siteId: string, funnelId: string, startDate?: string, endDate?: string, filters?: string): Promise<FunnelStats> {
   const params = new URLSearchParams()
   if (startDate) params.append('start_date', startDate)

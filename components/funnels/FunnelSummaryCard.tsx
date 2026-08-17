@@ -1,27 +1,33 @@
 'use client'
 
-import { useMemo } from 'react'
 import Link from 'next/link'
 import { CaretRight, FileText, House, Lightning, PencilSimple, Trash } from '@phosphor-icons/react'
-import type { Funnel, FunnelStep } from '@/lib/api/funnels'
-import { useFunnelStats } from '@/lib/swr/dashboard'
+import type { Funnel, FunnelStats, FunnelStep } from '@/lib/api/funnels'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { FunnelChart } from '@/components/ui/funnel-chart'
 import { guardedPctChange, type PctChangeResult } from '@/lib/utils/pctChange'
-import { previousDateRange } from '@/lib/hooks/periodUrl'
 
 // ---------------------------------------------------------------------------
 // Funnels list row — the whole card is a link to the funnel detail route;
 // edit/delete are hover/focus-revealed SIBLINGS (absolutely positioned), never
 // nested inside the link. Step chips show the real targets (custom names keep
 // the value in title), the conversion % is plain white with a tiny-base-
-// guarded delta, and the right rail carries a lazy 96×28 trend sparkline.
+// guarded delta, and the row carries the funnel's own mini chart.
+//
+// Stats arrive as PROPS from the page's single batched request — the card
+// used to fetch its own current + previous stats, which multiplied every
+// 60s poll by the number of funnels on the site.
 // ---------------------------------------------------------------------------
 
 interface FunnelSummaryCardProps {
   funnel: Funnel
   siteId: string
-  dateRange: { start: string; end: string }
+  /** This funnel's stats from the page-level batched fetch (undefined while loading). */
+  stats?: FunnelStats
+  /** Previous-range stats for the delta badge. */
+  prevStats?: FunnelStats
+  /** True when the batched stats request failed. */
+  statsError?: boolean
   /** Current ?period/start/end query (with leading `?`) carried into the detail link. */
   hrefQuery: string
   canManage: boolean
@@ -66,27 +72,14 @@ function DeltaBadge({ change }: { change: PctChangeResult }) {
 export function FunnelSummaryCard({
   funnel,
   siteId,
-  dateRange,
+  stats,
+  prevStats,
+  statsError,
   hrefQuery,
   canManage,
   onEdit,
   onDelete,
 }: FunnelSummaryCardProps) {
-  const { data: stats, error: statsError } = useFunnelStats(
-    siteId,
-    funnel.id,
-    dateRange.start,
-    dateRange.end,
-  )
-
-  const prevRange = useMemo(() => previousDateRange(dateRange), [dateRange])
-
-  const { data: prevStats } = useFunnelStats(
-    siteId,
-    funnel.id,
-    prevRange?.start ?? '',
-    prevRange?.end ?? '',
-  )
   const conversion = stats?.steps.length ? stats.steps[stats.steps.length - 1].conversion : null
   const prevConversion = prevStats?.steps.length
     ? prevStats.steps[prevStats.steps.length - 1].conversion

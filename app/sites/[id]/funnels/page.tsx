@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { deleteFunnel, createFunnel, updateFunnel, type Funnel, type CreateFunnelRequest } from '@/lib/api/funnels'
-import { useSite, useFunnels } from '@/lib/swr/dashboard'
+import { useSite, useFunnels, useFunnelListStats } from '@/lib/swr/dashboard'
+import { previousDateRange } from '@/lib/hooks/periodUrl'
 import { toast, PlusIcon, Button } from '@ciphera-net/facet'
 import { FunnelsListSkeleton } from '@/components/skeletons'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -53,6 +54,13 @@ export default function FunnelsPage() {
   const { data: site } = useSite(siteId)
   const { data: funnels, error: funnelsError, isLoading, mutate } = useFunnels(siteId)
   const { period, dateRange, setPeriod, shiftPeriod } = useUrlDateRange()
+
+  // * ONE batched stats request per range for the whole list (plus one for the
+  // * previous range, feeding the delta badges) — this page used to fan out
+  // * two requests per funnel per 60s poll.
+  const { data: listStats, error: listStatsError } = useFunnelListStats(siteId, dateRange.start, dateRange.end)
+  const prevRange = useMemo(() => previousDateRange(dateRange), [dateRange])
+  const { data: prevListStats } = useFunnelListStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '')
   const [deletingFunnel, setDeletingFunnel] = useState<{ id: string; name: string } | null>(null)
   const [prefill, setPrefill] = useState<FunnelPrefill | null>(() => parsePrefill(searchParams.get('prefill')))
   const [modalOpen, setModalOpen] = useState<boolean>(() => parsePrefill(searchParams.get('prefill')) !== null || searchParams.get('create') === '1')
@@ -144,7 +152,9 @@ export default function FunnelsPage() {
               <FunnelSummaryCard
                 funnel={funnel}
                 siteId={siteId}
-                dateRange={dateRange}
+                stats={listStats?.[funnel.id]}
+                prevStats={prevListStats?.[funnel.id]}
+                statsError={!!listStatsError}
                 hrefQuery={hrefQuery}
                 canManage={canManageFunnels}
                 onEdit={(f) => { setEditingFunnel(f); setModalOpen(true) }}
