@@ -4,8 +4,9 @@ import { useMemo } from 'react'
 import Link from 'next/link'
 import { CaretRight, FileText, House, Lightning, PencilSimple, Trash } from '@phosphor-icons/react'
 import type { Funnel, FunnelStep } from '@/lib/api/funnels'
-import { useFunnelStats, useFunnelTrends } from '@/lib/swr/dashboard'
+import { useFunnelStats } from '@/lib/swr/dashboard'
 import { AnimatedNumber } from '@/components/ui/animated-number'
+import { FunnelChart } from '@/components/ui/funnel-chart'
 import { guardedPctChange, type PctChangeResult } from '@/lib/utils/pctChange'
 import { previousDateRange } from '@/lib/hooks/periodUrl'
 
@@ -57,27 +58,10 @@ function DeltaBadge({ change }: { change: PctChangeResult }) {
   )
 }
 
-function Sparkline({ values }: { values: number[] }) {
-  if (values.length < 2) return null
-  const w = 96
-  const h = 28
-  const pad = 2
-  const max = Math.max(...values, 1)
-  const min = Math.min(...values, 0)
-  const span = max - min || 1
-  const points = values
-    .map((v, i) => {
-      const x = pad + (i / (values.length - 1)) * (w - pad * 2)
-      const y = h - pad - ((v - min) / span) * (h - pad * 2)
-      return `${x.toFixed(1)},${y.toFixed(1)}`
-    })
-    .join(' ')
-  return (
-    <svg width={w} height={h} aria-hidden="true" className="shrink-0">
-      <polyline points={points} fill="none" stroke="#FD5E0F" strokeWidth={1.5} />
-    </svg>
-  )
-}
+// * The 96×28 trend sparkline is gone on purpose: its most dramatic points were
+// * 1–2 visitor artifacts (audit F-sparkline), and the row now carries the
+// * funnel's own shape instead — the same FunnelChart the detail page draws,
+// * miniaturised. One visual grammar at every scale.
 
 export function FunnelSummaryCard({
   funnel,
@@ -103,8 +87,6 @@ export function FunnelSummaryCard({
     prevRange?.start ?? '',
     prevRange?.end ?? '',
   )
-  const { data: trends } = useFunnelTrends(siteId, funnel.id, dateRange.start, dateRange.end)
-
   const conversion = stats?.steps.length ? stats.steps[stats.steps.length - 1].conversion : null
   const prevConversion = prevStats?.steps.length
     ? prevStats.steps[prevStats.steps.length - 1].conversion
@@ -157,7 +139,7 @@ export function FunnelSummaryCard({
             )}
           </div>
 
-          {/* Right rail: conversion + delta + sparkline */}
+          {/* Right rail: conversion + guarded delta */}
           <div className="flex shrink-0 items-center gap-5 sm:pr-2 sm:pt-1">
             <div className="flex flex-col items-start gap-0.5 sm:items-end">
               {conversion !== null ? (
@@ -176,9 +158,24 @@ export function FunnelSummaryCard({
               )}
               <DeltaBadge change={delta} />
             </div>
-            <Sparkline values={trends?.overall ?? []} />
           </div>
         </div>
+
+        {/* Row 4: the funnel itself — same chart as the detail page, mini.
+            Renders only with data (the chart's own zero-entrant guard also
+            applies), so an empty funnel adds no dead band to the card. */}
+        {stats && stats.steps.length > 0 && stats.steps[0].visitors > 0 && (
+          <div className="mt-4 border-t border-border pt-3">
+            <FunnelChart
+              data={stats.steps.map((s) => ({
+                label: stepLabel(s.step),
+                value: s.visitors,
+              }))}
+              compact
+              staggerDelay={0.06}
+            />
+          </div>
+        )}
       </Link>
 
       {/* Hover/focus actions — siblings of the link, never nested interactive */}
