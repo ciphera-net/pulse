@@ -90,7 +90,6 @@ export function FunnelSummaryCard({
       ? guardedPctChange(conversion, prevConversion, prevVisitors)
       : null
 
-  const windowChip = `${funnel.conversion_window_value}${funnel.conversion_window_unit === 'hours' ? 'h' : 'd'} window`
 
   return (
     <div className="group relative">
@@ -104,7 +103,7 @@ export function FunnelSummaryCard({
             <div className="flex items-center gap-3 pr-20">
               <h3 className="truncate text-base font-semibold text-white">{funnel.name}</h3>
               <span className="shrink-0 text-xs text-neutral-500">
-                {funnel.steps.length} steps · {windowChip}
+                {funnel.steps.length} steps
               </span>
             </div>
 

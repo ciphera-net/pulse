@@ -218,7 +218,6 @@ export default function FunnelDetailPage() {
     null,
   )
 
-  const windowLabel = `${funnel.conversion_window_value}${funnel.conversion_window_unit === 'hours' ? 'h' : 'd'} window`
   const createdLabel = formatDisplayDate(new Date(funnel.created_at))
 
   return (
@@ -238,7 +237,7 @@ export default function FunnelDetailPage() {
             <p className="mt-1 text-sm text-neutral-400">
               {funnel.description && <span>{funnel.description} · </span>}
               <span className="text-xs text-neutral-500">
-                {windowLabel} · created {createdLabel}
+                a conversion completes within one visit · created {createdLabel}
               </span>
             </p>
           </div>
