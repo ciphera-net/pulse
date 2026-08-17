@@ -66,11 +66,15 @@ export interface FunnelTrends {
 
 export interface FunnelBreakdownEntry {
   value: string
-  /** sessions that reached the target step, chained through every prior step */
-  visitors: number
+  /**
+   * Sessions that reached the target step, chained through every prior step.
+   * null when the row is under the n≥5 entrant floor — withheld, not zero.
+   */
+  visitors: number | null
   /** sessions that entered the funnel under this dimension value — the denominator */
   entrants: number
-  conversion: number
+  /** null when floored */
+  conversion: number | null
 }
 
 export interface FunnelBreakdown {

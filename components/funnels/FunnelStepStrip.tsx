@@ -95,7 +95,7 @@ function BarRow({
 }: {
   icon: React.ReactNode
   label: string
-  count: number
+  count: number | null
   pct: number
   trailing?: string
 }) {
@@ -113,7 +113,7 @@ function BarRow({
         <span className="relative shrink-0 text-xs tabular-nums text-neutral-500">{trailing}</span>
       )}
       <span className="relative shrink-0 text-sm font-semibold tabular-nums text-neutral-400">
-        {formatNumber(count)}
+        {count != null ? formatNumber(count) : '—'}
       </span>
     </div>
   )
@@ -149,7 +149,7 @@ export function FunnelStepStrip({
   const exits = step.exit_pages ?? []
   const maxExit = exits.length > 0 ? exits[0].visitors : 0
   const entries = breakdown?.entries ?? []
-  const maxEntry = entries.reduce((m, e) => Math.max(m, e.visitors), 0)
+  const maxEntry = entries.reduce((m, e) => Math.max(m, e.visitors ?? 0), 0)
   const dimensionLabel = DIMENSIONS.find((d) => d.value === dimension)?.label ?? dimension
 
   return (
@@ -224,8 +224,14 @@ export function FunnelStepStrip({
                   icon={getFilterValueIcon(dimension, entry.value)}
                   label={entry.value}
                   count={entry.visitors}
-                  pct={maxEntry > 0 ? (entry.visitors / maxEntry) * 100 : 0}
-                  trailing={`${Math.round(entry.conversion)}% conv`}
+                  // A floored row draws NO bar — a bar length would redraw the
+                  // number the n≥5 floor just withheld.
+                  pct={entry.visitors != null && maxEntry > 0 ? (entry.visitors / maxEntry) * 100 : 0}
+                  trailing={
+                    entry.conversion != null
+                      ? `${Math.round(entry.conversion)}% conv`
+                      : 'fewer than 5 entered'
+                  }
                 />
               ))}
             </div>
