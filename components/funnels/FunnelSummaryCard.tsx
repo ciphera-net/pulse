@@ -90,10 +90,10 @@ export function FunnelSummaryCard({
   const conversion = stats?.steps.length ? stats.steps[stats.steps.length - 1].conversion : null
   const prevConversion = prevStats?.steps.length
     ? prevStats.steps[prevStats.steps.length - 1].conversion
-    : 0
+    : null
   const prevVisitors = prevStats?.steps[0]?.visitors ?? 0
   const delta =
-    conversion !== null && prevStats
+    conversion != null && prevConversion != null && prevStats
       ? guardedPctChange(conversion, prevConversion, prevVisitors)
       : null
 
