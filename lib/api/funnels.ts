@@ -53,8 +53,6 @@ export interface CreateFunnelRequest {
   name: string
   description: string
   steps: Omit<FunnelStep, 'order'>[]
-  conversion_window_value?: number
-  conversion_window_unit?: 'hours' | 'days'
 }
 
 export interface FunnelTrends {
