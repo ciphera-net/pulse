@@ -39,7 +39,9 @@ export function FunnelTrendChart({ siteId, funnelId, dateRange, filters }: Funne
     if (!trends?.dates?.length) return []
     return trends.dates.map((date, i) => ({
       date: date + 'T00:00:00',
-      overall: trends.overall[i] ?? 0,
+      // null stays null: a day with zero entrants has no rate, and the chart
+      // draws a gap for it (breakAtMissing) instead of a fabricated 0% point.
+      overall: trends.overall[i],
     }))
   }, [trends])
 
@@ -75,7 +77,10 @@ export function FunnelTrendChart({ siteId, funnelId, dateRange, filters }: Funne
                 {
                   color: ORANGE,
                   label: 'Overall',
-                  value: `${Math.round(typeof point.overall === 'number' ? point.overall : 0)}%`,
+                  value:
+                    typeof point.overall === 'number'
+                      ? `${Math.round(point.overall)}%`
+                      : '— no entrants',
                 },
               ]}
             />
@@ -86,6 +91,7 @@ export function FunnelTrendChart({ siteId, funnelId, dateRange, filters }: Funne
               stroke={ORANGE}
               strokeWidth={2}
               gradientToOpacity={0}
+              breakAtMissing
             />
           </AreaChart>
         ) : (

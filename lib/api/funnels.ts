@@ -35,8 +35,10 @@ export interface ExitPage {
 export interface FunnelStepStats {
   step: FunnelStep
   visitors: number
-  dropoff: number
-  conversion: number
+  /** null when the previous step had no visitors — a rate over an empty population is undefined */
+  dropoff: number | null
+  /** null when nobody entered the funnel */
+  conversion: number | null
   exit_pages: ExitPage[]
   median_step_seconds?: number | null
 }
@@ -57,13 +59,19 @@ export interface CreateFunnelRequest {
 
 export interface FunnelTrends {
   dates: string[]
-  overall: number[]
-  steps: Record<string, number[]>
+  /** null per bucket when that bucket had zero entrants — an empty day is not a 0% day */
+  overall: (number | null)[]
+  /** per-bucket entrant denominator, for gating small-n buckets */
+  entered: number[]
+  steps: Record<string, (number | null)[]>
 }
 
 export interface FunnelBreakdownEntry {
   value: string
+  /** sessions that reached the target step, chained through every prior step */
   visitors: number
+  /** sessions that entered the funnel under this dimension value — the denominator */
+  entrants: number
   conversion: number
 }
 

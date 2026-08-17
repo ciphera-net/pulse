@@ -27,7 +27,8 @@ import { UpdatingChip } from '@/components/ui/UpdatingChip'
 import { FunnelDetailSkeleton } from '@/components/skeletons'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import FunnelModal from '@/components/funnels/FunnelModal'
-import { FunnelCanvas } from '@/components/funnels/FunnelCanvas'
+import { FunnelChart } from '@/components/ui/funnel-chart'
+import { FileText, House, Lightning } from '@phosphor-icons/react'
 import { FunnelStepStrip } from '@/components/funnels/FunnelStepStrip'
 import { FunnelTrendChart } from '@/components/funnels/FunnelTrendChart'
 import { useCan } from '@/lib/auth/permissions'
@@ -194,20 +195,22 @@ export default function FunnelDetailPage() {
   if (!funnel) return <FunnelDetailSkeleton />
 
   // ── Derived stats ──────────────────────────────────────────────────
+  // conversion is null while stats load AND when nobody entered the funnel —
+  // both render as an em dash, never as a fabricated 0%.
   const totalVisitors = stats?.steps[0]?.visitors ?? 0
   const converted = stats?.steps.length ? stats.steps[stats.steps.length - 1].visitors : 0
-  const conversion = stats?.steps.length ? stats.steps[stats.steps.length - 1].conversion : 0
+  const conversion = stats?.steps.length ? stats.steps[stats.steps.length - 1].conversion : null
   const prevVisitors = prevStats?.steps[0]?.visitors ?? 0
   const prevConverted = prevStats?.steps.length
     ? prevStats.steps[prevStats.steps.length - 1].visitors
     : 0
   const prevConversion = prevStats?.steps.length
     ? prevStats.steps[prevStats.steps.length - 1].conversion
-    : 0
+    : null
 
   const biggestDrop = stats?.steps.reduce<{ value: string; dropoff: number } | null>(
     (worst, step, i) => {
-      if (i === 0) return worst
+      if (i === 0 || step.dropoff == null) return worst
       if (!worst || step.dropoff > worst.dropoff)
         return { value: step.step.value, dropoff: step.dropoff }
       return worst
@@ -289,33 +292,49 @@ export default function FunnelDetailPage() {
           <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
             <KpiCard
               label="Conversion"
-              delta={prevStats ? guardedPctChange(conversion, prevConversion, prevVisitors) : null}
+              delta={
+                prevStats && conversion != null && prevConversion != null
+                  ? guardedPctChange(conversion, prevConversion, prevVisitors)
+                  : null
+              }
             >
-              <AnimatedNumber
-                value={conversion}
-                format={(v) => `${Math.round(v)}%`}
-                className="text-xl font-semibold tabular-nums text-white"
-              />
+              {conversion != null ? (
+                <AnimatedNumber
+                  value={conversion}
+                  format={(v) => `${Math.round(v)}%`}
+                  className="text-xl font-semibold tabular-nums text-white"
+                />
+              ) : (
+                <span className="text-xl font-semibold text-neutral-600">—</span>
+              )}
             </KpiCard>
             <KpiCard
               label="Visitors"
               delta={prevStats ? guardedPctChange(totalVisitors, prevVisitors, prevVisitors) : null}
             >
-              <AnimatedNumber
-                value={totalVisitors}
-                format={(v) => formatNumber(Math.round(v))}
-                className="text-xl font-semibold tabular-nums text-white"
-              />
+              {stats ? (
+                <AnimatedNumber
+                  value={totalVisitors}
+                  format={(v) => formatNumber(Math.round(v))}
+                  className="text-xl font-semibold tabular-nums text-white"
+                />
+              ) : (
+                <span className="text-xl font-semibold text-neutral-600">—</span>
+              )}
             </KpiCard>
             <KpiCard
               label="Converted"
               delta={prevStats ? guardedPctChange(converted, prevConverted, prevVisitors) : null}
             >
-              <AnimatedNumber
-                value={converted}
-                format={(v) => formatNumber(Math.round(v))}
-                className="text-xl font-semibold tabular-nums text-white"
-              />
+              {stats ? (
+                <AnimatedNumber
+                  value={converted}
+                  format={(v) => formatNumber(Math.round(v))}
+                  className="text-xl font-semibold tabular-nums text-white"
+                />
+              ) : (
+                <span className="text-xl font-semibold text-neutral-600">—</span>
+              )}
             </KpiCard>
             <KpiCard label="Biggest drop-off">
               {biggestDrop ? (
@@ -345,10 +364,29 @@ export default function FunnelDetailPage() {
         {!statsError && stats && stats.steps.length > 0 && (
           <>
             <div className="mt-6">
-              <FunnelCanvas
-                steps={stats.steps}
-                selectedStep={selectedStep}
-                onSelectStep={setSelectedStep}
+              {/* * Funnel shape — the 21st.dev chart, house-adapted. Stage values
+                  * are the chained per-step visitor counts, so pct-of-first equals
+                  * the API's conversion-of-entry. Click/keys drive ?step= exactly
+                  * as the old canvas did. */}
+              <FunnelChart
+                data={stats.steps.map((s) => ({
+                  label: s.step.value,
+                  value: s.visitors,
+                  displayValue: formatNumber(s.visitors),
+                  icon:
+                    s.step.category === 'event' ? (
+                      <Lightning className="h-3.5 w-3.5 text-neutral-500" />
+                    ) : s.step.value === '/' ? (
+                      <House className="h-3.5 w-3.5 text-neutral-500" />
+                    ) : (
+                      <FileText className="h-3.5 w-3.5 text-neutral-500" />
+                    ),
+                  medianToNextSeconds: s.median_step_seconds ?? null,
+                }))}
+                selectedIndex={selectedStep - 1}
+                onStageSelect={(i) => setSelectedStep(i + 1)}
+                formatPercentage={(p) => `${p >= 10 || p === 0 ? Math.round(p) : p.toFixed(1)}%`}
+                style={{ aspectRatio: '2.8 / 1' }}
               />
             </div>
             <div className="mt-3">
