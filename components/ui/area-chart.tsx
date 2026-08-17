@@ -1568,6 +1568,12 @@ export interface AreaProps {
   showHighlight?: boolean;
   gradientToOpacity?: number;
   fadeEdges?: boolean;
+  /**
+   * Draw a gap where the point's value is not a number (null/undefined),
+   * instead of plotting it at 0. For series where a missing bucket means
+   * "no data", not "measured zero" — plotting it would fabricate the zero.
+   */
+  breakAtMissing?: boolean;
 }
 
 export function Area({
@@ -1582,6 +1588,7 @@ export function Area({
   showHighlight = true,
   gradientToOpacity = 0,
   fadeEdges = false,
+  breakAtMissing = false,
 }: AreaProps) {
   const {
     data,
@@ -1834,6 +1841,7 @@ export function Area({
             <AreaClosed
               curve={curve}
               data={data}
+              defined={breakAtMissing ? (d) => typeof d[dataKey] === "number" : undefined}
               fill={`url(#${gradientId})`}
               x={(d) => xScale(xAccessor(d)) ?? 0}
               y={getY}
@@ -1850,6 +1858,7 @@ export function Area({
               <LinePath
                 curve={curve}
                 data={data}
+                defined={breakAtMissing ? (d) => typeof d[dataKey] === "number" : undefined}
                 innerRef={pathRef}
                 stroke={`url(#${strokeGradientId})`}
                 strokeLinecap="round"
