@@ -27,7 +27,7 @@ import { UpdatingChip } from '@/components/ui/UpdatingChip'
 import { FunnelDetailSkeleton } from '@/components/skeletons'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import FunnelModal from '@/components/funnels/FunnelModal'
-import { FunnelCanvas } from '@/components/funnels/FunnelCanvas'
+import { FunnelChart } from '@/components/ui/funnel-chart'
 import { FunnelStepStrip } from '@/components/funnels/FunnelStepStrip'
 import { FunnelTrendChart } from '@/components/funnels/FunnelTrendChart'
 import { useCan } from '@/lib/auth/permissions'
@@ -345,10 +345,22 @@ export default function FunnelDetailPage() {
         {!statsError && stats && stats.steps.length > 0 && (
           <>
             <div className="mt-6">
-              <FunnelCanvas
-                steps={stats.steps}
-                selectedStep={selectedStep}
-                onSelectStep={setSelectedStep}
+              {/* * Funnel shape — the 21st.dev chart, house-adapted. Stage values
+                  * are the chained per-step visitor counts, so pct-of-first equals
+                  * the API's conversion-of-entry. Click/keys drive ?step= exactly
+                  * as the old canvas did. */}
+              <FunnelChart
+                data={stats.steps.map((s) => ({
+                  label: s.step.value,
+                  value: s.visitors,
+                  displayValue: formatNumber(s.visitors),
+                }))}
+                edges="straight"
+                layers={3}
+                selectedIndex={selectedStep - 1}
+                onStageSelect={(i) => setSelectedStep(i + 1)}
+                formatPercentage={(p) => `${p >= 10 || p === 0 ? Math.round(p) : p.toFixed(1)}%`}
+                style={{ aspectRatio: '2.8 / 1' }}
               />
             </div>
             <div className="mt-3">
