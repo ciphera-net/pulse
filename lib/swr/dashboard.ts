@@ -28,7 +28,7 @@ import {
 } from '@/lib/api/journeys'
 import { getSite, getInstallStatus } from '@/lib/api/sites'
 import type { Site, InstallStatusResponse } from '@/lib/api/sites'
-import { listFunnels, getFunnel, getFunnelStats, getFunnelTrends, getFunnelBreakdown, type Funnel, type FunnelStats, type FunnelTrends, type FunnelBreakdown } from '@/lib/api/funnels'
+import { listFunnels, getFunnel, getFunnelStats, getAllFunnelStats, getFunnelTrends, getFunnelBreakdown, type Funnel, type FunnelStats, type FunnelTrends, type FunnelBreakdown } from '@/lib/api/funnels'
 import {
   getUptimeStatus,
   getUptimeIncidents,
@@ -414,6 +414,22 @@ export function useFunnelDetail(siteId: string, funnelId: string) {
       ...dashboardSWRConfig,
       refreshInterval: 60_000,
       dedupingInterval: 10_000,
+    }
+  )
+}
+
+// * Hook for the batched list-stats endpoint: every funnel's stats in ONE
+// * request. The list page calls this twice (current + previous range)
+// * instead of two requests per funnel per poll.
+export function useFunnelListStats(siteId: string, startDate: string, endDate: string, filters?: string) {
+  return useSWR<Record<string, FunnelStats>>(
+    siteId && startDate && endDate ? ['funnelListStats', siteId, `${startDate}-${endDate}`, filters] : null,
+    () => getAllFunnelStats(siteId, startDate, endDate, filters),
+    {
+      ...dashboardSWRConfig,
+      refreshInterval: 60_000,
+      dedupingInterval: 10_000,
+      keepPreviousData: true,
     }
   )
 }
