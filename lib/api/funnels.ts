@@ -21,8 +21,6 @@ export interface Funnel {
   name: string
   description: string
   steps: FunnelStep[]
-  conversion_window_value: number
-  conversion_window_unit: 'hours' | 'days'
   created_at: string
   updated_at: string
 }
