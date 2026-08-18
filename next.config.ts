@@ -8,6 +8,37 @@ const withPWA = withPWAInit({
   disable: process.env.NODE_ENV === "development",
 })
 
+// * ═══ /_next/static/* IS SERVED FROM ITS OWN CDN ZONE ═══
+// *
+// * WHY: pulse.ciphera.net moves to Bunny Magic Containers, and an MC rollout is
+// * PROGRESSIVE — ~10-15 minutes across its region set. Next.js HTML references
+// * content-hashed chunks, so a mixed-version fleet 404s in BOTH directions: old HTML
+// * asking an already-updated region for a chunk it no longer has, AND new HTML asking
+// * a not-yet-updated one. Simply not purging static only ever covered the first case.
+// * At 1489 real req/h that is hundreds of sessions per deploy — which is why this is a
+// * PREREQUISITE for the MC migration, not an optimisation (frontends plan §3.5).
+// *
+// * Chunks now come from a storage-backed zone that KEEPS EVERY BUILD'S OUTPUT, so the
+// * URL a given HTML references is always resolvable whichever app version answers.
+// *
+// * 🔴 The upload in .woodpecker/deploy.yml runs BEFORE the rollout and FAILS the deploy
+// * if it cannot complete. That ordering is load-bearing: with a prefix set, an image
+// * whose assets were never uploaded serves a page where EVERY chunk 404s.
+// *
+// * ⚠️ DEFAULTS TO EMPTY ON PURPOSE. An unset build arg degrades to serving assets from
+// * the app itself — the site works, it just loses the decoupling. The alternative
+// * (baking the production URL in as the default, which is what `help` did) would make a
+// * STAGING build silently serve PRODUCTION chunks, i.e. a different build's JavaScript.
+// * Safe degradation beats a wrong default. The pipeline asserts the live HTML actually
+// * references this host after deploy, so "silently off" is caught rather than trusted.
+const ASSET_PREFIX = process.env['NEXT_PUBLIC_ASSET_PREFIX'] ?? ''
+
+// * The zone that serves those chunks. Kept as a constant because it appears in FOUR CSP
+// * directives and a typo in any one of them is a blank page, not an error.
+// * ⚠️ It is a `.b-cdn.net` host, so it is NOT covered by the `https://*.ciphera.net`
+// * already present in connect-src — every directive needs it spelled out.
+const ASSET_CDN = 'https://ciphera-app-static.b-cdn.net'
+
 // * CSP directives — restrict resource loading to known origins
 const cspDirectives = [
   "default-src 'self'",
@@ -15,14 +46,21 @@ const cspDirectives = [
   // 'wasm-unsafe-eval' lets the browser compile/instantiate the @ciphera-net/tessera OPAQUE
   // WASM core (settings re-auth) — without it WebAssembly.instantiate is CSP-blocked and the
   // re-auth ceremony fails at runtime. It permits WASM compilation only, not arbitrary eval.
-  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://js.ciphera.net https://api.help.ciphera.net${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
-  "style-src 'self' 'unsafe-inline'",
+  // 🔴 ASSET_CDN is a DELIBERATE WIDENING of script-src. It is our own zone and serves
+  // nothing but build output, but it does mean a compromise of that bucket is script
+  // execution on the authenticated dashboard. That is precisely why it is a DEDICATED
+  // storage zone with its own write credential (Woodpecker org secret
+  // `app_static_storage_password`) rather than the shared cdn.ciphera.net assets bucket:
+  // the credential used for routine image uploads must not gain script execution here.
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://js.ciphera.net https://api.help.ciphera.net ${ASSET_CDN}${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
+  `style-src 'self' 'unsafe-inline' ${ASSET_CDN}`,
   // * google/gstatic were only ever here for favicons — those now go through
   // * the same-origin /api/favicon proxy, and CSP enforces that nothing
   // * regresses to loading them from Google directly.
   "img-src 'self' data: blob: https://ciphera.net https://captcha.ciphera.net https://*.cartocdn.com https://cdn.ciphera.net",
-  "font-src 'self'",
-  `connect-src 'self' https://*.ciphera.net wss://*.ciphera.net https://ciphera.net https://cdn.jsdelivr.net https://*.cartocdn.com${process.env.NODE_ENV === 'development' ? ' http://localhost:* ws://localhost:*' : ''}`,
+  // next/font emits its woff2 files under /_next/static/media, so they move with the rest.
+  `font-src 'self' ${ASSET_CDN}`,
+  `connect-src 'self' https://*.ciphera.net wss://*.ciphera.net https://ciphera.net https://cdn.jsdelivr.net https://*.cartocdn.com ${ASSET_CDN}${process.env.NODE_ENV === 'development' ? ' http://localhost:* ws://localhost:*' : ''}`,
   "worker-src 'self' blob:",
   "frame-src https://api.help.ciphera.net",
   "object-src 'none'",
@@ -38,6 +76,9 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_BUILD_ID: BUILD_ID,
   },
   reactStrictMode: true,
+  // * Production only — `next dev` must keep serving its own assets, and an empty
+  // * prefix must stay a no-op rather than emitting `//_next/...`.
+  ...(process.env.NODE_ENV === 'production' && ASSET_PREFIX ? { assetPrefix: ASSET_PREFIX } : {}),
   // * Enable standalone output for production deployment
   output: 'standalone',
   // * Privacy-first: Disable analytics and telemetry
