@@ -35,6 +35,10 @@ describe('dashboard page wiring (Phase 3)', () => {
     expect(page).toContain('engagementError={Boolean(engagementError)}')
     expect(page).toContain('filtersActive={hasFilters}')
   })
+
+  it('carries no provenance strip — removed by owner decision 19-08', () => {
+    expect(page).not.toContain('DashboardStatusLine')
+  })
 })
 
 describe('command deck chart (approved C mockup fidelity)', () => {

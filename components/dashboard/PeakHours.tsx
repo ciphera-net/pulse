@@ -19,9 +19,12 @@ interface PeakHoursProps {
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const DAYS_FULL = ['Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays', 'Sundays']
-const BUCKETS = 12 // 2-hour buckets
-// Label at bucket index 0=00:00, 3=06:00, 6=12:00, 9=18:00
-const BUCKET_LABELS: Record<number, string> = { 0: '00:00', 3: '06:00', 6: '12:00', 9: '18:00' }
+// 24 hourly columns — the approved mockup's full-width grid. The old 12
+// two-hour buckets were sized for a HALF-width card; full width doubled the
+// square cells and the whole block with them.
+const BUCKETS = 24
+// Label at bucket index 0=00:00, 6=06:00, 12=12:00, 18=18:00
+const BUCKET_LABELS: Record<number, string> = { 0: '00:00', 6: '06:00', 12: '12:00', 18: '18:00' }
 
 const HIGHLIGHT_COLORS = [
   'transparent',
@@ -64,9 +67,7 @@ function formatMetricValue(value: number, metric: Metric): string {
 }
 
 function formatBucket(bucket: number): string {
-  const hour = bucket * 2
-  const end = hour + 2
-  return `${String(hour).padStart(2, '0')}:00–${String(end).padStart(2, '0')}:00`
+  return `${String(bucket).padStart(2, '0')}:00–${String(bucket + 1).padStart(2, '0')}:00`
 }
 
 function formatHour(hour: number): string {
@@ -122,7 +123,7 @@ export default function PeakHours({ siteId, dateRange, filters }: PeakHoursProps
       const day = date.getUTCDay()
       const hour = date.getUTCHours()
       const adjustedDay = day === 0 ? 6 : day - 1
-      const bucket = Math.floor(hour / 2)
+      const bucket = hour
       if (metric === 'pageviews') {
         grid[adjustedDay][bucket] += d.pageviews
       } else if (metric === 'visitors') {
@@ -238,7 +239,28 @@ export default function PeakHours({ siteId, dateRange, filters }: PeakHoursProps
         </div>
       ) : hasData ? (
         <>
-          <div className="flex-1 min-h-[270px] flex flex-col justify-center gap-[5px] relative" ref={gridRef}>
+          <div className="flex-1 min-h-[270px] flex flex-col justify-center gap-[3px] relative" ref={gridRef}>
+            {/* Hour axis on TOP, per the approved mockup. */}
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="w-7 flex-shrink-0" />
+              <div className="flex-1 relative h-3">
+                {Object.entries(BUCKET_LABELS).map(([b, label]) => (
+                  <span
+                    key={b}
+                    className="absolute text-micro-label text-neutral-600"
+                    style={{ left: `${(Number(b) / BUCKETS) * 100}%` }}
+                  >
+                    {label}
+                  </span>
+                ))}
+                <span
+                  className="absolute text-micro-label text-neutral-600 -translate-x-full"
+                  style={{ left: '100%' }}
+                >
+                  24:00
+                </span>
+              </div>
+            </div>
             {grid.map((buckets, dayIdx) => (
               <div key={dayIdx} className="flex items-center gap-1.5">
                 <span className="text-caption text-neutral-500 w-7 flex-shrink-0 text-right leading-none">
@@ -246,7 +268,7 @@ export default function PeakHours({ siteId, dateRange, filters }: PeakHoursProps
                 </span>
                 <div
                   className="flex-1"
-                  style={{ display: 'grid', gridTemplateColumns: `repeat(${BUCKETS}, 1fr)`, gap: '5px' }}
+                  style={{ display: 'grid', gridTemplateColumns: `repeat(${BUCKETS}, 1fr)`, gap: '3px' }}
                 >
                   {buckets.map((value, bucket) => {
                     const isHoveredCell = hovered?.day === dayIdx && hovered?.bucket === bucket
@@ -278,28 +300,6 @@ export default function PeakHours({ siteId, dateRange, filters }: PeakHoursProps
                 </div>
               </div>
             ))}
-
-            {/* Hour axis labels */}
-            <div className="flex items-center gap-1.5 mt-1">
-              <span className="w-7 flex-shrink-0" />
-              <div className="flex-1 relative h-3">
-                {Object.entries(BUCKET_LABELS).map(([b, label]) => (
-                  <span
-                    key={b}
-                    className="absolute text-micro-label text-neutral-600 -translate-x-1/2"
-                    style={{ left: `${(Number(b) / BUCKETS) * 100}%` }}
-                  >
-                    {label}
-                  </span>
-                ))}
-                <span
-                  className="absolute text-micro-label text-neutral-600 -translate-x-full"
-                  style={{ left: '100%' }}
-                >
-                  24:00
-                </span>
-              </div>
-            </div>
 
             {/* Intensity legend */}
             <div className="flex items-center justify-end gap-1.5 mt-2">
@@ -356,7 +356,7 @@ export default function PeakHours({ siteId, dateRange, filters }: PeakHoursProps
             >
               {BEST_TIME_LABELS[metric]}{' '}
               <span className="text-brand-orange font-medium">
-                {DAYS_FULL[bestTime.day]} at {formatHour(bestTime.bucket * 2)}
+                {DAYS_FULL[bestTime.day]} at {formatHour(bestTime.bucket)}
               </span>
             </motion.p>
           )}
