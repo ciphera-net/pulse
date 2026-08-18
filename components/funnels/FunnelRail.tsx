@@ -13,12 +13,15 @@ import type { PctChangeResult } from '@/lib/utils/pctChange'
 // beside it would grade something that does not exist.
 // ---------------------------------------------------------------------------
 
-export function RailDelta({ change }: { change: PctChangeResult }) {
+export function RailDelta({ change, invert = false }: { change: PctChangeResult; invert?: boolean }) {
   if (!change || change.type === 'new') return null
   const positive = change.value > 0
   const unit = change.type === 'pp' ? 'pp' : '%'
+  // The arrow always encodes the NUMBER's direction; `invert` flips only the
+  // COLOR, for metrics where up is bad (bounce rate: ↑2pp renders red).
+  const good = invert ? !positive : positive
   return (
-    <span className={cn('shrink-0 text-[11px] font-medium tabular-nums', positive ? 'text-green-400' : 'text-red-400')}>
+    <span className={cn('shrink-0 text-[11px] font-medium tabular-nums', good ? 'text-green-400' : 'text-red-400')}>
       {positive ? '↑' : '↓'} {Math.abs(change.value)}
       {unit}
     </span>

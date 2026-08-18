@@ -16,6 +16,17 @@ describe('URL-round-trippable presets resolve identically via the URL layer', ()
     expect(urlPresets.length).toBeGreaterThanOrEqual(5)
   })
 
+  it('EVERY global preset is a URL period — a key outside the grammar double-writes and lands as ?period=custom', () => {
+    // The Phase 2 review reproduced the failure: for a non-URL key the picker
+    // fires onPeriodChange + onDateRangeChange back-to-back, the second write
+    // clobbers the first in the shared query-params merge, and the preset's
+    // label degrades to a raw date span. Keeping the vocabularies identical
+    // makes that path unreachable.
+    for (const p of PERIOD_PRESETS) {
+      expect(isUrlPeriod(p.key), `preset "${p.key}" (${p.label}) must be in the URL period grammar`).toBe(true)
+    }
+  })
+
   for (const preset of urlPresets) {
     it(`?period=${preset.key} re-derives the range "${preset.label}" resolved`, () => {
       expect(parsePeriod(preset.key)).toBe(preset.key as Period)

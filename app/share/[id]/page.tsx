@@ -26,10 +26,13 @@ import { SiteFavicon } from '@/components/sites/SiteFavicon'
 // * link they can reconstruct an individual visitor. The picker offers only these, and
 // * loadDashboard coerces anything stale to 30 days.
 const SHARE_ALLOWED_PERIODS = ['today', 'yesterday', '7', '30']
+// The to-date keys are the URL grammar's week/month/qtd/year since the Phase 2
+// vocabulary unification — excluded by their CURRENT keys, or they reappear in
+// the picker and 400 against the server's fixed-period allowlist.
 const SHARE_EXCLUDED_PRESETS = [
   '1h', '24h',
   'last-week', 'last-month', 'last-quarter', 'last-year',
-  'wtd', 'mtd', 'qtd', 'ytd',
+  'week', 'month', 'qtd', 'year',
 ]
 
 // Helper to get date ranges

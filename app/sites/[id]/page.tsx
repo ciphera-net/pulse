@@ -1,9 +1,8 @@
 'use client'
 
 
-import { logger } from '@/lib/utils/logger'
-import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
-import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { useCallback, useEffect, useState, useMemo } from 'react'
+import { useParams, useSearchParams } from 'next/navigation'
 import {
   getEngagementPercentiles,
   type Stats,
@@ -11,10 +10,10 @@ import {
   type EngagementPercentilesData,
 } from '@/lib/api/stats'
 import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
-import { getDateRange, formatDate, getThisWeekRange, getThisMonthRange, getYesterdayRange, getLast24HoursRange, getLast1HourRange, getThisYearRange } from '@/lib/utils/dateRanges'
 import { toast } from '@ciphera-net/facet'
 import DateRangePicker from '@/components/ui/DateRangePicker'
-import { PERIOD_TO_API, findPreset } from '@/lib/constants/periods'
+import { PERIOD_TO_API } from '@/lib/constants/periods'
+import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
 import dynamic from 'next/dynamic'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import FilterButton from '@/components/dashboard/FilterButton'
@@ -22,7 +21,8 @@ import RealtimeVisitorsPopover from '@/components/dashboard/RealtimeVisitorsPopo
 import FilterPills from '@/components/dashboard/FilterPills'
 import FilterBuilder from '@/components/dashboard/filter/FilterBuilder'
 import { useFilterBuilder } from '@/components/dashboard/filter/useFilterBuilder'
-const Chart = dynamic(() => import('@/components/dashboard/Chart'), { ssr: false })
+const CommandDeck = dynamic(() => import('@/components/dashboard/CommandDeck'), { ssr: false })
+import { DashboardStatusLine } from '@/components/dashboard/DashboardStatusLine'
 import ContentStats from '@/components/dashboard/ContentStats'
 import ScrollDepthBars from '@/components/dashboard/ScrollDepthBars'
 import TopReferrers from '@/components/dashboard/TopReferrers'
@@ -44,99 +44,24 @@ import {
 import { useLiveIndicator } from '@/lib/live-indicator-context'
 import { useCan } from '@/lib/auth/permissions'
 
-function loadSavedSettings(): {
-  type?: string
-  dateRange?: { start: string; end: string }
-  todayInterval?: 'minute' | 'hour'
-  multiDayInterval?: 'hour' | 'day'
-} | null {
-  if (typeof window === 'undefined') return null
-  try {
-    const saved = localStorage.getItem('pulse_dashboard_settings')
-    return saved ? JSON.parse(saved) : null
-  } catch {
-    return null
-  }
-}
-
-
-const LEGACY_PERIOD_MAP: Record<string, string> = {
-  'week': 'wtd',
-  'month': 'mtd',
-  'year': 'ytd',
-}
-
-function normalizePeriodKey(key: string | undefined): string | undefined {
-  if (!key) return undefined
-  return LEGACY_PERIOD_MAP[key] ?? key
-}
-
-function getInitialDateRange(): { start: string; end: string } {
-  const settings = loadSavedSettings()
-  const type = normalizePeriodKey(settings?.type)
-  if (type === 'today') {
-    const today = formatDate(new Date())
-    return { start: today, end: today }
-  }
-  if (type === 'yesterday') return getYesterdayRange()
-  if (type === '1h') return getLast1HourRange()
-  if (type === '24h') return getLast24HoursRange()
-  if (type === '7') return getDateRange(7)
-  if (type === '30') return getDateRange(30)
-  if (type === 'wtd') return getThisWeekRange()
-  if (type === 'mtd') return getThisMonthRange()
-  if (type === 'ytd') return getThisYearRange()
-  if (type === 'custom' && settings?.dateRange) return settings.dateRange
-  if (type && type !== 'alltime') {
-    const preset = findPreset(type)
-    if (preset) return preset.resolve()
-  }
-  return getDateRange(30)
-}
-
-function getInitialPeriod(): string {
-  const saved = normalizePeriodKey(loadSavedSettings()?.type)
-  if (saved === 'alltime') return '30'
-  return saved || '30'
-}
 
 export default function SiteDashboardPage() {
 
 
 
   const params = useParams()
-  const router = useRouter()
   const siteId = params.id as string
 
-  // UI state - initialized from localStorage synchronously to avoid double-fetch
-  const [period, setPeriod] = useState(getInitialPeriod)
-  const [dateRange, setDateRange] = useState(getInitialDateRange)
-  const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>(
-    () => loadSavedSettings()?.todayInterval || 'hour'
-  )
-  const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>(
-    () => loadSavedSettings()?.multiDayInterval || 'day'
-  )
+  // Range state lives in the URL (?period=&start=&end=), the estate grammar
+  // every other date-ranged page already uses (F12): a shared link carries the
+  // range, back/forward works, and nothing is silently rewritten to a frozen
+  // custom range on reload. The chart intervals are view state, not identity —
+  // plain React state, no persistence.
+  const { period, dateRange, setPeriod, shiftPeriod } = useUrlDateRange()
+  const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>('hour')
+  const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
-
-  const shiftPeriod = useCallback((direction: -1 | 1) => {
-    const shift = (date: string, days: number) => {
-      const d = new Date(date + 'T00:00:00')
-      d.setDate(d.getDate() + days)
-      return formatDate(d)
-    }
-    const startDate = new Date(dateRange.start + 'T00:00:00')
-    const endDate = new Date(dateRange.end + 'T00:00:00')
-    const spanDays = Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1
-    const offsetDays = spanDays * direction
-    const newRange = { start: shift(dateRange.start, offsetDays), end: shift(dateRange.end, offsetDays) }
-    const today = formatDate(new Date())
-    if (newRange.end > today) return
-    setDateRange(newRange)
-    setPeriod('custom')
-    saveSettings('custom', newRange)
-  }, [dateRange])
-  const lastUpdatedAtRef = useRef<number | null>(null)
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
 
   // Dimension filters state
   const searchParams = useSearchParams()
@@ -275,48 +200,15 @@ export default function SiteDashboardPage() {
 
   const canExport = useCan('analytics.export')
 
-  // Track when dashboard data was last updated (drives the Live indicator in GlassTopBar)
+  // Track when dashboard data was last updated (drives the Live indicator in
+  // GlassTopBar and the provenance strip's freshness stamp)
   const { markUpdated } = useLiveIndicator()
   useEffect(() => {
     if (dashboard) {
-      lastUpdatedAtRef.current = Date.now()
+      setLastUpdatedAt(Date.now())
       markUpdated()
     }
   }, [dashboard, markUpdated])
-
-  // Save settings to localStorage
-  const saveSettings = (type: string, newDateRange?: { start: string; end: string }) => {
-    try {
-      const settings = {
-        type,
-        dateRange: newDateRange || dateRange,
-        todayInterval,
-        multiDayInterval,
-        lastUpdated: Date.now()
-      }
-      localStorage.setItem('pulse_dashboard_settings', JSON.stringify(settings))
-    } catch (e) {
-      logger.error('Failed to save dashboard settings', e)
-    }
-  }
-
-  // Save intervals when they change
-  useEffect(() => {
-    let type = 'custom'
-    const today = formatDate(new Date())
-    if (dateRange.start === today && dateRange.end === today) type = 'today'
-    else if (dateRange.start === getDateRange(7).start) type = '7'
-    else if (dateRange.start === getDateRange(30).start) type = '30'
-
-    const settings = {
-      type,
-      dateRange,
-      todayInterval,
-      multiDayInterval,
-      lastUpdated: Date.now()
-    }
-    localStorage.setItem('pulse_dashboard_settings', JSON.stringify(settings))
-  }, [todayInterval, multiDayInterval]) // eslint-disable-line react-hooks/exhaustive-deps -- dateRange saved via saveSettings
 
   useEffect(() => {
     if (site?.domain) document.title = `${site.domain} | Pulse`
@@ -365,22 +257,8 @@ export default function SiteDashboardPage() {
       <DateRangePicker
         period={period}
         dateRange={dateRange}
-        onPeriodChange={(p) => {
-          const preset = findPreset(p)
-          if (preset) {
-            const range = preset.resolve()
-            setDateRange(range)
-            if (p === '1h') setTodayInterval('minute')
-            setPeriod(p)
-            saveSettings(p, range)
-          } else if (p === 'custom') {
-            setPeriod('custom')
-          }
-        }}
-        onDateRangeChange={(range) => {
-          setDateRange(range)
-          saveSettings('custom', range)
-        }}
+        onPeriodChange={(p) => setPeriod(p as Period)}
+        onDateRangeChange={(range) => setPeriod('custom', range)}
         onShift={shiftPeriod}
       />
     </>
@@ -399,20 +277,24 @@ export default function SiteDashboardPage() {
         </div>
       </div>
 
-      {/* Advanced Chart with Integrated Stats */}
-      {resolvedDateRange && <><div className="mb-3">
-        <Chart
+      {/* The command deck: provenance strip + KPI rail + full-height chart */}
+      {resolvedDateRange && <><div className="mb-3 space-y-2">
+        <DashboardStatusLine
+          timezone={site.timezone}
+          lastUpdatedAt={lastUpdatedAt}
+          filterCount={filters.length}
+        />
+        <CommandDeck
           data={dailyStats}
           stats={stats}
           prevStats={prevStats}
-          interval={resolvedDateRange.start === resolvedDateRange.end ? todayInterval : multiDayInterval}
+          interval={interval}
           dateRange={resolvedDateRange}
           period={period}
           todayInterval={todayInterval}
           setTodayInterval={setTodayInterval}
           multiDayInterval={multiDayInterval}
           setMultiDayInterval={setMultiDayInterval}
-          lastUpdatedAt={lastUpdatedAtRef.current}
           engagementData={engagementData}
           onExport={canExport ? () => setIsExportModalOpen(true) : undefined}
         />
