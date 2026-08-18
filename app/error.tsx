@@ -2,6 +2,8 @@
 
 import ErrorDisplay from '@/components/ErrorDisplay'
 
+// Chunk-failure self-healing happens inside ErrorDisplay (shared by every route
+// boundary), not here — see components/ErrorDisplay.tsx and lib/chunk-recovery.ts.
 export default function GlobalError({ error, reset }: { error: Error; reset: () => void }) {
   return (
     <ErrorDisplay
