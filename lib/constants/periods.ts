@@ -37,14 +37,21 @@ export const PERIOD_PRESETS: PeriodPreset[] = [
   { key: 'last-month', label: 'Last month', group: 'Previous', resolve: getLastMonthRange },
   { key: 'last-quarter', label: 'Last quarter', group: 'Previous', resolve: getLastQuarterRange },
   { key: 'last-year', label: 'Last year', group: 'Previous', resolve: getLastYearRange },
-  { key: 'wtd', label: 'Week to date', group: 'To date', resolve: getThisWeekRange },
-  { key: 'mtd', label: 'Month to date', group: 'To date', resolve: getThisMonthRange },
+  // The to-date keys ARE the URL grammar's calendar periods (week/month/year)
+  // — one vocabulary, so every preset round-trips through ?period= and keeps
+  // its label. qtd joined the grammar in the same change.
+  { key: 'week', label: 'Week to date', group: 'To date', resolve: getThisWeekRange },
+  { key: 'month', label: 'Month to date', group: 'To date', resolve: getThisMonthRange },
   { key: 'qtd', label: 'Quarter to date', group: 'To date', resolve: getQuarterToDateRange },
-  { key: 'ytd', label: 'Year to date', group: 'To date', resolve: getThisYearRange },
+  { key: 'year', label: 'Year to date', group: 'To date', resolve: getThisYearRange },
 ]
 
 export const PERIOD_GROUPS = ['Real-time', 'Relative', 'Previous', 'To date'] as const
 
+// URL-grammar period keys the SERVER can resolve itself (ResolvePeriod, in the
+// site's timezone). Keys absent here fall back to client-computed
+// start_date/end_date. week/month/year arrive via shared URLs from sibling
+// pages; resolving them server-side keeps "this month" the SITE's month.
 export const PERIOD_TO_API: Record<string, string> = {
   'today': 'today',
   'yesterday': 'yesterday',
@@ -52,6 +59,9 @@ export const PERIOD_TO_API: Record<string, string> = {
   '24h': '24h',
   '7': '7d',
   '30': '30d',
+  'week': 'week',
+  'month': 'month',
+  'year': 'year',
 }
 
 export function findPreset(key: string): PeriodPreset | undefined {
