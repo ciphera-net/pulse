@@ -58,7 +58,8 @@ describe('TopReferrers', () => {
     render(<TopReferrers referrers={referrers} siteId="site-1" dateRange={dateRange} totals={totals} />)
     expect(screen.getByText('31%')).toBeTruthy()
     expect(screen.queryByText('67%')).toBeNull()
-    expect(screen.getByText(/share of 453 pageviews/)).toBeTruthy()
+    // Header note removed by owner call — the modal keeps its explanation.
+    expect(screen.queryByText(/share of 453 pageviews/)).toBeNull()
   })
 
   it('threads filters into the modal fetch', () => {
@@ -176,7 +177,7 @@ describe('Campaigns', () => {
     render(<Campaigns siteId="site-1" dateRange={dateRange} totals={totals} />)
     expect(await screen.findByText('50%')).toBeTruthy()
     expect(screen.queryByText('84%')).toBeNull()
-    expect(screen.getByText(/share of 314 visitors/)).toBeTruthy()
+    expect(screen.queryByText(/share of 314 visitors/)).toBeNull()
   })
 
   it('renders NO percentages without totals', async () => {
