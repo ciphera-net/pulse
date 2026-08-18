@@ -7,19 +7,18 @@
 //   "conviction-filtered" — Cerberus verdicts apply retroactively, so history
 //                           can legitimately revise itself (owner decision D3:
 //                           disclose the revision, never freeze the numbers)
-//   "a conversion completes within one visit" — the identity model resets at
-//                           UTC midnight; there is no multi-day attribution
+//   "one-visit conversions" — the identity model resets at UTC midnight;
+//                           there is no multi-day attribution
 //   "days are {tz}"       — the server buckets days in the site's timezone
 // ---------------------------------------------------------------------------
 
-export function FunnelStatusLine({ timezone, suffix }: { timezone?: string; suffix?: string }) {
+export function FunnelStatusLine({ timezone }: { timezone?: string }) {
   return (
     <div className="mt-2 flex items-center gap-2 text-xs text-neutral-500">
       <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-green-400" aria-hidden="true" />
       <span>
-        Live from events · conviction-filtered · a conversion completes within one visit
+        Live from events · conviction-filtered · one-visit conversions
         {timezone ? ` · days are ${timezone}` : ''}
-        {suffix ? ` · ${suffix}` : ''}
       </span>
     </div>
   )

@@ -18,7 +18,6 @@ import FilterBuilder from '@/components/dashboard/filter/FilterBuilder'
 import { useFilterBuilder } from '@/components/dashboard/filter/useFilterBuilder'
 import { guardedPctChange, guardedPointChange, type PctChangeResult } from '@/lib/utils/pctChange'
 import { formatNumber, formatConvertTime } from '@/lib/utils/format'
-import { formatDate as formatDisplayDate } from '@/lib/utils/formatDate'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { ErrorCard } from '@/components/ui/ErrorCard'
@@ -222,7 +221,6 @@ export default function FunnelDetailPage() {
     null,
   )
 
-  const createdLabel = formatDisplayDate(new Date(funnel.created_at))
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
@@ -239,7 +237,7 @@ export default function FunnelDetailPage() {
           <div className="min-w-0">
             <h1 className="truncate text-lg font-semibold text-white">{funnel.name}</h1>
             {funnel.description && <p className="mt-1 text-sm text-neutral-400">{funnel.description}</p>}
-            <FunnelStatusLine timezone={site?.timezone} suffix={`created ${createdLabel}`} />
+            <FunnelStatusLine timezone={site?.timezone} />
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             <FilterPills
@@ -265,11 +263,15 @@ export default function FunnelDetailPage() {
             />
             {canManage && (
               <>
-                <Button variant="secondary" onClick={() => setModalOpen(true)}>
+                {/* Header actions are chrome/toolbar estate-wide (uptime,
+                    performance) — same height and weight as the range picker
+                    they sit beside. */}
+                <Button variant="chrome" size="toolbar" onClick={() => setModalOpen(true)}>
                   Edit
                 </Button>
                 <Button
-                  variant="secondary"
+                  variant="chrome"
+                  size="toolbar"
                   className="text-red-400 hover:text-red-300"
                   onClick={() => setConfirmingDelete(true)}
                 >
