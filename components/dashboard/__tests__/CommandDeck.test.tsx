@@ -85,6 +85,26 @@ describe('CommandDeck rail', () => {
     }} />)
     expect(screen.getByText(/collecting · needs 7 days of history/)).toBeTruthy()
   })
+
+  it('states a failed engagement fetch as a failure, not a young site (F17)', () => {
+    render(<CommandDeck {...baseProps} engagementError />)
+    expect(screen.getByText(/couldn.t load/)).toBeTruthy()
+    expect(screen.queryByText(/collecting · needs 7 days of history/)).toBeNull()
+  })
+
+  it('marks the engagement row unfiltered ONLY while page filters are active', () => {
+    const engagementData = {
+      summary: { score: 56, scroll_pctl: 38, time_pctl: 67, depth_pctl: 70, bounce_pctl: 50 },
+      daily: [], data_days: 90,
+    }
+    const { rerender } = render(<CommandDeck {...baseProps} engagementData={engagementData} filtersActive />)
+    // The D4 baseline has no dimensions — with filters active, engagement is
+    // the one number on the deck the filters do not touch, and says so.
+    expect(screen.getByText('vs prior 90 days · unfiltered')).toBeTruthy()
+    rerender(<CommandDeck {...baseProps} engagementData={engagementData} />)
+    expect(screen.getByText('vs prior 90 days')).toBeTruthy()
+    expect(screen.queryByText(/· unfiltered/)).toBeNull()
+  })
 })
 
 describe('CommandDeck delta colours', () => {

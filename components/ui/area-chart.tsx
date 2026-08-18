@@ -2133,6 +2133,10 @@ export interface AreaChartProps {
   margin?: Partial<Margin>;
   animationDuration?: number;
   aspectRatio?: string;
+  // Fill the parent's height instead of deriving height from width via
+  // aspectRatio. The parent must have a definite height (grid/flex stretch or
+  // a min-height) or the chart collapses to zero.
+  fillParent?: boolean;
   className?: string;
   children: ReactNode;
 }
@@ -2349,6 +2353,7 @@ export function AreaChart({
   margin: marginProp,
   animationDuration = 1100,
   aspectRatio = "2 / 1",
+  fillParent = false,
   className = "",
   children,
 }: AreaChartProps) {
@@ -2357,9 +2362,9 @@ export function AreaChart({
 
   return (
     <div
-      className={cn("relative w-full", className)}
+      className={cn("relative w-full", fillParent && "h-full", className)}
       ref={containerRef}
-      style={{ aspectRatio, touchAction: "none" }}
+      style={fillParent ? { touchAction: "none" } : { aspectRatio, touchAction: "none" }}
     >
       <ParentSize debounceTime={10}>
         {({ width, height }) => (

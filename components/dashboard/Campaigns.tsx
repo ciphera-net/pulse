@@ -19,6 +19,9 @@ interface CampaignsProps {
   siteId: string
   dateRange: { start: string, end: string }
   filters?: string
+  // True range totals — the F9 denominator. Campaign rows count VISITORS, so
+  // shares divide by totals.visitors; no totals → no percentages.
+  totals?: { pageviews: number; visitors: number }
   onFilter?: (filter: DimensionFilter) => void
 }
 
@@ -26,7 +29,7 @@ type UtmTab = 'source' | 'medium' | 'campaign' | 'term' | 'content'
 
 const LIMIT = 7
 
-export default function Campaigns({ siteId, dateRange, filters, onFilter }: CampaignsProps) {
+export default function Campaigns({ siteId, dateRange, filters, totals, onFilter }: CampaignsProps) {
   const [data, setData] = useState<CampaignStat[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -99,7 +102,11 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
       .sort((a, b) => b.visitors - a.visitors)
   }, [sortedData, activeTab])
 
-  const totalVisitors = groupedData.reduce((sum, c) => sum + c.visitors, 0)
+  // The true denominator (F9): the range's visitor total, never the sum of
+  // the visible rows. null = not supplied → no percentages rendered.
+  const denom = totals && totals.visitors > 0 ? totals.visitors : null
+  const pct = (visitors: number) =>
+    denom != null ? `${Math.round((visitors / denom) * 100)}%` : ''
   const hasData = data.length > 0
   const displayedData = hasData ? groupedData.slice(0, LIMIT) : []
   const showViewAll = hasData && groupedData.length > LIMIT
@@ -177,6 +184,11 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
             ))}
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {denom != null && (
+              <span className="hidden whitespace-nowrap text-[11px] text-neutral-500 sm:block">
+                share of {formatNumber(denom)} visitors
+              </span>
+            )}
             {showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}
@@ -224,7 +236,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                     </div>
                     <div className="relative flex items-center gap-2 ml-4">
                       <span className="text-xs font-medium text-brand-orange opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
-                        {totalVisitors > 0 ? `${Math.round((item.visitors / totalVisitors) * 100)}%` : ''}
+                        {pct(item.visitors)}
                       </span>
                       <span className="text-sm font-semibold text-neutral-400">
                         {formatNumber(item.visitors)}
@@ -262,6 +274,11 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
             placeholder="Search campaigns..."
             className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-none text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
           />
+          {denom != null && (
+            <p className="mb-3 text-[11px] text-neutral-500">
+              Shares are of all {formatNumber(denom)} visitors in the range — searching narrows the rows, not the denominator.
+            </p>
+          )}
         </div>
         <div className="flex-1 overflow-y-auto min-h-0">
           {isLoadingFull ? (
@@ -273,7 +290,6 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
               const search = modalSearch.toLowerCase()
               return item.source.toLowerCase().includes(search) || (item.medium || '').toLowerCase().includes(search) || (item.campaign || '').toLowerCase().includes(search) || (item.term || '').toLowerCase().includes(search) || (item.content || '').toLowerCase().includes(search)
             })
-            const modalTotal = filteredCampaigns.reduce((sum, item) => sum + item.visitors, 0)
             return (
               <>
                 <div className="flex items-center justify-end mb-2">
@@ -309,7 +325,7 @@ export default function Campaigns({ siteId, dateRange, filters, onFilter }: Camp
                       </div>
                       <div className="flex items-center gap-4 ml-4 text-sm">
                         <span className="text-xs font-medium text-brand-orange opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
-                          {modalTotal > 0 ? `${Math.round((item.visitors / modalTotal) * 100)}%` : ''}
+                          {pct(item.visitors)}
                         </span>
                         <span className="font-semibold text-white">
                           {formatNumber(item.visitors)}
