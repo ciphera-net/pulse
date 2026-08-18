@@ -48,6 +48,11 @@ interface ChartProps {
   lastUpdatedAt?: number | null
   engagementData?: EngagementPercentilesData | null
   onExport?: () => void
+  // * Show the minute/hour/day interval selector. Default true. The public share
+  // * dashboard passes false: it is day-only (a sub-day bucket on a public link is
+  // * one visitor's arrival timeline), so a selector that changed nothing but its own
+  // * label would be a control that lies.
+  intervalPicker?: boolean
 }
 
 type MetricType = 'pageviews' | 'visitors' | 'pages_per_visit' | 'bounce_rate' | 'avg_duration' | 'engagement'
@@ -157,6 +162,7 @@ export default function Chart({
   lastUpdatedAt,
   engagementData,
   onExport,
+  intervalPicker = true,
 }: ChartProps) {
   const [metric, setMetric] = useState<MetricType>('visitors')
   const chartContainerRef = useRef<HTMLDivElement>(null)
@@ -329,7 +335,7 @@ export default function Chart({
                   <DownloadIcon className="w-3.5 h-3.5" />
                 </button>
               )}
-              {period === '1h' ? null : dateRange.start === dateRange.end ? (
+              {!intervalPicker ? null : period === '1h' ? null : dateRange.start === dateRange.end ? (
                 <Select
                   variant="input"
                   value={todayInterval}
