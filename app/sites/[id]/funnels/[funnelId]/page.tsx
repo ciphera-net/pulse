@@ -259,6 +259,9 @@ export default function FunnelDetailPage() {
               onPeriodChange={(p) => setPeriod(p as Period)}
               onDateRangeChange={(range) => setPeriod('custom', range)}
               onShift={shiftPeriod}
+              // * The funnel API is date-granular: "Last hour" would silently
+              // * mean "today". Don't offer what we can't honor.
+              excludePresets={['1h', '24h']}
             />
             {canManage && (
               <>
