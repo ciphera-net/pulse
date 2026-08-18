@@ -52,6 +52,17 @@ steps:
         from_secret: next_public_captcha_api_url
       NEXT_PUBLIC_CDN_URL:
         from_secret: next_public_cdn_url
+      # Literal, not a secret: it is a public CDN hostname that appears in every page's
+      # HTML anyway, and a secret would hide the one value most worth reading here.
+      # 🔴 The PATH SEGMENT is what separates environments in the shared bucket — prod
+      # and staging must never share it, or one would serve the other's JavaScript.
+      # ⚠️ SETTING IT HERE ALONE DOES NOTHING. The steps in THIS file are
+      # `dry-run: true` shadow builds tagged shadow-*; the image that ships is built
+      # by .woodpecker/push.yml. Next bakes assetPrefix at `next build`, so a value
+      # present only here is inlined into an artifact that is discarded, and the
+      # DEPLOYED HTML keeps same-origin chunks. Verified the hard way on 18-08-2026
+      # (pipeline 533). Keep this in sync with push.yml — both files or neither.
+      NEXT_PUBLIC_ASSET_PREFIX: https://ciphera-app-static.b-cdn.net/pulse
     # 🔴 THIS STEP OVERRIDES THE NAMESPACE DEFAULT, AND ONLY THIS STEP.
     #
     # woodpecker-builds carries a LimitRange of request==limit==1536Mi. This build
@@ -124,6 +135,7 @@ steps:
         - NEXT_PUBLIC_ID_API_URL
         - NEXT_PUBLIC_CAPTCHA_API_URL
         - NEXT_PUBLIC_CDN_URL
+        - NEXT_PUBLIC_ASSET_PREFIX
 
   build-staging:
     image: woodpeckerci/plugin-kaniko:2.3.2@sha256:01e0e325efd8fd2b1a95d207e84780a85ed7f8eb9712d8e79888e0f42ff8b7b3
@@ -143,6 +155,8 @@ steps:
         from_secret: staging_next_public_captcha_api_url
       NEXT_PUBLIC_CDN_URL:
         from_secret: staging_next_public_cdn_url
+      # Distinct path segment from production — see the note on the prod step.
+      NEXT_PUBLIC_ASSET_PREFIX: https://ciphera-app-static.b-cdn.net/pulse-staging
     # 🔴 THIS STEP OVERRIDES THE NAMESPACE DEFAULT, AND ONLY THIS STEP.
     #
     # woodpecker-builds carries a LimitRange of request==limit==1536Mi. This build
@@ -215,3 +229,4 @@ steps:
         - NEXT_PUBLIC_ID_API_URL
         - NEXT_PUBLIC_CAPTCHA_API_URL
         - NEXT_PUBLIC_CDN_URL
+        - NEXT_PUBLIC_ASSET_PREFIX

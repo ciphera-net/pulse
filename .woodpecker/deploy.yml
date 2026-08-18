@@ -96,6 +96,81 @@ steps:
         echo "$DIGEST"     > /woodpecker/digest
         echo "$DEPLOY_SHA" > /woodpecker/deploy_sha
       - echo "resolved sha-$DEPLOY_SHA -> $(cat /woodpecker/digest)"
+  # ═══ Upload THIS BUILD'S static assets BEFORE anything rolls ═══
+  # `assetPrefix` (next.config.ts) points /_next/static/* at a dedicated CDN zone so a
+  # build's chunks OUTLIVE the build that produced them. That is what removes the
+  # version coupling an MC rollout would otherwise expose — see next.config.ts for why.
+  #
+  # 🔴 IT RUNS FIRST AND A FAILURE ABORTS THE DEPLOY. With a prefix set, shipping an
+  # image whose assets were never uploaded means EVERY chunk 404s. Failing here leaves
+  # the OLD image serving, which is the safe outcome.
+  #
+  # 🔴 THE STEP IMAGE IS THE IMAGE BEING DEPLOYED, by its own tag. Deliberate: the files
+  # uploaded are then byte-identical to the ones inside the shipping image. Building the
+  # assets a second time in a node step would produce DIFFERENT content hashes from the
+  # ones the HTML references — the exact failure this mechanism exists to prevent,
+  # reintroduced by the fix. Pulling it needs the org-level Woodpecker registry entry for
+  # registry.ops.ciphera.net (recreated 18-08-2026, `ciphera-pull`, pull-only); without
+  # it this fails ImagePullBackOff.
+  # ⚠️ The image tag below uses the ONE deliberate dollar-brace substitution in this file
+  # (the short commit sha). Woodpecker substitutes it before the YAML is parsed, and writing
+  # that form anywhere else — INCLUDING IN A COMMENT — has broken the compiler before.
+  upload-static:
+    image: registry.ops.ciphera.net/ciphera-net/pulse-frontend:sha-${CI_COMMIT_SHA:0:7}
+    when:
+      - event: push
+        branch: main
+    backend_options:
+      kubernetes:
+        resources:
+          requests: { memory: 256Mi, cpu: 200m }
+          limits: { memory: 768Mi }
+    environment:
+      STORAGE_PASSWORD:
+        from_secret: app_static_storage_password
+      DEST_PREFIX: pulse
+    commands:
+      # node is the image's own runtime; no apk, no curl, and global fetch is available.
+      # Uploads are content-addressed and immutable, so a re-run is idempotent and a
+      # partial previous run self-heals.
+      - |
+        node -e '
+        const fs = require("fs"), path = require("path");
+        const BASE = "/app/.next/static";
+        const DEST = "https://storage.bunnycdn.com/ciphera-app-static/" + process.env.DEST_PREFIX + "/_next/static";
+        const PW = process.env.STORAGE_PASSWORD;
+        if (!PW) { console.error("FAIL: STORAGE_PASSWORD is empty"); process.exit(1); }
+        if (!process.env.DEST_PREFIX) { console.error("FAIL: DEST_PREFIX is empty — would upload to the bucket root"); process.exit(1); }
+        const TYPES = {".js":"application/javascript",".css":"text/css",".woff2":"font/woff2",".woff":"font/woff",".map":"application/json",".json":"application/json",".svg":"image/svg+xml",".wasm":"application/wasm"};
+        const walk = d => fs.readdirSync(d, {withFileTypes:true}).flatMap(e =>
+          e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]);
+        (async () => {
+          if (!fs.existsSync(BASE)) { console.error("FAIL: " + BASE + " missing"); process.exit(1); }
+          const files = walk(BASE);
+          if (files.length === 0) { console.error("FAIL: no static files found"); process.exit(1); }
+          let ok = 0;
+          for (const f of files) {
+            const rel = path.relative(BASE, f).split(path.sep).join("/");
+            const res = await fetch(DEST + "/" + rel, {
+              method: "PUT",
+              headers: { AccessKey: PW, "Content-Type": TYPES[path.extname(f)] || "application/octet-stream" },
+              body: fs.readFileSync(f),
+            });
+            if (!res.ok) { console.error("FAIL: PUT " + rel + " -> " + res.status); process.exit(1); }
+            ok++;
+          }
+          // Read one back FROM THE ORIGIN and compare bytes. A 2xx on the write is not
+          // proof the object is retrievable, and a silent partial upload is the one
+          // failure mode that breaks every page on the site.
+          const probe = path.relative(BASE, files[0]).split(path.sep).join("/");
+          const rb = await fetch(DEST + "/" + probe, { headers: { AccessKey: PW } });
+          if (!rb.ok) { console.error("FAIL: readback " + probe + " -> " + rb.status); process.exit(1); }
+          const got = Buffer.from(await rb.arrayBuffer());
+          if (got.length !== fs.statSync(files[0]).size) { console.error("FAIL: readback size mismatch on " + probe); process.exit(1); }
+          console.log("uploaded " + ok + " static files to " + process.env.DEST_PREFIX + "; readback OK (" + probe + ")");
+        })().catch(e => { console.error("FAIL: " + e.message); process.exit(1); });
+        '
+
   deploy-k8s:
     image: alpine:3.20
     backend_options:
@@ -109,7 +184,7 @@ steps:
     # Traefik's ClusterIP so the request never leaves the cluster.
     extra_hosts:
       - "registry.ops.ciphera.net:10.101.182.27"
-    depends_on: [digest]
+    depends_on: [digest, upload-static]
     when:
       - event: push
         branch: main
@@ -227,6 +302,81 @@ steps:
         echo "$DIGEST"     > /woodpecker/digest
         echo "$DEPLOY_SHA" > /woodpecker/deploy_sha
       - echo "resolved sha-$DEPLOY_SHA -> $(cat /woodpecker/digest)"
+  # ═══ Upload THIS BUILD'S static assets BEFORE anything rolls ═══
+  # `assetPrefix` (next.config.ts) points /_next/static/* at a dedicated CDN zone so a
+  # build's chunks OUTLIVE the build that produced them. That is what removes the
+  # version coupling an MC rollout would otherwise expose — see next.config.ts for why.
+  #
+  # 🔴 IT RUNS FIRST AND A FAILURE ABORTS THE DEPLOY. With a prefix set, shipping an
+  # image whose assets were never uploaded means EVERY chunk 404s. Failing here leaves
+  # the OLD image serving, which is the safe outcome.
+  #
+  # 🔴 THE STEP IMAGE IS THE IMAGE BEING DEPLOYED, by its own tag. Deliberate: the files
+  # uploaded are then byte-identical to the ones inside the shipping image. Building the
+  # assets a second time in a node step would produce DIFFERENT content hashes from the
+  # ones the HTML references — the exact failure this mechanism exists to prevent,
+  # reintroduced by the fix. Pulling it needs the org-level Woodpecker registry entry for
+  # registry.ops.ciphera.net (recreated 18-08-2026, `ciphera-pull`, pull-only); without
+  # it this fails ImagePullBackOff.
+  # ⚠️ The image tag below uses the ONE deliberate dollar-brace substitution in this file
+  # (the short commit sha). Woodpecker substitutes it before the YAML is parsed, and writing
+  # that form anywhere else — INCLUDING IN A COMMENT — has broken the compiler before.
+  upload-static-staging:
+    image: registry.ops.ciphera.net/ciphera-net/pulse-frontend-staging:sha-${CI_COMMIT_SHA:0:7}
+    when:
+      - event: push
+        branch: staging
+    backend_options:
+      kubernetes:
+        resources:
+          requests: { memory: 256Mi, cpu: 200m }
+          limits: { memory: 768Mi }
+    environment:
+      STORAGE_PASSWORD:
+        from_secret: app_static_storage_password
+      DEST_PREFIX: pulse-staging
+    commands:
+      # node is the image's own runtime; no apk, no curl, and global fetch is available.
+      # Uploads are content-addressed and immutable, so a re-run is idempotent and a
+      # partial previous run self-heals.
+      - |
+        node -e '
+        const fs = require("fs"), path = require("path");
+        const BASE = "/app/.next/static";
+        const DEST = "https://storage.bunnycdn.com/ciphera-app-static/" + process.env.DEST_PREFIX + "/_next/static";
+        const PW = process.env.STORAGE_PASSWORD;
+        if (!PW) { console.error("FAIL: STORAGE_PASSWORD is empty"); process.exit(1); }
+        if (!process.env.DEST_PREFIX) { console.error("FAIL: DEST_PREFIX is empty — would upload to the bucket root"); process.exit(1); }
+        const TYPES = {".js":"application/javascript",".css":"text/css",".woff2":"font/woff2",".woff":"font/woff",".map":"application/json",".json":"application/json",".svg":"image/svg+xml",".wasm":"application/wasm"};
+        const walk = d => fs.readdirSync(d, {withFileTypes:true}).flatMap(e =>
+          e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]);
+        (async () => {
+          if (!fs.existsSync(BASE)) { console.error("FAIL: " + BASE + " missing"); process.exit(1); }
+          const files = walk(BASE);
+          if (files.length === 0) { console.error("FAIL: no static files found"); process.exit(1); }
+          let ok = 0;
+          for (const f of files) {
+            const rel = path.relative(BASE, f).split(path.sep).join("/");
+            const res = await fetch(DEST + "/" + rel, {
+              method: "PUT",
+              headers: { AccessKey: PW, "Content-Type": TYPES[path.extname(f)] || "application/octet-stream" },
+              body: fs.readFileSync(f),
+            });
+            if (!res.ok) { console.error("FAIL: PUT " + rel + " -> " + res.status); process.exit(1); }
+            ok++;
+          }
+          // Read one back FROM THE ORIGIN and compare bytes. A 2xx on the write is not
+          // proof the object is retrievable, and a silent partial upload is the one
+          // failure mode that breaks every page on the site.
+          const probe = path.relative(BASE, files[0]).split(path.sep).join("/");
+          const rb = await fetch(DEST + "/" + probe, { headers: { AccessKey: PW } });
+          if (!rb.ok) { console.error("FAIL: readback " + probe + " -> " + rb.status); process.exit(1); }
+          const got = Buffer.from(await rb.arrayBuffer());
+          if (got.length !== fs.statSync(files[0]).size) { console.error("FAIL: readback size mismatch on " + probe); process.exit(1); }
+          console.log("uploaded " + ok + " static files to " + process.env.DEST_PREFIX + "; readback OK (" + probe + ")");
+        })().catch(e => { console.error("FAIL: " + e.message); process.exit(1); });
+        '
+
   deploy-k8s-staging:
     image: alpine:3.20
     backend_options:
@@ -240,7 +390,7 @@ steps:
     # Traefik's ClusterIP so the request never leaves the cluster.
     extra_hosts:
       - "registry.ops.ciphera.net:10.101.182.27"
-    depends_on: [digest-staging]
+    depends_on: [digest-staging, upload-static-staging]
     when:
       - event: push
         branch: staging
@@ -341,12 +491,11 @@ steps:
         from_secret: bunny_api_key
     commands:
       - apk add --no-cache curl >/dev/null
-      - |
-        curl -fsS --max-time 300 --retry 3 --retry-delay 10 --retry-all-errors -X POST \
-          "https://api.bunny.net/purge?url=https://pulse.ciphera.net/_next/static/*&async=false" \
-          -H "AccessKey: $BUNNY_API_KEY" \
-          || { echo "DEPLOY SHIPPED; CDN PURGE FAILED — re-run the purge only, do NOT re-deploy"; exit 1; }
-      - echo "Purged pulse.ciphera.net /_next/static/*"
+      # ⚠️ `/_next/static/*` IS NO LONGER PURGED (18-08-2026). Since assetPrefix those
+      # chunks are not served from this hostname at all — they live in their own zone
+      # (ciphera-app-static), and RETAINING EVERY BUILD'S OUTPUT IS THE ENTIRE POINT.
+      # Purging them here would be a no-op today; re-adding a purge against the asset
+      # zone would reintroduce exactly the blanking failure this change removes.
       # ═══ HTML PURGE — REQUIRED SINCE 13-08-2026, NOT AN OPTIMISATION ═══
       # Public marketing HTML is now edge-cached at 300s (Bunny zone 5440585, rule
       # "HTML edge caching 300s — EXPLICIT PATH ALLOWLIST"). Purging only
@@ -383,6 +532,27 @@ steps:
           exit 1
         fi
       - echo "Purged pulse.ciphera.net cached HTML (10 patterns)"
+      # ═══ 🔴 ASSERT THE PREFIX ACTUALLY SHIPPED ═══
+      # next.config.ts defaults NEXT_PUBLIC_ASSET_PREFIX to EMPTY, so a missing build arg
+      # degrades safely to same-origin assets instead of 404ing every chunk. The cost of
+      # that safe default is that the protection can be silently OFF — so it is ASSERTED
+      # here against the LIVE HTML rather than trusted. A feature that fails open needs a
+      # positive check; this is the same lesson as LIGHTHOUSE_RUNNER_URL being unset.
+      # Runs last, after the HTML purge, so what it reads is this build's markup.
+      - |
+        HTML=$(curl -fsS --max-time 30 --retry 3 --retry-all-errors "https://pulse.ciphera.net/login") \
+          || { echo "FAIL: could not fetch https://pulse.ciphera.net/login to verify assetPrefix"; exit 1; }
+        case "$HTML" in
+          *"https://ciphera-app-static.b-cdn.net/pulse/_next/static"*)
+            echo "assetPrefix verified live: chunks come from https://ciphera-app-static.b-cdn.net/pulse" ;;
+          *)
+            echo "🔴 DEPLOY SHIPPED BUT assetPrefix IS NOT IN THE LIVE HTML."
+            echo "🔴 Chunks are served from the app itself, so the version-coupling protection"
+            echo "🔴 that gates the Magic Containers migration is OFF."
+            echo "🔴 Check NEXT_PUBLIC_ASSET_PREFIX reached the kaniko build"
+            echo "🔴 (.woodpecker/build.yml build-args-from-env) and the Dockerfile ARG exists."
+            exit 1 ;;
+        esac
 
   # Purge AFTER the CLUSTER rollout converges (deploy-k8s asserts only the new ReplicaSet
   # is serving). Purging mid-rollout re-caches the old build's 404s for the new chunk
@@ -403,12 +573,11 @@ steps:
         from_secret: bunny_api_key
     commands:
       - apk add --no-cache curl >/dev/null
-      - |
-        curl -fsS --max-time 300 --retry 3 --retry-delay 10 --retry-all-errors -X POST \
-          "https://api.bunny.net/purge?url=https://pulse-staging.ciphera.net/_next/static/*&async=false" \
-          -H "AccessKey: $BUNNY_API_KEY" \
-          || { echo "DEPLOY SHIPPED; CDN PURGE FAILED — re-run the purge only, do NOT re-deploy"; exit 1; }
-      - echo "Purged pulse-staging.ciphera.net /_next/static/*"
+      # ⚠️ `/_next/static/*` IS NO LONGER PURGED (18-08-2026). Since assetPrefix those
+      # chunks are not served from this hostname at all — they live in their own zone
+      # (ciphera-app-static), and RETAINING EVERY BUILD'S OUTPUT IS THE ENTIRE POINT.
+      # Purging them here would be a no-op today; re-adding a purge against the asset
+      # zone would reintroduce exactly the blanking failure this change removes.
       # HTML purge — staging mirrors production exactly (zone 5440501). Keeping the
       # two lists identical is the point: staging can only rehearse a production
       # deploy if it carries production's caching rules AND production's purge set.
@@ -428,6 +597,27 @@ steps:
           exit 1
         fi
       - echo "Purged pulse-staging.ciphera.net cached HTML (10 patterns)"
+      # ═══ 🔴 ASSERT THE PREFIX ACTUALLY SHIPPED ═══
+      # next.config.ts defaults NEXT_PUBLIC_ASSET_PREFIX to EMPTY, so a missing build arg
+      # degrades safely to same-origin assets instead of 404ing every chunk. The cost of
+      # that safe default is that the protection can be silently OFF — so it is ASSERTED
+      # here against the LIVE HTML rather than trusted. A feature that fails open needs a
+      # positive check; this is the same lesson as LIGHTHOUSE_RUNNER_URL being unset.
+      # Runs last, after the HTML purge, so what it reads is this build's markup.
+      - |
+        HTML=$(curl -fsS --max-time 30 --retry 3 --retry-all-errors "https://pulse-staging.ciphera.net/login") \
+          || { echo "FAIL: could not fetch https://pulse-staging.ciphera.net/login to verify assetPrefix"; exit 1; }
+        case "$HTML" in
+          *"https://ciphera-app-static.b-cdn.net/pulse-staging/_next/static"*)
+            echo "assetPrefix verified live: chunks come from https://ciphera-app-static.b-cdn.net/pulse-staging" ;;
+          *)
+            echo "🔴 DEPLOY SHIPPED BUT assetPrefix IS NOT IN THE LIVE HTML."
+            echo "🔴 Chunks are served from the app itself, so the version-coupling protection"
+            echo "🔴 that gates the Magic Containers migration is OFF."
+            echo "🔴 Check NEXT_PUBLIC_ASSET_PREFIX reached the kaniko build"
+            echo "🔴 (.woodpecker/build.yml build-args-from-env) and the Dockerfile ARG exists."
+            exit 1 ;;
+        esac
 
   cdn-scripts:
     image: alpine:3.20
