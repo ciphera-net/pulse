@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
-import { getPublicDashboard, getPublicStats, getPublicDailyStats, getPublicRealtime, authenticatePublicDashboard, type DashboardData, type Stats, type DailyStat } from '@/lib/api/stats'
+import { getPublicDashboard, getPublicRealtime, authenticatePublicDashboard, type DashboardData, type Stats } from '@/lib/api/stats'
 import { toast } from '@ciphera-net/facet'
 import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { ApiError } from '@/lib/api/client'
@@ -19,6 +19,18 @@ import { PERIOD_TO_API } from '@/lib/constants/periods'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import ExportModal from '@/components/dashboard/ExportModal'
 import { SiteFavicon } from '@/components/sites/SiteFavicon'
+
+// * The shared (public) dashboard is a public-scoped read. The backend serves only
+// * these fixed, day-granular windows there (see resolvePublicScopedRange); anything
+// * else — 1h/24h, custom ranges, sub-day intervals — is refused, because on a public
+// * link they can reconstruct an individual visitor. The picker offers only these, and
+// * loadDashboard coerces anything stale to 30 days.
+const SHARE_ALLOWED_PERIODS = ['today', 'yesterday', '7', '30']
+const SHARE_EXCLUDED_PRESETS = [
+  '1h', '24h',
+  'last-week', 'last-month', 'last-quarter', 'last-year',
+  'wtd', 'mtd', 'qtd', 'ytd',
+]
 
 // Helper to get date ranges
 const getDateRange = (days: number) => {
@@ -56,37 +68,12 @@ export default function PublicDashboardPage() {
   const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>('hour')
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
 
-  const apiPeriod = period !== 'custom' ? (PERIOD_TO_API[period] || undefined) : undefined
-
-  // Previous period data
-  const [prevStats, setPrevStats] = useState<Stats | undefined>(undefined)
-  const [prevDailyStats, setPrevDailyStats] = useState<DailyStat[] | undefined>(undefined)
+  // Previous period comparison is not available on the public share surface — it
+  // required arbitrary-date fetches, which are the range-differencing primitive the
+  // surface now refuses. prevStats stays undefined; the chart renders without deltas.
+  const [prevStats] = useState<Stats | undefined>(undefined)
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
   const [, setTick] = useState(0)
-
-  const getPreviousDateRange = (start: string, end: string) => {
-    const startDate = new Date(start)
-    const endDate = new Date(end)
-    const duration = endDate.getTime() - startDate.getTime()
-    
-    // * If duration is 0 (Today), set previous range to yesterday
-    if (duration === 0) {
-      const prevEnd = new Date(startDate.getTime() - 24 * 60 * 60 * 1000)
-      const prevStart = prevEnd
-      return {
-        start: prevStart.toISOString().split('T')[0],
-        end: prevEnd.toISOString().split('T')[0]
-      }
-    }
-
-    const prevEnd = new Date(startDate.getTime() - 24 * 60 * 60 * 1000)
-    const prevStart = new Date(prevEnd.getTime() - duration)
-    
-    return {
-      start: prevStart.toISOString().split('T')[0],
-      end: prevEnd.toISOString().split('T')[0]
-    }
-  }
 
   // * Tick every 1s so "Live · Xs ago" counts in real time
   useEffect(() => {
@@ -109,23 +96,20 @@ export default function PublicDashboardPage() {
     try {
       if (!silent) setLoading(true)
 
-      const interval = dateRange.start === dateRange.end ? todayInterval : multiDayInterval
+      // * A shared dashboard is a public-scoped read: the backend serves only fixed,
+      // * allowlisted windows at day granularity (privacy — arbitrary ranges and
+      // * sub-day buckets on a public link can reconstruct one visitor's session).
+      // * We therefore always send an allowlisted period, never start/end, and never
+      // * a previous-period comparison (which required arbitrary-date fetches — the
+      // * exact range-differencing primitive the surface now refuses).
+      const sharePeriod = SHARE_ALLOWED_PERIODS.includes(period) ? period : '30'
+      const sharePeriodApi = PERIOD_TO_API[sharePeriod]
 
-      const [dashboardData, prevStatsData, prevDailyStatsData] = await Promise.all([
-        getPublicDashboard(siteId, apiPeriod ? undefined : dateRange.start, apiPeriod ? undefined : dateRange.end, 10, interval, undefined, undefined, apiPeriod),
-        (async () => {
-            const prevRange = getPreviousDateRange(dateRange.start, dateRange.end)
-            return getPublicStats(siteId, prevRange.start, prevRange.end)
-        })(),
-        (async () => {
-            const prevRange = getPreviousDateRange(dateRange.start, dateRange.end)
-            return getPublicDailyStats(siteId, prevRange.start, prevRange.end, interval)
-        })()
-      ])
+      const dashboardData = await getPublicDashboard(
+        siteId, undefined, undefined, 10, 'day', undefined, undefined, sharePeriodApi,
+      )
 
       setData(dashboardData)
-      setPrevStats(prevStatsData)
-      setPrevDailyStats(prevDailyStatsData)
       setLastUpdatedAt(Date.now())
       setIsPasswordProtected(false)
     } catch (error: unknown) {
@@ -140,7 +124,7 @@ export default function PublicDashboardPage() {
     } finally {
       if (!silent) setLoading(false)
     }
-  }, [siteId, dateRange, todayInterval, multiDayInterval, apiPeriod])
+  }, [siteId, period])
 
   // * Auto-refresh interval: chart, KPIs, and realtime count update every 30 seconds
   useEffect(() => {
@@ -151,11 +135,11 @@ export default function PublicDashboardPage() {
       }, 30000)
       return () => clearInterval(interval)
     }
-  }, [data, isPasswordProtected, dateRange, todayInterval, multiDayInterval, apiPeriod, loadDashboard, loadRealtime])
+  }, [data, isPasswordProtected, loadDashboard, loadRealtime])
 
   useEffect(() => {
     loadDashboard()
-  }, [siteId, dateRange, todayInterval, multiDayInterval, apiPeriod, loadDashboard])
+  }, [loadDashboard])
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -311,8 +295,10 @@ export default function PublicDashboardPage() {
               <DateRangePicker
                 period={period}
                 dateRange={dateRange}
-                onPeriodChange={setPeriod}
+                onPeriodChange={(p) => setPeriod(SHARE_ALLOWED_PERIODS.includes(p) ? p : '30')}
                 onDateRangeChange={setDateRange}
+                excludePresets={SHARE_EXCLUDED_PRESETS}
+                presetsOnly
               />
               {/* Powered by Ciphera Badge */}
               <a 
@@ -345,7 +331,8 @@ export default function PublicDashboardPage() {
             data={safeDailyStats}
             stats={safeStats}
             prevStats={prevStats}
-            interval={dateRange.start === dateRange.end ? todayInterval : multiDayInterval}
+            interval="day"
+            intervalPicker={false}
             dateRange={dateRange}
             todayInterval={todayInterval}
             setTodayInterval={setTodayInterval}

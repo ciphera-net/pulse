@@ -28,6 +28,13 @@ interface DateRangePickerProps {
   // * Preset keys this page cannot honestly serve (e.g. '1h'/'24h' on a
   // * date-granular API, where "Last hour" would silently mean "today").
   excludePresets?: string[]
+  // * Hide the Custom entry AND the calendar entirely. Used by the public share
+  // * dashboard, which is a public-scoped read: the backend serves only fixed
+  // * allowlisted windows there, so an arbitrary custom range is not just useless
+  // * but would 400 — and even a coerced custom pick would relabel the trigger
+  // * while the data stayed on the fallback window. Presets-only removes the
+  // * divergence at the source.
+  presetsOnly?: boolean
 }
 
 function formatRangeDisplay(start: string, end: string): string {
@@ -95,6 +102,7 @@ export default function DateRangePicker({
   align = 'left',
   extraPresets,
   excludePresets,
+  presetsOnly = false,
 }: DateRangePickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -313,6 +321,7 @@ export default function DateRangePicker({
                 ))}
               </div>
             ))}
+            {!presetsOnly && (
             <div>
               <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
                 Custom
@@ -332,8 +341,10 @@ export default function DateRangePicker({
                 Custom
               </button>
             </div>
+            )}
           </div>
 
+          {!presetsOnly && (
           <div className="w-full p-3 sm:w-[280px]">
             <div className="flex items-center justify-between mb-3">
               <button
@@ -373,6 +384,7 @@ export default function DateRangePicker({
               ))}
             </div>
           </div>
+          )}
         </motion.div>
       )}
     </AnimatePresence>
