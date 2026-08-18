@@ -15,6 +15,9 @@ import {
   formatDateFullUTC,
   formatCalendarDate,
   formatCalendarDateFull,
+  parseSiteWallClock,
+  formatDateShortUTC,
+  formatTimeUTC,
 } from '../formatDate'
 
 // Local fixture: Friday 14 March 2025, 14:30 (local time) — deterministic across runner TZ.
@@ -235,5 +238,54 @@ describe('formatCalendarDateFull', () => {
       expect(formatCalendarDateFull(iso)).toContain(`${String(d).padStart(2, '0')}/08/2026`)
       expect(formatCalendarDate(iso)).toBe(`${String(d).padStart(2, '0')}/08/2026`)
     }
+  })
+})
+
+describe('parseSiteWallClock + UTC chart formatters (F10)', () => {
+  // The stats API buckets in the SITE's timezone. Since 18-08-2026 it attaches
+  // the site's real offset; before that it sent the same wall clock mislabelled
+  // Z. Under BOTH formats the literal yyyy-mm-ddThh:mm prefix IS the site's
+  // wall clock, and every assertion here must hold identically under the
+  // negative-offset default pin and the tz-positive run — that invariance is
+  // the point: the viewer's clock must never move a site's bucket. The old
+  // path (new Date + local getters) shifted PeakHours +2h for a Brussels owner
+  // and moved buckets a whole weekday for Auckland viewers.
+
+  it('reads the site wall clock from an offset-carrying bucket', () => {
+    const d = parseSiteWallClock('2026-08-12T03:00:00+02:00')!
+    expect(formatTimeUTC(d)).toBe('03:00')
+    expect(formatDateShortUTC(d)).toBe('12/08')
+    expect(d.getUTCDay()).toBe(3) // Wednesday, the site's weekday
+  })
+
+  it('reads the same wall clock from the legacy Z-stamped format', () => {
+    // Backward compatibility during rollout: the old backend sends the wall
+    // clock mislabelled Z. Both formats must land in the same bucket.
+    const legacy = parseSiteWallClock('2026-08-12T03:00:00Z')!
+    const current = parseSiteWallClock('2026-08-12T03:00:00+02:00')!
+    expect(legacy.getTime()).toBe(current.getTime())
+  })
+
+  it('handles a negative-offset site (New York) without shifting the day', () => {
+    const d = parseSiteWallClock('2026-08-11T21:02:00-04:00')!
+    expect(formatDateShortUTC(d)).toBe('11/08')
+    expect(formatTimeUTC(d)).toBe('21:02')
+  })
+
+  it('adds the year only when it differs', () => {
+    expect(formatDateShortUTC(parseSiteWallClock('2020-02-01T00:00:00+01:00')!)).toBe('01/02/2020')
+  })
+
+  it('returns null for malformed values rather than guessing', () => {
+    expect(parseSiteWallClock('')).toBeNull()
+    expect(parseSiteWallClock(null)).toBeNull()
+    expect(parseSiteWallClock(undefined)).toBeNull()
+    expect(parseSiteWallClock('12/08/2026')).toBeNull()
+    expect(parseSiteWallClock('not-a-date')).toBeNull()
+  })
+
+  it('accepts date-only values extended with T00:00 (engagement daily series)', () => {
+    const d = parseSiteWallClock('2026-08-12' + 'T00:00')!
+    expect(formatDateShortUTC(d)).toBe('12/08')
   })
 })

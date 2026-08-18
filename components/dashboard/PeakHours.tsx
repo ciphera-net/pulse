@@ -8,6 +8,7 @@ import { DURATION_FAST, DURATION_SLOW, EASE_APPLE } from '@/lib/motion'
 import { logger } from '@/lib/utils/logger'
 import { getDailyStats } from '@/lib/api/stats'
 import type { DailyStat } from '@/lib/api/stats'
+import { parseSiteWallClock } from '@/lib/utils/formatDate'
 
 interface PeakHoursProps {
   siteId: string
@@ -113,9 +114,13 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
     const grid: number[][] = Array.from({ length: 7 }, () => Array(BUCKETS).fill(0))
     const weights: number[][] = Array.from({ length: 7 }, () => Array(BUCKETS).fill(0))
     for (const d of data) {
-      const date = new Date(d.date)
-      const day = date.getDay()
-      const hour = date.getHours()
+      // The wire value is the SITE's wall clock — read it with UTC getters.
+      // Local getters re-applied the VIEWER's offset: the heatmap was +2h off
+      // for a Brussels owner and a whole weekday off in Auckland, and the
+      // "busiest time" callout stated the shifted hour as fact (F10).
+      const date = parseSiteWallClock(d.date) ?? new Date(d.date)
+      const day = date.getUTCDay()
+      const hour = date.getUTCHours()
       const adjustedDay = day === 0 ? 6 : day - 1
       const bucket = Math.floor(hour / 2)
       if (metric === 'pageviews') {
@@ -123,8 +128,11 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
       } else if (metric === 'visitors') {
         grid[adjustedDay][bucket] += d.visitors
       } else {
-        const w = d.visitors
         const v = metric === 'avg_duration' ? d.avg_duration : d.bounce_rate
+        // null = unmeasured: the bucket contributes no value and no weight,
+        // instead of dragging the average down as a fabricated zero (F11).
+        if (v == null) continue
+        const w = d.visitors
         grid[adjustedDay][bucket] += v * w
         weights[adjustedDay][bucket] += w
       }
@@ -155,6 +163,11 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
         }
       }
     }
+    // An all-zero grid means NO bucket carried a measured value for this metric
+    // (every bucket null-skipped under F11) — the loop never fired and
+    // {day:0,bucket:0} would state "Mondays at 00:00" as a fact backed by zero
+    // measurements. No measurement, no callout.
+    if (bestVal === 0) return null
     return { day: bestDay, bucket: bestBucket }
   }, [grid, hasData])
 

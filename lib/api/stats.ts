@@ -3,13 +3,16 @@ import { Site } from './sites'
 
 // ─── Types ──────────────────────────────────────────────────────────
 
+// The four averages are nullable: null means "not measured" (no sessions in
+// the window, or no session carried that signal) — never coalesce it to 0, a
+// fabricated zero is indistinguishable from a measured one. Render an em dash.
 export interface Stats {
   pageviews: number
   visitors: number
-  bounce_rate: number
-  avg_duration: number
-  avg_scroll_depth: number
-  avg_visible_duration: number
+  bounce_rate: number | null
+  avg_duration: number | null
+  avg_scroll_depth: number | null
+  avg_visible_duration: number | null
 }
 
 export interface TopPage {
@@ -91,14 +94,21 @@ export interface DeviceStat {
   pageviews: number
 }
 
+// `date` is the bucket in the SITE's timezone. The server sends the true
+// instant with the site's offset attached (2026-08-12T03:00:00+02:00); the
+// LITERAL yyyy-mm-ddThh:mm prefix is the site's wall clock under both the old
+// (Z-stamped) and new wire formats — parse it with parseSiteWallClock and read
+// UTC getters, never local ones. The four averages are nullable like Stats';
+// a null bucket is "not measured" (or floored on a public-scoped read) and
+// draws as a GAP, not a zero.
 export interface DailyStat {
   date: string
   pageviews: number
   visitors: number
-  bounce_rate: number
-  avg_duration: number
-  avg_scroll_depth: number
-  avg_visible_duration: number
+  bounce_rate: number | null
+  avg_duration: number | null
+  avg_scroll_depth: number | null
+  avg_visible_duration: number | null
 }
 
 export interface RealtimeStats {
