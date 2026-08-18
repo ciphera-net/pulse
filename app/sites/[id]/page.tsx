@@ -20,7 +20,6 @@ import FilterPills from '@/components/dashboard/FilterPills'
 import FilterBuilder from '@/components/dashboard/filter/FilterBuilder'
 import { useFilterBuilder } from '@/components/dashboard/filter/useFilterBuilder'
 const CommandDeck = dynamic(() => import('@/components/dashboard/CommandDeck'), { ssr: false })
-import { DashboardStatusLine } from '@/components/dashboard/DashboardStatusLine'
 import ContentStats from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
 import Audience from '@/components/dashboard/Locations'
@@ -61,7 +60,6 @@ export default function SiteDashboardPage() {
   const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>('hour')
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
 
   // Dimension filters state
   const searchParams = useSearchParams()
@@ -196,11 +194,10 @@ export default function SiteDashboardPage() {
   const canExport = useCan('analytics.export')
 
   // Track when dashboard data was last updated (drives the Live indicator in
-  // GlassTopBar and the provenance strip's freshness stamp)
+  // GlassTopBar)
   const { markUpdated } = useLiveIndicator()
   useEffect(() => {
     if (dashboard) {
-      setLastUpdatedAt(Date.now())
       markUpdated()
     }
   }, [dashboard, markUpdated])
@@ -310,11 +307,6 @@ export default function SiteDashboardPage() {
         // the cards (review finding: "events" above a pageview-share card).
         const sectionNote = hasFilters ? 'filtered with the page' : 'whole site'
         return <><div className="mb-3 space-y-2">
-        <DashboardStatusLine
-          timezone={site.timezone}
-          lastUpdatedAt={lastUpdatedAt}
-          filterCount={filters.length}
-        />
         <CommandDeck
           data={dailyStats}
           stats={stats}

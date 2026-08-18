@@ -30,14 +30,18 @@ describe('PeakHours', () => {
     expect(useDailyStats).toHaveBeenCalledWith('site-1', '2026-08-11', '2026-08-18', 'hour', 'country:is:DE')
   })
 
-  it('renders the grid when data arrives', () => {
+  it('renders the grid with 24 hourly columns (the approved mockup)', () => {
     useDailyStats.mockReturnValue({
       data: [hour('2026-08-17T14:00:00+02:00', 12), hour('2026-08-17T16:00:00+02:00', 4)],
       error: undefined, isLoading: false, mutate: vi.fn(),
     })
-    render(<PeakHours siteId="site-1" dateRange={dateRange} />)
+    const { container } = render(<PeakHours siteId="site-1" dateRange={dateRange} />)
     expect(screen.getByText('Mon')).toBeTruthy()
     expect(screen.queryByText('Too early to tell')).toBeNull()
+    // 24 one-hour columns, not the old 12 two-hour buckets — at full card
+    // width the square cells otherwise double and the block with them.
+    expect(container.querySelector('[style*="repeat(24"]')).toBeTruthy()
+    expect(container.querySelector('[style*="repeat(12"]')).toBeNull()
   })
 
   it('renders an error with retry — never the empty-state explanation — on failure', () => {
