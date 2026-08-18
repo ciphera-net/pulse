@@ -184,6 +184,7 @@ export default function FunnelsPage() {
         <FunnelModal
           isOpen={modalOpen}
           siteId={siteId}
+          dateRange={dateRange}
           onClose={() => { setModalOpen(false); setEditingFunnel(null); setPrefill(null) }}
           initialData={editingFunnel ?? undefined}
           prefill={!editingFunnel ? prefill ?? undefined : undefined}

@@ -113,6 +113,15 @@ export async function deleteFunnel(siteId: string, funnelId: string): Promise<vo
 }
 
 /** Chained stats for EVERY funnel on the site in one request — the list surface. */
+/** Run the funnel engine over an UNSAVED definition — the modal's live preview. */
+export async function previewFunnel(siteId: string, steps: Omit<FunnelStep, 'order'>[], startDate: string, endDate: string): Promise<FunnelStats> {
+  const params = new URLSearchParams({ start_date: startDate, end_date: endDate })
+  return apiRequest<FunnelStats>(`/sites/${siteId}/funnels/preview?${params.toString()}`, {
+    method: 'POST',
+    body: JSON.stringify({ steps: steps.map((s, i) => ({ ...s, order: i })) }),
+  })
+}
+
 export async function getAllFunnelStats(siteId: string, startDate?: string, endDate?: string, filters?: string): Promise<Record<string, FunnelStats>> {
   const params = new URLSearchParams()
   if (startDate) params.append('start_date', startDate)

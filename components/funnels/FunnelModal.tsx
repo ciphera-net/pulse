@@ -6,6 +6,8 @@ import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { Button, Spinner, toast } from '@ciphera-net/facet'
 import { CaretUp, CaretDown, CircleNotch, FileText, House, Lightning, Plus, Trash } from '@phosphor-icons/react'
 import type { Funnel, FunnelStep, StepPropertyFilter, CreateFunnelRequest } from '@/lib/api/funnels'
+import { previewFunnel, type FunnelStats } from '@/lib/api/funnels'
+import { FunnelChart } from '@/components/ui/funnel-chart'
 import { getDashboardPages, getDashboardGoals } from '@/lib/api/stats'
 import { getDateRange } from '@/lib/utils/dateRanges'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -58,6 +60,8 @@ interface FunnelModalProps {
   /** Create-mode seed (e.g. from a journeys lens) — ignored when editing. */
   prefill?: FunnelPrefill
   siteId: string
+  /** The page's current range — the live preview measures over it. */
+  dateRange?: { start: string; end: string }
 }
 
 // ─── Suggestion input ───────────────────────────────────────────────
@@ -239,7 +243,7 @@ function SuggestInput({
 
 // ─── Modal ──────────────────────────────────────────────────────────
 
-export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, prefill, siteId }: FunnelModalProps) {
+export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, prefill, siteId, dateRange }: FunnelModalProps) {
   const [name, setName] = useState(initialData?.name ?? prefill?.name ?? '')
   const [description, setDescription] = useState(initialData?.description ?? prefill?.description ?? '')
   const [steps, setSteps] = useState<StepWithoutOrder[]>(
@@ -254,6 +258,60 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const initialStepCount = initialData?.steps.length ?? prefill?.steps?.length ?? 2
+
+  // ── Live preview: what this definition would have measured ─────────
+  // Debounced POST /funnels/preview over the page's current range — the same
+  // engine the page uses, run before the funnel exists. Duplicate or invalid
+  // steps 400 server-side and land in the quiet 'error' state; the inline
+  // field errors carry the explanation.
+  const [preview, setPreview] = useState<FunnelStats | null>(null)
+  const [previewState, setPreviewState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+
+  useEffect(() => {
+    if (!isOpen || !dateRange) return
+    const usable = steps.filter((st) => st.value.trim() !== '')
+    if (usable.length === 0) {
+      setPreview(null)
+      setPreviewState('idle')
+      return
+    }
+    for (const st of usable) {
+      if ((st.category || 'page') === 'page' && st.type === 'regex') {
+        try {
+          new RegExp(st.value)
+        } catch {
+          setPreview(null)
+          setPreviewState('idle')
+          return
+        }
+      }
+    }
+    let cancelled = false
+    setPreviewState((prev) => (prev === 'ready' ? 'ready' : 'loading'))
+    const t = setTimeout(async () => {
+      try {
+        const stats = await previewFunnel(
+          siteId,
+          usable.map((st) => ({ ...st, name: isDefaultStepName(st.name) ? st.value.trim() || st.name : st.name })),
+          dateRange.start,
+          dateRange.end,
+        )
+        if (!cancelled) {
+          setPreview(stats)
+          setPreviewState('ready')
+        }
+      } catch {
+        if (!cancelled) {
+          setPreview(null)
+          setPreviewState('error')
+        }
+      }
+    }, 600)
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
+  }, [isOpen, dateRange, steps, siteId])
   const stepIdCounter = useRef(initialStepCount)
   const [stepIds, setStepIds] = useState<number[]>(() =>
     Array.from({ length: initialStepCount }, (_, i) => i),
@@ -421,6 +479,23 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
       }
       if (cat === 'event' && step.property_filters?.some((f) => !f.key.trim())) {
         next[`step-${i}`] = 'Every property filter needs a key.'
+      }
+    })
+    // Exact duplicates: attribution is first-match-wins, so a later twin can
+    // never match and its step reads zero forever. The server rejects these
+    // too — this is the inline version of the same rule.
+    const seen = new Map<string, number>()
+    steps.forEach((step, i) => {
+      if (next[`step-${i}`] || !step.value.trim()) return
+      const cat = step.category || 'page'
+      // Filtered event steps may legitimately repeat an event name.
+      if (cat === 'event' && step.property_filters?.length) return
+      const key = cat === 'page' ? `page|${step.type}|${step.value.trim()}` : `event|${step.value.trim()}`
+      const prev = seen.get(key)
+      if (prev != null) {
+        next[`step-${i}`] = `Repeats step ${prev + 1} — a later duplicate step can never be matched.`
+      } else {
+        seen.set(key, i)
       }
     })
     setErrors(next)
@@ -686,6 +761,33 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                 )}
               </div>
             </div>
+
+            {/* Live preview — measured, not promised */}
+            {dateRange && previewState !== 'idle' && (
+              <div className="rounded-none border border-border bg-black/20 p-3">
+                <div className="mb-1.5 flex items-center justify-between gap-3">
+                  <span className="text-xs text-neutral-500">Preview · selected range</span>
+                  {previewState === 'ready' && preview && preview.steps.length > 0 && (
+                    <span className="shrink-0 text-xs tabular-nums text-neutral-500">
+                      {preview.steps[preview.steps.length - 1].visitors} of {preview.steps[0].visitors} entered
+                    </span>
+                  )}
+                </div>
+                {previewState === 'error' ? (
+                  <p className="text-xs text-neutral-500">Preview unavailable.</p>
+                ) : previewState === 'loading' && !preview ? (
+                  <p className="text-xs text-neutral-600">Measuring…</p>
+                ) : preview && preview.steps.length > 0 && preview.steps[0].visitors > 0 ? (
+                  <FunnelChart
+                    data={preview.steps.map((st) => ({ label: st.step.value, value: st.visitors }))}
+                    compact
+                    staggerDelay={0}
+                  />
+                ) : (
+                  <p className="text-xs text-neutral-500">No visitors matched this funnel in the selected range.</p>
+                )}
+              </div>
+            )}
 
             {/* No conversion window — the identity model resets at UTC midnight,
                 so a conversion either completes within the visit or not at all.
