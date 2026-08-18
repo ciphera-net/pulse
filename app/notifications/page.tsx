@@ -49,7 +49,7 @@ function NotificationsContent() {
         <EmptyState
           icon={<BellSimple />}
           title="All quiet"
-          description="You'll see alerts about uptime, traffic spikes, and goal milestones here."
+          description="You'll see alerts about uptime, site performance, and billing here."
         />
       )}
       {!loading && !error && receipts.length > 0 && (
