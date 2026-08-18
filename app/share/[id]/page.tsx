@@ -231,7 +231,7 @@ export default function PublicDashboardPage() {
 
   // Provide defaults for potentially undefined data
   const safeDailyStats = daily_stats || []
-  const safeStats = stats || { pageviews: 0, visitors: 0, bounce_rate: 0, avg_duration: 0 }
+  const safeStats = stats || { pageviews: 0, visitors: 0, bounce_rate: null, avg_duration: null }
   const safeTopPages = top_pages || []
   const safeEntryPages = entry_pages || []
   const safeExitPages = exit_pages || []

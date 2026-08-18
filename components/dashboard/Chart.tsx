@@ -12,26 +12,30 @@ import { motion } from 'framer-motion'
 import { SPRING, EASE_APPLE } from '@/lib/motion'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { cn } from '@/lib/utils'
-import { formatTime, formatDateShort, formatDateFull } from '@/lib/utils/formatDate'
+import { formatDateShortUTC, formatTimeUTC, formatDateFullUTC, parseSiteWallClock } from '@/lib/utils/formatDate'
+import { guardedPctChange, guardedPointChange, type PctChangeResult } from '@/lib/utils/pctChange'
 import { EmptyState } from '@/components/ui/EmptyState'
 
+// Mirrors lib/api/stats.ts: the four averages are nullable (null = not
+// measured, never 0), and `date` is the site's wall clock — parse it with
+// parseSiteWallClock and read UTC getters only.
 export interface DailyStat {
   date: string
   pageviews: number
   visitors: number
-  bounce_rate: number
-  avg_duration: number
-  avg_scroll_depth: number
-  avg_visible_duration: number
+  bounce_rate: number | null
+  avg_duration: number | null
+  avg_scroll_depth: number | null
+  avg_visible_duration: number | null
 }
 
 interface Stats {
   pageviews: number
   visitors: number
-  bounce_rate: number
-  avg_duration: number
-  avg_scroll_depth: number
-  avg_visible_duration: number
+  bounce_rate: number | null
+  avg_duration: number | null
+  avg_scroll_depth: number | null
+  avg_visible_duration: number | null
 }
 
 interface ChartProps {
@@ -76,18 +80,23 @@ function smoothPath(coords: { x: number; y: number }[]): string {
   return d
 }
 
-function Sparkline({ data, dataKey, active, engagementDaily }: { data: { pageviews: number; visitors: number; bounce_rate: number; avg_duration: number; engagement?: number }[]; dataKey: MetricType; active: boolean; engagementDaily?: { date: string; score: number }[] }) {
+function Sparkline({ data, dataKey, active, engagementDaily }: { data: { pageviews: number; visitors: number; bounce_rate: number | null; avg_duration: number | null; engagement?: number }[]; dataKey: MetricType; active: boolean; engagementDaily?: { date: string; score: number }[] }) {
   // Engagement sparkline always uses daily data (not hourly-mapped) to show real variation
   const sourceValues = dataKey === 'engagement' && engagementDaily?.length
     ? engagementDaily.map(d => d.score)
     : null
   if (!sourceValues && data.length < 2) return null
   if (sourceValues && sourceValues.length < 2) return null
-  const values = sourceValues ?? data.map((d) =>
-    dataKey === 'pages_per_visit'
-      ? (d.visitors > 0 ? d.pageviews / d.visitors : 0)
-      : d[dataKey] as number
-  )
+  // Unmeasured buckets (null) are skipped, not plotted as zeros — this is a
+  // decorative trend line, and a fabricated dip to 0 is still a fabrication.
+  const values = sourceValues ?? data
+    .map((d) =>
+      dataKey === 'pages_per_visit'
+        ? (d.visitors > 0 ? d.pageviews / d.visitors : 0)
+        : d[dataKey] as number | null
+    )
+    .filter((v): v is number => v != null)
+  if (values.length < 2) return null
   const max = Math.max(...values)
   const min = Math.min(...values)
   const range = max - min || 1
@@ -123,18 +132,23 @@ function Sparkline({ data, dataKey, active, engagementDaily }: { data: { pagevie
 
 // ─── Metric configurations ──────────────────────────────────────────
 
+// format receives null when the value is unmeasured and renders an em dash —
+// "no sessions carried this signal" and "measured zero" are different facts.
+// isRate routes the delta through guardedPointChange (percentage POINTS): a
+// relative % change of a percentage reads like traffic growth and is misread.
 const METRIC_CONFIGS: {
   key: MetricType
   label: string
-  format: (v: number) => string
+  format: (v: number | null) => string
   isNegative?: boolean
+  isRate?: boolean
 }[] = [
-  { key: 'visitors', label: 'Unique visitors', format: (v) => formatNumber(Math.round(v)) },
-  { key: 'pageviews', label: 'Total pageviews', format: (v) => formatNumber(Math.round(v)) },
-  { key: 'pages_per_visit', label: 'Pages per visit', format: (v) => (v ?? 0).toFixed(1) },
-  { key: 'bounce_rate', label: 'Bounce rate', format: (v) => `${Math.round(v)}%`, isNegative: true },
-  { key: 'avg_duration', label: 'Visit duration', format: (v) => formatDuration(Math.round(v)) },
-  { key: 'engagement', label: 'Engagement', format: (v) => String(Math.round(v ?? 0)) },
+  { key: 'visitors', label: 'Unique visitors', format: (v) => v == null ? '—' : formatNumber(Math.round(v)) },
+  { key: 'pageviews', label: 'Total pageviews', format: (v) => v == null ? '—' : formatNumber(Math.round(v)) },
+  { key: 'pages_per_visit', label: 'Pages per visit', format: (v) => v == null ? '—' : v.toFixed(1) },
+  { key: 'bounce_rate', label: 'Bounce rate', format: (v) => v == null ? '—' : `${Math.round(v)}%`, isNegative: true, isRate: true },
+  { key: 'avg_duration', label: 'Visit duration', format: (v) => v == null ? '—' : formatDuration(Math.round(v)) },
+  { key: 'engagement', label: 'Engagement', format: (v) => v == null ? '—' : String(Math.round(v)) },
 ]
 
 const CHART_COLORS: Record<MetricType, string> = {
@@ -173,19 +187,23 @@ export default function Chart({
   // ─── Data ──────────────────────────────────────────────────────────
 
   const chartData = useMemo(() => data.map((item) => {
+    // The wire value is the site's wall clock (offset attached since 18-08-2026,
+    // Z-mislabelled before). parseSiteWallClock reads the literal digits, so the
+    // label is the SITE's clock for every viewer; local getters would shift it
+    // by the viewer's offset (a New York reader saw each day bar a day early).
+    const wallClock = parseSiteWallClock(item.date) ?? new Date(item.date)
     let formattedDate: string
     if (interval === 'minute') {
-      formattedDate = formatTime(new Date(item.date))
+      formattedDate = formatTimeUTC(wallClock)
     } else if (interval === 'hour') {
-      const d = new Date(item.date)
-      formattedDate = formatDateShort(d) + ', ' + formatTime(d)
+      formattedDate = formatDateShortUTC(wallClock) + ', ' + formatTimeUTC(wallClock)
     } else {
-      formattedDate = formatDateShort(new Date(item.date))
+      formattedDate = formatDateShortUTC(wallClock)
     }
 
     return {
       date: formattedDate,
-      dateObj: new Date(item.date),
+      dateObj: wallClock,
       originalDate: item.date,
       pageviews: item.pageviews,
       visitors: item.visitors,
@@ -204,25 +222,32 @@ export default function Chart({
   // ─── Metrics with trends ──────────────────────────────────────────
 
   const metricsWithTrends = useMemo(() => {
-    // * A tiny comparison window (< 10 previous visitors) turns every delta
-    // * into ±double-digit noise and paints the whole strip red — treat those
-    // * windows as having no meaningful delta instead.
-    const insufficientBase = (prevStats?.visitors ?? 0) < 10
+    // * Deltas ride the shared estate helpers: guardedPctChange for counts and
+    // * durations, guardedPointChange (percentage POINTS) for rates. Both
+    // * suppress the badge when the previous window held < 10 visitors — the
+    // * base guard is evaluated on the SAME (filtered) population as the
+    // * comparison, which is what made the old inline version lie under a
+    // * filter (F4: a true +13% rendered as −46% red).
+    const prevBase = prevStats?.visitors ?? 0
     return METRIC_CONFIGS.map((m) => {
-    const value = m.key === 'engagement'
-      ? (engagementData?.summary?.score ?? 0)
+    const value: number | null = m.key === 'engagement'
+      ? (engagementData?.summary?.score ?? null)
       : m.key === 'pages_per_visit'
-        ? (stats.visitors > 0 ? stats.pageviews / stats.visitors : 0)
+        ? (stats.visitors > 0 ? stats.pageviews / stats.visitors : null)
         : stats[m.key as keyof Stats]
-    const previousValue = m.key === 'engagement'
+    const previousValue: number | null | undefined = m.key === 'engagement'
       ? undefined
       : m.key === 'pages_per_visit'
         ? (prevStats && prevStats.visitors > 0 ? prevStats.pageviews / prevStats.visitors : undefined)
         : prevStats?.[m.key as keyof Stats]
-    const change = !insufficientBase && previousValue != null && previousValue > 0
-      ? ((value - previousValue) / previousValue) * 100
+    const change: PctChangeResult = value != null && previousValue != null
+      ? (m.isRate
+          ? guardedPointChange(value, previousValue, prevBase)
+          : guardedPctChange(value, previousValue, prevBase))
       : null
-    const isPositive = change !== null ? (m.isNegative ? change < 0 : change > 0) : null
+    const isPositive = change && change.type !== 'new'
+      ? (m.isNegative ? change.value < 0 : change.value > 0)
+      : null
 
     return {
       ...m,
@@ -241,12 +266,18 @@ export default function Chart({
   const isEngagementHourly = metric === 'engagement' && (interval === 'hour' || interval === 'minute')
   const engagementChartData = useMemo(() => {
     if (!engagementData?.daily?.length) return []
-    return engagementData.daily.map(d => ({
-      date: formatDateShort(new Date(d.date + 'T00:00:00')),
-      dateObj: new Date(d.date + 'T00:00:00'),
-      originalDate: d.date,
-      engagement: d.score,
-    }))
+    // Same wall-clock basis as chartData — parsing this one as LOCAL midnight
+    // put the engagement series on different x-instants than the traffic series
+    // for every non-UTC viewer.
+    return engagementData.daily.map(d => {
+      const wallClock = parseSiteWallClock(d.date + 'T00:00') ?? new Date(d.date + 'T00:00:00Z')
+      return {
+        date: formatDateShortUTC(wallClock),
+        dateObj: wallClock,
+        originalDate: d.date,
+        engagement: d.score,
+      }
+    })
   }, [engagementData])
 
   // ─── Render ────────────────────────────────────────────────────────
@@ -270,10 +301,10 @@ export default function Chart({
                 <div className="relative z-10">
                   <div className="flex items-start justify-between mb-2">
                     <div className={cn('text-sm font-medium', metric === m.key ? 'text-brand-orange' : 'text-neutral-500 dark:text-neutral-400')}>{m.label}</div>
-                    {m.change !== null && (
+                    {m.change !== null && m.change.type !== 'new' && (
                       <span className={cn('flex items-center gap-0.5 text-xs font-semibold', m.isPositive ? 'text-[#10B981]' : 'text-[#EF4444]')}>
                         {m.isPositive ? <ArrowUpRight weight="bold" className="size-3" /> : <ArrowDownRight weight="bold" className="size-3" />}
-                        {Math.abs(m.change).toFixed(0)}%
+                        {Math.abs(m.change.value)}{m.change.type === 'pp' ? 'pp' : '%'}
                       </span>
                     )}
                   </div>
@@ -288,7 +319,9 @@ export default function Chart({
                         </div>
                       </>
                     )
-                    : <AnimatedNumber value={m.value} format={m.format} className="text-2xl font-bold text-white" />
+                    : m.value == null
+                      ? <span className="text-2xl font-bold text-neutral-600" title="Not measured in this window">—</span>
+                      : <AnimatedNumber value={m.value} format={m.format as (v: number) => string} className="text-2xl font-bold text-white" />
                   }
                   {m.key === 'engagement' && engagementData && engagementData.data_days >= 7 && (
                     <div
@@ -335,7 +368,10 @@ export default function Chart({
                   <DownloadIcon className="w-3.5 h-3.5" />
                 </button>
               )}
-              {!intervalPicker ? null : period === '1h' ? null : dateRange.start === dateRange.end ? (
+              {/* 1h and 24h are fixed-granularity rolling windows (minute / hour):
+                  showing the selector there would render a control whose displayed
+                  value disagrees with the chart. */}
+              {!intervalPicker ? null : period === '1h' || period === '24h' ? null : dateRange.start === dateRange.end ? (
                 <Select
                   variant="input"
                   value={todayInterval}
@@ -427,12 +463,15 @@ export default function Chart({
                       stroke={CHART_COLORS[metric]}
                       strokeWidth={2}
                       gradientToOpacity={0}
+                      // Rates and durations are null where unmeasured — a gap,
+                      // never a plotted zero (the uptime chart's contract).
+                      breakAtMissing={metric === 'bounce_rate' || metric === 'avg_duration'}
                     />
                     <VisxXAxis
                       numTicks={Math.min(activeChartData.length, 10)}
                       formatLabel={!isEngagementDaily && (interval === 'minute' || interval === 'hour')
-                        ? (d) => `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
-                        : (d) => formatDateShort(d)
+                        ? (d) => formatTimeUTC(d)
+                        : (d) => formatDateShortUTC(d)
                       }
                     />
                     <VisxYAxis
@@ -446,10 +485,10 @@ export default function Chart({
                       content={({ point }) => {
                         const dateObj = point.dateObj instanceof Date ? point.dateObj : new Date(point.dateObj as string || Date.now())
                         const config = METRIC_CONFIGS.find((m) => m.key === metric)
-                        const value = point[metric] as number
+                        const value = point[metric] as number | null
                         const title = !isEngagementDaily && (interval === 'minute' || interval === 'hour')
-                          ? `${String(dateObj.getUTCHours()).padStart(2, '0')}:${String(dateObj.getUTCMinutes()).padStart(2, '0')}`
-                          : formatDateFull(dateObj)
+                          ? formatTimeUTC(dateObj)
+                          : formatDateFullUTC(dateObj)
                         return (
                           <div className="px-3 py-2.5">
                             <div className="mb-2 font-medium text-neutral-400 text-xs">{title}</div>

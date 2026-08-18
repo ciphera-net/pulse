@@ -141,6 +141,42 @@ export function formatCalendarDate(isoDate: string | null | undefined): string |
   return `${d}/${mo}/${y}`
 }
 
+/** Parse a time-series bucket from the stats API into a Date whose UTC fields
+ * ARE the site's wall clock.
+ *
+ * The server buckets in the SITE's timezone and (since 18-08-2026) attaches the
+ * site's real offset: `2026-08-12T03:00:00+02:00` means 03:00 on the site's
+ * clock. Before that it sent the same wall clock mislabelled `Z`. Under BOTH
+ * formats the literal yyyy-mm-ddThh:mm prefix is the site's wall clock — so this
+ * reads the digits out of the string and never lets a runtime timezone (the
+ * viewer's, or the offset itself) shift what is shown. Read the result with UTC
+ * getters (getUTCHours/getUTCDay) or the *UTC formatters; local getters would
+ * re-apply the VIEWER's offset, which is the exact bug (PeakHours shifted +2h
+ * for a Brussels owner, a whole weekday for Auckland) this replaces.
+ *
+ * Returns null for a malformed value; callers fall back rather than fabricate.
+ */
+export function parseSiteWallClock(value: string | null | undefined): Date | null {
+  if (!value) return null
+  const m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/.exec(value)
+  if (!m) return null
+  const [, y, mo, d, h, mi] = m
+  return new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi)))
+}
+
+/** 14/03 in UTC — the chart-axis counterpart of formatDateShort, for wall-clock
+ *  Dates built by parseSiteWallClock. Adds the year when it differs. */
+export function formatDateShortUTC(d: Date): string {
+  const now = new Date()
+  const short = `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}`
+  return d.getUTCFullYear() !== now.getUTCFullYear() ? `${short}/${d.getUTCFullYear()}` : short
+}
+
+/** 14:30 in UTC — the time counterpart, for wall-clock Dates. */
+export function formatTimeUTC(d: Date): string {
+  return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`
+}
+
 /** Fri, 14/03/2025 14:30 — full date+time with weekday */
 export function formatDateTimeFull(d: Date): string {
   const weekday = d.toLocaleDateString(LOCALE, { weekday: 'short' })

@@ -149,7 +149,10 @@ export default function SiteDashboardPage() {
   // For relative periods send the period name; for custom ranges send dates
   const apiPeriod = period !== 'custom' ? (PERIOD_TO_API[period] || undefined) : undefined
 
-  const interval = period === '1h' ? 'minute' : (dateRange.start === dateRange.end ? todayInterval : multiDayInterval)
+  // '1h' narrows to minutes; '24h' narrows to hours — the server resolves 24h as
+  // a genuine rolling window (D3), and drawing it as two daily bars split the
+  // window mid-bar (F5). Other multi-day ranges keep the user's interval choice.
+  const interval = period === '1h' ? 'minute' : period === '24h' ? 'hour' : (dateRange.start === dateRange.end ? todayInterval : multiDayInterval)
 
   // Single dashboard request replaces focused hooks (overview, pages, locations,
   // devices, referrers, goals). The backend runs all queries in parallel
@@ -238,7 +241,11 @@ export default function SiteDashboardPage() {
     return { start: prevStart.toISOString().split('T')[0], end: prevEnd.toISOString().split('T')[0] }
   }, [resolvedDateRange])
   const { data: realtimeData } = useRealtime(siteId, 15_000)
-  const { data: prevStats } = useStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '')
+  // The previous-period comparison carries the SAME filters as the current
+  // period. Omitting them compared a filtered current window against an
+  // unfiltered previous one — every KPI delta was garbage under any active
+  // filter, measured as a true +13% rendered −46% red (F4).
+  const { data: prevStats } = useStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '', filtersParam || undefined)
   const { data: prevDailyStats } = useDailyStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '', interval, filtersParam || undefined)
   const { data: campaigns } = useCampaigns(siteId, resolvedDateRange?.start ?? '', resolvedDateRange?.end ?? '', 100, apiPeriod)
   // Fetch engagement percentiles in parallel with dashboard data
@@ -251,7 +258,9 @@ export default function SiteDashboardPage() {
 
   // Derive typed values from single dashboard response
   const site = dashboard?.site ?? null
-  const stats: Stats = dashboard?.stats ?? { pageviews: 0, visitors: 0, bounce_rate: 0, avg_duration: 0, avg_scroll_depth: 0, avg_visible_duration: 0 }
+  // The four averages default to null ("not measured"), never 0 — a fabricated
+  // zero is indistinguishable from a measured one (F11).
+  const stats: Stats = dashboard?.stats ?? { pageviews: 0, visitors: 0, bounce_rate: null, avg_duration: null, avg_scroll_depth: null, avg_visible_duration: null }
   const realtime = realtimeData?.visitors ?? dashboard?.realtime_visitors ?? 0
   const dailyStats: DailyStat[] = dashboard?.daily_stats ?? []
 
