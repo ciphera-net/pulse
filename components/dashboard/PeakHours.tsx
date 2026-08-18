@@ -3,16 +3,18 @@
 import { useState, useEffect, useMemo, useRef, type CSSProperties } from 'react'
 import { Clock } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { ErrorCard } from '@/components/ui/ErrorCard'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DURATION_FAST, DURATION_SLOW, EASE_APPLE } from '@/lib/motion'
-import { logger } from '@/lib/utils/logger'
-import { getDailyStats } from '@/lib/api/stats'
-import type { DailyStat } from '@/lib/api/stats'
+import { useDailyStats } from '@/lib/swr/dashboard'
 import { parseSiteWallClock } from '@/lib/utils/formatDate'
 
 interface PeakHoursProps {
   siteId: string
   dateRange: { start: string, end: string }
+  // Active page filters (F14): the heatmap describes the same population as
+  // the rest of the page, and the Behaviour section header says so.
+  filters?: string
 }
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -81,30 +83,28 @@ function getHighlightColor(value: number, max: number): string {
   return HIGHLIGHT_COLORS[4]
 }
 
-export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
-  const [data, setData] = useState<DailyStat[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+export default function PeakHours({ siteId, dateRange, filters }: PeakHoursProps) {
   const [animKey, setAnimKey] = useState(0)
   const [hovered, setHovered] = useState<{ day: number; bucket: number } | null>(null)
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null)
   const [metric, setMetric] = useState<Metric>('pageviews')
   const gridRef = useRef<HTMLDivElement>(null)
 
+  // SWR instead of the imperative fetch (F17): a failed request renders an
+  // error with a retry, not an empty heatmap explained as "too early to tell".
+  // Filters ride the key (F14).
+  const {
+    data: swrData,
+    error,
+    isLoading,
+    mutate: refetch,
+  } = useDailyStats(siteId, dateRange?.start ?? '', dateRange?.end ?? '', 'hour', filters)
+  const data = useMemo(() => swrData ?? [], [swrData])
+
+  // Re-trigger the cell cascade whenever a fresh payload arrives.
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true)
-      try {
-        const result = await getDailyStats(siteId, dateRange.start, dateRange.end, 'hour')
-        setData(result)
-        setAnimKey(k => k + 1)
-      } catch (e) {
-        logger.error(e)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    fetchData()
-  }, [siteId, dateRange])
+    if (swrData) setAnimKey(k => k + 1)
+  }, [swrData])
 
   const { grid, max, weekTotal } = useMemo(() => {
     // grid[day][bucket] — aggregate 2-hour buckets per selected metric.
@@ -227,6 +227,14 @@ export default function PeakHours({ siteId, dateRange }: PeakHoursProps) {
               <div className="flex-1 h-5 rounded-none bg-neutral-800 animate-skeleton-fade" />
             </div>
           ))}
+        </div>
+      ) : error && !swrData ? (
+        <div className="flex-1 min-h-[270px] flex flex-col justify-center">
+          <ErrorCard
+            title="Couldn’t load peak hours"
+            description="The rest of the dashboard is unaffected."
+            onRetry={() => refetch()}
+          />
         </div>
       ) : hasData ? (
         <>

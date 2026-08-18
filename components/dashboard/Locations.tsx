@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
-import { logger } from '@/lib/utils/logger'
 import { formatNumber } from '@/lib/utils/format'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { CountryFlag } from '@/components/ui/CountryFlag'
@@ -12,10 +11,11 @@ const MapView = dynamic(() => import('./MapView'), { ssr: false })
 import { Modal, GlobeIcon } from '@ciphera-net/facet'
 import { GlobeHemisphereWest } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { ErrorCard } from '@/components/ui/ErrorCard'
 import { ListSkeleton } from '@/components/skeletons'
 import VirtualList from './VirtualList'
 import { ShieldCheck, Detective, Broadcast, FrameCornersIcon } from '@phosphor-icons/react'
-import { getCountries, getCities, getRegions, getLanguages, getTimezones } from '@/lib/api/stats'
+import { useFullDimensionList, type FullListKind } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
 
 interface AudienceProps {
@@ -28,6 +28,12 @@ interface AudienceProps {
   collectAudienceData?: boolean
   siteId: string
   dateRange: { start: string, end: string }
+  // True range totals — the F9 denominator; no totals → no percentages.
+  totals?: { pageviews: number; visitors: number }
+  // Active page filters, threaded into the modal fetch (F14).
+  filters?: string
+  // Hidden on the anonymous share surface (no full-list endpoints there).
+  memberFeatures?: boolean
   onFilter?: (filter: DimensionFilter) => void
 }
 
@@ -36,6 +42,7 @@ type Tab = 'map' | 'countries' | 'regions' | 'cities' | 'languages' | 'timezones
 const LIMIT = 7
 
 const TAB_TO_DIMENSION: Record<string, string> = { countries: 'country', regions: 'region', cities: 'city', languages: 'language', timezones: 'timezone' }
+const TAB_TO_KIND: Partial<Record<Tab, FullListKind>> = { countries: 'countries', regions: 'regions', cities: 'cities', languages: 'languages', timezones: 'timezones' }
 
 function formatLanguage(locale: string): string {
   if (locale === 'Unknown') return 'Unknown'
@@ -143,14 +150,28 @@ function formatTimezone(tz: string): string {
   }
 }
 
-export default function Audience({ countries, cities, regions, languages, timezones, geoDataLevel = 'full', collectAudienceData = true, siteId, dateRange, onFilter }: AudienceProps) {
+export default function Audience({ countries, cities, regions, languages, timezones, geoDataLevel = 'full', collectAudienceData = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter }: AudienceProps) {
   const [activeTab, setActiveTab] = useState<Tab>('countries')
   const handleTabKeyDown = useTabListKeyboard()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalSearch, setModalSearch] = useState('')
   type AudienceItem = { country?: string; city?: string; region?: string; language?: string; timezone?: string; pageviews: number }
-  const [fullData, setFullData] = useState<AudienceItem[]>([])
-  const [isLoadingFull, setIsLoadingFull] = useState(false)
+
+  const denom = totals && totals.pageviews > 0 ? totals.pageviews : null
+  const pct = (pageviews: number) =>
+    denom != null ? `${Math.round((pageviews / denom) * 100)}%` : ''
+
+  // Modal data via SWR — armed only while open on a list tab, filters on the
+  // key (F14/F17).
+  const {
+    data: fullData,
+    error: fullError,
+    isLoading: isLoadingFull,
+    mutate: refetchFull,
+  } = useFullDimensionList<AudienceItem>(
+    isModalOpen ? (TAB_TO_KIND[activeTab] ?? null) : null,
+    siteId, dateRange?.start, dateRange?.end, 250, filters,
+  )
 
   const containerRef = useRef<HTMLDivElement>(null)
   const [inView, setInView] = useState(false)
@@ -165,36 +186,6 @@ export default function Audience({ countries, cities, regions, languages, timezo
     observer.observe(el)
     return () => observer.disconnect()
   }, [])
-
-  useEffect(() => {
-    if (isModalOpen) {
-      const fetchData = async () => {
-        setIsLoadingFull(true)
-        try {
-          let data: AudienceItem[] = []
-          if (activeTab === 'countries') {
-            data = await getCountries(siteId, dateRange.start, dateRange.end, 250)
-          } else if (activeTab === 'regions') {
-            data = await getRegions(siteId, dateRange.start, dateRange.end, 250)
-          } else if (activeTab === 'cities') {
-            data = await getCities(siteId, dateRange.start, dateRange.end, 250)
-          } else if (activeTab === 'languages') {
-            data = await getLanguages(siteId, dateRange.start, dateRange.end, 250)
-          } else if (activeTab === 'timezones') {
-            data = await getTimezones(siteId, dateRange.start, dateRange.end, 250)
-          }
-          setFullData(data)
-        } catch (e) {
-          logger.error(e)
-        } finally {
-          setIsLoadingFull(false)
-        }
-      }
-      fetchData()
-    } else {
-      setFullData([])
-    }
-  }, [isModalOpen, activeTab, siteId, dateRange])
 
   const getFlagComponent = (countryCode: string, tab?: Tab) => {
     if (!countryCode || countryCode === 'Unknown')
@@ -341,13 +332,12 @@ export default function Audience({ countries, cities, regions, languages, timezo
   const isVisualTab = activeTab === 'map'
   const rawData = isVisualTab ? [] : getData()
   const data = filterUnknown(rawData)
-  const totalPageviews = data.reduce((sum, item) => sum + item.pageviews, 0)
   const hasData = isVisualTab
     ? (countries && filterUnknown(countries).length > 0)
     : (data && data.length > 0)
   const displayedData = (!isVisualTab && hasData) ? data.slice(0, LIMIT) : []
   const emptySlots = Math.max(0, LIMIT - displayedData.length)
-  const showViewAll = !isVisualTab && hasData && data.length > LIMIT
+  const showViewAll = memberFeatures && !isVisualTab && hasData && data.length > LIMIT
 
   const getDisabledMessage = () => {
     if (activeTab === 'languages' || activeTab === 'timezones') {
@@ -388,15 +378,22 @@ export default function Audience({ countries, cities, regions, languages, timezo
               </button>
             ))}
           </div>
-          {showViewAll && (
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="p-3 md:p-1.5 text-neutral-500 hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-none ease-apple"
-              aria-label="View all audience data"
-            >
-              <FrameCornersIcon className="w-4 h-4" weight="bold" />
-            </button>
-          )}
+          <div className="flex shrink-0 items-center gap-1.5">
+            {denom != null && !isVisualTab && (
+              <span className="hidden whitespace-nowrap text-[11px] text-neutral-500 sm:block">
+                share of {formatNumber(denom)} pageviews
+              </span>
+            )}
+            {showViewAll && (
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="p-3 md:p-1.5 text-neutral-500 hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-none ease-apple"
+                aria-label="View all audience data"
+              >
+                <FrameCornersIcon className="w-4 h-4" weight="bold" />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="space-y-2 flex-1 min-h-[270px]">
@@ -443,7 +440,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
                       </div>
                       <div className="relative flex items-center gap-2 ml-4">
                         <span className="text-xs font-medium text-brand-orange opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
-                          {totalPageviews > 0 ? `${Math.round((item.pageviews / totalPageviews) * 100)}%` : ''}
+                          {pct(item.pageviews)}
                         </span>
                         <span className="text-sm font-semibold text-neutral-400">
                           {formatNumber(item.pageviews)}
@@ -481,20 +478,36 @@ export default function Audience({ countries, cities, regions, languages, timezo
             placeholder={`Search ${activeTab}...`}
             className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-none text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
           />
+          {denom != null && (
+            <p className="mb-3 text-[11px] text-neutral-500">
+              Shares are of all {formatNumber(denom)} pageviews in the range — searching narrows the rows, not the denominator.
+            </p>
+          )}
         </div>
         <div className="flex-1 overflow-y-auto min-h-0">
           {isLoadingFull ? (
             <div className="py-4">
               <ListSkeleton rows={10} />
             </div>
+          ) : fullError ? (
+            <ErrorCard
+              title="Couldn’t load the full list"
+              onRetry={() => refetchFull()}
+            />
           ) : (() => {
-            const rawModalData = fullData.length > 0 ? fullData : data
+            const rawModalData = fullData ?? []
             const search = modalSearch.toLowerCase()
             const modalData = !modalSearch ? rawModalData : rawModalData.filter(item => {
               const label = getItemLabel(item)
               return label.toLowerCase().includes(search)
             })
-            const modalTotal = modalData.reduce((sum, item) => sum + item.pageviews, 0)
+            if (modalData.length === 0) {
+              return (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <p className="text-sm text-neutral-500">{modalSearch ? 'Nothing matches your search' : 'No rows in this range'}</p>
+                </div>
+              )
+            }
             return (
               <VirtualList
                 items={modalData}
@@ -519,7 +532,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
                       </div>
                       <div className="flex items-center gap-2 ml-4">
                         <span className="text-xs font-medium text-brand-orange opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
-                          {modalTotal > 0 ? `${Math.round((item.pageviews / modalTotal) * 100)}%` : ''}
+                          {pct(item.pageviews)}
                         </span>
                         <span className="text-sm font-semibold text-neutral-400">
                           {formatNumber(item.pageviews)}

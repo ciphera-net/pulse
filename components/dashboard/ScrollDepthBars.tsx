@@ -14,16 +14,17 @@ import type { ScrollDepthDistribution } from '@/lib/api/stats'
 
 const THRESHOLDS = [25, 50, 75, 100] as const
 
-export default function ScrollDepthBars({ scrollDepth }: { scrollDepth?: ScrollDepthDistribution }) {
+export default function ScrollDepthBars({ scrollDepth, bare = false }: {
+  scrollDepth?: ScrollDepthDistribution
+  // Render only the rails, no card chrome/header — for composition inside the
+  // Content section's tabbed card (Scroll depth · Events).
+  bare?: boolean
+}) {
   const total = scrollDepth?.total_sessions ?? 0
   const hasData = total > 0
 
-  return (
-    <div className="flex h-full flex-col rounded-none border border-border bg-card p-4">
-      <div className="mb-3">
-        <span className="text-xs text-neutral-500">Scroll depth</span>
-      </div>
-
+  const content = (
+    <>
       {hasData ? (
         <>
           <div className="flex flex-1 flex-col justify-center gap-3">
@@ -47,9 +48,12 @@ export default function ScrollDepthBars({ scrollDepth }: { scrollDepth?: ScrollD
               )
             })}
           </div>
-          <p className="mt-3 text-xs text-neutral-500">
-            {formatNumber(total)} {total === 1 ? 'session' : 'sessions'}
-          </p>
+          {/* In bare mode the wrapping card's header states the session count. */}
+          {!bare && (
+            <p className="mt-3 text-xs text-neutral-500">
+              {formatNumber(total)} {total === 1 ? 'session' : 'sessions'}
+            </p>
+          )}
         </>
       ) : (
         <EmptyState
@@ -59,6 +63,17 @@ export default function ScrollDepthBars({ scrollDepth }: { scrollDepth?: ScrollD
           action={{ label: 'Install tracking script', href: '/installation' }}
         />
       )}
+    </>
+  )
+
+  if (bare) return content
+
+  return (
+    <div className="flex h-full flex-col rounded-none border border-border bg-card p-4">
+      <div className="mb-3">
+        <span className="text-xs text-neutral-500">Scroll depth</span>
+      </div>
+      {content}
     </div>
   )
 }

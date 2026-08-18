@@ -13,6 +13,9 @@ interface GoalStatsProps {
   goalCounts: GoalCountStat[]
   siteId: string
   dateRange: { start: string; end: string }
+  // Render only the list, no card chrome/header — for composition inside the
+  // Content section's tabbed card (Scroll depth · Events).
+  bare?: boolean
 }
 
 interface PropertyCache {
@@ -23,10 +26,9 @@ interface PropertyCache {
 
 const LIMIT = 7
 
-export default function GoalStats({ goalCounts, siteId, dateRange }: GoalStatsProps) {
+export default function GoalStats({ goalCounts, siteId, dateRange, bare = false }: GoalStatsProps) {
   const list = (goalCounts || []).slice(0, LIMIT)
   const hasData = list.length > 0
-  const total = list.reduce((sum, r) => sum + r.count, 0)
   const emptySlots = Math.max(0, LIMIT - list.length)
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -75,17 +77,8 @@ export default function GoalStats({ goalCounts, siteId, dateRange }: GoalStatsPr
     }
   }, [propertyCache, siteId, dateRange.start, dateRange.end])
 
-  return (
-    <div className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex gap-1">
-          <span className="relative px-2.5 py-3 sm:py-1 text-xs font-medium text-white">
-            Events
-            <span className="absolute inset-x-0 -bottom-px h-[3px] bg-brand-orange rounded-none" />
-          </span>
-        </div>
-      </div>
-
+  const content = (
+    <>
       {hasData ? (
         <div className="space-y-2 flex-1 min-h-[270px]">
           {list.map((row) => {
@@ -119,10 +112,10 @@ export default function GoalStats({ goalCounts, siteId, dateRange }: GoalStatsPr
                       {row.display_name ?? row.event_name.replace(/_/g, ' ')}
                     </span>
                   </div>
+                  {/* No % here by design (F9): these rows count EVENTS, and the
+                      events total is not on the wire — any denominator this
+                      card could compute would be share-of-visible-rows. */}
                   <div className="relative flex items-center gap-2 ml-4">
-                    <span className="text-xs font-medium text-brand-orange opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
-                      {total > 0 ? `${Math.round((row.count / total) * 100)}%` : ''}
-                    </span>
                     <span className="text-sm font-semibold text-neutral-400">
                       {formatNumber(row.count)}
                     </span>
@@ -199,6 +192,22 @@ export default function GoalStats({ goalCounts, siteId, dateRange }: GoalStatsPr
           action={{ label: 'Read the docs', href: '/installation' }}
         />
       )}
+    </>
+  )
+
+  if (bare) return content
+
+  return (
+    <div className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex gap-1">
+          <span className="relative px-2.5 py-3 sm:py-1 text-xs font-medium text-white">
+            Events
+            <span className="absolute inset-x-0 -bottom-px h-[3px] bg-brand-orange rounded-none" />
+          </span>
+        </div>
+      </div>
+      {content}
     </div>
   )
 }

@@ -18,6 +18,23 @@ import {
   getRealtimePages,
   getStats,
   getDailyStats,
+  getEngagementPercentiles,
+  getPageEngagement,
+  getTopPages,
+  getEntryPages,
+  getExitPages,
+  getTopReferrers,
+  getCountries,
+  getCities,
+  getRegions,
+  getLanguages,
+  getBrowsers,
+  getOS,
+  getDevices,
+  getScreenResolutions,
+  getTimezones,
+  type EngagementPercentilesData,
+  type PageEngagement,
   type RealtimePageVisitors,
 } from '@/lib/api/stats'
 import {
@@ -899,6 +916,67 @@ export function useBingDailyTotals(siteId: string, start: string, end: string) {
   return useSWR<{ daily_totals: BingDailyRow[]; date_basis: BingDateBasis }>(
     status?.connected ? ['bing-daily-totals', siteId, start, end] : null,
     () => getBingDailyTotals(siteId, start, end),
+    { ...dashboardSWRConfig, keepPreviousData: true }
+  )
+}
+
+// ─── Dashboard overhaul Phase 3 (F17): the six imperative fetches become SWR
+// hooks so a failed request has an ERROR state instead of masquerading as
+// "not enough data yet" — the fabricated-explanation antipattern the audit
+// measured on this page.
+
+// * Engagement percentiles for the deck's Engagement row + chart overlay.
+// * UNFILTERED by design: the D4 baseline (prior-90d daily_stats) has no
+// * dimensions, so a filtered rank would be dishonest — the deck marks it.
+export function useEngagementPercentiles(siteId: string, start: string, end: string) {
+  return useSWR<EngagementPercentilesData>(
+    siteId && start && end ? ['engagementPercentiles', siteId, start, end] : null,
+    () => getEngagementPercentiles(siteId, start, end),
+    { ...dashboardSWRConfig, keepPreviousData: true, refreshInterval: 60 * 1000 }
+  )
+}
+
+// * Per-page engagement scores (ContentStats' Engagement tab + its modal).
+export function usePageEngagement(
+  enabled: boolean, siteId: string, start: string, end: string,
+  minSessions: number, limit: number, filters?: string,
+) {
+  return useSWR<PageEngagement[]>(
+    enabled && siteId && start && end ? ['pageEngagement', siteId, start, end, minSessions, limit, filters] : null,
+    () => getPageEngagement(siteId, start, end, minSessions, limit, filters),
+    { ...dashboardSWRConfig, keepPreviousData: true }
+  )
+}
+
+// * The full-list fetchers behind every card's "view all" modal, keyed by the
+// * card's tab. `kind: null` (modal closed) fetches nothing; opening the modal
+// * arms the key. Filters ride along so a modal opened from a filtered card
+// * shows the SAME population as the card (F14 — the silent swap is gone).
+const fullListFetchers = {
+  pages: getTopPages,
+  'entry-pages': getEntryPages,
+  'exit-pages': getExitPages,
+  referrers: getTopReferrers,
+  countries: getCountries,
+  cities: getCities,
+  regions: getRegions,
+  languages: getLanguages,
+  timezones: getTimezones,
+  browsers: getBrowsers,
+  os: getOS,
+  devices: getDevices,
+  'screen-resolutions': getScreenResolutions,
+} as const
+
+export type FullListKind = keyof typeof fullListFetchers
+
+export function useFullDimensionList<T>(
+  kind: FullListKind | null, siteId: string, start: string, end: string,
+  limit: number, filters?: string,
+) {
+  return useSWR<T[]>(
+    kind && siteId && start && end ? ['fullList', kind, siteId, start, end, limit, filters] : null,
+    () => fullListFetchers[kind as FullListKind](siteId, start, end, limit, filters) as Promise<T[]>,
     { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }

@@ -4,10 +4,8 @@
 import { useCallback, useEffect, useState, useMemo } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import {
-  getEngagementPercentiles,
   type Stats,
   type DailyStat,
-  type EngagementPercentilesData,
 } from '@/lib/api/stats'
 import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
 import { toast } from '@ciphera-net/facet'
@@ -24,12 +22,12 @@ import { useFilterBuilder } from '@/components/dashboard/filter/useFilterBuilder
 const CommandDeck = dynamic(() => import('@/components/dashboard/CommandDeck'), { ssr: false })
 import { DashboardStatusLine } from '@/components/dashboard/DashboardStatusLine'
 import ContentStats from '@/components/dashboard/ContentStats'
-import ScrollDepthBars from '@/components/dashboard/ScrollDepthBars'
 import TopReferrers from '@/components/dashboard/TopReferrers'
 import Audience from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
+import SectionHeader from '@/components/dashboard/SectionHeader'
 
-const GoalStats = dynamic(() => import('@/components/dashboard/GoalStats'))
+const ContentSignals = dynamic(() => import('@/components/dashboard/ContentSignals'))
 const Campaigns = dynamic(() => import('@/components/dashboard/Campaigns'))
 const PeakHours = dynamic(() => import('@/components/dashboard/PeakHours'))
 const ExportModal = dynamic(() => import('@/components/dashboard/ExportModal'))
@@ -40,7 +38,9 @@ import {
   useStats,
   useDailyStats,
   useCampaigns,
+  useEngagementPercentiles,
 } from '@/lib/swr/dashboard'
+import { ErrorCard } from '@/components/ui/ErrorCard'
 import { useLiveIndicator } from '@/lib/live-indicator-context'
 import { useCan } from '@/lib/auth/permissions'
 
@@ -82,7 +82,7 @@ export default function SiteDashboardPage() {
   // Single dashboard request replaces focused hooks (overview, pages, locations,
   // devices, referrers, goals). The backend runs all queries in parallel
   // and caches the result in Redis for efficient data loading.
-  const { data: dashboard, isLoading: dashboardLoading, error: dashboardError } = useDashboard(siteId, dateRange?.start || '', dateRange?.end || '', interval, filtersParam || undefined, apiPeriod)
+  const { data: dashboard, isLoading: dashboardLoading, error: dashboardError, mutate: refetchDashboard } = useDashboard(siteId, dateRange?.start || '', dateRange?.end || '', interval, filtersParam || undefined, apiPeriod)
 
   // Server-resolved date range is the single source of truth for period-based queries.
   // null while loading — all downstream consumers must gate on this being non-null.
@@ -90,8 +90,6 @@ export default function SiteDashboardPage() {
   const resolvedDateRange: { start: string; end: string } | null =
     dashboard?.date_range ?? (apiPeriod ? null : dateRange)
 
-  // Engagement percentile data
-  const [engagementData, setEngagementData] = useState<EngagementPercentilesData | null>(null)
 
   const handleAddFilter = useCallback((filter: DimensionFilter) => {
     setFilters(prev => {
@@ -173,13 +171,10 @@ export default function SiteDashboardPage() {
   const { data: prevStats } = useStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '', filtersParam || undefined)
   const { data: prevDailyStats } = useDailyStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '', interval, filtersParam || undefined)
   const { data: campaigns } = useCampaigns(siteId, resolvedDateRange?.start ?? '', resolvedDateRange?.end ?? '', 100, apiPeriod)
-  // Fetch engagement percentiles in parallel with dashboard data
-  useEffect(() => {
-    if (!resolvedDateRange) return
-    getEngagementPercentiles(siteId, resolvedDateRange.start, resolvedDateRange.end)
-      .then(setEngagementData)
-      .catch(() => setEngagementData(null))
-  }, [siteId, resolvedDateRange?.start, resolvedDateRange?.end])
+  // Engagement percentiles ride SWR like everything else (F17): a failed fetch
+  // is an ERROR the deck can state, not a null that reads as "collecting data".
+  const { data: engagementData, error: engagementError } = useEngagementPercentiles(
+    siteId, resolvedDateRange?.start ?? '', resolvedDateRange?.end ?? '')
 
   // Derive typed values from single dashboard response
   const site = dashboard?.site ?? null
@@ -222,6 +217,30 @@ export default function SiteDashboardPage() {
 
   if (showSkeleton) {
     return <DashboardSkeleton />
+  }
+
+  // F8: a failed request is a FAILURE, stated as one. "Site not found" used to
+  // render for ANY error with no cached data — a 500 from the fan-out, a 400
+  // from interval validation, an expired session — confidently wrong about a
+  // site that exists. Only an actual 404 earns that sentence.
+  if (dashboardError && !dashboard) {
+    const status = (dashboardError as { status?: number })?.status
+    if (status === 404) {
+      return (
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
+          <p className="text-neutral-400">Site not found</p>
+        </div>
+      )
+    }
+    return (
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
+        <ErrorCard
+          title="Couldn’t load the dashboard"
+          description={status ? `The analytics request failed (HTTP ${status}). Your data is intact — this is a loading problem, not a data problem.` : 'The analytics request failed. Your data is intact — this is a loading problem, not a data problem.'}
+          onRetry={() => refetchDashboard()}
+        />
+      </div>
+    )
   }
 
   if (!site) {
@@ -277,8 +296,20 @@ export default function SiteDashboardPage() {
         </div>
       </div>
 
-      {/* The command deck: provenance strip + KPI rail + full-height chart */}
-      {resolvedDateRange && <><div className="mb-3 space-y-2">
+      {/* The command deck: provenance strip + KPI rail + full-height chart,
+          then the sectioned briefing IA (Acquisition · Audience · Content ·
+          Behaviour) — each section header states which population its cards
+          describe (F14). */}
+      {resolvedDateRange && (() => {
+        // One denominator for every card % (F9): the range's true totals,
+        // filtered exactly as the rows are.
+        const totals = { pageviews: stats.pageviews, visitors: stats.visitors }
+        const hasFilters = filters.length > 0
+        // The note states filter SCOPE only — each card states its own unit
+        // ("share of N pageviews/visitors"). Naming a unit here contradicted
+        // the cards (review finding: "events" above a pageview-share card).
+        const sectionNote = hasFilters ? 'filtered with the page' : 'whole site'
+        return <><div className="mb-3 space-y-2">
         <DashboardStatusLine
           timezone={site.timezone}
           lastUpdatedAt={lastUpdatedAt}
@@ -296,31 +327,28 @@ export default function SiteDashboardPage() {
           multiDayInterval={multiDayInterval}
           setMultiDayInterval={setMultiDayInterval}
           engagementData={engagementData}
+          engagementError={Boolean(engagementError)}
+          filtersActive={hasFilters}
           onExport={canExport ? () => setIsExportModalOpen(true) : undefined}
         />
       </div>
 
+      <SectionHeader title="Acquisition" note={sectionNote} />
       <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
-        <ContentStats
-          topPages={dashboard?.top_pages ?? []}
-          entryPages={dashboard?.entry_pages ?? []}
-          exitPages={dashboard?.exit_pages ?? []}
-          domain={site.domain}
-          collectPagePaths={site.collect_page_paths ?? true}
-          siteId={siteId}
-          dateRange={resolvedDateRange}
-          onFilter={handleAddFilter}
-        />
         <TopReferrers
           referrers={dashboard?.top_referrers ?? []}
           channels={dashboard?.channels ?? []}
           collectReferrers={site.collect_referrers ?? true}
           siteId={siteId}
           dateRange={resolvedDateRange}
+          totals={totals}
+          filters={filtersParam || undefined}
           onFilter={handleAddFilter}
         />
+        <Campaigns siteId={siteId} dateRange={resolvedDateRange} totals={totals} filters={filtersParam || undefined} onFilter={handleAddFilter} />
       </div>
 
+      <SectionHeader title="Audience" note={sectionNote} />
       <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
         <Audience
           countries={dashboard?.countries ?? []}
@@ -332,6 +360,8 @@ export default function SiteDashboardPage() {
           collectAudienceData={site.collect_audience_data ?? true}
           siteId={siteId}
           dateRange={resolvedDateRange}
+          totals={totals}
+          filters={filtersParam || undefined}
           onFilter={handleAddFilter}
         />
         <TechSpecs
@@ -343,25 +373,42 @@ export default function SiteDashboardPage() {
           collectScreenResolution={site.collect_screen_resolution ?? true}
           siteId={siteId}
           dateRange={resolvedDateRange}
+          totals={totals}
+          filters={filtersParam || undefined}
           onFilter={handleAddFilter}
         />
       </div>
 
+      <SectionHeader title="Content" note={sectionNote} />
       <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
-        <Campaigns siteId={siteId} dateRange={resolvedDateRange} filters={filtersParam || undefined} onFilter={handleAddFilter} />
-        <PeakHours siteId={siteId} dateRange={resolvedDateRange} />
-        <GoalStats
+        <ContentStats
+          topPages={dashboard?.top_pages ?? []}
+          entryPages={dashboard?.entry_pages ?? []}
+          exitPages={dashboard?.exit_pages ?? []}
+          domain={site.domain}
+          collectPagePaths={site.collect_page_paths ?? true}
+          siteId={siteId}
+          dateRange={resolvedDateRange}
+          totals={totals}
+          filters={filtersParam || undefined}
+          onFilter={handleAddFilter}
+        />
+        {/* Scroll depth arrives on the dashboard payload (computed in
+            GetDashboardHandler's fan-out); events likewise. One tabbed card,
+            per the approved C mockup. */}
+        <ContentSignals
+          scrollDepth={dashboard?.scroll_depth}
           goalCounts={dashboard?.goal_counts ?? []}
           siteId={siteId}
           dateRange={resolvedDateRange}
         />
-        {/* Scroll depth moved here when the Behavior page was retired. The
-            distribution has always arrived on the dashboard payload — the
-            backend computes it in GetDashboardHandler's query fan-out and it
-            rides on `dashboard.scroll_depth` — it simply was not rendered
-            anywhere but that page. No extra request. */}
-        <ScrollDepthBars scrollDepth={dashboard?.scroll_depth} />
-      </div></>}
+      </div>
+
+      <SectionHeader title="Behaviour" note={`${sectionNote} · site timezone`} />
+      <div className="grid gap-3 mb-3 [&>*]:min-w-0">
+        <PeakHours siteId={siteId} dateRange={resolvedDateRange} filters={filtersParam || undefined} />
+      </div></>
+      })()}
 
       <ExportModal
         isOpen={isExportModalOpen}
