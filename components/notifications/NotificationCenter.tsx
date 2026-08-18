@@ -286,7 +286,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
                 <EmptyState
                   icon={<BellSimple />}
                   title="All quiet"
-                  description="You'll see alerts about uptime, traffic spikes, and goal milestones here."
+                  description="You'll see alerts about uptime, site performance, and billing here."
                 />
               )}
               {!loading && !error && (receipts?.length ?? 0) > 0 && (
