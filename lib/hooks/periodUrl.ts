@@ -6,6 +6,11 @@ import {
   getYesterdayRange,
   getLast24HoursRange,
   getLast1HourRange,
+  getQuarterToDateRange,
+  getLastWeekRange,
+  getLastMonthRange,
+  getLastQuarterRange,
+  getLastYearRange,
   formatDate,
 } from '@/lib/utils/dateRanges'
 
@@ -29,11 +34,20 @@ export type Period =
   | '16m'
   | 'week'
   | 'month'
+  | 'qtd'
   | 'year'
+  | 'last-week'
+  | 'last-month'
+  | 'last-quarter'
+  | 'last-year'
   | 'custom'
 
 export const DEFAULT_PERIOD: Period = '30'
 
+// Every GLOBAL picker preset is a first-class URL period (Phase 2 review fix):
+// a key outside this set makes the picker double-write period+custom-range, and
+// the second write clobbers the first in the shared query-params merge — the
+// preset landed as ?period=custom and its label degraded to a raw date span.
 const PERIODS: ReadonlySet<Period> = new Set([
   '1h',
   '24h',
@@ -48,7 +62,12 @@ const PERIODS: ReadonlySet<Period> = new Set([
   '16m',
   'week',
   'month',
+  'qtd',
   'year',
+  'last-week',
+  'last-month',
+  'last-quarter',
+  'last-year',
   'custom',
 ])
 
@@ -104,8 +123,18 @@ export function periodToDateRange(period: Period): { start: string; end: string 
       return getThisWeekRange()
     case 'month':
       return getThisMonthRange()
+    case 'qtd':
+      return getQuarterToDateRange()
     case 'year':
       return getThisYearRange()
+    case 'last-week':
+      return getLastWeekRange()
+    case 'last-month':
+      return getLastMonthRange()
+    case 'last-quarter':
+      return getLastQuarterRange()
+    case 'last-year':
+      return getLastYearRange()
     case 'custom':
       // * Fallback only — actual custom range comes from the URL read path
       return getDateRange(30)

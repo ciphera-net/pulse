@@ -35,12 +35,17 @@ describe('DateRangePicker preset clicks', () => {
     expect(onDateRangeChange).not.toHaveBeenCalled()
   })
 
-  it('a non-URL preset keeps the period + range double write', () => {
+  it('every global preset now single-writes — last-week joined the URL grammar (Phase 2)', () => {
+    // This used to assert the double write for 'last-week'. The Phase 2 review
+    // proved the double write CLOBBERS the period in the shared query-params
+    // merge (?period=custom wins, the label degrades to a date span), so every
+    // global preset key became a first-class URL period. The double-write path
+    // now exists only for page-scoped extraPresets outside the grammar.
     const { onPeriodChange, onDateRangeChange } = setup()
     fireEvent.click(screen.getByRole('button', { name: /^last week$/i }))
     vi.advanceTimersByTime(200)
     expect(onPeriodChange).toHaveBeenCalledWith('last-week')
-    expect(onDateRangeChange).toHaveBeenCalledTimes(1)
+    expect(onDateRangeChange).not.toHaveBeenCalled()
   })
 
   it('excludePresets removes the keys a page cannot honor', () => {
