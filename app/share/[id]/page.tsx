@@ -362,7 +362,11 @@ export default function PublicDashboardPage() {
           </p>
         )}
 
-        {/* Details Grid */}
+        {/* Details Grid. totals: the same F9 denominator as the owner's
+            dashboard — the floor hides sub-5-visitor rows but never changes
+            site totals, so each visible row's % is its true share.
+            memberFeatures off: the full-list endpoints are member-only, so the
+            affordance would only ever error here. */}
         <div className="grid gap-6 lg:grid-cols-2 mb-8">
           <TopPages
             topPages={safeTopPages}
@@ -372,6 +376,8 @@ export default function PublicDashboardPage() {
             collectPagePaths={site.collect_page_paths ?? true}
             siteId={siteId}
             dateRange={dateRange}
+            totals={data ? { pageviews: data.stats.pageviews, visitors: data.stats.visitors } : undefined}
+            memberFeatures={false}
           />
           <TopReferrers
             referrers={safeTopReferrers}
@@ -379,6 +385,8 @@ export default function PublicDashboardPage() {
             collectReferrers={site.collect_referrers ?? true}
             siteId={siteId}
             dateRange={dateRange}
+            totals={data ? { pageviews: data.stats.pageviews, visitors: data.stats.visitors } : undefined}
+            memberFeatures={false}
           />
         </div>
 
@@ -393,6 +401,8 @@ export default function PublicDashboardPage() {
             collectAudienceData={site.collect_audience_data ?? true}
             siteId={siteId}
             dateRange={dateRange}
+            totals={data ? { pageviews: data.stats.pageviews, visitors: data.stats.visitors } : undefined}
+            memberFeatures={false}
           />
           <TechSpecs
             browsers={safeBrowsers}
@@ -403,6 +413,8 @@ export default function PublicDashboardPage() {
             collectScreenResolution={site.collect_screen_resolution ?? true}
             siteId={siteId}
             dateRange={dateRange}
+            totals={data ? { pageviews: data.stats.pageviews, visitors: data.stats.visitors } : undefined}
+            memberFeatures={false}
           />
         </div>
 

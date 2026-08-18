@@ -1,0 +1,73 @@
+'use client'
+
+import { useState } from 'react'
+import { formatNumber } from '@/lib/utils/format'
+import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
+import type { GoalCountStat, ScrollDepthDistribution } from '@/lib/api/stats'
+import ScrollDepthBars from './ScrollDepthBars'
+import GoalStats from './GoalStats'
+
+// ---------------------------------------------------------------------------
+// The Content section's second card in the approved C mockup: scroll depth and
+// custom events share one card behind tabs, balancing ContentStats beside it.
+// Both are read-only composition — the tab row is the same grammar as every
+// other dimension card; the content components render `bare`.
+// ---------------------------------------------------------------------------
+
+interface ContentSignalsProps {
+  scrollDepth?: ScrollDepthDistribution
+  goalCounts: GoalCountStat[]
+  siteId: string
+  dateRange: { start: string; end: string }
+}
+
+type Tab = 'scroll' | 'events'
+
+export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRange }: ContentSignalsProps) {
+  const [activeTab, setActiveTab] = useState<Tab>('scroll')
+  const handleTabKeyDown = useTabListKeyboard()
+
+  const scrollSessions = scrollDepth?.total_sessions ?? 0
+
+  return (
+    <div className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex gap-1 min-w-0" role="tablist" aria-label="Content signals tabs" onKeyDown={handleTabKeyDown}>
+          {([['scroll', 'Scroll depth'], ['events', 'Events']] as [Tab, string][]).map(([tab, label]) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              role="tab"
+              aria-selected={activeTab === tab}
+              className={`relative px-2.5 py-3 sm:py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-none cursor-pointer ${
+                activeTab === tab
+                  ? 'text-white'
+                  : 'text-neutral-500 hover:text-neutral-300'
+              } ease-apple`}
+            >
+              {label}
+              <span
+                className={`absolute inset-x-0 -bottom-px h-[3px] rounded-none transition-[width,background-color] duration-base ${
+                  activeTab === tab ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
+                } ease-apple`}
+              />
+            </button>
+          ))}
+        </div>
+        {activeTab === 'scroll' && scrollSessions > 0 && (
+          <span className="shrink-0 whitespace-nowrap text-[11px] text-neutral-500">
+            {formatNumber(scrollSessions)} {scrollSessions === 1 ? 'session' : 'sessions'}
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-1 flex-col min-h-[270px]">
+        {activeTab === 'scroll' ? (
+          <ScrollDepthBars scrollDepth={scrollDepth} bare />
+        ) : (
+          <GoalStats goalCounts={goalCounts} siteId={siteId} dateRange={dateRange} bare />
+        )}
+      </div>
+    </div>
+  )
+}

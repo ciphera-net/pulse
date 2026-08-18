@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { curveLinear } from 'd3-shape'
 import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip } from '@/components/ui/area-chart'
 import { Card } from '@ciphera-net/facet'
 import type { EngagementPercentilesData } from '@/lib/api/stats'
@@ -46,6 +47,14 @@ interface CommandDeckProps {
   multiDayInterval: 'hour' | 'day'
   setMultiDayInterval: (interval: 'hour' | 'day') => void
   engagementData?: EngagementPercentilesData | null
+  // A failed engagement fetch is a FAILURE, stated as one — without this the
+  // row's null value falls into the "collecting" copy, explaining an outage
+  // as a young site (F17's fabricated-explanation antipattern).
+  engagementError?: boolean
+  // The D4 baseline (prior-90d daily_stats) has no dimensions, so engagement
+  // deliberately ignores page filters. When filters are active it is the one
+  // unfiltered number on the deck, and says so.
+  filtersActive?: boolean
   onExport?: () => void
 }
 
@@ -106,6 +115,8 @@ export default function CommandDeck({
   multiDayInterval,
   setMultiDayInterval,
   engagementData,
+  engagementError,
+  filtersActive,
   onExport,
 }: CommandDeckProps) {
   const [metric, setMetric] = useState<MetricType>('visitors')
@@ -203,7 +214,11 @@ export default function CommandDeck({
                 ? <span className="mt-0.5 block text-xl font-semibold text-neutral-600">—</span>
                 : <AnimatedNumber value={m.value} format={m.format as (v: number) => string} className="mt-0.5 block text-xl font-semibold tabular-nums text-white" />}
               <span className="mt-0.5 block truncate text-[11px] text-neutral-500">
-                {m.key === 'engagement' && m.value == null ? 'collecting · needs 7 days of history' : m.context}
+                {m.key === 'engagement'
+                  ? m.value == null
+                    ? engagementError ? 'couldn’t load' : 'collecting · needs 7 days of history'
+                    : filtersActive ? `${m.context} · unfiltered` : m.context
+                  : m.context}
               </span>
             </button>
           ))}
@@ -251,7 +266,11 @@ export default function CommandDeck({
             </div>
           </div>
 
-          <div className="flex-1 px-2.5 pb-2 pt-1">
+          {/* The chart is the deck's height authority (the approved C mockup's
+              full-height chart): md+ pins a tall minimum and the rail rows
+              flex-stretch to match; mobile keeps a smaller floor. fillParent
+              (not aspectRatio) lets the plot use all of it. */}
+          <div className="min-h-[288px] flex-1 px-2.5 pb-2 pt-1 md:min-h-[500px]">
             {!hasData ? (
               <div className="flex h-full min-h-72 flex-col items-center justify-center">
                 <EmptyState
@@ -297,19 +316,26 @@ export default function CommandDeck({
                     )
                   })}
                 </div>
-                <p className="text-xs text-neutral-500">Engagement is ranked daily against the prior 90 days</p>
+                <p className="text-xs text-neutral-500">
+                  Engagement is ranked daily against the prior 90 days
+                  {filtersActive ? ' · not affected by your filters' : ''}
+                </p>
               </div>
             ) : (
               <VisxAreaChart
                 data={activeChartData as Record<string, unknown>[]}
                 xDataKey="dateObj"
-                aspectRatio="2.9 / 1"
+                fillParent
                 margin={{ top: 20, right: 20, bottom: 40, left: 50 }}
                 animationDuration={400}
               >
                 <VisxGrid horizontal vertical={false} stroke="var(--chart-grid)" numTicksRows={6} />
                 <VisxArea
                   dataKey={metric}
+                  // Linear segments, not a smoothing curve — the approved C
+                  // mockup's sharp instrument line; monotone rounding invents
+                  // slopes between real measurements.
+                  curve={curveLinear}
                   fill="var(--chart-1)"
                   fillOpacity={0.15}
                   stroke="var(--chart-1)"
