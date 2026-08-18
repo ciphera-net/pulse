@@ -3,6 +3,8 @@
 import { useEffect } from 'react'
 import { Button } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
+import { isChunkLoadError } from '@/lib/chunk-recovery'
+import { useChunkRecovery } from '@/lib/hooks/useChunkRecovery'
 
 interface ErrorDisplayProps {
   title?: string
@@ -15,6 +17,15 @@ interface ErrorDisplayProps {
 /**
  * Shared error UI for route-level error.tsx boundaries.
  * Matches the visual style of the 404 page.
+ *
+ * 🔑 CHUNK-FAILURE SELF-HEAL LIVES HERE, not in the individual error.tsx files.
+ * Next.js App Router delivers a failed route import to the NEAREST error boundary
+ * (measured 18-08-2026 — no global event fires), and this app has ten of them, one
+ * per dashboard section. Every one of them renders this component with the error
+ * prop, so recovering here covers them all — including boundaries added later, as
+ * long as they follow the same convention. A chunk failure is a stale tab meeting a
+ * new deploy, not an app bug: reload once (guarded, see lib/chunk-recovery.ts) to
+ * pick up the current build; if the guard blocks, fall through to this visible UI.
  */
 export default function ErrorDisplay({
   title = 'Something went wrong',
@@ -23,6 +34,9 @@ export default function ErrorDisplay({
   onGoHome = true,
   error,
 }: ErrorDisplayProps) {
+  const chunkFailure = isChunkLoadError(error)
+  const phase = useChunkRecovery(error)
+
   useEffect(() => {
     if (error && typeof window !== "undefined") {
       navigator.sendBeacon?.(
@@ -32,10 +46,16 @@ export default function ErrorDisplay({
           stack: error.stack?.slice(0, 500),
           url: window.location.href,
           timestamp: new Date().toISOString(),
+          // Distinguish routine deploy-staleness self-heals from real crashes.
+          chunkRecovery: chunkFailure,
         })], { type: "application/json" })
       );
     }
-  }, [error]);
+  }, [error, chunkFailure]);
+
+  // While the recovery reload is in flight (or still being decided), do not flash
+  // "Something went wrong" for what is really a routine self-heal.
+  if (phase !== 'show') return null
 
   return (
     <div className="relative min-h-[80vh] flex flex-col items-center justify-center overflow-hidden">
