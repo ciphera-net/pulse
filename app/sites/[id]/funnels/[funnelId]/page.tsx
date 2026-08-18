@@ -16,10 +16,8 @@ import FilterButton from '@/components/dashboard/FilterButton'
 import FilterPills from '@/components/dashboard/FilterPills'
 import FilterBuilder from '@/components/dashboard/filter/FilterBuilder'
 import { useFilterBuilder } from '@/components/dashboard/filter/useFilterBuilder'
-import { guardedPctChange, guardedPointChange, type PctChangeResult } from '@/lib/utils/pctChange'
 import { formatNumber, formatConvertTime } from '@/lib/utils/format'
 import DateRangePicker from '@/components/ui/DateRangePicker'
-import { AnimatedNumber } from '@/components/ui/animated-number'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { UpdatingChip } from '@/components/ui/UpdatingChip'
@@ -30,52 +28,14 @@ import { FunnelChart } from '@/components/ui/funnel-chart'
 import { FunnelStatusLine } from '@/components/funnels/FunnelStatusLine'
 import { FileText, House, Lightning } from '@phosphor-icons/react'
 import { FunnelStepStrip } from '@/components/funnels/FunnelStepStrip'
-import { FunnelTrendChart } from '@/components/funnels/FunnelTrendChart'
+import { FunnelKpiPlate } from '@/components/funnels/FunnelKpiPlate'
+import { FunnelDailyInstrument } from '@/components/funnels/FunnelDailyInstrument'
 import { useCan } from '@/lib/auth/permissions'
 
 // ---------------------------------------------------------------------------
 // Funnel detail — the revived real route. T9 ships the header + KPI band and
 // all the states; the canvas, step strip and trend chart land in T10–T12.
 // ---------------------------------------------------------------------------
-
-function DeltaBadge({ change }: { change: PctChangeResult }) {
-  // 'pp' deltas come from guardedPointChange — rate moves are printed in
-  // percentage points, never as a relative % of a %.
-  if (!change) return null
-  if (change.type === 'new') {
-    return (
-      <span className="rounded-none bg-brand-orange/10 px-1.5 py-0.5 text-[10px] font-medium text-brand-orange">
-        New
-      </span>
-    )
-  }
-  const positive = change.value > 0
-  return (
-    <span className={`text-xs font-medium tabular-nums ${positive ? 'text-green-400' : 'text-red-400'}`}>
-      {positive ? '↑' : '↓'} {Math.abs(change.value)}{change.type === 'pp' ? 'pp' : '%'}
-    </span>
-  )
-}
-
-function KpiCard({
-  label,
-  children,
-  delta,
-}: {
-  label: string
-  children: React.ReactNode
-  delta?: PctChangeResult
-}) {
-  return (
-    <div className="rounded-none border border-border bg-card p-4">
-      <div className="mb-1.5 flex items-start justify-between gap-2">
-        <span className="text-xs text-neutral-500">{label}</span>
-        {delta != null && <DeltaBadge change={delta} />}
-      </div>
-      {children}
-    </div>
-  )
-}
 
 export default function FunnelDetailPage() {
   const params = useParams()
@@ -197,31 +157,6 @@ export default function FunnelDetailPage() {
 
   if (!funnel) return <FunnelDetailSkeleton />
 
-  // ── Derived stats ──────────────────────────────────────────────────
-  // conversion is null while stats load AND when nobody entered the funnel —
-  // both render as an em dash, never as a fabricated 0%.
-  const totalVisitors = stats?.steps[0]?.visitors ?? 0
-  const converted = stats?.steps.length ? stats.steps[stats.steps.length - 1].visitors : 0
-  const conversion = stats?.steps.length ? stats.steps[stats.steps.length - 1].conversion : null
-  const prevVisitors = prevStats?.steps[0]?.visitors ?? 0
-  const prevConverted = prevStats?.steps.length
-    ? prevStats.steps[prevStats.steps.length - 1].visitors
-    : 0
-  const prevConversion = prevStats?.steps.length
-    ? prevStats.steps[prevStats.steps.length - 1].conversion
-    : null
-
-  const biggestDrop = stats?.steps.reduce<{ value: string; dropoff: number } | null>(
-    (worst, step, i) => {
-      if (i === 0 || step.dropoff == null) return worst
-      if (!worst || step.dropoff > worst.dropoff)
-        return { value: step.step.value, dropoff: step.dropoff }
-      return worst
-    },
-    null,
-  )
-
-
   return (
     <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
       {/* Header */}
@@ -293,75 +228,7 @@ export default function FunnelDetailPage() {
             onRetry={() => { void retryStats() }}
           />
         ) : (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-            <KpiCard
-              label="Conversion"
-              delta={
-                prevStats && conversion != null && prevConversion != null
-                  ? guardedPointChange(conversion, prevConversion, prevVisitors)
-                  : null
-              }
-            >
-              {conversion != null ? (
-                <AnimatedNumber
-                  value={conversion}
-                  format={(v) => `${Math.round(v)}%`}
-                  className="text-xl font-semibold tabular-nums text-white"
-                />
-              ) : (
-                <span className="text-xl font-semibold text-neutral-600">—</span>
-              )}
-            </KpiCard>
-            <KpiCard
-              label="Visitors"
-              delta={prevStats ? guardedPctChange(totalVisitors, prevVisitors, prevVisitors) : null}
-            >
-              {stats ? (
-                <AnimatedNumber
-                  value={totalVisitors}
-                  format={(v) => formatNumber(Math.round(v))}
-                  className="text-xl font-semibold tabular-nums text-white"
-                />
-              ) : (
-                <span className="text-xl font-semibold text-neutral-600">—</span>
-              )}
-            </KpiCard>
-            <KpiCard
-              label="Converted"
-              delta={prevStats ? guardedPctChange(converted, prevConverted, prevVisitors) : null}
-            >
-              {stats ? (
-                <AnimatedNumber
-                  value={converted}
-                  format={(v) => formatNumber(Math.round(v))}
-                  className="text-xl font-semibold tabular-nums text-white"
-                />
-              ) : (
-                <span className="text-xl font-semibold text-neutral-600">—</span>
-              )}
-            </KpiCard>
-            <KpiCard label="Biggest drop-off">
-              {biggestDrop ? (
-                <>
-                  <span className="text-xl font-semibold tabular-nums text-red-400">
-                    {Math.round(biggestDrop.dropoff)}%
-                  </span>
-                  <p className="mt-0.5 truncate text-xs text-neutral-500" title={biggestDrop.value}>
-                    {biggestDrop.value}
-                  </p>
-                </>
-              ) : (
-                <span className="text-xl font-semibold text-neutral-600">—</span>
-              )}
-            </KpiCard>
-            <KpiCard label="Median time">
-              <span className="text-xl font-semibold tabular-nums text-white">
-                {stats?.median_convert_seconds != null
-                  ? formatConvertTime(stats.median_convert_seconds)
-                  : '—'}
-              </span>
-            </KpiCard>
-          </div>
+          <FunnelKpiPlate stats={stats} prevStats={prevStats} statsError={statsError != null} />
         )}
 
         {/* Canvas — step columns with connecting bands; drives ?step= */}
@@ -404,12 +271,13 @@ export default function FunnelDetailPage() {
               />
             </div>
             <div className="mt-3">
-              <FunnelTrendChart
+              <FunnelDailyInstrument
                 siteId={siteId}
                 funnelId={funnelId}
-                steps={stats.steps}
                 dateRange={dateRange}
                 filters={filtersParam || undefined}
+                stats={stats}
+                prevStats={prevStats}
               />
             </div>
           </>
