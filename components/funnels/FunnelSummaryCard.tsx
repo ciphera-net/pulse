@@ -5,7 +5,7 @@ import { CaretRight, FileText, House, Lightning, PencilSimple, Trash } from '@ph
 import type { Funnel, FunnelStats, FunnelStep } from '@/lib/api/funnels'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { FunnelChart } from '@/components/ui/funnel-chart'
-import { guardedPctChange, type PctChangeResult } from '@/lib/utils/pctChange'
+import { guardedPointChange, type PctChangeResult } from '@/lib/utils/pctChange'
 
 // ---------------------------------------------------------------------------
 // Funnels list row — the whole card is a link to the funnel detail route;
@@ -48,18 +48,12 @@ function stepLabel(step: FunnelStep): string {
 }
 
 function DeltaBadge({ change }: { change: PctChangeResult }) {
-  if (!change) return null
-  if (change.type === 'new') {
-    return (
-      <span className="rounded-none bg-brand-orange/10 px-1.5 py-0.5 text-[10px] font-medium text-brand-orange">
-        New
-      </span>
-    )
-  }
+  if (!change || change.type === 'new') return null
   const positive = change.value > 0
+  const unit = change.type === 'pp' ? 'pp' : '%'
   return (
     <span className={`text-xs font-medium tabular-nums ${positive ? 'text-green-400' : 'text-red-400'}`}>
-      {positive ? '+' : ''}{change.value}% vs prev
+      {positive ? '+' : ''}{change.value}{unit} vs prev
     </span>
   )
 }
@@ -81,13 +75,17 @@ export function FunnelSummaryCard({
   onDelete,
 }: FunnelSummaryCardProps) {
   const conversion = stats?.steps.length ? stats.steps[stats.steps.length - 1].conversion : null
+  const entered = stats?.steps[0]?.visitors ?? 0
+  const converted = stats?.steps.length ? stats.steps[stats.steps.length - 1].visitors : 0
   const prevConversion = prevStats?.steps.length
     ? prevStats.steps[prevStats.steps.length - 1].conversion
     : null
   const prevVisitors = prevStats?.steps[0]?.visitors ?? 0
+  // Percentage POINTS, not a relative % of a % — "conversion up 344%" reads
+  // like traffic growth and is almost always misread.
   const delta =
     conversion != null && prevConversion != null && prevStats
-      ? guardedPctChange(conversion, prevConversion, prevVisitors)
+      ? guardedPointChange(conversion, prevConversion, prevVisitors)
       : null
 
 
@@ -146,6 +144,13 @@ export function FunnelSummaryCard({
                   title={statsError ? 'Couldn’t load stats' : 'Loading…'}
                 >
                   —
+                </span>
+              )}
+              {/* The denominator IS the honesty: 14% of 5,000 and 14% of 7
+                  are different facts. Zero entrants says so in words. */}
+              {stats && (
+                <span className="text-xs tabular-nums text-neutral-500">
+                  {entered > 0 ? `${converted} of ${entered} entered` : 'no visitors entered'}
                 </span>
               )}
               <DeltaBadge change={delta} />
