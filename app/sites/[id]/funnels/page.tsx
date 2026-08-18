@@ -12,6 +12,7 @@ import { FunnelsListSkeleton } from '@/components/skeletons'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { FunnelSummaryCard } from '@/components/funnels/FunnelSummaryCard'
+import { FunnelStatusLine } from '@/components/funnels/FunnelStatusLine'
 import { FunnelSimple } from '@phosphor-icons/react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import FunnelModal, { type FunnelPrefill } from '@/components/funnels/FunnelModal'
@@ -107,6 +108,7 @@ export default function FunnelsPage() {
         <div>
           <h1 className="text-lg font-semibold text-neutral-200 mb-1">Funnels</h1>
           <p className="text-sm text-neutral-400">Track user journeys and identify drop-off points</p>
+          <FunnelStatusLine timezone={site?.timezone} />
         </div>
         <div className="flex items-center gap-2">
           <DateRangePicker
