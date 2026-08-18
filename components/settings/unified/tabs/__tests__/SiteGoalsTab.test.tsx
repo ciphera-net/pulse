@@ -36,8 +36,8 @@ vi.mock('@ciphera-net/facet', () => ({
 import SiteGoalsTab from '../SiteGoalsTab'
 
 const goals = [
-  { id: 'g1', site_id: 's1', name: 'Sign up', event_name: 'signup_click', funnel_steps: [], created_at: '', updated_at: '' },
-  { id: 'g2', site_id: 's1', name: 'Purchase', event_name: 'purchase', funnel_steps: [], created_at: '', updated_at: '' },
+  { id: 'g1', site_id: 's1', name: 'Sign up', event_name: 'signup_click', created_at: '', updated_at: '' },
+  { id: 'g2', site_id: 's1', name: 'Purchase', event_name: 'purchase', created_at: '', updated_at: '' },
 ]
 
 const mutate = vi.fn().mockResolvedValue(undefined)

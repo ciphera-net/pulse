@@ -5,7 +5,6 @@ export interface Goal {
   site_id: string
   name: string
   event_name: string
-  funnel_steps: string[]
   created_at: string
   updated_at: string
 }
@@ -13,13 +12,11 @@ export interface Goal {
 export interface CreateGoalRequest {
   name: string
   event_name: string
-  funnel_steps?: string[]
 }
 
 export interface UpdateGoalRequest {
   name: string
   event_name: string
-  funnel_steps?: string[]
 }
 
 export async function listGoals(siteId: string): Promise<Goal[]> {
