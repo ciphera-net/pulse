@@ -60,6 +60,20 @@ steps:
         from_secret: next_public_captcha_api_url
       NEXT_PUBLIC_CDN_URL:
         from_secret: next_public_cdn_url
+      # 🔴 THIS FILE IS THE ONE THAT MATTERS FOR assetPrefix, NOT build.yml.
+      # build.yml's build/build-staging are `dry-run: true` shadow builds tagged
+      # shadow-*; they validate the Dockerfile and are thrown away. THIS step
+      # produces the image that is pushed, deployed, and read by upload-static.
+      # A build arg present only in build.yml is inlined into an artifact nobody
+      # ships — Next bakes assetPrefix at `next build`, so the deployed HTML then
+      # silently keeps same-origin chunks. That happened on 18-08-2026 (pipeline
+      # 533) and the live-HTML assertion in deploy.yml is what caught it.
+      # ⇒ Any change to a NEXT_PUBLIC_* build input must be made in BOTH files.
+      # Literal, not a secret: it is a public CDN hostname that appears in every
+      # page's HTML anyway. 🔴 The PATH SEGMENT separates environments in the
+      # shared bucket — prod and staging must never share it, or one serves the
+      # other's JavaScript.
+      NEXT_PUBLIC_ASSET_PREFIX: https://ciphera-app-static.b-cdn.net/pulse
     # 🔴 THIS STEP OVERRIDES THE NAMESPACE DEFAULT, AND ONLY THIS STEP.
     #
     # woodpecker-builds carries a LimitRange of request==limit==1536Mi. This build
@@ -132,6 +146,11 @@ steps:
         - NEXT_PUBLIC_ID_API_URL
         - NEXT_PUBLIC_CAPTCHA_API_URL
         - NEXT_PUBLIC_CDN_URL
+        # Without this line the `environment:` entry above is inert: kaniko only
+        # forwards the names listed here. Missing it fails OPEN (empty prefix,
+        # same-origin chunks, working site) — which is why deploy.yml asserts the
+        # prefix against the LIVE HTML instead of trusting the build.
+        - NEXT_PUBLIC_ASSET_PREFIX
 
   push-staging:
     image: woodpeckerci/plugin-kaniko:2.3.2@sha256:01e0e325efd8fd2b1a95d207e84780a85ed7f8eb9712d8e79888e0f42ff8b7b3
@@ -156,6 +175,9 @@ steps:
         from_secret: staging_next_public_captcha_api_url
       NEXT_PUBLIC_CDN_URL:
         from_secret: staging_next_public_cdn_url
+      # Distinct path segment from production — see the note on the prod step for
+      # why this belongs here and not only in build.yml.
+      NEXT_PUBLIC_ASSET_PREFIX: https://ciphera-app-static.b-cdn.net/pulse-staging
     # 🔴 THIS STEP OVERRIDES THE NAMESPACE DEFAULT, AND ONLY THIS STEP.
     #
     # woodpecker-builds carries a LimitRange of request==limit==1536Mi. This build
@@ -228,3 +250,5 @@ steps:
         - NEXT_PUBLIC_ID_API_URL
         - NEXT_PUBLIC_CAPTCHA_API_URL
         - NEXT_PUBLIC_CDN_URL
+        # See the prod step: the `environment:` entry is inert without this.
+        - NEXT_PUBLIC_ASSET_PREFIX

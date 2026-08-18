@@ -56,6 +56,12 @@ steps:
       # HTML anyway, and a secret would hide the one value most worth reading here.
       # 🔴 The PATH SEGMENT is what separates environments in the shared bucket — prod
       # and staging must never share it, or one would serve the other's JavaScript.
+      # ⚠️ SETTING IT HERE ALONE DOES NOTHING. The steps in THIS file are
+      # `dry-run: true` shadow builds tagged shadow-*; the image that ships is built
+      # by .woodpecker/push.yml. Next bakes assetPrefix at `next build`, so a value
+      # present only here is inlined into an artifact that is discarded, and the
+      # DEPLOYED HTML keeps same-origin chunks. Verified the hard way on 18-08-2026
+      # (pipeline 533). Keep this in sync with push.yml — both files or neither.
       NEXT_PUBLIC_ASSET_PREFIX: https://ciphera-app-static.b-cdn.net/pulse
     # 🔴 THIS STEP OVERRIDES THE NAMESPACE DEFAULT, AND ONLY THIS STEP.
     #
