@@ -27,11 +27,19 @@ const dist = (over: Partial<ScrollDepthDistribution> = {}): ScrollDepthDistribut
 })
 
 describe('ScrollDepthBars', () => {
-  it('renders a rail for each of the four thresholds', () => {
+  it('renders a row for each threshold with its COMPUTED share, not a static label', () => {
     render(<ScrollDepthBars scrollDepth={dist()} />)
-    for (const label of ['25%', '50%', '75%', '100%']) {
+    for (const label of ['Reached 25%', 'Reached 50%', 'Reached 75%', 'Reached 100%']) {
       expect(screen.getByText(label)).toBeInTheDocument()
     }
+    // The computed shares (count/total) — a broken percentage calc goes RED
+    // here (the adversarial review proved the old label-only assertion let a
+    // pct→0 mutation ship green).
+    for (const share of ['81%', '47%', '23%', '9%']) {
+      expect(screen.getByText(share)).toBeInTheDocument()
+    }
+    // And the raw counts in the row grammar.
+    expect(screen.getByText('810')).toBeInTheDocument()
   })
 
   it('shows the empty state when there are no sessions', () => {
@@ -41,7 +49,7 @@ describe('ScrollDepthBars', () => {
     // * legible empty state rather than four zero-width bars.
     const { container } = render(<ScrollDepthBars scrollDepth={dist({ total_sessions: 0 })} />)
     expect(container.textContent).toBeTruthy()
-    expect(screen.queryByText('25%')).not.toBeInTheDocument()
+    expect(screen.queryByText('Reached 25%')).not.toBeInTheDocument()
   })
 
   it('renders without data — the loading/undefined case must not throw', () => {

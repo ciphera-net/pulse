@@ -26,6 +26,7 @@ vi.mock('@/lib/utils/dateRanges', () => ({
 beforeEach(() => {
   mockReplace.mockClear()
   mockSearchParams = new URLSearchParams()
+  window.localStorage.clear()
 })
 
 describe('useUrlDateRange', () => {
@@ -106,5 +107,59 @@ describe('useUrlDateRange', () => {
       result.current.shiftPeriod(1)
     })
     expect(mockReplace).not.toHaveBeenCalled()
+  })
+})
+
+describe('useUrlDateRange range memory', () => {
+  it('remembers a chosen preset and applies it on a bare-URL mount', () => {
+    const { result } = renderHook(() => useUrlDateRange())
+    act(() => {
+      result.current.setPeriod('7')
+    })
+    expect(window.localStorage.getItem('pulse_last_period')).toBe('7')
+
+    // A fresh mount with no ?period= takes the remembered preset as the
+    // effective default (state, not a URL write — a mount-time replace is
+    // dropped during hydration on the prod build).
+    mockReplace.mockClear()
+    mockSearchParams = new URLSearchParams()
+    const { result: r2 } = renderHook(() => useUrlDateRange())
+    expect(r2.current.period).toBe('7')
+    expect(r2.current.dateRange).toEqual({ start: 'start-7', end: 'end-7' })
+  })
+
+  it('picking the default period while another preset is remembered does not revert', () => {
+    window.localStorage.setItem('pulse_last_period', '7')
+    const { result } = renderHook(() => useUrlDateRange())
+    expect(result.current.period).toBe('7')
+    act(() => {
+      result.current.setPeriod('30')
+    })
+    expect(result.current.period).toBe('30')
+    expect(window.localStorage.getItem('pulse_last_period')).toBe('30')
+  })
+
+  it('an explicit URL period always wins over the memory', () => {
+    window.localStorage.setItem('pulse_last_period', '7')
+    mockSearchParams = new URLSearchParams('period=week')
+    const { result } = renderHook(() => useUrlDateRange())
+    expect(result.current.period).toBe('week')
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('custom ranges are NOT remembered — a frozen date span must never become the default', () => {
+    window.localStorage.setItem('pulse_last_period', '7')
+    const { result } = renderHook(() => useUrlDateRange())
+    act(() => {
+      result.current.setPeriod('custom', { start: '2026-01-01', end: '2026-01-31' })
+    })
+    expect(window.localStorage.getItem('pulse_last_period')).toBe('7')
+  })
+
+  it('garbage in storage never becomes the period', () => {
+    window.localStorage.setItem('pulse_last_period', 'nonsense')
+    mockSearchParams = new URLSearchParams()
+    const { result } = renderHook(() => useUrlDateRange())
+    expect(result.current.period).toBe('30')
   })
 })
