@@ -160,11 +160,6 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
             ))}
           </div>
           <div className="flex min-w-0 shrink items-center gap-1.5">
-            {denom != null && (
-              <span className="hidden min-w-0 truncate whitespace-nowrap text-[11px] text-neutral-500 sm:block">
-                share of {formatNumber(denom)} pageviews
-              </span>
-            )}
             {view === 'referrers' && showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}
