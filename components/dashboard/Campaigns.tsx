@@ -183,12 +183,7 @@ export default function Campaigns({ siteId, dateRange, filters, totals, onFilter
               </button>
             ))}
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {denom != null && (
-              <span className="hidden whitespace-nowrap text-[11px] text-neutral-500 sm:block">
-                share of {formatNumber(denom)} visitors
-              </span>
-            )}
+          <div className="flex min-w-0 shrink items-center gap-2">
             {showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}

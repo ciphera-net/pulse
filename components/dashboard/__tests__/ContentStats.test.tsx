@@ -54,9 +54,11 @@ describe('ContentStats denominators (F9)', () => {
     expect(screen.queryByText('54%')).toBeNull()
   })
 
-  it('states the denominator in the card header', () => {
+  it('keeps the denominator note in the MODAL only (header note removed, owner call)', () => {
     render(<ContentStats {...baseProps} totals={totals} />)
-    expect(screen.getByText(/share of 453 pageviews/)).toBeTruthy()
+    expect(screen.queryByText(/share of 453 pageviews/)).toBeNull()
+    fireEvent.click(screen.getByLabelText('View all pages'))
+    expect(screen.getByText(/Shares are of all 453 pageviews/)).toBeTruthy()
   })
 
   it('renders NO percentages without totals — never a fabricated denominator', () => {

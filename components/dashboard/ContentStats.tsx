@@ -211,12 +211,9 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
               </button>
             ))}
           </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            {denom != null && !isEngagementTab && (
-              <span className="hidden whitespace-nowrap text-[11px] text-neutral-500 sm:block">
-                share of {formatNumber(denom)} pageviews
-              </span>
-            )}
+          {/* No denominator note in the header (owner call 19-08) — the modal
+              keeps its explanation, where search could otherwise mislead. */}
+          <div className="flex min-w-0 shrink items-center gap-1.5">
             {showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}
