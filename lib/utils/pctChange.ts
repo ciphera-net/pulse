@@ -1,5 +1,6 @@
 export type PctChangeResult =
   | { type: 'pct'; value: number }
+  | { type: 'pp'; value: number }
   | { type: 'new' }
   | null
 
@@ -22,4 +23,23 @@ export function guardedPctChange(
 ): PctChangeResult {
   if (previousBase < minBase) return null
   return pctChange(current, previous)
+}
+
+/**
+ * Delta between two RATES, in percentage points. A relative change of a
+ * percentage ("conversion up 344%") reads like traffic growth and is almost
+ * always misread — a rate moves in points. Same small-base guard as
+ * guardedPctChange, and no "new" state: a rate appearing where there was
+ * none is a base-too-small case, not news.
+ */
+export function guardedPointChange(
+  current: number,
+  previous: number,
+  previousBase: number,
+  minBase = 10,
+): PctChangeResult {
+  if (previousBase < minBase) return null
+  const diff = Math.round((current - previous) * 10) / 10
+  if (diff === 0) return null
+  return { type: 'pp', value: diff }
 }

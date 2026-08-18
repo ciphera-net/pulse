@@ -7,7 +7,7 @@ import { ArrowLeft, FunnelSimple } from '@phosphor-icons/react'
 import { toast, Button } from '@ciphera-net/facet'
 import { updateFunnel, deleteFunnel, type CreateFunnelRequest } from '@/lib/api/funnels'
 import { ApiError } from '@/lib/api/client'
-import { useFunnelDetail, useFunnelStats } from '@/lib/swr/dashboard'
+import { useFunnelDetail, useFunnelStats, useSite } from '@/lib/swr/dashboard'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
 import { previousDateRange } from '@/lib/hooks/periodUrl'
 import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
@@ -16,7 +16,7 @@ import FilterButton from '@/components/dashboard/FilterButton'
 import FilterPills from '@/components/dashboard/FilterPills'
 import FilterBuilder from '@/components/dashboard/filter/FilterBuilder'
 import { useFilterBuilder } from '@/components/dashboard/filter/useFilterBuilder'
-import { guardedPctChange, type PctChangeResult } from '@/lib/utils/pctChange'
+import { guardedPctChange, guardedPointChange, type PctChangeResult } from '@/lib/utils/pctChange'
 import { formatNumber, formatConvertTime } from '@/lib/utils/format'
 import { formatDate as formatDisplayDate } from '@/lib/utils/formatDate'
 import DateRangePicker from '@/components/ui/DateRangePicker'
@@ -28,6 +28,7 @@ import { FunnelDetailSkeleton } from '@/components/skeletons'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import FunnelModal from '@/components/funnels/FunnelModal'
 import { FunnelChart } from '@/components/ui/funnel-chart'
+import { FunnelStatusLine } from '@/components/funnels/FunnelStatusLine'
 import { FileText, House, Lightning } from '@phosphor-icons/react'
 import { FunnelStepStrip } from '@/components/funnels/FunnelStepStrip'
 import { FunnelTrendChart } from '@/components/funnels/FunnelTrendChart'
@@ -39,6 +40,8 @@ import { useCan } from '@/lib/auth/permissions'
 // ---------------------------------------------------------------------------
 
 function DeltaBadge({ change }: { change: PctChangeResult }) {
+  // 'pp' deltas come from guardedPointChange — rate moves are printed in
+  // percentage points, never as a relative % of a %.
   if (!change) return null
   if (change.type === 'new') {
     return (
@@ -50,7 +53,7 @@ function DeltaBadge({ change }: { change: PctChangeResult }) {
   const positive = change.value > 0
   return (
     <span className={`text-xs font-medium tabular-nums ${positive ? 'text-green-400' : 'text-red-400'}`}>
-      {positive ? '↑' : '↓'} {Math.abs(change.value)}%
+      {positive ? '↑' : '↓'} {Math.abs(change.value)}{change.type === 'pp' ? 'pp' : '%'}
     </span>
   )
 }
@@ -120,6 +123,7 @@ export default function FunnelDetailPage() {
   const fetchSuggestions = useFilterSuggestions(siteId, dateRange, filtersParam || undefined)
   const filterBuilder = useFilterBuilder(fetchSuggestions)
 
+  const { data: site } = useSite(siteId)
   const {
     data: funnel,
     error: funnelError,
@@ -218,7 +222,6 @@ export default function FunnelDetailPage() {
     null,
   )
 
-  const windowLabel = `${funnel.conversion_window_value}${funnel.conversion_window_unit === 'hours' ? 'h' : 'd'} window`
   const createdLabel = formatDisplayDate(new Date(funnel.created_at))
 
   return (
@@ -235,12 +238,8 @@ export default function FunnelDetailPage() {
         <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <h1 className="truncate text-lg font-semibold text-white">{funnel.name}</h1>
-            <p className="mt-1 text-sm text-neutral-400">
-              {funnel.description && <span>{funnel.description} · </span>}
-              <span className="text-xs text-neutral-500">
-                {windowLabel} · created {createdLabel}
-              </span>
-            </p>
+            {funnel.description && <p className="mt-1 text-sm text-neutral-400">{funnel.description}</p>}
+            <FunnelStatusLine timezone={site?.timezone} suffix={`created ${createdLabel}`} />
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             <FilterPills
@@ -260,6 +259,9 @@ export default function FunnelDetailPage() {
               onPeriodChange={(p) => setPeriod(p as Period)}
               onDateRangeChange={(range) => setPeriod('custom', range)}
               onShift={shiftPeriod}
+              // * The funnel API is date-granular: "Last hour" would silently
+              // * mean "today". Don't offer what we can't honor.
+              excludePresets={['1h', '24h']}
             />
             {canManage && (
               <>
@@ -294,7 +296,7 @@ export default function FunnelDetailPage() {
               label="Conversion"
               delta={
                 prevStats && conversion != null && prevConversion != null
-                  ? guardedPctChange(conversion, prevConversion, prevVisitors)
+                  ? guardedPointChange(conversion, prevConversion, prevVisitors)
                   : null
               }
             >

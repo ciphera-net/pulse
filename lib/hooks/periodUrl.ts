@@ -57,6 +57,17 @@ export function parsePeriod(raw: string | null): Period {
   return DEFAULT_PERIOD
 }
 
+/**
+ * True when a preset key round-trips through the URL as ?period=<key>. The
+ * DateRangePicker fires only onPeriodChange for these — writing the rolling
+ * period, not a frozen custom range. Keys outside this set (e.g. 'last-week')
+ * cannot live in the URL, so the picker keeps its legacy period+range double
+ * write for them and they land as custom dates.
+ */
+export function isUrlPeriod(key: string): boolean {
+  return PERIODS.has(key as Period)
+}
+
 export function isValidDateString(s: string | null): s is string {
   if (!s) return false
   return /^\d{4}-\d{2}-\d{2}$/.test(s)

@@ -6,6 +6,8 @@ import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { Button, Spinner, toast } from '@ciphera-net/facet'
 import { CaretUp, CaretDown, CircleNotch, FileText, House, Lightning, Plus, Trash } from '@phosphor-icons/react'
 import type { Funnel, FunnelStep, StepPropertyFilter, CreateFunnelRequest } from '@/lib/api/funnels'
+import { previewFunnel, type FunnelStats } from '@/lib/api/funnels'
+import { FunnelChart } from '@/components/ui/funnel-chart'
 import { getDashboardPages, getDashboardGoals } from '@/lib/api/stats'
 import { getDateRange } from '@/lib/utils/dateRanges'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -17,9 +19,10 @@ import { formatNumber } from '@/lib/utils/format'
 // Create/Edit funnel on the real dialog primitive (focus trap, focus return,
 // Esc, aria and the sanctioned shadow come free). Path and event inputs get
 // data-aware suggestion panels fed once per open from the dashboard's own
-// endpoints (free text always allowed), validation is inline with
-// focus-to-field, and the conversion-window control submits what it shows —
-// the hardcoded 30-day overwrite dies here.
+// endpoints (free text always allowed), and validation is inline with
+// focus-to-field. There is no conversion-window control: a conversion
+// completes within one visit (session identity resets at UTC midnight), so
+// a window was a promise the data model could not keep.
 // ---------------------------------------------------------------------------
 
 type StepWithoutOrder = Omit<FunnelStep, 'order'>
@@ -28,9 +31,6 @@ type StepWithoutOrder = Omit<FunnelStep, 'order'>
 // * same ring-2 brand-orange focus the Segmented and Select controls use.
 const inputClass =
   'h-10 w-full rounded-none border border-border bg-transparent px-3 text-sm text-white placeholder:text-neutral-600 transition-colors ease-apple focus:outline-none focus:ring-2 focus:ring-brand-orange'
-// * Kills the native number spinner so the window input matches the rest.
-const numberInputClass =
-  '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
 const invalidClass = 'border-red-500/60'
 const labelClass = 'mb-1.5 block text-sm font-medium text-neutral-300'
 
@@ -39,14 +39,6 @@ const MAX_FILTERS = 10
 
 /** A step whose label is still the auto "Step N" default (no custom rename). */
 const isDefaultStepName = (n: string) => /^Step \d+$/.test(n.trim())
-
-const WINDOW_PRESETS = [
-  { label: '24h', value: 24, unit: 'hours' as const },
-  { label: '72h', value: 72, unit: 'hours' as const },
-  { label: '7d', value: 7, unit: 'days' as const },
-  { label: '14d', value: 14, unit: 'days' as const },
-  { label: '30d', value: 30, unit: 'days' as const },
-]
 
 interface SuggestItem {
   value: string
@@ -68,6 +60,8 @@ interface FunnelModalProps {
   /** Create-mode seed (e.g. from a journeys lens) — ignored when editing. */
   prefill?: FunnelPrefill
   siteId: string
+  /** The page's current range — the live preview measures over it. */
+  dateRange?: { start: string; end: string }
 }
 
 // ─── Suggestion input ───────────────────────────────────────────────
@@ -249,7 +243,7 @@ function SuggestInput({
 
 // ─── Modal ──────────────────────────────────────────────────────────
 
-export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, prefill, siteId }: FunnelModalProps) {
+export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, prefill, siteId, dateRange }: FunnelModalProps) {
   const [name, setName] = useState(initialData?.name ?? prefill?.name ?? '')
   const [description, setDescription] = useState(initialData?.description ?? prefill?.description ?? '')
   const [steps, setSteps] = useState<StepWithoutOrder[]>(
@@ -260,12 +254,64 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
       ],
   )
   // * Window control prefills the stored values on edit; create defaults 7d
-  const [windowValue, setWindowValue] = useState<number>(initialData?.conversion_window_value ?? 7)
-  const [windowUnit, setWindowUnit] = useState<'hours' | 'days'>(initialData?.conversion_window_unit ?? 'days')
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const initialStepCount = initialData?.steps.length ?? prefill?.steps?.length ?? 2
+
+  // ── Live preview: what this definition would have measured ─────────
+  // Debounced POST /funnels/preview over the page's current range — the same
+  // engine the page uses, run before the funnel exists. Duplicate or invalid
+  // steps 400 server-side and land in the quiet 'error' state; the inline
+  // field errors carry the explanation.
+  const [preview, setPreview] = useState<FunnelStats | null>(null)
+  const [previewState, setPreviewState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+
+  useEffect(() => {
+    if (!isOpen || !dateRange) return
+    const usable = steps.filter((st) => st.value.trim() !== '')
+    if (usable.length === 0) {
+      setPreview(null)
+      setPreviewState('idle')
+      return
+    }
+    for (const st of usable) {
+      if ((st.category || 'page') === 'page' && st.type === 'regex') {
+        try {
+          new RegExp(st.value)
+        } catch {
+          setPreview(null)
+          setPreviewState('idle')
+          return
+        }
+      }
+    }
+    let cancelled = false
+    setPreviewState((prev) => (prev === 'ready' ? 'ready' : 'loading'))
+    const t = setTimeout(async () => {
+      try {
+        const stats = await previewFunnel(
+          siteId,
+          usable.map((st) => ({ ...st, name: isDefaultStepName(st.name) ? st.value.trim() || st.name : st.name })),
+          dateRange.start,
+          dateRange.end,
+        )
+        if (!cancelled) {
+          setPreview(stats)
+          setPreviewState('ready')
+        }
+      } catch {
+        if (!cancelled) {
+          setPreview(null)
+          setPreviewState('error')
+        }
+      }
+    }, 600)
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
+  }, [isOpen, dateRange, steps, siteId])
   const stepIdCounter = useRef(initialStepCount)
   const [stepIds, setStepIds] = useState<number[]>(() =>
     Array.from({ length: initialStepCount }, (_, i) => i),
@@ -435,14 +481,28 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
         next[`step-${i}`] = 'Every property filter needs a key.'
       }
     })
-    if (!Number.isFinite(windowValue) || windowValue < 1) {
-      next['window'] = 'The window must be at least 1.'
-    }
+    // Exact duplicates: attribution is first-match-wins, so a later twin can
+    // never match and its step reads zero forever. The server rejects these
+    // too — this is the inline version of the same rule.
+    const seen = new Map<string, number>()
+    steps.forEach((step, i) => {
+      if (next[`step-${i}`] || !step.value.trim()) return
+      const cat = step.category || 'page'
+      // Filtered event steps may legitimately repeat an event name.
+      if (cat === 'event' && step.property_filters?.length) return
+      const key = cat === 'page' ? `page|${step.type}|${step.value.trim()}` : `event|${step.value.trim()}`
+      const prev = seen.get(key)
+      if (prev != null) {
+        next[`step-${i}`] = `Repeats step ${prev + 1} — a later duplicate step can never be matched.`
+      } else {
+        seen.set(key, i)
+      }
+    })
     setErrors(next)
-    const first = ['name', ...steps.map((_, i) => `step-${i}`), 'window'].find((k) => k in next)
+    const first = ['name', ...steps.map((_, i) => `step-${i}`)].find((k) => k in next)
     if (first) fieldRefs.current.get(first)?.focus()
     return Object.keys(next).length === 0
-  }, [name, steps, windowValue])
+  }, [name, steps])
 
   const handleSubmit = async () => {
     if (!validate()) return
@@ -458,8 +518,6 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
           order: i,
           name: isDefaultStepName(s.name) ? s.value.trim() || s.name : s.name,
         })),
-        conversion_window_value: windowValue,
-        conversion_window_unit: windowUnit,
       })
       onClose()
     } catch {
@@ -704,68 +762,39 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
               </div>
             </div>
 
-            {/* Conversion window — one row; submits exactly what it shows */}
-            <div>
-              <label htmlFor="funnel-window" className={labelClass}>Conversion window</label>
-              <div className="flex flex-wrap items-center gap-2">
-                <input
-                  id="funnel-window"
-                  ref={registerField('window')}
-                  type="number"
-                  min={1}
-                  value={Number.isFinite(windowValue) ? windowValue : ''}
-                  onChange={(e) => {
-                    setWindowValue(parseInt(e.target.value, 10))
-                    clearError('window')
-                  }}
-                  aria-label="Conversion window value"
-                  className={`${inputClass} ${numberInputClass} !w-20 tabular-nums ${errors['window'] ? invalidClass : ''}`}
-                />
-                <Select
-                  variant="input"
-                  className="w-28 shrink-0"
-                  value={windowUnit}
-                  onChange={(v) => setWindowUnit(v as 'hours' | 'days')}
-                  options={[
-                    { value: 'hours', label: 'Hours' },
-                    { value: 'days', label: 'Days' },
-                  ]}
-                />
-                {/* Purely decorative rule between the numeric window and the
-                    preset chips. Once the row wraps on a phone it becomes a
-                    dangling vertical tick at the end of a line, so it is
-                    display:none below md. */}
-                <div className="hidden md:block mx-1 h-6 w-px bg-border" aria-hidden="true" />
-                <div className="flex items-center gap-1">
-                  {WINDOW_PRESETS.map((preset) => {
-                    const active = windowValue === preset.value && windowUnit === preset.unit
-                    return (
-                      <button
-                        key={preset.label}
-                        type="button"
-                        aria-pressed={active}
-                        onClick={() => {
-                          setWindowValue(preset.value)
-                          setWindowUnit(preset.unit)
-                          clearError('window')
-                        }}
-                        className={`h-10 rounded-none border px-3 text-sm tabular-nums transition-colors duration-fast ease-apple focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
-                          active
-                            ? 'border-brand-orange/50 text-brand-orange'
-                            : 'border-border text-neutral-400 hover:text-neutral-200'
-                        }`}
-                      >
-                        {preset.label}
-                      </button>
-                    )
-                  })}
+            {/* Live preview — measured, not promised */}
+            {dateRange && previewState !== 'idle' && (
+              <div className="rounded-none border border-border bg-black/20 p-3">
+                <div className="mb-1.5 flex items-center justify-between gap-3">
+                  <span className="text-xs text-neutral-500">Preview · selected range</span>
+                  {previewState === 'ready' && preview && preview.steps.length > 0 && (
+                    <span className="shrink-0 text-xs tabular-nums text-neutral-500">
+                      {preview.steps[preview.steps.length - 1].visitors} of {preview.steps[0].visitors} entered
+                    </span>
+                  )}
                 </div>
+                {previewState === 'error' ? (
+                  <p className="text-xs text-neutral-500">Preview unavailable.</p>
+                ) : previewState === 'loading' && !preview ? (
+                  <p className="text-xs text-neutral-600">Measuring…</p>
+                ) : preview && preview.steps.length > 0 && preview.steps[0].visitors > 0 ? (
+                  <FunnelChart
+                    data={preview.steps.map((st) => ({ label: st.step.value, value: st.visitors }))}
+                    compact
+                    staggerDelay={0}
+                  />
+                ) : (
+                  <p className="text-xs text-neutral-500">No visitors matched this funnel in the selected range.</p>
+                )}
               </div>
-              <p className="mt-1.5 text-xs text-neutral-500">
-                How long a visitor has to finish the funnel after starting it.
-              </p>
-              {errors['window'] && <p className="mt-1 text-xs text-red-400">{errors['window']}</p>}
-            </div>
+            )}
+
+            {/* No conversion window — the identity model resets at UTC midnight,
+                so a conversion either completes within the visit or not at all.
+                Saying so beats offering a dial that cannot do anything. */}
+            <p className="text-xs text-neutral-500">
+              A conversion counts when a visitor completes every step within one visit.
+            </p>
           </div>
         </div>
 

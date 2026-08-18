@@ -1,27 +1,33 @@
 'use client'
 
-import { useMemo } from 'react'
 import Link from 'next/link'
 import { CaretRight, FileText, House, Lightning, PencilSimple, Trash } from '@phosphor-icons/react'
-import type { Funnel, FunnelStep } from '@/lib/api/funnels'
-import { useFunnelStats } from '@/lib/swr/dashboard'
+import type { Funnel, FunnelStats, FunnelStep } from '@/lib/api/funnels'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { FunnelChart } from '@/components/ui/funnel-chart'
-import { guardedPctChange, type PctChangeResult } from '@/lib/utils/pctChange'
-import { previousDateRange } from '@/lib/hooks/periodUrl'
+import { guardedPointChange, type PctChangeResult } from '@/lib/utils/pctChange'
 
 // ---------------------------------------------------------------------------
 // Funnels list row — the whole card is a link to the funnel detail route;
 // edit/delete are hover/focus-revealed SIBLINGS (absolutely positioned), never
 // nested inside the link. Step chips show the real targets (custom names keep
 // the value in title), the conversion % is plain white with a tiny-base-
-// guarded delta, and the right rail carries a lazy 96×28 trend sparkline.
+// guarded delta, and the row carries the funnel's own mini chart.
+//
+// Stats arrive as PROPS from the page's single batched request — the card
+// used to fetch its own current + previous stats, which multiplied every
+// 60s poll by the number of funnels on the site.
 // ---------------------------------------------------------------------------
 
 interface FunnelSummaryCardProps {
   funnel: Funnel
   siteId: string
-  dateRange: { start: string; end: string }
+  /** This funnel's stats from the page-level batched fetch (undefined while loading). */
+  stats?: FunnelStats
+  /** Previous-range stats for the delta badge. */
+  prevStats?: FunnelStats
+  /** True when the batched stats request failed. */
+  statsError?: boolean
   /** Current ?period/start/end query (with leading `?`) carried into the detail link. */
   hrefQuery: string
   canManage: boolean
@@ -42,18 +48,12 @@ function stepLabel(step: FunnelStep): string {
 }
 
 function DeltaBadge({ change }: { change: PctChangeResult }) {
-  if (!change) return null
-  if (change.type === 'new') {
-    return (
-      <span className="rounded-none bg-brand-orange/10 px-1.5 py-0.5 text-[10px] font-medium text-brand-orange">
-        New
-      </span>
-    )
-  }
+  if (!change || change.type === 'new') return null
   const positive = change.value > 0
+  const unit = change.type === 'pp' ? 'pp' : '%'
   return (
     <span className={`text-xs font-medium tabular-nums ${positive ? 'text-green-400' : 'text-red-400'}`}>
-      {positive ? '+' : ''}{change.value}% vs prev
+      {positive ? '+' : ''}{change.value}{unit} vs prev
     </span>
   )
 }
@@ -66,38 +66,28 @@ function DeltaBadge({ change }: { change: PctChangeResult }) {
 export function FunnelSummaryCard({
   funnel,
   siteId,
-  dateRange,
+  stats,
+  prevStats,
+  statsError,
   hrefQuery,
   canManage,
   onEdit,
   onDelete,
 }: FunnelSummaryCardProps) {
-  const { data: stats, error: statsError } = useFunnelStats(
-    siteId,
-    funnel.id,
-    dateRange.start,
-    dateRange.end,
-  )
-
-  const prevRange = useMemo(() => previousDateRange(dateRange), [dateRange])
-
-  const { data: prevStats } = useFunnelStats(
-    siteId,
-    funnel.id,
-    prevRange?.start ?? '',
-    prevRange?.end ?? '',
-  )
   const conversion = stats?.steps.length ? stats.steps[stats.steps.length - 1].conversion : null
+  const entered = stats?.steps[0]?.visitors ?? 0
+  const converted = stats?.steps.length ? stats.steps[stats.steps.length - 1].visitors : 0
   const prevConversion = prevStats?.steps.length
     ? prevStats.steps[prevStats.steps.length - 1].conversion
     : null
   const prevVisitors = prevStats?.steps[0]?.visitors ?? 0
+  // Percentage POINTS, not a relative % of a % — "conversion up 344%" reads
+  // like traffic growth and is almost always misread.
   const delta =
     conversion != null && prevConversion != null && prevStats
-      ? guardedPctChange(conversion, prevConversion, prevVisitors)
+      ? guardedPointChange(conversion, prevConversion, prevVisitors)
       : null
 
-  const windowChip = `${funnel.conversion_window_value}${funnel.conversion_window_unit === 'hours' ? 'h' : 'd'} window`
 
   return (
     <div className="group relative">
@@ -111,7 +101,7 @@ export function FunnelSummaryCard({
             <div className="flex items-center gap-3 pr-20">
               <h3 className="truncate text-base font-semibold text-white">{funnel.name}</h3>
               <span className="shrink-0 text-xs text-neutral-500">
-                {funnel.steps.length} steps · {windowChip}
+                {funnel.steps.length} steps
               </span>
             </div>
 
@@ -154,6 +144,13 @@ export function FunnelSummaryCard({
                   title={statsError ? 'Couldn’t load stats' : 'Loading…'}
                 >
                   —
+                </span>
+              )}
+              {/* The denominator IS the honesty: 14% of 5,000 and 14% of 7
+                  are different facts. Zero entrants says so in words. */}
+              {stats && (
+                <span className="text-xs tabular-nums text-neutral-500">
+                  {entered > 0 ? `${converted} of ${entered} entered` : 'no visitors entered'}
                 </span>
               )}
               <DeltaBadge change={delta} />

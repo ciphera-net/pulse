@@ -21,8 +21,6 @@ export interface Funnel {
   name: string
   description: string
   steps: FunnelStep[]
-  conversion_window_value: number
-  conversion_window_unit: 'hours' | 'days'
   created_at: string
   updated_at: string
 }
@@ -53,8 +51,6 @@ export interface CreateFunnelRequest {
   name: string
   description: string
   steps: Omit<FunnelStep, 'order'>[]
-  conversion_window_value?: number
-  conversion_window_unit?: 'hours' | 'days'
 }
 
 export interface FunnelTrends {
@@ -68,11 +64,15 @@ export interface FunnelTrends {
 
 export interface FunnelBreakdownEntry {
   value: string
-  /** sessions that reached the target step, chained through every prior step */
-  visitors: number
+  /**
+   * Sessions that reached the target step, chained through every prior step.
+   * null when the row is under the n≥5 entrant floor — withheld, not zero.
+   */
+  visitors: number | null
   /** sessions that entered the funnel under this dimension value — the denominator */
   entrants: number
-  conversion: number
+  /** null when floored */
+  conversion: number | null
 }
 
 export interface FunnelBreakdown {
@@ -108,6 +108,26 @@ export async function deleteFunnel(siteId: string, funnelId: string): Promise<vo
   await apiRequest(`/sites/${siteId}/funnels/${funnelId}`, {
     method: 'DELETE',
   })
+}
+
+/** Chained stats for EVERY funnel on the site in one request — the list surface. */
+/** Run the funnel engine over an UNSAVED definition — the modal's live preview. */
+export async function previewFunnel(siteId: string, steps: Omit<FunnelStep, 'order'>[], startDate: string, endDate: string): Promise<FunnelStats> {
+  const params = new URLSearchParams({ start_date: startDate, end_date: endDate })
+  return apiRequest<FunnelStats>(`/sites/${siteId}/funnels/preview?${params.toString()}`, {
+    method: 'POST',
+    body: JSON.stringify({ steps: steps.map((s, i) => ({ ...s, order: i })) }),
+  })
+}
+
+export async function getAllFunnelStats(siteId: string, startDate?: string, endDate?: string, filters?: string): Promise<Record<string, FunnelStats>> {
+  const params = new URLSearchParams()
+  if (startDate) params.append('start_date', startDate)
+  if (endDate) params.append('end_date', endDate)
+  if (filters) params.append('filters', filters)
+  const queryString = params.toString() ? `?${params.toString()}` : ''
+  const response = await apiRequest<{ stats: Record<string, FunnelStats> }>(`/sites/${siteId}/funnels/stats${queryString}`)
+  return response?.stats ?? {}
 }
 
 export async function getFunnelStats(siteId: string, funnelId: string, startDate?: string, endDate?: string, filters?: string): Promise<FunnelStats> {
