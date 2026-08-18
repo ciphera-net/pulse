@@ -429,7 +429,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
                       className={`interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${canFilter ? ' cursor-pointer' : ''}`}
                     >
                       <div
-                        className="absolute inset-y-0.5 left-0.5 bg-white/[0.05] rounded-none transition-[width,background-color] ease-apple"
+                        className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-none transition-[width,background-color] ease-apple"
                         style={{ width: `${barWidth}%` }}
                       />
                       <div className="relative flex-1 truncate text-white flex items-center gap-3">
@@ -439,7 +439,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
                         </span>
                       </div>
                       <div className="relative flex items-center gap-2 ml-4">
-                        <span className="text-xs font-medium tabular-nums text-neutral-500">
+                        <span className="text-xs font-medium text-brand-orange opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
                           {pct(item.pageviews)}
                         </span>
                         <span className="text-sm font-semibold text-neutral-400">
@@ -531,7 +531,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
                         </span>
                       </div>
                       <div className="flex items-center gap-2 ml-4">
-                        <span className="text-xs font-medium tabular-nums text-neutral-500">
+                        <span className="text-xs font-medium text-brand-orange opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
                           {pct(item.pageviews)}
                         </span>
                         <span className="text-sm font-semibold text-neutral-400">
