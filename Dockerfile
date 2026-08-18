@@ -38,6 +38,13 @@ ARG NEXT_PUBLIC_APP_URL
 ARG NEXT_PUBLIC_ID_API_URL
 ARG NEXT_PUBLIC_CAPTCHA_API_URL
 ARG NEXT_PUBLIC_CDN_URL
+# /_next/static/* is served from its own CDN zone so a build's chunks outlive the build
+# (next.config.ts explains why). ⚠️ MUST be a BUILD arg, not runtime env: Next.js inlines
+# assetPrefix into the emitted HTML at `next build`. An unset value degrades safely to
+# same-origin assets — and the deploy pipeline asserts the live HTML actually references
+# the CDN, so a missing arg is caught rather than shipped silently.
+ARG NEXT_PUBLIC_ASSET_PREFIX
+ENV NEXT_PUBLIC_ASSET_PREFIX=${NEXT_PUBLIC_ASSET_PREFIX}
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_PUBLIC_ID_URL=${NEXT_PUBLIC_ID_URL}
 ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
