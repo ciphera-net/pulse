@@ -10,7 +10,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { DailyStat } from './Chart'
 import { formatNumber, formatDuration } from '@/lib/utils/format'
-import { formatDateISO, formatDate, formatDateTime } from '@/lib/utils/formatDate'
+import { formatDateISO, formatDate, formatDateUTC, formatTimeUTC, formatCalendarDate, parseSiteWallClock } from '@/lib/utils/formatDate'
 import { getReferrerDisplayName, mergeReferrersByDisplayName } from '@/lib/utils/icons'
 import type { TopPage, TopReferrer, CampaignStat } from '@/lib/api/stats'
 
@@ -21,8 +21,10 @@ interface ExportModalProps {
   stats?: {
     pageviews: number
     visitors: number
-    bounce_rate: number
-    avg_duration: number
+    // null = not measured in this window; exported as an empty cell / em dash,
+    // never a fabricated zero.
+    bounce_rate: number | null
+    avg_duration: number | null
   }
   topPages?: TopPage[]
   topReferrers?: TopReferrer[]
@@ -95,9 +97,10 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
           // Filter fields
           const fields = (Object.keys(selectedFields) as Array<keyof DailyStat>).filter((k) => selectedFields[k])
 
-          // Prepare data
+          // Prepare data. null stays null — a bucket nobody measured exports as
+          // an empty cell, not a zero someone will chart.
           const exportData = data.map((item) => {
-            const filteredItem: Record<string, string | number> = {}
+            const filteredItem: Record<string, string | number | null> = {}
             fields.forEach((field) => {
               filteredItem[field] = item[field]
             })
@@ -114,9 +117,13 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
               fields.map((field) => {
                   const val = row[field]
                   if (field === 'date' && typeof val === 'string') {
-                       return new Date(val).toISOString()
+                       // The wire value is the site's bucket with its real offset —
+                       // emit it verbatim. Round-tripping through toISOString()
+                       // re-expressed it in UTC and shifted day rows into the
+                       // previous calendar day for any site east of UTC.
+                       return val
                   }
-                  return val
+                  return val ?? ''
               }).join(',')
             )
             content = (includeHeader ? header + '\n' : '') + rows.join('\n')
@@ -182,8 +189,10 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
             doc.setFontSize(9)
             doc.setTextColor(150, 150, 150)
             const generatedDate = formatDate(new Date())
+            // The bucket's calendar day is the literal date prefix of the wire
+            // value — no Date construction, so no timezone can shift it.
             const dateRange = data.length > 0
-              ? `${formatDate(new Date(data[0].date))} - ${formatDate(new Date(data[data.length - 1].date))}`
+              ? `${formatCalendarDate(data[0].date.slice(0, 10)) ?? ''} - ${formatCalendarDate(data[data.length - 1].date.slice(0, 10)) ?? ''}`
               : generatedDate
 
             const pageWidth = doc.internal.pageSize.width
@@ -216,8 +225,8 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
 
               drawCard(14, 'Unique Visitors', formatNumber(stats.visitors))
               drawCard(14 + cardWidth + 5, 'Total Pageviews', formatNumber(stats.pageviews))
-              drawCard(14 + (cardWidth + 5) * 2, 'Bounce Rate', `${Math.round(stats.bounce_rate)}%`)
-              drawCard(14 + (cardWidth + 5) * 3, 'Avg Duration', formatDuration(stats.avg_duration))
+              drawCard(14 + (cardWidth + 5) * 2, 'Bounce Rate', stats.bounce_rate == null ? '—' : `${Math.round(stats.bounce_rate)}%`)
+              drawCard(14 + (cardWidth + 5) * 3, 'Avg Duration', stats.avg_duration == null ? '—' : formatDuration(stats.avg_duration))
 
               startY = 65 // Move table down
             }
@@ -230,8 +239,15 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
               fields.map(field => {
                 const val = row[field]
                 if (field === 'date' && typeof val === 'string') {
-                  const date = new Date(val)
-                  return isHourly ? formatDateTime(date) : formatDate(date)
+                  // Site wall clock, read from the literal digits — local-day
+                  // formatters shifted every bucket by the viewer's offset.
+                  const wallClock = parseSiteWallClock(val)
+                  if (wallClock) {
+                    return isHourly
+                      ? `${formatDateUTC(wallClock)} ${formatTimeUTC(wallClock)}`
+                      : formatDateUTC(wallClock)
+                  }
+                  return val
                 }
                 if (typeof val === 'number') {
                    if (field === 'bounce_rate') return `${Math.round(val)}%`

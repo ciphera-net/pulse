@@ -24,7 +24,10 @@ export function getYesterdayRange(): { start: string; end: string } {
   return { start: d, end: d }
 }
 
-/** Rolling 24-hour window — crosses midnight, two-day range */
+/** The two calendar days the rolling 24h window can touch. The SERVER resolves
+ * period=24h as a genuine rolling now−24h window (D3, 18-08-2026); this
+ * client-side range exists only as the pre-resolution placeholder and for
+ * previous-window arithmetic. It is NOT itself a rolling window. */
 export function getLast24HoursRange(): { start: string; end: string } {
   const today = new Date()
   const yesterday = new Date(today)
