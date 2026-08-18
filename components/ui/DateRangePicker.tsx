@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { CaretLeft, CaretRight, CalendarBlank, Check } from '@phosphor-icons/react'
 import { PERIOD_PRESETS, PERIOD_GROUPS, findPreset, type PeriodPreset } from '@/lib/constants/periods'
+import { isUrlPeriod } from '@/lib/hooks/periodUrl'
 import { buttonVariants } from '@ciphera-net/facet'
 import { cn } from '@/lib/utils'
 
@@ -24,6 +25,9 @@ interface DateRangePickerProps {
   // * source). Custom and the calendar always remain; an inherited URL
   // * period outside the list still resolves for the trigger label.
   extraPresets?: { group: string; presets: PeriodPreset[]; exclusive?: boolean }
+  // * Preset keys this page cannot honestly serve (e.g. '1h'/'24h' on a
+  // * date-granular API, where "Last hour" would silently mean "today").
+  excludePresets?: string[]
 }
 
 function formatRangeDisplay(start: string, end: string): string {
@@ -90,6 +94,7 @@ export default function DateRangePicker({
   onShift,
   align = 'left',
   extraPresets,
+  excludePresets,
 }: DateRangePickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -182,7 +187,15 @@ export default function DateRangePicker({
     setViewMonth({ year: d.getFullYear(), month: d.getMonth() })
     setTimeout(() => {
       onPeriodChange(key)
-      onDateRangeChange(range)
+      // * A URL-round-trippable preset writes ONLY the period — firing the
+      // * range callback too made every preset click land as
+      // * ?period=custom&start=…&end=… on pages that wire it to a custom
+      // * write: the label degraded to a date span, no checkmark ever showed,
+      // * and a shared link froze instead of rolling forward. Keys that can't
+      // * live in the URL keep the double write so they still work at all.
+      if (!isUrlPeriod(key)) {
+        onDateRangeChange(range)
+      }
       setIsOpen(false)
     }, 150)
   }
@@ -274,12 +287,14 @@ export default function DateRangePicker({
                 ))}
               </div>
             )}
-            {!extraPresets?.exclusive && PERIOD_GROUPS.map((group) => (
+            {!extraPresets?.exclusive && PERIOD_GROUPS.filter((group) =>
+              PERIOD_PRESETS.some(p => p.group === group && !excludePresets?.includes(p.key))
+            ).map((group) => (
               <div key={group}>
                 <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
                   {group}
                 </div>
-                {PERIOD_PRESETS.filter(p => p.group === group).map((preset) => (
+                {PERIOD_PRESETS.filter(p => p.group === group && !excludePresets?.includes(p.key)).map((preset) => (
                   <button
                     key={preset.key}
                     onClick={() => handlePresetClick(preset.key)}
