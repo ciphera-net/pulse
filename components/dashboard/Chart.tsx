@@ -463,9 +463,12 @@ export default function Chart({
                       stroke={CHART_COLORS[metric]}
                       strokeWidth={2}
                       gradientToOpacity={0}
-                      // Rates and durations are null where unmeasured — a gap,
-                      // never a plotted zero (the uptime chart's contract).
-                      breakAtMissing={metric === 'bounce_rate' || metric === 'avg_duration'}
+                      // Rates and durations are null where unmeasured. They
+                      // PLOT at zero so the line never disappears (owner
+                      // decision 19-08-2026); the tooltip reads the null and
+                      // shows '—'. Uptime keeps its own gap contract — this
+                      // is the dashboard's rendering choice only.
+                      missingAsZero={metric === 'bounce_rate' || metric === 'avg_duration'}
                     />
                     <VisxXAxis
                       numTicks={Math.min(activeChartData.length, 10)}
