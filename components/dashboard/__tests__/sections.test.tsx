@@ -1,7 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import { vi } from 'vitest'
 import SectionHeader from '@/components/dashboard/SectionHeader'
 import ContentSignals from '@/components/dashboard/ContentSignals'
+// ContentSignals fetches the scroll tab's page capture; pin it to "absent"
+// here so these tests exercise the rails rendering deterministically.
+vi.mock('@/lib/swr/dashboard', () => ({
+  usePagePreview: () => ({ data: null }),
+}))
+
 
 describe('SectionHeader', () => {
   it('renders the title with its provenance note', () => {
