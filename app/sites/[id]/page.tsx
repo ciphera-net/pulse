@@ -35,7 +35,6 @@ import {
   useDashboard,
   useRealtime,
   useStats,
-  useDailyStats,
   useCampaigns,
   useEngagementPercentiles,
 } from '@/lib/swr/dashboard'
@@ -167,7 +166,9 @@ export default function SiteDashboardPage() {
   // unfiltered previous one — every KPI delta was garbage under any active
   // filter, measured as a true +13% rendered −46% red (F4).
   const { data: prevStats } = useStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '', filtersParam || undefined)
-  const { data: prevDailyStats } = useDailyStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '', interval, filtersParam || undefined)
+  // NOTE: the page-level campaigns fetch is NOT a duplicate of the Campaigns
+  // card's own — it feeds the ExportModal's campaigns sheet. (The audit's
+  // "duplicate fetch" was prevDailyStats, deleted with the old sparklines.)
   const { data: campaigns } = useCampaigns(siteId, resolvedDateRange?.start ?? '', resolvedDateRange?.end ?? '', 100, apiPeriod)
   // Engagement percentiles ride SWR like everything else (F17): a failed fetch
   // is an ERROR the deck can state, not a null that reads as "collecting data".
