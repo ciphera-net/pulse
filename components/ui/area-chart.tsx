@@ -1214,43 +1214,6 @@ export function resolvePlottedY(
   return missingAsZero ? (scale(0) ?? 0) : 0;
 }
 
-// Sparse-data marks. With breakAtMissing, a segment of ONE measured bucket
-// draws literally nothing (zero-width area, zero-length line) and a
-// two-bucket segment draws only a ghost slab of the faint fill — the
-// "invisible chart" a low-traffic hour view produced. A measurement that
-// rendered nothing is a silent failure, so segments too short to read as a
-// line (1–2 points) get a dot per point instead. Pure so the segmenting is
-// unit-testable with stub scales.
-export function computeSparseMarks(
-  data: Record<string, unknown>[],
-  dataKey: string,
-  toX: (d: Record<string, unknown>) => number,
-  toY: (v: number) => number
-): { x: number; y: number }[] {
-  const marks: { x: number; y: number }[] = [];
-  let run: Record<string, unknown>[] = [];
-  const flush = () => {
-    if (run.length > 0 && run.length <= 2) {
-      for (const d of run) {
-        const v = d[dataKey];
-        if (typeof v === "number") {
-          marks.push({ x: toX(d), y: toY(v) });
-        }
-      }
-    }
-    run = [];
-  };
-  for (const d of data) {
-    if (typeof d[dataKey] === "number") {
-      run.push(d);
-    } else {
-      flush();
-    }
-  }
-  flush();
-  return marks;
-}
-
 // Thin a nice tick array to fit a row budget WITHOUT breaking the steps:
 // only strides that divide the interval count evenly are allowed, else fall
 // back to the endpoints. Uneven gridline spacing reads as a rendering bug.
@@ -1736,10 +1699,6 @@ export function Area({
 
   const resolvedStroke = stroke || fill;
 
-  const sparseMarks = useMemo(
-    () => (breakAtMissing ? computeSparseMarks(data, dataKey, (d) => xScale(xAccessor(d)) ?? 0, (v) => yScale(v) ?? 0) : []),
-    [breakAtMissing, data, dataKey, xScale, yScale, xAccessor]
-  );
 
   useEffect(() => {
     if (pathRef.current && animate) {
@@ -1982,20 +1941,6 @@ export function Area({
             </motion.g>
           )}
 
-          {sparseMarks.map((m, i) => (
-            <circle
-              key={`sparse-${i}`}
-              cx={m.x}
-              cy={m.y}
-              r={strokeWidth + 1.5}
-              fill={resolvedStroke}
-              // Inert: the tooltip/selection layer owns the pointer (events
-              // bubble to the interaction <g> anyway; this keeps hit-testing
-              // and cursors exactly as they were).
-              pointerEvents="none"
-              data-sparse-mark=""
-            />
-          ))}
         </motion.g>
       </g>
 
