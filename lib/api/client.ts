@@ -322,10 +322,13 @@ async function apiRequest<T>(
         pendingRequests.delete(requestKey)
         return data
       })
-      .catch((error) => {
-        // * Remove from pending on error too
+      .catch(() => {
+        // * Remove from pending on error too. Cleanup ONLY — callers hold
+        // * requestPromise, not this bookkeeping chain, so re-throwing here
+        // * minted a second, unawaited rejection that surfaced as a global
+        // * "Uncaught (in promise)" the first time a routine GET 404'd
+        // * (the page-preview absence path).
         pendingRequests.delete(requestKey)
-        throw error
       })
   }
 
