@@ -69,3 +69,50 @@ describe('ScrollDepthBars', () => {
     expect(d.total_sessions).toBeGreaterThanOrEqual(d.scroll_25)
   })
 })
+
+describe('ScrollDepthBars layered mode (D6h2)', () => {
+  const preview = {
+    screenshot: 'data:image/webp;base64,FULL',
+    width: 1350, height: 6638, strategy: 'desktop', checked_at: '2026-08-19T00:00:00Z',
+  }
+
+  it('renders four sheets of the capture, each shifted one quarter deeper', () => {
+    const { container } = render(<ScrollDepthBars scrollDepth={dist()} preview={preview} />)
+    const imgs = Array.from(container.querySelectorAll('img'))
+    expect(imgs).toHaveLength(4)
+    const shifts = imgs.map(img => (img as HTMLElement).style.transform)
+    expect(shifts).toEqual([
+      'translateY(-0%)', 'translateY(-25%)', 'translateY(-50%)', 'translateY(-75%)',
+    ])
+    // The rails grammar must NOT render alongside the sheets.
+    expect(screen.queryByText('Reached 25%')).not.toBeInTheDocument()
+  })
+
+  it('keeps the numbers in the chrome: computed shares above, depth captions below', () => {
+    render(<ScrollDepthBars scrollDepth={dist()} preview={preview} />)
+    for (const share of ['81%', '47%', '23%', '9%']) {
+      expect(screen.getByText(share)).toBeInTheDocument()
+    }
+    for (const cap of ['to 25%', 'to 50%', 'to 75%', 'to the end']) {
+      expect(screen.getByText(cap)).toBeInTheDocument()
+    }
+  })
+
+  it('derives each sheet\'s dim from its share — attrition is drawn, not decorated', () => {
+    const { container } = render(<ScrollDepthBars scrollDepth={dist()} preview={preview} />)
+    const dims = Array.from(container.querySelectorAll('[aria-hidden="true"]'))
+      .map(el => (el as HTMLElement).style.background)
+      .filter(bg => bg.includes('rgba(10, 10, 10'))
+    // shares .81/.47/.23/.09 → (1-share)*.85 clamped: .16/.45/.65/.77
+    expect(dims).toEqual([
+      'rgba(10, 10, 10, 0.16)', 'rgba(10, 10, 10, 0.45)',
+      'rgba(10, 10, 10, 0.65)', 'rgba(10, 10, 10, 0.77)',
+    ])
+  })
+
+  it('falls back to the rails without a capture — absence is a state', () => {
+    render(<ScrollDepthBars scrollDepth={dist()} preview={null} />)
+    expect(screen.getByText('Reached 25%')).toBeInTheDocument()
+    expect(document.querySelector('img')).toBeNull()
+  })
+})

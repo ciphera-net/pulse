@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { formatNumber } from '@/lib/utils/format'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
+import { usePagePreview } from '@/lib/swr/dashboard'
 import type { GoalCountStat, ScrollDepthDistribution } from '@/lib/api/stats'
 import ScrollDepthBars from './ScrollDepthBars'
 import GoalStats from './GoalStats'
@@ -26,6 +27,11 @@ type Tab = 'scroll' | 'events'
 export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRange }: ContentSignalsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('scroll')
   const handleTabKeyDown = useTabListKeyboard()
+
+  // The full-page capture behind the scroll tab's stacked sheets. null =
+  // no capture (a state — the tab renders its rails fallback), and a fetch
+  // error falls back the same way rather than blocking the numbers.
+  const { data: pagePreview } = usePagePreview(siteId)
 
   const scrollSessions = scrollDepth?.total_sessions ?? 0
 
@@ -63,7 +69,7 @@ export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRa
 
       <div className="flex flex-1 flex-col min-h-[270px]">
         {activeTab === 'scroll' ? (
-          <ScrollDepthBars scrollDepth={scrollDepth} bare />
+          <ScrollDepthBars scrollDepth={scrollDepth} preview={pagePreview} bare />
         ) : (
           <GoalStats goalCounts={goalCounts} siteId={siteId} dateRange={dateRange} bare />
         )}
