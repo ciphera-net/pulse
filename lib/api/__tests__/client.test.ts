@@ -58,3 +58,34 @@ describe('ApiError', () => {
     expect(fn).toThrow('fail')
   })
 })
+
+describe('GET dedupe bookkeeping on request failure', () => {
+  it('rejects the caller exactly once — no stray unhandled rejection', async () => {
+    const apiRequest = (await import('../client')).default
+    const unhandled: unknown[] = []
+    const onUnhandled = (reason: unknown) => { unhandled.push(reason) }
+    process.on('unhandledRejection', onUnhandled)
+    const realFetch = global.fetch
+    try {
+      global.fetch = vi.fn().mockResolvedValue(
+        new Response('{}', { status: 404 })
+      ) as unknown as typeof fetch
+
+      // The caller's promise must reject with the typed 404 (the absence
+      // contract getPagePreview maps to null)…
+      await expect(
+        apiRequest('/sites/00000000-0000-4000-8000-000000000000/performance/page-preview')
+      ).rejects.toMatchObject({ status: 404 })
+
+      // …and the dedupe bookkeeping chain must NOT mint a second, unawaited
+      // rejection (it did — cleanup re-threw into a promise nobody held,
+      // surfacing "Uncaught (in promise)" on every routine 404).
+      await new Promise((r) => setTimeout(r, 0))
+      await new Promise((r) => setTimeout(r, 0))
+      expect(unhandled).toHaveLength(0)
+    } finally {
+      global.fetch = realFetch
+      process.off('unhandledRejection', onUnhandled)
+    }
+  })
+})
