@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils'
 import { formatDateShortUTC, formatTimeUTC, formatDateFullUTC, parseSiteWallClock } from '@/lib/utils/formatDate'
 import { guardedPctChange, guardedPointChange, type PctChangeResult } from '@/lib/utils/pctChange'
 import { RailDelta } from '@/components/funnels/FunnelRail'
+import RailSparkline from '@/components/dashboard/RailSparkline'
 import { EmptyState } from '@/components/ui/EmptyState'
 import type { DailyStat, Stats } from '@/lib/api/stats'
 
@@ -191,35 +192,46 @@ export default function CommandDeck({
               onClick={() => setMetric(m.key)}
               title={m.title}
               className={cn(
-                'group relative flex-1 cursor-pointer px-4 py-3 text-start transition-colors ease-apple',
+                'group relative flex-1 cursor-pointer overflow-hidden px-4 py-3 text-start transition-colors ease-apple',
                 'border-neutral-800 max-md:odd:border-r max-md:[&:nth-child(-n+4)]:border-b',
                 i > 0 && 'md:border-t',
                 metric === m.key && 'bg-neutral-800/40',
               )}
             >
+              {/* The ghost trace: grey at rest, orange on hover, orange while
+                  active — the pre-deck tile sparkline, restored (owner pick
+                  S4, 19-08-2026). Sits at z-0 under the z-10 content. */}
+              <RailSparkline
+                data={data}
+                dataKey={m.key}
+                active={metric === m.key}
+                engagementDaily={m.key === 'engagement' ? engagementData?.daily : undefined}
+              />
               {metric === m.key && (
                 <motion.span
                   layoutId="deckActiveMetric"
-                  className="absolute bottom-0 left-0 top-0 w-[2px] bg-brand-orange"
+                  className="absolute bottom-0 left-0 top-0 z-10 w-[2px] bg-brand-orange"
                   transition={SPRING}
                 />
               )}
-              <div className="flex items-baseline justify-between gap-2">
-                <span className={cn('truncate text-[13px]', metric === m.key ? 'text-brand-orange' : 'text-neutral-400')}>
-                  {m.label}
+              <div className="relative z-10">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className={cn('truncate text-[13px]', metric === m.key ? 'text-brand-orange' : 'text-neutral-400')}>
+                    {m.label}
+                  </span>
+                  <RailDelta change={m.change} invert={m.isNegative} />
+                </div>
+                {m.value == null
+                  ? <span className="mt-0.5 block text-xl font-semibold text-neutral-600">—</span>
+                  : <AnimatedNumber value={m.value} format={m.format as (v: number) => string} className="mt-0.5 block text-xl font-semibold tabular-nums text-white" />}
+                <span className="mt-0.5 block truncate text-[11px] text-neutral-500">
+                  {m.key === 'engagement'
+                    ? m.value == null
+                      ? engagementError ? 'couldn’t load' : 'collecting · needs 7 days of history'
+                      : filtersActive ? `${m.context} · unfiltered` : m.context
+                    : m.context}
                 </span>
-                <RailDelta change={m.change} invert={m.isNegative} />
               </div>
-              {m.value == null
-                ? <span className="mt-0.5 block text-xl font-semibold text-neutral-600">—</span>
-                : <AnimatedNumber value={m.value} format={m.format as (v: number) => string} className="mt-0.5 block text-xl font-semibold tabular-nums text-white" />}
-              <span className="mt-0.5 block truncate text-[11px] text-neutral-500">
-                {m.key === 'engagement'
-                  ? m.value == null
-                    ? engagementError ? 'couldn’t load' : 'collecting · needs 7 days of history'
-                    : filtersActive ? `${m.context} · unfiltered` : m.context
-                  : m.context}
-              </span>
             </button>
           ))}
         </div>
