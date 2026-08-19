@@ -120,3 +120,22 @@ describe('CommandDeck delta colours', () => {
     expect(visitorsDelta?.className).toContain('text-green-400')
   })
 })
+
+describe('CommandDeck rail sparklines (S4 restore, 19-08-2026)', () => {
+  it('every measurable row carries the ghost trace; exactly the active one is lit', () => {
+    const { container } = render(<CommandDeck {...baseProps} />)
+    const lines = [...container.querySelectorAll('path[vector-effect="non-scaling-stroke"]')]
+    // engagement has no series in baseProps (no daily scores) → 5 of 6 rows.
+    expect(lines.length).toBe(5)
+    const lit = lines.filter(p => {
+      const c = p.getAttribute('class') ?? ''
+      return c.includes('stroke-brand-orange') && !c.includes('group-hover')
+    })
+    expect(lit.length).toBe(1)
+    const resting = lines.filter(p => (p.getAttribute('class') ?? '').includes('stroke-neutral-600'))
+    expect(resting.length).toBe(4)
+    for (const p of resting) {
+      expect(p.getAttribute('class')).toContain('group-hover:stroke-brand-orange')
+    }
+  })
+})
