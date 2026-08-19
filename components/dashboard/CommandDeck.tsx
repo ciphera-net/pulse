@@ -341,9 +341,12 @@ export default function CommandDeck({
                   stroke="var(--chart-1)"
                   strokeWidth={2}
                   gradientToOpacity={0}
-                  // Rates/durations/ratios are null where unmeasured — a gap,
-                  // never a plotted zero (F11).
-                  breakAtMissing={metric === 'bounce_rate' || metric === 'avg_duration' || metric === 'pages_per_visit' || metric === 'engagement'}
+                  // Rates/durations/ratios are null where unmeasured. They
+                  // PLOT at zero so the line never disappears (owner decision
+                  // 19-08-2026, superseding F11's gap rendering here); the
+                  // tooltip still reads the null and shows '—', so an empty
+                  // hour is never claimed as a measured zero.
+                  missingAsZero={metric === 'bounce_rate' || metric === 'avg_duration' || metric === 'pages_per_visit' || metric === 'engagement'}
                 />
                 <VisxXAxis
                   numTicks={Math.min(activeChartData.length, 10)}

@@ -1199,6 +1199,21 @@ export function niceYDomain(rawMax: number): { top: number; ticks: number[] } {
   };
 }
 
+// Where a value plots vertically. A number plots at its scaled position; a
+// missing value plots at the ZERO LINE when missingAsZero is set (owner
+// decision 19-08-2026: the line never disappears) — and only in the legacy
+// neither-flag case at pixel 0, the chart TOP, which is why the flags exist.
+// Pure so the top-vs-bottom distinction is unit-testable: the two failure
+// modes look identical in code review and completely different on screen.
+export function resolvePlottedY(
+  value: unknown,
+  scale: (n: number) => number | undefined,
+  missingAsZero: boolean
+): number {
+  if (typeof value === "number") return scale(value) ?? 0;
+  return missingAsZero ? (scale(0) ?? 0) : 0;
+}
+
 // Sparse-data marks. With breakAtMissing, a segment of ONE measured bucket
 // draws literally nothing (zero-width area, zero-length line) and a
 // two-bucket segment draws only a ghost slab of the faint fill — the
@@ -1663,6 +1678,12 @@ export interface AreaProps {
    * "no data", not "measured zero" — plotting it would fabricate the zero.
    */
   breakAtMissing?: boolean;
+  // Unmeasured buckets plot AT ZERO — the line always runs edge to edge
+  // (owner decision 19-08-2026: "no disappearing charts"). The tooltip still
+  // reads the ORIGINAL value, so an empty hour shows '—', never a fake "0s":
+  // continuity is a rendering choice, not a data claim. Mutually exclusive
+  // with breakAtMissing.
+  missingAsZero?: boolean;
 }
 
 export function Area({
@@ -1678,6 +1699,7 @@ export function Area({
   gradientToOpacity = 0,
   fadeEdges = false,
   breakAtMissing = false,
+  missingAsZero = false,
 }: AreaProps) {
   const {
     data,
@@ -1824,11 +1846,8 @@ export function Area({
   ]);
 
   const getY = useCallback(
-    (d: Record<string, unknown>) => {
-      const value = d[dataKey];
-      return typeof value === "number" ? (yScale(value) ?? 0) : 0;
-    },
-    [dataKey, yScale]
+    (d: Record<string, unknown>) => resolvePlottedY(d[dataKey], yScale, missingAsZero),
+    [dataKey, yScale, missingAsZero]
   );
 
   const isHovering = tooltipData !== null || selection?.active === true;

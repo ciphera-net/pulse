@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { niceYDomain, thinTicks, computeSparseMarks } from '@/components/ui/area-chart'
+import { niceYDomain, thinTicks, computeSparseMarks, resolvePlottedY } from '@/components/ui/area-chart'
 
 // The sparse-chart fix (owner report 19-08-2026): a low-traffic hourly view
 // rendered ghost slabs on an axis reading 0/24/48/72/96/120%. Two subjects:
@@ -113,5 +113,27 @@ describe('computeSparseMarks', () => {
   it('a fully-measured series gets no dots at all', () => {
     const data = [{ i: 0, v: 1 }, { i: 1, v: 2 }, { i: 2, v: 3 }]
     expect(computeSparseMarks(data, 'v', toX, toY)).toEqual([])
+  })
+})
+
+describe('resolvePlottedY', () => {
+  // innerHeight 200: value 0 → pixel 200 (bottom), value 100 → pixel 0 (top).
+  const scale = (n: number) => 200 - n * 2
+
+  it('numbers plot at their scaled position', () => {
+    expect(resolvePlottedY(50, scale, true)).toBe(100)
+    expect(resolvePlottedY(50, scale, false)).toBe(100)
+  })
+
+  it('missing values pin to the ZERO LINE with missingAsZero — never the chart top', () => {
+    // Owner decision 19-08-2026: unmeasured hours plot at zero so the line
+    // never disappears. scale(0) is the BOTTOM; a bare 0 would be the TOP —
+    // the same code shape, the opposite screen.
+    expect(resolvePlottedY(null, scale, true)).toBe(200)
+    expect(resolvePlottedY(undefined, scale, true)).toBe(200)
+  })
+
+  it('legacy neither-flag behaviour is unchanged (pixel 0)', () => {
+    expect(resolvePlottedY(null, scale, false)).toBe(0)
   })
 })
