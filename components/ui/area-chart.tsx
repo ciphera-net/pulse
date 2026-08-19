@@ -132,6 +132,9 @@ export interface ChartContextValue {
   orientation?: "vertical" | "horizontal";
   stacked?: boolean;
   stackOffsets?: Map<number, Map<string, number>>;
+  // Nice y-axis tick values, computed ONCE with the domain (niceYDomain) so
+  // Grid and YAxis always draw the same human-step lines.
+  yTickValues?: number[];
 }
 
 const ChartContext = createContext<ChartContextValue | null>(null);
@@ -1168,6 +1171,100 @@ ChartTooltip.displayName = "ChartTooltip";
  * Desktop is unaffected: a 3.5/1 chart in a ~900px column has ~257px of inner
  * height, a budget of 9, so `min(5, 9)` is still 5.
  */
+// Y domain top + tick values, computed TOGETHER so the axis always lands on
+// human steps ({1, 2, 2.5, 5} × 10^k — 2.5 only at integer magnitudes, so a
+// sub-integer axis never shows quarter steps a one-decimal formatter would
+// mangle). Replaces domain([0, max*1.1]).nice() + even division by tick
+// count, which produced 0.22-step ticks on sparse ratio charts and, via
+// float drift (100 * 1.1 = 110.00000000000001 → .nice() → 120), a 120%
+// bounce-rate axis. Step ≥ padded/5 guarantees at most 5 intervals, so the
+// standard numTicks={6} callers never need thinning.
+export function niceYDomain(rawMax: number): { top: number; ticks: number[] } {
+  const max = rawMax > 0 ? rawMax : 100;
+  const padded = max * 1.05; // headroom so the stroke never clips the frame
+  const rawStep = padded / 5;
+  const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const norm = rawStep / mag;
+  const mult = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 && mag >= 1 ? 2.5 : norm <= 5 ? 5 : 10;
+  const step = mult * mag;
+  const intervals = Math.max(1, Math.ceil(padded / step - 1e-9));
+  // Significant digits, not fixed decimals: toFixed(6) collapsed every tick
+  // to 0 for maxima below ~5e-7 (adversarial review, 19-08-2026), handing
+  // d3 a degenerate [0, 0] domain. toPrecision keeps tiny magnitudes exact
+  // while still absorbing float artifacts like 3 * 0.2 = 0.6000000000000001.
+  const round = (v: number) => Number(v.toPrecision(12));
+  return {
+    top: round(intervals * step),
+    ticks: Array.from({ length: intervals + 1 }, (_, i) => round(i * step)),
+  };
+}
+
+// Where a value plots vertically. A number plots at its scaled position; a
+// missing value plots at the ZERO LINE when missingAsZero is set (owner
+// decision 19-08-2026: the line never disappears) — and only in the legacy
+// neither-flag case at pixel 0, the chart TOP, which is why the flags exist.
+// Pure so the top-vs-bottom distinction is unit-testable: the two failure
+// modes look identical in code review and completely different on screen.
+export function resolvePlottedY(
+  value: unknown,
+  scale: (n: number) => number | undefined,
+  missingAsZero: boolean
+): number {
+  if (typeof value === "number") return scale(value) ?? 0;
+  return missingAsZero ? (scale(0) ?? 0) : 0;
+}
+
+// Sparse-data marks. With breakAtMissing, a segment of ONE measured bucket
+// draws literally nothing (zero-width area, zero-length line) and a
+// two-bucket segment draws only a ghost slab of the faint fill — the
+// "invisible chart" a low-traffic hour view produced. A measurement that
+// rendered nothing is a silent failure, so segments too short to read as a
+// line (1–2 points) get a dot per point instead. Pure so the segmenting is
+// unit-testable with stub scales.
+export function computeSparseMarks(
+  data: Record<string, unknown>[],
+  dataKey: string,
+  toX: (d: Record<string, unknown>) => number,
+  toY: (v: number) => number
+): { x: number; y: number }[] {
+  const marks: { x: number; y: number }[] = [];
+  let run: Record<string, unknown>[] = [];
+  const flush = () => {
+    if (run.length > 0 && run.length <= 2) {
+      for (const d of run) {
+        const v = d[dataKey];
+        if (typeof v === "number") {
+          marks.push({ x: toX(d), y: toY(v) });
+        }
+      }
+    }
+    run = [];
+  };
+  for (const d of data) {
+    if (typeof d[dataKey] === "number") {
+      run.push(d);
+    } else {
+      flush();
+    }
+  }
+  flush();
+  return marks;
+}
+
+// Thin a nice tick array to fit a row budget WITHOUT breaking the steps:
+// only strides that divide the interval count evenly are allowed, else fall
+// back to the endpoints. Uneven gridline spacing reads as a rendering bug.
+export function thinTicks(values: number[], target: number): number[] {
+  if (values.length <= target) return values;
+  const intervals = values.length - 1;
+  for (let stride = 2; stride <= intervals; stride++) {
+    if (intervals % stride === 0 && intervals / stride + 1 <= target) {
+      return values.filter((_, i) => i % stride === 0);
+    }
+  }
+  return [values[0], values[values.length - 1]];
+}
+
 export function fitRowTickCount(numTicks: number, innerHeight: number): number {
   if (!(innerHeight > 0)) return numTicks;
   return Math.max(2, Math.min(numTicks, Math.floor(innerHeight / 32) + 1));
@@ -1200,21 +1297,23 @@ export function Grid({
   fadeHorizontal = true,
   fadeVertical = false,
 }: GridProps) {
-  const { xScale, yScale, innerWidth, innerHeight, orientation, barScale } =
+  const { xScale, yScale, innerWidth, innerHeight, orientation, barScale, yTickValues } =
     useChart();
 
-  // Compute evenly-distributed row tick values so Grid aligns with YAxis
-  // (YAxis uses the same `min + step * i` logic by default).
+  // Grid rows come from the chart root's nice tick values (thinned with the
+  // same budget YAxis uses, so gridlines and labels can never disagree); the
+  // even-division fallback survives only for charts that pass an explicit
+  // yScale without nice ticks.
   const computedRowTicks = useMemo(() => {
     if (rowTickValues) return rowTickValues;
+    const count = fitRowTickCount(numTicksRows, innerHeight);
+    if (yTickValues && yTickValues.length >= 2) return thinTicks(yTickValues, count);
     const domain = yScale.domain() as [number, number];
     const min = domain[0];
     const max = domain[1];
-    // Same budget as YAxis, so gridlines and labels can never disagree.
-    const count = fitRowTickCount(numTicksRows, innerHeight);
     const step = (max - min) / (count - 1);
     return Array.from({ length: count }, (_, i) => min + step * i);
-  }, [yScale, numTicksRows, rowTickValues, innerHeight]);
+  }, [yScale, numTicksRows, rowTickValues, innerHeight, yTickValues]);
 
   const isHorizontalBarChart = orientation === "horizontal" && barScale;
   const columnScale = isHorizontalBarChart ? yScale : xScale;
@@ -1494,7 +1593,7 @@ export function YAxis({
   numTicks = 5,
   formatValue,
 }: YAxisProps) {
-  const { yScale, margin, containerRef, innerHeight } = useChart();
+  const { yScale, margin, containerRef, innerHeight, yTickValues } = useChart();
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -1502,26 +1601,31 @@ export function YAxis({
   }, [containerRef]);
 
   const ticks = useMemo(() => {
-    const domain = yScale.domain() as [number, number];
-    const min = domain[0];
-    const max = domain[1];
     // Thin to what the plot height can show without labels colliding.
     const count = fitRowTickCount(numTicks, innerHeight);
-    const step = (max - min) / (count - 1);
+    // Nice tick values from the chart root when present (the same array Grid
+    // thins, so lines and labels agree); even division only as the fallback.
+    let values: number[];
+    if (yTickValues && yTickValues.length >= 2) {
+      values = thinTicks(yTickValues, count);
+    } else {
+      const domain = yScale.domain() as [number, number];
+      const min = domain[0];
+      const max = domain[1];
+      const step = (max - min) / (count - 1);
+      values = Array.from({ length: count }, (_, i) => min + step * i);
+    }
 
-    return Array.from({ length: count }, (_, i) => {
-      const value = min + step * i;
-      return {
-        value,
-        y: (yScale(value) ?? 0) + margin.top,
-        label: formatValue
-          ? formatValue(value)
-          : value >= 1000
-            ? `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k`
-            : value.toLocaleString(),
-      };
-    });
-  }, [yScale, margin.top, numTicks, formatValue, innerHeight]);
+    return values.map((value) => ({
+      value,
+      y: (yScale(value) ?? 0) + margin.top,
+      label: formatValue
+        ? formatValue(value)
+        : value >= 1000
+          ? `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k`
+          : value.toLocaleString(),
+    }));
+  }, [yScale, margin.top, numTicks, formatValue, innerHeight, yTickValues]);
 
   if (!container) {
     return null;
@@ -1574,6 +1678,12 @@ export interface AreaProps {
    * "no data", not "measured zero" — plotting it would fabricate the zero.
    */
   breakAtMissing?: boolean;
+  // Unmeasured buckets plot AT ZERO — the line always runs edge to edge
+  // (owner decision 19-08-2026: "no disappearing charts"). The tooltip still
+  // reads the ORIGINAL value, so an empty hour shows '—', never a fake "0s":
+  // continuity is a rendering choice, not a data claim. Mutually exclusive
+  // with breakAtMissing.
+  missingAsZero?: boolean;
 }
 
 export function Area({
@@ -1589,6 +1699,7 @@ export function Area({
   gradientToOpacity = 0,
   fadeEdges = false,
   breakAtMissing = false,
+  missingAsZero = false,
 }: AreaProps) {
   const {
     data,
@@ -1624,6 +1735,11 @@ export function Area({
   const edgeGradientId = `${edgeMaskId}-gradient`;
 
   const resolvedStroke = stroke || fill;
+
+  const sparseMarks = useMemo(
+    () => (breakAtMissing ? computeSparseMarks(data, dataKey, (d) => xScale(xAccessor(d)) ?? 0, (v) => yScale(v) ?? 0) : []),
+    [breakAtMissing, data, dataKey, xScale, yScale, xAccessor]
+  );
 
   useEffect(() => {
     if (pathRef.current && animate) {
@@ -1730,11 +1846,8 @@ export function Area({
   ]);
 
   const getY = useCallback(
-    (d: Record<string, unknown>) => {
-      const value = d[dataKey];
-      return typeof value === "number" ? (yScale(value) ?? 0) : 0;
-    },
-    [dataKey, yScale]
+    (d: Record<string, unknown>) => resolvePlottedY(d[dataKey], yScale, missingAsZero),
+    [dataKey, yScale, missingAsZero]
   );
 
   const isHovering = tooltipData !== null || selection?.active === true;
@@ -1868,6 +1981,21 @@ export function Area({
               />
             </motion.g>
           )}
+
+          {sparseMarks.map((m, i) => (
+            <circle
+              key={`sparse-${i}`}
+              cx={m.x}
+              cy={m.y}
+              r={strokeWidth + 1.5}
+              fill={resolvedStroke}
+              // Inert: the tooltip/selection layer owns the pointer (events
+              // bubble to the interaction <g> anyway; this keeps hit-testing
+              // and cursors exactly as they were).
+              pointerEvents="none"
+              data-sparse-mark=""
+            />
+          ))}
         </motion.g>
       </g>
 
@@ -2201,7 +2329,7 @@ function ChartInner({
     return innerWidth / (data.length - 1);
   }, [innerWidth, data.length]);
 
-  const yScale = useMemo(() => {
+  const { yScale, yTickValues } = useMemo(() => {
     let maxValue = 0;
     for (const line of lines) {
       for (const d of data) {
@@ -2212,14 +2340,13 @@ function ChartInner({
       }
     }
 
-    if (maxValue === 0) {
-      maxValue = 100;
-    }
-
-    return scaleLinear()
-      .range([innerHeight, 0])
-      .domain([0, maxValue * 1.1])
-      .nice();
+    // Domain and ticks come from ONE computation (see niceYDomain) so the
+    // axis lands on human steps and Grid/YAxis can never disagree.
+    const { top, ticks } = niceYDomain(maxValue);
+    return {
+      yScale: scaleLinear().range([innerHeight, 0]).domain([0, top]),
+      yTickValues: ticks,
+    };
   }, [innerHeight, data, lines]);
 
   const dateLabels = useMemo(() => {
@@ -2303,6 +2430,7 @@ function ChartInner({
     dateLabels,
     selection,
     clearSelection,
+    yTickValues,
   };
 
   return (
