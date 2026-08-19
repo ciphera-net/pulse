@@ -149,3 +149,24 @@ export async function getPerformanceCheck(siteId: string, checkId: string): Prom
 export async function triggerPerformanceCheck(siteId: string): Promise<void> {
   await apiRequest(`/sites/${siteId}/performance/check`, { method: 'POST' })
 }
+
+// * The newest full-page capture for a site (the scroll-depth card's
+// * backdrop). 404 = no capture yet (Performance disabled, or no check since
+// * the backend started keeping them) — the card falls back; callers map it
+// * to null rather than treating it as a failure.
+export interface PagePreview {
+  screenshot: string // webp data URI
+  width: number
+  height: number
+  strategy: string
+  checked_at: string
+}
+
+export async function getPagePreview(siteId: string): Promise<PagePreview | null> {
+  try {
+    return await apiRequest<PagePreview>(`/sites/${siteId}/performance/page-preview`)
+  } catch (e) {
+    if ((e as { status?: number })?.status === 404) return null
+    throw e
+  }
+}

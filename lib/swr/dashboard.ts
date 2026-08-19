@@ -56,7 +56,7 @@ import {
   type UptimeResponseTimesResponse,
   type UptimeCheck,
 } from '@/lib/api/uptime'
-import { getPerformanceConfig, getPerformanceLatest, getPerformanceHistory, type PerformanceConfig, type PerformanceCheck, type PerformanceLatest } from '@/lib/api/performance'
+import { getPerformanceConfig, getPerformanceLatest, getPerformanceHistory, getPagePreview, type PerformanceConfig, type PerformanceCheck, type PerformanceLatest, type PagePreview as PagePreviewData } from '@/lib/api/performance'
 import { listGoals, type Goal } from '@/lib/api/goals'
 import { listReportSchedules, listAlertSchedules, type ReportSchedule } from '@/lib/api/report-schedules'
 import {
@@ -978,5 +978,17 @@ export function useFullDimensionList<T>(
     kind && siteId && start && end ? ['fullList', kind, siteId, start, end, limit, filters] : null,
     () => fullListFetchers[kind as FullListKind](siteId, start, end, limit, filters) as Promise<T[]>,
     { ...dashboardSWRConfig, keepPreviousData: true }
+  )
+}
+
+// * The scroll-depth card's full-page backdrop. null data = no capture exists
+// * (a state the card renders via its rails fallback); errors are real
+// * failures and also fall back. The image changes at most once per
+// * performance check, so no polling and a long dedupe.
+export function usePagePreview(siteId: string) {
+  return useSWR<PagePreviewData | null>(
+    siteId ? ['pagePreview', siteId] : null,
+    () => getPagePreview(siteId),
+    { ...dashboardSWRConfig, refreshInterval: 0, dedupingInterval: 5 * 60 * 1000, keepPreviousData: true }
   )
 }
