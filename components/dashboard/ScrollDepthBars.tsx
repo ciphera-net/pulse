@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { ArrowLineDown } from '@phosphor-icons/react'
 import { formatNumber } from '@/lib/utils/format'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -47,6 +48,10 @@ export default function ScrollDepthBars({ scrollDepth, preview, bare = false }: 
   const hasData = total > 0
   const maxCount = scrollDepth?.scroll_25 ?? 0
 
+  // Which sheet the pointer is over (layered render only). Hover is an
+  // enhancement — every number is always visible without it.
+  const [hovered, setHovered] = useState<number | null>(null)
+
   const counts = THRESHOLDS.map(t =>
     (scrollDepth?.[`scroll_${t}` as keyof ScrollDepthDistribution] as number) ?? 0)
   const shares = counts.map(n => (total > 0 ? n / total : 0))
@@ -68,7 +73,9 @@ export default function ScrollDepthBars({ scrollDepth, preview, bare = false }: 
         {shares.map((share, i) => (
           <span key={THRESHOLDS[i]} className="flex items-baseline justify-center gap-1.5">
             <span className="text-[13.5px] font-semibold tabular-nums text-white">{Math.round(share * 100)}%</span>
-            <span className="text-[11px] tabular-nums text-neutral-500">{formatNumber(counts[i])}</span>
+            <span className={`text-[11px] tabular-nums transition-colors duration-base ease-apple ${hovered === i ? 'text-white' : 'text-neutral-500'}`}>
+              {formatNumber(counts[i])}
+            </span>
           </span>
         ))}
       </div>
@@ -77,12 +84,23 @@ export default function ScrollDepthBars({ scrollDepth, preview, bare = false }: 
           <div
             key={t}
             className="absolute top-0 overflow-hidden border border-neutral-800"
+            onMouseEnter={() => setHovered(i)}
+            onMouseLeave={() => setHovered(null)}
             style={{
               width: SHEET_W,
               height: SHEET_H,
               left: `calc(${i} * (100% - ${SHEET_W}) / 3)`,
-              zIndex: 4 - i,
-              boxShadow: i > 0 ? '-14px 0 22px rgba(0,0,0,.55)' : undefined,
+              // The hovered sheet rises above all four; at rest, shallower
+              // sheets stack over deeper ones.
+              zIndex: hovered === i ? 10 : 4 - i,
+              transform: hovered === i ? 'scale(1.06)' : 'scale(1)',
+              // Grow away from the container edge so the end sheets never
+              // clip against the card.
+              transformOrigin: i === 0 ? 'left center' : i === 3 ? 'right center' : 'center',
+              transition: 'transform 220ms cubic-bezier(0.32, 0.72, 0, 1), box-shadow 220ms cubic-bezier(0.32, 0.72, 0, 1)',
+              boxShadow: hovered === i
+                ? '0 6px 28px rgba(0,0,0,.65)'
+                : i > 0 ? '-14px 0 22px rgba(0,0,0,.55)' : undefined,
             }}
           >
             {/* The top of quarter i: the capture scaled to sheet width and
@@ -98,7 +116,12 @@ export default function ScrollDepthBars({ scrollDepth, preview, bare = false }: 
             />
             <div
               className="pointer-events-none absolute inset-0"
-              style={{ background: `rgba(10,10,10,${dimFor(shares[i]).toFixed(2)})` }}
+              style={{
+                // On hover the dim falls to its floor so the reader can see
+                // that band of their page; at rest it encodes attrition.
+                background: `rgba(10,10,10,${(hovered === i ? 0.04 : dimFor(shares[i])).toFixed(2)})`,
+                transition: 'background 220ms cubic-bezier(0.32, 0.72, 0, 1)',
+              }}
               aria-hidden="true"
             />
           </div>

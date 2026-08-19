@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import ScrollDepthBars from '@/components/dashboard/ScrollDepthBars'
 import type { ScrollDepthDistribution } from '@/lib/api/stats'
 
@@ -114,5 +114,31 @@ describe('ScrollDepthBars layered mode (D6h2)', () => {
     render(<ScrollDepthBars scrollDepth={dist()} preview={null} />)
     expect(screen.getByText('Reached 25%')).toBeInTheDocument()
     expect(document.querySelector('img')).toBeNull()
+  })
+
+  it('grows the hovered sheet above the stack and lifts its dim to the floor', () => {
+    const { container } = render(<ScrollDepthBars scrollDepth={dist()} preview={preview} />)
+    const sheets = Array.from(container.querySelectorAll('img'))
+      .map(img => img.parentElement as HTMLElement)
+
+    // Rest state: no scale-up, shallow-over-deep stacking.
+    expect(sheets[2].style.transform).toBe('scale(1)')
+    expect(sheets[2].style.zIndex).toBe('2')
+
+    fireEvent.mouseEnter(sheets[2])
+    expect(sheets[2].style.transform).toBe('scale(1.06)')
+    expect(sheets[2].style.zIndex).toBe('10')
+    // Its dim falls to the floor so that band of the page is readable…
+    const dimOf = (sheet: HTMLElement) =>
+      (sheet.querySelector('[aria-hidden="true"]') as HTMLElement).style.background
+    expect(dimOf(sheets[2])).toBe('rgba(10, 10, 10, 0.04)')
+    // …while the neighbours keep their attrition dims and rest geometry.
+    expect(dimOf(sheets[1])).toBe('rgba(10, 10, 10, 0.45)')
+    expect(sheets[1].style.transform).toBe('scale(1)')
+
+    fireEvent.mouseLeave(sheets[2])
+    expect(sheets[2].style.transform).toBe('scale(1)')
+    expect(sheets[2].style.zIndex).toBe('2')
+    expect(dimOf(sheets[2])).toBe('rgba(10, 10, 10, 0.65)')
   })
 })
