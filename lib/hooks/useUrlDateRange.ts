@@ -48,6 +48,30 @@ function readLastPeriod(): Period | null {
 export interface UrlDateRange {
   period: Period
   dateRange: { start: string; end: string }
+  /**
+   * False for the one render between mount and the range-memory read, when the
+   * URL carries no ?period=. During that render `period` is DEFAULT_PERIOD — a
+   * PLACEHOLDER, not the user's choice — and callers must not fetch with it.
+   *
+   * 🔴 THIS FLAG EXISTS BECAUSE A CUSTOMER WAS SHOWN 30 DAYS OF DATA UNDER A
+   * "Today" LABEL. 20-08-2026, themodestyhouse.com. The remembered preset is
+   * read in an effect (deliberately — a mount-time router.replace is dropped
+   * during hydration), so the first render reports DEFAULT_PERIOD='30' →
+   * period=30d. That render is not harmless: it is a real SWR key, and on a
+   * return navigation that key is already WARM, so the dashboard resolves
+   * instantly to a 30-day range and every card downstream renders 30 days of
+   * data one render before the period corrects to the remembered "today".
+   *
+   * The customer reported it as "Campaigns is empty, then shows data after I
+   * navigate away and back". The empty state was the CORRECT one — that site
+   * has no campaign traffic today. What was wrong was the data: `reddit`
+   * (last seen 9 days earlier) and `copilot.com` (6 days earlier) can only
+   * appear in a 30-day window, which is how the window was identified.
+   *
+   * Gating on this rather than reading storage synchronously in useState keeps
+   * server and first client render in agreement, so hydration is unaffected.
+   */
+  periodReady: boolean
   setPeriod: (p: Period, customRange?: { start: string; end: string }) => void
   shiftPeriod: (direction: -1 | 1) => void
 }
@@ -65,9 +89,20 @@ export function useUrlDateRange(): UrlDateRange {
   // period whenever the URL carries none.
   const urlHasPeriod = searchParams.get('period') !== null
   const [remembered, setRemembered] = useState<Period | null>(null)
+  // Separate from `remembered` on purpose: "no preset stored" and "storage not
+  // read yet" both read as null, and only the second one must suppress
+  // fetching. Collapsing them would leave a user who has never picked a preset
+  // permanently un-ready.
+  const [memoryRead, setMemoryRead] = useState(false)
   useEffect(() => {
     setRemembered(readLastPeriod())
+    setMemoryRead(true)
   }, [])
+
+  // An explicit ?period= is authoritative immediately — there is nothing to
+  // wait for, so shared links and in-app navigations that carry the param
+  // never pay for this gate.
+  const periodReady = urlHasPeriod || memoryRead
 
   // * period=custom without a valid start/end pair normalizes to the default
   const urlPeriod: Period =
@@ -124,5 +159,5 @@ export function useUrlDateRange(): UrlDateRange {
     [dateRange, setPeriod],
   )
 
-  return { period, dateRange, setPeriod, shiftPeriod }
+  return { period, dateRange, periodReady, setPeriod, shiftPeriod }
 }
