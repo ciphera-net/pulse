@@ -1,15 +1,16 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { logger } from '@/lib/utils/logger'
 import Link from 'next/link'
 import Image from 'next/image'
 import { formatNumber } from '@/lib/utils/format'
 import { Modal } from '@ciphera-net/facet'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { ErrorCard } from '@/components/ui/ErrorCard'
 import { ListSkeleton } from '@/components/skeletons'
 import VirtualList from './VirtualList'
-import { getCampaigns, CampaignStat } from '@/lib/api/stats'
+import { type CampaignStat } from '@/lib/api/stats'
+import { useCampaignsList } from '@/lib/swr/dashboard'
 import { getReferrerFavicon, getReferrerIcon, getReferrerDisplayName } from '@/lib/utils/icons'
 import { Megaphone, FrameCornersIcon } from '@phosphor-icons/react'
 import UtmBuilder from '@/components/tools/UtmBuilder'
@@ -30,49 +31,34 @@ type UtmTab = 'source' | 'medium' | 'campaign' | 'term' | 'content'
 const LIMIT = 7
 
 export default function Campaigns({ siteId, dateRange, filters, totals, onFilter }: CampaignsProps) {
-  const [data, setData] = useState<CampaignStat[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalSearch, setModalSearch] = useState('')
   const [isBuilderOpen, setIsBuilderOpen] = useState(false)
-  const [fullData, setFullData] = useState<CampaignStat[]>([])
-  const [isLoadingFull, setIsLoadingFull] = useState(false)
   const [faviconFailed, setFaviconFailed] = useState<Set<string>>(new Set())
   const [activeTab, setActiveTab] = useState<UtmTab>('source')
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true)
-      try {
-        const result = await getCampaigns(siteId, dateRange.start, dateRange.end, 10, filters)
-        setData(result)
-      } catch (e) {
-        logger.error(e)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    fetchData()
-  }, [siteId, dateRange, filters])
+  // 🔴 WAS a bare useEffect + useState fetch — the last card in the Acquisition
+  // row still on the pre-Phase-3 pattern, missed by the migration that gave
+  // every sibling "three honest states". It had no error state, no abort or
+  // ordering guard, and its only failure handling was `logger.error`, which is
+  // a NO-OP in a production browser build. So a failed request, or a stale
+  // response landing after a fresh one, set `data` to [] and rendered the exact
+  // same "No UTM data yet" empty state as a genuinely empty range — nothing in
+  // the DOM or in state could tell the two apart.
+  //
+  // SWR keyed on (siteId, dates, limit, filters) fixes both halves: the newest
+  // key's data wins, so a superseded in-flight response can no longer overwrite
+  // a fresh one, and `error` is a real state the card can state out loud.
+  const { data: cardData, error: cardError, isLoading, mutate: refetchCard } =
+    useCampaignsList(siteId, dateRange.start, dateRange.end, 10, filters)
+  const data = cardData ?? []
 
-  useEffect(() => {
-    if (isModalOpen) {
-      const fetchFullData = async () => {
-        setIsLoadingFull(true)
-        try {
-          const result = await getCampaigns(siteId, dateRange.start, dateRange.end, 100, filters)
-          setFullData(result)
-        } catch (e) {
-          logger.error(e)
-        } finally {
-          setIsLoadingFull(false)
-        }
-      }
-      fetchFullData()
-    } else {
-      setFullData([])
-    }
-  }, [isModalOpen, siteId, dateRange, filters])
+  // The view-all sheet fetches only while open — `enabled` keeps the key null
+  // rather than firing and discarding, which is what the old `else setFullData([])`
+  // branch was compensating for.
+  const { data: fullDataRaw, error: fullError, isLoading: isLoadingFull } =
+    useCampaignsList(siteId, dateRange.start, dateRange.end, 100, filters, isModalOpen)
+  const fullData = fullDataRaw ?? []
 
   const sortedData = useMemo(
     () => [...data].sort((a, b) => b.visitors - a.visitors),
@@ -205,6 +191,17 @@ export default function Campaigns({ siteId, dateRange, filters, totals, onFilter
         <div className="space-y-2 flex-1 min-h-[270px]">
           {isLoading ? (
             <ListSkeleton rows={LIMIT} />
+          ) : cardError && !cardData ? (
+            // The anti-fake-empty. Before this branch existed a failed request
+            // rendered "No UTM data yet" — telling a customer they have no
+            // campaign traffic when in fact we simply could not find out.
+            // `!cardData` so a background revalidation failure keeps the last
+            // good rows on screen instead of blanking a working card.
+            <ErrorCard
+              title="Couldn’t load campaigns"
+              description="The rest of the dashboard is unaffected."
+              onRetry={() => refetchCard()}
+            />
           ) : hasData ? (
             <>
               {displayedData.map((item) => {
@@ -276,7 +273,12 @@ export default function Campaigns({ siteId, dateRange, filters, totals, onFilter
           )}
         </div>
         <div className="flex-1 overflow-y-auto min-h-0">
-          {isLoadingFull ? (
+          {fullError && !fullDataRaw ? (
+            <ErrorCard
+              title="Couldn’t load campaigns"
+              description="Close and reopen to try again."
+            />
+          ) : isLoadingFull ? (
             <div className="py-4">
               <ListSkeleton rows={10} />
             </div>

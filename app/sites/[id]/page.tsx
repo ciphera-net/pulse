@@ -12,6 +12,7 @@ import { toast } from '@ciphera-net/facet'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { PERIOD_TO_API } from '@/lib/constants/periods'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
+import { resolveDashboardRange } from '@/lib/dashboard/resolveRange'
 import dynamic from 'next/dynamic'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import FilterButton from '@/components/dashboard/FilterButton'
@@ -55,7 +56,7 @@ export default function SiteDashboardPage() {
   // range, back/forward works, and nothing is silently rewritten to a frozen
   // custom range on reload. The chart intervals are view state, not identity —
   // plain React state, no persistence.
-  const { period, dateRange, setPeriod, shiftPeriod } = useUrlDateRange()
+  const { period, dateRange, periodReady, setPeriod, shiftPeriod } = useUrlDateRange()
   const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>('hour')
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
@@ -68,8 +69,20 @@ export default function SiteDashboardPage() {
   })
   const filtersParam = useMemo(() => serializeFilters(filters), [filters])
 
-  // For relative periods send the period name; for custom ranges send dates
-  const apiPeriod = period !== 'custom' ? (PERIOD_TO_API[period] || undefined) : undefined
+  // For relative periods send the period name; for custom ranges send dates.
+  //
+  // 🔴 GATED ON periodReady. Until the range memory has been read, `period` is
+  // DEFAULT_PERIOD ('30') — a placeholder, not a choice — and firing on it is
+  // not free: it mints a real SWR cache entry for period=30d. On the NEXT
+  // navigation to this page that entry is warm, so `dashboard` resolves
+  // instantly to a 30-day range and every card below renders 30 days of data
+  // for one render, under whatever label the picker settles on. That is the
+  // themodestyhouse.com report of 20-08-2026: Campaigns showing `reddit`
+  // (9 days stale) and `copilot.com` (6 days stale) while the range said Today.
+  // Suppressing the request is what stops the poisoned cache entry existing.
+  const apiPeriod = !periodReady
+    ? undefined
+    : period !== 'custom' ? (PERIOD_TO_API[period] || undefined) : undefined
 
   // '1h' narrows to minutes; '24h' narrows to hours — the server resolves 24h as
   // a genuine rolling window (D3), and drawing it as two daily bars split the
@@ -79,13 +92,31 @@ export default function SiteDashboardPage() {
   // Single dashboard request replaces focused hooks (overview, pages, locations,
   // devices, referrers, goals). The backend runs all queries in parallel
   // and caches the result in Redis for efficient data loading.
-  const { data: dashboard, isLoading: dashboardLoading, error: dashboardError, mutate: refetchDashboard } = useDashboard(siteId, dateRange?.start || '', dateRange?.end || '', interval, filtersParam || undefined, apiPeriod)
+  // While the period is unresolved BOTH the dates and the period token are
+  // withheld, which makes useDashboard's SWR key null and issues no request at
+  // all. Withholding only the token would fall through to the client-computed
+  // dateRange for the placeholder period — the same 30-day window by another
+  // route.
+  const { data: dashboard, isLoading: dashboardLoading, error: dashboardError, mutate: refetchDashboard } = useDashboard(
+    siteId,
+    periodReady ? (dateRange?.start || '') : '',
+    periodReady ? (dateRange?.end || '') : '',
+    interval,
+    filtersParam || undefined,
+    apiPeriod,
+  )
 
   // Server-resolved date range is the single source of truth for period-based queries.
   // null while loading — all downstream consumers must gate on this being non-null.
   // Custom ranges use client-computed dateRange immediately (no server resolution needed).
-  const resolvedDateRange: { start: string; end: string } | null =
-    dashboard?.date_range ?? (apiPeriod ? null : dateRange)
+  //
+  // 🔴 `!periodReady` MUST short-circuit to null, and this line is where the
+  // first attempt at this fix leaked. Suppressing the REQUEST is not enough:
+  // with no apiPeriod the expression falls through to `dateRange`, which for
+  // the placeholder period is the client-computed THIRTY-DAY window — the very
+  // range being kept off the screen, arriving by the fallback instead of the
+  // cache. Gate the value, not just the fetch.
+  const resolvedDateRange = resolveDashboardRange(periodReady, dashboard?.date_range, apiPeriod, dateRange)
 
 
   const handleAddFilter = useCallback((filter: DimensionFilter) => {
@@ -209,7 +240,11 @@ export default function SiteDashboardPage() {
 
   // Skip the minimum-loading skeleton when SWR already has cached data
   // (prevents the 300ms flash when navigating back to the dashboard)
-  const showSkeleton = useMinimumLoading(dashboardLoading && !dashboard)
+  // `!periodReady` counts as loading. With the request suppressed SWR reports
+  // isLoading:false for a null key, so without this the page would drop
+  // straight past the skeleton into a body with no range — a blank dashboard
+  // instead of an honest loading state.
+  const showSkeleton = useMinimumLoading(!periodReady || (dashboardLoading && !dashboard))
   const fadeClass = useSkeletonFade(showSkeleton)
 
 
