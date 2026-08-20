@@ -366,6 +366,41 @@ export function useDashboardGoals(siteId: string, start: string, end: string, fi
 }
 
 // * Hook for campaigns data (used by export modal)
+/**
+ * Campaigns for a CARD — explicit dates, filter-aware, keyed on every argument
+ * that changes the answer.
+ *
+ * 🔴 SEPARATE FROM useCampaigns ON PURPOSE, and the difference is the bug this
+ * was written for. useCampaigns keys on `period || dates` because the SERVER
+ * resolves the period, so the dates are redundant there. A card is handed
+ * already-resolved dates and no period, so the DATES are its identity — keying
+ * on anything less lets one range's rows be served for another's.
+ *
+ * It replaces a bare useEffect + useState fetch that had no error state, no
+ * abort guard and a production no-op logger, so a failed or superseded request
+ * rendered the identical "No UTM data yet" empty state as a genuinely empty
+ * range. SWR gives three honest states and guarantees the newest key's data
+ * wins, which is what stops a stale in-flight response overwriting a fresh one.
+ */
+export function useCampaignsList(
+  siteId: string,
+  start: string,
+  end: string,
+  limit: number,
+  filters?: string,
+  enabled = true,
+) {
+  return useSWR<CampaignStat[]>(
+    enabled && siteId && start && end ? ['campaignsList', siteId, start, end, limit, filters] : null,
+    () => getCampaigns(siteId, start, end, limit, filters),
+    {
+      ...dashboardSWRConfig,
+      refreshInterval: 60 * 1000,
+      dedupingInterval: 10 * 1000,
+    }
+  )
+}
+
 export function useCampaigns(siteId: string, start: string, end: string, limit = 100, period?: string) {
   return useSWR<CampaignStat[]>(
     siteId && (period || (start && end)) ? ['campaigns', siteId, period || `${start}-${end}`, limit] : null,

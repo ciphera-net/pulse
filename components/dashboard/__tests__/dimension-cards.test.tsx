@@ -6,15 +6,14 @@ import TechSpecs from '@/components/dashboard/TechSpecs'
 import GoalStats from '@/components/dashboard/GoalStats'
 import Campaigns from '@/components/dashboard/Campaigns'
 
-// Campaigns fetches its own rows; pin the fetcher so its F9 denominator is
-// testable without a network.
-vi.mock('@/lib/api/stats', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/api/stats')>()),
-  getCampaigns: vi.fn().mockResolvedValue([
-    { source: 'google', medium: 'cpc', campaign: 'launch', term: '', content: '', visitors: 157, pageviews: 200 },
-    { source: 'linkedin', medium: 'social', campaign: 'launch', term: '', content: '', visitors: 31, pageviews: 40 },
-  ]),
-}))
+// Campaigns gets its rows from SWR like every other card in the row (it was
+// the last one still on a bare useEffect fetch). Pin the HOOK, not the
+// fetcher, so its F9 denominator is testable without a network.
+const CAMPAIGN_ROWS = [
+  { source: 'google', medium: 'cpc', campaign: 'launch', term: '', content: '', visitors: 157, pageviews: 200 },
+  { source: 'linkedin', medium: 'social', campaign: 'launch', term: '', content: '', visitors: 31, pageviews: 40 },
+]
+const useCampaignsList = vi.fn()
 
 // Shared F9/F14/F17 assertions for the remaining list cards. ContentStats has
 // its own file; this one pins the same contract on TopReferrers, Audience,
@@ -22,6 +21,7 @@ vi.mock('@/lib/api/stats', async (importOriginal) => ({
 const useFullDimensionList = vi.fn()
 vi.mock('@/lib/swr/dashboard', () => ({
   useFullDimensionList: (...args: unknown[]) => useFullDimensionList(...args),
+  useCampaignsList: (...args: unknown[]) => useCampaignsList(...args),
 }))
 vi.mock('@/components/dashboard/VirtualList', () => ({
   default: ({ items, renderItem }: { items: unknown[]; renderItem: (item: never, index: number) => React.ReactNode }) => (
@@ -173,6 +173,12 @@ describe('TechSpecs', () => {
 })
 
 describe('Campaigns', () => {
+  beforeEach(() => {
+    useCampaignsList.mockReturnValue({
+      data: CAMPAIGN_ROWS, error: undefined, isLoading: false, mutate: vi.fn(),
+    })
+  })
+
   it('divides by the true visitor total (157/314 = 50%), not the row sum (157/188 = 84%)', async () => {
     render(<Campaigns siteId="site-1" dateRange={dateRange} totals={totals} />)
     expect(await screen.findByText('50%')).toBeTruthy()
@@ -184,6 +190,44 @@ describe('Campaigns', () => {
     render(<Campaigns siteId="site-1" dateRange={dateRange} />)
     expect(await screen.findByText('157')).toBeTruthy()
     expect(screen.queryByText(/\d+%/)).toBeNull()
+  })
+
+  // 🔴 THE ANTI-FAKE-EMPTY. Reported by a customer on 20-08-2026 as "Campaigns
+  // shows no data": a failed fetch used to render the identical "No UTM data
+  // yet" empty state as a genuinely empty range, and its only handling was
+  // logger.error — a NO-OP in a production browser build. Nothing in the DOM
+  // or in state could tell "we could not find out" from "you have none".
+  it('states an ERROR rather than claiming there is no campaign traffic', () => {
+    const mutate = vi.fn()
+    useCampaignsList.mockReturnValue({
+      data: undefined, error: new Error('boom'), isLoading: false, mutate,
+    })
+    render(<Campaigns siteId="site-1" dateRange={dateRange} totals={totals} />)
+    expect(screen.getByText(/Couldn.t load campaigns/)).toBeTruthy()
+    expect(screen.queryByText(/No UTM data yet/)).toBeNull()
+    fireEvent.click(screen.getByText('Retry'))
+    expect(mutate).toHaveBeenCalled()
+  })
+
+  // The paired positive: a genuinely empty range must STILL say so, or the fix
+  // above would just have swapped one lie for another.
+  it('still shows the empty state for a genuinely empty range', () => {
+    useCampaignsList.mockReturnValue({
+      data: [], error: undefined, isLoading: false, mutate: vi.fn(),
+    })
+    render(<Campaigns siteId="site-1" dateRange={dateRange} totals={totals} />)
+    expect(screen.getByText(/No UTM data yet/)).toBeTruthy()
+    expect(screen.queryByText(/Couldn.t load campaigns/)).toBeNull()
+  })
+
+  // The card is handed already-resolved dates, so the DATES are its cache
+  // identity. Keying on less is how one range's rows get served for another —
+  // the 30-day window that produced the original report.
+  it('keys its request on the resolved dates', () => {
+    render(<Campaigns siteId="site-1" dateRange={dateRange} totals={totals} />)
+    expect(useCampaignsList).toHaveBeenCalledWith(
+      'site-1', dateRange.start, dateRange.end, 10, undefined,
+    )
   })
 })
 
