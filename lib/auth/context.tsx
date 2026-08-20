@@ -11,6 +11,7 @@ import { getUserOrganizations, switchContext, getOrganization } from '@/lib/api/
 import { logger } from '@/lib/utils/logger'
 import { cleanupStaleStorage } from '@/lib/utils/storage-cleanup'
 import { forgetAllPendingAuth } from '@/lib/api/oauth-store'
+import { isTransientRefreshFailure } from '@/lib/auth/refresh-outcome'
 
 /** Read vault PII from the cross-subdomain cookie set by id-frontend. */
 function getVaultPII(): { email?: string; display_name?: string } {
@@ -67,40 +68,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { mutate: swrMutate } = useSWRConfig()
 
-  const refreshToken = useCallback(async (): Promise<boolean> => {
-    try {
-      const cachedUser = localStorage.getItem('user')
-      const lastOrgId = cachedUser ? (JSON.parse(cachedUser).org_id ?? '') : ''
-      const res = await fetch('/api/auth/refresh', {
+  // * Returns WHY a refresh failed, not just that it did.
+  // *
+  // * `transient` means we never got a verdict — the network was down, the route
+  // * 5xx'd, id-backend was mid-rollout. The session may be perfectly valid, so
+  // * the caller must retry quietly rather than announce "Session expired". Only
+  // * a definitive rejection (the server said the credential is dead) ends the
+  // * session. See @ciphera-net/facet useSessionRefresh.
+  // * Audit: Infra/Auth/docs/audits/20-08-2026-session-loss-root-cause-audit.md §4 F-G
+  const refreshToken = useCallback(async (): Promise<{ ok: boolean; transient: boolean }> => {
+    const signals = () => ({
+      screen_width: window.screen.width,
+      screen_height: window.screen.height,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    })
+    const post = (orgId: string) =>
+      fetch('/api/auth/refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          screen_width: window.screen.width,
-          screen_height: window.screen.height,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          org_id: lastOrgId,
-        }),
+        body: JSON.stringify({ ...signals(), org_id: orgId }),
       })
-      if (res.ok) return true
+
+    try {
+      const cachedUser = localStorage.getItem('user')
+      const lastOrgId = cachedUser ? (JSON.parse(cachedUser).org_id ?? '') : ''
+
+      const res = await post(lastOrgId)
+      if (res.ok) return { ok: true, transient: false }
+
       const data = await res.json().catch(() => null)
       if (data?.retryable) {
-        const retry = await fetch('/api/auth/refresh', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            screen_width: window.screen.width,
-            screen_height: window.screen.height,
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            org_id: lastOrgId,
-          }),
-        })
-        return retry.ok
+        const retry = await post(lastOrgId)
+        if (retry.ok) return { ok: true, transient: false }
+        const retryData = await retry.json().catch(() => null)
+        return { ok: false, transient: isTransientRefreshFailure(retry.status, retryData) }
       }
-      return false
+      return { ok: false, transient: isTransientRefreshFailure(res.status, data) }
     } catch {
-      return false
+      // * The request never completed. That is a statement about the network,
+      // * never about the session.
+      return { ok: false, transient: true }
     }
   }, [])
 
