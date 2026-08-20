@@ -77,11 +77,39 @@ export async function POST(request: Request) {
       const upstream = await res.json().catch(() => ({ error: 'Unknown' }))
       const reason = upstream?.error || 'Refresh failed'
       const deleteOpts = { path: '/', domain: cookieDomain } as const
-      cookieStore.delete({ name: 'access_token', ...deleteOpts })
-      if (res.status !== 403) {
+
+      // * ═══ ONLY A VERDICT MAY DESTROY THE SESSION ═══
+      // *
+      // * 🔴 This block used to delete access_token on ANY non-OK status, and
+      // * refresh_token too unless the status was exactly 403. So a 500, a 502
+      // * while id-backend rolled, or a gateway blip permanently destroyed a
+      // * session that was never invalid — the user was signed out by an
+      // * infrastructure hiccup. That is very likely the origin of "I get logged
+      // * out when we deploy".
+      // *
+      // * A 401 is the ONLY answer that means "this credential is dead". A 403 is
+      // * about the organization context, not the credential. Everything else —
+      // * 5xx, 429, 408, a malformed reply — means we never got an answer at all,
+      // * and a session we could not verify is not a session we may throw away.
+      // * Audit: Infra/Auth/docs/audits/20-08-2026-session-loss-root-cause-audit.md §4 F-D
+      const credentialRejected = res.status === 401
+      const orgContextRejected = res.status === 403
+      const transient = !credentialRejected && !orgContextRejected
+
+      if (credentialRejected) {
+        cookieStore.delete({ name: 'access_token', ...deleteOpts })
         cookieStore.delete({ name: 'refresh_token', ...deleteOpts })
+      } else if (orgContextRejected) {
+        // * Drop only the access token so the client's retry falls back to the
+        // * org_id it carries in its body. The refresh token is still good.
+        cookieStore.delete({ name: 'access_token', ...deleteOpts })
       }
-      return NextResponse.json({ error: reason, retryable: res.status === 403 }, { status: res.status })
+      // * transient → touch nothing. The cookies are the only copy of the session.
+
+      return NextResponse.json(
+        { error: reason, retryable: orgContextRejected, transient },
+        { status: res.status },
+      )
     }
 
     const data = await res.json()
@@ -146,6 +174,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, access_token: data.access_token })
   } catch {
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+    // * We never reached id-backend, so we learned nothing about the session.
+    // * Report it as transient and leave the cookies alone.
+    return NextResponse.json({ error: 'Internal error', transient: true }, { status: 500 })
   }
 }

@@ -138,3 +138,72 @@ describe('POST /api/auth/refresh — refresh token write-back guard', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 })
+
+/**
+ * Cookie destruction on failure.
+ *
+ * 🔴 This route used to delete `access_token` on ANY non-OK upstream status, and
+ * `refresh_token` too unless the status was exactly 403. A 500, a 502 while
+ * id-backend rolled, or a gateway blip therefore permanently destroyed a session
+ * that was never invalid — very likely the origin of "I get logged out when we
+ * deploy". Only a 401 is a verdict about the credential.
+ * Audit: Infra/Auth/docs/audits/20-08-2026-session-loss-root-cause-audit.md §4 F-D
+ */
+describe('POST /api/auth/refresh — only a verdict may destroy the session', () => {
+  beforeEach(() => {
+    vi.resetModules()
+    cookieStore = makeCookieStore({ refresh_token: OLD_TOKEN, access_token: accessToken() })
+  })
+
+  function upstreamFailure(status: number, body: unknown = { error: 'nope' }) {
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { 'content-type': 'application/json' },
+    })
+  }
+
+  it('deletes both cookies on 401 — the credential was rejected', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstreamFailure(401)))
+
+    const res = await callRoute()
+
+    expect(res.status).toBe(401)
+    expect(cookieStore.deletes).toContain('access_token')
+    expect(cookieStore.deletes).toContain('refresh_token')
+    expect((await res.json()).transient).toBe(false)
+  })
+
+  it.each([500, 502, 503, 504, 429])(
+    'keeps BOTH cookies on %i — no verdict was reached',
+    async (status) => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstreamFailure(status)))
+
+      const res = await callRoute()
+
+      expect(cookieStore.deletes).not.toContain('refresh_token')
+      expect(cookieStore.deletes).not.toContain('access_token')
+      expect((await res.json()).transient).toBe(true)
+    },
+  )
+
+  it('keeps the refresh token on 403 — org context is not a credential verdict', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstreamFailure(403, { error: 'wrong org' })))
+
+    const res = await callRoute()
+    const body = await res.json()
+
+    expect(cookieStore.deletes).not.toContain('refresh_token')
+    expect(body.retryable).toBe(true)
+    expect(body.transient).toBe(false)
+  })
+
+  it('keeps both cookies when the upstream call throws outright', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('fetch failed')))
+
+    const res = await callRoute()
+
+    expect(res.status).toBe(500)
+    expect(cookieStore.deletes).toHaveLength(0)
+    expect((await res.json()).transient).toBe(true)
+  })
+})
