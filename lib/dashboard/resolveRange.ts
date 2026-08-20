@@ -45,3 +45,26 @@ export function resolveDashboardRange(
   // 4 — custom ranges are explicit dates; nothing to resolve.
   return clientRange
 }
+
+/**
+ * The range a page may FETCH with — empty strings until the period is resolved.
+ *
+ * The dashboard gates by holding a NULLABLE range and not rendering its cards
+ * (`resolveDashboardRange` above). The other date-ranged pages — funnels,
+ * search, cdn, uptime — pass concrete dates straight into SWR hooks whose keys
+ * already null out on an empty date, so withholding the dates is the same gate
+ * expressed in the shape those pages already have.
+ *
+ * 🔴 KEEP THE PICKER'S VALUE SEPARATE. Callers pass the hook's `dateRange` to
+ * the DateRangePicker for DISPLAY and this value to hooks for FETCHING. They
+ * differ for exactly one render, and collapsing them would blank the picker.
+ *
+ * Why it matters here is milder than on the dashboard but not nothing: these
+ * pages key their caches on the DATES, so a placeholder fetch lands in its own
+ * entry and cannot be served for the real range. What it costs is a wasted
+ * 30-day request on every bare-URL mount, and a possible flash of 30-day
+ * numbers before the remembered preset arrives.
+ */
+export function fetchableRange(periodReady: boolean, picked: DateRange): DateRange {
+  return periodReady ? picked : { start: '', end: '' }
+}

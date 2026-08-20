@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
+import { fetchableRange } from '@/lib/dashboard/resolveRange'
 import { useQueryParamsWriter } from '@/lib/hooks/useQueryParamsWriter'
 import { getDateRange } from '@/lib/utils/format'
 import type { PeriodPreset } from '@/lib/constants/periods'
@@ -72,7 +73,10 @@ export default function SearchConsolePage() {
   const searchParams = useSearchParams()
   const write = useQueryParamsWriter()
 
-  const { period, dateRange, setPeriod, shiftPeriod } = useUrlDateRange()
+  const { period, dateRange, periodReady, setPeriod, shiftPeriod } = useUrlDateRange()
+  // Passed to the child panels too — their SWR keys null out on an empty date,
+  // so they hold instead of fetching a range the user did not choose.
+  const fetchRange = fetchableRange(periodReady, dateRange)
   const granularity = parseGranularity(searchParams.get('g'))
 
   const setGranularity = useCallback(
@@ -106,7 +110,7 @@ export default function SearchConsolePage() {
     isValidating: overviewValidating,
     error: overviewError,
     mutate: retryOverview,
-  } = useGSCOverview(siteId, dateRange.start, dateRange.end)
+  } = useGSCOverview(siteId, fetchRange.start, fetchRange.end)
 
   // Document title
   useEffect(() => {
@@ -220,7 +224,7 @@ export default function SearchConsolePage() {
 
       {/* Bing: a deliberately smaller panel. Three metrics, no query tables — see BingPanel. */}
       {engine === 'bing' ? (
-        <BingPanel siteId={siteId} dateRange={dateRange} />
+        <BingPanel siteId={siteId} dateRange={fetchRange} />
       ) : (
       /* Content — the chip covers range changes, the ErrorCard covers failures */
       <div className="relative">
@@ -245,12 +249,12 @@ export default function SearchConsolePage() {
                   className="h-8"
                 />
               </div>
-              <InstrumentPanel siteId={siteId} dateRange={dateRange} overview={overview} granularity={granularity} />
+              <InstrumentPanel siteId={siteId} dateRange={fetchRange} overview={overview} granularity={granularity} />
             </motion.div>
 
             {/* Six-view table system — queries / pages / countries / devices / days / opportunities */}
             <motion.div {...cascade(0.08)} className="mt-6">
-              <SearchViews siteId={siteId} dateRange={dateRange} />
+              <SearchViews siteId={siteId} dateRange={fetchRange} />
             </motion.div>
           </>
         ) : null}

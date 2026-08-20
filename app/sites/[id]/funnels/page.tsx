@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import FunnelModal, { type FunnelPrefill } from '@/components/funnels/FunnelModal'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
+import { fetchableRange } from '@/lib/dashboard/resolveRange'
 import { useCan } from '@/lib/auth/permissions'
 
 // * ?prefill=<encodeURIComponent(JSON)> seeds the create modal (journeys lens
@@ -54,13 +55,17 @@ export default function FunnelsPage() {
 
   const { data: site } = useSite(siteId)
   const { data: funnels, error: funnelsError, isLoading, mutate } = useFunnels(siteId)
-  const { period, dateRange, setPeriod, shiftPeriod } = useUrlDateRange()
+  const { period, dateRange, periodReady, setPeriod, shiftPeriod } = useUrlDateRange()
+  // Fetch with nothing until the remembered preset is read — otherwise every
+  // bare-URL mount spends a 30-day request on the placeholder period and can
+  // flash its numbers. `dateRange` stays the picker's DISPLAY value.
+  const fetchRange = fetchableRange(periodReady, dateRange)
 
   // * ONE batched stats request per range for the whole list (plus one for the
   // * previous range, feeding the delta badges) — this page used to fan out
   // * two requests per funnel per 60s poll.
-  const { data: listStats, error: listStatsError } = useFunnelListStats(siteId, dateRange.start, dateRange.end)
-  const prevRange = useMemo(() => previousDateRange(dateRange), [dateRange])
+  const { data: listStats, error: listStatsError } = useFunnelListStats(siteId, fetchRange.start, fetchRange.end)
+  const prevRange = useMemo(() => previousDateRange(fetchRange), [fetchRange])
   const { data: prevListStats } = useFunnelListStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '')
   const [deletingFunnel, setDeletingFunnel] = useState<{ id: string; name: string } | null>(null)
   const [prefill, setPrefill] = useState<FunnelPrefill | null>(() => parsePrefill(searchParams.get('prefill')))
