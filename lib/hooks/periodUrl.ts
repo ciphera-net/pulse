@@ -154,6 +154,17 @@ export function previousDateRange(range: {
 }): { start: string; end: string } | null {
   const s = new Date(range.start + 'T00:00:00')
   const e = new Date(range.end + 'T00:00:00')
+  // 🔴 A GUARD THAT COMPARES AGAINST NaN IS NOT A GUARD. An unparseable range
+  // (most easily an empty one) makes every Date here Invalid, and BOTH checks
+  // below are `>` / `<` comparisons — which are false for NaN — so an invalid
+  // input sailed through and this returned {start:"NaN-NaN-NaN", end:"NaN-NaN-NaN"}.
+  // That value is a non-empty string, so callers guarding on `prevRange?.start ?? ''`
+  // saw something truthy and issued a REAL request with NaN dates. Measured on
+  // staging 20-08-2026 against /funnels, once the pages began withholding their
+  // range while the period resolved (fetchableRange returns empty strings).
+  // Rejecting here fixes every caller at once; guarding at each call site would
+  // leave the next one to rediscover it.
+  if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return null
   const duration = e.getTime() - s.getTime()
   if (duration > 366 * DAY_MS) return null
   const prevEnd = new Date(s.getTime() - DAY_MS)
