@@ -549,8 +549,12 @@ steps:
             echo "🔴 DEPLOY SHIPPED BUT assetPrefix IS NOT IN THE LIVE HTML."
             echo "🔴 Chunks are served from the app itself, so the version-coupling protection"
             echo "🔴 that gates the Magic Containers migration is OFF."
-            echo "🔴 Check NEXT_PUBLIC_ASSET_PREFIX reached the kaniko build"
-            echo "🔴 (.woodpecker/build.yml build-args-from-env) and the Dockerfile ARG exists."
+            echo "🔴 Check NEXT_PUBLIC_ASSET_PREFIX reached the kaniko build:"
+            echo "🔴   .woodpecker/push.yml -> settings.build-args-from-env MUST list"
+            echo "🔴   NEXT_PUBLIC_ASSET_PREFIX, or the environment: entry above it is INERT."
+            echo "🔴 Then confirm the Dockerfile declares the matching ARG."
+            echo "🔴 NOTE: build.yml no longer exists on this branch (deleted 20-08-2026);"
+            echo "🔴 push.yml is the ONLY place a build arg can reach the shipped image."
             exit 1 ;;
         esac
 
@@ -614,8 +618,12 @@ steps:
             echo "🔴 DEPLOY SHIPPED BUT assetPrefix IS NOT IN THE LIVE HTML."
             echo "🔴 Chunks are served from the app itself, so the version-coupling protection"
             echo "🔴 that gates the Magic Containers migration is OFF."
-            echo "🔴 Check NEXT_PUBLIC_ASSET_PREFIX reached the kaniko build"
-            echo "🔴 (.woodpecker/build.yml build-args-from-env) and the Dockerfile ARG exists."
+            echo "🔴 Check NEXT_PUBLIC_ASSET_PREFIX reached the kaniko build:"
+            echo "🔴   .woodpecker/push.yml -> settings.build-args-from-env MUST list"
+            echo "🔴   NEXT_PUBLIC_ASSET_PREFIX, or the environment: entry above it is INERT."
+            echo "🔴 Then confirm the Dockerfile declares the matching ARG."
+            echo "🔴 NOTE: build.yml no longer exists on this branch (deleted 20-08-2026);"
+            echo "🔴 push.yml is the ONLY place a build arg can reach the shipped image."
             exit 1 ;;
         esac
 
