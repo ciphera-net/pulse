@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveDashboardRange } from '../resolveRange'
+import { resolveDashboardRange, fetchableRange } from '../resolveRange'
 
 const CLIENT_30D = { start: '2026-07-22', end: '2026-08-20' }
 const SERVER_TODAY = { start: '2026-08-20', end: '2026-08-20' }
@@ -39,5 +39,21 @@ describe('resolveDashboardRange', () => {
   // above and the dashboard simply never renders.
   it('uses the client range for a custom period — explicit dates need no resolution', () => {
     expect(resolveDashboardRange(true, undefined, undefined, CLIENT_30D)).toEqual(CLIENT_30D)
+  })
+})
+
+describe('fetchableRange', () => {
+  it('withholds the dates until the period is resolved', () => {
+    expect(fetchableRange(false, CLIENT_30D)).toEqual({ start: '', end: '' })
+  })
+
+  it('passes the picked range through once resolved', () => {
+    expect(fetchableRange(true, CLIENT_30D)).toEqual(CLIENT_30D)
+  })
+
+  // The paired positive: "always withhold" would pass the first case and leave
+  // every one of these pages permanently blank.
+  it('does not mutate or clone away the caller range', () => {
+    expect(fetchableRange(true, CLIENT_30D)).toBe(CLIENT_30D)
   })
 })

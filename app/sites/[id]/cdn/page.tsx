@@ -7,6 +7,7 @@ import { useParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@ciphera-net/facet'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
+import { fetchableRange } from '@/lib/dashboard/resolveRange'
 import { presetUtcRange } from '@/components/uptime/uptimeMetrics'
 import { useSite, useBunnyStatus, useBunnyOverview, useBunnyDailyStats, useBunnyRegions } from '@/lib/swr/dashboard'
 
@@ -23,12 +24,14 @@ export default function CDNPage() {
   const params = useParams()
   const siteId = params.id as string
 
-  const { period, dateRange, setPeriod, shiftPeriod } = useUrlDateRange()
+  const { period, dateRange, periodReady, setPeriod, shiftPeriod } = useUrlDateRange()
   // * bunny_data days are UTC days (Bunny's chart convention, verified live).
   // * Preset windows anchor to the current UTC day — west of UTC, a local
   // * anchor would silently drop the newest day. An explicitly picked custom
   // * range passes through: the chosen calendar day IS the UTC day, as labeled.
-  const effectiveRange = period === 'custom' ? dateRange : presetUtcRange(dateRange)
+  // Gate BEFORE the UTC re-anchor: presetUtcRange of a placeholder range is
+  // still a placeholder range, just in a different frame.
+  const effectiveRange = fetchableRange(periodReady, period === 'custom' ? dateRange : presetUtcRange(dateRange))
 
   const { data: bunnyStatus } = useBunnyStatus(siteId)
   const connected = !!bunnyStatus?.connected

@@ -9,6 +9,7 @@ import { updateFunnel, deleteFunnel, type CreateFunnelRequest } from '@/lib/api/
 import { ApiError } from '@/lib/api/client'
 import { useFunnelDetail, useFunnelStats, useSite } from '@/lib/swr/dashboard'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
+import { fetchableRange } from '@/lib/dashboard/resolveRange'
 import { previousDateRange } from '@/lib/hooks/periodUrl'
 import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
 import { type DimensionFilter, serializeFilters, parseFiltersFromURL } from '@/lib/filters'
@@ -46,7 +47,8 @@ export default function FunnelDetailPage() {
   const funnelId = params.funnelId as string
   const canManage = useCan('funnels.manage')
 
-  const { period, dateRange, setPeriod, shiftPeriod } = useUrlDateRange()
+  const { period, dateRange, periodReady, setPeriod, shiftPeriod } = useUrlDateRange()
+  const fetchRange = fetchableRange(periodReady, dateRange)
 
   // ── Dashboard filter system, URL-synced with the dashboard's exact codec ──
   const [filters, setFilters] = useState<DimensionFilter[]>(() => {
@@ -94,9 +96,9 @@ export default function FunnelDetailPage() {
     error: statsError,
     isValidating: statsValidating,
     mutate: retryStats,
-  } = useFunnelStats(siteId, funnelId, dateRange.start, dateRange.end, filtersParam || undefined)
+  } = useFunnelStats(siteId, funnelId, fetchRange.start, fetchRange.end, filtersParam || undefined)
 
-  const prevRange = useMemo(() => previousDateRange(dateRange), [dateRange])
+  const prevRange = useMemo(() => previousDateRange(fetchRange), [fetchRange])
   const { data: prevStats } = useFunnelStats(
     siteId,
     funnelId,
