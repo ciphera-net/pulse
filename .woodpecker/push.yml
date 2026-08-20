@@ -10,8 +10,12 @@
 labels:
   runner: k8s
 
-depends_on:
-  - build
+# `depends_on: [build]` REMOVED 20-08-2026 (build.yml is pull-request only now).
+# On a push there is no `build` workflow to wait for, and what it used to wait
+# for was a discarded rebuild of this very image. This step is now the FIRST and
+# ONLY build on main/staging, which is what makes the deletion safe: a Dockerfile
+# that does not build still fails the pipeline here, before deploy.yml can ship.
+# See Infra/docs/audits/20-08-2026-ci-latency-audit.md §5.1.
 
 when:
   - event: push
