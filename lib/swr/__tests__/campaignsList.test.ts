@@ -6,13 +6,17 @@ import { renderHook } from '@testing-library/react'
 // decides which cache entry the answer is filed under and served from.
 // Named `swrSpy`, not `useSWR`: eslint's rules-of-hooks reads a `use*` call
 // inside the mock factory as a hook invoked outside a component.
-const swrSpy = vi.fn(() => ({ data: undefined, error: undefined, isLoading: false, mutate: vi.fn() }))
-vi.mock('swr', () => ({ default: (...args: unknown[]) => swrSpy(...(args as [])) }))
+// Typed with an explicit rest parameter: `vi.fn(() => …)` infers a ZERO-arg
+// signature, so mock.calls is an array of empty tuples and [0] does not
+// typecheck — green under vitest, rejected by tsc.
+const swrSpy = vi.fn((..._args: unknown[]) => ({ data: undefined, error: undefined, isLoading: false, mutate: vi.fn() }))
+vi.mock('swr', () => ({ default: (...args: unknown[]) => swrSpy(...args) }))
 vi.mock('swr/infinite', () => ({ default: vi.fn(() => ({ data: undefined, size: 0, setSize: vi.fn() })) }))
 
 import { useCampaignsList } from '../dashboard'
 
-const keyOf = () => swrSpy.mock.calls[swrSpy.mock.calls.length - 1][0] as unknown[]
+const keyOf = (): unknown[] | null =>
+  swrSpy.mock.calls[swrSpy.mock.calls.length - 1][0] as unknown[] | null
 
 beforeEach(() => swrSpy.mockClear())
 
