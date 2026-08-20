@@ -30,11 +30,15 @@ steps:
       - export NODE_AUTH_TOKEN="$NPM_READ_TOKEN"
       - npm ci
       # Types are ALREADY a gate — `next build` fails on them and has no
-      # `typescript.ignoreBuildErrors` — but that gate lives in build.yml, which
-      # runs only on push to main/staging. So a type error used to pass every PR
-      # check and then break the DEPLOY build after merge. This moves the same
-      # gate in front of the merge; it adds no new failure mode, only an earlier
-      # one. Runs before `npm test` because it is the cheaper signal.
+      # `typescript.ignoreBuildErrors` — but that gate lives in the image build,
+      # which runs only on push to main/staging. So a type error used to pass
+      # every PR check and then break the DEPLOY build after merge. This moves the
+      # same gate in front of the merge; it adds no new failure mode, only an
+      # earlier one. Runs before `npm test` because it is the cheaper signal.
+      # (That build was in build.yml until 20-08-2026; build.yml was a discarded
+      # `dry-run` duplicate and was deleted, so the gate now lives in push.yml.
+      # The reasoning is unchanged — push.yml is still push-only, so this step is
+      # still the ONLY type gate a pull request gets.)
       - npm run type-check
       - npm test
       # 🔴 The date-sensitive suites, a SECOND time, under a maximal POSITIVE
