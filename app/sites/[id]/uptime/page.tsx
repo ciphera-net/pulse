@@ -13,6 +13,7 @@ import { toast, Button } from '@ciphera-net/facet'
 import { UptimeSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
+import { fetchableRange } from '@/lib/dashboard/resolveRange'
 import { getDateRange } from '@/lib/utils/format'
 import type { PeriodPreset } from '@/lib/constants/periods'
 import UptimePanel from '@/components/uptime/UptimePanel'
@@ -148,15 +149,18 @@ export default function UptimePage() {
   const params = useParams()
   const siteId = params.id as string
 
-  const { period, dateRange, setPeriod, shiftPeriod } = useUrlDateRange()
+  const { period, dateRange, periodReady, setPeriod, shiftPeriod } = useUrlDateRange()
 
   // * The API reads UTC calendar days; useUrlDateRange builds LOCAL ones.
   // * Preset windows re-anchor to the current UTC day so the newest checks
   // * never fall off the range west of UTC; a custom pick passes through —
   // * an explicitly chosen calendar day IS the UTC day, as labeled.
+  // Gated BEFORE the UTC re-anchor — presetUtcRange of a placeholder is still
+  // a placeholder. Uptime's two hooks keyed on siteId ALONE, so an empty range
+  // used to fetch anyway; they now require dates (see lib/swr/dashboard.ts).
   const apiRange = useMemo(
-    () => (period === 'custom' ? dateRange : presetUtcRange(dateRange)),
-    [period, dateRange],
+    () => fetchableRange(periodReady, period === 'custom' ? dateRange : presetUtcRange(dateRange)),
+    [periodReady, period, dateRange],
   )
 
   const { data: site, mutate: mutateSite } = useSite(siteId)
