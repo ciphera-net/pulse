@@ -1,0 +1,40 @@
+# Excluded from the BUILD CONTEXT. This is not .gitignore — everything here is
+# still tracked; it simply never reaches the builder.
+#
+# 🔴 `.git` IS THE ENTIRE POINT OF THIS FILE, AND IT IS NOT A SIZE OPTIMISATION.
+# The Dockerfile does `COPY . .`, so .git lands in the build context. Woodpecker
+# re-clones on every pipeline and the resulting .git is BYTE-DIFFERENT each time
+# (pack files, FETCH_HEAD, logs/HEAD timestamps) even for the identical commit.
+# That changes the context hash, which misses the `COPY . .` layer, which misses
+# every layer after it — including the expensive one.
+#
+# MEASURED 21-08-2026 on website-backend, rebuilding the SAME commit:
+#     COPY go.mod go.sum ./   CACHED
+#     COPY vendor/ vendor/    CACHED
+#     COPY . .                DONE 0.3s    <- miss
+#     RUN go build ...        DONE 20.1s   <- miss, because of the line above
+# and isolated in a controlled A/B against the live daemon, two contexts differing
+# ONLY in .git/packfile: without this file the second build MISSES, with it the
+# second build is CACHED. Adding it took that repo's build step 46s -> 17s.
+#
+# ⚠️ This mattered not at all under kaniko, which had no layer cache configured.
+# Enabling a cache is what makes .git in the context expensive.
+.git
+.gitignore
+
+# Pipeline definitions never belong in an image, and excluding them means a
+# CI-only change does not invalidate the image cache.
+.woodpecker
+.dockerignore
+
+# ⚠️ .npmrc-ci is deliberately NOT excluded — the builder stage COPYs it.
+# ⚠️ public/ is deliberately NOT excluded — it ships in the image AND deploy.yml's
+#    cdn-scripts step computes SRI hashes over it (which is also why THIS repo's
+#    deploy.yml does NOT get skip_clone).
+
+# ⚠️ ADDED 21-08-2026 with migration phase 4. `next build` now runs in a Woodpecker
+# step, so the workspace holds its output when the image is assembled.
+# node_modules is NOT needed: .next/standalone bundles its own minimal copy.
+# .next/cache is the webpack/SWC cache — large, and never belongs in an image.
+node_modules
+.next/cache

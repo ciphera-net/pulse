@@ -1,17 +1,56 @@
 # Routes this workflow to the in-cluster Kubernetes agent, which advertises
 # `!runner=k8s` — a MANDATORY label, so an agent is only eligible when the task
-# asks for it. Deleting this line sends the workflow back to the ci-ops Docker
-# agent; that is the rollback, and it is one line.
+# asks for it.
 #
-# buildx needs a PRIVILEGED container, and WOODPECKER_PLUGINS_PRIVILEGED — the
-# server-side grant that made that safe on Nomad — is a NO-OP on the Kubernetes
-# backend (woodpecker-ci/woodpecker#6484). kaniko builds rootless instead, so no
-# step needs privilege at all.
+# ════════════════════════════════════════════════════════════════════════════════
+# BUILDER: rootless BuildKit, replacing kaniko (21-08-2026)
+# ════════════════════════════════════════════════════════════════════════════════
+# WHAT THIS USED TO BE. `woodpeckerci/plugin-kaniko:2.3.2`, with the build cache deliberately left OFF
+# because kaniko's `cache-repo` semantics were unverified. Google ARCHIVED
+# GoogleContainerTools/kaniko on 3 June 2025 — read-only, no CVE fixes — and the
+# plugin we ran was three forks deep, based on an individual's Docker Hub
+# namespace. Continuity, not speed, is why it is gone.
+# Plan: Infra/docs/plans/20-08-2026-buildkit-rootless-migration.md
+# As-built + measurements: Infra/docs/21-08-2026-buildkit-execution-record.md
+#
+# WHY BUILDKIT IS ALLOWED NOW WHEN plugin-docker-buildx WAS NOT (27-07-2026):
+# buildx needs a PRIVILEGED step container, and on the Kubernetes backend the only
+# route to that is repo-Trusted plus `privileged: true` in the step — i.e. exactly
+# the self-elevation path that decision refused. This step needs NO privilege: it
+# runs `buildctl`, a thin client that streams the build context to the SHARED
+# daemon (`buildkitd` in the `buildkit` namespace) and streams logs back. All
+# privilege lives in that daemon's manifest, which no committer can edit from here.
+#
+# ⚠️ THE DAEMON IS SHARED BY THE WHOLE ESTATE. A transport error here is an
+# estate-wide problem, not a repo problem — check the `BuildkitdDown` alert first.
+#
+# 🔑 THE npm CREDENTIAL STILL GOES IN VIA `.npmrc-ci` AND A NON-FINAL STAGE.
+# BuildKit supports `RUN --mount=type=secret`, which kaniko never did and which is
+# the proper fix — but changing the Dockerfile in the SAME change as the builder
+# swap would make a regression impossible to attribute. Separate follow-up.
+# ⚠️ `.npmrc-ci` MUST NOT be added to .dockerignore — the builder needs it.
+#
+# 🔴 `next build` NOW RUNS INSIDE THE SHARED DAEMON, NOT IN THIS POD. That is why
+# this step drops from 4Gi to 256Mi: the memory MOVED to buildkitd (4Gi request ==
+# limit), it did not disappear. Measured 21-08-2026: one Next.js build takes the
+# daemon from ~850Mi idle to ~2.4Gi. One fits comfortably; SEVERAL CONCURRENT ONES
+# are the case to watch, and an OOM of the daemon kills every in-flight build in
+# the estate, not just this one. `BuildkitdRestarting` fires on repeated OOM kills.
+# ⇒ The structural fix is migration phase 4 — moving `next build` OUT of the
+#   Dockerfile into an ordinary step, which takes the compile off the daemon
+#   entirely. Until that lands, this is a known and monitored window.
+#
+# 🔑 THE CACHE LIVES IN EXOSCALE SOS, NOT IN THE REGISTRY, AND THAT IS DELIBERATE.
+# `registry.ops.ciphera.net` still has NO garbage collection: it is execution-gated
+# after the 29-06-2026 incident in which a tag-keyed GC deleted the blobs of 11 of
+# 12 deployed images. A `mode=max` cache exports far more layers than kaniko ever
+# would, so putting it there means unbounded growth or un-gating that GC first.
+# ⚠️ Expiry is the `build-cache-prune` CronJob in the `buildkit` namespace, NOT an
+# S3 lifecycle rule: SOS bucket lifecycle is Exoscale Early Access and is not
+# enabled on this account — it accepts the PUT with HTTP 200 and stores nothing.
 labels:
   runner: k8s
 
-depends_on:
-  - build
 
 when:
   - event: push
@@ -22,10 +61,6 @@ when:
 steps:
   write-npmrc:
     image: alpine:3.20
-    # Resources declared 29-07-2026 — without them the step pod is QoS BestEffort, first
-    # evicted under node memory pressure. Estate-wide sweep after two pulse-backend steps
-    # were SIGKILLed (exit 137) mid-download, presenting as a test failure (see
-    # pulse-backend #147/#148). Sized by step class.
     backend_options:
       kubernetes:
         resources:
@@ -36,18 +71,30 @@ steps:
         from_secret: npm_token
     commands:
       - printf '@ciphera-net:registry=https://npm.pkg.github.com/\n//npm.pkg.github.com/:_authToken=%s\nlegacy-peer-deps=true\n' "$NPM_TOKEN" > .npmrc-ci
-
-  push:
-    image: woodpeckerci/plugin-kaniko:2.3.2@sha256:01e0e325efd8fd2b1a95d207e84780a85ed7f8eb9712d8e79888e0f42ff8b7b3
-    # registry.ops.ciphera.net resolves to the cluster's own NLB; a pod dialling
-    # its own load balancer hits the Exoscale hairpin (~1/node_count of
-    # connections black-holed). Pin it at Traefik's ClusterIP.
-    extra_hosts:
-      - "registry.ops.ciphera.net:10.101.182.27"
-    when:
-      - event: push
-        branch: main
+  next-build:
+    image: node:22-alpine
+    # 🔴 THE COMPILE LIVES HERE NOW, NOT IN THE DOCKERFILE (phase 4, 21-08-2026).
+    # An image build runs inside the SHARED `buildkitd` daemon that every repo uses.
+    # Measured 21-08: one Next.js compile takes it from ~850Mi idle to ~2.4-2.9Gi
+    # against a 4Gi limit, so two concurrent frontend builds would OOM it — and that
+    # kills EVERY in-flight build in the estate, not just this one. Compiling in a
+    # step pod puts the memory back where the scheduler can spread it across nodes.
+    # ⚠️ COUPLED to NODE_OPTIONS below and to the Dockerfile, which now only COPYs
+    # this step's output. Reverting one without the other produces an image with no
+    # application in it.
+    backend_options:
+      kubernetes:
+        resources:
+          requests: { memory: 3Gi, cpu: 1 }
+          limits: { memory: 3Gi }
     environment:
+      # V8 sizes old-space from TOTAL MACHINE MEMORY, not the cgroup limit, so an
+      # uncapped build self-selects ~4Gi on an 8Gi node. Caps old space only; RSS
+      # lands above this.
+      NODE_OPTIONS: --max-old-space-size=1280
+      # 🔑 NEXT_PUBLIC_* MOVED HERE FROM THE DOCKERFILE'S ARG/ENV PAIR. Next.js
+      # inlines them during `next build`, so this is now the only place they can
+      # reach the bundle. deploy.yml asserts the result against LIVE HTML.
       NEXT_PUBLIC_API_URL:
         from_secret: next_public_api_url
       NEXT_PUBLIC_APP_URL:
@@ -60,109 +107,162 @@ steps:
         from_secret: next_public_captcha_api_url
       NEXT_PUBLIC_CDN_URL:
         from_secret: next_public_cdn_url
-      # 🔴 THIS FILE IS THE ONE THAT MATTERS FOR assetPrefix, NOT build.yml.
-      # build.yml's build/build-staging are `dry-run: true` shadow builds tagged
-      # shadow-*; they validate the Dockerfile and are thrown away. THIS step
-      # produces the image that is pushed, deployed, and read by upload-static.
-      # A build arg present only in build.yml is inlined into an artifact nobody
-      # ships — Next bakes assetPrefix at `next build`, so the deployed HTML then
-      # silently keeps same-origin chunks. That happened on 18-08-2026 (pipeline
-      # 533) and the live-HTML assertion in deploy.yml is what caught it.
-      # ⇒ Any change to a NEXT_PUBLIC_* build input must be made in BOTH files.
-      # Literal, not a secret: it is a public CDN hostname that appears in every
-      # page's HTML anyway. 🔴 The PATH SEGMENT separates environments in the
-      # shared bucket — prod and staging must never share it, or one serves the
-      # other's JavaScript.
       NEXT_PUBLIC_ASSET_PREFIX: https://ciphera-app-static.b-cdn.net/pulse
-    # 🔴 THIS STEP OVERRIDES THE NAMESPACE DEFAULT, AND ONLY THIS STEP.
-    #
-    # woodpecker-builds carries a LimitRange of request==limit==1536Mi. This build
-    # genuinely does not fit in it — and that is a property of the BUILD (the
-    # largest node_modules in the estate, Next.js + webpack + PWA compile, with
-    # kaniko in the same pod), not of the node size. So the override STAYS.
-    # Measured 27-07-2026 on standard.medium (3411 MiB allocatable):
-    #   heap 1280, ceiling 1536Mi -> killed at the ceiling
-    #   heap  896, ceiling 1536Mi -> V8 "heap out of memory" at ~900 MB, RSS 1401 MiB
-    #   heap 1280, ceiling 2Gi    -> killed at the ceiling, RSS 2048 MiB
-    #   heap 1280, ceiling 3Gi    -> GREEN, RSS 2229 MiB
-    #
-    # 3Gi -> 4Gi on 27-07-2026, when the pool moved to 4 x standard.large
-    # (7436 MiB allocatable). WHY RAISE RATHER THAN REMOVE: 3Gi was the tightest
-    # ceiling that would fit a 3411 MiB node — it was sized against the NODE, not
-    # against the build, which is why the build ran permanently within ~800 MiB of
-    # being killed. The node constraint is gone; give it real headroom instead.
-    #
-    # ⚠️ WHY 4Gi AND NOT MORE. Measured free memory per node is 4410-5256 MiB.
-    # 4096 MiB fits on ALL FOUR nodes; 5Gi (5120 MiB) would fit on exactly ONE,
-    # which re-creates the single-eligible-node fragmentation this whole migration
-    # existed to remove. Size a build against measured FREE-per-node, never against
-    # node allocatable.
-    #
-    # request == limit here too: the point of the namespace default is that the
-    # scheduler's arithmetic bounds the node, and an override that only raised the
-    # limit would reintroduce exactly the overcommit that took a node down twice.
-    # Raise the DEFAULT for everyone and every node loses that guarantee; raise it
-    # HERE and only this build is expensive.
+      # 🔴 REQUIRED BECAUSE THE COMPILE MOVED OUT OF THE DOCKERFILE (21-08-2026).
+      # This repo commits a project-level .npmrc containing
+      #     //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+      # and a PROJECT .npmrc overrides the user-level /root/.npmrc. Inside the old
+      # Dockerfile this never mattered, because `npm ci` ran BEFORE `COPY . .` — the
+      # project file did not exist yet at that point. In a step the whole repo is
+      # checked out first, so the project file wins and an unset NODE_AUTH_TOKEN
+      # expands to empty, giving `npm error code E401 ... unauthenticated`.
+      # Measured exactly that way on id-frontend #92 and website #250.
+      NODE_AUTH_TOKEN:
+        from_secret: npm_token
+      CACHE_ENDPOINT: https://sos-ch-dk-2.exo.io
+      CACHE_BUCKET: ciphera-build-cache
+      CACHE_KEY: next-cache/pulse-frontend-main.tar.gz
+      AWS_DEFAULT_REGION: ch-dk-2
+      AWS_ACCESS_KEY_ID:
+        from_secret: build_cache_key
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: build_cache_secret
+    when:
+      - event: push
+        branch: main
+    commands:
+      # 🔴 SOVEREIGNTY TRIPWIRE — same reasoning as the buildctl steps. Every
+      # S3-backed tool defaults to AWS when the endpoint is unset.
+      - |
+        case "$CACHE_ENDPOINT" in
+          https://sos-*.exo.io) echo "cache endpoint OK: $CACHE_ENDPOINT" ;;
+          *) echo "REFUSING: cache endpoint '$CACHE_ENDPOINT' is not Exoscale SOS"; exit 1 ;;
+        esac
+      # 🔑 WHY THIS S3 ROUND-TRIP EXISTS. Until phase 4 the Dockerfile used
+      # `RUN --mount=type=cache` for .next/cache, which BuildKit persists in the
+      # daemon. Moving the compile into a step LOSES that, because a step runs on a
+      # fresh per-workflow PVC. Without this restore/save, moving the compile out
+      # would trade a memory win for a cache regression.
+      # ⚠️ The credential is scoped to `push`/`tag` events only, so a PULL REQUEST
+      # build has no cache and compiles cold ON PURPOSE — a PR must not be able to
+      # read a credential that can write the estate's shared cache.
+      - |
+        if [ -n "$AWS_ACCESS_KEY_ID" ]; then
+          apk add --no-cache aws-cli >/dev/null 2>&1
+          if aws s3 cp "s3://$CACHE_BUCKET/$CACHE_KEY" - --endpoint-url "$CACHE_ENDPOINT" 2>/dev/null | tar xzf - 2>/dev/null; then
+            echo "next cache restored from SOS"
+          else
+            echo "next cache cold (no object yet, or first run after a key change)"
+          fi
+        else
+          echo "no cache credential on this event (pull_request) — compiling cold, by design"
+        fi
+      - cp .npmrc-ci /root/.npmrc
+      - npm ci --prefer-offline --no-audit --progress=false
+      - rm -f /root/.npmrc
+      - npm run build
+      # Save AFTER a successful build only. A failed build must not publish its
+      # cache — `commands` stop at the first non-zero exit, so reaching here means
+      # `npm run build` succeeded.
+      - |
+        if [ -n "$AWS_ACCESS_KEY_ID" ] && [ -d .next/cache ]; then
+          tar czf - .next/cache | aws s3 cp - "s3://$CACHE_BUCKET/$CACHE_KEY" --endpoint-url "$CACHE_ENDPOINT" \
+            && echo "next cache saved to SOS" || echo "WARN: cache save failed (build is still good)"
+        fi
+      - echo "next build complete — the Dockerfile now only assembles this output"
+  push:
+    image: moby/buildkit:v0.32.2@sha256:28a898719c18a33f4e8000685287fa36fd0dd9560c6440227d3a732d79bb41d8
+    # 🔑 Down from 4Gi request == 4Gi limit under kaniko — the compile moved into the shared daemon.
     backend_options:
       kubernetes:
         resources:
-          requests:
-            memory: 4Gi
-          limits:
-            memory: 4Gi
-    settings:
-      # `extra_opts: --compressed-caching=false` REMOVED 27-07-2026 with the move to
-      # 4 x standard.large. kaniko holds every layer COMPRESSED IN MEMORY while
-      # snapshotting, on top of the build's own usage; on a 3411 MiB node that took
-      # this step to 2960 MiB and killed it at `COPY --from=deps /app/node_modules`
-      # — in kaniko's snapshot phase, not in `next build`. Disabling compressed
-      # caching made kaniko stream layers instead: it fit, and it COST BUILD TIME.
-      # That was a workaround for the node size, and the node size is now fixed —
-      # the pod has a 4Gi ceiling and every node has 4410+ MiB free.
-      # ⚠️ If this step ever OOMs in the snapshot phase again, restoring the flag is
-      # the fix — but record the measurement, do not restore it on suspicion.
-      registry: registry.ops.ciphera.net
-      repo: ciphera-net/pulse-frontend
-      tags:
-        - sha-${CI_COMMIT_SHA:0:7}
-        - latest
-      username:
+          requests: { memory: 256Mi, cpu: 200m }
+          limits: { memory: 768Mi }
+    # NOTE: `extra_hosts` is GONE and its absence is correct. The Exoscale NLB
+    # hairpin pin for registry.ops.ciphera.net moved to the DAEMON (hostAliases in
+    # buildkitd.yaml) because the DAEMON performs the push — buildctl only hands it
+    # the image name and forwards credentials over the session. Verified 21-08-2026
+    # from inside the daemon: GET https://registry.ops.ciphera.net/v2/ -> HTTP 401.
+    environment:
+      BUILDKIT_HOST: tcp://buildkitd.buildkit.svc.cluster.local:1234
+      CACHE_ENDPOINT: https://sos-ch-dk-2.exo.io
+      CACHE_BUCKET: ciphera-build-cache
+      CACHE_REGION: ch-dk-2
+      CACHE_NAME: pulse-frontend
+      REGISTRY: registry.ops.ciphera.net
+      IMAGE_REPO: ciphera-net/pulse-frontend
+      IMAGE_TAG: sha-${CI_COMMIT_SHA:0:7}
+      REGISTRY_USERNAME:
         from_secret: registry_username
-      password:
+      REGISTRY_PASSWORD:
         from_secret: registry_password
-      # buildx's registry cache is not ported: kaniko's `cache`/`cache-repo`
-      # semantics are unverified here and guessing silently creates a junk
-      # repository. Slower build, not a wrong one.
-      # `secrets:` removed — kaniko has no BuildKit --secret. The npm
-      # credential is COPY'd into a NON-FINAL Dockerfile stage instead, so it
-      # never reaches the published image. See the Dockerfile.
-      # kaniko takes build args from the step ENVIRONMENT (see the
-      # `environment:` block above) rather than an inline map, which keeps
-      # the `from_secret` indirection instead of inlining secret values.
-      build-args-from-env:
-        - NEXT_PUBLIC_API_URL
-        - NEXT_PUBLIC_APP_URL
-        - NEXT_PUBLIC_ID_URL
-        - NEXT_PUBLIC_ID_API_URL
-        - NEXT_PUBLIC_CAPTCHA_API_URL
-        - NEXT_PUBLIC_CDN_URL
-        # Without this line the `environment:` entry above is inert: kaniko only
-        # forwards the names listed here. Missing it fails OPEN (empty prefix,
-        # same-origin chunks, working site) — which is why deploy.yml asserts the
-        # prefix against the LIVE HTML instead of trusting the build.
-        - NEXT_PUBLIC_ASSET_PREFIX
-
-  push-staging:
-    image: woodpeckerci/plugin-kaniko:2.3.2@sha256:01e0e325efd8fd2b1a95d207e84780a85ed7f8eb9712d8e79888e0f42ff8b7b3
-    # registry.ops.ciphera.net resolves to the cluster's own NLB; a pod dialling
-    # its own load balancer hits the Exoscale hairpin (~1/node_count of
-    # connections black-holed). Pin it at Traefik's ClusterIP.
-    extra_hosts:
-      - "registry.ops.ciphera.net:10.101.182.27"
+      NEXT_PUBLIC_CDN_URL:
+        from_secret: next_public_cdn_url
     when:
       - event: push
-        branch: staging
+        branch: main
+    commands:
+      # 🔴 SOVEREIGNTY TRIPWIRE — see build.yml for the full reasoning.
+      - |
+        case "$CACHE_ENDPOINT" in
+          https://sos-*.exo.io) echo "cache endpoint OK: $CACHE_ENDPOINT" ;;
+          *) echo "REFUSING: cache endpoint '$CACHE_ENDPOINT' is not Exoscale SOS"; exit 1 ;;
+        esac
+      # buildctl reads the client's docker config and forwards the credential to the
+      # daemon PER BUILD over the session. That is what keeps the registry push
+      # credential subject to Woodpecker's per-repo trust and event gating — the
+      # daemon holds no standing registry credential of its own, deliberately (its
+      # Vault policy refuses kv/shared/ci-registry for exactly this reason).
+      # `base64 | tr -d` rather than `base64 -w0`: this is BusyBox base64.
+      - |
+        mkdir -p /root/.docker
+        AUTH=$(printf '%s:%s' "$REGISTRY_USERNAME" "$REGISTRY_PASSWORD" | base64 | tr -d '\n')
+        printf '{"auths":{"%s":{"auth":"%s"}}}\n' "$REGISTRY" "$AUTH" > /root/.docker/config.json
+        chmod 600 /root/.docker/config.json
+      # 🔑 A GREEN STEP PROVES THE CACHE WAS WRITTEN. A failed `--export-cache` is
+      # FATAL, not a warning — `ignore-error` defaults to false and is not set.
+      # Measured 21-08-2026 against a non-existent bucket: exit=1, "api error
+      # NoSuchBucket". So there is no separate post-flight check: this step
+      # succeeding IS the check, and the credential only works against SOS.
+      #
+      # The `name=` value carries a comma to publish two tags, so it must be QUOTED
+      # INSIDE the CSV or buildctl reads `latest` as a separate attribute.
+      - |
+        buildctl build \
+          --frontend dockerfile.v0 \
+          --local context=. \
+          --local dockerfile=. \
+          --opt filename=Dockerfile \
+          --opt build-arg:NEXT_PUBLIC_CDN_URL="$NEXT_PUBLIC_CDN_URL" \
+          --import-cache "type=s3,region=$CACHE_REGION,bucket=$CACHE_BUCKET,endpoint_url=$CACHE_ENDPOINT,use_path_style=true,name=$CACHE_NAME" \
+          --export-cache "type=s3,region=$CACHE_REGION,bucket=$CACHE_BUCKET,endpoint_url=$CACHE_ENDPOINT,use_path_style=true,name=$CACHE_NAME,mode=max" \
+          --output "type=image,\"name=$REGISTRY/$IMAGE_REPO:$IMAGE_TAG,$REGISTRY/$IMAGE_REPO:latest\",push=true" \
+          --progress plain
+      - echo "pushed $REGISTRY/$IMAGE_REPO:$IMAGE_TAG and :latest"
+  next-build-staging:
+    image: node:22-alpine
+    # 🔴 THE COMPILE LIVES HERE NOW, NOT IN THE DOCKERFILE (phase 4, 21-08-2026).
+    # An image build runs inside the SHARED `buildkitd` daemon that every repo uses.
+    # Measured 21-08: one Next.js compile takes it from ~850Mi idle to ~2.4-2.9Gi
+    # against a 4Gi limit, so two concurrent frontend builds would OOM it — and that
+    # kills EVERY in-flight build in the estate, not just this one. Compiling in a
+    # step pod puts the memory back where the scheduler can spread it across nodes.
+    # ⚠️ COUPLED to NODE_OPTIONS below and to the Dockerfile, which now only COPYs
+    # this step's output. Reverting one without the other produces an image with no
+    # application in it.
+    backend_options:
+      kubernetes:
+        resources:
+          requests: { memory: 3Gi, cpu: 1 }
+          limits: { memory: 3Gi }
     environment:
+      # V8 sizes old-space from TOTAL MACHINE MEMORY, not the cgroup limit, so an
+      # uncapped build self-selects ~4Gi on an 8Gi node. Caps old space only; RSS
+      # lands above this.
+      NODE_OPTIONS: --max-old-space-size=1280
+      # 🔑 NEXT_PUBLIC_* MOVED HERE FROM THE DOCKERFILE'S ARG/ENV PAIR. Next.js
+      # inlines them during `next build`, so this is now the only place they can
+      # reach the bundle. deploy.yml asserts the result against LIVE HTML.
       NEXT_PUBLIC_API_URL:
         from_secret: staging_next_public_api_url
       NEXT_PUBLIC_APP_URL:
@@ -175,80 +275,135 @@ steps:
         from_secret: staging_next_public_captcha_api_url
       NEXT_PUBLIC_CDN_URL:
         from_secret: staging_next_public_cdn_url
-      # Distinct path segment from production — see the note on the prod step for
-      # why this belongs here and not only in build.yml.
       NEXT_PUBLIC_ASSET_PREFIX: https://ciphera-app-static.b-cdn.net/pulse-staging
-    # 🔴 THIS STEP OVERRIDES THE NAMESPACE DEFAULT, AND ONLY THIS STEP.
-    #
-    # woodpecker-builds carries a LimitRange of request==limit==1536Mi. This build
-    # genuinely does not fit in it — and that is a property of the BUILD (the
-    # largest node_modules in the estate, Next.js + webpack + PWA compile, with
-    # kaniko in the same pod), not of the node size. So the override STAYS.
-    # Measured 27-07-2026 on standard.medium (3411 MiB allocatable):
-    #   heap 1280, ceiling 1536Mi -> killed at the ceiling
-    #   heap  896, ceiling 1536Mi -> V8 "heap out of memory" at ~900 MB, RSS 1401 MiB
-    #   heap 1280, ceiling 2Gi    -> killed at the ceiling, RSS 2048 MiB
-    #   heap 1280, ceiling 3Gi    -> GREEN, RSS 2229 MiB
-    #
-    # 3Gi -> 4Gi on 27-07-2026, when the pool moved to 4 x standard.large
-    # (7436 MiB allocatable). WHY RAISE RATHER THAN REMOVE: 3Gi was the tightest
-    # ceiling that would fit a 3411 MiB node — it was sized against the NODE, not
-    # against the build, which is why the build ran permanently within ~800 MiB of
-    # being killed. The node constraint is gone; give it real headroom instead.
-    #
-    # ⚠️ WHY 4Gi AND NOT MORE. Measured free memory per node is 4410-5256 MiB.
-    # 4096 MiB fits on ALL FOUR nodes; 5Gi (5120 MiB) would fit on exactly ONE,
-    # which re-creates the single-eligible-node fragmentation this whole migration
-    # existed to remove. Size a build against measured FREE-per-node, never against
-    # node allocatable.
-    #
-    # request == limit here too: the point of the namespace default is that the
-    # scheduler's arithmetic bounds the node, and an override that only raised the
-    # limit would reintroduce exactly the overcommit that took a node down twice.
-    # Raise the DEFAULT for everyone and every node loses that guarantee; raise it
-    # HERE and only this build is expensive.
+      # 🔴 REQUIRED BECAUSE THE COMPILE MOVED OUT OF THE DOCKERFILE (21-08-2026).
+      # This repo commits a project-level .npmrc containing
+      #     //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+      # and a PROJECT .npmrc overrides the user-level /root/.npmrc. Inside the old
+      # Dockerfile this never mattered, because `npm ci` ran BEFORE `COPY . .` — the
+      # project file did not exist yet at that point. In a step the whole repo is
+      # checked out first, so the project file wins and an unset NODE_AUTH_TOKEN
+      # expands to empty, giving `npm error code E401 ... unauthenticated`.
+      # Measured exactly that way on id-frontend #92 and website #250.
+      NODE_AUTH_TOKEN:
+        from_secret: npm_token
+      CACHE_ENDPOINT: https://sos-ch-dk-2.exo.io
+      CACHE_BUCKET: ciphera-build-cache
+      CACHE_KEY: next-cache/pulse-frontend-staging.tar.gz
+      AWS_DEFAULT_REGION: ch-dk-2
+      AWS_ACCESS_KEY_ID:
+        from_secret: build_cache_key
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: build_cache_secret
+    when:
+      - event: push
+        branch: staging
+    commands:
+      # 🔴 SOVEREIGNTY TRIPWIRE — same reasoning as the buildctl steps. Every
+      # S3-backed tool defaults to AWS when the endpoint is unset.
+      - |
+        case "$CACHE_ENDPOINT" in
+          https://sos-*.exo.io) echo "cache endpoint OK: $CACHE_ENDPOINT" ;;
+          *) echo "REFUSING: cache endpoint '$CACHE_ENDPOINT' is not Exoscale SOS"; exit 1 ;;
+        esac
+      # 🔑 WHY THIS S3 ROUND-TRIP EXISTS. Until phase 4 the Dockerfile used
+      # `RUN --mount=type=cache` for .next/cache, which BuildKit persists in the
+      # daemon. Moving the compile into a step LOSES that, because a step runs on a
+      # fresh per-workflow PVC. Without this restore/save, moving the compile out
+      # would trade a memory win for a cache regression.
+      # ⚠️ The credential is scoped to `push`/`tag` events only, so a PULL REQUEST
+      # build has no cache and compiles cold ON PURPOSE — a PR must not be able to
+      # read a credential that can write the estate's shared cache.
+      - |
+        if [ -n "$AWS_ACCESS_KEY_ID" ]; then
+          apk add --no-cache aws-cli >/dev/null 2>&1
+          if aws s3 cp "s3://$CACHE_BUCKET/$CACHE_KEY" - --endpoint-url "$CACHE_ENDPOINT" 2>/dev/null | tar xzf - 2>/dev/null; then
+            echo "next cache restored from SOS"
+          else
+            echo "next cache cold (no object yet, or first run after a key change)"
+          fi
+        else
+          echo "no cache credential on this event (pull_request) — compiling cold, by design"
+        fi
+      - cp .npmrc-ci /root/.npmrc
+      - npm ci --prefer-offline --no-audit --progress=false
+      - rm -f /root/.npmrc
+      - npm run build
+      # Save AFTER a successful build only. A failed build must not publish its
+      # cache — `commands` stop at the first non-zero exit, so reaching here means
+      # `npm run build` succeeded.
+      - |
+        if [ -n "$AWS_ACCESS_KEY_ID" ] && [ -d .next/cache ]; then
+          tar czf - .next/cache | aws s3 cp - "s3://$CACHE_BUCKET/$CACHE_KEY" --endpoint-url "$CACHE_ENDPOINT" \
+            && echo "next cache saved to SOS" || echo "WARN: cache save failed (build is still good)"
+        fi
+      - echo "next build complete — the Dockerfile now only assembles this output"
+  push-staging:
+    image: moby/buildkit:v0.32.2@sha256:28a898719c18a33f4e8000685287fa36fd0dd9560c6440227d3a732d79bb41d8
+    # 🔑 Down from 4Gi request == 4Gi limit under kaniko — the compile moved into the shared daemon.
     backend_options:
       kubernetes:
         resources:
-          requests:
-            memory: 4Gi
-          limits:
-            memory: 4Gi
-    settings:
-      # `extra_opts: --compressed-caching=false` REMOVED 27-07-2026 with the move to
-      # 4 x standard.large. kaniko holds every layer COMPRESSED IN MEMORY while
-      # snapshotting, on top of the build's own usage; on a 3411 MiB node that took
-      # this step to 2960 MiB and killed it at `COPY --from=deps /app/node_modules`
-      # — in kaniko's snapshot phase, not in `next build`. Disabling compressed
-      # caching made kaniko stream layers instead: it fit, and it COST BUILD TIME.
-      # That was a workaround for the node size, and the node size is now fixed —
-      # the pod has a 4Gi ceiling and every node has 4410+ MiB free.
-      # ⚠️ If this step ever OOMs in the snapshot phase again, restoring the flag is
-      # the fix — but record the measurement, do not restore it on suspicion.
-      registry: registry.ops.ciphera.net
-      repo: ciphera-net/pulse-frontend-staging
-      tags:
-        - sha-${CI_COMMIT_SHA:0:7}
-        - latest
-      username:
+          requests: { memory: 256Mi, cpu: 200m }
+          limits: { memory: 768Mi }
+    # NOTE: `extra_hosts` is GONE and its absence is correct. The Exoscale NLB
+    # hairpin pin for registry.ops.ciphera.net moved to the DAEMON (hostAliases in
+    # buildkitd.yaml) because the DAEMON performs the push — buildctl only hands it
+    # the image name and forwards credentials over the session. Verified 21-08-2026
+    # from inside the daemon: GET https://registry.ops.ciphera.net/v2/ -> HTTP 401.
+    environment:
+      BUILDKIT_HOST: tcp://buildkitd.buildkit.svc.cluster.local:1234
+      CACHE_ENDPOINT: https://sos-ch-dk-2.exo.io
+      CACHE_BUCKET: ciphera-build-cache
+      CACHE_REGION: ch-dk-2
+      CACHE_NAME: pulse-frontend
+      REGISTRY: registry.ops.ciphera.net
+      IMAGE_REPO: ciphera-net/pulse-frontend-staging
+      IMAGE_TAG: sha-${CI_COMMIT_SHA:0:7}
+      REGISTRY_USERNAME:
         from_secret: registry_username
-      password:
+      REGISTRY_PASSWORD:
         from_secret: registry_password
-      # buildx's registry cache is not ported: kaniko's `cache`/`cache-repo`
-      # semantics are unverified here and guessing silently creates a junk
-      # repository. Slower build, not a wrong one.
-      # `secrets:` removed — kaniko has no BuildKit --secret. The npm
-      # credential is COPY'd into a NON-FINAL Dockerfile stage instead, so it
-      # never reaches the published image. See the Dockerfile.
-      # kaniko takes build args from the step ENVIRONMENT (see the
-      # `environment:` block above) rather than an inline map, which keeps
-      # the `from_secret` indirection instead of inlining secret values.
-      build-args-from-env:
-        - NEXT_PUBLIC_API_URL
-        - NEXT_PUBLIC_APP_URL
-        - NEXT_PUBLIC_ID_URL
-        - NEXT_PUBLIC_ID_API_URL
-        - NEXT_PUBLIC_CAPTCHA_API_URL
-        - NEXT_PUBLIC_CDN_URL
-        # See the prod step: the `environment:` entry is inert without this.
-        - NEXT_PUBLIC_ASSET_PREFIX
+      NEXT_PUBLIC_CDN_URL:
+        from_secret: staging_next_public_cdn_url
+    when:
+      - event: push
+        branch: staging
+    commands:
+      # 🔴 SOVEREIGNTY TRIPWIRE — see build.yml for the full reasoning.
+      - |
+        case "$CACHE_ENDPOINT" in
+          https://sos-*.exo.io) echo "cache endpoint OK: $CACHE_ENDPOINT" ;;
+          *) echo "REFUSING: cache endpoint '$CACHE_ENDPOINT' is not Exoscale SOS"; exit 1 ;;
+        esac
+      # buildctl reads the client's docker config and forwards the credential to the
+      # daemon PER BUILD over the session. That is what keeps the registry push
+      # credential subject to Woodpecker's per-repo trust and event gating — the
+      # daemon holds no standing registry credential of its own, deliberately (its
+      # Vault policy refuses kv/shared/ci-registry for exactly this reason).
+      # `base64 | tr -d` rather than `base64 -w0`: this is BusyBox base64.
+      - |
+        mkdir -p /root/.docker
+        AUTH=$(printf '%s:%s' "$REGISTRY_USERNAME" "$REGISTRY_PASSWORD" | base64 | tr -d '\n')
+        printf '{"auths":{"%s":{"auth":"%s"}}}\n' "$REGISTRY" "$AUTH" > /root/.docker/config.json
+        chmod 600 /root/.docker/config.json
+      # 🔑 A GREEN STEP PROVES THE CACHE WAS WRITTEN. A failed `--export-cache` is
+      # FATAL, not a warning — `ignore-error` defaults to false and is not set.
+      # Measured 21-08-2026 against a non-existent bucket: exit=1, "api error
+      # NoSuchBucket". So there is no separate post-flight check: this step
+      # succeeding IS the check, and the credential only works against SOS.
+      #
+      # The `name=` value carries a comma to publish two tags, so it must be QUOTED
+      # INSIDE the CSV or buildctl reads `latest` as a separate attribute.
+      - |
+        buildctl build \
+          --frontend dockerfile.v0 \
+          --local context=. \
+          --local dockerfile=. \
+          --opt filename=Dockerfile \
+          --opt build-arg:NEXT_PUBLIC_CDN_URL="$NEXT_PUBLIC_CDN_URL" \
+          --import-cache "type=s3,region=$CACHE_REGION,bucket=$CACHE_BUCKET,endpoint_url=$CACHE_ENDPOINT,use_path_style=true,name=$CACHE_NAME" \
+          --export-cache "type=s3,region=$CACHE_REGION,bucket=$CACHE_BUCKET,endpoint_url=$CACHE_ENDPOINT,use_path_style=true,name=$CACHE_NAME,mode=max" \
+          --output "type=image,\"name=$REGISTRY/$IMAGE_REPO:$IMAGE_TAG,$REGISTRY/$IMAGE_REPO:latest\",push=true" \
+          --progress plain
+      - echo "pushed $REGISTRY/$IMAGE_REPO:$IMAGE_TAG and :latest"

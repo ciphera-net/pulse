@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useUrlDateRange } from '../useUrlDateRange'
+import { previousDateRange } from '../periodUrl'
 
 // * Mock Next.js navigation
 const mockReplace = vi.fn()
@@ -110,6 +111,72 @@ describe('useUrlDateRange', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// periodReady — the gate that stops a placeholder period reaching the network.
+//
+// 🔴 WHY THIS EXISTS. themodestyhouse.com, 20-08-2026: the Campaigns card
+// showed `reddit` (last seen 9 days earlier) and `copilot.com` (6 days) while
+// the range picker said "Today". Only a 30-DAY window contains both, and
+// DEFAULT_PERIOD is '30'.
+//
+// The range memory is read in an effect (deliberately — a mount-time
+// router.replace is dropped during hydration), so the first render of any
+// bare-URL mount reports DEFAULT_PERIOD. That render is not free: it mints a
+// real SWR cache entry for period=30d, and on the NEXT navigation to the page
+// that entry is warm, so the dashboard resolves instantly to a 30-day range
+// and every card renders 30 days of data before the period corrects.
+// ---------------------------------------------------------------------------
+describe('useUrlDateRange periodReady', () => {
+  function renderTrace() {
+    const seen: Array<{ period: string; ready: boolean }> = []
+    renderHook(() => {
+      const r = useUrlDateRange()
+      seen.push({ period: r.period, ready: r.periodReady })
+      return r
+    })
+    return seen
+  }
+
+  it('is NOT ready on the render that reports the placeholder period', () => {
+    window.localStorage.setItem('pulse_last_period', 'today')
+    const seen = renderTrace()
+
+    // The first render still reports DEFAULT_PERIOD — that is required for
+    // server and client to agree during hydration, and is not being changed.
+    expect(seen[0].period).toBe('30')
+    // What changes is that it now declares itself unresolved, so callers can
+    // withhold the request instead of caching a 30-day answer.
+    expect(seen[0].ready).toBe(false)
+
+    const last = seen[seen.length - 1]
+    expect(last.period).toBe('today')
+    expect(last.ready).toBe(true)
+  })
+
+  it('never reports ready while showing the placeholder — the invariant', () => {
+    window.localStorage.setItem('pulse_last_period', 'today')
+    const seen = renderTrace()
+    expect(seen.filter(r => r.ready && r.period === '30')).toEqual([])
+  })
+
+  it('is ready on the FIRST render when the URL carries an explicit period', () => {
+    mockSearchParams = new URLSearchParams('period=today')
+    const seen = renderTrace()
+    // Nothing to wait for: a shared link is authoritative immediately, so
+    // this gate must cost those navigations nothing.
+    expect(seen[0]).toEqual({ period: 'today', ready: true })
+  })
+
+  it('becomes ready when NOTHING is remembered', () => {
+    // The paired negative. "No preset stored" and "storage not read yet" both
+    // surface as null; collapsing them would leave a user who has never picked
+    // a preset permanently un-ready, i.e. a dashboard that never loads.
+    const seen = renderTrace()
+    const last = seen[seen.length - 1]
+    expect(last).toEqual({ period: '30', ready: true })
+  })
+})
+
 describe('useUrlDateRange range memory', () => {
   it('remembers a chosen preset and applies it on a bare-URL mount', () => {
     const { result } = renderHook(() => useUrlDateRange())
@@ -161,5 +228,52 @@ describe('useUrlDateRange range memory', () => {
     mockSearchParams = new URLSearchParams()
     const { result } = renderHook(() => useUrlDateRange())
     expect(result.current.period).toBe('30')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// previousDateRange must REJECT an unparseable range.
+//
+// 🔴 MEASURED ON STAGING 20-08-2026. Once the date-ranged pages began
+// withholding their range while the remembered period resolved (#326,
+// fetchableRange returns empty strings), /funnels issued a real request with
+// `startDate=NaN-NaN-NaN&endDate=NaN-NaN-NaN`.
+//
+// The cause is a guard that cannot fail: both existing checks are `>` and `<`
+// comparisons, and EVERY comparison with NaN is false, so an Invalid Date
+// passed straight through and formatDate produced "NaN-NaN-NaN". That string
+// is non-empty, so callers guarding on `prevRange?.start ?? ''` treated it as
+// a usable date.
+// ---------------------------------------------------------------------------
+describe('previousDateRange rejects what it cannot parse', () => {
+  it('returns null for an empty range — the shape a withheld range has', () => {
+    expect(previousDateRange({ start: '', end: '' })).toBeNull()
+  })
+
+  it('returns null for a malformed range', () => {
+    expect(previousDateRange({ start: 'not-a-date', end: 'nor-this' })).toBeNull()
+  })
+
+  it('returns null when only one end is missing', () => {
+    expect(previousDateRange({ start: '2026-08-20', end: '' })).toBeNull()
+    expect(previousDateRange({ start: '', end: '2026-08-20' })).toBeNull()
+  })
+
+  // The paired positive: "always null" would pass every case above and
+  // silently delete every period-over-period comparison in the product.
+  it('still computes the preceding window for a real range', () => {
+    expect(previousDateRange({ start: '2026-08-20', end: '2026-08-20' }))
+      .toEqual({ start: '2026-08-19', end: '2026-08-19' })
+    expect(previousDateRange({ start: '2026-08-14', end: '2026-08-20' }))
+      .toEqual({ start: '2026-08-07', end: '2026-08-13' })
+  })
+
+  // Never a NaN-shaped string, whatever the input — the property that actually
+  // reached the network.
+  it('never returns a NaN-shaped date', () => {
+    for (const r of [{ start: '', end: '' }, { start: 'x', end: 'y' }, { start: '2026-08-20', end: '' }]) {
+      const out = previousDateRange(r)
+      expect(out === null || (!out.start.includes('NaN') && !out.end.includes('NaN'))).toBe(true)
+    }
   })
 })

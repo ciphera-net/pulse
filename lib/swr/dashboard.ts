@@ -206,9 +206,22 @@ export function useInstallStatus(siteId: string | undefined, options?: { poll?: 
 
 // * Hook for full dashboard data (single request replaces 7 focused hooks)
 // * The backend runs all queries in parallel and caches the result in Redis (30s TTL)
+// 🔴 THE PERIOD TOKEN IS NOT AN IDENTITY ON ITS OWN. These four keys used to
+// read `period || \`${start}-${end}\`` — the dates were dropped whenever a
+// relative period was sent, on the reasoning that the SERVER resolves the
+// period so the client dates are advisory. True of the VALUE, false of the
+// KEY: `period=today` is the same string today and tomorrow, so the cache
+// entry never invalidated when the local day rolled over. Only the 60s
+// refreshInterval eventually moved it, and a tab left open across midnight
+// showed yesterday until it happened to tick.
+//
+// Both now. The token still drives the request (the server owns the timezone
+// resolution and echoes meta.range); the dates only distinguish one day's
+// answer from the next.
+
 export function useDashboard(siteId: string, start: string, end: string, interval?: string, filters?: string, period?: string) {
   return useSWR<DashboardData>(
-    siteId && (period || (start && end)) ? ['dashboard', siteId, period || `${start}-${end}`, interval, filters] : null,
+    siteId && (period || (start && end)) ? ['dashboard', siteId, period ?? '', start, end, interval, filters] : null,
     () => fetchers.dashboard(siteId, start, end, interval, filters, period),
     {
       ...dashboardSWRConfig,
@@ -223,7 +236,7 @@ export function useDashboard(siteId: string, start: string, end: string, interva
 // * Hook for stats (refreshed less frequently)
 export function useStats(siteId: string, start: string, end: string, filters?: string, period?: string) {
   return useSWR<Stats>(
-    siteId && (period || (start && end)) ? ['stats', siteId, period || `${start}-${end}`, filters] : null,
+    siteId && (period || (start && end)) ? ['stats', siteId, period ?? '', start, end, filters] : null,
     () => getStats(siteId, start, end, filters, period),
     {
       ...dashboardSWRConfig,
@@ -244,7 +257,7 @@ export function useDailyStats(
   period?: string
 ) {
   return useSWR<DailyStat[]>(
-    siteId && (period || (start && end)) ? ['dailyStats', siteId, period || `${start}-${end}`, interval, filters] : null,
+    siteId && (period || (start && end)) ? ['dailyStats', siteId, period ?? '', start, end, interval, filters] : null,
     () => getDailyStats(siteId, start, end, interval, filters, period),
     {
       ...dashboardSWRConfig,
@@ -366,9 +379,44 @@ export function useDashboardGoals(siteId: string, start: string, end: string, fi
 }
 
 // * Hook for campaigns data (used by export modal)
+/**
+ * Campaigns for a CARD — explicit dates, filter-aware, keyed on every argument
+ * that changes the answer.
+ *
+ * 🔴 SEPARATE FROM useCampaigns ON PURPOSE, and the difference is the bug this
+ * was written for. useCampaigns keys on `period || dates` because the SERVER
+ * resolves the period, so the dates are redundant there. A card is handed
+ * already-resolved dates and no period, so the DATES are its identity — keying
+ * on anything less lets one range's rows be served for another's.
+ *
+ * It replaces a bare useEffect + useState fetch that had no error state, no
+ * abort guard and a production no-op logger, so a failed or superseded request
+ * rendered the identical "No UTM data yet" empty state as a genuinely empty
+ * range. SWR gives three honest states and guarantees the newest key's data
+ * wins, which is what stops a stale in-flight response overwriting a fresh one.
+ */
+export function useCampaignsList(
+  siteId: string,
+  start: string,
+  end: string,
+  limit: number,
+  filters?: string,
+  enabled = true,
+) {
+  return useSWR<CampaignStat[]>(
+    enabled && siteId && start && end ? ['campaignsList', siteId, start, end, limit, filters] : null,
+    () => getCampaigns(siteId, start, end, limit, filters),
+    {
+      ...dashboardSWRConfig,
+      refreshInterval: 60 * 1000,
+      dedupingInterval: 10 * 1000,
+    }
+  )
+}
+
 export function useCampaigns(siteId: string, start: string, end: string, limit = 100, period?: string) {
   return useSWR<CampaignStat[]>(
-    siteId && (period || (start && end)) ? ['campaigns', siteId, period || `${start}-${end}`, limit] : null,
+    siteId && (period || (start && end)) ? ['campaigns', siteId, period ?? '', start, end, limit] : null,
     () => getCampaigns(siteId, start, end, limit, undefined, period),
     {
       ...dashboardSWRConfig,
@@ -506,7 +554,10 @@ export function useFunnelBreakdown(
 // * start/end are UTC calendar days; omitted = the API's 90-day default.
 export function useUptimeStatus(siteId: string, start?: string, end?: string) {
   return useSWR<UptimeStatusResponse>(
-    siteId ? ['uptimeStatus', siteId, start ?? '', end ?? ''] : null,
+    // 🔴 Requires the dates. This keyed on siteId ALONE, so a page withholding
+    // its range while the period resolved still fired — the one gate the other
+    // hooks give for free by null-keying on an empty date.
+    siteId && start && end ? ['uptimeStatus', siteId, start, end] : null,
     () => fetchers.uptimeStatus(siteId, start, end),
     {
       ...dashboardSWRConfig,
@@ -520,7 +571,7 @@ export function useUptimeStatus(siteId: string, start?: string, end?: string) {
 // * Hook for uptime incident episodes overlapping the range
 export function useUptimeIncidents(siteId: string, start: string, end: string) {
   return useSWR<UptimeIncidentsResponse>(
-    siteId ? ['uptimeIncidents', siteId, start, end] : null,
+    siteId && start && end ? ['uptimeIncidents', siteId, start, end] : null,
     () => fetchers.uptimeIncidents(siteId, start, end),
     {
       ...dashboardSWRConfig,
