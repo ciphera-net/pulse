@@ -149,7 +149,10 @@ export default function UptimePage() {
   const params = useParams()
   const siteId = params.id as string
 
-  const { period, dateRange, periodReady, setPeriod, shiftPeriod } = useUrlDateRange()
+  const { period, dateRange, periodReady, setPeriod, shiftPeriod, pickerProps } = useUrlDateRange({
+    pageKey: 'uptime',
+    extraPresets: UPTIME_PICKER_PRESETS,
+  })
 
   // * The API reads UTC calendar days; useUrlDateRange builds LOCAL ones.
   // * Preset windows re-anchor to the current UTC day so the newest checks
@@ -264,7 +267,7 @@ export default function UptimePage() {
             onPeriodChange={(p) => setPeriod(p as Period)}
             onDateRangeChange={(range) => setPeriod('custom', range)}
             onShift={shiftPeriod}
-            extraPresets={UPTIME_PICKER_PRESETS}
+            {...pickerProps}
           />
           {canEdit && (
             <Button variant="chrome" size="toolbar" onClick={() => handleToggleUptime(false)} isLoading={toggling}>

@@ -24,7 +24,10 @@ export default function CDNPage() {
   const params = useParams()
   const siteId = params.id as string
 
-  const { period, dateRange, periodReady, setPeriod, shiftPeriod } = useUrlDateRange()
+  const { period, dateRange, periodReady, setPeriod, shiftPeriod, pickerProps } = useUrlDateRange({
+    pageKey: 'cdn',
+    extraPresets: CDN_PICKER_PRESETS,
+  })
   // * bunny_data days are UTC days (Bunny's chart convention, verified live).
   // * Preset windows anchor to the current UTC day — west of UTC, a local
   // * anchor would silently drop the newest day. An explicitly picked custom
@@ -109,7 +112,7 @@ export default function CDNPage() {
             onDateRangeChange={(range) => setPeriod('custom', range)}
             onShift={shiftPeriod}
             align="right"
-            extraPresets={CDN_PICKER_PRESETS}
+            {...pickerProps}
           />
         </div>
       </div>

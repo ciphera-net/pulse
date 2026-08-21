@@ -49,8 +49,11 @@ describe('command deck chart (approved C mockup fidelity)', () => {
     expect(deck).not.toContain('aspectRatio="2.9 / 1"')
   })
 
-  it('draws sharp linear segments, not a smoothing curve', () => {
-    expect(deck).toContain('curve={curveLinear}')
+  it('draws the shared monotone curve — the sharp C-mockup line was reverted 21-08-2026', () => {
+    // No curve override at all: the Area default is curveMonotoneX, like every
+    // other chart surface. Overriding it again is a deliberate decision, not a
+    // drive-by.
+    expect(deck).not.toContain('curve={')
   })
 })
 
