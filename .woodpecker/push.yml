@@ -10,8 +10,14 @@
 labels:
   runner: k8s
 
-depends_on:
-  - build
+# `depends_on: [build]` REMOVED 20-08-2026, and build.yml was DELETED OUTRIGHT in
+# this repo — not made pull-request-only as in the ten single-image repos. Every
+# step it held was a `dry-run: true` rebuild of the image THIS file builds
+# seconds later, and it had no `pull_request` trigger, so deleting it removed
+# zero coverage. Staging remains the pre-main gate. This step is now the FIRST and
+# ONLY build on main/staging, which is what makes the deletion safe: a Dockerfile
+# that does not build still fails the pipeline here, before deploy.yml can ship.
+# See Infra/docs/audits/20-08-2026-ci-latency-audit.md §5.1.
 
 when:
   - event: push
@@ -60,15 +66,19 @@ steps:
         from_secret: next_public_captcha_api_url
       NEXT_PUBLIC_CDN_URL:
         from_secret: next_public_cdn_url
-      # 🔴 THIS FILE IS THE ONE THAT MATTERS FOR assetPrefix, NOT build.yml.
-      # build.yml's build/build-staging are `dry-run: true` shadow builds tagged
-      # shadow-*; they validate the Dockerfile and are thrown away. THIS step
-      # produces the image that is pushed, deployed, and read by upload-static.
-      # A build arg present only in build.yml is inlined into an artifact nobody
-      # ships — Next bakes assetPrefix at `next build`, so the deployed HTML then
-      # silently keeps same-origin chunks. That happened on 18-08-2026 (pipeline
-      # 533) and the live-HTML assertion in deploy.yml is what caught it.
-      # ⇒ Any change to a NEXT_PUBLIC_* build input must be made in BOTH files.
+      # 🔴 THIS FILE IS THE ONLY PLACE assetPrefix CAN BE SET. Since 20-08-2026
+      # there is no build.yml in this repo — it held `dry-run: true` shadow builds
+      # whose output was discarded, and it was deleted. THIS step produces the
+      # image that is pushed, deployed, and read by upload-static.
+      # WHY THAT MATTERS HISTORICALLY: Next bakes assetPrefix at `next build`, so
+      # a build arg set only in the discarded build was inlined into an artifact
+      # nobody shipped and the deployed HTML silently kept same-origin chunks.
+      # That happened on 18-08-2026 (pipeline 533) and the live-HTML assertion in
+      # deploy.yml is what caught it. The two-file sync hazard is now STRUCTURALLY
+      # GONE — there is only one file — which is a reason to keep it that way.
+      # ⚠️ The assertion in deploy.yml STAYS regardless: `build-args-from-env`
+      # below is what makes the `environment:` entry non-inert, and omitting it
+      # still fails OPEN (empty prefix, working site, wrong behaviour).
       # Literal, not a secret: it is a public CDN hostname that appears in every
       # page's HTML anyway. 🔴 The PATH SEGMENT separates environments in the
       # shared bucket — prod and staging must never share it, or one serves the
@@ -176,7 +186,7 @@ steps:
       NEXT_PUBLIC_CDN_URL:
         from_secret: staging_next_public_cdn_url
       # Distinct path segment from production — see the note on the prod step for
-      # why this belongs here and not only in build.yml.
+      # why this file is the only place it can be set.
       NEXT_PUBLIC_ASSET_PREFIX: https://ciphera-app-static.b-cdn.net/pulse-staging
     # 🔴 THIS STEP OVERRIDES THE NAMESPACE DEFAULT, AND ONLY THIS STEP.
     #
