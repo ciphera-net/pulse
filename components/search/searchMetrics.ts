@@ -40,6 +40,25 @@ export function serializeActiveMetrics(keys: MetricKey[]): string | null {
   return ordered.join(',')
 }
 
+// * Engine-scoped variants of the same grammar: Bing's panel plots a SUBSET of
+// * the metric vocabulary (its API has no position), so its ?bm= param
+// * validates against its own order and default. The Google helpers above stay
+// * as the canonical instance.
+export function parseActiveSubset(raw: string | null, order: MetricKey[], dflt: MetricKey[]): MetricKey[] {
+  if (!raw) return dflt
+  const keys = raw.split(',').filter((k): k is MetricKey => order.includes(k as MetricKey))
+  if (keys.length === 0) return dflt
+  return order.filter((k) => keys.includes(k))
+}
+
+export function serializeActiveSubset(keys: MetricKey[], order: MetricKey[], dflt: MetricKey[]): string | null {
+  const ordered = order.filter((k) => keys.includes(k))
+  if (ordered.length === dflt.length && ordered.every((k, i) => k === dflt[i])) {
+    return null
+  }
+  return ordered.join(',')
+}
+
 // ─── Granularity rollup ──────────────────────────────────────────
 
 export type Granularity = 'daily' | 'weekly' | 'monthly'

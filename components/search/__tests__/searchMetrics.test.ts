@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   parseActiveMetrics,
+  parseActiveSubset,
+  serializeActiveSubset,
+  type MetricKey,
   serializeActiveMetrics,
   rollupSeries,
   parseGranularity,
@@ -117,5 +120,28 @@ describe('sort grammar + sortRows', () => {
 
   it('no sort returns the input untouched', () => {
     expect(sortRows(rows, null)).toBe(rows)
+  })
+})
+
+describe('engine-scoped active-metric grammar (?bm=)', () => {
+  const ORDER: MetricKey[] = ['clicks', 'impressions', 'ctr']
+  const DFLT: MetricKey[] = ['clicks', 'impressions']
+
+  it('defaults, drops unknowns, and preserves the engine order', () => {
+    expect(parseActiveSubset(null, ORDER, DFLT)).toEqual(DFLT)
+    // position is a GOOGLE metric — on Bing's subset it must be dropped, not plotted.
+    expect(parseActiveSubset('position,ctr', ORDER, DFLT)).toEqual(['ctr'])
+    expect(parseActiveSubset('ctr,clicks', ORDER, DFLT)).toEqual(['clicks', 'ctr'])
+    expect(parseActiveSubset('nonsense', ORDER, DFLT)).toEqual(DFLT)
+    // A raw value of ONLY foreign keys must fall back to the default — an
+    // empty active set breaks the at-least-one-strip invariant. (This is the
+    // input that distinguishes validating against the engine's order from
+    // validating against the global METRIC_ORDER.)
+    expect(parseActiveSubset('position', ORDER, DFLT)).toEqual(DFLT)
+  })
+
+  it('serializes the default set as null so the URL stays clean', () => {
+    expect(serializeActiveSubset(['impressions', 'clicks'], ORDER, DFLT)).toBeNull()
+    expect(serializeActiveSubset(['clicks', 'ctr'], ORDER, DFLT)).toBe('clicks,ctr')
   })
 })

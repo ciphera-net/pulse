@@ -246,30 +246,49 @@ function XAxis({ width, series, granularity }: { width: number; series: SeriesPo
   )
 }
 
-// ─── Panel ───────────────────────────────────────────────────────
+// ─── Core (engine-agnostic instrument) ───────────────────────────
+//
+// One device, two engines. The Google panel and the Bing panel render THIS —
+// same rails, strips, crosshair, tooltip, scale labels and x-axis — with the
+// engine deciding only the metric set, the series and the delta arithmetic.
+// The Bing view being smaller is honest (its API has three metrics); it being
+// a different-looking instrument was not, which is why this core exists.
 
-export default function InstrumentPanel({ siteId, dateRange, overview, granularity }: InstrumentPanelProps) {
-  const searchParams = useSearchParams()
-  const write = useQueryParamsWriter()
+export interface InstrumentRow {
+  key: MetricKey
+  value: number
+  delta: PctChangeResult
+}
+
+export function InstrumentCore({
+  rows,
+  series,
+  granularity,
+  active,
+  onToggle,
+  isValidating,
+  isLoading,
+  error,
+  onRetry,
+  errorTitle,
+  emptyTitle,
+  emptyHint,
+}: {
+  rows: InstrumentRow[]
+  series: SeriesPoint[]
+  granularity: Granularity
+  active: MetricKey[]
+  onToggle: (key: MetricKey) => void
+  isValidating: boolean
+  isLoading: boolean
+  error: boolean
+  onRetry: () => void
+  errorTitle: string
+  emptyTitle: string
+  emptyHint: string
+}) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
 
-  const active = parseActiveMetrics(searchParams.get('m'))
-
-  const toggleMetric = useCallback(
-    (key: MetricKey) => {
-      const next = active.includes(key) ? active.filter((k) => k !== key) : [...active, key]
-      if (next.length === 0) return // at least one strip stays
-      write({ m: serializeActiveMetrics(next) })
-    },
-    [active, write],
-  )
-
-  const { data, error, isLoading, isValidating, mutate } = useGSCDailyTotals(siteId, dateRange.start, dateRange.end)
-
-  const series = useMemo(
-    () => rollupSeries(data?.daily_totals ?? [], granularity),
-    [data, granularity],
-  )
   // * Transitional state while a site's gsc_daily backfill runs: the series
   // * exists but carries no position. The strip says so instead of plotting 0s.
   const hasPositionSeries = useMemo(() => series.some((p) => p.position != null), [series])
@@ -278,13 +297,10 @@ export default function InstrumentPanel({ siteId, dateRange, overview, granulari
 
   return (
     <div className="relative rounded-none border border-border bg-card">
-      <UpdatingChip active={isValidating && !!data} className="right-2 top-2" />
+      <UpdatingChip active={isValidating} className="right-2 top-2" />
 
-      {METRIC_ORDER.map((key) => {
+      {rows.map(({ key, value, delta }) => {
         const isOn = active.includes(key)
-        const value = overviewValue(overview, key)
-        const prev = overviewPrev(overview, key)
-        const delta = guardedPctChange(value, prev, key === 'clicks' || key === 'impressions' ? prev : overview.prev_impressions)
         const invert = key === 'position'
 
         if (!isOn) {
@@ -293,7 +309,7 @@ export default function InstrumentPanel({ siteId, dateRange, overview, granulari
               key={key}
               type="button"
               aria-pressed={false}
-              onClick={() => toggleMetric(key)}
+              onClick={() => onToggle(key)}
               className="group flex h-11 w-full items-stretch border-t border-border text-left transition-colors duration-fast ease-apple first:border-t-0 hover:bg-neutral-800/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange"
             >
               <span className={cn(RAIL_W, 'flex shrink-0 items-center justify-between gap-2 border-r border-border px-4')}>
@@ -312,7 +328,7 @@ export default function InstrumentPanel({ siteId, dateRange, overview, granulari
             <button
               type="button"
               aria-pressed={true}
-              onClick={() => toggleMetric(key)}
+              onClick={() => onToggle(key)}
               className={cn(
                 RAIL_W,
                 'relative flex shrink-0 flex-col justify-center border-r border-border px-4 py-3 text-left transition-colors duration-fast ease-apple hover:bg-neutral-800/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange',
@@ -371,12 +387,12 @@ export default function InstrumentPanel({ siteId, dateRange, overview, granulari
       {/* Empty / error states cover the band area, rails stay visible */}
       {error ? (
         <div className="absolute inset-y-0 left-40 right-0 flex items-center justify-center sm:left-48">
-          <ErrorCard title="Couldn't load search traffic" onRetry={() => { void mutate() }} className="py-4" />
+          <ErrorCard title={errorTitle} onRetry={onRetry} className="py-4" />
         </div>
       ) : !isLoading && series.length === 0 ? (
         <div className="pointer-events-none absolute inset-y-0 left-40 right-0 flex flex-col items-center justify-center sm:left-48">
-          <p className="text-sm text-neutral-400">No search data in this period.</p>
-          <p className="mt-1 text-xs text-neutral-500">Google reports with a ~2-day delay — try a wider range.</p>
+          <p className="text-sm text-neutral-400">{emptyTitle}</p>
+          <p className="mt-1 text-xs text-neutral-500">{emptyHint}</p>
         </div>
       ) : null}
 
@@ -402,5 +418,57 @@ export default function InstrumentPanel({ siteId, dateRange, overview, granulari
         </div>
       )}
     </div>
+  )
+}
+
+// ─── Google wrapper ──────────────────────────────────────────────
+
+export default function InstrumentPanel({ siteId, dateRange, overview, granularity }: InstrumentPanelProps) {
+  const searchParams = useSearchParams()
+  const write = useQueryParamsWriter()
+
+  const active = parseActiveMetrics(searchParams.get('m'))
+
+  const toggleMetric = useCallback(
+    (key: MetricKey) => {
+      const next = active.includes(key) ? active.filter((k) => k !== key) : [...active, key]
+      if (next.length === 0) return // at least one strip stays
+      write({ m: serializeActiveMetrics(next) })
+    },
+    [active, write],
+  )
+
+  const { data, error, isLoading, isValidating, mutate } = useGSCDailyTotals(siteId, dateRange.start, dateRange.end)
+
+  const series = useMemo(
+    () => rollupSeries(data?.daily_totals ?? [], granularity),
+    [data, granularity],
+  )
+
+  const rows: InstrumentRow[] = METRIC_ORDER.map((key) => {
+    const value = overviewValue(overview, key)
+    const prev = overviewPrev(overview, key)
+    return {
+      key,
+      value,
+      delta: guardedPctChange(value, prev, key === 'clicks' || key === 'impressions' ? prev : overview.prev_impressions),
+    }
+  })
+
+  return (
+    <InstrumentCore
+      rows={rows}
+      series={series}
+      granularity={granularity}
+      active={active}
+      onToggle={toggleMetric}
+      isValidating={isValidating && !!data}
+      isLoading={isLoading}
+      error={!!error}
+      onRetry={() => { void mutate() }}
+      errorTitle="Couldn't load search traffic"
+      emptyTitle="No search data in this period."
+      emptyHint="Google reports with a ~2-day delay — try a wider range."
+    />
   )
 }
