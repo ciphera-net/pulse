@@ -108,6 +108,17 @@ steps:
       NEXT_PUBLIC_CDN_URL:
         from_secret: next_public_cdn_url
       NEXT_PUBLIC_ASSET_PREFIX: https://ciphera-app-static.b-cdn.net/pulse
+      # 🔴 REQUIRED BECAUSE THE COMPILE MOVED OUT OF THE DOCKERFILE (21-08-2026).
+      # This repo commits a project-level .npmrc containing
+      #     //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+      # and a PROJECT .npmrc overrides the user-level /root/.npmrc. Inside the old
+      # Dockerfile this never mattered, because `npm ci` ran BEFORE `COPY . .` — the
+      # project file did not exist yet at that point. In a step the whole repo is
+      # checked out first, so the project file wins and an unset NODE_AUTH_TOKEN
+      # expands to empty, giving `npm error code E401 ... unauthenticated`.
+      # Measured exactly that way on id-frontend #92 and website #250.
+      NODE_AUTH_TOKEN:
+        from_secret: npm_token
       CACHE_ENDPOINT: https://sos-ch-dk-2.exo.io
       CACHE_BUCKET: ciphera-build-cache
       CACHE_KEY: next-cache/pulse-frontend-main.tar.gz
@@ -265,6 +276,17 @@ steps:
       NEXT_PUBLIC_CDN_URL:
         from_secret: staging_next_public_cdn_url
       NEXT_PUBLIC_ASSET_PREFIX: https://ciphera-app-static.b-cdn.net/pulse-staging
+      # 🔴 REQUIRED BECAUSE THE COMPILE MOVED OUT OF THE DOCKERFILE (21-08-2026).
+      # This repo commits a project-level .npmrc containing
+      #     //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+      # and a PROJECT .npmrc overrides the user-level /root/.npmrc. Inside the old
+      # Dockerfile this never mattered, because `npm ci` ran BEFORE `COPY . .` — the
+      # project file did not exist yet at that point. In a step the whole repo is
+      # checked out first, so the project file wins and an unset NODE_AUTH_TOKEN
+      # expands to empty, giving `npm error code E401 ... unauthenticated`.
+      # Measured exactly that way on id-frontend #92 and website #250.
+      NODE_AUTH_TOKEN:
+        from_secret: npm_token
       CACHE_ENDPOINT: https://sos-ch-dk-2.exo.io
       CACHE_BUCKET: ciphera-build-cache
       CACHE_KEY: next-cache/pulse-frontend-staging.tar.gz
