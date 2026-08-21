@@ -19,7 +19,8 @@ import BingPanel from '@/components/search/BingPanel'
 import { SyncStatusLine } from '@/components/integrations/SyncStatusLine'
 import { UpdatingChip } from '@/components/ui/UpdatingChip'
 import { ErrorCard } from '@/components/ui/ErrorCard'
-import { Segmented, type SegmentedOption } from '@/components/ui/segmented'
+import { SegmentedControl } from '@ciphera-net/facet'
+import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 import { METRIC_ORDER, METRIC_LABEL, parseGranularity, type Granularity } from '@/components/search/searchMetrics'
 
 // ---------------------------------------------------------------------------
@@ -60,11 +61,24 @@ const GSC_PICKER_PRESETS: { group: string; presets: PeriodPreset[]; exclusive: b
   ],
 }
 
-const GRANULARITY_OPTIONS: SegmentedOption<Granularity>[] = [
+const GRANULARITY_OPTIONS = [
   { value: 'daily', label: 'Daily' },
   { value: 'weekly', label: 'Weekly' },
   { value: 'monthly', label: 'Monthly' },
 ]
+
+// * The engine control carries each engine's favicon through the same
+// * same-origin proxy the referrer rows use — identity at a glance, no
+// * third-party request from the authenticated app.
+function engineLabel(domain: string, text: string) {
+  return (
+    <span className="flex items-center gap-1.5">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={`${FAVICON_SERVICE_URL}?domain=${domain}&sz=32`} alt="" aria-hidden="true" className="size-3.5 rounded-none" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+      {text}
+    </span>
+  )
+}
 
 export default function SearchConsolePage() {
   const params = useParams()
@@ -95,9 +109,9 @@ export default function SearchConsolePage() {
     (e: string) => write({ engine: e === 'google' ? null : e }),
     [write],
   )
-  const ENGINE_OPTIONS: SegmentedOption<'google' | 'bing'>[] = [
-    { value: 'google', label: 'Google' },
-    { value: 'bing', label: 'Bing' },
+  const ENGINE_OPTIONS = [
+    { value: 'google', label: engineLabel('google.com', 'Google') },
+    { value: 'bing', label: engineLabel('bing.com', 'Bing') },
   ]
   const { data: site } = useSite(siteId)
   const {
@@ -199,12 +213,11 @@ export default function SearchConsolePage() {
         <div className="flex flex-wrap items-center gap-2">
           {/* Only when there is genuinely a choice. A one-option toggle is furniture. */}
           {bingConnected && connected && (
-            <Segmented
-              ariaLabel="Search engine"
+            <SegmentedControl
+              aria-label="Search engine"
               value={engine}
               onChange={setEngine}
               options={ENGINE_OPTIONS}
-              className="h-8"
             />
           )}
           <DateRangePicker
@@ -218,9 +231,23 @@ export default function SearchConsolePage() {
         </div>
       </div>
 
-      {/* Bing: a deliberately smaller panel. Three metrics, no query tables — see BingPanel. */}
+      {/* One toolbar for BOTH engines: the granularity is a chart control and
+          travels with the instrument, not with one engine. */}
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <span className="text-xs text-neutral-500">Search traffic</span>
+        <SegmentedControl
+          aria-label="Chart granularity"
+          value={granularity}
+          onChange={(v) => setGranularity(v as Granularity)}
+          options={GRANULARITY_OPTIONS}
+        />
+      </div>
+
+      {/* Bing: the same instrument with the metric set Bing honestly has — see BingPanel. */}
       {engine === 'bing' ? (
-        <BingPanel siteId={siteId} dateRange={dateRange} />
+        <motion.div {...cascade(0)}>
+          <BingPanel siteId={siteId} dateRange={dateRange} granularity={granularity} />
+        </motion.div>
       ) : (
       /* Content — the chip covers range changes, the ErrorCard covers failures */
       <div className="relative">
@@ -235,16 +262,6 @@ export default function SearchConsolePage() {
           <>
             {/* Instrument panel — each metric row is tile and strip at once */}
             <motion.div {...cascade(0)}>
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <span className="text-xs text-neutral-500">Search traffic</span>
-                <Segmented
-                  ariaLabel="Chart granularity"
-                  value={granularity}
-                  onChange={setGranularity}
-                  options={GRANULARITY_OPTIONS}
-                  className="h-8"
-                />
-              </div>
               <InstrumentPanel siteId={siteId} dateRange={dateRange} overview={overview} granularity={granularity} />
             </motion.div>
 
