@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { useUrlDateRange, SEARCH_CONSOLE_MAX_DAYS } from '../useUrlDateRange'
+import { useUrlDateRange, SEARCH_CONSOLE_MAX_DAYS, type PageRangeOptions } from '../useUrlDateRange'
 import { previousDateRange } from '../periodUrl'
+import type { PeriodPreset } from '@/lib/constants/periods'
 
 // * Mock Next.js navigation
 const mockReplace = vi.fn()
@@ -33,6 +34,19 @@ vi.mock('@/lib/utils/dateRanges', () => ({
   },
 }))
 
+// Every page passes its declaration since 22-08-2026 (per-page range memory).
+// PAGE stands in for a plain analytics page: full global grammar, 366-day cap.
+const PAGE: PageRangeOptions = { pageKey: 'page-a' }
+const PAGE_KEY = 'pulse_last_period:page-a'
+const LEGACY_SHARED_KEY = 'pulse_last_period'
+
+const preset = (key: string): PeriodPreset => ({
+  key,
+  label: key,
+  group: 'Test ranges',
+  resolve: () => ({ start: `start-${key}`, end: `end-${key}` }),
+})
+
 beforeEach(() => {
   mockReplace.mockClear()
   mockSearchParams = new URLSearchParams()
@@ -41,34 +55,34 @@ beforeEach(() => {
 
 describe('useUrlDateRange', () => {
   it('defaults to period 30 with its computed range', () => {
-    const { result } = renderHook(() => useUrlDateRange())
+    const { result } = renderHook(() => useUrlDateRange(PAGE))
     expect(result.current.period).toBe('30')
     expect(result.current.dateRange).toEqual({ start: 'start-30', end: 'end-30' })
   })
 
   it('reads a preset period from the URL', () => {
     mockSearchParams = new URLSearchParams('period=7')
-    const { result } = renderHook(() => useUrlDateRange())
+    const { result } = renderHook(() => useUrlDateRange(PAGE))
     expect(result.current.period).toBe('7')
     expect(result.current.dateRange).toEqual({ start: 'start-7', end: 'end-7' })
   })
 
   it('reads a custom range from the URL when valid', () => {
     mockSearchParams = new URLSearchParams('period=custom&start=2026-01-01&end=2026-01-31')
-    const { result } = renderHook(() => useUrlDateRange())
+    const { result } = renderHook(() => useUrlDateRange(PAGE))
     expect(result.current.period).toBe('custom')
     expect(result.current.dateRange).toEqual({ start: '2026-01-01', end: '2026-01-31' })
   })
 
   it('normalizes period=custom with missing or malformed dates to the default', () => {
     mockSearchParams = new URLSearchParams('period=custom')
-    expect(renderHook(() => useUrlDateRange()).result.current.period).toBe('30')
+    expect(renderHook(() => useUrlDateRange(PAGE)).result.current.period).toBe('30')
     mockSearchParams = new URLSearchParams('period=custom&start=garbage&end=2026-01-31')
-    expect(renderHook(() => useUrlDateRange()).result.current.period).toBe('30')
+    expect(renderHook(() => useUrlDateRange(PAGE)).result.current.period).toBe('30')
   })
 
   it('setPeriod custom writes period/start/end; presets strip them', () => {
-    const { result } = renderHook(() => useUrlDateRange())
+    const { result } = renderHook(() => useUrlDateRange(PAGE))
     act(() => {
       result.current.setPeriod('custom', { start: '2026-01-01', end: '2026-01-31' })
     })
@@ -78,7 +92,7 @@ describe('useUrlDateRange', () => {
     expect(calledWith).toContain('end=2026-01-31')
 
     mockSearchParams = new URLSearchParams('period=custom&start=2026-01-01&end=2026-01-31')
-    const { result: r2 } = renderHook(() => useUrlDateRange())
+    const { result: r2 } = renderHook(() => useUrlDateRange(PAGE))
     mockReplace.mockClear()
     act(() => {
       r2.current.setPeriod('7')
@@ -91,7 +105,7 @@ describe('useUrlDateRange', () => {
 
   it('omits the default period from the URL', () => {
     mockSearchParams = new URLSearchParams('period=7')
-    const { result } = renderHook(() => useUrlDateRange())
+    const { result } = renderHook(() => useUrlDateRange(PAGE))
     act(() => {
       result.current.setPeriod('30')
     })
@@ -101,7 +115,7 @@ describe('useUrlDateRange', () => {
 
   it('shiftPeriod moves a custom range back by its own span', () => {
     mockSearchParams = new URLSearchParams('period=custom&start=2026-01-08&end=2026-01-14')
-    const { result } = renderHook(() => useUrlDateRange())
+    const { result } = renderHook(() => useUrlDateRange(PAGE))
     act(() => {
       result.current.shiftPeriod(-1)
     })
@@ -112,11 +126,25 @@ describe('useUrlDateRange', () => {
 
   it('shiftPeriod forward clamps at today (no-op past it)', () => {
     mockSearchParams = new URLSearchParams('period=custom&start=2099-01-01&end=2099-01-07')
-    const { result } = renderHook(() => useUrlDateRange())
+    const { result } = renderHook(() => useUrlDateRange(PAGE))
     act(() => {
       result.current.shiftPeriod(1)
     })
     expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('hands the page declaration back as pickerProps — one source for menu and validation', () => {
+    const extraPresets = { group: 'Test ranges', exclusive: true, presets: [preset('7'), preset('30')] }
+    const { result } = renderHook(() =>
+      useUrlDateRange({ pageKey: 'page-a', extraPresets }),
+    )
+    expect(result.current.pickerProps.extraPresets).toBe(extraPresets)
+
+    const excludePresets = ['1h', '24h']
+    const { result: r2 } = renderHook(() =>
+      useUrlDateRange({ pageKey: 'page-a', excludePresets }),
+    )
+    expect(r2.current.pickerProps.excludePresets).toBe(excludePresets)
   })
 })
 
@@ -139,7 +167,7 @@ describe('useUrlDateRange periodReady', () => {
   function renderTrace() {
     const seen: Array<{ period: string; ready: boolean }> = []
     renderHook(() => {
-      const r = useUrlDateRange()
+      const r = useUrlDateRange(PAGE)
       seen.push({ period: r.period, ready: r.periodReady })
       return r
     })
@@ -147,7 +175,7 @@ describe('useUrlDateRange periodReady', () => {
   }
 
   it('is NOT ready on the render that reports the placeholder period', () => {
-    window.localStorage.setItem('pulse_last_period', 'today')
+    window.localStorage.setItem(PAGE_KEY, 'today')
     const seen = renderTrace()
 
     // The first render still reports DEFAULT_PERIOD — that is required for
@@ -163,7 +191,7 @@ describe('useUrlDateRange periodReady', () => {
   })
 
   it('never reports ready while showing the placeholder — the invariant', () => {
-    window.localStorage.setItem('pulse_last_period', 'today')
+    window.localStorage.setItem(PAGE_KEY, 'today')
     const seen = renderTrace()
     expect(seen.filter(r => r.ready && r.period === '30')).toEqual([])
   })
@@ -188,55 +216,188 @@ describe('useUrlDateRange periodReady', () => {
 
 describe('useUrlDateRange range memory', () => {
   it('remembers a chosen preset and applies it on a bare-URL mount', () => {
-    const { result } = renderHook(() => useUrlDateRange())
+    const { result } = renderHook(() => useUrlDateRange(PAGE))
     act(() => {
       result.current.setPeriod('7')
     })
-    expect(window.localStorage.getItem('pulse_last_period')).toBe('7')
+    expect(window.localStorage.getItem(PAGE_KEY)).toBe('7')
 
     // A fresh mount with no ?period= takes the remembered preset as the
     // effective default (state, not a URL write — a mount-time replace is
     // dropped during hydration on the prod build).
     mockReplace.mockClear()
     mockSearchParams = new URLSearchParams()
-    const { result: r2 } = renderHook(() => useUrlDateRange())
+    const { result: r2 } = renderHook(() => useUrlDateRange(PAGE))
     expect(r2.current.period).toBe('7')
     expect(r2.current.dateRange).toEqual({ start: 'start-7', end: 'end-7' })
   })
 
   it('picking the default period while another preset is remembered does not revert', () => {
-    window.localStorage.setItem('pulse_last_period', '7')
-    const { result } = renderHook(() => useUrlDateRange())
+    window.localStorage.setItem(PAGE_KEY, '7')
+    const { result } = renderHook(() => useUrlDateRange(PAGE))
     expect(result.current.period).toBe('7')
     act(() => {
       result.current.setPeriod('30')
     })
     expect(result.current.period).toBe('30')
-    expect(window.localStorage.getItem('pulse_last_period')).toBe('30')
+    expect(window.localStorage.getItem(PAGE_KEY)).toBe('30')
   })
 
   it('an explicit URL period always wins over the memory', () => {
-    window.localStorage.setItem('pulse_last_period', '7')
+    window.localStorage.setItem(PAGE_KEY, '7')
     mockSearchParams = new URLSearchParams('period=week')
-    const { result } = renderHook(() => useUrlDateRange())
+    const { result } = renderHook(() => useUrlDateRange(PAGE))
     expect(result.current.period).toBe('week')
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
   it('custom ranges are NOT remembered — a frozen date span must never become the default', () => {
-    window.localStorage.setItem('pulse_last_period', '7')
-    const { result } = renderHook(() => useUrlDateRange())
+    window.localStorage.setItem(PAGE_KEY, '7')
+    const { result } = renderHook(() => useUrlDateRange(PAGE))
     act(() => {
       result.current.setPeriod('custom', { start: '2026-01-01', end: '2026-01-31' })
     })
-    expect(window.localStorage.getItem('pulse_last_period')).toBe('7')
+    expect(window.localStorage.getItem(PAGE_KEY)).toBe('7')
   })
 
   it('garbage in storage never becomes the period', () => {
-    window.localStorage.setItem('pulse_last_period', 'nonsense')
+    window.localStorage.setItem(PAGE_KEY, 'nonsense')
     mockSearchParams = new URLSearchParams()
-    const { result } = renderHook(() => useUrlDateRange())
+    const { result } = renderHook(() => useUrlDateRange(PAGE))
     expect(result.current.period).toBe('30')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Per-page memory (owner decision 22-08-2026). The pre-existing SHARED key is
+// the reported bug: "Today" picked on the dashboard followed the customer to
+// Search and CDN, whose pickers deliberately do not offer "Today".
+// ---------------------------------------------------------------------------
+describe('per-page range memory (22-08-2026)', () => {
+  it('a preset picked on one page never changes what another page shows', () => {
+    const { result } = renderHook(() => useUrlDateRange(PAGE))
+    act(() => {
+      result.current.setPeriod('7')
+    })
+
+    const { result: other } = renderHook(() => useUrlDateRange({ pageKey: 'page-b' }))
+    expect(other.current.period).toBe('30')
+    expect(other.current.periodReady).toBe(true)
+    expect(window.localStorage.getItem(PAGE_KEY)).toBe('7')
+    expect(window.localStorage.getItem('pulse_last_period:page-b')).toBeNull()
+  })
+
+  it('pages declaring the same pageKey share memory — funnels list and detail are one instrument', () => {
+    // The paired positive for the isolation above: same key ⇒ same memory.
+    const { result } = renderHook(() => useUrlDateRange(PAGE))
+    act(() => {
+      result.current.setPeriod('7')
+    })
+    const { result: sibling } = renderHook(() => useUrlDateRange({ pageKey: 'page-a' }))
+    expect(sibling.current.period).toBe('7')
+  })
+
+  it('the pre-22-08 shared key is never applied as a value — and is deleted on sight', () => {
+    window.localStorage.setItem(LEGACY_SHARED_KEY, 'today')
+    const { result } = renderHook(() => useUrlDateRange(PAGE))
+    // Not seeded, not applied: per-page memory means no cross-page carryover,
+    // including from the era when carryover was the behaviour.
+    expect(result.current.period).toBe('30')
+    expect(result.current.periodReady).toBe(true)
+    expect(window.localStorage.getItem(LEGACY_SHARED_KEY)).toBeNull()
+    expect(window.localStorage.getItem(PAGE_KEY)).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The applied grammar follows the page's declared vocabulary (22-08-2026).
+// The picker always filtered its MENU by the declaration; nothing filtered
+// what memory or a shared URL APPLIED, so "today" stuck on pages that cannot
+// offer it. Same family as the 16m ceiling bug — this is the other half.
+// ---------------------------------------------------------------------------
+describe('page preset vocabulary — applied, not just offered', () => {
+  // A Search-page-shaped declaration: exclusive provider vocabulary, 480-day cap.
+  const SEARCH_LIKE: PageRangeOptions = {
+    pageKey: 'search-like',
+    maxDays: SEARCH_CONSOLE_MAX_DAYS,
+    extraPresets: {
+      group: 'Search ranges',
+      exclusive: true,
+      presets: ['7', '28', '30', '3m', '6m', '12m', '16m'].map(preset),
+    },
+  }
+
+  it('an exclusive page drops a remembered period outside its vocabulary', () => {
+    window.localStorage.setItem('pulse_last_period:search-like', 'today')
+    const { result } = renderHook(() => useUrlDateRange(SEARCH_LIKE))
+    expect(result.current.period).toBe('30')
+    expect(result.current.periodReady).toBe(true)
+  })
+
+  it('an exclusive page drops a ?period= outside its vocabulary from a shared link', () => {
+    mockSearchParams = new URLSearchParams('period=today')
+    const { result } = renderHook(() => useUrlDateRange(SEARCH_LIKE))
+    expect(result.current.period).toBe('30')
+  })
+
+  it('an exclusive page honours its own vocabulary — including 16m under the wider cap', () => {
+    // The paired positive: "always fall back to 30" would pass everything above.
+    window.localStorage.setItem('pulse_last_period:search-like', '16m')
+    const { result } = renderHook(() => useUrlDateRange(SEARCH_LIKE))
+    expect(result.current.period).toBe('16m')
+  })
+
+  it('custom stays usable on an exclusive page — it carries explicit dates', () => {
+    mockSearchParams = new URLSearchParams('period=custom&start=2026-01-01&end=2026-01-31')
+    const { result } = renderHook(() => useUrlDateRange(SEARCH_LIKE))
+    expect(result.current.period).toBe('custom')
+    expect(result.current.dateRange).toEqual({ start: '2026-01-01', end: '2026-01-31' })
+  })
+
+  it('excludePresets removes those keys from the applied grammar, not just the menu', () => {
+    const FUNNELS_LIKE: PageRangeOptions = { pageKey: 'funnels-like', excludePresets: ['1h', '24h'] }
+    mockSearchParams = new URLSearchParams('period=24h')
+    expect(renderHook(() => useUrlDateRange(FUNNELS_LIKE)).result.current.period).toBe('30')
+
+    mockSearchParams = new URLSearchParams()
+    window.localStorage.setItem('pulse_last_period:funnels-like', '24h')
+    expect(renderHook(() => useUrlDateRange(FUNNELS_LIKE)).result.current.period).toBe('30')
+
+    // Paired positive: a non-excluded global preset still applies.
+    window.localStorage.clear()
+    mockSearchParams = new URLSearchParams('period=today')
+    expect(renderHook(() => useUrlDateRange(FUNNELS_LIKE)).result.current.period).toBe('today')
+  })
+
+  it('a NON-exclusive page still honours URL-grammar periods its menu does not list', () => {
+    // Deliberate looseness: ?period=3m shared from Search opens on the
+    // dashboard as the 90-day range it names (within the ceiling) — the menu
+    // not offering a shortcut is not the same as the API refusing the range.
+    mockSearchParams = new URLSearchParams('period=3m')
+    const { result } = renderHook(() => useUrlDateRange(PAGE))
+    expect(result.current.period).toBe('3m')
+  })
+
+  it('setPeriod refuses to remember a period outside the vocabulary', () => {
+    const FUNNELS_LIKE: PageRangeOptions = { pageKey: 'funnels-like', excludePresets: ['1h', '24h'] }
+    const { result } = renderHook(() => useUrlDateRange(FUNNELS_LIKE))
+    act(() => {
+      result.current.setPeriod('24h')
+    })
+    expect(window.localStorage.getItem('pulse_last_period:funnels-like')).toBeNull()
+  })
+
+  it('a declaration without the default period fails loud in dev', () => {
+    // The silent fallback IS the default — a vocabulary excluding it would
+    // fall back to a period the page does not offer.
+    expect(() =>
+      renderHook(() =>
+        useUrlDateRange({
+          pageKey: 'broken',
+          extraPresets: { group: 'X', exclusive: true, presets: [preset('7')] },
+        }),
+      ),
+    ).toThrow(/DEFAULT_PERIOD/)
   })
 })
 
@@ -289,13 +450,15 @@ describe('previousDateRange rejects what it cannot parse', () => {
 
 describe('per-page range ceiling (the 22-08-2026 dashboard outage)', () => {
   // A customer picked "Last 16 months" on Search (Google retains ~480 days),
-  // then opened the Dashboard. The preset is remembered ACROSS pages, the
+  // then opened the Dashboard. The preset was remembered ACROSS pages, the
   // analytics API refuses > 366 days, and every card 400'd behind a
   // "Couldn't load the dashboard" screen. These pin both halves of the fix.
+  // (Per-page memory has since removed the cross-page path, but a page's own
+  // memory must still respect a ceiling that tightens in a future deploy.)
 
   it('drops a remembered preset the page\'s API cannot serve', () => {
-    window.localStorage.setItem('pulse_last_period', '16m')
-    const { result } = renderHook(() => useUrlDateRange())
+    window.localStorage.setItem(PAGE_KEY, '16m')
+    const { result } = renderHook(() => useUrlDateRange(PAGE))
     // Falls back to the default rather than sending a 480-day request.
     expect(result.current.period).toBe('30')
     expect(result.current.periodReady).toBe(true)
@@ -303,8 +466,8 @@ describe('per-page range ceiling (the 22-08-2026 dashboard outage)', () => {
 
   it('honours that same preset on a page that opts into the wider ceiling', () => {
     // The paired positive — without it, "always fall back to 30" would pass.
-    window.localStorage.setItem('pulse_last_period', '16m')
-    const { result } = renderHook(() => useUrlDateRange({ maxDays: SEARCH_CONSOLE_MAX_DAYS }))
+    window.localStorage.setItem(PAGE_KEY, '16m')
+    const { result } = renderHook(() => useUrlDateRange({ pageKey: 'page-a', maxDays: SEARCH_CONSOLE_MAX_DAYS }))
     expect(result.current.period).toBe('16m')
   })
 
@@ -312,15 +475,15 @@ describe('per-page range ceiling (the 22-08-2026 dashboard outage)', () => {
     // A link shared from Search opened on an analytics page would 400 exactly
     // like the remembered preset did.
     mockSearchParams = new URLSearchParams('period=16m')
-    const { result } = renderHook(() => useUrlDateRange())
+    const { result } = renderHook(() => useUrlDateRange(PAGE))
     expect(result.current.period).toBe('30')
   })
 
   it('leaves every in-ceiling preset untouched', () => {
     for (const p of ['today', 'yesterday', '7', '28', '30', '3m', '6m', '12m', 'week', 'month', 'qtd', 'year', 'last-week', 'last-month', 'last-quarter', 'last-year'] as const) {
       window.localStorage.clear()
-      window.localStorage.setItem('pulse_last_period', p)
-      const { result } = renderHook(() => useUrlDateRange())
+      window.localStorage.setItem(PAGE_KEY, p)
+      const { result } = renderHook(() => useUrlDateRange(PAGE))
       expect(result.current.period, `${p} must survive the 366-day ceiling`).toBe(p)
     }
   })

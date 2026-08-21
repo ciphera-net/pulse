@@ -48,7 +48,9 @@ export const DEFAULT_PERIOD: Period = '30'
 // a key outside this set makes the picker double-write period+custom-range, and
 // the second write clobbers the first in the shared query-params merge — the
 // preset landed as ?period=custom and its label degraded to a raw date span.
-const PERIODS: ReadonlySet<Period> = new Set([
+// Exported since 22-08-2026: useUrlDateRange derives each page's APPLIED
+// vocabulary from this grammar (minus the page's declared exclusions).
+export const PERIODS: ReadonlySet<Period> = new Set([
   '1h',
   '24h',
   'today',

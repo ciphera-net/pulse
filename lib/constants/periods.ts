@@ -64,6 +64,13 @@ export const PERIOD_TO_API: Record<string, string> = {
   'year': 'year',
 }
 
+// * Preset keys the funnels instrument cannot honestly serve: its API is
+// * date-granular, so "Last hour"/"Last 24 hours" would silently mean
+// * "today". One constant for the list AND detail page — both declare it to
+// * useUrlDateRange, which returns it as pickerProps so menu and validation
+// * cannot drift.
+export const FUNNEL_EXCLUDED_PRESETS: string[] = ['1h', '24h']
+
 export function findPreset(key: string): PeriodPreset | undefined {
   return PERIOD_PRESETS.find(p => p.key === key)
 }
