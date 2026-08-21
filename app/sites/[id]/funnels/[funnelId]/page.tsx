@@ -9,6 +9,7 @@ import { updateFunnel, deleteFunnel, type CreateFunnelRequest } from '@/lib/api/
 import { ApiError } from '@/lib/api/client'
 import { useFunnelDetail, useFunnelStats, useSite } from '@/lib/swr/dashboard'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
+import { FUNNEL_EXCLUDED_PRESETS } from '@/lib/constants/periods'
 import { fetchableRange } from '@/lib/dashboard/resolveRange'
 import { previousDateRange } from '@/lib/hooks/periodUrl'
 import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
@@ -47,7 +48,11 @@ export default function FunnelDetailPage() {
   const funnelId = params.funnelId as string
   const canManage = useCan('funnels.manage')
 
-  const { period, dateRange, periodReady, setPeriod, shiftPeriod } = useUrlDateRange()
+  const { period, dateRange, periodReady, setPeriod, shiftPeriod, pickerProps } = useUrlDateRange({
+    // Shared with the funnels list page — one instrument, one range memory.
+    pageKey: 'funnels',
+    excludePresets: FUNNEL_EXCLUDED_PRESETS,
+  })
   const fetchRange = fetchableRange(periodReady, dateRange)
 
   // ── Dashboard filter system, URL-synced with the dashboard's exact codec ──
@@ -194,9 +199,9 @@ export default function FunnelDetailPage() {
               onPeriodChange={(p) => setPeriod(p as Period)}
               onDateRangeChange={(range) => setPeriod('custom', range)}
               onShift={shiftPeriod}
-              // * The funnel API is date-granular: "Last hour" would silently
-              // * mean "today". Don't offer what we can't honor.
-              excludePresets={['1h', '24h']}
+              // * Menu and validation both come from the page declaration on
+              // * the hook (FUNNEL_EXCLUDED_PRESETS) — one source, no drift.
+              {...pickerProps}
             />
             {canManage && (
               <>

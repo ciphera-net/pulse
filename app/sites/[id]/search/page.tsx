@@ -89,7 +89,11 @@ export default function SearchConsolePage() {
 
   // Search Console retains ~480 days and its API accepts them, so this page
   // opts into the wider ceiling; every analytics page keeps the 366-day one.
-  const { period, dateRange, periodReady, setPeriod, shiftPeriod } = useUrlDateRange({ maxDays: SEARCH_CONSOLE_MAX_DAYS })
+  const { period, dateRange, periodReady, setPeriod, shiftPeriod, pickerProps } = useUrlDateRange({
+    pageKey: 'search',
+    maxDays: SEARCH_CONSOLE_MAX_DAYS,
+    extraPresets: GSC_PICKER_PRESETS,
+  })
   // Passed to the child panels too — their SWR keys null out on an empty date,
   // so they hold instead of fetching a range the user did not choose.
   const fetchRange = fetchableRange(periodReady, dateRange)
@@ -232,7 +236,7 @@ export default function SearchConsolePage() {
             onPeriodChange={(p) => setPeriod(p as Period)}
             onDateRangeChange={(range) => setPeriod('custom', range)}
             onShift={shiftPeriod}
-            extraPresets={GSC_PICKER_PRESETS}
+            {...pickerProps}
           />
         </div>
       </div>
