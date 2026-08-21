@@ -11,7 +11,7 @@ import DateRangePicker from '@/components/ui/DateRangePicker'
 import ColumnJourney from '@/components/journeys/ColumnJourney'
 import SankeyJourney from '@/components/journeys/SankeyJourney'
 import { StepperControl } from '@/components/ui/stepper-control'
-import { Segmented } from '@/components/ui/segmented'
+import { SegmentedControl } from '@ciphera-net/facet'
 import { EntryCombobox } from '@/components/journeys/EntryCombobox'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -243,13 +243,13 @@ export default function JourneysPage() {
             >
               Reset
             </button>
-            <Segmented
-              ariaLabel="Journey view"
+            <SegmentedControl
+              aria-label="Journey view"
               value={filters.viewMode}
-              onChange={filters.setViewMode}
+              onChange={(v) => filters.setViewMode(v as 'columns' | 'flow')}
               options={[
-                { value: 'columns', label: 'Columns', icon: <Rows className="h-4 w-4" /> },
-                { value: 'flow', label: 'Flow', icon: <FlowArrow className="h-4 w-4" /> },
+                { value: 'columns', label: <span className="flex items-center gap-1.5"><Rows className="h-4 w-4" />Columns</span> },
+                { value: 'flow', label: <span className="flex items-center gap-1.5"><FlowArrow className="h-4 w-4" />Flow</span> },
               ]}
             />
           </div>
