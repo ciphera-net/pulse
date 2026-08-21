@@ -71,6 +71,105 @@ steps:
         from_secret: npm_token
     commands:
       - printf '@ciphera-net:registry=https://npm.pkg.github.com/\n//npm.pkg.github.com/:_authToken=%s\nlegacy-peer-deps=true\n' "$NPM_TOKEN" > .npmrc-ci
+  next-build:
+    image: node:22-alpine
+    # 🔴 THE COMPILE LIVES HERE NOW, NOT IN THE DOCKERFILE (phase 4, 21-08-2026).
+    # An image build runs inside the SHARED `buildkitd` daemon that every repo uses.
+    # Measured 21-08: one Next.js compile takes it from ~850Mi idle to ~2.4-2.9Gi
+    # against a 4Gi limit, so two concurrent frontend builds would OOM it — and that
+    # kills EVERY in-flight build in the estate, not just this one. Compiling in a
+    # step pod puts the memory back where the scheduler can spread it across nodes.
+    # ⚠️ COUPLED to NODE_OPTIONS below and to the Dockerfile, which now only COPYs
+    # this step's output. Reverting one without the other produces an image with no
+    # application in it.
+    backend_options:
+      kubernetes:
+        resources:
+          requests: { memory: 3Gi, cpu: 1 }
+          limits: { memory: 3Gi }
+    environment:
+      # V8 sizes old-space from TOTAL MACHINE MEMORY, not the cgroup limit, so an
+      # uncapped build self-selects ~4Gi on an 8Gi node. Caps old space only; RSS
+      # lands above this.
+      NODE_OPTIONS: --max-old-space-size=1280
+      # 🔑 NEXT_PUBLIC_* MOVED HERE FROM THE DOCKERFILE'S ARG/ENV PAIR. Next.js
+      # inlines them during `next build`, so this is now the only place they can
+      # reach the bundle. deploy.yml asserts the result against LIVE HTML.
+      NEXT_PUBLIC_API_URL:
+        from_secret: next_public_api_url
+      NEXT_PUBLIC_APP_URL:
+        from_secret: next_public_app_url
+      NEXT_PUBLIC_ID_URL:
+        from_secret: next_public_id_url
+      NEXT_PUBLIC_ID_API_URL:
+        from_secret: next_public_id_api_url
+      NEXT_PUBLIC_CAPTCHA_API_URL:
+        from_secret: next_public_captcha_api_url
+      NEXT_PUBLIC_CDN_URL:
+        from_secret: next_public_cdn_url
+      NEXT_PUBLIC_ASSET_PREFIX: https://ciphera-app-static.b-cdn.net/pulse
+      # 🔴 REQUIRED BECAUSE THE COMPILE MOVED OUT OF THE DOCKERFILE (21-08-2026).
+      # This repo commits a project-level .npmrc containing
+      #     //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+      # and a PROJECT .npmrc overrides the user-level /root/.npmrc. Inside the old
+      # Dockerfile this never mattered, because `npm ci` ran BEFORE `COPY . .` — the
+      # project file did not exist yet at that point. In a step the whole repo is
+      # checked out first, so the project file wins and an unset NODE_AUTH_TOKEN
+      # expands to empty, giving `npm error code E401 ... unauthenticated`.
+      # Measured exactly that way on id-frontend #92 and website #250.
+      NODE_AUTH_TOKEN:
+        from_secret: npm_token
+      CACHE_ENDPOINT: https://sos-ch-dk-2.exo.io
+      CACHE_BUCKET: ciphera-build-cache
+      CACHE_KEY: next-cache/pulse-frontend-main.tar.gz
+      AWS_DEFAULT_REGION: ch-dk-2
+      AWS_ACCESS_KEY_ID:
+        from_secret: build_cache_key
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: build_cache_secret
+    when:
+      - event: push
+        branch: main
+    commands:
+      # 🔴 SOVEREIGNTY TRIPWIRE — same reasoning as the buildctl steps. Every
+      # S3-backed tool defaults to AWS when the endpoint is unset.
+      - |
+        case "$CACHE_ENDPOINT" in
+          https://sos-*.exo.io) echo "cache endpoint OK: $CACHE_ENDPOINT" ;;
+          *) echo "REFUSING: cache endpoint '$CACHE_ENDPOINT' is not Exoscale SOS"; exit 1 ;;
+        esac
+      # 🔑 WHY THIS S3 ROUND-TRIP EXISTS. Until phase 4 the Dockerfile used
+      # `RUN --mount=type=cache` for .next/cache, which BuildKit persists in the
+      # daemon. Moving the compile into a step LOSES that, because a step runs on a
+      # fresh per-workflow PVC. Without this restore/save, moving the compile out
+      # would trade a memory win for a cache regression.
+      # ⚠️ The credential is scoped to `push`/`tag` events only, so a PULL REQUEST
+      # build has no cache and compiles cold ON PURPOSE — a PR must not be able to
+      # read a credential that can write the estate's shared cache.
+      - |
+        if [ -n "$AWS_ACCESS_KEY_ID" ]; then
+          apk add --no-cache aws-cli >/dev/null 2>&1
+          if aws s3 cp "s3://$CACHE_BUCKET/$CACHE_KEY" - --endpoint-url "$CACHE_ENDPOINT" 2>/dev/null | tar xzf - 2>/dev/null; then
+            echo "next cache restored from SOS"
+          else
+            echo "next cache cold (no object yet, or first run after a key change)"
+          fi
+        else
+          echo "no cache credential on this event (pull_request) — compiling cold, by design"
+        fi
+      - cp .npmrc-ci /root/.npmrc
+      - npm ci --prefer-offline --no-audit --progress=false
+      - rm -f /root/.npmrc
+      - npm run build
+      # Save AFTER a successful build only. A failed build must not publish its
+      # cache — `commands` stop at the first non-zero exit, so reaching here means
+      # `npm run build` succeeded.
+      - |
+        if [ -n "$AWS_ACCESS_KEY_ID" ] && [ -d .next/cache ]; then
+          tar czf - .next/cache | aws s3 cp - "s3://$CACHE_BUCKET/$CACHE_KEY" --endpoint-url "$CACHE_ENDPOINT" \
+            && echo "next cache saved to SOS" || echo "WARN: cache save failed (build is still good)"
+        fi
+      - echo "next build complete — the Dockerfile now only assembles this output"
   push:
     image: moby/buildkit:v0.32.2@sha256:28a898719c18a33f4e8000685287fa36fd0dd9560c6440227d3a732d79bb41d8
     # 🔑 Down from 4Gi request == 4Gi limit under kaniko — the compile moved into the shared daemon.
@@ -97,19 +196,8 @@ steps:
         from_secret: registry_username
       REGISTRY_PASSWORD:
         from_secret: registry_password
-      NEXT_PUBLIC_API_URL:
-        from_secret: next_public_api_url
-      NEXT_PUBLIC_APP_URL:
-        from_secret: next_public_app_url
-      NEXT_PUBLIC_ID_URL:
-        from_secret: next_public_id_url
-      NEXT_PUBLIC_ID_API_URL:
-        from_secret: next_public_id_api_url
-      NEXT_PUBLIC_CAPTCHA_API_URL:
-        from_secret: next_public_captcha_api_url
       NEXT_PUBLIC_CDN_URL:
         from_secret: next_public_cdn_url
-      NEXT_PUBLIC_ASSET_PREFIX: https://ciphera-app-static.b-cdn.net/pulse
     when:
       - event: push
         branch: main
@@ -145,18 +233,111 @@ steps:
           --local context=. \
           --local dockerfile=. \
           --opt filename=Dockerfile \
-          --opt build-arg:NEXT_PUBLIC_API_URL="$NEXT_PUBLIC_API_URL" \
-          --opt build-arg:NEXT_PUBLIC_APP_URL="$NEXT_PUBLIC_APP_URL" \
-          --opt build-arg:NEXT_PUBLIC_ID_URL="$NEXT_PUBLIC_ID_URL" \
-          --opt build-arg:NEXT_PUBLIC_ID_API_URL="$NEXT_PUBLIC_ID_API_URL" \
-          --opt build-arg:NEXT_PUBLIC_CAPTCHA_API_URL="$NEXT_PUBLIC_CAPTCHA_API_URL" \
           --opt build-arg:NEXT_PUBLIC_CDN_URL="$NEXT_PUBLIC_CDN_URL" \
-          --opt build-arg:NEXT_PUBLIC_ASSET_PREFIX="$NEXT_PUBLIC_ASSET_PREFIX" \
           --import-cache "type=s3,region=$CACHE_REGION,bucket=$CACHE_BUCKET,endpoint_url=$CACHE_ENDPOINT,use_path_style=true,name=$CACHE_NAME" \
           --export-cache "type=s3,region=$CACHE_REGION,bucket=$CACHE_BUCKET,endpoint_url=$CACHE_ENDPOINT,use_path_style=true,name=$CACHE_NAME,mode=max" \
           --output "type=image,\"name=$REGISTRY/$IMAGE_REPO:$IMAGE_TAG,$REGISTRY/$IMAGE_REPO:latest\",push=true" \
           --progress plain
       - echo "pushed $REGISTRY/$IMAGE_REPO:$IMAGE_TAG and :latest"
+  next-build-staging:
+    image: node:22-alpine
+    # 🔴 THE COMPILE LIVES HERE NOW, NOT IN THE DOCKERFILE (phase 4, 21-08-2026).
+    # An image build runs inside the SHARED `buildkitd` daemon that every repo uses.
+    # Measured 21-08: one Next.js compile takes it from ~850Mi idle to ~2.4-2.9Gi
+    # against a 4Gi limit, so two concurrent frontend builds would OOM it — and that
+    # kills EVERY in-flight build in the estate, not just this one. Compiling in a
+    # step pod puts the memory back where the scheduler can spread it across nodes.
+    # ⚠️ COUPLED to NODE_OPTIONS below and to the Dockerfile, which now only COPYs
+    # this step's output. Reverting one without the other produces an image with no
+    # application in it.
+    backend_options:
+      kubernetes:
+        resources:
+          requests: { memory: 3Gi, cpu: 1 }
+          limits: { memory: 3Gi }
+    environment:
+      # V8 sizes old-space from TOTAL MACHINE MEMORY, not the cgroup limit, so an
+      # uncapped build self-selects ~4Gi on an 8Gi node. Caps old space only; RSS
+      # lands above this.
+      NODE_OPTIONS: --max-old-space-size=1280
+      # 🔑 NEXT_PUBLIC_* MOVED HERE FROM THE DOCKERFILE'S ARG/ENV PAIR. Next.js
+      # inlines them during `next build`, so this is now the only place they can
+      # reach the bundle. deploy.yml asserts the result against LIVE HTML.
+      NEXT_PUBLIC_API_URL:
+        from_secret: staging_next_public_api_url
+      NEXT_PUBLIC_APP_URL:
+        from_secret: staging_next_public_app_url
+      NEXT_PUBLIC_ID_URL:
+        from_secret: staging_next_public_id_url
+      NEXT_PUBLIC_ID_API_URL:
+        from_secret: staging_next_public_id_api_url
+      NEXT_PUBLIC_CAPTCHA_API_URL:
+        from_secret: staging_next_public_captcha_api_url
+      NEXT_PUBLIC_CDN_URL:
+        from_secret: staging_next_public_cdn_url
+      NEXT_PUBLIC_ASSET_PREFIX: https://ciphera-app-static.b-cdn.net/pulse-staging
+      # 🔴 REQUIRED BECAUSE THE COMPILE MOVED OUT OF THE DOCKERFILE (21-08-2026).
+      # This repo commits a project-level .npmrc containing
+      #     //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+      # and a PROJECT .npmrc overrides the user-level /root/.npmrc. Inside the old
+      # Dockerfile this never mattered, because `npm ci` ran BEFORE `COPY . .` — the
+      # project file did not exist yet at that point. In a step the whole repo is
+      # checked out first, so the project file wins and an unset NODE_AUTH_TOKEN
+      # expands to empty, giving `npm error code E401 ... unauthenticated`.
+      # Measured exactly that way on id-frontend #92 and website #250.
+      NODE_AUTH_TOKEN:
+        from_secret: npm_token
+      CACHE_ENDPOINT: https://sos-ch-dk-2.exo.io
+      CACHE_BUCKET: ciphera-build-cache
+      CACHE_KEY: next-cache/pulse-frontend-staging.tar.gz
+      AWS_DEFAULT_REGION: ch-dk-2
+      AWS_ACCESS_KEY_ID:
+        from_secret: build_cache_key
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: build_cache_secret
+    when:
+      - event: push
+        branch: staging
+    commands:
+      # 🔴 SOVEREIGNTY TRIPWIRE — same reasoning as the buildctl steps. Every
+      # S3-backed tool defaults to AWS when the endpoint is unset.
+      - |
+        case "$CACHE_ENDPOINT" in
+          https://sos-*.exo.io) echo "cache endpoint OK: $CACHE_ENDPOINT" ;;
+          *) echo "REFUSING: cache endpoint '$CACHE_ENDPOINT' is not Exoscale SOS"; exit 1 ;;
+        esac
+      # 🔑 WHY THIS S3 ROUND-TRIP EXISTS. Until phase 4 the Dockerfile used
+      # `RUN --mount=type=cache` for .next/cache, which BuildKit persists in the
+      # daemon. Moving the compile into a step LOSES that, because a step runs on a
+      # fresh per-workflow PVC. Without this restore/save, moving the compile out
+      # would trade a memory win for a cache regression.
+      # ⚠️ The credential is scoped to `push`/`tag` events only, so a PULL REQUEST
+      # build has no cache and compiles cold ON PURPOSE — a PR must not be able to
+      # read a credential that can write the estate's shared cache.
+      - |
+        if [ -n "$AWS_ACCESS_KEY_ID" ]; then
+          apk add --no-cache aws-cli >/dev/null 2>&1
+          if aws s3 cp "s3://$CACHE_BUCKET/$CACHE_KEY" - --endpoint-url "$CACHE_ENDPOINT" 2>/dev/null | tar xzf - 2>/dev/null; then
+            echo "next cache restored from SOS"
+          else
+            echo "next cache cold (no object yet, or first run after a key change)"
+          fi
+        else
+          echo "no cache credential on this event (pull_request) — compiling cold, by design"
+        fi
+      - cp .npmrc-ci /root/.npmrc
+      - npm ci --prefer-offline --no-audit --progress=false
+      - rm -f /root/.npmrc
+      - npm run build
+      # Save AFTER a successful build only. A failed build must not publish its
+      # cache — `commands` stop at the first non-zero exit, so reaching here means
+      # `npm run build` succeeded.
+      - |
+        if [ -n "$AWS_ACCESS_KEY_ID" ] && [ -d .next/cache ]; then
+          tar czf - .next/cache | aws s3 cp - "s3://$CACHE_BUCKET/$CACHE_KEY" --endpoint-url "$CACHE_ENDPOINT" \
+            && echo "next cache saved to SOS" || echo "WARN: cache save failed (build is still good)"
+        fi
+      - echo "next build complete — the Dockerfile now only assembles this output"
   push-staging:
     image: moby/buildkit:v0.32.2@sha256:28a898719c18a33f4e8000685287fa36fd0dd9560c6440227d3a732d79bb41d8
     # 🔑 Down from 4Gi request == 4Gi limit under kaniko — the compile moved into the shared daemon.
@@ -183,19 +364,8 @@ steps:
         from_secret: registry_username
       REGISTRY_PASSWORD:
         from_secret: registry_password
-      NEXT_PUBLIC_API_URL:
-        from_secret: staging_next_public_api_url
-      NEXT_PUBLIC_APP_URL:
-        from_secret: staging_next_public_app_url
-      NEXT_PUBLIC_ID_URL:
-        from_secret: staging_next_public_id_url
-      NEXT_PUBLIC_ID_API_URL:
-        from_secret: staging_next_public_id_api_url
-      NEXT_PUBLIC_CAPTCHA_API_URL:
-        from_secret: staging_next_public_captcha_api_url
       NEXT_PUBLIC_CDN_URL:
         from_secret: staging_next_public_cdn_url
-      NEXT_PUBLIC_ASSET_PREFIX: https://ciphera-app-static.b-cdn.net/pulse-staging
     when:
       - event: push
         branch: staging
@@ -231,13 +401,7 @@ steps:
           --local context=. \
           --local dockerfile=. \
           --opt filename=Dockerfile \
-          --opt build-arg:NEXT_PUBLIC_API_URL="$NEXT_PUBLIC_API_URL" \
-          --opt build-arg:NEXT_PUBLIC_APP_URL="$NEXT_PUBLIC_APP_URL" \
-          --opt build-arg:NEXT_PUBLIC_ID_URL="$NEXT_PUBLIC_ID_URL" \
-          --opt build-arg:NEXT_PUBLIC_ID_API_URL="$NEXT_PUBLIC_ID_API_URL" \
-          --opt build-arg:NEXT_PUBLIC_CAPTCHA_API_URL="$NEXT_PUBLIC_CAPTCHA_API_URL" \
           --opt build-arg:NEXT_PUBLIC_CDN_URL="$NEXT_PUBLIC_CDN_URL" \
-          --opt build-arg:NEXT_PUBLIC_ASSET_PREFIX="$NEXT_PUBLIC_ASSET_PREFIX" \
           --import-cache "type=s3,region=$CACHE_REGION,bucket=$CACHE_BUCKET,endpoint_url=$CACHE_ENDPOINT,use_path_style=true,name=$CACHE_NAME" \
           --export-cache "type=s3,region=$CACHE_REGION,bucket=$CACHE_BUCKET,endpoint_url=$CACHE_ENDPOINT,use_path_style=true,name=$CACHE_NAME,mode=max" \
           --output "type=image,\"name=$REGISTRY/$IMAGE_REPO:$IMAGE_TAG,$REGISTRY/$IMAGE_REPO:latest\",push=true" \

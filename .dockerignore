@@ -31,3 +31,10 @@
 # ⚠️ public/ is deliberately NOT excluded — it ships in the image AND deploy.yml's
 #    cdn-scripts step computes SRI hashes over it (which is also why THIS repo's
 #    deploy.yml does NOT get skip_clone).
+
+# ⚠️ ADDED 21-08-2026 with migration phase 4. `next build` now runs in a Woodpecker
+# step, so the workspace holds its output when the image is assembled.
+# node_modules is NOT needed: .next/standalone bundles its own minimal copy.
+# .next/cache is the webpack/SWC cache — large, and never belongs in an image.
+node_modules
+.next/cache
