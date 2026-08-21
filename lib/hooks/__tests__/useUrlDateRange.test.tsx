@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { useUrlDateRange } from '../useUrlDateRange'
+import { useUrlDateRange, SEARCH_CONSOLE_MAX_DAYS } from '../useUrlDateRange'
 import { previousDateRange } from '../periodUrl'
 
 // * Mock Next.js navigation
@@ -18,6 +18,15 @@ vi.mock('@/lib/utils/dateRanges', () => ({
   getDateRange: (days: number) => ({ start: `start-${days}`, end: `end-${days}` }),
   getThisWeekRange: () => ({ start: 'week-start', end: 'week-end' }),
   getThisMonthRange: () => ({ start: 'month-start', end: 'month-end' }),
+  // Completed 22-08-2026: the ceiling tests exercise EVERY preset, which
+  // reaches range getters the original three-stub mock never called.
+  getThisYearRange: () => ({ start: 'year-start', end: 'year-end' }),
+  getYesterdayRange: () => ({ start: 'yday-start', end: 'yday-end' }),
+  getQuarterToDateRange: () => ({ start: 'qtd-start', end: 'qtd-end' }),
+  getLastWeekRange: () => ({ start: 'lweek-start', end: 'lweek-end' }),
+  getLastMonthRange: () => ({ start: 'lmonth-start', end: 'lmonth-end' }),
+  getLastQuarterRange: () => ({ start: 'lq-start', end: 'lq-end' }),
+  getLastYearRange: () => ({ start: 'lyear-start', end: 'lyear-end' }),
   formatDate: (d: Date) => {
     const p = (n: number) => String(n).padStart(2, '0')
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
@@ -274,6 +283,45 @@ describe('previousDateRange rejects what it cannot parse', () => {
     for (const r of [{ start: '', end: '' }, { start: 'x', end: 'y' }, { start: '2026-08-20', end: '' }]) {
       const out = previousDateRange(r)
       expect(out === null || (!out.start.includes('NaN') && !out.end.includes('NaN'))).toBe(true)
+    }
+  })
+})
+
+describe('per-page range ceiling (the 22-08-2026 dashboard outage)', () => {
+  // A customer picked "Last 16 months" on Search (Google retains ~480 days),
+  // then opened the Dashboard. The preset is remembered ACROSS pages, the
+  // analytics API refuses > 366 days, and every card 400'd behind a
+  // "Couldn't load the dashboard" screen. These pin both halves of the fix.
+
+  it('drops a remembered preset the page\'s API cannot serve', () => {
+    window.localStorage.setItem('pulse_last_period', '16m')
+    const { result } = renderHook(() => useUrlDateRange())
+    // Falls back to the default rather than sending a 480-day request.
+    expect(result.current.period).toBe('30')
+    expect(result.current.periodReady).toBe(true)
+  })
+
+  it('honours that same preset on a page that opts into the wider ceiling', () => {
+    // The paired positive — without it, "always fall back to 30" would pass.
+    window.localStorage.setItem('pulse_last_period', '16m')
+    const { result } = renderHook(() => useUrlDateRange({ maxDays: SEARCH_CONSOLE_MAX_DAYS }))
+    expect(result.current.period).toBe('16m')
+  })
+
+  it('clamps an over-long ?period= from a shared link too', () => {
+    // A link shared from Search opened on an analytics page would 400 exactly
+    // like the remembered preset did.
+    mockSearchParams = new URLSearchParams('period=16m')
+    const { result } = renderHook(() => useUrlDateRange())
+    expect(result.current.period).toBe('30')
+  })
+
+  it('leaves every in-ceiling preset untouched', () => {
+    for (const p of ['today', 'yesterday', '7', '28', '30', '3m', '6m', '12m', 'week', 'month', 'qtd', 'year', 'last-week', 'last-month', 'last-quarter', 'last-year'] as const) {
+      window.localStorage.clear()
+      window.localStorage.setItem('pulse_last_period', p)
+      const { result } = renderHook(() => useUrlDateRange())
+      expect(result.current.period, `${p} must survive the 366-day ceiling`).toBe(p)
     }
   })
 })
