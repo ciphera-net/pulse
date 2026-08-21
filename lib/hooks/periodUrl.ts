@@ -177,6 +177,42 @@ export function previousDateRange(range: {
  * The same range shifted by its own span, or null when the shift would land
  * past today (local date parts throughout — no UTC drift).
  */
+// * The MAXIMUM number of days a preset can span — the unit every API cap is
+// * expressed in (the analytics API refuses > 366; Search Console > 480).
+// *
+// * Deliberately a static table rather than measuring the resolved range: the
+// * ceiling is a property of the PRESET, so it must not vary with the clock,
+// * the site timezone, or a stubbed date helper. Variable-length presets take
+// * their upper bound (a month is at most 31 days, a quarter at most 92).
+// * 'custom' is unbounded here — a custom span carries explicit start/end and
+// * is validated where it is chosen, not by preset identity.
+const PERIOD_MAX_DAYS: Record<Period, number> = {
+  '1h': 1,
+  '24h': 1,
+  today: 1,
+  yesterday: 1,
+  '7': 7,
+  '28': 28,
+  '30': 30,
+  '3m': 92,
+  '6m': 184,
+  '12m': 366,
+  '16m': 480,
+  week: 7,
+  month: 31,
+  qtd: 92,
+  year: 366,
+  'last-week': 7,
+  'last-month': 31,
+  'last-quarter': 92,
+  'last-year': 366,
+  custom: Number.POSITIVE_INFINITY,
+}
+
+export function periodMaxDays(p: Period): number {
+  return PERIOD_MAX_DAYS[p] ?? Number.POSITIVE_INFINITY
+}
+
 export function shiftDateRange(
   range: { start: string; end: string },
   direction: -1 | 1,

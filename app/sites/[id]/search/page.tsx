@@ -6,7 +6,7 @@ import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import DateRangePicker from '@/components/ui/DateRangePicker'
-import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
+import { useUrlDateRange, SEARCH_CONSOLE_MAX_DAYS, type Period } from '@/lib/hooks/useUrlDateRange'
 import { fetchableRange } from '@/lib/dashboard/resolveRange'
 import { useQueryParamsWriter } from '@/lib/hooks/useQueryParamsWriter'
 import { getDateRange } from '@/lib/utils/format'
@@ -87,7 +87,9 @@ export default function SearchConsolePage() {
   const searchParams = useSearchParams()
   const write = useQueryParamsWriter()
 
-  const { period, dateRange, periodReady, setPeriod, shiftPeriod } = useUrlDateRange()
+  // Search Console retains ~480 days and its API accepts them, so this page
+  // opts into the wider ceiling; every analytics page keeps the 366-day one.
+  const { period, dateRange, periodReady, setPeriod, shiftPeriod } = useUrlDateRange({ maxDays: SEARCH_CONSOLE_MAX_DAYS })
   // Passed to the child panels too — their SWR keys null out on an empty date,
   // so they hold instead of fetching a range the user did not choose.
   const fetchRange = fetchableRange(periodReady, dateRange)
