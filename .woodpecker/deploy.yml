@@ -51,8 +51,11 @@ when:
 
 steps:
   # ⚠️ The Accept list MUST include application/vnd.oci.image.manifest.v1+json.
-  # kaniko INHERITS THE BASE IMAGE'S manifest media type, so the format varies
-  # per REPO, not per tool. With an incomplete Accept the registry can fall back
+  # 🔴 THE REASON CHANGED ON 21-08-2026, THE REQUIREMENT DID NOT. Under kaniko the
+  # manifest media type was inherited from the BASE IMAGE, so it varied per repo
+  # rather than per tool. The builder is now BuildKit, where the media type is
+  # chosen by the image exporter. Either way this step must not assume which one
+  # it will get — keep all four Accept entries.
   # to legacy schema1 and return a DIFFERENT DIGEST for the same tag — measured
   # 27-07-2026 — which would pin a Deployment to something that is not the image
   # that was built, with every gate still green.
@@ -549,9 +552,12 @@ steps:
             echo "🔴 DEPLOY SHIPPED BUT assetPrefix IS NOT IN THE LIVE HTML."
             echo "🔴 Chunks are served from the app itself, so the version-coupling protection"
             echo "🔴 that gates the Magic Containers migration is OFF."
-            echo "🔴 Check NEXT_PUBLIC_ASSET_PREFIX reached the kaniko build:"
-            echo "🔴   .woodpecker/push.yml -> settings.build-args-from-env MUST list"
-            echo "🔴   NEXT_PUBLIC_ASSET_PREFIX, or the environment: entry above it is INERT."
+            echo "🔴 Check NEXT_PUBLIC_ASSET_PREFIX reached the BuildKit build:"
+            echo "🔴   .woodpecker/push.yml -> the buildctl line MUST carry"
+            echo "🔴   --opt build-arg:NEXT_PUBLIC_ASSET_PREFIX=\$NEXT_PUBLIC_ASSET_PREFIX,"
+            echo "🔴   or the environment: entry above it is INERT."
+            echo "🔴   (This said settings.build-args-from-env until 21-08-2026, which was"
+            echo "🔴    the kaniko plugin setting and no longer exists.)"
             echo "🔴 Then confirm the Dockerfile declares the matching ARG."
             echo "🔴 NOTE: build.yml no longer exists on this branch (deleted 20-08-2026);"
             echo "🔴 push.yml is the ONLY place a build arg can reach the shipped image."
@@ -618,9 +624,12 @@ steps:
             echo "🔴 DEPLOY SHIPPED BUT assetPrefix IS NOT IN THE LIVE HTML."
             echo "🔴 Chunks are served from the app itself, so the version-coupling protection"
             echo "🔴 that gates the Magic Containers migration is OFF."
-            echo "🔴 Check NEXT_PUBLIC_ASSET_PREFIX reached the kaniko build:"
-            echo "🔴   .woodpecker/push.yml -> settings.build-args-from-env MUST list"
-            echo "🔴   NEXT_PUBLIC_ASSET_PREFIX, or the environment: entry above it is INERT."
+            echo "🔴 Check NEXT_PUBLIC_ASSET_PREFIX reached the BuildKit build:"
+            echo "🔴   .woodpecker/push.yml -> the buildctl line MUST carry"
+            echo "🔴   --opt build-arg:NEXT_PUBLIC_ASSET_PREFIX=\$NEXT_PUBLIC_ASSET_PREFIX,"
+            echo "🔴   or the environment: entry above it is INERT."
+            echo "🔴   (This said settings.build-args-from-env until 21-08-2026, which was"
+            echo "🔴    the kaniko plugin setting and no longer exists.)"
             echo "🔴 Then confirm the Dockerfile declares the matching ARG."
             echo "🔴 NOTE: build.yml no longer exists on this branch (deleted 20-08-2026);"
             echo "🔴 push.yml is the ONLY place a build arg can reach the shipped image."
