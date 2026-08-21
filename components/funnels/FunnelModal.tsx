@@ -11,7 +11,7 @@ import { FunnelChart } from '@/components/ui/funnel-chart'
 import { getDashboardPages, getDashboardGoals } from '@/lib/api/stats'
 import { getDateRange } from '@/lib/utils/dateRanges'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
-import { Segmented } from '@/components/ui/segmented'
+import { SegmentedControl } from '@ciphera-net/facet'
 import Select from '@/components/ui/select'
 import { formatNumber } from '@/lib/utils/format'
 
@@ -607,10 +607,10 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                           {/* Type + matcher + value on one line; filters below */}
                           <div className="min-w-0 flex-1 space-y-1.5">
                             <div className="flex flex-wrap items-center gap-2">
-                              <Segmented
-                                ariaLabel={`Step ${i + 1} type`}
+                              <SegmentedControl
+                                aria-label={`Step ${i + 1} type`}
                                 value={cat}
-                                onChange={(v) => setCategory(i, v)}
+                                onChange={(v) => setCategory(i, v as 'page' | 'event')}
                                 options={[
                                   { value: 'page', label: 'Page' },
                                   { value: 'event', label: 'Event' },

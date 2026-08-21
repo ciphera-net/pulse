@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useQueryParamsWriter } from '@/lib/hooks/useQueryParamsWriter'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -8,7 +8,7 @@ import { CaretDown, MagnifyingGlass, FileText, GlobeHemisphereWest, Monitor, Cal
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 import { useGSCTopQueries, useGSCTopPages, useGSCDailyTotals } from '@/lib/swr/dashboard'
-import { Segmented, type SegmentedOption } from '@/components/ui/segmented'
+import { SegmentedControl } from '@ciphera-net/facet'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { NewQueriesChip } from './NewQueriesChip'
 import { QueryExpansion, PageExpansion } from './SearchExpansion'
@@ -48,13 +48,17 @@ const PAGE_SIZE = 50
 const VIEWS = ['queries', 'pages', 'countries', 'devices', 'days', 'opportunities'] as const
 type View = (typeof VIEWS)[number]
 
-const VIEW_OPTIONS: SegmentedOption<View>[] = [
-  { value: 'queries', label: 'Queries', icon: <MagnifyingGlass className="h-4 w-4" /> },
-  { value: 'pages', label: 'Pages', icon: <FileText className="h-4 w-4" /> },
-  { value: 'countries', label: 'Countries', icon: <GlobeHemisphereWest className="h-4 w-4" /> },
-  { value: 'devices', label: 'Devices', icon: <Monitor className="h-4 w-4" /> },
-  { value: 'days', label: 'Days', icon: <CalendarBlank className="h-4 w-4" /> },
-  { value: 'opportunities', label: 'Opportunities', icon: <Target className="h-4 w-4" /> },
+const viewLabel = (icon: ReactNode, text: string) => (
+  <span className="flex items-center gap-1.5">{icon}{text}</span>
+)
+
+const VIEW_OPTIONS = [
+  { value: 'queries', label: viewLabel(<MagnifyingGlass className="h-4 w-4" />, 'Queries') },
+  { value: 'pages', label: viewLabel(<FileText className="h-4 w-4" />, 'Pages') },
+  { value: 'countries', label: viewLabel(<GlobeHemisphereWest className="h-4 w-4" />, 'Countries') },
+  { value: 'devices', label: viewLabel(<Monitor className="h-4 w-4" />, 'Devices') },
+  { value: 'days', label: viewLabel(<CalendarBlank className="h-4 w-4" />, 'Days') },
+  { value: 'opportunities', label: viewLabel(<Target className="h-4 w-4" />, 'Opportunities') },
 ]
 
 function parseView(raw: string | null): View {
@@ -354,7 +358,7 @@ export default function SearchViews({ siteId, dateRange }: RangeProps) {
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="max-w-full overflow-x-auto">
-          <Segmented ariaLabel="Search view" value={view} onChange={setView} options={VIEW_OPTIONS} />
+          <SegmentedControl aria-label="Search view" value={view} onChange={(v) => setView(v as View)} options={VIEW_OPTIONS} />
         </div>
         <NewQueriesChip siteId={siteId} start={dateRange.start} end={dateRange.end} onPick={pickNewQuery} />
       </div>
