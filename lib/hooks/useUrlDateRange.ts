@@ -6,6 +6,7 @@ import {
   DEFAULT_PERIOD,
   isValidDateString,
   parsePeriod,
+  periodMaxDays,
   periodToDateRange,
   shiftDateRange,
   type Period,
@@ -32,14 +33,45 @@ export type { Period }
 
 const LAST_PERIOD_KEY = 'pulse_last_period'
 
-function readLastPeriod(): Period | null {
+// 🔴 THE PRESET VOCABULARY IS GLOBAL; THE APIs BEHIND IT ARE NOT.
+//
+// Period covers up to '16m' (480 days) because Search Console retains ~480
+// days, and the last-chosen preset is remembered ACROSS PAGES. The analytics
+// API refuses anything over 366 days, so a customer who picked "Last 16
+// months" on Search and then opened the Dashboard got HTTP 400 on every card
+// and a "Couldn't load the dashboard" screen — measured in production
+// 22-08-2026. Nothing was wrong with their data; the page asked a question
+// its own API forbids.
+//
+// So every caller declares the ceiling ITS API enforces, and a period that
+// exceeds it — whether it arrives from storage or from ?period= in a shared
+// link — falls back to the default instead of being sent. Clamping on READ is
+// what makes an already-poisoned localStorage heal itself on the next load
+// rather than needing every affected customer to clear storage by hand.
+export const ANALYTICS_MAX_DAYS = 366
+export const SEARCH_CONSOLE_MAX_DAYS = 480
+
+function withinCeiling(p: Period, maxDays: number): boolean {
+  // 'custom' is exempt: it is not a preset with a span, it carries explicit
+  // start/end chosen in the picker. Comparing its unbounded sentinel against
+  // a finite cap rejected EVERY custom range — caught by the existing suite
+  // while this ceiling was being written, which is what those tests are for.
+  if (p === 'custom') return true
+  return periodMaxDays(p) <= maxDays
+}
+
+function readLastPeriod(maxDays: number): Period | null {
   try {
     const raw = window.localStorage.getItem(LAST_PERIOD_KEY)
     if (!raw) return null
     const p = parsePeriod(raw)
     // parsePeriod maps unknown values to the default — honour only an exact,
     // non-custom echo so garbage in storage cannot masquerade as a choice.
-    return raw === p && p !== 'custom' ? p : null
+    if (raw !== p || p === 'custom') return null
+    // A preset this page's API cannot serve is not a usable memory. Dropping
+    // it here (rather than at fetch time) means the picker shows the default
+    // it will actually request, instead of a label whose fetch 400s.
+    return withinCeiling(p, maxDays) ? p : null
   } catch {
     return null
   }
@@ -76,7 +108,8 @@ export interface UrlDateRange {
   shiftPeriod: (direction: -1 | 1) => void
 }
 
-export function useUrlDateRange(): UrlDateRange {
+export function useUrlDateRange(options?: { maxDays?: number }): UrlDateRange {
+  const maxDays = options?.maxDays ?? ANALYTICS_MAX_DAYS
   const searchParams = useSearchParams()
   const write = useQueryParamsWriter()
 
@@ -95,9 +128,9 @@ export function useUrlDateRange(): UrlDateRange {
   // permanently un-ready.
   const [memoryRead, setMemoryRead] = useState(false)
   useEffect(() => {
-    setRemembered(readLastPeriod())
+    setRemembered(readLastPeriod(maxDays))
     setMemoryRead(true)
-  }, [])
+  }, [maxDays])
 
   // An explicit ?period= is authoritative immediately — there is nothing to
   // wait for, so shared links and in-app navigations that carry the param
@@ -105,10 +138,13 @@ export function useUrlDateRange(): UrlDateRange {
   const periodReady = urlHasPeriod || memoryRead
 
   // * period=custom without a valid start/end pair normalizes to the default
-  const urlPeriod: Period =
+  const parsedUrlPeriod: Period =
     rawPeriod === 'custom' && (!isValidDateString(rawStart) || !isValidDateString(rawEnd))
       ? DEFAULT_PERIOD
       : rawPeriod
+  // * A shared ?period=16m link opened on an analytics page would 400 exactly
+  // * like the remembered preset did, so the ceiling applies to the URL too.
+  const urlPeriod: Period = withinCeiling(parsedUrlPeriod, maxDays) ? parsedUrlPeriod : DEFAULT_PERIOD
   const period: Period = urlHasPeriod ? urlPeriod : (remembered ?? urlPeriod)
 
   const dateRange = useMemo(
