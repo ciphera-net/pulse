@@ -59,9 +59,8 @@ describe('RailSparkline', () => {
     )
     expect(container.querySelector('path[vector-effect="non-scaling-stroke"]')).not.toBeNull()
   })
-  })
 
-  it('the trace is sharp — linear segments only, no smoothing curves', () => {
+  it("the trace is smooth — monotone curve segments, the estate's chart grammar", () => {
     const { container } = render(
       <RailSparkline data={[
         { pageviews: 8, visitors: 5, bounce_rate: 50, avg_duration: 60 },
@@ -70,8 +69,8 @@ describe('RailSparkline', () => {
       ]} dataKey="visitors" active={false} />
     )
     const d = container.querySelector('path[vector-effect="non-scaling-stroke"]')!.getAttribute('d')!
-    // The hero chart is deliberately curveLinear (smoothing invents slopes
-    // between real measurements); the rail speaks the same grammar.
-    expect(d).not.toContain('C')
-    expect(d).toContain('L')
+    // curveMonotoneX (sharp reverted, owner call 21-08-2026): Bezier segments
+    // in the path; monotone still cannot overshoot a measured point.
+    expect(d).toContain('C')
   })
+})

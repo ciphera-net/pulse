@@ -1,13 +1,17 @@
 'use client'
 
+import { line as shapeLine, curveMonotoneX } from 'd3-shape'
+
 // ─── RailSparkline ───────────────────────────────────────────────────
 //
 // The edge-to-edge ghost trace behind a KPI row: grey at rest, brand
 // orange on hover, permanently orange on the active metric (owner pick
 // "S4, like before", 19-08-2026 — the pre-deck tile sparkline, extracted
 // from Chart.tsx so the command deck and the share page render the same
-// instrument from one source; the trace is SHARP, not smoothed, matching
-// the hero chart's curveLinear decision).
+// instrument from one source). Smoothed with curveMonotoneX like the
+// hero chart and every other surface — the sharp-trace decision was
+// reverted 21-08-2026 (owner call; monotone cannot overshoot a measured
+// point, so it fabricates no peaks).
 //
 // Unmeasured buckets (null) are SKIPPED, not plotted as zeros — this is
 // a decorative trend line with no time axis, and a fabricated dip to 0
@@ -48,10 +52,13 @@ export default function RailSparkline({ data, dataKey, active, engagementDaily }
     y: h - padBottom - ((v - min) / range) * (h - padBottom - padTop),
   }))
 
-  // Sharp linear segments — the hero chart's own decision (curveLinear:
-  // smoothing invents slopes between real measurements), applied at the
-  // rail's scale too (owner call, 19-08-2026).
-  const linePath = 'M' + coords.map((c) => `${c.x},${c.y}`).join(' L')
+  // Monotone smoothing — the hero chart's grammar (reverted from sharp
+  // 21-08-2026), at the rail's scale too.
+  const linePath =
+    shapeLine<{ x: number; y: number }>()
+      .x((c) => c.x)
+      .y((c) => c.y)
+      .curve(curveMonotoneX)(coords) ?? ''
   const fillPath = linePath + ` L100,${h} L0,${h} Z`
 
   return (
