@@ -70,6 +70,18 @@ describe('series math', () => {
     expect(bucketLabel(p.date, 'hour', 'UTC')).toBe('08:00')
     expect(bucketLabel(p.date, 'day', 'UTC')).toBe('10/08')
   })
+
+  it('parses OFFSET-carrying bucket timestamps without corrupting them', () => {
+    // 🔴 MEASURED ON PROD 22-08-2026: the site-tz hourly buckets serialize
+    // with the site's offset ("+02:00"); the naive-string shim appended 'Z'
+    // to them, minting "…+02:00Z" — an Invalid Date whose first Intl format
+    // threw RangeError and took the whole 7d uptime view to its error
+    // boundary. A zone-carrying string must parse AS-IS.
+    const [p] = toUptimeSeries([bucket({ bucket_start: '2026-08-22T03:00:00+02:00' })])
+    expect(p.date.toISOString()).toBe('2026-08-22T01:00:00.000Z')
+    const [z] = toUptimeSeries([bucket({ bucket_start: '2026-08-22T03:00:00Z' })])
+    expect(z.date.toISOString()).toBe('2026-08-22T03:00:00.000Z')
+  })
 })
 
 describe('incident math', () => {

@@ -46,9 +46,16 @@ export interface UptimePoint {
   p95Ms: number | null
 }
 
+// A bucket_start with ANY zone designator (Z or ±hh:mm — the site-tz hourly
+// buckets carry the site's offset since 22-08-2026) parses AS-IS; only a
+// truly NAIVE string gets the UTC suffix. Appending 'Z' to an offset string
+// mints an Invalid Date whose first Intl format throws RangeError — measured
+// on prod taking the whole 7d view to its error boundary.
+const HAS_ZONE = /(?:Z|[+-]\d{2}:?\d{2})$/
+
 export function toUptimeSeries(buckets: UptimeResponseTimeBucket[]): UptimePoint[] {
   return buckets.map((b) => ({
-    date: new Date(b.bucket_start.endsWith('Z') ? b.bucket_start : b.bucket_start + 'Z'),
+    date: new Date(HAS_ZONE.test(b.bucket_start) ? b.bucket_start : b.bucket_start + 'Z'),
     samples: b.samples,
     up: Math.max(0, b.samples - b.failed_checks - b.degraded_checks),
     failed: b.failed_checks,
