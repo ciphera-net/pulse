@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { createPortal } from 'react-dom'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { type Site } from '@/lib/api/sites'
@@ -23,6 +22,7 @@ import {
   PlusIcon,
   XIcon,
   BookOpenIcon,
+  Tooltip,
 } from '@ciphera-net/facet'
 import { HelpSupportButton } from '@/components/support/HelpSupportButton'
 
@@ -84,42 +84,17 @@ function Label({ children, collapsed }: { children: React.ReactNode; collapsed: 
   )
 }
 
-// ─── Sidebar Tooltip (portal-based, escapes overflow-hidden) ──
+// ─── Sidebar tooltip ──────────────────────────────────────────────
+// Facet's Tooltip, not a hand-rolled portal: same dark bordered surface, and
+// Radix gives it keyboard focus and Escape, which the mouse-only original
+// never had (tooltip consolidation, 22-08-2026). z-[100] is kept from the
+// original — the sidebar stacks above the z-50 default.
 
 function SidebarTooltip({ children, label }: { children: React.ReactNode; label: string }) {
-  const [show, setShow] = useState(false)
-  const [pos, setPos] = useState({ x: 0, y: 0 })
-  const ref = useRef<HTMLDivElement>(null)
-  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
-
-  const handleEnter = () => {
-    timerRef.current = setTimeout(() => {
-      if (ref.current) {
-        const rect = ref.current.getBoundingClientRect()
-        setPos({ x: rect.right + 8, y: rect.top + rect.height / 2 })
-        setShow(true)
-      }
-    }, 100)
-  }
-
-  const handleLeave = () => {
-    clearTimeout(timerRef.current)
-    setShow(false)
-  }
-
   return (
-    <div ref={ref} onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
+    <Tooltip content={label} side="right" align="center" delayDuration={100} className="z-[100]">
       {children}
-      {show && typeof document !== 'undefined' && createPortal(
-        <span
-          className="fixed z-[100] px-3 py-2 rounded-none bg-neutral-950 border border-neutral-800/60 text-white text-sm font-medium whitespace-nowrap pointer-events-none -translate-y-1/2"
-          style={{ left: pos.x, top: pos.y }}
-        >
-          {label}
-        </span>,
-        document.body
-      )}
-    </div>
+    </Tooltip>
   )
 }
 
