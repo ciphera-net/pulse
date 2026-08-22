@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import type { PerformanceCheck } from '@/lib/api/performance'
+import { safeTimeZone } from '@/lib/utils/siteTime'
 
 // ---------------------------------------------------------------------------
 // Performance score trend.
@@ -34,6 +35,9 @@ const MEDIAN_WINDOW = 7
 interface PerformanceTrendProps {
   checks: PerformanceCheck[]
   className?: string
+  /** The SITE's IANA timezone — check instants label their axis day in site
+   * time (22-08-2026 alignment; previously UTC). */
+  timezone: string | null
 }
 
 interface Point {
@@ -64,7 +68,7 @@ export function provenanceBoundary(points: { t: number; source: string }[]): num
   return points[firstLighthouse].t
 }
 
-export function PerformanceTrend({ checks, className }: PerformanceTrendProps) {
+export function PerformanceTrend({ checks, className, timezone }: PerformanceTrendProps) {
   const points = useMemo<Point[]>(() => {
     const usable = checks
       .filter(c => c.performance_score !== null)
@@ -100,7 +104,7 @@ export function PerformanceTrend({ checks, className }: PerformanceTrendProps) {
   const gradientId = 'pagespeed-trend-fill'
 
   const fmtDate = (t: number) =>
-    new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+    new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: safeTimeZone(timezone) })
   const midT = t0 + span / 2
 
   const hasLegacy = points.some(p => p.source === 'psi')
