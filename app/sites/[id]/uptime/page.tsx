@@ -29,6 +29,7 @@ import {
   fmtCheckTime,
   presetZoneRange,
 } from '@/components/uptime/uptimeMetrics'
+import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 // ---------------------------------------------------------------------------
 // Uptime — the instrument-panel layout. One range control (the picker, with
@@ -113,7 +114,10 @@ function RecentChecks({ siteId, monitorId, timezone }: { siteId: string; monitor
   return (
     <div className="rounded-none border border-border bg-card">
       <div className="flex h-10 items-center justify-between border-b border-border px-4">
-        <span className="text-sm font-medium text-white">Recent checks</span>
+        <span className="flex items-center gap-1 text-sm font-medium text-white">
+          Recent checks
+          <TermInfoTip term="recent_checks" />
+        </span>
         <span className="text-xs text-neutral-500">last {checks.length}</span>
       </div>
       <div className="max-h-64 overflow-y-auto">

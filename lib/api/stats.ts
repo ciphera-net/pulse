@@ -13,6 +13,12 @@ export interface Stats {
   avg_duration: number | null
   avg_scroll_depth: number | null
   avg_visible_duration: number | null
+  // The denominators behind the two rates, for the InfoTip worked examples
+  // (metric info layer, 22-08-2026). Optional because an older backend does
+  // not send them — and a missing count means NO example, never a numerator
+  // multiplied out in the browser.
+  bounce_sessions?: number
+  duration_measured_sessions?: number
 }
 
 // visitors/rates are populated for top pages; entry/exit rows reuse this shape
