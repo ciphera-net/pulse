@@ -12,12 +12,16 @@ import { formatNumber } from '@/lib/utils/format'
 import { useCan } from '@/lib/auth/permissions'
 
 /**
- * Fixed crop applied to the capture's top edge so the card background starts
- * below the captured site's own navbar (~the navbar band of a 1440-wide
- * desktop capture). One constant on purpose — navbar heights vary, but a
- * heuristic beats rendering every card as mostly-navbar.
+ * Crop applied to the capture's top edge so the card background starts BELOW
+ * the captured site's own navbar (~70-90px tall at the sweep's 1350px desktop
+ * width). Expressed in SOURCE pixels and applied as a width-relative
+ * percentage margin (% margins resolve against the container's WIDTH), so the
+ * crop is exact at any rendered card size — a card-height-relative crop
+ * silently shrank with the render scale and sliced navbars mid-glyph
+ * (measured live 22-08: 6% of card height = only 38 of ~80 navbar pixels).
  */
-const CAPTURE_NAVBAR_CROP_PCT = 6
+const CAPTURE_NAVBAR_CROP_SRC_PX = 96
+const CAPTURE_FALLBACK_SRC_WIDTH = 1350
 
 /** Bottom-third mean luminance above this ⇒ light capture ⇒ stronger scrim. */
 const LIGHT_CAPTURE_LUMINANCE = 0.55
@@ -94,19 +98,33 @@ function useFaviconTint(domain: string, enabled: boolean): string | null {
   return tint
 }
 
-/** Mean luminance (0..1) of the image's bottom third, or null when unreadable. */
-function sampleBottomLuminance(img: HTMLImageElement): number | null {
+/**
+ * Mean luminance (0..1) of the band the scrim text actually sits on — the
+ * bottom third of the DISPLAYED slice of the capture, in source coordinates.
+ * Captures are full-page tall, so sampling the source's own bottom would read
+ * the site's footer, not the region under the identity row. Returns null when
+ * unreadable (jsdom, zero-size frame) — cosmetic only, default scrim holds.
+ */
+function sampleDisplayedBandLuminance(img: HTMLImageElement): number | null {
   try {
+    const frame = img.parentElement?.getBoundingClientRect()
+    if (!frame || frame.width <= 0 || frame.height <= 0 || img.naturalWidth <= 0) return null
+    const scale = img.naturalWidth / frame.width
+    const displayedSrcH = frame.height * scale
+    const bandTop = Math.min(
+      CAPTURE_NAVBAR_CROP_SRC_PX + (displayedSrcH * 2) / 3,
+      Math.max(0, img.naturalHeight - 1)
+    )
+    const bandH = Math.max(1, Math.min(displayedSrcH / 3, img.naturalHeight - bandTop))
     const w = 48
-    const h = 48
+    const h = 16
     const canvas = document.createElement('canvas')
     canvas.width = w
     canvas.height = h
     const ctx = canvas.getContext('2d')
     if (!ctx) return null
-    ctx.drawImage(img, 0, 0, w, h)
-    const top = Math.floor((h * 2) / 3)
-    const data = ctx.getImageData(0, top, w, h - top).data
+    ctx.drawImage(img, 0, bandTop, img.naturalWidth, bandH, 0, 0, w, h)
+    const data = ctx.getImageData(0, 0, w, h).data
     let sum = 0
     for (let i = 0; i < data.length; i += 4) {
       sum += 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]
@@ -178,13 +196,15 @@ export function FleetCard({ site, overview, overviewError }: FleetCardProps) {
             src={preview.screenshot}
             alt=""
             onLoad={(e) => {
-              const luma = sampleBottomLuminance(e.currentTarget)
+              const luma = sampleDisplayedBandLuminance(e.currentTarget)
               if (luma !== null && luma > LIGHT_CAPTURE_LUMINANCE) setStrongScrim(true)
             }}
-            className={`absolute left-0 w-full object-cover object-top ${
+            className={`block h-auto w-full ${
               stalled || neverInstalled ? 'grayscale-[.55] brightness-[.65]' : 'brightness-[.92]'
             }`}
-            style={{ top: `-${CAPTURE_NAVBAR_CROP_PCT}%`, height: `${100 + CAPTURE_NAVBAR_CROP_PCT}%` }}
+            style={{
+              marginTop: `-${(CAPTURE_NAVBAR_CROP_SRC_PX / (preview.width || CAPTURE_FALLBACK_SRC_WIDTH)) * 100}%`,
+            }}
           />
         </div>
       ) : (
