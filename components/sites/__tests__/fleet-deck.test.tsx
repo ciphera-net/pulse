@@ -4,10 +4,13 @@ import { FleetCard } from '@/components/sites/FleetCard'
 import FleetDeck from '@/components/sites/FleetDeck'
 import type { Site, SiteOverview } from '@/lib/api/sites'
 
-// The capture request layer is not under test: no capture exists, so cards
-// render their fallback plate deterministically.
+// The capture request layer is not under test; individual tests set
+// previewData to exercise the capture branch (default: no capture, so cards
+// render their fallback plate deterministically).
+let previewData: { screenshot: string; width: number; height: number; strategy: string; checked_at: string } | null =
+  null
 vi.mock('@/lib/swr/dashboard', () => ({
-  usePagePreview: () => ({ data: null }),
+  usePagePreview: () => ({ data: previewData }),
 }))
 
 let canEdit = true
@@ -51,6 +54,7 @@ function makeOverview(overrides: Partial<SiteOverview> = {}): SiteOverview {
 
 beforeEach(() => {
   canEdit = true
+  previewData = null
 })
 
 describe('FleetCard', () => {
@@ -145,6 +149,23 @@ describe('FleetCard', () => {
       <FleetCard site={makeSite({ is_verified: false })} overview={overview} overviewError={false} />
     )
     expect(b.container.innerHTML).toBe(verifiedHtml)
+  })
+
+  it('crops the capture below the navbar in SOURCE pixels via a width-relative margin', () => {
+    // 96 source px of a 1350-wide capture — % margin-top resolves against the
+    // container WIDTH, so the crop stays exact at any rendered card size (the
+    // shipped card-height-relative crop shrank with scale and sliced navbars).
+    previewData = {
+      screenshot: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=',
+      width: 1350,
+      height: 6638,
+      strategy: 'desktop',
+      checked_at: '2026-08-22T06:00:00Z',
+    }
+    const { container } = render(<FleetCard site={makeSite()} overview={makeOverview()} overviewError={false} />)
+    const img = container.querySelector('img[src^="data:image/gif"]') as HTMLImageElement
+    expect(img).toBeTruthy()
+    expect(img.style.marginTop).toBe(`${-(96 / 1350) * 100}%`)
   })
 
   it('gates the settings gear on sites.edit', () => {
