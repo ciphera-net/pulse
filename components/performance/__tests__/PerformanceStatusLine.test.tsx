@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
-import { PerformanceStatusLine, formatCountdown, formatUtcStamp } from '../PerformanceStatusLine'
+import { PerformanceStatusLine, formatCountdown } from '../PerformanceStatusLine'
 import type { PerformanceAttempt, PerformanceCheck } from '@/lib/api/performance'
 
 // The status line is the only place a failed check can be SAID. Before the
@@ -48,13 +48,15 @@ const check = (over: Partial<PerformanceCheck> = {}): PerformanceCheck =>
   }) as PerformanceCheck
 
 describe('PerformanceStatusLine', () => {
-  it('reports the last check in UTC, never a localised stamp', () => {
+  it("reports the last check in the SITE's time with its zone label — never the viewer's", () => {
     const { container } = render(
-      <PerformanceStatusLine attempt={attempt()} displayed={check()} nextCheckAt={null} />,
+      <PerformanceStatusLine attempt={attempt()} displayed={check()} nextCheckAt={null} timezone="Europe/Brussels" />,
     )
     const text = container.textContent ?? ''
     expect(text).toContain('Last checked')
-    expect(text).toContain('13 Aug 2026, 21:15 UTC')
+    // 21:15Z on a Brussels site is 23:15 CEST; the suite runs under TZ=UTC,
+    // so this passing proves the stamp follows the SITE, not the viewer.
+    expect(text).toContain('13 Aug 2026, 23:15 CEST')
     // A healthy line must not be red — the colour IS the signal here.
     expect(container.querySelector('p')?.className).toContain('text-neutral-500')
     expect(container.querySelector('p')?.className).not.toContain('text-red')
@@ -63,6 +65,7 @@ describe('PerformanceStatusLine', () => {
   it('names the CAUSE of a failure and says the numbers on screen are stale', () => {
     const { container, getByRole } = render(
       <PerformanceStatusLine
+        timezone="Europe/Brussels"
         attempt={attempt({ status: 'error', error: 'lighthouse run exceeded 120000ms', runs: 0 })}
         displayed={check()}
         nextCheckAt={null}
@@ -82,6 +85,7 @@ describe('PerformanceStatusLine', () => {
   it('does not claim stale data is on screen when there is none to show', () => {
     const { container } = render(
       <PerformanceStatusLine
+        timezone="Europe/Brussels"
         attempt={attempt({ status: 'error', error: 'dns failure' })}
         displayed={null}
         nextCheckAt={null}
@@ -94,7 +98,7 @@ describe('PerformanceStatusLine', () => {
 
   it('says a first check is queued rather than rendering an empty line', () => {
     const { container } = render(
-      <PerformanceStatusLine attempt={null} displayed={null} nextCheckAt={null} />,
+      <PerformanceStatusLine attempt={null} displayed={null} nextCheckAt={null} timezone="Europe/Brussels" />,
     )
     expect(container.textContent).toContain('First check queued')
   })
@@ -102,6 +106,7 @@ describe('PerformanceStatusLine', () => {
   it('omits the rerun action without permission', () => {
     const { queryByRole } = render(
       <PerformanceStatusLine
+        timezone="Europe/Brussels"
         attempt={attempt({ status: 'error', error: 'boom' })}
         displayed={check()}
         nextCheckAt={null}
@@ -131,10 +136,3 @@ describe('formatCountdown', () => {
   })
 })
 
-describe('formatUtcStamp', () => {
-  it('renders in UTC regardless of the viewer, and says so', () => {
-    // 23:30 UTC is the next day in CET — a stamp that silently localised would
-    // disagree with the runs-are-UTC contract printed on the spec plate.
-    expect(formatUtcStamp('2026-08-13T23:30:00Z')).toBe('13 Aug 2026, 23:30 UTC')
-  })
-})

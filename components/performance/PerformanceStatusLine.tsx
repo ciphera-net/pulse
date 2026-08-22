@@ -1,6 +1,7 @@
 'use client'
 
 import type { PerformanceAttempt, PerformanceCheck } from '@/lib/api/performance'
+import { formatSiteStamp } from '@/lib/utils/siteTime'
 
 // ---------------------------------------------------------------------------
 // Performance status line — the meta line under the page subtitle, in the same
@@ -25,24 +26,14 @@ interface PerformanceStatusLineProps {
   /** Rerun action, shown inline on the failure line. Omitted without permission. */
   onRunCheck?: () => void
   runInFlight?: boolean
-}
-
-/** "13 Aug 2026, 21:15 UTC" — always UTC-labelled, never localised. */
-export function formatUtcStamp(iso: string): string {
-  const d = new Date(iso)
-  const date = d.toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
-  const time = d.toLocaleTimeString('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-    timeZone: 'UTC',
-  })
-  return `${date}, ${time} UTC`
+  /**
+   * The SITE's IANA timezone. Check stamps are instants and render in site
+   * time, self-labelled with the zone abbreviation ("23:15 CEST") — never the
+   * VIEWER's locale zone, which would make two people quote different stamps
+   * for the same check (owner decision 22-08-2026, the site-timezone
+   * alignment design; previously these stamps were pinned to UTC).
+   */
+  timezone: string | null
 }
 
 /**
@@ -50,7 +41,7 @@ export function formatUtcStamp(iso: string): string {
  *
  * A duration between two instants, not a calendar computation — no timezone is
  * inferred anywhere, which is why this one is safe to do on the client while the
- * absolute stamp above stays explicitly UTC.
+ * absolute stamp above self-labels its zone.
  */
 export function formatCountdown(target: string, now: Date = new Date()): string | null {
   const ms = new Date(target).getTime() - now.getTime()
@@ -69,6 +60,7 @@ export function PerformanceStatusLine({
   nextCheckAt,
   onRunCheck,
   runInFlight,
+  timezone,
 }: PerformanceStatusLineProps) {
   // No attempt at all: monitoring is on but nothing has run yet. Say that
   // rather than rendering an empty line that reads like a loading failure.
@@ -115,7 +107,7 @@ export function PerformanceStatusLine({
   const countdown = nextCheckAt ? formatCountdown(nextCheckAt) : null
   return (
     <p className="mt-1.5 text-xs text-neutral-500">
-      <span className="tabular-nums">Last checked {formatUtcStamp(attempt.checked_at)}</span>
+      <span className="tabular-nums">Last checked {formatSiteStamp(attempt.checked_at, timezone)}</span>
       {countdown && (
         <>
           <span aria-hidden="true" className="mx-1.5 text-neutral-600">
