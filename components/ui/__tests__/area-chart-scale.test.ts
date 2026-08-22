@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { niceYDomain, thinTicks, resolvePlottedY } from '@/components/ui/area-chart'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { niceYDomain, thinTicks, resolvePlottedY, resolveTooltipYPositions } from '@/components/ui/area-chart'
 
 // The sparse-chart fix (owner report 19-08-2026): a low-traffic hourly view
 // rendered ghost slabs on an axis reading 0/24/48/72/96/120%. Two subjects:
@@ -78,5 +80,84 @@ describe('thinTicks', () => {
   it('falls back to endpoints rather than uneven gridlines', () => {
     // 5 intervals, target 4: no stride divides 5 into ≤3 intervals except 5.
     expect(thinTicks([0, 25, 50, 75, 100, 125], 4)).toEqual([0, 125])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// resolveTooltipYPositions — the hover dot must ride the plotted line.
+//
+// 🔴 MEASURED 22-08-2026 (owner screenshot, deck hero on Pages/visit): hover
+// an unmeasured hour and the orange dot sat at the chart TOP on the 2.0
+// gridline while the line sat on the zero line and the tooltip honestly said
+// '—'. The resolver only recorded a y for numeric values, so a null bucket
+// left no entry and the dot call-site's `?? 0` fallback rendered at SVG y=0
+// — the top. Same failure family resolvePlottedY already pins for the line
+// itself; this is the tooltip layer's half.
+// ---------------------------------------------------------------------------
+describe('resolveTooltipYPositions', () => {
+  // A linear scale over domain [0, 2] and range [200, 0] (SVG y grows down):
+  // 0 → 200 (bottom), 2 → 0 (top).
+  const scale = (n: number) => 200 - n * 100
+
+  it('anchors a numeric value at its scaled position', () => {
+    const y = resolveTooltipYPositions(
+      { v: 1 },
+      [{ dataKey: 'v', missingAsZero: true }],
+      scale,
+    )
+    expect(y).toEqual({ v: 100 })
+  })
+
+  it('anchors a missing bucket at the ZERO LINE when the line plots missing-as-zero', () => {
+    // The screenshot bug: this must be the bottom (200), never the top (0).
+    const y = resolveTooltipYPositions(
+      { v: null },
+      [{ dataKey: 'v', missingAsZero: true }],
+      scale,
+    )
+    expect(y).toEqual({ v: 200 })
+  })
+
+  it('yields NO entry for a missing bucket without the flag — the dot hides', () => {
+    // Pinning the dot anywhere would fabricate a measurement the tooltip's
+    // em dash just denied.
+    const y = resolveTooltipYPositions(
+      { v: null },
+      [{ dataKey: 'v', missingAsZero: false }],
+      scale,
+    )
+    expect('v' in y).toBe(false)
+  })
+
+  it('each line follows its own flag', () => {
+    const y = resolveTooltipYPositions(
+      { a: null, b: null, c: 2 },
+      [
+        { dataKey: 'a', missingAsZero: true },
+        { dataKey: 'b', missingAsZero: false },
+        { dataKey: 'c', missingAsZero: false },
+      ],
+      scale,
+    )
+    expect(y).toEqual({ a: 200, c: 0 })
+  })
+})
+
+describe('tooltip dot wiring (source pin)', () => {
+  // The unit tests above cover the resolver; this pins the two call-site
+  // halves jsdom cannot reach (ParentSize measures 0×0, so hover geometry
+  // never runs in tests): the resolver is actually used, and an absent entry
+  // HIDES the dot instead of falling back to the top.
+  const src = readFileSync(
+    join(__dirname, '..', 'area-chart.tsx'),
+    'utf8',
+  )
+
+  it('the hover resolver builds yPositions through resolveTooltipYPositions', () => {
+    expect(src).toContain('resolveTooltipYPositions(d, lines, yScale)')
+  })
+
+  it('an absent y entry hides the dot — never a bare `?? 0` to the chart top', () => {
+    expect(src).toContain('visible={visible && dotY !== undefined}')
   })
 })

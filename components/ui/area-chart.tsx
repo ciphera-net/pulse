@@ -94,6 +94,10 @@ export interface LineConfig {
   dataKey: string;
   stroke: string;
   strokeWidth: number;
+  // Mirrors the Area's own missingAsZero so the tooltip layer anchors a
+  // missing bucket exactly where the line plots it — see
+  // resolveTooltipYPositions.
+  missingAsZero: boolean;
 }
 
 export interface ChartSelection {
@@ -237,13 +241,7 @@ function useChartInteraction({
         }
       }
 
-      const yPositions: Record<string, number> = {};
-      for (const line of lines) {
-        const value = d[line.dataKey];
-        if (typeof value === "number") {
-          yPositions[line.dataKey] = yScale(value) ?? 0;
-        }
-      }
+      const yPositions = resolveTooltipYPositions(d, lines, yScale);
 
       return {
         point: d,
@@ -1097,16 +1095,22 @@ export function ChartTooltip({
           width="100%"
         >
           <g transform={`translate(${margin.left},${margin.top})`}>
-            {lines.map((line) => (
-              <TooltipDot
-                color={line.stroke}
-                key={line.dataKey}
-                strokeColor={chartCssVars.background}
-                visible={visible}
-                x={tooltipData?.xPositions?.[line.dataKey] ?? x}
-                y={tooltipData?.yPositions[line.dataKey] ?? 0}
-              />
-            ))}
+            {lines.map((line) => {
+              // No entry = missing bucket on a line that does not plot
+              // missing-as-zero: the dot HIDES rather than sit at a
+              // fabricated position (a bare `?? 0` here is the chart TOP).
+              const dotY = tooltipData?.yPositions[line.dataKey];
+              return (
+                <TooltipDot
+                  color={line.stroke}
+                  key={line.dataKey}
+                  strokeColor={chartCssVars.background}
+                  visible={visible && dotY !== undefined}
+                  x={tooltipData?.xPositions?.[line.dataKey] ?? x}
+                  y={dotY ?? 0}
+                />
+              );
+            })}
           </g>
         </svg>
       )}
@@ -1212,6 +1216,31 @@ export function resolvePlottedY(
 ): number {
   if (typeof value === "number") return scale(value) ?? 0;
   return missingAsZero ? (scale(0) ?? 0) : 0;
+}
+
+// Where the hover dot (the tooltip's line anchor) sits for each line at a
+// bucket. A number anchors at its scaled position. A missing value anchors at
+// the ZERO LINE when that line plots missing-as-zero — the dot must ride the
+// plotted line, never detach from it (measured 22-08-2026: a null bucket left
+// no entry here and the dot call-site's `?? 0` fallback parked it at the
+// chart TOP while the line sat on the zero line). Without the flag a missing
+// bucket yields NO entry and the dot hides — pinning it anywhere would
+// fabricate a measurement the tooltip's em dash just denied.
+export function resolveTooltipYPositions(
+  point: Record<string, unknown>,
+  lines: readonly Pick<LineConfig, "dataKey" | "missingAsZero">[],
+  scale: (n: number) => number | undefined
+): Record<string, number> {
+  const yPositions: Record<string, number> = {};
+  for (const line of lines) {
+    const value = point[line.dataKey];
+    if (typeof value === "number") {
+      yPositions[line.dataKey] = scale(value) ?? 0;
+    } else if (line.missingAsZero) {
+      yPositions[line.dataKey] = scale(0) ?? 0;
+    }
+  }
+  return yPositions;
 }
 
 // Thin a nice tick array to fit a row budget WITHOUT breaking the steps:
@@ -2193,6 +2222,7 @@ function extractAreaConfigs(children: ReactNode): LineConfig[] {
         dataKey: props.dataKey,
         stroke: props.stroke || props.fill || "var(--chart-line-primary)",
         strokeWidth: props.strokeWidth || 2,
+        missingAsZero: props.missingAsZero ?? false,
       });
     }
   });
