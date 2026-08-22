@@ -63,6 +63,11 @@ export interface UptimeStatusResponse {
   overall_uptime: number
   status: 'operational' | 'degraded' | 'down'
   total_monitors: number
+  /** Newest pre-conversion (UTC-bucketed) rollup date within the requested
+   * range, or null when every day in range is a site-timezone day. Days at or
+   * before it can never be re-bucketed — their raw checks are purged — so the
+   * UI labels the boundary (22-08-2026 site-timezone alignment). */
+  utc_days_before: string | null
 }
 
 // * A confirmed downtime/degradation episode. ended_at null = ongoing.

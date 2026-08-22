@@ -14,8 +14,9 @@ import {
   fmtMs,
   fmtUptimePct,
   fmtDurationSeconds,
-  fmtCheckTimeUTC,
-  bucketLabelUTC,
+  fmtCheckTime,
+  bucketLabel,
+  presetZoneRange,
   UPTIME_DEFAULT_ACTIVE,
 } from '../uptimeMetrics'
 import type { UptimeIncident, UptimeResponseTimeBucket } from '@/lib/api/uptime'
@@ -63,11 +64,11 @@ describe('series math', () => {
     expect(seriesUptimePct(toUptimeSeries([bucket({ samples: 0 })]))).toBeNull()
   })
 
-  it('parses naive bucket timestamps as UTC', () => {
+  it('parses naive bucket timestamps as UTC instants', () => {
     const [p] = toUptimeSeries([bucket({ bucket_start: '2026-08-10T08:00:00' })])
     expect(p.date.toISOString()).toBe('2026-08-10T08:00:00.000Z')
-    expect(bucketLabelUTC(p.date, 'hour')).toBe('08:00')
-    expect(bucketLabelUTC(p.date, 'day')).toBe('10/08')
+    expect(bucketLabel(p.date, 'hour', 'UTC')).toBe('08:00')
+    expect(bucketLabel(p.date, 'day', 'UTC')).toBe('10/08')
   })
 })
 
@@ -103,10 +104,17 @@ describe('incident math', () => {
     expect(clippedDurationSeconds(ongoing, midStart, now, now)).toBe(30 * 60)
   })
 
-  it('derives the range window from UTC day strings, capped at now', () => {
-    const { startMs, endMs } = rangeWindowMs({ start: '2026-07-26', end: '2026-07-27' }, now)
+  it('derives the range window from SITE-day strings, capped at now', () => {
+    const { startMs, endMs } = rangeWindowMs({ start: '2026-07-26', end: '2026-07-27' }, 'UTC', now)
     expect(startMs).toBe(Date.parse('2026-07-26T00:00:00Z'))
     expect(endMs).toBe(now) // 27 Jul 24:00Z is in the future at 10:00Z
+  })
+
+  it("the window opens at the SITE's midnight, not UTC's — the 22-08 conversion", () => {
+    // Brussels midnight of 26 Jul is 22:00Z on the 25th; a UTC-window clip
+    // would charge the range two extra hours of a midnight-straddling outage.
+    const { startMs } = rangeWindowMs({ start: '2026-07-26', end: '2026-07-27' }, 'Europe/Brussels', now)
+    expect(startMs).toBe(Date.parse('2026-07-25T22:00:00Z'))
   })
 })
 
@@ -121,6 +129,22 @@ describe('presetUtcRange', () => {
   it('is a no-op when local and UTC agree on today', () => {
     const nowUtc = new Date('2026-08-13T12:00:00Z')
     expect(presetUtcRange({ start: '2026-08-07', end: '2026-08-13' }, nowUtc))
+      .toEqual({ start: '2026-08-07', end: '2026-08-13' })
+  })
+})
+
+describe('presetZoneRange', () => {
+  it("re-anchors a preset window to the SITE's current day, keeping its length", () => {
+    // 22:30Z on 12 Aug is already 13 Aug in Brussels: the site's "last 30
+    // days" must end on the 13th even though UTC (and the viewer) say the
+    // 12th.
+    const now = new Date('2026-08-12T22:30:00Z')
+    const local30d = { start: '2026-07-13', end: '2026-08-12' }
+    expect(presetZoneRange(local30d, 'Europe/Brussels', now)).toEqual({ start: '2026-07-14', end: '2026-08-13' })
+  })
+  it('is a no-op when the anchor already agrees', () => {
+    const now = new Date('2026-08-13T12:00:00Z')
+    expect(presetZoneRange({ start: '2026-08-07', end: '2026-08-13' }, 'UTC', now))
       .toEqual({ start: '2026-08-07', end: '2026-08-13' })
   })
 })
@@ -151,16 +175,27 @@ describe('formatters', () => {
     // * FLOORS: a range with real failures must never present as 100%.
     expect(fmtUptimePct(99.9996)).toBe('99.99%')
   })
-  it('labels hourly buckets with their day on multi-day series, and check times in UTC', () => {
+  it("labels buckets and check times in the SITE's zone — never the viewer's", () => {
+    // The suite runs under TZ=UTC, so the Brussels expectations passing
+    // proves the formatters follow the site.
     const d = new Date('2026-08-10T14:00:00Z')
-    expect(bucketLabelUTC(d, 'hour')).toBe('14:00')
-    expect(bucketLabelUTC(d, 'hour', true)).toBe('10/08 14:00')
-    expect(fmtCheckTimeUTC('2026-08-13T12:43:18Z')).toBe('13/08 12:43')
+    expect(bucketLabel(d, 'hour', 'UTC')).toBe('14:00')
+    expect(bucketLabel(d, 'hour', 'Europe/Brussels')).toBe('16:00')
+    expect(bucketLabel(d, 'hour', 'Europe/Brussels', true)).toBe('10/08 16:00')
+    expect(fmtCheckTime('2026-08-13T12:43:18Z', 'UTC')).toBe('13/08 12:43')
+    expect(fmtCheckTime('2026-08-13T12:43:18Z', 'Europe/Brussels')).toBe('13/08 14:43')
+  })
+
+  it('day-span detection follows the site calendar — the discriminating case', () => {
+    // 22:00Z on the 10th and 02:00Z on the 11th are TWO UTC days but ONE
+    // Brussels day (00:00 and 04:00 CEST on the 11th) — so the hourly axis
+    // needs day labels for a UTC site and must not for a Brussels one.
     const series = toUptimeSeries([
       bucket({ bucket_start: '2026-08-10T22:00:00Z' }),
       bucket({ bucket_start: '2026-08-11T02:00:00Z' }),
     ])
-    expect(seriesSpansMultipleDays(series)).toBe(true)
+    expect(seriesSpansMultipleDays(series, 'UTC')).toBe(true)
+    expect(seriesSpansMultipleDays(series, 'Europe/Brussels')).toBe(false)
   })
   it('formats durations across the s/m/h breakpoints', () => {
     expect(fmtDurationSeconds(45)).toBe('45 s')
