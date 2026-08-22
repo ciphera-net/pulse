@@ -10,6 +10,9 @@ import { useDailyStats } from '@/lib/swr/dashboard'
 import { parseSiteWallClock } from '@/lib/utils/formatDate'
 
 interface PeakHoursProps {
+  // The page's selected metric. PeakHours keeps its own 4-way control as an
+  // override, but follows the page whenever the page picks one of its four.
+  pageMetric?: 'pageviews' | 'visitors' | 'pages_per_visit' | 'bounce_rate' | 'avg_duration'
   siteId: string
   dateRange: { start: string, end: string }
   // Active page filters (F14): the heatmap describes the same population as
@@ -84,11 +87,14 @@ function getHighlightColor(value: number, max: number): string {
   return HIGHLIGHT_COLORS[4]
 }
 
-export default function PeakHours({ siteId, dateRange, filters }: PeakHoursProps) {
+export default function PeakHours({ pageMetric, siteId, dateRange, filters }: PeakHoursProps) {
   const [animKey, setAnimKey] = useState(0)
   const [hovered, setHovered] = useState<{ day: number; bucket: number } | null>(null)
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null)
   const [metric, setMetric] = useState<Metric>('pageviews')
+  useEffect(() => {
+    if (pageMetric && pageMetric !== 'pages_per_visit') setMetric(pageMetric)
+  }, [pageMetric])
   const gridRef = useRef<HTMLDivElement>(null)
 
   // SWR instead of the imperative fetch (F17): a failed request renders an

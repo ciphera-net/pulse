@@ -15,8 +15,12 @@ import { getReferrerFavicon, getReferrerIcon, getReferrerDisplayName } from '@/l
 import { Megaphone, FrameCornersIcon } from '@phosphor-icons/react'
 import UtmBuilder from '@/components/tools/UtmBuilder'
 import { type DimensionFilter } from '@/lib/filters'
+import { type BlockMetric } from '@/lib/dashboard/metrics'
+import { MetricRowStat, MetricUnitLabel, rowBarWidth, shareDenominatorNote } from '@/components/dashboard/MetricRowStat'
 
 interface CampaignsProps {
+  // The page's selected metric — rows display it; ranking stays visitors-first.
+  metric?: BlockMetric
   siteId: string
   dateRange: { start: string, end: string }
   filters?: string
@@ -30,7 +34,7 @@ type UtmTab = 'source' | 'medium' | 'campaign' | 'term' | 'content'
 
 const LIMIT = 7
 
-export default function Campaigns({ siteId, dateRange, filters, totals, onFilter }: CampaignsProps) {
+export default function Campaigns({ metric = 'visitors', siteId, dateRange, filters, totals, onFilter }: CampaignsProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalSearch, setModalSearch] = useState('')
   const [isBuilderOpen, setIsBuilderOpen] = useState(false)
@@ -70,29 +74,41 @@ export default function Campaigns({ siteId, dateRange, filters, totals, onFilter
   )
 
   const groupedData = useMemo(() => {
-    const grouped = new Map<string, { visitors: number; pageviews: number }>()
+    // Rates for a grouped row are visitors-weighted means of the non-null
+    // components — a component with no rate contributes no weight rather than
+    // dragging the mean toward zero.
+    type Acc = { visitors: number; pageviews: number; bounceW: number; bounceBase: number; durW: number; durBase: number }
+    const grouped = new Map<string, Acc>()
     for (const item of sortedData) {
       const raw = item[activeTab]
       if (!raw) continue
-      const key = raw
-      const existing = grouped.get(key)
-      if (existing) {
-        existing.visitors += item.visitors
-        existing.pageviews += item.pageviews
-      } else {
-        grouped.set(key, { visitors: item.visitors, pageviews: item.pageviews })
+      let acc = grouped.get(raw)
+      if (!acc) {
+        acc = { visitors: 0, pageviews: 0, bounceW: 0, bounceBase: 0, durW: 0, durBase: 0 }
+        grouped.set(raw, acc)
+      }
+      acc.visitors += item.visitors
+      acc.pageviews += item.pageviews
+      if (item.bounce_rate != null && item.visitors > 0) {
+        acc.bounceW += item.bounce_rate * item.visitors
+        acc.bounceBase += item.visitors
+      }
+      if (item.avg_duration != null && item.visitors > 0) {
+        acc.durW += item.avg_duration * item.visitors
+        acc.durBase += item.visitors
       }
     }
     return [...grouped.entries()]
-      .map(([name, stats]) => ({ name, ...stats }))
+      .map(([name, a]) => ({
+        name,
+        visitors: a.visitors,
+        pageviews: a.pageviews,
+        bounce_rate: a.bounceBase > 0 ? a.bounceW / a.bounceBase : null,
+        avg_duration: a.durBase > 0 ? a.durW / a.durBase : null,
+      }))
       .sort((a, b) => b.visitors - a.visitors)
   }, [sortedData, activeTab])
 
-  // The true denominator (F9): the range's visitor total, never the sum of
-  // the visible rows. null = not supplied → no percentages rendered.
-  const denom = totals && totals.visitors > 0 ? totals.visitors : null
-  const pct = (visitors: number) =>
-    denom != null ? `${Math.round((visitors / denom) * 100)}%` : ''
   const hasData = data.length > 0
   const displayedData = hasData ? groupedData.slice(0, LIMIT) : []
   const showViewAll = hasData && groupedData.length > LIMIT
@@ -170,6 +186,7 @@ export default function Campaigns({ siteId, dateRange, filters, totals, onFilter
             ))}
           </div>
           <div className="flex min-w-0 shrink items-center gap-2">
+            <MetricUnitLabel metric={metric} />
             {showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}
@@ -205,8 +222,7 @@ export default function Campaigns({ siteId, dateRange, filters, totals, onFilter
           ) : hasData ? (
             <>
               {displayedData.map((item) => {
-                const maxVis = displayedData[0]?.visitors ?? 0
-                const barWidth = maxVis > 0 ? (item.visitors / maxVis) * 75 : 0
+                const barWidth = rowBarWidth(metric, item, displayedData, 'visitors')
                 const filterDimension = `utm_${activeTab}`
                 return (
                   <div
@@ -226,14 +242,7 @@ export default function Campaigns({ siteId, dateRange, filters, totals, onFilter
                         </div>
                       </div>
                     </div>
-                    <div className="relative flex items-center gap-2 ml-4">
-                      <span className="text-xs font-medium text-brand-orange opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
-                        {pct(item.visitors)}
-                      </span>
-                      <span className="text-sm font-semibold text-neutral-400">
-                        {formatNumber(item.visitors)}
-                      </span>
-                    </div>
+                    <MetricRowStat metric={metric} row={item} totals={totals} />
                   </div>
                 )
               })}
@@ -266,10 +275,8 @@ export default function Campaigns({ siteId, dateRange, filters, totals, onFilter
             placeholder="Search campaigns..."
             className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-none text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
           />
-          {denom != null && (
-            <p className="mb-3 text-[11px] text-neutral-500">
-              Shares are of all {formatNumber(denom)} visitors in the range — searching narrows the rows, not the denominator.
-            </p>
+          {shareDenominatorNote(metric, totals) && (
+            <p className="mb-3 text-[11px] text-neutral-500">{shareDenominatorNote(metric, totals)}</p>
           )}
         </div>
         <div className="flex-1 overflow-y-auto min-h-0">
@@ -321,15 +328,12 @@ export default function Campaigns({ siteId, dateRange, filters, totals, onFilter
                         </div>
                       </div>
                       <div className="flex items-center gap-4 ml-4 text-sm">
-                        <span className="text-xs font-medium text-brand-orange opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
-                          {pct(item.visitors)}
-                        </span>
-                        <span className="font-semibold text-white">
-                          {formatNumber(item.visitors)}
-                        </span>
-                        <span className="text-neutral-500 w-16 text-right">
-                          {formatNumber(item.pageviews)} pv
-                        </span>
+                        <MetricRowStat metric={metric} row={item} totals={totals} />
+                        {metric !== 'pageviews' && (
+                          <span className="text-neutral-500 w-16 text-right">
+                            {formatNumber(item.pageviews)} pv
+                          </span>
+                        )}
                       </div>
                     </div>
                   )}

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useCallback, memo } from 'react'
 import * as d3 from 'd3'
 import * as topojson from 'topojson-client'
 import { formatNumber } from '@/lib/utils/format'
+import { type BlockMetric, blockRowDisplay, shareValue, BLOCK_METRIC_LABEL } from '@/lib/dashboard/metrics'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const worldJson = require('visionscarto-world-atlas/world/110m.json')
 
@@ -36,7 +37,11 @@ const NUM_TO_ALPHA2: Record<string, string> = {
 }
 
 interface MapViewProps {
-  data: Array<{ country: string; pageviews: number }>
+  data: Array<{ country: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
+  // When set (the Audience map), the tooltip value and its unit follow the
+  // page's selected metric — this also retires the old always-says-"visitors"
+  // tooltip that plotted pageviews. Absent = legacy value/label props (CDN map).
+  metric?: BlockMetric
   className?: string
   formatValue?: (value: number) => string
   /**
@@ -54,15 +59,25 @@ function getCountryFeatures(): CountryFeature[] {
   return (collection as unknown as GeoJSON.FeatureCollection).features as unknown as CountryFeature[]
 }
 
-function MapView({ data, className, formatValue = formatNumber, valueLabel = (v) => (v === 1 ? 'visitor' : 'visitors') }: MapViewProps) {
+function MapView({ data, metric, className, formatValue = formatNumber, valueLabel = (v) => (v === 1 ? 'visitor' : 'visitors') }: MapViewProps) {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const highlightRef = useRef<d3.Selection<SVGPathElement, unknown, null, undefined> | null>(null)
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; name: string; value: number } | null>(null)
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; name: string; text: string } | null>(null)
 
   const trafficMap = useMemo(() => {
+    // Choropleth intensity: the selected count, or the ranking count under a
+    // rate metric (rate intensity would light up 1-session noise countries).
     const map: Record<string, number> = {}
     for (const d of data) {
-      if (d.country && d.country !== 'Unknown') map[d.country] = d.pageviews
+      if (d.country && d.country !== 'Unknown') map[d.country] = metric ? shareValue(metric, d, 'pageviews') : d.pageviews
+    }
+    return map
+  }, [data, metric])
+
+  const rowMap = useMemo(() => {
+    const map: Record<string, (typeof data)[number]> = {}
+    for (const d of data) {
+      if (d.country && d.country !== 'Unknown') map[d.country] = d
     }
     return map
   }, [data])
@@ -133,7 +148,11 @@ function MapView({ data, className, formatValue = formatNumber, valueLabel = (v)
           .style('stroke', value > 0 ? 'rgba(249,115,22,0.6)' : 'rgba(255,255,255,0.15)')
         if (value > 0) {
           const [x, y] = d3.pointer(event, svgRef.current?.parentNode)
-          setTooltip({ x, y, name: d.properties.name, value })
+          const row = rowMap[alpha2]
+          const text = metric && row
+            ? `${blockRowDisplay(metric, row).text} ${BLOCK_METRIC_LABEL[metric]}`
+            : [formatValue(value), valueLabel(value)].filter(Boolean).join(' ')
+          setTooltip({ x, y, name: d.properties.name, text })
         }
       })
       .on('mousemove', function (event) {
@@ -161,7 +180,7 @@ function MapView({ data, className, formatValue = formatNumber, valueLabel = (v)
             style={{ left: tooltip.x, top: tooltip.y - 36 }}
           >
             <span>{tooltip.name}</span>
-            <span className="ml-2 text-brand-orange font-bold">{[formatValue(tooltip.value), valueLabel(tooltip.value)].filter(Boolean).join(' ')}</span>
+            <span className="ml-2 text-brand-orange font-bold">{tooltip.text}</span>
           </div>
         )}
       </div>

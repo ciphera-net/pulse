@@ -18,6 +18,7 @@ import { RailDelta } from '@/components/funnels/FunnelRail'
 import RailSparkline from '@/components/dashboard/RailSparkline'
 import { EmptyState } from '@/components/ui/EmptyState'
 import type { DailyStat, Stats } from '@/lib/api/stats'
+import type { MetricType } from '@/lib/dashboard/metrics'
 
 // ---------------------------------------------------------------------------
 // The command deck — Direction C's headline device (dashboard overhaul Phase 2,
@@ -33,12 +34,15 @@ import type { DailyStat, Stats } from '@/lib/api/stats'
 // authenticated instrument; the share surface is a reduced, public-scoped view.
 // ---------------------------------------------------------------------------
 
-type MetricType = 'pageviews' | 'visitors' | 'pages_per_visit' | 'bounce_rate' | 'avg_duration' | 'engagement'
-
 interface CommandDeckProps {
   data: DailyStat[]
   stats: Stats
   prevStats?: Stats
+  // Controlled metric selection (deck metric propagation, 22-08-2026): the
+  // page owns the state so the dimension blocks below can follow it and the
+  // URL can carry it.
+  metric: MetricType
+  onMetricChange: (metric: MetricType) => void
   interval: 'minute' | 'hour' | 'day' | 'month'
   dateRange: { start: string; end: string }
   period?: string
@@ -107,6 +111,8 @@ export default function CommandDeck({
   data,
   stats,
   prevStats,
+  metric,
+  onMetricChange,
   interval,
   dateRange,
   period,
@@ -119,8 +125,6 @@ export default function CommandDeck({
   filtersActive,
   onExport,
 }: CommandDeckProps) {
-  const [metric, setMetric] = useState<MetricType>('visitors')
-
   // ─── Chart data (site wall clock, F10) ─────────────────────────────
   const chartData = useMemo(() => data.map((item) => {
     const wallClock = parseSiteWallClock(item.date) ?? new Date(item.date)
@@ -188,7 +192,7 @@ export default function CommandDeck({
           {rows.map((m, i) => (
             <button
               key={m.key}
-              onClick={() => setMetric(m.key)}
+              onClick={() => onMetricChange(m.key)}
               title={m.title}
               className={cn(
                 'group relative flex-1 cursor-pointer overflow-hidden px-4 py-3 text-start transition-colors ease-apple',
