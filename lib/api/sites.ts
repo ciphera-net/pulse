@@ -96,6 +96,33 @@ export async function listSites(): Promise<Site[]> {
   return response?.sites || []
 }
 
+export interface SiteOverviewDay {
+  date: string
+  visitors: number
+}
+
+/**
+ * One site's entry in the batched GET /sites/overview — the Fleet Deck's data.
+ * `today` is the resolved current date in the SITE's timezone: the server owns
+ * timezone resolution, the client prints it and never computes its own range.
+ * `daily` is exactly 7 site-local days (today-6 … today), zero-filled.
+ * `uptime_status` is null when the site has no enabled monitor.
+ */
+export interface SiteOverview {
+  site_id: string
+  today: string
+  visitors_today: number
+  daily: SiteOverviewDay[]
+  install_status: InstallStatus
+  last_event_at: string | null
+  uptime_status: 'up' | 'degraded' | 'down' | 'unknown' | null
+}
+
+export async function getSitesOverview(): Promise<SiteOverview[]> {
+  const response = await apiRequest<{ sites: SiteOverview[] }>('/sites/overview')
+  return response?.sites || []
+}
+
 export async function getSite(id: string): Promise<Site> {
   return apiRequest<Site>(`/sites/${id}`)
 }

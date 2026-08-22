@@ -5,24 +5,24 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getLastSiteId, markSessionEntered, entryRedirectTarget } from '@/lib/last-site'
 import { listDeletedSites, restoreSite, type Site } from '@/lib/api/sites'
-import { useSites } from '@/lib/swr/sites'
-import { getStats, type Stats } from '@/lib/api/stats'
+import { useSites, useSitesOverview } from '@/lib/swr/sites'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
-import SiteList from '@/components/sites/SiteList'
+import FleetDeck from '@/components/sites/FleetDeck'
+import FleetHeader from '@/components/sites/FleetHeader'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
-import SiteLimitUpgradeButton from '@/components/dashboard/SiteLimitUpgradeButton'
-import { Button, toast, getAuthErrorMessage } from '@ciphera-net/facet'
+import { Badge, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 import { useCan } from '@/lib/auth/permissions'
 import { getSitesLimitForPlan } from '@/lib/plans'
 import { SitesListSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 
-type SiteStatsMap = Record<string, { stats: Stats }>
-
 export default function HomeDashboard() {
   const router = useRouter()
   const { sites, isLoading: sitesLoading, mutate: mutateSitesList } = useSites()
-  const [siteStats, setSiteStats] = useState<SiteStatsMap>({})
+  // * The Fleet Deck's data arrives in ONE batched request (visitors today in
+  // * the site's timezone, 7-day series, install + uptime status) — the former
+  // * per-site Promise.allSettled stats fan-out is gone with it.
+  const { overviewBySite, overviewError, mutate: mutateOverview } = useSitesOverview()
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null)
   const [deletedSites, setDeletedSites] = useState<Site[]>([])
   const [permanentDeleteSiteModal, setPermanentDeleteSiteModal] = useState<Site | null>(null)
@@ -43,37 +43,6 @@ export default function HomeDashboard() {
     loadDeletedSites()
     loadSubscription()
   }, [])
-
-  useEffect(() => {
-    if (sites.length === 0) {
-      setSiteStats({})
-      return
-    }
-    let cancelled = false
-    const today = new Date().toISOString().split('T')[0]
-    const emptyStats: Stats = { pageviews: 0, visitors: 0, bounce_rate: null, avg_duration: null, avg_scroll_depth: null, avg_visible_duration: null }
-    const load = async () => {
-      const results = await Promise.allSettled(
-        sites.map(async (site) => {
-          const statsRes = await getStats(site.id, today, today)
-          return { siteId: site.id, stats: statsRes }
-        })
-      )
-      if (cancelled) return
-      const map: SiteStatsMap = {}
-      results.forEach((r, i) => {
-        const site = sites[i]
-        if (r.status === 'fulfilled') {
-          map[site.id] = { stats: r.value.stats }
-        } else {
-          map[site.id] = { stats: emptyStats }
-        }
-      })
-      setSiteStats(map)
-    }
-    load()
-    return () => { cancelled = true }
-  }, [sites])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -127,39 +96,22 @@ export default function HomeDashboard() {
   const showSkeleton = useMinimumLoading(sitesLoading && sites.length === 0)
   const fadeClass = useSkeletonFade(showSkeleton)
 
+  const siteLimit = getSitesLimitForPlan(subscription?.plan_id)
+  const atLimit = siteLimit != null && sites.length >= siteLimit
+
   return (
     <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-lg font-semibold text-neutral-200 mb-1">Your Sites</h1>
-          <p className="text-sm text-neutral-400">Manage your analytics sites and view insights.</p>
-        </div>
-        {(() => {
-          const siteLimit = getSitesLimitForPlan(subscription?.plan_id)
-          const atLimit = siteLimit != null && sites.length >= siteLimit
-          return atLimit ? (
-          <div>
-            <SiteLimitUpgradeButton used={sites.length} limit={siteLimit} />
-            {deletedSites.length > 0 && (
-              <p className="text-sm text-neutral-400 mt-2">
-                You have a site pending deletion. Restore it or permanently delete it to free the slot.
-              </p>
-            )}
-          </div>
-        ) : null
-        })() ?? (
-          canCreateSite ? <Link href="/sites/new">
-            <Button variant="default" size="toolbar" className="text-sm whitespace-nowrap">
-              Add New Site
-            </Button>
-          </Link> : null
-        )}
-      </div>
+      <FleetHeader siteCount={sites.length} siteLimit={siteLimit} canCreate={canCreateSite} />
+      {atLimit && deletedSites.length > 0 && (
+        <p className="-mt-3 mb-4 text-sm text-neutral-400">
+          You have a site pending deletion. Restore it or permanently delete it to free the slot.
+        </p>
+      )}
 
       {showSkeleton || entryRedirect !== false ? (
         /* also held while the entry redirect is pending or in flight, so the
            list never flashes before navigation */
-        <SitesListSkeleton rows={3} />
+        <SitesListSkeleton rows={4} />
       ) : sites.length === 0 ? (
         <div className="mb-8 flex flex-col items-center justify-center gap-4 py-16 px-6 text-center rounded-none border-2 border-dashed border-brand-orange/30 bg-brand-orange/10">
           <img
@@ -179,7 +131,12 @@ export default function HomeDashboard() {
           </Link>}
         </div>
       ) : (
-        <SiteList sites={sites} siteStats={siteStats} loading={false} />
+        <FleetDeck
+          sites={sites}
+          overviewBySite={overviewBySite}
+          overviewError={!!overviewError}
+          onRetryOverview={() => mutateOverview()}
+        />
       )}
 
       <DeleteSiteModal
@@ -201,24 +158,24 @@ export default function HomeDashboard() {
               const daysLeft = purgeAt ? Math.max(0, Math.ceil((purgeAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0
 
               return (
-                <div key={site.id} className="flex items-center justify-between p-4 rounded-none border border-neutral-800 bg-card opacity-60">
-                  <div>
+                <div key={site.id} className="flex items-center justify-between rounded-none border border-neutral-800 bg-neutral-900 p-4 opacity-70">
+                  <div className="flex items-center gap-3">
                     <span className="font-medium text-neutral-300">{site.name}</span>
-                    <span className="ml-2 text-sm text-neutral-400">{site.domain}</span>
-                    <span className="ml-3 inline-flex items-center rounded-none bg-red-900/20 px-2 py-0.5 text-xs font-medium text-red-400">
+                    <span className="text-sm text-neutral-400">{site.domain}</span>
+                    <Badge variant="danger" size="sm">
                       Deleting in {daysLeft} day{daysLeft !== 1 ? 's' : ''}
-                    </span>
+                    </Badge>
                   </div>
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleRestore(site.id)}
-                      className="px-3 py-1.5 text-xs font-medium text-neutral-300 border border-neutral-700 rounded-none hover:bg-neutral-800 transition-colors ease-apple"
+                      className="rounded-none border border-input bg-card px-3 py-1.5 text-xs font-medium text-neutral-300 transition-colors ease-apple hover:border-line-hover"
                     >
                       Restore
                     </button>
                     <button
                       onClick={() => handlePermanentDelete(site.id)}
-                      className="px-3 py-1.5 text-xs font-medium text-red-400 border border-red-900 rounded-none hover:bg-red-900/20 transition-colors ease-apple"
+                      className="rounded-none border border-red-900 px-3 py-1.5 text-xs font-medium text-red-400 transition-colors ease-apple hover:bg-red-900/20"
                     >
                       Delete Now
                     </button>
