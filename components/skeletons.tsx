@@ -347,37 +347,27 @@ export function FunnelDetailSkeleton() {
   )
 }
 
-// ─── Sites list skeleton (home dashboard) ───────────────────
+// ─── Sites list skeleton (home dashboard / Fleet Deck) ──────
 
-export function SitesListSkeleton({ rows = 3 }: { rows?: number }) {
+export function SitesListSkeleton({ rows = 4 }: { rows?: number }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-5 md:grid-cols-2">
       {Array.from({ length: rows }).map((_, i) => (
         <div
           key={i}
-          className="flex flex-col rounded-none border border-neutral-800 bg-neutral-900 p-6"
+          className="relative flex h-[290px] flex-col justify-end rounded-none border border-neutral-800 bg-neutral-900 p-4"
         >
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <SkeletonCard className="h-12 w-12" />
-              <div className="space-y-2">
-                <SkeletonLine className="h-4 w-28" />
-                <SkeletonLine className="h-3 w-36" />
-              </div>
-            </div>
-            <SkeletonLine className="h-6 w-16 rounded-none" />
-          </div>
-          <div className="mb-6 grid grid-cols-2 gap-4 rounded-none bg-neutral-800/50 p-3">
+          <div className="flex items-end gap-3">
+            <SkeletonCard className="h-[30px] w-[30px]" />
             <div className="space-y-2">
-              <SkeletonLine className="h-3 w-20" />
-              <SkeletonLine className="h-5 w-16" />
+              <SkeletonLine className="h-4 w-28" />
+              <SkeletonLine className="h-3 w-36" />
             </div>
-            <div className="space-y-2">
-              <SkeletonLine className="h-3 w-20" />
-              <SkeletonLine className="h-5 w-16" />
+            <div className="ml-auto space-y-2 text-right">
+              <SkeletonLine className="ml-auto h-6 w-14" />
+              <SkeletonLine className="ml-auto h-3 w-20" />
             </div>
           </div>
-          <SkeletonLine className="h-9 w-full rounded-none mt-auto" />
         </div>
       ))}
     </div>

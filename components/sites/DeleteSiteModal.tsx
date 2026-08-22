@@ -1,9 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { createPortal } from 'react-dom'
-import { motion, AnimatePresence } from 'framer-motion'
-import { toast, getAuthErrorMessage, AlertTriangleIcon, XIcon } from '@ciphera-net/facet'
+import { useEffect, useRef, useState } from 'react'
+import { Modal, Button, toast, getAuthErrorMessage, AlertTriangleIcon } from '@ciphera-net/facet'
 import { deleteSite, permanentDeleteSite } from '@/lib/api/sites'
 
 interface DeleteSiteModalProps {
@@ -16,18 +14,41 @@ interface DeleteSiteModalProps {
   permanentOnly?: boolean
 }
 
+function WarningRow({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 rounded-none border border-red-900/20 bg-red-900/10 p-3">
+      <AlertTriangleIcon className="h-4 w-4 shrink-0 text-red-500" />
+      <span className="text-sm font-medium text-red-300">{children}</span>
+    </div>
+  )
+}
+
+/**
+ * Site deletion dialog on Facet's Modal (replacing the former bespoke
+ * framer-motion portal). Two flows: schedule (type DELETE, 7-day grace) and
+ * permanent (type the exact domain). Facet's Modal traps focus but does not
+ * restore it on close, so the opener's focus is restored here.
+ */
 export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, siteDomain, siteId, permanentOnly }: DeleteSiteModalProps) {
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
   const [showPermanent, setShowPermanent] = useState(!!permanentOnly)
   const [permanentConfirm, setPermanentConfirm] = useState('')
   const [isPermanentDeleting, setIsPermanentDeleting] = useState(false)
+  const restoreFocusRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
-    if (open && permanentOnly) {
-      setShowPermanent(true)
-    }
+    if (open && permanentOnly) setShowPermanent(true)
   }, [open, permanentOnly])
+
+  useEffect(() => {
+    if (open) {
+      restoreFocusRef.current = document.activeElement as HTMLElement | null
+    } else {
+      restoreFocusRef.current?.focus()
+      restoreFocusRef.current = null
+    }
+  }, [open])
 
   const handleClose = () => {
     setDeleteConfirm('')
@@ -66,163 +87,111 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
     }
   }
 
-  if (typeof document === 'undefined') return null
+  const confirmInputClass =
+    'w-full rounded-none border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-400'
 
-  return createPortal(
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-popover p-4 pointer-events-none"
-        >
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            className="w-full max-w-sm bg-neutral-900 p-6 rounded-none border border-red-900 pointer-events-auto"
+  return (
+    <Modal isOpen={open} onClose={handleClose} title={`Delete ${siteName || 'Site'}?`} className="max-w-sm">
+      {!showPermanent ? (
+        <div className="space-y-4">
+          <p className="text-sm text-neutral-400">
+            This site will be scheduled for deletion with a <span className="font-bold">7-day grace period</span>. You
+            can restore it at any time during this period.
+          </p>
+
+          <div className="space-y-2">
+            <WarningRow>All events and analytics data</WarningRow>
+            <WarningRow>Report schedules and goals</WarningRow>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-neutral-300">
+              Type <span className="font-mono font-bold text-red-400">DELETE</span> to confirm
+            </label>
+            <input
+              type="text"
+              value={deleteConfirm}
+              onChange={(e) => setDeleteConfirm(e.target.value)}
+              autoComplete="off"
+              className={confirmInputClass}
+              placeholder="DELETE"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={handleClose} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleSoftDelete}
+              disabled={deleteConfirm !== 'DELETE' || isDeleting}
+              isLoading={isDeleting}
+            >
+              Schedule Deletion
+            </Button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowPermanent(true)}
+            className="w-full text-center text-xs text-neutral-400 transition-colors ease-apple hover:text-red-400"
           >
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-red-500">Delete {siteName || 'Site'}?</h3>
-              <button
-                onClick={handleClose}
-                className="text-neutral-400 hover:text-white"
-              >
-                <XIcon className="w-5 h-5" />
-              </button>
-            </div>
+            Permanently delete now (cannot be undone)
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <p className="text-sm text-neutral-400">
+            This action is <span className="font-bold">irreversible</span>. The site and all its data will be
+            permanently deleted immediately.
+          </p>
 
-            {!showPermanent ? (
-              <>
-                <p className="text-sm text-neutral-400 mb-4">
-                  This site will be scheduled for deletion with a <span className="font-bold">7-day grace period</span>. You can restore it at any time during this period.
-                </p>
+          <div className="space-y-2">
+            <WarningRow>All analytics data will be permanently lost</WarningRow>
+            <WarningRow>This cannot be undone</WarningRow>
+          </div>
 
-                <div className="mb-5 space-y-2">
-                  <div className="flex items-center gap-3 p-3 bg-red-900/10 border border-red-900/20 rounded-none">
-                    <AlertTriangleIcon className="h-4 w-4 text-red-500 shrink-0" />
-                    <span className="text-sm font-medium text-red-300">
-                      All events and analytics data
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 bg-red-900/10 border border-red-900/20 rounded-none">
-                    <AlertTriangleIcon className="h-4 w-4 text-red-500 shrink-0" />
-                    <span className="text-sm font-medium text-red-300">
-                      Report schedules and goals
-                    </span>
-                  </div>
-                </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-neutral-300">
+              Type <span className="font-mono font-bold text-red-400">{siteDomain}</span> to confirm
+            </label>
+            <input
+              type="text"
+              value={permanentConfirm}
+              onChange={(e) => setPermanentConfirm(e.target.value)}
+              autoComplete="off"
+              className={confirmInputClass}
+              placeholder={siteDomain}
+            />
+          </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-medium text-neutral-300 mb-1">
-                      Type <span className="font-mono font-bold text-red-400">DELETE</span> to confirm
-                    </label>
-                    <input
-                      type="text"
-                      value={deleteConfirm}
-                      onChange={(e) => setDeleteConfirm(e.target.value)}
-                      autoComplete="off"
-                      className="w-full px-3 py-2 text-sm border border-neutral-700 rounded-none bg-neutral-800 text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-400"
-                      placeholder="DELETE"
-                    />
-                  </div>
-
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={handleClose}
-                      className="flex-1 px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-800 rounded-none transition-colors ease-apple"
-                      disabled={isDeleting}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleSoftDelete}
-                      disabled={deleteConfirm !== 'DELETE' || isDeleting}
-                      className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed ease-apple"
-                    >
-                      {isDeleting ? 'Deleting...' : 'Schedule Deletion'}
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowPermanent(true)}
-                    className="w-full text-center text-xs text-neutral-400 hover:text-red-400 transition-colors ease-apple"
-                  >
-                    Permanently delete now (cannot be undone)
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-neutral-400 mb-4">
-                  This action is <span className="font-bold">irreversible</span>. The site and all its data will be permanently deleted immediately.
-                </p>
-
-                <div className="mb-5 space-y-2">
-                  <div className="flex items-center gap-3 p-3 bg-red-900/10 border border-red-900/20 rounded-none">
-                    <AlertTriangleIcon className="h-4 w-4 text-red-500 shrink-0" />
-                    <span className="text-sm font-medium text-red-300">
-                      All analytics data will be permanently lost
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 bg-red-900/10 border border-red-900/20 rounded-none">
-                    <AlertTriangleIcon className="h-4 w-4 text-red-500 shrink-0" />
-                    <span className="text-sm font-medium text-red-300">
-                      This cannot be undone
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-medium text-neutral-300 mb-1">
-                      Type <span className="font-mono font-bold text-red-400">{siteDomain}</span> to confirm
-                    </label>
-                    <input
-                      type="text"
-                      value={permanentConfirm}
-                      onChange={(e) => setPermanentConfirm(e.target.value)}
-                      autoComplete="off"
-                      className="w-full px-3 py-2 text-sm border border-neutral-700 rounded-none bg-neutral-800 text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-400"
-                      placeholder={siteDomain}
-                    />
-                  </div>
-
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (permanentOnly) {
-                          handleClose()
-                        } else {
-                          setShowPermanent(false)
-                          setPermanentConfirm('')
-                        }
-                      }}
-                      className="flex-1 px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-800 rounded-none transition-colors ease-apple"
-                      disabled={isPermanentDeleting}
-                    >
-                      {permanentOnly ? 'Cancel' : 'Back'}
-                    </button>
-                    <button
-                      onClick={handlePermanentDelete}
-                      disabled={permanentConfirm !== siteDomain || isPermanentDeleting}
-                      className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed ease-apple"
-                    >
-                      {isPermanentDeleting ? 'Deleting...' : 'Delete Forever'}
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
-          </motion.div>
-        </motion.div>
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (permanentOnly) {
+                  handleClose()
+                } else {
+                  setShowPermanent(false)
+                  setPermanentConfirm('')
+                }
+              }}
+              disabled={isPermanentDeleting}
+            >
+              {permanentOnly ? 'Cancel' : 'Back'}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handlePermanentDelete}
+              disabled={permanentConfirm !== siteDomain || isPermanentDeleting}
+              isLoading={isPermanentDeleting}
+            >
+              Delete Forever
+            </Button>
+          </div>
+        </div>
       )}
-    </AnimatePresence>,
-    document.body
+    </Modal>
   )
 }
