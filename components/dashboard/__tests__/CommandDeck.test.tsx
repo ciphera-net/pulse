@@ -43,6 +43,8 @@ const baseProps = {
   data: [day('2026-08-16T00:00:00+02:00', 10), day('2026-08-17T00:00:00+02:00', 14)],
   stats,
   prevStats,
+  metric: 'visitors' as const,
+  onMetricChange: noop,
   interval: 'day' as const,
   dateRange: { start: '2026-08-16', end: '2026-08-17' },
   todayInterval: 'hour' as const,

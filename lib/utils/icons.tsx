@@ -366,24 +366,49 @@ export function getFilterValueIcon(dimension: string, value: string): ReactNode 
  * summing pageviews and keeping one referrer per group for icon/tooltip. Sorted by pageviews desc.
  */
 export function mergeReferrersByDisplayName(
-  items: Array<{ referrer: string; pageviews: number }>
-): Array<{ referrer: string; pageviews: number; allReferrers: string[] }> {
-  const byDisplayName = new Map<string, { referrer: string; pageviews: number; maxSingle: number; allReferrers: Set<string> }>()
+  items: Array<{ referrer: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
+): Array<{ referrer: string; pageviews: number; visitors: number; bounce_rate: number | null; avg_duration: number | null; allReferrers: string[] }> {
+  type Acc = {
+    referrer: string; pageviews: number; visitors: number; maxSingle: number; allReferrers: Set<string>
+    // Merged rates are visitors-weighted means of the non-null components —
+    // the union's true rate when sessions don't straddle merged variants
+    // (m./www. of one site rarely share a session). A component with no rate
+    // contributes no weight rather than dragging the mean toward zero.
+    bounceWeighted: number; bounceBase: number; durationWeighted: number; durationBase: number
+  }
+  const byDisplayName = new Map<string, Acc>()
   for (const ref of items) {
     const name = getReferrerDisplayName(ref.referrer)
-    const existing = byDisplayName.get(name)
-    if (!existing) {
-      byDisplayName.set(name, { referrer: ref.referrer, pageviews: ref.pageviews, maxSingle: ref.pageviews, allReferrers: new Set([ref.referrer]) })
-    } else {
-      existing.pageviews += ref.pageviews
-      existing.allReferrers.add(ref.referrer)
-      if (ref.pageviews > existing.maxSingle) {
-        existing.maxSingle = ref.pageviews
-        existing.referrer = ref.referrer
-      }
+    const visitors = ref.visitors ?? 0
+    let acc = byDisplayName.get(name)
+    if (!acc) {
+      acc = { referrer: ref.referrer, pageviews: 0, visitors: 0, maxSingle: -1, allReferrers: new Set(), bounceWeighted: 0, bounceBase: 0, durationWeighted: 0, durationBase: 0 }
+      byDisplayName.set(name, acc)
+    }
+    acc.pageviews += ref.pageviews
+    acc.visitors += visitors
+    acc.allReferrers.add(ref.referrer)
+    if (ref.pageviews > acc.maxSingle) {
+      acc.maxSingle = ref.pageviews
+      acc.referrer = ref.referrer
+    }
+    if (ref.bounce_rate != null && visitors > 0) {
+      acc.bounceWeighted += ref.bounce_rate * visitors
+      acc.bounceBase += visitors
+    }
+    if (ref.avg_duration != null && visitors > 0) {
+      acc.durationWeighted += ref.avg_duration * visitors
+      acc.durationBase += visitors
     }
   }
   return Array.from(byDisplayName.values())
-    .map(({ referrer, pageviews, allReferrers }) => ({ referrer, pageviews, allReferrers: Array.from(allReferrers) }))
+    .map((a) => ({
+      referrer: a.referrer,
+      pageviews: a.pageviews,
+      visitors: a.visitors,
+      bounce_rate: a.bounceBase > 0 ? a.bounceWeighted / a.bounceBase : null,
+      avg_duration: a.durationBase > 0 ? a.durationWeighted / a.durationBase : null,
+      allReferrers: Array.from(a.allReferrers),
+    }))
     .sort((a, b) => b.pageviews - a.pageviews)
 }

@@ -13,12 +13,16 @@ import { ListSkeleton } from '@/components/skeletons'
 import VirtualList from './VirtualList'
 import { useFullDimensionList, type FullListKind } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
+import { type BlockMetric } from '@/lib/dashboard/metrics'
+import { MetricRowStat, MetricUnitLabel, rowBarWidth, shareDenominatorNote } from '@/components/dashboard/MetricRowStat'
 
 interface TechSpecsProps {
-  browsers: Array<{ browser: string; pageviews: number }>
-  os: Array<{ os: string; pageviews: number }>
-  devices: Array<{ device: string; pageviews: number }>
-  screenResolutions: Array<{ screen_resolution: string; pageviews: number }>
+  // The page's selected metric — rows display it; ranking stays server-side.
+  metric?: BlockMetric
+  browsers: Array<{ browser: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
+  os: Array<{ os: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
+  devices: Array<{ device: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
+  screenResolutions: Array<{ screen_resolution: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
   collectDeviceInfo?: boolean
   collectScreenResolution?: boolean
   siteId: string
@@ -43,7 +47,7 @@ const TAB_TO_KIND: Record<Tab, FullListKind> = {
 
 // The full-list endpoints return rows keyed by their own dimension name; the
 // card renders a unified { name, pageviews } shape.
-type RawTechRow = { browser?: string; os?: string; device?: string; screen_resolution?: string; pageviews: number }
+type RawTechRow = { browser?: string; os?: string; device?: string; screen_resolution?: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }
 const RAW_NAME_KEY: Record<Tab, keyof RawTechRow> = {
   browsers: 'browser',
   os: 'os',
@@ -62,16 +66,13 @@ const LIMIT = 7
 
 const TAB_TO_DIMENSION: Record<string, string> = { browsers: 'browser', os: 'os', devices: 'device', screens: 'screen_resolution' }
 
-export default function TechSpecs({ browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter }: TechSpecsProps) {
+export default function TechSpecs({ metric = 'pageviews', browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter }: TechSpecsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('browsers')
   const handleTabKeyDown = useTabListKeyboard()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalSearch, setModalSearch] = useState('')
-  type TechItem = { name: string; pageviews: number; icon: React.ReactNode }
+  type TechItem = { name: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null; icon: React.ReactNode }
 
-  const denom = totals && totals.pageviews > 0 ? totals.pageviews : null
-  const pct = (pageviews: number) =>
-    denom != null ? `${Math.round((pageviews / denom) * 100)}%` : ''
 
   // Filter out "Unknown" entries that result from disabled collection
   const filterUnknown = (items: Array<{ name: string; pageviews: number; icon: React.ReactNode }>) => {
@@ -98,7 +99,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
             : <Monitor className="text-neutral-500" />
     return filterUnknown((fullRaw ?? []).map(row => {
       const name = (row[nameKey] as string) ?? ''
-      return { name, pageviews: row.pageviews, icon: iconFor(name) }
+      return { name, pageviews: row.pageviews, visitors: row.visitors, bounce_rate: row.bounce_rate, avg_duration: row.avg_duration, icon: iconFor(name) }
     }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fullRaw, activeTab])
@@ -106,13 +107,13 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
   const getRawData = () => {
     switch (activeTab) {
       case 'browsers':
-        return browsers.map(b => ({ name: b.browser, pageviews: b.pageviews, icon: getBrowserIcon(b.browser) }))
+        return browsers.map(b => ({ name: b.browser, pageviews: b.pageviews, visitors: b.visitors, bounce_rate: b.bounce_rate, avg_duration: b.avg_duration, icon: getBrowserIcon(b.browser) }))
       case 'os':
-        return os.map(o => ({ name: o.os, pageviews: o.pageviews, icon: getOSIcon(o.os) }))
+        return os.map(o => ({ name: o.os, pageviews: o.pageviews, visitors: o.visitors, bounce_rate: o.bounce_rate, avg_duration: o.avg_duration, icon: getOSIcon(o.os) }))
       case 'devices':
-        return devices.map(d => ({ name: d.device, pageviews: d.pageviews, icon: getDeviceIcon(d.device) }))
+        return devices.map(d => ({ name: d.device, pageviews: d.pageviews, visitors: d.visitors, bounce_rate: d.bounce_rate, avg_duration: d.avg_duration, icon: getDeviceIcon(d.device) }))
       case 'screens':
-        return screenResolutions.map(s => ({ name: s.screen_resolution, pageviews: s.pageviews, icon: <Monitor className="text-neutral-500" /> }))
+        return screenResolutions.map(s => ({ name: s.screen_resolution, pageviews: s.pageviews, visitors: s.visitors, bounce_rate: s.bounce_rate, avg_duration: s.avg_duration, icon: <Monitor className="text-neutral-500" /> }))
       default:
         return []
     }
@@ -173,6 +174,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
             ))}
           </div>
           <div className="flex min-w-0 shrink items-center gap-1.5">
+            <MetricUnitLabel metric={metric} />
             {showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}
@@ -195,8 +197,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
               {displayedData.map((item) => {
                 const dim = TAB_TO_DIMENSION[activeTab]
                 const canFilter = onFilter && dim
-                const maxPv = displayedData[0]?.pageviews ?? 0
-                const barWidth = maxPv > 0 ? (item.pageviews / maxPv) * 75 : 0
+                const barWidth = rowBarWidth(metric, item, displayedData)
                 return (
                   <div
                     key={item.name}
@@ -211,14 +212,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
                       {item.icon && <span className="text-lg">{item.icon}</span>}
                       <span className="truncate">{capitalize(item.name)}</span>
                     </div>
-                    <div className="relative flex items-center gap-2 ml-4">
-                      <span className="text-xs font-medium text-brand-orange opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
-                        {pct(item.pageviews)}
-                      </span>
-                      <span className="text-sm font-semibold text-neutral-400">
-                        {formatNumber(item.pageviews)}
-                      </span>
-                    </div>
+                    <MetricRowStat metric={metric} row={item} totals={totals} />
                   </div>
                 )
               })}
@@ -251,10 +245,8 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
             placeholder="Search technology..."
             className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-none text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
           />
-          {denom != null && (
-            <p className="mb-3 text-[11px] text-neutral-500">
-              Shares are of all {formatNumber(denom)} pageviews in the range — searching narrows the rows, not the denominator.
-            </p>
+          {shareDenominatorNote(metric, totals) && (
+            <p className="mb-3 text-[11px] text-neutral-500">{shareDenominatorNote(metric, totals)}</p>
           )}
         </div>
         <div className="flex-1 overflow-y-auto min-h-0">
@@ -294,14 +286,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
                         {item.icon && <span className="text-lg">{item.icon}</span>}
                         <span className="truncate">{capitalize(item.name)}</span>
                       </div>
-                      <div className="flex items-center gap-2 ml-4">
-                        <span className="text-xs font-medium text-brand-orange opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
-                          {pct(item.pageviews)}
-                        </span>
-                        <span className="text-sm font-semibold text-neutral-400">
-                          {formatNumber(item.pageviews)}
-                        </span>
-                      </div>
+                      <MetricRowStat metric={metric} row={item} totals={totals} />
                     </div>
                   )
                 }}

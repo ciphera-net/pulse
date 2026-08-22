@@ -17,13 +17,17 @@ import VirtualList from './VirtualList'
 import { ShieldCheck, Detective, Broadcast, FrameCornersIcon } from '@phosphor-icons/react'
 import { useFullDimensionList, type FullListKind } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
+import { type BlockMetric } from '@/lib/dashboard/metrics'
+import { MetricRowStat, MetricUnitLabel, rowBarWidth, shareDenominatorNote } from '@/components/dashboard/MetricRowStat'
 
 interface AudienceProps {
-  countries: Array<{ country: string; pageviews: number }>
-  cities: Array<{ city: string; country: string; pageviews: number }>
-  regions: Array<{ region: string; country: string; pageviews: number }>
-  languages: Array<{ language: string; pageviews: number }>
-  timezones: Array<{ timezone: string; pageviews: number }>
+  // The page's selected metric — rows display it; ranking stays server-side.
+  metric?: BlockMetric
+  countries: Array<{ country: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
+  cities: Array<{ city: string; country: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
+  regions: Array<{ region: string; country: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
+  languages: Array<{ language: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
+  timezones: Array<{ timezone: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
   geoDataLevel?: 'full' | 'country' | 'none'
   collectAudienceData?: boolean
   siteId: string
@@ -150,16 +154,13 @@ function formatTimezone(tz: string): string {
   }
 }
 
-export default function Audience({ countries, cities, regions, languages, timezones, geoDataLevel = 'full', collectAudienceData = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter }: AudienceProps) {
+export default function Audience({ metric = 'pageviews', countries, cities, regions, languages, timezones, geoDataLevel = 'full', collectAudienceData = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter }: AudienceProps) {
   const [activeTab, setActiveTab] = useState<Tab>('countries')
   const handleTabKeyDown = useTabListKeyboard()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalSearch, setModalSearch] = useState('')
-  type AudienceItem = { country?: string; city?: string; region?: string; language?: string; timezone?: string; pageviews: number }
+  type AudienceItem = { country?: string; city?: string; region?: string; language?: string; timezone?: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }
 
-  const denom = totals && totals.pageviews > 0 ? totals.pageviews : null
-  const pct = (pageviews: number) =>
-    denom != null ? `${Math.round((pageviews / denom) * 100)}%` : ''
 
   // Modal data via SWR — armed only while open on a list tab, filters on the
   // key (F14/F17).
@@ -379,6 +380,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
             ))}
           </div>
           <div className="flex min-w-0 shrink items-center gap-1.5">
+            <MetricUnitLabel metric={metric} />
             {showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}
@@ -398,7 +400,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
             </div>
           ) : isVisualTab ? (
             hasData ? (
-              inView ? <MapView data={filterUnknown(countries) as { country: string; pageviews: number }[]} /> : null
+              inView ? <MapView metric={metric} data={filterUnknown(countries) as { country: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }[]} /> : null
             ) : (
               <EmptyState
                 icon={<GlobeHemisphereWest />}
@@ -414,8 +416,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
                   const dim = TAB_TO_DIMENSION[activeTab]
                   const filterValue = getItemFilterValue(item)
                   const canFilter = onFilter && dim && filterValue
-                  const maxPv = displayedData[0]?.pageviews ?? 0
-                  const barWidth = maxPv > 0 ? (item.pageviews / maxPv) * 75 : 0
+                  const barWidth = rowBarWidth(metric, item, displayedData)
                   const itemKey = activeTab === 'languages' ? (item.language ?? idx) : activeTab === 'timezones' ? (item.timezone ?? idx) : `${item.country ?? ''}-${item.region ?? ''}-${item.city ?? ''}`
                   return (
                     <div
@@ -433,14 +434,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
                           {getItemLabel(item)}
                         </span>
                       </div>
-                      <div className="relative flex items-center gap-2 ml-4">
-                        <span className="text-xs font-medium text-brand-orange opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
-                          {pct(item.pageviews)}
-                        </span>
-                        <span className="text-sm font-semibold text-neutral-400">
-                          {formatNumber(item.pageviews)}
-                        </span>
-                      </div>
+                      <MetricRowStat metric={metric} row={item} totals={totals} />
                     </div>
                   )
                 })}
@@ -473,10 +467,8 @@ export default function Audience({ countries, cities, regions, languages, timezo
             placeholder={`Search ${activeTab}...`}
             className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-none text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
           />
-          {denom != null && (
-            <p className="mb-3 text-[11px] text-neutral-500">
-              Shares are of all {formatNumber(denom)} pageviews in the range — searching narrows the rows, not the denominator.
-            </p>
+          {shareDenominatorNote(metric, totals) && (
+            <p className="mb-3 text-[11px] text-neutral-500">{shareDenominatorNote(metric, totals)}</p>
           )}
         </div>
         <div className="flex-1 overflow-y-auto min-h-0">
@@ -525,14 +517,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
                           {getItemLabel(item)}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 ml-4">
-                        <span className="text-xs font-medium text-brand-orange opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
-                          {pct(item.pageviews)}
-                        </span>
-                        <span className="text-sm font-semibold text-neutral-400">
-                          {formatNumber(item.pageviews)}
-                        </span>
-                      </div>
+                      <MetricRowStat metric={metric} row={item} totals={totals} />
                     </div>
                   )
                 }}

@@ -28,10 +28,14 @@ import VirtualList from './VirtualList'
 import { TopReferrer } from '@/lib/api/stats'
 import { useFullDimensionList } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
+import { type BlockMetric } from '@/lib/dashboard/metrics'
+import { MetricRowStat, MetricUnitLabel, rowBarWidth, shareDenominatorNote } from '@/components/dashboard/MetricRowStat'
 
 interface TopReferrersProps {
-  referrers: Array<{ referrer: string; pageviews: number }>
-  channels?: Array<{ channel: string; pageviews: number }>
+  // The page's selected metric — rows display it; ranking stays server-side.
+  metric?: BlockMetric
+  referrers: Array<{ referrer: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
+  channels?: Array<{ channel: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
   collectReferrers?: boolean
   siteId: string
   dateRange: { start: string, end: string }
@@ -66,15 +70,11 @@ function getChannelIcon(channel: string) {
   }
 }
 
-export default function TopReferrers({ referrers, channels = [], collectReferrers = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter }: TopReferrersProps) {
+export default function TopReferrers({ metric = 'pageviews', referrers, channels = [], collectReferrers = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter }: TopReferrersProps) {
   const [view, setView] = useState<'referrers' | 'channels'>('referrers')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalSearch, setModalSearch] = useState('')
   const [faviconFailed, setFaviconFailed] = useState<Set<string>>(new Set())
-
-  const denom = totals && totals.pageviews > 0 ? totals.pageviews : null
-  const pct = (pageviews: number) =>
-    denom != null ? `${Math.round((pageviews / denom) * 100)}%` : ''
 
   // Modal data via SWR — armed only while open, filters on the key (F14/F17).
   const {
@@ -160,6 +160,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
             ))}
           </div>
           <div className="flex min-w-0 shrink items-center gap-1.5">
+            <MetricUnitLabel metric={metric} />
             {view === 'referrers' && showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}
@@ -182,8 +183,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
             ) : hasData ? (
               <>
                 {displayedReferrers.map((ref) => {
-                  const maxPv = displayedReferrers[0]?.pageviews ?? 0
-                  const barWidth = maxPv > 0 ? (ref.pageviews / maxPv) * 75 : 0
+                  const barWidth = rowBarWidth(metric, ref, displayedReferrers)
                   return (
                     <div
                       key={ref.referrer}
@@ -198,14 +198,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                         {renderReferrerIcon(ref.referrer)}
                         <span className="truncate" title={getReferrerDisplayName(ref.referrer)}>{getReferrerDisplayName(ref.referrer)}</span>
                       </div>
-                      <div className="relative flex items-center gap-2 ml-4">
-                        <span className="text-xs font-medium text-brand-orange opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
-                          {pct(ref.pageviews)}
-                        </span>
-                        <span className="text-sm font-semibold text-neutral-400">
-                          {formatNumber(ref.pageviews)}
-                        </span>
-                      </div>
+                      <MetricRowStat metric={metric} row={ref} totals={totals} />
                     </div>
                   )
                 })}
@@ -226,8 +219,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
             hasChannelData ? (
               <>
                 {displayedChannels.map((ch) => {
-                  const maxPv = displayedChannels[0]?.pageviews ?? 0
-                  const barWidth = maxPv > 0 ? (ch.pageviews / maxPv) * 75 : 0
+                  const barWidth = rowBarWidth(metric, ch, displayedChannels)
                   return (
                     <div
                       key={ch.channel}
@@ -242,14 +234,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                         <span className="flex-shrink-0">{getChannelIcon(ch.channel)}</span>
                         <span className="truncate" title={ch.channel}>{ch.channel}</span>
                       </div>
-                      <div className="relative flex items-center gap-2 ml-4">
-                        <span className="text-xs font-medium text-brand-orange opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
-                          {pct(ch.pageviews)}
-                        </span>
-                        <span className="text-sm font-semibold text-neutral-400">
-                          {formatNumber(ch.pageviews)}
-                        </span>
-                      </div>
+                      <MetricRowStat metric={metric} row={ch} totals={totals} />
                     </div>
                   )
                 })}
@@ -282,10 +267,8 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
             placeholder="Search referrers..."
             className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-none text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
           />
-          {denom != null && (
-            <p className="mb-3 text-[11px] text-neutral-500">
-              Shares are of all {formatNumber(denom)} pageviews in the range — searching narrows the rows, not the denominator.
-            </p>
+          {shareDenominatorNote(metric, totals) && (
+            <p className="mb-3 text-[11px] text-neutral-500">{shareDenominatorNote(metric, totals)}</p>
           )}
         </div>
         <div className="flex-1 overflow-y-auto min-h-0">
@@ -318,14 +301,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
                       {renderReferrerIcon(ref.referrer)}
                       <span className="truncate" title={getReferrerDisplayName(ref.referrer)}>{getReferrerDisplayName(ref.referrer)}</span>
                     </div>
-                    <div className="flex items-center gap-2 ml-4">
-                      <span className="text-xs font-medium text-brand-orange opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
-                        {pct(ref.pageviews)}
-                      </span>
-                      <span className="text-sm font-semibold text-neutral-400">
-                        {formatNumber(ref.pageviews)}
-                      </span>
-                    </div>
+                    <MetricRowStat metric={metric} row={ref} totals={totals} />
                   </div>
                 )}
               />

@@ -22,7 +22,7 @@ vi.mock('@/components/dashboard/VirtualList', () => ({
 
 const idle = { data: undefined, error: undefined, isLoading: false, mutate: vi.fn() }
 
-const page = (path: string, pageviews: number): TopPage => ({ path, pageviews })
+const page = (path: string, pageviews: number): TopPage => ({ path, pageviews, visitors: pageviews, bounce_rate: null, avg_duration: null })
 
 // The audit's F9 example: 453 total pageviews, top row 200. Share-of-top-N
 // said 52%; the truth — and what must render — is 44%.

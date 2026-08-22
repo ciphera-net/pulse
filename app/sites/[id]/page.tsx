@@ -41,6 +41,7 @@ import {
 } from '@/lib/swr/dashboard'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { useLiveIndicator } from '@/lib/live-indicator-context'
+import { type MetricType, type BlockMetric, isMetricType } from '@/lib/dashboard/metrics'
 import { useCan } from '@/lib/auth/permissions'
 
 
@@ -68,6 +69,32 @@ export default function SiteDashboardPage() {
     return raw ? parseFiltersFromURL(raw) : []
   })
   const filtersParam = useMemo(() => serializeFilters(filters), [filters])
+
+  // Deck metric selection lives in the URL (?metric=) like ?period= — a shared
+  // link carries it and a reload keeps it. The dimension blocks follow the
+  // last block-capable metric: engagement is page-scoped (no per-row value),
+  // so while it is selected the blocks hold their previous unit.
+  const [metric, setMetric] = useState<MetricType>(() => {
+    const raw = searchParams.get('metric')
+    return isMetricType(raw) ? raw : 'visitors'
+  })
+  const [blockMetric, setBlockMetric] = useState<BlockMetric>(() => {
+    const raw = searchParams.get('metric')
+    return isMetricType(raw) && raw !== 'engagement' ? raw : 'visitors'
+  })
+  const handleMetricChange = useCallback((m: MetricType) => {
+    setMetric(m)
+    if (m !== 'engagement') setBlockMetric(m)
+  }, [])
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    if (metric !== 'visitors') {
+      url.searchParams.set('metric', metric)
+    } else {
+      url.searchParams.delete('metric')
+    }
+    window.history.replaceState({}, '', url.toString())
+  }, [metric])
 
   // For relative periods send the period name; for custom ranges send dates.
   //
@@ -348,6 +375,8 @@ export default function SiteDashboardPage() {
           data={dailyStats}
           stats={stats}
           prevStats={prevStats}
+          metric={metric}
+          onMetricChange={handleMetricChange}
           interval={interval}
           dateRange={resolvedDateRange}
           period={period}
@@ -365,6 +394,7 @@ export default function SiteDashboardPage() {
       <SectionHeader title="Acquisition" note={sectionNote} />
       <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
         <TopReferrers
+          metric={blockMetric}
           referrers={dashboard?.top_referrers ?? []}
           channels={dashboard?.channels ?? []}
           collectReferrers={site.collect_referrers ?? true}
@@ -374,12 +404,13 @@ export default function SiteDashboardPage() {
           filters={filtersParam || undefined}
           onFilter={handleAddFilter}
         />
-        <Campaigns siteId={siteId} dateRange={resolvedDateRange} totals={totals} filters={filtersParam || undefined} onFilter={handleAddFilter} />
+        <Campaigns metric={blockMetric} siteId={siteId} dateRange={resolvedDateRange} totals={totals} filters={filtersParam || undefined} onFilter={handleAddFilter} />
       </div>
 
       <SectionHeader title="Audience" note={sectionNote} />
       <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
         <Audience
+          metric={blockMetric}
           countries={dashboard?.countries ?? []}
           cities={dashboard?.cities ?? []}
           regions={dashboard?.regions ?? []}
@@ -394,6 +425,7 @@ export default function SiteDashboardPage() {
           onFilter={handleAddFilter}
         />
         <TechSpecs
+          metric={blockMetric}
           browsers={dashboard?.browsers ?? []}
           os={dashboard?.os ?? []}
           devices={dashboard?.devices ?? []}
@@ -411,6 +443,7 @@ export default function SiteDashboardPage() {
       <SectionHeader title="Content" note={sectionNote} />
       <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
         <ContentStats
+          metric={blockMetric}
           topPages={dashboard?.top_pages ?? []}
           entryPages={dashboard?.entry_pages ?? []}
           exitPages={dashboard?.exit_pages ?? []}
@@ -435,7 +468,7 @@ export default function SiteDashboardPage() {
 
       <SectionHeader title="Behaviour" note={`${sectionNote} · site timezone`} />
       <div className="grid gap-3 mb-3 [&>*]:min-w-0">
-        <PeakHours siteId={siteId} dateRange={resolvedDateRange} filters={filtersParam || undefined} />
+        <PeakHours pageMetric={blockMetric} siteId={siteId} dateRange={resolvedDateRange} filters={filtersParam || undefined} />
       </div></>
       })()}
 
