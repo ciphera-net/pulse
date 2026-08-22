@@ -151,10 +151,10 @@ describe('FleetCard', () => {
     expect(b.container.innerHTML).toBe(verifiedHtml)
   })
 
-  it('crops the capture below the navbar in SOURCE pixels via a width-relative margin', () => {
-    // 96 source px of a 1350-wide capture — % margin-top resolves against the
-    // container WIDTH, so the crop stays exact at any rendered card size (the
-    // shipped card-height-relative crop shrank with scale and sliced navbars).
+  it('shows the capture from the VERY TOP of the page, full-bleed', () => {
+    // Owner decision 22-08 (supersedes the crop-below-navbar idea): the site's
+    // own header is part of the card. Full-bleed cover anchored to the top —
+    // no margin, no offset, exactly the mock's geometry.
     previewData = {
       screenshot: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=',
       width: 1350,
@@ -165,7 +165,12 @@ describe('FleetCard', () => {
     const { container } = render(<FleetCard site={makeSite()} overview={makeOverview()} overviewError={false} />)
     const img = container.querySelector('img[src^="data:image/gif"]') as HTMLImageElement
     expect(img).toBeTruthy()
-    expect(img.style.marginTop).toBe(`${-(96 / 1350) * 100}%`)
+    expect(img.style.marginTop).toBe('')
+    expect(img.style.top).toBe('')
+    expect(img.className).toContain('object-cover')
+    expect(img.className).toContain('object-top')
+    expect(img.className).toContain('w-full')
+    expect(img.className).toContain('h-full')
   })
 
   it('gates the settings gear on sites.edit', () => {
