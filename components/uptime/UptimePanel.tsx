@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useQueryParamsWriter } from '@/lib/hooks/useQueryParamsWriter'
+import { shiftDayKey } from '@/lib/utils/siteTime'
 import { scaleLinear, scaleTime } from 'd3-scale'
 import { curveMonotoneX } from 'd3-shape'
 import { AreaClosed, LinePath, ParentSize, localPoint } from '@/lib/charts/primitives'
@@ -28,7 +29,7 @@ import {
   fmtMs,
   fmtUptimePct,
   fmtDurationSeconds,
-  bucketLabelUTC,
+  bucketLabel,
   type UptimeMetricKey,
   type UptimePoint,
 } from './uptimeMetrics'
@@ -39,7 +40,8 @@ import {
 // honest scale. Availability draws as per-bucket state bars — pos/neg is
 // SEMANTIC here (up/down state), not decoration — while response time and
 // checks stay in the one neutral ink. One crosshair runs through every strip.
-// All bucketing is the server's (hour or day, echoed); days/hours are UTC.
+// All bucketing is the server's (hour or day, echoed); days/hours are the
+// SITE's timezone (22-08-2026 alignment, superseding decision D5).
 // ---------------------------------------------------------------------------
 
 const INK = '#b3b1ad'
@@ -57,6 +59,11 @@ interface UptimePanelProps {
   monitor: UptimeMonitor
   dateRange: { start: string; end: string }
   incidents: UptimeIncident[] | undefined
+  /** The SITE's IANA timezone — every bucket, label and clip window speaks it. */
+  timezone: string | null
+  /** Newest 'utc'-basis rollup date in range (pre-conversion days whose raw
+   * checks are purged), or null when the whole range is site-day rows. */
+  utcDaysBefore?: string | null
 }
 
 // ─── Shared x placement ──────────────────────────────────────────
@@ -348,7 +355,7 @@ function ChecksStrip({
 
 // ─── X axis (one shared row under all strips) ────────────────────
 
-function XAxis({ width, series, granularity }: { width: number; series: UptimePoint[]; granularity: 'hour' | 'day' }) {
+function XAxis({ width, series, granularity, timezone }: { width: number; series: UptimePoint[]; granularity: 'hour' | 'day'; timezone: string | null }) {
   const innerW = width - PAD.l - PAD.r
   if (innerW <= 0 || series.length === 0) return null
   const xScale = scaleTime().domain([series[0].date, series[series.length - 1].date]).range([0, innerW])
@@ -356,7 +363,7 @@ function XAxis({ width, series, granularity }: { width: number; series: UptimePo
   const ticks = n <= 1 ? [0] : Array.from({ length: n }, (_, k) => Math.round((k * (series.length - 1)) / (n - 1)))
   // * A 7-day range serves ~168 HOURLY buckets — a bare "14:00" axis would be
   // * seven identical days of labels, so multi-day hourly axes carry the day.
-  const withDay = granularity === 'hour' && seriesSpansMultipleDays(series)
+  const withDay = granularity === 'hour' && seriesSpansMultipleDays(series, timezone)
   return (
     <svg aria-hidden="true" width={width} height={20} style={{ display: 'block' }}>
       {ticks.map((idx) => (
@@ -368,7 +375,7 @@ function XAxis({ width, series, granularity }: { width: number; series: UptimePo
           fontSize={11}
           fill="var(--chart-axis)"
         >
-          {bucketLabelUTC(series[idx].date, granularity, withDay)}
+          {bucketLabel(series[idx].date, granularity, timezone, withDay)}
         </text>
       ))}
     </svg>
@@ -400,7 +407,7 @@ function TLSNote({ monitor }: { monitor: UptimeMonitor }) {
 
 // ─── Panel ───────────────────────────────────────────────────────
 
-export default function UptimePanel({ siteId, monitor, dateRange, incidents }: UptimePanelProps) {
+export default function UptimePanel({ siteId, monitor, dateRange, incidents, timezone, utcDaysBefore }: UptimePanelProps) {
   const searchParams = useSearchParams()
   const write = useQueryParamsWriter()
 
@@ -441,11 +448,11 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents }: U
   // * Downtime attributed to the range is CLIPPED to it — an old multi-day
   // * episode overlapping the window must not report more downtime than the
   // * window contains.
-  const { startMs, endMs } = rangeWindowMs(dateRange)
+  const { startMs, endMs } = rangeWindowMs(dateRange, timezone)
   const downtime = incidents ? totalDowntimeSeconds(incidents, startMs, endMs) : 0
 
   const hovered = hoverIdx != null && hoverIdx < series.length ? series[hoverIdx] : null
-  const hourWithDay = granularity === 'hour' && seriesSpansMultipleDays(series)
+  const hourWithDay = granularity === 'hour' && seriesSpansMultipleDays(series, timezone)
 
   // * Rail primary for response time: exact p50 where the server has it
   // * (hourly source), the exact weighted avg otherwise — always labeled.
@@ -566,12 +573,16 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents }: U
         <div className="h-7 min-w-0 flex-1 py-1">
           {series.length > 0 && (
             <ParentSize debounceTime={10}>
-              {({ width }) => (width > 0 ? <XAxis width={width} series={series} granularity={granularity} /> : null)}
+              {({ width }) => (width > 0 ? <XAxis width={width} series={series} granularity={granularity} timezone={timezone} /> : null)}
             </ParentSize>
           )}
         </div>
         <span className="flex h-7 shrink-0 items-center pr-3 text-xs text-neutral-600">
-          {granularity === 'hour' ? 'hours are UTC' : 'days are UTC'}
+          {/* The convention, stated once — plus the honest boundary: days at
+              or before utcDaysBefore predate the site-timezone conversion and
+              their raw checks are purged, so they can never be re-cut. */}
+          site timezone
+          {utcDaysBefore && <> · days before {shiftDayKey(utcDaysBefore, 1)} are UTC days</>}
         </span>
       </div>
 
@@ -601,7 +612,7 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents }: U
         <div className="pointer-events-none absolute left-1/2 top-12 z-10 -translate-x-1/2">
           <div className="min-w-[170px] rounded-none border border-border bg-popover px-3 py-2.5 text-white">
             <div className="mb-2 text-xs font-medium text-neutral-400">
-              {bucketLabelUTC(hovered.date, granularity, hourWithDay)} · UTC
+              {bucketLabel(hovered.date, granularity, timezone, hourWithDay)}
             </div>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between gap-4">

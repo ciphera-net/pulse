@@ -1,5 +1,6 @@
 'use client'
 
+import { safeTimeZone, zoneDayKey, zoneParts } from '@/lib/utils/siteTime'
 import type { UptimeIncident } from '@/lib/api/uptime'
 import {
   incidentDurationSeconds,
@@ -15,7 +16,8 @@ import {
 // confirmed-failed check count live on the row's tooltip — they are debugging
 // detail, not what the range gets judged by. No footer: the Availability
 // rail's sub-line already states the range's incident count and downtime
-// (trim decision, 14-08). Times are UTC, stated once on the panel's axis row.
+// (trim decision, 14-08). Times are the SITE's timezone (22-08-2026
+// alignment), stated once on the panel's axis row.
 // ---------------------------------------------------------------------------
 
 // * Matches the fetch limit (the API's maximum). If a range genuinely holds
@@ -23,16 +25,14 @@ import {
 // * presenting it as complete.
 export const INCIDENTS_FETCH_LIMIT = 200
 
-function startedLabel(iso: string): string {
+function startedLabel(iso: string, tz: string | null): string {
   const d = new Date(iso)
-  const now = new Date()
-  const sameDay =
-    d.getUTCFullYear() === now.getUTCFullYear() &&
-    d.getUTCMonth() === now.getUTCMonth() &&
-    d.getUTCDate() === now.getUTCDate()
-  const hm = `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
-  if (sameDay) return `Today, ${hm}`
-  const day = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+  const p = zoneParts(d, tz)
+  const hm = `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`
+  // "Today" is the SITE's today — the same calendar every other number on
+  // this page speaks.
+  if (zoneDayKey(d, tz) === zoneDayKey(new Date(), tz)) return `Today, ${hm}`
+  const day = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: safeTimeZone(tz) })
   return `${day}, ${hm}`
 }
 
@@ -48,9 +48,11 @@ interface IncidentsTableProps {
   error?: boolean
   /** The monitor's timeout, so a timeout cause can say after how long. */
   timeoutSeconds?: number
+  /** The SITE's IANA timezone — incident instants render in site time. */
+  timezone: string | null
 }
 
-export default function IncidentsTable({ incidents, error, timeoutSeconds }: IncidentsTableProps) {
+export default function IncidentsTable({ incidents, error, timeoutSeconds, timezone }: IncidentsTableProps) {
   let body: React.ReactNode
   if (error && incidents === undefined) {
     body = <div className="px-4 py-6 text-sm text-neutral-500">Couldn&apos;t load incidents — retrying.</div>
@@ -79,7 +81,7 @@ export default function IncidentsTable({ incidents, error, timeoutSeconds }: Inc
             >
               {ongoing && <span aria-hidden="true" className="absolute bottom-0 left-0 top-0 w-[2px]" style={{ background: UPTIME_NEG }} />}
               <span className="min-w-0 flex-1 truncate text-white">
-                {startedLabel(i.started_at)}
+                {startedLabel(i.started_at, timezone)}
                 {ongoing && (
                   <span className="ml-2" style={{ color: UPTIME_NEG }}>
                     · ongoing

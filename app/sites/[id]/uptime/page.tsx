@@ -26,8 +26,8 @@ import {
   UPTIME_NEG,
   UPTIME_DEGRADED,
   fmtMs,
-  fmtCheckTimeUTC,
-  presetUtcRange,
+  fmtCheckTime,
+  presetZoneRange,
 } from '@/components/uptime/uptimeMetrics'
 
 // ---------------------------------------------------------------------------
@@ -35,7 +35,9 @@ import {
 // uptime's page-scoped presets; 12m is bounded by the API's 366-day cap), the
 // UptimePanel where each metric row is tile and strip at once, the incident
 // ledger, and the monitor strip. All day/hour bucketing is the server's, in
-// UTC — deliberately (decision D5).
+// the SITE's timezone (22-08-2026 alignment — supersedes decision D5; days
+// older than the raw-check retention stay UTC-bucketed and the panel labels
+// that boundary).
 // ---------------------------------------------------------------------------
 
 const cascade = (delay: number) => ({
@@ -105,7 +107,7 @@ const CHECK_DOT: Record<string, string> = {
   down: UPTIME_NEG,
 }
 
-function RecentChecks({ siteId, monitorId }: { siteId: string; monitorId: string | undefined }) {
+function RecentChecks({ siteId, monitorId, timezone }: { siteId: string; monitorId: string | undefined; timezone: string | null }) {
   const { data: checks } = useUptimeChecks(siteId, monitorId, 20)
   if (!checks || checks.length === 0) return null
   return (
@@ -125,7 +127,7 @@ function RecentChecks({ siteId, monitorId }: { siteId: string; monitorId: string
               className="h-1.5 w-1.5 shrink-0 rounded-full"
               style={{ background: CHECK_DOT[c.effective_status ?? c.status] ?? '#737373' }}
             />
-            <span className="ml-2.5 shrink-0 tabular-nums text-neutral-300">{fmtCheckTimeUTC(c.checked_at)}</span>
+            <span className="ml-2.5 shrink-0 tabular-nums text-neutral-300">{fmtCheckTime(c.checked_at, timezone)}</span>
             {/* A failed check finally shows WHY — the error was always fetched, never rendered */}
             {c.error_message && (
               <span className="ml-3 min-w-0 flex-1 truncate font-mono text-neutral-500">{c.error_message}</span>
@@ -154,19 +156,20 @@ export default function UptimePage() {
     extraPresets: UPTIME_PICKER_PRESETS,
   })
 
-  // * The API reads UTC calendar days; useUrlDateRange builds LOCAL ones.
-  // * Preset windows re-anchor to the current UTC day so the newest checks
-  // * never fall off the range west of UTC; a custom pick passes through —
-  // * an explicitly chosen calendar day IS the UTC day, as labeled.
-  // Gated BEFORE the UTC re-anchor — presetUtcRange of a placeholder is still
+  const { data: site, mutate: mutateSite } = useSite(siteId)
+
+  // * The API reads SITE-timezone calendar days; useUrlDateRange builds
+  // * VIEWER-local ones. Preset windows re-anchor to the site's current day
+  // * so the newest checks never fall off for a viewer west of the site; a
+  // * custom pick passes through — an explicitly chosen calendar day IS the
+  // * site's day, as labeled.
+  // Gated BEFORE the re-anchor — presetZoneRange of a placeholder is still
   // a placeholder. Uptime's two hooks keyed on siteId ALONE, so an empty range
   // used to fetch anyway; they now require dates (see lib/swr/dashboard.ts).
   const apiRange = useMemo(
-    () => fetchableRange(periodReady, period === 'custom' ? dateRange : presetUtcRange(dateRange)),
-    [periodReady, period, dateRange],
+    () => fetchableRange(periodReady, period === 'custom' ? dateRange : presetZoneRange(dateRange, site?.timezone ?? null)),
+    [periodReady, period, dateRange, site?.timezone],
   )
-
-  const { data: site, mutate: mutateSite } = useSite(siteId)
   const {
     data: uptimeData,
     isLoading,
@@ -285,6 +288,8 @@ export default function UptimePage() {
               monitor={monitor}
               dateRange={apiRange}
               incidents={incidentsError ? undefined : incidentsData?.incidents}
+              timezone={site?.timezone ?? null}
+              utcDaysBefore={uptimeData?.utc_days_before}
             />
           </motion.div>
 
@@ -293,11 +298,12 @@ export default function UptimePage() {
               incidents={incidentsError ? undefined : incidentsData?.incidents}
               error={!!incidentsError}
               timeoutSeconds={monitor.timeout_seconds}
+              timezone={site?.timezone ?? null}
             />
           </motion.div>
 
           <motion.div {...cascade(0.14)} className="mt-6">
-            <RecentChecks siteId={siteId} monitorId={monitor.id} />
+            <RecentChecks siteId={siteId} monitorId={monitor.id} timezone={site?.timezone ?? null} />
           </motion.div>
         </>
       ) : uptimeError && !uptimeData ? (
