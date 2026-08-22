@@ -19,7 +19,7 @@
     "test:tz-positive": "PULSE_TEST_TZ=Pacific/Kiritimati vitest run lib/utils/__tests__/formatDate.test.ts components/settings/unified/tabs/__tests__/WorkspaceBillingTab.test.tsx lib/notifications"
   },
   "dependencies": {
-    "@ciphera-net/facet": "^0.8.0",
+    "@ciphera-net/facet": "^0.8.1",
     "@ciphera-net/facet-tailwind": "^0.2.0",
     "@ciphera-net/facet-tokens": "^0.1.0",
     "@ciphera-net/tessera": "^0.1.3",
