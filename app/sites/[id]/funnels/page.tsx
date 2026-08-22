@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import FunnelModal, { type FunnelPrefill } from '@/components/funnels/FunnelModal'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
+import { FUNNEL_EXCLUDED_PRESETS } from '@/lib/constants/periods'
 import { fetchableRange } from '@/lib/dashboard/resolveRange'
 import { useCan } from '@/lib/auth/permissions'
 
@@ -55,7 +56,11 @@ export default function FunnelsPage() {
 
   const { data: site } = useSite(siteId)
   const { data: funnels, error: funnelsError, isLoading, mutate } = useFunnels(siteId)
-  const { period, dateRange, periodReady, setPeriod, shiftPeriod } = useUrlDateRange()
+  const { period, dateRange, periodReady, setPeriod, shiftPeriod, pickerProps } = useUrlDateRange({
+    // Shared with the funnel detail page — one instrument, one range memory.
+    pageKey: 'funnels',
+    excludePresets: FUNNEL_EXCLUDED_PRESETS,
+  })
   // Fetch with nothing until the remembered preset is read — otherwise every
   // bare-URL mount spends a 30-day request on the placeholder period and can
   // flash its numbers. `dateRange` stays the picker's DISPLAY value.
@@ -122,9 +127,9 @@ export default function FunnelsPage() {
             onPeriodChange={(p) => setPeriod(p as Period)}
             onDateRangeChange={(range) => setPeriod('custom', range)}
             onShift={shiftPeriod}
-            // * The funnel API is date-granular: "Last hour" would silently
-            // * mean "today". Don't offer what we can't honor.
-            excludePresets={['1h', '24h']}
+            // * Menu and validation both come from the page declaration on
+            // * the hook (FUNNEL_EXCLUDED_PRESETS) — one source, no drift.
+            {...pickerProps}
           />
           {/* * The empty state below carries its own create CTA — showing this
            * header button too meant two identical orange CTAs on one screen. */}

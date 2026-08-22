@@ -56,7 +56,7 @@ export default function SiteDashboardPage() {
   // range, back/forward works, and nothing is silently rewritten to a frozen
   // custom range on reload. The chart intervals are view state, not identity —
   // plain React state, no persistence.
-  const { period, dateRange, periodReady, setPeriod, shiftPeriod } = useUrlDateRange()
+  const { period, dateRange, periodReady, setPeriod, shiftPeriod, pickerProps } = useUrlDateRange({ pageKey: 'dashboard' })
   const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>('hour')
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
@@ -312,6 +312,7 @@ export default function SiteDashboardPage() {
         onPeriodChange={(p) => setPeriod(p as Period)}
         onDateRangeChange={(range) => setPeriod('custom', range)}
         onShift={shiftPeriod}
+        {...pickerProps}
       />
     </>
   )

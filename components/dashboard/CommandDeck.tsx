@@ -1,7 +1,6 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { curveLinear } from 'd3-shape'
 import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip } from '@/components/ui/area-chart'
 import { Card } from '@ciphera-net/facet'
 import type { EngagementPercentilesData } from '@/lib/api/stats'
@@ -344,10 +343,11 @@ export default function CommandDeck({
                 <VisxGrid horizontal vertical={false} stroke="var(--chart-grid)" numTicksRows={6} />
                 <VisxArea
                   dataKey={metric}
-                  // Linear segments, not a smoothing curve — the approved C
-                  // mockup's sharp instrument line; monotone rounding invents
-                  // slopes between real measurements.
-                  curve={curveLinear}
+                  // Shared monotone default, not the C mockup's curveLinear —
+                  // reverted 21-08-2026 (owner call): four of six chart
+                  // surfaces were already smooth, and monotoneX cannot
+                  // overshoot a measured point (the tooltip carries exact
+                  // values, so nobody reads numbers off the curve).
                   fill="var(--chart-1)"
                   fillOpacity={0.15}
                   stroke="var(--chart-1)"
