@@ -161,3 +161,22 @@ describe('tooltip dot wiring (source pin)', () => {
     expect(src).toContain('visible={visible && dotY !== undefined}')
   })
 })
+
+describe('highlight dash wiring (source pin)', () => {
+  // 🔴 CUSTOMER REPORT 22-08-2026 (waltonmarket/inomedigital): the hover
+  // highlight lit the line at the hovered point AND again near the right
+  // edge. The overlay is a dashed path copy; its measured length was keyed
+  // on mount-ish inputs only, so switching the deck metric left the dash
+  // pattern sized for the OLD path (904 vs 10,430 measured in the repro) and
+  // SVG dash patterns REPEAT. jsdom has no getTotalLength, so the browser
+  // repro lives in tests/dash-wrap-repro.spec.ts and these pin the wiring.
+  const src = readFileSync(join(__dirname, '..', 'area-chart.tsx'), 'utf8')
+
+  it('the path length re-measures on every input that shapes d', () => {
+    expect(src).toContain('[animate, innerWidth, isLoaded, data, dataKey, xScale, yScale, curve, missingAsZero]')
+  })
+
+  it('the dash gap is a constant, never the measurement it must outlive', () => {
+    expect(src).toContain('useMotionTemplate`${segmentLengthSpring} 100000`')
+  })
+})
