@@ -15,15 +15,26 @@ export interface Stats {
   avg_visible_duration: number | null
 }
 
+// visitors/rates are populated for top pages; entry/exit rows reuse this shape
+// with visitors == pageviews by construction and null rates.
 export interface TopPage {
   path: string
   pageviews: number
-  visits?: number
+  visitors: number
+  // Session-level rates over this row's member sessions — same definitions as
+  // the headline stats (backend dimension_rates.go). null = unmeasured, never 0.
+  bounce_rate: number | null
+  avg_duration: number | null
 }
 
 export interface ScreenResolutionStat {
   screen_resolution: string
   pageviews: number
+  visitors: number
+  // Session-level rates over this row's member sessions — same definitions as
+  // the headline stats (backend dimension_rates.go). null = unmeasured, never 0.
+  bounce_rate: number | null
+  avg_duration: number | null
 }
 
 export interface GoalCountStat {
@@ -40,58 +51,112 @@ export interface CampaignStat {
   content: string
   visitors: number
   pageviews: number
+  // Session-level rates over this row's member sessions — same definitions as
+  // the headline stats (backend dimension_rates.go). null = unmeasured, never 0.
+  bounce_rate: number | null
+  avg_duration: number | null
 }
 
 export interface TopReferrer {
   referrer: string
   pageviews: number
+  visitors: number
+  // Session-level rates over this row's member sessions — same definitions as
+  // the headline stats (backend dimension_rates.go). null = unmeasured, never 0.
+  bounce_rate: number | null
+  avg_duration: number | null
 }
 
 export interface ChannelStat {
   channel: string
   pageviews: number
+  visitors: number
+  // Session-level rates over this row's member sessions — same definitions as
+  // the headline stats (backend dimension_rates.go). null = unmeasured, never 0.
+  bounce_rate: number | null
+  avg_duration: number | null
 }
 
 export interface CountryStat {
   country: string
   pageviews: number
+  visitors: number
+  // Session-level rates over this row's member sessions — same definitions as
+  // the headline stats (backend dimension_rates.go). null = unmeasured, never 0.
+  bounce_rate: number | null
+  avg_duration: number | null
 }
 
 export interface CityStat {
   city: string
   country: string
   pageviews: number
+  visitors: number
+  // Session-level rates over this row's member sessions — same definitions as
+  // the headline stats (backend dimension_rates.go). null = unmeasured, never 0.
+  bounce_rate: number | null
+  avg_duration: number | null
 }
 
 export interface RegionStat {
   region: string
   country: string
   pageviews: number
+  visitors: number
+  // Session-level rates over this row's member sessions — same definitions as
+  // the headline stats (backend dimension_rates.go). null = unmeasured, never 0.
+  bounce_rate: number | null
+  avg_duration: number | null
 }
 
 export interface LanguageStat {
   language: string
   pageviews: number
+  visitors: number
+  // Session-level rates over this row's member sessions — same definitions as
+  // the headline stats (backend dimension_rates.go). null = unmeasured, never 0.
+  bounce_rate: number | null
+  avg_duration: number | null
 }
 
 export interface TimezoneStat {
   timezone: string
   pageviews: number
+  visitors: number
+  // Session-level rates over this row's member sessions — same definitions as
+  // the headline stats (backend dimension_rates.go). null = unmeasured, never 0.
+  bounce_rate: number | null
+  avg_duration: number | null
 }
 
 export interface BrowserStat {
   browser: string
   pageviews: number
+  visitors: number
+  // Session-level rates over this row's member sessions — same definitions as
+  // the headline stats (backend dimension_rates.go). null = unmeasured, never 0.
+  bounce_rate: number | null
+  avg_duration: number | null
 }
 
 export interface OSStat {
   os: string
   pageviews: number
+  visitors: number
+  // Session-level rates over this row's member sessions — same definitions as
+  // the headline stats (backend dimension_rates.go). null = unmeasured, never 0.
+  bounce_rate: number | null
+  avg_duration: number | null
 }
 
 export interface DeviceStat {
   device: string
   pageviews: number
+  visitors: number
+  // Session-level rates over this row's member sessions — same definitions as
+  // the headline stats (backend dimension_rates.go). null = unmeasured, never 0.
+  bounce_rate: number | null
+  avg_duration: number | null
 }
 
 // `date` is the bucket in the SITE's timezone. The server sends the true
