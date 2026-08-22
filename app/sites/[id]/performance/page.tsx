@@ -18,6 +18,7 @@ import Select from '@/components/ui/select'
 import { motion } from 'framer-motion'
 import ScoreGauge from '@/components/performance/ScoreGauge'
 import { PerformanceStatusLine } from '@/components/performance/PerformanceStatusLine'
+import { formatSiteStampShort } from '@/lib/utils/siteTime'
 import { PerformanceTrend } from '@/components/performance/PerformanceTrend'
 import { auditDescription } from '@/lib/performance/descriptions'
 import { remapLearnUrl } from '@/lib/learn-links'
@@ -87,14 +88,8 @@ function formatMs(ms: number): string {
   return ms < 1000 ? `${Math.round(ms)}ms` : `${(ms / 1000).toFixed(1)}s`
 }
 
-// * A short UTC stamp for the check navigator — the header already carries the
-// * full one, so this stays compact.
-function formatShortUtc(iso: string): string {
-  const d = new Date(iso)
-  const date = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
-  const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' })
-  return `${date}, ${time} UTC`
-}
+// * The check navigator's compact stamp is formatSiteStampShort — the status
+// * line above carries the full zone-labelled one, so this stays terse.
 
 export default function PerformancePage() {
   const canEdit = useCan('pagespeed.manage')
@@ -479,6 +474,7 @@ export default function PerformancePage() {
             nextCheckAt={config?.next_check_at ?? null}
             onRunCheck={canEdit ? handleRunCheck : undefined}
             runInFlight={running}
+            timezone={site.timezone ?? null}
           />
         </div>
 
@@ -617,7 +613,7 @@ export default function PerformancePage() {
                   </button>
                 )}
                 {currentCheck?.checked_at ? (
-                  <span className="tabular-nums text-neutral-200">{formatShortUtc(currentCheck.checked_at)}</span>
+                  <span className="tabular-nums text-neutral-200">{formatSiteStampShort(currentCheck.checked_at, site.timezone)}</span>
                 ) : (
                   <span className="text-neutral-500">—</span>
                 )}
@@ -733,7 +729,7 @@ export default function PerformancePage() {
             scoredHistoryCount >= 2 && (
               <div className={`${CARD} p-6 sm:p-8`}>
                 <h3 className={`${SECTION_LABEL} mb-4`}>Performance score trend</h3>
-                <PerformanceTrend checks={historyChecks ?? []} />
+                <PerformanceTrend checks={historyChecks ?? []} timezone={site.timezone ?? null} />
               </div>
             )
           )}
@@ -858,7 +854,7 @@ function SpecPlate({
       <span className="min-w-0 break-all font-mono">
         {[`https://${domain}`, engine, runs].filter(Boolean).join(' · ')}
       </span>
-      <span>runs are UTC</span>
+      <span>times are site time</span>
     </div>
   )
 }

@@ -128,7 +128,7 @@ describe('PerformanceTrend', () => {
   it('pins the y axis to 0-100 so a 20-point swing does not fill the plot', () => {
     // This IS the fix. With an auto-scaled axis these two points would sit at
     // the very top and very bottom of the chart.
-    const { container } = render(<PerformanceTrend checks={series([71, 91])} />)
+    const { container } = render(<PerformanceTrend checks={series([71, 91])} timezone={null} />)
     const labels = [...container.querySelectorAll('text')]
       .map(t => t.textContent)
       .filter(t => t && /^\d+$/.test(t))
@@ -160,7 +160,7 @@ describe('PerformanceTrend', () => {
     //
     // Seven points, one 20-point dip at index 5. The dot must follow the dip and
     // the line must not.
-    const { container } = render(<PerformanceTrend checks={series([80, 80, 80, 80, 80, 60, 80])} />)
+    const { container } = render(<PerformanceTrend checks={series([80, 80, 80, 80, 80, 60, 80])} timezone={null} />)
 
     const linePath = container.querySelector('path[fill="none"]')
     expect(linePath).toBeTruthy()
@@ -183,18 +183,18 @@ describe('PerformanceTrend', () => {
   })
 
   it('draws one dot per check — the spread, not just the trend', () => {
-    const { container } = render(<PerformanceTrend checks={series([70, 75, 80, 85, 90])} />)
+    const { container } = render(<PerformanceTrend checks={series([70, 75, 80, 85, 90])} timezone={null} />)
     expect(container.querySelectorAll('circle').length).toBe(5)
   })
 
   it('drops checks with no score rather than plotting them as zero', () => {
-    const { container } = render(<PerformanceTrend checks={series([70, null, 80])} />)
+    const { container } = render(<PerformanceTrend checks={series([70, null, 80])} timezone={null} />)
     expect(container.querySelectorAll('circle').length).toBe(2)
   })
 
   it('annotates where the measuring instrument changed', () => {
     const { container } = render(
-      <PerformanceTrend checks={series([70, 72, 78, 80], i => (i < 2 ? 'psi' : 'lighthouse'))} />,
+      <PerformanceTrend checks={series([70, 72, 78, 80], i => (i < 2 ? 'psi' : 'lighthouse'))} timezone={null} />,
     )
     const text = container.textContent ?? ''
     expect(text).toContain('median of 3 from')
@@ -203,13 +203,13 @@ describe('PerformanceTrend', () => {
   })
 
   it('says nothing about provenance when the whole series is one instrument', () => {
-    const { container } = render(<PerformanceTrend checks={series([70, 72, 78, 80])} />)
+    const { container } = render(<PerformanceTrend checks={series([70, 72, 78, 80])} timezone={null} />)
     expect(container.textContent).not.toContain('median of 3 from')
     expect(container.querySelector('line[stroke-dasharray]')).toBeNull()
   })
 
   it('renders nothing below two points instead of drawing a line through one', () => {
-    const { container } = render(<PerformanceTrend checks={series([70])} />)
+    const { container } = render(<PerformanceTrend checks={series([70])} timezone={null} />)
     expect(container.querySelector('svg')).toBeNull()
   })
 
@@ -217,7 +217,7 @@ describe('PerformanceTrend', () => {
     // The app shell's ancestors lack min-width:0, so a wide grid child forces
     // the shell to scroll — and the shell's overflow-x-hidden then DELETES the
     // overflowing content rather than revealing it.
-    const { container } = render(<PerformanceTrend checks={series([70, 80])} />)
+    const { container } = render(<PerformanceTrend checks={series([70, 80])} timezone={null} />)
     const svgWrapper = container.querySelector('svg')?.parentElement
     expect(svgWrapper?.className).toContain('min-w-0')
   })

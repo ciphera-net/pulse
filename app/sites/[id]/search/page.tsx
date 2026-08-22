@@ -219,6 +219,18 @@ export default function SearchConsolePage() {
                   settingsHref="/settings/site/integrations"
                 />
               )}
+          {/* Provenance: these days are the PROVIDER's own reporting days —
+              the one instrument that cannot speak the site's timezone
+              (22-08-2026 alignment design: Google/Bing serve nothing but
+              whole days in their calendar beyond ~10 days back). Say so,
+              in the CDN chip's grammar. */}
+          {(engine === 'bing' ? bingStatus : gscStatus) && (
+            <p className="mt-1 text-xs text-neutral-600">
+              {engine === 'bing'
+                ? 'days are Bing’s'
+                : 'days are Google’s · reports lag ~2 days'}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {/* Only when there is genuinely a choice. A one-option toggle is furniture. */}
