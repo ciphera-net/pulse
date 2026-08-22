@@ -18,6 +18,8 @@ import { RailDelta } from '@/components/funnels/FunnelRail'
 import RailSparkline from '@/components/dashboard/RailSparkline'
 import { EmptyState } from '@/components/ui/EmptyState'
 import type { DailyStat, Stats } from '@/lib/api/stats'
+import { METRIC_TERMS } from '@/lib/dashboard/glossary'
+import { MetricInfoTip, buildExample } from '@/components/dashboard/MetricInfoTip'
 import type { MetricType } from '@/lib/dashboard/metrics'
 
 // ---------------------------------------------------------------------------
@@ -62,14 +64,25 @@ interface CommandDeckProps {
   onExport?: () => void
 }
 
+// The four rail metrics read straight off Stats. Named explicitly rather than
+// `keyof Stats`, which also spans the InfoTip example counts — optional fields
+// the rail must never plot.
+type RailStatKey = 'visitors' | 'pageviews' | 'bounce_rate' | 'avg_duration'
+
 // format receives null for "not measured" and renders an em dash — never a
 // fabricated zero (F11).
+//
+// `label` and `title` come from lib/dashboard/glossary: one registry feeds the
+// rail's sentence, the toolbar's InfoTip and the glossary page, so the three
+// can never drift (metric info layer, 22-08-2026).
 const METRICS: {
   key: MetricType
   label: string
   // The context line under the value: what this number actually counts.
   context: string
-  // The fuller sentence, as a hover title.
+  // The canonical sentence. Reaches the reader through aria-describedby on the
+  // row (never a title= tooltip: invisible to touch and keyboard) and through
+  // the toolbar InfoTip when this metric is selected.
   title: string
   format: (v: number | null) => string
   isNegative?: boolean
@@ -77,32 +90,32 @@ const METRICS: {
 }[] = [
   {
     key: 'visitors', label: 'Unique visitors', context: 'distinct sessions',
-    title: 'Distinct sessions, deduplicated across the range. A session lasts one UTC day, so a returning reader counts once per day they visit.',
+    title: METRIC_TERMS.visitors.definition,
     format: (v) => v == null ? '—' : formatNumber(Math.round(v)),
   },
   {
     key: 'pageviews', label: 'Total pageviews', context: 'across the site',
-    title: 'Every pageview in the range.',
+    title: METRIC_TERMS.pageviews.definition,
     format: (v) => v == null ? '—' : formatNumber(Math.round(v)),
   },
   {
     key: 'pages_per_visit', label: 'Pages / visit', context: 'depth',
-    title: 'Pageviews divided by unique visitors.',
+    title: METRIC_TERMS.pages_per_visit.definition,
     format: (v) => v == null ? '—' : v.toFixed(1),
   },
   {
     key: 'bounce_rate', label: 'Bounce rate', context: 'single-page sessions',
-    title: 'Share of sessions that saw exactly one page. Deltas are percentage points.',
+    title: METRIC_TERMS.bounce_rate.definition,
     format: (v) => v == null ? '—' : `${Math.round(v)}%`, isNegative: true, isRate: true,
   },
   {
     key: 'avg_duration', label: 'Visit duration', context: 'average',
-    title: 'Average session duration over sessions that carried a duration signal — unmeasured sessions are excluded, not counted as zero.',
+    title: METRIC_TERMS.avg_duration.definition,
     format: (v) => v == null ? '—' : formatDuration(Math.round(v)),
   },
   {
     key: 'engagement', label: 'Engagement', context: 'vs prior 90 days',
-    title: 'Median daily percentile of scroll depth, time on page, visit depth and bounce rate, ranked against this site’s prior 90 days. 50 means a typical day for this site.',
+    title: METRIC_TERMS.engagement.definition,
     format: (v) => v == null ? '—' : String(Math.round(v)),
   },
 ]
@@ -160,12 +173,12 @@ export default function CommandDeck({
         ? (engagementData && engagementData.data_days >= 7 ? engagementData.summary.score : null)
         : m.key === 'pages_per_visit'
           ? (stats.visitors > 0 ? stats.pageviews / stats.visitors : null)
-          : stats[m.key as keyof Stats]
+          : stats[m.key as RailStatKey]
       const previousValue: number | null | undefined = m.key === 'engagement'
         ? undefined
         : m.key === 'pages_per_visit'
           ? (prevStats && prevStats.visitors > 0 ? prevStats.pageviews / prevStats.visitors : undefined)
-          : prevStats?.[m.key as keyof Stats]
+          : prevStats?.[m.key as RailStatKey]
       const change: PctChangeResult = value != null && previousValue != null
         ? (m.isRate
             ? guardedPointChange(value, previousValue, prevBase)
@@ -193,7 +206,12 @@ export default function CommandDeck({
             <button
               key={m.key}
               onClick={() => onMetricChange(m.key)}
-              title={m.title}
+              // The canonical sentence, reachable by screen readers without a
+              // control nested inside this button (metric info layer,
+              // 22-08-2026). It replaces a title= attribute that no touch or
+              // keyboard user could ever reach; sighted users read the same
+              // sentence in the toolbar InfoTip once the row is selected.
+              aria-describedby={`deck-def-${m.key}`}
               className={cn(
                 'group relative flex-1 cursor-pointer overflow-hidden px-4 py-3 text-start transition-colors ease-apple',
                 'border-neutral-800 max-md:odd:border-r max-md:[&:nth-child(-n+4)]:border-b',
@@ -235,6 +253,9 @@ export default function CommandDeck({
                     : m.context}
                 </span>
               </div>
+              <span id={`deck-def-${m.key}`} className="sr-only">
+                {m.title}
+              </span>
             </button>
           ))}
         </div>
@@ -242,8 +263,12 @@ export default function CommandDeck({
         {/* Hero chart — fills the deck; the rail stretches to match. */}
         <div className="flex min-w-0 flex-col">
           <div className="flex items-center justify-between gap-3 px-4 pt-3">
-            <span className="text-xs font-medium text-neutral-400">
+            {/* The toolbar names the selected metric, so ONE resident glyph
+                here reaches all six definitions — the rail rows stay clean
+                (metric info layer, 22-08-2026). */}
+            <span className="flex items-center gap-1 text-xs font-medium text-neutral-400">
               {metric === 'visitors' && interval === 'day' ? 'Daily unique visitors' : activeMetric?.label}
+              <MetricInfoTip metric={metric} example={buildExample(metric, stats, engagementData)} />
             </span>
             <div className="flex items-center gap-2">
               {onExport && (

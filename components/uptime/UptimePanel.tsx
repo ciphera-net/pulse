@@ -12,6 +12,8 @@ import { UpdatingChip } from '@/components/ui/UpdatingChip'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { cn } from '@/lib/utils'
+import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
+import { TERMS, UPTIME_TERM } from '@/lib/dashboard/glossary'
 import type { UptimeIncident, UptimeMonitor } from '@/lib/api/uptime'
 import {
   UPTIME_METRIC_ORDER,
@@ -515,6 +517,7 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, tim
               key={key}
               type="button"
               aria-pressed={false}
+              aria-describedby={`uptime-def-${key}`}
               onClick={() => toggleMetric(key)}
               className="group flex h-11 w-full items-stretch border-t border-border first:border-t-0 text-left transition-colors duration-fast ease-apple hover:bg-neutral-800/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange"
             >
@@ -525,6 +528,9 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, tim
               <span className="flex items-center px-4 text-xs text-neutral-600 transition-colors duration-fast ease-apple group-hover:text-neutral-400">
                 Show
               </span>
+              <span id={`uptime-def-${key}`} className="sr-only">
+                {UPTIME_TERM[key] ? TERMS[UPTIME_TERM[key]]?.definition : null}
+              </span>
             </button>
           )
         }
@@ -534,6 +540,7 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, tim
             <button
               type="button"
               aria-pressed={true}
+              aria-describedby={`uptime-def-${key}`}
               onClick={() => toggleMetric(key)}
               className={cn(
                 RAIL_W,
@@ -552,6 +559,9 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, tim
                 <span className="mt-0.5 text-xl font-semibold tabular-nums text-white">{rail.text}</span>
               )}
               <span className="mt-0.5 truncate text-xs text-neutral-500">{rail.sub}</span>
+              <span id={`uptime-def-${key}`} className="sr-only">
+                {UPTIME_TERM[key] ? TERMS[UPTIME_TERM[key]]?.definition : null}
+              </span>
             </button>
 
             <div className="relative min-w-0 flex-1">
@@ -583,6 +593,7 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, tim
               their raw checks are purged, so they can never be re-cut. */}
           site timezone
           {utcDaysBefore && <> · days before {shiftDayKey(utcDaysBefore, 1)} are UTC days</>}
+          <TermInfoTip term="site_timezone" glyphSize={12} />
         </span>
       </div>
 
