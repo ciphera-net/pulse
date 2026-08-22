@@ -11,18 +11,6 @@ import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 import { formatNumber } from '@/lib/utils/format'
 import { useCan } from '@/lib/auth/permissions'
 
-/**
- * Crop applied to the capture's top edge so the card background starts BELOW
- * the captured site's own navbar (~70-90px tall at the sweep's 1350px desktop
- * width). Expressed in SOURCE pixels and applied as a width-relative
- * percentage margin (% margins resolve against the container's WIDTH), so the
- * crop is exact at any rendered card size — a card-height-relative crop
- * silently shrank with the render scale and sliced navbars mid-glyph
- * (measured live 22-08: 6% of card height = only 38 of ~80 navbar pixels).
- */
-const CAPTURE_NAVBAR_CROP_SRC_PX = 96
-const CAPTURE_FALLBACK_SRC_WIDTH = 1350
-
 /** Bottom-third mean luminance above this ⇒ light capture ⇒ stronger scrim. */
 const LIGHT_CAPTURE_LUMINANCE = 0.55
 
@@ -111,10 +99,7 @@ function sampleDisplayedBandLuminance(img: HTMLImageElement): number | null {
     if (!frame || frame.width <= 0 || frame.height <= 0 || img.naturalWidth <= 0) return null
     const scale = img.naturalWidth / frame.width
     const displayedSrcH = frame.height * scale
-    const bandTop = Math.min(
-      CAPTURE_NAVBAR_CROP_SRC_PX + (displayedSrcH * 2) / 3,
-      Math.max(0, img.naturalHeight - 1)
-    )
+    const bandTop = Math.min((displayedSrcH * 2) / 3, Math.max(0, img.naturalHeight - 1))
     const bandH = Math.max(1, Math.min(displayedSrcH / 3, img.naturalHeight - bandTop))
     const w = 48
     const h = 16
@@ -188,7 +173,11 @@ export function FleetCard({ site, overview, overviewError }: FleetCardProps) {
       ref={cardRef}
       className="group relative h-[290px] overflow-hidden rounded-none border border-neutral-800 bg-neutral-900 transition-colors duration-base ease-apple hover:border-neutral-700"
     >
-      {/* Background: capture, or a favicon-tinted plate when none exists */}
+      {/* Background: capture, or a favicon-tinted plate when none exists.
+          The capture starts at the VERY TOP of the page — the site's own
+          header is part of the card's identity (owner decision 22-08,
+          superseding the earlier crop-below-navbar idea). Full-bleed cover,
+          exactly the mock's geometry. */}
       {preview?.screenshot ? (
         <div className="absolute inset-0 overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element -- data URI from the capture store */}
@@ -199,12 +188,9 @@ export function FleetCard({ site, overview, overviewError }: FleetCardProps) {
               const luma = sampleDisplayedBandLuminance(e.currentTarget)
               if (luma !== null && luma > LIGHT_CAPTURE_LUMINANCE) setStrongScrim(true)
             }}
-            className={`block h-auto w-full ${
+            className={`absolute inset-0 h-full w-full object-cover object-top ${
               stalled || neverInstalled ? 'grayscale-[.55] brightness-[.65]' : 'brightness-[.92]'
             }`}
-            style={{
-              marginTop: `-${(CAPTURE_NAVBAR_CROP_SRC_PX / (preview.width || CAPTURE_FALLBACK_SRC_WIDTH)) * 100}%`,
-            }}
           />
         </div>
       ) : (
