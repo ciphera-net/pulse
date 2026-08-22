@@ -1729,6 +1729,15 @@ export function Area({
   const resolvedStroke = stroke || fill;
 
 
+  // The measured length must track the GEOMETRY: d is a function of the
+  // data, the scales, the curve and the metric, and a measurement keyed only
+  // on mount-ish inputs goes stale the moment the deck switches metrics —
+  // findLengthAtX then binary-searches a 10,000-unit path inside a 900-unit
+  // bound and every highlight segment lands wrong (customer report,
+  // 22-08-2026: the line lit at the hovered point AND again near the right
+  // edge — the dash pattern wrapping, reproduced with a flat→spiky metric
+  // switch measuring 904 vs 10,430).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: data/dataKey/xScale/yScale/curve/missingAsZero are the inputs that shape the path's d attribute, read via pathRef
   useEffect(() => {
     if (pathRef.current && animate) {
       const len = pathRef.current.getTotalLength();
@@ -1741,7 +1750,7 @@ export function Area({
         }
       }
     }
-  }, [animate, innerWidth, isLoaded]);
+  }, [animate, innerWidth, isLoaded, data, dataKey, xScale, yScale, curve, missingAsZero]);
 
   const findLengthAtX = useCallback(
     (targetX: number): number => {
@@ -1821,7 +1830,12 @@ export function Area({
   const offsetSpring = useSpring(0, springConfig);
   const segmentLengthSpring = useSpring(0, springConfig);
 
-  const animatedDasharray = useMotionTemplate`${segmentLengthSpring} ${pathLength}`;
+  // The gap's ONLY job is "never repeat". Sizing it to the measured length
+  // makes correctness depend on the measurement being current — the wrap bug
+  // above. A large constant makes a second bright segment geometrically
+  // impossible for any real chart, including the one frame between a path
+  // change and the re-measure effect.
+  const animatedDasharray = useMotionTemplate`${segmentLengthSpring} 100000`;
 
   useEffect(() => {
     offsetSpring.set(-segmentBounds.startLength);
