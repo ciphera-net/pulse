@@ -35,7 +35,7 @@ export function StepHeader({ index, visitors, dropOffPercent, showDropoffTip }: 
           Fixed height lets the transparent hit area overhang harmlessly. */}
       <span className="flex h-4 items-center gap-1 text-xs uppercase tracking-[0.08em] text-neutral-500">
         Step {index + 1}
-        {index === 0 && <TermInfoTip term="journey_step" glyphSize={12} />}
+        {index === 0 && <TermInfoTip term="journey_step" />}
       </span>
       <div className="flex items-baseline gap-1.5">
         <AnimatedNumber
@@ -47,7 +47,7 @@ export function StepHeader({ index, visitors, dropOffPercent, showDropoffTip }: 
         {dropOffPercent !== 0 && (
           <span className={`flex h-4 items-center gap-1 text-xs font-medium tabular-nums ${dropOffPercent < 0 ? 'text-red-400' : 'text-green-400'}`}>
             {dropOffPercent > 0 ? '+' : ''}{dropOffPercent}%
-            {showDropoffTip && <TermInfoTip term="journey_dropoff" glyphSize={12} />}
+            {showDropoffTip && <TermInfoTip term="journey_dropoff" />}
           </span>
         )}
       </div>

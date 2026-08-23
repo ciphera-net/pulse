@@ -593,7 +593,7 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, tim
               their raw checks are purged, so they can never be re-cut. */}
           site timezone
           {utcDaysBefore && <> · days before {shiftDayKey(utcDaysBefore, 1)} are UTC days</>}
-          <TermInfoTip term="site_timezone" glyphSize={12} />
+          <TermInfoTip term="site_timezone" />
         </span>
       </div>
 

@@ -20,19 +20,19 @@ export function FunnelStatusLine({ timezone }: { timezone?: string }) {
       <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-green-400" aria-hidden="true" />
       <span className="inline-flex items-center gap-1">
         Live from events · conviction-filtered
-        <TermInfoTip term="funnel_live_conviction_filtered" glyphSize={12} />
+        <TermInfoTip term="funnel_live_conviction_filtered" />
       </span>
       <span>·</span>
       <span className="inline-flex items-center gap-1">
         one-visit conversions
-        <TermInfoTip term="funnel_one_visit" glyphSize={12} />
+        <TermInfoTip term="funnel_one_visit" />
       </span>
       {timezone && (
         <>
           <span>·</span>
           <span className="inline-flex items-center gap-1">
             days are {timezone}
-            <TermInfoTip term="funnel_days_site_timezone" glyphSize={12} />
+            <TermInfoTip term="funnel_days_site_timezone" />
           </span>
         </>
       )}

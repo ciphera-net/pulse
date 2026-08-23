@@ -591,7 +591,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                   on the label that explains what a step is. */}
               <label className="mb-1.5 flex h-5 items-center gap-1 text-sm font-medium text-neutral-300">
                 Steps
-                <TermInfoTip term="funnel_step_definition" glyphSize={12} />
+                <TermInfoTip term="funnel_step_definition" />
               </label>
               <div className="space-y-1.5">
                 <AnimatePresence initial={false}>

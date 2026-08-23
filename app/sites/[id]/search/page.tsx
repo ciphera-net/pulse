@@ -235,7 +235,7 @@ export default function SearchConsolePage() {
               {engine === 'bing'
                 ? 'days are Bing’s'
                 : 'days are Google’s · reports lag ~2 days'}
-              <TermInfoTip term={engine === 'bing' ? 'bing_timezone_days' : 'search_data_source_gate'} glyphSize={12} />
+              <TermInfoTip term={engine === 'bing' ? 'bing_timezone_days' : 'search_data_source_gate'} />
             </p>
           )}
         </div>
@@ -265,7 +265,7 @@ export default function SearchConsolePage() {
       <div className="mb-2 flex items-center justify-between gap-3">
         <span className="flex items-center gap-1 text-xs text-neutral-500">
           Search traffic
-          <TermInfoTip term="search_granularity_rollup" glyphSize={12} />
+          <TermInfoTip term="search_granularity_rollup" />
         </span>
         <SegmentedControl
           aria-label="Chart granularity"

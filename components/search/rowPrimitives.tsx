@@ -149,7 +149,7 @@ export function StandardHeader({
     <div className="flex h-8 items-center border-b border-border px-3 text-xs text-neutral-500">
       <span className="flex min-w-0 flex-1 items-center gap-1">
         {label}
-        {term && <TermInfoTip term={term} glyphSize={12} />}
+        {term && <TermInfoTip term={term} />}
       </span>
       <div className="ml-3 flex shrink-0 items-center gap-3">
         <HeaderCell col="clicks" label="Clicks" width={W.clicks} sort={sort} onSort={onSort} />

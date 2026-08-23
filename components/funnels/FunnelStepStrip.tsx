@@ -160,7 +160,7 @@ export function FunnelStepStrip({
         <div className="mb-3 flex h-10 items-center justify-between gap-3">
           <span className="flex items-center gap-1 text-xs text-neutral-500">
             Where visitors went after dropping off
-            <TermInfoTip term="funnel_exit_pages" glyphSize={12} />
+            <TermInfoTip term="funnel_exit_pages" />
           </span>
           {step.step.category !== 'event' && step.step.type === 'exact' && (
             <Link
@@ -202,7 +202,7 @@ export function FunnelStepStrip({
         <div className="mb-3 flex h-10 items-center justify-between gap-3">
           <span className="flex items-center gap-1 text-xs text-neutral-500">
             Breakdown
-            <TermInfoTip term="funnel_breakdown_floor" glyphSize={12} />
+            <TermInfoTip term="funnel_breakdown_floor" />
           </span>
           <Select
             variant="input"
