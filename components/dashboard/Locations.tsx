@@ -19,6 +19,7 @@ import { useFullDimensionList, type FullListKind } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
 import { type BlockMetric } from '@/lib/dashboard/metrics'
 import { MetricRowStat, MetricUnitLabel, rowBarWidth, shareDenominatorNote } from '@/components/dashboard/MetricRowStat'
+import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 interface AudienceProps {
   // The page's selected metric — rows display it; ranking stays server-side.
@@ -380,6 +381,7 @@ export default function Audience({ metric = 'pageviews', countries, cities, regi
             ))}
           </div>
           <div className="flex min-w-0 shrink items-center gap-1.5">
+            <DimensionInfoTip tab={activeTab} />
             <MetricUnitLabel metric={metric} />
             {showViewAll && (
               <button

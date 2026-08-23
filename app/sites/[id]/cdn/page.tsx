@@ -19,6 +19,7 @@ import { CDNSkeleton } from '@/components/skeletons'
 import { EdgeCard, OriginCard } from '@/components/cdn/CdnSplitInstrument'
 import { CdnLiveCard } from '@/components/cdn/CdnLiveCard'
 import { toCdnSeries, statusMix, cdnDayLabel, CDN_PICKER_PRESETS } from '@/components/cdn/cdnMetrics'
+import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 export default function CDNPage() {
   const params = useParams()
@@ -164,9 +165,19 @@ export default function CDNPage() {
             {bunnyStatus.pull_zone_name} · zone {bunnyStatus.pull_zone_id}
           </span>
           <span className="shrink-0 text-xs text-neutral-600">
-            days are UTC
+            <span className="inline-flex items-center gap-1">
+              days are UTC
+              <TermInfoTip term="cdn_utc_days" glyphSize={12} />
+            </span>
+            <span className="ml-1 inline-flex items-center gap-1">
+              · unmeasured shows —
+              <TermInfoTip term="cdn_zero_fill_absence" glyphSize={12} />
+            </span>
             {series.length > 0 && series[0].date.toISOString().slice(0, 10) > effectiveRange.start && (
-              <> · data begins {cdnDayLabel(series[0].date)}</>
+              <span className="ml-1 inline-flex items-center gap-1">
+                · data begins {cdnDayLabel(series[0].date)}
+                <TermInfoTip term="cdn_backfill_caps" glyphSize={12} />
+              </span>
             )}
           </span>
         </div>

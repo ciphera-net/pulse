@@ -184,7 +184,7 @@ function QueriesView({ siteId, dateRange, page, setPage, expand, toggleExpand, s
   const total = data?.total ?? 0
   return (
     <>
-      <StandardHeader label="Query" sort={sort} onSort={onSort} />
+      <StandardHeader label="Query" sort={sort} onSort={onSort} term="search_row_tables" />
       <ViewBody
         isLoading={isLoading}
         hasData={!!data}
@@ -224,7 +224,7 @@ function PagesView({ siteId, dateRange, page, setPage, expand, toggleExpand, sor
   const total = data?.total ?? 0
   return (
     <>
-      <StandardHeader label="Page" sort={sort} onSort={onSort} />
+      <StandardHeader label="Page" sort={sort} onSort={onSort} term="search_row_tables" />
       <ViewBody
         isLoading={isLoading}
         hasData={!!data}
@@ -279,7 +279,7 @@ function DaysView({ siteId, dateRange, page, setPage, sort, onSort }: DaysProps)
 
   return (
     <>
-      <StandardHeader label="Date" sort={sort} onSort={onSort} />
+      <StandardHeader label="Date" sort={sort} onSort={onSort} term="search_days_view" />
       <ViewBody
         isLoading={isLoading}
         hasData={!!data}

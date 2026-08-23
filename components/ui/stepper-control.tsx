@@ -108,6 +108,11 @@ export function StepperControl({ label, value, min, max, step = 1, onChange, for
         className,
       )}
     >
+      {/* No InfoTip lives in here. The root is role="spinbutton" with
+          tabIndex=0 and its own arrow-key handler, i.e. a control — a glyph
+          button nested inside it hijacks ArrowUp/ArrowDown while focused and
+          is a leaf most screen readers never surface. The journeys toolbar
+          places that glyph beside the pair instead. */}
       <span className="text-xs text-neutral-500 pr-0.5">{label}</span>
       <button
         type="button"

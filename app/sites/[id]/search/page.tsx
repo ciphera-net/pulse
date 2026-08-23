@@ -23,6 +23,7 @@ import { ErrorCard } from '@/components/ui/ErrorCard'
 import { SegmentedControl } from '@ciphera-net/facet'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 import { METRIC_ORDER, METRIC_LABEL, parseGranularity, type Granularity } from '@/components/search/searchMetrics'
+import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 // ---------------------------------------------------------------------------
 // Search Console — the instrument-panel layout. One range control (the
@@ -223,12 +224,18 @@ export default function SearchConsolePage() {
               the one instrument that cannot speak the site's timezone
               (22-08-2026 alignment design: Google/Bing serve nothing but
               whole days in their calendar beyond ~10 days back). Say so,
-              in the CDN chip's grammar. */}
+              in the CDN chip's grammar. The glyph carries the two most
+              consequential facts a reader meets on this page: Bing's day is
+              Bing's own timezone (bing_timezone_days), and Google's tiles and
+              tables read two different syncs that will not sum
+              (search_data_source_gate) — both stated once, here, before
+              either surface below can surprise them. */}
           {(engine === 'bing' ? bingStatus : gscStatus) && (
-            <p className="mt-1 text-xs text-neutral-600">
+            <p className="mt-1 flex items-center gap-1 text-xs text-neutral-600">
               {engine === 'bing'
                 ? 'days are Bing’s'
                 : 'days are Google’s · reports lag ~2 days'}
+              <TermInfoTip term={engine === 'bing' ? 'bing_timezone_days' : 'search_data_source_gate'} glyphSize={12} />
             </p>
           )}
         </div>
@@ -256,7 +263,10 @@ export default function SearchConsolePage() {
       {/* One toolbar for BOTH engines: the granularity is a chart control and
           travels with the instrument, not with one engine. */}
       <div className="mb-2 flex items-center justify-between gap-3">
-        <span className="text-xs text-neutral-500">Search traffic</span>
+        <span className="flex items-center gap-1 text-xs text-neutral-500">
+          Search traffic
+          <TermInfoTip term="search_granularity_rollup" glyphSize={12} />
+        </span>
         <SegmentedControl
           aria-label="Chart granularity"
           value={granularity}

@@ -7,6 +7,7 @@ import { countryName } from '@/lib/utils/countryCodes'
 import { useGSCTopCountries, useGSCTopDevices, useGSCOpportunities } from '@/lib/swr/dashboard'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { PositionBadge } from './PositionBadge'
+import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import {
   RowBar,
   StandardMetrics,
@@ -69,7 +70,7 @@ export function CountriesView({ siteId, dateRange, page, setPage, sort, onSort }
   const maxClicks = Math.max(...rows.map((r) => r.clicks), 0)
   return (
     <>
-      <StandardHeader label="Country" sort={sort} onSort={onSort} />
+      <StandardHeader label="Country" sort={sort} onSort={onSort} term="search_row_tables" />
       <ViewBody
         isLoading={isLoading}
         hasData={!!data}
@@ -108,7 +109,7 @@ export function DevicesView({ siteId, dateRange, sort, onSort }: RangeProps & So
   const maxClicks = Math.max(...rows.map((r) => r.clicks), 0)
   return (
     <>
-      <StandardHeader label="Device" sort={sort} onSort={onSort} />
+      <StandardHeader label="Device" sort={sort} onSort={onSort} term="search_row_tables" />
       <ViewBody
         isLoading={isLoading}
         hasData={!!data}
@@ -143,8 +144,9 @@ export function OpportunitiesView({ siteId, dateRange }: RangeProps) {
   const maxImpr = Math.max(...rows.map((r) => r.impressions), 0)
   return (
     <>
-      <p className="border-b border-border px-3 py-2.5 text-xs text-neutral-500">
+      <p className="flex items-center gap-1 border-b border-border px-3 py-2.5 text-xs text-neutral-500">
         Queries ranking just off the first page where better content or titles can win clicks.
+        <TermInfoTip term="search_opportunities" glyphSize={12} />
       </p>
       <div className="flex h-8 items-center border-b border-border px-3 text-xs text-neutral-500">
         <span className="min-w-0 flex-1">Query</span>

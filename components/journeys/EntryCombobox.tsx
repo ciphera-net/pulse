@@ -6,6 +6,7 @@ import FilterPopover from '@/components/dashboard/filter/FilterPopover'
 import { moveHighlight } from '@/components/dashboard/filter/useFilterBuilder'
 import type { EntryPoint } from '@/lib/api/journeys'
 import { cn } from '@/lib/utils'
+import { TERMS } from '@/lib/dashboard/terms'
 
 // ---------------------------------------------------------------------------
 // EntryCombobox — the journeys entry-point picker. A quiet h-10 trigger and a
@@ -95,6 +96,7 @@ export function EntryCombobox({ value, onChange, entries, className }: EntryComb
         type="button"
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-describedby="journeys-def-entry"
         onClick={() => setOpen(o => !o)}
         className={cn(
           'inline-flex h-10 items-center gap-2 rounded-none border border-neutral-800 bg-transparent px-3 text-sm',
@@ -111,6 +113,7 @@ export function EntryCombobox({ value, onChange, entries, className }: EntryComb
           <span className="text-xs tabular-nums text-neutral-500">{current.session_count.toLocaleString()}</span>
         )}
         <CaretDown className={cn('h-3.5 w-3.5 text-neutral-500 transition-transform duration-fast ease-apple', open && 'rotate-180')} />
+        <span id="journeys-def-entry" className="sr-only">{TERMS.journey_entry_point?.definition}</span>
       </button>
 
       <FilterPopover

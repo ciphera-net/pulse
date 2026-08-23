@@ -15,6 +15,7 @@ import { useFullDimensionList, usePageEngagement, type FullListKind } from '@/li
 import { type DimensionFilter } from '@/lib/filters'
 import { type BlockMetric } from '@/lib/dashboard/metrics'
 import { MetricRowStat, MetricUnitLabel, rowBarWidth, shareDenominatorNote } from '@/components/dashboard/MetricRowStat'
+import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 interface ContentStatsProps {
   // The page's selected metric — rows display it; ranking stays server-side.
@@ -215,6 +216,7 @@ export default function ContentStats({ metric = 'pageviews', topPages, entryPage
           {/* No denominator note in the header (owner call 19-08) — the modal
               keeps its explanation, where search could otherwise mislead. */}
           <div className="flex min-w-0 shrink items-center gap-1.5">
+            <DimensionInfoTip tab={activeTab} />
             <MetricUnitLabel metric={metric} />
             {showViewAll && (
               <button

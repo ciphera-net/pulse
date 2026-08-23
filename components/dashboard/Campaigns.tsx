@@ -17,6 +17,7 @@ import UtmBuilder from '@/components/tools/UtmBuilder'
 import { type DimensionFilter } from '@/lib/filters'
 import { type BlockMetric } from '@/lib/dashboard/metrics'
 import { MetricRowStat, MetricUnitLabel, rowBarWidth, shareDenominatorNote } from '@/components/dashboard/MetricRowStat'
+import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 interface CampaignsProps {
   // The page's selected metric — rows display it; ranking stays visitors-first.
@@ -186,6 +187,7 @@ export default function Campaigns({ metric = 'visitors', siteId, dateRange, filt
             ))}
           </div>
           <div className="flex min-w-0 shrink items-center gap-2">
+            <DimensionInfoTip tab={activeTab} />
             <MetricUnitLabel metric={metric} />
             {showViewAll && (
               <button
