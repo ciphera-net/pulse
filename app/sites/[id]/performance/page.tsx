@@ -670,7 +670,7 @@ export default function PerformancePage() {
                     {currentCheck.runs ? `median of ${currentCheck.runs}` : 'single run'}
                     {/* -my-1 keeps the 24px hit target from making this chip
                         taller than the frequency chip sitting next to it. */}
-                    {currentCheck.runs ? <TermInfoTip term="median_of_three" glyphSize={12} className="-my-1" /> : null}
+                    {currentCheck.runs ? <TermInfoTip term="median_of_three" className="-my-1" /> : null}
                   </Chip>
                 )}
                 {loadingCheck && <span className="text-xs text-neutral-500">Loading…</span>}
@@ -688,7 +688,7 @@ export default function PerformancePage() {
             <div className={`${CARD} p-6 sm:p-8`}>
               <h3 className={`${SECTION_LABEL} mb-4 flex items-center gap-1`}>
                 Page load timeline
-                <TermInfoTip term="check_imagery_retention" glyphSize={12} />
+                <TermInfoTip term="check_imagery_retention" />
               </h3>
               {/* min-w-0 so the strip scrolls inside its own box instead of
                   forcing the app shell to scroll — the shell's overflow-x-hidden
@@ -744,7 +744,7 @@ export default function PerformancePage() {
                         baseline against the two bare ones. */}
                     <div className="flex h-5 items-center gap-1 text-sm text-neutral-400">
                       {label}
-                      {METRIC_TERM[key] && <TermInfoTip term={METRIC_TERM[key]!} glyphSize={12} />}
+                      {METRIC_TERM[key] && <TermInfoTip term={METRIC_TERM[key]!} />}
                     </div>
                     <div className="text-2xl font-semibold tabular-nums text-white">
                       {formatMetricValue(key, value)}

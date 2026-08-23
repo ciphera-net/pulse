@@ -655,7 +655,7 @@ export function EdgeCard({ series, overview, regions, regionsTotal, regionsError
           label="Served from cache"
           value={fmtBytes(sumCached)}
           ghost={railGhost}
-          infoTip={<TermInfoTip term="cdn_served_from_cache" glyphSize={12} />}
+          infoTip={<TermInfoTip term="cdn_served_from_cache" />}
           delta={
             overview ? (
               <DeltaBadge change={guardedPctChange(overview.total_bandwidth_cached, overview.prev_total_bandwidth_cached, overview.prev_total_requests)} />
@@ -665,7 +665,7 @@ export function EdgeCard({ series, overview, regions, regionsTotal, regionsError
             cachedShare != null ? (
               <span className="inline-flex items-center gap-1">
                 {cachedShare}% of all bandwidth
-                <TermInfoTip term="cdn_bandwidth_total" glyphSize={12} />
+                <TermInfoTip term="cdn_bandwidth_total" />
               </span>
             ) : undefined
           }
@@ -680,7 +680,7 @@ export function EdgeCard({ series, overview, regions, regionsTotal, regionsError
           label="Cache hit rate"
           value={fmtHitRate(hitRate)}
           ghost={railGhost}
-          infoTip={<TermInfoTip term="cdn_cache_hit_rate" glyphSize={12} />}
+          infoTip={<TermInfoTip term="cdn_cache_hit_rate" />}
           delta={overview ? <PointsDelta cur={overview.cache_hit_rate} prev={overview.prev_cache_hit_rate} prevBase={overview.prev_total_requests} /> : null}
           context={sumReq > 0 ? `${formatNumber(sumReqCached)} of ${formatNumber(sumReq)} requests` : undefined}
         />
@@ -700,7 +700,7 @@ export function EdgeCard({ series, overview, regions, regionsTotal, regionsError
         <div className="flex items-baseline justify-between gap-4 px-4 py-3">
           <span className="flex items-center gap-1 text-sm font-medium text-neutral-200">
             Served from
-            <TermInfoTip term="cdn_served_from_regions" glyphSize={12} />
+            <TermInfoTip term="cdn_served_from_regions" />
           </span>
           <span className="truncate text-xs text-neutral-500">bandwidth by Bunny edge region · selected range</span>
         </div>
@@ -763,7 +763,7 @@ export function OriginCard({ series, overview, mix, ghost = false, empty = false
           label="Origin traffic"
           value={fmtBytes(sumOrigin)}
           ghost={railGhost}
-          infoTip={<TermInfoTip term="cdn_origin_traffic" glyphSize={12} />}
+          infoTip={<TermInfoTip term="cdn_origin_traffic" />}
           delta={overview ? <DeltaBadge change={guardedPctChange(sumOrigin, prevOrigin, overview.prev_total_requests)} invert /> : null}
           context="left the origin"
         />
@@ -777,7 +777,7 @@ export function OriginCard({ series, overview, mix, ghost = false, empty = false
           label="Origin latency"
           value={fmtOriginMs(avgMs)}
           ghost={railGhost}
-          infoTip={<TermInfoTip term="cdn_origin_latency" glyphSize={12} />}
+          infoTip={<TermInfoTip term="cdn_origin_latency" />}
           delta={
             overview ? (
               <DeltaBadge change={guardedPctChange(overview.avg_origin_response, overview.prev_avg_origin_response, overview.prev_total_requests)} invert />
@@ -795,7 +795,7 @@ export function OriginCard({ series, overview, mix, ghost = false, empty = false
           label="Errors"
           value={railGhost ? '—' : formatNumber(sumErr)}
           ghost={railGhost}
-          infoTip={<TermInfoTip term="cdn_errors" glyphSize={12} />}
+          infoTip={<TermInfoTip term="cdn_errors" />}
           delta={overview ? <DeltaBadge change={guardedPctChange(overview.total_errors, overview.prev_total_errors, overview.prev_total_requests)} invert /> : null}
           context={sum5xx > 0 ? `${formatNumber(sum5xx)} × 5xx` : '4xx and 5xx'}
         />

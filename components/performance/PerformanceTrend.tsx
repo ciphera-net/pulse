@@ -209,12 +209,12 @@ export function PerformanceTrend({ checks, className, timezone }: PerformanceTre
       <p className="mt-2 flex flex-wrap items-center gap-x-1 text-caption text-neutral-500">
         <span className="inline-flex items-center gap-1">
           dots = individual checks · line = {MEDIAN_WINDOW}-check median
-          <TermInfoTip term="trend_trailing_median" glyphSize={12} />
+          <TermInfoTip term="trend_trailing_median" />
         </span>
         {hasLegacy && boundary !== null && (
           <span className="inline-flex items-center gap-1">
             · history before {fmtDate(boundary)} is single-run, Lighthouse version unknown
-            <TermInfoTip term="trend_provenance_boundary" glyphSize={12} />
+            <TermInfoTip term="trend_provenance_boundary" />
           </span>
         )}
       </p>

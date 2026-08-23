@@ -68,7 +68,7 @@ export function QueryTrendSparkline({ siteId, query, start, end }: QueryTrendSpa
       <div className="mb-2 flex items-center gap-1.5 text-sm">
         <span className="flex items-center gap-1 text-neutral-400">
           Position
-          <TermInfoTip term="search_query_trend" glyphSize={12} />
+          <TermInfoTip term="search_query_trend" />
         </span>
         <span className="tabular-nums text-white">{first.position.toFixed(1)}</span>
         <span className="text-neutral-500">&rarr;</span>

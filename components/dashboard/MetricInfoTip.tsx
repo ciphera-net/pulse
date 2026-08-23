@@ -66,17 +66,23 @@ export function DimensionInfoTip({ tab, className }: { tab: string; className?: 
   return <TermInfoTip term={DIMENSION_TERM[tab] ?? tab} className={className} />
 }
 
-/** The InfoTip for a non-deck term (instrument metric, provenance caveat). */
+/**
+ * The InfoTip for a non-deck term (instrument metric, provenance caveat).
+ *
+ * Deliberately takes NO size prop: the glyph is one identity estate-wide
+ * (14px bold, facet's default), and the round-2 size decision reached only
+ * the dashboard precisely because instrument call sites had pinned their own
+ * 12px override hours earlier. `className` stays for PLACEMENT (margins),
+ * never identity — size, weight and colour belong to the component.
+ */
 export function TermInfoTip({
   term: key,
   example,
   className,
-  glyphSize,
 }: {
   term: keyof typeof TERMS | string
   example?: React.ReactNode
   className?: string
-  glyphSize?: number
 }) {
   const term: GlossaryTerm | undefined = TERMS[key]
   // No entry, no glyph — the registry gate, enforced before render.
@@ -88,7 +94,6 @@ export function TermInfoTip({
       example={example}
       learnMoreHref={docsHref(term)}
       glyphClassName={className}
-      glyphSize={glyphSize}
     />
   )
 }
