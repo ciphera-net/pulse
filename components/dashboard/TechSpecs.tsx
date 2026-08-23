@@ -174,8 +174,8 @@ export default function TechSpecs({ metric = 'pageviews', browsers, os, devices,
               </button>
             ))}
           </div>
+          <DimensionInfoTip tab={activeTab} className="ms-2 me-auto" />
           <div className="flex min-w-0 shrink items-center gap-1.5">
-            <DimensionInfoTip tab={activeTab} />
             <MetricUnitLabel metric={metric} />
             {showViewAll && (
               <button

@@ -213,10 +213,10 @@ export default function ContentStats({ metric = 'pageviews', topPages, entryPage
               </button>
             ))}
           </div>
+          <DimensionInfoTip tab={activeTab} className="ms-2 me-auto" />
           {/* No denominator note in the header (owner call 19-08) — the modal
               keeps its explanation, where search could otherwise mislead. */}
           <div className="flex min-w-0 shrink items-center gap-1.5">
-            <DimensionInfoTip tab={activeTab} />
             <MetricUnitLabel metric={metric} />
             {showViewAll && (
               <button
