@@ -167,16 +167,16 @@ export default function CDNPage() {
           <span className="shrink-0 text-xs text-neutral-600">
             <span className="inline-flex items-center gap-1">
               days are UTC
-              <TermInfoTip term="cdn_utc_days" glyphSize={12} />
+              <TermInfoTip term="cdn_utc_days" />
             </span>
             <span className="ml-1 inline-flex items-center gap-1">
               · unmeasured shows —
-              <TermInfoTip term="cdn_zero_fill_absence" glyphSize={12} />
+              <TermInfoTip term="cdn_zero_fill_absence" />
             </span>
             {series.length > 0 && series[0].date.toISOString().slice(0, 10) > effectiveRange.start && (
               <span className="ml-1 inline-flex items-center gap-1">
                 · data begins {cdnDayLabel(series[0].date)}
-                <TermInfoTip term="cdn_backfill_caps" glyphSize={12} />
+                <TermInfoTip term="cdn_backfill_caps" />
               </span>
             )}
           </span>

@@ -49,7 +49,7 @@ export function CdnLiveCard({ siteId }: { siteId: string }) {
       <div className="flex items-center justify-between gap-4 border-b border-border px-4 py-2">
         <span className="flex shrink-0 items-center gap-1 text-sm text-neutral-400">
           Last 24 hours
-          <TermInfoTip term="cdn_live_card" glyphSize={12} />
+          <TermInfoTip term="cdn_live_card" />
         </span>
         <span className={error ? 'text-right text-xs text-red-400' : 'text-right text-xs text-neutral-600'}>{meta}</span>
       </div>

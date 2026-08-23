@@ -58,7 +58,7 @@ export function FunnelRail({
             three grow 4px and their values fall off the grid row. */}
         <span className="flex h-5 min-w-0 items-center gap-1 text-[13px] text-neutral-400">
           <span className="truncate">{label}</span>
-          {labelTerm && <TermInfoTip term={labelTerm} glyphSize={12} />}
+          {labelTerm && <TermInfoTip term={labelTerm} />}
         </span>
         {!isDash && <RailDelta change={delta ?? null} />}
       </div>

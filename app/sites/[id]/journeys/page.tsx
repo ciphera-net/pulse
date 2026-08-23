@@ -189,7 +189,7 @@ export default function JourneysPage() {
                 kept per step"), so it sits beside the pair rather than inside
                 either one — a StepperControl is role="spinbutton", and a glyph
                 button nested in a composite widget steals its arrow keys. */}
-            <TermInfoTip term="journey_depth_density" glyphSize={12} />
+            <TermInfoTip term="journey_depth_density" />
           </div>
           {/* Below sm this group takes a FULL row of its own and wraps inside
               itself. As a `flex-1 min-w-[280px]` sibling it was ~294px wide but
@@ -207,7 +207,7 @@ export default function JourneysPage() {
               <div className="inline-flex h-10 max-w-64 items-center gap-1.5 rounded-none border border-neutral-800 px-2.5">
                 <span className="flex items-center gap-1 text-xs text-neutral-500">
                   Lens
-                  <TermInfoTip term="journey_lens" glyphSize={12} />
+                  <TermInfoTip term="journey_lens" />
                 </span>
                 <span className="truncate text-sm text-white" title={filters.lens}>
                   {filters.lens}

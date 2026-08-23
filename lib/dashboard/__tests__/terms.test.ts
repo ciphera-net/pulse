@@ -26,6 +26,21 @@ function read(rel: string): string {
   return fs.readFileSync(path.join(ROOT, rel), 'utf8')
 }
 
+/** Every product source file under the given roots (tests and harnesses excluded). */
+function sourceFiles(roots: string[]): string[] {
+  const out: string[] = []
+  const walk = (rel: string) => {
+    for (const entry of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
+      if (entry.name === 'node_modules' || entry.name.startsWith('.') || entry.name === '__tests__') continue
+      const child = `${rel}/${entry.name}`
+      if (entry.isDirectory()) walk(child)
+      else if (/\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)) out.push(child)
+    }
+  }
+  for (const root of roots) walk(root)
+  return out
+}
+
 /** Every `term="..."` / `term: '...'` literal a component hands to an InfoTip. */
 function referencedTerms(source: string): string[] {
   return [...source.matchAll(/\bterm=(?:"([a-z_]+)"|\{'([a-z_]+)'\})/g)].map(
@@ -170,6 +185,41 @@ describe('terms registry', () => {
     // repetition. It must be a plain label again.
     const unit = read('components/dashboard/MetricRowStat.tsx')
     expect(unit).not.toContain('<MetricInfoTip')
+  })
+
+  it('no call site pins its own glyph size — one identity, estate-wide', () => {
+    // The drift this guards against shipped on day one: the instrument pages
+    // were wired with `glyphSize={12}` hours BEFORE the size decision moved
+    // the component default to 14px bold, so "make the glyph findable" reached
+    // only the dashboard — the one surface that passed no override. Two pages
+    // (Performance, Uptime) rendered both sizes at once. A component default
+    // governs exactly the call sites that don't pass the prop, so the fix is
+    // structural: no source file may mention glyphSize at all.
+    const offenders: string[] = []
+    for (const file of sourceFiles(['components', 'app', 'lib'])) {
+      if (read(file).includes('glyphSize')) offenders.push(file)
+    }
+    expect(
+      offenders,
+      `call sites pinning their own glyph size (the component owns identity): ${offenders.join(', ')}`,
+    ).toEqual([])
+  })
+
+  it("facet's InfoTip is reached only through the registry wrappers", () => {
+    // Every glyph goes through MetricInfoTip/DimensionInfoTip/TermInfoTip so
+    // the registry gate and the one-identity rule cannot be bypassed by a
+    // direct import handing the primitive its own copy or its own styling.
+    const WRAPPER = 'components/dashboard/MetricInfoTip.tsx'
+    const offenders: string[] = []
+    for (const file of sourceFiles(['components', 'app', 'lib'])) {
+      if (file === WRAPPER) continue
+      const facetImport = read(file).match(/import\s*\{([^}]*)\}\s*from\s*'@ciphera-net\/facet'/)
+      if (facetImport && /\bInfoTip\b/.test(facetImport[1])) offenders.push(file)
+    }
+    expect(
+      offenders,
+      `files importing facet's InfoTip directly instead of the registry wrappers: ${offenders.join(', ')}`,
+    ).toEqual([])
   })
 
   it('the deck rail states its sentences through the registry, not its own copies', () => {

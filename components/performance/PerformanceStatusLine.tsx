@@ -79,7 +79,7 @@ export function PerformanceStatusLine({
       <p className="mt-1.5 text-xs text-red-400">
         <span className="inline-flex items-center gap-1">
           Check failed{cause ? ` — ${cause}` : ''}
-          <TermInfoTip term="check_error_status" glyphSize={12} />
+          <TermInfoTip term="check_error_status" />
         </span>
         {displayed && (
           <>
