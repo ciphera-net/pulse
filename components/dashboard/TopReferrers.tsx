@@ -30,6 +30,7 @@ import { useFullDimensionList } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
 import { type BlockMetric } from '@/lib/dashboard/metrics'
 import { MetricRowStat, MetricUnitLabel, rowBarWidth, shareDenominatorNote } from '@/components/dashboard/MetricRowStat'
+import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 interface TopReferrersProps {
   // The page's selected metric — rows display it; ranking stays server-side.
@@ -160,6 +161,7 @@ export default function TopReferrers({ metric = 'pageviews', referrers, channels
             ))}
           </div>
           <div className="flex min-w-0 shrink items-center gap-1.5">
+            <DimensionInfoTip tab={view} />
             <MetricUnitLabel metric={metric} />
             {view === 'referrers' && showViewAll && (
               <button

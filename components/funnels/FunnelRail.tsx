@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import type { PctChangeResult } from '@/lib/utils/pctChange'
+import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 // ---------------------------------------------------------------------------
 // The funnels rail — one metric cell in the estate's instrument grammar
@@ -33,12 +34,18 @@ export function FunnelRail({
   value,
   delta,
   context,
+  labelTerm,
   className,
 }: {
   label: string
   value: string
   delta?: PctChangeResult
   context?: string
+  /** Registry key for this rail's own InfoTip — omit for a rail with no term
+   * of its own, or whose term already sits elsewhere on the page (the Daily
+   * instrument reuses these same labels and carries none, so the sentence
+   * opens from exactly one place). */
+  labelTerm?: string
   className?: string
 }) {
   const isDash = value === '—'
@@ -46,7 +53,13 @@ export function FunnelRail({
     <div className={cn('relative flex min-w-0 flex-col justify-center px-4 py-3', className)}>
       <span aria-hidden="true" className="absolute bottom-0 left-0 top-0 w-[2px] bg-brand-orange" />
       <div className="flex items-baseline justify-between gap-2">
-        <span className="truncate text-[13px] text-neutral-400">{label}</span>
+        {/* h-5 = the un-glyphed line height. Three of the plate's five rails
+            carry a term and two do not; without a pinned height the glyphed
+            three grow 4px and their values fall off the grid row. */}
+        <span className="flex h-5 min-w-0 items-center gap-1 text-[13px] text-neutral-400">
+          <span className="truncate">{label}</span>
+          {labelTerm && <TermInfoTip term={labelTerm} glyphSize={12} />}
+        </span>
         {!isDash && <RailDelta change={delta ?? null} />}
       </div>
       <span className={cn('mt-0.5 text-xl font-semibold tabular-nums', isDash ? 'text-neutral-600' : 'text-white')}>

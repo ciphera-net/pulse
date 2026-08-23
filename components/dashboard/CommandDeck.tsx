@@ -18,7 +18,7 @@ import { RailDelta } from '@/components/funnels/FunnelRail'
 import RailSparkline from '@/components/dashboard/RailSparkline'
 import { EmptyState } from '@/components/ui/EmptyState'
 import type { DailyStat, Stats } from '@/lib/api/stats'
-import { METRIC_TERMS } from '@/lib/dashboard/glossary'
+import { METRIC_TERMS } from '@/lib/dashboard/terms'
 import { MetricInfoTip, buildExample } from '@/components/dashboard/MetricInfoTip'
 import type { MetricType } from '@/lib/dashboard/metrics'
 
@@ -72,7 +72,7 @@ type RailStatKey = 'visitors' | 'pageviews' | 'bounce_rate' | 'avg_duration'
 // format receives null for "not measured" and renders an em dash — never a
 // fabricated zero (F11).
 //
-// `label` and `title` come from lib/dashboard/glossary: one registry feeds the
+// `label` and `title` come from lib/dashboard/terms: one registry feeds the
 // rail's sentence, the toolbar's InfoTip and the glossary page, so the three
 // can never drift (metric info layer, 22-08-2026).
 const METRICS: {

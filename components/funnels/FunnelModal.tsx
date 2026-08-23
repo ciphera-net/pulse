@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { SegmentedControl } from '@ciphera-net/facet'
 import Select from '@/components/ui/select'
 import { formatNumber } from '@/lib/utils/format'
+import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 // ---------------------------------------------------------------------------
 // Create/Edit funnel on the real dialog primitive (focus trap, focus return,
@@ -582,7 +583,16 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
             </div>
 
             <div>
-              <label className={labelClass}>Steps</label>
+              {/* ONE glyph. Two ⓘ side by side on a single label are
+                  indistinguishable to the reader — they read as a rendering
+                  bug, not as two facts. funnel_first_match_wins belongs on the
+                  surface where a duplicate step actually bites (the editor
+                  already refuses to save one, with its own error), not stacked
+                  on the label that explains what a step is. */}
+              <label className="mb-1.5 flex h-5 items-center gap-1 text-sm font-medium text-neutral-300">
+                Steps
+                <TermInfoTip term="funnel_step_definition" glyphSize={12} />
+              </label>
               <div className="space-y-1.5">
                 <AnimatePresence initial={false}>
                   {steps.map((step, i) => {

@@ -10,7 +10,6 @@ import {
   shareValue,
   BLOCK_METRIC_LABEL,
 } from '@/lib/dashboard/metrics'
-import { MetricInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 // ---------------------------------------------------------------------------
 // The shared right-hand stat cluster for dimension-card rows (deck metric
@@ -43,15 +42,18 @@ export function MetricRowStat({ metric, row, totals }: MetricRowStatProps) {
 }
 
 /**
- * The card-header unit label naming what the row numbers are — and, since it
- * is a metric's name labelling a whole card, the place its definition lives
- * (metric info layer, 22-08-2026). One glyph per card, never per row.
+ * The card-header unit label naming what the row numbers are.
+ *
+ * It carries NO InfoTip. It did briefly, and the result was six glyphs on one
+ * screen all opening the same sentence about the rail's selected metric —
+ * noise that explained the card the reader was not asking about. A card's
+ * glyph explains the CARD (see DimensionInfoTip); the unit label is just a
+ * label again.
  */
 export function MetricUnitLabel({ metric }: { metric: BlockMetric }) {
   return (
-    <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-neutral-500">
-      <span data-testid="metric-unit">{BLOCK_METRIC_LABEL[metric]}</span>
-      <MetricInfoTip metric={metric} />
+    <span className="shrink-0 text-[11px] text-neutral-500" data-testid="metric-unit">
+      {BLOCK_METRIC_LABEL[metric]}
     </span>
   )
 }

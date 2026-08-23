@@ -13,7 +13,7 @@ import { ErrorCard } from '@/components/ui/ErrorCard'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { cn } from '@/lib/utils'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
-import { TERMS, UPTIME_TERM } from '@/lib/dashboard/glossary'
+import { TERMS, UPTIME_TERM } from '@/lib/dashboard/terms'
 import type { UptimeIncident, UptimeMonitor } from '@/lib/api/uptime'
 import {
   UPTIME_METRIC_ORDER,

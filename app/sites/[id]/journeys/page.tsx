@@ -16,6 +16,7 @@ import { EntryCombobox } from '@/components/journeys/EntryCombobox'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { UpdatingChip } from '@/components/ui/UpdatingChip'
+import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { JourneysSkeleton } from '@/components/skeletons'
 import FilterButton from '@/components/dashboard/FilterButton'
 import FilterPills from '@/components/dashboard/FilterPills'
@@ -184,6 +185,11 @@ export default function JourneysPage() {
               step={DENSITY_STEP}
               onChange={filters.setDensity}
             />
+            {/* One sentence covers BOTH steppers ("Steps plotted … and pages
+                kept per step"), so it sits beside the pair rather than inside
+                either one — a StepperControl is role="spinbutton", and a glyph
+                button nested in a composite widget steals its arrow keys. */}
+            <TermInfoTip term="journey_depth_density" glyphSize={12} />
           </div>
           {/* Below sm this group takes a FULL row of its own and wraps inside
               itself. As a `flex-1 min-w-[280px]` sibling it was ~294px wide but
@@ -199,7 +205,10 @@ export default function JourneysPage() {
             />
             {filters.lens && (
               <div className="inline-flex h-10 max-w-64 items-center gap-1.5 rounded-none border border-neutral-800 px-2.5">
-                <span className="text-xs text-neutral-500">Lens</span>
+                <span className="flex items-center gap-1 text-xs text-neutral-500">
+                  Lens
+                  <TermInfoTip term="journey_lens" glyphSize={12} />
+                </span>
                 <span className="truncate text-sm text-white" title={filters.lens}>
                   {filters.lens}
                 </span>

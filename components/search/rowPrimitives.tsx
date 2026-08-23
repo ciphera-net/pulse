@@ -9,6 +9,7 @@ import { alpha3ToAlpha2 } from '@/lib/utils/countryCodes'
 import { SkeletonLine } from '@/components/skeletons'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { PositionBadge } from './PositionBadge'
+import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 // ---------------------------------------------------------------------------
 // The one row grammar for the Search Console views. A card, mono sentence-case
@@ -133,14 +134,23 @@ export function StandardHeader({
   label,
   sort,
   onSort,
+  term,
 }: {
   label: string
   sort?: SortState | null
   onSort?: (col: SortCol) => void
+  // Which registry entry explains this VIEW's rows — shared across the
+  // sibling views that read the same source (Queries/Pages/Countries/Devices
+  // all undercount the same way; Days reads a different sync entirely), so
+  // only one view's header ever carries it, never two disagreeing ones.
+  term?: string
 }) {
   return (
     <div className="flex h-8 items-center border-b border-border px-3 text-xs text-neutral-500">
-      <span className="min-w-0 flex-1">{label}</span>
+      <span className="flex min-w-0 flex-1 items-center gap-1">
+        {label}
+        {term && <TermInfoTip term={term} glyphSize={12} />}
+      </span>
       <div className="ml-3 flex shrink-0 items-center gap-3">
         <HeaderCell col="clicks" label="Clicks" width={W.clicks} sort={sort} onSort={onSort} />
         <HeaderCell col="impressions" label="Impressions" width={W.impressions} hideBelowSm sort={sort} onSort={onSort} />

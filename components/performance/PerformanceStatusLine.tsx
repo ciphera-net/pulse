@@ -2,6 +2,7 @@
 
 import type { PerformanceAttempt, PerformanceCheck } from '@/lib/api/performance'
 import { formatSiteStamp } from '@/lib/utils/siteTime'
+import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 // ---------------------------------------------------------------------------
 // Performance status line — the meta line under the page subtitle, in the same
@@ -76,7 +77,10 @@ export function PerformanceStatusLine({
     const cause = attempt.error?.trim()
     return (
       <p className="mt-1.5 text-xs text-red-400">
-        Check failed{cause ? ` — ${cause}` : ''}
+        <span className="inline-flex items-center gap-1">
+          Check failed{cause ? ` — ${cause}` : ''}
+          <TermInfoTip term="check_error_status" glyphSize={12} />
+        </span>
         {displayed && (
           <>
             <span aria-hidden="true" className="mx-1.5 text-red-400/50">
