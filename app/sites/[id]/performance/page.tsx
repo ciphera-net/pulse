@@ -24,6 +24,8 @@ import { auditDescription } from '@/lib/performance/descriptions'
 import { remapLearnUrl } from '@/lib/learn-links'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { useMinimumLoading } from '@/components/skeletons'
+import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
+import { TERMS } from '@/lib/dashboard/terms'
 
 type Strategy = 'mobile' | 'desktop'
 
@@ -72,6 +74,28 @@ const BAND_DOT: Record<string, string> = {
   warn: 'bg-amber-500',
   poor: 'bg-red-500',
   unknown: 'bg-neutral-600',
+}
+
+// * The four category scores' registry keys. Shared by the hero gauges (which
+// * carry the definition via aria-describedby, since they sit inside a
+// * scroll-to button) and the accordion headers below (the one VISIBLE glyph
+// * per term — rule: no two glyphs on screen open the same sentence).
+const SCORE_TERM: Record<string, string> = {
+  performance: 'performance_score',
+  accessibility: 'accessibility_score',
+  'best-practices': 'best_practices_score',
+  seo: 'seo_score',
+}
+
+// * Only the metrics whose definition teaches something the visible label and
+// * "good <threshold>" caption do not already say. FCP and LCP mostly restate
+// * that caption once unpacked, so they stay bare (grammar rule: a definition
+// * that would only restate the visible label gets no glyph).
+const METRIC_TERM: Partial<Record<string, string>> = {
+  tbt: 'metric_tbt',
+  cls: 'metric_cls',
+  si: 'metric_speed_index',
+  tti: 'metric_tti',
 }
 
 // * An em dash, never a zero. A metric Lighthouse did not produce is not a
@@ -581,9 +605,16 @@ export default function PerformancePage() {
                       onClick={() =>
                         document.getElementById(`diag-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
                       }
+                      // The canonical sentence, reachable by screen readers without a
+                      // control nested inside this button — the sighted equivalent is
+                      // the one glyph on this same term's accordion heading below.
+                      aria-describedby={`pagespeed-score-def-${key}`}
                       className="cursor-pointer transition-opacity ease-apple hover:opacity-80"
                     >
                       <ScoreGauge score={score} label={label} size={92} />
+                      <span id={`pagespeed-score-def-${key}`} className="sr-only">
+                        {TERMS[SCORE_TERM[key]]?.definition}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -632,9 +663,15 @@ export default function PerformancePage() {
                 {config?.frequency && <Chip>{config.frequency}</Chip>}
                 {/* The provenance chip reads the row, never a constant: a
                     pre-cutover check really was a single run and must not be
-                    labelled "median of 3". */}
+                    labelled "median of 3". The glyph only applies to the
+                    median case — a single-run chip has no methodology to explain. */}
                 {currentCheck && (
-                  <Chip>{currentCheck.runs ? `median of ${currentCheck.runs}` : 'single run'}</Chip>
+                  <Chip>
+                    {currentCheck.runs ? `median of ${currentCheck.runs}` : 'single run'}
+                    {/* -my-1 keeps the 24px hit target from making this chip
+                        taller than the frequency chip sitting next to it. */}
+                    {currentCheck.runs ? <TermInfoTip term="median_of_three" glyphSize={12} className="-my-1" /> : null}
+                  </Chip>
                 )}
                 {loadingCheck && <span className="text-xs text-neutral-500">Loading…</span>}
               </div>
@@ -649,7 +686,10 @@ export default function PerformancePage() {
           {/* ── Filmstrip ── */}
           {currentCheck?.filmstrip && currentCheck.filmstrip.length > 0 && (
             <div className={`${CARD} p-6 sm:p-8`}>
-              <h3 className={`${SECTION_LABEL} mb-4`}>Page load timeline</h3>
+              <h3 className={`${SECTION_LABEL} mb-4 flex items-center gap-1`}>
+                Page load timeline
+                <TermInfoTip term="check_imagery_retention" glyphSize={12} />
+              </h3>
               {/* min-w-0 so the strip scrolls inside its own box instead of
                   forcing the app shell to scroll — the shell's overflow-x-hidden
                   DELETES clipped content rather than revealing it. */}
@@ -698,7 +738,14 @@ export default function PerformancePage() {
                     className={`mt-1.5 inline-block h-2.5 w-2.5 flex-none rounded-full ${BAND_DOT[metricBand(key, value)]}`}
                   />
                   <div className="min-w-0">
-                    <div className="text-sm text-neutral-400">{label}</div>
+                    {/* h-5 = the un-glyphed line height. Only four of the six
+                        metrics carry a glyph, so without it the four glyphed
+                        cells grow 4px and their values sit off the grid row's
+                        baseline against the two bare ones. */}
+                    <div className="flex h-5 items-center gap-1 text-sm text-neutral-400">
+                      {label}
+                      {METRIC_TERM[key] && <TermInfoTip term={METRIC_TERM[key]!} glyphSize={12} />}
+                    </div>
                     <div className="text-2xl font-semibold tabular-nums text-white">
                       {formatMetricValue(key, value)}
                     </div>
@@ -747,7 +794,10 @@ export default function PerformancePage() {
                   <div className="mb-5 flex items-center gap-4">
                     <ScoreGauge score={scoreByGroup[group.key]} label="" size={40} />
                     <div className="min-w-0">
-                      <h3 className="font-semibold text-white">{group.label}</h3>
+                      <h3 className="flex items-center gap-1 font-semibold text-white">
+                        {group.label}
+                        <TermInfoTip term={SCORE_TERM[group.key]} />
+                      </h3>
                       <p className="text-xs text-neutral-500">
                         {realIssues === 0 ? 'No issues found' : `${realIssues} issue${realIssues !== 1 ? 's' : ''} found`}
                       </p>
@@ -803,7 +853,10 @@ function PageHeader({ domain, frequency }: { domain: string; frequency: string |
   const cadence = frequency ? `checked ${frequency}` : 'checked on a schedule'
   return (
     <div>
-      <h1 className="text-lg font-semibold text-white">Performance</h1>
+      <h1 className="flex items-center gap-1 text-lg font-semibold text-white">
+        Performance
+        <TermInfoTip term="check_provenance" />
+      </h1>
       <p className="mt-1 text-sm text-neutral-400">
         Lab performance scores for {domain} — {cadence}, mobile and desktop.
       </p>
@@ -813,7 +866,7 @@ function PageHeader({ domain, frequency }: { domain: string; frequency: string |
 
 function Chip({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center rounded-none border border-border px-2 py-0.5 text-xs text-neutral-400">
+    <span className="inline-flex items-center gap-1 rounded-none border border-border px-2 py-0.5 text-xs text-neutral-400">
       {children}
     </span>
   )

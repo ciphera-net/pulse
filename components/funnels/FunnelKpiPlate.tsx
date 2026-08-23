@@ -63,11 +63,11 @@ export function FunnelKpiPlate({
       className="grid grid-cols-2 rounded-none border border-border bg-card md:grid-cols-5"
       title={statsError ? 'Couldn’t load stats' : undefined}
     >
-      <FunnelRail label="Conversion" value={m.conversion} delta={m.conversionDelta} context={m.conversionContext} className={cell} />
+      <FunnelRail label="Conversion" value={m.conversion} delta={m.conversionDelta} context={m.conversionContext} labelTerm="funnel_conversion" className={cell} />
       <FunnelRail label="Visitors" value={m.entered} delta={m.enteredDelta} context="entered the funnel" className={cell} />
       <FunnelRail label="Converted" value={m.converted} delta={m.convertedDelta} context="completed every step" className={cell} />
-      <FunnelRail label="Biggest drop-off" value={m.drop} context={m.dropContext} className={cell} />
-      <FunnelRail label="Median time" value={m.median} context="entry → conversion" className={cell} />
+      <FunnelRail label="Biggest drop-off" value={m.drop} context={m.dropContext} labelTerm="funnel_dropoff" className={cell} />
+      <FunnelRail label="Median time" value={m.median} context="entry → conversion" labelTerm="funnel_median_time" className={cell} />
     </div>
   )
 }

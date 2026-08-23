@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { useGSCNewQueries } from '@/lib/swr/dashboard'
 import FilterPopover from '@/components/dashboard/filter/FilterPopover'
+import { TERMS } from '@/lib/dashboard/terms'
 
 // The quiet "N new queries" chip. Clicking opens a portal popover (FilterPopover
 // shell: flip, clamp, focus trap, Esc, focus-return) listing the new queries the
@@ -33,10 +34,17 @@ export function NewQueriesChip({ siteId, start, end, onPick }: NewQueriesChipPro
         type="button"
         aria-haspopup="dialog"
         aria-expanded={open}
+        aria-describedby="search-def-new-queries"
         onClick={() => setOpen((o) => !o)}
         className="inline-flex h-8 items-center rounded-none border border-border px-2.5 text-xs tabular-nums text-neutral-400 transition-colors duration-fast ease-apple hover:border-neutral-700 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
       >
         {count} new {count === 1 ? 'query' : 'queries'}
+        {/* Chip is a <button> — the definition travels via aria-describedby,
+            not a resident glyph nested inside a control (metric info layer
+            placement grammar). */}
+        <span id="search-def-new-queries" className="sr-only">
+          {TERMS['search_new_queries_chip']?.definition}
+        </span>
       </button>
 
       <FilterPopover

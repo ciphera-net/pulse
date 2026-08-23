@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 
 import { useBunnyLive } from '@/lib/swr/dashboard'
 
+import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { Rail } from './CdnSplitInstrument'
 import { deriveLiveCard, fmtHitRate } from './cdnMetrics'
 
@@ -46,7 +47,10 @@ export function CdnLiveCard({ siteId }: { siteId: string }) {
   return (
     <div className="mt-6 rounded-none border border-border bg-card">
       <div className="flex items-center justify-between gap-4 border-b border-border px-4 py-2">
-        <span className="shrink-0 text-sm text-neutral-400">Last 24 hours</span>
+        <span className="flex shrink-0 items-center gap-1 text-sm text-neutral-400">
+          Last 24 hours
+          <TermInfoTip term="cdn_live_card" glyphSize={12} />
+        </span>
         <span className={error ? 'text-right text-xs text-red-400' : 'text-right text-xs text-neutral-600'}>{meta}</span>
       </div>
       <div className="flex flex-col lg:flex-row lg:items-stretch">

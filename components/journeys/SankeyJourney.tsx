@@ -13,6 +13,7 @@ import {
 import { layoutSankey, NODE_WIDTH, type SankeyLink } from '@/lib/journeys/sankeyLayout'
 import { StepHeader } from './StepHeader'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
+import { TERMS } from '@/lib/dashboard/terms'
 
 // ---------------------------------------------------------------------------
 // Flow view — a declarative React SVG render of lib/journeys/sankeyLayout.
@@ -119,6 +120,12 @@ export default function SankeyJourney({
     () => new Map(layout.steps.map((s, ordinal) => [s.index, ordinal])),
     [layout.steps],
   )
+  // * Same gate as ColumnJourney: drop-off's InfoTip shows only on the first
+  // * step whose value actually renders.
+  const firstDropoffIdx = useMemo(
+    () => layout.steps.findIndex((s) => s.dropOffPercent !== 0),
+    [layout.steps],
+  )
   const nodesByStep = useMemo(() => {
     const m = new Map<number, string[]>()
     for (const n of layout.nodes) {
@@ -178,6 +185,9 @@ export default function SankeyJourney({
 
   return (
     <div>
+      {/* (other) nodes read this via aria-describedby rather than a glyph —
+          the grammar's rule against a glyph on a repeated value row. */}
+      <span id="journeys-def-other" className="sr-only">{TERMS.journey_other_bucket?.definition}</span>
       {/* Step headers — DOM so typography matches the columns view exactly */}
       <div className="relative mb-2 h-11">
         {layout.steps.map((s) => (
@@ -190,7 +200,12 @@ export default function SankeyJourney({
                 : { left: s.x }
             }
           >
-            <StepHeader index={s.index} visitors={s.visitors} dropOffPercent={s.dropOffPercent} />
+            <StepHeader
+              index={s.index}
+              visitors={s.visitors}
+              dropOffPercent={s.dropOffPercent}
+              showDropoffTip={s.index === firstDropoffIdx}
+            />
           </div>
         ))}
       </div>
@@ -281,6 +296,7 @@ export default function SankeyJourney({
                 role="button"
                 aria-label={`${n.path} — ${n.count.toLocaleString()} sessions`}
                 aria-pressed={lens === n.path}
+                aria-describedby={n.path === '(other)' ? 'journeys-def-other' : undefined}
                 data-id={n.id}
                 data-step={n.step}
                 data-idx={ordinalIdx}

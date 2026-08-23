@@ -51,6 +51,15 @@ vi.mock('@ciphera-net/facet', () => ({
   ),
   // lib/utils re-exports cn from facet, so ErrorCard breaks without it.
   cn: (...parts: unknown[]) => parts.filter(Boolean).join(' '),
+  // The page grew InfoTip glyphs with the metric info layer; without a stub
+  // here every test in this file dies on "No InfoTip export is defined".
+  // It renders the GLYPH ONLY, exactly like the real component — the panel is
+  // a portal that exists only while open, so printing the definition would put
+  // copy on screen that a reader never sees and trip the "never says X"
+  // assertions below (metric_tti's sentence contains "Core Web Vitals").
+  InfoTip: ({ title }: { title?: string }) => (
+    <button type="button" aria-label={title ? `About ${title}` : 'What this counts'} />
+  ),
 }))
 vi.mock('@/components/ui/select', () => ({ default: () => <select /> }))
 vi.mock('@/lib/api/performance', async importOriginal => {

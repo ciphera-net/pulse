@@ -15,6 +15,7 @@ import type { BunnyOverview, BunnyRegionEntry } from '@/lib/api/bunny'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { CountryFlag } from '@/components/ui/CountryFlag'
 import { ErrorCard } from '@/components/ui/ErrorCard'
+import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import {
   type CdnPoint,
   type StatusMix,
@@ -368,13 +369,18 @@ export function Rail({
   context,
   ghost = false,
   widthClass,
+  infoTip,
 }: {
   label: string
   value: string | number
   delta?: React.ReactNode
-  context?: string
+  context?: React.ReactNode
   ghost?: boolean
   widthClass?: string
+  /** The rail's own glyph (never inside a control — Rail is a plain div, not
+   *  a toggle button, so it sits right beside the label, not behind
+   *  aria-describedby). */
+  infoTip?: React.ReactNode
 }) {
   // * A rail showing an em dash has NO measurement this window — a delta or
   // * context line beside it would grade something that does not exist
@@ -383,7 +389,10 @@ export function Rail({
   return (
     <div className={cn(widthClass ?? RAIL_W, 'relative flex shrink-0 flex-col justify-center border-r border-border px-4 py-3')}>
       {!ghost && <span aria-hidden="true" className="absolute bottom-0 left-0 top-0 w-[2px] bg-brand-orange" />}
-      <span className="text-sm text-neutral-400">{label}</span>
+      <span className="flex items-center gap-1 text-sm text-neutral-400">
+        {label}
+        {infoTip}
+      </span>
       {ghost ? (
         <span className="mt-0.5 text-xl font-semibold tabular-nums text-neutral-600">—</span>
       ) : typeof value === 'number' ? (
@@ -646,12 +655,20 @@ export function EdgeCard({ series, overview, regions, regionsTotal, regionsError
           label="Served from cache"
           value={fmtBytes(sumCached)}
           ghost={railGhost}
+          infoTip={<TermInfoTip term="cdn_served_from_cache" glyphSize={12} />}
           delta={
             overview ? (
               <DeltaBadge change={guardedPctChange(overview.total_bandwidth_cached, overview.prev_total_bandwidth_cached, overview.prev_total_requests)} />
             ) : null
           }
-          context={cachedShare != null ? `${cachedShare}% of all bandwidth` : undefined}
+          context={
+            cachedShare != null ? (
+              <span className="inline-flex items-center gap-1">
+                {cachedShare}% of all bandwidth
+                <TermInfoTip term="cdn_bandwidth_total" glyphSize={12} />
+              </span>
+            ) : undefined
+          }
         />
       ),
     },
@@ -663,6 +680,7 @@ export function EdgeCard({ series, overview, regions, regionsTotal, regionsError
           label="Cache hit rate"
           value={fmtHitRate(hitRate)}
           ghost={railGhost}
+          infoTip={<TermInfoTip term="cdn_cache_hit_rate" glyphSize={12} />}
           delta={overview ? <PointsDelta cur={overview.cache_hit_rate} prev={overview.prev_cache_hit_rate} prevBase={overview.prev_total_requests} /> : null}
           context={sumReq > 0 ? `${formatNumber(sumReqCached)} of ${formatNumber(sumReq)} requests` : undefined}
         />
@@ -680,7 +698,10 @@ export function EdgeCard({ series, overview, regions, regionsTotal, regionsError
       {/* Served from — the live edge-region distribution. */}
       <div className="border-t border-border">
         <div className="flex items-baseline justify-between gap-4 px-4 py-3">
-          <span className="text-sm font-medium text-neutral-200">Served from</span>
+          <span className="flex items-center gap-1 text-sm font-medium text-neutral-200">
+            Served from
+            <TermInfoTip term="cdn_served_from_regions" glyphSize={12} />
+          </span>
           <span className="truncate text-xs text-neutral-500">bandwidth by Bunny edge region · selected range</span>
         </div>
         {ghost ? (
@@ -742,6 +763,7 @@ export function OriginCard({ series, overview, mix, ghost = false, empty = false
           label="Origin traffic"
           value={fmtBytes(sumOrigin)}
           ghost={railGhost}
+          infoTip={<TermInfoTip term="cdn_origin_traffic" glyphSize={12} />}
           delta={overview ? <DeltaBadge change={guardedPctChange(sumOrigin, prevOrigin, overview.prev_total_requests)} invert /> : null}
           context="left the origin"
         />
@@ -755,6 +777,7 @@ export function OriginCard({ series, overview, mix, ghost = false, empty = false
           label="Origin latency"
           value={fmtOriginMs(avgMs)}
           ghost={railGhost}
+          infoTip={<TermInfoTip term="cdn_origin_latency" glyphSize={12} />}
           delta={
             overview ? (
               <DeltaBadge change={guardedPctChange(overview.avg_origin_response, overview.prev_avg_origin_response, overview.prev_total_requests)} invert />
@@ -772,6 +795,7 @@ export function OriginCard({ series, overview, mix, ghost = false, empty = false
           label="Errors"
           value={railGhost ? '—' : formatNumber(sumErr)}
           ghost={railGhost}
+          infoTip={<TermInfoTip term="cdn_errors" glyphSize={12} />}
           delta={overview ? <DeltaBadge change={guardedPctChange(overview.total_errors, overview.prev_total_errors, overview.prev_total_requests)} invert /> : null}
           context={sum5xx > 0 ? `${formatNumber(sum5xx)} × 5xx` : '4xx and 5xx'}
         />

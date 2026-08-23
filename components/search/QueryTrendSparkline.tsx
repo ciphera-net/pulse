@@ -4,6 +4,7 @@ import { useGSCQueryTrend } from '@/lib/swr/dashboard'
 import { DelayedSpinner } from '@/components/ui/DelayedSpinner'
 import { formatDate } from '@/lib/utils/formatDate'
 import { cn } from '@/lib/utils'
+import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 // Position trend for one query inside its expanded row. Bars are inverted so a
 // TALLER bar means a BETTER (lower) rank; the header states first → last with a
@@ -65,7 +66,10 @@ export function QueryTrendSparkline({ siteId, query, start, end }: QueryTrendSpa
   return (
     <div>
       <div className="mb-2 flex items-center gap-1.5 text-sm">
-        <span className="text-neutral-400">Position</span>
+        <span className="flex items-center gap-1 text-neutral-400">
+          Position
+          <TermInfoTip term="search_query_trend" glyphSize={12} />
+        </span>
         <span className="tabular-nums text-white">{first.position.toFixed(1)}</span>
         <span className="text-neutral-500">&rarr;</span>
         <span className="tabular-nums text-white">{last.position.toFixed(1)}</span>

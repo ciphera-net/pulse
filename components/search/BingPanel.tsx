@@ -124,6 +124,10 @@ export default function BingPanel({
         errorTitle="Couldn't load Bing data"
         emptyTitle="No Bing data in this period."
         emptyHint="Bing syncs daily site totals — try a wider range."
+        // * One registry entry, all three rows — Bing's daily endpoint returns
+        // * clicks/impressions/CTR as one site-level payload, not three
+        // * independently-sourced metrics the way Google's four are.
+        termFor={() => 'bing_clicks_impressions_ctr'}
       />
 
       {/* The limit, stated where someone would otherwise go looking for the missing tables. */}

@@ -19,6 +19,7 @@ import {
 } from '@/lib/journeys/chain'
 import { StepHeader } from './StepHeader'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
+import { TERMS } from '@/lib/dashboard/terms'
 
 // ---------------------------------------------------------------------------
 // Columns view. Rows carry kind glyphs and proportional orange bars; ambient
@@ -220,6 +221,7 @@ function PageRow({
       data-col={colIndex}
       data-idx={rowIndex}
       data-path={path}
+      aria-describedby={isOther ? 'journeys-def-other' : undefined}
       onClick={() => onToggleLens(path)}
       onMouseEnter={() => { if (!isOther) onHover(id) }}
       onFocus={() => { if (!isOther) onHover(id) }}
@@ -302,6 +304,13 @@ export default function ColumnJourney({
     [transitions, depth, maxPagesPerStep],
   )
   const links = useMemo(() => buildLinks(transitions, columns), [transitions, columns])
+  // * Drop-off's InfoTip is gated to whichever column shows it first — the
+  // * grammar's "no two glyphs open the same sentence" rule, applied to a
+  // * value whose first-shown column depends on the data.
+  const firstDropoffIdx = useMemo(
+    () => columns.findIndex((c) => c.dropOffPercent !== 0),
+    [columns],
+  )
 
   // * Hover is node-specific (only the flow through that row); a pinned lens is
   // * path-based (traces the page across every step — design §4.2).
@@ -368,6 +377,12 @@ export default function ColumnJourney({
 
   return (
     <div className="relative">
+      {/* Shared definitions for repeated rows living inside PageRow's <button>
+          (or, for (exit), a non-interactive row) — read via aria-describedby
+          rather than a glyph, per the grammar's rule against a glyph on a
+          repeated value row. One span each; every occurrence points here. */}
+      <span id="journeys-def-other" className="sr-only">{TERMS.journey_other_bucket?.definition}</span>
+      <span id="journeys-def-exit" className="sr-only">{TERMS.journey_exit?.definition}</span>
       <div
         ref={containerRef}
         className="relative -mx-6 overflow-x-auto px-6 pb-2"
@@ -405,6 +420,7 @@ export default function ColumnJourney({
                     index={col.index}
                     visitors={col.visitors}
                     dropOffPercent={col.dropOffPercent}
+                    showDropoffTip={col.index === firstDropoffIdx}
                   />
                 </div>
                 {col.pages.length === 0 && exits === 0 ? (
@@ -437,6 +453,7 @@ export default function ColumnJourney({
                       <motion.div
                         data-col={col.index}
                         data-path="(exit)"
+                        aria-describedby="journeys-def-exit"
                         className="relative flex h-9 w-full items-center gap-2 rounded-none bg-red-500/10 px-3"
                         initial={{ opacity: 0, y: -4 }}
                         animate={{ opacity: 1, y: 0 }}

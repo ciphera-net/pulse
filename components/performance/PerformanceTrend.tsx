@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import type { PerformanceCheck } from '@/lib/api/performance'
 import { safeTimeZone } from '@/lib/utils/siteTime'
+import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 // ---------------------------------------------------------------------------
 // Performance score trend.
@@ -201,10 +202,20 @@ export function PerformanceTrend({ checks, className, timezone }: PerformanceTre
         </svg>
       </div>
 
-      <p className="mt-2 text-caption text-neutral-500">
-        dots = individual checks · line = {MEDIAN_WINDOW}-check median
+      {/* Each clause is its own inline-flex run. A bare glyph dropped straight
+          into the paragraph aligns its 24px box on the text BASELINE, which
+          lifts the whole caption line; wrapping the clause makes the glyph a
+          flex item that centres against its own text instead. */}
+      <p className="mt-2 flex flex-wrap items-center gap-x-1 text-caption text-neutral-500">
+        <span className="inline-flex items-center gap-1">
+          dots = individual checks · line = {MEDIAN_WINDOW}-check median
+          <TermInfoTip term="trend_trailing_median" glyphSize={12} />
+        </span>
         {hasLegacy && boundary !== null && (
-          <> · history before {fmtDate(boundary)} is single-run, Lighthouse version unknown</>
+          <span className="inline-flex items-center gap-1">
+            · history before {fmtDate(boundary)} is single-run, Lighthouse version unknown
+            <TermInfoTip term="trend_provenance_boundary" glyphSize={12} />
+          </span>
         )}
       </p>
     </div>

@@ -12,6 +12,7 @@ import { ErrorCard } from '@/components/ui/ErrorCard'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { guardedPctChange, type PctChangeResult } from '@/lib/utils/pctChange'
 import { cn } from '@/lib/utils'
+import { TERMS } from '@/lib/dashboard/terms'
 import type { GSCOverview } from '@/lib/api/gsc'
 import {
   METRIC_ORDER,
@@ -260,6 +261,12 @@ export interface InstrumentRow {
   delta: PctChangeResult
 }
 
+// * The rail row is a toggle <button> (Show / active), so its explanation
+// * travels via aria-describedby + a sr-only span rather than a resident
+// * glyph — the same accommodation as the uptime rail. termFor resolves a
+// * row's registry key; a row with none gets no describedby at all, honestly
+// * (the engine-agnostic core is shared by Google's four-metric rail and
+// * Bing's three-metric one, whose source note differs).
 export function InstrumentCore({
   rows,
   series,
@@ -273,6 +280,7 @@ export function InstrumentCore({
   errorTitle,
   emptyTitle,
   emptyHint,
+  termFor,
 }: {
   rows: InstrumentRow[]
   series: SeriesPoint[]
@@ -286,6 +294,7 @@ export function InstrumentCore({
   errorTitle: string
   emptyTitle: string
   emptyHint: string
+  termFor?: (key: MetricKey) => string | undefined
 }) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
 
@@ -302,6 +311,7 @@ export function InstrumentCore({
       {rows.map(({ key, value, delta }) => {
         const isOn = active.includes(key)
         const invert = key === 'position'
+        const term = termFor?.(key)
 
         if (!isOn) {
           return (
@@ -309,6 +319,7 @@ export function InstrumentCore({
               key={key}
               type="button"
               aria-pressed={false}
+              aria-describedby={term ? `search-def-${key}` : undefined}
               onClick={() => onToggle(key)}
               className="group flex h-11 w-full items-stretch border-t border-border text-left transition-colors duration-fast ease-apple first:border-t-0 hover:bg-neutral-800/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange"
             >
@@ -319,6 +330,11 @@ export function InstrumentCore({
               <span className="flex items-center px-4 text-xs text-neutral-600 transition-colors duration-fast ease-apple group-hover:text-neutral-400">
                 Show
               </span>
+              {term && (
+                <span id={`search-def-${key}`} className="sr-only">
+                  {TERMS[term]?.definition}
+                </span>
+              )}
             </button>
           )
         }
@@ -328,6 +344,7 @@ export function InstrumentCore({
             <button
               type="button"
               aria-pressed={true}
+              aria-describedby={term ? `search-def-${key}` : undefined}
               onClick={() => onToggle(key)}
               className={cn(
                 RAIL_W,
@@ -342,6 +359,11 @@ export function InstrumentCore({
                 className="mt-0.5 text-xl font-semibold tabular-nums text-white"
               />
               <DeltaBadge change={delta} invert={invert} />
+              {term && (
+                <span id={`search-def-${key}`} className="sr-only">
+                  {TERMS[term]?.definition}
+                </span>
+              )}
             </button>
 
             <div className="relative min-w-0 flex-1">
@@ -423,6 +445,15 @@ export function InstrumentCore({
 
 // ─── Google wrapper ──────────────────────────────────────────────
 
+// * Google's rail carries FOUR registry entries, one per metric — each row's
+// * own source/caveat, not one generic caption repeated four times.
+const GOOGLE_METRIC_TERM: Record<MetricKey, string> = {
+  clicks: 'search_clicks',
+  impressions: 'search_impressions',
+  ctr: 'search_avg_ctr',
+  position: 'search_avg_position',
+}
+
 export default function InstrumentPanel({ siteId, dateRange, overview, granularity }: InstrumentPanelProps) {
   const searchParams = useSearchParams()
   const write = useQueryParamsWriter()
@@ -469,6 +500,7 @@ export default function InstrumentPanel({ siteId, dateRange, overview, granulari
       errorTitle="Couldn't load search traffic"
       emptyTitle="No search data in this period."
       emptyHint="Google reports with a ~2-day delay — try a wider range."
+      termFor={(key) => GOOGLE_METRIC_TERM[key]}
     />
   )
 }

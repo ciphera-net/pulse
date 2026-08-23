@@ -1,7 +1,7 @@
 'use client'
 
 import { InfoTip } from '@ciphera-net/facet'
-import { METRIC_TERMS, TERMS, glossaryHref, type GlossaryTerm } from '@/lib/dashboard/glossary'
+import { DIMENSION_TERM, METRIC_TERMS, TERMS, docsHref, type GlossaryTerm } from '@/lib/dashboard/terms'
 import type { MetricType } from '@/lib/dashboard/metrics'
 import type { EngagementPercentilesData, Stats } from '@/lib/api/stats'
 import { formatNumber } from '@/lib/utils/format'
@@ -38,10 +38,32 @@ export function MetricInfoTip({ metric, example, className }: MetricInfoTipProps
       title={term.title}
       definition={term.definition}
       example={example}
-      learnMoreHref={glossaryHref(term)}
+      learnMoreHref={docsHref(term)}
       glyphClassName={className}
     />
   )
+}
+
+/**
+ * The InfoTip for a dimension card — it explains WHAT THE CARD SHOWS, keyed on
+ * the card's active tab, not on the rail's selected metric.
+ *
+ * This is the whole point of the fix: a glyph must say something the reader
+ * cannot already read off the label beside it, and no two glyphs on a screen
+ * may resolve to the same sentence. Keying these on the rail metric produced
+ * six identical "unique visitors" panels across the dashboard.
+ *
+ * No registry entry for a tab means NO glyph for that tab — a card whose tabs
+ * are only partly covered simply shows the glyph where it has something to
+ * say. (Silence is honest; a glyph that opens the wrong sentence is not.)
+ *
+ * 🔴 The tab id a card holds in state is NOT the registry key (`source` vs
+ * `utm_source`, `top_pages` vs `pages`, `scroll` vs `scroll_depth`), so the
+ * resolution goes through DIMENSION_TERM. Skipping it does not error — it
+ * renders no glyph at all, which is how Campaigns and Content shipped bare.
+ */
+export function DimensionInfoTip({ tab, className }: { tab: string; className?: string }) {
+  return <TermInfoTip term={DIMENSION_TERM[tab] ?? tab} className={className} />
 }
 
 /** The InfoTip for a non-deck term (instrument metric, provenance caveat). */
@@ -64,7 +86,7 @@ export function TermInfoTip({
       title={term.title}
       definition={term.definition}
       example={example}
-      learnMoreHref={glossaryHref(term)}
+      learnMoreHref={docsHref(term)}
       glyphClassName={className}
       glyphSize={glyphSize}
     />

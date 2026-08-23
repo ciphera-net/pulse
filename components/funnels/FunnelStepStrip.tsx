@@ -10,6 +10,7 @@ import { getFilterValueIcon } from '@/lib/utils/icons'
 import { formatNumber } from '@/lib/utils/format'
 import Select from '@/components/ui/select'
 import { ErrorCard } from '@/components/ui/ErrorCard'
+import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 
 // ---------------------------------------------------------------------------
@@ -157,8 +158,9 @@ export function FunnelStepStrip({
       {/* Exits pane */}
       <div className="rounded-none border border-border bg-card p-4">
         <div className="mb-3 flex h-10 items-center justify-between gap-3">
-          <span className="text-xs text-neutral-500">
+          <span className="flex items-center gap-1 text-xs text-neutral-500">
             Where visitors went after dropping off
+            <TermInfoTip term="funnel_exit_pages" glyphSize={12} />
           </span>
           {step.step.category !== 'event' && step.step.type === 'exact' && (
             <Link
@@ -198,7 +200,10 @@ export function FunnelStepStrip({
       {/* Breakdown pane */}
       <div className="rounded-none border border-border bg-card p-4">
         <div className="mb-3 flex h-10 items-center justify-between gap-3">
-          <span className="text-xs text-neutral-500">Breakdown</span>
+          <span className="flex items-center gap-1 text-xs text-neutral-500">
+            Breakdown
+            <TermInfoTip term="funnel_breakdown_floor" glyphSize={12} />
+          </span>
           <Select
             variant="input"
             className="w-40"
