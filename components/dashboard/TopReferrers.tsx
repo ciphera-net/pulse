@@ -160,8 +160,8 @@ export default function TopReferrers({ metric = 'pageviews', referrers, channels
               </button>
             ))}
           </div>
+          <DimensionInfoTip tab={view} className="ms-2 me-auto" />
           <div className="flex min-w-0 shrink items-center gap-1.5">
-            <DimensionInfoTip tab={view} />
             <MetricUnitLabel metric={metric} />
             {view === 'referrers' && showViewAll && (
               <button
