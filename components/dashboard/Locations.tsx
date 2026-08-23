@@ -380,8 +380,8 @@ export default function Audience({ metric = 'pageviews', countries, cities, regi
               </button>
             ))}
           </div>
+          <DimensionInfoTip tab={activeTab} className="ms-2 me-auto" />
           <div className="flex min-w-0 shrink items-center gap-1.5">
-            <DimensionInfoTip tab={activeTab} />
             <MetricUnitLabel metric={metric} />
             {showViewAll && (
               <button

@@ -61,7 +61,7 @@ export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRa
             </button>
           ))}
         </div>
-        <DimensionInfoTip tab={activeTab} className="ms-auto" />
+        <DimensionInfoTip tab={activeTab} className="ms-2 me-auto" />
         {activeTab === 'scroll' && scrollSessions > 0 && (
           <span className="shrink-0 whitespace-nowrap text-[11px] text-neutral-500">
             {formatNumber(scrollSessions)} {scrollSessions === 1 ? 'session' : 'sessions'}
