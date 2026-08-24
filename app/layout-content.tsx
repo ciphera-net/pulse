@@ -136,11 +136,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
       >
         {children}
       </main>
-      <Footer
-        LinkComponent={Link}
-        appName="Pulse"
-        isAuthenticated={false}
-      />
+      <Footer LinkComponent={Link} />
     </div>
   )
 }

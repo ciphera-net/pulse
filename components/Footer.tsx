@@ -8,8 +8,6 @@ import { Watermark } from '@/components/marketing/system/Watermark'
 
 interface FooterProps {
   LinkComponent?: React.ElementType
-  appName?: string
-  isAuthenticated?: boolean
 }
 
 type FooterLink = { name: string; href: string; external?: boolean }
@@ -96,42 +94,12 @@ function FooterLinkItem({
   )
 }
 
-export function Footer({
-  LinkComponent = Link,
-  appName = 'Pulse',
-  isAuthenticated = false,
-}: FooterProps) {
+export function Footer({ LinkComponent = Link }: FooterProps) {
   const Component = LinkComponent
   const year = new Date().getFullYear()
 
-  // * Simple footer for authenticated users (dashboard chrome).
-  if (isAuthenticated) {
-    return (
-      <footer className="mt-auto w-full border-t border-border py-8">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-            <div className="text-sm text-muted-foreground">
-              © 2024-{year} Ciphera. All rights reserved.
-            </div>
-            <div className="flex gap-6 text-sm font-medium text-foreground/80">
-              <Component href="/about" className="transition-colors duration-fast hover:text-foreground">
-                About {appName}
-              </Component>
-              <Component href="/changelog" className="transition-colors duration-fast hover:text-foreground">
-                Changelog
-              </Component>
-              <Component href="/pricing" className="transition-colors duration-fast hover:text-foreground">
-                Pricing
-              </Component>
-              <Component href="/faq" className="transition-colors duration-fast hover:text-foreground">
-                FAQ
-              </Component>
-            </div>
-          </div>
-        </div>
-      </footer>
-    )
-  }
+  // (The old `isAuthenticated` variant was dead code — the sole call site
+  // hardcoded false. In-app legal links live in the settings nav instead.)
 
   // * Comprehensive marketing footer — on the rail so the vertical lines run
   // * continuously from the header through every section into the footer.
