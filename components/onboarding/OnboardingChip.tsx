@@ -185,6 +185,7 @@ export default function OnboardingChip() {
       <button
         ref={buttonRef}
         type="button"
+        data-tour="onboarding-chip"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-haspopup="true"

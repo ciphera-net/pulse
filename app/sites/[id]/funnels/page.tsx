@@ -163,7 +163,7 @@ export default function FunnelsPage() {
           action={canManageFunnels ? { label: 'Create funnel', onClick: () => { setEditingFunnel(null); setModalOpen(true) } } : undefined}
         />
       ) : (
-        <div className="grid gap-3">
+        <div data-tour="funnels-list" className="grid gap-3">
           {list.map((funnel, index) => (
             <motion.div
               key={funnel.id}

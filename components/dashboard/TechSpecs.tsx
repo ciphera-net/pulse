@@ -150,7 +150,7 @@ export default function TechSpecs({ metric = 'pageviews', browsers, os, devices,
 
   return (
     <>
-      <div className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
+      <div data-tour="dimension-card" data-tour-card="tech" className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
         <div className="flex items-center justify-between mb-4">
           <div className="flex gap-1 min-w-0 overflow-x-auto scrollbar-hide pb-1 max-md:[mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)]" role="tablist" aria-label="Technology view tabs" onKeyDown={handleTabKeyDown}>
             {(['browsers', 'os', 'devices', 'screens'] as Tab[]).map((tab) => (

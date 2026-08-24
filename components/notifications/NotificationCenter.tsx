@@ -209,6 +209,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
           // below md only; md:h-auto/w-auto hands desktop back to p-2 unchanged.
           : 'relative flex h-11 w-11 items-center justify-center p-2 text-neutral-400 hover:text-white rounded-none hover:bg-white/[0.06] transition-colors md:h-auto md:w-auto'
         }
+        data-tour="notification-bell"
         aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
       >
         {isSidebar ? (

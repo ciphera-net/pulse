@@ -111,7 +111,7 @@ export function PerformanceTrend({ checks, className, timezone }: PerformanceTre
   const hasLegacy = points.some(p => p.source === 'psi')
 
   return (
-    <div className={className}>
+    <div data-tour="performance-trend" className={className}>
       {/* min-w-0 is load-bearing: the app shell's ancestors lack it, so a wide
           child forces the whole shell to scroll horizontally and the shell's
           overflow-x-hidden then DELETES the overflowing content rather than
