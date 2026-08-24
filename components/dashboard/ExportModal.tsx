@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Modal, Button, Input } from '@ciphera-net/facet'
+import { Modal, Button, Input, toast } from '@ciphera-net/facet'
 import { Checkbox } from '@/components/ui/checkbox'
 import Select from '@/components/ui/select'
 import { cdnUrl } from '@/lib/cdn'
@@ -413,7 +413,11 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
 
           finishExport()
         } catch (e) {
+          // A swallowed failure here left the modal sitting silently while the
+          // user waited for a download that never came (WS3.5). Same failure
+          // surface as ResetDataModal — the estate's one pattern.
           console.error('Export failed:', e)
+          toast.error('Export failed', { description: 'Nothing was downloaded. Try again — your data is safe.' })
         } finally {
           setIsExporting(false)
         }

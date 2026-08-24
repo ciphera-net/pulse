@@ -64,7 +64,7 @@ export default function ScoreGauge({ score, label, size = 120 }: ScoreGaugeProps
             style={{ color: hasScore ? color : undefined }}
           >
             {displayScore !== null ? displayScore : (
-              <span className="text-neutral-500">--</span>
+              <span className="text-neutral-500">—</span>
             )}
           </span>
         </div>
