@@ -31,6 +31,9 @@ const ContentSignals = dynamic(() => import('@/components/dashboard/ContentSigna
 const Campaigns = dynamic(() => import('@/components/dashboard/Campaigns'))
 const PeakHours = dynamic(() => import('@/components/dashboard/PeakHours'))
 const ExportModal = dynamic(() => import('@/components/dashboard/ExportModal'))
+// Client-only and off the critical path: driver.js only matters once the
+// dashboard is interactive, and the controller waits for the anchors anyway.
+const TourController = dynamic(() => import('@/lib/tour/TourController'), { ssr: false })
 import { type DimensionFilter, serializeFilters, parseFiltersFromURL } from '@/lib/filters'
 import {
   useDashboard,
@@ -347,6 +350,7 @@ export default function SiteDashboardPage() {
 
   return (
     <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
+      <TourController />
       <div className="mb-3">
         {/* flex-wrap, not a single row: the five controls measure ~414px of
             intrinsic width, so on a 390px phone the row overflowed and the

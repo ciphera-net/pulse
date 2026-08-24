@@ -244,3 +244,124 @@
 [data-sonner-toaster][data-y-position='top'] {
   top: 72px !important;
 }
+
+/* * Product tour (driver.js) — the popover wears the estate's one panel
+   recipe (bg-popover · border-border · rounded-none · shadow-lg) and the
+   checklist chip's progress anatomy; the footer is the Facet button pair
+   (owner pick P2, 24-08-2026). driver.css ships its own rounded, light-theme
+   look — everything visual is overridden here, keyed on the popoverClass. */
+.driver-popover.pulse-tour {
+  background: rgb(var(--popover));
+  color: rgb(var(--foreground));
+  border: 1px solid rgb(var(--border));
+  border-radius: 0;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  padding: 0;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  font-family: inherit;
+}
+/* The approved mock has no arrow — panels in this app never carry one. */
+.pulse-tour .driver-popover-arrow {
+  display: none;
+}
+.pulse-tour .driver-popover-close-btn {
+  display: none;
+}
+.pulse-tour .pulse-tour-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 16px 16px 12px;
+}
+.pulse-tour .driver-popover-title {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
+}
+.pulse-tour .driver-popover-progress-text {
+  font-size: 12px;
+  color: #737373; /* neutral-500, the chip counter's tone */
+  font-variant-numeric: tabular-nums;
+}
+.pulse-tour .pulse-tour-bar {
+  height: 4px;
+  background: #262626; /* neutral-800 track, as the chip's bar */
+}
+.pulse-tour .pulse-tour-bar > div {
+  height: 100%;
+  background: rgb(var(--primary));
+  border-radius: 0 9999px 9999px 0;
+  transition: width 0.5s var(--ease-apple);
+}
+.pulse-tour .driver-popover-description {
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.625;
+  color: #a3a3a3; /* neutral-400 body, as every panel */
+}
+.pulse-tour .driver-popover-footer {
+  border-top: 1px solid rgb(var(--border));
+  padding: 12px 16px;
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pulse-tour .driver-popover-navigation-btns {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+/* P2 — the Facet button pair (ExportModal's default + secondary). */
+.pulse-tour .driver-popover-footer button {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  border-radius: 0;
+  transition: background-color 150ms var(--ease-apple);
+}
+.pulse-tour .driver-popover-footer button:focus-visible {
+  outline: 2px solid rgb(var(--ring));
+  outline-offset: 2px;
+}
+/* The variant selectors repeat the reset's `button` element so they outrank
+   it — with `.pulse-tour .driver-popover-next-btn` alone, the `all: unset`
+   reset above (one more element in its selector) wins the cascade and the
+   fills silently never apply. Caught on the dev-server render, not in CI. */
+.pulse-tour .driver-popover-footer button.driver-popover-next-btn {
+  background: rgb(var(--primary));
+  color: rgb(var(--primary-foreground));
+}
+.pulse-tour .driver-popover-footer button.driver-popover-next-btn:hover {
+  background: rgb(var(--primary) / 0.9);
+}
+.pulse-tour .driver-popover-footer button.driver-popover-prev-btn {
+  background: rgb(var(--secondary));
+  color: rgb(var(--secondary-foreground));
+}
+.pulse-tour .driver-popover-footer button.driver-popover-prev-btn:hover {
+  background: rgb(var(--secondary) / 0.8);
+}
+/* S2 — the spotlight ring: driver stamps this class on the highlighted
+   element; stagePadding is 7, so a 6px-offset 1px outline sits just inside
+   the cutout edge (at 7 it would be under the dim). The ring is the focus
+   ring's own token — attention, said the way the app already says it. */
+.driver-active-element {
+  outline: 1px solid rgb(var(--ring));
+  outline-offset: 6px;
+}
