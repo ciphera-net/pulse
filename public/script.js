@@ -49,7 +49,7 @@
 
   // * Helper: read a config value from script data-* attribute or globalConfig
   function attr(name) {
-    // * Support both "storage-ttl" (data-attr style) and "storageTtl" (camelCase config style)
+    // * Support both data-attr style ("some-name") and camelCase config style ("someName")
     var camel = name.replace(/-([a-z])/g, function(_, c) { return c.toUpperCase(); });
     return (script && script.getAttribute('data-' + name)) || globalConfig[name] || globalConfig[camel] || null;
   }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useParams, useSearchParams, useRouter } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { getPublicDashboard, getPublicRealtime, authenticatePublicDashboard, type DashboardData, type Stats } from '@/lib/api/stats'
 import { toast } from '@ciphera-net/facet'
 import { getAuthErrorMessage } from '@ciphera-net/facet'
@@ -48,14 +48,12 @@ const getDateRange = (days: number) => {
 
 export default function PublicDashboardPage() {
   const params = useParams()
-  const searchParams = useSearchParams()
   const router = useRouter()
   const siteId = params.id as string
-  const passwordParam = searchParams.get('password') || undefined
 
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<DashboardData | null>(null)
-  const [password, setPassword] = useState(passwordParam || '')
+  const [password, setPassword] = useState('')
   const [isPasswordProtected, setIsPasswordProtected] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [authLoading, setAuthLoading] = useState(false)
@@ -87,13 +85,16 @@ export default function PublicDashboardPage() {
   const loadRealtime = useCallback(async () => {
     try {
       const realtimeData = await getPublicRealtime(siteId)
-      if (data) {
-        setData({ ...data, realtime_visitors: realtimeData.visitors })
-      }
+      // Functional update, and only onto a payload that still exists: the
+      // 30s tick runs this NEXT TO loadDashboard, and when the dashboard
+      // load 401s (expired share cookie) it clears the payload — a stale
+      // closure here would resurrect the cleared data and paint the old
+      // dashboard behind the password prompt.
+      setData((prev) => (prev ? { ...prev, realtime_visitors: realtimeData.visitors } : prev))
     } catch {
       // Silently fail for realtime updates
     }
-  }, [siteId, data])
+  }, [siteId])
 
   const loadDashboard = useCallback(async (silent = false) => {
     try {
@@ -109,7 +110,7 @@ export default function PublicDashboardPage() {
       const sharePeriodApi = PERIOD_TO_API[sharePeriod]
 
       const dashboardData = await getPublicDashboard(
-        siteId, undefined, undefined, 10, 'day', undefined, undefined, sharePeriodApi,
+        siteId, undefined, undefined, 10, 'day', sharePeriodApi,
       )
 
       setData(dashboardData)
@@ -118,7 +119,14 @@ export default function PublicDashboardPage() {
     } catch (error: unknown) {
       const apiErr = error instanceof ApiError ? error : null
       if (apiErr?.status === 401 && (apiErr.data as Record<string, unknown>)?.is_protected) {
+        // The share cookie is the ONLY grant now, so its expiry is the normal
+        // failure mode of a protected share. Clear the payload with the flag:
+        // the password gate renders on `isPasswordProtected && !data`, and
+        // keeping stale numbers behind a live-looking indicator is the lie
+        // this page exists not to tell.
         setIsPasswordProtected(true)
+        setData(null)
+        setLastUpdatedAt(null)
       } else if (apiErr?.status === 404) {
         toast.error('Site not found')
       } else if (!silent) {

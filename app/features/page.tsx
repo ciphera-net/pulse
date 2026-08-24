@@ -142,7 +142,7 @@ const capabilities: Feature[] = [
   {
     icon: GlobeIcon,
     title: 'CDN analytics',
-    description: 'Bunny CDN bandwidth, cache hit rate, origin latency, and a map of the edge regions your bytes were served from — beside your visitor data.',
+    description: 'Bunny CDN bandwidth, cache hit rate, origin latency, and a ranked breakdown of the edge regions your bytes were served from — beside your visitor data.',
   },
 ]
 
