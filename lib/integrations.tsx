@@ -59,6 +59,22 @@ export interface FrameworkSnippet {
   note?: string
   /** Optional call to action (e.g. install the official plugin). */
   cta?: { text: string; url: string }
+  /**
+   * The platform forbids custom script injection outright: there is NO install
+   * path here, not merely a harder one. Set it and the guide renders `note`
+   * alone, with no snippet block at all.
+   *
+   * ! EXPLICIT on purpose — do not infer this. A missing `code`, a
+   * ! `special-handling` tier and a `custom-code-plan-gated` method each mean
+   * ! "awkward", never "impossible": ~60 platforms have no framework-specific
+   * ! code and correctly fall back to the universal tag, and Webflow /
+   * ! Squarespace / every headless CMS install fine. Inferring from any of
+   * ! those would strip the tag from platforms that genuinely work.
+   * ! Never combine with `code` — the merge guard below throws, because a
+   * ! "you cannot install this" note printed directly above a copy-paste
+   * ! install block is the exact contradiction this flag exists to prevent.
+   */
+  unsupported?: true
 }
 
 /** Install/trust metadata merged onto every registry entry. Kept in the
@@ -1053,7 +1069,7 @@ const rawIntegrations: RawIntegration[] = [
   {
     id: 'substack',
     name: 'Substack',
-    description: 'Add Pulse to your Substack publication with a custom domain.',
+    description: "Can you add Pulse analytics to Substack? Not directly — here's why, and what works instead.",
     category: 'platform',
     brandColor: '#FF6719',
     icon: (
@@ -1067,7 +1083,7 @@ const rawIntegrations: RawIntegration[] = [
   {
     id: 'linktree',
     name: 'Linktree',
-    description: 'Add Pulse to your Linktree page via custom code.',
+    description: "Can you add Pulse analytics to Linktree? Not directly — here's why, and what works instead.",
     category: 'platform',
     brandColor: '#43E55E',
     icon: (
@@ -1218,7 +1234,7 @@ const rawIntegrations: RawIntegration[] = [
   {
     id: 'amp',
     name: 'Google AMP',
-    description: 'Add Pulse to your AMP (Accelerated Mobile Pages) site.',
+    description: 'Pulse on AMP pages: not yet available — amp-analytics support is on the roadmap.',
     category: 'platform',
     brandColor: '#005AF0',
     icon: (
@@ -1376,6 +1392,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   },
   amp: {
     label: 'amp-analytics',
+    unsupported: true,
     note: 'AMP forbids author JavaScript, so the universal tag can’t run. Support requires an amp-analytics JSON config and a beacon ingest path — this is on the roadmap, not yet available.',
   },
   strapi: { label: 'Frontend head', note: 'Strapi is a headless CMS with no rendered <head> of its own — add the Pulse tag in the frontend app that consumes it (Next.js, Nuxt, etc.).' },
@@ -1384,9 +1401,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   payload: { label: 'Frontend head', note: 'Payload is headless — add the Pulse tag in the frontend app it powers.' },
   storyblok: { label: 'Frontend head', note: 'Storyblok is headless — add the Pulse tag in the frontend that renders your stories.' },
   prismic: { label: 'Frontend head', note: 'Prismic is headless — add the Pulse tag in the frontend that consumes the API.' },
-  notion: { label: 'Not directly supported', note: 'Native Notion pages don’t allow custom <head> scripts. Use a Notion-site wrapper (e.g. a hosting layer that adds a head tag) and place the Pulse tag there.' },
-  substack: { label: 'Not directly supported', note: 'Substack doesn’t allow custom script injection, so the Pulse tag can’t be added to a Substack-hosted publication.' },
-  linktree: { label: 'Not directly supported', note: 'Linktree doesn’t allow custom script injection, so the Pulse tag can’t be added.' },
+  notion: { label: 'Not directly supported', unsupported: true, note: 'Native Notion pages don’t allow custom <head> scripts. Use a Notion-site wrapper (e.g. a hosting layer that adds a head tag) and place the Pulse tag there.' },
+  substack: { label: 'Not directly supported', unsupported: true, note: 'Substack doesn’t allow custom script injection, so the Pulse tag can’t be added to a Substack-hosted publication.' },
+  linktree: { label: 'Not directly supported', unsupported: true, note: 'Linktree doesn’t allow custom script injection, so the Pulse tag can’t be added.' },
 }
 
 // * ─── Install/trust metadata (the forced tier audit) ─────────────────────────
@@ -1494,6 +1511,20 @@ export const integrations: Integration[] = rawIntegrations.map((base) => {
     )
   }
   const [supportTier, installMethod, docsSlug, showInPicker, pickerRank] = row
+  const snippet = SNIPPETS[base.id] ?? null
+  // * Two build-breaking invariants for `unsupported`, in the same spirit as
+  // * the tier audit above: the flag must never ship a contradiction, and it
+  // * must never leave the guide with nothing to say.
+  if (snippet?.unsupported && snippet.code) {
+    throw new Error(
+      `integrations: "${base.id}" is marked unsupported but carries snippet code — a platform that cannot run the tag must not ship an install block.`,
+    )
+  }
+  if (snippet?.unsupported && !snippet.note) {
+    throw new Error(
+      `integrations: "${base.id}" is marked unsupported but has no note — the guide shows the note INSTEAD of a snippet, so it must explain why.`,
+    )
+  }
   return {
     ...base,
     supportTier,
@@ -1502,7 +1533,7 @@ export const integrations: Integration[] = rawIntegrations.map((base) => {
     verifiedAt: null, // set by the CI verification harness (Stage 4); null = not yet CI-proven
     showInPicker,
     pickerRank,
-    snippet: SNIPPETS[base.id] ?? null,
+    snippet,
   }
 })
 
@@ -1511,6 +1542,19 @@ export const integrations: Integration[] = rawIntegrations.map((base) => {
 /** Retrieve a single integration by its route slug. */
 export function getIntegration(id: string): Integration | undefined {
   return integrations.find((i) => i.id === id)
+}
+
+/**
+ * True when the platform cannot run the Pulse tag at all — the install guide
+ * must render the explanatory note and NO snippet block.
+ *
+ * ! Read the flag; never derive this from `snippet.code == null`. Most
+ * ! platforms carry no framework-specific code and correctly fall back to the
+ * ! universal tag, so absence of code means "nothing bespoke to show", not
+ * ! "installation is impossible".
+ */
+export function isInstallUnsupported(integration: Integration): boolean {
+  return integration.snippet?.unsupported === true
 }
 
 /** Group integrations by category, preserving category ordering. */
