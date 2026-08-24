@@ -5,7 +5,6 @@ import {
   Eye,
   ShieldCheck,
   Robot,
-  MagnifyingGlass,
   ChartBar,
   Plugs,
   Buildings,
@@ -64,7 +63,6 @@ export const NAV_GROUPS: NavGroup[] = [
       // Bot & Spam is viewable by anyone with quarantine.view; the tab gates
       // mutations on quarantine.manage internally.
       { label: 'Bot & Spam', href: '/settings/site/bot-spam', icon: Robot, requires: 'quarantine.view' },
-      { label: 'Privacy Scan', href: '/settings/site/privacy-scan', icon: MagnifyingGlass, requires: 'privacy_scan.manage' },
       { label: 'Reports', href: '/settings/site/reports', icon: ChartBar, requires: 'reports.manage' },
       { label: 'Integrations', href: '/settings/site/integrations', icon: Plugs, requires: 'integrations.manage' },
     ],

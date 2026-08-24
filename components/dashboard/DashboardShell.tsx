@@ -17,7 +17,7 @@ import { setSessionAction } from '@/app/actions/auth'
 import { logger } from '@/lib/utils/logger'
 import {
   CaretDown, CaretRight, SidebarSimple, Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, Globe as GlobeIcon,
-  GearSix, Target, Eye, ShieldCheck, Robot, MagnifyingGlass, ChartBar,
+  GearSix, Target, Eye, ShieldCheck, Robot, ChartBar,
   Buildings, UsersThree, Key, CreditCard, Bell, ClockCounterClockwise, User, Lock, DeviceMobile,
 } from '@phosphor-icons/react'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
@@ -107,7 +107,6 @@ function useHomePageMeta(): PageMeta {
       visibility: { label: 'Visibility', icon: Eye },
       privacy: { label: 'Privacy', icon: ShieldCheck },
       'bot-spam': { label: 'Bot & Spam', icon: Robot },
-      'privacy-scan': { label: 'Privacy Scan', icon: MagnifyingGlass },
       reports: { label: 'Reports', icon: ChartBar },
       integrations: { label: 'Integrations', icon: PlugsIcon },
       workspace: { label: 'General', icon: Buildings },

@@ -82,7 +82,6 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
     'sites.edit': useCan('sites.edit'),
     'goals.manage': useCan('goals.manage'),
     'quarantine.view': useCan('quarantine.view'),
-    'privacy_scan.manage': useCan('privacy_scan.manage'),
     'reports.manage': useCan('reports.manage'),
     'integrations.manage': useCan('integrations.manage'),
     'team.view': useCan('team.view'),
