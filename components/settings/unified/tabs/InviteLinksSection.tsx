@@ -56,11 +56,15 @@ function CopyLinkButton({ url }: { url?: string }) {
             size="icon"
             className="h-8 w-8"
             onClick={handleCopy}
+            aria-label="Copy invite link"
           >
             {copied
-              ? <Check weight="bold" className="w-3.5 h-3.5 text-pos" />
-              : <Copy weight="bold" className="w-3.5 h-3.5" />
+              ? <Check weight="bold" className="w-3.5 h-3.5 text-pos" aria-hidden="true" />
+              : <Copy weight="bold" className="w-3.5 h-3.5" aria-hidden="true" />
             }
+            {/* The icon swap is visual-only; announce the outcome to screen
+                readers (the toast lives in a separate landmark). */}
+            <span aria-live="polite" className="sr-only">{copied ? 'Invite link copied' : ''}</span>
           </Button>
         </TooltipTrigger>
         <TooltipContent>Copy invite link</TooltipContent>
