@@ -33,9 +33,9 @@ vi.mock('@/components/settings/shell-slots', () => ({
 vi.mock('@/lib/api/roles', () => ({
   listRoles: vi.fn(),
   listPermissionGroups: vi.fn(),
-  createRole: vi.fn(),
-  updateRole: vi.fn(),
-  deleteRole: vi.fn(),
+  // Mirrors the real const — the component derives the Not-assignable chip
+  // from it, and a mock factory replaces the whole module.
+  INVITABLE_SLUGS: ['admin', 'member'],
 }))
 
 vi.mock('@ciphera-net/facet', () => ({
@@ -111,6 +111,16 @@ describe('WorkspaceRolesTab', () => {
     expect(screen.getByText('Owner')).toBeTruthy()
     // Built-in scope chip present.
     expect(screen.getAllByText('All sites').length).toBeGreaterThan(0)
+  })
+
+  it('labels non-invitable builtins Not assignable — invitable ones stay unlabelled', async () => {
+    render(<WorkspaceRolesTab />)
+    await waitFor(() => expect(screen.getByText('Analyst')).toBeTruthy())
+    // Analyst survives display-wise but nothing can assign it any more.
+    expect(screen.getByText('Not assignable')).toBeTruthy()
+    // Owner is excluded from the label by design, and the fixture has no
+    // admin/member rows — exactly one chip must render.
+    expect(screen.getAllByText('Not assignable')).toHaveLength(1)
   })
 
   it('is read-only for everyone — no create CTA, no row mutators, matrix disabled', async () => {

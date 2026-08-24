@@ -26,6 +26,13 @@ export interface PermissionGroup {
   permissions: PermissionInfo[]
 }
 
+// The builtin slugs an invite link can grant. The finer roles (analyst,
+// viewer, pre-trim customs) were only ever assigned through the removed
+// metadata.role_id path, so they are viewable but not assignable — the
+// invite modal offers exactly this set and the roles tab labels everything
+// outside it. One const so the two surfaces cannot drift.
+export const INVITABLE_SLUGS = ['admin', 'member']
+
 // Reads only — custom-role CRUD was removed with the backend routes
 // (pre-launch triage batch 4).
 export const listRoles = () =>

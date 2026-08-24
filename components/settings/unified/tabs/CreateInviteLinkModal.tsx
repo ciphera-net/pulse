@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Button, Input, Modal, Select, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { Copy, Check } from '@phosphor-icons/react'
 import { createInviteLink, type InviteLink } from '@/lib/api/organization'
-import { type Role } from '@/lib/api/roles'
+import { INVITABLE_SLUGS, type Role } from '@/lib/api/roles'
 
 const EXPIRY_OPTIONS = [
   { value: '1h', label: '1 hour' },
@@ -33,11 +33,9 @@ interface Props {
   onCreated: () => void
 }
 
-// The invitable roles are the builtins ciphera-id itself understands. The
-// finer roles used to ride along as metadata.role_id, a path the backend now
-// ignores (it was an unchecked client-authored role UUID — the escalation the
-// triage removed), so offering them here would silently mint members.
-const INVITABLE_SLUGS = ['admin', 'member']
+// INVITABLE_SLUGS (lib/api/roles) is what an invite can actually grant —
+// offering a finer role here would silently mint members, since the backend
+// ignores the metadata.role_id path those roles used to ride on.
 
 export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange, onCreated }: Props) {
   const inviteRoleOptions = roles

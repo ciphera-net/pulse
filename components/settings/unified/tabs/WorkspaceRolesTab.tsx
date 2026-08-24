@@ -20,6 +20,7 @@ import { useAuth } from '@/lib/auth/context'
 import {
   listRoles,
   listPermissionGroups,
+  INVITABLE_SLUGS,
   type Role,
   type PermissionGroup,
 } from '@/lib/api/roles'
@@ -148,6 +149,11 @@ function RoleRow({ role, permissionGroups }: RoleRowProps) {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium text-foreground truncate">{role.name}</span>
             {role.is_builtin && <StatusChip tone="neutral">Built-in</StatusChip>}
+            {/* Roles outside the invitable set are held only by members from
+                before the trim — nothing can assign them any more. */}
+            {role.slug !== 'owner' && !INVITABLE_SLUGS.includes(role.slug) && (
+              <StatusChip tone="neutral">Not assignable</StatusChip>
+            )}
             <StatusChip tone="neutral">{scopeLabel}</StatusChip>
           </div>
           {role.is_builtin && (
@@ -274,7 +280,7 @@ export default function WorkspaceRolesTab() {
       ) : (
         <SettingsPanel
           kicker="Roles"
-          description="What each role can do. Roles are fixed; members get one through their invite link."
+          description="What each role can do. New members get Admin or Member through their invite link; roles marked not assignable are held only by members who had them before."
         >
           <div className="divide-y divide-border">
             {roles.map((role) => (
