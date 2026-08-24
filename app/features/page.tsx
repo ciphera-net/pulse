@@ -136,8 +136,8 @@ const capabilities: Feature[] = [
   },
   {
     icon: BarChartIcon,
-    title: 'Email reports',
-    description: 'Weekly or monthly summaries delivered to your inbox — key metrics, top pages, and referrers.',
+    title: 'Uptime alerts',
+    description: 'Uptime monitors with downtime and recovery alerts to email, Slack, Discord, or a webhook of yours.',
   },
   {
     icon: GlobeIcon,

@@ -101,7 +101,7 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
 
           <div className="space-y-2">
             <WarningRow>All events and analytics data</WarningRow>
-            <WarningRow>Report schedules and goals</WarningRow>
+            <WarningRow>Alert channels and goals</WarningRow>
           </div>
 
           <div>

@@ -177,7 +177,6 @@ export const PLAN_FEATURE_MATRIX: PlanFeatureGroup[] = [
     label: 'Included in every plan',
     rows: [
       { label: 'Custom events', values: acrossPlans(true) },
-      { label: 'Email reports', values: acrossPlans(true) },
       { label: 'Funnels & journeys', values: acrossPlans(true) },
       { label: 'Uptime monitoring', values: acrossPlans(true) },
       { label: 'Team dashboard', values: acrossPlans(true) },

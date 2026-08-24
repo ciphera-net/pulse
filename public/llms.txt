@@ -11,7 +11,7 @@ Pulse is a lightweight, privacy-focused website analytics platform built by Ciph
 - UTM campaign tracking and custom event tracking
 - Public/shared dashboard support
 - Organization and team management
-- Scheduled email reports
+- Uptime monitoring with downtime alerts (email, Slack, Discord, webhook)
 
 ## Integrations
 - [Next.js](https://pulse.ciphera.net/integrations/nextjs)

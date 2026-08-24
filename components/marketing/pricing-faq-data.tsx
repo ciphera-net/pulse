@@ -42,7 +42,7 @@ export const pricingFaqData: Record<string, FAQItem[]> = {
     {
       question: 'Do higher plans unlock more features?',
       answer:
-        'No — every plan runs the full product. Custom events, funnels and journeys, email reports, API access, uptime monitoring, the team dashboard and shared links are included everywhere, on Hobby too. Higher plans scale the limits: more sites, more pageviews, longer data retention — and Business adds priority support.',
+        'No — every plan runs the full product. Custom events, funnels and journeys, API access, uptime monitoring with alerts, the team dashboard and shared links are included everywhere, on Hobby too. Higher plans scale the limits: more sites, more pageviews, longer data retention — and Business adds priority support.',
     },
     {
       question: 'Can I change plans anytime?',
