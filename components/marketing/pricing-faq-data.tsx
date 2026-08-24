@@ -4,7 +4,9 @@
 
 export interface FAQItem {
   question: string
-  answer: string
+  // ReactNode so an answer can carry an inline link; the accordion renders
+  // answers as children, and nothing serializes them (no FAQ JSON-LD here).
+  answer: React.ReactNode
 }
 
 export const pricingFaqCategories: Record<string, string> = {
@@ -49,8 +51,27 @@ export const pricingFaqData: Record<string, FAQItem[]> = {
     },
     {
       question: 'What happens if I exceed my pageview limit?',
-      answer:
-        "We don't cut off your tracking. If you consistently exceed your limit, we'll reach out to help you find the right plan. We believe in fair usage, not hard cutoffs.",
+      // Honest mechanics — the backend enforces a hard ceiling at 2x the plan
+      // limit (entitlement.go HardCeilingMultiplier) and the billing tab says
+      // "Collection has stopped" at it. This answer must never promise softer
+      // behaviour than the product delivers.
+      answer: (
+        <>
+          Nothing breaks the moment you cross your limit — collection continues up to twice your
+          plan&rsquo;s pageviews, and we email you at 80%, 90% and 100% along the way. At the 2&times;
+          ceiling, collection pauses until you upgrade or the period resets. The full mechanics are in
+          the{' '}
+          <a
+            href="https://help.ciphera.net/docs/pulse/billing#pageview-limits"
+            target="_blank"
+            rel="noreferrer"
+            className="underline underline-offset-2 transition-colors duration-fast hover:text-foreground"
+          >
+            billing docs
+          </a>
+          .
+        </>
+      ),
     },
     {
       question: "What's the difference between Solo and Team?",
