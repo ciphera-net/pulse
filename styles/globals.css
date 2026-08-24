@@ -357,11 +357,16 @@
 .pulse-tour .driver-popover-footer button.driver-popover-prev-btn:hover {
   background: rgb(var(--secondary) / 0.8);
 }
-/* S2 — the spotlight ring: driver stamps this class on the highlighted
-   element; stagePadding is 7, so a 6px-offset 1px outline sits just inside
-   the cutout edge (at 7 it would be under the dim). The ring is the focus
-   ring's own token — attention, said the way the app already says it. */
-.driver-active-element {
-  outline: 1px solid rgb(var(--ring));
-  outline-offset: 6px;
+/* S2 — the spotlight ring. NOT an outline on the highlighted element: CSS
+   outlines are clipped by ancestor overflow (the deck Card is
+   overflow-hidden — the rail's ring rendered as a single right edge;
+   measured, 24-08 audit). The controller draws this fixed-position element
+   at the cutout instead — attached to <body>, nothing can clip it. Sits
+   above driver's overlay svg (z 10000), below its popover (z 1e9). The
+   token is the focus ring's own — attention, said the way the app says it. */
+.pulse-tour-ring {
+  position: fixed;
+  border: 1px solid rgb(var(--ring));
+  pointer-events: none;
+  z-index: 10001;
 }
