@@ -40,6 +40,7 @@ import {
   useEngagementPercentiles,
 } from '@/lib/swr/dashboard'
 import { ErrorCard } from '@/components/ui/ErrorCard'
+import InstallBanner from '@/components/dashboard/InstallBanner'
 import { useLiveIndicator } from '@/lib/live-indicator-context'
 import { type MetricType, type BlockMetric, isMetricType } from '@/lib/dashboard/metrics'
 import { useCan } from '@/lib/auth/permissions'
@@ -356,6 +357,11 @@ export default function SiteDashboardPage() {
           {toolbarControls()}
         </div>
       </div>
+
+      {/* Install health — a fact about the SITE, above the deck, distinct from
+          the chart's own "no data in this range" (a fact about the RANGE).
+          Renders nothing when the site is reporting normally. */}
+      <InstallBanner siteId={siteId} />
 
       {/* The command deck: provenance strip + KPI rail + full-height chart,
           then the sectioned briefing IA (Acquisition · Audience · Content ·
