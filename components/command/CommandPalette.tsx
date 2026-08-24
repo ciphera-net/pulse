@@ -238,7 +238,7 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
           {canReportsManage && (
             <CommandItem value="settings-site-reports" onSelect={() => go('/settings/site/reports')}>
               <ChartBar size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-              <span><HighlightMatch text="Reports & Alerts" query={search} /></span>
+              <span><HighlightMatch text="Alerts" query={search} /></span>
             </CommandItem>
           )}
           {canIntegrations && (

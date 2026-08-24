@@ -16,20 +16,17 @@ import { renderHook } from '@testing-library/react'
 let sites: Array<Record<string, unknown>> = []
 let members: unknown[] = [{ id: 'u1' }]
 let goals: unknown[] | undefined = []
-let schedules: Array<Record<string, unknown>> | undefined = []
 
 vi.mock('@/lib/auth/context', () => ({ useAuth: () => ({ user: { org_id: 'org1' } }) }))
 vi.mock('@/lib/swr/sites', () => ({ useSites: () => ({ sites, isLoading: false }) }))
 vi.mock('@/lib/swr/members', () => ({ useMembers: () => ({ members }) }))
 vi.mock('@/lib/api/goals', () => ({ listGoals: vi.fn() }))
-vi.mock('@/lib/api/report-schedules', () => ({ listReportSchedules: vi.fn() }))
 
 // SWR is keyed per-resource in the hook; return the right fixture per key.
 vi.mock('swr', () => ({
   default: (key: unknown) => {
     const name = Array.isArray(key) ? key[0] : key
     if (name === 'goals') return { data: goals, mutate: vi.fn() }
-    if (name === 'reportSchedules') return { data: schedules, mutate: vi.fn() }
     if (name === 'onboarding-dismissed') return { data: false, mutate: vi.fn() }
     return { data: undefined, mutate: vi.fn() }
   },
@@ -44,19 +41,17 @@ beforeEach(() => {
   sites = [{ id: 's1', install_status: 'never_installed' }]
   members = [{ id: 'u1' }]
   goals = []
-  schedules = []
 })
 
 describe('useOnboarding', () => {
   it('lets a solo workspace actually finish', () => {
     sites = [{ id: 's1', install_status: 'active' }]
     goals = [{ id: 'g1' }]
-    schedules = [{ channel: 'email', enabled: true }]
     const { result } = renderHook(() => useOnboarding())
-    // Four counted steps, all done — with the old math this org was stuck at
-    // 4/5 forever because it had no second member.
-    expect(result.current.total).toBe(4)
-    expect(result.current.completedCount).toBe(4)
+    // Three counted steps, all done — with the old math this org was stuck
+    // short forever because it had no second member.
+    expect(result.current.total).toBe(3)
+    expect(result.current.completedCount).toBe(3)
     expect(result.current.allDone).toBe(true)
     expect(result.current.visible).toBe(false)
   })
@@ -66,13 +61,13 @@ describe('useOnboarding', () => {
     const teammate = item(result.current, 'teammate')
     expect(teammate).toBeTruthy()
     expect(teammate.countsTowardCompletion).toBe(false)
-    expect(result.current.total).toBe(4)
+    expect(result.current.total).toBe(3)
   })
 
   it('locks the steps that have nowhere to go before a site exists', () => {
     sites = []
     const { result } = renderHook(() => useOnboarding())
-    for (const key of ['script', 'goal', 'reports']) {
+    for (const key of ['script', 'goal']) {
       const i = item(result.current, key)
       expect(i.href, `${key} should have no destination yet`).toBeUndefined()
       expect(i.lockedReason, `${key} should say what unlocks it`).toBe('add a site first')

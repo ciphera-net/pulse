@@ -1,19 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { Button, toast, Spinner, Modal, Input, Select, getAuthErrorMessage } from '@ciphera-net/facet'
-import { Plus, Pencil, Trash, EnvelopeSimple, WebhooksLogo, PaperPlaneTilt, FileText, Bell } from '@phosphor-icons/react'
+import { Button, toast, Spinner, Modal, Input, getAuthErrorMessage } from '@ciphera-net/facet'
+import { Plus, Pencil, Trash, EnvelopeSimple, WebhooksLogo, PaperPlaneTilt, Bell } from '@phosphor-icons/react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { cn } from '@/lib/utils'
 import { cdnUrl } from '@/lib/cdn'
-import { useReportSchedules, useAlertSchedules, useSite } from '@/lib/swr/dashboard'
+import { useAlertSchedules, useSite } from '@/lib/swr/dashboard'
 import { useCan } from '@/lib/auth/permissions'
 import {
   createReportSchedule,
   updateReportSchedule,
   deleteReportSchedule,
-  testReportSchedule,
   type ReportSchedule,
   type CreateReportScheduleRequest,
   type EmailConfig,
@@ -21,32 +20,8 @@ import {
 } from '@/lib/api/report-schedules'
 import { formatDateTime } from '@/lib/utils/formatDate'
 import { SettingsPanel, PanelRows, EmptyRow } from '@/components/settings/panels'
-import { MastheadAction } from '@/components/settings/shell-slots'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-const TIMEZONES = [
-  'UTC', 'America/New_York', 'America/Los_Angeles', 'America/Chicago',
-  'America/Toronto', 'Europe/London', 'Europe/Paris', 'Europe/Berlin',
-  'Europe/Amsterdam', 'Asia/Tokyo', 'Asia/Singapore', 'Asia/Dubai',
-  'Australia/Sydney', 'Pacific/Auckland',
-]
-
-const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-
-const formatHour = (hour: number) => {
-  if (hour === 0) return '12:00 AM'
-  if (hour === 12) return '12:00 PM'
-  return hour < 12 ? `${hour}:00 AM` : `${hour - 12}:00 PM`
-}
-
-const ordinalSuffix = (n: number) => {
-  const s = ['th', 'st', 'nd', 'rd']
-  const v = n % 100
-  return n + (s[(v - 20) % 10] || s[v] || s[0])
-}
 
 // ── Icons ────────────────────────────────────────────────────────────────────
 
@@ -72,7 +47,7 @@ function ChannelIcon({ channel }: { channel: string }) {
   return <>{CHANNEL_ICONS[channel] ?? <PaperPlaneTilt weight="bold" className="w-4 h-4" />}</>
 }
 
-// ── Schedule Row ─────────────────────────────────────────────────────────────
+// ── Channel Row ──────────────────────────────────────────────────────────────
 
 function ScheduleRow({
   schedule,
@@ -87,21 +62,8 @@ function ScheduleRow({
   onEdit: (schedule: ReportSchedule) => void
   canManage: boolean
 }) {
-  const [testing, setTesting] = useState(false)
   const [toggling, setToggling] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
-
-  const handleTest = async () => {
-    setTesting(true)
-    try {
-      await testReportSchedule(siteId, schedule.id)
-      toast.success('Test report sent')
-    } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to send test')
-    } finally {
-      setTesting(false)
-    }
-  }
 
   const handleToggle = async () => {
     if (toggling) return
@@ -118,7 +80,7 @@ function ScheduleRow({
         timezone: schedule.timezone,
         purpose: schedule.purpose,
       })
-      toast.success(schedule.enabled ? 'Report paused' : 'Report enabled')
+      toast.success(schedule.enabled ? 'Alert channel paused' : 'Alert channel enabled')
       onMutate()
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to update')
@@ -130,7 +92,7 @@ function ScheduleRow({
   const handleDelete = async () => {
     try {
       await deleteReportSchedule(siteId, schedule.id)
-      toast.success('Report deleted')
+      toast.success('Alert channel deleted')
       onMutate()
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to delete')
@@ -170,7 +132,7 @@ function ScheduleRow({
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              {schedule.frequency} · {schedule.report_type} report
+              downtime alerts
               {schedule.last_sent_at && (
                 <span className="ml-1">· sent {formatDateTime(new Date(schedule.last_sent_at))}</span>
               )}
@@ -190,14 +152,6 @@ function ScheduleRow({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Edit</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleTest} disabled={testing} aria-label="Send test">
-                  {testing ? <Spinner className="w-3.5 h-3.5" /> : <PaperPlaneTilt weight="bold" className="w-3.5 h-3.5" />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Send test</TooltipContent>
             </Tooltip>
             <Button variant="ghost" size="sm" onClick={handleToggle} disabled={toggling}>
               {toggling ? <Spinner className="w-3.5 h-3.5" /> : schedule.enabled ? 'Pause' : 'Enable'}
@@ -222,8 +176,8 @@ function ScheduleRow({
         <ConfirmDialog
           open={confirmDelete}
           onOpenChange={setConfirmDelete}
-          title="Delete schedule"
-          description="This report schedule will be permanently removed."
+          title="Delete alert channel"
+          description="This alert channel will be permanently removed."
           confirmLabel="Delete"
           variant="danger"
           onConfirm={handleDelete}
@@ -233,7 +187,7 @@ function ScheduleRow({
   )
 }
 
-// ── Ghost preview rows (empty-state hint, spec §2.3) ──────────────────────────
+// ── Ghost preview row (empty-state hint, spec §2.3) ───────────────────────────
 
 function GhostRow({ icon, primary, secondary }: { icon: React.ReactNode; primary: string; secondary: string }) {
   return (
@@ -285,239 +239,6 @@ function FormLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor?:
     <label htmlFor={htmlFor} className="mb-1.5 block font-semibold text-micro-label uppercase text-muted-foreground">
       {children}
     </label>
-  )
-}
-
-// ── Report Schedule Modal ────────────────────────────────────────────────────
-
-function ReportScheduleModal({
-  isOpen,
-  onClose,
-  siteId,
-  siteTimezone,
-  editing,
-  onSaved,
-}: {
-  isOpen: boolean
-  onClose: () => void
-  siteId: string
-  siteTimezone: string
-  editing: ReportSchedule | null
-  onSaved: () => void
-}) {
-  const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState(() => formFromSchedule(editing, siteTimezone))
-
-  // Reset form when editing target changes
-  function formFromSchedule(schedule: ReportSchedule | null, fallbackTz: string) {
-    if (schedule) {
-      return {
-        channel: schedule.channel,
-        recipients: schedule.channel === 'email' && 'recipients' in schedule.channel_config
-          ? (schedule.channel_config as EmailConfig).recipients.join(', ')
-          : '',
-        webhookUrl: schedule.channel !== 'email' && 'url' in schedule.channel_config
-          ? (schedule.channel_config as WebhookConfig).url
-          : '',
-        frequency: schedule.frequency,
-        reportType: schedule.report_type,
-        timezone: schedule.timezone || fallbackTz,
-        sendHour: schedule.send_hour,
-        sendDay: schedule.send_day ?? 1,
-      }
-    }
-    return {
-      channel: 'email',
-      recipients: '',
-      webhookUrl: '',
-      frequency: 'weekly',
-      reportType: 'summary',
-      timezone: fallbackTz,
-      sendHour: 9,
-      sendDay: 1,
-    }
-  }
-
-  // Re-init when modal opens with different editing target
-  const [prevEditing, setPrevEditing] = useState<ReportSchedule | null>(editing)
-  if (editing !== prevEditing) {
-    setPrevEditing(editing)
-    setForm(formFromSchedule(editing, siteTimezone))
-  }
-
-  const updateField = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
-    setForm((f) => ({ ...f, [key]: value }))
-
-  const handleSubmit = async () => {
-    // Validation
-    if (form.channel === 'email') {
-      const emails = form.recipients.split(',').map((r) => r.trim()).filter(Boolean)
-      if (emails.length === 0) { toast.error('Enter at least one email address'); return }
-    } else {
-      if (!form.webhookUrl.trim()) { toast.error('Enter a webhook URL'); return }
-    }
-
-    setSaving(true)
-    try {
-      const channelConfig: EmailConfig | WebhookConfig =
-        form.channel === 'email'
-          ? { recipients: form.recipients.split(',').map((r) => r.trim()).filter(Boolean) }
-          : { url: form.webhookUrl.trim() }
-
-      const payload: CreateReportScheduleRequest = {
-        channel: form.channel,
-        channel_config: channelConfig,
-        frequency: form.frequency,
-        report_type: form.reportType,
-        timezone: form.timezone,
-        send_hour: form.sendHour,
-        send_day: form.frequency === 'weekly' || form.frequency === 'monthly' ? form.sendDay : undefined,
-        purpose: 'report',
-      }
-
-      if (editing) {
-        await updateReportSchedule(siteId, editing.id, payload)
-        toast.success('Report schedule updated')
-      } else {
-        await createReportSchedule(siteId, payload)
-        toast.success('Report schedule created')
-      }
-      onSaved()
-      onClose()
-    } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to save schedule')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const webhookPlaceholder =
-    form.channel === 'slack' ? 'https://hooks.slack.com/services/...'
-    : form.channel === 'discord' ? 'https://discord.com/api/webhooks/...'
-    : 'https://example.com/webhook'
-
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} title={editing ? 'Edit Report Schedule' : 'New Report Schedule'}>
-      <div className="space-y-5">
-        {/* Channel */}
-        <div>
-          <FormLabel>Channel</FormLabel>
-          <ChannelPicker value={form.channel} onChange={(v) => updateField('channel', v)} />
-        </div>
-
-        {/* Recipients / URL */}
-        {form.channel === 'email' ? (
-          <div>
-            <FormLabel htmlFor="report-recipients">Recipients</FormLabel>
-            <Input
-              id="report-recipients"
-              value={form.recipients}
-              onChange={(e) => updateField('recipients', e.target.value)}
-              placeholder="email@example.com, another@example.com"
-            />
-            <p className="mt-1 text-xs text-muted-foreground">Comma-separated email addresses</p>
-          </div>
-        ) : (
-          <div>
-            <FormLabel htmlFor="report-webhook">Webhook URL</FormLabel>
-            <Input
-              id="report-webhook"
-              type="url"
-              value={form.webhookUrl}
-              onChange={(e) => updateField('webhookUrl', e.target.value)}
-              placeholder={webhookPlaceholder}
-            />
-          </div>
-        )}
-
-        {/* Frequency */}
-        <div>
-          <FormLabel>Frequency</FormLabel>
-          <Select
-            value={form.frequency}
-            onChange={(v) => updateField('frequency', v)}
-            options={[
-              { value: 'daily', label: 'Daily' },
-              { value: 'weekly', label: 'Weekly' },
-              { value: 'monthly', label: 'Monthly' },
-            ]}
-          />
-        </div>
-
-        {/* Day of week (weekly) */}
-        {form.frequency === 'weekly' && (
-          <div>
-            <FormLabel>Day of Week</FormLabel>
-            <Select
-              value={String(form.sendDay)}
-              onChange={(v) => updateField('sendDay', Number(v))}
-              options={WEEKDAY_NAMES.map((name, i) => ({ value: String(i + 1), label: name }))}
-            />
-          </div>
-        )}
-
-        {/* Day of month (monthly) */}
-        {form.frequency === 'monthly' && (
-          <div>
-            <FormLabel>Day of Month</FormLabel>
-            <Select
-              value={String(form.sendDay)}
-              onChange={(v) => updateField('sendDay', Number(v))}
-              options={Array.from({ length: 28 }, (_, i) => ({
-                value: String(i + 1),
-                label: ordinalSuffix(i + 1),
-              }))}
-            />
-          </div>
-        )}
-
-        {/* Time */}
-        <div>
-          <FormLabel>Time</FormLabel>
-          <Select
-            value={String(form.sendHour)}
-            onChange={(v) => updateField('sendHour', Number(v))}
-            options={Array.from({ length: 24 }, (_, i) => ({
-              value: String(i),
-              label: formatHour(i),
-            }))}
-          />
-        </div>
-
-        {/* Timezone */}
-        <div>
-          <FormLabel>Timezone</FormLabel>
-          <Select
-            value={form.timezone}
-            onChange={(v) => updateField('timezone', v)}
-            options={TIMEZONES.map((tz) => ({ value: tz, label: tz.replace(/_/g, ' ') }))}
-          />
-        </div>
-
-        {/* Report Type */}
-        <div>
-          <FormLabel>Report Type</FormLabel>
-          <Select
-            value={form.reportType}
-            onChange={(v) => updateField('reportType', v)}
-            options={[
-              { value: 'summary', label: 'Summary' },
-              { value: 'pages', label: 'Pages' },
-              { value: 'sources', label: 'Sources' },
-              { value: 'goals', label: 'Goals' },
-            ]}
-          />
-        </div>
-
-        {/* Actions */}
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button variant="default" onClick={handleSubmit} disabled={saving}>
-            {saving ? <Spinner className="w-4 h-4" /> : editing ? 'Save Changes' : 'Create Schedule'}
-          </Button>
-        </div>
-      </div>
-    </Modal>
   )
 }
 
@@ -667,74 +388,21 @@ function AlertChannelModal({
 export default function SiteReportsTab({ siteId }: { siteId: string }) {
   const canManage = useCan('reports.manage')
   const { data: site } = useSite(siteId)
-  const { data: reports = [], isLoading: reportsLoading, isValidating: reportsValidating, error: reportsError, mutate: mutateReports } = useReportSchedules(siteId)
   const { data: alerts = [], isLoading: alertsLoading, isValidating: alertsValidating, error: alertsError, mutate: mutateAlerts } = useAlertSchedules(siteId)
 
-  // Report modal state
-  const [reportModalOpen, setReportModalOpen] = useState(false)
-  const [editingSchedule, setEditingSchedule] = useState<ReportSchedule | null>(null)
-
-  // Alert modal state
   const [alertModalOpen, setAlertModalOpen] = useState(false)
   const [editingAlert, setEditingAlert] = useState<ReportSchedule | null>(null)
 
   const siteTimezone = site?.timezone || 'UTC'
-  const loading = reportsLoading || alertsLoading
 
-  const openNewReport = () => { setEditingSchedule(null); setReportModalOpen(true) }
-  const openEditReport = (schedule: ReportSchedule) => { setEditingSchedule(schedule); setReportModalOpen(true) }
   const openNewAlert = () => { setEditingAlert(null); setAlertModalOpen(true) }
   const openEditAlert = (schedule: ReportSchedule) => { setEditingAlert(schedule); setAlertModalOpen(true) }
 
-  if (loading) return <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-muted-foreground" /></div>
+  if (alertsLoading) return <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-muted-foreground" /></div>
 
   return (
     <div className="space-y-8">
-      {/* The tab's one orange: the primary CTA, portaled into the masthead. */}
-      {canManage && (
-        <MastheadAction>
-          <Button variant="default" className="gap-1.5" onClick={openNewReport}>
-            <Plus weight="bold" className="h-4 w-4" /> Add report
-          </Button>
-        </MastheadAction>
-      )}
-
-      {/* Scheduled Reports */}
-      <SettingsPanel
-        kicker="Scheduled reports"
-        description="Automated analytics summaries via email or webhook."
-      >
-        {reportsError && reports.length === 0 ? (
-          <div className="p-5">
-            <SettingsErrorState
-              variant="banner"
-              message="We couldn't load your scheduled reports. It may be a temporary problem."
-              onRetry={() => mutateReports()}
-              retrying={reportsValidating}
-            />
-          </div>
-        ) : reports.length === 0 ? (
-          <EmptyRow
-            icon={<FileText weight="regular" />}
-            title="No scheduled reports yet"
-            caption="Get automated analytics summaries delivered on a recurring schedule."
-            action={canManage ? (
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={openNewReport}>
-                <Plus weight="bold" className="h-3.5 w-3.5" /> Add report
-              </Button>
-            ) : undefined}
-            ghost={<GhostRow icon={<EnvelopeSimple weight="bold" className="h-4 w-4" />} primary="you@example.com" secondary="weekly · summary report" />}
-          />
-        ) : (
-          <PanelRows>
-            {reports.map((r) => (
-              <ScheduleRow key={r.id} schedule={r} siteId={siteId} onMutate={() => mutateReports()} onEdit={openEditReport} canManage={canManage} />
-            ))}
-          </PanelRows>
-        )}
-      </SettingsPanel>
-
-      {/* Alert Channels — header CTA is an outline (neutral) button, not orange. */}
+      {/* Alert Channels */}
       <SettingsPanel
         kicker="Alert channels"
         description="Get notified when uptime monitors go down."
@@ -763,7 +431,7 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
                 <Plus weight="bold" className="h-3.5 w-3.5" /> Add channel
               </Button>
             ) : undefined}
-            ghost={<GhostRow icon={<WebhooksLogo weight="bold" className="h-4 w-4" />} primary="alerts@example.com" secondary="daily · downtime alerts" />}
+            ghost={<GhostRow icon={<WebhooksLogo weight="bold" className="h-4 w-4" />} primary="alerts@example.com" secondary="downtime alerts" />}
           />
         ) : (
           <PanelRows>
@@ -773,18 +441,6 @@ export default function SiteReportsTab({ siteId }: { siteId: string }) {
           </PanelRows>
         )}
       </SettingsPanel>
-
-      {/* Report Schedule Modal */}
-      {reportModalOpen && (
-        <ReportScheduleModal
-          isOpen={reportModalOpen}
-          onClose={() => setReportModalOpen(false)}
-          siteId={siteId}
-          siteTimezone={siteTimezone}
-          editing={editingSchedule}
-          onSaved={() => mutateReports()}
-        />
-      )}
 
       {/* Alert Channel Modal */}
       {alertModalOpen && (
