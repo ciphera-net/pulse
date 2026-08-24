@@ -9,7 +9,7 @@ export type Permission =
   | 'analytics.view' | 'analytics.export'
   | 'goals.manage' | 'funnels.manage' | 'reports.manage'
   | 'integrations.manage'
-  | 'uptime.manage' | 'pagespeed.manage' | 'privacy_scan.manage'
+  | 'uptime.manage' | 'pagespeed.manage'
   | 'quarantine.view' | 'quarantine.manage'
   | 'billing.view' | 'billing.manage'
   | 'team.view' | 'team.invite' | 'team.manage'
@@ -23,7 +23,7 @@ const DEFAULT_ADMIN_PERMS: Permission[] = [
   'analytics.view', 'analytics.export',
   'goals.manage', 'funnels.manage', 'reports.manage',
   'integrations.manage',
-  'uptime.manage', 'pagespeed.manage', 'privacy_scan.manage',
+  'uptime.manage', 'pagespeed.manage',
   'quarantine.view', 'quarantine.manage',
   'billing.view',
   'team.view', 'team.invite', 'team.manage',

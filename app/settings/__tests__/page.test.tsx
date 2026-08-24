@@ -34,7 +34,6 @@ const ALL_PERMS = [
   'sites.edit',
   'goals.manage',
   'quarantine.view',
-  'privacy_scan.manage',
   'reports.manage',
   'integrations.manage',
   'team.view',

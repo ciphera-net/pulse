@@ -16,7 +16,6 @@ const SiteGoalsTab        = dynamic(() => import('@/components/settings/unified/
 const SiteVisibilityTab   = dynamic(() => import('@/components/settings/unified/tabs/SiteVisibilityTab'))
 const SitePrivacyTab      = dynamic(() => import('@/components/settings/unified/tabs/SitePrivacyTab'))
 const SiteBotSpamTab      = dynamic(() => import('@/components/settings/unified/tabs/SiteBotSpamTab'))
-const SitePrivacyScanTab  = dynamic(() => import('@/components/settings/unified/tabs/SitePrivacyScanTab'))
 const SiteReportsTab      = dynamic(() => import('@/components/settings/unified/tabs/SiteReportsTab'))
 const SiteIntegrationsTab = dynamic(() => import('@/components/settings/unified/tabs/SiteIntegrationsTab'))
 
@@ -26,7 +25,6 @@ const SITE_TAB_PERMISSIONS: Record<string, Permission> = {
   visibility: 'sites.edit',
   privacy: 'sites.edit',
   'bot-spam': 'quarantine.view',
-  'privacy-scan': 'privacy_scan.manage',
   reports: 'reports.manage',
   integrations: 'integrations.manage',
 }
@@ -37,7 +35,6 @@ const TAB_COMPONENTS: Record<string, React.ComponentType<{ siteId: string }>> = 
   visibility:     SiteVisibilityTab,
   privacy:        SitePrivacyTab,
   'bot-spam':     SiteBotSpamTab,
-  'privacy-scan': SitePrivacyScanTab,
   reports:        SiteReportsTab,
   integrations:   SiteIntegrationsTab,
 }
