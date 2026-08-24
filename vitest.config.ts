@@ -13,6 +13,12 @@ export default defineConfig({
     // copies of source + tests and shadow the real suite.
     exclude: [...configDefaults.exclude, '**/.worktrees/**'],
     globals: true,
+    // In CI the test pod requests 500m CPU while os.cpus() reports the full
+    // node, so the default thread-per-core pool oversubscribes ~20:1 and
+    // waitFor budgets starve — the known ResetDataModal timeout at default
+    // workers. Cap the pool to roughly the pod's real allotment; local runs
+    // keep the full pool. (Woodpecker sets CI=woodpecker.)
+    ...(process.env.CI ? { maxWorkers: 4, minWorkers: 1 } : {}),
   },
   resolve: {
     alias: {
