@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useMemo, useState } from 'react'
-import dynamic from 'next/dynamic'
 import { scaleLinear, scaleTime } from 'd3-scale'
 import { curveMonotoneX } from 'd3-shape'
 
@@ -26,7 +25,6 @@ import {
   cdnDayLabelLong,
 } from './cdnMetrics'
 
-const MapView = dynamic(() => import('@/components/dashboard/MapView'), { ssr: false })
 
 // * Same instrument constants as Search/Uptime — the pages are one family.
 const INK = '#b3b1ad'
@@ -626,19 +624,6 @@ export function EdgeCard({ series, overview, regions, regionsTotal, regionsError
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   const railGhost = ghost || empty
 
-  // * Countries for the dotted map: several Bunny POPs resolve to one country
-  // * (two US PoPs, etc) — summing per country before mapping keeps the map
-  // * from dropping duplicates.
-  const mapData = useMemo(() => {
-    if (!regions) return []
-    const byCountry = new Map<string, number>()
-    for (const r of regions) {
-      const c = extractCountryCode(r.region)
-      if (c) byCountry.set(c, (byCountry.get(c) ?? 0) + r.bandwidth)
-    }
-    return Array.from(byCountry, ([country, pageviews]) => ({ country, pageviews }))
-  }, [regions])
-
   const sumCached = useMemo(() => series.reduce((a, p) => a + p.bandwidthCached, 0), [series])
   const sumBw = useMemo(() => series.reduce((a, p) => a + p.bandwidth, 0), [series])
   const sumReq = useMemo(() => series.reduce((a, p) => a + p.requests, 0), [series])
@@ -721,10 +706,7 @@ export function EdgeCard({ series, overview, regions, regionsTotal, regionsError
             <span className="text-xs text-neutral-600">No traffic in this range</span>
           </div>
         ) : (
-          <>
-            <MapView data={mapData} formatValue={fmtBytes} valueLabel={() => ''} />
-            <RegionRows regions={regions} total={regionsTotal} />
-          </>
+          <RegionRows regions={regions} total={regionsTotal} />
         )}
       </div>
 

@@ -34,7 +34,14 @@ vi.mock('@/lib/api/sites', () => ({
 // this smoke render focuses on the tab's OWN composition (panels, danger zone,
 // verification chip, save wiring / partial-PUT body).
 vi.mock('@/components/sites/ScriptSetupBlock', () => ({
-  default: () => <div data-testid="script-setup" />,
+  // The stub exposes onFeaturesChange so the merge contract below can be
+  // driven: clicking it emits exactly the key set the real block still owns.
+  default: ({ onFeaturesChange }: { onFeaturesChange?: (f: Record<string, unknown>) => void }) => (
+    <button
+      data-testid="script-setup"
+      onClick={() => onFeaturesChange?.({ scroll: false, outbound: true, downloads: true, sri: false })}
+    />
+  ),
 }))
 vi.mock('@/components/settings/unified/ResetDataModal', () => ({
   default: ({ open }: { open: boolean }) => (open ? <div data-testid="reset-modal" /> : null),
@@ -150,6 +157,35 @@ describe('SiteGeneralTab (Facet structured panels)', () => {
         name: 'Acme Corp',
         timezone: 'UTC',
         script_features: {},
+      }),
+    )
+  })
+
+  it('preserves legacy script_features keys the block no longer emits (merge, not replace)', async () => {
+    // A pre-excision site still carries the visitor-recognition keys. The
+    // block emits only scroll/outbound/downloads/sri now; a plain replace
+    // would destroy storage/ttl on the first save — the removal's contract
+    // is stored-but-unread, not deleted-on-next-touch.
+    useSite.mockReturnValue(siteState({ script_features: { storage: 'session', ttl: '720', scroll: true } }))
+    render(<SiteGeneralTab siteId="s1" />)
+    await screen.findByDisplayValue('Acme')
+
+    fireEvent.click(screen.getByTestId('script-setup'))
+    await waitFor(() => expect(screen.getByTestId('savebar').dataset.dirty).toBe('true'))
+
+    fireEvent.click(screen.getByRole('button', { name: 'save' }))
+    await waitFor(() =>
+      expect(updateSite).toHaveBeenCalledWith('s1', {
+        name: 'Acme',
+        timezone: 'UTC',
+        script_features: {
+          storage: 'session',
+          ttl: '720',
+          scroll: false,
+          outbound: true,
+          downloads: true,
+          sri: false,
+        },
       }),
     )
   })
