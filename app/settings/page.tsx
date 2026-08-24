@@ -47,15 +47,15 @@ const SITE_ROWS: SectionRow[] = [
   { label: 'Goals', href: '/settings/site/goals', description: 'Track conversions and key actions.', requires: 'goals.manage' },
   { label: 'Visibility', href: '/settings/site/visibility', description: 'Public dashboard and share links.', requires: 'sites.edit' },
   { label: 'Privacy', href: '/settings/site/privacy', description: 'Data collection and retention controls.', requires: 'sites.edit' },
-  { label: 'Bot & Spam', href: '/settings/site/bot-spam', description: 'Filtering and quarantine review.', requires: 'quarantine.view' },
+  { label: 'Bot & Spam', href: '/settings/site/bot-spam', description: 'Filtering and quarantine review.' },
   { label: 'Alerts', href: '/settings/site/reports', description: 'Alert channels for uptime monitoring.', requires: 'reports.manage' },
   { label: 'Integrations', href: '/settings/site/integrations', description: 'Search Console and Bunny CDN.', requires: 'integrations.manage' },
 ]
 
 const ORG_ROWS: SectionRow[] = [
   { label: 'General', href: '/settings/organization/general', description: 'Workspace name and slug.' },
-  { label: 'Members', href: '/settings/organization/members', description: 'Invite and manage your team.', requires: 'team.view' },
-  { label: 'Roles & Permissions', href: '/settings/organization/roles', description: 'Custom roles and access control.', requires: 'roles.manage' },
+  { label: 'Members', href: '/settings/organization/members', description: 'Invite and manage your team.' },
+  { label: 'Roles & Permissions', href: '/settings/organization/roles', description: 'What each role can access.', requires: 'roles.manage' },
   { label: 'Billing', href: '/settings/organization/billing', description: 'Plan, usage, and invoices.', requires: 'billing.view' },
   { label: 'Notifications', href: '/settings/organization/notifications', description: 'Workspace notification categories.', requires: 'notification_settings.manage' },
   { label: 'Audit Log', href: '/settings/organization/audit', description: 'Review workspace activity.', requires: 'audit.view' },
@@ -82,10 +82,8 @@ export default function SettingsLandingPage() {
   const perm: Record<string, boolean> = {
     'sites.edit': useCan('sites.edit'),
     'goals.manage': useCan('goals.manage'),
-    'quarantine.view': useCan('quarantine.view'),
     'reports.manage': useCan('reports.manage'),
     'integrations.manage': useCan('integrations.manage'),
-    'team.view': useCan('team.view'),
     'roles.manage': useCan('roles.manage'),
     'billing.view': useCan('billing.view'),
     'notification_settings.manage': useCan('notification_settings.manage'),

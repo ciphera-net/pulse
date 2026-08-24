@@ -81,10 +81,8 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
   const perm: Record<string, boolean> = {
     'sites.edit': useCan('sites.edit'),
     'goals.manage': useCan('goals.manage'),
-    'quarantine.view': useCan('quarantine.view'),
     'reports.manage': useCan('reports.manage'),
     'integrations.manage': useCan('integrations.manage'),
-    'team.view': useCan('team.view'),
     'roles.manage': useCan('roles.manage'),
     'billing.view': useCan('billing.view'),
     'notification_settings.manage': useCan('notification_settings.manage'),

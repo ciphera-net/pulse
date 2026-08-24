@@ -6,7 +6,7 @@ import { Copy, Check, LinkSimple } from '@phosphor-icons/react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { revokeInviteLink, type InviteLink } from '@/lib/api/organization'
 import { type Role } from '@/lib/api/roles'
-import { useCan } from '@/lib/auth/permissions'
+import { useIsAdminOrOwner } from '@/lib/auth/permissions'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsPanel, PanelRows, EmptyRow } from '@/components/settings/panels'
@@ -19,13 +19,17 @@ interface Props {
   onRevoked: () => void
 }
 
-function LinkRoleBadge({ roleId, roles }: { roleId?: string; roles: Role[] }) {
-  const matched = roles.find(r => r.id === roleId)
-  if (!matched) return null
+function LinkRoleBadge({ role, roles }: { role: string; roles: Role[] }) {
+  // Resolved from link.role — the slug is what the link actually GRANTS now.
+  // metadata.role_id is deliberately not consulted, even as a fallback: the
+  // backend ignores that field since the trim, so a metadata-derived label
+  // would assert a role the link does not grant. Unknown slugs still render
+  // as text rather than vanishing.
+  const matched = roles.find(r => r.slug === role)
   // Admin gets an info tint; everything else (incl. owner, which invite links
   // never carry) stays neutral so the panel never spends orange (spec §2.3).
-  const tone = matched.slug === 'admin' ? 'info' : 'neutral'
-  return <StatusChip tone={tone}>{matched.name}</StatusChip>
+  const tone = role === 'admin' ? 'info' : 'neutral'
+  return <StatusChip tone={tone}>{matched?.name ?? role}</StatusChip>
 }
 
 function CopyLinkButton({ url }: { url?: string }) {
@@ -66,7 +70,7 @@ function CopyLinkButton({ url }: { url?: string }) {
 }
 
 export default function InviteLinksSection({ orgId, links, roles, onRevoked }: Props) {
-  const canManage = useCan('team.manage')
+  const canManage = useIsAdminOrOwner()
   const [confirmRevoke, setConfirmRevoke] = useState<InviteLink | null>(null)
 
   const handleRevoke = (link: InviteLink) => {
@@ -95,7 +99,7 @@ export default function InviteLinksSection({ orgId, links, roles, onRevoked }: P
         <PanelRows>
           {links.map(link => {
             const isExhausted = link.max_uses !== null && link.use_count >= link.max_uses
-            const roleId = link.metadata?.role_id
+            const linkRole = link.role
             const expiresAt = new Date(link.expires_at)
             const isExpired = expiresAt < new Date()
             const isDimmed = isExhausted || isExpired
@@ -121,7 +125,7 @@ export default function InviteLinksSection({ orgId, links, roles, onRevoked }: P
                     ) : (
                       <StatusChip tone="success" dot pulse>Active</StatusChip>
                     )}
-                    <LinkRoleBadge roleId={roleId} roles={roles} />
+                    <LinkRoleBadge role={linkRole} roles={roles} />
                   </div>
                   <div className="mt-1 flex items-center gap-2 tabular-nums text-xs text-muted-foreground">
                     <span>{usageLabel}</span>

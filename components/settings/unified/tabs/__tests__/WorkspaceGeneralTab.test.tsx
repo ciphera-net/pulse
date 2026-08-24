@@ -4,13 +4,16 @@ import * as orgApi from '@/lib/api/organization'
 
 // --- Mocks ---------------------------------------------------------------
 
+const refreshSession = vi.fn().mockResolvedValue(undefined)
 vi.mock('@/lib/auth/context', () => ({
-  useAuth: () => ({ user: { id: 'u_owner', org_id: 'org_1' } }),
+  useAuth: () => ({ user: { id: 'u_owner', org_id: 'org_1' }, refreshSession }),
 }))
 
-let mockCan = true
+let mockIsOwner = true
+let mockIsAdminOrOwner = true
 vi.mock('@/lib/auth/permissions', () => ({
-  useCan: () => mockCan,
+  useIsOwner: () => mockIsOwner,
+  useIsAdminOrOwner: () => mockIsAdminOrOwner,
 }))
 
 vi.mock('@/lib/api/organization', () => ({
@@ -48,7 +51,9 @@ vi.mock('@ciphera-net/facet', () => ({
 import WorkspaceGeneralTab from '../WorkspaceGeneralTab'
 
 beforeEach(() => {
-  mockCan = true
+  mockIsOwner = true
+  mockIsAdminOrOwner = true
+  refreshSession.mockClear()
   vi.clearAllMocks()
   ;(orgApi.getOrganization as any).mockResolvedValue({ name: 'Acme Corp', slug: 'acme-corp' })
   ;(orgApi.getOrganizationMembers as any).mockResolvedValue([])
@@ -86,11 +91,52 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
     await waitFor(() => expect((confirm as HTMLButtonElement).disabled).toBe(false))
   })
 
-  it('hides the danger zone + save bar when the org.delete gate is denied', async () => {
-    mockCan = false
+  it('hides the danger zone + save bar for plain members', async () => {
+    mockIsOwner = false
+    mockIsAdminOrOwner = false
     render(<WorkspaceGeneralTab />)
     await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
     expect(screen.queryByText('Danger zone')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Transfer' })).toBeNull()
+  })
+
+  it('admins can rename but never see the danger zone — two server rules, two gates', async () => {
+    mockIsOwner = false
+    mockIsAdminOrOwner = true
+    render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+    // Rename surfaces follow ciphera-id's owner-OR-admin rule.
+    expect((screen.getByDisplayValue('Acme Corp') as HTMLInputElement).disabled).toBe(false)
+    // Deletion/transfer stay owner-only.
+    expect(screen.queryByRole('button', { name: 'Transfer' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull()
+  })
+
+  it('transfer rotates the token before the reload — the old cookie still says owner', async () => {
+    const { getOrganizationMembers } = await import('@/lib/api/organization')
+    vi.mocked(getOrganizationMembers).mockResolvedValueOnce([
+      { user_id: 'u_next', user_email: 'next@acme.com', role: 'member' } as never,
+    ])
+    // jsdom cannot navigate; capture href assignments instead.
+    const hrefSpy = vi.fn()
+    const originalLocation = window.location
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...originalLocation, set href(v: string) { hrefSpy(v) } },
+    })
+    try {
+      render(<WorkspaceGeneralTab />)
+      await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+      fireEvent.click(screen.getByRole('button', { name: 'Transfer' }))
+      fireEvent.change(screen.getByLabelText('New owner'), { target: { value: 'u_next' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Transfer Ownership' }))
+      await waitFor(() => expect(hrefSpy).toHaveBeenCalledWith('/settings/organization/general'))
+      expect(refreshSession).toHaveBeenCalledTimes(1)
+      // Rotation strictly BEFORE navigation: a bare reload re-hydrates the old
+      // role and the ex-owner's Danger Zone survives it.
+      expect(refreshSession.mock.invocationCallOrder[0]).toBeLessThan(hrefSpy.mock.invocationCallOrder[0])
+    } finally {
+      Object.defineProperty(window, 'location', { configurable: true, value: originalLocation })
+    }
   })
 })

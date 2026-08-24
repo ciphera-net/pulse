@@ -24,7 +24,6 @@ const SITE_TAB_PERMISSIONS: Record<string, Permission> = {
   goals: 'goals.manage',
   visibility: 'sites.edit',
   privacy: 'sites.edit',
-  'bot-spam': 'quarantine.view',
   reports: 'reports.manage',
   integrations: 'integrations.manage',
 }

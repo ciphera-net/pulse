@@ -60,9 +60,9 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Goals', href: '/settings/site/goals', icon: Target, requires: 'goals.manage' },
       { label: 'Visibility', href: '/settings/site/visibility', icon: Eye, requires: 'sites.edit' },
       { label: 'Privacy', href: '/settings/site/privacy', icon: ShieldCheck, requires: 'sites.edit' },
-      // Bot & Spam is viewable by anyone with quarantine.view; the tab gates
-      // mutations on quarantine.manage internally.
-      { label: 'Bot & Spam', href: '/settings/site/bot-spam', icon: Robot, requires: 'quarantine.view' },
+      // Bot & Spam is viewable by every member (the server authorises reads on
+      // membership); the tab gates mutations on quarantine.manage internally.
+      { label: 'Bot & Spam', href: '/settings/site/bot-spam', icon: Robot },
       { label: 'Alerts', href: '/settings/site/reports', icon: ChartBar, requires: 'reports.manage' },
       { label: 'Integrations', href: '/settings/site/integrations', icon: Plugs, requires: 'integrations.manage' },
     ],
@@ -72,7 +72,7 @@ export const NAV_GROUPS: NavGroup[] = [
     section: 'organization',
     tabs: [
       { label: 'General', href: '/settings/organization/general', icon: Buildings },
-      { label: 'Members', href: '/settings/organization/members', icon: UsersThree, requires: 'team.view' },
+      { label: 'Members', href: '/settings/organization/members', icon: UsersThree },
       { label: 'Roles & Permissions', href: '/settings/organization/roles', icon: Key, requires: 'roles.manage' },
       { label: 'Billing', href: '/settings/organization/billing', icon: CreditCard, requires: 'billing.view' },
       { label: 'Notifications', href: '/settings/organization/notifications', icon: Bell, requires: 'notification_settings.manage' },
