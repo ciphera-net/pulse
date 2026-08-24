@@ -1,7 +1,6 @@
 'use client'
 import Link from 'next/link'
 import CategoryTogglesSection from './CategoryTogglesSection'
-import WebhooksSection from './WebhooksSection'
 
 export default function WorkspaceNotificationsTab() {
   return (
@@ -9,7 +8,7 @@ export default function WorkspaceNotificationsTab() {
       {/* Personal preferences moved to Account (spec §5.2). Old links that
           expected the "My preferences" sub-tab here land on the workspace side;
           this points people to their personal settings. Kept from P1; rendered
-          neutral so the tab's single orange stays the Webhooks CTA. */}
+          neutral. */}
       <p className="text-sm text-muted-foreground">
         Looking for your personal notification preferences?{' '}
         <Link
@@ -21,7 +20,6 @@ export default function WorkspaceNotificationsTab() {
       </p>
 
       <CategoryTogglesSection />
-      <WebhooksSection />
     </div>
   )
 }

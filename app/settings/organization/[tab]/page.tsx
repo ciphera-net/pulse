@@ -10,7 +10,7 @@ const WorkspaceGeneralTab = dynamic(() => import('@/components/settings/unified/
 const WorkspaceMembersTab = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceMembersTab'))
 const WorkspaceRolesTab   = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceRolesTab'))
 const WorkspaceBillingTab = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceBillingTab'))
-// * Org Notifications is now workspace-only (categories + webhooks). Personal
+// * Org Notifications is now workspace-only (category toggles). Personal
 // * preferences moved to Account (spec §5.2); the "mine/workspace" mini-router
 // * that used to wrap both is retired.
 const WorkspaceNotificationsTab = dynamic(() => import('@/components/settings/notifications/WorkspaceNotificationsTab'))

@@ -14,7 +14,7 @@ export type Permission =
   | 'billing.view' | 'billing.manage'
   | 'team.view' | 'team.invite' | 'team.manage'
   | 'roles.manage'
-  | 'notification_settings.manage' | 'webhooks.manage'
+  | 'notification_settings.manage'
   | 'audit.view'
   | 'org.delete'
 
@@ -27,7 +27,7 @@ const DEFAULT_ADMIN_PERMS: Permission[] = [
   'quarantine.view', 'quarantine.manage',
   'billing.view',
   'team.view', 'team.invite', 'team.manage',
-  'notification_settings.manage', 'webhooks.manage',
+  'notification_settings.manage',
   'audit.view',
 ]
 
