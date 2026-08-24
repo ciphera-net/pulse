@@ -6,7 +6,6 @@ import { useAuth } from '@/lib/auth/context'
 import { useSites } from '@/lib/swr/sites'
 import { useMembers } from '@/lib/swr/members'
 import { listGoals, type Goal } from '@/lib/api/goals'
-import { listReportSchedules, type ReportSchedule } from '@/lib/api/report-schedules'
 
 const DISMISSED_PREFIX = 'pulse_checklist_dismissed_'
 
@@ -40,18 +39,13 @@ export function useOnboarding() {
   const { members } = useMembers()
   const firstSiteId = sites[0]?.id ?? ''
 
-  // Same SWR keys as the dashboard's useGoals/useReportSchedules so the cache
-  // is shared, but with refreshInterval: 0 — onboarding completion changes on
-  // user action, never in the background, and this hook mounts in the shell on
-  // every page. The dashboard's 60s poll must not ride along app-wide.
+  // Same SWR key as the dashboard's useGoals so the cache is shared, but with
+  // refreshInterval: 0 — onboarding completion changes on user action, never
+  // in the background, and this hook mounts in the shell on every page. The
+  // dashboard's 60s poll must not ride along app-wide.
   const { data: goals } = useSWR<Goal[]>(
     firstSiteId ? ['goals', firstSiteId] : null,
     () => listGoals(firstSiteId),
-    { refreshInterval: 0, revalidateOnFocus: false, dedupingInterval: 30_000 }
-  )
-  const { data: schedules } = useSWR<ReportSchedule[]>(
-    firstSiteId ? ['reportSchedules', firstSiteId] : null,
-    () => listReportSchedules(firstSiteId),
     { refreshInterval: 0, revalidateOnFocus: false, dedupingInterval: 30_000 }
   )
 
@@ -79,8 +73,7 @@ export function useOnboarding() {
     { key: 'site', label: 'Add your first site', href: '/sites/new', completed: sites.length > 0 },
     // Point directly at the settings tabs. The old `/sites/{id}/settings` /
     // `/sites/{id}/goals` targets were a deprecated redirect shim and a dead
-    // 404 respectively; "Enable email reports" also landed on General, not
-    // Reports. The site-settings page resolves the active site from
+    // 404 respectively. The site-settings page resolves the active site from
     // sessionStorage, falling back to the first site (firstSiteId here).
     // `is_verified` is only ever flipped by someone pressing a button, so a
     // correctly installed site read as incomplete forever (FleetCard calls it
@@ -89,7 +82,6 @@ export function useOnboarding() {
     { key: 'script', label: 'Install tracking script', href: firstSiteId ? '/settings/site/general' : undefined, completed: sites.some(s => s.install_status && s.install_status !== 'never_installed'), lockedReason: needsSite },
     { key: 'teammate', label: 'Invite a teammate', href: '/settings/organization/members', completed: members.length > 1, countsTowardCompletion: false },
     { key: 'goal', label: 'Set up a goal', href: firstSiteId ? '/settings/site/goals' : undefined, completed: (goals?.length ?? 0) > 0, lockedReason: needsSite },
-    { key: 'reports', label: 'Enable email reports', href: firstSiteId ? '/settings/site/reports' : undefined, completed: schedules?.some(s => s.channel === 'email' && s.enabled) ?? false, lockedReason: needsSite },
   ]
 
   // Completion counts only the steps that gate it — see countsTowardCompletion.
@@ -104,7 +96,7 @@ export function useOnboarding() {
   // at allDone) would visibly shift the bell/avatar cluster on every load.
   const dataReady =
     !sitesLoading &&
-    (firstSiteId === '' || (goals !== undefined && schedules !== undefined))
+    (firstSiteId === '' || goals !== undefined)
   const visible = Boolean(orgId) && dismissed === false && dataReady && !allDone
 
   return { items, completedCount, total, allDone, nextItem, visible, dismiss }

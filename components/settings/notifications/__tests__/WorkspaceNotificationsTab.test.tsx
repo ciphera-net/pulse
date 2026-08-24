@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
-import type { CategorySettingsResponse, Webhook } from '@/lib/api/notifications-webhooks'
+import type { CategorySettingsResponse } from '@/lib/api/notifications-categories'
 
 // --- Mocks ---------------------------------------------------------------
 
@@ -28,29 +28,14 @@ vi.mock('@ciphera-net/facet', () => ({
   Button: ({ children, isLoading, variant, size, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
-  Input: (props: any) => <input {...props} />,
-  Checkbox: ({ label, checked, onChange }: any) => (
-    <label>
-      <input type="checkbox" checked={checked} onChange={onChange} />
-      {label}
-    </label>
-  ),
-  Modal: ({ isOpen, children, title }: any) =>
-    isOpen ? <div role="dialog" aria-label={title}>{children}</div> : null,
 }))
 
-vi.mock('@/components/ui/ConfirmDialog', () => ({ ConfirmDialog: () => null }))
-
-vi.mock('@/lib/api/notifications-webhooks', () => ({
+vi.mock('@/lib/api/notifications-categories', () => ({
   getCategorySettings: vi.fn(),
   updateCategorySettings: vi.fn(),
-  listWebhooks: vi.fn(),
-  deleteWebhook: vi.fn(),
-  createWebhook: vi.fn(),
-  testWebhook: vi.fn(),
 }))
 
-import * as api from '@/lib/api/notifications-webhooks'
+import * as api from '@/lib/api/notifications-categories'
 import WorkspaceNotificationsTab from '../WorkspaceNotificationsTab'
 
 const CATEGORIES: CategorySettingsResponse = {
@@ -62,17 +47,6 @@ const CATEGORIES: CategorySettingsResponse = {
   ],
 }
 
-const WEBHOOK: Webhook = {
-  id: 'w1',
-  organization_id: 'org1',
-  label: 'Ops channel',
-  subscribed_types: ['billing_'],
-  enabled: true,
-  created_by: 'u1',
-  created_at: '2026-07-18T00:00:00Z',
-  url_masked: 'https://hooks.slack.com/***',
-}
-
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(api.getCategorySettings).mockResolvedValue(CATEGORIES)
@@ -80,7 +54,6 @@ beforeEach(() => {
 
 describe('WorkspaceNotificationsTab', () => {
   it('renders category rows with locked "Always on" categories and the account cross-link', async () => {
-    vi.mocked(api.listWebhooks).mockResolvedValue({ webhooks: [] })
     render(<WorkspaceNotificationsTab />)
 
     await waitFor(() => expect(screen.getByText('Uptime')).toBeInTheDocument())
@@ -100,29 +73,11 @@ describe('WorkspaceNotificationsTab', () => {
     ).toHaveAttribute('href', '/settings/account/notifications')
   })
 
-  it('shows the in-frame empty state when there are no webhooks', async () => {
-    vi.mocked(api.listWebhooks).mockResolvedValue({ webhooks: [] })
-    render(<WorkspaceNotificationsTab />)
-
-    await waitFor(() =>
-      expect(screen.getByText('No webhooks configured')).toBeInTheDocument(),
-    )
-  })
-
-  it('renders webhook rows with an always-visible Delete action', async () => {
-    vi.mocked(api.listWebhooks).mockResolvedValue({ webhooks: [WEBHOOK] })
-    render(<WorkspaceNotificationsTab />)
-
-    await waitFor(() => expect(screen.getByText('Ops channel')).toBeInTheDocument())
-    expect(screen.getByText('https://hooks.slack.com/***')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
-  })
-
-  it('surfaces a load failure as a danger banner with a retry action', async () => {
-    vi.mocked(api.listWebhooks).mockRejectedValue(new Error('Boom failure'))
+  it('surfaces a category-settings load failure as an error state with a retry action', async () => {
+    vi.mocked(api.getCategorySettings).mockRejectedValue(new Error('Boom failure'))
     render(<WorkspaceNotificationsTab />)
 
     await waitFor(() => expect(screen.getByText('Boom failure')).toBeInTheDocument())
-    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
   })
 })

@@ -107,7 +107,7 @@ function useHomePageMeta(): PageMeta {
       visibility: { label: 'Visibility', icon: Eye },
       privacy: { label: 'Privacy', icon: ShieldCheck },
       'bot-spam': { label: 'Bot & Spam', icon: Robot },
-      reports: { label: 'Reports', icon: ChartBar },
+      reports: { label: 'Alerts', icon: ChartBar },
       integrations: { label: 'Integrations', icon: PlugsIcon },
       workspace: { label: 'General', icon: Buildings },
       members: { label: 'Members', icon: UsersThree },

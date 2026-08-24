@@ -6,7 +6,7 @@ import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels
 import { StatusChip } from '@/components/settings/StatusChip'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
-import { getCategorySettings, updateCategorySettings, type CategorySetting } from '@/lib/api/notifications-webhooks'
+import { getCategorySettings, updateCategorySettings, type CategorySetting } from '@/lib/api/notifications-categories'
 
 export default function CategoryTogglesSection() {
   const [settings, setSettings] = useState<Record<string, boolean> | null>(null)
