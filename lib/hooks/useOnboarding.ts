@@ -15,6 +15,15 @@ export interface OnboardingItem {
   label: string
   href?: string
   completed: boolean
+  /**
+   * False for steps that are worth offering but must not gate completion.
+   * A one-person workspace cannot invite a teammate, so counting that step
+   * left every solo org stuck at 4/5 forever — a checklist whose only exit
+   * was the dismiss X. Offered, not required.
+   */
+  countsTowardCompletion?: boolean
+  /** Why this step cannot be taken yet. Set only while it is unreachable. */
+  lockedReason?: string
 }
 
 /**
@@ -61,6 +70,11 @@ export function useOnboarding() {
     mutateDismissed(true, false)
   }, [orgId, mutateDismissed])
 
+  // Before a site exists these steps have nowhere to go. They used to render
+  // identically to the live one, so a new customer clicked them and nothing
+  // happened; now they say what unlocks them.
+  const needsSite = firstSiteId ? undefined : 'add a site first'
+
   const items: OnboardingItem[] = [
     { key: 'site', label: 'Add your first site', href: '/sites/new', completed: sites.length > 0 },
     // Point directly at the settings tabs. The old `/sites/{id}/settings` /
@@ -68,16 +82,22 @@ export function useOnboarding() {
     // 404 respectively; "Enable email reports" also landed on General, not
     // Reports. The site-settings page resolves the active site from
     // sessionStorage, falling back to the first site (firstSiteId here).
-    { key: 'script', label: 'Install tracking script', href: firstSiteId ? '/settings/site/general' : undefined, completed: sites.some(s => s.is_verified) },
-    { key: 'teammate', label: 'Invite a teammate', href: '/settings/organization/members', completed: members.length > 1 },
-    { key: 'goal', label: 'Set up a goal', href: firstSiteId ? '/settings/site/goals' : undefined, completed: (goals?.length ?? 0) > 0 },
-    { key: 'reports', label: 'Enable email reports', href: firstSiteId ? '/settings/site/reports' : undefined, completed: schedules?.some(s => s.channel === 'email' && s.enabled) ?? false },
+    // `is_verified` is only ever flipped by someone pressing a button, so a
+    // correctly installed site read as incomplete forever (FleetCard calls it
+    // "the known false green"). The server's derived install status is what
+    // actually knows whether events arrived.
+    { key: 'script', label: 'Install tracking script', href: firstSiteId ? '/settings/site/general' : undefined, completed: sites.some(s => s.install_status && s.install_status !== 'never_installed'), lockedReason: needsSite },
+    { key: 'teammate', label: 'Invite a teammate', href: '/settings/organization/members', completed: members.length > 1, countsTowardCompletion: false },
+    { key: 'goal', label: 'Set up a goal', href: firstSiteId ? '/settings/site/goals' : undefined, completed: (goals?.length ?? 0) > 0, lockedReason: needsSite },
+    { key: 'reports', label: 'Enable email reports', href: firstSiteId ? '/settings/site/reports' : undefined, completed: schedules?.some(s => s.channel === 'email' && s.enabled) ?? false, lockedReason: needsSite },
   ]
 
-  const completedCount = items.filter(i => i.completed).length
-  const total = items.length
+  // Completion counts only the steps that gate it — see countsTowardCompletion.
+  const counted = items.filter(i => i.countsTowardCompletion !== false)
+  const completedCount = counted.filter(i => i.completed).length
+  const total = counted.length
   const allDone = completedCount === total
-  const nextItem = items.find(i => !i.completed)
+  const nextItem = counted.find(i => !i.completed) ?? items.find(i => !i.completed)
 
   // Gate visibility on the data actually being there. The chip is top-bar
   // chrome: appearing with a provisional 0/5 and then settling (or vanishing

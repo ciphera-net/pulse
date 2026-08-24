@@ -72,6 +72,10 @@ function getChannelIcon(channel: string) {
 }
 
 export default function TopReferrers({ metric = 'pageviews', referrers, channels = [], collectReferrers = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter }: TopReferrersProps) {
+  // A row that filters is a real control; one that cannot is inert text.
+  // Same conditional-tag pattern as RealtimeVisitorsPopover, hoisted here
+  // because the condition is a prop and every row in this file shares it.
+  const Row = onFilter ? 'button' : 'div'
   const [view, setView] = useState<'referrers' | 'channels'>('referrers')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalSearch, setModalSearch] = useState('')
@@ -187,10 +191,10 @@ export default function TopReferrers({ metric = 'pageviews', referrers, channels
                 {displayedReferrers.map((ref) => {
                   const barWidth = rowBarWidth(metric, ref, displayedReferrers)
                   return (
-                    <div
+                    <Row
                       key={ref.referrer}
-                      onClick={() => onFilter?.({ dimension: 'referrer', operator: 'is', values: ref.allReferrers ?? [ref.referrer] })}
-                      className={`interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
+                      {...(onFilter ? { type: 'button' as const, onClick: () => onFilter?.({ dimension: 'referrer', operator: 'is', values: ref.allReferrers ?? [ref.referrer] }) } : {})}
+                      className={`interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
                     >
                       <div
                         className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-none transition-[width,background-color] ease-apple"
@@ -201,7 +205,7 @@ export default function TopReferrers({ metric = 'pageviews', referrers, channels
                         <span className="truncate" title={getReferrerDisplayName(ref.referrer)}>{getReferrerDisplayName(ref.referrer)}</span>
                       </div>
                       <MetricRowStat metric={metric} row={ref} totals={totals} />
-                    </div>
+                    </Row>
                   )
                 })}
                 {Array.from({ length: emptySlots }).map((_, i) => (
@@ -223,10 +227,10 @@ export default function TopReferrers({ metric = 'pageviews', referrers, channels
                 {displayedChannels.map((ch) => {
                   const barWidth = rowBarWidth(metric, ch, displayedChannels)
                   return (
-                    <div
+                    <Row
                       key={ch.channel}
-                      onClick={() => onFilter?.({ dimension: 'channel', operator: 'is', values: [ch.channel] })}
-                      className={`interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
+                      {...(onFilter ? { type: 'button' as const, onClick: () => onFilter?.({ dimension: 'channel', operator: 'is', values: [ch.channel] }) } : {})}
+                      className={`interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
                     >
                       <div
                         className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-none transition-[width,background-color] ease-apple"
@@ -237,7 +241,7 @@ export default function TopReferrers({ metric = 'pageviews', referrers, channels
                         <span className="truncate" title={ch.channel}>{ch.channel}</span>
                       </div>
                       <MetricRowStat metric={metric} row={ch} totals={totals} />
-                    </div>
+                    </Row>
                   )
                 })}
                 {Array.from({ length: channelEmptySlots }).map((_, i) => (
@@ -294,17 +298,17 @@ export default function TopReferrers({ metric = 'pageviews', referrers, channels
                 estimateSize={36}
                 className="pr-2"
                 renderItem={(ref) => (
-                  <div
+                  <Row
                     key={ref.referrer}
-                    onClick={() => { if (onFilter) { onFilter({ dimension: 'referrer', operator: 'is', values: ref.allReferrers ?? [ref.referrer] }); setIsModalOpen(false) } }}
-                    className={`interactive-row flex items-center justify-between h-9 group rounded-none px-2${onFilter ? ' cursor-pointer' : ''}`}
+                    {...(onFilter ? { type: 'button' as const, onClick: () => { if (onFilter) { onFilter({ dimension: 'referrer', operator: 'is', values: ref.allReferrers ?? [ref.referrer] }); setIsModalOpen(false) } } } : {})}
+                    className={`interactive-row w-full text-left flex items-center justify-between h-9 group rounded-none px-2${onFilter ? ' cursor-pointer' : ''}`}
                   >
                     <div className="flex-1 truncate text-white flex items-center gap-3">
                       {renderReferrerIcon(ref.referrer)}
                       <span className="truncate" title={getReferrerDisplayName(ref.referrer)}>{getReferrerDisplayName(ref.referrer)}</span>
                     </div>
                     <MetricRowStat metric={metric} row={ref} totals={totals} />
-                  </div>
+                  </Row>
                 )}
               />
             ) : (

@@ -20,8 +20,11 @@ vi.mock('@/lib/api/organization', () => ({
   completeOnboarding: vi.fn().mockResolvedValue({}),
 }))
 
-vi.mock('@/lib/api/stats', () => ({
-  getRealtime: vi.fn().mockResolvedValue({ visitors: 0 }),
+// The page no longer polls /realtime — it reads the server's install status
+// through InstallStateBlock. Mock the hook rather than the whole SWR module's
+// import chain.
+vi.mock('@/lib/swr/dashboard', () => ({
+  useInstallStatus: () => ({ data: undefined, mutate: vi.fn() }),
 }))
 
 const getSubscription = vi.fn()

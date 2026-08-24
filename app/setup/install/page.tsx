@@ -1,61 +1,39 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSetup } from '@/lib/setup/context'
 import { preservePlanParams } from '@/lib/setup/utils'
 import { verifySite } from '@/lib/api/sites'
-import { getRealtime } from '@/lib/api/stats'
-import { Button, Spinner, CheckCircleIcon, GlobeIcon } from '@ciphera-net/facet'
+import { Button, CheckCircleIcon, GlobeIcon } from '@ciphera-net/facet'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
-
-type VerificationState = 'idle' | 'checking' | 'success' | 'timeout'
+import InstallStateBlock from '@/components/setup/InstallStateBlock'
 
 export default function SetupInstallPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { site, completeStep } = useSetup()
-  const [verifyState, setVerifyState] = useState<VerificationState>('idle')
-  const cancelledRef = useRef(false)
 
   const handleContinue = () => {
     completeStep('install')
     router.push(`/setup/plan${preservePlanParams(searchParams)}`)
   }
 
-  const startVerification = useCallback(async () => {
-    if (!site) return
-    cancelledRef.current = false
-    setVerifyState('checking')
-
-    for (let attempt = 0; attempt < 15; attempt++) {
-      if (cancelledRef.current) return
-
-      try {
-        const data = await getRealtime(site.id)
-        if (cancelledRef.current) return
-
-        if (data && data.visitors > 0) {
-          await verifySite(site.id)
-          setVerifyState('success')
-          return
-        }
-      } catch {
-        // no data yet
-      }
-
-      if (attempt < 14) {
-        await new Promise((r) => setTimeout(r, 2000))
-      }
-    }
-
-    if (!cancelledRef.current) setVerifyState('timeout')
+  // An observed event IS the verification a human used to give by pressing
+  // "Verify installation", so the flag flips itself the moment the server
+  // reports the site reporting. `is_verified` still drives the settings
+  // status chip and the integrations gate, so it must keep being set — it
+  // just should not depend on someone noticing a button.
+  const verifiedRef = useRef(false)
+  const markVerified = useCallback(() => {
+    if (!site || verifiedRef.current) return
+    verifiedRef.current = true
+    void verifySite(site.id).catch(() => {
+      // Non-fatal: the install state is already correct on screen, and the
+      // flag is re-derivable. Never block the wizard on it.
+      verifiedRef.current = false
+    })
   }, [site])
-
-  const cancelVerification = useCallback(() => {
-    cancelledRef.current = true
-    setVerifyState('idle')
-  }, [])
 
   return (
     <>
@@ -79,53 +57,27 @@ export default function SetupInstallPage() {
 
       {site && (
         <div className="mb-6">
+          {/* `siteId` is deliberately NOT passed: ScriptSetupBlock mounts its
+              own InstallVerify panel when it gets one, and this page states
+              the install state itself, below. Passing it here would put two
+              live status panels on one screen. */}
           <ScriptSetupBlock site={site} />
         </div>
       )}
 
-      {verifyState === 'idle' && site && (
+      {/* The install state, from the server's own install status. This page
+          used to poll /realtime 15x2s, but only if the reader pressed
+          "Verify installation" — pressing "Continue" or "Skip for now" gave
+          no feedback at all. */}
+      {site && (
+        <InstallStateBlock siteId={site.id} domain={site.domain} onFirstEvent={markVerified} />
+      )}
+
+      {site && (
         <div className="flex gap-3">
-          <Button onClick={startVerification} variant="secondary" className="flex-1 h-11 md:h-9">
-            Verify installation
-          </Button>
           <Button onClick={handleContinue} className="flex-1 h-11 md:h-9">
             Continue
           </Button>
-        </div>
-      )}
-
-      {verifyState === 'checking' && (
-        <div className="text-center space-y-3">
-          <div className="flex items-center justify-center gap-2 text-neutral-400">
-            <Spinner size="sm" />
-            <span className="text-sm">Listening for the first pageview...</span>
-          </div>
-          <button type="button" onClick={cancelVerification} className="text-xs text-neutral-600 hover:text-neutral-400">
-            Cancel
-          </button>
-        </div>
-      )}
-
-      {verifyState === 'success' && (
-        <div className="text-center space-y-4">
-          <p className="text-sm text-emerald-400 font-medium">Script verified — data is flowing!</p>
-          <Button onClick={handleContinue} className="w-full h-11 md:h-9">Continue</Button>
-        </div>
-      )}
-
-      {verifyState === 'timeout' && (
-        <div className="text-center space-y-4">
-          <p className="text-sm text-neutral-400">
-            No data received yet. You can continue and check back later.
-          </p>
-          <div className="flex gap-3">
-            <Button onClick={startVerification} variant="secondary" className="flex-1 h-11 md:h-9">
-              Try again
-            </Button>
-            <Button onClick={handleContinue} className="flex-1 h-11 md:h-9">
-              Continue anyway
-            </Button>
-          </div>
         </div>
       )}
 
