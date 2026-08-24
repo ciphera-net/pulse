@@ -13,6 +13,7 @@ import { TierBadge } from '@/components/integrations/TierBadge'
 import {
   integrations,
   getIntegration,
+  isInstallUnsupported,
   categoryLabels,
   supportTierDescriptions,
   integrationDocsUrl,
@@ -64,6 +65,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 // * tag with a placeholder domain — the in-app snippet generator produces the
 // * customized/SRI form. Framework-idiomatic wiring (snippet.code) is shown when
 // * the platform has it.
+// ! The fallback below is only reachable for platforms that CAN take a head
+// ! snippet. Platforms flagged `snippet.unsupported` never render an install
+// ! block at all (see `unsupported` in the component) — printing the universal
+// ! tag under a "this platform forbids custom scripts" note made four guides
+// ! contradict themselves.
 function renderSnippet(code: string | undefined): string {
   if (code) return code.replace(/DOMAIN/g, 'example.com')
   return '<script defer data-domain="example.com" src="https://js.ciphera.net/script.js"></script>'
@@ -83,6 +89,10 @@ export default async function IntegrationGuidePage({ params }: { params: Promise
   const hasNote = Boolean(integration.snippet?.note)
   const caveat =
     integration.supportTier === 'plan-gated' || integration.supportTier === 'special-handling'
+  // * The platform forbids custom scripts outright: show the note, and nothing
+  // * that looks like an install path. The registry guarantees a note exists
+  // * whenever this is set, so the page can never end up silently empty.
+  const unsupported = isInstallUnsupported(integration)
 
   const breadcrumb = {
     '@context': 'https://schema.org',
@@ -132,52 +142,58 @@ export default async function IntegrationGuidePage({ params }: { params: Promise
           </p>
         </div>
 
-        {/* Caveat banner for plan-gated / special-handling platforms. */}
-        {caveat && hasNote && (
+        {/* Caveat banner for plan-gated / special-handling platforms — and the
+            only block an unsupported platform gets. */}
+        {(caveat || unsupported) && hasNote && (
           <div className="mt-8 max-w-3xl rounded-none border border-amber-500/25 bg-amber-500/5 p-5">
             <p className="mb-1 text-[11px] uppercase tracking-[0.08em] text-amber-400">
-              Before you start
+              {unsupported ? 'Not supported' : 'Before you start'}
             </p>
             <p className="text-sm leading-relaxed text-foreground">{integration.snippet?.note}</p>
           </div>
         )}
 
-        {/* Install snippet or plugin CTA. */}
-        <div className="mt-8 max-w-3xl">
-          {isPlugin ? (
-            <div className="rounded-none border border-border bg-card p-6">
-              <p className="text-sm leading-relaxed text-foreground">{integration.snippet?.note}</p>
-              {integration.snippet?.cta && (
-                <a
-                  href={integration.snippet.cta.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-4 inline-flex items-center gap-2 rounded-none bg-brand-orange px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-orange/90"
-                >
-                  {integration.snippet.cta.text}
-                  <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
-                </a>
-              )}
-            </div>
-          ) : (
-            <div className="rounded-none border border-border overflow-hidden">
-              <div className="h-1 bg-gradient-to-r from-brand-orange via-brand-orange/60 to-transparent" />
-              <div className="bg-neutral-950 p-5">
-                <p className="mb-3 text-xs text-muted-foreground">
-                  {integration.snippet?.label ?? 'Add to your site’s <head>'}
-                </p>
-                <pre className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-[13px] leading-relaxed text-neutral-300">
-                  {renderSnippet(integration.snippet?.code)}
-                </pre>
+        {/* Install snippet or plugin CTA — omitted entirely when the platform
+            forbids custom scripts, so the note above is never contradicted by a
+            copy-paste install block (and the data-domain instructions below it
+            never describe a tag that cannot be added). */}
+        {!unsupported && (
+          <div className="mt-8 max-w-3xl">
+            {isPlugin ? (
+              <div className="rounded-none border border-border bg-card p-6">
+                <p className="text-sm leading-relaxed text-foreground">{integration.snippet?.note}</p>
+                {integration.snippet?.cta && (
+                  <a
+                    href={integration.snippet.cta.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 inline-flex items-center gap-2 rounded-none bg-brand-orange px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-orange/90"
+                  >
+                    {integration.snippet.cta.text}
+                    <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
+                  </a>
+                )}
               </div>
-            </div>
-          )}
-          <p className="mt-3 text-xs text-muted-foreground">
-            Set <code className="font-mono text-neutral-400">data-domain</code> to the domain you
-            registered in Pulse. Configure feature toggles, SRI, and storage from the install panel
-            in your dashboard.
-          </p>
-        </div>
+            ) : (
+              <div className="rounded-none border border-border overflow-hidden">
+                <div className="h-1 bg-gradient-to-r from-brand-orange via-brand-orange/60 to-transparent" />
+                <div className="bg-neutral-950 p-5">
+                  <p className="mb-3 text-xs text-muted-foreground">
+                    {integration.snippet?.label ?? 'Add to your site’s <head>'}
+                  </p>
+                  <pre className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-[13px] leading-relaxed text-neutral-300">
+                    {renderSnippet(integration.snippet?.code)}
+                  </pre>
+                </div>
+              </div>
+            )}
+            <p className="mt-3 text-xs text-muted-foreground">
+              Set <code className="font-mono text-neutral-400">data-domain</code> to the domain you
+              registered in Pulse. Configure feature toggles, SRI, and storage from the install panel
+              in your dashboard.
+            </p>
+          </div>
+        )}
 
         {/* Guides + CSP. */}
         <div className="mt-8 flex max-w-3xl flex-wrap items-center gap-4">
