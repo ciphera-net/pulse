@@ -226,11 +226,12 @@ export default function Campaigns({ metric = 'visitors', siteId, dateRange, filt
               {displayedData.map((item) => {
                 const barWidth = rowBarWidth(metric, item, displayedData, 'visitors')
                 const filterDimension = `utm_${activeTab}`
+                const Row = onFilter ? 'button' : 'div'
                 return (
-                  <div
+                  <Row
                     key={item.name}
-                    onClick={() => onFilter?.({ dimension: filterDimension, operator: 'is', values: [item.name] })}
-                    className={`interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
+                    {...(onFilter ? { type: 'button' as const, onClick: () => onFilter?.({ dimension: filterDimension, operator: 'is', values: [item.name] }) } : {})}
+                    className={`interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
                   >
                     <div
                       className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-none transition-[width,background-color] ease-apple"
@@ -245,7 +246,7 @@ export default function Campaigns({ metric = 'visitors', siteId, dateRange, filt
                       </div>
                     </div>
                     <MetricRowStat metric={metric} row={item} totals={totals} />
-                  </div>
+                  </Row>
                 )
               })}
               {Array.from({ length: emptySlots }).map((_, i) => (
@@ -296,6 +297,7 @@ export default function Campaigns({ metric = 'visitors', siteId, dateRange, filt
               const search = modalSearch.toLowerCase()
               return item.source.toLowerCase().includes(search) || (item.medium || '').toLowerCase().includes(search) || (item.campaign || '').toLowerCase().includes(search) || (item.term || '').toLowerCase().includes(search) || (item.content || '').toLowerCase().includes(search)
             })
+            const Row = onFilter ? 'button' : 'div'
             return (
               <>
                 <div className="flex items-center justify-end mb-2">
@@ -311,10 +313,10 @@ export default function Campaigns({ metric = 'visitors', siteId, dateRange, filt
                   estimateSize={36}
                   className="pr-2"
                   renderItem={(item) => (
-                    <div
+                    <Row
                       key={`${item.source}|${item.medium}|${item.campaign}`}
-                      onClick={() => { if (onFilter) { onFilter({ dimension: 'utm_source', operator: 'is', values: [item.source] }); setIsModalOpen(false) } }}
-                      className={`interactive-row flex items-center justify-between py-2 group rounded-none px-2${onFilter ? ' cursor-pointer' : ''}`}
+                      {...(onFilter ? { type: 'button' as const, onClick: () => { if (onFilter) { onFilter({ dimension: 'utm_source', operator: 'is', values: [item.source] }); setIsModalOpen(false) } } } : {})}
+                      className={`interactive-row w-full text-left flex items-center justify-between py-2 group rounded-none px-2${onFilter ? ' cursor-pointer' : ''}`}
                     >
                       <div className="flex-1 flex items-center gap-3 min-w-0">
                         {renderSourceIcon(item.source)}
@@ -337,7 +339,7 @@ export default function Campaigns({ metric = 'visitors', siteId, dateRange, filt
                           </span>
                         )}
                       </div>
-                    </div>
+                    </Row>
                   )}
                 />
               </>
