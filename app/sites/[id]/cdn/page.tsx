@@ -37,7 +37,7 @@ export default function CDNPage() {
   // still a placeholder range, just in a different frame.
   const effectiveRange = fetchableRange(periodReady, period === 'custom' ? dateRange : presetUtcRange(dateRange))
 
-  const { data: bunnyStatus } = useBunnyStatus(siteId)
+  const { data: bunnyStatus, error: bunnyStatusError, mutate: retryBunnyStatus } = useBunnyStatus(siteId)
   const connected = !!bunnyStatus?.connected
   const { data: site } = useSite(siteId)
   const {
@@ -66,6 +66,28 @@ export default function CDNPage() {
     const domain = site?.domain
     document.title = domain ? `CDN · ${domain} | Pulse` : 'CDN | Pulse'
   }, [site?.domain])
+
+  // A DEAD status check is a failure, stated as one — `undefined + error`
+  // means SWR has given up, not "loading", and the skeleton must not render
+  // forever. Checked BEFORE the skeleton gate. Same device as the dashboard
+  // and Search: ErrorCard + Retry, header preserved.
+  if (bunnyStatus === undefined && bunnyStatusError) {
+    return (
+      <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
+        <div className="mb-6">
+          <h1 className="text-lg font-semibold text-white">CDN</h1>
+          <p className="mt-1 text-sm text-neutral-400">Bunny bandwidth, requests, cache performance and errors</p>
+        </div>
+        <ErrorCard
+          title="Couldn’t check the Bunny connection"
+          description="The connection status request failed. Your data is intact — this is a loading problem, not a data problem."
+          onRetry={() => {
+            void retryBunnyStatus()
+          }}
+        />
+      </div>
+    )
+  }
 
   if (bunnyStatus === undefined || (connected && overview === undefined && overviewLoading)) {
     return <CDNSkeleton />
