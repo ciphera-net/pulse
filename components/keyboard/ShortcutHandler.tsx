@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import { isTourActive } from '@/lib/tour/constants'
 
 type SitePage = 'dashboard' | 'journeys' | 'funnels' | 'search' | 'cdn' | 'uptime' | 'pagespeed'
 
@@ -46,6 +47,12 @@ export function ShortcutHandler({
   useEffect(() => {
     function handler(e: KeyboardEvent) {
       const target = e.target as HTMLElement
+
+      // While the product tour owns the screen, these shortcuts would open
+      // surfaces beneath its overlay (app modals are z-[100]; the overlay is
+      // 10000) and arrive click-dead. Esc stays with driver: it closes the
+      // tour.
+      if (isTourActive()) return
 
       // ⌘K / Ctrl+K — open command palette (works even in inputs)
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {

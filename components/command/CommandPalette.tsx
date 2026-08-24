@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import {
   SquaresFour,
   Path,
@@ -29,7 +29,9 @@ import {
   Lock,
   DeviceMobile,
   BellRinging,
+  Compass,
 } from '@phosphor-icons/react'
+import { TOUR_MD_QUERY, TOUR_REQUEST_KEY, TOUR_START_EVENT } from '@/lib/tour/constants'
 import { useSites } from '@/lib/swr/sites'
 import { useCan } from '@/lib/auth/permissions'
 import { SiteFavicon } from '@/components/sites/SiteFavicon'
@@ -96,6 +98,7 @@ const PLACEHOLDERS = [
 
 export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPaletteProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const { sites } = useSites()
 
   // Permission gating for the Settings group — the palette was the one entry
@@ -114,6 +117,19 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
   const [search, setSearch] = useState('')
   const [placeholderIdx, setPlaceholderIdx] = useState(0)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // The tour is md+ only (owner ruling) — below that the action would be a
+  // silent no-op, so it isn't offered at all. Lazy-initialized so the effect
+  // only subscribes to changes (no synchronous set on mount).
+  const [tourAvailable, setTourAvailable] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(TOUR_MD_QUERY).matches
+  )
+  useEffect(() => {
+    const mq = window.matchMedia(TOUR_MD_QUERY)
+    const update = () => setTourAvailable(mq.matches)
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
 
   useEffect(() => {
     if (open && !search) {
@@ -194,6 +210,33 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
             <Plus size={16} weight="regular" className="opacity-60" aria-hidden="true" />
             <span><HighlightMatch text="New site" query={search} /></span>
           </CommandItem>
+          {currentSiteId && tourAvailable && (
+            <CommandItem
+              value="action-product-tour"
+              onSelect={() => {
+                // The tour lives on the site dashboard. Already there: start
+                // in place — navigating would drop the ?period range and
+                // remount the page under the tour it just requested. From
+                // anywhere else, a TIMESTAMPED one-shot survives the
+                // navigation; the controller honours it only while fresh
+                // (see lib/tour/constants.ts).
+                if (pathname === `/sites/${currentSiteId}`) {
+                  window.dispatchEvent(new Event(TOUR_START_EVENT))
+                  onOpenChange(false)
+                  return
+                }
+                try {
+                  sessionStorage.setItem(TOUR_REQUEST_KEY, String(Date.now()))
+                } catch {
+                  // storage unavailable — the tour simply won't auto-fire
+                }
+                go(`/sites/${currentSiteId}`)
+              }}
+            >
+              <Compass size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+              <span><HighlightMatch text="Take the product tour" query={search} /></span>
+            </CommandItem>
+          )}
           <CommandItem value="action-integrations" onSelect={() => go('/integrations')}>
             <Plugs size={16} weight="regular" className="opacity-60" aria-hidden="true" />
             <span><HighlightMatch text="Browse integrations" query={search} /></span>

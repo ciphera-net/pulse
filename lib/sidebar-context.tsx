@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import { isTourActive } from '@/lib/tour/constants'
 
 const SIDEBAR_KEY = 'pulse_sidebar_collapsed'
 
@@ -47,6 +48,10 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      // The product tour holds the rail open for its run; a mid-tour collapse
+      // would strand driver's spotlight 192px from its anchor (driver only
+      // re-measures on resize/scroll).
+      if (isTourActive()) return
       if (e.key === '[' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault()
         toggle()
