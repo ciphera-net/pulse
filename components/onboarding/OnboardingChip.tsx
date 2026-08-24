@@ -17,7 +17,7 @@ import Link from 'next/link'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { useOnboarding } from '@/lib/hooks/useOnboarding'
 import { XIcon, CheckCircleIcon } from '@ciphera-net/facet'
-import { Circle as CircleIcon } from '@phosphor-icons/react'
+import { Circle as CircleIcon, LockSimple as LockSimpleIcon } from '@phosphor-icons/react'
 
 const PANEL_WIDTH = 288 // w-72
 
@@ -150,18 +150,36 @@ export default function OnboardingChip() {
 
           <div className="p-3 space-y-1">
             {items.map((item) => {
+              // A step with nowhere to go is LOCKED, not merely unfinished.
+              // It used to render identically to a live row — same colour,
+              // same hover — so day-0 readers clicked four rows that did
+              // nothing. The lock, the muted text and the reason say why.
+              const locked = !item.completed && !item.href
+              const optional = item.countsTowardCompletion === false && !item.completed
               const inner = (
                 <div className={`flex items-center gap-2.5 px-2 py-2 rounded-none text-sm transition-colors ${
                   item.completed
                     ? 'text-neutral-500'
-                    : 'text-neutral-300 hover:text-white hover:bg-neutral-800/50'
+                    : locked
+                      ? 'text-neutral-600 cursor-default'
+                      : 'text-neutral-300 hover:text-white hover:bg-neutral-800/50'
                 }`}>
                   {item.completed ? (
                     <CheckCircleIcon className="h-4 w-4 text-emerald-400 shrink-0" />
+                  ) : locked ? (
+                    <LockSimpleIcon className="h-4 w-4 text-neutral-700 shrink-0" weight="fill" aria-hidden />
                   ) : (
                     <CircleIcon className="h-4 w-4 text-neutral-600 shrink-0" />
                   )}
                   <span className={item.completed ? 'line-through' : ''}>{item.label}</span>
+                  {locked && item.lockedReason && (
+                    <span className="ml-auto shrink-0 text-[11px] text-neutral-600">{item.lockedReason}</span>
+                  )}
+                  {optional && (
+                    <span className="ml-auto shrink-0 rounded-none border border-neutral-800 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-neutral-500">
+                      optional
+                    </span>
+                  )}
                 </div>
               )
 
