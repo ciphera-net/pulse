@@ -42,6 +42,27 @@ describe('billing_plan_renewed renderer', () => {
   })
 })
 
+describe('billing_pageview_100 renderer', () => {
+  it('states the ruled overage mechanics, never a hard cut-off', () => {
+    // Fires at 100% of PLAN limit, where collection has NOT stopped (WS1.1
+    // ruling: continues to 2x, then pauses). "No longer being recorded" is
+    // true only at the hard ceiling and belongs to the ceiling banner.
+    const r: Receipt = {
+      user_id: 'u', event_id: 'e', delivered_at: null, read_at: null,
+      event: {
+        id: 'e', organization_id: 'o', type: 'billing_pageview_100',
+        payload: { limit_type: 'pageviews', percent_used: 100 },
+        link_url: null, link_label_key: null,
+        created_at: '2026-04-15T12:00:00Z', expires_at: '2026-07-14T12:00:00Z',
+      },
+    }
+    const { title, body } = renderNotification(r)
+    expect(title).toBe('Pageview limit reached')
+    expect(body).toMatch(/Collection continues up to 2x/)
+    expect(body).not.toMatch(/no longer being recorded/)
+  })
+})
+
 describe('billing_usage_limit renderer', () => {
   it('renders percent and limit type', () => {
     const r: Receipt = {
