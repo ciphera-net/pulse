@@ -160,7 +160,7 @@ export default function UptimePage() {
     extraPresets: UPTIME_PICKER_PRESETS,
   })
 
-  const { data: site, mutate: mutateSite } = useSite(siteId)
+  const { data: site, error: siteError, mutate: mutateSite } = useSite(siteId)
 
   // * The API reads SITE-timezone calendar days; useUrlDateRange builds
   // * VIEWER-local ones. Preset windows re-anchor to the site's current day
@@ -216,7 +216,31 @@ export default function UptimePage() {
   const fadeClass = useSkeletonFade(showSkeleton)
 
   if (showSkeleton) return <UptimeSkeleton />
-  if (!site) return <div className="p-8 text-neutral-500">Site not found</div>
+  // F8, propagated from the dashboard: a failed site request is a FAILURE,
+  // stated as one — only an actual 404 earns "Site not found". Anything else
+  // gets the estate's one error device; still in flight keeps the skeleton.
+  if (!site) {
+    const status = (siteError as { status?: number } | undefined)?.status
+    if (siteError && status !== 404) {
+      return (
+        <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
+          <div className="mb-6">
+            <h1 className="text-lg font-semibold text-white">Uptime</h1>
+            <p className="mt-1 text-sm text-neutral-400">Availability, response time and incident history</p>
+          </div>
+          <ErrorCard
+            title="Couldn’t load uptime"
+            description="The site request failed. Your monitoring is unaffected — this is a loading problem, not a data problem."
+            onRetry={() => {
+              void mutateSite()
+            }}
+          />
+        </div>
+      )
+    }
+    if (!siteError) return <UptimeSkeleton />
+    return <div className="p-8 text-neutral-500">Site not found</div>
+  }
 
   // ─── Disabled — the panel's shape, ghosted, with the CTA ──────
 

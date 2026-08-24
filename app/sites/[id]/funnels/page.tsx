@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { deleteFunnel, createFunnel, updateFunnel, type Funnel, type CreateFunnelRequest } from '@/lib/api/funnels'
+import { ApiError } from '@/lib/api/client'
 import { useSite, useFunnels, useFunnelListStats } from '@/lib/swr/dashboard'
 import { previousDateRange } from '@/lib/hooks/periodUrl'
 import { toast, PlusIcon, Button } from '@ciphera-net/facet'
@@ -143,11 +144,17 @@ export default function FunnelsPage() {
       </div>
 
       {funnelsError ? (
-        <ErrorCard
-          title="Couldn't load funnels"
-          description="The funnels request failed. Your funnels are safe — this is a loading problem."
-          onRetry={() => { void mutate() }}
-        />
+        // F8: only an actual 404 (the site itself is gone) earns "Site not
+        // found" — "your funnels are safe" was actively misleading for it.
+        funnelsError instanceof ApiError && funnelsError.status === 404 ? (
+          <p className="text-neutral-400">Site not found</p>
+        ) : (
+          <ErrorCard
+            title="Couldn't load funnels"
+            description="The funnels request failed. Your funnels are safe — this is a loading problem."
+            onRetry={() => { void mutate() }}
+          />
+        )
       ) : list.length === 0 ? (
         <EmptyState
           icon={<FunnelSimple />}
