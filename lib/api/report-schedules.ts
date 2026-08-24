@@ -51,11 +51,6 @@ export interface UpdateReportScheduleRequest {
   send_day?: number
 }
 
-export async function listReportSchedules(siteId: string): Promise<ReportSchedule[]> {
-  const res = await apiRequest<{ report_schedules: ReportSchedule[] }>(`/sites/${siteId}/report-schedules`)
-  return res?.report_schedules ?? []
-}
-
 export async function createReportSchedule(siteId: string, data: CreateReportScheduleRequest): Promise<ReportSchedule> {
   return apiRequest<ReportSchedule>(`/sites/${siteId}/report-schedules`, {
     method: 'POST',
@@ -79,10 +74,4 @@ export async function deleteReportSchedule(siteId: string, scheduleId: string): 
 export async function listAlertSchedules(siteId: string): Promise<ReportSchedule[]> {
   const res = await apiRequest<{ report_schedules: ReportSchedule[] }>(`/sites/${siteId}/report-schedules?purpose=alert`)
   return res?.report_schedules ?? []
-}
-
-export async function testReportSchedule(siteId: string, scheduleId: string): Promise<void> {
-  await apiRequest(`/sites/${siteId}/report-schedules/${scheduleId}/test`, {
-    method: 'POST',
-  })
 }

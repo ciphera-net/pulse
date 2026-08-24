@@ -63,7 +63,7 @@ export const NAV_GROUPS: NavGroup[] = [
       // Bot & Spam is viewable by anyone with quarantine.view; the tab gates
       // mutations on quarantine.manage internally.
       { label: 'Bot & Spam', href: '/settings/site/bot-spam', icon: Robot, requires: 'quarantine.view' },
-      { label: 'Reports', href: '/settings/site/reports', icon: ChartBar, requires: 'reports.manage' },
+      { label: 'Alerts', href: '/settings/site/reports', icon: ChartBar, requires: 'reports.manage' },
       { label: 'Integrations', href: '/settings/site/integrations', icon: Plugs, requires: 'integrations.manage' },
     ],
   },

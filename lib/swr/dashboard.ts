@@ -58,7 +58,7 @@ import {
 } from '@/lib/api/uptime'
 import { getPerformanceConfig, getPerformanceLatest, getPerformanceHistory, getPagePreview, type PerformanceConfig, type PerformanceCheck, type PerformanceLatest, type PagePreview as PagePreviewData } from '@/lib/api/performance'
 import { listGoals, type Goal } from '@/lib/api/goals'
-import { listReportSchedules, listAlertSchedules, type ReportSchedule } from '@/lib/api/report-schedules'
+import { listAlertSchedules, type ReportSchedule } from '@/lib/api/report-schedules'
 import {
   getQuarantineStats,
   getQuarantineEvents,
@@ -119,7 +119,6 @@ const fetchers = {
   performanceLatest: (siteId: string) => getPerformanceLatest(siteId),
   performanceHistory: (siteId: string, strategy: 'mobile' | 'desktop', days: number) => getPerformanceHistory(siteId, strategy, days),
   goals: (siteId: string) => listGoals(siteId),
-  reportSchedules: (siteId: string) => listReportSchedules(siteId),
   alertSchedules: (siteId: string) => listAlertSchedules(siteId),
   gscStatus: (siteId: string) => getGSCStatus(siteId),
   bingStatus: (siteId: string) => getBingStatus(siteId),
@@ -617,19 +616,6 @@ export function useGoals(siteId: string) {
   return useSWR<Goal[]>(
     siteId ? ['goals', siteId] : null,
     () => fetchers.goals(siteId),
-    {
-      ...dashboardSWRConfig,
-      refreshInterval: 60 * 1000,
-      dedupingInterval: 10 * 1000,
-    }
-  )
-}
-
-// * Hook for report schedules
-export function useReportSchedules(siteId: string) {
-  return useSWR<ReportSchedule[]>(
-    siteId ? ['reportSchedules', siteId] : null,
-    () => fetchers.reportSchedules(siteId),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
