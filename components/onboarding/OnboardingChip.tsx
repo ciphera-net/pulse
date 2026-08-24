@@ -16,6 +16,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import Link from 'next/link'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { useOnboarding } from '@/lib/hooks/useOnboarding'
+import { trackOnboardingChipOpened, trackOnboardingItemClicked, trackOnboardingDismissed } from '@/lib/welcomeAnalytics'
 import { XIcon, CheckCircleIcon } from '@ciphera-net/facet'
 import { Circle as CircleIcon, LockSimple as LockSimpleIcon } from '@phosphor-icons/react'
 
@@ -108,7 +109,13 @@ export default function OnboardingChip() {
   const handleDismiss = (e: React.MouseEvent) => {
     e.stopPropagation()
     setOpen(false)
+    trackOnboardingDismissed(completedCount)
     dismiss()
+  }
+
+  const handleToggle = () => {
+    if (!open) trackOnboardingChipOpened(completedCount)
+    setOpen(!open)
   }
 
   const panel = (
@@ -184,7 +191,18 @@ export default function OnboardingChip() {
               )
 
               if (item.href && !item.completed) {
-                return <Link key={item.key} href={item.href} onClick={() => setOpen(false)}>{inner}</Link>
+                return (
+                  <Link
+                    key={item.key}
+                    href={item.href}
+                    onClick={() => {
+                      trackOnboardingItemClicked(item.key)
+                      setOpen(false)
+                    }}
+                  >
+                    {inner}
+                  </Link>
+                )
               }
               return <div key={item.key}>{inner}</div>
             })}
@@ -204,7 +222,7 @@ export default function OnboardingChip() {
         ref={buttonRef}
         type="button"
         data-tour="onboarding-chip"
-        onClick={() => setOpen(!open)}
+        onClick={handleToggle}
         aria-expanded={open}
         aria-haspopup="true"
         aria-controls={open ? 'onboarding-dropdown' : undefined}
