@@ -6,7 +6,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import InlineErrorDisplay from '@/components/InlineErrorDisplay'
 
-const sendBeacon = vi.fn(() => true)
+const sendBeacon = vi.fn((_url: string | URL, _data?: BodyInit | null) => true)
 
 beforeEach(() => {
   sendBeacon.mockClear()
