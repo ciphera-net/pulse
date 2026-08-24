@@ -152,14 +152,20 @@ export default function ContentStats({ metric = 'pageviews', topPages, entryPage
       ? `${Math.round(item.avg_visible_duration / 60)}m`
       : `${Math.round(item.avg_visible_duration)}s`
 
+    const Row = onFilter ? 'button' : 'div'
     return (
-      <div
+      <Row
         key={item.path}
-        className={`interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
-        onClick={() => {
-          onFilter?.({ dimension: 'page', operator: 'is', values: [item.path] })
-          if (inModal) setIsModalOpen(false)
-        }}
+        {...(onFilter
+          ? {
+              type: 'button' as const,
+              onClick: () => {
+                onFilter({ dimension: 'page', operator: 'is', values: [item.path] })
+                if (inModal) setIsModalOpen(false)
+              },
+            }
+          : {})}
+        className={`interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
       >
         {/* Bar — width based on engagement score */}
         <div
@@ -183,7 +189,7 @@ export default function ContentStats({ metric = 'pageviews', topPages, entryPage
             {item.engagement_score}
           </span>
         </div>
-      </div>
+      </Row>
     )
   }
 
@@ -269,9 +275,26 @@ export default function ContentStats({ metric = 'pageviews', topPages, entryPage
               {displayedData.map((page) => {
                 const barWidth = rowBarWidth(metric, page, displayedData)
                 return (
+                  // This row cannot become a <button>: it contains a real
+                  // "open this page" link, and a link inside a button is
+                  // invalid — the control-inside-a-control pattern the info
+                  // glyph round removed. It gets keyboard semantics instead,
+                  // so it is reachable and operable without a mouse.
                   <div
                     key={page.path}
-                    onClick={() => onFilter?.({ dimension: 'page', operator: 'is', values: [page.path] })}
+                    {...(onFilter
+                      ? {
+                          role: 'button' as const,
+                          tabIndex: 0,
+                          onClick: () => onFilter({ dimension: 'page', operator: 'is', values: [page.path] }),
+                          onKeyDown: (e: React.KeyboardEvent) => {
+                            if (e.key !== 'Enter' && e.key !== ' ') return
+                            // Space scrolls the page by default; a control must not.
+                            e.preventDefault()
+                            onFilter({ dimension: 'page', operator: 'is', values: [page.path] })
+                          },
+                        }
+                      : {})}
                     className={`interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
                   >
                     <div
@@ -377,17 +400,18 @@ export default function ContentStats({ metric = 'pageviews', topPages, entryPage
                 className="pr-2"
                 renderItem={(page) => {
                   const canFilter = onFilter && page.path
+                  const Row = canFilter ? 'button' : 'div'
                   return (
-                    <div
+                    <Row
                       key={page.path}
-                      onClick={() => { if (canFilter) { onFilter({ dimension: 'page', operator: 'is', values: [page.path] }); setIsModalOpen(false) } }}
-                      className={`interactive-row flex items-center justify-between h-9 group rounded-none px-2${canFilter ? ' cursor-pointer' : ''}`}
+                      {...(canFilter ? { type: 'button' as const, onClick: () => { if (canFilter) { onFilter({ dimension: 'page', operator: 'is', values: [page.path] }); setIsModalOpen(false) } } } : {})}
+                      className={`interactive-row w-full text-left flex items-center justify-between h-9 group rounded-none px-2${canFilter ? ' cursor-pointer' : ''}`}
                     >
                       <div className="flex-1 truncate text-white flex items-center">
                         <span className="truncate">{page.path}</span>
                       </div>
                       <MetricRowStat metric={metric} row={page} totals={totals} />
-                    </div>
+                    </Row>
                   )
                 }}
               />

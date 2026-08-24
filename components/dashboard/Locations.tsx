@@ -420,11 +420,12 @@ export default function Audience({ metric = 'pageviews', countries, cities, regi
                   const canFilter = onFilter && dim && filterValue
                   const barWidth = rowBarWidth(metric, item, displayedData)
                   const itemKey = activeTab === 'languages' ? (item.language ?? idx) : activeTab === 'timezones' ? (item.timezone ?? idx) : `${item.country ?? ''}-${item.region ?? ''}-${item.city ?? ''}`
+                  const Row = canFilter ? 'button' : 'div'
                   return (
-                    <div
+                    <Row
                       key={itemKey}
-                      onClick={() => canFilter && onFilter({ dimension: dim, operator: 'is', values: [filterValue!] })}
-                      className={`interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${canFilter ? ' cursor-pointer' : ''}`}
+                      {...(canFilter ? { type: 'button' as const, onClick: () => canFilter && onFilter({ dimension: dim, operator: 'is', values: [filterValue!] }) } : {})}
+                      className={`interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${canFilter ? ' cursor-pointer' : ''}`}
                     >
                       <div
                         className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-none transition-[width,background-color] ease-apple"
@@ -437,7 +438,7 @@ export default function Audience({ metric = 'pageviews', countries, cities, regi
                         </span>
                       </div>
                       <MetricRowStat metric={metric} row={item} totals={totals} />
-                    </div>
+                    </Row>
                   )
                 })}
                 {Array.from({ length: emptySlots }).map((_, i) => (
@@ -507,11 +508,12 @@ export default function Audience({ metric = 'pageviews', countries, cities, regi
                   const filterValue = getItemFilterValue(item)
                   const canFilter = onFilter && dim && filterValue
                   const itemKey = activeTab === 'languages' ? (item.language ?? idx) : activeTab === 'timezones' ? (item.timezone ?? idx) : `${item.country ?? ''}-${item.region ?? ''}-${item.city ?? ''}`
+                  const Row = canFilter ? 'button' : 'div'
                   return (
-                    <div
+                    <Row
                       key={itemKey}
-                      onClick={() => { if (canFilter) { onFilter({ dimension: dim, operator: 'is', values: [filterValue!] }); setIsModalOpen(false) } }}
-                      className={`interactive-row flex items-center justify-between h-9 group rounded-none px-2${canFilter ? ' cursor-pointer' : ''}`}
+                      {...(canFilter ? { type: 'button' as const, onClick: () => { if (canFilter) { onFilter({ dimension: dim, operator: 'is', values: [filterValue!] }); setIsModalOpen(false) } } } : {})}
+                      className={`interactive-row w-full text-left flex items-center justify-between h-9 group rounded-none px-2${canFilter ? ' cursor-pointer' : ''}`}
                     >
                       <div className="flex-1 truncate text-white flex items-center gap-3">
                         {showsFlag && <span className="shrink-0">{getFlagComponent(getItemFlagCode(item, activeTab), activeTab)}</span>}
@@ -520,7 +522,7 @@ export default function Audience({ metric = 'pageviews', countries, cities, regi
                         </span>
                       </div>
                       <MetricRowStat metric={metric} row={item} totals={totals} />
-                    </div>
+                    </Row>
                   )
                 }}
               />
