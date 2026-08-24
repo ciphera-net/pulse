@@ -7,8 +7,20 @@ import { getUserOrganizations } from '@/lib/api/organization'
 import { listSites } from '@/lib/api/sites'
 import { SetupProvider, useSetup } from '@/lib/setup/context'
 import SetupStepper from '@/components/setup/SetupStepper'
+import { trackWelcomeStepView } from '@/lib/welcomeAnalytics'
 import { LoadingOverlay } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
+
+// Funnel step numbers per /setup segment. Fixed per page — the guard can
+// route around steps (site-skip lands on plan, an existing site skips org),
+// so these are identities, not a strict order.
+const SETUP_STEPS: Record<string, number> = {
+  '/setup/org': 1,
+  '/setup/site': 2,
+  '/setup/plan': 3,
+  '/setup/install': 4,
+  '/setup/done': 5,
+}
 
 function SetupGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -58,6 +70,14 @@ function SetupGuard({ children }: { children: React.ReactNode }) {
 
     guard()
   }, [authLoading, user, pathname, router])
+
+  // Step views only AFTER the guard resolves: an arrival it redirects away
+  // (e.g. /setup/org with an existing org) was never shown and must not count.
+  useEffect(() => {
+    if (!resolved) return
+    const step = SETUP_STEPS[pathname]
+    if (step) trackWelcomeStepView(step, pathname.replace('/setup/', ''))
+  }, [resolved, pathname])
 
   if (authLoading || !resolved) {
     return <LoadingOverlay logoSrc={cdnUrl('/pulse_icon_no_margins.png')} title="Pulse" />

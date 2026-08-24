@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth/context'
 import { useSetup } from '@/lib/setup/context'
 import { completeOnboarding } from '@/lib/api/organization'
 import { getSubscription } from '@/lib/api/billing'
+import { trackWelcomeCompleted } from '@/lib/welcomeAnalytics'
 import { Button, Spinner, CheckCircleIcon, UsersIcon, BookOpenIcon, FunnelIcon } from '@ciphera-net/facet'
 import InstallStateBlock from '@/components/setup/InstallStateBlock'
 
@@ -57,9 +58,14 @@ export default function SetupDonePage() {
 
   useEffect(() => {
     completeStep('done')
+    trackWelcomeCompleted(Boolean(site))
     if (user?.org_id) {
       completeOnboarding(user.org_id).catch(() => {})
     }
+    // `site` is deliberately not a dependency: this effect marks arrival at
+    // the done step once; a late framework-detection setSite must not re-fire
+    // completion.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [completeStep, user?.org_id])
 
   if (payment === 'confirming') {
