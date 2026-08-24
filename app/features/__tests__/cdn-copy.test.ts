@@ -11,6 +11,11 @@
  *
  * This is a source-text guard rather than a render test: the page is a heavy
  * client component, and what is being protected is the string itself.
+ *
+ * Batch 5 then deleted the CDN map outright (bandwidth per edge POP drawn on
+ * a country map was the confusion made visual); the copy now sells the ranked
+ * region breakdown that remains, and the map guard below keeps the promise
+ * from creeping back.
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
@@ -47,6 +52,12 @@ describe('CDN analytics marketing copy', () => {
   it('describes the honest mechanics — where bytes were served from', () => {
     expect(description).toMatch(/edge region/i)
     expect(description).toMatch(/served from/i)
+  })
+
+  it('does not promise a map — the CDN edge-POP map was removed with the triage', () => {
+    // The CDN page renders a ranked region breakdown; the dotted world map is
+    // gone. Only the Geographic-insights card may sell a map (that one lives).
+    expect(description.toLowerCase()).not.toMatch(/\bmaps?\b/)
   })
 
   it('leaves the real visitor-geography claim alone', () => {

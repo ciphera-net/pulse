@@ -186,11 +186,6 @@ export interface RealtimeStats {
   visitors: number
 }
 
-export interface AuthParams {
-  password?: string
-  captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string }
-}
-
 // ─── Public Auth ─────────────────────────────────────────────────────
 
 export function authenticatePublicDashboard(siteId: string, password: string, captchaToken?: string, captchaId?: string, captchaSolution?: string): Promise<{ status: string }> {
@@ -208,13 +203,6 @@ export function authenticatePublicDashboard(siteId: string, password: string, ca
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
-function appendAuthParams(params: URLSearchParams, auth?: AuthParams) {
-  if (auth?.password) params.append('password', auth.password)
-  if (auth?.captcha?.captcha_id) params.append('captcha_id', auth.captcha.captcha_id)
-  if (auth?.captcha?.captcha_solution) params.append('captcha_solution', auth.captcha.captcha_solution)
-  if (auth?.captcha?.captcha_token) params.append('captcha_token', auth.captcha.captcha_token)
-}
-
 function buildQuery(
   opts: {
     startDate?: string
@@ -226,7 +214,6 @@ function buildQuery(
     sort?: string
     filters?: string
   },
-  auth?: AuthParams
 ): string {
   const params = new URLSearchParams()
   if (opts.period) {
@@ -240,7 +227,6 @@ function buildQuery(
   if (opts.countryLimit != null) params.append('country_limit', opts.countryLimit.toString())
   if (opts.sort) params.append('sort', opts.sort)
   if (opts.filters) params.append('filters', opts.filters)
-  if (auth) appendAuthParams(params, auth)
   const query = params.toString()
   return query ? `?${query}` : ''
 }
@@ -277,16 +263,16 @@ export function getStats(siteId: string, startDate?: string, endDate?: string, f
   return apiRequest<Stats>(`/sites/${siteId}/stats${buildQuery({ startDate, endDate, filters, period })}`)
 }
 
-export function getPublicStats(siteId: string, startDate?: string, endDate?: string, auth?: AuthParams): Promise<Stats> {
-  return apiRequest<Stats>(`/public/sites/${siteId}/stats${buildQuery({ startDate, endDate }, auth)}`)
+export function getPublicStats(siteId: string, startDate?: string, endDate?: string): Promise<Stats> {
+  return apiRequest<Stats>(`/public/sites/${siteId}/stats${buildQuery({ startDate, endDate })}`)
 }
 
 export function getRealtime(siteId: string): Promise<RealtimeStats> {
   return apiRequest<RealtimeStats>(`/sites/${siteId}/realtime`)
 }
 
-export function getPublicRealtime(siteId: string, auth?: AuthParams): Promise<RealtimeStats> {
-  return apiRequest<RealtimeStats>(`/public/sites/${siteId}/realtime${buildQuery({}, auth)}`)
+export function getPublicRealtime(siteId: string): Promise<RealtimeStats> {
+  return apiRequest<RealtimeStats>(`/public/sites/${siteId}/realtime`)
 }
 
 export interface RealtimePageVisitors {
@@ -306,8 +292,8 @@ export function getDailyStats(siteId: string, startDate?: string, endDate?: stri
     .then(r => r?.stats || [])
 }
 
-export function getPublicDailyStats(siteId: string, startDate?: string, endDate?: string, interval?: string, auth?: AuthParams): Promise<DailyStat[]> {
-  return apiRequest<{ stats: DailyStat[] }>(`/public/sites/${siteId}/daily${buildQuery({ startDate, endDate, interval }, auth)}`)
+export function getPublicDailyStats(siteId: string, startDate?: string, endDate?: string, interval?: string): Promise<DailyStat[]> {
+  return apiRequest<{ stats: DailyStat[] }>(`/public/sites/${siteId}/daily${buildQuery({ startDate, endDate, interval })}`)
     .then(r => r?.stats || [])
 }
 
@@ -374,12 +360,10 @@ export function getPublicDashboard(
   endDate?: string,
   limit = 10,
   interval?: string,
-  password?: string,
-  captcha?: { captcha_id?: string, captcha_solution?: string, captcha_token?: string },
   period?: string
 ): Promise<DashboardData> {
   return apiRequest<DashboardData>(
-    `/public/sites/${siteId}/dashboard${buildQuery({ startDate, endDate, limit, interval, period }, { password, captcha })}`
+    `/public/sites/${siteId}/dashboard${buildQuery({ startDate, endDate, limit, interval, period })}`
   )
 }
 
