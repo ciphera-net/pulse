@@ -48,7 +48,6 @@ const SITE_ROWS: SectionRow[] = [
   { label: 'Visibility', href: '/settings/site/visibility', description: 'Public dashboard and share links.', requires: 'sites.edit' },
   { label: 'Privacy', href: '/settings/site/privacy', description: 'Data collection and retention controls.', requires: 'sites.edit' },
   { label: 'Bot & Spam', href: '/settings/site/bot-spam', description: 'Filtering and quarantine review.', requires: 'quarantine.view' },
-  { label: 'Privacy Scan', href: '/settings/site/privacy-scan', description: 'Automated privacy compliance checks.', requires: 'privacy_scan.manage' },
   { label: 'Reports', href: '/settings/site/reports', description: 'Scheduled reports and alert channels.', requires: 'reports.manage' },
   { label: 'Integrations', href: '/settings/site/integrations', description: 'Search Console and Bunny CDN.', requires: 'integrations.manage' },
 ]
@@ -84,7 +83,6 @@ export default function SettingsLandingPage() {
     'sites.edit': useCan('sites.edit'),
     'goals.manage': useCan('goals.manage'),
     'quarantine.view': useCan('quarantine.view'),
-    'privacy_scan.manage': useCan('privacy_scan.manage'),
     'reports.manage': useCan('reports.manage'),
     'integrations.manage': useCan('integrations.manage'),
     'team.view': useCan('team.view'),

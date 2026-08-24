@@ -104,7 +104,6 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
   const canSitesEdit      = useCan('sites.edit')
   const canGoalsManage    = useCan('goals.manage')
   const canQuarantineView = useCan('quarantine.view')
-  const canPrivacyScan    = useCan('privacy_scan.manage')
   const canReportsManage  = useCan('reports.manage')
   const canIntegrations   = useCan('integrations.manage')
   const canTeamView       = useCan('team.view')
@@ -234,12 +233,6 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
             <CommandItem value="settings-site-bot-spam" onSelect={() => go('/settings/site/bot-spam')}>
               <Robot size={16} weight="regular" className="opacity-60" aria-hidden="true" />
               <span><HighlightMatch text="Bot & Spam Filtering" query={search} /></span>
-            </CommandItem>
-          )}
-          {canPrivacyScan && (
-            <CommandItem value="settings-site-privacy-scan" onSelect={() => go('/settings/site/privacy-scan')}>
-              <MagnifyingGlass size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-              <span><HighlightMatch text="Privacy Scan" query={search} /></span>
             </CommandItem>
           )}
           {canReportsManage && (
