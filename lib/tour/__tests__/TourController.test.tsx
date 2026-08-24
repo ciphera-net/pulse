@@ -18,6 +18,8 @@ interface MockedDriverConfig {
   stageRadius: number
   overlayOpacity: number
   popoverClass: string
+  waitForElement: number
+  skipMissingElement: boolean
   steps: Array<{
     element?: () => Element | undefined
     popover: {
