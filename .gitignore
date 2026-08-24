@@ -62,6 +62,8 @@ tests/*
 !tests/site-settings-save.spec.ts
 !tests/behavior-removal.spec.ts
 !tests/oauth-state-clobber.spec.ts
+!tests/ws4-tour-audit.spec.ts
+!tests/ws4-staging-tour-verify.spec.ts
 !tests/support/
 tests/support/*
 !tests/support/login.ts
