@@ -113,21 +113,19 @@ describe('WorkspaceRolesTab', () => {
     expect(screen.getAllByText('All sites').length).toBeGreaterThan(0)
   })
 
-  it('offers the New role CTA to managers and opens the create panel', async () => {
-    render(<WorkspaceRolesTab />)
-    const cta = await screen.findByRole('button', { name: /New role/i })
-    fireEvent.click(cta)
-    await waitFor(() => expect(screen.getByText('New custom role')).toBeTruthy())
-    expect(screen.getByRole('button', { name: /Create role/i })).toBeTruthy()
-  })
-
-  it('hides row actions and shows the read-only note for non-managers', async () => {
-    mockCanManage = false
+  it('is read-only for everyone — no create CTA, no row mutators, matrix disabled', async () => {
     render(<WorkspaceRolesTab />)
     await waitFor(() => expect(screen.getByText('Analyst')).toBeTruthy())
+    // Custom-role CRUD is gone (batch 4): nothing on this tab mutates.
     expect(screen.queryByRole('button', { name: /New role/i })).toBeNull()
     expect(screen.queryByLabelText('Delete role')).toBeNull()
-    expect(screen.getByText(/Only workspace owners can modify role permissions/i)).toBeTruthy()
+    expect(screen.queryByLabelText('Rename role')).toBeNull()
+    // Expand a row: every permission checkbox is disabled.
+    fireEvent.click(screen.getByText('Analyst'))
+    await waitFor(() => expect(screen.getAllByRole('checkbox').length).toBeGreaterThan(0))
+    for (const box of screen.getAllByRole('checkbox')) {
+      expect(box).toBeDisabled()
+    }
   })
 
   it('surfaces an error state (not an empty state) when the load fails', async () => {
@@ -140,9 +138,4 @@ describe('WorkspaceRolesTab', () => {
     expect(screen.queryByText(/No roles configured/i)).toBeNull()
   })
 
-  it('shows the ghost empty state when the roster is genuinely empty', async () => {
-    vi.mocked(rolesApi.listRoles).mockResolvedValueOnce({ roles: [] })
-    render(<WorkspaceRolesTab />)
-    await waitFor(() => expect(screen.getByText(/No roles configured/i)).toBeTruthy())
-  })
 })

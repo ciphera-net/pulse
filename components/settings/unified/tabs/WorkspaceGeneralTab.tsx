@@ -13,7 +13,7 @@ import {
   getAuthErrorMessage,
 } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
-import { useCan } from '@/lib/auth/permissions'
+import { useIsOwner } from '@/lib/auth/permissions'
 import { getOrganization, updateOrganization, deleteOrganization, getOrganizationMembers, transferOwnership, type OrganizationMember } from '@/lib/api/organization'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
@@ -22,7 +22,7 @@ import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels
 
 export default function WorkspaceGeneralTab() {
   const { user } = useAuth()
-  const canDeleteOrg = useCan('org.delete')
+  const canDeleteOrg = useIsOwner()
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [loading, setLoading] = useState(true)

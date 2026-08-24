@@ -10,7 +10,7 @@ vi.mock('@/lib/auth/context', () => ({
 
 let mockCan = true
 vi.mock('@/lib/auth/permissions', () => ({
-  useCan: () => mockCan,
+  useIsOwner: () => mockCan,
 }))
 
 vi.mock('@/lib/api/organization', () => ({
@@ -86,7 +86,7 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
     await waitFor(() => expect((confirm as HTMLButtonElement).disabled).toBe(false))
   })
 
-  it('hides the danger zone + save bar when the org.delete gate is denied', async () => {
+  it('hides the danger zone + save bar for non-owners', async () => {
     mockCan = false
     render(<WorkspaceGeneralTab />)
     await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())

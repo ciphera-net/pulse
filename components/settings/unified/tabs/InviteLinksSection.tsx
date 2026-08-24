@@ -6,7 +6,7 @@ import { Copy, Check, LinkSimple } from '@phosphor-icons/react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { revokeInviteLink, type InviteLink } from '@/lib/api/organization'
 import { type Role } from '@/lib/api/roles'
-import { useCan } from '@/lib/auth/permissions'
+import { useIsAdminOrOwner } from '@/lib/auth/permissions'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsPanel, PanelRows, EmptyRow } from '@/components/settings/panels'
@@ -66,7 +66,7 @@ function CopyLinkButton({ url }: { url?: string }) {
 }
 
 export default function InviteLinksSection({ orgId, links, roles, onRevoked }: Props) {
-  const canManage = useCan('team.manage')
+  const canManage = useIsAdminOrOwner()
   const [confirmRevoke, setConfirmRevoke] = useState<InviteLink | null>(null)
 
   const handleRevoke = (link: InviteLink) => {

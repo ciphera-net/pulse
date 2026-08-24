@@ -1,11 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Button, Input, Modal, Select, Checkbox, toast, getAuthErrorMessage } from '@ciphera-net/facet'
+import { Button, Input, Modal, Select, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { Copy, Check } from '@phosphor-icons/react'
 import { createInviteLink, type InviteLink } from '@/lib/api/organization'
 import { type Role } from '@/lib/api/roles'
-import { useSites } from '@/lib/swr/sites'
 
 const EXPIRY_OPTIONS = [
   { value: '1h', label: '1 hour' },
@@ -34,17 +33,15 @@ interface Props {
   onCreated: () => void
 }
 
-function mapRoleSlugToIdRole(slug: string): string {
-  if (slug === 'owner') return 'owner'
-  if (slug === 'admin') return 'admin'
-  return 'member'
-}
+// The invitable roles are the builtins ciphera-id itself understands. The
+// finer roles used to ride along as metadata.role_id, a path the backend now
+// ignores (it was an unchecked client-authored role UUID — the escalation the
+// triage removed), so offering them here would silently mint members.
+const INVITABLE_SLUGS = ['admin', 'member']
 
 export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange, onCreated }: Props) {
-  const { sites } = useSites()
-
   const inviteRoleOptions = roles
-    .filter(r => r.slug !== 'owner')
+    .filter(r => r.is_builtin && INVITABLE_SLUGS.includes(r.slug))
     .map(r => ({ value: r.id, label: r.name }))
 
   const defaultRoleId = inviteRoleOptions[0]?.value ?? ''
@@ -53,41 +50,24 @@ export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange
   const [roleId, setRoleId] = useState(defaultRoleId)
   const [expiresIn, setExpiresIn] = useState('7d')
   const [maxUses, setMaxUses] = useState(NO_LIMIT)
-  const [siteIds, setSiteIds] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [created, setCreated] = useState<InviteLink | null>(null)
   const [copied, setCopied] = useState(false)
 
   const selectedRole = roles.find(r => r.id === roleId) ?? null
-  const isSiteScoped = selectedRole?.site_scoped === true
 
   const handleRoleChange = (id: string) => {
     setRoleId(id)
-    setSiteIds([])
-  }
-
-  const toggleSite = (siteId: string) => {
-    setSiteIds(prev =>
-      prev.includes(siteId) ? prev.filter(id => id !== siteId) : [...prev, siteId]
-    )
   }
 
   const handleCreate = async () => {
     if (!name.trim() || !roleId) return
     setSubmitting(true)
     try {
-      const idRole = mapRoleSlugToIdRole(selectedRole?.slug ?? 'member')
-      const metadata: { app: string; role_id: string; site_ids?: string[] } = {
-        app: 'pulse',
-        role_id: roleId,
-      }
-      if (isSiteScoped && siteIds.length > 0) {
-        metadata.site_ids = siteIds
-      }
       const link = await createInviteLink(orgId, {
         name: name.trim(),
-        role: idRole,
-        metadata,
+        role: selectedRole?.slug ?? 'member',
+        metadata: { app: 'pulse' },
         max_uses: maxUses !== NO_LIMIT ? parseInt(maxUses, 10) : undefined,
         expires_in: expiresIn,
       })
@@ -121,7 +101,6 @@ export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange
     setRoleId(defaultRoleId)
     setExpiresIn('7d')
     setMaxUses(NO_LIMIT)
-    setSiteIds([])
     setCreated(null)
     setCopied(false)
     onOpenChange(false)
@@ -183,25 +162,6 @@ export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange
               placeholder="Select a role"
             />
           </div>
-
-          {isSiteScoped && sites.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">
-                This role is site-scoped — select the sites this member can access:
-              </p>
-              <ul className="max-h-40 space-y-1.5 overflow-y-auto">
-                {sites.map(site => (
-                  <li key={site.id}>
-                    <Checkbox
-                      checked={siteIds.includes(site.id)}
-                      onChange={() => toggleSite(site.id)}
-                      label={site.name || site.domain}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">

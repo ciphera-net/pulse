@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button, toast } from '@ciphera-net/facet'
 import { Plus, Trash, Crown, User, Users } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
-import { useCan } from '@/lib/auth/permissions'
+import { useIsAdminOrOwner } from '@/lib/auth/permissions'
 import { getOrganizationMembers, removeOrganizationMember, getInviteLinks, type OrganizationMember, type InviteLink } from '@/lib/api/organization'
 import { listRoles, type Role } from '@/lib/api/roles'
 import CreateInviteLinkModal from './CreateInviteLinkModal'
@@ -50,7 +50,7 @@ export default function WorkspaceMembersTab() {
   const [showLinkModal, setShowLinkModal] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState<{ userId: string; email: string } | null>(null)
 
-  const canManage = useCan('team.manage')
+  const canManage = useIsAdminOrOwner()
 
   const loadMembers = async () => {
     if (!user?.org_id) return

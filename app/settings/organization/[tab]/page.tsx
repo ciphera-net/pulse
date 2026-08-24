@@ -28,7 +28,6 @@ const TAB_COMPONENTS: Record<string, React.ComponentType> = {
 }
 
 const TAB_PERMISSIONS: Record<string, Permission> = {
-  members:       'team.view',
   roles:         'roles.manage',
   billing:       'billing.view',
   notifications: 'notification_settings.manage',

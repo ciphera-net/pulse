@@ -9,8 +9,6 @@ vi.mock('@/lib/api/organization', () => ({
   createInviteLink: (...a: unknown[]) => createInviteLink(...a),
 }))
 
-vi.mock('@/lib/swr/sites', () => ({ useSites: () => ({ sites: [] }) }))
-
 // Minimal facet doubles: Select becomes a native <select> so option changes are
 // drivable; Modal renders its children only when open.
 vi.mock('@ciphera-net/facet', () => ({
@@ -36,7 +34,12 @@ vi.mock('@ciphera-net/facet', () => ({
 import CreateInviteLinkModal from '../CreateInviteLinkModal'
 
 const roles: Role[] = [
-  { id: 'r1', slug: 'member', name: 'Member' } as Role,
+  { id: 'r1', slug: 'member', name: 'Member', is_builtin: true } as Role,
+  // Not invitable: the fine-grained roles were only ever assigned through the
+  // removed metadata.role_id path, so offering one would silently mint a
+  // member. The options filter must drop it.
+  { id: 'r2', slug: 'analyst', name: 'Analyst', is_builtin: true } as Role,
+  { id: 'r3', slug: 'custom-x', name: 'Custom X', is_builtin: false } as Role,
 ]
 
 const noop = () => {}
@@ -67,11 +70,22 @@ describe('CreateInviteLinkModal', () => {
         role: 'member',
         expires_in: '7d',
         max_uses: undefined,
-        metadata: expect.objectContaining({ app: 'pulse', role_id: 'r1' }),
+        // metadata carries the app marker ONLY — role_id/site_ids retired
+        // with the backend's escalation branch.
+        metadata: { app: 'pulse' },
       }),
     )
     // Success result screen replaces the form.
     await waitFor(() => expect(screen.getByText('Invite link created')).toBeInTheDocument())
+  })
+
+  it('offers only the invitable builtins — admin and member, never analyst or custom roles', () => {
+    renderModal()
+    const roleSelect = screen.getAllByRole('combobox')[0]
+    const labels = Array.from(roleSelect.querySelectorAll('option')).map(o => o.textContent)
+    expect(labels).toContain('Member')
+    expect(labels).not.toContain('Analyst')
+    expect(labels).not.toContain('Custom X')
   })
 
   it('maps a chosen numeric cap to max_uses (the No-limit sentinel is not a number)', async () => {

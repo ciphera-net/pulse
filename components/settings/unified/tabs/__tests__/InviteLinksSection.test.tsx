@@ -4,7 +4,7 @@ import type { InviteLink } from '@/lib/api/organization'
 
 // --- Mocks ---------------------------------------------------------------
 
-vi.mock('@/lib/auth/permissions', () => ({ useCan: () => true }))
+vi.mock('@/lib/auth/permissions', () => ({ useIsAdminOrOwner: () => true }))
 
 vi.mock('@ciphera-net/facet', () => ({
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,

@@ -7,7 +7,7 @@ import { MastheadSlotProvider } from '@/components/settings/shell-slots'
 
 let mockCanManage = true
 vi.mock('@/lib/auth/permissions', () => ({
-  useCan: () => mockCanManage,
+  useIsAdminOrOwner: () => mockCanManage,
 }))
 
 vi.mock('@/lib/auth/context', () => ({

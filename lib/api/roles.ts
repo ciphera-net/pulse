@@ -26,36 +26,10 @@ export interface PermissionGroup {
   permissions: PermissionInfo[]
 }
 
+// Reads only — custom-role CRUD was removed with the backend routes
+// (pre-launch triage batch 4).
 export const listRoles = () =>
   apiRequest<{ roles: Role[] }>('/roles')
-
-export const getRole = (roleId: string) =>
-  apiRequest<Role>(`/roles/${roleId}`)
-
-export const createRole = (data: {
-  name: string
-  slug: string
-  color?: string
-  permissions: string[]
-  site_scoped?: boolean
-  site_ids?: string[]
-}) =>
-  apiRequest<Role>('/roles', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  })
-
-export const updateRole = (
-  roleId: string,
-  data: { name: string; color?: string; permissions: string[]; site_scoped?: boolean; site_ids?: string[] }
-) =>
-  apiRequest<void>(`/roles/${roleId}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  })
-
-export const deleteRole = (roleId: string) =>
-  apiRequest<void>(`/roles/${roleId}`, { method: 'DELETE' })
 
 export const listPermissionGroups = () =>
   apiRequest<{ groups: PermissionGroup[] }>('/roles/permissions')

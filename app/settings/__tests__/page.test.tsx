@@ -33,10 +33,8 @@ import SettingsLandingPage from '../page'
 const ALL_PERMS = [
   'sites.edit',
   'goals.manage',
-  'quarantine.view',
   'reports.manage',
   'integrations.manage',
-  'team.view',
   'roles.manage',
   'billing.view',
   'notification_settings.manage',
@@ -57,14 +55,22 @@ describe('Settings landing (permission-aware index)', () => {
     expect(screen.getByText('Devices')).toBeInTheDocument()
   })
 
-  it('hides the entire Site section for a user with no site permissions', () => {
+  it('hides gated rows for a user with no permissions — membership-implied rows stay', () => {
+    // A site exists; the user simply holds no gated permissions.
+    mockActiveSite = {
+      activeSite: { name: 'Acme', domain: 'acme.com', is_verified: true },
+      sites: [{ id: 's1' }],
+      isLoading: false,
+    }
     render(<SettingsLandingPage />)
-    // Site-only rows are gone (no site permissions granted).
+    // Permission-gated rows are gone (nothing granted).
     expect(screen.queryByText('Goals')).not.toBeInTheDocument()
-    expect(screen.queryByText('Bot & Spam')).not.toBeInTheDocument()
-    // Gated org rows also gone…
-    expect(screen.queryByText('Members')).not.toBeInTheDocument()
     expect(screen.queryByText('Audit Log')).not.toBeInTheDocument()
+    // Bot & Spam and Members are membership-implied since the never-checked
+    // view permissions were deleted (batch 4) — every member sees them, which
+    // is what the server enforced all along.
+    expect(screen.getByText('Bot & Spam')).toBeInTheDocument()
+    expect(screen.getByText('Members')).toBeInTheDocument()
   })
 
   it('reveals gated rows once the permissions are held', () => {
