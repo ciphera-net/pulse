@@ -305,7 +305,7 @@ export function InstrumentCore({
   const hovered = hoverIdx != null && hoverIdx < series.length ? series[hoverIdx] : null
 
   return (
-    <div className="relative rounded-none border border-border bg-card">
+    <div data-tour="search-instrument" className="relative rounded-none border border-border bg-card">
       <UpdatingChip active={isValidating} className="right-2 top-2" />
 
       {rows.map(({ key, value, delta }) => {

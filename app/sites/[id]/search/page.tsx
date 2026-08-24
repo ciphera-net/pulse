@@ -268,12 +268,15 @@ export default function SearchConsolePage() {
         <div className="flex flex-wrap items-center gap-2">
           {/* Only when there is genuinely a choice. A one-option toggle is furniture. */}
           {bingConnected && connected && (
+            // display:contents — a real span would become its own flex item.
+            <span className="contents" data-tour="search-engine-toggle">
             <SegmentedControl
               aria-label="Search engine"
               value={engine}
               onChange={setEngine}
               options={ENGINE_OPTIONS}
             />
+            </span>
           )}
           <DateRangePicker
             period={period}

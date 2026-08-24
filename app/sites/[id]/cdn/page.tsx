@@ -142,7 +142,7 @@ export default function CDNPage() {
 
       {/* The split instrument: Edge (what Bunny absorbed) vs Origin (what got
           through). Ghosted with a connect CTA when no zone is connected. */}
-      <div className="relative">
+      <div data-tour="cdn-split" className="relative">
         <div className="flex flex-col gap-6 lg:flex-row">
           <EdgeCard {...cardProps} />
           <OriginCard {...cardProps} />

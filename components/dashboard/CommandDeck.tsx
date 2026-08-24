@@ -201,7 +201,7 @@ export default function CommandDeck({
       <div className="grid md:grid-cols-[236px_1fr]">
         {/* KPI rail. On md+ the rows flex-stretch so the rail bottoms out level
             with the chart; on mobile it is a 2-column grid above the chart. */}
-        <div className="grid grid-cols-2 border-b border-neutral-800 md:flex md:flex-col md:border-b-0 md:border-r">
+        <div data-tour="metric-rail" className="grid grid-cols-2 border-b border-neutral-800 md:flex md:flex-col md:border-b-0 md:border-r">
           {rows.map((m, i) => (
             <button
               key={m.key}
@@ -266,7 +266,7 @@ export default function CommandDeck({
             {/* The toolbar names the selected metric, so ONE resident glyph
                 here reaches all six definitions — the rail rows stay clean
                 (metric info layer, 22-08-2026). */}
-            <span className="flex items-center gap-1 text-xs font-medium text-neutral-400">
+            <span data-tour="chart-toolbar" className="flex items-center gap-1 text-xs font-medium text-neutral-400">
               {metric === 'visitors' && interval === 'day' ? 'Daily unique visitors' : activeMetric?.label}
               <MetricInfoTip metric={metric} example={buildExample(metric, stats, engagementData)} />
             </span>

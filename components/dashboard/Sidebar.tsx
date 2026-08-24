@@ -271,7 +271,7 @@ function SidebarContent({
 
       {/* Nav Groups */}
       {siteId ? (
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 space-y-4">
+        <nav data-tour="sidebar-nav" className="flex-1 overflow-y-auto overflow-x-hidden px-2 space-y-4">
           {NAV_GROUPS.map((group) => (
             <div key={group.label}>
               <div className="h-5 flex items-center overflow-hidden">
@@ -295,7 +295,7 @@ function SidebarContent({
           ))}
         </nav>
       ) : (
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 space-y-4">
+        <nav data-tour="sidebar-nav" className="flex-1 overflow-y-auto overflow-x-hidden px-2 space-y-4">
           {/* Your Sites */}
           <div>
             {c ? (

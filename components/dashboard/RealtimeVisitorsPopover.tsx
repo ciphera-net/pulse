@@ -66,6 +66,7 @@ export default function RealtimeVisitorsPopover({ siteId, count, onFilterPage }:
       <button
         ref={triggerRef}
         type="button"
+        data-tour="realtime-trigger"
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}

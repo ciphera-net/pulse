@@ -277,7 +277,7 @@ export default function JourneysPage() {
         )}
 
         {/* Journey canvas — error and settled-empty states before either view */}
-        <div className="relative p-6">
+        <div data-tour="journeys-canvas" className="relative p-6">
           <UpdatingChip active={transitionsValidating} />
           {transitionsError ? (
             <ErrorCard

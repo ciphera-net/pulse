@@ -134,7 +134,7 @@ export default function TopReferrers({ metric = 'pageviews', referrers, channels
 
   return (
     <>
-      <div className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
+      <div data-tour="dimension-card" data-tour-card="referrers" className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
         <div className="flex items-center justify-between gap-2 mb-4">
           {/* Matches the scrolling tab row every other dimension card uses, so a
               narrow card can never push the header action off its right edge. */}

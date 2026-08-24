@@ -408,6 +408,10 @@ export default function DateRangePicker({
       <button
         ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
+        data-tour="date-range-picker"
+        // The visible label alone names a RANGE, not the control — assistive
+        // tech (and the tour) get what the control IS.
+        aria-label={`Date range: ${displayLabel}`}
         className={cn(buttonVariants({ variant: 'chrome', size: 'toolbar' }), 'font-normal ease-apple')}
       >
         <CalendarBlank className="text-muted-foreground" />

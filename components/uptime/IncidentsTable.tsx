@@ -107,7 +107,7 @@ export default function IncidentsTable({ incidents, error, timeoutSeconds, timez
       : 'confirmed status changes'
 
   return (
-    <div className="rounded-none border border-border bg-card">
+    <div data-tour="uptime-incidents" className="rounded-none border border-border bg-card">
       <div className="flex h-10 items-center justify-between border-b border-border px-4">
         <span className="flex items-center gap-1 text-sm font-medium text-white">
         Incidents

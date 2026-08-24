@@ -622,7 +622,7 @@ export default function PerformancePage() {
                     plus the gap no longer fit beside the screenshot. A 2-column
                     grid gets the 2×2 the design calls for regardless of how long
                     a label happens to be. */}
-                <div className="grid w-full min-w-0 grid-cols-2 gap-y-6 sm:flex sm:w-auto sm:flex-1 sm:flex-wrap sm:items-center sm:justify-center sm:gap-10">
+                <div data-tour="performance-scores" className="grid w-full min-w-0 grid-cols-2 gap-y-6 sm:flex sm:w-auto sm:flex-1 sm:flex-wrap sm:items-center sm:justify-center sm:gap-10">
                   {allScores.map(({ key, label, score }) => (
                     <button
                       key={key}
