@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback, memo } from 'react'
 import * as d3 from 'd3'
 import * as topojson from 'topojson-client'
-import { formatNumber } from '@/lib/utils/format'
 import { type BlockMetric, blockRowDisplay, shareValue, BLOCK_METRIC_LABEL } from '@/lib/dashboard/metrics'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const worldJson = require('visionscarto-world-atlas/world/110m.json')
@@ -38,18 +37,11 @@ const NUM_TO_ALPHA2: Record<string, string> = {
 
 interface MapViewProps {
   data: Array<{ country: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
-  // When set (the Audience map), the tooltip value and its unit follow the
-  // page's selected metric — this also retires the old always-says-"visitors"
-  // tooltip that plotted pageviews. Absent = legacy value/label props (CDN map).
-  metric?: BlockMetric
+  // The tooltip value and its unit follow the page's selected metric.
+  // Required: the Audience map is the only consumer since the CDN map
+  // retired, and a metric-less render has no honest tooltip to show.
+  metric: BlockMetric
   className?: string
-  formatValue?: (value: number) => string
-  /**
-   * Unit noun after the formatted value ('' for self-describing units like
-   * bytes). Defaults to the visitors wording so existing consumers keep
-   * their tooltip — the CDN map passes bandwidth, not people.
-   */
-  valueLabel?: (value: number) => string
 }
 
 type CountryFeature = { properties: { name: string; a3: string }; id: string }
@@ -59,7 +51,7 @@ function getCountryFeatures(): CountryFeature[] {
   return (collection as unknown as GeoJSON.FeatureCollection).features as unknown as CountryFeature[]
 }
 
-function MapView({ data, metric, className, formatValue = formatNumber, valueLabel = (v) => (v === 1 ? 'visitor' : 'visitors') }: MapViewProps) {
+function MapView({ data, metric, className }: MapViewProps) {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const highlightRef = useRef<d3.Selection<SVGPathElement, unknown, null, undefined> | null>(null)
   const [tooltip, setTooltip] = useState<{ x: number; y: number; name: string; text: string } | null>(null)
@@ -69,7 +61,7 @@ function MapView({ data, metric, className, formatValue = formatNumber, valueLab
     // rate metric (rate intensity would light up 1-session noise countries).
     const map: Record<string, number> = {}
     for (const d of data) {
-      if (d.country && d.country !== 'Unknown') map[d.country] = metric ? shareValue(metric, d, 'pageviews') : d.pageviews
+      if (d.country && d.country !== 'Unknown') map[d.country] = shareValue(metric, d, 'pageviews')
     }
     return map
   }, [data, metric])
@@ -148,11 +140,12 @@ function MapView({ data, metric, className, formatValue = formatNumber, valueLab
           .style('stroke', value > 0 ? 'rgba(249,115,22,0.6)' : 'rgba(255,255,255,0.15)')
         if (value > 0) {
           const [x, y] = d3.pointer(event, svgRef.current?.parentNode)
+          // value > 0 means the country came from `data`, so the row exists;
+          // the guard is for the type, not a reachable state.
           const row = rowMap[alpha2]
-          const text = metric && row
-            ? `${blockRowDisplay(metric, row).text} ${BLOCK_METRIC_LABEL[metric]}`
-            : [formatValue(value), valueLabel(value)].filter(Boolean).join(' ')
-          setTooltip({ x, y, name: d.properties.name, text })
+          if (row) {
+            setTooltip({ x, y, name: d.properties.name, text: `${blockRowDisplay(metric, row).text} ${BLOCK_METRIC_LABEL[metric]}` })
+          }
         }
       })
       .on('mousemove', function (event) {

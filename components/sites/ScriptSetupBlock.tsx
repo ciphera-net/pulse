@@ -30,7 +30,6 @@ import {
   Spinner,
   cn,
 } from '@ciphera-net/facet'
-import Select from '@/components/ui/select'
 import { TierBadge } from '@/components/integrations/TierBadge'
 import { PanelRow, PanelRows } from '@/components/settings/panels'
 import { useInstallStatus } from '@/lib/swr/dashboard'
@@ -58,18 +57,6 @@ const FEATURES = [
 ] as const
 
 type FeatureKey = (typeof FEATURES)[number]['key']
-
-const STORAGE_OPTIONS = [
-  { value: 'local', label: 'Across all tabs' },
-  { value: 'session', label: 'Single tab only' },
-]
-
-const TTL_OPTIONS = [
-  { value: '24', label: '24 hours' },
-  { value: '48', label: '2 days' },
-  { value: '168', label: '7 days' },
-  { value: '720', label: '30 days' },
-]
 
 const DEFAULT_FEATURES: Record<FeatureKey, boolean> = {
   scroll: true,
@@ -122,8 +109,6 @@ export default function ScriptSetupBlock({
     outbound: sf.outbound != null ? Boolean(sf.outbound) : DEFAULT_FEATURES.outbound,
     downloads: sf.downloads != null ? Boolean(sf.downloads) : DEFAULT_FEATURES.downloads,
   })
-  const [storage, setStorage] = useState(typeof sf.storage === 'string' ? sf.storage : 'local')
-  const [ttl, setTtl] = useState(typeof sf.ttl === 'string' ? sf.ttl : '24')
   // * SRI is now PERSISTED (sf.sri) so Pulse can enumerate SRI users before any
   // * rolling-script change.
   const [showSRI, setShowSRI] = useState(sf.sri != null ? Boolean(sf.sri) : false)
@@ -195,8 +180,6 @@ export default function ScriptSetupBlock({
   const buildTag = useCallback(
     (file: string): string => {
       const attrs: string[] = ['defer', `data-domain="${safeDomain}"`]
-      if (storage === 'session') attrs.push('data-storage="session"')
-      if (storage === 'local' && ttl !== '24') attrs.push(`data-storage-ttl="${ttl}"`)
       for (const f of FEATURES) if (!features[f.key]) attrs.push(f.attr)
       const meta = VERSION_MANIFEST.files[file]
       if (showSRI && meta) {
@@ -208,7 +191,7 @@ export default function ScriptSetupBlock({
       }
       return `<script ${attrs.join(' ')}></script>`
     },
-    [safeDomain, storage, ttl, features, showSRI],
+    [safeDomain, features, showSRI],
   )
 
   const scriptSnippet = useMemo(() => {
@@ -255,7 +238,7 @@ export default function ScriptSetupBlock({
   const toggleFeature = (key: FeatureKey) => {
     setFeatures((prev) => {
       const next = { ...prev, [key]: !prev[key] }
-      onFeaturesChange?.({ ...next, storage, ttl, sri: showSRI })
+      onFeaturesChange?.({ ...next, sri: showSRI })
       return next
     })
   }
@@ -263,7 +246,7 @@ export default function ScriptSetupBlock({
   const toggleSRI = () => {
     setShowSRI((prev) => {
       const next = !prev
-      onFeaturesChange?.({ ...features, storage, ttl, sri: next })
+      onFeaturesChange?.({ ...features, sri: next })
       return next
     })
   }
@@ -560,39 +543,6 @@ export default function ScriptSetupBlock({
               caption={`Pins the script to version ${VERSION_MANIFEST.version} with an integrity hash · you update the tag to adopt new versions`}
               control={<Toggle checked={showSRI} onChange={toggleSRI} disabled={disabled} />}
             />
-            <PanelRow
-              label="Visitor recognition"
-              caption="How returning visitors are recognized. Stricter settings increase privacy but may raise unique visitor counts."
-            >
-              <div className="flex flex-wrap items-end gap-3">
-                <Select
-                  variant="input"
-                  value={storage}
-                  onChange={(v: string) => {
-                    setStorage(v)
-                    onFeaturesChange?.({ ...features, storage: v, ttl, sri: showSRI })
-                  }}
-                  options={STORAGE_OPTIONS}
-                  disabled={disabled}
-                  aria-label="Visitor recognition"
-                />
-                {storage === 'local' && (
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Reset after</label>
-                    <Select
-                      variant="input"
-                      value={ttl}
-                      onChange={(v: string) => {
-                        setTtl(v)
-                        onFeaturesChange?.({ ...features, storage, ttl: v, sri: showSRI })
-                      }}
-                      options={TTL_OPTIONS}
-                      disabled={disabled}
-                    />
-                  </div>
-                )}
-              </div>
-            </PanelRow>
           </PanelRows>
         )}
       </div>
