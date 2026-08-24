@@ -37,7 +37,7 @@ export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRa
   const scrollSessions = scrollDepth?.total_sessions ?? 0
 
   return (
-    <div className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
+    <div data-tour="dimension-card" data-tour-card="content-signals" className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
       <div className="flex items-center justify-between mb-4">
         <div className="flex gap-1 min-w-0" role="tablist" aria-label="Content signals tabs" onKeyDown={handleTabKeyDown}>
           {([['scroll', 'Scroll depth'], ['events', 'Events']] as [Tab, string][]).map(([tab, label]) => (

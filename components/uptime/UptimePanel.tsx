@@ -504,7 +504,7 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, tim
   }
 
   return (
-    <div className="relative rounded-none border border-border bg-card">
+    <div data-tour="uptime-panel" className="relative rounded-none border border-border bg-card">
       <UpdatingChip active={isValidating && !!data} className="right-2 top-2" />
 
       {UPTIME_METRIC_ORDER.map((key) => {

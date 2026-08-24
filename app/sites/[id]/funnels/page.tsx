@@ -143,11 +143,21 @@ export default function FunnelsPage() {
       </div>
 
       {funnelsError ? (
-        <ErrorCard
-          title="Couldn't load funnels"
-          description="The funnels request failed. Your funnels are safe — this is a loading problem."
-          onRetry={() => { void mutate() }}
-        />
+        // F8: only an actual 404 (the site itself is gone) earns "Site not
+        // found" — "your funnels are safe" was actively misleading for it.
+        // Duck-typed like the dashboard's device, NOT instanceof: chunk-split
+        // bundles can hold two ApiError classes, and instanceof across them is
+        // false for a real 404 (measured on staging — the 404 rendered the
+        // generic card).
+        (funnelsError as { status?: number })?.status === 404 ? (
+          <p className="text-neutral-400">Site not found</p>
+        ) : (
+          <ErrorCard
+            title="Couldn't load funnels"
+            description="The funnels request failed. Your funnels are safe — this is a loading problem."
+            onRetry={() => { void mutate() }}
+          />
+        )
       ) : list.length === 0 ? (
         <EmptyState
           icon={<FunnelSimple />}
@@ -156,7 +166,7 @@ export default function FunnelsPage() {
           action={canManageFunnels ? { label: 'Create funnel', onClick: () => { setEditingFunnel(null); setModalOpen(true) } } : undefined}
         />
       ) : (
-        <div className="grid gap-3">
+        <div data-tour="funnels-list" className="grid gap-3">
           {list.map((funnel, index) => (
             <motion.div
               key={funnel.id}

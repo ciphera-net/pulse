@@ -356,7 +356,7 @@ export default function Audience({ metric = 'pageviews', countries, cities, regi
 
   return (
     <>
-      <div ref={containerRef} className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
+      <div ref={containerRef} data-tour="dimension-card" data-tour-card="locations" className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
         <div className="flex items-center justify-between mb-4">
           <div className="flex gap-1 min-w-0 overflow-x-auto scrollbar-hide pb-1 max-md:[mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)]" role="tablist" aria-label="Audience view tabs" onKeyDown={handleTabKeyDown}>
             {(['map', 'countries', 'regions', 'cities', 'languages', 'timezones'] as Tab[]).map((tab) => (

@@ -126,7 +126,7 @@ export default function PerformancePage() {
   // * the ?engine= convention on the Search page.
   const strategy: Strategy = searchParams.get('strategy') === 'desktop' ? 'desktop' : 'mobile'
 
-  const { data: site } = useSite(siteId)
+  const { data: site, error: siteError, mutate: mutateSite } = useSite(siteId)
   const { data: config, error: configError, isLoading: configLoading, mutate: mutateConfig } = usePerformanceConfig(siteId)
   const { data: latest, error: latestError, isLoading: latestLoading, mutate: mutateLatest } = usePerformanceLatest(siteId)
 
@@ -370,7 +370,31 @@ export default function PerformancePage() {
   // * (latest still in flight) before the real page appears.
   const showSkeleton = useMinimumLoading((configLoading || latestLoading) && (!config || !latest))
   if (showSkeleton) return <PerformanceSkeleton />
-  if (!site) return <div className="p-8 text-neutral-500">Site not found</div>
+  // F8, propagated from the dashboard: a failed site request is a FAILURE,
+  // stated as one — only an actual 404 earns "Site not found". Anything else
+  // gets the estate's one error device; still in flight keeps the skeleton.
+  if (!site) {
+    const siteStatus = (siteError as { status?: number } | undefined)?.status
+    if (siteError && siteStatus !== 404) {
+      return (
+        <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
+          <div className="mb-6">
+            <h1 className="text-lg font-semibold text-white">Performance</h1>
+            <p className="mt-1 text-sm text-neutral-400">Lab performance scores — mobile and desktop.</p>
+          </div>
+          <ErrorCard
+            title="Couldn’t load performance"
+            description="The site request failed. Your checks are unaffected — this is a loading problem, not a data problem."
+            onRetry={() => {
+              void mutateSite()
+            }}
+          />
+        </div>
+      )
+    }
+    if (!siteError) return <PerformanceSkeleton />
+    return <div className="p-8 text-neutral-500">Site not found</div>
+  }
 
   // ── State: the config request FAILED ──────────────────────────────────────
   // This must never be confused with "monitoring is disabled". `config?.enabled
@@ -598,7 +622,7 @@ export default function PerformancePage() {
                     plus the gap no longer fit beside the screenshot. A 2-column
                     grid gets the 2×2 the design calls for regardless of how long
                     a label happens to be. */}
-                <div className="grid w-full min-w-0 grid-cols-2 gap-y-6 sm:flex sm:w-auto sm:flex-1 sm:flex-wrap sm:items-center sm:justify-center sm:gap-10">
+                <div data-tour="performance-scores" className="grid w-full min-w-0 grid-cols-2 gap-y-6 sm:flex sm:w-auto sm:flex-1 sm:flex-wrap sm:items-center sm:justify-center sm:gap-10">
                   {allScores.map(({ key, label, score }) => (
                     <button
                       key={key}

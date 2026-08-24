@@ -375,6 +375,7 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
       <button
         ref={buttonRef}
         onClick={() => setOpen(!open)}
+        data-tour="site-switcher"
         className="inline-flex items-center gap-2 text-neutral-500 hover:text-neutral-300 transition-colors max-w-[180px] cursor-pointer ease-apple"
       >
         {currentSite?.domain && (

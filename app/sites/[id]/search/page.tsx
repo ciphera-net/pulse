@@ -105,8 +105,8 @@ export default function SearchConsolePage() {
     [write],
   )
 
-  const { data: gscStatus } = useGSCStatus(siteId)
-  const { data: bingStatus } = useBingStatus(siteId)
+  const { data: gscStatus, error: gscStatusError, mutate: retryGscStatus } = useGSCStatus(siteId)
+  const { data: bingStatus, error: bingStatusError, mutate: retryBingStatus } = useBingStatus(siteId)
   const connected = gscStatus?.connected
 
   // * Engine lives in the URL like granularity does, so a Bing view survives a refresh and can be
@@ -139,7 +139,33 @@ export default function SearchConsolePage() {
     document.title = domain ? `Search Console · ${domain} | Pulse` : 'Search Console | Pulse'
   }, [site?.domain])
 
-  // ─── Route-level state: skeleton only on the very first load ──
+  // ─── Route-level state: a DEAD status check is a failure, stated as one ──
+  // Both status hooks gate the whole page, so a persistently failing request
+  // used to leave the skeleton up forever — a failed check must render an
+  // error with a retry, never an infinite loading state. Checked BEFORE the
+  // skeleton gate: `undefined + error` means SWR has given up, not "loading".
+  if ((gscStatus === undefined && gscStatusError) || (bingStatus === undefined && bingStatusError)) {
+    return (
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 pb-8">
+        <div className="mb-6">
+          <h1 className="text-lg font-semibold text-white mb-1">Search Console</h1>
+          <p className="text-sm text-neutral-400">
+            Google Search performance, queries, and page rankings
+          </p>
+        </div>
+        <ErrorCard
+          title="Couldn’t check the search connections"
+          description="The connection status request failed. Your data is intact — this is a loading problem, not a data problem."
+          onRetry={() => {
+            void retryGscStatus()
+            void retryBingStatus()
+          }}
+        />
+      </div>
+    )
+  }
+
+  // ─── Skeleton only on the very first load ──
   if (gscStatus === undefined || bingStatus === undefined || (connected && engine === 'google' && overview === undefined && overviewLoading)) {
     return <SearchSkeleton />
   }
@@ -242,12 +268,15 @@ export default function SearchConsolePage() {
         <div className="flex flex-wrap items-center gap-2">
           {/* Only when there is genuinely a choice. A one-option toggle is furniture. */}
           {bingConnected && connected && (
+            // display:contents — a real span would become its own flex item.
+            <span className="contents" data-tour="search-engine-toggle">
             <SegmentedControl
               aria-label="Search engine"
               value={engine}
               onChange={setEngine}
               options={ENGINE_OPTIONS}
             />
+            </span>
           )}
           <DateRangePicker
             period={period}

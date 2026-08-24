@@ -245,6 +245,28 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                       </Fragment>
                     ))}
                   </div>
+                  {/* Legal — the authenticated app's one path to the policies
+                      (owner pick F1, Tranche A). Quiet by design: nav
+                      utility, not content. */}
+                  <div className="mt-8 border-t border-border pt-4 text-xs text-muted-foreground">
+                    <a
+                      href="https://ciphera.net/privacy"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="transition-colors duration-fast hover:text-foreground"
+                    >
+                      Privacy Policy
+                    </a>
+                    <span aria-hidden="true" className="mx-2 opacity-50">·</span>
+                    <a
+                      href="https://ciphera.net/terms"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="transition-colors duration-fast hover:text-foreground"
+                    >
+                      Terms of Service
+                    </a>
+                  </div>
                 </nav>
 
                 {/* ── Content column ──
@@ -350,6 +372,28 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                             })}
                           </div>
                         ))}
+                      </div>
+                      {/* Legal — same quiet row as the desktop rail; the sheet
+                          IS the settings nav on mobile, so the links reach
+                          every viewport. */}
+                      <div className="border-t border-border px-5 py-4 text-xs text-muted-foreground">
+                        <a
+                          href="https://ciphera.net/privacy"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="transition-colors duration-fast hover:text-foreground"
+                        >
+                          Privacy Policy
+                        </a>
+                        <span aria-hidden="true" className="mx-2 opacity-50">·</span>
+                        <a
+                          href="https://ciphera.net/terms"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="transition-colors duration-fast hover:text-foreground"
+                        >
+                          Terms of Service
+                        </a>
                       </div>
                     </motion.div>
                   </div>

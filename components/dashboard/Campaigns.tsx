@@ -157,7 +157,7 @@ export default function Campaigns({ metric = 'visitors', siteId, dateRange, filt
 
   return (
     <>
-      <div className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
+      <div data-tour="dimension-card" data-tour-card="campaigns" className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
         <div className="flex items-center justify-between gap-2 mb-4">
           {/* The five dimension tabs measure ~319px; on a phone that left no room
               for "Build URL", which was pushed 12px off the card. Every other
