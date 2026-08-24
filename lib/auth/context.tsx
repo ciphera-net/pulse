@@ -76,6 +76,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // * a definitive rejection (the server said the credential is dead) ends the
   // * session. See @ciphera-net/facet useSessionRefresh.
   // * Audit: Infra/Auth/docs/audits/20-08-2026-session-loss-root-cause-audit.md §4 F-G
+  // Re-read the freshly minted cookie's org_id/role into the user snapshot.
+  // The slug gates (useIsOwner/useIsAdminOrOwner) read user.role, which is
+  // otherwise hydrated only at page init and org switch — without this, a
+  // role change stays invisible for the life of the tab while the token
+  // quietly rotates every ~13 minutes.
+  const rehydrateRoleSnapshot = useCallback(async () => {
+    try {
+      const session = await getSessionAction()
+      if (!session) return
+      setUser((prev) => {
+        if (!prev) return prev
+        if (prev.org_id === session.org_id && prev.role === session.role) return prev
+        const merged = { ...prev, org_id: session.org_id, role: session.role }
+        localStorage.setItem('user', JSON.stringify(merged))
+        return merged
+      })
+    } catch {
+      // * Stale build — the snapshot keeps its last value; the next full
+      // * navigation re-hydrates from fresh HTML/JS.
+    }
+  }, [])
+
   const refreshToken = useCallback(async (): Promise<{ ok: boolean; transient: boolean }> => {
     const signals = () => ({
       screen_width: window.screen.width,
@@ -95,12 +117,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const lastOrgId = cachedUser ? (JSON.parse(cachedUser).org_id ?? '') : ''
 
       const res = await post(lastOrgId)
-      if (res.ok) return { ok: true, transient: false }
+      if (res.ok) {
+        await rehydrateRoleSnapshot()
+        return { ok: true, transient: false }
+      }
 
       const data = await res.json().catch(() => null)
       if (data?.retryable) {
         const retry = await post(lastOrgId)
-        if (retry.ok) return { ok: true, transient: false }
+        if (retry.ok) {
+          await rehydrateRoleSnapshot()
+          return { ok: true, transient: false }
+        }
         const retryData = await retry.json().catch(() => null)
         return { ok: false, transient: isTransientRefreshFailure(retry.status, retryData) }
       }
@@ -110,7 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // * never about the session.
       return { ok: false, transient: true }
     }
-  }, [])
+  }, [rehydrateRoleSnapshot])
 
   const login = (userData: User) => {
     // * Merge vault PII from cross-subdomain cookie (set by id-frontend)
@@ -207,9 +235,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.refresh()
   }, [router, swrMutate])
 
+  // Rotate the token, THEN re-hydrate. The plain refresh() re-reads the
+  // CURRENT cookie, which after a server-side role change (ownership
+  // transfer) still carries the old role — only a rotation mints a cookie
+  // from the server's truth. Callers that changed their own role go through
+  // this, not refresh().
   const refreshSession = useCallback(async () => {
+      await refreshWithMutex()
       await refresh()
-  }, [refresh])
+  }, [refreshWithMutex, refresh])
 
   // Initial load
   useEffect(() => {

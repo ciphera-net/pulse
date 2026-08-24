@@ -13,7 +13,7 @@ import {
   getAuthErrorMessage,
 } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
-import { useCan } from '@/lib/auth/permissions'
+import { useIsOwner, useIsAdminOrOwner } from '@/lib/auth/permissions'
 import { getOrganization, updateOrganization, deleteOrganization, getOrganizationMembers, transferOwnership, type OrganizationMember } from '@/lib/api/organization'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
@@ -21,8 +21,11 @@ import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
 
 export default function WorkspaceGeneralTab() {
-  const { user } = useAuth()
-  const canDeleteOrg = useCan('org.delete')
+  const { user, refreshSession } = useAuth()
+  // Two different server rules, two gates: ciphera-id lets owner OR admin
+  // rename the workspace, but only the owner delete or transfer it.
+  const canDeleteOrg = useIsOwner()
+  const canEditOrg = useIsAdminOrOwner()
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [loading, setLoading] = useState(true)
@@ -110,8 +113,11 @@ export default function WorkspaceGeneralTab() {
     try {
       await transferOwnership(user.org_id, transferTargetId)
       toast.success('Ownership transferred. You are now a member.')
-      // Reload to reflect the new role — force a full page reload so the
-      // JWT context is refreshed with the updated role.
+      // Rotate the token BEFORE reloading: the access_token cookie is still
+      // minted with role 'owner', so a bare reload re-hydrates the old role
+      // and the ex-owner's Danger Zone survives the very reload meant to
+      // clear it. refreshSession rotates against the server's truth first.
+      await refreshSession()
       window.location.href = '/settings/organization/general'
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to transfer ownership')
@@ -151,7 +157,7 @@ export default function WorkspaceGeneralTab() {
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="Acme Corp"
-              disabled={!canDeleteOrg}
+              disabled={!canEditOrg}
             />
           </PanelRow>
           <PanelRow
@@ -168,7 +174,7 @@ export default function WorkspaceGeneralTab() {
                 value={slug}
                 onChange={e => setSlug(e.target.value)}
                 placeholder="acme-corp"
-                disabled={!canDeleteOrg}
+                disabled={!canEditOrg}
               />
             </InputGroup>
           </PanelRow>
@@ -275,7 +281,7 @@ export default function WorkspaceGeneralTab() {
         )}
       </DangerZone>}
 
-      {canDeleteOrg && (
+      {canEditOrg && (
         <SettingsSaveBar
           isDirty={isDirty}
           onSave={handleSave}

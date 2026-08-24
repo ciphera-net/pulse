@@ -106,10 +106,12 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
   // tab that only renders "Access restricted". Mirror the nav's gates.
   const canSitesEdit      = useCan('sites.edit')
   const canGoalsManage    = useCan('goals.manage')
-  const canQuarantineView = useCan('quarantine.view')
+  // Bot & Spam and Members are membership-implied (the server authorises
+  // those reads on org membership alone); no permission gate.
+  const canQuarantineView = true
   const canReportsManage  = useCan('reports.manage')
   const canIntegrations   = useCan('integrations.manage')
-  const canTeamView       = useCan('team.view')
+  const canTeamView       = true
   const canBillingView    = useCan('billing.view')
   const canNotificationSettings = useCan('notification_settings.manage')
   const canAuditView      = useCan('audit.view')

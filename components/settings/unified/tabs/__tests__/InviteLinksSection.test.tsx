@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import type { InviteLink } from '@/lib/api/organization'
+import type { Role } from '@/lib/api/roles'
 
 // --- Mocks ---------------------------------------------------------------
 
-vi.mock('@/lib/auth/permissions', () => ({ useCan: () => true }))
+vi.mock('@/lib/auth/permissions', () => ({ useIsAdminOrOwner: () => true }))
 
 vi.mock('@ciphera-net/facet', () => ({
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
@@ -67,5 +68,25 @@ describe('InviteLinksSection', () => {
     render(<InviteLinksSection orgId="o" links={[]} roles={[]} onRevoked={noop} />)
     expect(screen.getByText('Invite Links')).toBeInTheDocument()
     expect(screen.getByText('No invite links yet')).toBeInTheDocument()
+  })
+
+  it('resolves the role chip from link.role — metadata.role_id is never consulted', () => {
+    const chipRoles = [
+      { id: 'r-admin', slug: 'admin', name: 'Admin' } as Role,
+      { id: 'r-member', slug: 'member', name: 'Member' } as Role,
+      { id: 'r-analyst', slug: 'analyst', name: 'Analyst' } as Role,
+    ]
+    const chipLinks: InviteLink[] = [
+      { id: 'l-adm', organization_id: 'o', name: 'Admin invite', role: 'admin', max_uses: null, use_count: 0, expires_at: future, created_by: 'u', created_at: past, url: 'https://x/join/adm' },
+      // Legacy pre-trim link: role 'member' on the wire, a finer role in
+      // metadata. The backend ignores metadata.role_id since the trim, so the
+      // chip must say what the link GRANTS (Member) — a metadata-derived
+      // label would assert a role the link does not grant.
+      { id: 'l-leg', organization_id: 'o', name: 'Legacy analyst invite', role: 'member', metadata: { app: 'pulse', role_id: 'r-analyst' }, max_uses: null, use_count: 0, expires_at: future, created_by: 'u', created_at: past, url: 'https://x/join/leg' },
+    ]
+    render(<InviteLinksSection orgId="o" links={chipLinks} roles={chipRoles} onRevoked={noop} />)
+    expect(screen.getByText('Admin')).toBeInTheDocument()
+    expect(screen.getByText('Member')).toBeInTheDocument()
+    expect(screen.queryByText('Analyst')).not.toBeInTheDocument()
   })
 })

@@ -26,36 +26,17 @@ export interface PermissionGroup {
   permissions: PermissionInfo[]
 }
 
+// The builtin slugs an invite link can grant. The finer roles (analyst,
+// viewer, pre-trim customs) were only ever assigned through the removed
+// metadata.role_id path, so they are viewable but not assignable — the
+// invite modal offers exactly this set and the roles tab labels everything
+// outside it. One const so the two surfaces cannot drift.
+export const INVITABLE_SLUGS = ['admin', 'member']
+
+// Reads only — custom-role CRUD was removed with the backend routes
+// (pre-launch triage batch 4).
 export const listRoles = () =>
   apiRequest<{ roles: Role[] }>('/roles')
-
-export const getRole = (roleId: string) =>
-  apiRequest<Role>(`/roles/${roleId}`)
-
-export const createRole = (data: {
-  name: string
-  slug: string
-  color?: string
-  permissions: string[]
-  site_scoped?: boolean
-  site_ids?: string[]
-}) =>
-  apiRequest<Role>('/roles', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  })
-
-export const updateRole = (
-  roleId: string,
-  data: { name: string; color?: string; permissions: string[]; site_scoped?: boolean; site_ids?: string[] }
-) =>
-  apiRequest<void>(`/roles/${roleId}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  })
-
-export const deleteRole = (roleId: string) =>
-  apiRequest<void>(`/roles/${roleId}`, { method: 'DELETE' })
 
 export const listPermissionGroups = () =>
   apiRequest<{ groups: PermissionGroup[] }>('/roles/permissions')
