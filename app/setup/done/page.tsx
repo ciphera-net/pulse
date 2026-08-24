@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
@@ -8,9 +8,9 @@ import { WarningCircle } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
 import { useSetup } from '@/lib/setup/context'
 import { completeOnboarding } from '@/lib/api/organization'
-import { getRealtime } from '@/lib/api/stats'
 import { getSubscription } from '@/lib/api/billing'
 import { Button, Spinner, CheckCircleIcon, UsersIcon, BookOpenIcon, FunnelIcon } from '@ciphera-net/facet'
+import InstallStateBlock from '@/components/setup/InstallStateBlock'
 
 /**
  * Payment-confirmation state for arrivals from the Mollie checkout
@@ -24,9 +24,7 @@ export default function SetupDonePage() {
   const router = useRouter()
   const { user } = useAuth()
   const { site, completeStep } = useSetup()
-  const [dataReceived, setDataReceived] = useState(false)
   const [payment, setPayment] = useState<PaymentState>('none')
-  const cancelledRef = useRef(false)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -63,31 +61,6 @@ export default function SetupDonePage() {
       completeOnboarding(user.org_id).catch(() => {})
     }
   }, [completeStep, user?.org_id])
-
-  // Poll for first pageview if a site was created
-  useEffect(() => {
-    if (!site) return
-    cancelledRef.current = false
-
-    const poll = async () => {
-      for (let i = 0; i < 30; i++) {
-        if (cancelledRef.current) return
-        try {
-          const data = await getRealtime(site.id)
-          if (data && data.visitors > 0) {
-            setDataReceived(true)
-            return
-          }
-        } catch {
-          // keep polling
-        }
-        await new Promise((r) => setTimeout(r, 3000))
-      }
-    }
-    poll()
-
-    return () => { cancelledRef.current = true }
-  }, [site])
 
   if (payment === 'confirming') {
     return (
@@ -154,24 +127,12 @@ export default function SetupDonePage() {
         </p>
       </div>
 
-      {/* Live data indicator */}
-      {site && (
-        <div className="mb-6 p-4 rounded-none border border-neutral-800 bg-neutral-900">
-          <div className="flex items-center gap-3">
-            {dataReceived ? (
-              <>
-                <div className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-sm text-emerald-400 font-medium">Live data flowing from {site.name}</span>
-              </>
-            ) : (
-              <>
-                <Spinner size="sm" />
-                <span className="text-sm text-neutral-400">Waiting for first pageview from {site.name}...</span>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      {/* First-event state — the server's own install status, not a live
+          visitor count, and with a watch window that admits when it lapses.
+          The old block here polled /realtime 30x3s and then stopped WITHOUT
+          any state for having stopped, so the spinner claimed to still be
+          checking forever. */}
+      {site && <InstallStateBlock siteId={site.id} domain={site.domain} />}
 
       {/* Next steps cards */}
       <div className="space-y-3 mb-8">
