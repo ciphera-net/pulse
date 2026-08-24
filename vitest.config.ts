@@ -18,7 +18,19 @@ export default defineConfig({
     // waitFor budgets starve — the known ResetDataModal timeout at default
     // workers. Cap the pool to roughly the pod's real allotment; local runs
     // keep the full pool. (Woodpecker sets CI=woodpecker.)
-    ...(process.env.CI ? { maxWorkers: 4, minWorkers: 1 } : {}),
+    //
+    // The worker cap REDUCED the starvation, it did not eliminate it: after
+    // #374 the same 5000ms-timeout signature hit ResetDataModal (pipeline
+    // 856) and then FOUR tests in SiteGeneralTab (867) — two unrelated files
+    // neither diff touched, both green locally. That rules out per-file
+    // fixes: the failing constraint is the DEFAULT 5s budget on a 500m pod,
+    // not any one test. Raise the budgets in CI only — a hung test still
+    // fails, just against a budget the pod can actually meet; local runs
+    // keep the sharp 5s default so real slowness is still felt where a
+    // human is watching.
+    ...(process.env.CI
+      ? { maxWorkers: 4, minWorkers: 1, testTimeout: 20_000, hookTimeout: 20_000 }
+      : {}),
   },
   resolve: {
     alias: {

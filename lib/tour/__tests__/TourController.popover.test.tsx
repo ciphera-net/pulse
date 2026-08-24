@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, cleanup, waitFor, fireEvent } from '@testing-library/react'
 import TourController from '../TourController'
 import { TOUR_DONE_PREFIX } from '../constants'
-import { TOUR_READY_SELECTORS } from '../steps'
+import { TOUR_STEPS } from '../steps'
 
 /**
  * Drives the REAL driver.js (no vi.mock) in jsdom. The sibling suite mocks
@@ -36,13 +36,16 @@ vi.mock('@ciphera-net/facet', () => ({
 }))
 
 function mountReadyAnchors() {
-  for (const sel of TOUR_READY_SELECTORS) {
+  for (const def of TOUR_STEPS) {
+    if (!def.anchor) continue
     const el = document.createElement('div')
-    const anchor = /data-tour="([^"]+)"/.exec(sel)?.[1] as string
-    el.setAttribute('data-tour', anchor)
-    const card = /data-tour-card="([^"]+)"/.exec(sel)?.[1]
-    if (card) el.setAttribute('data-tour-card', card)
+    el.setAttribute('data-tour', def.anchor)
+    if (def.card) el.setAttribute('data-tour-card', def.card)
     Object.defineProperty(el, 'offsetParent', { get: () => document.body })
+    // jsdom has no layout: model a real on-screen rect so the ring device
+    // (which hides for 0-size targets) has something to draw around.
+    el.getBoundingClientRect = () =>
+      ({ x: 100, y: 120, left: 100, top: 120, right: 336, bottom: 400, width: 236, height: 280, toJSON: () => ({}) }) as DOMRect
     document.body.appendChild(el)
   }
 }
@@ -111,5 +114,28 @@ describe('welcome step against the real driver.js', () => {
     const back = document.querySelector<HTMLButtonElement>('.driver-popover-prev-btn')
     expect(back!.textContent).toBe('Back')
     expect(back!.disabled).toBe(false)
+    // The spotlight ring is a body-attached fixed element (outlines get
+    // clipped by ancestor overflow), drawn 6px outside the target's rect.
+    await waitFor(() => {
+      const ring = document.getElementById('pulse-tour-ring')
+      expect(ring).toBeTruthy()
+      expect(ring!.style.display).toBe('block')
+    })
+    const ring = document.getElementById('pulse-tour-ring')!
+    expect(ring.style.left).toBe('94px')
+    expect(ring.style.top).toBe('114px')
+    expect(ring.style.width).toBe('248px')
+    expect(ring.style.height).toBe('292px')
+  })
+
+  it('the ring is removed with the tour', async () => {
+    render(<TourController />)
+    await waitFor(
+      () => expect(document.querySelector('.driver-popover.pulse-tour')).toBeTruthy(),
+      { timeout: 5000 }
+    )
+    fireEvent.click(document.querySelector<HTMLButtonElement>('.driver-popover-prev-btn')!)
+    await waitFor(() => expect(document.querySelector('.driver-popover')).toBeNull())
+    expect(document.getElementById('pulse-tour-ring')).toBeNull()
   })
 })

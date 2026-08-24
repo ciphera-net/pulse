@@ -13,7 +13,7 @@ import {
   TOUR_REQUEST_TTL_MS,
   TOUR_START_EVENT,
 } from './constants'
-import { TOUR_STEPS, TOUR_STEP_COUNT, TOUR_READY_SELECTORS, findStepElement } from './steps'
+import { TOUR_STEPS, TOUR_READY_SELECTORS, findStepElement, type TourStepDef } from './steps'
 import { trackTourCompleted, trackTourSkipped, trackTourStarted, trackTourStepViewed } from './analytics'
 
 /**
@@ -28,15 +28,24 @@ import { trackTourCompleted, trackTourSkipped, trackTourStarted, trackTourStepVi
  *
  * Anchors are awaited, never assumed: the deck is client-only behind a
  * ≥300ms skeleton with no ready signal, so start() polls for the two
- * latest-mounting anchors before driving, and driver's own waitForElement
- * covers per-step races after that.
+ * latest-mounting anchors before driving. The step list is then built from
+ * the anchors that are actually PRESENT for this user — an absent or hidden
+ * target is dropped and the counter renumbers, instead of driver spotlighting
+ * a 0×0 rect or hanging on a wait (measured failure modes, 24-08 audit).
  *
- * Teardown is owned HERE, not by driver's onDestroyed hook: driver publishes
- * `__activeStep`/`__activeElement` only once the first transition commits
- * (~400ms with animate on) and gates onDestroyed on both — an Esc inside that
- * window would otherwise end the tour visually while skipping the done-key,
- * the sidebar restore, and the analytics, and leave activeRef stuck true.
- * finish() is idempotent; every exit path calls it.
+ * Three drawing facts this controller owns (same audit):
+ * - driver binds `scroll` on window WITHOUT capture, and the app scrolls in
+ *   <main> — container scrolls (including driver's own scrollIntoView between
+ *   steps) never trigger its refresh, stranding the cutout and parking the
+ *   popover on top of its own target. A capture-phase scroll listener calls
+ *   refresh() while the tour runs.
+ * - the spotlight ring is a fixed-position element, not an outline on the
+ *   target — outlines are clipped by ancestor overflow (the deck Card is
+ *   overflow-hidden; the rail's ring rendered as one edge).
+ * - teardown is owned here, not by driver's onDestroyed hook: driver gates it
+ *   on transition state that exists only ~400ms after drive(), so an early
+ *   Esc would skip the done-key, the sidebar restore, and the analytics.
+ *   finish() is idempotent; every exit path calls it.
  */
 export default function TourController() {
   const { user } = useAuth()
@@ -53,6 +62,8 @@ export default function TourController() {
   const finishedRef = useRef(false)
   const lastIndexRef = useRef(0)
   const sidebarWasCollapsedRef = useRef(false)
+  const ringRef = useRef<HTMLDivElement | null>(null)
+  const rafRef = useRef(0)
 
   const startRef = useRef<(trigger: 'auto' | 'manual') => Promise<void>>(async () => {})
   const finishRef = useRef<() => void>(() => {})
@@ -60,6 +71,54 @@ export default function TourController() {
   const restoreSidebar = () => {
     if (sidebarWasCollapsedRef.current) sidebarRef.current.collapse()
   }
+
+  /** Place the ring 1px inside the cutout edge (stagePadding 7 → inset 6). */
+  const syncRing = () => {
+    const ring = ringRef.current
+    const d = driverRef.current
+    if (!ring || !d) return
+    const el = d.getActiveElement()
+    if (!el || el.id === 'driver-dummy-element') {
+      ring.style.display = 'none'
+      return
+    }
+    const r = el.getBoundingClientRect()
+    if (r.width < 2 || r.height < 2) {
+      ring.style.display = 'none'
+      return
+    }
+    const PAD = 6
+    ring.style.display = 'block'
+    ring.style.left = `${r.left - PAD}px`
+    ring.style.top = `${r.top - PAD}px`
+    ring.style.width = `${r.width + PAD * 2}px`
+    ring.style.height = `${r.height + PAD * 2}px`
+  }
+
+  // Container scrolls never reach driver's own (bubble-phase, window-only)
+  // scroll listener; non-bubbling events still traverse the capture phase,
+  // so this one sees <main> scrolling and re-syncs cutout + popover + ring.
+  const onViewportChange = () => {
+    if (rafRef.current) return
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = 0
+      driverRef.current?.refresh()
+      syncRing()
+    })
+  }
+
+  const detachDrawing = () => {
+    window.removeEventListener('scroll', onViewportChange, true)
+    window.removeEventListener('resize', onViewportChange)
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = 0
+    }
+    ringRef.current?.remove()
+    ringRef.current = null
+  }
+  const detachDrawingRef = useRef(detachDrawing)
+  const onViewportChangeRef = useRef(onViewportChange)
 
   /**
    * Bookkeeping for a tour that actually SHOWED (drive() ran): stamp the
@@ -73,6 +132,7 @@ export default function TourController() {
     finishedRef.current = true
     activeRef.current = false
     driverRef.current = null
+    detachDrawingRef.current()
     const uid = userIdRef.current
     if (uid) {
       try {
@@ -120,6 +180,20 @@ export default function TourController() {
       return
     }
 
+    // The tour this user actually gets: the welcome plus every step whose
+    // target exists and is visible RIGHT NOW. A user without some surface
+    // gets a shorter, honestly-numbered tour — never a corner-pinned
+    // spotlight or an 8-second dimmed wait for an element that isn't coming.
+    const presentSteps = TOUR_STEPS.filter((def) => def.anchor === null || Boolean(findStepElement(def)))
+    if (presentSteps.length < 2) {
+      activeRef.current = false
+      restoreSidebar()
+      if (trigger === 'manual') {
+        toast.error('The tour needs a loaded dashboard — try again in a moment.')
+      }
+      return
+    }
+
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const d = driver({
       animate: !reduced,
@@ -140,7 +214,11 @@ export default function TourController() {
       // Per-popover showProgress is OR-merged with this, so the config stays
       // false and counted steps opt in — the welcome is deliberately uncounted.
       showProgress: false,
-      waitForElement: 8_000,
+      // A target that vanishes MID-tour (the start-time filter already
+      // removed the never-present ones) gets a short grace, then its step is
+      // skipped — never the dimmed dead-air of a long wait.
+      waitForElement: 2_500,
+      skipMissingElement: true,
       onPopoverRender: (popover, opts) => {
         const idx = opts.index ?? driverRef.current?.getActiveIndex() ?? 0
         const head = document.createElement('div')
@@ -154,15 +232,21 @@ export default function TourController() {
           const bar = document.createElement('div')
           bar.className = 'pulse-tour-bar'
           const fill = document.createElement('div')
-          fill.style.width = `${Math.round((idx / TOUR_STEP_COUNT) * 100)}%`
+          fill.style.width = `${Math.round((idx / (presentSteps.length - 1)) * 100)}%`
           bar.appendChild(fill)
           head.insertAdjacentElement('afterend', bar)
         }
+      },
+      onHighlightStarted: () => {
+        // The ring must not sit at the previous step's rect while the cutout
+        // tweens to the next one.
+        if (ringRef.current) ringRef.current.style.display = 'none'
       },
       onHighlighted: (_el, _step, opts) => {
         const idx = opts.index ?? driverRef.current?.getActiveIndex() ?? 0
         lastIndexRef.current = idx
         trackTourStepViewed(idx)
+        syncRing()
       },
       // Esc and overlay clicks route through this hook INSTEAD of tearing
       // down (driver's confirm-dialog contract); the public destroy() —
@@ -174,20 +258,30 @@ export default function TourController() {
       onDestroyed: () => {
         finishRef.current()
       },
-      steps: buildSteps(),
+      steps: buildSteps(presentSteps),
     })
     driverRef.current = d
+    const ring = document.createElement('div')
+    ring.className = 'pulse-tour-ring'
+    ring.id = 'pulse-tour-ring'
+    ring.style.display = 'none'
+    document.body.appendChild(ring)
+    ringRef.current = ring
+    window.addEventListener('scroll', onViewportChangeRef.current, true)
+    window.addEventListener('resize', onViewportChangeRef.current)
     d.drive()
     trackTourStarted(trigger)
   }
 
-  function buildSteps(): DriveStep[] {
-    return TOUR_STEPS.map((def, i) => {
+  function buildSteps(defs: readonly TourStepDef[]): DriveStep[] {
+    const counted = defs.length - 1
+    return defs.map((def, i) => {
       const isWelcome = def.anchor === null
-      const isLast = i === TOUR_STEPS.length - 1
+      const isLast = i === defs.length - 1
       const step: DriveStep = {
         // The cast admits what driver.js handles at runtime: an undefined
-        // return means "not here yet" and engages its waitForElement retry.
+        // return means "not here yet" and engages its waitForElement retry
+        // (then skipMissingElement, should the wait come up empty).
         element: isWelcome ? undefined : ((() => findStepElement(def)) as unknown as () => Element),
         popover: {
           title: def.title,
@@ -213,7 +307,7 @@ export default function TourController() {
               }
             : {
                 showProgress: true,
-                progressText: `${i} of ${TOUR_STEP_COUNT}`,
+                progressText: `${i} of ${counted}`,
               }),
           ...(isLast
             ? {
@@ -240,6 +334,8 @@ export default function TourController() {
     sidebarRef.current = sidebar
     startRef.current = start
     finishRef.current = finish
+    detachDrawingRef.current = detachDrawing
+    onViewportChangeRef.current = onViewportChange
   })
 
   // Manual start: same-page event (palette on the dashboard) — the one-shot
