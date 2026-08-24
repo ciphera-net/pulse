@@ -1069,7 +1069,7 @@ const rawIntegrations: RawIntegration[] = [
   {
     id: 'substack',
     name: 'Substack',
-    description: 'Add Pulse to your Substack publication with a custom domain.',
+    description: "Can you add Pulse analytics to Substack? Not directly — here's why, and what works instead.",
     category: 'platform',
     brandColor: '#FF6719',
     icon: (
@@ -1083,7 +1083,7 @@ const rawIntegrations: RawIntegration[] = [
   {
     id: 'linktree',
     name: 'Linktree',
-    description: 'Add Pulse to your Linktree page via custom code.',
+    description: "Can you add Pulse analytics to Linktree? Not directly — here's why, and what works instead.",
     category: 'platform',
     brandColor: '#43E55E',
     icon: (
@@ -1234,7 +1234,7 @@ const rawIntegrations: RawIntegration[] = [
   {
     id: 'amp',
     name: 'Google AMP',
-    description: 'Add Pulse to your AMP (Accelerated Mobile Pages) site.',
+    description: 'Pulse on AMP pages: not yet available — amp-analytics support is on the roadmap.',
     category: 'platform',
     brandColor: '#005AF0',
     icon: (
