@@ -64,10 +64,12 @@ describe('findStepElement', () => {
     expect(findStepElement(bellStep)).toBe(visible)
   })
 
-  it('falls back to the first match when no mount is visible', () => {
-    const first = addAnchor('notification-bell', false)
+  // A hidden node handed to driver reads as "found" and spotlights a 0×0
+  // rect at the viewport corner (24-08 audit) — hidden is NOT a fallback.
+  it('returns undefined when no mount is visible', () => {
     addAnchor('notification-bell', false)
-    expect(findStepElement(bellStep)).toBe(first)
+    addAnchor('notification-bell', false)
+    expect(findStepElement(bellStep)).toBeUndefined()
   })
 
   it('returns undefined when the anchor is absent — driver waits, not crashes', () => {

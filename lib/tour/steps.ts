@@ -94,9 +94,13 @@ export function findStepElement(def: TourStepDef): Element | undefined {
   const selector = stepSelector(def)
   if (!selector) return undefined
   const nodes = Array.from(document.querySelectorAll<HTMLElement>(selector))
-  // An undefined return tells driver.js "not found yet" — it re-invokes the
-  // element function under its waitForElement window instead of giving up.
-  return nodes.find((n) => n.offsetParent !== null) ?? nodes[0]
+  // VISIBLE matches only, no fallback: a hidden node handed to driver reads
+  // as "found" — it then spotlights a 0×0 rect at the viewport corner with
+  // the popover floating over the shell (measured, 24-08 audit). An
+  // undefined return instead tells driver "not here", which engages its
+  // waitForElement/skipMissingElement handling — and the controller filters
+  // absent-target steps out before the tour even starts.
+  return nodes.find((n) => n.offsetParent !== null)
 }
 
 /**
