@@ -5,7 +5,6 @@ import { useParams, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { deleteFunnel, createFunnel, updateFunnel, type Funnel, type CreateFunnelRequest } from '@/lib/api/funnels'
-import { ApiError } from '@/lib/api/client'
 import { useSite, useFunnels, useFunnelListStats } from '@/lib/swr/dashboard'
 import { previousDateRange } from '@/lib/hooks/periodUrl'
 import { toast, PlusIcon, Button } from '@ciphera-net/facet'
@@ -146,7 +145,11 @@ export default function FunnelsPage() {
       {funnelsError ? (
         // F8: only an actual 404 (the site itself is gone) earns "Site not
         // found" — "your funnels are safe" was actively misleading for it.
-        funnelsError instanceof ApiError && funnelsError.status === 404 ? (
+        // Duck-typed like the dashboard's device, NOT instanceof: chunk-split
+        // bundles can hold two ApiError classes, and instanceof across them is
+        // false for a real 404 (measured on staging — the 404 rendered the
+        // generic card).
+        (funnelsError as { status?: number })?.status === 404 ? (
           <p className="text-neutral-400">Site not found</p>
         ) : (
           <ErrorCard
