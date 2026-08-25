@@ -14,6 +14,7 @@ import { cleanupStaleStorage } from '@/lib/utils/storage-cleanup'
 import { forgetAllPendingAuth } from '@/lib/api/oauth-store'
 import { isTransientRefreshFailure } from '@/lib/auth/refresh-outcome'
 import { reportClientEvent } from '@/lib/utils/clientEvents'
+import { isAuthedAppRoute } from '@/lib/auth/appRoutes'
 
 /** Read vault PII from the cross-subdomain cookie set by id-frontend. */
 function getVaultPII(): { email?: string; display_name?: string } {
@@ -45,6 +46,9 @@ interface AuthContextType {
   user: User | null
   loading: boolean
   hadPriorSession: boolean
+  /** True while init's transient-failure retry loop is actively trying to
+   * restore the session — the state the takeover renders as "Restoring". */
+  recovering: boolean
   login: (user: User) => void
   logout: () => void
   refresh: () => Promise<void>
@@ -55,6 +59,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   hadPriorSession: false,
+  recovering: false,
   login: () => {},
   logout: () => {},
   refresh: async () => {},
@@ -65,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [hadPriorSession, setHadPriorSession] = useState(false)
+  const [recovering, setRecovering] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
@@ -299,6 +305,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               definitiveReject = true
               break
             }
+            // * Entering the retry loop: surface it, so app routes can render
+            // * the "Restoring your session" takeover instead of a blank frame.
+            setRecovering(true)
             // * Transient: wait out the backoff, but return early the moment the
             // * browser reports the network back.
             const delay = INIT_BACKOFF_MS[Math.min(attempt, INIT_BACKOFF_MS.length - 1)]
@@ -315,6 +324,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               window.addEventListener('online', onOnline)
             })
           }
+          setRecovering(false)
         }
 
         if (session) {
@@ -362,6 +372,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     init()
   }, [])
+
+  // * Durable session-history signal for the takeover: a 1-year cookie set on
+  // * every authenticated session, NEVER cleared by logout. It only says "this
+  // * browser has signed in before" — display-only, no auth weight — and it is
+  // * what lets the takeover tell "signed out" from "never signed in" after
+  // * every fragile in-memory flag is gone (cross-tab logout, cache wipe).
+  // * Audit: 25-08-2026-lost-rotation-reuse-revocation-and-half-state-chrome.md §5.2
+  useEffect(() => {
+    if (user && typeof document !== 'undefined') {
+      document.cookie = 'pulse_had_session=1; Max-Age=31536000; Path=/; SameSite=Lax'
+    }
+  }, [user])
+
+  // * A DEFINITIVE session death on an app route ends the session in state, so
+  // * the route renders the takeover — the one thing a dead session shows
+  // * (design D, approved 26-08-2026). The facet modal remains the surface for
+  // * marketing routes, where there is no app chrome to take over; it clears
+  // * itself when isAuthenticated flips false.
+  useEffect(() => {
+    if (showExpiredModal && pathname && isAuthedAppRoute(pathname)) {
+      localStorage.removeItem('user')
+      setUser(null)
+    }
+  }, [showExpiredModal, pathname])
 
   // * RECOVERY PATH. Once the context flipped to logged-out, nothing used to
   // * ever re-check: `user` went null, useSessionRefresh unmounted, and data
@@ -432,7 +466,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('ciphera_token_refreshed_at')
       localStorage.removeItem('ciphera_last_activity')
       setUser(null)
-      setHadPriorSession(false)
+      // * hadPriorSession deliberately NOT cleared: this browser demonstrably
+      // * had a session (a sibling tab just ended it). Clearing it here was one
+      // * of the two paths into the marketing-over-app franken-state. The
+      // * durable pulse_had_session cookie is the takeover's real signal now.
       router.push('/')
       router.refresh()
     },
@@ -546,10 +583,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [loading, isAuthenticated, userOrgId, pathname, router])
 
   return (
-    <AuthContext.Provider value={{ user, loading, hadPriorSession, login, logout, refresh, refreshSession }}>
+    <AuthContext.Provider value={{ user, loading, hadPriorSession, recovering, login, logout, refresh, refreshSession }}>
       {isLoggingOut && <LoadingOverlay logoSrc={cdnUrl('/pulse_icon_no_margins.png')} title="Pulse" />}
+      {/* On app routes the takeover IS the expired surface — the modal would be
+          a second voice over it. It stays for marketing routes. */}
       <SessionExpiryWarning
-        show={showExpiredModal}
+        show={showExpiredModal && !(pathname && isAuthedAppRoute(pathname))}
         onSignIn={logout}
       />
       {children}

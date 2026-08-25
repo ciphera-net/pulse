@@ -11,8 +11,8 @@ import { usePathname } from 'next/navigation'
 import DashboardShell from '@/components/dashboard/DashboardShell'
 import { ErrorBoundary } from '@/components/error-boundary'
 import VersionToast from '@/components/VersionToast'
-import { useEffect } from 'react'
-import { reportClientEvent } from '@/lib/utils/clientEvents'
+import SessionTakeover from '@/components/auth/SessionTakeover'
+import { isAuthedAppRoute } from '@/lib/auth/appRoutes'
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const auth = useAuth()
@@ -43,26 +43,30 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   // all of which 403 and create the post-login flicker / slow-load.
   const isAuthCallback = pathname.startsWith('/auth/callback')
 
-  // * TELEMETRY, not a fix: count every render where an APP route is about to
-  // * fall through to marketing chrome because the session is gone and
-  // * hadPriorSession doesn't cover it — the exact franken-state the 25-08
-  // * customer screenshotted (marketing header over live dashboard chrome).
-  // * The chrome fix itself is a separate, design-approved change; this makes
-  // * the fallthrough measurable in Loki either way.
-  // * Audit: 25-08-2026-lost-rotation-reuse-revocation-and-half-state-chrome.md §3, §5.5
-  const isAppRoute = (pathname.startsWith('/sites/') && pathname !== '/sites/new') ||
-    pathname === '/sites' || pathname === '/notifications' ||
-    pathname.startsWith('/settings') || pathname.startsWith('/admin')
-  const willFallThroughToMarketing =
-    !auth.user && !auth.loading && !auth.hadPriorSession && isAppRoute
-  useEffect(() => {
-    if (willFallThroughToMarketing) {
-      reportClientEvent('marketing_fallthrough_on_app_route')
-    }
-  }, [willFallThroughToMarketing])
+  // * The chrome hinge, made route-derived (the D takeover, approved
+  // * 26-08-2026). An app route with no session renders exactly ONE thing —
+  // * the takeover — regardless of any in-memory flag. The old hinge was
+  // * `hadPriorSession`, which a cross-tab logout cleared and a cache wipe
+  // * destroyed, and every uncovered state fell through to MarketingHeader
+  // * stacked over the app shell: the franken-state a customer screenshotted.
+  // * Audit: 25-08-2026-lost-rotation-reuse-revocation-and-half-state-chrome.md §3, §5.2
+  const isAppRoute = isAuthedAppRoute(pathname)
 
   if (isAuthCallback) {
     return <>{children}</>
+  }
+
+  // * Session being actively restored (transient-failure retry loop) on an app
+  // * route: give the wait a face instead of a blank frame.
+  if (isAppRoute && auth.loading && auth.recovering) {
+    return <SessionTakeover state="restoring" />
+  }
+
+  // * Dead session on an app route → the takeover, always. First-time visitors
+  // * deep-linking an app URL get the same room with sign-in-to-continue copy
+  // * (the pulse_had_session cookie tells the two apart inside the component).
+  if (isAppRoute && !isAuthenticated && !auth.loading) {
+    return <SessionTakeover state="signed-out" />
   }
 
   // While auth is loading on an authed-only chrome page, render nothing to
@@ -109,31 +113,10 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   // the marketing overhaul; app surfaces belong to the DashboardShell lists
   // above).
 
-  // Session expired on a protected page — only shown when user HAD a session
-  // that expired, not for first-time unauthenticated visitors.
-  if (!isAuthenticated && !auth.loading && auth.hadPriorSession && (isSitePage || isDashboardPage)) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-neutral-950">
-        <div className="w-full max-w-sm bg-neutral-900 border border-neutral-800 rounded-none p-8 text-center"
-          style={{ backgroundImage: 'linear-gradient(to bottom, rgba(255,255,255,0.03), transparent 120px)' }}
-        >
-          <div className="w-14 h-14 rounded-none bg-red-500/10 flex items-center justify-center mx-auto mb-5">
-            <svg className="w-7 h-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-            </svg>
-          </div>
-          <h2 className="text-lg font-semibold text-white mb-2">Session expired</h2>
-          <p className="text-sm text-neutral-400 mb-6">Your session has expired. Please sign in again to continue.</p>
-          <button
-            onClick={() => window.location.href = '/'}
-            className="w-full px-4 py-2.5 bg-brand-orange hover:bg-brand-orange-hover text-white text-sm font-medium rounded-none transition-colors cursor-pointer"
-          >
-            Sign in again
-          </button>
-        </div>
-      </div>
-    )
-  }
+  // * The pre-26-08 "Session expired" card lived here, hinged on
+  // * auth.hadPriorSession. Superseded by the SessionTakeover early-return
+  // * above, which covers every dead-session state on app routes — including
+  // * the ones the flag never did.
 
   // Join page: standalone, no app shell
   if (pathname.startsWith('/join')) {
