@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth/context'
 import { useSetup } from '@/lib/setup/context'
 import { preservePlanParams } from '@/lib/setup/utils'
 import { createOrganization, switchContext } from '@/lib/api/organization'
-import { clearOrgScopedCaches } from '@/lib/swr/org-switch'
+import { useClearOrgScopedCaches } from '@/lib/swr/org-switch'
 import { setSessionAction } from '@/app/actions/auth'
 import { trackWelcomeWorkspaceCreated } from '@/lib/welcomeAnalytics'
 import apiRequest from '@/lib/api/client'
@@ -23,6 +23,7 @@ export default function SetupOrgPage() {
   const searchParams = useSearchParams()
   const { user, login } = useAuth()
   const { setOrg, completeStep } = useSetup()
+  const clearOrgScopedCaches = useClearOrgScopedCaches()
 
   const defaultName = user?.display_name ? `${user.display_name}'s workspace` : ''
   const [orgName, setOrgName] = useState(defaultName)

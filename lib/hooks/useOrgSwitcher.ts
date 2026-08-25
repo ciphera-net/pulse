@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
 import { setSessionAction } from '@/app/actions/auth'
-import { clearOrgScopedCaches } from '@/lib/swr/org-switch'
+import { useClearOrgScopedCaches } from '@/lib/swr/org-switch'
 import { logger } from '@/lib/utils/logger'
 
 /**
@@ -24,6 +24,7 @@ import { logger } from '@/lib/utils/logger'
 export function useOrgSwitcher() {
   const auth = useAuth()
   const router = useRouter()
+  const clearOrgScopedCaches = useClearOrgScopedCaches()
   const [orgs, setOrgs] = useState<OrganizationMember[]>([])
 
   useEffect(() => {
@@ -47,7 +48,7 @@ export function useOrgSwitcher() {
     } catch (err) {
       logger.error('Failed to switch organization', err)
     }
-  }, [auth, router])
+  }, [auth, router, clearOrgScopedCaches])
 
   const createOrganization = useCallback(() => {
     router.push('/setup/org?new=1')
