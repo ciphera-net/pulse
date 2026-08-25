@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
 import { setSessionAction } from '@/app/actions/auth'
+import { clearOrgScopedCaches } from '@/lib/swr/org-switch'
 import { logger } from '@/lib/utils/logger'
 
 /**
@@ -39,6 +40,9 @@ export function useOrgSwitcher() {
       const { access_token } = await switchContext(orgId)
       await setSessionAction(access_token)
       await auth.refresh()
+      // Every cached fact (sites, subscription, invoices, permissions) belongs
+      // to the org the session WAS on — a soft navigation keeps them alive.
+      await clearOrgScopedCaches()
       router.push('/')
     } catch (err) {
       logger.error('Failed to switch organization', err)
