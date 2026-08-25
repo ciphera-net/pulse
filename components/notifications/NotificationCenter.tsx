@@ -20,6 +20,7 @@ import { SettingsIcon } from '@ciphera-net/facet'
 import { SkeletonLine, SkeletonCircle } from '@/components/skeletons'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { BellSimple } from '@phosphor-icons/react'
+import { useAuth } from '@/lib/auth/context'
 
 // * Bell icon (simple SVG, no extra deps)
 function BellIcon({ className }: { className?: string }) {
@@ -57,6 +58,7 @@ interface NotificationCenterProps {
 
 export default function NotificationCenter({ anchor = 'bottom', variant = 'default', children }: NotificationCenterProps) {
   const router = useRouter()
+  const { user } = useAuth()
   const [open, setOpen] = useState(false)
   const [receipts, setReceipts] = useState<Receipt[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -125,12 +127,22 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
     }
   }, [open, updatePosition])
 
-  // * Poll unread count in background (when authenticated)
+  // * Poll unread count in background — GATED on the auth context, which the
+  // * old comment claimed and the old code did not do. On the 25-08 half-state
+  // * this poll kept firing every 90s on a dead session, swallowing 401s, and
+  // * its last good unread state was the bell dot rendered beside "Sign in".
+  // * When the context says logged out: stop polling AND drop the stale count —
+  // * a dot the session can no longer explain must not survive it.
+  // * Audit: 25-08-2026-lost-rotation-reuse-revocation-and-half-state-chrome.md §3
   useEffect(() => {
+    if (!user) {
+      setUnreadCount(0)
+      return
+    }
     fetchUnreadCount()
     const id = setInterval(fetchUnreadCount, POLL_INTERVAL_MS)
     return () => clearInterval(id)
-  }, [])
+  }, [user])
 
   // * Close dropdown when clicking outside or pressing Escape
   useEffect(() => {
