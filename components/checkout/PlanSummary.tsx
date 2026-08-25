@@ -6,6 +6,7 @@ import { SPRING, TIMING } from '@/lib/motion'
 import Select from '@/components/ui/select'
 import useSWR from 'swr'
 import { TRAFFIC_TIERS, formatPlanName } from '@/lib/plans'
+import { formatEuro } from '@/lib/utils/money'
 import { COUNTRY_OPTIONS } from '@/lib/countries'
 import { calculateVAT, getPrices, type VATResult } from '@/lib/api/billing'
 
@@ -312,32 +313,32 @@ export default function PlanSummary({ plan, interval, onIntervalChange, limit, c
           <div className="space-y-1.5 text-sm">
             <div className="flex justify-between text-neutral-400">
               <span>Subtotal ({tierLabel} pageviews)</span>
-              <span>&euro;{vatResult.base_amount}</span>
+              <span>{formatEuro(parseFloat(vatResult.base_amount))}</span>
             </div>
             {vatResult.vat_exempt ? (
               <div className="flex justify-between text-neutral-500 text-xs">
                 <span>{vatResult.vat_reason}</span>
-                <span>&euro;0.00</span>
+                <span>{formatEuro(0)}</span>
               </div>
             ) : (
               <div className="flex justify-between text-neutral-400">
                 <span>VAT {vatResult.vat_rate}%</span>
-                <span>&euro;{vatResult.vat_amount}</span>
+                <span>{formatEuro(parseFloat(vatResult.vat_amount))}</span>
               </div>
             )}
             <div className="flex justify-between font-semibold text-white pt-1 border-t border-neutral-800">
               <span>Total {isYearly ? '/year' : '/mo'}</span>
-              <span>&euro;{vatResult.total_amount}</span>
+              <span>{formatEuro(parseFloat(vatResult.total_amount))}</span>
             </div>
             {isYearly && (
-              <p className="text-xs text-neutral-500">&euro;{(parseFloat(vatResult.total_amount) / 12).toFixed(2)}/mo</p>
+              <p className="text-xs text-neutral-500">{formatEuro(parseFloat(vatResult.total_amount) / 12)}/mo</p>
             )}
           </div>
         ) : (
           <div className="space-y-1.5 text-sm">
             <div className="flex justify-between text-neutral-400">
               <span>Subtotal ({tierLabel} pageviews)</span>
-              <span>&euro;{baseDisplay.toFixed(2)}</span>
+              <span>{formatEuro(baseDisplay)}</span>
             </div>
             <div className="flex justify-between text-neutral-500 text-xs">
               <span>VAT</span>
@@ -345,10 +346,10 @@ export default function PlanSummary({ plan, interval, onIntervalChange, limit, c
             </div>
             <div className="flex justify-between font-semibold text-white pt-1 border-t border-neutral-800">
               <span>Total {isYearly ? '/year' : '/mo'} <span className="font-normal text-neutral-500 text-xs">excl. VAT</span></span>
-              <span>&euro;{baseDisplay.toFixed(2)}</span>
+              <span>{formatEuro(baseDisplay)}</span>
             </div>
             {isYearly && (
-              <p className="text-xs text-neutral-500">&euro;{(baseDisplay / 12).toFixed(2)}/mo &middot; Save 1 month</p>
+              <p className="text-xs text-neutral-500">{formatEuro(baseDisplay / 12)}/mo &middot; Save 1 month</p>
             )}
           </div>
         )}

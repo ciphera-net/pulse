@@ -70,8 +70,13 @@ export default function AdminOrgDetailPage() {
           // no way to reason about — and that time-of-day went straight into the
           // column the renewal guard compared against, which is how a charge
           // arriving on the right DAY was refused for being ~21h "early".
-          if (data.billing.next_charge_on) {
-            setPeriodEnd(data.billing.next_charge_on)
+          //
+          // Prefill from grant_expires_on — the column this form actually
+          // writes. Prefilling from next_charge_on (a CHARGE date) was the
+          // exact conflation migration 142 split apart: editing a paying org's
+          // grant form would have offered its charge date as a grant end.
+          if (data.billing.grant_expires_on) {
+            setPeriodEnd(data.billing.grant_expires_on)
           } else {
             setPeriodEnd(addMonths(new Date(), 1).toISOString().slice(0, 10))
           }
@@ -145,6 +150,13 @@ export default function AdminOrgDetailPage() {
                 {org.next_charge_on ?? '—'}
               </span>
 
+              <span className="text-neutral-500">Grant ends:</span>
+              <span className="font-medium">
+                {/* Same verbatim rule. An em dash means "not a grant" (or a
+                    perpetual one) — the usual state for a paying org. */}
+                {org.grant_expires_on ?? '—'}
+              </span>
+
               <span className="text-neutral-500">Customer ID:</span>
               <span className="font-mono text-xs">{org.billing_customer_id || '—'}</span>
 
@@ -201,7 +213,11 @@ export default function AdminOrgDetailPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Next charge date</label>
+                {/* Since backend migration 142 the wire field period_end writes
+                    grant_expires_on — a grant END, on which nothing is charged.
+                    Labelling it "Next charge date" here was the conflation the
+                    migration undid, kept alive in the UI. */}
+                <label className="text-sm font-medium">Grant end date</label>
                 <input
                   type="date"
                   value={periodEnd}
@@ -219,14 +235,17 @@ export default function AdminOrgDetailPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setPeriodEnd(addYears(new Date(), 1).toISOString().slice(0, 16))}
+                    // slice(0, 10): a type="date" input rejects the previous
+                    // slice(0, 16) datetime string outright — the browser
+                    // cleared the field and both quick-sets were no-ops.
+                    onClick={() => setPeriodEnd(addYears(new Date(), 1).toISOString().slice(0, 10))}
                     className="text-xs text-brand-orange hover:underline"
                   >
                     +1 Year
                   </button>
                   <button
                     type="button"
-                    onClick={() => setPeriodEnd(addYears(new Date(), 100).toISOString().slice(0, 16))}
+                    onClick={() => setPeriodEnd(addYears(new Date(), 100).toISOString().slice(0, 10))}
                     className="text-xs text-brand-orange hover:underline"
                   >
                     Forever

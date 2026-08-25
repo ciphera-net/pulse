@@ -20,6 +20,9 @@ import { Button } from '@ciphera-net/facet'
  * sub-section that failed while the rest of the tab rendered.
  */
 interface SettingsErrorStateProps {
+  /** Card-variant headline; name the thing that failed ("Couldn't load your
+   *  subscription") so the reader knows the blast radius without guessing. */
+  title?: string
   message?: string
   onRetry?: () => void
   retrying?: boolean
@@ -28,6 +31,7 @@ interface SettingsErrorStateProps {
 }
 
 export function SettingsErrorState({
+  title = "Couldn't load this",
   message = 'Something went wrong loading this. It may be a temporary problem.',
   onRetry,
   retrying,
@@ -63,7 +67,7 @@ export function SettingsErrorState({
       <div className="flex items-start gap-3 px-5 py-6">
         <WarningCircle size={20} weight="fill" className="mt-0.5 shrink-0 text-destructive" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-foreground">Couldn&apos;t load this</p>
+          <p className="text-sm font-medium text-foreground">{title}</p>
           <p className="mt-0.5 text-sm text-muted-foreground">{message}</p>
           {onRetry && (
             <div className="mt-3">

@@ -71,8 +71,13 @@ export function usePermissions(): Set<Permission> {
     { revalidateOnFocus: false, dedupingInterval: 300_000 }
   )
   if (data?.permissions) return new Set(data.permissions as Permission[])
-  if (error) return getDefaultPermissions(user?.role)
-  return new Set()
+  // No data yet — errored OR still in flight. Both fall back to the JWT role's
+  // defaults rather than an empty Set: an empty Set reads as "may do nothing",
+  // which flashed "Only the workspace owner can modify billing" at the actual
+  // owner on every billing-page load. The role slug is available synchronously
+  // from the JWT, and since the RBAC trim (migrations 156/157) the server's
+  // answer IS the role default, so the fallback cannot over- or under-offer.
+  return getDefaultPermissions(user?.role)
 }
 
 export function useCan(perm: Permission): boolean {
