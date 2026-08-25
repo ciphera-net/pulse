@@ -306,6 +306,19 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
 
   const currentSite = sites.find((s) => s.id === currentSiteId)
 
+  // * Display-only breadcrumb for the session takeover: the site the person was
+  // * last viewing, by domain, so a dead session can honestly say "you were
+  // * viewing X" after every in-memory trace of the site is gone.
+  useEffect(() => {
+    if (currentSite?.domain) {
+      try {
+        localStorage.setItem('pulse_last_site_label', currentSite.domain)
+      } catch {
+        // * Storage unavailable — the takeover falls back to generic copy.
+      }
+    }
+  }, [currentSite?.domain])
+
   const dropdown = (
     <AnimatePresence>
       {open && (
