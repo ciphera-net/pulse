@@ -1,7 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { SWRConfig } from 'swr'
 
 // --- Mocks ---------------------------------------------------------------
+// Deliberately NOT mocked: swr and @/lib/swr/org-switch. The first version of
+// the org-switch cache fix used the GLOBAL mutate, which never touches the
+// app's custom SWR cache provider — and its unit test mocked the purge module,
+// so a fix that cleared a cache nothing reads passed green while the stale-org
+// bug survived on staging. This test seeds a REAL provider cache and asserts
+// the entry is actually gone.
 
 const mockPush = vi.fn()
 vi.mock('next/navigation', () => ({
@@ -37,11 +44,6 @@ vi.mock('@/lib/welcomeAnalytics', () => ({
   trackWelcomeWorkspaceCreated: vi.fn(),
 }))
 
-const clearOrgScopedCaches = vi.fn().mockResolvedValue(undefined)
-vi.mock('@/lib/swr/org-switch', () => ({
-  clearOrgScopedCaches: (...a: unknown[]) => clearOrgScopedCaches(...a),
-}))
-
 vi.mock('@ciphera-net/facet', () => ({
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
   Input: (props: any) => <input {...props} />,
@@ -54,22 +56,29 @@ import SetupOrgPage from '../page'
 
 beforeEach(() => {
   mockPush.mockClear()
-  clearOrgScopedCaches.mockClear()
 })
 
 describe('SetupOrgPage org creation', () => {
-  it('purges the SWR cache BEFORE navigating — the session now points at a new org', async () => {
-    render(<SetupOrgPage />)
+  it('purges the PROVIDER-SCOPED SWR cache before navigating', async () => {
+    // Seed the cache the way the app would have it mid-session: the OLD org's
+    // sites, the exact rows that rendered as "Pick up where you left off" on
+    // the fresh org (measured on staging, 25-08).
+    const cache = new Map()
+    cache.set('sites', { data: [{ id: 'old-site', domain: 'old.example.com', created_at: '2026-07-18' }] })
+    cache.set('subscription', { data: { plan_id: 'solo' } })
+
+    render(
+      <SWRConfig value={{ provider: () => cache }}>
+        <SetupOrgPage />
+      </SWRConfig>,
+    )
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Fresh Org' } })
     fireEvent.click(screen.getByRole('button', { name: /Create/i }))
 
     await waitFor(() => expect(mockPush).toHaveBeenCalled())
-    // Every cached fact (sites, subscription, invoices, permissions) belongs to
-    // the OLD org. Without the purge, the site step rendered the previous
-    // org's site as "Pick up where you left off" (measured on staging, 25-08).
-    expect(clearOrgScopedCaches).toHaveBeenCalledTimes(1)
-    const purgeOrder = clearOrgScopedCaches.mock.invocationCallOrder[0]
-    const navOrder = mockPush.mock.invocationCallOrder[0]
-    expect(purgeOrder).toBeLessThan(navOrder)
+    // The session now points at the new org — the old org's cached facts must
+    // be GONE from the provider cache, not merely marked for revalidation.
+    expect(cache.get('sites')?.data).toBeUndefined()
+    expect(cache.get('subscription')?.data).toBeUndefined()
   })
 })

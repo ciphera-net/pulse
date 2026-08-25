@@ -1,4 +1,5 @@
-import { mutate } from 'swr'
+import { useCallback } from 'react'
+import { useSWRConfig } from 'swr'
 
 /**
  * Purge the entire SWR cache after the session's ORG CONTEXT changes.
@@ -7,9 +8,13 @@ import { mutate } from 'swr'
  * 'permissions' and friends are all facts about the org the session WAS on,
  * and a soft navigation keeps them alive. Measured failure (25-08-2026): after
  * creating a fresh org, the setup wizard's site step rendered the PREVIOUS
- * org's site as "Pick up where you left off" — the guard's direct API call saw
- * the new org's empty site list while the page read the stale cache, and the
- * two disagreed on which world they were in.
+ * org's site as "Pick up where you left off".
+ *
+ * 🔴 This MUST be the BOUND mutate from useSWRConfig(). The app mounts
+ * SWRConfig with a custom cache provider (components/SWRProvider.tsx), and the
+ * global `mutate` imported from 'swr' operates on the DEFAULT cache — the
+ * first version of this fix used it, cleared a cache nothing reads, and the
+ * stale-org bug survived a green unit test that had mocked this very module.
  *
  * Clearing data (not just revalidating) is deliberate: a revalidate serves the
  * stale value while the refetch is in flight, which is exactly the window the
@@ -18,6 +23,10 @@ import { mutate } from 'swr'
  * Call this at EVERY client-side org-context switch. Flows that hard-navigate
  * (workspace deletion) get the same effect from the full page load.
  */
-export function clearOrgScopedCaches(): Promise<unknown> {
-  return mutate(() => true, undefined, { revalidate: false })
+export function useClearOrgScopedCaches(): () => Promise<unknown> {
+  const { mutate } = useSWRConfig()
+  return useCallback(
+    () => mutate(() => true, undefined, { revalidate: false }),
+    [mutate],
+  )
 }
