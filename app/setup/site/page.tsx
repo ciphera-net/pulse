@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useSetup } from '@/lib/setup/context'
 import { preservePlanParams } from '@/lib/setup/utils'
 import { createSite, detectFramework } from '@/lib/api/sites'
+import { trackWelcomeSiteAdded, trackWelcomeSiteSkipped } from '@/lib/welcomeAnalytics'
 import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { Button, Input, toast } from '@ciphera-net/facet'
 import { GlobeIcon } from '@ciphera-net/facet'
@@ -38,6 +39,7 @@ export default function SetupSitePage() {
       const site = await createSite({ name: domain, domain, timezone: browserTz })
       setSite(site)
       completeStep('site')
+      trackWelcomeSiteAdded()
       // Fire framework detection in the background — does not block navigation.
       detectFramework(domain).then(result => {
         if (result.framework) {
@@ -53,6 +55,7 @@ export default function SetupSitePage() {
 
   const handleSkip = () => {
     completeStep('site')
+    trackWelcomeSiteSkipped()
     router.push(`/setup/plan${preservePlanParams(searchParams)}`)
   }
 

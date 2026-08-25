@@ -1,12 +1,17 @@
 type PulseEventMap = {
-  welcome_step_view: { step: string }
-  welcome_workspace_selected: Record<string, never>
+  // welcome_workspace_selected was removed with the old welcome wizard's
+  // workspace picker — /setup auto-routes past org creation instead, so the
+  // moment it described no longer exists.
+  welcome_step_view: { step: string; step_name: string }
   welcome_workspace_created: { had_pending_checkout: string }
   welcome_site_added: { added_site: string }
   welcome_site_skipped: Record<string, never>
   welcome_completed: { added_site: string }
   site_created_from_dashboard: Record<string, never>
   site_created_script_copied: Record<string, never>
+  onboarding_chip_opened: { completed_count: string }
+  onboarding_item_clicked: { item: string }
+  onboarding_dismissed: { completed_count: string }
   outbound_link: { url: string; page_path: string }
   file_download: { url: string; page_path: string }
 }

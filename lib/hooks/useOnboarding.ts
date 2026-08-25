@@ -5,7 +5,7 @@ import useSWR from 'swr'
 import { useAuth } from '@/lib/auth/context'
 import { useSites } from '@/lib/swr/sites'
 import { useMembers } from '@/lib/swr/members'
-import { listGoals, type Goal } from '@/lib/api/goals'
+import apiRequest from '@/lib/api/client'
 
 const DISMISSED_PREFIX = 'pulse_checklist_dismissed_'
 
@@ -39,13 +39,17 @@ export function useOnboarding() {
   const { members } = useMembers()
   const firstSiteId = sites[0]?.id ?? ''
 
-  // Same SWR key as the dashboard's useGoals so the cache is shared, but with
-  // refreshInterval: 0 — onboarding completion changes on user action, never
-  // in the background, and this hook mounts in the shell on every page. The
-  // dashboard's 60s poll must not ride along app-wide.
-  const { data: goals } = useSWR<Goal[]>(
-    firstSiteId ? ['goals', firstSiteId] : null,
-    () => listGoals(firstSiteId),
+  // Org-wide onboarding facts in ONE request (WS2.4b, owner decision
+  // 25-08-2026). The predecessor read sites[0]'s goals, so a goal on any
+  // later site never completed the item — and per-site fetches from a hook
+  // that mounts on every page would grow with the fleet. refreshInterval: 0 —
+  // completion changes on user action, never in the background. `error`
+  // matters for readiness: against a backend predating the endpoint (a
+  // rollback), data stays undefined forever, and readiness gating on data
+  // alone would hide the chip for good.
+  const { data: onboarding, error: onboardingError } = useSWR<{ has_goal: boolean }>(
+    orgId ? ['onboarding-status', orgId] : null,
+    () => apiRequest<{ has_goal: boolean }>('/onboarding/status'),
     { refreshInterval: 0, revalidateOnFocus: false, dedupingInterval: 30_000 }
   )
 
@@ -81,7 +85,7 @@ export function useOnboarding() {
     // actually knows whether events arrived.
     { key: 'script', label: 'Install tracking script', href: firstSiteId ? '/settings/site/general' : undefined, completed: sites.some(s => s.install_status && s.install_status !== 'never_installed'), lockedReason: needsSite },
     { key: 'teammate', label: 'Invite a teammate', href: '/settings/organization/members', completed: members.length > 1, countsTowardCompletion: false },
-    { key: 'goal', label: 'Set up a goal', href: firstSiteId ? '/settings/site/goals' : undefined, completed: (goals?.length ?? 0) > 0, lockedReason: needsSite },
+    { key: 'goal', label: 'Set up a goal', href: firstSiteId ? '/settings/site/goals' : undefined, completed: onboarding?.has_goal ?? false, lockedReason: needsSite },
   ]
 
   // Completion counts only the steps that gate it — see countsTowardCompletion.
@@ -96,7 +100,7 @@ export function useOnboarding() {
   // at allDone) would visibly shift the bell/avatar cluster on every load.
   const dataReady =
     !sitesLoading &&
-    (firstSiteId === '' || goals !== undefined)
+    (onboarding !== undefined || onboardingError !== undefined)
   const visible = Boolean(orgId) && dismissed === false && dataReady && !allDone
 
   return { items, completedCount, total, allDone, nextItem, visible, dismiss }

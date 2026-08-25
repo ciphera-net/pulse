@@ -251,6 +251,10 @@ function SidebarContent({
       <div className="px-2 mb-2 shrink-0">
         <button
           onClick={onOpenPalette}
+          // Collapsed, the button is icon-only — without a name it reads as
+          // "button" to a screen reader. Named always (harmless expanded).
+          aria-label="Search"
+          aria-keyshortcuts="Meta+K"
           className={`${c
             ? 'w-9 h-9 flex items-center justify-center mx-auto'
             : 'w-full h-9 flex items-center gap-2 px-3'
@@ -434,8 +438,8 @@ export default function Sidebar({
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800/60">
               <span className="text-sm font-semibold text-white">Navigation</span>
-              <button onClick={handleMobileClose} className="p-1.5 text-neutral-400 hover:text-neutral-300">
-                <XIcon className="w-5 h-5" />
+              <button onClick={handleMobileClose} aria-label="Close navigation" className="p-1.5 text-neutral-400 hover:text-neutral-300">
+                <XIcon className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
             <SidebarContent

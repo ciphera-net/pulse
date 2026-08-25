@@ -1,26 +1,43 @@
 /**
- * Welcome/onboarding analytics. Emits custom events for step views and actions
- * so drop-off and funnel can be measured. Listen for 'pulse_welcome' or use
- * the payload with your analytics backend.
+ * Onboarding-funnel analytics: the /setup wizard steps, the two site-creation
+ * events from the dashboard path, and the Getting Started chip. Same
+ * triple-emit shape as lib/tour/analytics.ts: the site's own tracking script
+ * when present, a window CustomEvent for listeners, and a capped
+ * sessionStorage queue for debugging. All failure-silent — losing an
+ * analytics event must never break onboarding.
+ *
+ * Note: window.pulse.track refuses automated browsers (navigator.webdriver
+ * guard in the script), so these events can only be verified server-side or
+ * by a human — never from Playwright.
  */
+
+import { track } from '@/lib/pulse'
 
 export type WelcomeEventName =
   | 'welcome_step_view'
-  | 'welcome_workspace_selected'
   | 'welcome_workspace_created'
   | 'welcome_site_added'
   | 'welcome_site_skipped'
   | 'welcome_completed'
   | 'site_created_from_dashboard'
   | 'site_created_script_copied'
+  | 'onboarding_chip_opened'
+  | 'onboarding_item_clicked'
+  | 'onboarding_dismissed'
 
 export interface WelcomeEventPayload {
   event: WelcomeEventName
   step?: number
-  /** For workspace_created: has pending checkout */
+  /** The /setup segment the step number stands for — survives reordering. */
+  step_name?: string
+  /** For workspace_created: arrived from pricing with a plan pre-selected. */
   had_pending_checkout?: boolean
-  /** For site_added: whether user added a site in wizard */
+  /** For site_added / completed: whether user added a site in wizard */
   added_site?: boolean
+  /** For onboarding_item_clicked: the checklist item's key. */
+  item?: string
+  /** For onboarding_dismissed / chip_opened: completed steps at that moment. */
+  completed_count?: number
 }
 
 const STORAGE_KEY = 'pulse_welcome_events'
@@ -31,12 +48,12 @@ function emit(event: WelcomeEventName, payload: Omit<WelcomeEventPayload, 'event
   try {
     const props: Record<string, string> = {}
     if (payload.step !== undefined) props.step = String(payload.step)
+    if (payload.step_name !== undefined) props.step_name = payload.step_name
     if (payload.had_pending_checkout !== undefined) props.had_pending_checkout = String(payload.had_pending_checkout)
     if (payload.added_site !== undefined) props.added_site = String(payload.added_site)
-    const pulse = (window as any).pulse
-    if (pulse && typeof pulse.track === 'function') {
-      pulse.track(event, Object.keys(props).length > 0 ? props : undefined)
-    }
+    if (payload.item !== undefined) props.item = payload.item
+    if (payload.completed_count !== undefined) props.completed_count = String(payload.completed_count)
+    track(event, Object.keys(props).length > 0 ? props : undefined)
 
     window.dispatchEvent(
       new CustomEvent('pulse_welcome', { detail: full })
@@ -53,12 +70,8 @@ function emit(event: WelcomeEventName, payload: Omit<WelcomeEventPayload, 'event
   }
 }
 
-export function trackWelcomeStepView(step: number) {
-  emit('welcome_step_view', { step })
-}
-
-export function trackWelcomeWorkspaceSelected() {
-  emit('welcome_workspace_selected')
+export function trackWelcomeStepView(step: number, stepName: string) {
+  emit('welcome_step_view', { step, step_name: stepName })
 }
 
 export function trackWelcomeWorkspaceCreated(hadPendingCheckout: boolean) {
@@ -83,4 +96,16 @@ export function trackSiteCreatedFromDashboard() {
 
 export function trackSiteCreatedScriptCopied() {
   emit('site_created_script_copied')
+}
+
+export function trackOnboardingChipOpened(completedCount: number) {
+  emit('onboarding_chip_opened', { completed_count: completedCount })
+}
+
+export function trackOnboardingItemClicked(item: string) {
+  emit('onboarding_item_clicked', { item })
+}
+
+export function trackOnboardingDismissed(completedCount: number) {
+  emit('onboarding_dismissed', { completed_count: completedCount })
 }

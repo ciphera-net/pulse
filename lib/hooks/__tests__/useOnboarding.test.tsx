@@ -15,18 +15,24 @@ import { renderHook } from '@testing-library/react'
 
 let sites: Array<Record<string, unknown>> = []
 let members: unknown[] = [{ id: 'u1' }]
-let goals: unknown[] | undefined = []
+let hasGoal: boolean | undefined = false
 
 vi.mock('@/lib/auth/context', () => ({ useAuth: () => ({ user: { org_id: 'org1' } }) }))
 vi.mock('@/lib/swr/sites', () => ({ useSites: () => ({ sites, isLoading: false }) }))
 vi.mock('@/lib/swr/members', () => ({ useMembers: () => ({ members }) }))
-vi.mock('@/lib/api/goals', () => ({ listGoals: vi.fn() }))
+vi.mock('@/lib/api/client', () => ({ default: vi.fn() }))
 
 // SWR is keyed per-resource in the hook; return the right fixture per key.
+// The goal check reads the org-wide /onboarding/status aggregate (WS2.4b) —
+// hasGoal=undefined stands in for the request still being in flight.
 vi.mock('swr', () => ({
   default: (key: unknown) => {
     const name = Array.isArray(key) ? key[0] : key
-    if (name === 'goals') return { data: goals, mutate: vi.fn() }
+    if (name === 'onboarding-status') {
+      return hasGoal === undefined
+        ? { data: undefined, error: undefined, mutate: vi.fn() }
+        : { data: { has_goal: hasGoal }, error: undefined, mutate: vi.fn() }
+    }
     if (name === 'onboarding-dismissed') return { data: false, mutate: vi.fn() }
     return { data: undefined, mutate: vi.fn() }
   },
@@ -40,13 +46,13 @@ const item = (r: ReturnType<typeof useOnboarding>, key: string) =>
 beforeEach(() => {
   sites = [{ id: 's1', install_status: 'never_installed' }]
   members = [{ id: 'u1' }]
-  goals = []
+  hasGoal = false
 })
 
 describe('useOnboarding', () => {
   it('lets a solo workspace actually finish', () => {
     sites = [{ id: 's1', install_status: 'active' }]
-    goals = [{ id: 'g1' }]
+    hasGoal = true
     const { result } = renderHook(() => useOnboarding())
     // Three counted steps, all done — with the old math this org was stuck
     // short forever because it had no second member.
@@ -95,5 +101,15 @@ describe('useOnboarding', () => {
     sites = [{ id: 's1', install_status: 'never_installed', is_verified: true }]
     const { result } = renderHook(() => useOnboarding())
     expect(item(result.current, 'script').completed).toBe(false)
+  })
+
+  it('completes the goal step from the org-wide aggregate, not sites[0]', () => {
+    // The defect this swap fixes: two sites, goal on the SECOND — the old
+    // sites[0]-scoped check never completed the item. The aggregate answers
+    // for the whole org, so which site carries the goal cannot matter.
+    sites = [{ id: 's1', install_status: 'active' }, { id: 's2', install_status: 'active' }]
+    hasGoal = true
+    const { result } = renderHook(() => useOnboarding())
+    expect(item(result.current, 'goal').completed).toBe(true)
   })
 })

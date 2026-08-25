@@ -66,9 +66,14 @@ export const billingRenderers = {
     }
   },
   billing_pageview_100: (_r: Receipt, _resolvers?: Resolvers): Rendered => {
+    // This fires at 100% of PLAN limit, where collection has NOT stopped — the
+    // ruled mechanics (WS1.1): collection continues up to 2x the limit, then
+    // pauses until the next period. "No longer being recorded" is true only at
+    // the hard ceiling, and that claim belongs to the ceiling banner in
+    // WorkspaceBillingTab, not here.
     return {
       title: 'Pageview limit reached',
-      body: "You've hit your monthly pageview limit. New events are no longer being recorded.",
+      body: "You've hit your monthly pageview limit. Collection continues up to 2x your limit, then pauses until your next billing period.",
       linkLabel: 'View billing',
     }
   },

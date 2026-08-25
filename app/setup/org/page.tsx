@@ -7,6 +7,7 @@ import { useSetup } from '@/lib/setup/context'
 import { preservePlanParams } from '@/lib/setup/utils'
 import { createOrganization, switchContext } from '@/lib/api/organization'
 import { setSessionAction } from '@/app/actions/auth'
+import { trackWelcomeWorkspaceCreated } from '@/lib/welcomeAnalytics'
 import apiRequest from '@/lib/api/client'
 import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { Button, Input, toast } from '@ciphera-net/facet'
@@ -58,6 +59,7 @@ export default function SetupOrgPage() {
 
       setOrg(org.id, orgName.trim())
       completeStep('org')
+      trackWelcomeWorkspaceCreated(Boolean(searchParams.get('plan')))
       router.push(`/setup/site${preservePlanParams(searchParams)}`)
     } catch (err) {
       setError(getAuthErrorMessage(err as Error) || 'Failed to create organization')
