@@ -11,6 +11,8 @@ import { usePathname } from 'next/navigation'
 import DashboardShell from '@/components/dashboard/DashboardShell'
 import { ErrorBoundary } from '@/components/error-boundary'
 import VersionToast from '@/components/VersionToast'
+import { useEffect } from 'react'
+import { reportClientEvent } from '@/lib/utils/clientEvents'
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const auth = useAuth()
@@ -40,6 +42,24 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   // UnifiedSettingsModal, organizations) using the stale pre-login session,
   // all of which 403 and create the post-login flicker / slow-load.
   const isAuthCallback = pathname.startsWith('/auth/callback')
+
+  // * TELEMETRY, not a fix: count every render where an APP route is about to
+  // * fall through to marketing chrome because the session is gone and
+  // * hadPriorSession doesn't cover it — the exact franken-state the 25-08
+  // * customer screenshotted (marketing header over live dashboard chrome).
+  // * The chrome fix itself is a separate, design-approved change; this makes
+  // * the fallthrough measurable in Loki either way.
+  // * Audit: 25-08-2026-lost-rotation-reuse-revocation-and-half-state-chrome.md §3, §5.5
+  const isAppRoute = (pathname.startsWith('/sites/') && pathname !== '/sites/new') ||
+    pathname === '/sites' || pathname === '/notifications' ||
+    pathname.startsWith('/settings') || pathname.startsWith('/admin')
+  const willFallThroughToMarketing =
+    !auth.user && !auth.loading && !auth.hadPriorSession && isAppRoute
+  useEffect(() => {
+    if (willFallThroughToMarketing) {
+      reportClientEvent('marketing_fallthrough_on_app_route')
+    }
+  }, [willFallThroughToMarketing])
 
   if (isAuthCallback) {
     return <>{children}</>
