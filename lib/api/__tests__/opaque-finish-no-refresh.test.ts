@@ -21,7 +21,7 @@ function respond401(): Response {
 }
 
 describe('OPAQUE login/finish 401 — single-use-state protection', () => {
-  const refreshHandler = vi.fn(async () => true)
+  const refreshHandler = vi.fn(async () => ({ ok: true, transient: false }))
 
   beforeEach(() => {
     refreshHandler.mockClear()

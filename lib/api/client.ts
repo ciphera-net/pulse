@@ -3,7 +3,7 @@
  * Includes Request ID propagation for debugging across services
  */
 
-import { authMessageFromStatus, AUTH_ERROR_MESSAGES } from '@ciphera-net/facet'
+import { authMessageFromStatus, AUTH_ERROR_MESSAGES, type SessionRefreshResult } from '@ciphera-net/facet'
 import { generateRequestId, getRequestIdHeader, setLastRequestId } from '@/lib/utils/requestId'
 import { env } from '@/lib/env'
 
@@ -75,9 +75,17 @@ export class ApiError extends Error {
 // * Shared refresh handler — injected by AuthProvider via setRefreshHandler().
 // * Routes all 401 refresh attempts through useSessionRefresh's mutex,
 // * preventing concurrent refresh calls that trigger token reuse detection.
-let refreshHandler: (() => Promise<boolean>) | null = null
+// *
+// * 🔴 It returns the DETAILED outcome, not a boolean. The distinction is
+// * load-bearing here: a `{ transient: true }` refresh (network down, 5xx,
+// * timeout) means the session MAY still be valid, so this path must not wipe
+// * the cached user — collapsing it into `false` and clearing local state is
+// * what logged users out on a wake-time blip. Only a definitive rejection
+// * clears the cache. See @ciphera-net/facet refreshDetailed and
+// * Infra/Auth/docs/audits/25-08-2026-lost-rotation-reuse-revocation-and-half-state-chrome.md §3.
+let refreshHandler: (() => Promise<SessionRefreshResult>) | null = null
 
-export function setRefreshHandler(handler: (() => Promise<boolean>) | null) {
+export function setRefreshHandler(handler: (() => Promise<SessionRefreshResult>) | null) {
   refreshHandler = handler
 }
 
@@ -244,9 +252,9 @@ async function apiRequest<T>(
         // * and for refresh requests themselves (prevent infinite loop). OPAQUE flows pass
         // * skipAuthRetry so a 401 never triggers a refresh that would burn single-use login state.
         if (!options.skipAuthRetry && !endpoint.includes('/auth/refresh') && !endpoint.includes('/public/') && refreshHandler) {
-          const success = await refreshHandler()
+          const outcome = await refreshHandler()
 
-          if (success) {
+          if (outcome.ok) {
             const retryHeaders: Record<string, string> = {
               'Content-Type': 'application/json',
               [getRequestIdHeader()]: generateRequestId(),
@@ -273,8 +281,16 @@ async function apiRequest<T>(
             throw new ApiError(authMessageFromStatus(retryResponse.status), retryResponse.status, retryBody)
           }
 
-          localStorage.removeItem('user')
-          throw new ApiError(authMessageFromStatus(401), 401)
+          // 🔴 Only a DEFINITIVE rejection clears the cached user. A transient
+          // * refresh failure (network down, 5xx, timeout) is not a statement
+          // * that the session is dead — wiping the cache on it is what turned a
+          // * wake-time blip into a durable logged-out state that the auth
+          // * context could never recover from. Leave the cache intact; the
+          // * data fetch still fails now, but the session can come back.
+          if (!outcome.transient) {
+            localStorage.removeItem('user')
+          }
+          throw new ApiError(authMessageFromStatus(401), 401, { transient: outcome.transient })
         }
       }
     }

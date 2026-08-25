@@ -13,6 +13,7 @@ import { logger } from '@/lib/utils/logger'
 import { cleanupStaleStorage } from '@/lib/utils/storage-cleanup'
 import { forgetAllPendingAuth } from '@/lib/api/oauth-store'
 import { isTransientRefreshFailure } from '@/lib/auth/refresh-outcome'
+import { reportClientEvent } from '@/lib/utils/clientEvents'
 
 /** Read vault PII from the cross-subdomain cookie set by id-frontend. */
 function getVaultPII(): { email?: string; display_name?: string } {
@@ -99,17 +100,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const refreshToken = useCallback(async (): Promise<{ ok: boolean; transient: boolean }> => {
+  const refreshToken = useCallback(async (signal?: AbortSignal): Promise<{ ok: boolean; transient: boolean }> => {
     const signals = () => ({
       screen_width: window.screen.width,
       screen_height: window.screen.height,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     })
+    // * Thread the hook's deadline AbortSignal into the fetch so a refresh the
+    // * client has given up on is actually cancelled, not left in flight to
+    // * commit a rotation the browser will never receive (the lost-rotation
+    // * shape). Audit: 25-08-2026-lost-rotation-reuse-revocation-and-half-state-chrome.md §5.
     const post = (orgId: string) =>
       fetch('/api/auth/refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        signal,
         body: JSON.stringify({ ...signals(), org_id: orgId }),
       })
 
@@ -199,15 +205,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.location.href = '/login'
   }, [])
 
-  const { showExpiredModal, refreshWithMutex } = useSessionRefresh({
+  const { showExpiredModal, refreshWithMutex, refreshDetailed } = useSessionRefresh({
     isAuthenticated: !!user,
     onRefresh: refreshToken,
   })
 
+  // * Inject the DETAILED handler into the API client, not the boolean one — the
+  // * client must see `transient` so it does not wipe the cached user on a
+  // * network blip. See lib/api/client.ts.
   useEffect(() => {
-    setRefreshHandler(refreshWithMutex)
+    setRefreshHandler(refreshDetailed)
     return () => setRefreshHandler(null)
-  }, [refreshWithMutex])
+  }, [refreshDetailed])
 
   const refresh = useCallback(async () => {
     try {
@@ -261,17 +270,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // * which fetches fresh HTML/JS from the server on return.
         }
 
-        // * 2. If no access_token but user was previously logged in, try refresh
+        // * 2. If no access_token but user was previously logged in, try refresh.
+        // *
+        // * 🔴 On a TRANSIENT failure (network down, 5xx, timeout) this retries on
+        // * a backoff while `loading` holds — it does NOT null the user. A wake-time
+        // * blip used to take the definitive path here, wipe the cached user, and
+        // * leave the context logged-out for the life of the browser profile with
+        // * no way back. Only the server saying "this credential is dead" ends the
+        // * session; an unreachable server proves nothing.
+        // * Audit: 25-08-2026-lost-rotation-reuse-revocation-and-half-state-chrome.md §3, §5.3
         const cachedUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null
+        let definitiveReject = false
         if (!session && cachedUser) {
           setHadPriorSession(true)
-          const refreshed = await refreshWithMutex()
-          if (refreshed) {
-            try {
-              session = await getSessionAction()
-            } catch {
-              // * Stale build — fall through
+          const INIT_BACKOFF_MS = [5_000, 15_000, 45_000, 60_000]
+          for (let attempt = 0; ; attempt++) {
+            const outcome = await refreshDetailed()
+            if (outcome.ok) {
+              try {
+                session = await getSessionAction()
+              } catch {
+                // * Stale build — fall through (cache kept: the refresh proved
+                // * the session alive; a full navigation re-hydrates).
+              }
+              break
             }
+            if (!outcome.transient) {
+              definitiveReject = true
+              break
+            }
+            // * Transient: wait out the backoff, but return early the moment the
+            // * browser reports the network back.
+            const delay = INIT_BACKOFF_MS[Math.min(attempt, INIT_BACKOFF_MS.length - 1)]
+            await new Promise<void>((resolve) => {
+              const timer = setTimeout(() => {
+                window.removeEventListener('online', onOnline)
+                resolve()
+              }, delay)
+              const onOnline = () => {
+                clearTimeout(timer)
+                window.removeEventListener('online', onOnline)
+                resolve()
+              }
+              window.addEventListener('online', onOnline)
+            })
           }
         }
 
@@ -302,8 +344,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               logger.error('Failed to fetch full profile', e)
             }
         } else {
-            // * Session invalid/expired
-            localStorage.removeItem('user')
+            // * No session. Wipe the cache ONLY when the server definitively
+            // * rejected the credential (or there was never a cached user).
+            // * After an ok-refresh-but-stale-build, or with no verdict at all,
+            // * the cache is the recovery path's seed — destroying it makes the
+            // * logged-out state permanent.
+            if (!cachedUser || definitiveReject) {
+              localStorage.removeItem('user')
+            }
+            if (definitiveReject && cachedUser) {
+              reportClientEvent('session_lost_on_live_tab', 'init_definitive_reject')
+            }
             setUser(null)
         }
 
@@ -311,6 +362,68 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     init()
   }, [])
+
+  // * RECOVERY PATH. Once the context flipped to logged-out, nothing used to
+  // * ever re-check: `user` went null, useSessionRefresh unmounted, and data
+  // * hooks kept succeeding or failing on their own — the context could not
+  // * come back even when the session was fine (another tab refreshed it, the
+  // * network returned, the cookie jar is valid again). Re-probe the session on
+  // * the signals that it may be back; on success the user is restored in place.
+  // * Audit: 25-08-2026-lost-rotation-reuse-revocation-and-half-state-chrome.md §3, §5.3
+  useEffect(() => {
+    if (user || loading || !hadPriorSession || typeof window === 'undefined') return
+    let cancelled = false
+    let probing = false
+    const tryRecover = async () => {
+      if (cancelled || probing) return
+      probing = true
+      try {
+        let session = await getSessionAction().catch(() => null)
+        if (!session) {
+          // * No live access token — the refresh cookie may still be good.
+          const outcome = await refreshDetailed()
+          if (outcome.ok) {
+            session = await getSessionAction().catch(() => null)
+          }
+        }
+        if (!cancelled && session) {
+          localStorage.setItem('user', JSON.stringify(session))
+          localStorage.setItem('ciphera_token_refreshed_at', Date.now().toString())
+          setUser(session)
+          reportClientEvent('session_recovered_on_live_tab')
+        }
+      } finally {
+        probing = false
+      }
+    }
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void tryRecover()
+    }
+    const onStorage = (e: StorageEvent) => {
+      // * Another tab on this origin refreshed successfully — its token is in
+      // * the shared jar, so this tab's session is live again.
+      if (e.key === 'ciphera_token_refreshed_at' && e.newValue) void tryRecover()
+    }
+    const onOnline = () => void tryRecover()
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('storage', onStorage)
+    window.addEventListener('online', onOnline)
+    return () => {
+      cancelled = true
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener('online', onOnline)
+    }
+  }, [user, loading, hadPriorSession, refreshDetailed])
+
+  // * Telemetry: the moment the expiry modal goes up IS "a session was lost on
+  // * a live tab" — the event the 25-08 incident had to be reconstructed
+  // * without. Counted, not screenshotted, from now on.
+  useEffect(() => {
+    if (showExpiredModal) {
+      reportClientEvent('session_lost_on_live_tab', 'expiry_modal_shown')
+    }
+  }, [showExpiredModal])
 
   // * Sync session across browser tabs using BroadcastChannel
   useSessionSync({
