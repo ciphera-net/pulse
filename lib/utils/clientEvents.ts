@@ -21,6 +21,7 @@ export type ClientEventName =
   | 'session_lost_on_live_tab'
   | 'session_recovered_on_live_tab'
   | 'marketing_fallthrough_on_app_route'
+  | 'session_takeover_rendered'
 
 export function reportClientEvent(name: ClientEventName, detail?: string): void {
   if (typeof window === 'undefined') return
