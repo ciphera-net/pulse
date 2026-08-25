@@ -12,12 +12,19 @@ vi.mock('@/lib/auth/context', () => ({
   useAuth: () => ({ user: { org_id: 'org_1' } }),
 }))
 
+const completeStep = vi.fn()
 vi.mock('@/lib/setup/context', () => ({
-  useSetup: () => ({ site: null, completeStep: vi.fn() }),
+  useSetup: () => ({ site: null, completeStep: (...args: unknown[]) => completeStep(...args) }),
 }))
 
+const completeOnboarding = vi.fn().mockResolvedValue({})
 vi.mock('@/lib/api/organization', () => ({
-  completeOnboarding: vi.fn().mockResolvedValue({}),
+  completeOnboarding: (...args: unknown[]) => completeOnboarding(...args),
+}))
+
+const trackWelcomeCompleted = vi.fn()
+vi.mock('@/lib/welcomeAnalytics', () => ({
+  trackWelcomeCompleted: (...args: unknown[]) => trackWelcomeCompleted(...args),
 }))
 
 // The page no longer polls /realtime — it reads the server's install status
@@ -54,6 +61,9 @@ function setSearch(search: string) {
 beforeEach(() => {
   getSubscription.mockReset()
   mockPush.mockClear()
+  completeStep.mockClear()
+  completeOnboarding.mockClear()
+  trackWelcomeCompleted.mockClear()
 })
 
 afterEach(() => {
@@ -92,5 +102,80 @@ describe('SetupDonePage payment confirmation', () => {
     expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'View billing' })).toBeTruthy()
     expect(screen.queryByText(/You're all set!/)).toBeNull()
+  })
+
+  it('resolves a TERMINAL status immediately — no 75s burn on a definitively failed payment', async () => {
+    setSearch('?from=checkout')
+    getSubscription.mockResolvedValue({ subscription_status: 'past_due' })
+    render(<SetupDonePage />)
+    // First poll answers past_due — the failed state appears without any timer advance.
+    expect(await screen.findByText(/Your payment didn't go through/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()
+    expect(screen.queryByText(/You're all set!/)).toBeNull()
+  })
+
+  it('gives persistent POLL failures their own state — never "couldn\'t confirm your payment"', async () => {
+    vi.useFakeTimers()
+    setSearch('?from=checkout')
+    getSubscription.mockRejectedValue(new Error('500'))
+    render(<SetupDonePage />)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000)
+    })
+    expect(screen.getByText(/We can't check your payment right now/)).toBeTruthy()
+    // The old page rendered a 401/500 as "couldn't confirm your payment" —
+    // a statement about the PAYMENT it had no basis for.
+    expect(screen.queryByText(/couldn't confirm your payment/)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Check again' })).toBeTruthy()
+  })
+})
+
+describe('SetupDonePage completion gating (ruled B1 — F-B14)', () => {
+  it('fires completion exactly once for a settled non-checkout arrival', async () => {
+    setSearch('')
+    render(<SetupDonePage />)
+    expect(screen.getByText(/You're all set!/)).toBeTruthy()
+    expect(completeStep).toHaveBeenCalledWith('done')
+    expect(trackWelcomeCompleted).toHaveBeenCalledTimes(1)
+    expect(completeOnboarding).toHaveBeenCalledWith('org_1')
+  })
+
+  it('fires NOTHING while the confirming spinner is up', async () => {
+    vi.useFakeTimers()
+    setSearch('?from=checkout')
+    getSubscription.mockResolvedValue({ subscription_status: '' })
+    render(<SetupDonePage />)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000)
+    })
+    expect(screen.getByText(/Confirming your payment/)).toBeTruthy()
+    // The abandoned-checkout funnel pollution: these all used to fire on mount.
+    expect(completeStep).not.toHaveBeenCalled()
+    expect(trackWelcomeCompleted).not.toHaveBeenCalled()
+    expect(completeOnboarding).not.toHaveBeenCalled()
+  })
+
+  it('fires NOTHING for an unconfirmed or failed outcome', async () => {
+    vi.useFakeTimers()
+    setSearch('?from=checkout')
+    getSubscription.mockResolvedValue({ subscription_status: '' })
+    render(<SetupDonePage />)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(90_000)
+    })
+    expect(screen.getByText(/couldn't confirm your payment/)).toBeTruthy()
+    expect(completeStep).not.toHaveBeenCalled()
+    expect(completeOnboarding).not.toHaveBeenCalled()
+  })
+
+  it('fires completion once the payment is CONFIRMED', async () => {
+    setSearch('?from=checkout')
+    getSubscription.mockResolvedValue({ subscription_status: 'active' })
+    render(<SetupDonePage />)
+    expect(await screen.findByText(/You're all set!/)).toBeTruthy()
+    expect(screen.getByText(/Payment confirmed/)).toBeTruthy()
+    expect(completeStep).toHaveBeenCalledWith('done')
+    expect(completeOnboarding).toHaveBeenCalledWith('org_1')
+    expect(trackWelcomeCompleted).toHaveBeenCalledTimes(1)
   })
 })

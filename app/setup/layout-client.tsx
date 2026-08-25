@@ -13,12 +13,17 @@ import { cdnUrl } from '@/lib/cdn'
 
 // Funnel step numbers per /setup segment. Fixed per page — the guard can
 // route around steps (site-skip lands on plan, an existing site skips org),
-// so these are identities, not a strict order.
+// so these are identities, not a strict order. Numbering MATCHES the stepper
+// (org→site→install→plan→done): it used to emit plan=3/install=4 while the
+// stepper showed install=③/plan=④, so /setup/plan told the user "Step 4"
+// while recording step 3 and every funnel drop-off read one step early.
+// (Analytics note, 25-08-2026: welcome_step_view rows before this date carry
+// the OLD numbering for steps 3/4.)
 const SETUP_STEPS: Record<string, number> = {
   '/setup/org': 1,
   '/setup/site': 2,
-  '/setup/plan': 3,
-  '/setup/install': 4,
+  '/setup/install': 3,
+  '/setup/plan': 4,
   '/setup/done': 5,
 }
 

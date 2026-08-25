@@ -14,7 +14,8 @@ import {
 } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
 import { useIsOwner, useIsAdminOrOwner } from '@/lib/auth/permissions'
-import { getOrganization, updateOrganization, deleteOrganization, getOrganizationMembers, transferOwnership, type OrganizationMember } from '@/lib/api/organization'
+import { getOrganization, updateOrganization, deleteOrganization, getOrganizationMembers, getUserOrganizations, switchContext, transferOwnership, type OrganizationMember } from '@/lib/api/organization'
+import { setSessionAction } from '@/app/actions/auth'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
@@ -100,6 +101,22 @@ export default function WorkspaceGeneralTab() {
     try {
       await deleteOrganization(user.org_id)
       localStorage.clear()
+      // Land somewhere REAL. The session JWT still names the deleted org, so
+      // a bare navigation used to resume the setup wizard for whichever org
+      // the guard happened to find. Switch the session to a surviving org and
+      // go to its fleet; only a user with no orgs left belongs in /setup/org.
+      try {
+        const orgs = await getUserOrganizations()
+        const survivor = orgs.find((o) => o.organization_id !== user.org_id) ?? orgs[0]
+        if (survivor) {
+          const { access_token } = await switchContext(survivor.organization_id)
+          await setSessionAction(access_token)
+          window.location.href = '/'
+          return
+        }
+      } catch {
+        // switching failed — the wizard below is still a safe landing
+      }
       window.location.href = '/setup/org'
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to delete organization')

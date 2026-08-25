@@ -8,6 +8,7 @@ import { LoadingOverlay, useSessionSync, SessionExpiryWarning, useSessionRefresh
 import { cdnUrl } from '@/lib/cdn'
 import { logoutAction, getSessionAction, setSessionAction } from '@/app/actions/auth'
 import { getUserOrganizations, switchContext, getOrganization } from '@/lib/api/organization'
+import { listSites } from '@/lib/api/sites'
 import { logger } from '@/lib/utils/logger'
 import { cleanupStaleStorage } from '@/lib/utils/storage-cleanup'
 import { forgetAllPendingAuth } from '@/lib/api/oauth-store'
@@ -351,15 +352,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return
           }
 
-          // * Onboarding lock: if current org hasn't completed onboarding, redirect to setup
-          if (userOrgId && !pathname?.startsWith('/setup')) {
+          // * Onboarding lock: if current org hasn't completed onboarding, redirect to setup.
+          // * /settings/* is EXEMPT (ruled C1, 25-08-2026): the wall used to gate every
+          // * app route, so an org abandoned mid-wizard could not be managed or even
+          // * DELETED — the danger zone sat behind the wall it needed to escape.
+          if (
+            userOrgId &&
+            !pathname?.startsWith('/setup') &&
+            !pathname?.startsWith('/settings')
+          ) {
             const cacheKey = `pulse_onboarding_done_${userOrgId}`
             const cached = typeof window !== 'undefined' && localStorage.getItem(cacheKey)
             if (!cached) {
               try {
                 const org = await getOrganization(userOrgId)
                 if (!org.onboarding_completed_at) {
-                  router.push('/setup/site')
+                  // * Resume at the furthest incomplete step, computed from server
+                  // * state — the fixed '/setup/site' target invited a duplicate
+                  // * site from every org that already had one.
+                  let target = '/setup/site'
+                  try {
+                    const sites = await listSites()
+                    if (sites.length > 0) {
+                      target = sites.some(s => s.install_status && s.install_status !== 'never_installed')
+                        ? '/setup/plan'
+                        : '/setup/install'
+                    }
+                  } catch {
+                    // sites fetch failed — the default target still resumes the wizard
+                  }
+                  router.push(target)
                   return
                 }
                 localStorage.setItem(cacheKey, '1')
