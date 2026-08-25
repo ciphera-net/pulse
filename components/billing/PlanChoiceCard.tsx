@@ -4,6 +4,7 @@ import { forwardRef } from 'react'
 import { Check } from '@phosphor-icons/react'
 import { Spinner } from '@ciphera-net/facet'
 import { cn } from '@/lib/cn'
+import { formatEuro } from '@/lib/utils/money'
 import type { PlanCatalogEntry, PlanPricing } from '@/lib/plans'
 
 interface PlanChoiceCardProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -62,12 +63,12 @@ const PlanChoiceCard = forwardRef<HTMLButtonElement, PlanChoiceCardProps>(
             <div className="text-right shrink-0">
               <div>
                 <span className="text-lg font-bold text-white">
-                  €{isYearly ? price.effectiveMonthly : price.monthly}
+                  {formatEuro(isYearly ? price.effectiveMonthly : price.monthly)}
                 </span>
                 <span className="text-xs text-neutral-500">/mo</span>
               </div>
               {isYearly && (
-                <p className="text-xs text-neutral-500">€{price.yearlyTotal} billed yearly</p>
+                <p className="text-xs text-neutral-500">{formatEuro(price.yearlyTotal)} billed yearly</p>
               )}
             </div>
           ) : priceLoading ? (

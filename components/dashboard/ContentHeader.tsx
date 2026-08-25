@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { MenuIcon, UserMenu } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
+import { useOrgSwitcher } from '@/lib/hooks/useOrgSwitcher'
 import { useSites } from '@/lib/swr/sites'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
 import OnboardingChip from '@/components/onboarding/OnboardingChip'
@@ -18,6 +19,7 @@ export default function ContentHeader({
 }) {
   const auth = useAuth()
   const router = useRouter()
+  const { orgs, activeOrgId, switchOrganization, createOrganization } = useOrgSwitcher()
   // SWR-cached and deduped with the Sidebar's own useSites() — no extra request.
   const { sites } = useSites()
   const activeSite = siteId ? sites.find((s) => s.id === siteId) : undefined
@@ -50,9 +52,17 @@ export default function ContentHeader({
       <div className="flex shrink-0 items-center gap-1">
         <OnboardingChip />
         <NotificationCenter anchor="bottom" variant="default" />
+        {/* Prop parity with the desktop GlassTopBar instance: without the four
+            org props the Facet menu silently drops its whole workspace section,
+            which left multi-org customers on a phone unable to switch, create,
+            or reach another workspace (F-C8). */}
         <UserMenu
           auth={auth}
           LinkComponent={Link}
+          orgs={orgs}
+          activeOrgId={activeOrgId}
+          onSwitchOrganization={switchOrganization}
+          onCreateOrganization={createOrganization}
           compact
           anchor="bottom"
           allowPersonalOrganization={false}

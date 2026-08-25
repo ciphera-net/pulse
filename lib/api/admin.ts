@@ -12,6 +12,10 @@ export interface AdminOrgSummary {
   /** Calendar date of the next scheduled charge, "YYYY-MM-DD", or null when there
    *  is none. Replaced current_period_end (a timestamp) on 15-08-2026. */
   next_charge_on: string | null
+  /** Calendar date a MANUAL GRANT ends, "YYYY-MM-DD", or null. A different fact
+   *  from next_charge_on (backend migration 142): the grant form's period_end
+   *  writes THIS column, and nothing is charged on it. */
+  grant_expires_on: string | null
   business_name: string
   last_payment_at?: string
   created_at: string

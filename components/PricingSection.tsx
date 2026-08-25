@@ -20,7 +20,9 @@ import {
   PLAN_CATALOG,
   PLAN_FEATURE_MATRIX,
   FREE_PAGEVIEW_LIMIT,
+  getPlanPricing,
 } from '@/lib/plans'
+import { formatEuro } from '@/lib/utils/money'
 import { PlanComparisonTable } from '@/components/marketing/PlanComparisonTable'
 import { HomeClosingCta } from '@/components/marketing/HomeClosingCta'
 import { getPrices } from '@/lib/api/billing'
@@ -92,12 +94,10 @@ export default function PricingSection() {
     if (planId === 'free') return null
     if (currentTraffic.value === TIER_10M_PLUS.value) return null
     const selectedLimit = TRAFFIC_TIERS[sliderIndex]?.value
-    const baseCents = prices?.[planId]?.[selectedLimit]
-    if (!baseCents) return null
-    const monthly = baseCents / 100
-    const yearlyTotal = Math.round((monthly * 11) * 100) / 100
-    const effectiveMonthly = Math.round((yearlyTotal / 12) * 100) / 100
-    return { monthly, effectiveMonthly, yearlyTotal }
+    if (!selectedLimit) return null
+    // The derivation (yearly = 11 × monthly) lives in lib/plans.ts — this used
+    // to re-implement the formula verbatim, which is how the two could drift.
+    return getPlanPricing(prices, planId, selectedLimit)
   }
 
   const handleSubscribe = async (planId: string) => {
@@ -250,7 +250,7 @@ export default function PricingSection() {
                   const soloCents = prices?.['solo']?.[(tier as { value: number }).value]
                   return {
                     value: String(i),
-                    label: `${tier.label} pageviews/month${soloCents ? ` — from €${soloCents / 100}/mo` : ' — Custom'}`,
+                    label: `${tier.label} pageviews/month${soloCents ? ` — from ${formatEuro(soloCents / 100)}/mo` : ' — Custom'}`,
                   }
                 })}
               />
@@ -324,7 +324,7 @@ export default function PricingSection() {
                       <>
                         <div className="flex items-baseline gap-1">
                           <span className="font-display text-4xl font-semibold tabular-nums text-foreground">
-                            €{isYearly ? priceDetails.effectiveMonthly : priceDetails.monthly}
+                            {formatEuro(isYearly ? priceDetails.effectiveMonthly : priceDetails.monthly)}
                           </span>
                           <span className="text-sm text-muted-foreground">/mo</span>
                         </div>
@@ -333,7 +333,7 @@ export default function PricingSection() {
                             toggles. VAT is disclosed once, under the toggle. */}
                         {isYearly ? (
                           <p className="mt-1 text-xs text-muted-foreground">
-                            {currentTraffic.label} pageviews · €{priceDetails.yearlyTotal} billed
+                            {currentTraffic.label} pageviews · {formatEuro(priceDetails.yearlyTotal)} billed
                             yearly
                           </p>
                         ) : (

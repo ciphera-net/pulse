@@ -86,7 +86,9 @@ export default function SetupDonePage() {
   if (payment === 'unconfirmed') {
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-10">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-none bg-amber-900/20 border border-amber-900/40 mb-5">
+        {/* Hairline square, colour only in the glyph (ruled A2 vocabulary —
+            tinted panels are the WS2-retired device). */}
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-none border border-neutral-800 mb-5">
           <WarningCircle weight="fill" className="h-8 w-8 text-amber-400" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-white">
@@ -121,9 +123,9 @@ export default function SetupDonePage() {
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-          className="mx-auto flex h-16 w-16 items-center justify-center rounded-none bg-emerald-500/20 mb-5"
+          className="mx-auto flex h-16 w-16 items-center justify-center rounded-none border border-neutral-800 mb-5"
         >
-          <CheckCircleIcon className="h-8 w-8 text-emerald-400" />
+          <CheckCircleIcon className="h-8 w-8 text-pos" />
         </motion.div>
         <h1 className="text-2xl font-bold tracking-tight text-white">
           You&apos;re all set!
@@ -140,29 +142,34 @@ export default function SetupDonePage() {
           checking forever. */}
       {site && <InstallStateBlock siteId={site.id} domain={site.domain} />}
 
-      {/* Next steps cards */}
+      {/* Next steps cards — hairline icon squares, colour only in the glyph
+          (ruled A2). The goal card is site-scoped, so a site-less org (site
+          step skipped) doesn't get a link into settings for a site that
+          doesn't exist. */}
       <div className="space-y-3 mb-8">
-        <Link
-          href="/settings/site/goals"
-          className="flex items-center gap-3 p-3 rounded-none border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/30 transition-all"
-          onClick={() => {
-            if (site) sessionStorage.setItem('pulse_active_site', site.id)
-          }}
-        >
-          <div className="h-9 w-9 rounded-none bg-brand-orange/10 flex items-center justify-center shrink-0">
-            <FunnelIcon className="h-4.5 w-4.5 text-brand-orange" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-white">Set up a goal</p>
-            <p className="text-xs text-neutral-500">Track conversions and key events</p>
-          </div>
-        </Link>
+        {site && (
+          <Link
+            href="/settings/site/goals"
+            className="flex items-center gap-3 p-3 rounded-none border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/30 transition-all"
+            onClick={() => {
+              sessionStorage.setItem('pulse_active_site', site.id)
+            }}
+          >
+            <div className="h-9 w-9 rounded-none border border-neutral-800 flex items-center justify-center shrink-0">
+              <FunnelIcon className="h-4.5 w-4.5 text-brand-orange" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-white">Set up a goal</p>
+              <p className="text-xs text-neutral-500">Track conversions and key events</p>
+            </div>
+          </Link>
+        )}
 
         <Link
           href="/settings/organization/members"
           className="flex items-center gap-3 p-3 rounded-none border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/30 transition-all"
         >
-          <div className="h-9 w-9 rounded-none bg-brand-orange/10 flex items-center justify-center shrink-0">
+          <div className="h-9 w-9 rounded-none border border-neutral-800 flex items-center justify-center shrink-0">
             <UsersIcon className="h-4.5 w-4.5 text-brand-orange" />
           </div>
           <div>
@@ -177,7 +184,7 @@ export default function SetupDonePage() {
           rel="noopener noreferrer"
           className="flex items-center gap-3 p-3 rounded-none border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/30 transition-all"
         >
-          <div className="h-9 w-9 rounded-none bg-brand-orange/10 flex items-center justify-center shrink-0">
+          <div className="h-9 w-9 rounded-none border border-neutral-800 flex items-center justify-center shrink-0">
             <BookOpenIcon className="h-4.5 w-4.5 text-brand-orange" />
           </div>
           <div>

@@ -13,6 +13,7 @@ import { PLAN_CATALOG, TRAFFIC_TIERS, getPlanPricing, formatPlanName } from '@/l
 import PlanChoiceCard from '@/components/billing/PlanChoiceCard'
 import TierSlider from '@/components/billing/TierSlider'
 import { formatDateFull } from '@/lib/utils/formatDate'
+import { formatEuro, formatEuroCents } from '@/lib/utils/money'
 import { cdnUrl } from '@/lib/cdn'
 import { TIMING } from '@/lib/motion'
 
@@ -28,7 +29,9 @@ function formatLimit(limit: number): string {
 }
 
 function formatCents(cents: number): string {
-  return `€${(Math.abs(cents) / 100).toFixed(2)}`
+  // Magnitude only — callers render the sign/direction themselves ("refund",
+  // a leading −). Formatting itself goes through the one shared formatter.
+  return formatEuroCents(Math.abs(cents))
 }
 
 /** Estimate dates arrive as strings; render them verbosely when parseable. */
@@ -319,7 +322,7 @@ function SwitchPlanContent() {
                     <p className="text-sm text-neutral-400">{formatLimit(currentLimit)} pageviews</p>
                     <p className="text-xs text-neutral-500 mt-0.5">
                       {currentInterval === 'year' ? 'Yearly' : 'Monthly'} billing
-                      {currentPricing ? ` · €${currentInterval === 'year' ? currentPricing.effectiveMonthly : currentPricing.monthly}/mo` : ''}
+                      {currentPricing ? ` · ${formatEuro(currentInterval === 'year' ? currentPricing.effectiveMonthly : currentPricing.monthly)}/mo` : ''}
                     </p>
                   </div>
 
@@ -331,7 +334,7 @@ function SwitchPlanContent() {
                     <p className="text-sm text-neutral-400">{formatLimit(selectedLimit)} pageviews</p>
                     <p className="text-xs text-neutral-500 mt-0.5">
                       {isYearly ? 'Yearly' : 'Monthly'} billing
-                      {newPricing ? ` · €${isYearly ? newPricing.effectiveMonthly : newPricing.monthly}/mo` : ''}
+                      {newPricing ? ` · ${formatEuro(isYearly ? newPricing.effectiveMonthly : newPricing.monthly)}/mo` : ''}
                     </p>
                   </div>
                 </div>

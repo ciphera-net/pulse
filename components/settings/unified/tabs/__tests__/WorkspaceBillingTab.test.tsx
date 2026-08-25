@@ -12,8 +12,14 @@ vi.mock('next/navigation', () => ({
 }))
 
 let mockSubscription: SubscriptionDetails | undefined
+let mockSubscriptionError: Error | undefined
 vi.mock('@/lib/swr/dashboard', () => ({
-  useSubscription: () => ({ data: mockSubscription, isLoading: false, mutate: vi.fn() }),
+  useSubscription: () => ({
+    data: mockSubscription,
+    error: mockSubscriptionError,
+    isLoading: false,
+    mutate: vi.fn(),
+  }),
 }))
 
 let mockCanManage = true
@@ -102,6 +108,7 @@ const base: SubscriptionDetails = {
 beforeEach(() => {
   mockCanManage = true
   mockSubscription = { ...base }
+  mockSubscriptionError = undefined
   mockPush.mockClear()
 })
 
@@ -388,6 +395,115 @@ describe('WorkspaceBillingTab grant expiry', () => {
     // A perpetual grant has no end date. An absent tile is honest; a fabricated
     // "never" or an epoch would not be.
     expect(screen.queryByText('Grant ends')).toBeNull()
+  })
+})
+
+describe('WorkspaceBillingTab grant presentation (ruled D2, 25-08-2026)', () => {
+  it('a grant gets the quiet sentence and NO payment actions', async () => {
+    mockSubscription = {
+      ...base,
+      plan_id: 'pioneer',
+      next_charge_on: null,
+      grant_expires_on: '2027-04-27',
+    }
+    renderTab()
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/runs on a granted Pioneer plan until 27\/04\/2027 — nothing is billed/i),
+      ).toBeTruthy(),
+    )
+    // No Mollie objects exist behind a grant — both actions could only error.
+    expect(screen.queryByRole('button', { name: /Update payment method/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Cancel subscription' })).toBeNull()
+  })
+
+  it('a granted org that ALSO carries a live charge schedule keeps its payment actions', async () => {
+    // AdminGrantPlan does not clear next_charge_on: a grant on top of a live
+    // Mollie subscription is still billing. "Nothing is billed" would be false
+    // and hiding the actions would strand the real subscription.
+    mockSubscription = {
+      ...base,
+      plan_id: 'pioneer',
+      next_charge_on: '2026-09-15',
+      grant_expires_on: '2027-04-27',
+    }
+    renderTab()
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Update payment method/i })).toBeTruthy(),
+    )
+    expect(screen.queryByText(/nothing is billed/i)).toBeNull()
+  })
+
+  it('no duplicate Limit tile for a plan id without a prices entry', async () => {
+    // 'pioneer' has no entry in the prices map. The old fallback rendered a
+    // "Limit" tile repeating the Pageviews tile's denominator one track over.
+    mockSubscription = {
+      ...base,
+      plan_id: 'pioneer',
+      next_charge_on: null,
+      grant_expires_on: '2027-04-27',
+      pageview_limit: 100000,
+      pageview_usage: 3635,
+    }
+    renderTab()
+
+    await waitFor(() => expect(screen.getByText('Pageviews')).toBeTruthy())
+    expect(screen.queryByText('Limit')).toBeNull()
+    expect(screen.queryByText('100,000 / mo')).toBeNull()
+  })
+})
+
+describe('WorkspaceBillingTab subscription fetch error (ruled F1)', () => {
+  it('a failed fetch renders the error card, never the Hobby empty state', async () => {
+    mockSubscription = undefined
+    mockSubscriptionError = new Error('network')
+    renderTab()
+
+    await waitFor(() =>
+      expect(screen.getByText(/Couldn.t load your subscription/i)).toBeTruthy(),
+    )
+    expect(
+      screen.getByText(/temporarily unavailable\. Your subscription itself is unaffected/i),
+    ).toBeTruthy()
+    // The old fall-through told a paying customer they were on the free plan.
+    expect(screen.queryByText(/free Hobby plan/i)).toBeNull()
+    expect(screen.queryByText('No subscription')).toBeNull()
+  })
+})
+
+describe('WorkspaceBillingTab invoice status vocabulary (ruled F2)', () => {
+  function invoiceWithStatus(status: string): Invoice {
+    return {
+      id: `inv_${status}`,
+      invoice_number: '2026-0001',
+      amount_cents: 4700,
+      vat_cents: 0,
+      total_cents: 4700,
+      currency: 'EUR',
+      description: 'Solo plan',
+      status,
+      created_at: '2026-07-01T00:00:00Z',
+    }
+  }
+
+  it("maps the backend's `paid` to a Paid chip", async () => {
+    vi.spyOn(billingApi, 'getInvoices').mockResolvedValue([invoiceWithStatus('paid')])
+    renderTab()
+    await waitFor(() => expect(screen.getByText('Paid')).toBeTruthy())
+    // The raw lowercase status must not leak into the chip.
+    expect(screen.queryByText('paid')).toBeNull()
+  })
+
+  it('maps `refunded` to a Refunded chip and `failed` to Failed', async () => {
+    vi.spyOn(billingApi, 'getInvoices').mockResolvedValue([
+      invoiceWithStatus('refunded'),
+      { ...invoiceWithStatus('failed'), id: 'inv_f2' },
+    ])
+    renderTab()
+    await waitFor(() => expect(screen.getByText('Refunded')).toBeTruthy())
+    expect(screen.getByText('Failed')).toBeTruthy()
   })
 })
 

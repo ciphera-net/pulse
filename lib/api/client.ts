@@ -300,6 +300,20 @@ async function apiRequest<T>(
   return response.json()
   })()
 
+  // * Mutations invalidate the whole GET micro-cache once they land: an SWR
+  // * revalidate fired right after a POST/PATCH could otherwise be served the
+  // * pre-mutation body for up to CACHE_TTL_MS (the cancel/resume subscription
+  // * flows hit exactly this window). The cache is a 2s dedupe aid, not state —
+  // * dropping it wholesale on the rare mutation is free.
+  if (!shouldDedupe) {
+    requestPromise
+      .then((data) => {
+        responseCache.clear()
+        return data
+      })
+      .catch(() => {})
+  }
+
   // * For GET requests, track the promise for deduplication and cache the result
   if (shouldDedupe) {
     const requestKey = getRequestKey(endpoint, options)

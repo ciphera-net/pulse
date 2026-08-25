@@ -1,16 +1,16 @@
 import type { Receipt } from '@/lib/notifications/types'
 import type { Rendered, Resolvers } from './index'
 import { formatDateUTC } from '@/lib/utils/formatDate'
-
-function formatMoney(amountCents: number, currency: string): string {
-  return new Intl.NumberFormat('en', { style: 'currency', currency }).format(amountCents / 100)
-}
+import { formatMoneyCents } from '@/lib/utils/money'
 
 export const billingRenderers = {
   billing_payment_failed: (r: Receipt, _resolvers?: Resolvers): Rendered => {
     const p = r.event.payload as { invoice_id: string; amount: number; currency: string; error_code: string; retry_at: string }
     const title = p.invoice_id ? `Payment failed — Invoice #${p.invoice_id}` : 'Payment failed'
-    const amount = formatMoney(p.amount, p.currency)
+    // formatMoneyCents falls back to EUR on a missing currency — the backend
+    // has shipped payloads without one, and Intl.NumberFormat throws on
+    // undefined currency, which blanked the whole notification center.
+    const amount = formatMoneyCents(p.amount, p.currency)
     const reason = p.error_code ? ` (${p.error_code})` : ''
     const retryDate = p.retry_at && !p.retry_at.startsWith('0001') ? `. We'll retry on ${formatDateUTC(new Date(p.retry_at))}` : ''
     return {
