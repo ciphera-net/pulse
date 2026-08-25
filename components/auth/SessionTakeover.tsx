@@ -21,9 +21,10 @@
  */
 
 import { useEffect, useMemo } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { cdnUrl } from '@/lib/cdn'
 import { reportClientEvent } from '@/lib/utils/clientEvents'
+import { useAuth } from '@/lib/auth/context'
 
 export type TakeoverState = 'signed-out' | 'restoring'
 
@@ -49,7 +50,7 @@ const GRID_TEXTURE: React.CSSProperties = {
 }
 
 export default function SessionTakeover({ state }: { state: TakeoverState }) {
-  const router = useRouter()
+  const { logout } = useAuth()
   const pathname = usePathname()
   const hadSession = hasSessionHistory()
   const site = useMemo(() => lastSiteLabel(), [])
@@ -62,11 +63,18 @@ export default function SessionTakeover({ state }: { state: TakeoverState }) {
     try {
       // * The callback already consumes this slot and returns the person to the
       // * stored path — the room's promise is delivered by existing machinery.
+      // * (logout()'s forgetAllPendingAuth clears only oauth_* attempt slots;
+      // * this key survives it.)
       localStorage.setItem('pulse_auth_return_to', pathname || '/sites')
     } catch {
       // * Storage unavailable — sign-in still works, landing on /.
     }
-    router.push('/login')
+    // 🔴 Through logout(), NOT router.push('/login'). The session here is dead
+    // * but its COOKIES still exist, and middleware bounces /login back to
+    // * /sites whenever an access_token cookie is present — a client-side push
+    // * loops right back to this room (measured on staging). logout() clears
+    // * the dead cookies server-side first, then full-navigates to /login.
+    logout()
   }
 
   const statement =

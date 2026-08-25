@@ -7,12 +7,12 @@ import { isAuthedAppRoute } from '@/lib/auth/appRoutes'
 // exactly ONE thing — this room. These pin its three states and the sign-in
 // promise (return-to stored in the slot the auth callback already consumes).
 
-const push = vi.fn()
+const logout = vi.fn()
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push }),
   usePathname: () => '/sites/abc-123',
 }))
 vi.mock('@/lib/utils/clientEvents', () => ({ reportClientEvent: vi.fn() }))
+vi.mock('@/lib/auth/context', () => ({ useAuth: () => ({ logout }) }))
 
 function setHadSessionCookie(on: boolean) {
   document.cookie = on
@@ -22,7 +22,7 @@ function setHadSessionCookie(on: boolean) {
 
 describe('SessionTakeover', () => {
   beforeEach(() => {
-    push.mockClear()
+    logout.mockClear()
     localStorage.clear()
     setHadSessionCookie(false)
   })
@@ -59,7 +59,7 @@ describe('SessionTakeover', () => {
     expect(screen.queryByRole('button', { name: /back to your dashboard/i })).not.toBeInTheDocument()
   })
 
-  it('sign in stores the current path in the return-to slot and routes to /login', () => {
+  it('sign in stores the return path, then goes through logout() — never a bare /login push', () => {
     setHadSessionCookie(true)
     render(<SessionTakeover state="signed-out" />)
 
@@ -68,7 +68,11 @@ describe('SessionTakeover', () => {
     // 🔴 The room's promise ("returns you to it") is this line — the callback
     // consumes pulse_auth_return_to and navigates there after the exchange.
     expect(localStorage.getItem('pulse_auth_return_to')).toBe('/sites/abc-123')
-    expect(push).toHaveBeenCalledWith('/login')
+    // 🔴 Through logout(): the dead session's cookies still exist, and
+    // middleware bounces /login back to /sites while an access_token cookie is
+    // present — a client-side push loops back to this room (measured on
+    // staging). logout() clears the cookies server-side, then navigates.
+    expect(logout).toHaveBeenCalledOnce()
   })
 })
 
