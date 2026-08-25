@@ -49,9 +49,12 @@ interface PaymentFormProps {
   postalCode: string
   /** Reports which billing fields blocked submission so PlanSummary can mark them. */
   onMissingFields?: (fields: string[]) => void
+  /** Which surface hosts this form — the server maps it to Mollie's return
+   *  URLs. Defaults to the onboarding wizard (the historical behaviour). */
+  returnTo?: 'setup' | 'switch'
 }
 
-export default function PaymentForm({ plan, interval, limit, country, vatId, verifiedVatId, businessName, billingEmail, address, city, postalCode, onMissingFields }: PaymentFormProps) {
+export default function PaymentForm({ plan, interval, limit, country, vatId, verifiedVatId, businessName, billingEmail, address, city, postalCode, onMissingFields, returnTo }: PaymentFormProps) {
   const [selectedMethod, setSelectedMethod] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -124,6 +127,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId, ver
         address,
         city,
         postal_code: postalCode,
+        return_to: returnTo,
       })
 
       window.location.href = url

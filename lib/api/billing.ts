@@ -166,6 +166,10 @@ export interface CreateCheckoutParams {
   address: string
   city: string
   postal_code: string
+  /** Which surface started this checkout — the server maps it to Mollie's
+   *  redirect/cancel URLs (a closed enum server-side, never a URL). Absent
+   *  means the onboarding wizard, the historical default. */
+  return_to?: 'setup' | 'switch'
 }
 
 export async function createCheckoutSession(params: CreateCheckoutParams): Promise<{ url: string }> {

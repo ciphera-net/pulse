@@ -135,7 +135,7 @@ export default function WorkspaceBillingTab() {
       const result = await resumeSubscription()
       if (result.requires_checkout) {
         toast.warning('Your subscription has expired. Please subscribe again.')
-        router.push('/setup/plan')
+        router.push('/switch')
         return
       }
       if (!result.ok) {
@@ -312,10 +312,11 @@ export default function WorkspaceBillingTab() {
           method is the correct action) and for non-managers. */}
       {canManageBilling && !isPastDue && (
         <MastheadAction>
-          <Button
-            variant="default"
-            onClick={() => router.push(isCanceled || isFree ? '/setup/plan' : '/switch')}
-          >
+          {/* Every plan change goes through /switch (ruled E1) — routing free
+              and cancelled orgs into /setup/plan funneled paying customers
+              through the first-run onboarding completion screen and re-fired
+              welcome_completed (F-C10). */}
+          <Button variant="default" onClick={() => router.push('/switch')}>
             {isCanceled ? 'Resubscribe' : isFree ? 'Upgrade' : 'Change Plan'}
           </Button>
         </MastheadAction>
