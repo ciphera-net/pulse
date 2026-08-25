@@ -57,9 +57,12 @@ export default function PlanSummary({ plan, interval, onIntervalChange, limit, c
   const [vatRetryNonce, setVatRetryNonce] = useState(0)
 
   const { data: prices } = useSWR('plan-prices', getPrices)
-  const monthlyCents = prices?.[plan]?.[limit] || 0
+  // null = no price known (fetch pending/failed, or no catalog entry) — a real
+  // state that must render as absence. The old `|| 0` sentinel showed
+  // "Total €0.00" as fact whenever prices hadn't loaded.
+  const monthlyCents = prices?.[plan]?.[limit] ?? null
   const isYearly = interval === 'year'
-  const baseDisplay = isYearly ? (monthlyCents * 11) / 100 : monthlyCents / 100
+  const baseDisplay = monthlyCents === null ? null : isYearly ? (monthlyCents * 11) / 100 : monthlyCents / 100
 
   const tierLabel =
     TRAFFIC_TIERS.find((t) => t.value === limit)?.label ||
@@ -338,7 +341,7 @@ export default function PlanSummary({ plan, interval, onIntervalChange, limit, c
           <div className="space-y-1.5 text-sm">
             <div className="flex justify-between text-neutral-400">
               <span>Subtotal ({tierLabel} pageviews)</span>
-              <span>{formatEuro(baseDisplay)}</span>
+              <span>{baseDisplay === null ? '—' : formatEuro(baseDisplay)}</span>
             </div>
             <div className="flex justify-between text-neutral-500 text-xs">
               <span>VAT</span>
@@ -346,9 +349,9 @@ export default function PlanSummary({ plan, interval, onIntervalChange, limit, c
             </div>
             <div className="flex justify-between font-semibold text-white pt-1 border-t border-neutral-800">
               <span>Total {isYearly ? '/year' : '/mo'} <span className="font-normal text-neutral-500 text-xs">excl. VAT</span></span>
-              <span>{formatEuro(baseDisplay)}</span>
+              <span>{baseDisplay === null ? '—' : formatEuro(baseDisplay)}</span>
             </div>
-            {isYearly && (
+            {isYearly && baseDisplay !== null && (
               <p className="text-xs text-neutral-500">{formatEuro(baseDisplay / 12)}/mo &middot; Save 1 month</p>
             )}
           </div>

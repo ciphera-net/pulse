@@ -41,5 +41,13 @@ export function renderNotification(r: Receipt, resolvers?: Resolvers): Rendered 
   if (!renderer) {
     return { title: r.event.type, body: '', linkLabel: null }
   }
-  return renderer(r, resolvers)
+  try {
+    return renderer(r, resolvers)
+  } catch {
+    // A renderer throwing on one malformed payload (a backend has shipped
+    // billing_payment_failed without a currency) must degrade to ONE plain
+    // row — not blank the entire notification center, which is what an
+    // uncaught throw inside the list map did.
+    return { title: r.event.type, body: '', linkLabel: null }
+  }
 }

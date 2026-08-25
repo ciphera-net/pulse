@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useSetup } from '@/lib/setup/context'
 import { preservePlanParams } from '@/lib/setup/utils'
 import { verifySite } from '@/lib/api/sites'
-import { Button, CheckCircleIcon, GlobeIcon } from '@ciphera-net/facet'
+import { useSites } from '@/lib/swr/sites'
+import { Button, CheckCircleIcon, GlobeIcon, Spinner } from '@ciphera-net/facet'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 import InstallStateBlock from '@/components/setup/InstallStateBlock'
 
@@ -13,6 +14,7 @@ export default function SetupInstallPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { site, completeStep } = useSetup()
+  const { isLoading: sitesLoading } = useSites()
 
   const handleContinue = () => {
     completeStep('install')
@@ -34,6 +36,17 @@ export default function SetupInstallPage() {
       verifiedRef.current = false
     })
   }, [site])
+
+  // Context rehydrates `site` from GET /sites; until that fetch lands we
+  // don't know whether a site exists, and flashing the "no site is attached"
+  // notice at someone whose site is about to appear reads as data loss.
+  if (!site && sitesLoading) {
+    return (
+      <div className="py-16 text-center">
+        <Spinner className="mx-auto" />
+      </div>
+    )
+  }
 
   return (
     <>
@@ -92,7 +105,9 @@ export default function SetupInstallPage() {
               show yet. Create your site first and the snippet will appear here.
             </p>
           </div>
-          <Button onClick={() => router.push('/setup')} variant="secondary" className="w-full h-11 md:h-9">
+          {/* Direct hop — the old '/setup' target took three redirects to end
+              up on the site step anyway. */}
+          <Button onClick={() => router.push('/setup/site')} variant="secondary" className="w-full h-11 md:h-9">
             Back to site setup
           </Button>
           <Button onClick={handleContinue} className="w-full h-11 md:h-9">

@@ -58,7 +58,7 @@ export default function SetupStepper({ completedSteps }: SetupStepperProps) {
                   entirely. On mobile we keep the numbered circles + connectors
                   (the visual device) and print the CURRENT step's label once,
                   centred, below the rail. sm+ is untouched. */}
-              <div className="flex flex-col items-center shrink-0">
+              <div className="flex flex-col items-center shrink-0" aria-current={isCurrent ? 'step' : undefined}>
                 <div className={circleClasses}>
                   {isCompleted ? <CheckIcon /> : i + 1}
                 </div>

@@ -129,7 +129,19 @@ export default function PaymentForm({ plan, interval, limit, country, vatId, ver
       window.location.href = url
     } catch (err) {
       inFlight.current = false
-      setFormError((err as Error)?.message || 'Payment failed. Please try again.')
+      const apiErr = err as { status?: number; data?: { code?: string } }
+      if (apiErr.status === 409) {
+        // Two distinct refusals, both honest (ruled B1): a first payment still
+        // confirming must NOT be answered with a second live checkout, and an
+        // already-subscribed org changes plans in Settings, not here.
+        setFormError(
+          apiErr.data?.code === 'checkout_in_flight'
+            ? 'Your previous payment is still being confirmed. If you completed it, your plan activates automatically — you won’t be charged twice. Check Settings → Billing in a minute.'
+            : 'This workspace already has an active subscription. You can change your plan from Settings → Billing.',
+        )
+      } else {
+        setFormError((err as Error)?.message || 'Payment failed. Please try again.')
+      }
       setSubmitting(false)
     }
   }
