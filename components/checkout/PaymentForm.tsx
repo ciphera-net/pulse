@@ -49,9 +49,12 @@ interface PaymentFormProps {
   postalCode: string
   /** Reports which billing fields blocked submission so PlanSummary can mark them. */
   onMissingFields?: (fields: string[]) => void
+  /** Which surface hosts this form — the server maps it to Mollie's return
+   *  URLs. Defaults to the onboarding wizard (the historical behaviour). */
+  returnTo?: 'setup' | 'switch'
 }
 
-export default function PaymentForm({ plan, interval, limit, country, vatId, verifiedVatId, businessName, billingEmail, address, city, postalCode, onMissingFields }: PaymentFormProps) {
+export default function PaymentForm({ plan, interval, limit, country, vatId, verifiedVatId, businessName, billingEmail, address, city, postalCode, onMissingFields, returnTo }: PaymentFormProps) {
   const [selectedMethod, setSelectedMethod] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -124,12 +127,25 @@ export default function PaymentForm({ plan, interval, limit, country, vatId, ver
         address,
         city,
         postal_code: postalCode,
+        return_to: returnTo,
       })
 
       window.location.href = url
     } catch (err) {
       inFlight.current = false
-      setFormError((err as Error)?.message || 'Payment failed. Please try again.')
+      const apiErr = err as { status?: number; data?: { code?: string } }
+      if (apiErr.status === 409) {
+        // Two distinct refusals, both honest (ruled B1): a first payment still
+        // confirming must NOT be answered with a second live checkout, and an
+        // already-subscribed org changes plans in Settings, not here.
+        setFormError(
+          apiErr.data?.code === 'checkout_in_flight'
+            ? 'Your previous payment is still being confirmed. If you completed it, your plan activates automatically — you won’t be charged twice. Check Settings → Billing in a minute.'
+            : 'This workspace already has an active subscription. You can change your plan from Settings → Billing.',
+        )
+      } else {
+        setFormError((err as Error)?.message || 'Payment failed. Please try again.')
+      }
       setSubmitting(false)
     }
   }

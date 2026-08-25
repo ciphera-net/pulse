@@ -28,12 +28,11 @@ import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { updatePaymentMethod, cancelSubscription, resumeSubscription, getInvoices, getPrices, downloadInvoicePDF, updateBillingSettings } from '@/lib/api/billing'
-import { formatCalendarDateFull, formatDateUTC } from '@/lib/utils/formatDate'
+import { formatCalendarDate, formatCalendarDateFull, formatDateUTC } from '@/lib/utils/formatDate'
+import { formatEuro, formatEuroCents, formatMoneyCents } from '@/lib/utils/money'
 import { cdnUrl } from '@/lib/cdn'
 import { useCan } from '@/lib/auth/permissions'
 import { formatPlanName, getPlanPricing, FREE_PAGEVIEW_LIMIT } from '@/lib/plans'
-
-const euro = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR' })
 
 const PAYMENT_METHODS = [
   { id: 'creditcard', label: 'Cards', icons: ['/icons/payment/visa.svg', '/icons/payment/mastercard.svg'] },
@@ -58,7 +57,7 @@ function StatTile({ label, value, sub }: { label: string; value: React.ReactNode
 export default function WorkspaceBillingTab() {
   const router = useRouter()
   const canManageBilling = useCan('billing.manage')
-  const { data: subscription, isLoading, mutate } = useSubscription()
+  const { data: subscription, error: subscriptionError, isLoading, mutate } = useSubscription()
   const [cancelling, setCancelling] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false)
@@ -110,10 +109,18 @@ export default function WorkspaceBillingTab() {
   const handleCancel = async () => {
     setCancelling(true)
     try {
-      await cancelSubscription()
-      if (subscription) {
-        await mutate({ ...subscription, cancel_at_period_end: true }, { revalidate: false })
+      const result = await cancelSubscription()
+      if (!result.ok) {
+        toast.error('The subscription could not be cancelled. Please try again.')
+        return
       }
+      // Optimistic paint, then revalidate against the server — the old
+      // `revalidate: false` fabricated the cache and never read the API's
+      // actual answer, so a server-side no-op rendered as success forever.
+      await mutate(
+        subscription ? { ...subscription, cancel_at_period_end: true } : undefined,
+        { revalidate: true },
+      )
       toast.success('Subscription cancelled')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to cancel subscription')
@@ -128,12 +135,17 @@ export default function WorkspaceBillingTab() {
       const result = await resumeSubscription()
       if (result.requires_checkout) {
         toast.warning('Your subscription has expired. Please subscribe again.')
-        router.push('/setup/plan')
+        router.push('/switch')
         return
       }
-      if (subscription) {
-        await mutate({ ...subscription, cancel_at_period_end: false }, { revalidate: false })
+      if (!result.ok) {
+        toast.error('The subscription could not be resumed. Please try again.')
+        return
       }
+      await mutate(
+        subscription ? { ...subscription, cancel_at_period_end: false } : undefined,
+        { revalidate: true },
+      )
       toast.success('Subscription resumed')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to resume subscription')
@@ -165,6 +177,10 @@ export default function WorkspaceBillingTab() {
         await mutate()
         setEditingBilling(false)
         toast.success('Billing details updated')
+      } else {
+        // ok:false is a failure and must say so — the old silence left the
+        // form open with the user believing the save landed.
+        toast.error('Your billing details could not be saved. Please try again.')
       }
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || 'Failed to update billing details')
@@ -190,6 +206,19 @@ export default function WorkspaceBillingTab() {
 
   if (isLoading) {
     return <SettingsLoadingState rows={4} />
+  }
+
+  // A failed fetch is NOT "no subscription": the old fall-through rendered
+  // "You're on the free Hobby plan" to a paying customer whose request blipped.
+  // Ruled error device (F1, options round 25-08) — named blast radius + retry.
+  if (subscriptionError && !subscription) {
+    return (
+      <SettingsErrorState
+        title="Couldn’t load your subscription"
+        message="Your plan and usage are temporarily unavailable. Your subscription itself is unaffected."
+        onRetry={() => mutate()}
+      />
+    )
   }
 
   if (!subscription) {
@@ -262,10 +291,19 @@ export default function WorkspaceBillingTab() {
       ? subscription.pageview_usage / subscription.pageview_limit
       : 0
 
+  // A grant is an org someone at Ciphera gave a plan — nothing is billed.
+  // Detection is grant_expires_on (migration 142's column; the prod grant rows
+  // were backfilled by migration 158) AND no scheduled charge: AdminGrantPlan
+  // deliberately does not clear next_charge_on, so a granted org can still
+  // carry a live Mollie subscription — for that hybrid, "nothing is billed"
+  // would be a lie and hiding the payment actions would strand a real
+  // subscription. Grant presentation engages only when no charge is scheduled.
+  const isGrant = Boolean(subscription.grant_expires_on) && !subscription.next_charge_on
+
   // Non-CTA management actions live in the plan-band footer. Hidden for
-  // Hobby/free and cancelled orgs: there is no Mollie customer or subscription
-  // behind them, so both calls would only error.
-  const showActions = !isCanceled && !isFree && canManageBilling
+  // Hobby/free, cancelled AND granted orgs: there is no Mollie customer or
+  // subscription behind any of them, so both calls would only error.
+  const showActions = !isCanceled && !isFree && !isGrant && canManageBilling
 
   return (
     <div className="space-y-8">
@@ -274,10 +312,11 @@ export default function WorkspaceBillingTab() {
           method is the correct action) and for non-managers. */}
       {canManageBilling && !isPastDue && (
         <MastheadAction>
-          <Button
-            variant="default"
-            onClick={() => router.push(isCanceled || isFree ? '/setup/plan' : '/switch')}
-          >
+          {/* Every plan change goes through /switch (ruled E1) — routing free
+              and cancelled orgs into /setup/plan funneled paying customers
+              through the first-run onboarding completion screen and re-fired
+              welcome_completed (F-C10). */}
+          <Button variant="default" onClick={() => router.push('/switch')}>
             {isCanceled ? 'Resubscribe' : isFree ? 'Upgrade' : 'Change Plan'}
           </Button>
         </MastheadAction>
@@ -363,22 +402,31 @@ export default function WorkspaceBillingTab() {
             {grantEndsLabel && (
               <StatTile label="Grant ends" value={grantEndsLabel} />
             )}
-            {planPricing && !isFree ? (
+            {planPricing && !isFree && (
+              // No fallback tile for plan ids without a prices entry (grants,
+              // Hobby): the old "Limit" tile repeated the Pageviews tile's
+              // denominator one track over. Absence is the honest render.
               <StatTile
                 label="Price"
-                value={isYearlyInterval ? `€${planPricing.yearlyTotal}/yr` : `€${planPricing.monthly}/mo`}
+                value={isYearlyInterval ? `${formatEuro(planPricing.yearlyTotal)}/yr` : `${formatEuro(planPricing.monthly)}/mo`}
                 sub={
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    excl. VAT{isYearlyInterval ? ` · €${planPricing.effectiveMonthly}/mo` : ''}
+                    excl. VAT{isYearlyInterval ? ` · ${formatEuro(planPricing.effectiveMonthly)}/mo` : ''}
                   </p>
                 }
               />
-            ) : subscription.pageview_limit > 0 ? (
-              // Legacy plan ids have no entry in the prices map — fall back to
-              // the limit rather than showing an empty cell.
-              <StatTile label="Limit" value={`${subscription.pageview_limit.toLocaleString()} / mo`} />
-            ) : null}
+            )}
           </RailGrid>
+        )}
+
+        {/* The grant, said plainly (ruled D2, options round 25-08): one quiet
+            sentence where the payment actions would sit — not a paid-plan
+            cosplay with buttons that could only error. */}
+        {isGrant && !isCanceled && (
+          <p className="border-t border-border px-5 py-3 text-sm text-muted-foreground">
+            This workspace runs on a granted {planLabel} plan
+            {formatCalendarDate(subscription.grant_expires_on) ? ` until ${formatCalendarDate(subscription.grant_expires_on)}` : ''} — nothing is billed.
+          </p>
         )}
 
         {showActions && (
@@ -513,7 +561,7 @@ export default function WorkspaceBillingTab() {
             title="Account credit"
             action={
               <span className="text-sm font-semibold tabular-nums text-foreground">
-                {euro.format(subscription.credit_balance / 100)}
+                {formatEuroCents(subscription.credit_balance)}
               </span>
             }
           >
@@ -746,7 +794,6 @@ export default function WorkspaceBillingTab() {
             <TBody>
               {invoices.map(invoice => {
                 const isCreditNote = invoice.document_type === 'credit_note'
-                const fmt = new Intl.NumberFormat(undefined, { style: 'currency', currency: invoice.currency || 'EUR' })
                 return (
                   <TR key={invoice.id}>
                     <TD>
@@ -759,19 +806,23 @@ export default function WorkspaceBillingTab() {
                     <TD className="hidden sm:table-cell">{formatDateUTC(new Date(invoice.created_at))}</TD>
                     <TD numeric>
                       <span className="text-foreground">
-                        {isCreditNote ? '−' : ''}{fmt.format(Math.abs(invoice.total_cents) / 100)}
+                        {isCreditNote ? '−' : ''}{formatMoneyCents(Math.abs(invoice.total_cents), invoice.currency)}
                       </span>
                     </TD>
                     <TD numeric className="hidden sm:table-cell">
                       <span className="text-muted-foreground">
-                        {isCreditNote ? 'refund ' : 'incl. '}{fmt.format(Math.abs(invoice.vat_cents) / 100)}
+                        {isCreditNote ? 'refund ' : 'incl. '}{formatMoneyCents(Math.abs(invoice.vat_cents), invoice.currency)}
                       </span>
                     </TD>
                     <TD>
                       {isCreditNote ? (
                         <StatusChip tone="info">Credit Note</StatusChip>
-                      ) : invoice.status === 'sent' ? (
+                      ) : invoice.status === 'sent' || invoice.status === 'paid' ? (
+                        // The backend mints `paid` (webhook mirror); `sent` is the
+                        // legacy synonym. Both are the same settled fact: Paid.
                         <StatusChip tone="success">Paid</StatusChip>
+                      ) : invoice.status === 'refunded' ? (
+                        <StatusChip tone="info">Refunded</StatusChip>
                       ) : invoice.status === 'failed' ? (
                         // A failed charge is real trouble — coral, not a quiet grey.
                         <StatusChip tone="danger">Failed</StatusChip>

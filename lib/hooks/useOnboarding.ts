@@ -36,7 +36,7 @@ export function useOnboarding() {
   const { user } = useAuth()
   const orgId = user?.org_id
   const { sites, isLoading: sitesLoading } = useSites()
-  const { members } = useMembers()
+  const { members, isLoading: membersLoading } = useMembers()
   const firstSiteId = sites[0]?.id ?? ''
 
   // Org-wide onboarding facts in ONE request (WS2.4b, owner decision
@@ -93,15 +93,17 @@ export function useOnboarding() {
   const completedCount = counted.filter(i => i.completed).length
   const total = counted.length
   const allDone = completedCount === total
-  const nextItem = counted.find(i => !i.completed) ?? items.find(i => !i.completed)
 
   // Gate visibility on the data actually being there. The chip is top-bar
   // chrome: appearing with a provisional 0/5 and then settling (or vanishing
   // at allDone) would visibly shift the bell/avatar cluster on every load.
+  // Members are part of "there": without them the teammate row flickered
+  // unchecked→checked on every open.
   const dataReady =
     !sitesLoading &&
+    !membersLoading &&
     (onboarding !== undefined || onboardingError !== undefined)
   const visible = Boolean(orgId) && dismissed === false && dataReady && !allDone
 
-  return { items, completedCount, total, allDone, nextItem, visible, dismiss }
+  return { items, completedCount, total, allDone, visible, dismiss }
 }

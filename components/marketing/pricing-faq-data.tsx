@@ -28,14 +28,21 @@ export const pricingFaqData: Record<string, FAQItem[]> = {
         'Prices shown are exclusive of VAT. VAT is calculated at checkout based on your country. EU businesses can enter their VAT ID to apply the reverse charge mechanism.',
     },
     {
+      // SEPA Direct Debit removed 25-08-2026 (F-B16): the FAQ promised a
+      // method the checkout deliberately does not offer. The answer lists
+      // what the method picker actually shows.
       question: 'What payment methods do you accept?',
       answer:
-        'We accept credit and debit cards (Visa, Mastercard, American Express), iDEAL, Bancontact, SEPA Direct Debit, and other European payment methods. Payments are processed by Mollie, our EU payment provider — your card details never touch our servers.',
+        'We accept credit and debit cards (Visa, Mastercard, American Express), iDEAL, Bancontact, and Apple Pay. Payments are processed by Mollie, our EU payment provider — your card details never touch our servers.',
     },
     {
+      // Aligned with what /switch actually does (F-B16): a yearly plan
+      // downgraded mid-cycle IS refunded for the unused remainder — the
+      // review step shows the exact amount before you confirm. "We don't
+      // offer refunds" contradicted the product's own screen.
       question: 'Can I get a refund?',
       answer:
-        "We don't offer refunds, but you can cancel your subscription anytime. Your plan stays active until the end of the current billing period. The Hobby plan is free forever, so you can always try Pulse before committing.",
+        "Cancelling doesn't refund the current period — your plan stays active until the end of what you've paid for. Switching a yearly plan to a smaller one is different: the unused remainder is refunded to your payment method automatically, and the exact amount is shown before you confirm the change. The Hobby plan is free forever, so you can always try Pulse before committing.",
     },
   ],
   plans: [
@@ -45,9 +52,13 @@ export const pricingFaqData: Record<string, FAQItem[]> = {
         'No — every plan runs the full product. Custom events, funnels and journeys, API access, uptime monitoring with alerts, the team dashboard and shared links are included everywhere, on Hobby too. Higher plans scale the limits: more sites, more pageviews, longer data retention — and Business adds priority support.',
     },
     {
+      // Upgrade timing corrected 25-08-2026 (F-B16): upgrades are IMMEDIATE —
+      // /switch charges the prorated difference today and the new limits are
+      // live at once. "Takes effect on your next billing cycle" described a
+      // behaviour the product has never had.
       question: 'Can I change plans anytime?',
       answer:
-        'Yes. You can upgrade or downgrade your plan at any time from your billing settings. When upgrading, the new price takes effect on your next billing cycle. When downgrading, you keep your current plan until the end of the paid period.',
+        'Yes. You can upgrade or downgrade at any time from your billing settings. Upgrades take effect immediately — you pay the prorated difference for the rest of the current period today, with any unused time on your old plan credited. Downgrades are scheduled: you keep your current plan until the end of the paid period, then the new plan starts.',
     },
     {
       question: 'What happens if I exceed my pageview limit?',

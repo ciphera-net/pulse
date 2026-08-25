@@ -13,7 +13,8 @@
 
 import { track } from '@/lib/pulse'
 
-export type WelcomeEventName =
+// Internal-only since 25-08-2026: both types had zero external consumers.
+type WelcomeEventName =
   | 'welcome_step_view'
   | 'welcome_workspace_created'
   | 'welcome_site_added'
@@ -25,7 +26,7 @@ export type WelcomeEventName =
   | 'onboarding_item_clicked'
   | 'onboarding_dismissed'
 
-export interface WelcomeEventPayload {
+interface WelcomeEventPayload {
   event: WelcomeEventName
   step?: number
   /** The /setup segment the step number stands for — survives reordering. */
@@ -59,7 +60,6 @@ function emit(event: WelcomeEventName, payload: Omit<WelcomeEventPayload, 'event
       new CustomEvent('pulse_welcome', { detail: full })
     )
     if (process.env.NODE_ENV === 'development') {
-      // eslint-disable-next-line no-console
       console.debug('[Pulse Welcome]', full)
     }
     const queue = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '[]')

@@ -4,11 +4,10 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSetup } from '@/lib/setup/context'
 import { preservePlanParams } from '@/lib/setup/utils'
-import { createSite, detectFramework } from '@/lib/api/sites'
+import { createSite, detectFramework, type Site } from '@/lib/api/sites'
+import { useSites, mutateSites } from '@/lib/swr/sites'
 import { trackWelcomeSiteAdded, trackWelcomeSiteSkipped } from '@/lib/welcomeAnalytics'
-import { getAuthErrorMessage } from '@ciphera-net/facet'
-import { Button, Input, toast } from '@ciphera-net/facet'
-import { GlobeIcon } from '@ciphera-net/facet'
+import { getAuthErrorMessage, Button, Input, Spinner, GlobeIcon } from '@ciphera-net/facet'
 
 function domainFromUrl(input: string): string {
   let d = input.trim().toLowerCase()
@@ -18,14 +17,40 @@ function domainFromUrl(input: string): string {
   return d
 }
 
+/** "2 Feb" (year appended when it isn't the current one) — the fact row's
+ *  added-date, matching the approved C1 mock. */
+function formatAddedDate(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const sameYear = d.getFullYear() === new Date().getFullYear()
+  return d.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  })
+}
+
+function installStateLabel(site: Site): string {
+  switch (site.install_status) {
+    case 'active':
+      return 'receiving events'
+    case 'stalled':
+      return 'stalled — no recent events'
+    default:
+      return 'waiting for its first event'
+  }
+}
+
 export default function SetupSitePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { setSite, completeStep } = useSetup()
+  const { sites, isLoading: sitesLoading } = useSites()
 
   const [siteDomain, setSiteDomain] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [addingAnother, setAddingAnother] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -40,6 +65,9 @@ export default function SetupSitePage() {
       setSite(site)
       completeStep('site')
       trackWelcomeSiteAdded()
+      // Keep the shared sites cache honest — the resume view, the guard and
+      // the context rehydration all read it.
+      void mutateSites()
       // Fire framework detection in the background — does not block navigation.
       detectFramework(domain).then(result => {
         if (result.framework) {
@@ -54,9 +82,75 @@ export default function SetupSitePage() {
   }
 
   const handleSkip = () => {
-    completeStep('site')
+    // Deliberately NOT completeStep('site'): skipped is not done, and the
+    // stepper marking a skipped step with a checkmark was part of the lie the
+    // server-truth stepper replaced.
     trackWelcomeSiteSkipped()
     router.push(`/setup/plan${preservePlanParams(searchParams)}`)
+  }
+
+  // Sites are being fetched — don't flash the create form at someone who is
+  // about to be shown the resume view (or vice versa).
+  if (sitesLoading) {
+    return (
+      <div className="py-16 text-center">
+        <Spinner className="mx-auto" />
+      </div>
+    )
+  }
+
+  // ── Resume truth (ruled C1): the org already has a site — say so. The old
+  // page rendered the create form unconditionally, so every resume through the
+  // wall invited a duplicate site. ──
+  const resumeSite = !addingAnother && sites.length > 0
+    ? [...sites].sort((a, b) => b.created_at.localeCompare(a.created_at))[0]
+    : null
+
+  if (resumeSite) {
+    const added = formatAddedDate(resumeSite.created_at)
+    return (
+      <>
+        <div className="text-center mb-8">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-none bg-brand-orange/10 text-brand-orange mb-5">
+            <GlobeIcon className="h-7 w-7" />
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-white">
+            Pick up where you left off
+          </h1>
+          <p className="mt-2 text-sm text-neutral-400 max-w-sm mx-auto">
+            Your workspace and site are already set up.
+          </p>
+        </div>
+
+        <div className="flex items-center justify-between border border-neutral-800 px-4 py-3">
+          <div>
+            <p className="text-sm font-medium text-white">{resumeSite.domain}</p>
+            <p className="text-xs text-neutral-500">
+              {added ? `Added ${added} · ` : ''}{installStateLabel(resumeSite)}
+            </p>
+          </div>
+          <span className="text-sm font-semibold text-pos">✓</span>
+        </div>
+
+        <Button
+          className="mt-4 w-full h-11 md:h-9"
+          onClick={() => {
+            setSite(resumeSite)
+            router.push(`/setup/install${preservePlanParams(searchParams)}`)
+          }}
+        >
+          Continue to install
+        </Button>
+
+        <button
+          type="button"
+          onClick={() => setAddingAnother(true)}
+          className="mt-3 w-full min-h-11 md:min-h-0 text-center text-sm text-neutral-500 hover:text-neutral-400 transition-colors"
+        >
+          Add another site
+        </button>
+      </>
+    )
   }
 
   return (
@@ -66,7 +160,7 @@ export default function SetupSitePage() {
           <GlobeIcon className="h-7 w-7" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-white">
-          Add your first site
+          {addingAnother ? 'Add another site' : 'Add your first site'}
         </h1>
         <p className="mt-2 text-sm text-neutral-400 max-w-sm mx-auto">
           Enter the domain you want to track. You can add more later.
@@ -97,13 +191,23 @@ export default function SetupSitePage() {
         </Button>
       </form>
 
-      <button
-        type="button"
-        onClick={handleSkip}
-        className="mt-4 w-full min-h-11 md:min-h-0 text-center text-sm text-neutral-500 hover:text-neutral-400 transition-colors"
-      >
-        Skip for now
-      </button>
+      {addingAnother ? (
+        <button
+          type="button"
+          onClick={() => setAddingAnother(false)}
+          className="mt-4 w-full min-h-11 md:min-h-0 text-center text-sm text-neutral-500 hover:text-neutral-400 transition-colors"
+        >
+          Back
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={handleSkip}
+          className="mt-4 w-full min-h-11 md:min-h-0 text-center text-sm text-neutral-500 hover:text-neutral-400 transition-colors"
+        >
+          Skip for now
+        </button>
+      )}
     </>
   )
 }

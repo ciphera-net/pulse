@@ -12,9 +12,7 @@ import { useFunnelDetail } from '@/lib/swr/dashboard'
 import { useAuth } from '@/lib/auth/context'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
 import OnboardingChip from '@/components/onboarding/OnboardingChip'
-import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
-import { setSessionAction } from '@/app/actions/auth'
-import { logger } from '@/lib/utils/logger'
+import { useOrgSwitcher } from '@/lib/hooks/useOrgSwitcher'
 import {
   CaretDown, CaretRight, SidebarSimple, Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, Globe as GlobeIcon,
   GearSix, Target, Eye, ShieldCheck, Robot, ChartBar,
@@ -410,32 +408,12 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
   const [siteName, setSiteName] = useState<string | null>(null)
   const auth = useAuth()
   const router = useRouter()
-  const [orgs, setOrgs] = useState<OrganizationMember[]>([])
+  const { orgs, activeOrgId, switchOrganization, createOrganization } = useOrgSwitcher()
 
   useEffect(() => {
     if (!siteId) { setSiteName(null); return }
     getSite(siteId).then((s) => setSiteName(s.name)).catch(() => {})
   }, [siteId])
-
-  useEffect(() => {
-    if (auth.user) {
-      getUserOrganizations()
-        .then((organizations) => setOrgs(Array.isArray(organizations) ? organizations : []))
-        .catch(err => logger.error('Failed to fetch orgs', err))
-    }
-  }, [auth.user])
-
-  const handleSwitchOrganization = useCallback(async (orgId: string | null) => {
-    if (!orgId) return
-    try {
-      const { access_token } = await switchContext(orgId)
-      await setSessionAction(access_token)
-      await auth.refresh()
-      router.push('/')
-    } catch (err) {
-      logger.error('Failed to switch organization', err)
-    }
-  }, [auth, router])
 
   const pageMeta = usePageMeta()
   const homeMeta = useHomePageMeta()
@@ -518,9 +496,9 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
           auth={auth}
           LinkComponent={Link}
           orgs={orgs}
-          activeOrgId={auth.user?.org_id}
-          onSwitchOrganization={handleSwitchOrganization}
-          onCreateOrganization={() => router.push('/setup/org?new=1')}
+          activeOrgId={activeOrgId}
+          onSwitchOrganization={switchOrganization}
+          onCreateOrganization={createOrganization}
           allowPersonalOrganization={false}
           onOpenSettings={() => router.push('/settings/account/profile')}
           onOpenOrgSettings={() => router.push('/settings/organization/general')}

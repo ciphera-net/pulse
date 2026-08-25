@@ -4,6 +4,7 @@ import { forwardRef } from 'react'
 import { Check } from '@phosphor-icons/react'
 import { Spinner } from '@ciphera-net/facet'
 import { cn } from '@/lib/cn'
+import { formatEuro } from '@/lib/utils/money'
 import type { PlanCatalogEntry, PlanPricing } from '@/lib/plans'
 
 interface PlanChoiceCardProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -24,11 +25,15 @@ interface PlanChoiceCardProps extends React.ButtonHTMLAttributes<HTMLButtonEleme
  */
 const PlanChoiceCard = forwardRef<HTMLButtonElement, PlanChoiceCardProps>(
   function PlanChoiceCard({ plan, price, priceLoading, isYearly, isCurrent = false, className, disabled, ...rest }, ref) {
+    // An unpriced card (no prices entry, fetch settled) must not be selectable:
+    // clicking one used to open a submittable checkout showing "€0.00" as fact.
+    const unpriced = !price && !priceLoading
     return (
       <button
         ref={ref}
         type="button"
-        disabled={disabled || isCurrent}
+        disabled={disabled || isCurrent || unpriced}
+        aria-disabled={disabled || isCurrent || unpriced}
         className={cn(
           'w-full text-left p-4 rounded-none border transition-all duration-base ease-apple',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange',
@@ -37,6 +42,7 @@ const PlanChoiceCard = forwardRef<HTMLButtonElement, PlanChoiceCardProps>(
             : plan.popular
               ? 'border-brand-orange/40 bg-brand-orange/5 hover:border-brand-orange/70'
               : 'border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/30',
+          unpriced && 'opacity-60 cursor-not-allowed',
           className,
         )}
         {...rest}
@@ -62,12 +68,12 @@ const PlanChoiceCard = forwardRef<HTMLButtonElement, PlanChoiceCardProps>(
             <div className="text-right shrink-0">
               <div>
                 <span className="text-lg font-bold text-white">
-                  €{isYearly ? price.effectiveMonthly : price.monthly}
+                  {formatEuro(isYearly ? price.effectiveMonthly : price.monthly)}
                 </span>
                 <span className="text-xs text-neutral-500">/mo</span>
               </div>
               {isYearly && (
-                <p className="text-xs text-neutral-500">€{price.yearlyTotal} billed yearly</p>
+                <p className="text-xs text-neutral-500">{formatEuro(price.yearlyTotal)} billed yearly</p>
               )}
             </div>
           ) : priceLoading ? (

@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth/context'
 import { useSetup } from '@/lib/setup/context'
 import { preservePlanParams } from '@/lib/setup/utils'
 import { createOrganization, switchContext } from '@/lib/api/organization'
+import { useClearOrgScopedCaches } from '@/lib/swr/org-switch'
 import { setSessionAction } from '@/app/actions/auth'
 import { trackWelcomeWorkspaceCreated } from '@/lib/welcomeAnalytics'
 import apiRequest from '@/lib/api/client'
@@ -22,6 +23,7 @@ export default function SetupOrgPage() {
   const searchParams = useSearchParams()
   const { user, login } = useAuth()
   const { setOrg, completeStep } = useSetup()
+  const clearOrgScopedCaches = useClearOrgScopedCaches()
 
   const defaultName = user?.display_name ? `${user.display_name}'s workspace` : ''
   const [orgName, setOrgName] = useState(defaultName)
@@ -60,6 +62,10 @@ export default function SetupOrgPage() {
       setOrg(org.id, orgName.trim())
       completeStep('org')
       trackWelcomeWorkspaceCreated(Boolean(searchParams.get('plan')))
+      // The session now points at the NEW org — every cached fact about the
+      // old one is a lie here. Without this, the site step rendered the
+      // previous org's site as "Pick up where you left off".
+      await clearOrgScopedCaches()
       router.push(`/setup/site${preservePlanParams(searchParams)}`)
     } catch (err) {
       setError(getAuthErrorMessage(err as Error) || 'Failed to create organization')
