@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
+import { Heartbeat } from '@phosphor-icons/react'
 import { useCan } from '@/lib/auth/permissions'
+import { InstrumentOffState } from '@/components/ui/InstrumentOffState'
 import { useSite, useUptimeStatus, useUptimeIncidents, useUptimeChecks } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import type { UptimeMonitor } from '@/lib/api/uptime'
@@ -251,31 +253,23 @@ export default function UptimePage() {
           <h1 className="mb-1 text-lg font-semibold text-neutral-200">Uptime</h1>
           <p className="text-sm text-neutral-400">Availability, response time and incident history</p>
         </div>
-        <div className="flex rounded-none border border-border bg-card">
-          {/* Ghost rails — what the page becomes once enabled */}
-          <div className="hidden w-48 shrink-0 flex-col border-r border-border sm:flex" aria-hidden="true">
-            {UPTIME_METRIC_ORDER.map((key) => (
-              <div key={key} className="flex flex-1 flex-col justify-center border-t border-border px-4 py-4 first:border-t-0">
-                <span className="text-sm text-neutral-600">{UPTIME_METRIC_LABEL[key]}</span>
-                <span className="mt-0.5 text-xl font-semibold text-neutral-700">&mdash;</span>
-              </div>
-            ))}
-          </div>
-          <div className="flex min-h-[320px] flex-1 flex-col items-center justify-center px-6 py-12 text-center">
-            <h2 className="mb-2 text-xl font-semibold text-white">Uptime monitoring is off</h2>
-            <p className="mb-6 max-w-md text-sm text-neutral-400">
+        <InstrumentOffState
+          rails={UPTIME_METRIC_ORDER.map((key) => UPTIME_METRIC_LABEL[key])}
+          icon={<Heartbeat size={40} />}
+          heading="Uptime monitoring is off"
+          body={
+            <>
               Check <span className="font-mono text-neutral-300">https://{site.domain}</span> every 5 minutes —
               availability, response time and incident history, with alerts by email, Slack, Discord or webhook.
-            </p>
-            {canEdit ? (
-              <Button onClick={() => handleToggleUptime(true)} disabled={toggling}>
-                {toggling ? 'Enabling…' : 'Enable uptime monitoring'}
-              </Button>
-            ) : (
-              <p className="text-xs text-neutral-500">An owner or admin can enable it.</p>
-            )}
-          </div>
-        </div>
+            </>
+          }
+          canAct={canEdit}
+          action={{
+            label: toggling ? 'Enabling…' : 'Enable uptime monitoring',
+            onClick: () => handleToggleUptime(true),
+            disabled: toggling,
+          }}
+        />
       </div>
     )
   }
