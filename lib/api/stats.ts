@@ -17,15 +17,16 @@ export interface Stats {
   // (metric info layer, 22-08-2026). Optional because an older backend does
   // not send them — and a missing count means NO example, never a numerator
   // multiplied out in the browser.
-  bounce_sessions?: number
-  duration_measured_sessions?: number
-  // The rates' shared DENOMINATOR — visits, not people. Load-bearing since
-  // migration 163 (26-08-2026): `visitors` used to BE the session count and
-  // the examples divided by it; it now counts people (monthly dedup), so a
-  // session numerator over `visitors` prints a fraction that cannot produce
-  // the rate beside it. Optional for the same reason as the two above: a
-  // backend that does not send it gets NO example, never a wrong one.
-  sessions?: number
+  bounce_visits?: number
+  duration_measured_visits?: number
+  // The rates' shared DENOMINATOR. Load-bearing since migration 163: `visitors`
+  // used to BE the session count and the examples divided by it; it now counts
+  // people (monthly dedup), so a visit numerator over `visitors` prints a
+  // fraction that cannot produce the rate beside it. Since the visits split
+  // (26-08-2026) this counts VISITS — 30-minute-inactivity runs — not days.
+  // Optional for the same reason as the two above: a backend that does not send
+  // it gets NO example, never a wrong one.
+  visits?: number
 }
 
 // visitors/rates are populated for top pages; entry/exit rows reuse this shape
@@ -183,6 +184,12 @@ export interface DailyStat {
   date: string
   pageviews: number
   visitors: number
+  // The bucket's VISIT count (migration 164) — what "Pages / visit" divides by.
+  // NULLABLE and null is a real answer: a daily_stats row frozen before 164 has
+  // no visit count, and only a recompute can give it one. Consumers must omit
+  // the ratio on null — falling back to `visitors` reports pages per PERSON,
+  // the exact number this field exists to stop publishing.
+  visits: number | null
   bounce_rate: number | null
   avg_duration: number | null
   avg_scroll_depth: number | null

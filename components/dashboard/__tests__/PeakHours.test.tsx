@@ -14,6 +14,7 @@ vi.mock('@/lib/swr/dashboard', () => ({
 
 const hour = (date: string, pageviews: number): DailyStat => ({
   date, pageviews, visitors: Math.max(1, Math.floor(pageviews / 2)),
+  visits: Math.max(1, Math.floor(pageviews / 2)) + 1,
   bounce_rate: 50, avg_duration: 60, avg_scroll_depth: 55, avg_visible_duration: 20,
 })
 

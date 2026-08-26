@@ -61,7 +61,7 @@ function isSummable(metric: Metric): boolean {
 
 function formatMetricValue(value: number, metric: Metric): string {
   if (metric === 'pageviews') return `${value.toLocaleString()} pageviews`
-  if (metric === 'visitors') return `${value.toLocaleString()} visitor sessions`
+  if (metric === 'visitors') return `${value.toLocaleString()} visits`
   if (metric === 'avg_duration') {
     const mins = Math.floor(value / 60)
     const secs = Math.round(value % 60)

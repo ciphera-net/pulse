@@ -23,8 +23,8 @@ vi.mock('@/components/ui/area-chart', () => {
 })
 
 const referrers = [
-  { referrer: 'https://google.com', pageviews: 134, visitors: 61, bounce_rate: 41.2, avg_duration: 95 },
-  { referrer: 'https://tiny.example', pageviews: 9, visitors: 3, bounce_rate: 100, avg_duration: 4 },
+  { referrer: 'https://google.com', pageviews: 134, visitors: 61, visits: 63, bounce_rate: 41.2, avg_duration: 95 },
+  { referrer: 'https://tiny.example', pageviews: 9, visitors: 3, visits: 5, bounce_rate: 100, avg_duration: 4 },
 ]
 const totals = { pageviews: 300, visitors: 120 }
 const base = {
@@ -64,9 +64,9 @@ describe('dimension blocks follow the selected metric', () => {
 
 describe('CommandDeck is controlled', () => {
   const noop = () => {}
-  const stats: Stats = { pageviews: 300, visitors: 120, bounce_rate: 50, avg_duration: 60, avg_scroll_depth: null, avg_visible_duration: null }
+  const stats: Stats = { pageviews: 300, visitors: 120, visits: 122, bounce_rate: 50, avg_duration: 60, avg_scroll_depth: null, avg_visible_duration: null }
   const data: DailyStat[] = [
-    { date: '2026-08-21T00:00:00+02:00', pageviews: 10, visitors: 5, bounce_rate: 40, avg_duration: 50, avg_scroll_depth: null, avg_visible_duration: null },
+    { date: '2026-08-21T00:00:00+02:00', pageviews: 10, visitors: 5, visits: 7, bounce_rate: 40, avg_duration: 50, avg_scroll_depth: null, avg_visible_duration: null },
   ]
 
   it('reports rail clicks through onMetricChange instead of owning state', () => {
