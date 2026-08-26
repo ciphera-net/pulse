@@ -49,8 +49,12 @@ describe('tracker script endpoints', () => {
     expect(code.match(/apiUrl \+ ENGAGEMENT_PATH/g)).toHaveLength(3)
   })
 
-  it('still sends pageviews to /api/v1/events', () => {
-    expect(code).toContain("apiUrl + '/api/v1/events'")
+  // * Two call sites: the pageview in trackPageview and the custom event in
+  // * trackCustomEvent. The count is pinned because `toContain` passes while either
+  // * one is intact — breaking exactly one endpoint is the realistic mistake, and it
+  // * would take out goals and outbound-link tracking with nothing to show for it.
+  it('still sends pageviews and custom events to /api/v1/events', () => {
+    expect(code.match(/apiUrl \+ '\/api\/v1\/events'/g)).toHaveLength(2)
   })
 })
 
