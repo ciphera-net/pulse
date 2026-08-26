@@ -18,13 +18,13 @@ const stats = (over: Partial<Stats> = {}): Stats =>
     // Deliberately far apart: 300 people, 400 visits. Any example that
     // divides by the wrong one is visible in the rendered text.
     visitors: 300,
-    sessions: 400,
+    visits: 400,
     bounce_rate: 75,
     avg_duration: 42,
     avg_scroll_depth: 55,
     avg_visible_duration: 30,
-    bounce_sessions: 300,
-    duration_measured_sessions: 250,
+    bounce_visits: 300,
+    duration_measured_visits: 250,
     ...over,
   }) as Stats
 
@@ -34,20 +34,20 @@ const textOf = (node: React.ReactNode) => {
 }
 
 describe('worked-example denominators (post-163)', () => {
-  it('bounce divides by sessions, not by people', () => {
+  it('bounce divides by visits, not by people', () => {
     const text = textOf(buildExample('bounce_rate', stats()))
-    expect(text).toContain('300 of 400 sessions')
+    expect(text).toContain('300 of 400 visits')
     // The people count must not appear as the denominator.
-    expect(text).not.toContain('of 300 sessions')
+    expect(text).not.toContain('of 300 visits')
     // …and the example must reproduce the rate beside it: 300/400 = 75%.
     expect(text).toContain('75%')
   })
 
-  it('duration excludes against sessions, not against people', () => {
+  it('duration excludes against visits, not against people', () => {
     const text = textOf(buildExample('avg_duration', stats()))
-    // 400 sessions - 250 measured = 150 excluded. Against people it would be
+    // 400 visits - 250 measured = 150 excluded. Against people it would be
     // 300 - 250 = 50, or clamp to 0 for any site with fewer people than
-    // measured sessions — silently dropping the clause the inset exists for.
+    // measured visits — silently dropping the clause the inset exists for.
     // The negative is anchored on the em dash: bare '50 had none' is a
     // SUBSTRING of the correct '150 had none' and would pass either way.
     expect(text).toContain('— 150 had none')
@@ -55,10 +55,10 @@ describe('worked-example denominators (post-163)', () => {
   })
 
   it('omits the example entirely when the server sent no session count', () => {
-    // An older backend does not send `sessions`. The rule is NO example
+    // An older backend does not send `visits`. The rule is NO example
     // rather than a denominator minted in the browser.
     const older = stats()
-    delete (older as { sessions?: number }).sessions
+    delete (older as { visits?: number }).visits
     expect(buildExample('bounce_rate', older)).toBeUndefined()
     expect(buildExample('avg_duration', older)).toBeUndefined()
   })

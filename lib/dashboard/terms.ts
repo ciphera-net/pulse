@@ -45,19 +45,19 @@ export const METRIC_TERMS: Record<MetricType, GlossaryTerm> = {
   pages_per_visit: {
     title: 'Pages / visit',
     definition:
-      'Pageviews divided by unique visitors — so since monthly deduplication it reads per PERSON over the range, not per visit. A returning reader raises it rather than adding a second visit.',
+      'Pageviews divided by visits — how many pages someone reads before they stop. A returning reader adds a second visit rather than deepening the first.',
     docs: 'dashboard#pages-per-visit',
   },
   bounce_rate: {
     title: 'Bounce rate',
     definition:
-      'Share of sessions with exactly one pageview — a reload counts as a second, so it ends the bounce. Deltas are percentage points.',
+      'Share of visits with exactly one pageview — a reload counts as a second, so it ends the bounce. A visit ends after 30 minutes of inactivity. Deltas are percentage points.',
     docs: 'dashboard#bounce-rate',
   },
   avg_duration: {
     title: 'Visit duration',
     definition:
-      'Average session duration over sessions that carried a duration signal — unmeasured sessions are excluded, not counted as zero.',
+      'Average length of a visit, over visits that carried a duration signal — unmeasured visits are excluded, not counted as zero. A visit ends after 30 minutes of inactivity.',
     docs: 'dashboard#visit-duration',
   },
   engagement: {
@@ -218,7 +218,7 @@ export const TERMS: Record<string, GlossaryTerm> = {
   scroll_depth: {
     title: 'Scroll depth',
     definition:
-      'Cumulative and per session, not per page: 80% counts in the 25, 50 and 75 rows. Sessions with no scroll reading are excluded, not counted as 0%.',
+      'Cumulative and per visit, not per page: 80% counts in the 25, 50 and 75 rows. Visits with no scroll reading are excluded, not counted as 0%.',
     docs: 'dashboard#scroll-depth',
   },
   timezones: {

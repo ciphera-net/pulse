@@ -104,7 +104,7 @@ const METRICS: {
     format: (v) => v == null ? '—' : v.toFixed(1),
   },
   {
-    key: 'bounce_rate', label: 'Bounce rate', context: 'single-page sessions',
+    key: 'bounce_rate', label: 'Bounce rate', context: 'single-page visits',
     title: METRIC_TERMS.bounce_rate.definition,
     format: (v) => v == null ? '—' : `${Math.round(v)}%`, isNegative: true, isRate: true,
   },
@@ -146,7 +146,10 @@ export default function CommandDeck({
       originalDate: item.date,
       pageviews: item.pageviews,
       visitors: item.visitors,
-      pages_per_visit: item.visitors > 0 ? item.pageviews / item.visitors : null,
+      // Divide by VISITS, never visitors. `visits` is null on daily_stats rows
+      // frozen before migration 164 — the point plots as a gap rather than
+      // silently reporting pages per PERSON under a label that says per visit.
+      pages_per_visit: item.visits != null && item.visits > 0 ? item.pageviews / item.visits : null,
       bounce_rate: item.bounce_rate,
       avg_duration: item.avg_duration,
       engagement: (() => {
@@ -172,12 +175,12 @@ export default function CommandDeck({
       const value: number | null = m.key === 'engagement'
         ? (engagementData && engagementData.data_days >= 7 ? engagementData.summary.score : null)
         : m.key === 'pages_per_visit'
-          ? (stats.visitors > 0 ? stats.pageviews / stats.visitors : null)
+          ? (stats.visits != null && stats.visits > 0 ? stats.pageviews / stats.visits : null)
           : stats[m.key as RailStatKey]
       const previousValue: number | null | undefined = m.key === 'engagement'
         ? undefined
         : m.key === 'pages_per_visit'
-          ? (prevStats && prevStats.visitors > 0 ? prevStats.pageviews / prevStats.visitors : undefined)
+          ? (prevStats?.visits != null && prevStats.visits > 0 ? prevStats.pageviews / prevStats.visits : undefined)
           : prevStats?.[m.key as RailStatKey]
       const change: PctChangeResult = value != null && previousValue != null
         ? (m.isRate
