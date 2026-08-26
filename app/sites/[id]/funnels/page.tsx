@@ -20,6 +20,7 @@ import DateRangePicker from '@/components/ui/DateRangePicker'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
 import { FUNNEL_EXCLUDED_PRESETS } from '@/lib/constants/periods'
 import { fetchableRange } from '@/lib/dashboard/resolveRange'
+import { presetZoneRange } from '@/components/uptime/uptimeMetrics'
 import { useCan } from '@/lib/auth/permissions'
 
 // * ?prefill=<encodeURIComponent(JSON)> seeds the create modal (journeys lens
@@ -64,7 +65,15 @@ export default function FunnelsPage() {
   // Fetch with nothing until the remembered preset is read — otherwise every
   // bare-URL mount spends a 30-day request on the placeholder period and can
   // flash its numbers. `dateRange` stays the picker's DISPLAY value.
-  const fetchRange = fetchableRange(periodReady, dateRange)
+  // * Preset windows re-anchor to the SITE's current day (uptime's device):
+  // * the server cuts day boundaries in the site zone, so which dates get
+  // * requested must come from the site's calendar too, or "Today" means the
+  // * viewer's today (closeout F2). A custom pick passes through — an
+  // * explicitly chosen calendar day IS the site's day, as labeled.
+  const fetchRange = useMemo(
+    () => fetchableRange(periodReady, period === 'custom' ? dateRange : presetZoneRange(dateRange, site?.timezone ?? null)),
+    [periodReady, period, dateRange, site?.timezone],
+  )
 
   // * ONE batched stats request per range for the whole list (plus one for the
   // * previous range, feeding the delta badges) — this page used to fan out

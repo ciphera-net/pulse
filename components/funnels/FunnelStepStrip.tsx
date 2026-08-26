@@ -173,9 +173,12 @@ export function FunnelStepStrip({
           )}
         </div>
         <HeightMorph>
-          {selectedStep === 1 ? (
+          {selectedStep === steps.length ? (
+            // The final step has no onward drop-off — the backend never
+            // queries exit pages for it, so the generic "no data" line would
+            // present a non-measurement as an empty measurement (F3).
             <p className="px-2.5 pb-2 text-sm text-neutral-500">
-              Entry step — all visitors start here.
+              Final step — completions end here, so there is no drop-off to follow.
             </p>
           ) : exits.length > 0 ? (
             <div className="space-y-0.5 pb-1">
@@ -229,14 +232,11 @@ export function FunnelStepStrip({
                   icon={getFilterValueIcon(dimension, entry.value)}
                   label={entry.value}
                   count={entry.visitors}
-                  // A floored row draws NO bar — a bar length would redraw the
-                  // number the n≥5 floor just withheld.
+                  // Sub-floor values are withheld as WHOLE ROWS server-side
+                  // (26-08 ruling) — nothing here is ever floored; the null
+                  // guards survive only as wire-robustness.
                   pct={entry.visitors != null && maxEntry > 0 ? (entry.visitors / maxEntry) * 100 : 0}
-                  trailing={
-                    entry.conversion != null
-                      ? `${Math.round(entry.conversion)}% conv`
-                      : 'fewer than 5 entered'
-                  }
+                  trailing={entry.conversion != null ? `${Math.round(entry.conversion)}% conv` : '—'}
                 />
               ))}
             </div>

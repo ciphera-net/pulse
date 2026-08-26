@@ -89,11 +89,12 @@ const SCORE_TERM: Record<string, string> = {
   seo: 'seo_score',
 }
 
-// * Only the metrics whose definition teaches something the visible label and
-// * "good <threshold>" caption do not already say. FCP and LCP mostly restate
-// * that caption once unpacked, so they stay bare (grammar rule: a definition
-// * that would only restate the visible label gets no glyph).
+// * All six metric cells carry a glyph (closeout ruling C2, 26-08-2026): FCP
+// * and LCP are the two definitions readers most often want, and a uniform
+// * glyph column beats protecting 4px of cell height on four of six.
 const METRIC_TERM: Partial<Record<string, string>> = {
+  fcp: 'metric_fcp',
+  lcp: 'metric_lcp',
   tbt: 'metric_tbt',
   cls: 'metric_cls',
   si: 'metric_speed_index',

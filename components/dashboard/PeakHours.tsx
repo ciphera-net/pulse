@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { DURATION_FAST, DURATION_SLOW, EASE_APPLE } from '@/lib/motion'
 import { useDailyStats } from '@/lib/swr/dashboard'
 import { parseSiteWallClock } from '@/lib/utils/formatDate'
+import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 interface PeakHoursProps {
   // The page's selected metric. PeakHours keeps its own 4-way control as an
@@ -205,7 +206,7 @@ export default function PeakHours({ pageMetric, siteId, dateRange, filters }: Pe
   return (
     <div className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
       <div className="flex items-center justify-between mb-4">
-        <div className="flex gap-1 flex-wrap">
+        <div className="flex items-center gap-1 flex-wrap">
           {METRICS.map((m) => (
             <button
               key={m.key}
@@ -223,6 +224,9 @@ export default function PeakHours({ pageMetric, siteId, dateRange, filters }: Pe
               />
             </button>
           ))}
+          {/* Glyph closes the tab row — the dimension-card device (P2). The
+              entry existed registry-complete but unwired (closeout C1). */}
+          <TermInfoTip term="peak_hours" />
         </div>
       </div>
 
