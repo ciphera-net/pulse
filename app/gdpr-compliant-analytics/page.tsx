@@ -78,13 +78,16 @@ export default function GdprCompliantAnalyticsPage() {
             opt-in before storing or reading information on a user’s device, such as a cookie.
           </p>
           <p>
-            Pulse is built to sit outside both triggers. It sets no cookies and reads nothing from
-            the device beyond the current tab’s <code className="font-mono text-sm text-foreground/80">sessionStorage</code>,
-            so the ePrivacy consent requirement does not apply. And it collects no personal data: IP
+            Pulse is built to sit outside both triggers. It sets no cookies and stores nothing
+            identifying on the device — the current tab’s{' '}
+            <code className="font-mono text-sm text-foreground/80">sessionStorage</code> holds only
+            a five-second guard against double-counting a refresh, never an identifier — so the
+            ePrivacy consent requirement does not apply. And it collects no personal data: IP
             addresses are used only to resolve a country at request time and are then discarded,
-            there is no persistent identifier, and no visitor can be singled out or tracked across
-            sites. With no personal data and no device access, there is no lawful-basis question to
-            answer and no consent to collect.
+            visit and visitor keys are server-derived hashes that rotate daily and monthly, and no
+            visitor can be singled out or tracked across sites. With no personal data and no
+            identifying device access, there is no lawful-basis question to answer and no consent
+            to collect.
           </p>
           <p>
             This is a different posture from &ldquo;GDPR-ready&rdquo;. You are not relying on a

@@ -60,7 +60,7 @@ function isSummable(metric: Metric): boolean {
 
 function formatMetricValue(value: number, metric: Metric): string {
   if (metric === 'pageviews') return `${value.toLocaleString()} pageviews`
-  if (metric === 'visitors') return `${value.toLocaleString()} unique visitors`
+  if (metric === 'visitors') return `${value.toLocaleString()} visitor sessions`
   if (metric === 'avg_duration') {
     const mins = Math.floor(value / 60)
     const secs = Math.round(value % 60)
@@ -343,7 +343,10 @@ export default function PeakHours({ pageMetric, siteId, dateRange, filters }: Pe
                     <div className="flex flex-col gap-0.5 text-xs text-neutral-400 font-normal">
                       <span>{formatMetricValue(tooltipData.value, metric)}</span>
                       {isSummable(metric) && tooltipData.value > 0 && (
-                        <span>{tooltipData.pct}% of week&apos;s {metric === 'visitors' ? 'visitors' : 'traffic'}</span>
+                        // * "activity", not "visitors": the cells sum per-bucket session
+                        // * counts, so a person active in two buckets is two units of this
+                        // * denominator — it is a share of activity, never of people.
+                        <span>{metric === 'visitors' ? `${tooltipData.pct}% of weekly activity` : `${tooltipData.pct}% of week's traffic`}</span>
                       )}
                     </div>
                   </div>
