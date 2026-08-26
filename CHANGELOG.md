@@ -11,6 +11,32 @@ public read API's — see that entry for what it does and does not cover.
 
 ### Changed
 
+- **The tracking script sends engagement to a path ad blockers do not cancel, and
+  26-08-2026 is a measurement boundary for time-on-page and scroll depth.** The
+  beacon carrying duration, visible duration and scroll depth used to post to
+  `/api/v1/metrics`. EasyPrivacy carries a bare, domain-agnostic substring rule for
+  exactly that path — written for an unrelated vendor, matching ours by coincidence —
+  so uBlock Origin, Brave and everything else shipping that list cancelled the request
+  client-side while the pageview itself landed. Those visitors were counted, and their
+  engagement was not. The script now posts to `/api/v1/engagement`; the old path stays
+  live server-side indefinitely for scripts already cached at the edge and for
+  SRI-pinned embeds. **Expect time-on-page, visible time and scroll depth to step up.**
+  That is the instrument widening, not readers behaving differently, and it cannot be
+  backfilled — a blocked beacon never reached us to be recovered. Measured before the
+  change: 89.9% of pageviews carried a duration over 30 days, lowest on `ciphera.net`
+  at 61.1%. The step will be smaller than that gap suggests, because the script also
+  withholds the beacon by design when there is no genuine engagement to report.
+  Ciphera is on no filter list; this was a path-name collision, verified against
+  EasyPrivacy, EasyList, uBlock's uAssets, AdGuard and Disconnect. Analysis:
+  `Pulse/docs/audits/26-08-2026-psi-err-blocked-by-client-metrics.md`.
+
+- **Tracking script v1.1.0.** New bytes require a new immutable version, so the
+  SRI-pinned embed snippet now offers `v1.1.0`. An existing pinned tag keeps working
+  and keeps posting to the legacy path — a pin is a promise that those bytes never
+  change, so adopting the fix means updating the tag. The rolling
+  `js.ciphera.net/script.js` embed, which carries no integrity attribute, picks the
+  fix up automatically.
+
 - **"Unique visitors" now counts people, and 26-08-2026 is a measurement boundary.**
   Visitor identity used to rotate every day, so a returning reader was re-counted
   once per day (and the public API's `visitors` field inherited that). Since
