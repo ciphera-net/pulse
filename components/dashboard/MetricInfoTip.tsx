@@ -124,32 +124,32 @@ export function buildExample(
 
   if (!stats) return undefined
 
-  // * Both examples divide by SESSIONS, never by `visitors`. Since migration
-  // * 163 `visitors` counts PEOPLE (deduplicated monthly), while both rates
-  // * stay session-scoped — a bounce is a property of a visit. Dividing a
-  // * session numerator by people printed a fraction that could not produce
-  // * the rate beside it, so the denominator comes from the server's own
-  // * `sessions` field or the example is omitted entirely.
+  // * Both examples divide by VISITS, never by `visitors`. Since migration 163
+  // * `visitors` counts PEOPLE (deduplicated monthly), while both rates describe
+  // * one visit — a 30-minute-inactivity run since the 26-08 visits split.
+  // * Dividing a visit numerator by people printed a fraction that could not
+  // * produce the rate beside it, so the denominator comes from the server's own
+  // * `visits` field or the example is omitted entirely.
   if (metric === 'bounce_rate') {
-    const bounced = stats.bounce_sessions
-    const sessions = stats.sessions
-    if (bounced == null || sessions == null || stats.bounce_rate == null || sessions <= 0) return undefined
+    const bounced = stats.bounce_visits
+    const visits = stats.visits
+    if (bounced == null || visits == null || stats.bounce_rate == null || visits <= 0) return undefined
     return (
       <>
         <b>{Math.round(stats.bounce_rate)}%</b> — {formatNumber(bounced)} of{' '}
-        {formatNumber(sessions)} sessions recorded exactly one pageview
+        {formatNumber(visits)} visits recorded exactly one pageview
       </>
     )
   }
 
   if (metric === 'avg_duration') {
-    const measured = stats.duration_measured_sessions
-    const sessions = stats.sessions
-    if (measured == null || sessions == null || sessions <= 0) return undefined
-    const excluded = Math.max(0, sessions - measured)
+    const measured = stats.duration_measured_visits
+    const visits = stats.visits
+    if (measured == null || visits == null || visits <= 0) return undefined
+    const excluded = Math.max(0, visits - measured)
     return (
       <>
-        Measured over <b>{formatNumber(measured)}</b> sessions that carried a duration signal
+        Measured over <b>{formatNumber(measured)}</b> visits that carried a duration signal
         {excluded > 0 ? (
           <> — {formatNumber(excluded)} had none and are excluded, not counted as zero</>
         ) : null}

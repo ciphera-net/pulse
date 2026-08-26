@@ -34,7 +34,9 @@ const prevStats: Stats = {
   avg_visible_duration: 29,
 }
 const day = (date: string, visitors: number): DailyStat => ({
-  date, visitors, pageviews: visitors + 3,
+  // visits > visitors on purpose: a fixture where they are equal cannot tell
+  // "pages per visit" from "pages per person" (the 26-08 visits split).
+  date, visitors, visits: visitors + 2, pageviews: visitors + 3,
   bounce_rate: 50, avg_duration: 60, avg_scroll_depth: 55, avg_visible_duration: 20,
 })
 const noop = () => {}
@@ -64,7 +66,7 @@ describe('CommandDeck rail', () => {
     // visitor hash), so the D5 relabel "distinct sessions" is retired.
     expect(screen.getByText('unique people')).toBeTruthy()
     expect(screen.getByText('vs prior 90 days')).toBeTruthy() // D4
-    expect(screen.getByText('single-page sessions')).toBeTruthy()
+    expect(screen.getByText('single-page visits')).toBeTruthy()
     expect(screen.getByText('average')).toBeTruthy()
   })
 

@@ -171,7 +171,7 @@ export default function ScrollDepthBars({ scrollDepth, preview, bare = false }: 
       {/* In bare mode the wrapping card's header states the session count. */}
       {!bare && (
         <p className="mt-3 text-xs text-neutral-500">
-          {formatNumber(total)} {total === 1 ? 'session' : 'sessions'}
+          {formatNumber(total)} {total === 1 ? 'visit' : 'visits'}
         </p>
       )}
     </div>
