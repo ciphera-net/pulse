@@ -45,7 +45,7 @@ export const METRIC_TERMS: Record<MetricType, GlossaryTerm> = {
   pages_per_visit: {
     title: 'Pages / visit',
     definition:
-      'Pageviews divided by unique visitors.',
+      'Pageviews divided by unique visitors — so since monthly deduplication it reads per PERSON over the range, not per visit. A returning reader raises it rather than adding a second visit.',
     docs: 'dashboard#pages-per-visit',
   },
   bounce_rate: {
@@ -188,7 +188,7 @@ export const TERMS: Record<string, GlossaryTerm> = {
   pages: {
     title: 'Pages',
     definition:
-      'Pageviews count page loads; visitors counts sessions, so a reload adds a pageview but not a visitor. Bounce and duration are computed over visitors.',
+      'Pageviews count page loads, so a reload adds one. Visitors counts people, deduplicated monthly — a reload adds no visitor, and neither does a return trip. Bounce and duration stay session-scoped: they describe a visit, not a person.',
     docs: 'dashboard#pages',
   },
   peak_hours: {

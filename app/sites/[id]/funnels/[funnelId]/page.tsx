@@ -279,12 +279,15 @@ export default function FunnelDetailPage() {
               />
             </div>
             <div className="mt-3">
+              {/* Both of these FETCH, so they take fetchRange (the site-day
+                  re-anchored window) — not the picker's display value, or one
+                  screen would query two different ranges. */}
               <FunnelStepStrip
                 siteId={siteId}
                 funnelId={funnelId}
                 steps={stats.steps}
                 selectedStep={selectedStep}
-                dateRange={dateRange}
+                dateRange={fetchRange}
                 filters={filtersParam || undefined}
               />
             </div>
@@ -292,7 +295,7 @@ export default function FunnelDetailPage() {
               <FunnelDailyInstrument
                 siteId={siteId}
                 funnelId={funnelId}
-                dateRange={dateRange}
+                dateRange={fetchRange}
                 filters={filtersParam || undefined}
                 stats={stats}
                 prevStats={prevStats}

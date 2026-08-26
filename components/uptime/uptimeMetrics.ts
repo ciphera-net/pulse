@@ -77,14 +77,27 @@ export function seriesUptimePct(series: UptimePoint[]): number | null {
 
 // ─── Range anchoring ─────────────────────────────────────────────
 
-// * presetZoneRange: the uptime API reads start_date/end_date as SITE-timezone
+// * presetZoneRange: the API reads start_date/end_date as SITE-timezone
 // * calendar days (22-08-2026 alignment, superseding decision D5), while
-// * useUrlDateRange builds VIEWER-local date strings. For preset ranges the
-// * window's LENGTH is what the preset means — so keep the span and re-anchor
-// * its end to the site's CURRENT day, or a viewer west of the site keeps
-// * asking for a site-day that already ended and the newest checks fall off.
-// * Custom ranges pass through: an explicitly picked calendar day IS the
+// * useUrlDateRange builds VIEWER-local date strings. For a TRAILING preset
+// * the window's LENGTH is what the preset means — so keep the span and
+// * re-anchor its end to the site's CURRENT day, or a viewer west of the site
+// * keeps asking for a site-day that already ended and the newest data falls
+// * off. Custom ranges pass through: an explicitly picked calendar day IS the
 // * site's day, as labeled.
+// *
+// * 🔴 A CLOSED PAST RANGE MUST PASS THROUGH UNCHANGED (fixed 26-08-2026).
+// * This device moves `end` to today, so applying it to Yesterday / Last week
+// * / Last month / Last quarter / Last year silently rewrote them into
+// * trailing windows ending TODAY while the picker kept the original label —
+// * "Yesterday" rendered today's data. Those presets are offered on every
+// * page that uses this helper (an `extraPresets` group ADDS to the global
+// * list unless it declares `exclusive`), so the guard belongs here, in the
+// * one place, rather than in each caller's preset allowlist.
+// *
+// * The test for "trailing" is the range's own end: a preset that ends on the
+// * VIEWER's today is a trailing window and re-anchors; anything ending
+// * earlier is a closed period and is returned untouched.
 export function presetZoneRange(
   dateRange: { start: string; end: string },
   tz: string | null | undefined,
@@ -94,6 +107,10 @@ export function presetZoneRange(
     (Date.parse(dateRange.end + 'T00:00:00Z') - Date.parse(dateRange.start + 'T00:00:00Z')) / 86_400_000,
   )
   if (!Number.isFinite(spanDays)) return dateRange
+  // Viewer-local today, spelled the way useUrlDateRange spells its ranges.
+  const p2 = (n: number) => String(n).padStart(2, '0')
+  const viewerToday = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}`
+  if (dateRange.end !== viewerToday) return dateRange
   const end = zoneDayKey(now, tz)
   return { start: shiftDayKey(end, -spanDays), end }
 }
