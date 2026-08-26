@@ -69,9 +69,19 @@
   }
 
   const apiUrl = attr('api') || 'https://pulse-api.ciphera.net';
+
   // * Identity is fully server-side: a daily-rotating session hash and a monthly-rotating
   // * visitor hash of IP + UA + domain, salted on the site's own calendar. No client-side
   // * visitor ID storage — zero localStorage, zero identifying sessionStorage, zero cookies.
+
+  // * Engagement beacon path — deliberately NOT '/api/v1/metrics'.
+  // * EasyPrivacy carries a bare, domain-agnostic substring rule for that path (written
+  // * for an unrelated vendor), so uBlock Origin, Brave and anything else shipping that
+  // * list cancel the beacon client-side with ERR_BLOCKED_BY_CLIENT while the pageview
+  // * itself lands — the site records visits with no time-on-page and no scroll depth.
+  // * The old path still answers server-side, for scripts already cached at the edge.
+  // * See Pulse/docs/audits/26-08-2026-psi-err-blocked-by-client-metrics.md
+  var ENGAGEMENT_PATH = '/api/v1/engagement';
 
   let currentEventId = null;
 
@@ -140,9 +150,9 @@
     var data = JSON.stringify(payload);
 
     if (navigator.sendBeacon) {
-      navigator.sendBeacon(apiUrl + '/api/v1/metrics', new Blob([data], {type: 'application/json'}));
+      navigator.sendBeacon(apiUrl + ENGAGEMENT_PATH, new Blob([data], {type: 'application/json'}));
     } else {
-      fetch(apiUrl + '/api/v1/metrics', {
+      fetch(apiUrl + ENGAGEMENT_PATH, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: data,
@@ -167,7 +177,7 @@
       payload.scroll_depth = maxScrollPct;
     }
     if (navigator.sendBeacon) {
-      navigator.sendBeacon(apiUrl + '/api/v1/metrics', new Blob([JSON.stringify(payload)], {type: 'application/json'}));
+      navigator.sendBeacon(apiUrl + ENGAGEMENT_PATH, new Blob([JSON.stringify(payload)], {type: 'application/json'}));
     }
   }
 
