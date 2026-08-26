@@ -146,18 +146,52 @@ describe('presetUtcRange', () => {
 })
 
 describe('presetZoneRange', () => {
-  it("re-anchors a preset window to the SITE's current day, keeping its length", () => {
-    // 22:30Z on 12 Aug is already 13 Aug in Brussels: the site's "last 30
-    // days" must end on the 13th even though UTC (and the viewer) say the
-    // 12th.
+  // The viewer's local day, spelled the way useUrlDateRange spells its ranges.
+  // Derived rather than hardcoded: this helper translates FROM the viewer's
+  // clock, so a fixture that hardcodes "the viewer thinks it is the 12th"
+  // silently stops testing the real path under a runner in another zone (the
+  // suite pins America/New_York and re-runs date-sensitive files at UTC+14).
+  const viewerDay = (d: Date, offsetDays = 0) => {
+    const x = new Date(d.getFullYear(), d.getMonth(), d.getDate() + offsetDays)
+    const p2 = (n: number) => String(n).padStart(2, '0')
+    return `${x.getFullYear()}-${p2(x.getMonth() + 1)}-${p2(x.getDate())}`
+  }
+
+  it("re-anchors a TRAILING preset to the SITE's current day, keeping its length", () => {
+    // 22:30Z on 12 Aug is already 13 Aug in Brussels: a site-day-anchored
+    // "last 30 days" must end on the site's today even when the viewer's
+    // calendar says otherwise, or the newest data falls off for a viewer west
+    // of the site.
     const now = new Date('2026-08-12T22:30:00Z')
-    const local30d = { start: '2026-07-13', end: '2026-08-12' }
-    expect(presetZoneRange(local30d, 'Europe/Brussels', now)).toEqual({ start: '2026-07-14', end: '2026-08-13' })
+    const trailing30d = { start: viewerDay(now, -30), end: viewerDay(now) }
+    const got = presetZoneRange(trailing30d, 'Europe/Brussels', now)
+    expect(got.end).toBe('2026-08-13')
+    expect(got.start).toBe('2026-07-14')
   })
+
   it('is a no-op when the anchor already agrees', () => {
     const now = new Date('2026-08-13T12:00:00Z')
-    expect(presetZoneRange({ start: '2026-08-07', end: '2026-08-13' }, 'UTC', now))
-      .toEqual({ start: '2026-08-07', end: '2026-08-13' })
+    const trailing7d = { start: viewerDay(now, -6), end: viewerDay(now) }
+    // Same zone as the viewer ⇒ nothing to translate.
+    expect(presetZoneRange(trailing7d, Intl.DateTimeFormat().resolvedOptions().timeZone, now)).toEqual(trailing7d)
+  })
+
+  // 🔴 The regression this guard exists for (26-08-2026). presetZoneRange moves
+  // `end` to today, so applying it to a CLOSED PAST range rewrote Yesterday /
+  // Last week / Last month into trailing windows ending today while the picker
+  // kept the original label — "Yesterday" rendered today's numbers. Every page
+  // using this helper offers those presets (an extraPresets group ADDS to the
+  // global list unless it declares `exclusive`).
+  it('leaves a CLOSED PAST range untouched — "Yesterday" is not "today"', () => {
+    const now = new Date('2026-08-12T22:30:00Z')
+    const yesterday = { start: viewerDay(now, -1), end: viewerDay(now, -1) }
+    expect(presetZoneRange(yesterday, 'Europe/Brussels', now)).toEqual(yesterday)
+  })
+
+  it('leaves a closed multi-day period untouched — "Last week" keeps both ends', () => {
+    const now = new Date('2026-08-12T22:30:00Z')
+    const lastWeek = { start: viewerDay(now, -10), end: viewerDay(now, -4) }
+    expect(presetZoneRange(lastWeek, 'Pacific/Kiritimati', now)).toEqual(lastWeek)
   })
 })
 

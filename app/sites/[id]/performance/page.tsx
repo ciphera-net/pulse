@@ -767,10 +767,11 @@ export default function PerformancePage() {
                     className={`mt-1.5 inline-block h-2.5 w-2.5 flex-none rounded-full ${BAND_DOT[metricBand(key, value)]}`}
                   />
                   <div className="min-w-0">
-                    {/* h-5 = the un-glyphed line height. Only four of the six
-                        metrics carry a glyph, so without it the four glyphed
-                        cells grow 4px and their values sit off the grid row's
-                        baseline against the two bare ones. */}
+                    {/* h-5 = the un-glyphed line height, pinned so the glyph
+                        cannot add 4px and push values off the grid row's
+                        baseline. All six metrics carry a glyph since 26-08-2026
+                        (closeout C2), so the row is uniform either way — the
+                        pin stays because it is what makes that true. */}
                     <div className="flex h-5 items-center gap-1 text-sm text-neutral-400">
                       {label}
                       {METRIC_TERM[key] && <TermInfoTip term={METRIC_TERM[key]!} />}

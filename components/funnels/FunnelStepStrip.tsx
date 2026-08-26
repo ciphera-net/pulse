@@ -149,6 +149,10 @@ export function FunnelStepStrip({
 
   const exits = step.exit_pages ?? []
   const maxExit = exits.length > 0 ? exits[0].visitors : 0
+  // How many reached this step but not the next — the population whose exit
+  // pages the backend looks up. Zero means there was nothing to look for,
+  // which is not the same as looking and finding nothing.
+  const dropped = Math.max(0, step.visitors - (steps[selectedStep]?.visitors ?? 0))
   const entries = breakdown?.entries ?? []
   const maxEntry = entries.reduce((m, e) => Math.max(m, e.visitors ?? 0), 0)
   const dimensionLabel = DIMENSIONS.find((d) => d.value === dimension)?.label ?? dimension
@@ -179,6 +183,13 @@ export function FunnelStepStrip({
             // present a non-measurement as an empty measurement (F3).
             <p className="px-2.5 pb-2 text-sm text-neutral-500">
               Final step — completions end here, so there is no drop-off to follow.
+            </p>
+          ) : dropped === 0 ? (
+            // Nobody dropped off this step, so there was nothing to follow —
+            // also a non-measurement, and distinct from "we looked and found
+            // nothing" (same F3 rule as the final step above).
+            <p className="px-2.5 pb-2 text-sm text-neutral-500">
+              Everyone who reached this step continued, so there is no drop-off to follow.
             </p>
           ) : exits.length > 0 ? (
             <div className="space-y-0.5 pb-1">
