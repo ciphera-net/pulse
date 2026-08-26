@@ -47,6 +47,16 @@ describe('CdnLiveCard failure honesty', () => {
     expect(screen.getByText('live · hours are UTC')).toBeTruthy()
   })
 
+  it('names the percent rail "Cache hit rate", never the Edge card\'s bytes label (ruling 4a)', () => {
+    // The Edge card's "Served from cache" is a BYTES figure; this card's rail
+    // is the hit-rate percent. Sharing the label made 76.2% read as a
+    // contradiction of the daily 19.1 GB one screen above.
+    mockUseBunnyLive.mockReturnValue({ data: liveData([100, 200]), error: undefined })
+    render(<CdnLiveCard siteId="s" />)
+    expect(screen.getByText('Cache hit rate')).toBeTruthy()
+    expect(screen.queryByText('Served from cache')).toBeNull()
+  })
+
   it('cold failure ghosts the rails with the unavailable line', () => {
     mockUseBunnyLive.mockReturnValue({ data: undefined, error: { status: 502 } })
     render(<CdnLiveCard siteId="s" />)
