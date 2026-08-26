@@ -14,6 +14,8 @@ import {
 } from '@/lib/api/performance'
 import { useQueryParamsWriter } from '@/lib/hooks/useQueryParamsWriter'
 import { toast, Button } from '@ciphera-net/facet'
+import { Gauge } from '@phosphor-icons/react'
+import { InstrumentOffState } from '@/components/ui/InstrumentOffState'
 import Select from '@/components/ui/select'
 import { motion } from 'framer-motion'
 import ScoreGauge from '@/components/performance/ScoreGauge'
@@ -427,34 +429,36 @@ export default function PerformancePage() {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
         <PageHeader domain={site.domain} frequency={null} />
-        <div className={`${CARD} p-6 text-center md:p-12`}>
-          <h3 className="mb-2 font-semibold text-white">Performance monitoring is off</h3>
-          <p className="mx-auto mb-6 max-w-md text-sm text-neutral-400">
-            Turn it on to run Lighthouse against {site.domain} on a schedule and track how the scores move.
-            Each check is the median of three runs, so the trend reflects the page rather than run-to-run noise.
-          </p>
-          <div className="mb-6 flex items-center justify-center gap-3">
-            <label className="text-sm text-neutral-400" htmlFor="pagespeed-frequency">
-              Check frequency
-            </label>
-            <Select
-              variant="input"
-              className="min-w-[120px]"
-              value={frequency}
-              onChange={value => setFrequency(value)}
-              options={[
-                { value: 'daily', label: 'Daily' },
-                { value: 'weekly', label: 'Weekly' },
-                { value: 'monthly', label: 'Monthly' },
-              ]}
-            />
-          </div>
-          {canEdit && (
-            <Button onClick={() => handleToggle(true)} disabled={toggling}>
-              {toggling ? 'Enabling…' : 'Enable performance monitoring'}
-            </Button>
-          )}
-        </div>
+        <InstrumentOffState
+          rails={['Performance', 'Accessibility', 'Best practices', 'SEO']}
+          icon={<Gauge size={40} />}
+          heading="Performance monitoring is off"
+          body={`Turn it on to run Lighthouse against ${site.domain} on a schedule and track how the scores move. Each check is the median of three runs, so the trend reflects the page rather than run-to-run noise.`}
+          config={
+            <div className="flex items-center justify-center gap-3">
+              <label className="text-sm text-neutral-400" htmlFor="pagespeed-frequency">
+                Check frequency
+              </label>
+              <Select
+                variant="input"
+                className="min-w-[120px]"
+                value={frequency}
+                onChange={value => setFrequency(value)}
+                options={[
+                  { value: 'daily', label: 'Daily' },
+                  { value: 'weekly', label: 'Weekly' },
+                  { value: 'monthly', label: 'Monthly' },
+                ]}
+              />
+            </div>
+          }
+          canAct={canEdit}
+          action={{
+            label: toggling ? 'Enabling…' : 'Enable performance monitoring',
+            onClick: () => handleToggle(true),
+            disabled: toggling,
+          }}
+        />
       </div>
     )
   }

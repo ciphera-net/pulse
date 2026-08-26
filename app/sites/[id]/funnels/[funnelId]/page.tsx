@@ -6,7 +6,6 @@ import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigat
 import { ArrowLeft, FunnelSimple } from '@phosphor-icons/react'
 import { toast, Button } from '@ciphera-net/facet'
 import { updateFunnel, deleteFunnel, type CreateFunnelRequest } from '@/lib/api/funnels'
-import { ApiError } from '@/lib/api/client'
 import { useFunnelDetail, useFunnelStats, useSite } from '@/lib/swr/dashboard'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
 import { FUNNEL_EXCLUDED_PRESETS } from '@/lib/constants/periods'
@@ -141,7 +140,11 @@ export default function FunnelDetailPage() {
   if (funnelLoading && !funnel) return <FunnelDetailSkeleton />
 
   if (funnelError) {
-    const notFound = funnelError instanceof ApiError && funnelError.status === 404
+    // Duck-typed like the funnels list and the dashboard's device, NOT
+    // instanceof: chunk-split bundles can hold two ApiError classes, and
+    // instanceof across them is false for a real 404 (measured on staging —
+    // the 404 rendered the generic card).
+    const notFound = (funnelError as { status?: number })?.status === 404
     return (
       <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
         {notFound ? (

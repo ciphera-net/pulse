@@ -1,14 +1,14 @@
 'use client'
 
 import { useEffect, useMemo } from 'react'
-import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
-import { cn } from '@/lib/utils'
-import { buttonVariants } from '@ciphera-net/facet'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
 import { fetchableRange } from '@/lib/dashboard/resolveRange'
 import { presetUtcRange } from '@/components/uptime/uptimeMetrics'
+import { CloudArrowUp } from '@phosphor-icons/react'
+import { useCan } from '@/lib/auth/permissions'
+import { InstrumentOffState } from '@/components/ui/InstrumentOffState'
 import { useSite, useBunnyStatus, useBunnyOverview, useBunnyDailyStats, useBunnyRegions } from '@/lib/swr/dashboard'
 
 import DateRangePicker from '@/components/ui/DateRangePicker'
@@ -24,6 +24,7 @@ import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 export default function CDNPage() {
   const params = useParams()
   const siteId = params.id as string
+  const canManageIntegrations = useCan('integrations.manage')
 
   const { period, dateRange, periodReady, setPeriod, shiftPeriod, pickerProps } = useUrlDateRange({
     pageKey: 'cdn',
@@ -93,6 +94,29 @@ export default function CDNPage() {
     return <CDNSkeleton />
   }
 
+  // ─── Not connected — the shared off-state shell (closeout ruling 1b) ──
+  // No date picker here: a range control over a not-connected instrument is
+  // dead chrome. The ghost rails preview the two cards' five metrics.
+  if (!connected) {
+    return (
+      <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
+        <div className="mb-6">
+          <h1 className="text-lg font-semibold text-white">CDN</h1>
+          <p className="mt-1 text-sm text-neutral-400">Bunny bandwidth, requests, cache performance and errors</p>
+        </div>
+        <InstrumentOffState
+          rails={['Served from cache', 'Cache hit rate', 'Origin traffic', 'Origin latency', 'Errors']}
+          icon={<CloudArrowUp size={40} />}
+          heading="Connect Bunny CDN"
+          body="See bandwidth, cache performance and errors. Read-only · uses a Bunny API key with account-wide scope · synced every 3 hours."
+          canAct={canManageIntegrations}
+          action={{ label: 'Connect in Settings', href: '/settings/site/integrations' }}
+          fallback="An owner or admin can connect it."
+        />
+      </div>
+    )
+  }
+
   const empty = connected && dailyStats !== undefined && series.length === 0
   const anyValidating = overviewValidating || dailyValidating || regionsValidating
 
@@ -106,7 +130,6 @@ export default function CDNPage() {
       void mutateRegions()
     },
     mix,
-    ghost: !connected,
     empty,
   }
 
@@ -141,24 +164,13 @@ export default function CDNPage() {
       </div>
 
       {/* The split instrument: Edge (what Bunny absorbed) vs Origin (what got
-          through). Ghosted with a connect CTA when no zone is connected. */}
+          through). The not-connected state early-returns above, so these
+          always render connected. */}
       <div data-tour="cdn-split" className="relative">
         <div className="flex flex-col gap-6 lg:flex-row">
           <EdgeCard {...cardProps} />
           <OriginCard {...cardProps} />
         </div>
-
-        {!connected && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60">
-            <div className="text-center">
-              <p className="text-sm text-neutral-300">Connect your Bunny account to see bandwidth, cache performance and errors.</p>
-              <p className="mt-1 text-xs text-neutral-500">Read-only · uses a Bunny API key with account-wide scope · synced every 3 hours</p>
-              <Link href="/settings/site/integrations" className={cn(buttonVariants({ variant: 'chrome', size: 'toolbar' }), 'mt-4 font-normal ease-apple')}>
-                Connect in Settings
-              </Link>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Daily-stats failure is a page-level fact (both cards draw from it). */}

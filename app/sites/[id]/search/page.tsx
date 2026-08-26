@@ -3,7 +3,6 @@
 import { useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
-import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { useUrlDateRange, SEARCH_CONSOLE_MAX_DAYS, type Period } from '@/lib/hooks/useUrlDateRange'
@@ -11,7 +10,9 @@ import { fetchableRange } from '@/lib/dashboard/resolveRange'
 import { useQueryParamsWriter } from '@/lib/hooks/useQueryParamsWriter'
 import { getDateRange } from '@/lib/utils/format'
 import type { PeriodPreset } from '@/lib/constants/periods'
-import { MagnifyingGlass, ArrowSquareOut } from '@phosphor-icons/react'
+import { MagnifyingGlass } from '@phosphor-icons/react'
+import { useCan } from '@/lib/auth/permissions'
+import { InstrumentOffState } from '@/components/ui/InstrumentOffState'
 import { useSite, useGSCStatus, useGSCOverview, useBingStatus } from '@/lib/swr/dashboard'
 import { SearchSkeleton } from '@/components/skeletons'
 import InstrumentPanel from '@/components/search/InstrumentPanel'
@@ -87,6 +88,7 @@ export default function SearchConsolePage() {
   const siteId = params.id as string
   const searchParams = useSearchParams()
   const write = useQueryParamsWriter()
+  const canManageIntegrations = useCan('integrations.manage')
 
   // Search Console retains ~480 days and its API accepts them, so this page
   // opts into the wider ceiling; every analytics page keeps the 366-day one.
@@ -181,35 +183,15 @@ export default function SearchConsolePage() {
             Google Search performance, queries, and page rankings
           </p>
         </div>
-        <div className="flex rounded-none border border-border bg-card">
-          {/* Ghost rails — what the page becomes once connected */}
-          <div className="hidden w-48 shrink-0 flex-col border-r border-border sm:flex" aria-hidden="true">
-            {METRIC_ORDER.map((key) => (
-              <div key={key} className="flex flex-1 flex-col justify-center border-t border-border px-4 py-4 first:border-t-0">
-                <span className="text-sm text-neutral-600">{METRIC_LABEL[key]}</span>
-                <span className="mt-0.5 text-xl font-semibold text-neutral-700">&mdash;</span>
-              </div>
-            ))}
-          </div>
-          <div className="flex min-h-[360px] flex-1 flex-col items-center justify-center px-6 py-12 text-center">
-            <div className="rounded-none bg-neutral-800 p-5 mb-6">
-              <MagnifyingGlass size={40} className="text-neutral-500" />
-            </div>
-            <h2 className="text-xl font-semibold text-white mb-2">
-              Connect Google Search Console
-            </h2>
-            <p className="text-sm text-neutral-400 max-w-md mb-6">
-              See how your site performs in Google Search. View top queries, pages, click-through rates, and average position data.
-            </p>
-            <Link
-              href="/settings/site/integrations"
-              className="inline-flex h-10 items-center gap-2 rounded-none bg-brand-orange-button px-5 text-sm font-medium text-white transition-colors ease-apple hover:bg-brand-orange-button-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
-            >
-              Connect in Settings
-              <ArrowSquareOut size={16} weight="bold" />
-            </Link>
-          </div>
-        </div>
+        <InstrumentOffState
+          rails={METRIC_ORDER.map((key) => METRIC_LABEL[key])}
+          icon={<MagnifyingGlass size={40} />}
+          heading="Connect Google Search Console"
+          body="See how your site performs in Google Search. View top queries, pages, click-through rates, and average position data."
+          canAct={canManageIntegrations}
+          action={{ label: 'Connect in Settings', href: '/settings/site/integrations' }}
+          fallback="An owner or admin can connect it."
+        />
       </div>
     )
   }

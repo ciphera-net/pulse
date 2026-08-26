@@ -535,7 +535,10 @@ function StatusBand({ mix }: { mix: StatusMix }) {
             )
           })}
         </div>
-        <span className="text-neutral-600">of {formatNumber(mix.total)} responses</span>
+        <span className="flex items-center gap-1 text-neutral-600">
+          of {formatNumber(mix.total)} responses
+          <TermInfoTip term="cdn_status_band" />
+        </span>
       </div>
     </div>
   )
