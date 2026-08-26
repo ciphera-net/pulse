@@ -27,7 +27,6 @@ import {
   RailGrid,
   CheckIcon,
   CopyIcon,
-  Spinner,
   cn,
 } from '@ciphera-net/facet'
 import { TierBadge } from '@/components/integrations/TierBadge'
@@ -580,44 +579,45 @@ function InstallVerify({ siteId, domain, compact }: { siteId: string; domain: st
   if (compact && status === 'active') return null
   const lastSeen = data?.last_event_at ? relativeTime(data.last_event_at) : null
 
-  let tone = 'border-border bg-muted text-muted-foreground'
-  let icon = <Spinner size="sm" />
-  let title = 'Listening for your first event…'
-  let detail = `Load ${domain} in a browser — Pulse will confirm here within seconds.`
+  // The SyncStatusLine grammar (closeout ruling 6A): colour lives in the dot
+  // and at most one word — never a panel background. The tinted alert boxes
+  // this replaces were the estate's last holdout of that idiom.
+  let dot = 'bg-neutral-600'
+  let word = <span className="text-neutral-400">Listening for your first event…</span>
+  let detail: string | null = `· load ${domain} in a browser — confirms here within seconds`
 
   if (isLoading && !data) {
-    title = 'Checking install status…'
-    detail = ''
+    word = <span className="text-neutral-400">Checking install status…</span>
+    detail = null
   } else if (status === 'active') {
-    tone = 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-    icon = <CheckIcon className="w-4 h-4" />
-    title = 'Active'
-    detail = lastSeen ? `Last event received ${lastSeen}.` : 'Receiving events.'
+    dot = 'bg-emerald-400'
+    word = <span className="text-neutral-400">Active</span>
+    detail = lastSeen ? `· last event ${lastSeen}` : '· receiving events'
   } else if (status === 'stalled') {
-    tone = 'border-amber-500/30 bg-amber-500/10 text-amber-400'
-    icon = <span className="text-base leading-none">!</span>
-    title = 'No recent data'
-    detail = `No events${lastSeen ? ` since ${lastSeen}` : ''}. Check the install — CSP, ad-blockers, or a domain mismatch are the usual causes.`
+    dot = 'bg-amber-400'
+    word = <span className="text-amber-400">No recent events</span>
+    detail = `· none${lastSeen ? ` since ${lastSeen}` : ''} — usually a removed snippet, an ad blocker, or a CSP`
   }
 
   return (
-    <div className={`mt-4 rounded-none border p-4 ${tone}`}>
-      <div className="flex items-center gap-2">
-        <span className="flex items-center justify-center w-5 h-5">{icon}</span>
-        <span className="text-sm font-medium">{title}</span>
-      </div>
-      {detail && <p className="text-xs text-muted-foreground mt-1 ml-7">{detail}</p>}
+    <p className="mt-4 flex flex-wrap items-center gap-1.5 text-xs text-neutral-500">
+      <span aria-hidden="true" className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
+      {word}
+      {detail && <span className="tabular-nums">{detail}</span>}
       {status !== 'active' && (
-        <a
-          href="https://help.ciphera.net/docs/pulse/troubleshooting"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 mt-2 ml-7 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors ease-apple"
-        >
-          Troubleshooting guide →
-        </a>
+        <>
+          <span aria-hidden="true" className="mx-1.5 text-neutral-600">·</span>
+          <a
+            href="https://help.ciphera.net/docs/pulse/troubleshooting"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-neutral-300 underline-offset-2 transition-colors duration-fast ease-apple hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+          >
+            Troubleshooting guide
+          </a>
+        </>
       )}
-    </div>
+    </p>
   )
 }
 
