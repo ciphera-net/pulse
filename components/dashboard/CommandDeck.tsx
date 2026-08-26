@@ -89,7 +89,7 @@ const METRICS: {
   isRate?: boolean
 }[] = [
   {
-    key: 'visitors', label: 'Unique visitors', context: 'distinct sessions',
+    key: 'visitors', label: 'Unique visitors', context: 'unique people',
     title: METRIC_TERMS.visitors.definition,
     format: (v) => v == null ? '—' : formatNumber(Math.round(v)),
   },

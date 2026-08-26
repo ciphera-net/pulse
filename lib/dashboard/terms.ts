@@ -33,7 +33,7 @@ export const METRIC_TERMS: Record<MetricType, GlossaryTerm> = {
   visitors: {
     title: 'Unique visitors',
     definition:
-      'Distinct sessions, deduplicated across the range. A session lasts one UTC day, so a returning reader counts once per day they visit.',
+      "People, not visits: a returning reader counts once. Identity is deduplicated within each calendar month in your site's timezone, so a range that spans months counts a returning reader once per month. Before 26 Aug 2026, deduplication was per day.",
     docs: 'dashboard#unique-visitors',
   },
   pageviews: {
@@ -612,7 +612,7 @@ export const TERMS: Record<string, GlossaryTerm> = {
   funnel_one_visit: {
     title: 'One-visit conversions',
     definition:
-      'Every step must complete within one visit. There is no multi-day window because session identity resets at UTC midnight.',
+      "Every step must complete within one visit. There is no multi-day window because session identity resets at your site's midnight.",
     docs: 'funnels#funnel-one-visit',
   },
   funnel_step_definition: {

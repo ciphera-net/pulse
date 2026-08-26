@@ -92,14 +92,14 @@ export const faqData: Record<string, FAQItem[]> = {
     {
       question: 'Can Pulse identify individual users?',
       answer:
-        'No. Pulse is architecturally incapable of identifying individual users. Each pageview is treated as an independent, anonymous event. There are no user IDs, session IDs, or any form of persistent tracking.',
+        'No. Pulse is architecturally incapable of identifying individual people. Pageviews are grouped by short-lived, server-derived identifiers — a daily session hash and a monthly visitor hash — with no client-side storage and no way to link activity across sites or beyond a calendar month.',
     },
   ],
   technical: [
     {
       question: 'How does Pulse count unique visitors without cookies?',
       answer:
-        'Pulse uses a privacy-safe hashing method that generates a daily rotating identifier from non-personal data points. This allows approximate unique visitor counts without tracking individuals across sessions or days.',
+        "Pulse derives two identifiers server-side from non-personal data points: a session identifier that rotates daily and a visitor identifier that rotates monthly, both scoped to your site's timezone. Unique visitor counts are deduplicated within each calendar month, and nothing can follow a person across sites or beyond that month.",
     },
     {
       question: 'Does Pulse have an API?',

@@ -1,7 +1,8 @@
 /**
  * Pulse - Privacy-First Tracking Script
  * Lightweight, no cookies, no localStorage, no client-side identifiers. GDPR compliant.
- * Unique visitors are identified server-side via a daily-rotating hash of IP + UA + domain.
+ * Visits and visitors are identified server-side: a daily-rotating session hash and a
+ * monthly-rotating visitor hash of IP + UA + domain, salted on the site's own calendar.
  */
 
 (function() {
@@ -68,8 +69,9 @@
   }
 
   const apiUrl = attr('api') || 'https://pulse-api.ciphera.net';
-  // * Session identification is now fully server-side (daily-rotating hash of IP + UA + domain).
-  // * No client-side visitor ID storage — zero localStorage, zero sessionStorage, zero cookies.
+  // * Identity is fully server-side: a daily-rotating session hash and a monthly-rotating
+  // * visitor hash of IP + UA + domain, salted on the site's own calendar. No client-side
+  // * visitor ID storage — zero localStorage, zero identifying sessionStorage, zero cookies.
 
   let currentEventId = null;
 

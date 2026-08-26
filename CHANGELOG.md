@@ -9,6 +9,22 @@ public read API's — see that entry for what it does and does not cover.
 
 ## [Unreleased]
 
+### Changed
+
+- **"Unique visitors" now counts people, and 26-08-2026 is a measurement boundary.**
+  Visitor identity used to rotate every day, so a returning reader was re-counted
+  once per day (and the public API's `visitors` field inherited that). Since
+  26-08-2026, identity is deduplicated within each calendar month in the site's own
+  timezone: a returning reader counts once, on the dashboard and in the public read
+  API's `visitors` field alike — same field, corrected meaning, no wire change.
+  Expect the number to step down; that is the correction, not a traffic drop. Days
+  before the boundary can never be re-deduplicated (the address the identity derives
+  from is discarded on arrival and was never stored), so ranges reaching back keep
+  per-day counting for those days. Session boundaries also moved from UTC midnight
+  to the site's own midnight, which ends the long-standing off-by-one between the
+  headline and the daily chart — and means the chart's daily values can now sum to
+  more than the headline, correctly: the difference is your returning readers.
+
 ### Removed
 
 - **The privacy scanner is gone.** The Settings > Privacy scan — a single-request check that printed "Privacy score 100" for pages it could not meaningfully judge — has been removed end to end, including its stored results. The Privacy settings tab itself (page rules, path grouping, query-parameter allowlist) is unchanged.
