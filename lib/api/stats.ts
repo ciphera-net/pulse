@@ -19,6 +19,13 @@ export interface Stats {
   // multiplied out in the browser.
   bounce_sessions?: number
   duration_measured_sessions?: number
+  // The rates' shared DENOMINATOR — visits, not people. Load-bearing since
+  // migration 163 (26-08-2026): `visitors` used to BE the session count and
+  // the examples divided by it; it now counts people (monthly dedup), so a
+  // session numerator over `visitors` prints a fraction that cannot produce
+  // the rate beside it. Optional for the same reason as the two above: a
+  // backend that does not send it gets NO example, never a wrong one.
+  sessions?: number
 }
 
 // visitors/rates are populated for top pages; entry/exit rows reuse this shape
