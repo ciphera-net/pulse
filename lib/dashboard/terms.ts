@@ -33,13 +33,13 @@ export const METRIC_TERMS: Record<MetricType, GlossaryTerm> = {
   visitors: {
     title: 'Unique visitors',
     definition:
-      'Distinct sessions, deduplicated across the range. A session lasts one UTC day, so a returning reader counts once per day they visit.',
+      "People, not visits: a returning reader counts once. Identity is deduplicated within each calendar month in your site's timezone, so a range that spans months counts a returning reader once per month. Before 26 Aug 2026, deduplication was per day.",
     docs: 'dashboard#unique-visitors',
   },
   pageviews: {
     title: 'Total pageviews',
     definition:
-      'Every pageview in the range.',
+      'Every page load in the range, bots and excluded traffic removed — a reload counts again.',
     docs: 'dashboard#total-pageviews',
   },
   pages_per_visit: {
@@ -51,7 +51,7 @@ export const METRIC_TERMS: Record<MetricType, GlossaryTerm> = {
   bounce_rate: {
     title: 'Bounce rate',
     definition:
-      'Share of sessions that saw exactly one page. Deltas are percentage points.',
+      'Share of sessions with exactly one pageview — a reload counts as a second, so it ends the bounce. Deltas are percentage points.',
     docs: 'dashboard#bounce-rate',
   },
   avg_duration: {
@@ -63,7 +63,7 @@ export const METRIC_TERMS: Record<MetricType, GlossaryTerm> = {
   engagement: {
     title: 'Engagement',
     definition:
-      'Median daily percentile of scroll depth, time on page, visit depth and bounce rate, ranked against this site’s prior 90 days. 50 means a typical day for this site.',
+      'Each day is ranked against this site’s prior 90 days on scroll depth, time on page, visit depth and bounce rate; those four are blended by weight, and the score is the median across the period’s days. 50 means the day beat half of the prior 90.',
     docs: 'dashboard#engagement',
   },
 }
@@ -84,13 +84,13 @@ export const TERMS: Record<string, GlossaryTerm> = {
   availability: {
     title: 'Availability',
     definition:
-      'The share of uptime checks that succeeded across the range. Days are your site’s calendar days.',
+      'The share of uptime checks that came back healthy across the range. A degraded check — an unexpected status code under 500, or a response slower than 5 s — counts against it, and a failure only counts once the checker has confirmed it. Days are your site’s calendar days.',
     docs: 'uptime#availability',
   },
   response_time: {
     title: 'Response time',
     definition:
-      'Average response time of successful checks. p50 and p95 come from raw checks, kept 90 days — older periods show an em dash rather than an invented number.',
+      'Average response time across every timed check, failures included. Exact p50 and p95 come from raw checks (kept 90 days) on ranges up to 8 days; longer ranges fall back to the stored daily average, labelled ‘avg’ — never an invented percentile.',
     docs: 'uptime#response-time',
   },
   checks: {
@@ -102,19 +102,19 @@ export const TERMS: Record<string, GlossaryTerm> = {
   incidents: {
     title: 'Incidents',
     definition:
-      'Confirmed status changes — the durable downtime record. Raw checks are purged after 90 days; incidents are kept.',
+      'Confirmed down or degraded episodes — the durable record. Raw checks are purged after 90 days; incidents are kept.',
     docs: 'uptime#incidents',
   },
   recent_checks: {
     title: 'Recent checks',
     definition:
-      'The most recent raw checks: when each ran, the status code it saw and how long it took.',
+      'The newest checks for this monitor, whatever range is selected: when each ran, the status code it saw and how long it took. The dot shows the confirmed status, so a blip inside the grace window still reads as up.',
     docs: 'uptime#checks',
   },
   site_timezone: {
     title: 'Site timezone',
     definition:
-      'Days here are your site’s calendar days. Days at or before the labelled boundary were recorded as UTC days and their raw checks are purged, so they can never be re-cut.',
+      'Days here are your site’s calendar days. Days before the labelled date were bucketed on the old UTC calendar and their raw checks no longer fully survive, so they can’t be re-cut.',
     docs: 'uptime#site-timezone',
   },
 
@@ -140,7 +140,7 @@ export const TERMS: Record<string, GlossaryTerm> = {
   countries: {
     title: 'Countries',
     definition:
-      'Resolved from the request IP at ingestion, which is then wiped. T1, A1, A2, O1, EU and AP are not countries — only an anonymising network or broad region.',
+      'Resolved from the request IP at ingestion, which is then wiped. T1, A1, A2, O1, EU and AP are not countries — an anonymising network, a satellite provider, a broad region or an unplaceable IP.',
     docs: 'dashboard#countries',
   },
   devices: {
@@ -294,7 +294,7 @@ export const TERMS: Record<string, GlossaryTerm> = {
   search_data_source_gate: {
     title: 'Search data source (why tables and tiles differ)',
     definition:
-      'Search Console drops anonymised queries when a query dimension is requested, so that sync undercounts. Tiles switch to the date-only sync after a zero-error backfill; tables never do.',
+      'Search Console drops anonymised queries when a query dimension is requested, so that sync undercounts. Tiles, the chart and the Days table switch to the date-only sync after a zero-error backfill; the query and page tables never do.',
     docs: 'search-console#search-data-source-gate',
   },
   search_days_view: {
@@ -362,7 +362,7 @@ export const TERMS: Record<string, GlossaryTerm> = {
   cdn_errors: {
     title: 'Errors (4xx/5xx)',
     definition:
-      'Counts stored before 14-08-2026 are all zero and prove nothing: the upstream chart zero-filled unless errors were explicitly requested, and they were not. 3xx are redirects, not errors.',
+      'The upstream chart zero-fills the error series unless errors are explicitly requested, and until 14-08-2026 they were not — so counts written before then were fabricated zeros. A full re-sync rewrote the last 364 days with real counts; anything older still reads zero and proves nothing. 3xx are redirects, not errors.',
     docs: 'cdn#cdn-errors',
   },
   cdn_live_card: {
@@ -410,7 +410,7 @@ export const TERMS: Record<string, GlossaryTerm> = {
   cdn_zero_fill_absence: {
     title: 'Zero-fill means absence',
     definition:
-      'The CDN returns a value for every bucket asked about, so a stored zero cannot be told apart from unmeasured. Empty buckets render a dash.',
+      'The CDN returns a value for every bucket asked about, so an all-zero day is indistinguishable from a day the zone did not exist — Pulse refuses to store one. Days with no row leave a gap and render a dash, never a zero.',
     docs: 'cdn#cdn-zero-fill',
   },
 
@@ -424,7 +424,7 @@ export const TERMS: Record<string, GlossaryTerm> = {
   best_practices_score: {
     title: 'Best Practices score',
     definition:
-      'Browser and web-platform hygiene: known-vulnerable JavaScript libraries, HTTPS, console errors. It says nothing about load speed.',
+      'Browser and web-platform hygiene: HTTPS, console errors, deprecated APIs, security headers. It says nothing about load speed.',
     docs: 'pagespeed#best-practices-score',
   },
   check_error_status: {
@@ -448,7 +448,7 @@ export const TERMS: Record<string, GlossaryTerm> = {
   median_of_three: {
     title: 'Median of 3',
     definition:
-      'Three full runs; the one with the median performance score is kept whole. A metric-by-metric median would describe a page load that never happened.',
+      'Up to three full runs; the one with the median performance score is kept whole — with two, the lower. A metric-by-metric median would describe a page load that never happened.',
     docs: 'pagespeed#median-of-3',
   },
   metric_cls: {
@@ -478,13 +478,13 @@ export const TERMS: Record<string, GlossaryTerm> = {
   metric_tbt: {
     title: 'Total Blocking Time (TBT)',
     definition:
-      'How long the main thread was blocked by tasks over 50ms, between First Contentful Paint and the page becoming interactive. Under 200ms is good.',
+      'How long the main thread was blocked, counting only the time past 50ms in each long task, between First Contentful Paint and the page becoming interactive. Under 200ms is good.',
     docs: 'pagespeed#tbt',
   },
   metric_tti: {
     title: 'Time to Interactive (TTI)',
     definition:
-      'Time until the page could reliably respond to input. Under 3.8s is good. Not one of Lighthouse\'s Core Web Vitals, though shown alongside them.',
+      'Time until the page could reliably respond to input. Under 3.8s is good. It carries no weight in the Performance score — it is shown for diagnosis, so a poor TTI beside a green gauge is not a contradiction.',
     docs: 'pagespeed#tti',
   },
   performance_score: {
@@ -496,7 +496,7 @@ export const TERMS: Record<string, GlossaryTerm> = {
   seo_score: {
     title: 'SEO score',
     definition:
-      'On-page crawlability checks: meta tags, mobile-friendliness, structured data. It measures whether a crawler can read the page, not how it ranks.',
+      'On-page crawlability checks: meta tags, crawler directives, link text, canonical and hreflang. It measures whether a crawler can read the page, not how it ranks.',
     docs: 'pagespeed#seo-score',
   },
   trend_provenance_boundary: {
@@ -508,7 +508,7 @@ export const TERMS: Record<string, GlossaryTerm> = {
   trend_trailing_median: {
     title: 'Trend line (7-check trailing median)',
     definition:
-      'The line is a trailing median over the last 7 checks, not the raw score; ties take the lower value. The dots are the individual checks.',
+      'The line is a trailing median over the last 7 scored checks, not the raw score; with an even count it takes the lower of the two middle values. The dots are the individual checks.',
     docs: 'pagespeed#trend-trailing-median',
   },
 
@@ -564,7 +564,7 @@ export const TERMS: Record<string, GlossaryTerm> = {
   funnel_breakdown_floor: {
     title: 'Funnel breakdown privacy floor',
     definition:
-      'A row\'s count is withheld — left empty, never zero — when fewer than 5 sessions entered under that value, so iterating a dimension cannot isolate one visitor.',
+      'Values with fewer than 5 entrants are withheld entirely — no row, never a zero — so a small slice and an empty one look the same and iterating a dimension cannot isolate one visitor.',
     docs: 'funnels#funnel-breakdown-floor',
   },
   funnel_conversion: {
@@ -588,7 +588,7 @@ export const TERMS: Record<string, GlossaryTerm> = {
   funnel_exit_pages: {
     title: 'Exit pages (funnels)',
     definition:
-      'Where the visitors who dropped off a step went instead, ranked by volume. Not shown on step 1, which everyone is on by definition.',
+      'The pages visitors opened within an hour of dropping off this step, top ten by volume. The final step has no drop-off, so it shows none.',
     docs: 'funnels#funnel-exit-pages',
   },
   funnel_first_match_wins: {
@@ -612,7 +612,7 @@ export const TERMS: Record<string, GlossaryTerm> = {
   funnel_one_visit: {
     title: 'One-visit conversions',
     definition:
-      'Every step must complete within one visit. There is no multi-day window because session identity resets at UTC midnight.',
+      "Every step must complete within one visit. There is no multi-day window because session identity resets at your site's midnight.",
     docs: 'funnels#funnel-one-visit',
   },
   funnel_step_definition: {

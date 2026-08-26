@@ -130,7 +130,7 @@ export function buildExample(
     return (
       <>
         <b>{Math.round(stats.bounce_rate)}%</b> — {formatNumber(bounced)} of{' '}
-        {formatNumber(stats.visitors)} sessions saw exactly one page
+        {formatNumber(stats.visitors)} sessions recorded exactly one pageview
       </>
     )
   }

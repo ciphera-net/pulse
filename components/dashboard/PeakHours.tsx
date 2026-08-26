@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { DURATION_FAST, DURATION_SLOW, EASE_APPLE } from '@/lib/motion'
 import { useDailyStats } from '@/lib/swr/dashboard'
 import { parseSiteWallClock } from '@/lib/utils/formatDate'
+import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 interface PeakHoursProps {
   // The page's selected metric. PeakHours keeps its own 4-way control as an
@@ -60,7 +61,7 @@ function isSummable(metric: Metric): boolean {
 
 function formatMetricValue(value: number, metric: Metric): string {
   if (metric === 'pageviews') return `${value.toLocaleString()} pageviews`
-  if (metric === 'visitors') return `${value.toLocaleString()} unique visitors`
+  if (metric === 'visitors') return `${value.toLocaleString()} visitor sessions`
   if (metric === 'avg_duration') {
     const mins = Math.floor(value / 60)
     const secs = Math.round(value % 60)
@@ -205,7 +206,7 @@ export default function PeakHours({ pageMetric, siteId, dateRange, filters }: Pe
   return (
     <div className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
       <div className="flex items-center justify-between mb-4">
-        <div className="flex gap-1 flex-wrap">
+        <div className="flex items-center gap-1 flex-wrap">
           {METRICS.map((m) => (
             <button
               key={m.key}
@@ -223,6 +224,9 @@ export default function PeakHours({ pageMetric, siteId, dateRange, filters }: Pe
               />
             </button>
           ))}
+          {/* Glyph closes the tab row — the dimension-card device (P2). The
+              entry existed registry-complete but unwired (closeout C1). */}
+          <TermInfoTip term="peak_hours" />
         </div>
       </div>
 
@@ -343,7 +347,10 @@ export default function PeakHours({ pageMetric, siteId, dateRange, filters }: Pe
                     <div className="flex flex-col gap-0.5 text-xs text-neutral-400 font-normal">
                       <span>{formatMetricValue(tooltipData.value, metric)}</span>
                       {isSummable(metric) && tooltipData.value > 0 && (
-                        <span>{tooltipData.pct}% of week&apos;s {metric === 'visitors' ? 'visitors' : 'traffic'}</span>
+                        // * "activity", not "visitors": the cells sum per-bucket session
+                        // * counts, so a person active in two buckets is two units of this
+                        // * denominator — it is a share of activity, never of people.
+                        <span>{metric === 'visitors' ? `${tooltipData.pct}% of weekly activity` : `${tooltipData.pct}% of week's traffic`}</span>
                       )}
                     </div>
                   </div>

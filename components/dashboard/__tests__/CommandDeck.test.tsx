@@ -60,7 +60,9 @@ describe('CommandDeck rail', () => {
       daily: [], data_days: 90,
     }} />)
     expect(screen.getByText('Unique visitors')).toBeTruthy()
-    expect(screen.getByText('distinct sessions')).toBeTruthy() // D5
+    // 26-08 identity rebuild: the headline deduplicates people (monthly
+    // visitor hash), so the D5 relabel "distinct sessions" is retired.
+    expect(screen.getByText('unique people')).toBeTruthy()
     expect(screen.getByText('vs prior 90 days')).toBeTruthy() // D4
     expect(screen.getByText('single-page sessions')).toBeTruthy()
     expect(screen.getByText('average')).toBeTruthy()

@@ -17,7 +17,7 @@ const SITE_URL = 'https://pulse.ciphera.net'
 export const metadata: Metadata = {
   title: 'Cookieless analytics',
   description:
-    'How cookieless web analytics works: no cookies, no persistent identifiers, no fingerprinting. Pulse counts visits accurately with sessionStorage only — here is the mechanism.',
+    'How cookieless web analytics works: no cookies, no client-side identifiers, no fingerprinting. Pulse counts visits and unique visitors server-side, with nothing identifying stored in the browser — here is the mechanism.',
   alternates: { canonical: '/cookieless-analytics' },
   openGraph: {
     title: 'Cookieless analytics — how it works | Pulse by Ciphera',
@@ -40,12 +40,12 @@ const faqs = [
   {
     question: 'How does cookieless analytics count visitors without cookies?',
     answer:
-      'Pulse counts sessions, not persistent users. When a pageview arrives, the script records the page, referrer, device type, browser and a country derived from the IP at request time — then discards the IP. To group pageviews within a single visit it uses the browser’s sessionStorage, which is cleared when the tab closes and is never shared across sites. There is no cookie and no cross-visit identifier, so nothing follows a person from one day to the next.',
+      'Pulse counts people without profiles. When a pageview arrives, the script records the page, referrer, device type, browser and a country derived from the IP at request time — then discards the IP. Pageviews are grouped entirely server-side: a salted session hash that rotates daily and a visitor hash that rotates monthly, both in the site’s own timezone. The browser stores nothing that identifies anyone — sessionStorage holds only a five-second guard against double-counting a refresh, and it is never sent. There is no cookie and no client-side identifier, so nothing can follow a person across sites or beyond a calendar month.',
   },
   {
     question: 'Is cookieless analytics less accurate than cookie-based tracking?',
     answer:
-      'For the numbers most teams actually use — pageviews, top pages, referrers, entry and exit pages, device and country breakdowns — cookieless is as accurate or more accurate, because it does not depend on consent and is not blocked by tracker-blockers the way cookie-based tools are. The trade-off is that it counts a returning visitor on a new day as a new session rather than stitching them into one long-lived profile. For product-level identity resolution you would still want a dedicated product-analytics tool.',
+      'For the numbers most teams actually use — pageviews, top pages, referrers, entry and exit pages, device and country breakdowns — cookieless is as accurate or more accurate, because it does not depend on consent and is not blocked by tracker-blockers the way cookie-based tools are. The trade-off is that identity is short-lived by design: a returning visitor is deduplicated within a calendar month, never stitched into a long-lived profile, and never recognised across devices or sites. For product-level identity resolution you would still want a dedicated product-analytics tool.',
   },
   {
     question: 'Does Pulse use device fingerprinting instead of cookies?',
@@ -82,14 +82,18 @@ export default function CookielessAnalyticsPage() {
             single anonymous event per pageview containing the page path, the referrer, the device
             type and browser, and a country resolved from the IP address at the moment of the
             request. The IP itself is never stored. To tie the pageviews of one visit together —
-            so an entry page and an exit page belong to the same session — Pulse uses{' '}
-            <code className="font-mono text-sm text-foreground/80">sessionStorage</code>, which the
-            browser wipes the instant the tab closes and never exposes to any other domain.
+            so an entry page and an exit page belong to the same session — the server derives a
+            salted hash that rotates every day, and a second, monthly-rotating hash deduplicates
+            unique visitors; both follow the site&rsquo;s own calendar and neither ever reaches the
+            browser. The only thing the script touches client-side is a five-second{' '}
+            <code className="font-mono text-sm text-foreground/80">sessionStorage</code> guard
+            against double-counting a refresh — never transmitted, wiped with the tab.
           </p>
           <p>
-            There is no cross-session key, no cross-site key, and no fingerprint. A visitor who
-            returns tomorrow is counted as a fresh session rather than re-identified — which is
-            precisely why the method collects no personal data and needs no cookie banner.
+            There is no client-side key, no cross-site key, and no fingerprint. A returning visitor
+            is deduplicated within a calendar month and then the key rotates away — no long-lived
+            profile ever exists, which is precisely why the method collects no personal data and
+            needs no cookie banner.
           </p>
         </div>
       </MarketingSection>
@@ -109,7 +113,7 @@ export default function CookielessAnalyticsPage() {
           </p>
           <p>
             Pulse still gives you the reports teams look at every day: real-time visitors,
-            pageviews, unique sessions, top pages, referrers and UTM campaigns, entry and exit
+            pageviews, unique visitors, top pages, referrers and UTM campaigns, entry and exit
             pages, device, browser and country breakdowns, and custom events for the actions that
             matter. The tracking script is a couple of kilobytes and loads asynchronously, so it
             does not slow the page down. And because the dashboard and script are open (AGPL) with a{' '}

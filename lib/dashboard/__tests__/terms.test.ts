@@ -227,7 +227,7 @@ describe('terms registry', () => {
     // A literal sentence in METRICS[] would drift from the docs page the
     // moment either is edited; the rail must read from the one source.
     expect(deck).toContain('METRIC_TERMS.visitors.definition')
-    expect(deck).not.toContain('A session lasts one UTC day')
+    expect(deck).not.toContain('People, not visits: a returning reader counts once')
     // And it must reach the reader as semantics, not as an unreachable title.
     expect(deck).toContain('aria-describedby={`deck-def-')
     expect(deck).not.toMatch(/title=\{m\.title\}/)
