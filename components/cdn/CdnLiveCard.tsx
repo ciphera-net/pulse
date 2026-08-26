@@ -56,7 +56,10 @@ export function CdnLiveCard({ siteId }: { siteId: string }) {
       <div className="flex flex-col lg:flex-row lg:items-stretch">
         <div className="grid shrink-0 grid-cols-3 lg:flex">
           <Rail widthClass={LIVE_RAIL_W} label="Requests" value={model ? model.requests : '—'} ghost={ghost} />
-          <Rail widthClass={LIVE_RAIL_W} label="Served from cache" value={model ? fmtHitRate(model.hitRate) : '—'} ghost={ghost} />
+          {/* Named like the Edge card's percent rail — "Served from cache" is
+              its BYTES label, and sharing it here made a percent read as a
+              contradiction of the daily figure (closeout ruling 4a). */}
+          <Rail widthClass={LIVE_RAIL_W} label="Cache hit rate" value={model ? fmtHitRate(model.hitRate) : '—'} ghost={ghost} />
           <Rail widthClass={LIVE_RAIL_W} label="Errors" value={model ? model.errors : '—'} ghost={ghost} />
         </div>
         <div className="flex min-w-0 flex-1 items-center border-t border-border px-4 py-3 lg:border-t-0">
