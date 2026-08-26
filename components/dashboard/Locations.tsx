@@ -80,7 +80,8 @@ function getTimezoneCountry(tz: string): string {
     const formatter = new Intl.DateTimeFormat('en', { timeZone: tz })
     const opts = formatter.resolvedOptions()
     // Fallback: map well-known prefixes
-    if (tz.startsWith('Europe/Amsterdam') || tz.startsWith('Europe/Brussels')) return 'NL'
+    if (tz.startsWith('Europe/Brussels')) return 'BE'
+    if (tz.startsWith('Europe/Amsterdam')) return 'NL'
     if (tz.startsWith('America/New_York') || tz.startsWith('America/Chicago') || tz.startsWith('America/Denver') || tz.startsWith('America/Los_Angeles')) return 'US'
     if (tz.startsWith('Europe/London')) return 'GB'
     if (tz.startsWith('Europe/Berlin')) return 'DE'
@@ -103,7 +104,8 @@ function getTimezoneCountry(tz: string): string {
     if (tz.startsWith('Europe/Istanbul')) return 'TR'
     if (tz.startsWith('Europe/Moscow')) return 'RU'
     if (tz.startsWith('Asia/Tokyo')) return 'JP'
-    if (tz.startsWith('Asia/Shanghai') || tz.startsWith('Asia/Hong_Kong')) return 'CN'
+    if (tz.startsWith('Asia/Hong_Kong')) return 'HK'
+    if (tz.startsWith('Asia/Shanghai')) return 'CN'
     if (tz.startsWith('Asia/Seoul')) return 'KR'
     if (tz.startsWith('Asia/Kolkata') || tz.startsWith('Asia/Calcutta')) return 'IN'
     if (tz.startsWith('Asia/Singapore')) return 'SG'

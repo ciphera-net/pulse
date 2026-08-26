@@ -10,6 +10,7 @@ import { useFunnelDetail, useFunnelStats, useSite } from '@/lib/swr/dashboard'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
 import { FUNNEL_EXCLUDED_PRESETS } from '@/lib/constants/periods'
 import { fetchableRange } from '@/lib/dashboard/resolveRange'
+import { presetZoneRange } from '@/components/uptime/uptimeMetrics'
 import { previousDateRange } from '@/lib/hooks/periodUrl'
 import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
 import { type DimensionFilter, serializeFilters, parseFiltersFromURL } from '@/lib/filters'
@@ -52,7 +53,15 @@ export default function FunnelDetailPage() {
     pageKey: 'funnels',
     excludePresets: FUNNEL_EXCLUDED_PRESETS,
   })
-  const fetchRange = fetchableRange(periodReady, dateRange)
+  const { data: site } = useSite(siteId)
+  // * Preset windows re-anchor to the SITE's current day (uptime's device):
+  // * the server cuts day boundaries in the site zone, so which dates get
+  // * requested must come from the site's calendar too, or "Today" means the
+  // * viewer's today (closeout F2). A custom pick passes through.
+  const fetchRange = useMemo(
+    () => fetchableRange(periodReady, period === 'custom' ? dateRange : presetZoneRange(dateRange, site?.timezone ?? null)),
+    [periodReady, period, dateRange, site?.timezone],
+  )
 
   // ── Dashboard filter system, URL-synced with the dashboard's exact codec ──
   const [filters, setFilters] = useState<DimensionFilter[]>(() => {
@@ -88,7 +97,6 @@ export default function FunnelDetailPage() {
   const fetchSuggestions = useFilterSuggestions(siteId, dateRange, filtersParam || undefined)
   const filterBuilder = useFilterBuilder(fetchSuggestions)
 
-  const { data: site } = useSite(siteId)
   const {
     data: funnel,
     error: funnelError,
