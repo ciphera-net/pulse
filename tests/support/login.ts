@@ -1,4 +1,6 @@
 import type { Page } from '@playwright/test'
+import { createHmac } from 'node:crypto'
+import { existsSync, readFileSync, statSync, unlinkSync } from 'node:fs'
 
 /**
  * Shared OPAQUE login helper for authed smoke/E2E specs.
@@ -17,7 +19,22 @@ import type { Page } from '@playwright/test'
  */
 
 const EMAIL = process.env.CIPHERA_ID_EMAIL
-const PASSWORD = process.env.CIPHERA_SETTINGS_SMOKE_PASSWORD
+// Accept either name. The workspace .env ships CIPHERA_ID_PASSWORD, and every
+// run of this suite used to fail on a variable nobody had.
+const PASSWORD =
+  process.env.CIPHERA_SETTINGS_SMOKE_PASSWORD ?? process.env.CIPHERA_ID_PASSWORD
+
+/**
+ * Base32 secret for the account's authenticator, if it has one.
+ *
+ * 🔴 Ciphera ID enforces a second factor on this account, and this helper had
+ * no step for it — so EVERY authed spec in this repo was failing at the
+ * six-digit prompt, not at whatever it meant to test. Set this and the suite
+ * runs unattended; leave it unset and an interactive run can drop a code in
+ * TOTP_FILE instead.
+ */
+const TOTP_SECRET = process.env.CIPHERA_ID_TOTP_SECRET
+const TOTP_FILE = process.env.CIPHERA_ID_TOTP_FILE ?? '/tmp/pulse-totp.txt'
 
 /** True while the browser is sitting on the Ciphera ID origin (login/redirect). */
 function onIdOrigin(url: string): boolean {
@@ -28,10 +45,96 @@ export function requireCredentials(): { email: string; password: string } {
   if (!EMAIL || !PASSWORD) {
     throw new Error(
       'Missing credentials: set CIPHERA_ID_EMAIL and CIPHERA_SETTINGS_SMOKE_PASSWORD ' +
-        'in the environment before running the authed smoke suite.',
+        '(or CIPHERA_ID_PASSWORD) before running the authed smoke suite.',
     )
   }
   return { email: EMAIL, password: PASSWORD }
+}
+
+
+/** RFC 4648 base32 -> bytes. Authenticator secrets are base32, often padded. */
+function base32Decode(input: string): Buffer {
+  const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+  const clean = input.replace(/=+$/, '').replace(/\s+/g, '').toUpperCase()
+  let bits = 0
+  let value = 0
+  const out: number[] = []
+  for (const ch of clean) {
+    const idx = A.indexOf(ch)
+    if (idx === -1) throw new Error(`CIPHERA_ID_TOTP_SECRET is not valid base32 (bad char ${ch})`)
+    value = (value << 5) | idx
+    bits += 5
+    if (bits >= 8) {
+      out.push((value >>> (bits - 8)) & 0xff)
+      bits -= 8
+    }
+  }
+  return Buffer.from(out)
+}
+
+/**
+ * RFC 6238 TOTP — SHA-1, 6 digits, 30s step, which is what authenticator apps
+ * and id-backend both assume. Implemented here rather than pulled in as a
+ * dependency: it is twenty lines and this is a test helper.
+ */
+export function totpCode(secret: string, at: number = Date.now()): string {
+  const counter = Math.floor(at / 1000 / 30)
+  const msg = Buffer.alloc(8)
+  msg.writeUInt32BE(Math.floor(counter / 2 ** 32), 0)
+  msg.writeUInt32BE(counter >>> 0, 4)
+  const digest = createHmac('sha1', base32Decode(secret)).update(msg).digest()
+  const offset = digest[digest.length - 1] & 0x0f
+  const bin =
+    ((digest[offset] & 0x7f) << 24) |
+    ((digest[offset + 1] & 0xff) << 16) |
+    ((digest[offset + 2] & 0xff) << 8) |
+    (digest[offset + 3] & 0xff)
+  return String(bin % 1_000_000).padStart(6, '0')
+}
+
+/**
+ * A six-digit code, from the secret if we have one, otherwise from a file a
+ * human drops in.
+ *
+ * The file path deliberately does NOT clear on entry and accepts anything
+ * written in the last two minutes: a person will often paste the code before
+ * the browser reaches the prompt, and deleting it here would throw away the one
+ * thing we are waiting for. A stale code from an earlier run is refused instead
+ * of being replayed into a confusing login failure.
+ */
+async function secondFactorCode(page: Page): Promise<string> {
+  if (TOTP_SECRET) return totpCode(TOTP_SECRET)
+
+  // eslint-disable-next-line no-console
+  console.log(`\n>>> Ciphera ID wants a 6-digit code. Write one to ${TOTP_FILE} <<<\n`)
+  for (let i = 0; i < 900; i++) {
+    if (existsSync(TOTP_FILE)) {
+      const code = readFileSync(TOTP_FILE, 'utf8').trim()
+      const fresh = Date.now() - statSync(TOTP_FILE).mtimeMs < 120_000
+      if (/^\d{6}$/.test(code) && fresh) {
+        unlinkSync(TOTP_FILE)
+        return code
+      }
+    }
+    await page.waitForTimeout(500)
+  }
+  throw new Error(
+    'Ciphera ID asked for a second factor and none arrived. Set ' +
+      'CIPHERA_ID_TOTP_SECRET for unattended runs, or write a fresh code to ' +
+      TOTP_FILE,
+  )
+}
+
+/**
+ * Answers the six-digit prompt if id-backend raises one. No-op otherwise, so
+ * it is safe on an account without a second factor.
+ */
+async function handleSecondFactor(page: Page): Promise<void> {
+  const otp = page.locator('input[placeholder="6-digit code"]')
+  await otp.waitFor({ state: 'visible', timeout: 8_000 }).catch(() => {})
+  if ((await otp.count()) === 0) return
+  await otp.fill(await secondFactorCode(page))
+  await page.click('button:has-text("Verify code")')
 }
 
 /**
@@ -49,6 +152,7 @@ export async function handleLogin(page: Page): Promise<void> {
   await page.fill('input[placeholder="you@example.com"]', email)
   await page.fill('input[placeholder="Enter your password"]', password)
   await page.click('button:has-text("Sign in")')
+  await handleSecondFactor(page)
 
   await page.waitForURL((url) => !onIdOrigin(url.toString()), { timeout: 20_000 })
   await page.waitForLoadState('networkidle')
@@ -83,7 +187,8 @@ export async function login(page: Page, baseURL: string): Promise<void> {
     await page.fill('input[placeholder="you@example.com"]', email)
     await page.fill('input[placeholder="Enter your password"]', password)
     await page.click('button:has-text("Sign in")')
-    await page.waitForURL((url) => !onIdOrigin(url.toString()), { timeout: 30_000 })
+    await handleSecondFactor(page)
+    await page.waitForURL((url) => !onIdOrigin(url.toString()), { timeout: 60_000 })
   }
 
   await page.waitForLoadState('networkidle').catch(() => {})
