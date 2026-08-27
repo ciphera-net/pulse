@@ -37,6 +37,36 @@ vi.mock('@/components/skeletons', () => ({
   useSkeletonFade: () => '',
 }))
 
+// 🔴 Facet must be mocked here, and this file was the ONLY page test in the
+// repo that did not mock it (34 siblings do).
+//
+// Unmocked, the 401 branch below mounts the REAL Captcha, whose mount effect
+// fires a live fetch at the deliberately-unreachable host in vitest.setup.ts.
+// That request can settle AFTER vitest tears this file's jsdom down — teardown
+// deletes `window` from the global — so the continuation throws
+// `ReferenceError: window is not defined` attributed to no test at all. It
+// fails the WHOLE step while every test passes, which reads as a broken build
+// rather than a flake. Seen once on pipeline 987; green on 986/988/989 and
+// 1021/1021 locally, because `test.invalid` resolves in ~20ms here and only a
+// slower CI resolver loses the race.
+//
+// Facet 0.11.1 also aborts that request on unmount, so the leak is closed at
+// the source too — but a page test should not be making a network call for a
+// component it is not exercising.
+vi.mock('@ciphera-net/facet', () => ({
+  Captcha: ({ onVerify }: any) => (
+    <button data-testid="captcha" onClick={() => onVerify?.('', '', 'test-token')}>
+      captcha
+    </button>
+  ),
+  Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+  LoadingOverlay: () => <div data-testid="loading-overlay" />,
+  toast: { success: vi.fn(), error: vi.fn() },
+  getAuthErrorMessage: () => 'error',
+  DownloadIcon: () => <span />,
+  ZapIcon: () => <span />,
+}))
+
 import SharePage from '@/app/share/[id]/page'
 
 const dashboardPayload = {
