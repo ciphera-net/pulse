@@ -18,7 +18,6 @@ export function isAuthedAppRoute(pathname: string): boolean {
     pathname === '/sites' ||
     pathname === '/sites/new' ||
     pathname === '/notifications' ||
-    pathname.startsWith('/settings') ||
-    pathname.startsWith('/admin')
+    pathname.startsWith('/settings')
   )
 }

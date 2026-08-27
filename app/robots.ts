@@ -27,7 +27,6 @@ const PUBLIC_ALLOW = [
 // * crawlable metadata instead).
 const APP_DISALLOW = [
   '/api/',
-  '/admin/',
   '/sites',
   '/notifications/',
   '/onboarding/',
