@@ -78,12 +78,16 @@ describe('SessionTakeover', () => {
 
 describe('isAuthedAppRoute', () => {
   it('covers app routes and excludes public/marketing surfaces', () => {
-    for (const p of ['/sites', '/sites/new', '/sites/abc/uptime', '/notifications', '/settings/account', '/admin']) {
+    for (const p of ['/sites', '/sites/new', '/sites/abc/uptime', '/notifications', '/settings/account']) {
       expect(isAuthedAppRoute(p), p).toBe(true)
     }
     // Public dashboard-shell routes server-render marketing for crawlers by
     // design; marketing pages are obviously out.
-    for (const p of ['/', '/pricing', '/integrations/gsc', '/installation', '/faq', '/login', '/setup/site', '/join', '/checkout']) {
+    // '/admin' is in this list BECAUSE THE CONSOLE IS GONE (P3). It moved to
+    // Warden, which is Teleport-gated and not in this repo — so /admin is no
+    // longer an app route here, and asserting that is how a re-added one gets
+    // noticed.
+    for (const p of ['/', '/pricing', '/integrations/gsc', '/installation', '/faq', '/login', '/setup/site', '/join', '/checkout', '/admin']) {
       expect(isAuthedAppRoute(p), p).toBe(false)
     }
   })

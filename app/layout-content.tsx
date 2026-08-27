@@ -26,7 +26,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   // Pages that use DashboardShell with home sidebar (no site context). `/sites`
   // is the authenticated home (public `/` server-renders marketing and
   // redirects signed-in visitors here via middleware).
-  const isDashboardPage = pathname === '/sites' || pathname.startsWith('/integrations') || pathname === '/pricing' || pathname === '/installation' || pathname === '/notifications' || pathname === '/sites/new' || pathname.startsWith('/settings') || pathname.startsWith('/admin')
+  const isDashboardPage = pathname === '/sites' || pathname.startsWith('/integrations') || pathname === '/pricing' || pathname === '/installation' || pathname === '/notifications' || pathname === '/sites/new' || pathname.startsWith('/settings')
   // Public dashboard-shell routes (/pricing, /integrations/*) must SERVER-RENDER
   // their marketing variant for crawlers, so they are excluded from the
   // "hold a blank frame while the auth probe runs" guard below. Anonymous
