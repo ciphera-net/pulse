@@ -24,7 +24,7 @@ function NotificationsContent() {
   const state = params.get('state') ?? 'all'
   const categories = (params.get('category') ?? '').split(',').filter(Boolean)
 
-  const { receipts, unreadCount, loading, error, refresh } = useNotifications({
+  const { receipts, unreadCount, totalCount, loading, error, refresh } = useNotifications({
     unread: state === 'unread',
     category: categories.length ? categories : undefined,
     limit: 100,
@@ -38,9 +38,14 @@ function NotificationsContent() {
         <h1 className="text-2xl font-semibold text-white">Notifications</h1>
       </header>
       <TransparencyBanner />
+      {/* Two different counts, deliberately. FilterChips' "All · N" describes
+          THIS VIEW, so receipts.length is right for it. BulkActionBar's purge
+          deletes everything the user has regardless of the filter, so it needs
+          the unfiltered total — passing receipts.length there is what made the
+          confirmation understate what it was about to destroy. */}
       <FilterChips unreadCount={unreadCount} totalCount={receipts.length} />
       {!loading && !error && (
-        <BulkActionBar totalCount={receipts.length} unreadCount={unreadCount} onChange={refresh} />
+        <BulkActionBar purgeCount={totalCount} unreadCount={unreadCount} onChange={refresh} />
       )}
 
       {loading && <div className="text-neutral-500 text-sm py-12 text-center">Loading…</div>}
