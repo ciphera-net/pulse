@@ -5,6 +5,12 @@ import type { Receipt } from '@/lib/notifications/types'
 export interface UseNotificationsResult {
   receipts: Receipt[]
   unreadCount: number
+  /**
+   * The user's ENTIRE receipt count, independent of the filters passed to this
+   * hook — distinct from `receipts.length`, which is the current page.
+   * `null` = the server could not count it. Callers must not coerce that to 0.
+   */
+  totalCount: number | null
   loading: boolean
   error: Error | null
   refresh: () => void
@@ -13,6 +19,7 @@ export interface UseNotificationsResult {
 export function useNotifications(params: ListParams): UseNotificationsResult {
   const [receipts, setReceipts] = useState<Receipt[]>([])
   const [unreadCount, setUnread] = useState(0)
+  const [totalCount, setTotal] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   const [version, setVersion] = useState(0)
@@ -27,6 +34,7 @@ export function useNotifications(params: ListParams): UseNotificationsResult {
         if (cancelled) return
         setReceipts(r.receipts)
         setUnread(r.unread_count)
+        setTotal(r.total_count)
         setError(null)
       })
       .catch((e: Error) => {
@@ -43,5 +51,5 @@ export function useNotifications(params: ListParams): UseNotificationsResult {
 
   const refresh = useCallback(() => setVersion(v => v + 1), [])
 
-  return { receipts, unreadCount, loading, error, refresh }
+  return { receipts, unreadCount, totalCount, loading, error, refresh }
 }
