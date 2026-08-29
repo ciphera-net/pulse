@@ -57,8 +57,12 @@ export interface SiteExportReadyPayload { export_id: string; site_id: string }
 export interface TeamMemberInvitedPayload { inviter_user_id: string }
 export interface TeamMemberJoinedPayload { user_id: string }
 export interface TeamRoleChangedPayload { user_id: string; new_role: string }
-export interface SystemAnnouncementPayload { announcement_id: string }
-export interface SystemMaintenancePayload { starts_at: string; ends_at: string }
+// The announcement's words, not a reference to a record that has no home.
+// `announcement_id` was the shape until 29-08-2026; nothing ever stored one.
+export interface SystemAnnouncementPayload { title: string; body: string }
+// starts_at/ends_at are OPTIONAL: the Warden composer collects no dates, so a
+// maintenance notice must read correctly without a window.
+export interface SystemMaintenancePayload { title: string; body: string; starts_at?: string; ends_at?: string }
 export interface BillingSubscriptionCanceledPayload { plan_id: string }
 export interface BillingInvoiceSentPayload { invoice_number: string; amount: string; currency: string; plan_name: string }
 export interface BillingPageview80Payload { }
