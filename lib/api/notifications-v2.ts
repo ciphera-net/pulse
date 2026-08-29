@@ -24,6 +24,17 @@ export interface ListParams {
 export interface ListResponse {
   receipts: Receipt[]
   unread_count: number
+  /**
+   * Every receipt the user has — NOT narrowed by limit/offset/unread/category,
+   * because the purge it describes is not narrowed either: DELETE
+   * /notifications/mine takes no filter parameters and removes all of them.
+   *
+   * 🔴 `null` means the server could not count, and must stay null rather than
+   * becoming 0. It is rendered inside a destructive confirmation, where a
+   * fabricated 0 would understate what is about to be destroyed — which is the
+   * bug this field was added to fix.
+   */
+  total_count: number | null
 }
 
 function normalizeReceipt(r: any): Receipt {
@@ -52,10 +63,13 @@ export async function listNotifications(p: ListParams = {}): Promise<ListRespons
   if (p.unread) qs.set('unread', 'true')
   if (p.category?.length) qs.set('category', p.category.join(','))
   const url = '/notifications' + (qs.toString() ? '?' + qs : '')
-  const raw = await apiRequest<{ receipts: any[]; unread_count: number }>(url)
+  const raw = await apiRequest<{ receipts: any[]; unread_count: number; total_count?: number | null }>(url)
   return {
     receipts: (raw.receipts ?? []).map(normalizeReceipt),
     unread_count: raw.unread_count ?? 0,
+    // `?? null`, never `?? 0` — see the field doc. This also covers a backend
+    // that predates the field, which must read as "unknown", not as "none".
+    total_count: raw.total_count ?? null,
   }
 }
 

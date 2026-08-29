@@ -4,12 +4,26 @@ import { markAllRead, purgeMine } from '@/lib/api/notifications-v2'
 import PurgeConfirmDialog from './PurgeConfirmDialog'
 
 interface BulkActionBarProps {
-  totalCount: number
+  /**
+   * Every receipt the user has — NOT the visible page. "Purge mine" deletes all
+   * of them regardless of the active filter or the 100-row page cap, so this is
+   * the only honest number to state in the confirmation, and the only honest
+   * basis for disabling the button.
+   *
+   * Until 29-08-2026 this prop was passed `receipts.length`, so a filtered view
+   * could tell the user it was deleting 3 things while it deleted 300.
+   *
+   * `null` = the server could not count. The dialog then states no number at
+   * all, and the button stays ENABLED: not knowing the count is not a reason to
+   * block a user from clearing their own history, and the no-number wording is
+   * honest about what will happen.
+   */
+  purgeCount: number | null
   unreadCount: number
   onChange: () => void
 }
 
-export default function BulkActionBar({ totalCount, unreadCount, onChange }: BulkActionBarProps) {
+export default function BulkActionBar({ purgeCount, unreadCount, onChange }: BulkActionBarProps) {
   const [purging, setPurging] = useState(false)
   const [busy, setBusy] = useState(false)
 
@@ -43,7 +57,7 @@ export default function BulkActionBar({ totalCount, unreadCount, onChange }: Bul
         <button
           type="button"
           onClick={() => setPurging(true)}
-          disabled={totalCount === 0 || busy}
+          disabled={purgeCount === 0 || busy}
           className="inline-flex min-h-11 items-center md:min-h-0 text-red-400 hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Purge mine
@@ -51,7 +65,7 @@ export default function BulkActionBar({ totalCount, unreadCount, onChange }: Bul
       </div>
       {purging && (
         <PurgeConfirmDialog
-          count={totalCount}
+          count={purgeCount}
           onCancel={() => setPurging(false)}
           onConfirm={async () => {
             await purgeMine()
