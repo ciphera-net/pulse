@@ -8,6 +8,12 @@ export interface OpaqueReauthOptions {
   /** Frontend PBKDF2 blind index (computeBlindIndex) — the server lookup key.
    *  Matches performOpaqueLogin: the caller computes it from the typed email. */
   blindIndex: string
+  /** The ONE ceremony this token may be spent on (29-08-2026). The server
+   *  stores "<purpose>:<userID>" and requires both halves to match at consume,
+   *  so a delete-account token can never buy an email change or vice versa.
+   *  Required once ciphera-id #51 deploys; the older backend ignores the extra
+   *  field, which is why the frontends ship it FIRST. */
+  purpose: 'del' | 'eml'
 }
 
 /**
@@ -40,6 +46,8 @@ export async function performOpaqueReauth(opts: OpaqueReauthOptions): Promise<st
     blindIndex: opts.blindIndex,
     mode: 'login',
     basePath: '/auth/reauth',
+    // Rides the finish body via loginExtras — the same seam device signals use.
+    loginExtras: { purpose: opts.purpose },
   })
   try {
     await new Tessera(transport).login({

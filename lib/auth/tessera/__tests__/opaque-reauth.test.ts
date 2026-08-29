@@ -61,6 +61,7 @@ describe('performOpaqueReauth', () => {
       email: 'user@example.com',
       password: 'hunter2',
       blindIndex: 'bi-123',
+      purpose: 'del',
     })
 
     expect(token).toBe('tok-abc123')
@@ -81,7 +82,7 @@ describe('performOpaqueReauth', () => {
     })
 
     await expect(
-      performOpaqueReauth({ email: 'user@example.com', password: 'hunter2', blindIndex: 'bi-123' })
+      performOpaqueReauth({ email: 'user@example.com', password: 'hunter2', blindIndex: 'bi-123', purpose: 'del' })
     ).rejects.toThrow()
   })
 
@@ -95,7 +96,7 @@ describe('performOpaqueReauth', () => {
     })
 
     await expect(
-      performOpaqueReauth({ email: 'user@example.com', password: 'wrong', blindIndex: 'bi-123' })
+      performOpaqueReauth({ email: 'user@example.com', password: 'wrong', blindIndex: 'bi-123', purpose: 'del' })
     ).rejects.toThrow('bad password 401')
   })
 })

@@ -292,6 +292,9 @@ export function useReauthModal(): {
         email: trimmed,
         password: request.password,
         blindIndex: await computeBlindIndex(trimmed),
+        // This branch mints ONLY delete tokens. When Pulse's email op moves to
+        // the two-stage ceremony it mints its own 'eml' token — never this one.
+        purpose: 'del',
       })
       return { reauthToken }
     },
