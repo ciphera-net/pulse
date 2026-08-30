@@ -143,6 +143,17 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
     setCollectAudienceData(site.collect_audience_data ?? true)
     setCollectGeoData(site.collect_geo_data ?? 'full')
     setHideUnknownLocations(site.hide_unknown_locations ?? false)
+    // 🔴 THIS LINE WAS MISSING, and its absence caused two visible bugs at once.
+    // The BASELINE below reads visitor_views_enabled from the site, but the state
+    // stayed at its useState(false) default — so on a site with the toggle ON the
+    // switch rendered OFF, and state(false) vs baseline(true) made the tab report
+    // 'Unsaved changes' the instant it opened, before anyone touched anything.
+    //
+    // The third consequence was the dangerous one: pressing Save on that screen
+    // would have written visitor_views_enabled = false and silently switched the
+    // feature off. Seeding state and baseline from the same source is the whole
+    // contract of this effect; every other field here already honoured it.
+    setVisitorViewsEnabled(site.visitor_views_enabled ?? false)
     setDataRetention(site.data_retention_months ?? 6)
     setAutoGroupDynamic(site.auto_group_dynamic_paths ?? true)
     setPageRules(site.page_rules || [])

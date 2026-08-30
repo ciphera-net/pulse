@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { useSWRConfig } from 'swr'
 import { UsersThree } from '@phosphor-icons/react'
 import { toast, getAuthErrorMessage } from '@ciphera-net/facet'
-import { updateSite } from '@/lib/api/sites'
+import { updateSite, type Site } from '@/lib/api/sites'
 import { useCan } from '@/lib/auth/permissions'
 
 // ─── The default-OFF room (approved round 1, §9a.6) ─────────────────
@@ -20,19 +21,59 @@ import { useCan } from '@/lib/auth/permissions'
 // data existing.
 
 interface VisitorsOffRoomProps {
-  siteId: string
-  domain: string
+  /**
+   * The WHOLE site, not just its domain.
+   *
+   * 🔴 It used to take `domain` and send `{ name: domain }`, because the update
+   * endpoint requires a name. That RENAMED THE SITE TO ITS DOMAIN on every
+   * enable — measured in production: "Ciphera" became "ciphera.net" the moment
+   * the owner pressed the button. PUT /sites/:id merges omitted fields against
+   * the stored row, but `name` is `binding:"required"` and so cannot be
+   * omitted; the only correct value to send is the one already there, which is
+   * exactly what SitePrivacyTab does (`name: site!.name`).
+   */
+  site: Site
   onEnabled: () => void
 }
 
-export function VisitorsOffRoom({ siteId, domain, onEnabled }: VisitorsOffRoomProps) {
+export function VisitorsOffRoom({ site, onEnabled }: VisitorsOffRoomProps) {
   const canEdit = useCan('sites.edit')
   const [saving, setSaving] = useState(false)
+  // 🔴 The BOUND mutate. The global `mutate` from 'swr' writes to the default
+  // cache, which nothing in this app reads — SWRConfig mounts a custom provider
+  // — so it is a silent no-op (pulse#412/#413).
+  const { mutate } = useSWRConfig()
 
   async function enable() {
     setSaving(true)
     try {
-      await updateSite(siteId, { name: domain, visitor_views_enabled: true })
+      const updated = await updateSite(site.id, {
+        // The stored name, never the domain. See the prop's comment.
+        name: site.name,
+        visitor_views_enabled: true,
+      })
+
+      // Seed the site cache with the server's own answer — no refetch needed,
+      // and no window where the page still believes the toggle is off.
+      await mutate(['site', site.id], updated, { revalidate: false })
+
+      // 🔴 AND DROP THE VISITORS CACHES. Without this the page kept showing
+      // this very room after a success toast, until the user refreshed.
+      //
+      // The reason is not obvious: useVisitors had already failed with the
+      // toggle-off 403, and dashboardSWRConfig deliberately does NOT retry a
+      // 403. SWR therefore holds that error until something revalidates the
+      // key — and the key does not change when the site does. So the page's
+      // "API says disabled" branch stayed true against a site that was now
+      // enabled. Clearing the data forces those hooks back into loading and
+      // refetching, which is what clears the error.
+      await mutate(
+        (key) => Array.isArray(key) && typeof key[0] === 'string'
+          && key[0].startsWith('visitor') && key[1] === site.id,
+        undefined,
+        { revalidate: true },
+      )
+
       toast.success('Visitor views enabled')
       onEnabled()
     } catch (err) {
@@ -63,7 +104,7 @@ export function VisitorsOffRoom({ siteId, domain, onEnabled }: VisitorsOffRoomPr
       <div className="mt-6 flex items-center justify-between border border-border px-3 py-2.5">
         <span className="flex items-center gap-2 text-sm text-neutral-300">
           <span className="size-1.5 rounded-full bg-neutral-600" aria-hidden="true" />
-          Off for {domain}
+          Off for {site.domain}
         </span>
         <span className="text-xs text-neutral-500">collection unchanged</span>
       </div>
