@@ -9,6 +9,42 @@ public read API's — see that entry for what it does and does not cover.
 
 ## [Unreleased]
 
+### Added
+
+- **Visitors — a per-visitor view of your own analytics, off by default.** A new page
+  under Analytics (`G V`) lists the readers seen in a range and drills into one of
+  them: their visits, the pages of each visit in order, dwell per page, and any custom
+  events they fired with their full properties. There is a live mode with rolling
+  windows down to the last 30 minutes.
+
+  **This changes what Pulse will show you, not what Pulse collects.** Every column the
+  page reads was already being written for every site; the switch controls whether
+  anyone can read it at visitor grain. It is **off for every site, including existing
+  ones**, and turning it on is a deliberate act by a site owner that is recorded in
+  your organisation's audit trail. Settings → Site → Privacy → Visitor views.
+
+  **What a "visitor" is here, exactly.** A server-derived pseudonymous key, re-minted
+  at the start of every calendar month in your site's timezone. It carries no name, no
+  email, no account, no cookie and nothing stored on the reader's device, it cannot be
+  linked to the same person on another site, and at the end of the month it stops
+  existing — a returning reader comes back as a new visitor, under a new name. The
+  page says so on its face rather than in a footnote. History begins **26 Aug 2026**,
+  the day monthly identity was introduced; the date picker will not offer earlier days,
+  because earlier rows have no monthly key at all and showing them would label
+  per-day identities as if they were per-month ones.
+
+  **What it deliberately cannot reach.** Visitor-level data never appears on a public
+  share link, in the public read API, in an export, or on the internal admin surface —
+  four exclusions pinned by tests rather than by convention, because Pulse runs a live
+  public demo through the share surface. Sessions Cerberus has convicted stay invisible
+  here exactly as everywhere else. The n≥5 privacy floor on the public API is untouched.
+
+  Some of our own wording had to change with it: several pages said Pulse keeps "no
+  individual records" or is "architecturally incapable of identifying individual
+  people". The second half of that was always the load-bearing part and is unchanged —
+  Pulse still cannot tell you who someone is — but "no individual records" stopped being
+  true the moment this page existed, so it has been rewritten rather than left to age.
+
 ### Changed
 
 - **The tracking script sends engagement to a path ad blockers do not cancel, and

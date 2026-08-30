@@ -105,10 +105,12 @@ export default function GdprCompliantAnalyticsPage() {
         <div className="mt-6 max-w-3xl space-y-5 text-base leading-relaxed text-muted-foreground">
           <p>
             Data minimisation is a GDPR principle, not just a nicety: you should collect only what
-            you need. Pulse takes that literally by measuring traffic in aggregate and keeping no
-            individual-level profiles. There is nothing to leak in a breach that could identify a
-            visitor, nothing to hand over in a data-subject access request about a visitor, and
-            nothing to delete on request — because it was never collected.
+            you need. Pulse takes that literally. No name, no email, no account, no cross-site
+            identity, and no identifier that outlives a calendar month — so there is nothing in a
+            breach that could identify a visitor, and a data-subject request about one cannot be
+            answered because the data has never been linkable to a person in the first place.
+            Visitor-level views group a month&rsquo;s pageviews under a pseudonym that is re-minted
+            every month; they are off by default and switched on per site by its owner.
           </p>
           <p>
             Jurisdiction matters too. Pulse is operated by Ciphera BV, a Belgian company, with data

@@ -40,7 +40,7 @@ const faqs = [
   {
     question: 'How does cookieless analytics count visitors without cookies?',
     answer:
-      'Pulse counts people without profiles. When a pageview arrives, the script records the page, referrer, device type, browser and a country derived from the IP at request time — then discards the IP. Pageviews are grouped entirely server-side: a salted session hash that rotates daily and a visitor hash that rotates monthly, both in the site’s own timezone. The browser stores nothing that identifies anyone — sessionStorage holds only a five-second guard against double-counting a refresh, and it is never sent. There is no cookie and no client-side identifier, so nothing can follow a person across sites or beyond a calendar month.',
+      'Pulse counts people without ever learning who they are. When a pageview arrives, the script records the page, referrer, device type, browser and a country derived from the IP at request time — then discards the IP. Pageviews are grouped entirely server-side: a salted session hash that rotates daily and a visitor hash that rotates monthly, both in the site’s own timezone. The browser stores nothing that identifies anyone — sessionStorage holds only a five-second guard against double-counting a refresh, and it is never sent. There is no cookie and no client-side identifier, so nothing can follow a person across sites or beyond a calendar month.',
   },
   {
     question: 'Is cookieless analytics less accurate than cookie-based tracking?',
@@ -93,7 +93,9 @@ export default function CookielessAnalyticsPage() {
             There is no client-side key, no cross-site key, and no fingerprint. A returning visitor
             is deduplicated within a calendar month and then the key rotates away — no long-lived
             profile ever exists, which is precisely why the method collects no personal data and
-            needs no cookie banner.
+            needs no cookie banner. A site owner can switch on visitor-level views to read that
+            month&rsquo;s groupings one reader at a time; the month is still the horizon, and the
+            key is still gone at the end of it.
           </p>
         </div>
       </MarketingSection>
