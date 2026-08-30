@@ -212,6 +212,36 @@ test('the Visitors surface renders the approved design on staging', async ({ pag
     await expect(page.getByText('Pulse collects the same data either way')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Enable visitor views' })).toBeVisible()
     await page.screenshot({ path: `${SHOTS}/staging-off.png` })
+
+    // ─── 6b. ACTUALLY PRESS THE BUTTON ─────────────────────────────
+    //
+    // 🔴 THIS STEP EXISTS BECAUSE ITS ABSENCE SHIPPED THREE BUGS. The earlier
+    // walkthrough RENDERED this room and never clicked it, so it verified the
+    // door and not the doorway: enabling renamed the site to its domain, the
+    // room survived its own success toast until a manual refresh, and the
+    // settings tab opened dirty with the toggle inverted. A capture of a room
+    // is not a test of its door.
+    if (process.env.VISITORS_CLICK_ENABLE === '1') {
+      const nameBefore = await page
+        .locator('nav a, header a, [aria-label*="readcrumb"] a')
+        .filter({ hasText: /\S/ })
+        .allInnerTexts()
+        .catch(() => [] as string[])
+
+      await page.getByRole('button', { name: 'Enable visitor views' }).click()
+
+      // The room must go WITHOUT a reload. It used to persist because SWR held
+      // the toggle-off 403 against a key that never changes when the site does.
+      await expect(page.getByText('Visitor-level views are off')).toBeHidden({ timeout: 20_000 })
+      await expect(page.getByRole('heading', { name: 'Visitors', level: 1 })).toBeVisible()
+      await page.screenshot({ path: `${SHOTS}/staging-after-enable.png` })
+
+      // The breadcrumb still names the SITE, not its domain — the rename bug
+      // would have turned "[QA] Visitors Off" into "qa-visitors-off.example.com".
+      const crumbs = (await page.locator('header, nav').first().innerText()).toLowerCase()
+      expect(crumbs).not.toContain('qa-visitors-off.example.com')
+      void nameBefore
+    }
   }
 
   // ─── 7. The DASHBOARD, for side-by-side icon comparison ──────────
