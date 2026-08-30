@@ -36,6 +36,26 @@ const PASSWORD =
 const TOTP_SECRET = process.env.CIPHERA_ID_TOTP_SECRET
 const TOTP_FILE = process.env.CIPHERA_ID_TOTP_FILE ?? '/tmp/pulse-totp.txt'
 
+/**
+ * How long an interactive run waits for a pasted code.
+ *
+ * 🔴 WIDENED FROM 450 s TO 20 MIN ON 30-08-2026, after two consecutive runs
+ * timed out for the same reason: the window assumed someone already watching
+ * the terminal. They usually are not — they are asked for a code, go and open
+ * an authenticator, and by then the run has given up and burned a login
+ * attempt. 450 s is a fine budget for a machine and a poor one for a person.
+ *
+ * Cost, stated: an interactive run that nobody answers now hangs for 20 minutes
+ * instead of 7½. That is the correct trade — an abandoned run costs idle time,
+ * whereas one that gives up too early costs a real login attempt AND the
+ * operator's second trip to their phone. Unattended runs are unaffected: they
+ * set CIPHERA_ID_TOTP_SECRET and never reach this loop.
+ *
+ * Override with CIPHERA_ID_TOTP_WAIT_SECONDS where a fast fail is wanted (CI, or
+ * a scripted run that must not block).
+ */
+const TOTP_WAIT_MS = Number(process.env.CIPHERA_ID_TOTP_WAIT_SECONDS ?? 1200) * 1000
+
 /** True while the browser is sitting on the Ciphera ID origin (login/redirect). */
 function onIdOrigin(url: string): boolean {
   return url.includes('id-staging') || url.includes('id.ciphera')
@@ -106,8 +126,12 @@ async function secondFactorCode(page: Page): Promise<string> {
   if (TOTP_SECRET) return totpCode(TOTP_SECRET)
 
   // eslint-disable-next-line no-console
-  console.log(`\n>>> Ciphera ID wants a 6-digit code. Write one to ${TOTP_FILE} <<<\n`)
-  for (let i = 0; i < 900; i++) {
+  console.log(
+    `\n>>> Ciphera ID wants a 6-digit code. Write one to ${TOTP_FILE} ` +
+      `(waiting up to ${Math.round(TOTP_WAIT_MS / 60_000)} min) <<<\n`,
+  )
+  const ticks = Math.ceil(TOTP_WAIT_MS / 500)
+  for (let i = 0; i < ticks; i++) {
     if (existsSync(TOTP_FILE)) {
       const code = readFileSync(TOTP_FILE, 'utf8').trim()
       const fresh = Date.now() - statSync(TOTP_FILE).mtimeMs < 120_000
