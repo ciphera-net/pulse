@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from 'node:fs'
 import { test, expect } from '@playwright/test'
 import { login } from './support/login'
 
@@ -35,11 +36,45 @@ const SHOTS = process.env.VISITORS_SHOT_DIR ?? '/tmp/visitors-staging'
 // rendered at, so a capture here is directly comparable to round4-*.png.
 test.use({ viewport: { width: 1440, height: 1000 } })
 
+/**
+ * Where to cache the signed-in session between runs.
+ *
+ * 🔴 EVERY RUN OF THIS SPEC COSTS A HUMAN A TRIP TO AN AUTHENTICATOR. Iterating
+ * on the walkthrough itself — a stale selector, a missing capture — then costs
+ * one code per iteration, and getting through this one took four. Caching the
+ * session after a successful login makes every later run free until the refresh
+ * token expires.
+ *
+ * ⚠️ THE FILE IS A LIVE CREDENTIAL. Scratch directory only — never the repo,
+ * never a fixture — and delete it when the debugging session ends. Leave
+ * VISITORS_STORAGE_STATE unset to always log in fresh.
+ */
+const STATE_PATH = process.env.VISITORS_STORAGE_STATE ?? ''
+
 test('the Visitors surface renders the approved design on staging', async ({ page }) => {
   test.setTimeout(600_000)
   if (!SITE_ID) throw new Error('Set VISITORS_SITE_ID to the staging site under test')
 
-  await login(page, BASE_URL)
+  let authed = false
+  if (STATE_PATH && existsSync(STATE_PATH)) {
+    const saved = JSON.parse(readFileSync(STATE_PATH, 'utf8'))
+    await page.context().addCookies(saved.cookies ?? [])
+    await page.goto(`${BASE_URL}/sites/${SITE_ID}/visitors?period=30`)
+    // Prove the session actually works rather than assuming a file means authed
+    // — a stale cookie jar would otherwise fail later, in a confusing place.
+    authed = await page
+      .getByRole('heading', { name: 'Visitors', level: 1 })
+      .isVisible({ timeout: 15_000 })
+      .catch(() => false)
+    if (!authed) console.log('cached session is stale — logging in again')
+  }
+  if (!authed) {
+    await login(page, BASE_URL)
+    if (STATE_PATH) {
+      await page.context().storageState({ path: STATE_PATH })
+      console.log(`session cached at ${STATE_PATH} — later runs need no code`)
+    }
+  }
 
   // ─── 1. The roster ───────────────────────────────────────────────
   await page.goto(`${BASE_URL}/sites/${SITE_ID}/visitors?period=30`)
@@ -164,23 +199,12 @@ test('the Visitors surface renders the approved design on staging', async ({ pag
   await page.screenshot({ path: `${SHOTS}/staging-picker-floor.png` })
   await page.keyboard.press('Escape')
 
-  // ─── 6. The DASHBOARD, for side-by-side icon comparison ──────────
+  // ─── 6. The OFF room ─────────────────────────────────────────────
   //
-  // The whole point of the icon rewrite: the roster's browser/OS marks must be
-  // the SAME artwork this card draws. Captured in the same run, at the same
-  // viewport, so the two screenshots can be put next to each other.
-  await page.goto(`${BASE_URL}/sites/${SITE_ID}`)
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-  const techCard = page.locator('[data-tour-card="devices"], [data-tour="dimension-card"]').first()
-  if (await techCard.isVisible().catch(() => false)) {
-    await techCard.scrollIntoViewIfNeeded()
-  }
-  await page.screenshot({ path: `${SHOTS}/staging-dashboard-for-comparison.png`, fullPage: true })
-
-  // ─── 7. The OFF room ─────────────────────────────────────────────
-  // Read-only for the toggle itself: flipping it is exercised by the backend
-  // suite. Here the page is asked to render the room its API 403 produces, by
-  // visiting a site whose toggle is off.
+  // ⚠️ ORDERED BEFORE THE DASHBOARD DELIBERATELY. This is a state of the
+  // feature; the dashboard capture below is a comparison nicety. When the
+  // dashboard step failed on a missing h1, it stranded this one behind it — a
+  // convenience must never gate a subject.
   const offSiteId = process.env.VISITORS_OFF_SITE_ID
   if (offSiteId) {
     await page.goto(`${BASE_URL}/sites/${offSiteId}/visitors`)
@@ -189,6 +213,18 @@ test('the Visitors surface renders the approved design on staging', async ({ pag
     await expect(page.getByRole('button', { name: 'Enable visitor views' })).toBeVisible()
     await page.screenshot({ path: `${SHOTS}/staging-off.png` })
   }
+
+  // ─── 7. The DASHBOARD, for side-by-side icon comparison ──────────
+  //
+  // The whole point of the icon rewrite: the roster's browser/OS marks must be
+  // the SAME artwork this card draws. Captured in the same run, at the same
+  // viewport, so the two screenshots can be put next to each other.
+  //
+  // No h1 assertion — the dashboard does not render one, and requiring it is
+  // what stranded the OFF room above.
+  await page.goto(`${BASE_URL}/sites/${SITE_ID}`)
+  await page.waitForLoadState('networkidle').catch(() => {})
+  await page.screenshot({ path: `${SHOTS}/staging-dashboard-for-comparison.png`, fullPage: true })
 })
 
 /** No two names in the presence field may share pixels. */
