@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from 'node:fs'
 import { test, expect } from '@playwright/test'
 import { login } from './support/login'
 
@@ -35,11 +36,45 @@ const SHOTS = process.env.VISITORS_SHOT_DIR ?? '/tmp/visitors-staging'
 // rendered at, so a capture here is directly comparable to round4-*.png.
 test.use({ viewport: { width: 1440, height: 1000 } })
 
+/**
+ * Where to cache the signed-in session between runs.
+ *
+ * 🔴 EVERY RUN OF THIS SPEC COSTS A HUMAN A TRIP TO AN AUTHENTICATOR. Iterating
+ * on the walkthrough itself — a stale selector, a missing capture — then costs
+ * one code per iteration, and getting through this one took four. Caching the
+ * session after a successful login makes every later run free until the refresh
+ * token expires.
+ *
+ * ⚠️ THE FILE IS A LIVE CREDENTIAL. Scratch directory only — never the repo,
+ * never a fixture — and delete it when the debugging session ends. Leave
+ * VISITORS_STORAGE_STATE unset to always log in fresh.
+ */
+const STATE_PATH = process.env.VISITORS_STORAGE_STATE ?? ''
+
 test('the Visitors surface renders the approved design on staging', async ({ page }) => {
   test.setTimeout(600_000)
   if (!SITE_ID) throw new Error('Set VISITORS_SITE_ID to the staging site under test')
 
-  await login(page, BASE_URL)
+  let authed = false
+  if (STATE_PATH && existsSync(STATE_PATH)) {
+    const saved = JSON.parse(readFileSync(STATE_PATH, 'utf8'))
+    await page.context().addCookies(saved.cookies ?? [])
+    await page.goto(`${BASE_URL}/sites/${SITE_ID}/visitors?period=30`)
+    // Prove the session actually works rather than assuming a file means authed
+    // — a stale cookie jar would otherwise fail later, in a confusing place.
+    authed = await page
+      .getByRole('heading', { name: 'Visitors', level: 1 })
+      .isVisible({ timeout: 15_000 })
+      .catch(() => false)
+    if (!authed) console.log('cached session is stale — logging in again')
+  }
+  if (!authed) {
+    await login(page, BASE_URL)
+    if (STATE_PATH) {
+      await page.context().storageState({ path: STATE_PATH })
+      console.log(`session cached at ${STATE_PATH} — later runs need no code`)
+    }
+  }
 
   // ─── 1. The roster ───────────────────────────────────────────────
   await page.goto(`${BASE_URL}/sites/${SITE_ID}/visitors?period=30`)
@@ -57,18 +92,47 @@ test('the Visitors surface renders the approved design on staging', async ({ pag
   // Signature device #2: a journey strand per row, as inline SVG.
   expect(await page.locator('svg circle').count()).toBeGreaterThan(0)
 
-  // The meta line carries REAL house assets.
+  // The meta line carries the HOUSE registry's assets — the same artwork the
+  // Dashboard draws. Two things this assertion learned the hard way:
   //
-  // ⚠️ Scoped to a ROW. An unscoped `img[src*="/api/favicon"]` matches
+  // ⚠️ SCOPE IT TO A ROW. An unscoped `img[src*="/api/favicon"]` matches
   // FleetCard's hidden 1x1 colour sampler first — a real element with a real
-  // favicon URL that is deliberately invisible, so the assertion failed while
-  // the icons it meant to check were rendering perfectly.
+  // favicon URL that is deliberately invisible.
+  //
+  // 🔴 ASSERT IT PAINTED, NOT THAT THE TAG EXISTS. `toBeVisible()` passes on an
+  // <img> whose request is still in flight or has failed: the element is laid
+  // out, it just has nothing in it. That is exactly the state the owner
+  // reported ("where are the icons?"), so the check has to be the one a person
+  // makes — did a picture appear — which is `naturalWidth > 0`. CDN images are
+  // third-party and slower than the same-origin favicon proxy, so this also
+  // stops the run screenshotting a half-loaded page.
   const firstRow = rows.first()
-  await expect(firstRow.locator('img[src*="/flags/"]')).toBeVisible()
-  const marks = firstRow.locator('img[src*="/api/favicon"], img[src*="/brands/"]')
-  await expect(marks.first()).toBeVisible()
-  // Browser + OS + referrer: at least two brand marks on every row.
-  expect(await marks.count()).toBeGreaterThanOrEqual(2)
+  const houseIcons = firstRow.locator(
+    'img[src*="/flags/"], img[src*="/icons/browsers/"], img[src*="/icons/os/"], img[src*="/icons/brands/"], img[src*="/api/favicon"]',
+  )
+  await expect(houseIcons.first()).toBeVisible()
+  // flag + browser + OS, at minimum, plus a referrer mark on most rows.
+  expect(await houseIcons.count()).toBeGreaterThanOrEqual(3)
+
+  await expect
+    .poll(
+      async () =>
+        houseIcons.evaluateAll((els) =>
+          els.filter((e) => (e as HTMLImageElement).naturalWidth > 0).length,
+        ),
+      { timeout: 20_000, message: 'row icons never painted (naturalWidth stayed 0)' },
+    )
+    .toBeGreaterThanOrEqual(3)
+
+  // 🔴 The browser and the OS must come from the REGISTRY, positively stated.
+  //
+  // The negative ("no /api/favicon anywhere in the row") would be wrong: a
+  // referrer on a domain we hold no curated art for is SUPPOSED to resolve
+  // through Sigil. What must never happen is a browser or an OS doing so — the
+  // bug the owner caught, website favicons at arbitrary aspect ratios that do
+  // not match the Dashboard.
+  await expect(firstRow.locator('img[src*="/icons/browsers/"]')).toHaveCount(1)
+  await expect(firstRow.locator('img[src*="/icons/os/"]')).toHaveCount(1)
 
   // Pseudonyms, not hashes: a row's name is two capitalised words.
   expect(await firstRow.locator('span').first().innerText()).toMatch(/^[A-Z][a-z]+ [A-Z][a-z]+$/)
@@ -85,7 +149,8 @@ test('the Visitors surface renders the approved design on staging', async ({ pag
   await page.waitForURL(/\/visitors\/[0-9a-f]{32}/)
 
   // The hash is always visible beside the pseudonym — it is the true key.
-  await expect(page.locator('span.font-mono').first()).toBeVisible()
+  // Scoped to the h1: `span.font-mono` unscoped matches code spans elsewhere.
+  await expect(page.getByRole('heading', { level: 1 }).locator('span.font-mono')).toBeVisible()
   await expect(page.getByText(/avg visit/)).toBeVisible()
   await expect(page.getByText(/this identity resets/)).toBeVisible()
   // Signature device #3: the month ribbon.
@@ -107,7 +172,10 @@ test('the Visitors surface renders the approved design on staging', async ({ pag
   await visitToggle.click()
   await expect(visitToggle).toHaveAttribute('aria-expanded', 'true')
   // The rail timeline fetches per expanded row; wait for a step to arrive.
-  await expect(page.locator('span.rounded-full.shrink-0').first()).toBeVisible({ timeout: 20_000 })
+  // Scoped to the expanded panel — an active-now dot is also a rounded-full
+  // shrink-0 span, and matching one of those would pass without a trail.
+  const trail = page.locator('div.pb-3.pl-12')
+  await expect(trail.locator('span.rounded-full').first()).toBeVisible({ timeout: 20_000 })
   await page.screenshot({ path: `${SHOTS}/staging-detail-expanded.png`, fullPage: true })
 
   // ─── 4. Live mode ────────────────────────────────────────────────
@@ -131,23 +199,12 @@ test('the Visitors surface renders the approved design on staging', async ({ pag
   await page.screenshot({ path: `${SHOTS}/staging-picker-floor.png` })
   await page.keyboard.press('Escape')
 
-  // ─── 6. The DASHBOARD, for side-by-side icon comparison ──────────
+  // ─── 6. The OFF room ─────────────────────────────────────────────
   //
-  // The whole point of the icon rewrite: the roster's browser/OS marks must be
-  // the SAME artwork this card draws. Captured in the same run, at the same
-  // viewport, so the two screenshots can be put next to each other.
-  await page.goto(`${BASE_URL}/sites/${SITE_ID}`)
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-  const techCard = page.locator('[data-tour-card="devices"], [data-tour="dimension-card"]').first()
-  if (await techCard.isVisible().catch(() => false)) {
-    await techCard.scrollIntoViewIfNeeded()
-  }
-  await page.screenshot({ path: `${SHOTS}/staging-dashboard-for-comparison.png`, fullPage: true })
-
-  // ─── 7. The OFF room ─────────────────────────────────────────────
-  // Read-only for the toggle itself: flipping it is exercised by the backend
-  // suite. Here the page is asked to render the room its API 403 produces, by
-  // visiting a site whose toggle is off.
+  // ⚠️ ORDERED BEFORE THE DASHBOARD DELIBERATELY. This is a state of the
+  // feature; the dashboard capture below is a comparison nicety. When the
+  // dashboard step failed on a missing h1, it stranded this one behind it — a
+  // convenience must never gate a subject.
   const offSiteId = process.env.VISITORS_OFF_SITE_ID
   if (offSiteId) {
     await page.goto(`${BASE_URL}/sites/${offSiteId}/visitors`)
@@ -156,6 +213,18 @@ test('the Visitors surface renders the approved design on staging', async ({ pag
     await expect(page.getByRole('button', { name: 'Enable visitor views' })).toBeVisible()
     await page.screenshot({ path: `${SHOTS}/staging-off.png` })
   }
+
+  // ─── 7. The DASHBOARD, for side-by-side icon comparison ──────────
+  //
+  // The whole point of the icon rewrite: the roster's browser/OS marks must be
+  // the SAME artwork this card draws. Captured in the same run, at the same
+  // viewport, so the two screenshots can be put next to each other.
+  //
+  // No h1 assertion — the dashboard does not render one, and requiring it is
+  // what stranded the OFF room above.
+  await page.goto(`${BASE_URL}/sites/${SITE_ID}`)
+  await page.waitForLoadState('networkidle').catch(() => {})
+  await page.screenshot({ path: `${SHOTS}/staging-dashboard-for-comparison.png`, fullPage: true })
 })
 
 /** No two names in the presence field may share pixels. */
