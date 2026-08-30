@@ -88,6 +88,30 @@ export interface PageRangeOptions {
    */
   extraPresets?: { group: string; presets: PeriodPreset[]; exclusive?: boolean }
   excludePresets?: string[]
+  /**
+   * The earliest date this page can answer for ('YYYY-MM-DD'), or undefined for
+   * no floor. The Visitors surface is floored at the identity-rebuild cutover
+   * (26-08-2026): before it, `visitor_id` is NULL forever, reads fall back to a
+   * per-DAY key, and the page would render per-day identities under a per-MONTH
+   * label — a wrong answer that looks like a right one.
+   *
+   * It clamps the RESOLVED start and disables earlier days in the picker. It is
+   * deliberately not a rejection: a bookmarked link with an older start should
+   * still answer, for the part of the range that has real identities in it.
+   */
+  minDate?: string
+  /**
+   * Periods this page serves as a ROLLING window rather than a date range,
+   * mapped to their width in minutes.
+   *
+   * A rolling window genuinely is not a date range — "the last 30 minutes"
+   * cannot be written as two YYYY-MM-DD strings without losing the thing that
+   * makes it live. Declaring it here keeps the picker, the URL and the fetch in
+   * one object: the hook hands back `rollingMinutes` for the active period, and
+   * the page sends that instead of start/end. The alternative was a second,
+   * page-local range hook, which is the useJourneyFilters anti-pattern.
+   */
+  rollingMinutes?: Partial<Record<Period, number>>
 }
 
 function allowedPeriodsFor(options: PageRangeOptions): ReadonlySet<Period> {
@@ -171,6 +195,13 @@ export interface UrlDateRange {
    * server and first client render in agreement, so hydration is unaffected.
    */
   periodReady: boolean
+  /**
+   * The active period's rolling width in minutes, or null when the page's range
+   * is an ordinary date span. A caller sends `minutes=` when this is non-null
+   * and `start_date`/`end_date` when it is null — never both; the two are
+   * mutually exclusive on the wire and the server 400s a request carrying both.
+   */
+  rollingMinutes: number | null
   setPeriod: (p: Period, customRange?: { start: string; end: string }) => void
   shiftPeriod: (direction: -1 | 1) => void
   /**
@@ -182,11 +213,12 @@ export interface UrlDateRange {
   pickerProps: {
     extraPresets?: { group: string; presets: PeriodPreset[]; exclusive?: boolean }
     excludePresets?: string[]
+    minDate?: string
   }
 }
 
 export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
-  const { pageKey, extraPresets, excludePresets } = options
+  const { pageKey, extraPresets, excludePresets, minDate, rollingMinutes } = options
   const maxDays = options.maxDays ?? ANALYTICS_MAX_DAYS
   const searchParams = useSearchParams()
   const write = useQueryParamsWriter()
@@ -250,13 +282,22 @@ export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
     : DEFAULT_PERIOD
   const period: Period = urlHasPeriod ? urlPeriod : (remembered ?? urlPeriod)
 
-  const dateRange = useMemo(
-    () =>
+  const dateRange = useMemo(() => {
+    const resolved =
       period === 'custom' && rawStart && rawEnd
         ? { start: rawStart, end: rawEnd }
-        : periodToDateRange(period),
-    [period, rawStart, rawEnd],
-  )
+        : periodToDateRange(period)
+    if (!minDate) return resolved
+    // Clamp, never reject — string compare is correct for YYYY-MM-DD. A range
+    // that ends before the floor collapses to the floor itself, so the page
+    // asks a well-formed question whose honest answer is "nothing here yet"
+    // rather than sending a backwards range.
+    const start = resolved.start < minDate ? minDate : resolved.start
+    const end = resolved.end < minDate ? minDate : resolved.end
+    return start === resolved.start && end === resolved.end ? resolved : { start, end }
+  }, [period, rawStart, rawEnd, minDate])
+
+  const activeRollingMinutes = rollingMinutes?.[period] ?? null
 
   const updateUrl = useCallback(
     (updates: Record<string, string | null>) => {
@@ -301,9 +342,17 @@ export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
   )
 
   const pickerProps = useMemo(
-    () => ({ extraPresets, excludePresets }),
-    [extraPresets, excludePresets],
+    () => ({ extraPresets, excludePresets, minDate }),
+    [extraPresets, excludePresets, minDate],
   )
 
-  return { period, dateRange, periodReady, setPeriod, shiftPeriod, pickerProps }
+  return {
+    period,
+    dateRange,
+    periodReady,
+    rollingMinutes: activeRollingMinutes,
+    setPeriod,
+    shiftPeriod,
+    pickerProps,
+  }
 }

@@ -35,6 +35,26 @@ export function getLast24HoursRange(): { start: string; end: string } {
   return { start: formatDate(yesterday), end: formatDate(today) }
 }
 
+/**
+ * Last 30 minutes / last 6 hours — the DATE span a rolling minute window
+ * touches, for pages that still need start/end as a fallback or a label.
+ *
+ * A rolling window is not really a date range, which is the whole reason
+ * useUrlDateRange's `rollingMinutes` exists: a page that declares one sends the
+ * width in minutes and lets the server resolve the instant. These functions
+ * only answer "which calendar days does it touch", so a 30-minute window that
+ * straddles midnight still covers both.
+ */
+export function getLast30MinutesRange(): { start: string; end: string } {
+  const now = new Date()
+  return { start: formatDate(new Date(now.getTime() - 30 * 60_000)), end: formatDate(now) }
+}
+
+export function getLast6HoursRange(): { start: string; end: string } {
+  const now = new Date()
+  return { start: formatDate(new Date(now.getTime() - 6 * 60 * 60_000)), end: formatDate(now) }
+}
+
 /** Last 1 hour — same-day range, caller should narrow to minute interval */
 export function getLast1HourRange(): { start: string; end: string } {
   const today = formatDate(new Date())
