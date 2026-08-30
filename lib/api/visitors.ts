@@ -81,7 +81,12 @@ export interface VisitEvent {
   timestamp: string
   type: 'pageview' | 'custom'
   event_name: string
-  path: string
+  /**
+   * Null when the site does not collect page paths (D7). The column itself is
+   * NOT NULL — the server applies the site's CURRENT setting on the way out,
+   * because the rows can hold paths collected before the owner narrowed it.
+   */
+  path: string | null
   properties?: Record<string, string>
   duration: number | null
   scroll_depth: number | null

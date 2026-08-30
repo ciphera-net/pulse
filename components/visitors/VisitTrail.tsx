@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useVisitEvents } from '@/lib/swr/dashboard'
 import { EM_DASH, formatDuration } from '@/lib/visitors/format'
 import type { VisitEvent } from '@/lib/api/visitors'
@@ -28,9 +28,53 @@ export function VisitTrail({ siteId, visitorKey, visitKey, range }: VisitTrailPr
   const [page, setPage] = useState(1)
   const { data, error, isLoading } = useVisitEvents(siteId, visitorKey, visitKey, range, page)
 
-  const events = data?.events ?? []
+  // 🔴 PAGES ACCUMULATE. Rendering `data.events` alone meant the second page
+  // REPLACED the first: a 242-step visit, opened and "Load more"d, showed steps
+  // 201–242 with its beginning gone — the precise failure the comment below
+  // says must never ship, arriving from the other end.
+  //
+  // Kept as a page MAP rather than the `[...prev, ...next]` append the audit-log
+  // card uses, because that card fetches directly and this one is on SWR:
+  // revalidation re-delivers a page already held, and an append would duplicate
+  // every step of it. Writing under the page's own key is idempotent.
+  //
+  // 🔑 Keyed by `data.page` — the page the SERVER says it answered — never by
+  // the local `page` state. The hook sets `keepPreviousData: true`, so straight
+  // after a click `data` still holds the PREVIOUS page while `page` already
+  // reads the new one; keying on local state would file page 1's steps under 2.
+  const [pages, setPages] = useState<Record<number, VisitEvent[]>>({})
+
+  // The subject changing (a different visit, or a new range) invalidates
+  // everything accumulated for the old one.
+  const subject = `${siteId}|${visitorKey}|${visitKey}|${range.startDate ?? ''}|${range.endDate ?? ''}|${range.minutes ?? ''}`
+  useEffect(() => {
+    setPage(1)
+    setPages({})
+  }, [subject])
+
+  useEffect(() => {
+    if (!data?.events) return
+    const n = data.page
+    // 🔴 RECORD EACH PAGE ONCE, decided on the page NUMBER — never on the
+    // identity of `data.events`. A fetcher handing back a fresh array for the
+    // same page (any re-render can) makes an identity comparison false forever:
+    // setPages writes on every render, the write re-renders, and the component
+    // spins. Returning `prev` unchanged lets React bail out of the update.
+    setPages((prev) => (prev[n] !== undefined ? prev : { ...prev, [n]: data.events }))
+  }, [data])
+
+  const events = useMemo(
+    () =>
+      Object.keys(pages)
+        .map(Number)
+        .sort((a, b) => a - b)
+        .flatMap((n) => pages[n]),
+    [pages],
+  )
   const total = data?.total ?? 0
-  const shownThrough = (page - 1) * PAGE_SIZE + events.length
+  // True by construction now, which also repairs TrailStep's `last` prop — it
+  // used to end the rail at the end of every PAGE rather than of the trail.
+  const shownThrough = events.length
 
   if (error) {
     return (
@@ -102,7 +146,9 @@ function TrailStep({ event, last }: { event: VisitEvent; last: boolean }) {
 
       <div className="min-w-0 flex-1 pb-1">
         <div className="flex items-baseline justify-between gap-3">
-          <span className="min-w-0 truncate text-sm text-neutral-300">{event.path}</span>
+          {/* An em dash, never a "/": a site that collects no page paths must
+              not be shown a page its visitor may never have been on. */}
+          <span className="min-w-0 truncate text-sm text-neutral-300">{event.path ?? EM_DASH}</span>
           <span className="shrink-0 text-xs tabular-nums text-neutral-500">
             {/* Dwell is the STORED event duration, never recomputed from the gap
                 to the next step. A missing beacon is an em dash, not a zero. */}

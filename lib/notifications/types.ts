@@ -30,9 +30,10 @@ export type NotificationType =
 
 export type Category = 'billing' | 'uptime' | 'security' | 'site' | 'team' | 'system'
 
-export function categoryOf(t: NotificationType): Category {
-  return t.split('_')[0] as Category
-}
+// categoryOf — the split-the-type-key derivation — is DELETED (Phase 2 FE-1,
+// spec §6.3 demolition family): category is registry data owned by the
+// backend, never derived from a type string. It had zero callers; keeping it
+// was an invitation to grow one.
 
 // Payload shape per type. Mirror of Go payload structs in pulse-backend/internal/notifications/payloads.go.
 export interface BillingPaymentFailedPayload {
