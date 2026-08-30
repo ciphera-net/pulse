@@ -64,7 +64,32 @@ export function PresenceField({
     const shown = ordered.slice(0, MAX_DOTS)
     const maxPages = Math.max(1, ...shown.map((v) => v.pageviews))
 
+    // Which dots get a name: everyone active, plus the most recent handful.
+    // Decided BEFORE placement, because a labelled dot is placed differently.
     let labelledInactive = 0
+    const labelled = new Set<string>()
+    for (const v of shown) {
+      if (v.active_now) {
+        labelled.add(v.visitor_key)
+      } else if (labelledInactive < LABELLED_INACTIVE) {
+        labelled.add(v.visitor_key)
+        labelledInactive++
+      }
+    }
+
+    // 🔴 LABELLED DOTS GET A LADDER, NOT THEIR HASH LANE.
+    //
+    // The lane is hash-derived jitter with no collision avoidance — which is
+    // fine for a bare dot and NOT fine for a dot carrying a name. Two visitors
+    // whose hashes land in adjacent lanes at similar recency printed their names
+    // on top of each other (measured on staging: "Curious Bookbinder" over
+    // "Frequent Bookbinder"). Names are the one thing here a reader actually
+    // reads, so the labelled few are spread down an even ladder and everybody
+    // else keeps the jitter. The y axis still means nothing, which is what the
+    // caption promises.
+    const ladderSize = labelled.size
+    let ladderIndex = 0
+
     return shown.map((v) => {
       const t = new Date(v.last_seen).getTime()
       // Clamp rather than drop: a visitor whose last_seen sits a hair outside the
@@ -72,14 +97,20 @@ export function PresenceField({
       // at the edge, not missing from a field that claims to show everyone.
       const x = Math.min(1, Math.max(0, (t - from) / span))
       const size = 4 + Math.round((Math.min(v.pageviews, maxPages) / maxPages) * 8)
-      let label: string | null = null
-      if (v.active_now) {
-        label = visitorPseudonym(v.visitor_key)
-      } else if (labelledInactive < LABELLED_INACTIVE) {
-        label = visitorPseudonym(v.visitor_key)
-        labelledInactive++
+      const isLabelled = labelled.has(v.visitor_key)
+      let y = lane(v.visitor_key)
+      if (isLabelled) {
+        y = ladderSize > 1 ? (ladderIndex / (ladderSize - 1)) * 0.86 + 0.07 : 0.5
+        ladderIndex++
       }
-      return { key: v.visitor_key, x, y: lane(v.visitor_key), size, active: v.active_now, label }
+      return {
+        key: v.visitor_key,
+        x,
+        y,
+        size,
+        active: v.active_now,
+        label: isLabelled ? visitorPseudonym(v.visitor_key) : null,
+      }
     })
   }, [visitors, from, to])
 
