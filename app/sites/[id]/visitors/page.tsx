@@ -93,7 +93,7 @@ export default function VisitorsPage() {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
         <PageHeader live={0} showToolbar={false} />
-        <VisitorsOffRoom siteId={siteId} domain={site.domain} onEnabled={() => refreshSite()} />
+        <VisitorsOffRoom site={site} onEnabled={() => refreshSite()} />
       </div>
     )
   }
@@ -104,7 +104,7 @@ export default function VisitorsPage() {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
         <PageHeader live={0} showToolbar={false} />
-        <VisitorsOffRoom siteId={siteId} domain={site.domain} onEnabled={() => refreshSite()} />
+        <VisitorsOffRoom site={site} onEnabled={() => refreshSite()} />
       </div>
     )
   }
