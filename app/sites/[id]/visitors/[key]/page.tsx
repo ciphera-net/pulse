@@ -27,6 +27,7 @@ import {
   visitorLocalTime,
 } from '@/lib/visitors/format'
 import { VISITORS_MIN_DATE, VISITORS_ROLLING_MINUTES, VISITORS_PRESETS } from '@/lib/visitors/range'
+import { deviceLabel } from '@/components/visitors/VisitorMeta'
 import type { VisitRow } from '@/lib/api/visitors'
 
 // ─── The visitor page (approved design §9a, "The visitor page") ─────
@@ -295,8 +296,12 @@ export default function VisitorDetailPage() {
               </ProfileCell>
               <ProfileCell label="Device · Screen">
                 {profile.device_type || profile.screen_resolution ? (
+                  // The cell is LABELLED "Device · Screen", so it owes two
+                  // values. A glyph beside a resolution answers only half of it
+                  // and leaves the reader to decode a picture for the other.
                   <span className="flex items-center gap-1.5">
                     <DeviceGlyph device={profile.device_type} />
+                    {profile.device_type ? deviceLabel(profile.device_type) : EM_DASH} ·{' '}
                     {profile.screen_resolution ?? EM_DASH}
                   </span>
                 ) : (

@@ -38,8 +38,14 @@ interface VisitorMetaProps {
   className?: string
 }
 
-/** 'desktop' -> 'Desktop'. The column stores a lowercase token. */
-function deviceLabel(device: string): string {
+/**
+ * 'desktop' -> 'Desktop'. The column stores a lowercase token.
+ *
+ * Exported so the detail page's "Device · Screen" cell spells it the same way
+ * the roster's meta line does — two spellings of the same value on two screens
+ * of the same feature is how a product starts to read as several products.
+ */
+export function deviceLabel(device: string): string {
   return device.charAt(0).toUpperCase() + device.slice(1)
 }
 

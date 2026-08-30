@@ -95,8 +95,17 @@ test('the Visitors surface renders the approved design on staging', async ({ pag
   await page.screenshot({ path: `${SHOTS}/staging-detail.png`, fullPage: true })
 
   // ─── 3. A visit's trail ──────────────────────────────────────────
-  await page.locator('button[aria-expanded]').first().click()
-  await expect(page.locator('button[aria-expanded="true"]').first()).toBeVisible()
+  //
+  // ⚠️ SCOPED TO THE VISITS CARD. An unscoped `button[aria-expanded]` matched
+  // the NOTIFICATIONS BELL in the app header and opened its popover over half
+  // the page — the same unscoped-locator mistake as the favicon sampler, and it
+  // reported the trail missing when the trail had never been asked to open.
+  const visitToggle = page
+    .locator('button[aria-expanded]')
+    .filter({ hasText: /\d+ pages?\s·/ })
+    .first()
+  await visitToggle.click()
+  await expect(visitToggle).toHaveAttribute('aria-expanded', 'true')
   // The rail timeline fetches per expanded row; wait for a step to arrive.
   await expect(page.locator('span.rounded-full.shrink-0').first()).toBeVisible({ timeout: 20_000 })
   await page.screenshot({ path: `${SHOTS}/staging-detail-expanded.png`, fullPage: true })
@@ -122,7 +131,20 @@ test('the Visitors surface renders the approved design on staging', async ({ pag
   await page.screenshot({ path: `${SHOTS}/staging-picker-floor.png` })
   await page.keyboard.press('Escape')
 
-  // ─── 6. The OFF room ─────────────────────────────────────────────
+  // ─── 6. The DASHBOARD, for side-by-side icon comparison ──────────
+  //
+  // The whole point of the icon rewrite: the roster's browser/OS marks must be
+  // the SAME artwork this card draws. Captured in the same run, at the same
+  // viewport, so the two screenshots can be put next to each other.
+  await page.goto(`${BASE_URL}/sites/${SITE_ID}`)
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  const techCard = page.locator('[data-tour-card="devices"], [data-tour="dimension-card"]').first()
+  if (await techCard.isVisible().catch(() => false)) {
+    await techCard.scrollIntoViewIfNeeded()
+  }
+  await page.screenshot({ path: `${SHOTS}/staging-dashboard-for-comparison.png`, fullPage: true })
+
+  // ─── 7. The OFF room ─────────────────────────────────────────────
   // Read-only for the toggle itself: flipping it is exercised by the backend
   // suite. Here the page is asked to render the room its API 403 produces, by
   // visiting a site whose toggle is off.
