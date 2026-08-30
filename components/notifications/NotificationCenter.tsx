@@ -4,18 +4,18 @@
  * @file Notification center: bell icon with dropdown of recent notifications.
  */
 
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo, Fragment } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { listNotifications, markRead, markAllRead, dismiss } from '@/lib/api/notifications-v2'
 import type { Receipt } from '@/lib/notifications/types'
+import { useNotificationInbox } from '@/lib/hooks/useNotificationInbox'
+import { NotificationRow, StratumHeader } from './NotificationRows'
 import { renderNotification } from '@/lib/notifications/renderers'
 import { useResolveSiteName, useResolveUserName } from '@/lib/notifications/resolvers'
-import { getAuthErrorMessage } from '@ciphera-net/facet'
-import { formatTimeAgo, getTypeIcon } from '@/lib/utils/notifications'
+import { getAuthErrorMessage, toast } from '@ciphera-net/facet'
 import { SettingsIcon } from '@ciphera-net/facet'
 import { SkeletonLine, SkeletonCircle } from '@/components/skeletons'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -60,10 +60,13 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
   const router = useRouter()
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
-  const [receipts, setReceipts] = useState<Receipt[]>([])
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  // Data lives in a store BOTH mounts share — see useNotificationInbox for why
+  // (two unconditional mounts, two polls, two counts that disagreed).
+  const { receipts, unreadCount, loading, error: inboxError, markRead, markAllRead, dismiss } = useNotificationInbox()
+  const error = inboxError ? (getAuthErrorMessage(inboxError) || 'Failed to load notifications') : null
+  // Rows with a dismiss in flight. Local by design: it is per-mount interaction
+  // state, not shared data, and it is what makes the row's "Removing…" real.
+  const [removing, setRemoving] = useState<Set<string>>(new Set())
   const dropdownRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -94,55 +97,28 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
     }
   }, [anchor])
 
-  const fetchUnreadCount = async () => {
-    try {
-      const res = await listNotifications({ limit: 1 })
-      setUnreadCount(typeof res?.unread_count === 'number' ? res.unread_count : 0)
-    } catch {
-      // Ignore polling errors
-    }
-  }
-
-  const fetchNotifications = async () => {
-    setError(null)
-    const loadingTimer = setTimeout(() => setLoading(true), LOADING_DELAY_MS)
-    try {
-      const res = await listNotifications({ limit: 10 })
-      setReceipts(Array.isArray(res?.receipts) ? res.receipts : [])
-      setUnreadCount(typeof res?.unread_count === 'number' ? res.unread_count : 0)
-    } catch (err) {
-      setError(getAuthErrorMessage(err as Error) || 'Failed to load notifications')
-      setReceipts([])
-      setUnreadCount(0)
-    } finally {
-      clearTimeout(loadingTimer)
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
-    if (open) {
-      fetchNotifications()
-      updatePosition()
-    }
+    if (open) updatePosition()
   }, [open, updatePosition])
 
-  // * Poll unread count in background — GATED on the auth context, which the
-  // * old comment claimed and the old code did not do. On the 25-08 half-state
-  // * this poll kept firing every 90s on a dead session, swallowing 401s, and
-  // * its last good unread state was the bell dot rendered beside "Sign in".
-  // * When the context says logged out: stop polling AND drop the stale count —
-  // * a dot the session can no longer explain must not survive it.
-  // * Audit: 25-08-2026-lost-rotation-reuse-revocation-and-half-state-chrome.md §3
+  /**
+   * Announce a rising unread count.
+   *
+   * Politely, and only on an INCREASE: the count also drops when the user marks
+   * things read, and narrating their own click is noise. The two mounts cannot
+   * double-announce — the inactive one is inside a `display:none` wrapper, which
+   * removes it from the accessibility tree.
+   */
+  const [announcement, setAnnouncement] = useState('')
+  const prevUnread = useRef(unreadCount)
   useEffect(() => {
-    if (!user) {
-      setUnreadCount(0)
-      return
+    if (unreadCount > prevUnread.current) {
+      setAnnouncement(
+        unreadCount === 1 ? '1 unread notification' : `${unreadCount} unread notifications`,
+      )
     }
-    fetchUnreadCount()
-    const id = setInterval(fetchUnreadCount, POLL_INTERVAL_MS)
-    return () => clearInterval(id)
-  }, [user])
+    prevUnread.current = unreadCount
+  }, [unreadCount])
 
   // * Close dropdown when clicking outside or pressing Escape
   useEffect(() => {
@@ -156,8 +132,35 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
         setOpen(false)
       }
     }
+    /**
+     * 🔴 ESCAPE CLOSES **AND** A TAB CYCLE STAYS INSIDE.
+     *
+     * The panel has carried `role="dialog"` for months with no `aria-modal`, no
+     * focus move on open, no trap and no restore on close — so a keyboard or
+     * screen-reader user could Tab straight out of an open dialog into the page
+     * behind it and lose their place entirely. Hand-rolled rather than pulling a
+     * dependency: it is one keydown handler.
+     */
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false)
+      if (e.key === 'Escape') {
+        setOpen(false)
+        return
+      }
+      if (e.key !== 'Tab' || !panelRef.current) return
+      const focusables = panelRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )
+      if (focusables.length === 0) return
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+      const active = document.activeElement
+      if (e.shiftKey && (active === first || active === panelRef.current)) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault()
+        first.focus()
+      }
     }
     document.addEventListener('mousedown', handleClickOutside)
     document.addEventListener('keydown', handleKeyDown)
@@ -167,33 +170,67 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
     }
   }, [open])
 
+  /**
+   * Move focus in on open, and put it back on close.
+   *
+   * The restore is deliberately skipped when focus has already left the panel —
+   * clicking a notification navigates, and yanking focus back to the bell on the
+   * destination page would be worse than doing nothing.
+   */
+  useEffect(() => {
+    if (open) {
+      panelRef.current?.focus()
+      return
+    }
+    if (panelRef.current?.contains(document.activeElement) ?? false) {
+      buttonRef.current?.focus()
+    }
+  }, [open])
+
+  /**
+   * 🔴 EVERY MUTATION SURFACES ITS FAILURE.
+   *
+   * These four handlers used to swallow errors in empty `catch` blocks, in a
+   * codebase with 150 toast call sites and an explicit "no silent failures"
+   * principle — a click that did nothing looked identical to a click that
+   * worked. `MyPreferencesTab` is the pattern being matched.
+   *
+   * Reads stay soft on purpose: a failed background poll keeps the last known
+   * list rather than blanking it or shouting, and the in-panel error body
+   * appears only when there is no cached data at all.
+   */
   const handleMarkRead = async (eventID: string) => {
     try {
       await markRead(eventID)
-      setReceipts((prev) => prev.map((r) => (r.event_id === eventID ? { ...r, read_at: new Date().toISOString() } : r)))
-      setUnreadCount((c) => Math.max(0, c - 1))
-    } catch {
-      // Ignore; user can retry
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to mark notification as read')
     }
   }
 
   const handleDismiss = async (eventID: string) => {
+    setRemoving((prev) => new Set(prev).add(eventID))
     try {
       await dismiss(eventID)
-      setReceipts((prev) => prev.filter((x) => x.event_id !== eventID))
-      setUnreadCount((c) => Math.max(0, c - 1))
-    } catch {
-      // Ignore — user can retry
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to dismiss notification')
+    } finally {
+      // The row returns to its previous state either way: on success it is gone
+      // from the list, on failure the optimistic update has already rolled back,
+      // so clearing this is what makes the revert visible rather than leaving a
+      // permanently greyed row.
+      setRemoving((prev) => {
+        const next = new Set(prev)
+        next.delete(eventID)
+        return next
+      })
     }
   }
 
   const handleMarkAllRead = async () => {
     try {
       await markAllRead()
-      setReceipts((prev) => prev.map((r) => ({ ...r, read_at: r.read_at ?? new Date().toISOString() })))
-      setUnreadCount(0)
-    } catch {
-      // Ignore
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to mark all as read')
     }
   }
 
@@ -201,6 +238,55 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
     if (!r.read_at) handleMarkRead(r.event_id)
     setOpen(false)
   }
+
+  /**
+   * Two strata: New (unread) above Earlier (read), each newest-first.
+   *
+   * That IS the triage — what needs attention floats regardless of age, what has
+   * been seen sinks. Computed from the receipts as they were WHEN THE PANEL
+   * OPENED and held for as long as it stays open: marking a row read changes its
+   * dot and its weight in place, it does not jump strata out from under the
+   * cursor mid-scan. The next open re-stratifies.
+   */
+  const [snapshot, setSnapshot] = useState<Receipt[]>([])
+  useEffect(() => {
+    if (open) setSnapshot(receipts)
+    // Deliberately keyed on `open` alone: re-running on every `receipts` change
+    // is exactly the mid-scan re-sort this exists to prevent.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
+
+  // Which rows were ALREADY read when the panel opened. Captured separately from
+  // the snapshot so that marking a row read changes its weight without moving it.
+  //
+  // ⚠️ Declared ABOVE the useMemo that reads it. useMemo runs its callback during
+  // the call, so a `const` declared after it is still in the temporal dead zone
+  // on the first render — TypeScript does not flag it (it cannot prove when a
+  // closure runs) and it throws at runtime.
+  const snapshotRead = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (open) {
+      snapshotRead.current = new Set(receipts.filter((r) => r.read_at).map((r) => r.event_id))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
+
+  const strata = useMemo(() => {
+    // While the panel is open the order comes from the snapshot, but the ROW
+    // STATE comes from the live store — so an optimistic mark-read still shows
+    // instantly in the row it is already in.
+    const live = new Map(receipts.map((r) => [r.event_id, r]))
+    const ordered = (snapshot.length ? snapshot : receipts)
+      .map((r) => live.get(r.event_id) ?? r)
+      .filter((r) => live.has(r.event_id))
+    return [
+      { label: 'New', rows: ordered.filter((r) => !snapshotRead.current.has(r.event_id)) },
+      { label: 'Earlier', rows: ordered.filter((r) => snapshotRead.current.has(r.event_id)) },
+    ].filter((s) => s.rows.length > 0)
+  }, [snapshot, receipts])
+
+  /** A header on a homogeneous list labels nothing. */
+  const showHeaders = strata.length > 1
 
   const isSidebar = variant === 'sidebar'
 
@@ -244,6 +330,10 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
         )}
       </button>
 
+      {/* Announces a RISING unread count. `sr-only` rather than hidden: an
+          `aria-live` region inside `display:none` is not announced at all. */}
+      <span className="sr-only" role="status" aria-live="polite">{announcement}</span>
+
       {(() => {
         const panel = (
           <AnimatePresence>
@@ -252,6 +342,8 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
             ref={panelRef}
             id="notification-dropdown"
             role="dialog"
+            aria-modal="true"
+            tabIndex={-1}
             aria-label="Notifications"
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -304,80 +396,25 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
               )}
               {!loading && !error && (receipts?.length ?? 0) > 0 && (
                 <ul className="divide-y divide-white/[0.06]">
-                  {(receipts ?? []).map((r) => {
-                    const { title, body } = renderNotification(r, { resolveSiteName, resolveUserName })
-                    const isUnread = !r.read_at
-                    return (
-                      <li key={r.event_id} className="group relative">
-                        {r.event.link_url ? (
-                          <Link
-                            href={r.event.link_url}
-                            onClick={() => handleNotificationClick(r)}
-                            className={`block px-4 py-3 hover:bg-white/[0.06] transition-colors ${isUnread ? 'bg-brand-orange/10' : ''} ease-apple`}
-                          >
-                            <div className="flex gap-3 items-start">
-                              <span className="w-8 h-8 rounded-none bg-neutral-800/60 flex items-center justify-center shrink-0 mt-0.5">
-                                {getTypeIcon(r.event.type)}
-                              </span>
-                              <div className="min-w-0 flex-1">
-                                <p className={`text-sm ${isUnread ? 'font-medium' : ''} text-white`}>
-                                  {title}
-                                </p>
-                                {body && (
-                                  <p className="text-xs text-neutral-400 mt-0.5 line-clamp-2">
-                                    {body}
-                                  </p>
-                                )}
-                                <p
-                                  className="text-xs text-neutral-500 mt-1"
-                                  title={new Date(r.event.created_at).toISOString()}
-                                >
-                                  {formatTimeAgo(r.event.created_at)}
-                                </p>
-                              </div>
-                            </div>
-                          </Link>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleNotificationClick(r)}
-                            className={`w-full text-left block px-4 py-3 hover:bg-white/[0.06] cursor-pointer ${isUnread ? 'bg-brand-orange/10' : ''}`}
-                          >
-                            <div className="flex gap-3 items-start">
-                              <span className="w-8 h-8 rounded-none bg-neutral-800/60 flex items-center justify-center shrink-0 mt-0.5">
-                                {getTypeIcon(r.event.type)}
-                              </span>
-                              <div className="min-w-0 flex-1">
-                                <p className={`text-sm ${isUnread ? 'font-medium' : ''} text-white`}>
-                                  {title}
-                                </p>
-                                {body && (
-                                  <p className="text-xs text-neutral-400 mt-0.5 line-clamp-2">
-                                    {body}
-                                  </p>
-                                )}
-                                <p
-                                  className="text-xs text-neutral-500 mt-1"
-                                  title={new Date(r.event.created_at).toISOString()}
-                                >
-                                  {formatTimeAgo(r.event.created_at)}
-                                </p>
-                              </div>
-                            </div>
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDismiss(r.event_id) }}
-                          aria-label="Delete my copy of this notification"
-                          title="Delete my copy"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-3 text-neutral-500 hover:text-red-400 px-2 py-1 text-xs"
-                        >
-                          ×
-                        </button>
-                      </li>
-                    )
-                  })}
+                  {strata.map(({ label, rows }) => (
+                    <Fragment key={label}>
+                      {showHeaders && <StratumHeader>{label}</StratumHeader>}
+                      {rows.map((r) => {
+                        const { title, body } = renderNotification(r, { resolveSiteName, resolveUserName })
+                        return (
+                          <NotificationRow
+                            key={r.event_id}
+                            receipt={r}
+                            title={title}
+                            body={body}
+                            removing={removing.has(r.event_id)}
+                            onActivate={handleNotificationClick}
+                            onDismiss={handleDismiss}
+                          />
+                        )
+                      })}
+                    </Fragment>
+                  ))}
                 </ul>
               )}
             </div>

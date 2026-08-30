@@ -20,6 +20,18 @@ vi.mock('@/lib/api/notifications-v2', () => ({
 // billing tab test) — keeps Radix Select / SegmentedControl out of jsdom.
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...a: any[]) => a.flat(Infinity).filter(Boolean).join(' '),
+  // PurgeConfirmDialog moved onto Facet's Modal (30-08-2026) — the hand-rolled
+  // div it replaced had no role, no aria-modal, no Escape and no focus trap.
+  // Mocked with the dialog semantics the real one ships, so the test still
+  // asserts against a dialog rather than an anonymous div.
+  Modal: ({ isOpen, title, children }: any) =>
+    isOpen ? (
+      <div role="dialog" aria-modal="true" aria-label={title}>
+        <h2>{title}</h2>
+        {children}
+      </div>
+    ) : null,
+  Input: (props: any) => <input {...props} />,
   SegmentedControl: ({ options, value, onChange, 'aria-label': label }: any) => (
     <div role="radiogroup" aria-label={label}>
       {options.map((o: any) => (
