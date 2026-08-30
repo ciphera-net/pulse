@@ -1,15 +1,7 @@
 'use client'
 
 import { CountryFlag } from '@/components/ui/CountryFlag'
-import {
-  BrowserMark,
-  OSMark,
-  ReferrerMark,
-  DeviceGlyph,
-  referrerLabel,
-  browserVendor,
-  osVendor,
-} from './VisitorIcons'
+import { BrowserMark, OSMark, ReferrerMark, DeviceGlyph, referrerLabel } from './VisitorIcons'
 import { countryName } from '@/lib/visitors/format'
 
 // ─── The roster / header meta line (approved §9a.4 line 2) ──────────
@@ -46,6 +38,11 @@ interface VisitorMetaProps {
   className?: string
 }
 
+/** 'desktop' -> 'Desktop'. The column stores a lowercase token. */
+function deviceLabel(device: string): string {
+  return device.charAt(0).toUpperCase() + device.slice(1)
+}
+
 function Dot() {
   return (
     <span className="text-neutral-700" aria-hidden="true">
@@ -74,27 +71,22 @@ export function VisitorMeta({
       </span>,
     )
   }
-  // 🔑 FOLD WHEN BROWSER AND OS SHARE A VENDOR (approved design §9a.4).
-  //
-  // Safari and macOS both resolve to apple.com; Edge and Windows both to
-  // microsoft.com. Rendering both marks prints the SAME favicon twice in a row,
-  // which reads as a rendering bug rather than as information. The approved mock
-  // shows `[Apple] Safari · macOS` — one mark, the OS as bare text — while
-  // keeping two where the vendors genuinely differ (`[Chrome] Chrome ·
-  // [Windows] Windows`).
-  const folded = Boolean(browser && os && browserVendor(browser) === osVendor(os))
-
+  // ⚠️ NO FOLD. An earlier version collapsed "Safari · macOS" to one mark,
+  // because the approved mock shows one there — but the mock was rendered with
+  // FAVICONS, where Safari and macOS are both apple.com and the second mark was
+  // a literal duplicate of the first. Against the house registry they are
+  // genuinely different artwork (the Safari compass and the Apple mark), the
+  // same two the Dashboard shows, so both belong. The mock's single mark was an
+  // artifact of the wrong icon source, not a design decision to preserve.
   if (browser) {
     segments.push(
       <span key="browser" className="flex items-center gap-1.5">
         <BrowserMark browser={browser} />
-        <span>{folded ? `${browser} · ${os}` : browser}</span>
+        <span>{browser}</span>
       </span>,
     )
   }
-  // `folded` is false whenever there is no browser, so this one branch also
-  // covers an OS standing on its own — it keeps its own mark.
-  if (os && !folded) {
+  if (os) {
     segments.push(
       <span key="os" className="flex items-center gap-1.5">
         <OSMark os={os} />
@@ -103,9 +95,14 @@ export function VisitorMeta({
     )
   }
   if (deviceType) {
+    // The glyph alone is a rebus. A monitor outline is not obviously "desktop"
+    // rather than "screen resolution" or "display", and the two mobile-ish
+    // glyphs are a coin toss at 16px — every other segment on this line pairs
+    // its mark with a word, and this one now does too.
     segments.push(
-      <span key="device" className="flex items-center">
+      <span key="device" className="flex items-center gap-1.5">
         <DeviceGlyph device={deviceType} />
+        <span>{deviceLabel(deviceType)}</span>
       </span>,
     )
   }

@@ -1,55 +1,65 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { VisitorMeta } from '../VisitorMeta'
-import { browserVendor, osVendor } from '../VisitorIcons'
 
 /**
- * Pins §9a.4's fold rule and D7's absence rule — the two things about this line
- * that a reader would notice being wrong and a compiler would not.
+ * 🔴 THE ONE THING THIS FILE EXISTS FOR: the Visitors meta line must draw the
+ * SAME artwork the rest of Pulse draws.
+ *
+ * The first version resolved browsers and operating systems through
+ * `/api/favicon?domain=…` — each vendor's own website favicon, at whatever
+ * aspect ratio that vendor happens to use, and not the icons the Dashboard
+ * shows for the same browser. The owner spotted it immediately: some were
+ * rectangular, none matched the dashboard. These tests pin the source, so a
+ * second icon system cannot creep back in.
  */
 
-function marks(container: HTMLElement) {
-  return container.querySelectorAll('img[src*="/api/favicon"], img[src*="/brands/"]')
+const HOUSE_BROWSER_ICON = /\/icons\/browsers\//
+const HOUSE_OS_ICON = /\/icons\/os\//
+const FAVICON_PROXY = /\/api\/favicon/
+
+function imgSrcs(container: HTMLElement): string[] {
+  return Array.from(container.querySelectorAll('img')).map((i) => i.getAttribute('src') ?? '')
 }
 
-describe('the meta line folds a shared vendor to ONE mark', () => {
-  it('Safari + macOS render one Apple mark and the OS as text', () => {
-    // Both resolve to apple.com, so two marks would print the SAME favicon
-    // twice in a row — which reads as a rendering bug, not as information.
-    expect(browserVendor('Safari')).toBe(osVendor('macOS'))
-    const { container } = render(<VisitorMeta browser="Safari" os="macOS" />)
-    expect(marks(container)).toHaveLength(1)
-    expect(screen.getByText('Safari · macOS')).toBeInTheDocument()
+describe('icons come from the house registry, not from website favicons', () => {
+  it('a browser draws the registry SVG the dashboard draws', () => {
+    const { container } = render(<VisitorMeta browser="Firefox" />)
+    expect(imgSrcs(container).some((s) => HOUSE_BROWSER_ICON.test(s))).toBe(true)
   })
 
-  it('Edge + Windows fold too — same vendor, same favicon', () => {
-    expect(browserVendor('Edge')).toBe(osVendor('Windows'))
-    const { container } = render(<VisitorMeta browser="Edge" os="Windows" />)
-    expect(marks(container)).toHaveLength(1)
-    expect(screen.getByText('Edge · Windows')).toBeInTheDocument()
-  })
-
-  it('Chrome + Windows keep TWO marks — the vendors genuinely differ', () => {
-    expect(browserVendor('Chrome')).not.toBe(osVendor('Windows'))
-    const { container } = render(<VisitorMeta browser="Chrome" os="Windows" />)
-    expect(marks(container)).toHaveLength(2)
-  })
-
-  it('Firefox + Linux keep two marks', () => {
-    const { container } = render(<VisitorMeta browser="Firefox" os="Linux" />)
-    expect(marks(container)).toHaveLength(2)
-  })
-
-  it('an OS standing alone still carries its own mark, exactly once', () => {
+  it('an OS draws the registry icon', () => {
     const { container } = render(<VisitorMeta os="Windows" />)
-    expect(marks(container)).toHaveLength(1)
-    expect(screen.getAllByText('Windows')).toHaveLength(1)
+    expect(imgSrcs(container).some((s) => HOUSE_OS_ICON.test(s))).toBe(true)
   })
 
-  it('matches a versioned UA string, not just the bare name', () => {
-    // The columns hold whatever the parser produced: "Mobile Safari", "Mac OS X".
-    expect(browserVendor('Mobile Safari 17')).toBe('apple.com')
-    expect(osVendor('Mac OS X')).toBe('apple.com')
+  it('NOTHING in the meta line resolves a browser or OS through the favicon proxy', () => {
+    // The proxy is right for an arbitrary referrer domain we have no artwork
+    // for. It is wrong for a browser or an OS, where a curated icon exists.
+    const { container } = render(
+      <VisitorMeta country="BE" browser="Safari" os="macOS" deviceType="desktop" />,
+    )
+    expect(imgSrcs(container).some((s) => FAVICON_PROXY.test(s))).toBe(false)
+  })
+
+  it('Safari and macOS BOTH draw a mark — they are different artwork here', () => {
+    // The approved mock folded these to one, because with favicons the second
+    // was a byte-identical duplicate (both apple.com). Against the registry
+    // they are the Safari compass and the Apple mark — the pair the Dashboard
+    // shows — so both belong.
+    const { container } = render(<VisitorMeta browser="Safari" os="macOS" />)
+    const srcs = imgSrcs(container)
+    expect(srcs.some((s) => HOUSE_BROWSER_ICON.test(s))).toBe(true)
+    expect(srcs.some((s) => HOUSE_OS_ICON.test(s))).toBe(true)
+  })
+
+  it('a referrer uses the REGISTRY display name, not a local lookup table', () => {
+    // Asserted against the registry's own answer rather than a name this file
+    // would prefer: the point is that the roster says whatever the Dashboard
+    // says about the same referrer. A local table that disagreed prettily would
+    // be the icon bug again, one layer down.
+    render(<VisitorMeta referrer="https://www.google.com/" collectsReferrers />)
+    expect(screen.getByText('Google')).toBeInTheDocument()
   })
 })
 
@@ -77,5 +87,43 @@ describe('absence is absence, never a placeholder (D7)', () => {
     // fact it deliberately chose not to gather.
     render(<VisitorMeta referrer={null} collectsReferrers={false} />)
     expect(screen.queryByText('Direct')).toBeNull()
+  })
+})
+
+describe('the device segment names itself', () => {
+  it.each([
+    ['desktop', 'Desktop'],
+    ['mobile', 'Mobile'],
+    ['tablet', 'Tablet'],
+  ])('%s renders its glyph AND the word %s', (stored, shown) => {
+    // A monitor outline alone is a rebus — and at 16px the phone and tablet
+    // glyphs are a coin toss. Every other segment pairs a mark with a word.
+    render(<VisitorMeta deviceType={stored} />)
+    expect(screen.getByText(shown)).toBeInTheDocument()
+  })
+})
+
+describe('favicons come from Sigil, flags from the flag helper', () => {
+  it('an uncurated referrer domain resolves through the Sigil proxy', () => {
+    // /api/favicon is the app's same-origin proxy in front of Sigil
+    // (icons.ciphera.net). It is how this product resolves a favicon — never a
+    // third-party service and never a guessed asset path.
+    const { container } = render(
+      <VisitorMeta referrer="https://some-blog.example.org/post" collectsReferrers />,
+    )
+    const srcs = Array.from(container.querySelectorAll('img')).map((i) => i.getAttribute('src') ?? '')
+    expect(srcs.some((s) => s.startsWith('/api/favicon?domain='))).toBe(true)
+  })
+
+  it('a curated referrer uses the house brand icon instead, like the Dashboard', () => {
+    const { container } = render(<VisitorMeta referrer="https://www.google.com/" collectsReferrers />)
+    const srcs = Array.from(container.querySelectorAll('img')).map((i) => i.getAttribute('src') ?? '')
+    expect(srcs.some((s) => s.includes('/icons/brands/'))).toBe(true)
+  })
+
+  it('a country draws the CDN flag set — Sigil serves favicons, not flags (it 404s)', () => {
+    const { container } = render(<VisitorMeta country="BE" />)
+    const srcs = Array.from(container.querySelectorAll('img')).map((i) => i.getAttribute('src') ?? '')
+    expect(srcs.some((s) => s.includes('/flags/be.svg'))).toBe(true)
   })
 })
