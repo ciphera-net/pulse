@@ -1,6 +1,10 @@
-import { useEffect, useState, useCallback } from 'react'
+'use client'
+
+import useSWR from 'swr'
+import { useAuth } from '@/lib/auth/context'
 import { listNotifications, type ListParams, type ListResponse } from '@/lib/api/notifications-v2'
 import type { Receipt } from '@/lib/notifications/types'
+import { NOTIFICATIONS_KEY, invalidateNotifications } from './useNotificationInbox'
 
 export interface UseNotificationsResult {
   receipts: Receipt[]
@@ -16,40 +20,53 @@ export interface UseNotificationsResult {
   refresh: () => void
 }
 
+/**
+ * The /notifications page's list.
+ *
+ * 🔑 ON SWR, AND ON THE SAME KEY FAMILY AS THE BELL. It used to be bare
+ * `useState` keyed on `JSON.stringify(params)` with a manual version counter,
+ * which meant the bell and this page shared no cache at all: "Mark all read" in
+ * the bell left an open page rendering unread styling until its own next fetch.
+ * Both now sit under `NOTIFICATIONS_KEY`, and any mutation invalidates every
+ * mounted variant by prefix — see `invalidateNotifications`.
+ *
+ * The filters stay IN the key rather than being applied after the fetch, so two
+ * filter states cannot overwrite each other's cache entry.
+ */
 export function useNotifications(params: ListParams): UseNotificationsResult {
-  const [receipts, setReceipts] = useState<Receipt[]>([])
-  const [unreadCount, setUnread] = useState(0)
-  const [totalCount, setTotal] = useState<number | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
-  const [version, setVersion] = useState(0)
+  const { user } = useAuth()
+  const orgId = user?.org_id
 
-  const key = JSON.stringify(params)
+  const key = user
+    ? [
+        NOTIFICATIONS_KEY,
+        orgId ?? '',
+        'list',
+        params.unread ? 'unread' : 'all',
+        params.category ?? '',
+        params.limit ?? 0,
+      ]
+    : null
 
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    listNotifications(params)
-      .then((r: ListResponse) => {
-        if (cancelled) return
-        setReceipts(r.receipts)
-        setUnread(r.unread_count)
-        setTotal(r.total_count)
-        setError(null)
-      })
-      .catch((e: Error) => {
-        if (cancelled) return
-        setError(e)
-      })
-      .finally(() => {
-        if (cancelled) return
-        setLoading(false)
-      })
-    return () => { cancelled = true }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, version])
+  const { data, error, isLoading } = useSWR<ListResponse>(
+    key,
+    () => listNotifications(params),
+    {
+      // The list must not blank while a revalidation is in flight — a page that
+      // flickers empty reads as "you have nothing".
+      keepPreviousData: true,
+      revalidateOnFocus: true,
+    },
+  )
 
-  const refresh = useCallback(() => setVersion(v => v + 1), [])
-
-  return { receipts, unreadCount, totalCount, loading, error, refresh }
+  return {
+    receipts: data?.receipts ?? [],
+    unreadCount: user ? (data?.unread_count ?? 0) : 0,
+    // 🔴 NOT coerced to 0. null means the server could not count, and the purge
+    // dialog's copy branches on exactly that.
+    totalCount: data?.total_count ?? null,
+    loading: isLoading,
+    error: (error as Error) ?? null,
+    refresh: () => { void invalidateNotifications() },
+  }
 }

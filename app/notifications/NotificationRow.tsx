@@ -7,6 +7,7 @@ import { renderNotification } from '@/lib/notifications/renderers'
 import { useResolveSiteName, useResolveUserName } from '@/lib/notifications/resolvers'
 import { formatTimeAgo } from '@/lib/utils/notifications'
 import { markRead, markUnread, dismiss, listDeliveries, type Delivery } from '@/lib/api/notifications-v2'
+import { toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import Link from 'next/link'
 
 interface NotificationRowProps {
@@ -39,6 +40,11 @@ export default function NotificationRow({ receipt, onChange }: NotificationRowPr
       try {
         await markRead(receipt.event_id)
         onChange()
+      } catch (err) {
+        // 🔴 `try/finally` with no `catch` is an UNHANDLED REJECTION, not
+        // error handling — the row simply stopped being busy and nothing said
+        // why. Same defect as the bell's four empty catch blocks (audit P-F2).
+        toast.error(getAuthErrorMessage(err as Error) || 'Failed to mark notification as read')
       } finally {
         setBusy(false)
       }
@@ -53,6 +59,8 @@ export default function NotificationRow({ receipt, onChange }: NotificationRowPr
     try {
       await dismiss(receipt.event_id)
       onChange()
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to dismiss notification')
     } finally {
       setBusy(false)
     }
@@ -65,14 +73,20 @@ export default function NotificationRow({ receipt, onChange }: NotificationRowPr
     try {
       await markUnread(receipt.event_id)
       onChange()
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to mark notification as unread')
     } finally {
       setBusy(false)
     }
   }
 
   return (
+    /* The tinted unread row is gone here as well as in the bell — the same house
+       device, applied to the same data. The brand-orange left border stays: on a
+       full-width page row it reads as a marginal rule rather than a panel wash,
+       and it is the page's equivalent of the bell's corner dot. */
     <li className={`rounded-none overflow-hidden transition-colors ${
-      isUnread ? 'border-l-2 border-brand-orange bg-brand-orange/[0.06]' : 'border-l-2 border-transparent'
+      isUnread ? 'border-l-2 border-brand-orange' : 'border-l-2 border-transparent'
     }`}>
       <button
         type="button"

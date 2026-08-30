@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { markAllRead, purgeMine } from '@/lib/api/notifications-v2'
+import { toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import PurgeConfirmDialog from './PurgeConfirmDialog'
 
 interface BulkActionBarProps {
@@ -33,6 +34,8 @@ export default function BulkActionBar({ purgeCount, unreadCount, onChange }: Bul
     try {
       await markAllRead()
       onChange()
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to mark all as read')
     } finally {
       setBusy(false)
     }
@@ -68,9 +71,18 @@ export default function BulkActionBar({ purgeCount, unreadCount, onChange }: Bul
           count={purgeCount}
           onCancel={() => setPurging(false)}
           onConfirm={async () => {
-            await purgeMine()
-            setPurging(false)
-            onChange()
+            try {
+              await purgeMine()
+              toast.success('Notification history deleted')
+              setPurging(false)
+              onChange()
+            } catch (err) {
+              // The dialog stays OPEN on failure. Closing it would leave the
+              // user believing an irreversible action succeeded — and this is
+              // the one action in the product where that belief is unrecoverable.
+              toast.error(getAuthErrorMessage(err as Error) || 'Failed to delete notification history')
+              throw err
+            }
           }}
         />
       )}
