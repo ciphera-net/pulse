@@ -57,18 +57,47 @@ test('the Visitors surface renders the approved design on staging', async ({ pag
   // Signature device #2: a journey strand per row, as inline SVG.
   expect(await page.locator('svg circle').count()).toBeGreaterThan(0)
 
-  // The meta line carries REAL house assets.
+  // The meta line carries the HOUSE registry's assets — the same artwork the
+  // Dashboard draws. Two things this assertion learned the hard way:
   //
-  // ⚠️ Scoped to a ROW. An unscoped `img[src*="/api/favicon"]` matches
+  // ⚠️ SCOPE IT TO A ROW. An unscoped `img[src*="/api/favicon"]` matches
   // FleetCard's hidden 1x1 colour sampler first — a real element with a real
-  // favicon URL that is deliberately invisible, so the assertion failed while
-  // the icons it meant to check were rendering perfectly.
+  // favicon URL that is deliberately invisible.
+  //
+  // 🔴 ASSERT IT PAINTED, NOT THAT THE TAG EXISTS. `toBeVisible()` passes on an
+  // <img> whose request is still in flight or has failed: the element is laid
+  // out, it just has nothing in it. That is exactly the state the owner
+  // reported ("where are the icons?"), so the check has to be the one a person
+  // makes — did a picture appear — which is `naturalWidth > 0`. CDN images are
+  // third-party and slower than the same-origin favicon proxy, so this also
+  // stops the run screenshotting a half-loaded page.
   const firstRow = rows.first()
-  await expect(firstRow.locator('img[src*="/flags/"]')).toBeVisible()
-  const marks = firstRow.locator('img[src*="/api/favicon"], img[src*="/brands/"]')
-  await expect(marks.first()).toBeVisible()
-  // Browser + OS + referrer: at least two brand marks on every row.
-  expect(await marks.count()).toBeGreaterThanOrEqual(2)
+  const houseIcons = firstRow.locator(
+    'img[src*="/flags/"], img[src*="/icons/browsers/"], img[src*="/icons/os/"], img[src*="/icons/brands/"], img[src*="/api/favicon"]',
+  )
+  await expect(houseIcons.first()).toBeVisible()
+  // flag + browser + OS, at minimum, plus a referrer mark on most rows.
+  expect(await houseIcons.count()).toBeGreaterThanOrEqual(3)
+
+  await expect
+    .poll(
+      async () =>
+        houseIcons.evaluateAll((els) =>
+          els.filter((e) => (e as HTMLImageElement).naturalWidth > 0).length,
+        ),
+      { timeout: 20_000, message: 'row icons never painted (naturalWidth stayed 0)' },
+    )
+    .toBeGreaterThanOrEqual(3)
+
+  // 🔴 The browser and the OS must come from the REGISTRY, positively stated.
+  //
+  // The negative ("no /api/favicon anywhere in the row") would be wrong: a
+  // referrer on a domain we hold no curated art for is SUPPOSED to resolve
+  // through Sigil. What must never happen is a browser or an OS doing so — the
+  // bug the owner caught, website favicons at arbitrary aspect ratios that do
+  // not match the Dashboard.
+  await expect(firstRow.locator('img[src*="/icons/browsers/"]')).toHaveCount(1)
+  await expect(firstRow.locator('img[src*="/icons/os/"]')).toHaveCount(1)
 
   // Pseudonyms, not hashes: a row's name is two capitalised words.
   expect(await firstRow.locator('span').first().innerText()).toMatch(/^[A-Z][a-z]+ [A-Z][a-z]+$/)
@@ -85,7 +114,8 @@ test('the Visitors surface renders the approved design on staging', async ({ pag
   await page.waitForURL(/\/visitors\/[0-9a-f]{32}/)
 
   // The hash is always visible beside the pseudonym — it is the true key.
-  await expect(page.locator('span.font-mono').first()).toBeVisible()
+  // Scoped to the h1: `span.font-mono` unscoped matches code spans elsewhere.
+  await expect(page.getByRole('heading', { level: 1 }).locator('span.font-mono')).toBeVisible()
   await expect(page.getByText(/avg visit/)).toBeVisible()
   await expect(page.getByText(/this identity resets/)).toBeVisible()
   // Signature device #3: the month ribbon.
@@ -107,7 +137,10 @@ test('the Visitors surface renders the approved design on staging', async ({ pag
   await visitToggle.click()
   await expect(visitToggle).toHaveAttribute('aria-expanded', 'true')
   // The rail timeline fetches per expanded row; wait for a step to arrive.
-  await expect(page.locator('span.rounded-full.shrink-0').first()).toBeVisible({ timeout: 20_000 })
+  // Scoped to the expanded panel — an active-now dot is also a rounded-full
+  // shrink-0 span, and matching one of those would pass without a trail.
+  const trail = page.locator('div.pb-3.pl-12')
+  await expect(trail.locator('span.rounded-full').first()).toBeVisible({ timeout: 20_000 })
   await page.screenshot({ path: `${SHOTS}/staging-detail-expanded.png`, fullPage: true })
 
   // ─── 4. Live mode ────────────────────────────────────────────────
