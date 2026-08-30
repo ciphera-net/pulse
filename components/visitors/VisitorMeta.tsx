@@ -1,7 +1,15 @@
 'use client'
 
 import { CountryFlag } from '@/components/ui/CountryFlag'
-import { BrowserMark, OSMark, ReferrerMark, DeviceGlyph, referrerLabel } from './VisitorIcons'
+import {
+  BrowserMark,
+  OSMark,
+  ReferrerMark,
+  DeviceGlyph,
+  referrerLabel,
+  browserVendor,
+  osVendor,
+} from './VisitorIcons'
 import { countryName } from '@/lib/visitors/format'
 
 // ─── The roster / header meta line (approved §9a.4 line 2) ──────────
@@ -23,6 +31,18 @@ interface VisitorMetaProps {
   os?: string | null
   deviceType?: string | null
   referrer?: string | null
+  /**
+   * Whether this site collects referrers at all.
+   *
+   * 🔴 It is the DISCRIMINATOR, and without it the line cannot be honest.
+   * `referrer: null` means two different things on the wire — "your site does
+   * not collect this" and "this visit arrived directly" — because a direct
+   * visit's referrer column is genuinely NULL. Rendering "via Direct" for both
+   * would tell a site that collects no referrers that every one of its readers
+   * came direct, which is a fabrication; omitting the segment for both would
+   * hide a real, collected fact. The site's own setting separates them.
+   */
+  collectsReferrers?: boolean
   className?: string
 }
 
@@ -41,6 +61,7 @@ export function VisitorMeta({
   os,
   deviceType,
   referrer,
+  collectsReferrers = false,
   className,
 }: VisitorMetaProps) {
   const segments: React.ReactNode[] = []
@@ -53,15 +74,27 @@ export function VisitorMeta({
       </span>,
     )
   }
+  // 🔑 FOLD WHEN BROWSER AND OS SHARE A VENDOR (approved design §9a.4).
+  //
+  // Safari and macOS both resolve to apple.com; Edge and Windows both to
+  // microsoft.com. Rendering both marks prints the SAME favicon twice in a row,
+  // which reads as a rendering bug rather than as information. The approved mock
+  // shows `[Apple] Safari · macOS` — one mark, the OS as bare text — while
+  // keeping two where the vendors genuinely differ (`[Chrome] Chrome ·
+  // [Windows] Windows`).
+  const folded = Boolean(browser && os && browserVendor(browser) === osVendor(os))
+
   if (browser) {
     segments.push(
       <span key="browser" className="flex items-center gap-1.5">
         <BrowserMark browser={browser} />
-        <span>{browser}</span>
+        <span>{folded ? `${browser} · ${os}` : browser}</span>
       </span>,
     )
   }
-  if (os) {
+  // `folded` is false whenever there is no browser, so this one branch also
+  // covers an OS standing on its own — it keeps its own mark.
+  if (os && !folded) {
     segments.push(
       <span key="os" className="flex items-center gap-1.5">
         <OSMark os={os} />
@@ -76,9 +109,9 @@ export function VisitorMeta({
       </span>,
     )
   }
-  // The referrer segment always renders when referrers are collected at all —
+  // Renders whenever referrers are collected, INCLUDING for a null one —
   // "via Direct" is information, not an absence.
-  if (referrer !== null && referrer !== undefined) {
+  if (referrer || collectsReferrers) {
     segments.push(
       <span key="ref" className="flex items-center gap-1.5">
         <span className="text-neutral-600">via</span>

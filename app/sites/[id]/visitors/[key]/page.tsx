@@ -159,6 +159,7 @@ export default function VisitorDetailPage() {
                   os={profile.os}
                   deviceType={profile.device_type}
                   referrer={profile.referrer}
+                  collectsReferrers={site?.collect_referrers ?? false}
                 />
               </>
             )}

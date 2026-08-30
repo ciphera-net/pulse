@@ -114,16 +114,33 @@ function VendorMark({ domain, className }: { domain: string; className?: string 
   )
 }
 
+/**
+ * browserVendor / osVendor expose the resolved vendor domain so a caller can ask
+ * the question the approved design asks: do these two marks come from the same
+ * vendor?
+ *
+ * Safari and macOS both resolve to apple.com, Edge and Windows both to
+ * microsoft.com — so rendering both would print the SAME favicon twice in a row.
+ * The mock folds those to a single mark (`[Apple] Safari · macOS`) while keeping
+ * two where the vendors genuinely differ (`[Chrome] Chrome · [Windows] Windows`).
+ * VisitorMeta does the folding; these are what let it decide.
+ */
+export function browserVendor(browser?: string | null): string | null {
+  return browser ? normaliseVendor(browser, BROWSER_DOMAIN) : null
+}
+
+export function osVendor(os?: string | null): string | null {
+  return os ? normaliseVendor(os, OS_DOMAIN) : null
+}
+
 export function BrowserMark({ browser, className }: { browser?: string | null; className?: string }) {
-  if (!browser) return null
-  const domain = normaliseVendor(browser, BROWSER_DOMAIN)
+  const domain = browserVendor(browser)
   if (!domain) return null
   return <VendorMark domain={domain} className={className} />
 }
 
 export function OSMark({ os, className }: { os?: string | null; className?: string }) {
-  if (!os) return null
-  const domain = normaliseVendor(os, OS_DOMAIN)
+  const domain = osVendor(os)
   if (!domain) return null
   return <VendorMark domain={domain} className={className} />
 }

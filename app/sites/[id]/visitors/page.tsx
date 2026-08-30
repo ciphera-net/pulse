@@ -202,7 +202,12 @@ export default function VisitorsPage() {
         ) : (
           <>
             {visitors.map((v) => (
-              <VisitorRowLink key={`${v.visitor_key}-${v.month}`} siteId={siteId} visitor={v} />
+              <VisitorRowLink
+                key={`${v.visitor_key}-${v.month}`}
+                siteId={siteId}
+                visitor={v}
+                collectsReferrers={site?.collect_referrers ?? false}
+              />
             ))}
             <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPage={setPage} />
           </>
@@ -317,7 +322,15 @@ function SortHeader({
   )
 }
 
-function VisitorRowLink({ siteId, visitor }: { siteId: string; visitor: VisitorRow }) {
+function VisitorRowLink({
+  siteId,
+  visitor,
+  collectsReferrers,
+}: {
+  siteId: string
+  visitor: VisitorRow
+  collectsReferrers: boolean
+}) {
   const name = visitorPseudonym(visitor.visitor_key)
   return (
     <Link
@@ -343,6 +356,7 @@ function VisitorRowLink({ siteId, visitor }: { siteId: string; visitor: VisitorR
           os={visitor.os}
           deviceType={visitor.device_type}
           referrer={visitor.referrer}
+          collectsReferrers={collectsReferrers}
         />
       </div>
 
