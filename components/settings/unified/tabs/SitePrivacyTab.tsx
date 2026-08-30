@@ -50,6 +50,7 @@ const GEO_OPTIONS = [
 // change (spec §6 [keep]: section anchors deep-link).
 const SECTIONS = [
   { id: 'section-data-privacy', label: 'Data & Privacy' },
+  { id: 'section-visitor-views', label: 'Visitor views' },
   { id: 'section-geographic', label: 'Geographic' },
   { id: 'section-data-retention', label: 'Data Retention' },
   { id: 'section-path-grouping', label: 'Path Grouping' },
@@ -116,6 +117,8 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
   const [collectAudienceData, setCollectAudienceData] = useState(true)
   const [collectGeoData, setCollectGeoData] = useState('full')
   const [hideUnknownLocations, setHideUnknownLocations] = useState(false)
+  // A DISPLAY gate, unlike every other toggle on this tab. See its panel below.
+  const [visitorViewsEnabled, setVisitorViewsEnabled] = useState(false)
   const [dataRetention, setDataRetention] = useState(6)
   const [autoGroupDynamic, setAutoGroupDynamic] = useState(true)
   const [pageRules, setPageRules] = useState<PageRule[]>([])
@@ -152,6 +155,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
       collectAudienceData: site.collect_audience_data ?? true,
       collectGeoData: site.collect_geo_data ?? 'full',
       hideUnknownLocations: site.hide_unknown_locations ?? false,
+      visitorViewsEnabled: site.visitor_views_enabled ?? false,
       dataRetention: site.data_retention_months ?? 6,
       autoGroupDynamic: site.auto_group_dynamic_paths ?? true,
       pageRules: site.page_rules || [],
@@ -206,7 +210,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
 
   // Track dirty state
   const isDirty = baseline
-    ? JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency }) !== baseline
+    ? JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, visitorViewsEnabled, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency }) !== baseline
     : false
 
   const handleDiscard = () => {
@@ -219,6 +223,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
     setCollectAudienceData(snap.collectAudienceData)
     setCollectGeoData(snap.collectGeoData)
     setHideUnknownLocations(snap.hideUnknownLocations)
+    setVisitorViewsEnabled(snap.visitorViewsEnabled)
     setDataRetention(snap.dataRetention)
     setAutoGroupDynamic(snap.autoGroupDynamic)
     setPageRules(snap.pageRules)
@@ -239,6 +244,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
         collect_audience_data: collectAudienceData,
         collect_geo_data: collectGeoData as 'full' | 'country' | 'none',
         hide_unknown_locations: hideUnknownLocations,
+        visitor_views_enabled: visitorViewsEnabled,
         data_retention_months: dataRetention,
         page_rules: pageRules,
         auto_group_dynamic_paths: autoGroupDynamic,
@@ -249,7 +255,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
         await updatePerformanceConfig(siteId, { enabled: psiConfig.enabled, frequency: psiFrequency })
         await mutatePSIConfig()
       }
-      setBaseline(JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency }))
+      setBaseline(JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, visitorViewsEnabled, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency }))
       await mutate()
       toast.success('Privacy settings updated')
     } catch (err) {
@@ -257,7 +263,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
     } finally {
       setSaving(false)
     }
-  }, [saving, siteId, collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency, psiConfig, mutatePSIConfig, mutate])
+  }, [saving, siteId, collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, visitorViewsEnabled, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency, psiConfig, mutatePSIConfig, mutate])
 
   const updateRule = (index: number, updates: Partial<PageRule>) => {
     setPageRules(rules => rules.map((r, i) => i === index ? { ...r, ...updates } : r))
@@ -316,6 +322,30 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
               <PanelRow label="Screen resolution" caption="Track visitor screen dimensions." control={<Toggle checked={collectScreenRes} onChange={() => setCollectScreenRes(v => !v)} disabled={!canEdit} />} />
               <PanelRow label="Audience data" caption="Track visitor language and timezone." control={<Toggle checked={collectAudienceData} onChange={() => setCollectAudienceData(v => !v)} disabled={!canEdit} />} />
               <PanelRow label="Hide unknown locations" caption='Exclude "Unknown" from location stats.' control={<Toggle checked={hideUnknownLocations} onChange={() => setHideUnknownLocations(v => !v)} disabled={!canEdit} />} />
+            </PanelRows>
+          </SettingsPanel>
+        </section>
+
+        {/*
+          Visitor views — its OWN panel, deliberately not a row in "Data & Privacy".
+          That panel's description is "Control what data is collected from your
+          visitors", and this switch does not control collection: Pulse writes the
+          same columns either way. Putting it there would teach exactly the
+          misreading migration 169 exists to warn about — an owner believing the
+          switch stops the data existing. It is a DISPLAY gate, a new class on
+          this tab, and the copy has to say so on its face (design doc §7).
+        */}
+        <section id="section-visitor-views" className="scroll-mt-24">
+          <SettingsPanel
+            kicker="Visitor views"
+            description="Who can read your analytics at visitor grain. This does not change what is collected."
+          >
+            <PanelRows>
+              <PanelRow
+                label="Visitor-level views"
+                caption="Turns on the Visitors page: individual readers, their visits and their journeys. Pulse collects the same data either way — this controls whether anyone can look at it one reader at a time. Identities are pseudonymous, scoped to this site, and reset every calendar month. Turning it on or off is recorded in your audit trail, and it is never exposed on a public share link or the public API."
+                control={<Toggle checked={visitorViewsEnabled} onChange={() => setVisitorViewsEnabled(v => !v)} disabled={!canEdit} />}
+              />
             </PanelRows>
           </SettingsPanel>
         </section>

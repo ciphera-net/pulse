@@ -23,7 +23,12 @@ export function hasFlag(alpha2?: string | null): boolean {
 // Flags live at the CDN ORIGIN root, not the per-app prefix. Derive the origin from
 // NEXT_PUBLIC_CDN_URL (e.g. https://cdn.ciphera.net/pulse -> https://cdn.ciphera.net);
 // fall back to the known host so flags still load in local dev when the env is unset.
-function cdnOrigin(): string {
+//
+// Exported since 30-08-2026: the Visitors surface's brand marks live at
+// /brands/ on the SAME origin root, for the same reason flags do — a finite,
+// immutable, house-hosted asset set outside the app's cdnUrl() '/pulse' prefix.
+// Two copies of this derivation would be two places to get the prefix wrong.
+export function cdnOrigin(): string {
   const base = process.env.NEXT_PUBLIC_CDN_URL
   if (!base) return 'https://cdn.ciphera.net'
   try {

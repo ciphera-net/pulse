@@ -4,6 +4,16 @@
 import useSWR from 'swr'
 import { getBingStatus, getBingOverview, getBingDailyTotals, type BingStatus, type BingOverview, type BingDailyRow, type BingDateBasis } from '@/lib/api/bing'
 import { useAuth } from '@/lib/auth/context'
+import {
+  getVisitors,
+  getVisitorProfile,
+  getVisitorVisits,
+  getVisitEvents,
+  type VisitorsResponse,
+  type VisitorProfileResponse,
+  type VisitsResponse,
+  type VisitEventsResponse,
+} from '@/lib/api/visitors'
 import { toast } from '@ciphera-net/facet'
 import {
   getDashboard,
@@ -1027,5 +1037,91 @@ export function usePagePreview(siteId: string) {
     siteId ? ['pagePreview', siteId] : null,
     () => getPagePreview(siteId),
     { ...dashboardSWRConfig, refreshInterval: 0, dedupingInterval: 5 * 60 * 1000, keepPreviousData: true }
+  )
+}
+
+// ─── Visitors ───────────────────────────────────────────────────────
+//
+// Design: Pulse/docs/plans/30-08-2026-visitors-surface-design.md §4.
+//
+// 🔑 A 403 from these is not an error to retry — it is the site's
+// visitor_views_enabled toggle being off, which is a STATE the page renders (the
+// enable room). dashboardSWRConfig's onErrorRetry already declines to retry or
+// toast a 403, so it lands in the hook's `error` as an ApiError with .status
+// 403 and the page branches on it.
+//
+// The keys carry `minutes` as its own slot rather than folding it into
+// start/end. A rolling window and a date range are different questions, and a
+// key that could not tell them apart would serve a live view from a cached
+// historical one.
+
+export function useVisitors(
+  siteId: string,
+  range: { startDate?: string; endDate?: string; minutes?: number | null },
+  opts: { sort: string; order: 'asc' | 'desc'; page: number; pageSize: number; enabled?: boolean },
+) {
+  const { startDate, endDate, minutes } = range
+  const ready = opts.enabled !== false && Boolean(siteId) && (minutes != null || Boolean(startDate && endDate))
+  return useSWR<VisitorsResponse>(
+    ready ? ['visitors', siteId, startDate, endDate, minutes, opts.sort, opts.order, opts.page, opts.pageSize] : null,
+    () => getVisitors(siteId, range, opts),
+    {
+      ...dashboardSWRConfig,
+      // Live windows refresh; historical ranges do not need to.
+      refreshInterval: minutes != null ? 20 * 1000 : 60 * 1000,
+      dedupingInterval: 10 * 1000,
+      // Paging and re-sorting keep the roster on screen instead of flashing a
+      // skeleton — the same reason journeys keeps its canvas.
+      keepPreviousData: true,
+    },
+  )
+}
+
+export function useVisitorProfile(
+  siteId: string,
+  key: string,
+  range: { startDate?: string; endDate?: string; minutes?: number | null },
+) {
+  const { startDate, endDate, minutes } = range
+  const ready = Boolean(siteId && key) && (minutes != null || Boolean(startDate && endDate))
+  return useSWR<VisitorProfileResponse>(
+    ready ? ['visitorProfile', siteId, key, startDate, endDate, minutes] : null,
+    () => getVisitorProfile(siteId, key, range),
+    { ...dashboardSWRConfig, refreshInterval: 60 * 1000, dedupingInterval: 10 * 1000, keepPreviousData: true },
+  )
+}
+
+export function useVisitorVisits(
+  siteId: string,
+  key: string,
+  range: { startDate?: string; endDate?: string; minutes?: number | null },
+  page: number,
+  pageSize: number,
+) {
+  const { startDate, endDate, minutes } = range
+  const ready = Boolean(siteId && key) && (minutes != null || Boolean(startDate && endDate))
+  return useSWR<VisitsResponse>(
+    ready ? ['visitorVisits', siteId, key, startDate, endDate, minutes, page, pageSize] : null,
+    () => getVisitorVisits(siteId, key, range, { page, pageSize }),
+    { ...dashboardSWRConfig, refreshInterval: 60 * 1000, dedupingInterval: 10 * 1000, keepPreviousData: true },
+  )
+}
+
+// The trail is fetched per EXPANDED visit — the SearchExpansion per-row-SWR
+// pattern. A null visitKey (collapsed row) is a null key, so a collapsed row
+// costs nothing.
+export function useVisitEvents(
+  siteId: string,
+  key: string,
+  visitKey: string | null,
+  range: { startDate?: string; endDate?: string; minutes?: number | null },
+  page: number,
+) {
+  const { startDate, endDate, minutes } = range
+  const ready = Boolean(siteId && key && visitKey) && (minutes != null || Boolean(startDate && endDate))
+  return useSWR<VisitEventsResponse>(
+    ready ? ['visitEvents', siteId, key, visitKey, startDate, endDate, minutes, page] : null,
+    () => getVisitEvents(siteId, key, visitKey as string, range, page),
+    { ...dashboardSWRConfig, refreshInterval: 0, dedupingInterval: 30 * 1000, keepPreviousData: true },
   )
 }

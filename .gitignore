@@ -64,6 +64,7 @@ tests/*
 !tests/oauth-state-clobber.spec.ts
 !tests/ws4-tour-audit.spec.ts
 !tests/ws4-staging-tour-verify.spec.ts
+!tests/visitors-staging.spec.ts
 !tests/support/
 tests/support/*
 !tests/support/login.ts

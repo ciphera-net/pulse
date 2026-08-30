@@ -28,7 +28,7 @@ export const faqData: Record<string, FAQItem[]> = {
     {
       question: 'Can I migrate from Google Analytics?',
       answer:
-        "Pulse is not a drop-in replacement for Google Analytics — it's fundamentally different by design. It doesn't track individual users or sessions, so historical GA data can't be imported. However, you can run both side by side during a transition period.",
+        "Pulse is not a drop-in replacement for Google Analytics — it's fundamentally different by design. There are no accounts, no cross-site identity and no history beyond a calendar month, so GA's user-level exports have nothing to map onto and can't be imported. However, you can run both side by side during a transition period.",
     },
     {
       question: 'Is Pulse open source?',
@@ -92,7 +92,7 @@ export const faqData: Record<string, FAQItem[]> = {
     {
       question: 'Can Pulse identify individual users?',
       answer:
-        'No. Pulse is architecturally incapable of identifying individual people. Pageviews are grouped by short-lived, server-derived identifiers — a daily session hash and a monthly visitor hash — with no client-side storage and no way to link activity across sites or beyond a calendar month.',
+        'No — it cannot tell you who someone is. Pageviews are grouped by short-lived, server-derived identifiers (a daily session hash and a monthly visitor hash) with no client-side storage, no name, no email and no way to link activity across sites or beyond a calendar month. A site owner can switch on visitor-level views to read those groupings one reader at a time; it is off by default, per site, and what it shows is a pseudonym that stops existing at the end of the month.',
     },
   ],
   technical: [
