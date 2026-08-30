@@ -6,6 +6,8 @@ import {
   getYesterdayRange,
   getLast24HoursRange,
   getLast1HourRange,
+  getLast30MinutesRange,
+  getLast6HoursRange,
   getQuarterToDateRange,
   getLastWeekRange,
   getLastMonthRange,
@@ -21,7 +23,14 @@ import {
 // ---------------------------------------------------------------------------
 
 export type Period =
+  // '30m' and '6h' join '1h'/'24h' as first-class URL periods so the Visitors
+  // page's live windows are shareable and survive a refresh like every other
+  // preset. They are NOT in PERIOD_PRESETS — only a page that declares them in
+  // extraPresets shows them in its menu — but they must be in this grammar, or
+  // the picker double-writes period+range and the preset lands as ?period=custom.
+  | '30m'
   | '1h'
+  | '6h'
   | '24h'
   | 'today'
   | 'yesterday'
@@ -51,7 +60,9 @@ export const DEFAULT_PERIOD: Period = '30'
 // Exported since 22-08-2026: useUrlDateRange derives each page's APPLIED
 // vocabulary from this grammar (minus the page's declared exclusions).
 export const PERIODS: ReadonlySet<Period> = new Set([
+  '30m',
   '1h',
+  '6h',
   '24h',
   'today',
   'yesterday',
@@ -96,8 +107,12 @@ export function isValidDateString(s: string | null): s is string {
 
 export function periodToDateRange(period: Period): { start: string; end: string } {
   switch (period) {
+    case '30m':
+      return getLast30MinutesRange()
     case '1h':
       return getLast1HourRange()
+    case '6h':
+      return getLast6HoursRange()
     case '24h':
       return getLast24HoursRange()
     case 'today': {
@@ -189,7 +204,9 @@ export function previousDateRange(range: {
 // * 'custom' is unbounded here — a custom span carries explicit start/end and
 // * is validated where it is chosen, not by preset identity.
 const PERIOD_MAX_DAYS: Record<Period, number> = {
+  '30m': 1,
   '1h': 1,
+  '6h': 1,
   '24h': 1,
   today: 1,
   yesterday: 1,

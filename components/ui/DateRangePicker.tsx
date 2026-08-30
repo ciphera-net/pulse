@@ -35,6 +35,15 @@ interface DateRangePickerProps {
   // * while the data stayed on the fallback window. Presets-only removes the
   // * divergence at the source.
   presetsOnly?: boolean
+  // * The earliest selectable date ('YYYY-MM-DD'). Days before it are rendered
+  // * disabled, exactly like future days already are — a floor and a ceiling are
+  // * the same affordance pointing opposite ways.
+  // *
+  // * The Visitors page floors at the identity-rebuild cutover: earlier days
+  // * hold no visitor identity at all, so offering them would let a customer
+  // * pick a range the page can only answer emptily or, worse, answer with
+  // * per-day keys wearing per-month labels.
+  minDate?: string
 }
 
 function formatRangeDisplay(start: string, end: string): string {
@@ -103,6 +112,7 @@ export default function DateRangePicker({
   extraPresets,
   excludePresets,
   presetsOnly = false,
+  minDate,
 }: DateRangePickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -234,9 +244,14 @@ export default function DateRangePicker({
     ? [effectiveStart, effectiveEnd]
     : [effectiveEnd, effectiveStart]
 
+  // A day is out of bounds if it is in the future OR before the page's floor.
+  // Both render identically because they mean the same thing to the person
+  // clicking: there is no data there to ask for.
+  const isBeforeFloor = (date: string) => Boolean(minDate) && date < (minDate as string)
+
   function getDayClass(date: string, day: { isCurrentMonth: boolean; isFuture: boolean }): string {
     if (!day.isCurrentMonth) return 'text-muted-foreground/40'
-    if (day.isFuture) return 'text-muted-foreground/25 cursor-not-allowed'
+    if (day.isFuture || isBeforeFloor(date)) return 'text-muted-foreground/25 cursor-not-allowed'
 
     const isStart = date === resolvedStart
     const isEnd = date === resolvedEnd
@@ -374,7 +389,7 @@ export default function DateRangePicker({
               {days.map((day, i) => (
                 <button
                   key={i}
-                  disabled={day.isFuture || !day.isCurrentMonth}
+                  disabled={day.isFuture || isBeforeFloor(day.date) || !day.isCurrentMonth}
                   onClick={() => handleDayClick(day.date)}
                   onMouseEnter={() => rangeStart && setHoverDate(day.date)}
                   className={`flex h-11 w-full items-center justify-center text-sm transition-colors sm:h-9 sm:w-9 ${getDayClass(day.date, day)}`}

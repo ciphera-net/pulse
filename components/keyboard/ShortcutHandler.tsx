@@ -4,11 +4,12 @@ import { useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { isTourActive } from '@/lib/tour/constants'
 
-type SitePage = 'dashboard' | 'journeys' | 'funnels' | 'search' | 'cdn' | 'uptime' | 'pagespeed'
+type SitePage = 'dashboard' | 'journeys' | 'visitors' | 'funnels' | 'search' | 'cdn' | 'uptime' | 'pagespeed'
 
 const SITE_KEY_MAP: Record<string, SitePage> = {
   d: 'dashboard',
   j: 'journeys',
+  v: 'visitors',
   f: 'funnels',
   s: 'search',
   c: 'cdn',
@@ -25,7 +26,7 @@ const SITE_KEY_MAP: Record<string, SitePage> = {
  * - `g X` (g-prefix within 1.5s): navigate. Requires siteId for site-scoped keys.
  *   - g h = /sites (home)
  *   - g i = /integrations
- *   - g d/j/f/b/s/c/u/p = site pages (no-op when no siteId in scope)
+ *   - g d/j/v/f/s/c/u/p = site pages (no-op when no siteId in scope)
  * - `?` = open shortcuts overlay
  * - `,` = open unified settings
  *

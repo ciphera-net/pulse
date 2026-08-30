@@ -33,6 +33,10 @@ export interface Site {
   hide_unknown_locations?: boolean
   // Data retention (months); 0 = keep forever
   data_retention_months?: number
+  // Visitor-grain read surface. A DISPLAY gate, not a collection one: Pulse
+  // writes the same columns either way, and this controls whether anyone can
+  // read them at visitor grain. Default false; flipping it is audit-logged.
+  visitor_views_enabled?: boolean
   // Script feature toggles
   script_features?: Record<string, unknown>
   // Uptime monitoring toggle
@@ -89,6 +93,8 @@ export interface UpdateSiteRequest {
   hide_unknown_locations?: boolean
   // Data retention (months); 0 = keep forever
   data_retention_months?: number
+  // Visitor-grain read surface (display gate — see the Site interface above)
+  visitor_views_enabled?: boolean
 }
 
 export async function listSites(): Promise<Site[]> {

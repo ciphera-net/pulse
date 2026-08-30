@@ -9,7 +9,7 @@ import { useSites, FaviconPreloader } from '@/lib/swr/sites'
 import { cdnUrl } from '@/lib/cdn'
 import { useSidebar } from '@/lib/sidebar-context'
 import { SiteFavicon } from '@/components/sites/SiteFavicon'
-import { Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, MagnifyingGlass } from '@phosphor-icons/react'
+import { Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, MagnifyingGlass, UsersThree as UsersThreeIcon } from '@phosphor-icons/react'
 import {
   LayoutDashboardIcon,
   PathIcon,
@@ -46,6 +46,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Dashboard', href: (id) => `/sites/${id}`, icon: LayoutDashboardIcon },
       { label: 'Journeys', href: (id) => `/sites/${id}/journeys`, icon: PathIcon, matchPrefix: true },
+      { label: 'Visitors', href: (id) => `/sites/${id}/visitors`, icon: UsersThreeIcon, matchPrefix: true },
       { label: 'Funnels', href: (id) => `/sites/${id}/funnels`, icon: FunnelIcon, matchPrefix: true },
       { label: 'Search', href: (id) => `/sites/${id}/search`, icon: SearchIcon, matchPrefix: true },
     ],
@@ -68,7 +69,7 @@ const SETTINGS_ITEM: NavItem = {
 }
 
 const NAV_SHORTCUTS: Record<string, string> = {
-  Dashboard: 'G D', Journeys: 'G J', Funnels: 'G F', Search: 'G S',
+  Dashboard: 'G D', Journeys: 'G J', Visitors: 'G V', Funnels: 'G F', Search: 'G S',
   CDN: 'G C', Uptime: 'G U', Performance: 'G P', 'Site Settings': ',',
 }
 

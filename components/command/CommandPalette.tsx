@@ -49,6 +49,7 @@ import {
 const SITE_PAGES = [
   { label: 'Dashboard', path: '', icon: SquaresFour, shortcut: 'g d' },
   { label: 'Journeys', path: '/journeys', icon: Path, shortcut: 'g j' },
+  { label: 'Visitors', path: '/visitors', icon: UsersThree, shortcut: 'g v' },
   { label: 'Funnels', path: '/funnels', icon: Funnel, shortcut: 'g f' },
   { label: 'Search', path: '/search', icon: MagnifyingGlass, shortcut: 'g s' },
   { label: 'CDN', path: '/cdn', icon: CloudArrowUp, shortcut: 'g c' },

@@ -81,6 +81,20 @@ export const METRIC_TERMS: Record<MetricType, GlossaryTerm> = {
  * resolves through DIMENSION_TERM below.
  */
 export const TERMS: Record<string, GlossaryTerm> = {
+  // The Visitors surface. Both entries exist to say the SAME thing the metric
+  // glossary's `visitors` entry says, at the surface where a reader is looking
+  // at individual rows and is most likely to assume more permanence than there
+  // is — one sentence family, three places, no third definition.
+  visitor_identity: {
+    title: 'Visitor identity',
+    definition:
+      'A pseudonym derived server-side from a monthly key, scoped to this site. It cannot be linked to a person, to another site, or to the same reader next month — the key is re-minted at the start of each calendar month in your site’s timezone, so a returning reader becomes a new visitor. There is no cookie and nothing stored on their device.',
+  },
+  visitor_month_reset: {
+    title: 'Monthly reset',
+    definition:
+      'Identities reset on the first day of each calendar month in your site’s timezone. A range that spans a boundary therefore shows a returning reader once per month, under two different names — that is the identity genuinely resetting, not a duplicate.',
+  },
   availability: {
     title: 'Availability',
     definition:
