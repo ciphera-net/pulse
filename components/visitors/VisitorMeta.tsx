@@ -23,7 +23,24 @@ interface VisitorMetaProps {
   os?: string | null
   deviceType?: string | null
   referrer?: string | null
+  /**
+   * Whether this site collects referrers at all.
+   *
+   * 🔴 It is the DISCRIMINATOR, and without it the line cannot be honest.
+   * `referrer: null` means two different things on the wire — "your site does
+   * not collect this" and "this visit arrived directly" — because a direct
+   * visit's referrer column is genuinely NULL. Rendering "via Direct" for both
+   * would tell a site that collects no referrers that every one of its readers
+   * came direct, which is a fabrication; omitting the segment for both would
+   * hide a real, collected fact. The site's own setting separates them.
+   */
+  collectsReferrers?: boolean
   className?: string
+}
+
+/** 'desktop' -> 'Desktop'. The column stores a lowercase token. */
+function deviceLabel(device: string): string {
+  return device.charAt(0).toUpperCase() + device.slice(1)
 }
 
 function Dot() {
@@ -41,6 +58,7 @@ export function VisitorMeta({
   os,
   deviceType,
   referrer,
+  collectsReferrers = false,
   className,
 }: VisitorMetaProps) {
   const segments: React.ReactNode[] = []
@@ -53,6 +71,13 @@ export function VisitorMeta({
       </span>,
     )
   }
+  // ⚠️ NO FOLD. An earlier version collapsed "Safari · macOS" to one mark,
+  // because the approved mock shows one there — but the mock was rendered with
+  // FAVICONS, where Safari and macOS are both apple.com and the second mark was
+  // a literal duplicate of the first. Against the house registry they are
+  // genuinely different artwork (the Safari compass and the Apple mark), the
+  // same two the Dashboard shows, so both belong. The mock's single mark was an
+  // artifact of the wrong icon source, not a design decision to preserve.
   if (browser) {
     segments.push(
       <span key="browser" className="flex items-center gap-1.5">
@@ -70,15 +95,20 @@ export function VisitorMeta({
     )
   }
   if (deviceType) {
+    // The glyph alone is a rebus. A monitor outline is not obviously "desktop"
+    // rather than "screen resolution" or "display", and the two mobile-ish
+    // glyphs are a coin toss at 16px — every other segment on this line pairs
+    // its mark with a word, and this one now does too.
     segments.push(
-      <span key="device" className="flex items-center">
+      <span key="device" className="flex items-center gap-1.5">
         <DeviceGlyph device={deviceType} />
+        <span>{deviceLabel(deviceType)}</span>
       </span>,
     )
   }
-  // The referrer segment always renders when referrers are collected at all —
+  // Renders whenever referrers are collected, INCLUDING for a null one —
   // "via Direct" is information, not an absence.
-  if (referrer !== null && referrer !== undefined) {
+  if (referrer || collectsReferrers) {
     segments.push(
       <span key="ref" className="flex items-center gap-1.5">
         <span className="text-neutral-600">via</span>

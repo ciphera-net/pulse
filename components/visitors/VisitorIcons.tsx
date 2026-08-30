@@ -1,194 +1,123 @@
 'use client'
 
-import { Monitor, DeviceMobile, DeviceTablet } from '@phosphor-icons/react'
-import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
-import { cdnOrigin } from '@/lib/flags'
+import { useState, type ReactNode } from 'react'
+import {
+  getBrowserIcon,
+  getOSIcon,
+  getDeviceIcon,
+  getReferrerIcon,
+  getReferrerFavicon,
+  getReferrerDisplayName,
+} from '@/lib/utils/icons'
 import { cn } from '@/lib/utils'
 
-// ─── The Visitors icon kit (approved design §9a, "Icon assets") ─────
+// ─── The Visitors icon kit ──────────────────────────────────────────
 //
-// HOUSE ASSETS ONLY. Nothing here hot-links a third-party CDN: brand marks come
-// from our own cdn.ciphera.net when we host them, and otherwise from the app's
-// own /api/favicon proxy, which Sigil resolves server-side so a customer's
-// browser never talks to a vendor's domain (and never leaks a referrer to one).
+// 🔴 THIS FILE IS A SIZING ADAPTER. IT OWNS NO ARTWORK.
 //
-// 🔑 The CDN path is tried FIRST and the proxy is the fallback, per §9a. Both
-// render the same mark, so uploading the SVG set later changes where the bytes
-// come from and not a single pixel — no code change, no visual review.
-// Until then the proxy is the live path, and it is the one the approved round-4
-// render was made with.
-
-/** Vendor domains the favicon proxy is known to resolve (verified round 4). */
-const BROWSER_DOMAIN: Record<string, string> = {
-  firefox: 'firefox.com',
-  chrome: 'chromium.org',
-  chromium: 'chromium.org',
-  safari: 'apple.com',
-  edge: 'microsoft.com',
-  opera: 'opera.com',
-  brave: 'brave.com',
-  vivaldi: 'vivaldi.com',
-  samsung: 'samsung.com',
-  duckduckgo: 'duckduckgo.com',
-}
-
-const OS_DOMAIN: Record<string, string> = {
-  windows: 'microsoft.com',
-  macos: 'apple.com',
-  'mac os': 'apple.com',
-  ios: 'apple.com',
-  ipados: 'apple.com',
-  linux: 'kernel.org',
-  ubuntu: 'ubuntu.com',
-  fedora: 'fedoraproject.org',
-  debian: 'debian.org',
-  android: 'android.com',
-  chromeos: 'chromium.org',
-  'chrome os': 'chromium.org',
-}
+// It used to. The first version resolved browsers and operating systems through
+// `/api/favicon?domain=…` — which returns each VENDOR'S OWN WEBSITE FAVICON.
+// Those are not an icon set: microsoft.com's is a four-colour square,
+// kernel.org's is a rectangle, apple.com's is an apple. They arrived at
+// different aspect ratios and different visual weights, and none of them were
+// the icons the Dashboard shows for the same browser on the same site.
+//
+// Pulse has had one browser/OS/device/referrer icon registry the whole time —
+// `lib/utils/icons.tsx`, backed by a curated square set on our own CDN
+// (`/icons/browsers/*.svg`, `/icons/os/*.png`, with `invert` on macOS so it
+// reads on dark) and used by the dashboard's TechSpecs, TopReferrers, Campaigns
+// and the filter popover. Building a second one was the "reuse the dominant
+// device, don't invent a novel one" rule broken in the most literal way
+// available.
+//
+// So: every mark below is the registry's, unchanged. The only thing this file
+// adds is a box, because the roster's meta line is 12px text and the registry
+// hard-codes 20px on the <img>. Same artwork, same file, same CDN — one size
+// down for a denser line.
 
 /**
- * normaliseVendor reduces a stored browser/OS string to a lookup key.
+ * Box a registry icon at the meta line's scale.
  *
- * The columns hold whatever the UA parser produced — "Mobile Safari", "Chrome
- * 129", "Mac OS X". Matching on a PREFIX of the normalised string rather than
- * on equality is what makes those resolve without a table of every version
- * string ever seen.
+ * The `[&_img]` / `[&_svg]` descendants are what actually resize it: the
+ * registry sets width/height ATTRIBUTES on its <img>, which a parent's size
+ * cannot override on its own.
  */
-function normaliseVendor(value: string, table: Record<string, string>): string | null {
-  const v = value.toLowerCase().trim()
-  for (const key of Object.keys(table)) {
-    if (v.includes(key)) return table[key]
-  }
-  return null
-}
-
-function brandCdnUrl(slug: string): string {
-  // Brand marks live at the CDN ORIGIN ROOT, beside /flags — deliberately
-  // outside the app's cdnUrl() '/pulse' prefix, exactly like flags. Using
-  // cdnUrl() here would 404.
-  return `${cdnOrigin()}/brands/${slug}.svg`
-}
-
-/** Slugs we would self-host, if and when the SVG set is uploaded. */
-const BRAND_SLUG: Record<string, string> = {
-  'firefox.com': 'firefox',
-  'chromium.org': 'chrome',
-  'apple.com': 'apple',
-  'microsoft.com': 'windows',
-  'kernel.org': 'linux',
-  'android.com': 'android',
-}
-
-/**
- * VendorMark renders one brand icon, CDN-first with the favicon proxy as the
- * fallback, and renders NOTHING if neither resolves.
- *
- * Nothing, not a placeholder: a generic grey square beside a browser name reads
- * as "we could not identify this browser", which is a different and false
- * statement from "we have no artwork for it". The name text beside it already
- * carries the information.
- */
-function VendorMark({ domain, className }: { domain: string; className?: string }) {
-  const slug = BRAND_SLUG[domain]
+function MetaIcon({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <img
-      src={slug ? brandCdnUrl(slug) : `${FAVICON_SERVICE_URL}?domain=${domain}&sz=32`}
-      alt=""
+    <span
+      className={cn(
+        'inline-flex size-4 shrink-0 items-center justify-center [&_img]:size-4 [&_svg]:size-4',
+        className,
+      )}
       aria-hidden="true"
-      loading="lazy"
-      draggable={false}
-      className={cn('size-3.5 shrink-0 rounded-none object-contain', className)}
-      onError={(e) => {
-        const el = e.currentTarget
-        const proxy = `${FAVICON_SERVICE_URL}?domain=${domain}&sz=32`
-        // One fallback hop, then give up — without the guard a proxy that also
-        // fails would loop the browser through the same two URLs forever.
-        if (el.src.endsWith('.svg') && slug) {
-          el.src = proxy
-          return
-        }
-        el.style.display = 'none'
-      }}
-    />
+    >
+      {children}
+    </span>
   )
 }
 
 export function BrowserMark({ browser, className }: { browser?: string | null; className?: string }) {
   if (!browser) return null
-  const domain = normaliseVendor(browser, BROWSER_DOMAIN)
-  if (!domain) return null
-  return <VendorMark domain={domain} className={className} />
+  return <MetaIcon className={className}>{getBrowserIcon(browser)}</MetaIcon>
 }
 
 export function OSMark({ os, className }: { os?: string | null; className?: string }) {
   if (!os) return null
-  const domain = normaliseVendor(os, OS_DOMAIN)
-  if (!domain) return null
-  return <VendorMark domain={domain} className={className} />
-}
-
-export function ReferrerMark({ referrer, className }: { referrer?: string | null; className?: string }) {
-  const domain = referrerDomain(referrer)
-  if (!domain) return null
-  return <VendorMark domain={domain} className={className} />
+  return <MetaIcon className={className}>{getOSIcon(os)}</MetaIcon>
 }
 
 /**
- * DeviceGlyph is a monochrome Phosphor outline, per §9a — device type is a
- * SHAPE, not a brand, so it is drawn rather than fetched.
+ * ReferrerMark — SIGIL FIRST, curated registry icon second.
+ *
+ * This is TopReferrers' `renderReferrerIcon`, verbatim in structure and sized
+ * for the meta line. The order matters and is not an implementation detail:
+ *
+ *   1. `getReferrerFavicon` returns a **Sigil** URL (`/api/favicon?domain=…`,
+ *      resolved server-side by icons.ciphera.net) for any domain we have no
+ *      curated artwork for. Sigil is how this product resolves a favicon —
+ *      never a third-party service, never a guess.
+ *   2. It returns null for a domain the registry DOES have art for (Google,
+ *      GitHub, LinkedIn…), and for those `getReferrerIcon` draws the house
+ *      brand icon — the same one the Dashboard draws.
+ *
+ * A failed Sigil fetch falls back to the registry rather than leaving a hole.
  */
+export function ReferrerMark({ referrer, className }: { referrer?: string | null; className?: string }) {
+  const [faviconFailed, setFaviconFailed] = useState(false)
+  if (!referrer) return null
+
+  const faviconUrl = getReferrerFavicon(referrer)
+  if (faviconUrl && !faviconFailed) {
+    return (
+      <MetaIcon className={className}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={faviconUrl}
+          alt=""
+          width={16}
+          height={16}
+          className="size-4 shrink-0 rounded-none object-contain"
+          onError={() => setFaviconFailed(true)}
+        />
+      </MetaIcon>
+    )
+  }
+  return <MetaIcon className={className}>{getReferrerIcon(referrer)}</MetaIcon>
+}
+
 export function DeviceGlyph({ device, className }: { device?: string | null; className?: string }) {
   if (!device) return null
-  const Icon =
-    device.toLowerCase() === 'mobile'
-      ? DeviceMobile
-      : device.toLowerCase() === 'tablet'
-        ? DeviceTablet
-        : Monitor
-  return (
-    <Icon
-      className={cn('size-3.5 shrink-0 text-neutral-400', className)}
-      weight="regular"
-      aria-hidden="true"
-    />
-  )
+  return <MetaIcon className={cn('text-neutral-400', className)}>{getDeviceIcon(device)}</MetaIcon>
 }
 
 /**
- * referrerDomain extracts a bare host from a stored referrer.
+ * referrerLabel is the registry's display name, with "Direct" for the absence.
  *
- * Returns null for a missing referrer AND for one that will not parse — the
- * caller then renders "Direct" or an em dash rather than a broken icon. A
- * referrer with no host is not a vendor; it is an absence.
- */
-export function referrerDomain(referrer?: string | null): string | null {
-  if (!referrer) return null
-  try {
-    const host = new URL(referrer.includes('://') ? referrer : `https://${referrer}`).hostname
-    return host.replace(/^www\./, '') || null
-  } catch {
-    return null
-  }
-}
-
-/**
- * referrerLabel is the human name beside the mark. "Direct" is the honest word
- * for no referrer — the visit happened, it just arrived without one.
+ * The registry already knows that `news.ycombinator.com` is "Hacker News" — the
+ * first version of this file carried its own little lookup table beside it,
+ * which is the same duplication as the icons, one layer down.
  */
 export function referrerLabel(referrer?: string | null): string {
-  const domain = referrerDomain(referrer)
-  if (!domain) return 'Direct'
-  const known: Record<string, string> = {
-    'google.com': 'Google',
-    'news.ycombinator.com': 'Hacker News',
-    'duckduckgo.com': 'DuckDuckGo',
-    'bing.com': 'Bing',
-    'github.com': 'GitHub',
-    'linkedin.com': 'LinkedIn',
-    'reddit.com': 'Reddit',
-    'x.com': 'X',
-    't.co': 'X',
-  }
-  return known[domain] ?? domain
+  if (!referrer) return 'Direct'
+  return getReferrerDisplayName(referrer) || 'Direct'
 }

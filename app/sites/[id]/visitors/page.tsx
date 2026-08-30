@@ -202,9 +202,31 @@ export default function VisitorsPage() {
         ) : (
           <>
             {visitors.map((v) => (
-              <VisitorRowLink key={`${v.visitor_key}-${v.month}`} siteId={siteId} visitor={v} />
+              <VisitorRowLink
+                key={`${v.visitor_key}-${v.month}`}
+                siteId={siteId}
+                visitor={v}
+                collectsReferrers={site?.collect_referrers ?? false}
+              />
             ))}
-            <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPage={setPage} />
+            {/*
+              🔴 Pagination is ZERO-indexed (`disabled={page === 0}`, and its
+              "N–M of T" label is computed as `page * pageSize + 1`). The API is
+              ONE-indexed, per §4. Passing our 1-based page straight in left
+              Previous enabled on the first page, sent `page=0`, and the server
+              correctly rejected it — the user saw "Couldn't load this view" for
+              pressing a button that should have been disabled. The label was
+              wrong too: page 1 rendered rows 1–10 under "11–20 of N".
+
+              Converted here, at the one boundary where the two conventions
+              meet, rather than by loosening the server's validation.
+            */}
+            <Pagination
+              page={page - 1}
+              pageSize={PAGE_SIZE}
+              total={total}
+              onPage={(zeroBased) => setPage(zeroBased + 1)}
+            />
           </>
         )}
       </div>
@@ -317,7 +339,15 @@ function SortHeader({
   )
 }
 
-function VisitorRowLink({ siteId, visitor }: { siteId: string; visitor: VisitorRow }) {
+function VisitorRowLink({
+  siteId,
+  visitor,
+  collectsReferrers,
+}: {
+  siteId: string
+  visitor: VisitorRow
+  collectsReferrers: boolean
+}) {
   const name = visitorPseudonym(visitor.visitor_key)
   return (
     <Link
@@ -343,6 +373,7 @@ function VisitorRowLink({ siteId, visitor }: { siteId: string; visitor: VisitorR
           os={visitor.os}
           deviceType={visitor.device_type}
           referrer={visitor.referrer}
+          collectsReferrers={collectsReferrers}
         />
       </div>
 

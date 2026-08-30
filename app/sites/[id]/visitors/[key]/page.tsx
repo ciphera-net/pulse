@@ -159,6 +159,7 @@ export default function VisitorDetailPage() {
                   os={profile.os}
                   deviceType={profile.device_type}
                   referrer={profile.referrer}
+                  collectsReferrers={site?.collect_referrers ?? false}
                 />
               </>
             )}
@@ -236,11 +237,12 @@ export default function VisitorDetailPage() {
                 onToggle={() => setOpenVisit((k) => (k === v.visit_key ? null : v.visit_key))}
               />
             ))}
+            {/* Zero-indexed component, one-indexed API — see the roster page. */}
             <Pagination
-              page={page}
+              page={page - 1}
               pageSize={VISITS_PAGE_SIZE}
               total={visitsData?.total ?? 0}
-              onPage={setPage}
+              onPage={(zeroBased) => setPage(zeroBased + 1)}
             />
           </>
         )}
