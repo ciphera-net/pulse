@@ -37,7 +37,7 @@ const POLL_INTERVAL_MS = 90_000
  * deliberate and is the same contract useNotifications documents: null means
  * the server could not count, and callers must not coerce it to 0.
  */
-const EMPTY_INBOX: ListResponse = { receipts: [], unread_count: 0, total_count: null }
+const EMPTY_INBOX: ListResponse = { receipts: [], unread_count: 0, total_count: null, category_counts: {} }
 
 /**
  * Revalidate every mounted notification hook, whatever its filters.

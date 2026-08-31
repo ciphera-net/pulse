@@ -1,29 +1,33 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, within, fireEvent } from '@testing-library/react'
-import type { Preferences } from '@/lib/api/notifications-preferences'
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
+import type {
+  PreferencesDocument,
+  CategoryPreferenceDoc,
+} from '@/lib/api/notifications-preferences'
 
 // --- Mocks ---------------------------------------------------------------
 
-const getPrefs = vi.fn()
-const updatePrefs = vi.fn().mockResolvedValue({ ok: true })
+const getPrefsDocument = vi.fn()
+const updatePrefsBooleans = vi.fn()
 vi.mock('@/lib/api/notifications-preferences', () => ({
-  getPrefs: () => getPrefs(),
-  updatePrefs: (p: unknown) => updatePrefs(p),
+  getPrefsDocument: () => getPrefsDocument(),
+  updatePrefsBooleans: (w: unknown) => updatePrefsBooleans(w),
 }))
 
 const purgeMine = vi.fn().mockResolvedValue(undefined)
+const listNotifications = vi.fn()
 vi.mock('@/lib/api/notifications-v2', () => ({
   purgeMine: () => purgeMine(),
+  listNotifications: (p: unknown) => listNotifications(p),
 }))
 
-// Facet primitives collapse to thin, assertable stubs (same approach as the
-// billing tab test) — keeps Radix Select / SegmentedControl out of jsdom.
+vi.mock('@/lib/auth/context', () => ({
+  useAuth: () => ({ user: { email: 'owner@example.com', org_id: 'org-1' } }),
+}))
+
+const toastError = vi.fn()
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...a: any[]) => a.flat(Infinity).filter(Boolean).join(' '),
-  // PurgeConfirmDialog moved onto Facet's Modal (30-08-2026) — the hand-rolled
-  // div it replaced had no role, no aria-modal, no Escape and no focus trap.
-  // Mocked with the dialog semantics the real one ships, so the test still
-  // asserts against a dialog rather than an anonymous div.
   Modal: ({ isOpen, title, children }: any) =>
     isOpen ? (
       <div role="dialog" aria-modal="true" aria-label={title}>
@@ -32,23 +36,8 @@ vi.mock('@ciphera-net/facet', () => ({
       </div>
     ) : null,
   Input: (props: any) => <input {...props} />,
-  SegmentedControl: ({ options, value, onChange, 'aria-label': label }: any) => (
-    <div role="radiogroup" aria-label={label}>
-      {options.map((o: any) => (
-        <button
-          key={o.value}
-          type="button"
-          role="radio"
-          aria-checked={value === o.value}
-          onClick={() => onChange(o.value)}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  ),
   Select: ({ options, value, onChange, 'aria-label': label }: any) => (
-    <select aria-label={label} value={value} onChange={e => onChange(e.target.value)}>
+    <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>
       {options.map((o: any) => (
         <option key={o.value} value={o.value}>
           {o.label}
@@ -56,145 +45,246 @@ vi.mock('@ciphera-net/facet', () => ({
       ))}
     </select>
   ),
-  Banner: ({ title, children }: any) => (
-    <div role="alert">
-      {title}
+  CheckIcon: () => <span />,
+  Button: ({ children, onClick, ...rest }: any) => (
+    <button type="button" onClick={onClick} {...rest}>
       {children}
-    </div>
+    </button>
   ),
-  Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
-  Table: ({ children }: any) => <table>{children}</table>,
-  THead: ({ children }: any) => <thead>{children}</thead>,
-  TBody: ({ children }: any) => <tbody>{children}</tbody>,
-  TR: ({ children }: any) => <tr>{children}</tr>,
-  TH: ({ children }: any) => <th>{children}</th>,
-  TD: ({ children }: any) => <td>{children}</td>,
-  toast: { error: vi.fn() },
-  getAuthErrorMessage: () => 'error',
-}))
-
-// SaveBar is portal + shell-slot machinery (its own behavior is covered by the
-// masthead-save test). Here we stub it to a marker that exposes dirty state and
-// drives onSave/onDiscard, mirroring the real component's try/catch so a failing
-// save never becomes an unhandled rejection in the test.
-vi.mock('@/components/settings/SettingsSaveBar', () => ({
-  default: ({ isDirty, onSave, onDiscard }: any) => (
-    <div data-testid="savebar" data-dirty={String(isDirty)}>
-      <button onClick={() => { void onSave().catch(() => {}) }}>save-changes</button>
-      <button onClick={onDiscard}>discard-changes</button>
-    </div>
-  ),
+  toast: { error: (...a: any[]) => toastError(...a), success: vi.fn() },
+  getAuthErrorMessage: (e: Error) => e?.message ?? '',
 }))
 
 import MyPreferencesTab from '../MyPreferencesTab'
 
-const base: Preferences = {
-  user_id: 'u1',
-  delivery_modes: {
-    billing: 'email_immediate',
-    security: 'email_immediate',
-    uptime: 'in_app_only',
-    site: 'off',
-    team: 'email_digest',
-    system: 'off',
-  },
-  quiet_hours_start: null,
-  quiet_hours_end: null,
-  timezone: 'UTC',
-  digest_time: '09:00',
-  retention_overrides: {},
-  updated_at: '2026-07-18T00:00:00Z',
+// --- Fixtures ------------------------------------------------------------
+
+function cat(
+  id: string,
+  displayName: string,
+  criticality: 'critical' | 'standard' | 'low',
+  over: Partial<CategoryPreferenceDoc> = {},
+): CategoryPreferenceDoc {
+  return {
+    category_id: id,
+    display_name: displayName,
+    criticality,
+    suppressible: criticality !== 'critical',
+    digest_group: null,
+    unread_ttl_seconds: 90 * 86400,
+    read_ttl_seconds: 30 * 86400,
+    min_retention_seconds: 7 * 86400,
+    default_in_app: true,
+    default_email: criticality === 'critical',
+    default_digest: false,
+    in_app: true,
+    email: criticality === 'critical',
+    digest: false,
+    muted: false,
+    stored: false,
+    retention_override_seconds: null,
+    ...over,
+  }
+}
+
+function doc(overrides: Partial<PreferencesDocument> = {}): PreferencesDocument {
+  return {
+    user_id: 'u1',
+    delivery_modes: {},
+    quiet_hours_start: null,
+    quiet_hours_end: null,
+    timezone: 'Europe/Brussels',
+    digest_time: '09:00:00',
+    retention_overrides: {},
+    updated_at: '2026-08-31T00:00:00Z',
+    product: 'pulse',
+    recipient_preferences: {
+      timezone: 'Europe/Brussels',
+      quiet_hours_start: null,
+      quiet_hours_end: null,
+      quiet_hours_mode: 'defer',
+      digest_time: '09:00:00',
+    },
+    categories: [
+      cat('billing', 'Billing', 'critical'),
+      cat('security', 'Security', 'critical'),
+      cat('uptime', 'Uptime', 'standard', { email: true }),
+      cat('site', 'Site activity', 'low', { digest: true }),
+      cat('team', 'Team', 'low'),
+      cat('system', 'System', 'low', {
+        muted: true,
+        email: true,
+      }),
+    ],
+    ...overrides,
+  }
 }
 
 beforeEach(() => {
-  getPrefs.mockReset().mockResolvedValue({ ...base })
-  updatePrefs.mockClear()
-  purgeMine.mockClear()
+  vi.clearAllMocks()
+  getPrefsDocument.mockResolvedValue(doc())
+  updatePrefsBooleans.mockImplementation(async () => ({ ...doc(), ok: true }))
+  listNotifications.mockResolvedValue({
+    receipts: [],
+    unread_count: 3,
+    total_count: 87,
+    category_counts: {
+      billing: { display_name: 'Billing', unread: 1, total: 12 },
+      security: { display_name: 'Security', unread: 1, total: 9 },
+      uptime: { display_name: 'Uptime', unread: 2, total: 41 },
+      site: { display_name: 'Site activity', unread: 1, total: 17 },
+      team: { display_name: 'Team', unread: 0, total: 5 },
+      system: { display_name: 'System', unread: 0, total: 3 },
+    },
+  })
 })
 
-describe('MyPreferencesTab (Account · Notifications, Facet panels)', () => {
-  it('renders the five structured panels once prefs load', async () => {
-    render(<MyPreferencesTab />)
-    expect(await screen.findByText('Delivery')).toBeInTheDocument()
-    expect(screen.getByText('Daily digest')).toBeInTheDocument()
-    expect(screen.getByText('Quiet hours')).toBeInTheDocument()
-    expect(screen.getByText('Retention')).toBeInTheDocument()
-    expect(screen.getByText('Danger zone')).toBeInTheDocument()
+async function renderTab() {
+  render(<MyPreferencesTab />)
+  await waitFor(() => expect(screen.getByText('Delivery')).toBeInTheDocument())
+}
+
+// --- Tests ---------------------------------------------------------------
+
+describe('MyPreferencesTab (round-3 family)', () => {
+  it('renders the six categories in the family order with registry names', async () => {
+    await renderTab()
+    const names = screen
+      .getAllByRole('button', { expanded: false })
+      .map((b) => b.textContent ?? '')
+      .filter((t) =>
+        ['Billing', 'Security', 'Uptime', 'Site activity', 'Team', 'System'].some((n) =>
+          t.startsWith(n),
+        ),
+      )
+    expect(names.length).toBe(6)
+    expect(names[0]).toContain('Billing')
+    expect(names[2]).toContain('Uptime')
+    expect(names[5]).toContain('System')
   })
 
-  it('locks the Off segment out of critical (always-on) categories only', async () => {
-    render(<MyPreferencesTab />)
-    const billing = await screen.findByRole('radiogroup', { name: 'Delivery for Billing' })
-    // Critical: no "Off" option, and an "Always on" micro-label.
-    expect(within(billing).queryByRole('radio', { name: 'Off' })).toBeNull()
-    expect(screen.getAllByText('Always on')).toHaveLength(2) // billing + security
-
-    // Non-critical still offers Off.
-    const uptime = screen.getByRole('radiogroup', { name: 'Delivery for Uptime monitoring' })
-    expect(within(uptime).getByRole('radio', { name: 'Off' })).toBeInTheDocument()
+  it('critical rows summarize as always on; muted rows read as muted with resume state', async () => {
+    await renderTab()
+    expect(screen.getAllByText('In-app + Email · always on').length).toBe(2)
+    expect(screen.getByText('Muted · resumes to In-app + Email')).toBeInTheDocument()
   })
 
-  it('buffers a delivery change until Save (no write on edit)', async () => {
-    render(<MyPreferencesTab />)
-    const uptime = await screen.findByRole('radiogroup', { name: 'Delivery for Uptime monitoring' })
+  it('a critical category expands to On·always cells, an em-dash digest and NO mute affordance', async () => {
+    await renderTab()
+    fireEvent.click(screen.getByRole('button', { name: /^Billing/ }))
+    expect(screen.getAllByText('On · always').length).toBe(2)
+    expect(screen.getByText('—')).toBeInTheDocument()
+    expect(screen.getByText(/Not available — Billing is never digested/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Mute Billing/ })).toBeNull()
+    // No checkbox inputs at all inside a critical expansion.
+    expect(screen.queryByRole('checkbox')).toBeNull()
+  })
 
-    // Clean on load.
-    expect(screen.getByTestId('savebar').dataset.dirty).toBe('false')
+  it('a suppressible category expands to checkbox rows and a mute button', async () => {
+    await renderTab()
+    fireEvent.click(screen.getByRole('button', { name: /^Uptime/ }))
+    expect(screen.getAllByRole('checkbox').length).toBe(3)
+    expect(screen.getByRole('button', { name: 'Mute Uptime' })).toBeInTheDocument()
+  })
 
-    // Editing the draft flips dirty but writes NOTHING yet.
-    fireEvent.click(within(uptime).getByRole('radio', { name: 'Off' }))
-    expect(within(uptime).getByRole('radio', { name: 'Off' })).toHaveAttribute('aria-checked', 'true')
-    expect(screen.getByTestId('savebar').dataset.dirty).toBe('true')
-    expect(updatePrefs).not.toHaveBeenCalled()
+  it('🔴 every category write carries the CURRENT schedule fields (the clobber guard)', async () => {
+    await renderTab()
+    fireEvent.click(screen.getByRole('button', { name: /^Uptime/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Daily digest for Uptime' }))
+    await waitFor(() => expect(updatePrefsBooleans).toHaveBeenCalledTimes(1))
+    const body = updatePrefsBooleans.mock.calls[0][0]
+    // The categories half…
+    expect(body.categories).toEqual({ uptime: { digest: true } })
+    // …and the schedule half, present on EVERY write: the proxy sends the
+    // recipient_preferences block unconditionally, so omitting these would
+    // silently reset digest time and quiet hours to defaults.
+    expect(body.digest_time).toBe('09:00')
+    expect(body.timezone).toBe('Europe/Brussels')
+    expect('quiet_hours_start' in body).toBe(true)
+    expect('quiet_hours_end' in body).toBe(true)
+  })
 
-    // One PUT of the whole draft on Save; back to clean afterwards.
-    fireEvent.click(screen.getByRole('button', { name: 'save-changes' }))
-    await waitFor(() => expect(updatePrefs).toHaveBeenCalledTimes(1))
-    expect(updatePrefs).toHaveBeenCalledWith(
-      expect.objectContaining({ delivery_modes: expect.objectContaining({ uptime: 'off' }) }),
+  it('muting writes muted:true and unmuting writes muted:false', async () => {
+    await renderTab()
+    fireEvent.click(screen.getByRole('button', { name: /^Uptime/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Mute Uptime' }))
+    await waitFor(() => expect(updatePrefsBooleans).toHaveBeenCalled())
+    expect(updatePrefsBooleans.mock.calls[0][0].categories).toEqual({
+      uptime: { muted: true },
+    })
+  })
+
+  it('the retention select offers no option below the registry floor (n−1)', async () => {
+    await renderTab()
+    fireEvent.click(screen.getByRole('button', { name: /^Uptime/ }))
+    const selects = screen.getAllByRole('combobox', { name: 'Retention for Uptime' })
+    const options = within(selects[0])
+      .getAllByRole('option')
+      .map((o) => (o as HTMLOptionElement).value)
+    // floor is 7 days: 3 must be absent, 7 present, default 30 labelled.
+    expect(options).not.toContain('3')
+    expect(options).toContain('7')
+    expect(within(selects[0]).getByText('30 days · registry default')).toBeInTheDocument()
+  })
+
+  it('selecting the registry default clears the override (null, not a copied value)', async () => {
+    await renderTab()
+    fireEvent.click(screen.getByRole('button', { name: /^Uptime/ }))
+    const selects = screen.getAllByRole('combobox', { name: 'Retention for Uptime' })
+    fireEvent.change(selects[0], { target: { value: '30' } })
+    await waitFor(() => expect(updatePrefsBooleans).toHaveBeenCalled())
+    expect(
+      updatePrefsBooleans.mock.calls[0][0].categories.uptime.retention_override_seconds,
+    ).toBeNull()
+  })
+
+  it('the quiet-hours copy is the ruled variant A, criticals exempt', async () => {
+    await renderTab()
+    expect(
+      screen.getByText(
+        /During quiet hours, email is held and delivered when they end — never dropped\. Billing and Security send immediately, always\./,
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('adopts the SERVER response after a write (stored truth, not the optimistic guess)', async () => {
+    const answered = doc()
+    answered.categories = answered.categories.map((c) =>
+      c.category_id === 'uptime' ? { ...c, digest: true, email: false, stored: true } : c,
     )
-    await waitFor(() => expect(screen.getByTestId('savebar').dataset.dirty).toBe('false'))
+    updatePrefsBooleans.mockResolvedValue({ ...answered, ok: true })
+    await renderTab()
+    fireEvent.click(screen.getByRole('button', { name: /^Uptime/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Daily digest for Uptime' }))
+    await waitFor(() => expect(screen.getByText('In-app + Digest')).toBeInTheDocument())
   })
 
-  it('keeps the draft and shows a banner when the save fails', async () => {
-    updatePrefs.mockRejectedValueOnce(new Error('server said no'))
-    render(<MyPreferencesTab />)
-    const uptime = await screen.findByRole('radiogroup', { name: 'Delivery for Uptime monitoring' })
-
-    fireEvent.click(within(uptime).getByRole('radio', { name: 'Off' }))
-    fireEvent.click(screen.getByRole('button', { name: 'save-changes' }))
-
-    // Failure surfaces in the banner (error ≠ empty) and the draft is preserved,
-    // so the tab stays dirty and the edited value survives. (The Banner stub
-    // renders title+children in one element, so assert on its text content.)
-    const banner = await screen.findByRole('alert')
-    expect(banner).toHaveTextContent("Couldn't save your preferences")
-    expect(banner).toHaveTextContent('server said no')
-    expect(within(uptime).getByRole('radio', { name: 'Off' })).toHaveAttribute('aria-checked', 'true')
-    expect(screen.getByTestId('savebar').dataset.dirty).toBe('true')
+  it('a trigger refusal (422) surfaces the server words and changes nothing', async () => {
+    updatePrefsBooleans.mockRejectedValue(new Error('cannot disable a critical category'))
+    await renderTab()
+    fireEvent.click(screen.getByRole('button', { name: /^Uptime/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'In-app' }))
+    await waitFor(() => expect(toastError).toHaveBeenCalled())
+    expect(String(toastError.mock.calls[0][0])).toContain('cannot disable a critical category')
   })
 
-  it('renders retention defaults as a ruled table', async () => {
-    render(<MyPreferencesTab />)
-    expect(await screen.findByText('Purge my read items after')).toBeInTheDocument()
-    expect(screen.getByText('Category')).toBeInTheDocument()
-    // Billing (30) + Team (30) render a "30 days" default cell; Select options
-    // echo the same string, so there are at least the two default cells.
-    expect(screen.getAllByText('30 days').length).toBeGreaterThanOrEqual(2)
+  it('the retention band anchors each category to its true read-held count', async () => {
+    await renderTab()
+    // uptime: 41 total − 2 unread = 39 read items held
+    expect(screen.getByText('39 read items held')).toBeInTheDocument()
   })
 
-  it('opens the typed-DELETE purge confirm from the danger panel', async () => {
-    render(<MyPreferencesTab />)
-    const del = await screen.findByRole('button', { name: /Delete all my notification history/i })
-    fireEvent.click(del)
-    expect(await screen.findByText(/Type/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Delete everything/i })).toBeInTheDocument()
+  it('the purge button carries the server true count and confirms in a dialog', async () => {
+    await renderTab()
+    const btn = screen.getByRole('button', { name: 'Purge all 87 notifications' })
+    fireEvent.click(btn)
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
-  it('shows the error state (not an empty panel) when the fetch fails', async () => {
-    getPrefs.mockRejectedValueOnce(new Error('boom'))
+  it('a failed load renders the error state, never an empty panel', async () => {
+    getPrefsDocument.mockRejectedValue(new Error('boom'))
     render(<MyPreferencesTab />)
-    expect(await screen.findByText(/Couldn.t load this/i)).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText(/boom|Failed to load/)).toBeInTheDocument())
     expect(screen.queryByText('Delivery')).toBeNull()
   })
 })

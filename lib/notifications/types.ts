@@ -110,6 +110,15 @@ export interface Receipt<T extends NotificationType = NotificationType> {
   event_id: string
   delivered_at: string | null
   read_at: string | null
+  /**
+   * The email leg's status ('queued' | 'held' | 'handed_off' | 'suppressed' |
+   * 'dead_letter' | …, Iris's vocabulary untranslated) — null when no email
+   * delivery exists for this receipt. 'held' draws the amber quiet-hours chip;
+   * delivered_at means HANDED OFF and is null while held ("Delivered" stays
+   * reserved for Phase 3's confirmed truth).
+   */
+  email_status?: string | null
+  email_state_reason?: string | null
   event: {
     id: string
     organization_id: string
