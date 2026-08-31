@@ -10,7 +10,6 @@ const TAB_MAP: Record<string, string> = {
   privacy:       'privacy',
   bot:           'bot-spam',
   goals:         'goals',
-  notifications: 'reports',
   integrations:  'integrations',
 }
 

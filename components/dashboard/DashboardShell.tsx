@@ -15,7 +15,7 @@ import OnboardingChip from '@/components/onboarding/OnboardingChip'
 import { useOrgSwitcher } from '@/lib/hooks/useOrgSwitcher'
 import {
   CaretDown, CaretRight, SidebarSimple, Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, Globe as GlobeIcon,
-  GearSix, Target, Eye, ShieldCheck, Robot, ChartBar,
+  GearSix, Target, Eye, ShieldCheck, Robot,
   Buildings, UsersThree, Key, CreditCard, Bell, ClockCounterClockwise, User, Lock, DeviceMobile,
 } from '@phosphor-icons/react'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
@@ -105,7 +105,6 @@ function useHomePageMeta(): PageMeta {
       visibility: { label: 'Visibility', icon: Eye },
       privacy: { label: 'Privacy', icon: ShieldCheck },
       'bot-spam': { label: 'Bot & Spam', icon: Robot },
-      reports: { label: 'Alerts', icon: ChartBar },
       integrations: { label: 'Integrations', icon: PlugsIcon },
       workspace: { label: 'General', icon: Buildings },
       members: { label: 'Members', icon: UsersThree },

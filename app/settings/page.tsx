@@ -48,7 +48,6 @@ const SITE_ROWS: SectionRow[] = [
   { label: 'Visibility', href: '/settings/site/visibility', description: 'Public dashboard and share links.', requires: 'sites.edit' },
   { label: 'Privacy', href: '/settings/site/privacy', description: 'Data collection and retention controls.', requires: 'sites.edit' },
   { label: 'Bot & Spam', href: '/settings/site/bot-spam', description: 'Filtering and quarantine review.' },
-  { label: 'Alerts', href: '/settings/site/reports', description: 'Alert channels for uptime monitoring.', requires: 'reports.manage' },
   { label: 'Integrations', href: '/settings/site/integrations', description: 'Search Console and Bunny CDN.', requires: 'integrations.manage' },
 ]
 
@@ -82,7 +81,6 @@ export default function SettingsLandingPage() {
   const perm: Record<string, boolean> = {
     'sites.edit': useCan('sites.edit'),
     'goals.manage': useCan('goals.manage'),
-    'reports.manage': useCan('reports.manage'),
     'integrations.manage': useCan('integrations.manage'),
     'roles.manage': useCan('roles.manage'),
     'billing.view': useCan('billing.view'),
