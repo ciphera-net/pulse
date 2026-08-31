@@ -91,10 +91,8 @@ describe('dashboard filter rows are reachable without a mouse', () => {
 // --- the row that cannot be a button ---------------------------------------
 
 const useFullDimensionList = vi.fn()
-const usePageEngagement = vi.fn()
 vi.mock('@/lib/swr/dashboard', () => ({
   useFullDimensionList: (...args: unknown[]) => useFullDimensionList(...args),
-  usePageEngagement: (...args: unknown[]) => usePageEngagement(...args),
 }))
 vi.mock('@/components/dashboard/VirtualList', () => ({
   default: ({ items, renderItem }: { items: unknown[]; renderItem: (item: never, i: number) => React.ReactNode }) => (
@@ -107,7 +105,6 @@ const page = (p: string, pv: number): TopPage => ({ path: p, pageviews: pv, visi
 
 beforeEach(() => {
   useFullDimensionList.mockReset().mockReturnValue(idle)
-  usePageEngagement.mockReset().mockReturnValue(idle)
 })
 
 describe('the pages row keeps its link and still works from the keyboard', () => {

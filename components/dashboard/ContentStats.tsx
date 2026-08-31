@@ -1,27 +1,20 @@
 'use client'
 
 import { useState } from 'react'
-import { Spinner } from '@ciphera-net/facet'
-import { formatNumber } from '@/lib/utils/format'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
-import { TopPage, PageEngagement } from '@/lib/api/stats'
+import { TopPage } from '@/lib/api/stats'
 import { FrameCornersIcon, FileText } from '@phosphor-icons/react'
 import { Modal, ArrowUpRightIcon } from '@ciphera-net/facet'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { ListSkeleton } from '@/components/skeletons'
 import VirtualList from './VirtualList'
-import { useFullDimensionList, usePageEngagement, type FullListKind } from '@/lib/swr/dashboard'
+import { useFullDimensionList, type FullListKind } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
-import { type BlockMetric } from '@/lib/dashboard/metrics'
 import { MetricRowStat, MetricUnitLabel, rowBarWidth, shareDenominatorNote } from '@/components/dashboard/MetricRowStat'
 import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 interface ContentStatsProps {
-  // The page's selected metric — rows display it; ranking stays server-side.
-  // Entry/exit rows are session-counts by construction (visitors == pageviews,
-  // no rates), so rate metrics render guarded dashes there — honestly.
-  metric?: BlockMetric
   topPages: TopPage[]
   entryPages: TopPage[]
   exitPages: TopPage[]
@@ -34,8 +27,8 @@ interface ContentStatsProps {
   // F9 fix: one unit, one denominator, in the card and its modal alike.
   totals?: { pageviews: number; visitors: number }
   // Active page filters, threaded into every fetch this card makes itself
-  // (modal + engagement) so a modal opened from a filtered card shows the
-  // same population as the card (F14).
+  // (the modal) so a modal opened from a filtered card shows the same
+  // population as the card (F14).
   filters?: string
   // The anonymous share surface has no full-list endpoints (member-strict
   // since Phase 0) — hide the affordance rather than show an error for a
@@ -44,42 +37,29 @@ interface ContentStatsProps {
   onFilter?: (filter: DimensionFilter) => void
 }
 
-type Tab = 'top_pages' | 'entry_pages' | 'exit_pages' | 'engagement'
+type Tab = 'top_pages' | 'entry_pages' | 'exit_pages'
 
 const LIMIT = 7
 
-const TAB_TO_KIND: Record<Exclude<Tab, 'engagement'>, FullListKind> = {
+const TAB_TO_KIND: Record<Tab, FullListKind> = {
   top_pages: 'pages',
   entry_pages: 'entry-pages',
   exit_pages: 'exit-pages',
 }
 
-export default function ContentStats({ metric = 'pageviews', topPages, entryPages, exitPages, domain, collectPagePaths = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter }: ContentStatsProps) {
+export default function ContentStats({ topPages, entryPages, exitPages, domain, collectPagePaths = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter }: ContentStatsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('top_pages')
   const handleTabKeyDown = useTabListKeyboard()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalSearch, setModalSearch] = useState('')
 
-  const isEngagementTab = activeTab === 'engagement'
+  const tabs: Tab[] = ['top_pages', 'entry_pages', 'exit_pages']
 
-  // The Engagement tab's own fetch hits a member-only endpoint
-  // (/page-engagement is not on the public-share allowlist), so the tab must
-  // not exist on the anonymous surface — otherwise clicking it renders an
-  // error box for a capability that structurally cannot work there.
-  const tabs: Tab[] = memberFeatures
-    ? ['top_pages', 'entry_pages', 'exit_pages', 'engagement']
-    : ['top_pages', 'entry_pages', 'exit_pages']
-
-
-  // Engagement tab (card view): SWR with a conditional key — nothing fetches
-  // until the tab is active, and a failure is an error state, not an empty
-  // list masquerading as "not enough data yet" (F17).
-  const {
-    data: engagementData,
-    error: engagementTabError,
-    isLoading: engagementLoading,
-    mutate: refetchEngagementTab,
-  } = usePageEngagement(isEngagementTab, siteId, dateRange?.start, dateRange?.end, 5, LIMIT, filters)
+  // Twin columns (O3, 01-09-2026): the Pages tab shows visitors + views —
+  // the one list where the two genuinely diverge (a page is read repeatedly).
+  // Entry/exit rows are visit-counts by construction (visitors == pageviews),
+  // so a second column there would print the same number twice.
+  const twinColumns = activeTab === 'top_pages'
 
   // Modal data: conditional keys arm only while the modal is open on the
   // matching tab. Filters ride the key (F14).
@@ -89,15 +69,9 @@ export default function ContentStats({ metric = 'pageviews', topPages, entryPage
     isLoading: isLoadingFull,
     mutate: refetchFull,
   } = useFullDimensionList<TopPage>(
-    isModalOpen && !isEngagementTab ? TAB_TO_KIND[activeTab as Exclude<Tab, 'engagement'>] : null,
+    isModalOpen ? TAB_TO_KIND[activeTab] : null,
     siteId, dateRange?.start, dateRange?.end, 100, filters,
   )
-  const {
-    data: fullEngagementData,
-    error: fullEngagementError,
-    isLoading: isLoadingFullEngagement,
-    mutate: refetchFullEngagement,
-  } = usePageEngagement(isModalOpen && isEngagementTab, siteId, dateRange?.start, dateRange?.end, 5, 50, filters)
 
   // Filter out generic "/" entries when page paths are disabled (all traffic shows as "/")
   const filterGenericPaths = (pages: TopPage[]) => {
@@ -114,8 +88,6 @@ export default function ContentStats({ metric = 'pageviews', topPages, entryPage
         return filterGenericPaths(entryPages)
       case 'exit_pages':
         return filterGenericPaths(exitPages)
-      default:
-        return []
     }
   }
 
@@ -124,74 +96,14 @@ export default function ContentStats({ metric = 'pageviews', topPages, entryPage
       case 'top_pages': return 'Pages'
       case 'entry_pages': return 'Entries'
       case 'exit_pages': return 'Exits'
-      case 'engagement': return 'Engagement'
     }
   }
 
-  const data = isEngagementTab ? [] : getData()
-  const engagementRows = engagementData ?? []
-  const hasData = isEngagementTab ? engagementRows.length > 0 : (data && data.length > 0)
-  const displayedData = !isEngagementTab && hasData ? data.slice(0, LIMIT) : []
-  const displayedEngagement = isEngagementTab ? engagementRows.slice(0, LIMIT) : []
-  const emptySlots = isEngagementTab
-    ? Math.max(0, LIMIT - displayedEngagement.length)
-    : Math.max(0, LIMIT - displayedData.length)
-  const showViewAll = memberFeatures && (isEngagementTab
-    ? (engagementRows.length >= LIMIT)
-    : (hasData && data.length > LIMIT))
-
-
-  const renderEngagementRow = (item: PageEngagement, inModal = false) => {
-    const scoreColor = item.engagement_score >= 70
-      ? { bar: 'rgba(34,197,94,0.07)', border: 'rgba(34,197,94,0.7)', badge: 'bg-green-500/20 text-green-400' }
-      : item.engagement_score >= 40
-        ? { bar: 'rgba(245,158,11,0.07)', border: 'rgba(245,158,11,0.7)', badge: 'bg-amber-500/20 text-amber-400' }
-        : { bar: 'rgba(239,68,68,0.07)', border: 'rgba(239,68,68,0.7)', badge: 'bg-red-500/20 text-red-400' }
-
-    const readTime = item.avg_visible_duration >= 60
-      ? `${Math.round(item.avg_visible_duration / 60)}m`
-      : `${Math.round(item.avg_visible_duration)}s`
-
-    const Row = onFilter ? 'button' : 'div'
-    return (
-      <Row
-        key={item.path}
-        {...(onFilter
-          ? {
-              type: 'button' as const,
-              onClick: () => {
-                onFilter({ dimension: 'page', operator: 'is', values: [item.path] })
-                if (inModal) setIsModalOpen(false)
-              },
-            }
-          : {})}
-        className={`interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
-      >
-        {/* Bar — width based on engagement score */}
-        <div
-          className="absolute inset-y-0.5 left-0.5 rounded-none transition-all duration-300 ease-apple"
-          style={{
-            width: `${(item.engagement_score / 100) * 75}%`,
-            backgroundColor: scoreColor.bar,
-            borderLeft: `2px solid ${scoreColor.border}`,
-          }}
-        />
-        {/* Path */}
-        <div className="relative flex-1 truncate text-white flex items-center">
-          <span className="truncate">{item.path}</span>
-        </div>
-        {/* Score badge + details on hover */}
-        <div className="relative flex items-center gap-2 ml-4">
-          <span className="opacity-100 translate-x-0 md:opacity-0 md:group-hover:opacity-100 md:translate-x-2 md:group-hover:translate-x-0 transition-all duration-150 text-[10px] font-medium text-neutral-500 whitespace-nowrap">
-            {Math.round(item.avg_scroll_depth)}% scroll · {readTime} read
-          </span>
-          <span className={`inline-flex items-center justify-center w-8 h-5 rounded-none text-[10px] font-bold tabular-nums ${scoreColor.badge}`}>
-            {item.engagement_score}
-          </span>
-        </div>
-      </Row>
-    )
-  }
+  const data = getData()
+  const hasData = data && data.length > 0
+  const displayedData = hasData ? data.slice(0, LIMIT) : []
+  const emptySlots = Math.max(0, LIMIT - displayedData.length)
+  const showViewAll = memberFeatures && hasData && data.length > LIMIT
 
   return (
     <>
@@ -223,7 +135,7 @@ export default function ContentStats({ metric = 'pageviews', topPages, entryPage
           {/* No denominator note in the header (owner call 19-08) — the modal
               keeps its explanation, where search could otherwise mislead. */}
           <div className="flex min-w-0 shrink items-center gap-1.5">
-            <MetricUnitLabel metric={metric} />
+            <MetricUnitLabel views={twinColumns} />
             {showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}
@@ -241,39 +153,10 @@ export default function ContentStats({ metric = 'pageviews', topPages, entryPage
             <div className="h-full flex flex-col items-center justify-center text-center px-4">
               <p className="text-neutral-400 text-sm">Page path tracking is disabled in site settings</p>
             </div>
-          ) : isEngagementTab ? (
-            engagementLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Spinner size="sm" />
-              </div>
-            ) : engagementTabError ? (
-              <ErrorCard
-                title="Couldn’t load engagement scores"
-                description="The rest of the dashboard is unaffected."
-                onRetry={() => refetchEngagementTab()}
-              />
-            ) : engagementRows.length > 0 ? (
-              <>
-                {displayedEngagement.map((item) => renderEngagementRow(item))}
-                {Array.from({ length: emptySlots }).map((_, i) => (
-                  <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
-                ))}
-              </>
-            ) : (
-              <>
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <p className="text-sm text-neutral-500">Not enough data yet</p>
-                  <p className="text-xs text-neutral-600 mt-1">Pages need at least 5 sessions for scoring</p>
-                </div>
-                {Array.from({ length: LIMIT }).map((_, i) => (
-                  <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
-                ))}
-              </>
-            )
           ) : hasData ? (
             <>
               {displayedData.map((page) => {
-                const barWidth = rowBarWidth(metric, page, displayedData)
+                const barWidth = rowBarWidth(page, displayedData)
                 return (
                   // This row cannot become a <button>: it contains a real
                   // "open this page" link, and a link inside a button is
@@ -317,7 +200,7 @@ export default function ContentStats({ metric = 'pageviews', topPages, entryPage
                         <ArrowUpRightIcon className="w-4 h-4 opacity-60 md:w-3 md:h-3 md:opacity-0 text-neutral-400 md:group-hover:opacity-100 transition-opacity hover:text-brand-orange ease-apple" />
                       </a>
                     </div>
-                    <MetricRowStat metric={metric} row={page} totals={totals} />
+                    <MetricRowStat row={page} totals={totals} views={twinColumns} />
                   </div>
                 )
               })}
@@ -350,39 +233,12 @@ export default function ContentStats({ metric = 'pageviews', topPages, entryPage
             placeholder="Search pages..."
             className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-none text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
           />
-          {shareDenominatorNote(metric, totals) && !isEngagementTab && (
-            <p className="mb-3 text-[11px] text-neutral-500">{shareDenominatorNote(metric, totals)}</p>
+          {shareDenominatorNote(totals) && (
+            <p className="mb-3 text-[11px] text-neutral-500">{shareDenominatorNote(totals)}</p>
           )}
         </div>
         <div className="flex-1 overflow-y-auto min-h-0">
-          {isEngagementTab ? (
-            isLoadingFullEngagement ? (
-              <div className="py-4">
-                <ListSkeleton rows={10} />
-              </div>
-            ) : fullEngagementError ? (
-              <ErrorCard
-                title="Couldn’t load the full list"
-                onRetry={() => refetchFullEngagement()}
-              />
-            ) : (() => {
-              const modalEngagementData = (fullEngagementData ?? [])
-                .filter(p => !modalSearch || p.path.toLowerCase().includes(modalSearch.toLowerCase()))
-              return modalEngagementData.length > 0 ? (
-                <VirtualList
-                  items={modalEngagementData}
-                  estimateSize={36}
-                  className="pr-2"
-                  renderItem={(item) => renderEngagementRow(item, true)}
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <p className="text-sm text-neutral-500">Not enough data yet</p>
-                  <p className="text-xs text-neutral-600 mt-1">Pages need at least 5 sessions for scoring</p>
-                </div>
-              )
-            })()
-          ) : isLoadingFull ? (
+          {isLoadingFull ? (
             <div className="py-4">
               <ListSkeleton rows={10} />
             </div>
@@ -410,7 +266,7 @@ export default function ContentStats({ metric = 'pageviews', topPages, entryPage
                       <div className="flex-1 truncate text-white flex items-center">
                         <span className="truncate">{page.path}</span>
                       </div>
-                      <MetricRowStat metric={metric} row={page} totals={totals} />
+                      <MetricRowStat row={page} totals={totals} views={twinColumns} />
                     </Row>
                   )
                 }}

@@ -28,13 +28,10 @@ import VirtualList from './VirtualList'
 import { TopReferrer } from '@/lib/api/stats'
 import { useFullDimensionList } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
-import { type BlockMetric } from '@/lib/dashboard/metrics'
 import { MetricRowStat, MetricUnitLabel, rowBarWidth, shareDenominatorNote } from '@/components/dashboard/MetricRowStat'
 import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 interface TopReferrersProps {
-  // The page's selected metric — rows display it; ranking stays server-side.
-  metric?: BlockMetric
   referrers: Array<{ referrer: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
   channels?: Array<{ channel: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
   collectReferrers?: boolean
@@ -71,7 +68,7 @@ function getChannelIcon(channel: string) {
   }
 }
 
-export default function TopReferrers({ metric = 'pageviews', referrers, channels = [], collectReferrers = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter }: TopReferrersProps) {
+export default function TopReferrers({ referrers, channels = [], collectReferrers = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter }: TopReferrersProps) {
   // A row that filters is a real control; one that cannot is inert text.
   // Same conditional-tag pattern as RealtimeVisitorsPopover, hoisted here
   // because the condition is a prop and every row in this file shares it.
@@ -166,7 +163,7 @@ export default function TopReferrers({ metric = 'pageviews', referrers, channels
           </div>
           <DimensionInfoTip tab={view} className="ms-2 me-auto" />
           <div className="flex min-w-0 shrink items-center gap-1.5">
-            <MetricUnitLabel metric={metric} />
+            <MetricUnitLabel />
             {view === 'referrers' && showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}
@@ -189,7 +186,7 @@ export default function TopReferrers({ metric = 'pageviews', referrers, channels
             ) : hasData ? (
               <>
                 {displayedReferrers.map((ref) => {
-                  const barWidth = rowBarWidth(metric, ref, displayedReferrers)
+                  const barWidth = rowBarWidth(ref, displayedReferrers)
                   return (
                     <Row
                       key={ref.referrer}
@@ -204,7 +201,7 @@ export default function TopReferrers({ metric = 'pageviews', referrers, channels
                         {renderReferrerIcon(ref.referrer)}
                         <span className="truncate" title={getReferrerDisplayName(ref.referrer)}>{getReferrerDisplayName(ref.referrer)}</span>
                       </div>
-                      <MetricRowStat metric={metric} row={ref} totals={totals} />
+                      <MetricRowStat row={ref} totals={totals} />
                     </Row>
                   )
                 })}
@@ -225,7 +222,7 @@ export default function TopReferrers({ metric = 'pageviews', referrers, channels
             hasChannelData ? (
               <>
                 {displayedChannels.map((ch) => {
-                  const barWidth = rowBarWidth(metric, ch, displayedChannels)
+                  const barWidth = rowBarWidth(ch, displayedChannels)
                   return (
                     <Row
                       key={ch.channel}
@@ -240,7 +237,7 @@ export default function TopReferrers({ metric = 'pageviews', referrers, channels
                         <span className="flex-shrink-0">{getChannelIcon(ch.channel)}</span>
                         <span className="truncate" title={ch.channel}>{ch.channel}</span>
                       </div>
-                      <MetricRowStat metric={metric} row={ch} totals={totals} />
+                      <MetricRowStat row={ch} totals={totals} />
                     </Row>
                   )
                 })}
@@ -273,8 +270,8 @@ export default function TopReferrers({ metric = 'pageviews', referrers, channels
             placeholder="Search referrers..."
             className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-none text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
           />
-          {shareDenominatorNote(metric, totals) && (
-            <p className="mb-3 text-[11px] text-neutral-500">{shareDenominatorNote(metric, totals)}</p>
+          {shareDenominatorNote(totals) && (
+            <p className="mb-3 text-[11px] text-neutral-500">{shareDenominatorNote(totals)}</p>
           )}
         </div>
         <div className="flex-1 overflow-y-auto min-h-0">
@@ -307,7 +304,7 @@ export default function TopReferrers({ metric = 'pageviews', referrers, channels
                       {renderReferrerIcon(ref.referrer)}
                       <span className="truncate" title={getReferrerDisplayName(ref.referrer)}>{getReferrerDisplayName(ref.referrer)}</span>
                     </div>
-                    <MetricRowStat metric={metric} row={ref} totals={totals} />
+                    <MetricRowStat row={ref} totals={totals} />
                   </Row>
                 )}
               />

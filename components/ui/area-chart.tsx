@@ -2254,6 +2254,10 @@ export interface AreaChartProps {
   // aspectRatio. The parent must have a definite height (grid/flex stretch or
   // a min-height) or the chart collapses to zero.
   fillParent?: boolean;
+  // Hard ceiling for the y domain (e.g. 100 for percentage metrics). Without
+  // it, nice-step rounding can print a 125% gridline over a bounce-rate
+  // series — an axis claiming a value the metric cannot take.
+  yCap?: number;
   className?: string;
   children: ReactNode;
 }
@@ -2267,6 +2271,7 @@ interface ChartInnerProps {
   xDataKey: string;
   margin: Margin;
   animationDuration: number;
+  yCap?: number;
   children: ReactNode;
   containerRef: RefObject<HTMLDivElement | null>;
 }
@@ -2278,6 +2283,7 @@ function ChartInner({
   xDataKey,
   margin,
   animationDuration,
+  yCap,
   children,
   containerRef,
 }: ChartInnerProps) {
@@ -2331,12 +2337,18 @@ function ChartInner({
 
     // Domain and ticks come from ONE computation (see niceYDomain) so the
     // axis lands on human steps and Grid/YAxis can never disagree.
-    const { top, ticks } = niceYDomain(maxValue);
+    let { top, ticks } = niceYDomain(maxValue);
+    if (yCap != null && top > yCap) {
+      // A capped metric (percentages) never exceeds its cap, so quarter steps
+      // of the cap replace the nice-step ladder that overshot it.
+      top = yCap;
+      ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => f * yCap);
+    }
     return {
       yScale: scaleLinear().range([innerHeight, 0]).domain([0, top]),
       yTickValues: ticks,
     };
-  }, [innerHeight, data, lines]);
+  }, [innerHeight, data, lines, yCap]);
 
   const dateLabels = useMemo(() => {
     if (data.length < 2) return data.map((d) => xAccessor(d).toLocaleDateString("en-GB", { month: "short", day: "numeric" }));
@@ -2471,6 +2483,7 @@ export function AreaChart({
   animationDuration = 1100,
   aspectRatio = "2 / 1",
   fillParent = false,
+  yCap,
   className = "",
   children,
 }: AreaChartProps) {
@@ -2493,6 +2506,7 @@ export function AreaChart({
             margin={margin}
             width={width}
             xDataKey={xDataKey}
+            yCap={yCap}
           >
             {children}
           </ChartInner>

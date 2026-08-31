@@ -150,7 +150,7 @@ export default function AboutPage() {
           <MacWindow>
             <Image
               src={cdnUrl('/marketing/dashboard-hero-aug-2x.png')}
-              alt="The Pulse dashboard for ciphera.net — 30 days of real visitor, pageview and engagement data"
+              alt="The Pulse dashboard for ciphera.net — 30 days of real visitor and pageview data"
               width={2244}
               height={1922}
               unoptimized

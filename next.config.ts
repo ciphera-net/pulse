@@ -6,6 +6,13 @@ const withPWA = withPWAInit({
   dest: "public",
   register: true,
   disable: process.env.NODE_ENV === "development",
+  // * The tracker and its release manifests must NOT be in the SW precache.
+  // * Workbox aborts the ENTIRE install when any one precache fetch fails, and
+  // * script.js is exactly the kind of URL content blockers kill — one blocked
+  // * fetch turned into a dead service worker for that visitor (observed
+  // * 01-09-2026, Vemetric comparison audit §10). The tracker is for CUSTOMER
+  // * sites anyway; the dashboard shell never imports it.
+  publicExcludes: ["script.js", "script-sri.json", "script-versions.json"],
 })
 
 // * ═══ /_next/static/* IS SERVED FROM ITS OWN CDN ZONE ═══

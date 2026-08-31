@@ -28,8 +28,6 @@ import {
   getRealtimePages,
   getStats,
   getDailyStats,
-  getEngagementPercentiles,
-  getPageEngagement,
   getTopPages,
   getEntryPages,
   getExitPages,
@@ -43,8 +41,6 @@ import {
   getDevices,
   getScreenResolutions,
   getTimezones,
-  type EngagementPercentilesData,
-  type PageEngagement,
   type RealtimePageVisitors,
 } from '@/lib/api/stats'
 import {
@@ -961,29 +957,6 @@ export function useBingDailyTotals(siteId: string, start: string, end: string) {
 // hooks so a failed request has an ERROR state instead of masquerading as
 // "not enough data yet" — the fabricated-explanation antipattern the audit
 // measured on this page.
-
-// * Engagement percentiles for the deck's Engagement row + chart overlay.
-// * UNFILTERED by design: the D4 baseline (prior-90d daily_stats) has no
-// * dimensions, so a filtered rank would be dishonest — the deck marks it.
-export function useEngagementPercentiles(siteId: string, start: string, end: string) {
-  return useSWR<EngagementPercentilesData>(
-    siteId && start && end ? ['engagementPercentiles', siteId, start, end] : null,
-    () => getEngagementPercentiles(siteId, start, end),
-    { ...dashboardSWRConfig, keepPreviousData: true, refreshInterval: 60 * 1000 }
-  )
-}
-
-// * Per-page engagement scores (ContentStats' Engagement tab + its modal).
-export function usePageEngagement(
-  enabled: boolean, siteId: string, start: string, end: string,
-  minSessions: number, limit: number, filters?: string,
-) {
-  return useSWR<PageEngagement[]>(
-    enabled && siteId && start && end ? ['pageEngagement', siteId, start, end, minSessions, limit, filters] : null,
-    () => getPageEngagement(siteId, start, end, minSessions, limit, filters),
-    { ...dashboardSWRConfig, keepPreviousData: true }
-  )
-}
 
 // * The full-list fetchers behind every card's "view all" modal, keyed by the
 // * card's tab. `kind: null` (modal closed) fetches nothing; opening the modal

@@ -70,7 +70,7 @@ const CARD_TABS: Record<string, string[]> = {
   'components/dashboard/Campaigns.tsx': ['source', 'medium', 'campaign', 'term', 'content'],
   'components/dashboard/Locations.tsx': ['map', 'countries', 'regions', 'cities', 'languages', 'timezones'],
   'components/dashboard/TechSpecs.tsx': ['browsers', 'os', 'devices', 'screens'],
-  'components/dashboard/ContentStats.tsx': ['top_pages', 'entry_pages', 'exit_pages', 'engagement'],
+  'components/dashboard/ContentStats.tsx': ['top_pages', 'entry_pages', 'exit_pages'],
   'components/dashboard/ContentSignals.tsx': ['scroll', 'events'],
 }
 
@@ -165,11 +165,8 @@ describe('terms registry', () => {
 
   it('every dimension-card tab resolves to a real registry entry', () => {
     // Coverage is all-or-none across a sibling set: a card with one bare tab
-    // reads as a bug, not as a gap. `engagement` is the one deliberate
-    // exception — it is a DECK metric whose sentence already reaches the
-    // reader from the rail, and repeating it here would be the same sentence
-    // twice on one screen.
-    const DELIBERATELY_BARE = new Set(['engagement'])
+    // reads as a bug, not as a gap.
+    const DELIBERATELY_BARE = new Set<string>()
     const bare: string[] = []
     for (const [file, tabs] of Object.entries(CARD_TABS)) {
       for (const tab of tabs) {

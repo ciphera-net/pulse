@@ -48,18 +48,18 @@ beforeEach(() => {
 
 describe('TopReferrers', () => {
   const referrers = [
-    { referrer: 'google.com', pageviews: 142 }, { referrer: 'linkedin.com', pageviews: 43 },
-    { referrer: 'chatgpt.com', pageviews: 11 }, { referrer: 'bing.com', pageviews: 5 },
-    { referrer: 'ddg.gg', pageviews: 4 }, { referrer: 'x.com', pageviews: 3 },
-    { referrer: 'reddit.com', pageviews: 2 }, { referrer: 'news.ycombinator.com', pageviews: 1 },
+    { referrer: 'google.com', pageviews: 142, visitors: 97 }, { referrer: 'linkedin.com', pageviews: 43, visitors: 30 },
+    { referrer: 'chatgpt.com', pageviews: 11, visitors: 8 }, { referrer: 'bing.com', pageviews: 5, visitors: 3 },
+    { referrer: 'ddg.gg', pageviews: 4, visitors: 3 }, { referrer: 'x.com', pageviews: 3, visitors: 2 },
+    { referrer: 'reddit.com', pageviews: 2, visitors: 1 }, { referrer: 'news.ycombinator.com', pageviews: 1, visitors: 1 },
   ]
 
-  it('divides by the true total (142/453 = 31%), not the row sum (142/211 = 67%)', () => {
+  it('divides by the true visitor total (97/314 = 31%), not the row sum (97/145 = 67%)', () => {
     render(<TopReferrers referrers={referrers} siteId="site-1" dateRange={dateRange} totals={totals} />)
     expect(screen.getByText('31%')).toBeTruthy()
     expect(screen.queryByText('67%')).toBeNull()
     // Header note removed by owner call — the modal keeps its explanation.
-    expect(screen.queryByText(/share of 453 pageviews/)).toBeNull()
+    expect(screen.queryByText(/Shares are of all 314 visitors/)).toBeNull()
   })
 
   it('threads filters into the modal fetch', () => {
@@ -89,20 +89,20 @@ describe('TopReferrers', () => {
 
 describe('Audience', () => {
   const countries = [
-    { country: 'US', pageviews: 115 }, { country: 'DE', pageviews: 42 },
-    { country: 'BE', pageviews: 34 }, { country: 'NL', pageviews: 31 },
-    { country: 'TR', pageviews: 22 }, { country: 'GB', pageviews: 19 },
-    { country: 'FR', pageviews: 12 }, { country: 'ES', pageviews: 9 },
+    { country: 'US', pageviews: 115, visitors: 78 }, { country: 'DE', pageviews: 42, visitors: 28 },
+    { country: 'BE', pageviews: 34, visitors: 23 }, { country: 'NL', pageviews: 31, visitors: 21 },
+    { country: 'TR', pageviews: 22, visitors: 15 }, { country: 'GB', pageviews: 19, visitors: 13 },
+    { country: 'FR', pageviews: 12, visitors: 8 }, { country: 'ES', pageviews: 9, visitors: 6 },
   ]
   const baseProps = {
     countries, cities: [], regions: [], languages: [], timezones: [],
     siteId: 'site-1', dateRange,
   }
 
-  it('divides by the true total (115/453 = 25%), not the row sum (115/284 = 40%)', () => {
+  it('divides by the true visitor total (78/314 = 25%), not the row sum (78/192 = 41%)', () => {
     render(<Audience {...baseProps} totals={totals} />)
     expect(screen.getByText('25%')).toBeTruthy()
-    expect(screen.queryByText('40%')).toBeNull()
+    expect(screen.queryByText('41%')).toBeNull()
   })
 
   it('threads filters and the 250 limit into the modal fetch', () => {
@@ -132,17 +132,17 @@ describe('Audience', () => {
 
 describe('TechSpecs', () => {
   const browsers = [
-    { browser: 'Chrome', pageviews: 296 }, { browser: 'Safari', pageviews: 63 },
-    { browser: 'Firefox', pageviews: 46 }, { browser: 'Edge', pageviews: 17 },
-    { browser: 'LinkedIn Browser', pageviews: 17 }, { browser: 'Opera', pageviews: 6 },
-    { browser: 'Brave', pageviews: 4 }, { browser: 'Vivaldi', pageviews: 2 },
+    { browser: 'Chrome', pageviews: 296, visitors: 204 }, { browser: 'Safari', pageviews: 63, visitors: 43 },
+    { browser: 'Firefox', pageviews: 46, visitors: 31 }, { browser: 'Edge', pageviews: 17, visitors: 12 },
+    { browser: 'LinkedIn Browser', pageviews: 17, visitors: 11 }, { browser: 'Opera', pageviews: 6, visitors: 4 },
+    { browser: 'Brave', pageviews: 4, visitors: 3 }, { browser: 'Vivaldi', pageviews: 2, visitors: 1 },
   ]
   const baseProps = {
     browsers, os: [], devices: [], screenResolutions: [],
     siteId: 'site-1', dateRange,
   }
 
-  it('divides by the true total (296/453 = 65%), not the row sum (296/451 = 66%)', () => {
+  it('divides by the true visitor total (204/314 = 65%), not the row sum (204/309 = 66%)', () => {
     render(<TechSpecs {...baseProps} totals={totals} />)
     expect(screen.getByText('65%')).toBeTruthy()
     expect(screen.queryByText('66%')).toBeNull()
@@ -150,7 +150,7 @@ describe('TechSpecs', () => {
 
   it('threads filters and maps raw rows in the modal', () => {
     useFullDimensionList.mockImplementation((kind: unknown) =>
-      kind ? { ...idle, data: [{ browser: 'Chrome', pageviews: 296 }] } : idle)
+      kind ? { ...idle, data: [{ browser: 'Chrome', pageviews: 296, visitors: 204 }] } : idle)
     render(<TechSpecs {...baseProps} totals={totals} filters="country:is:DE" />)
     fireEvent.click(screen.getByLabelText('View all technology'))
     expect(useFullDimensionList).toHaveBeenLastCalledWith(

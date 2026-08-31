@@ -60,12 +60,6 @@ export const METRIC_TERMS: Record<MetricType, GlossaryTerm> = {
       'Average length of a visit, over visits that carried a duration signal — unmeasured visits are excluded, not counted as zero. A visit ends after 30 minutes of inactivity.',
     docs: 'dashboard#visit-duration',
   },
-  engagement: {
-    title: 'Engagement',
-    definition:
-      'Each day is ranked against this site’s prior 90 days on scroll depth, time on page, visit depth and bounce rate; those four are blended by weight, and the score is the median across the period’s days. 50 means the day beat half of the prior 90.',
-    docs: 'dashboard#engagement',
-  },
 }
 
 /**
