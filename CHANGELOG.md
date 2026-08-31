@@ -47,6 +47,44 @@ public read API's — see that entry for what it does and does not cover.
 
 ### Changed
 
+- **Funnels, redrawn and simplified.** The funnel page is now one chart and one
+  sentence: tall gradient columns show each step's survivors against the entry total,
+  the loss between steps is drawn as the wedge between columns with the drop and the
+  median time to the next step written in the gap, and the headline — conversion,
+  completed of entered, change vs the previous period, median time to convert — is
+  stated once, above the chart, and nowhere else. The five-tile KPI band and the
+  duplicated daily rails are gone; the daily chart and the drop-off and breakdown
+  panels remain. The drop-off panel now names the step it describes and opens on the
+  step that loses the most visitors. The breakdown panel now shows each segment's
+  **end-to-end** funnel conversion (it used to follow the selected step, which made
+  the default view read "100% conv" for every row — true only in the useless sense),
+  and every breakdown dimension is available, not a curated seven. List cards carry
+  the same chart in miniature. Conversion rates below 10% now show one decimal —
+  a 0.4% funnel no longer prints "0%".
+
+- **Funnel steps may repeat a page or event — revisit funnels work now.** A funnel
+  like `/ → /pricing → /` used to be rejected when saving ("a later duplicate step
+  can never be matched") because the engine assigned each pageview to only one step.
+  Matching is now evaluated per step, so a later step completes on any strictly-later
+  matching event. Funnels whose steps don't overlap measure exactly as before; if two
+  of your steps *do* overlap (say, a "contains" step that also covers an "exact"
+  step's page), sequences the old engine silently missed are now counted — that is a
+  correction, and numbers can step up slightly.
+
+- **Page "contains" steps are now case-insensitive, and `%`/`_` match literally.**
+  This was the only case-sensitive "contains" in the product, and a literal percent
+  or underscore in the value acted as a hidden wildcard. A contains step may match
+  slightly more than before; exact and regex steps are unchanged.
+
+- **Funnel regexes are validated by the engine that runs them.** Saving a funnel
+  checks the pattern against the database's regex dialect, so a pattern that saves is
+  a pattern that reads. Previously a pattern could pass the save-time check and then
+  fail on every view of the funnel, forever.
+
+- **Funnels need at least two steps**, exact page steps must start with `/`, and a
+  site can hold up to 50 funnels. Creating and editing funnels and goals is now
+  recorded in your organisation's audit trail.
+
 - **The tracking script sends engagement to a path ad blockers do not cancel, and
   26-08-2026 is a measurement boundary for time-on-page and scroll depth.** The
   beacon carrying duration, visible duration and scroll depth used to post to
@@ -89,6 +127,13 @@ public read API's — see that entry for what it does and does not cover.
 
 ### Removed
 
+- **The funnel conversion window is gone — it never did anything.** The setting
+  (24 hours to 30 days) shipped in March and was removed from the product in August:
+  session identity resets at your site's midnight, so no conversion could ever span
+  more than one session and every window setting measured identically (verified on
+  production data before removal). Funnels state the real rule instead: a conversion
+  counts when a visitor completes every step within one session. The March entry
+  below is kept as history.
 - **The privacy scanner is gone.** The Settings > Privacy scan — a single-request check that printed "Privacy score 100" for pages it could not meaningfully judge — has been removed end to end, including its stored results. The Privacy settings tab itself (page rules, path grouping, query-parameter allowlist) is unchanged.
 - **Scheduled email reports and outbound webhooks are gone; the Reports tab is now Alerts.** Scheduled analytics reports and the notification-webhook integration have been removed. Uptime alert channels — email, Slack, Discord, or a webhook of yours, fired when a monitor goes down or recovers — are unchanged and keep their tab (now named Alerts). Two fixes landed with the change: a paused alert channel no longer disappears from settings, and alert channels no longer consume report slots.
 - **Custom roles are gone.** Roles are now the built-in three — Owner, Admin, Member — assigned through invite links. The Roles view remains as a read-only matrix of what each role can do. Existing memberships were unaffected; the only custom role ever created was a test artifact and was removed.
