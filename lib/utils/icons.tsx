@@ -363,7 +363,9 @@ export function getFilterValueIcon(dimension: string, value: string): ReactNode 
 
 /**
  * Merges referrer rows that share the same display name (e.g. chatgpt.com and https://chatgpt.com/...),
- * summing pageviews and keeping one referrer per group for icon/tooltip. Sorted by pageviews desc.
+ * summing counts and keeping one referrer per group for icon/tooltip. Sorted by visitors desc
+ * (the displayed primary and the server's ranking field — a pageview sort here silently undid the
+ * server's ordering for exactly this one card, 01-09-2026).
  */
 export function mergeReferrersByDisplayName(
   items: Array<{ referrer: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
@@ -410,5 +412,5 @@ export function mergeReferrersByDisplayName(
       avg_duration: a.durationBase > 0 ? a.durationWeighted / a.durationBase : null,
       allReferrers: Array.from(a.allReferrers),
     }))
-    .sort((a, b) => b.pageviews - a.pageviews)
+    .sort((a, b) => b.visitors - a.visitors || b.pageviews - a.pageviews)
 }
