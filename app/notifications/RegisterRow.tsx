@@ -91,6 +91,13 @@ export default function RegisterRow({
         {quietHoursEnd ? `Held — quiet hours · sends ${quietHoursEnd}` : 'Held — quiet hours'}
       </span>
     )
+  } else if (receipt.email_status === 'delivered' && receipt.delivered_at) {
+    // Phase 3's confirmed truth — the per-recipient DSN, ingested from
+    // Stalwart's trace. Green is RESERVED for exactly this (round-3 standing
+    // default: "Emailed" means handed off; green waits for Delivered).
+    emailMeta = <span className="text-pos">Delivered {hhmm(receipt.delivered_at)}</span>
+  } else if (receipt.email_status === 'bounced') {
+    emailMeta = <span>Email bounced</span>
   } else if (receipt.delivered_at) {
     emailMeta = <span>Emailed {hhmm(receipt.delivered_at)}</span>
   } else if (receipt.email_status === 'suppressed') {
