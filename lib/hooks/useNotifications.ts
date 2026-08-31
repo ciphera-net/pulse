@@ -4,7 +4,7 @@ import useSWR from 'swr'
 import { useAuth } from '@/lib/auth/context'
 import { listNotifications, type CategoryCount, type ListParams, type ListResponse } from '@/lib/api/notifications-v2'
 import type { Receipt } from '@/lib/notifications/types'
-import { NOTIFICATIONS_KEY, invalidateNotifications } from './useNotificationInbox'
+import { NOTIFICATIONS_KEY, useInvalidateNotifications } from './useNotificationInbox'
 
 export interface UseNotificationsResult {
   receipts: Receipt[]
@@ -42,6 +42,7 @@ export interface UseNotificationsResult {
 export function useNotifications(params: ListParams): UseNotificationsResult {
   const { user } = useAuth()
   const orgId = user?.org_id
+  const invalidateNotifications = useInvalidateNotifications()
 
   const key = user
     ? [
@@ -74,6 +75,6 @@ export function useNotifications(params: ListParams): UseNotificationsResult {
     categoryCounts: data?.category_counts ?? null,
     loading: isLoading,
     error: (error as Error) ?? null,
-    refresh: () => { void invalidateNotifications() },
+    refresh: () => { void invalidateNotifications() },  // bound mutate — the global one is a no-op here
   }
 }
