@@ -82,7 +82,11 @@ export function FunnelColumns({ steps, selectedStep, onSelectStep, compact }: Fu
   const plotH = base - top
 
   return (
-    <div>
+    // ParentSize only calls its child once its own div measures non-zero in
+    // BOTH axes, and its div is height:100% — so the height must come from
+    // this wrapper, never from the child (a child-sized wrapper deadlocks at
+    // 0px and the chart never mounts).
+    <div style={{ height: compact ? chartH : chartH + 30 }}>
       <ParentSize>
         {({ width: w }) => {
           if (w <= 0) return <div style={{ height: chartH }} />
@@ -93,7 +97,7 @@ export function FunnelColumns({ steps, selectedStep, onSelectStep, compact }: Fu
           const hOf = (v: number) => Math.max(compact ? 2 : 3, plotH * (v / entered))
 
           return (
-            <div className="relative" style={{ height: compact ? chartH : chartH + 30 }}>
+            <div className="relative">
               <svg width={w} height={chartH} style={{ display: 'block' }} aria-hidden="true">
                 <defs>
                   <linearGradient id={`fc-${gradId}`} x1="0" y1="0" x2="0" y2="1">
