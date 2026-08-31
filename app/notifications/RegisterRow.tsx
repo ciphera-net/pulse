@@ -57,19 +57,26 @@ export default function RegisterRow({
   const linkUrl = receipt.event.link_url
   const recovered = receipt.event.type === 'uptime_monitor_recovered'
 
-  const onToggle = async () => {
-    if (!expanded && isUnread && !busy) {
-      setBusy(true)
-      try {
-        await markRead(receipt.event_id)
-        onChange()
-      } catch (err) {
-        toast.error(getAuthErrorMessage(err as Error) || 'Failed to mark notification as read')
-      } finally {
-        setBusy(false)
-      }
-    }
+  const onToggle = () => {
+    // Expansion is a LOCAL act and happens immediately; the mark-read rides
+    // behind it. Blocking the expansion on the network round trip made a
+    // slow link read as a dead control (measured: >10s on staging behind
+    // unrelated chrome requests). The ruled semantic — expansion marks read,
+    // reading never consumes unread invisibly — is unchanged: the POST still
+    // fires on exactly this gesture, and a failure surfaces as a toast while
+    // the row stays visibly unread (the stub only clears when the server
+    // confirms via the refetch).
+    const shouldMark = !expanded && isUnread && !busy
     setExpanded((e) => !e)
+    if (shouldMark) {
+      setBusy(true)
+      markRead(receipt.event_id)
+        .then(() => onChange())
+        .catch((err) => {
+          toast.error(getAuthErrorMessage(err as Error) || 'Failed to mark notification as read')
+        })
+        .finally(() => setBusy(false))
+    }
   }
 
   // The email leg's honest meta. delivered_at = handed off; held draws the
