@@ -225,6 +225,24 @@ describe('the Day Register (/notifications, round-3 Direction B)', () => {
     expect(screen.getByText('Held — quiet hours · sends 08:00')).toBeInTheDocument()
   })
 
+  it('a confirmed delivery renders green "Delivered HH:MM"; a bounce is stated', () => {
+    useNotifications.mockReturnValue(
+      baseHook({
+        receipts: [
+          receipt('rd', 'billing_invoice_sent', todayISO, {
+            delivered_at: todayISO,
+            email_status: 'delivered',
+          }),
+          receipt('rb', 'site_added', todayISO, { email_status: 'bounced' }),
+        ],
+      }),
+    )
+    render(<NotificationsPage />)
+    const delivered = screen.getByText(/^Delivered \d{2}:\d{2}$/)
+    expect(delivered.className).toContain('text-pos')
+    expect(screen.getByText('Email bounced')).toBeInTheDocument()
+  })
+
   it('a muted category’s row reads "Muted — recorded, not alerted"', () => {
     useNotifications.mockReturnValue(
       baseHook({ receipts: [receipt('r4', 'system_announcement', todayISO)] }),
