@@ -19,25 +19,40 @@ import FilterPills from '@/components/dashboard/FilterPills'
 import FilterBuilder from '@/components/dashboard/filter/FilterBuilder'
 import { useFilterBuilder } from '@/components/dashboard/filter/useFilterBuilder'
 import { formatNumber, formatConvertTime } from '@/lib/utils/format'
+import { guardedPointChange, type PctChangeResult } from '@/lib/utils/pctChange'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { UpdatingChip } from '@/components/ui/UpdatingChip'
 import { FunnelDetailSkeleton } from '@/components/skeletons'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import FunnelModal from '@/components/funnels/FunnelModal'
-import { FunnelChart } from '@/components/ui/funnel-chart'
+import { FunnelColumns, formatFunnelPct } from '@/components/funnels/FunnelColumns'
 import { FunnelStatusLine } from '@/components/funnels/FunnelStatusLine'
-import { FileText, House, Lightning } from '@phosphor-icons/react'
 import { FunnelStepStrip } from '@/components/funnels/FunnelStepStrip'
-import { FunnelKpiPlate } from '@/components/funnels/FunnelKpiPlate'
 import { FunnelDailyInstrument } from '@/components/funnels/FunnelDailyInstrument'
+import { DeleteFunnelDialog } from '@/components/funnels/DeleteFunnelDialog'
 import { useCan } from '@/lib/auth/permissions'
 
 // ---------------------------------------------------------------------------
-// Funnel detail — the revived real route. T9 ships the header + KPI band and
-// all the states; the canvas, step strip and trend chart land in T10–T12.
+// Funnel detail (31-08 overhaul, "tall columns"): ONE panel carries the
+// headline and the funnel shape — the five-rail KPI plate and the old
+// third-party chart are gone, and nothing on the page states a fact twice.
+// Below it: the step panes (Drop-off named + scoped, Breakdown funnel-wide)
+// and the Daily instrument, unchanged.
 // ---------------------------------------------------------------------------
+
+function HeaderDelta({ change }: { change: PctChangeResult }) {
+  if (!change || change.type === 'new') return null
+  const positive = change.value > 0
+  const unit = change.type === 'pp' ? 'pp' : '%'
+  return (
+    <span className={`text-xs tabular-nums ${positive ? 'text-green-400' : 'text-red-400'}`}>
+      {positive ? '↑ ' : '↓ '}
+      {Math.abs(change.value)}
+      {unit}
+    </span>
+  )
+}
 
 export default function FunnelDetailPage() {
   const params = useParams()
@@ -121,28 +136,69 @@ export default function FunnelDetailPage() {
 
   const [modalOpen, setModalOpen] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  // * Bumped after an edit so the panes and Daily refetch immediately — their
+  // * SWR keys only carry ids and range, so a step change would otherwise
+  // * show pre-edit numbers until the next 60s poll.
+  const [editEpoch, setEditEpoch] = useState(0)
 
-  // * Selected step lives in ?step= (1-based; default 1 stays out of the URL)
+  // * Headline facts — stated ONCE, here, and nowhere else on the page.
+  const entered = stats?.steps[0]?.visitors ?? null
+  const completed = stats?.steps.length ? stats.steps[stats.steps.length - 1].visitors : null
+  const conversion = stats?.steps.length ? stats.steps[stats.steps.length - 1].conversion : null
+  const prevConversion = prevStats?.steps.length ? prevStats.steps[prevStats.steps.length - 1].conversion : null
+  const prevEntered = prevStats?.steps[0]?.visitors ?? 0
+  const conversionDelta =
+    conversion != null && prevConversion != null && prevStats
+      ? guardedPointChange(conversion, prevConversion, prevEntered)
+      : null
+
+  // * Selected step lives in ?step= (1-based). The DEFAULT is the biggest
+  // * drop-off step — the one the Drop-off pane has something to say about —
+  // * and the default stays out of the URL.
   const stepCount = stats?.steps.length ?? 0
-  const rawStep = parseInt(searchParams.get('step') ?? '1', 10)
-  const selectedStep = Math.max(1, Math.min(stepCount || 1, Number.isNaN(rawStep) ? 1 : rawStep))
+  const defaultStep = useMemo(() => {
+    if (!stats || stats.steps.length < 2) return 1
+    let best = 1
+    let bestLost = -1
+    for (let i = 0; i + 1 < stats.steps.length; i++) {
+      const lost = stats.steps[i].visitors - stats.steps[i + 1].visitors
+      if (lost > bestLost) {
+        bestLost = lost
+        best = i + 1
+      }
+    }
+    return best
+  }, [stats])
+  const rawStepParam = searchParams.get('step')
+  const rawStep = rawStepParam != null ? parseInt(rawStepParam, 10) : defaultStep
+  const selectedStep = Math.max(1, Math.min(stepCount || 1, Number.isNaN(rawStep) ? defaultStep : rawStep))
   const setSelectedStep = useCallback(
     (n: number) => {
       const next = new URLSearchParams(searchParams.toString())
-      if (n <= 1) next.delete('step')
+      if (n === defaultStep) next.delete('step')
       else next.set('step', String(n))
       const qsNext = next.toString()
       router.replace(qsNext ? `${pathname}?${qsNext}` : pathname, { scroll: false })
     },
-    [router, pathname, searchParams],
+    [router, pathname, searchParams, defaultStep],
   )
 
   useEffect(() => {
     document.title = funnel ? `${funnel.name} · Funnels | Pulse` : 'Funnels | Pulse'
   }, [funnel])
 
-  const qs = searchParams.toString()
-  const listHref = `/sites/${siteId}/funnels${qs ? `?${qs}` : ''}`
+  // * The back link carries the RANGE only — never ?step= or ?filters=. Those
+  // * are this funnel's state; carried back, the list re-emitted them into
+  // * every card link and funnel B opened with funnel A's filters applied.
+  const listHref = useMemo(() => {
+    const keep = new URLSearchParams()
+    for (const key of ['period', 'start', 'end']) {
+      const v = searchParams.get(key)
+      if (v) keep.set(key, v)
+    }
+    const s = keep.toString()
+    return `/sites/${siteId}/funnels${s ? `?${s}` : ''}`
+  }, [siteId, searchParams])
 
   // ── Route-level states ─────────────────────────────────────────────
   if (funnelLoading && !funnel) return <FunnelDetailSkeleton />
@@ -236,7 +292,7 @@ export default function FunnelDetailPage() {
         </div>
       </div>
 
-      {/* KPI band — the updating chip covers range changes */}
+      {/* The funnel panel — headline + columns, one UpdatingChip for the page */}
       <div className="relative">
         <UpdatingChip active={statsValidating} className="-top-1 right-0" />
         {statsError ? (
@@ -246,38 +302,48 @@ export default function FunnelDetailPage() {
             onRetry={() => { void retryStats() }}
           />
         ) : (
-          <FunnelKpiPlate stats={stats} prevStats={prevStats} statsError={statsError != null} />
+          <div className="rounded-none border border-border bg-card">
+            <div className="flex h-12 items-center justify-between gap-4 border-b border-border px-4">
+              <div className="flex min-w-0 items-baseline gap-2">
+                <span className="shrink-0 text-sm font-medium text-white">Conversion</span>
+                <span className="text-xl font-semibold tabular-nums text-white">
+                  {conversion != null ? formatFunnelPct(conversion) : <span className="text-neutral-600">—</span>}
+                </span>
+                {stats && entered != null && (
+                  <span className="truncate text-xs tabular-nums text-neutral-500">
+                    {entered > 0
+                      ? `${formatNumber(completed ?? 0)} of ${formatNumber(entered)} entered`
+                      : 'no visitors entered in this period'}
+                  </span>
+                )}
+                <HeaderDelta change={conversionDelta} />
+              </div>
+              {stats?.median_convert_seconds != null && (
+                <span className="shrink-0 text-xs text-neutral-500">
+                  median time to convert {formatConvertTime(stats.median_convert_seconds)}
+                </span>
+              )}
+            </div>
+            {stats && stats.steps.length > 0 && (entered ?? 0) > 0 ? (
+              <div className="px-4 pb-3 pt-2">
+                <FunnelColumns
+                  steps={stats.steps}
+                  selectedStep={selectedStep}
+                  onSelectStep={setSelectedStep}
+                />
+              </div>
+            ) : stats ? (
+              <p className="px-4 py-6 text-sm text-neutral-500">
+                No sessions entered this funnel in the selected period.
+              </p>
+            ) : (
+              <div className="h-72" />
+            )}
+          </div>
         )}
 
-        {/* Canvas — step columns with connecting bands; drives ?step= */}
         {!statsError && stats && stats.steps.length > 0 && (
           <>
-            <div className="mt-6">
-              {/* * Funnel shape — the 21st.dev chart, house-adapted. Stage values
-                  * are the chained per-step visitor counts, so pct-of-first equals
-                  * the API's conversion-of-entry. Click/keys drive ?step= exactly
-                  * as the old canvas did. */}
-              <FunnelChart
-                data={stats.steps.map((s) => ({
-                  label: s.step.value,
-                  value: s.visitors,
-                  displayValue: formatNumber(s.visitors),
-                  icon:
-                    s.step.category === 'event' ? (
-                      <Lightning className="h-3.5 w-3.5 text-neutral-500" />
-                    ) : s.step.value === '/' ? (
-                      <House className="h-3.5 w-3.5 text-neutral-500" />
-                    ) : (
-                      <FileText className="h-3.5 w-3.5 text-neutral-500" />
-                    ),
-                  medianToNextSeconds: s.median_step_seconds ?? null,
-                }))}
-                selectedIndex={selectedStep - 1}
-                onStageSelect={(i) => setSelectedStep(i + 1)}
-                formatPercentage={(p) => `${p >= 10 || p === 0 ? Math.round(p) : p.toFixed(1)}%`}
-                style={{ aspectRatio: '2.8 / 1' }}
-              />
-            </div>
             <div className="mt-3">
               {/* Both of these FETCH, so they take fetchRange (the site-day
                   re-anchored window) — not the picker's display value, or one
@@ -289,6 +355,7 @@ export default function FunnelDetailPage() {
                 selectedStep={selectedStep}
                 dateRange={fetchRange}
                 filters={filtersParam || undefined}
+                editEpoch={editEpoch}
               />
             </div>
             <div className="mt-3">
@@ -299,6 +366,7 @@ export default function FunnelDetailPage() {
                 filters={filtersParam || undefined}
                 stats={stats}
                 prevStats={prevStats}
+                editEpoch={editEpoch}
               />
             </div>
           </>
@@ -308,43 +376,29 @@ export default function FunnelDetailPage() {
       {/* Filter popover — create anchors to the button, edit to the pill */}
       <FilterBuilder builder={filterBuilder} filters={filters} onApply={handleFilterApply} />
 
-      {/* Delete confirm */}
-      <Dialog open={confirmingDelete} onOpenChange={() => setConfirmingDelete(false)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete funnel</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete &ldquo;{funnel.name}&rdquo;? This cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setConfirmingDelete(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="default"
-              className="bg-red-600 shadow-none hover:bg-red-500"
-              onClick={async () => {
-                try {
-                  await deleteFunnel(siteId, funnelId)
-                  toast.success('Funnel deleted')
-                  router.push(listHref)
-                } catch {
-                  toast.error('Failed to delete funnel')
-                }
-              }}
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteFunnelDialog
+        open={confirmingDelete}
+        funnelName={funnel.name}
+        onCancel={() => setConfirmingDelete(false)}
+        onConfirm={async () => {
+          try {
+            await deleteFunnel(siteId, funnelId)
+            toast.success('Funnel deleted')
+            router.push(listHref)
+          } catch {
+            toast.error('Failed to delete funnel')
+          }
+        }}
+      />
 
-      {/* Edit modal */}
+      {/* Edit modal — dateRange feeds the live preview (the detail page used
+          to omit it, so the same modal previewed from the list and silently
+          didn't from the funnel you were looking at). */}
       {modalOpen && canManage && (
         <FunnelModal
           isOpen={modalOpen}
           siteId={siteId}
+          dateRange={fetchRange}
           onClose={() => setModalOpen(false)}
           initialData={funnel}
           onSubmit={async (data: CreateFunnelRequest) => {
@@ -352,6 +406,7 @@ export default function FunnelDetailPage() {
             toast.success('Funnel updated')
             void retryFunnel()
             void retryStats()
+            setEditEpoch((e) => e + 1)
           }}
         />
       )}

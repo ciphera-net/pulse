@@ -52,7 +52,6 @@ export const TOUR_ANCHORS = {
   performanceScores: 'performance-scores',
   performanceTrend: 'performance-trend',
   journeysCanvas: 'journeys-canvas',
-  funnelsList: 'funnels-list',
 } as const
 
 export type TourAnchor = (typeof TOUR_ANCHORS)[keyof typeof TOUR_ANCHORS]

@@ -332,17 +332,20 @@ export function FunnelDetailSkeleton() {
           </div>
         </div>
       </div>
-      {/* KPI band */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="bg-card border border-border rounded-none p-4">
-            <SkeletonLine className="h-3 w-20 mb-3" />
-            <SkeletonLine className="h-7 w-16" />
-          </div>
-        ))}
+      {/* The funnel panel: headline bar + columns */}
+      <div className="bg-card border border-border rounded-none mb-3">
+        <div className="flex h-12 items-center gap-3 border-b border-border px-4">
+          <SkeletonLine className="h-4 w-24" />
+          <SkeletonLine className="h-6 w-14" />
+          <SkeletonLine className="h-3 w-32" />
+        </div>
+        <div className="h-72" />
       </div>
-      {/* Canvas region */}
-      <SkeletonCard className="h-72" />
+      {/* Panes */}
+      <div className="grid gap-3 md:grid-cols-2">
+        <SkeletonCard className="h-48" />
+        <SkeletonCard className="h-48" />
+      </div>
     </div>
   )
 }

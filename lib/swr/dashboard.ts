@@ -522,10 +522,13 @@ export function useFunnelStats(siteId: string, funnelId: string, startDate: stri
   )
 }
 
-// * Hook for funnel completion trends over time
-export function useFunnelTrends(siteId: string, funnelId: string, startDate: string, endDate: string, filters?: string) {
+// * Hook for funnel completion trends over time. editEpoch is bumped by the
+// * detail page after an edit so the daily series refetches immediately — a
+// * step change would otherwise keep showing pre-edit numbers for up to a
+// * poll cycle (the key carries only ids and range).
+export function useFunnelTrends(siteId: string, funnelId: string, startDate: string, endDate: string, filters?: string, editEpoch?: number) {
   return useSWR<FunnelTrends>(
-    siteId && funnelId && startDate && endDate ? ['funnelTrends', siteId, funnelId, `${startDate}-${endDate}`, filters] : null,
+    siteId && funnelId && startDate && endDate ? ['funnelTrends', siteId, funnelId, `${startDate}-${endDate}`, filters, editEpoch ?? 0] : null,
     () => getFunnelTrends(siteId, funnelId, startDate, endDate, 'day', filters),
     {
       ...dashboardSWRConfig,
@@ -536,7 +539,8 @@ export function useFunnelTrends(siteId: string, funnelId: string, startDate: str
   )
 }
 
-// * Hook for a funnel step's dimension breakdown (step is 0-based, per the API)
+// * Hook for a funnel step's dimension breakdown (step is 0-based, per the
+// * API). editEpoch: same immediate-refetch-after-edit device as trends.
 export function useFunnelBreakdown(
   siteId: string,
   funnelId: string,
@@ -545,10 +549,11 @@ export function useFunnelBreakdown(
   startDate: string,
   endDate: string,
   filters?: string,
+  editEpoch?: number,
 ) {
   return useSWR<FunnelBreakdown>(
     siteId && funnelId && step >= 0 && dimension && startDate && endDate
-      ? ['funnelBreakdown', siteId, funnelId, step, dimension, `${startDate}-${endDate}`, filters]
+      ? ['funnelBreakdown', siteId, funnelId, step, dimension, `${startDate}-${endDate}`, filters, editEpoch ?? 0]
       : null,
     () => getFunnelBreakdown(siteId, funnelId, step, dimension, startDate, endDate, filters),
     {
