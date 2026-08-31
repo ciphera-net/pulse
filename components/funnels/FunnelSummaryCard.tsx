@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { CaretRight, FileText, House, Lightning, PencilSimple, Trash } from '@phosphor-icons/react'
 import type { Funnel, FunnelStats, FunnelStep } from '@/lib/api/funnels'
 import { AnimatedNumber } from '@/components/ui/animated-number'
-import { FunnelChart } from '@/components/ui/funnel-chart'
+import { FunnelColumns, formatFunnelPct } from '@/components/funnels/FunnelColumns'
 import { guardedPointChange, type PctChangeResult } from '@/lib/utils/pctChange'
 
 // ---------------------------------------------------------------------------
@@ -101,7 +101,7 @@ export function FunnelSummaryCard({
             <div className="flex items-center gap-3 pr-20">
               <h3 className="truncate text-base font-semibold text-white">{funnel.name}</h3>
               <span className="shrink-0 text-xs text-neutral-500">
-                {funnel.steps.length} steps
+                {funnel.steps.length} {funnel.steps.length === 1 ? 'step' : 'steps'}
               </span>
             </div>
 
@@ -135,7 +135,7 @@ export function FunnelSummaryCard({
               {conversion !== null ? (
                 <AnimatedNumber
                   value={conversion}
-                  format={(v) => `${Math.round(v)}%`}
+                  format={(v) => formatFunnelPct(v)}
                   className="text-xl font-semibold tabular-nums text-white"
                 />
               ) : (
@@ -158,19 +158,12 @@ export function FunnelSummaryCard({
           </div>
         </div>
 
-        {/* Row 4: the funnel itself — same chart as the detail page, mini.
-            Renders only with data (the chart's own zero-entrant guard also
+        {/* Row 4: the funnel itself — the detail page's columns, miniaturised.
+            Renders only with data (the component's own zero-entrant guard also
             applies), so an empty funnel adds no dead band to the card. */}
         {stats && stats.steps.length > 0 && stats.steps[0].visitors > 0 && (
           <div className="mt-4 border-t border-border pt-3">
-            <FunnelChart
-              data={stats.steps.map((s) => ({
-                label: stepLabel(s.step),
-                value: s.visitors,
-              }))}
-              compact
-              staggerDelay={0.06}
-            />
+            <FunnelColumns steps={stats.steps} compact />
           </div>
         )}
       </Link>

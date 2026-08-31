@@ -7,7 +7,7 @@ import { Button, Spinner, toast } from '@ciphera-net/facet'
 import { CaretUp, CaretDown, CircleNotch, FileText, House, Lightning, Plus, Trash } from '@phosphor-icons/react'
 import type { Funnel, FunnelStep, StepPropertyFilter, CreateFunnelRequest } from '@/lib/api/funnels'
 import { previewFunnel, type FunnelStats } from '@/lib/api/funnels'
-import { FunnelChart } from '@/components/ui/funnel-chart'
+import { FunnelColumns } from '@/components/funnels/FunnelColumns'
 import { getDashboardPages, getDashboardGoals } from '@/lib/api/stats'
 import { getDateRange } from '@/lib/utils/dateRanges'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -22,8 +22,10 @@ import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 // data-aware suggestion panels fed once per open from the dashboard's own
 // endpoints (free text always allowed), and validation is inline with
 // focus-to-field. There is no conversion-window control: a conversion
-// completes within one visit (session identity resets at UTC midnight), so
-// a window was a promise the data model could not keep.
+// completes within one session (identity resets at the SITE's own midnight,
+// site-local since 26-08-2026), so a window was a promise the data model
+// could not keep. Duplicate steps are legal — the engine matches per-step
+// booleans, so revisit funnels (/ → /pricing → /) work (31-08 overhaul).
 // ---------------------------------------------------------------------------
 
 type StepWithoutOrder = Omit<FunnelStep, 'order'>
@@ -254,7 +256,6 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
         { name: 'Step 2', value: '', type: 'exact' },
       ],
   )
-  // * Window control prefills the stored values on edit; create defaults 7d
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -262,9 +263,9 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
 
   // ── Live preview: what this definition would have measured ─────────
   // Debounced POST /funnels/preview over the page's current range — the same
-  // engine the page uses, run before the funnel exists. Duplicate or invalid
-  // steps 400 server-side and land in the quiet 'error' state; the inline
-  // field errors carry the explanation.
+  // engine the page uses, run before the funnel exists. Invalid steps 400
+  // server-side and land in the quiet 'error' state; the inline field errors
+  // carry the explanation.
   const [preview, setPreview] = useState<FunnelStats | null>(null)
   const [previewState, setPreviewState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
 
@@ -403,7 +404,10 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
   const setCategory = (i: number, category: 'page' | 'event') => {
     setSteps((p) => {
       const n = [...p]
-      const s = { ...n[i], category, value: '' }
+      // * The typed value SURVIVES the toggle — wiping it threw away work on a
+      // * mis-click with no undo. Property filters only exist for event steps,
+      // * so those still clear on the way to 'page'.
+      const s = { ...n[i], category }
       if (category === 'page') s.property_filters = undefined
       else s.type = 'exact'
       n[i] = s
@@ -461,13 +465,28 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
   }
 
   // ── Validation: inline field errors, focus the first failure ──────
+  // * No duplicate-step rule any more: the engine matches per-step booleans
+  // * (31-08 overhaul), so a revisit funnel like / → /pricing → / completes
+  // * its later duplicate step on a strictly-later matching event.
   const validate = useCallback((): boolean => {
     const next: Record<string, string> = {}
     if (!name.trim()) next['name'] = 'Give the funnel a name.'
+    if (steps.length < 2) {
+      // * A one-step "funnel" is a counter, not a funnel — the server rejects
+      // * it too. (Goals are the single-event device.)
+      next['step-0'] = 'A funnel needs at least two steps.'
+    }
     steps.forEach((step, i) => {
+      if (next[`step-${i}`]) return
       const cat = step.category || 'page'
       if (!step.value.trim()) {
         next[`step-${i}`] = cat === 'event' ? 'Enter an event name.' : 'Enter a path.'
+        return
+      }
+      if (cat === 'page' && step.type === 'exact' && !step.value.trim().startsWith('/')) {
+        // * Exact page steps match the stored path verbatim, and stored paths
+        // * always start with '/' — anything else silently matches nothing.
+        next[`step-${i}`] = 'A path starts with / — e.g. /pricing.'
         return
       }
       if (cat === 'page' && step.type === 'regex') {
@@ -480,23 +499,6 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
       }
       if (cat === 'event' && step.property_filters?.some((f) => !f.key.trim())) {
         next[`step-${i}`] = 'Every property filter needs a key.'
-      }
-    })
-    // Exact duplicates: attribution is first-match-wins, so a later twin can
-    // never match and its step reads zero forever. The server rejects these
-    // too — this is the inline version of the same rule.
-    const seen = new Map<string, number>()
-    steps.forEach((step, i) => {
-      if (next[`step-${i}`] || !step.value.trim()) return
-      const cat = step.category || 'page'
-      // Filtered event steps may legitimately repeat an event name.
-      if (cat === 'event' && step.property_filters?.length) return
-      const key = cat === 'page' ? `page|${step.type}|${step.value.trim()}` : `event|${step.value.trim()}`
-      const prev = seen.get(key)
-      if (prev != null) {
-        next[`step-${i}`] = `Repeats step ${prev + 1} — a later duplicate step can never be matched.`
-      } else {
-        seen.set(key, i)
       }
     })
     setErrors(next)
@@ -760,7 +762,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                   })}
                 </AnimatePresence>
 
-                {steps.length < MAX_STEPS && (
+                {steps.length < MAX_STEPS ? (
                   <button
                     type="button"
                     onClick={addStep}
@@ -768,6 +770,12 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                   >
                     <Plus className="h-3.5 w-3.5" /> Add step
                   </button>
+                ) : (
+                  // * Say the cap out loud — the button used to just vanish,
+                  // * which read as a bug, not a limit.
+                  <p className="py-1 text-center text-xs text-neutral-600">
+                    {MAX_STEPS} steps is the maximum.
+                  </p>
                 )}
               </div>
             </div>
@@ -776,7 +784,11 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
             {dateRange && previewState !== 'idle' && (
               <div className="rounded-none border border-border bg-black/20 p-3">
                 <div className="mb-1.5 flex items-center justify-between gap-3">
-                  <span className="text-xs text-neutral-500">Preview · selected range</span>
+                  {/* Name the actual window — "selected range" pointed at a
+                      control hidden behind the modal. */}
+                  <span className="text-xs tabular-nums text-neutral-500">
+                    Preview · {dateRange.start} → {dateRange.end}
+                  </span>
                   {previewState === 'ready' && preview && preview.steps.length > 0 && (
                     <span className="shrink-0 text-xs tabular-nums text-neutral-500">
                       {preview.steps[preview.steps.length - 1].visitors} of {preview.steps[0].visitors} entered
@@ -788,22 +800,20 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                 ) : previewState === 'loading' && !preview ? (
                   <p className="text-xs text-neutral-600">Measuring…</p>
                 ) : preview && preview.steps.length > 0 && preview.steps[0].visitors > 0 ? (
-                  <FunnelChart
-                    data={preview.steps.map((st) => ({ label: st.step.value, value: st.visitors }))}
-                    compact
-                    staggerDelay={0}
-                  />
+                  <FunnelColumns steps={preview.steps} compact />
                 ) : (
                   <p className="text-xs text-neutral-500">No visitors matched this funnel in the selected range.</p>
                 )}
               </div>
             )}
 
-            {/* No conversion window — the identity model resets at UTC midnight,
-                so a conversion either completes within the visit or not at all.
-                Saying so beats offering a dial that cannot do anything. */}
+            {/* No conversion window — session identity resets at the site's
+                own midnight, so a conversion either completes within the
+                session or not at all. Saying so beats offering a dial that
+                cannot do anything. ("Session", not "visit": a 40-minute break
+                starts a new visit without breaking a funnel.) */}
             <p className="text-xs text-neutral-500">
-              A conversion counts when a visitor completes every step within one visit.
+              A conversion counts when a visitor completes every step within one session.
             </p>
           </div>
         </div>

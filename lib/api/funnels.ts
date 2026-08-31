@@ -59,7 +59,6 @@ export interface FunnelTrends {
   overall: (number | null)[]
   /** per-bucket entrant denominator, for gating small-n buckets */
   entered: number[]
-  steps: Record<string, (number | null)[]>
 }
 
 export interface FunnelBreakdownEntry {
@@ -110,7 +109,6 @@ export async function deleteFunnel(siteId: string, funnelId: string): Promise<vo
   })
 }
 
-/** Chained stats for EVERY funnel on the site in one request — the list surface. */
 /** Run the funnel engine over an UNSAVED definition — the modal's live preview. */
 export async function previewFunnel(siteId: string, steps: Omit<FunnelStep, 'order'>[], startDate: string, endDate: string): Promise<FunnelStats> {
   const params = new URLSearchParams({ start_date: startDate, end_date: endDate })
@@ -120,6 +118,7 @@ export async function previewFunnel(siteId: string, steps: Omit<FunnelStep, 'ord
   })
 }
 
+/** Chained stats for EVERY funnel on the site in one request — the list surface. */
 export async function getAllFunnelStats(siteId: string, startDate?: string, endDate?: string, filters?: string): Promise<Record<string, FunnelStats>> {
   const params = new URLSearchParams()
   if (startDate) params.append('start_date', startDate)
