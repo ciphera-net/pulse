@@ -311,15 +311,19 @@ describe('MyPreferencesTab (round-3 family)', () => {
     const start = screen.getByLabelText('Quiet hours start') as HTMLInputElement
     fireEvent.change(start, { target: { value: '22:00' } })
     expect(updatePrefsBooleans).not.toHaveBeenCalled() // typing alone never writes
+    // React maps onBlur to focusout; jsdom's `blur` alone has not reliably
+    // reached it on CI — dispatch both (measured: green locally, red in CI).
     fireEvent.blur(start)
-    await waitFor(() => expect(updatePrefsBooleans).toHaveBeenCalledTimes(1))
+    fireEvent.focusOut(start)
+    await waitFor(() => expect(updatePrefsBooleans).toHaveBeenCalledTimes(1), { timeout: 5000 })
     const body = updatePrefsBooleans.mock.calls[0][0]
     expect(body.quiet_hours_start).toBe('22:00')
     expect(body.quiet_hours_end).toBe('08:00') // pairing at commit, not per keystroke
     // An empty intermediate is abandoned, never written as a clear.
     fireEvent.change(start, { target: { value: '' } })
     fireEvent.blur(start)
-    expect(updatePrefsBooleans).toHaveBeenCalledTimes(1)
+    fireEvent.focusOut(start)
+    await waitFor(() => expect(updatePrefsBooleans).toHaveBeenCalledTimes(1))
   })
 
   it('a failed load renders the error state, never an empty panel', async () => {
