@@ -21,9 +21,22 @@ export interface ListParams {
   category?: string[]
 }
 
+export interface CategoryCount {
+  display_name: string
+  unread: number
+  total: number
+}
+
 export interface ListResponse {
   receipts: Receipt[]
   unread_count: number
+  /**
+   * Per-category {unread, total} + the registry display name — GLOBAL and
+   * NEVER narrowed by limit/offset/unread/category (pinned server-side, the
+   * total_count lesson): a filtered list returns the same category_counts as
+   * an unfiltered one, so the tab row's numbers never dance with the filter.
+   */
+  category_counts: Record<string, CategoryCount>
   /**
    * Every receipt the user has — NOT narrowed by limit/offset/unread/category,
    * because the purge it describes is not narrowed either: DELETE
@@ -43,6 +56,11 @@ function normalizeReceipt(r: any): Receipt {
     event_id: r.event_id,
     delivered_at: r.delivered_at ?? null,
     read_at: r.read_at ?? null,
+    // The email leg's status vocabulary, untranslated (S10): 'held' draws the
+    // amber chip; delivered_at stays "handed off, null while held".
+    email_status: r.email_status ?? null,
+    email_state_reason: r.email_state_reason ?? null,
+    category_id: r.category_id ?? null,
     event: {
       id: r.event.id,
       organization_id: r.event.organization_id,
@@ -63,8 +81,14 @@ export async function listNotifications(p: ListParams = {}): Promise<ListRespons
   if (p.unread) qs.set('unread', 'true')
   if (p.category?.length) qs.set('category', p.category.join(','))
   const url = '/notifications' + (qs.toString() ? '?' + qs : '')
-  const raw = await apiRequest<{ receipts: any[]; unread_count: number; total_count?: number | null }>(url)
+  const raw = await apiRequest<{
+    receipts: any[]
+    unread_count: number
+    total_count?: number | null
+    category_counts?: Record<string, CategoryCount>
+  }>(url)
   return {
+    category_counts: raw.category_counts ?? {},
     receipts: (raw.receipts ?? []).map(normalizeReceipt),
     unread_count: raw.unread_count ?? 0,
     // `?? null`, never `?? 0` — see the field doc. This also covers a backend
@@ -79,8 +103,11 @@ export const markRead = (id: string) =>
 export const markUnread = (id: string) =>
   apiRequest(`/notifications/${id}/unread`, { method: 'POST' })
 
-export const markAllRead = () =>
-  apiRequest('/notifications/read-all', { method: 'POST' })
+export const markAllRead = (category?: string) =>
+  apiRequest(
+    `/notifications/read-all${category ? `?category=${encodeURIComponent(category)}` : ''}`,
+    { method: 'POST' },
+  )
 
 export const dismiss = (id: string) =>
   apiRequest(`/notifications/${id}`, { method: 'DELETE' })

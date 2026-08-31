@@ -2,7 +2,7 @@
 
 import useSWR from 'swr'
 import { useAuth } from '@/lib/auth/context'
-import { listNotifications, type ListParams, type ListResponse } from '@/lib/api/notifications-v2'
+import { listNotifications, type CategoryCount, type ListParams, type ListResponse } from '@/lib/api/notifications-v2'
 import type { Receipt } from '@/lib/notifications/types'
 import { NOTIFICATIONS_KEY, invalidateNotifications } from './useNotificationInbox'
 
@@ -15,6 +15,12 @@ export interface UseNotificationsResult {
    * `null` = the server could not count it. Callers must not coerce that to 0.
    */
   totalCount: number | null
+  /**
+   * Per-category {unread, total} + registry display names — GLOBAL, never
+   * narrowed by this hook's filters (pinned server-side). null before the
+   * first response.
+   */
+  categoryCounts: Record<string, CategoryCount> | null
   loading: boolean
   error: Error | null
   refresh: () => void
@@ -65,6 +71,7 @@ export function useNotifications(params: ListParams): UseNotificationsResult {
     // 🔴 NOT coerced to 0. null means the server could not count, and the purge
     // dialog's copy branches on exactly that.
     totalCount: data?.total_count ?? null,
+    categoryCounts: data?.category_counts ?? null,
     loading: isLoading,
     error: (error as Error) ?? null,
     refresh: () => { void invalidateNotifications() },
