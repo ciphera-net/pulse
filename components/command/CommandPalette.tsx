@@ -20,7 +20,6 @@ import {
   Eye,
   ShieldCheck,
   Robot,
-  ChartBar,
   Buildings,
   UsersThree,
   CreditCard,
@@ -110,7 +109,6 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
   // Bot & Spam and Members are membership-implied (the server authorises
   // those reads on org membership alone); no permission gate.
   const canQuarantineView = true
-  const canReportsManage  = useCan('reports.manage')
   const canIntegrations   = useCan('integrations.manage')
   const canTeamView       = true
   const canBillingView    = useCan('billing.view')
@@ -279,12 +277,6 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
             <CommandItem value="settings-site-bot-spam" onSelect={() => go('/settings/site/bot-spam')}>
               <Robot size={16} weight="regular" className="opacity-60" aria-hidden="true" />
               <span><HighlightMatch text="Bot & Spam Filtering" query={search} /></span>
-            </CommandItem>
-          )}
-          {canReportsManage && (
-            <CommandItem value="settings-site-reports" onSelect={() => go('/settings/site/reports')}>
-              <ChartBar size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-              <span><HighlightMatch text="Alerts" query={search} /></span>
             </CommandItem>
           )}
           {canIntegrations && (

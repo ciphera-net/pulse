@@ -9,10 +9,14 @@ import useSWR from 'swr'
 // deleted estate-wide (batch 4). Surfaces they used to gate are either open
 // to every member (matching what the server actually enforced all along) or
 // gated on the member's ROLE SLUG below, mirroring ciphera-id's enforcement.
+//
+// 'reports.manage' left for a different reason (Phase 7): the server still
+// enforces it, but the alert-channels surface it gated is gone, so nothing in
+// this app asks the question any more.
 export type Permission =
   | 'sites.create' | 'sites.edit' | 'sites.delete' | 'sites.reset_data'
   | 'analytics.export'
-  | 'goals.manage' | 'funnels.manage' | 'reports.manage'
+  | 'goals.manage' | 'funnels.manage'
   | 'integrations.manage'
   | 'uptime.manage' | 'pagespeed.manage'
   | 'quarantine.manage'
@@ -24,7 +28,7 @@ export type Permission =
 const DEFAULT_ADMIN_PERMS: Permission[] = [
   'sites.create', 'sites.edit', 'sites.delete',
   'analytics.export',
-  'goals.manage', 'funnels.manage', 'reports.manage',
+  'goals.manage', 'funnels.manage',
   'integrations.manage',
   'uptime.manage', 'pagespeed.manage',
   'quarantine.manage',
@@ -38,7 +42,7 @@ const DEFAULT_ADMIN_PERMS: Permission[] = [
 // fetch fallback must still know their shape.
 const DEFAULT_ANALYST_PERMS: Permission[] = [
   'analytics.export',
-  'goals.manage', 'funnels.manage', 'reports.manage',
+  'goals.manage', 'funnels.manage',
 ]
 
 const DEFAULT_MEMBER_PERMS: Permission[] = [

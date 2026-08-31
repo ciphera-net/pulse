@@ -33,7 +33,6 @@ import SettingsLandingPage from '../page'
 const ALL_PERMS = [
   'sites.edit',
   'goals.manage',
-  'reports.manage',
   'integrations.manage',
   'roles.manage',
   'billing.view',
