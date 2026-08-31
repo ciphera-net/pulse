@@ -193,8 +193,12 @@ describe('MyPreferencesTab (round-3 family)', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Daily digest for Uptime' }))
     await waitFor(() => expect(updatePrefsBooleans).toHaveBeenCalledTimes(1))
     const body = updatePrefsBooleans.mock.calls[0][0]
-    // The categories half…
-    expect(body.categories).toEqual({ uptime: { digest: true } })
+    // The categories half: the FULL row — iris refuses partial writes ("a
+    // stored row is the full expression"), so every write carries all four
+    // booleans composed from the current document plus the change.
+    expect(body.categories).toEqual({
+      uptime: { in_app: true, email: true, digest: true, muted: false, retention_override_seconds: null },
+    })
     // …and the schedule half, present on EVERY write: the proxy sends the
     // recipient_preferences block unconditionally, so omitting these would
     // silently reset digest time and quiet hours to defaults.
@@ -210,7 +214,7 @@ describe('MyPreferencesTab (round-3 family)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mute Uptime' }))
     await waitFor(() => expect(updatePrefsBooleans).toHaveBeenCalled())
     expect(updatePrefsBooleans.mock.calls[0][0].categories).toEqual({
-      uptime: { muted: true },
+      uptime: { in_app: true, email: true, digest: false, muted: true, retention_override_seconds: null },
     })
   })
 

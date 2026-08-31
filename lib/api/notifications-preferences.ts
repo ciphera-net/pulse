@@ -67,7 +67,11 @@ export interface PreferencesDocument extends Preferences {
   categories: CategoryPreferenceDoc[]
 }
 
-/** One category's write, the §13b boolean shape. Omitted fields keep stored. */
+/**
+ * One category's write, the §13b boolean shape. ⚠️ Iris refuses a partial
+ * write — a stored row is the full expression, so ALL FOUR booleans must be
+ * present (measured live, 31-08); callers compose from the current document.
+ */
 export interface CategoryWrite {
   in_app?: boolean
   email?: boolean

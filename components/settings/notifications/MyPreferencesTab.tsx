@@ -121,8 +121,21 @@ export default function MyPreferencesTab() {
    * is the trigger speaking (silencing a critical) — surfaced verbatim.
    */
   const writeCategory = useCallback(
-    async (categoryId: string, write: CategoryWrite) => {
+    async (categoryId: string, patch: CategoryWrite) => {
       if (!doc || saving) return
+      // 🔴 Iris refuses a partial category write — "a stored row is the full
+      // expression" (measured live, 31-08): all four booleans are required.
+      // Compose the full row from the current document plus the change.
+      const current = doc.categories.find((c) => c.category_id === categoryId)
+      if (!current) return
+      const full: CategoryWrite = {
+        in_app: current.in_app,
+        email: current.email,
+        digest: current.digest,
+        muted: current.muted,
+        retention_override_seconds: current.retention_override_seconds,
+        ...patch,
+      }
       setSaving(true)
       try {
         const next = await updatePrefsBooleans({
@@ -130,7 +143,7 @@ export default function MyPreferencesTab() {
           quiet_hours_start: doc.recipient_preferences.quiet_hours_start,
           quiet_hours_end: doc.recipient_preferences.quiet_hours_end,
           digest_time: doc.recipient_preferences.digest_time.slice(0, 5),
-          categories: { [categoryId]: write },
+          categories: { [categoryId]: full },
         })
         setDoc(next)
       } catch (err) {
