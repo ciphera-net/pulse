@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback } from 'react'
-import useSWR, { mutate as globalMutate } from 'swr'
+import useSWR, { useSWRConfig } from 'swr'
 import { useAuth } from '@/lib/auth/context'
 import {
   listNotifications,
@@ -43,12 +43,27 @@ const EMPTY_INBOX: ListResponse = { receipts: [], unread_count: 0, total_count: 
  * Revalidate every mounted notification hook, whatever its filters.
  *
  * The predicate form is load-bearing — see NOTIFICATIONS_KEY.
+ *
+ * 🔴 A HOOK, NOT A MODULE FUNCTION, and that is the whole fix: pulse mounts a
+ * custom SWR cache provider (components/SWRProvider.tsx), so the GLOBAL
+ * `mutate` imported from 'swr' operates on a cache nothing in the app reads —
+ * a silent no-op. The first version of this helper was exactly that no-op:
+ * the bell LOOKED right (its own optimistic per-key writes carried it) while
+ * cross-surface invalidation never fired once — measured on staging 31-08:
+ * a register mark-read POST returned in 3ms and the next list fetch was the
+ * 90-second poll, 78s later. Same defect as the org-switch purge (pulse#412
+ * → #413); the memory said "never import { mutate } from 'swr'" and this
+ * file was the remaining offender. Bound mutate from useSWRConfig() or
+ * nothing.
  */
-export function invalidateNotifications() {
-  return globalMutate(
-    (key) => Array.isArray(key) && key[0] === NOTIFICATIONS_KEY,
-    undefined,
-    { revalidate: true },
+export function useInvalidateNotifications() {
+  const { mutate } = useSWRConfig()
+  return useCallback(
+    () =>
+      mutate((key) => Array.isArray(key) && key[0] === NOTIFICATIONS_KEY, undefined, {
+        revalidate: true,
+      }),
+    [mutate],
   )
 }
 
@@ -89,6 +104,7 @@ export interface NotificationInbox {
 export function useNotificationInbox(): NotificationInbox {
   const { user } = useAuth()
   const orgId = user?.org_id
+  const invalidateNotifications = useInvalidateNotifications()
 
   const key = user ? [NOTIFICATIONS_KEY, orgId ?? '', 'inbox'] : null
 
@@ -140,7 +156,7 @@ export function useNotificationInbox(): NotificationInbox {
       },
     )
     await invalidateNotifications()
-  }, [mutate])
+  }, [mutate, invalidateNotifications])
 
   const markAllRead = useCallback(async () => {
     await mutate(
@@ -166,7 +182,7 @@ export function useNotificationInbox(): NotificationInbox {
       },
     )
     await invalidateNotifications()
-  }, [mutate])
+  }, [mutate, invalidateNotifications])
 
   const dismissOne = useCallback(async (eventID: string) => {
     await mutate(
@@ -193,7 +209,7 @@ export function useNotificationInbox(): NotificationInbox {
       },
     )
     await invalidateNotifications()
-  }, [mutate])
+  }, [mutate, invalidateNotifications])
 
   return {
     receipts,

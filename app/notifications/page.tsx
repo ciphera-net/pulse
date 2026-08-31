@@ -4,7 +4,7 @@ import { Suspense, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useNotifications } from '@/lib/hooks/useNotifications'
-import { NOTIFICATIONS_KEY, invalidateNotifications } from '@/lib/hooks/useNotificationInbox'
+import { NOTIFICATIONS_KEY, useInvalidateNotifications } from '@/lib/hooks/useNotificationInbox'
 import { markAllRead, purgeMine } from '@/lib/api/notifications-v2'
 import { getPrefsDocument, type PreferencesDocument } from '@/lib/api/notifications-preferences'
 import { NOTIFICATION_CATEGORIES, shortLabel } from '@/lib/notifications/categories'
@@ -50,6 +50,7 @@ export default function NotificationsPage() {
 const TAB_ORDER = ['all', ...NOTIFICATION_CATEGORIES.map((c) => c.id)] as const
 
 function NotificationsContent() {
+  const invalidateNotifications = useInvalidateNotifications()
   const router = useRouter()
   const params = useSearchParams()
   const active = params.get('category') ?? 'all'

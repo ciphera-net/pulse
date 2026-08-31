@@ -18,7 +18,8 @@ vi.mock('@/lib/hooks/useNotifications', () => ({
 
 vi.mock('@/lib/hooks/useNotificationInbox', () => ({
   NOTIFICATIONS_KEY: 'notifications',
-  invalidateNotifications: vi.fn().mockResolvedValue(undefined),
+  // The bound-mutate hook (the global-mutate version was the recorded no-op).
+  useInvalidateNotifications: () => vi.fn().mockResolvedValue(undefined),
 }))
 
 const markAllRead = vi.fn().mockResolvedValue({})
