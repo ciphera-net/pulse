@@ -123,7 +123,14 @@ function doc(overrides: Partial<PreferencesDocument> = {}): PreferencesDocument 
 beforeEach(() => {
   vi.clearAllMocks()
   getPrefsDocument.mockResolvedValue(doc())
-  updatePrefsBooleans.mockImplementation(async () => ({ ...doc(), ok: true }))
+  // 🔴 The mock BRANCHES ON THE BODY the way the deployed proxy does: a
+  // schedule-only write (no categories key) takes the legacy path and answers
+  // {"ok":true} WITHOUT a document. The first version of this mock returned a
+  // full document for every body — the stub encoded a wrong guess and 36
+  // green tests hid a page-destroying crash (the adversarial review's proof).
+  updatePrefsBooleans.mockImplementation(async (w: any) =>
+    w && w.categories ? { ...doc(), ok: true } : ({ ok: true } as any),
+  )
   listNotifications.mockResolvedValue({
     receipts: [],
     unread_count: 3,
@@ -283,6 +290,36 @@ describe('MyPreferencesTab (round-3 family)', () => {
     const btn = screen.getByRole('button', { name: 'Purge all 87 notifications' })
     fireEvent.click(btn)
     expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('🔴 a schedule save survives the {"ok":true} legacy-path answer (re-reads the document)', async () => {
+    await renderTab()
+    const input = screen.getByLabelText('Digest send time') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '10:30' } })
+    fireEvent.blur(input)
+    await waitFor(() => expect(updatePrefsBooleans).toHaveBeenCalledTimes(1))
+    // No categories key on a schedule write → the mock answered {"ok":true};
+    // the page must re-read the document rather than adopting it…
+    expect(updatePrefsBooleans.mock.calls[0][0].categories).toBeUndefined()
+    await waitFor(() => expect(getPrefsDocument).toHaveBeenCalledTimes(2))
+    // …and still render (the crash was setDoc({ok:true}) → undefined reads).
+    expect(screen.getByText('Delivery')).toBeInTheDocument()
+  })
+
+  it('quiet-hours inputs commit on BLUR, never per keystroke, and an empty edit is abandoned', async () => {
+    await renderTab()
+    const start = screen.getByLabelText('Quiet hours start') as HTMLInputElement
+    fireEvent.change(start, { target: { value: '22:00' } })
+    expect(updatePrefsBooleans).not.toHaveBeenCalled() // typing alone never writes
+    fireEvent.blur(start)
+    await waitFor(() => expect(updatePrefsBooleans).toHaveBeenCalledTimes(1))
+    const body = updatePrefsBooleans.mock.calls[0][0]
+    expect(body.quiet_hours_start).toBe('22:00')
+    expect(body.quiet_hours_end).toBe('08:00') // pairing at commit, not per keystroke
+    // An empty intermediate is abandoned, never written as a clear.
+    fireEvent.change(start, { target: { value: '' } })
+    fireEvent.blur(start)
+    expect(updatePrefsBooleans).toHaveBeenCalledTimes(1)
   })
 
   it('a failed load renders the error state, never an empty panel', async () => {

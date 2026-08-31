@@ -13,7 +13,9 @@ export function groupByDay(receipts: Receipt[]): DaySection[] {
   const now = new Date()
   const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
   const todayStart = startOfDay(now).getTime()
-  const yesterdayStart = todayStart - 24 * 3600 * 1000
+  // Calendar arithmetic, not 24h subtraction — a DST fall-back day is 25
+  // hours long and a fixed offset mislabels it (review catch).
+  const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).getTime()
 
   const sections: DaySection[] = []
   const byKey = new Map<string, DaySection>()

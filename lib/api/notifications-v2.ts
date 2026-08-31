@@ -60,6 +60,7 @@ function normalizeReceipt(r: any): Receipt {
     // amber chip; delivered_at stays "handed off, null while held".
     email_status: r.email_status ?? null,
     email_state_reason: r.email_state_reason ?? null,
+    category_id: r.category_id ?? null,
     event: {
       id: r.event.id,
       organization_id: r.event.organization_id,

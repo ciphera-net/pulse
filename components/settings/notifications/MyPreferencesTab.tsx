@@ -72,7 +72,7 @@ function channelsSummary(cat: CategoryPreferenceDoc): string {
 
 function summaryLine(cat: CategoryPreferenceDoc): string {
   if (cat.muted) return `Muted · resumes to ${channelsSummary(cat)}`
-  if (cat.criticality === 'critical') return `${channelsSummary(cat)} · always on`
+  if (!cat.suppressible) return `${channelsSummary(cat)} · always on`
   return channelsSummary(cat)
 }
 
@@ -145,7 +145,7 @@ export default function MyPreferencesTab() {
           digest_time: doc.recipient_preferences.digest_time.slice(0, 5),
           categories: { [categoryId]: full },
         })
-        setDoc(next)
+        setDoc(Array.isArray(next?.categories) ? next : await getPrefsDocument())
       } catch (err) {
         toast.error(getAuthErrorMessage(err as Error) || (err as Error).message || 'Failed to save')
       } finally {
@@ -177,7 +177,10 @@ export default function MyPreferencesTab() {
               : doc.recipient_preferences.quiet_hours_end,
           digest_time: (fields.digest_time ?? doc.recipient_preferences.digest_time).slice(0, 5),
         })
-        setDoc(next)
+        // 🔴 A schedule-only body takes the proxy's legacy path and answers
+        // {"ok":true} with NO document — adopting that as the document blanked
+        // the page (review catch). Adopt only a real document; else re-read.
+        setDoc(Array.isArray(next?.categories) ? next : await getPrefsDocument())
       } catch (err) {
         toast.error(getAuthErrorMessage(err as Error) || (err as Error).message || 'Failed to save')
       } finally {
@@ -224,7 +227,11 @@ export default function MyPreferencesTab() {
           <ul className="divide-y divide-border">
             {categories.map((cat) => {
               const isOpen = expanded === cat.category_id
-              const critical = cat.criticality === 'critical'
+              // ⚠️ Iris's trigger gates on `suppressible`, not `criticality`
+              // (its 422 says "unsuppressible") — the rendering of its
+              // refusals must read the SAME column or the two can disagree
+              // (review catch). `criticality` stays a display word only.
+              const critical = !cat.suppressible
               const count = counts?.[cat.category_id]
               return (
                 <li key={cat.category_id}>
@@ -282,6 +289,7 @@ export default function MyPreferencesTab() {
                             sub="the bell and the notifications page"
                             critical={critical}
                             checked={cat.in_app}
+                            disabled={saving}
                             onChange={(v) => writeCategory(cat.category_id, { in_app: v })}
                           />
                           <ChannelRow
@@ -293,6 +301,7 @@ export default function MyPreferencesTab() {
                             }
                             critical={critical}
                             checked={cat.email}
+                            disabled={saving}
                             onChange={(v) => writeCategory(cat.category_id, { email: v })}
                           />
                           <div className="flex items-center justify-between px-4 py-3">
@@ -312,6 +321,7 @@ export default function MyPreferencesTab() {
                               <Checkbox
                                 aria-label={`Daily digest for ${cat.display_name}`}
                                 checked={cat.digest}
+                                disabled={saving}
                                 onCheckedChange={(v) => writeCategory(cat.category_id, { digest: v })}
                               />
                             )}
@@ -331,6 +341,7 @@ export default function MyPreferencesTab() {
                               </div>
                               <button
                                 type="button"
+                                disabled={saving}
                                 onClick={() => writeCategory(cat.category_id, { muted: !cat.muted })}
                                 className="inline-flex items-center gap-2 border border-border rounded-none px-4 py-2 text-xs font-medium text-neutral-300 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer whitespace-nowrap"
                               >
@@ -387,11 +398,10 @@ export default function MyPreferencesTab() {
                 <div className="text-[11px] text-neutral-500">{tz}</div>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <input
-                  type="time"
-                  className={timeInputClass}
+                <TimeField
                   value={digestHHMM}
-                  onChange={(e) => e.target.value && void writeSchedule({ digest_time: e.target.value })}
+                  disabled={saving}
+                  onCommit={(v) => void writeSchedule({ digest_time: v })}
                   aria-label="Digest send time"
                 />
                 <div className="w-64">
@@ -418,35 +428,41 @@ export default function MyPreferencesTab() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <input
-                  type="time"
-                  className={timeInputClass}
+                <TimeField
                   value={rp.quiet_hours_start?.slice(0, 5) ?? ''}
-                  onChange={(e) =>
+                  disabled={saving}
+                  onCommit={(v) =>
                     void writeSchedule({
-                      quiet_hours_start: e.target.value || null,
-                      quiet_hours_end: e.target.value
-                        ? rp.quiet_hours_end?.slice(0, 5) ?? '08:00'
-                        : null,
+                      quiet_hours_start: v,
+                      quiet_hours_end: rp.quiet_hours_end?.slice(0, 5) ?? '08:00',
                     })
                   }
                   aria-label="Quiet hours start"
                 />
                 <span className="text-[11px] text-neutral-500">to</span>
-                <input
-                  type="time"
-                  className={timeInputClass}
+                <TimeField
                   value={rp.quiet_hours_end?.slice(0, 5) ?? ''}
-                  onChange={(e) =>
+                  disabled={saving}
+                  onCommit={(v) =>
                     void writeSchedule({
-                      quiet_hours_end: e.target.value || null,
-                      quiet_hours_start: e.target.value
-                        ? rp.quiet_hours_start?.slice(0, 5) ?? '22:00'
-                        : null,
+                      quiet_hours_end: v,
+                      quiet_hours_start: rp.quiet_hours_start?.slice(0, 5) ?? '22:00',
                     })
                   }
                   aria-label="Quiet hours end"
                 />
+                {(rp.quiet_hours_start || rp.quiet_hours_end) && (
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() =>
+                      void writeSchedule({ quiet_hours_start: null, quiet_hours_end: null })
+                    }
+                    className="inline-flex items-center gap-2 border border-border rounded-none px-4 py-2 text-xs font-medium text-neutral-300 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer disabled:opacity-40"
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -529,12 +545,14 @@ function ChannelRow({
   sub,
   critical,
   checked,
+  disabled,
   onChange,
 }: {
   label: string
   sub: string
   critical: boolean
   checked: boolean
+  disabled?: boolean
   onChange: (v: boolean) => void
 }) {
   return (
@@ -548,7 +566,7 @@ function ChannelRow({
           On · always
         </span>
       ) : (
-        <Checkbox aria-label={label} checked={checked} onCheckedChange={onChange} />
+        <Checkbox aria-label={label} checked={checked} disabled={disabled} onCheckedChange={onChange} />
       )}
     </div>
   )
@@ -565,8 +583,10 @@ function RetentionSelect({
   const defaultDays = Math.round(cat.read_ttl_seconds / DAY)
   const floorDays = Math.max(1, Math.round(cat.min_retention_seconds / DAY))
   const currentDays = Math.round((cat.retention_override_seconds ?? cat.read_ttl_seconds) / DAY)
-  const candidates = Array.from(new Set([3, 7, 14, 30, 90, defaultDays]))
-    .filter((d) => d >= floorDays && d <= defaultDays)
+  // The stored value is ALWAYS in the list — a select whose value matches no
+  // option renders the wrong story about what is stored (review catch).
+  const candidates = Array.from(new Set([3, 7, 14, 30, 90, defaultDays, currentDays]))
+    .filter((d) => (d >= floorDays && d <= defaultDays) || d === currentDays)
     .sort((a, b) => a - b)
   return (
     <div className="shrink-0 w-56">
@@ -608,5 +628,41 @@ function RetentionRow({
       </div>
       <RetentionSelect cat={cat} onWrite={onWrite} />
     </div>
+  )
+}
+
+
+/**
+ * A time input that commits ON BLUR, never per keystroke. `<input type="time">`
+ * reports '' for any incomplete value, so a per-change write would fire a save
+ * for every edited segment and an empty intermediate would clear stored state
+ * mid-edit (review catch: the quiet-hours pair got nulled by half an edit).
+ */
+function TimeField({
+  value,
+  onCommit,
+  disabled,
+  'aria-label': ariaLabel,
+}: {
+  value: string
+  onCommit: (v: string) => void
+  disabled?: boolean
+  'aria-label': string
+}) {
+  const [draft, setDraft] = useState(value)
+  useEffect(() => setDraft(value), [value])
+  return (
+    <input
+      type="time"
+      className={timeInputClass}
+      value={draft}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => {
+        if (draft !== value && /^\d{2}:\d{2}$/.test(draft)) onCommit(draft)
+        else if (draft === '') setDraft(value) // abandon an incomplete edit
+      }}
+    />
   )
 }

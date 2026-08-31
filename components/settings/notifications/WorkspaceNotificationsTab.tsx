@@ -48,10 +48,17 @@ export default function WorkspaceNotificationsTab() {
       .then(setDoc)
       .catch(() => {})
   }, [])
+  const wireCat = (id: string) => doc?.categories.find((c) => c.category_id === id)
   const nameOf = (id: string) =>
-    doc?.categories.find((c) => c.category_id === id)?.display_name ??
-    NOTIFICATION_CATEGORIES.find((c) => c.id === id)?.label ??
-    id
+    wireCat(id)?.display_name ?? NOTIFICATION_CATEGORIES.find((c) => c.id === id)?.label ?? id
+  // The enforcement claim reads the WIRE's own column when available —
+  // `suppressible` is the trigger's gate (review catch); the local flag is
+  // only the pre-wire fallback.
+  const alwaysOn = (id: string) => {
+    const c = wireCat(id)
+    if (c) return !c.suppressible
+    return NOTIFICATION_CATEGORIES.find((x) => x.id === id)?.critical ?? false
+  }
 
   return (
     <div className="space-y-8">
@@ -81,7 +88,7 @@ export default function WorkspaceNotificationsTab() {
                   <span>{CATEGORY_ICONS[c.id]}</span>
                   <span className="text-sm font-medium text-white truncate">{nameOf(c.id)}</span>
                 </div>
-                {c.critical ? (
+                {alwaysOn(c.id) ? (
                   <span className="text-sm text-neutral-600 select-none" aria-disabled="true">
                     Always on — for everyone
                   </span>

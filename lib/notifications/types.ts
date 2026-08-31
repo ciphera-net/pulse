@@ -119,6 +119,9 @@ export interface Receipt<T extends NotificationType = NotificationType> {
    */
   email_status?: string | null
   email_state_reason?: string | null
+  /** The receipt's FROZEN category, stamped by iris at fan-out (null on a
+   *  backend that predates the field — fall back to the type-key prefix). */
+  category_id?: string | null
   event: {
     id: string
     organization_id: string

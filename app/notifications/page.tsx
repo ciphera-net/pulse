@@ -4,7 +4,7 @@ import { Suspense, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useNotifications } from '@/lib/hooks/useNotifications'
-import { invalidateNotifications } from '@/lib/hooks/useNotificationInbox'
+import { NOTIFICATIONS_KEY, invalidateNotifications } from '@/lib/hooks/useNotificationInbox'
 import { markAllRead, purgeMine } from '@/lib/api/notifications-v2'
 import { getPrefsDocument, type PreferencesDocument } from '@/lib/api/notifications-preferences'
 import { NOTIFICATION_CATEGORIES, shortLabel } from '@/lib/notifications/categories'
@@ -66,8 +66,12 @@ function NotificationsContent() {
   // The preferences document feeds two honest details: the held chip's send
   // time (quiet_hours_end) and the muted state per category. Its absence
   // degrades those details, never the page.
-  const { data: prefsDoc } = useSWR<PreferencesDocument>('notifications-prefs-doc', () =>
-    getPrefsDocument(),
+  // The key sits INSIDE the invalidation family (array, NOTIFICATIONS_KEY
+  // first) so a settings save reaches this copy too — a bare string key is
+  // invisible to invalidateNotifications' prefix predicate (review catch).
+  const { data: prefsDoc } = useSWR<PreferencesDocument>(
+    [NOTIFICATIONS_KEY, 'prefs-doc'],
+    () => getPrefsDocument(),
   )
   const mutedByCategory = useMemo(() => {
     const m: Record<string, boolean> = {}
@@ -257,9 +261,9 @@ function NotificationsContent() {
                     <RegisterRow
                       key={r.event_id}
                       receipt={r}
-                      categoryName={displayName(categoryOf(r.event.type))}
+                      categoryName={displayName(r.category_id ?? categoryOf(r.event.type))}
                       quietHoursEnd={quietHoursEnd}
-                      muted={mutedByCategory[categoryOf(r.event.type)] ?? false}
+                      muted={mutedByCategory[r.category_id ?? categoryOf(r.event.type)] ?? false}
                       onChange={() => {
                         refresh()
                         void invalidateNotifications()
@@ -310,7 +314,8 @@ function NotificationsContent() {
   )
 }
 
-/** A type key's category is its prefix — the registry's own construction. */
+/** Fallback only: a type key's category is its prefix. The authoritative
+ *  value is the receipt's frozen category_id from iris (review catch). */
 function categoryOf(type: string): string {
   return type.split('_')[0]
 }

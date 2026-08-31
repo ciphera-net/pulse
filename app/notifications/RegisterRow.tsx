@@ -73,11 +73,12 @@ export default function RegisterRow({
   }
 
   // The email leg's honest meta. delivered_at = handed off; held draws the
-  // chip; suppression is stated, never hidden.
+  // chip; suppression is stated, never hidden. ⚠️ ORDER IS LOAD-BEARING
+  // (review catch): `muted` is the CURRENT preference — a row whose email WAS
+  // handed off keeps saying so forever; the muted line is only the
+  // explanation for rows that carry no email fact at all.
   let emailMeta: React.ReactNode = null
-  if (muted) {
-    emailMeta = <span>Muted — recorded, not alerted</span>
-  } else if (receipt.email_status === 'held') {
+  if (receipt.email_status === 'held') {
     emailMeta = (
       <span className="px-1 text-[11px] bg-amber-500/15 text-amber-400 whitespace-nowrap">
         {quietHoursEnd ? `Held — quiet hours · sends ${quietHoursEnd}` : 'Held — quiet hours'}
@@ -87,6 +88,8 @@ export default function RegisterRow({
     emailMeta = <span>Emailed {hhmm(receipt.delivered_at)}</span>
   } else if (receipt.email_status === 'suppressed') {
     emailMeta = <span>Email suppressed</span>
+  } else if (muted) {
+    emailMeta = <span>Muted — recorded, not alerted</span>
   }
 
   return (
