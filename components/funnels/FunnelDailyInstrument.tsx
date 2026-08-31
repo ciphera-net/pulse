@@ -6,7 +6,6 @@ import { curveMonotoneX } from 'd3-shape'
 import { AreaClosed, LinePath, ParentSize, localPoint } from '@/lib/charts/primitives'
 import { useFunnelTrends } from '@/lib/swr/dashboard'
 import type { FunnelStats } from '@/lib/api/funnels'
-import { UpdatingChip } from '@/components/ui/UpdatingChip'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { formatNumber, formatConvertTime } from '@/lib/utils/format'
 import { guardedPctChange, guardedPointChange } from '@/lib/utils/pctChange'
@@ -51,6 +50,7 @@ export function FunnelDailyInstrument({
   filters,
   stats,
   prevStats,
+  editEpoch,
 }: {
   siteId: string
   funnelId: string
@@ -58,13 +58,16 @@ export function FunnelDailyInstrument({
   filters?: string
   stats?: FunnelStats
   prevStats?: FunnelStats
+  /** Bumped by the page after an edit — forces an immediate trends refetch. */
+  editEpoch?: number
 }) {
-  const { data: trends, error, isValidating, mutate: retry } = useFunnelTrends(
+  const { data: trends, error, mutate: retry } = useFunnelTrends(
     siteId,
     funnelId,
     dateRange.start,
     dateRange.end,
     filters,
+    editEpoch,
   )
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
 
@@ -111,7 +114,8 @@ export function FunnelDailyInstrument({
 
   return (
     <div className="relative rounded-none border border-border bg-card">
-      <UpdatingChip active={isValidating && !!trends} className="right-3 top-2" />
+      {/* No UpdatingChip here — the page-level chip on the funnel panel is
+          the one liveness indicator; two chips on one screen read as noise. */}
       <div className="flex items-baseline justify-between gap-4 border-b border-border px-4 py-3">
         <span className="text-sm font-medium text-neutral-200">Daily</span>
         <span className="truncate text-xs text-neutral-500">rate marked only where ≥{MIN_RATE_ENTRANTS} entered</span>

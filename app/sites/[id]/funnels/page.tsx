@@ -14,7 +14,7 @@ import { ErrorCard } from '@/components/ui/ErrorCard'
 import { FunnelSummaryCard } from '@/components/funnels/FunnelSummaryCard'
 import { FunnelStatusLine } from '@/components/funnels/FunnelStatusLine'
 import { FunnelSimple } from '@phosphor-icons/react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { DeleteFunnelDialog } from '@/components/funnels/DeleteFunnelDialog'
 import FunnelModal, { type FunnelPrefill } from '@/components/funnels/FunnelModal'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
@@ -127,7 +127,9 @@ export default function FunnelsPage() {
         <div>
           <h1 className="text-lg font-semibold text-neutral-200 mb-1">Funnels</h1>
           <p className="text-sm text-neutral-400">Track user journeys and identify drop-off points</p>
-          <FunnelStatusLine timezone={site?.timezone} />
+          {/* Provenance describes numbers — with zero funnels there are none
+              to describe, so the line stays off the empty page. */}
+          {list.length > 0 && <FunnelStatusLine timezone={site?.timezone} />}
         </div>
         <div className="flex items-center gap-2">
           <DateRangePicker
@@ -159,7 +161,12 @@ export default function FunnelsPage() {
         // false for a real 404 (measured on staging — the 404 rendered the
         // generic card).
         (funnelsError as { status?: number })?.status === 404 ? (
-          <p className="text-neutral-400">Site not found</p>
+          <EmptyState
+            icon={<FunnelSimple />}
+            title="Site not found"
+            description="It may have been deleted, or the link points to a site you don't have access to."
+            action={{ label: 'Back to your sites', href: '/' }}
+          />
         ) : (
           <ErrorCard
             title="Couldn't load funnels"
@@ -171,11 +178,15 @@ export default function FunnelsPage() {
         <EmptyState
           icon={<FunnelSimple />}
           title="No funnels yet"
-          description="Create a funnel to track how visitors move through your site and where they drop off."
+          description={
+            canManageFunnels
+              ? 'Create a funnel to track how visitors move through your site and where they drop off.'
+              : 'Funnels track how visitors move through your site. They are set up by teammates with the analytics permission.'
+          }
           action={canManageFunnels ? { label: 'Create funnel', onClick: () => { setEditingFunnel(null); setModalOpen(true) } } : undefined}
         />
       ) : (
-        <div data-tour="funnels-list" className="grid gap-3">
+        <div className="grid gap-3">
           {list.map((funnel, index) => (
             <motion.div
               key={funnel.id}
@@ -199,24 +210,21 @@ export default function FunnelsPage() {
         </div>
       )}
 
-      <Dialog open={!!deletingFunnel} onOpenChange={() => setDeletingFunnel(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete funnel</DialogTitle>
-            <DialogDescription>Are you sure you want to delete &ldquo;{deletingFunnel?.name}&rdquo;? This cannot be undone.</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setDeletingFunnel(null)}>Cancel</Button>
-            <Button variant="default" className="bg-red-600 hover:bg-red-500 shadow-none" onClick={handleDelete}>Delete</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteFunnelDialog
+        open={!!deletingFunnel}
+        funnelName={deletingFunnel?.name ?? ''}
+        onCancel={() => setDeletingFunnel(null)}
+        onConfirm={handleDelete}
+      />
 
       {modalOpen && canManageFunnels && (
         <FunnelModal
           isOpen={modalOpen}
           siteId={siteId}
-          dateRange={dateRange}
+          // * fetchRange, not the picker's display value — the preview must
+          // * measure the same site-day-anchored window the cards fetch, or
+          // * the modal and the page can disagree about the same funnel.
+          dateRange={fetchRange}
           onClose={() => { setModalOpen(false); setEditingFunnel(null); setPrefill(null) }}
           initialData={editingFunnel ?? undefined}
           prefill={!editingFunnel ? prefill ?? undefined : undefined}

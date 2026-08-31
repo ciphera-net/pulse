@@ -581,53 +581,17 @@ export const TERMS: Record<string, GlossaryTerm> = {
       'Values with fewer than 5 entrants are withheld entirely — no row, never a zero — so a small slice and an empty one look the same and iterating a dimension cannot isolate one visitor.',
     docs: 'funnels#funnel-breakdown-floor',
   },
-  funnel_conversion: {
-    title: 'Conversion (funnels)',
-    definition:
-      'Share of step 1\'s entrants who got this far, chained through every step in between — not an independent per-step rate. With no entrants it is empty, not 0%.',
-    docs: 'funnels#funnel-conversion',
-  },
-  funnel_days_site_timezone: {
-    title: 'Days are site time (funnels)',
-    definition:
-      'Cut by the server in the site\'s own timezone — not UTC and not your browser\'s — so viewers in different countries see identical day boundaries.',
-    docs: 'funnels#funnel-days-site-timezone',
-  },
-  funnel_dropoff: {
-    title: 'Drop-off (funnels)',
-    definition:
-      'Share of the previous step\'s visitors who did not reach this one. Empty rather than 0% when the previous step had no visitors.',
-    docs: 'funnels#funnel-dropoff',
-  },
   funnel_exit_pages: {
     title: 'Exit pages (funnels)',
     definition:
       'The pages visitors opened within an hour of dropping off this step, top ten by volume. The final step has no drop-off, so it shows none.',
     docs: 'funnels#funnel-exit-pages',
   },
-  funnel_first_match_wins: {
-    title: 'First match wins',
+  funnel_provenance: {
+    title: 'How funnel numbers are made',
     definition:
-      'When two steps would match the same page or event, only the earlier fires; the later reads zero forever. The editor refuses to save an exact duplicate.',
-    docs: 'funnels#funnel-first-match-wins',
-  },
-  funnel_live_conviction_filtered: {
-    title: 'Live from events, bot-filtered',
-    definition:
-      'Computed from raw events on every request, not a frozen snapshot, with bot and fraud verdicts applied. Those verdicts can be revised retroactively, so past numbers can change.',
-    docs: 'funnels#funnel-live-conviction-filtered',
-  },
-  funnel_median_time: {
-    title: 'Median time to convert',
-    definition:
-      'Measured from entering the funnel to finishing the last step, over converted sessions only. A median, so a few very slow completions cannot drag it up.',
-    docs: 'funnels#funnel-median-time',
-  },
-  funnel_one_visit: {
-    title: 'One-visit conversions',
-    definition:
-      "Every step must complete within one visit. There is no multi-day window because session identity resets at your site's midnight.",
-    docs: 'funnels#funnel-one-visit',
+      "Computed from raw events on every request with bot and fraud verdicts applied — those can be revised retroactively, so past numbers can change. Every step must complete within one session, which resets at your site's midnight; days are cut in the site's timezone.",
+    docs: 'funnels#funnel-provenance',
   },
   funnel_step_definition: {
     title: 'Funnel step',
