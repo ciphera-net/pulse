@@ -5,7 +5,6 @@ import RailSparkline from '@/components/dashboard/RailSparkline'
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip, type TooltipRow } from '@/components/ui/area-chart'
 import { Card, CardContent, CardHeader } from '@ciphera-net/facet'
-import type { EngagementPercentilesData } from '@/lib/api/stats'
 import { formatNumber, formatDuration } from '@/lib/utils/format'
 import { DownloadIcon } from '@ciphera-net/facet'
 import Select from '@/components/ui/select'
@@ -52,7 +51,6 @@ interface ChartProps {
   multiDayInterval: 'hour' | 'day'
   setMultiDayInterval: (interval: 'hour' | 'day') => void
   lastUpdatedAt?: number | null
-  engagementData?: EngagementPercentilesData | null
   onExport?: () => void
   // * Show the minute/hour/day interval selector. Default true. The public share
   // * dashboard passes false: it is day-only (a sub-day bucket on a public link is
@@ -61,7 +59,7 @@ interface ChartProps {
   intervalPicker?: boolean
 }
 
-type MetricType = 'pageviews' | 'visitors' | 'pages_per_visit' | 'bounce_rate' | 'avg_duration' | 'engagement'
+type MetricType = 'pageviews' | 'visitors' | 'pages_per_visit' | 'bounce_rate' | 'avg_duration'
 
 // ─── Sparkline ───────────────────────────────────────────────────────
 // Extracted to RailSparkline (19-08-2026) so the command deck's KPI rail
@@ -87,7 +85,6 @@ const METRIC_CONFIGS: {
   { key: 'pages_per_visit', label: 'Pages per visit', format: (v) => v == null ? '—' : v.toFixed(1) },
   { key: 'bounce_rate', label: 'Bounce rate', format: (v) => v == null ? '—' : `${Math.round(v)}%`, isNegative: true, isRate: true },
   { key: 'avg_duration', label: 'Visit duration', format: (v) => v == null ? '—' : formatDuration(Math.round(v)) },
-  { key: 'engagement', label: 'Engagement', format: (v) => v == null ? '—' : String(Math.round(v)) },
 ]
 
 const CHART_COLORS: Record<MetricType, string> = {
@@ -96,7 +93,6 @@ const CHART_COLORS: Record<MetricType, string> = {
   pages_per_visit: 'var(--chart-3)', // green
   bounce_rate: 'var(--chart-4)',    // purple
   avg_duration: 'var(--chart-5)',   // amber
-  engagement: 'var(--chart-2)',     // blue
 }
 
 // ─── Chart Component ─────────────────────────────────────────────────
@@ -113,7 +109,6 @@ export default function Chart({
   multiDayInterval,
   setMultiDayInterval,
   lastUpdatedAt,
-  engagementData,
   onExport,
   intervalPicker = true,
 }: ChartProps) {
@@ -149,14 +144,8 @@ export default function Chart({
       pages_per_visit: item.visitors > 0 ? item.pageviews / item.visitors : 0,
       bounce_rate: item.bounce_rate,
       avg_duration: item.avg_duration,
-      engagement: (() => {
-        if (!engagementData?.daily?.length) return 0
-        const dateStr = typeof item.date === 'string' ? item.date.slice(0, 10) : ''
-        const match = engagementData.daily.find(d => d.date === dateStr)
-        return match?.score ?? 0
-      })(),
     }
-  }), [data, interval, engagementData])
+  }), [data, interval])
 
   // ─── Metrics with trends ──────────────────────────────────────────
 
@@ -169,14 +158,10 @@ export default function Chart({
     // * filter (F4: a true +13% rendered as −46% red).
     const prevBase = prevStats?.visitors ?? 0
     return METRIC_CONFIGS.map((m) => {
-    const value: number | null = m.key === 'engagement'
-      ? (engagementData?.summary?.score ?? null)
-      : m.key === 'pages_per_visit'
+    const value: number | null = m.key === 'pages_per_visit'
         ? (stats.visitors > 0 ? stats.pageviews / stats.visitors : null)
         : stats[m.key as keyof Stats]
-    const previousValue: number | null | undefined = m.key === 'engagement'
-      ? undefined
-      : m.key === 'pages_per_visit'
+    const previousValue: number | null | undefined = m.key === 'pages_per_visit'
         ? (prevStats && prevStats.visitors > 0 ? prevStats.pageviews / prevStats.visitors : undefined)
         : prevStats?.[m.key as keyof Stats]
     const change: PctChangeResult = value != null && previousValue != null
@@ -195,29 +180,11 @@ export default function Chart({
       change,
       isPositive,
     }
-  })}, [stats, prevStats, engagementData])
+  })}, [stats, prevStats])
 
   const hasData = data.length > 0
   const hasAnyNonZero = hasData && chartData.some((d) => (d[metric] as number) > 0
   )
-
-  // Engagement uses daily data for the chart (not hourly-mapped duplicates)
-  const isEngagementHourly = metric === 'engagement' && (interval === 'hour' || interval === 'minute')
-  const engagementChartData = useMemo(() => {
-    if (!engagementData?.daily?.length) return []
-    // Same wall-clock basis as chartData — parsing this one as LOCAL midnight
-    // put the engagement series on different x-instants than the traffic series
-    // for every non-UTC viewer.
-    return engagementData.daily.map(d => {
-      const wallClock = parseSiteWallClock(d.date + 'T00:00') ?? new Date(d.date + 'T00:00:00Z')
-      return {
-        date: formatDateShortUTC(wallClock),
-        dateObj: wallClock,
-        originalDate: d.date,
-        engagement: d.score,
-      }
-    })
-  }, [engagementData])
 
   // ─── Render ────────────────────────────────────────────────────────
 
@@ -226,7 +193,7 @@ export default function Chart({
       <Card className="w-full overflow-hidden rounded-none">
         <CardHeader className="p-0 mb-0">
           {/* Metrics Grid - 21st.dev style */}
-          <div className="grid grid-cols-2 md:grid-cols-6 grow w-full">
+          <div className="grid grid-cols-2 md:grid-cols-5 grow w-full">
             {metricsWithTrends.map((m, index) => (
               <button
                 key={m.key}
@@ -236,7 +203,7 @@ export default function Chart({
                   metric === m.key && 'bg-neutral-800/40',
                 )}
               >
-                <RailSparkline data={m.key === 'engagement' ? chartData : data} dataKey={m.key} active={metric === m.key} engagementDaily={m.key === 'engagement' ? engagementData?.daily : undefined} />
+                <RailSparkline data={data} dataKey={m.key} active={metric === m.key} />
                 <div className="relative z-10">
                   <div className="flex items-start justify-between mb-2">
                     <div className={cn('text-sm font-medium', metric === m.key ? 'text-brand-orange' : 'text-neutral-500 dark:text-neutral-400')}>{m.label}</div>
@@ -247,35 +214,10 @@ export default function Chart({
                       </span>
                     )}
                   </div>
-                  {m.key === 'engagement' && (!engagementData || engagementData.data_days < 7)
-                    ? (
-                      /* keep the sibling tiles' value rhythm while the score
-                         warms up instead of a bare placeholder string */
-                      <>
-                        <span className="text-2xl font-bold text-neutral-600">—</span>
-                        <div className="mt-1 text-micro-label text-neutral-500" title="The engagement score compares each day against your site's own history and needs 7 days of data.">
-                          Collecting data · needs 7 days
-                        </div>
-                      </>
-                    )
-                    : m.value == null
-                      ? <span className="text-2xl font-bold text-neutral-600" title="Not measured in this window">—</span>
-                      : <AnimatedNumber value={m.value} format={m.format as (v: number) => string} className="text-2xl font-bold text-white" />
+                  {m.value == null
+                    ? <span className="text-2xl font-bold text-neutral-600" title="Not measured in this window">—</span>
+                    : <AnimatedNumber value={m.value} format={m.format as (v: number) => string} className="text-2xl font-bold text-white" />
                   }
-                  {m.key === 'engagement' && engagementData && engagementData.data_days >= 7 && (
-                    <div
-                      className="flex items-center gap-1.5 mt-1 text-micro-label text-neutral-500 cursor-help"
-                      title="How this period ranks against your site's own history — S: scroll depth, T: time on page, D: visit depth, B: bounce rate. P77 means better than 77% of days."
-                    >
-                      <span>S P{Math.round(engagementData.summary.scroll_pctl)}</span>
-                      <span>·</span>
-                      <span>T P{Math.round(engagementData.summary.time_pctl)}</span>
-                      <span>·</span>
-                      <span>D P{Math.round(engagementData.summary.depth_pctl)}</span>
-                      <span>·</span>
-                      <span>B P{Math.round(engagementData.summary.bounce_pctl)}</span>
-                    </div>
-                  )}
                 </div>
                 {metric === m.key && (
                   <motion.div
@@ -352,44 +294,14 @@ export default function Chart({
                 className="py-0"
               />
             </div>
-          ) : isEngagementHourly ? (
-            <div className="flex flex-col items-center justify-center gap-6 py-10" style={{ aspectRatio: '2.5 / 1' }}>
-              <div className="text-6xl font-bold text-white tabular-nums">
-                {Math.round(engagementData?.summary?.score ?? 0)}
-              </div>
-              <div className="grid grid-cols-4 gap-6 w-full max-w-md">
-                {[
-                  { label: 'Scroll', key: 'scroll_pctl' as const, color: '#FD5E0F' },
-                  { label: 'Time', key: 'time_pctl' as const, color: '#F59E0B' },
-                  { label: 'Depth', key: 'depth_pctl' as const, color: '#10B981' },
-                  { label: 'Bounce', key: 'bounce_pctl' as const, color: '#6366F1' },
-                ].map(({ label, key, color }) => {
-                  const value = Math.round(engagementData?.summary?.[key] ?? 0)
-                  return (
-                    <div key={key} className="flex flex-col items-center gap-2">
-                      <div className="relative w-14 h-14">
-                        <svg viewBox="0 0 36 36" className="w-14 h-14 -rotate-90">
-                          <circle cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" className="text-neutral-800" strokeWidth="3" />
-                          <circle cx="18" cy="18" r="15.9" fill="none" stroke={color} strokeWidth="3" strokeDasharray={`${value} ${100 - value}`} strokeLinecap="round" />
-                        </svg>
-                        <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-white">{value}</span>
-                      </div>
-                      <span className="text-micro-label uppercase tracking-widest text-neutral-500">{label}</span>
-                    </div>
-                  )
-                })}
-              </div>
-              <p className="text-xs text-neutral-500">Engagement is calculated daily</p>
-            </div>
           ) : (
             <div className="relative w-full">
               {(() => {
-                const isEngagementDaily = metric === 'engagement' && engagementChartData.length > 0
-                const activeChartData = isEngagementDaily ? engagementChartData : chartData
                 return (
                   <VisxAreaChart
-                    data={activeChartData as Record<string, unknown>[]}
+                    data={chartData as Record<string, unknown>[]}
                     xDataKey="dateObj"
+                    yCap={metric === 'bounce_rate' ? 100 : undefined}
                     aspectRatio="3.5 / 1"
                     margin={{ top: 20, right: 20, bottom: 40, left: 50 }}
                     animationDuration={400}
@@ -410,8 +322,8 @@ export default function Chart({
                       missingAsZero={metric === 'bounce_rate' || metric === 'avg_duration'}
                     />
                     <VisxXAxis
-                      numTicks={Math.min(activeChartData.length, 10)}
-                      formatLabel={!isEngagementDaily && (interval === 'minute' || interval === 'hour')
+                      numTicks={Math.min(chartData.length, 10)}
+                      formatLabel={(interval === 'minute' || interval === 'hour')
                         ? (d) => formatTimeUTC(d)
                         : (d) => formatDateShortUTC(d)
                       }
@@ -428,7 +340,7 @@ export default function Chart({
                         const dateObj = point.dateObj instanceof Date ? point.dateObj : new Date(point.dateObj as string || Date.now())
                         const config = METRIC_CONFIGS.find((m) => m.key === metric)
                         const value = point[metric] as number | null
-                        const title = !isEngagementDaily && (interval === 'minute' || interval === 'hour')
+                        const title = (interval === 'minute' || interval === 'hour')
                           ? formatTimeUTC(dateObj)
                           : formatDateFullUTC(dateObj)
                         return (

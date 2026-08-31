@@ -40,12 +40,11 @@ import {
   useRealtime,
   useStats,
   useCampaigns,
-  useEngagementPercentiles,
 } from '@/lib/swr/dashboard'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import InstallBanner from '@/components/dashboard/InstallBanner'
 import { useLiveIndicator } from '@/lib/live-indicator-context'
-import { type MetricType, type BlockMetric, isMetricType } from '@/lib/dashboard/metrics'
+import { type MetricType, isMetricType } from '@/lib/dashboard/metrics'
 import { useCan } from '@/lib/auth/permissions'
 
 
@@ -75,20 +74,16 @@ export default function SiteDashboardPage() {
   const filtersParam = useMemo(() => serializeFilters(filters), [filters])
 
   // Deck metric selection lives in the URL (?metric=) like ?period= — a shared
-  // link carries it and a reload keeps it. The dimension blocks follow the
-  // last block-capable metric: engagement is page-scoped (no per-row value),
-  // so while it is selected the blocks hold their previous unit.
+  // link carries it and a reload keeps it. DECOUPLED (owner decision,
+  // 01-09-2026): the selection drives ONLY the hero chart. The dimension
+  // blocks hold fixed columns (visitors; the Pages card adds views) and never
+  // re-render on a KPI click.
   const [metric, setMetric] = useState<MetricType>(() => {
     const raw = searchParams.get('metric')
     return isMetricType(raw) ? raw : 'visitors'
   })
-  const [blockMetric, setBlockMetric] = useState<BlockMetric>(() => {
-    const raw = searchParams.get('metric')
-    return isMetricType(raw) && raw !== 'engagement' ? raw : 'visitors'
-  })
   const handleMetricChange = useCallback((m: MetricType) => {
     setMetric(m)
-    if (m !== 'engagement') setBlockMetric(m)
   }, [])
   useEffect(() => {
     const url = new URL(window.location.href)
@@ -232,11 +227,6 @@ export default function SiteDashboardPage() {
   // card's own — it feeds the ExportModal's campaigns sheet. (The audit's
   // "duplicate fetch" was prevDailyStats, deleted with the old sparklines.)
   const { data: campaigns } = useCampaigns(siteId, resolvedDateRange?.start ?? '', resolvedDateRange?.end ?? '', 100, apiPeriod)
-  // Engagement percentiles ride SWR like everything else (F17): a failed fetch
-  // is an ERROR the deck can state, not a null that reads as "collecting data".
-  const { data: engagementData, error: engagementError } = useEngagementPercentiles(
-    siteId, resolvedDateRange?.start ?? '', resolvedDateRange?.end ?? '')
-
   // Derive typed values from single dashboard response
   const site = dashboard?.site ?? null
   // The four averages default to null ("not measured"), never 0 — a fabricated
@@ -394,9 +384,6 @@ export default function SiteDashboardPage() {
           setTodayInterval={setTodayInterval}
           multiDayInterval={multiDayInterval}
           setMultiDayInterval={setMultiDayInterval}
-          engagementData={engagementData}
-          engagementError={Boolean(engagementError)}
-          filtersActive={hasFilters}
           onExport={canExport ? () => setIsExportModalOpen(true) : undefined}
         />
       </div>
@@ -404,7 +391,6 @@ export default function SiteDashboardPage() {
       <SectionHeader title="Acquisition" note={sectionNote} />
       <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
         <TopReferrers
-          metric={blockMetric}
           referrers={dashboard?.top_referrers ?? []}
           channels={dashboard?.channels ?? []}
           collectReferrers={site.collect_referrers ?? true}
@@ -414,13 +400,12 @@ export default function SiteDashboardPage() {
           filters={filtersParam || undefined}
           onFilter={handleAddFilter}
         />
-        <Campaigns metric={blockMetric} siteId={siteId} dateRange={resolvedDateRange} totals={totals} filters={filtersParam || undefined} onFilter={handleAddFilter} />
+        <Campaigns siteId={siteId} dateRange={resolvedDateRange} totals={totals} filters={filtersParam || undefined} onFilter={handleAddFilter} />
       </div>
 
       <SectionHeader title="Audience" note={sectionNote} />
       <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
         <Audience
-          metric={blockMetric}
           countries={dashboard?.countries ?? []}
           cities={dashboard?.cities ?? []}
           regions={dashboard?.regions ?? []}
@@ -435,7 +420,6 @@ export default function SiteDashboardPage() {
           onFilter={handleAddFilter}
         />
         <TechSpecs
-          metric={blockMetric}
           browsers={dashboard?.browsers ?? []}
           os={dashboard?.os ?? []}
           devices={dashboard?.devices ?? []}
@@ -453,7 +437,6 @@ export default function SiteDashboardPage() {
       <SectionHeader title="Content" note={sectionNote} />
       <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
         <ContentStats
-          metric={blockMetric}
           topPages={dashboard?.top_pages ?? []}
           entryPages={dashboard?.entry_pages ?? []}
           exitPages={dashboard?.exit_pages ?? []}
@@ -478,7 +461,7 @@ export default function SiteDashboardPage() {
 
       <SectionHeader title="Behaviour" note={`${sectionNote} · site timezone`} />
       <div className="grid gap-3 mb-3 [&>*]:min-w-0">
-        <PeakHours pageMetric={blockMetric} siteId={siteId} dateRange={resolvedDateRange} filters={filtersParam || undefined} />
+        <PeakHours siteId={siteId} dateRange={resolvedDateRange} filters={filtersParam || undefined} />
       </div></>
       })()}
 

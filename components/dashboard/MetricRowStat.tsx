@@ -2,33 +2,27 @@
 
 import { cn } from '@/lib/utils'
 import { formatNumber } from '@/lib/utils/format'
-import {
-  type BlockMetric,
-  type DimensionRateRow,
-  blockRowDisplay,
-  metricHasShare,
-  shareValue,
-  BLOCK_METRIC_LABEL,
-} from '@/lib/dashboard/metrics'
+import { type DimensionRateRow } from '@/lib/dashboard/metrics'
 
 // ---------------------------------------------------------------------------
-// The shared right-hand stat cluster for dimension-card rows (deck metric
-// propagation, 22-08-2026): the number follows the page's selected metric,
-// the hover % applies only to count metrics (share of the range's F9 total),
-// and guarded/unmeasured rates render a muted em dash — never a zero.
+// The shared right-hand stat cluster for dimension-card rows. DECOUPLED
+// (01-09-2026, O3): rows always show VISITORS — the same field the server
+// ranks by — and the Pages card adds a views column beside it. The chart's
+// selected metric no longer reaches these rows. The hover % is the row's
+// share of the range's visitor total (the F9 denominator).
 // ---------------------------------------------------------------------------
 
 interface MetricRowStatProps {
-  metric: BlockMetric
   row: DimensionRateRow
   totals?: { pageviews: number; visitors: number }
+  /** Twin-column mode (the Pages card): visitors + views, equal weight. */
+  views?: boolean
 }
 
-export function MetricRowStat({ metric, row, totals }: MetricRowStatProps) {
-  const d = blockRowDisplay(metric, row)
-  const showPct = metricHasShare(metric)
-  const denom = showPct && totals ? totals[metric as 'pageviews' | 'visitors'] : 0
-  const pct = denom > 0 ? `${Math.round((shareValue(metric, row, 'pageviews') / denom) * 100)}%` : ''
+export function MetricRowStat({ row, totals, views }: MetricRowStatProps) {
+  const visitors = row.visitors ?? 0
+  const denom = totals?.visitors ?? 0
+  const pct = denom > 0 ? `${Math.round((visitors / denom) * 100)}%` : ''
   return (
     <div className="relative flex items-center gap-2 ml-4">
       {pct && (
@@ -36,7 +30,14 @@ export function MetricRowStat({ metric, row, totals }: MetricRowStatProps) {
           {pct}
         </span>
       )}
-      <span className={cn('text-sm font-semibold', d.muted ? 'text-neutral-600' : 'text-neutral-400')}>{d.text}</span>
+      <span className={cn('text-sm font-semibold text-neutral-400', views && 'w-12 text-right tabular-nums')}>
+        {formatNumber(visitors)}
+      </span>
+      {views && (
+        <span className="w-12 text-right tabular-nums text-sm font-semibold text-neutral-400">
+          {formatNumber(row.pageviews)}
+        </span>
+      )}
     </div>
   )
 }
@@ -50,31 +51,28 @@ export function MetricRowStat({ metric, row, totals }: MetricRowStatProps) {
  * glyph explains the CARD (see DimensionInfoTip); the unit label is just a
  * label again.
  */
-export function MetricUnitLabel({ metric }: { metric: BlockMetric }) {
-  return (
+export function MetricUnitLabel({ views }: { views?: boolean }) {
+  return views ? (
     <span className="shrink-0 text-[11px] text-neutral-500" data-testid="metric-unit">
-      {BLOCK_METRIC_LABEL[metric]}
+      <span className="inline-block w-12 text-right">visitors</span>
+      <span className="inline-block w-12 text-right">views</span>
+    </span>
+  ) : (
+    <span className="shrink-0 text-[11px] text-neutral-500" data-testid="metric-unit">
+      visitors
     </span>
   )
 }
 
-/** Share-bar width (0..75) — count metrics scale by the selected count, rate
- * metrics keep the block's ranking count so visual hierarchy stays put. */
-export function rowBarWidth(
-  metric: BlockMetric,
-  row: DimensionRateRow,
-  rows: DimensionRateRow[],
-  rankingField: 'pageviews' | 'visitors' = 'pageviews'
-): number {
-  const max = rows.reduce((m, r) => Math.max(m, shareValue(metric, r, rankingField)), 0)
-  return max > 0 ? (shareValue(metric, row, rankingField) / max) * 75 : 0
+/** Share-bar width (0..75) — bars follow visitors, the same field the rows
+ * rank by, so visual hierarchy and reading order can never disagree. */
+export function rowBarWidth(row: DimensionRateRow, rows: DimensionRateRow[]): number {
+  const max = rows.reduce((m, r) => Math.max(m, r.visitors ?? 0), 0)
+  return max > 0 ? ((row.visitors ?? 0) / max) * 75 : 0
 }
 
-/** The denominator sentence for "view all" modals, metric-aware. */
-export function shareDenominatorNote(metric: BlockMetric, totals?: { pageviews: number; visitors: number }): string | null {
-  if (!metricHasShare(metric) || !totals) return null
-  const denom = totals[metric as 'pageviews' | 'visitors']
-  if (!(denom > 0)) return null
-  const unit = metric === 'visitors' ? 'visitors' : 'pageviews'
-  return `Shares are of all ${formatNumber(denom)} ${unit} in the range — searching narrows the rows, not the denominator.`
+/** The denominator sentence for "view all" modals. */
+export function shareDenominatorNote(totals?: { pageviews: number; visitors: number }): string | null {
+  if (!totals || !(totals.visitors > 0)) return null
+  return `Shares are of all ${formatNumber(totals.visitors)} visitors in the range — searching narrows the rows, not the denominator.`
 }

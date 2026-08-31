@@ -1,16 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import ContentStats from '@/components/dashboard/ContentStats'
-import type { TopPage, PageEngagement } from '@/lib/api/stats'
+import type { TopPage } from '@/lib/api/stats'
 
 // The hooks are the seam: these tests pin WHAT the card asks for (kind,
 // limit, filters — the F14 threading) and what it renders from the answer
 // (true denominators — F9; error states — F17).
 const useFullDimensionList = vi.fn()
-const usePageEngagement = vi.fn()
 vi.mock('@/lib/swr/dashboard', () => ({
   useFullDimensionList: (...args: unknown[]) => useFullDimensionList(...args),
-  usePageEngagement: (...args: unknown[]) => usePageEngagement(...args),
 }))
 
 // The virtualizer needs real layout measurement; render every row instead.
@@ -43,22 +41,22 @@ const baseProps = {
 
 beforeEach(() => {
   useFullDimensionList.mockReset().mockReturnValue(idle)
-  usePageEngagement.mockReset().mockReturnValue(idle)
 })
 
 describe('ContentStats denominators (F9)', () => {
   it('divides each row by the true range total, not the sum of visible rows', () => {
     render(<ContentStats {...baseProps} totals={totals} />)
-    // 200/453 = 44% — share-of-top-N would say 200/372 = 54% here.
-    expect(screen.getByText('44%')).toBeTruthy()
+    // Rows share on VISITORS since the O3 decouple: 200/314 = 64% —
+    // share-of-top-N would say 200/372 = 54% here.
+    expect(screen.getByText('64%')).toBeTruthy()
     expect(screen.queryByText('54%')).toBeNull()
   })
 
   it('keeps the denominator note in the MODAL only (header note removed, owner call)', () => {
     render(<ContentStats {...baseProps} totals={totals} />)
-    expect(screen.queryByText(/share of 453 pageviews/)).toBeNull()
+    expect(screen.queryByText(/Shares are of all 314 visitors/)).toBeNull()
     fireEvent.click(screen.getByLabelText('View all pages'))
-    expect(screen.getByText(/Shares are of all 453 pageviews/)).toBeTruthy()
+    expect(screen.getByText(/Shares are of all 314 visitors/)).toBeTruthy()
   })
 
   it('renders NO percentages without totals — never a fabricated denominator', () => {
@@ -83,9 +81,9 @@ describe('ContentStats modal (F14 + F17)', () => {
     fireEvent.click(screen.getByLabelText('View all pages'))
     fireEvent.change(screen.getByPlaceholderText('Search pages...'), { target: { value: '/blog' } })
     // /blog alone remains visible in the modal; its share must stay
-    // 64/453 = 14%, not 64/64 = 100% of the narrowed list. (The card behind
-    // the modal shows the same 14%, so match all.)
-    expect(screen.getAllByText('14%').length).toBeGreaterThan(0)
+    // 64/314 = 20%, not 64/64 = 100% of the narrowed list. (The card behind
+    // the modal shows the same 20%, so match all.)
+    expect(screen.getAllByText('20%').length).toBeGreaterThan(0)
     expect(screen.queryByText('100%')).toBeNull()
   })
 
@@ -105,41 +103,10 @@ describe('ContentStats modal (F14 + F17)', () => {
     expect(screen.queryByLabelText('View all pages')).toBeNull()
   })
 
-  it('hides the Engagement tab when memberFeatures is false — its endpoint is member-only', () => {
-    render(<ContentStats {...baseProps} totals={totals} memberFeatures={false} />)
+  it('has no Engagement tab on any surface — the feature left 01-09-2026', () => {
+    render(<ContentStats {...baseProps} totals={totals} />)
     expect(screen.queryByRole('tab', { name: 'Engagement' })).toBeNull()
-    // The member surface keeps it.
     expect(screen.getByRole('tab', { name: 'Pages' })).toBeTruthy()
   })
 })
 
-describe('ContentStats engagement tab (F17)', () => {
-  it('arms the hook only when the tab is active, with filters and the card limit', () => {
-    render(<ContentStats {...baseProps} totals={totals} filters="country:is:DE" />)
-    expect(usePageEngagement).toHaveBeenCalledWith(
-      false, 'site-1', '2026-07-20', '2026-08-18', 5, 7, 'country:is:DE')
-    fireEvent.click(screen.getByRole('tab', { name: 'Engagement' }))
-    expect(usePageEngagement).toHaveBeenCalledWith(
-      true, 'site-1', '2026-07-20', '2026-08-18', 5, 7, 'country:is:DE')
-  })
-
-  it('renders an error state — not "not enough data" — when the fetch fails', () => {
-    const mutate = vi.fn()
-    usePageEngagement.mockImplementation((enabled: unknown) =>
-      enabled ? { data: undefined, error: new Error('boom'), isLoading: false, mutate } : idle)
-    render(<ContentStats {...baseProps} totals={totals} />)
-    fireEvent.click(screen.getByRole('tab', { name: 'Engagement' }))
-    expect(screen.getByText(/Couldn.t load engagement scores/)).toBeTruthy()
-    expect(screen.queryByText('Not enough data yet')).toBeNull()
-    fireEvent.click(screen.getByText('Retry'))
-    expect(mutate).toHaveBeenCalled()
-  })
-
-  it('keeps the honest empty state when the fetch succeeds with no rows', () => {
-    usePageEngagement.mockImplementation((enabled: unknown) =>
-      enabled ? { ...idle, data: [] as PageEngagement[] } : idle)
-    render(<ContentStats {...baseProps} totals={totals} />)
-    fireEvent.click(screen.getByRole('tab', { name: 'Engagement' }))
-    expect(screen.getByText('Not enough data yet')).toBeTruthy()
-  })
-})

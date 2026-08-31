@@ -31,9 +31,10 @@ describe('dashboard page wiring (Phase 3)', () => {
     }
   })
 
-  it('passes the engagement error and filter state to the deck', () => {
-    expect(page).toContain('engagementError={Boolean(engagementError)}')
-    expect(page).toContain('filtersActive={hasFilters}')
+  it('keeps the blocks decoupled — no metric prop reaches any card (01-09-2026)', () => {
+    expect(page).not.toContain('blockMetric')
+    expect(page).not.toContain('pageMetric')
+    expect(page).not.toContain('useEngagementPercentiles')
   })
 
   it('carries no provenance strip — removed by owner decision 19-08', () => {

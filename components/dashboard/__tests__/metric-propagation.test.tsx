@@ -34,31 +34,22 @@ const base = {
   totals,
 }
 
-describe('dimension blocks follow the selected metric', () => {
-  it('shows pageviews (the historical default) with its unit label', () => {
-    render(<TopReferrers {...base} metric="pageviews" />)
-    expect(screen.getByText('134')).toBeTruthy()
-    expect(screen.getByTestId('metric-unit').textContent).toBe('views')
-  })
-
-  it('switches the displayed number and label to visitors', () => {
-    render(<TopReferrers {...base} metric="visitors" />)
+// DECOUPLED (owner decision 01-09-2026, Vemetric comparison audit §8): the
+// dimension blocks hold a FIXED display — visitors, the field the server
+// ranks by — and take no metric prop at all. The chart's selection cannot
+// reach them; this file pins that it stays unreachable.
+describe('dimension blocks are decoupled from the selected metric', () => {
+  it('shows visitors with the visitors unit label', () => {
+    render(<TopReferrers {...base} />)
     expect(screen.getByText('61')).toBeTruthy()
-    expect(screen.queryByText('134')).toBeNull()
+    expect(screen.getByText('3')).toBeTruthy()
     expect(screen.getByTestId('metric-unit').textContent).toBe('visitors')
   })
 
-  it('shows guarded bounce rates: real above base, em dash below it', () => {
-    render(<TopReferrers {...base} metric="bounce_rate" />)
-    expect(screen.getByText('41%')).toBeTruthy() // 61 sessions — above the base guard
-    expect(screen.getByText('—')).toBeTruthy()   // 3 sessions — guarded, never "100%"
-    expect(screen.queryByText('100%')).toBeNull()
-    expect(screen.getByTestId('metric-unit').textContent).toBe('bounce')
-  })
-
-  it('derives pages/visit per row without any new wire field', () => {
-    render(<TopReferrers {...base} metric="pages_per_visit" />)
-    expect(screen.getByText('2.2')).toBeTruthy() // 134/61
+  it('never shows the pageview count as the row stat', () => {
+    render(<TopReferrers {...base} />)
+    expect(screen.queryByText('134')).toBeNull()
+    expect(screen.queryByText('9')).toBeNull()
   })
 })
 
@@ -69,23 +60,33 @@ describe('CommandDeck is controlled', () => {
     { date: '2026-08-21T00:00:00+02:00', pageviews: 10, visitors: 5, visits: 7, bounce_rate: 40, avg_duration: 50, avg_scroll_depth: null, avg_visible_duration: null },
   ]
 
+  const deck = (onMetricChange: (m: string) => void) => (
+    <CommandDeck
+      data={data}
+      stats={stats}
+      metric="visitors"
+      onMetricChange={onMetricChange}
+      interval="day"
+      dateRange={{ start: '2026-08-21', end: '2026-08-21' }}
+      todayInterval="hour"
+      setTodayInterval={noop}
+      multiDayInterval="day"
+      setMultiDayInterval={noop}
+    />
+  )
+
   it('reports rail clicks through onMetricChange instead of owning state', () => {
     const onMetricChange = vi.fn()
-    render(
-      <CommandDeck
-        data={data}
-        stats={stats}
-        metric="visitors"
-        onMetricChange={onMetricChange}
-        interval="day"
-        dateRange={{ start: '2026-08-21', end: '2026-08-21' }}
-        todayInterval="hour"
-        setTodayInterval={noop}
-        multiDayInterval="day"
-        setMultiDayInterval={noop}
-      />
-    )
+    render(deck(onMetricChange))
     fireEvent.click(screen.getByText('Total pageviews'))
     expect(onMetricChange).toHaveBeenCalledWith('pageviews')
+  })
+
+  it('renders five tiles — Engagement left the rail with the feature', () => {
+    render(deck(() => {}))
+    expect(screen.queryByText('Engagement')).toBeNull()
+    for (const label of ['Unique visitors', 'Total pageviews', 'Pages / visit', 'Bounce rate', 'Visit duration']) {
+      expect(screen.getByText(label)).toBeTruthy()
+    }
   })
 })

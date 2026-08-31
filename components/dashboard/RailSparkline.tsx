@@ -18,21 +18,15 @@ import { line as shapeLine, curveMonotoneX } from 'd3-shape'
 // is still a fabrication. (The hero chart's zero-fill decision is about
 // its time axis; a sparkline compresses to the measured points.)
 
-type SparkMetric = 'pageviews' | 'visitors' | 'pages_per_visit' | 'bounce_rate' | 'avg_duration' | 'engagement'
+type SparkMetric = 'pageviews' | 'visitors' | 'pages_per_visit' | 'bounce_rate' | 'avg_duration'
 
-export default function RailSparkline({ data, dataKey, active, engagementDaily }: {
-  data: { pageviews: number; visitors: number; bounce_rate: number | null; avg_duration: number | null; engagement?: number }[]
+export default function RailSparkline({ data, dataKey, active }: {
+  data: { pageviews: number; visitors: number; bounce_rate: number | null; avg_duration: number | null }[]
   dataKey: SparkMetric
   active: boolean
-  engagementDaily?: { date: string; score: number }[]
 }) {
-  // Engagement always uses daily scores (not hourly-mapped) for real variation.
-  const sourceValues = dataKey === 'engagement' && engagementDaily?.length
-    ? engagementDaily.map(d => d.score)
-    : null
-  if (!sourceValues && data.length < 2) return null
-  if (sourceValues && sourceValues.length < 2) return null
-  const values = sourceValues ?? data
+  if (data.length < 2) return null
+  const values = data
     .map((d) =>
       dataKey === 'pages_per_visit'
         ? (d.visitors > 0 ? d.pageviews / d.visitors : 0)

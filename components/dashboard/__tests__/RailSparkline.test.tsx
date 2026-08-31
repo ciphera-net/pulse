@@ -48,18 +48,6 @@ describe('RailSparkline', () => {
     expect(container.querySelector('svg')).toBeNull()
   })
 
-  it('engagement draws from the daily scores, not the bucket rows', () => {
-    const { container } = render(
-      <RailSparkline
-        data={[]}
-        dataKey="engagement"
-        active={false}
-        engagementDaily={[{ date: '2026-08-17', score: 40 }, { date: '2026-08-18', score: 55 }]}
-      />
-    )
-    expect(container.querySelector('path[vector-effect="non-scaling-stroke"]')).not.toBeNull()
-  })
-
   it("the trace is smooth — monotone curve segments, the estate's chart grammar", () => {
     const { container } = render(
       <RailSparkline data={[

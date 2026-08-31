@@ -3,7 +3,7 @@
 import { InfoTip } from '@ciphera-net/facet'
 import { DIMENSION_TERM, METRIC_TERMS, TERMS, docsHref, type GlossaryTerm } from '@/lib/dashboard/terms'
 import type { MetricType } from '@/lib/dashboard/metrics'
-import type { EngagementPercentilesData, Stats } from '@/lib/api/stats'
+import type { Stats } from '@/lib/api/stats'
 import { formatNumber } from '@/lib/utils/format'
 
 // ---------------------------------------------------------------------------
@@ -108,20 +108,7 @@ export function TermInfoTip({
 export function buildExample(
   metric: MetricType,
   stats: Stats | undefined,
-  engagement?: EngagementPercentilesData | null,
 ): React.ReactNode | undefined {
-  if (metric === 'engagement') {
-    const s = engagement?.summary
-    if (!s || (engagement?.data_days ?? 0) < 7) return undefined
-    return (
-      <>
-        <b>{Math.round(s.score)}</b> — scroll {Math.round(s.scroll_pctl)} · time{' '}
-        {Math.round(s.time_pctl)} · depth {Math.round(s.depth_pctl)} · bounce{' '}
-        {Math.round(s.bounce_pctl)}, median over the period against this site’s prior 90 days
-      </>
-    )
-  }
-
   if (!stats) return undefined
 
   // * Both examples divide by VISITS, never by `visitors`. Since migration 163

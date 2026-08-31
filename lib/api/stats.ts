@@ -451,33 +451,6 @@ export function getDashboardGoals(siteId: string, startDate?: string, endDate?: 
 }
 
 
-// ─── Engagement Percentiles ──────────────────────────────────────────
-
-export interface EngagementSummary {
-  score: number
-  scroll_pctl: number
-  time_pctl: number
-  depth_pctl: number
-  bounce_pctl: number
-}
-
-export interface DailyEngagement {
-  date: string
-  score: number
-}
-
-export interface EngagementPercentilesData {
-  summary: EngagementSummary
-  daily: DailyEngagement[]
-  data_days: number
-}
-
-export function getEngagementPercentiles(siteId: string, startDate?: string, endDate?: string): Promise<EngagementPercentilesData> {
-  return apiRequest<EngagementPercentilesData>(`/sites/${siteId}/engagement/percentiles${buildQuery({ startDate, endDate })}`)
-    .then(r => r ?? { summary: { score: 0, scroll_pctl: 0, time_pctl: 0, depth_pctl: 0, bounce_pctl: 0 }, daily: [], data_days: 0 })
-}
-
-
 // ─── Event Properties ────────────────────────────────────────────────
 
 export interface EventPropertyKey {
@@ -498,24 +471,6 @@ export function getEventPropertyKeys(siteId: string, eventName: string, startDat
 export function getEventPropertyValues(siteId: string, eventName: string, propName: string, startDate?: string, endDate?: string, limit = 20): Promise<EventPropertyValue[]> {
   return apiRequest<{ values: EventPropertyValue[] }>(`/sites/${siteId}/goals/${encodeURIComponent(eventName)}/properties/${encodeURIComponent(propName)}${buildQuery({ startDate, endDate, limit })}`)
     .then(r => r?.values || [])
-}
-
-// ─── Page Engagement ────────────────────────────────────────────────
-
-export interface PageEngagement {
-  path: string
-  sessions: number
-  pageviews: number
-  engagement_score: number
-  avg_scroll_depth: number
-  avg_visible_duration: number
-  bounce_rate: number
-}
-
-export async function getPageEngagement(siteId: string, startDate?: string, endDate?: string, minSessions = 5, limit = 50, filters?: string): Promise<PageEngagement[]> {
-  return apiRequest<{ pages: PageEngagement[] }>(
-    `/sites/${siteId}/page-engagement${buildQuery({ startDate, endDate, limit, filters })}&min_sessions=${minSessions}`
-  ).then(r => r?.pages ?? [])
 }
 
 

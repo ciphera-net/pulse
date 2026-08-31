@@ -13,13 +13,10 @@ import { ListSkeleton } from '@/components/skeletons'
 import VirtualList from './VirtualList'
 import { useFullDimensionList, type FullListKind } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
-import { type BlockMetric } from '@/lib/dashboard/metrics'
 import { MetricRowStat, MetricUnitLabel, rowBarWidth, shareDenominatorNote } from '@/components/dashboard/MetricRowStat'
 import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 interface TechSpecsProps {
-  // The page's selected metric — rows display it; ranking stays server-side.
-  metric?: BlockMetric
   browsers: Array<{ browser: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
   os: Array<{ os: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
   devices: Array<{ device: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
@@ -67,7 +64,7 @@ const LIMIT = 7
 
 const TAB_TO_DIMENSION: Record<string, string> = { browsers: 'browser', os: 'os', devices: 'device', screens: 'screen_resolution' }
 
-export default function TechSpecs({ metric = 'pageviews', browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter }: TechSpecsProps) {
+export default function TechSpecs({ browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter }: TechSpecsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('browsers')
   const handleTabKeyDown = useTabListKeyboard()
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -176,7 +173,7 @@ export default function TechSpecs({ metric = 'pageviews', browsers, os, devices,
           </div>
           <DimensionInfoTip tab={activeTab} className="ms-2 me-auto" />
           <div className="flex min-w-0 shrink items-center gap-1.5">
-            <MetricUnitLabel metric={metric} />
+            <MetricUnitLabel />
             {showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}
@@ -199,7 +196,7 @@ export default function TechSpecs({ metric = 'pageviews', browsers, os, devices,
               {displayedData.map((item) => {
                 const dim = TAB_TO_DIMENSION[activeTab]
                 const canFilter = onFilter && dim
-                const barWidth = rowBarWidth(metric, item, displayedData)
+                const barWidth = rowBarWidth(item, displayedData)
                 const Row = canFilter ? 'button' : 'div'
                 return (
                   <Row
@@ -215,7 +212,7 @@ export default function TechSpecs({ metric = 'pageviews', browsers, os, devices,
                       {item.icon && <span className="text-lg">{item.icon}</span>}
                       <span className="truncate">{capitalize(item.name)}</span>
                     </div>
-                    <MetricRowStat metric={metric} row={item} totals={totals} />
+                    <MetricRowStat row={item} totals={totals} />
                   </Row>
                 )
               })}
@@ -248,8 +245,8 @@ export default function TechSpecs({ metric = 'pageviews', browsers, os, devices,
             placeholder="Search technology..."
             className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-none text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
           />
-          {shareDenominatorNote(metric, totals) && (
-            <p className="mb-3 text-[11px] text-neutral-500">{shareDenominatorNote(metric, totals)}</p>
+          {shareDenominatorNote(totals) && (
+            <p className="mb-3 text-[11px] text-neutral-500">{shareDenominatorNote(totals)}</p>
           )}
         </div>
         <div className="flex-1 overflow-y-auto min-h-0">
@@ -290,7 +287,7 @@ export default function TechSpecs({ metric = 'pageviews', browsers, os, devices,
                         {item.icon && <span className="text-lg">{item.icon}</span>}
                         <span className="truncate">{capitalize(item.name)}</span>
                       </div>
-                      <MetricRowStat metric={metric} row={item} totals={totals} />
+                      <MetricRowStat row={item} totals={totals} />
                     </Row>
                   )
                 }}

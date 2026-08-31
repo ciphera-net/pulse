@@ -36,7 +36,7 @@ export default function DemoPage() {
         </h1>
         <p className="mt-6 text-base leading-relaxed text-muted-foreground sm:text-lg">
           This is our own dashboard, not a sandbox. It shows the last 30 days of
-          real visitor, pageview and engagement data for ciphera.net — the same
+          real visitor and pageview data for ciphera.net — the same
           numbers we look at ourselves. No cookies were set to collect any of it.
         </p>
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">

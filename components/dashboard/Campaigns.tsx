@@ -15,13 +15,10 @@ import { getReferrerFavicon, getReferrerIcon, getReferrerDisplayName } from '@/l
 import { Megaphone, FrameCornersIcon } from '@phosphor-icons/react'
 import UtmBuilder from '@/components/tools/UtmBuilder'
 import { type DimensionFilter } from '@/lib/filters'
-import { type BlockMetric } from '@/lib/dashboard/metrics'
 import { MetricRowStat, MetricUnitLabel, rowBarWidth, shareDenominatorNote } from '@/components/dashboard/MetricRowStat'
 import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 interface CampaignsProps {
-  // The page's selected metric — rows display it; ranking stays visitors-first.
-  metric?: BlockMetric
   siteId: string
   dateRange: { start: string, end: string }
   filters?: string
@@ -35,7 +32,7 @@ type UtmTab = 'source' | 'medium' | 'campaign' | 'term' | 'content'
 
 const LIMIT = 7
 
-export default function Campaigns({ metric = 'visitors', siteId, dateRange, filters, totals, onFilter }: CampaignsProps) {
+export default function Campaigns({ siteId, dateRange, filters, totals, onFilter }: CampaignsProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalSearch, setModalSearch] = useState('')
   const [isBuilderOpen, setIsBuilderOpen] = useState(false)
@@ -188,7 +185,7 @@ export default function Campaigns({ metric = 'visitors', siteId, dateRange, filt
           </div>
           <DimensionInfoTip tab={activeTab} className="ms-2 me-auto" />
           <div className="flex min-w-0 shrink items-center gap-2">
-            <MetricUnitLabel metric={metric} />
+            <MetricUnitLabel />
             {showViewAll && (
               <button
                 onClick={() => setIsModalOpen(true)}
@@ -224,7 +221,7 @@ export default function Campaigns({ metric = 'visitors', siteId, dateRange, filt
           ) : hasData ? (
             <>
               {displayedData.map((item) => {
-                const barWidth = rowBarWidth(metric, item, displayedData, 'visitors')
+                const barWidth = rowBarWidth(item, displayedData)
                 const filterDimension = `utm_${activeTab}`
                 const Row = onFilter ? 'button' : 'div'
                 return (
@@ -245,7 +242,7 @@ export default function Campaigns({ metric = 'visitors', siteId, dateRange, filt
                         </div>
                       </div>
                     </div>
-                    <MetricRowStat metric={metric} row={item} totals={totals} />
+                    <MetricRowStat row={item} totals={totals} />
                   </Row>
                 )
               })}
@@ -278,8 +275,8 @@ export default function Campaigns({ metric = 'visitors', siteId, dateRange, filt
             placeholder="Search campaigns..."
             className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-none text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
           />
-          {shareDenominatorNote(metric, totals) && (
-            <p className="mb-3 text-[11px] text-neutral-500">{shareDenominatorNote(metric, totals)}</p>
+          {shareDenominatorNote(totals) && (
+            <p className="mb-3 text-[11px] text-neutral-500">{shareDenominatorNote(totals)}</p>
           )}
         </div>
         <div className="flex-1 overflow-y-auto min-h-0">
@@ -332,8 +329,8 @@ export default function Campaigns({ metric = 'visitors', siteId, dateRange, filt
                         </div>
                       </div>
                       <div className="flex items-center gap-4 ml-4 text-sm">
-                        <MetricRowStat metric={metric} row={item} totals={totals} />
-                        {metric !== 'pageviews' && (
+                        <MetricRowStat row={item} totals={totals} />
+                        {(
                           <span className="text-neutral-500 w-16 text-right">
                             {formatNumber(item.pageviews)} pv
                           </span>

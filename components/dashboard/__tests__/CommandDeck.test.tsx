@@ -56,18 +56,16 @@ const baseProps = {
 }
 
 describe('CommandDeck rail', () => {
-  it('renders the six metrics with their honest context lines (D4/D5 relabels)', () => {
-    render(<CommandDeck {...baseProps} engagementData={{
-      summary: { score: 56, scroll_pctl: 38, time_pctl: 67, depth_pctl: 70, bounce_pctl: 50 },
-      daily: [], data_days: 90,
-    }} />)
+  it('renders the five metrics with their honest context lines', () => {
+    render(<CommandDeck {...baseProps} />)
     expect(screen.getByText('Unique visitors')).toBeTruthy()
     // 26-08 identity rebuild: the headline deduplicates people (monthly
     // visitor hash), so the D5 relabel "distinct sessions" is retired.
     expect(screen.getByText('unique people')).toBeTruthy()
-    expect(screen.getByText('vs prior 90 days')).toBeTruthy() // D4
     expect(screen.getByText('single-page visits')).toBeTruthy()
     expect(screen.getByText('average')).toBeTruthy()
+    // Engagement left the product 01-09-2026 — the rail is five tiles.
+    expect(screen.queryByText('Engagement')).toBeNull()
   })
 
   it('deltas ride the estate grammar: pp for the bounce rate, % for counts', () => {
@@ -82,34 +80,6 @@ describe('CommandDeck rail', () => {
     render(<CommandDeck {...baseProps} stats={{ ...stats, avg_duration: null, bounce_rate: null }} />)
     expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2)
     expect(screen.queryByText('0s')).toBeNull()
-  })
-
-  it('holds the engagement row in its collecting state below 7 history days', () => {
-    render(<CommandDeck {...baseProps} engagementData={{
-      summary: { score: 56, scroll_pctl: 1, time_pctl: 1, depth_pctl: 1, bounce_pctl: 1 },
-      daily: [], data_days: 3,
-    }} />)
-    expect(screen.getByText(/collecting · needs 7 days of history/)).toBeTruthy()
-  })
-
-  it('states a failed engagement fetch as a failure, not a young site (F17)', () => {
-    render(<CommandDeck {...baseProps} engagementError />)
-    expect(screen.getByText(/couldn.t load/)).toBeTruthy()
-    expect(screen.queryByText(/collecting · needs 7 days of history/)).toBeNull()
-  })
-
-  it('marks the engagement row unfiltered ONLY while page filters are active', () => {
-    const engagementData = {
-      summary: { score: 56, scroll_pctl: 38, time_pctl: 67, depth_pctl: 70, bounce_pctl: 50 },
-      daily: [], data_days: 90,
-    }
-    const { rerender } = render(<CommandDeck {...baseProps} engagementData={engagementData} filtersActive />)
-    // The D4 baseline has no dimensions — with filters active, engagement is
-    // the one number on the deck the filters do not touch, and says so.
-    expect(screen.getByText('vs prior 90 days · unfiltered')).toBeTruthy()
-    rerender(<CommandDeck {...baseProps} engagementData={engagementData} />)
-    expect(screen.getByText('vs prior 90 days')).toBeTruthy()
-    expect(screen.queryByText(/· unfiltered/)).toBeNull()
   })
 })
 
@@ -131,7 +101,7 @@ describe('CommandDeck rail sparklines (S4 restore, 19-08-2026)', () => {
   it('every measurable row carries the ghost trace; exactly the active one is lit', () => {
     const { container } = render(<CommandDeck {...baseProps} />)
     const lines = [...container.querySelectorAll('path[vector-effect="non-scaling-stroke"]')]
-    // engagement has no series in baseProps (no daily scores) → 5 of 6 rows.
+    // five tiles, every one measurable in baseProps → 5 traces.
     expect(lines.length).toBe(5)
     const lit = lines.filter(p => {
       const c = p.getAttribute('class') ?? ''
