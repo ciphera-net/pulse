@@ -753,11 +753,11 @@ function TooltipContent({ title, rows, children }: TooltipContentProps) {
                 className="h-1.5 w-1.5 shrink-0 rounded-full"
                 style={{ backgroundColor: row.color }}
               />
-              <span className="font-medium text-neutral-300 text-sm">
+              <span className="whitespace-nowrap font-medium text-neutral-300 text-sm">
                 {row.label}
               </span>
             </div>
-            <span className="font-semibold text-white text-sm tabular-nums">
+            <span className="whitespace-nowrap font-semibold text-white text-sm tabular-nums">
               {typeof row.value === "number"
                 ? row.value.toLocaleString()
                 : row.value}
@@ -852,16 +852,28 @@ function TooltipBox({
   // the card's size may never change while hovering (owner ruling,
   // 01-09-2026) — the mount scale, the flip-pop and the flexible min-width
   // all read as the tooltip shrinking mid-hover.
+  // Position gets Vemetric's exact glide — 100ms ease on reposition (their
+  // tooltip wrapper's tuned animationDuration over the library default
+  // easing) — so the side-flip near the right edge slides instead of
+  // teleporting. Scoped to left/top only: the entrance fade is JS-driven
+  // and the crosshair/dot stay instant.
   return createPortal(
     <motion.div
       animate={{ opacity: 1 }}
       className={cn("pointer-events-none absolute z-50", className)}
       initial={{ opacity: 0 }}
       ref={tooltipRef}
-      style={{ left: finalLeft, top: finalTop }}
+      style={{
+        left: finalLeft,
+        top: finalTop,
+        transition: "left 100ms ease, top 100ms ease",
+      }}
       transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
     >
-      <div className="w-48 overflow-hidden rounded-none bg-popover border border-border text-white">
+      {/* w-56 fits the longest row on one line ("Visit duration | 15m 58s"
+          ≈ 210px incl. padding) — rows are nowrap, so a narrower box would
+          clip, and wrapping is what the fixed-size ruling forbids. */}
+      <div className="w-56 overflow-hidden rounded-none bg-popover border border-border text-white">
         {children}
       </div>
     </motion.div>,
