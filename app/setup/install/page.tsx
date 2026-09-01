@@ -9,6 +9,7 @@ import { useSites } from '@/lib/swr/sites'
 import { Button, CheckCircleIcon, GlobeIcon, Spinner } from '@ciphera-net/facet'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 import InstallStateBlock from '@/components/setup/InstallStateBlock'
+import { trackWelcomeInstallSkipped } from '@/lib/welcomeAnalytics'
 
 export default function SetupInstallPage() {
   const router = useRouter()
@@ -118,7 +119,10 @@ export default function SetupInstallPage() {
 
       <button
         type="button"
-        onClick={handleContinue}
+        onClick={() => {
+          trackWelcomeInstallSkipped()
+          handleContinue()
+        }}
         className="mt-4 w-full min-h-11 md:min-h-0 text-center text-sm text-neutral-500 hover:text-neutral-400 transition-colors"
       >
         Skip for now

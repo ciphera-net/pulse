@@ -1,5 +1,6 @@
 import { ID_URL, APP_URL } from './client'
 import { rememberPendingAuth } from './oauth-store'
+import { track } from '@/lib/pulse'
 
 function generateRandomString(length: number): string {
   const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'
@@ -58,6 +59,7 @@ export async function initiateOAuthFlow(redirectPath = '/auth/callback') {
 
   const loginUrl = `${ID_URL}/login?client_id=pulse-app&redirect_uri=${redirectUri}&response_type=code&prompt=select_account&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`
 
+  track('login_flow_started')
   window.location.href = loginUrl
 }
 
@@ -76,6 +78,7 @@ export async function initiateSignupFlow(redirectPath = '/auth/callback') {
     const redirectUri = encodeURIComponent(`${baseUrl}${path}`)
     
     const signupUrl = `${ID_URL}/signup?client_id=pulse-app&redirect_uri=${redirectUri}&response_type=code&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`
-  
+
+    track('signup_flow_started')
     window.location.href = signupUrl
   }

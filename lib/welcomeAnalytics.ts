@@ -19,6 +19,7 @@ type WelcomeEventName =
   | 'welcome_workspace_created'
   | 'welcome_site_added'
   | 'welcome_site_skipped'
+  | 'welcome_install_skipped'
   | 'welcome_completed'
   | 'site_created_from_dashboard'
   | 'site_created_script_copied'
@@ -84,6 +85,14 @@ export function trackWelcomeSiteAdded() {
 
 export function trackWelcomeSiteSkipped() {
   emit('welcome_site_skipped')
+}
+
+// The install step's "Skip for now" used to route through the same
+// handleContinue as the Continue button, so "skipped the script install" was
+// indistinguishable from "installed and continued" — the exact cohort the
+// activation funnel needs to see (a skipped install is the dead-account path).
+export function trackWelcomeInstallSkipped() {
+  emit('welcome_install_skipped')
 }
 
 export function trackWelcomeCompleted(addedSite: boolean) {
