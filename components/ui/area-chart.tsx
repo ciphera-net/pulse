@@ -2007,25 +2007,24 @@ export function Area({
         </motion.g>
       </g>
 
+      {/* Plain <path>, NOT motion.path: framer captures style dash values
+          into MotionValues at mount and ignores later plain updates, which
+          froze the lit window at its first-hover position (01-09). The
+          window must re-render per bucket; the fade feel comes from the
+          base line's animated dim, which sits pixel-identical underneath. */}
       {showHighlight &&
         showLine &&
         isHovering &&
         isLoaded &&
         pathRef.current && (
-          <motion.path
-            animate={{ opacity: 1 }}
+          <path
             d={pathRef.current.getAttribute("d") || ""}
-            exit={{ opacity: 0 }}
             fill="none"
-            initial={{ opacity: 0 }}
             stroke={resolvedStroke}
+            strokeDasharray={highlightDasharray}
+            strokeDashoffset={highlightDashoffset}
             strokeLinecap="round"
             strokeWidth={strokeWidth}
-            style={{
-              strokeDasharray: highlightDasharray,
-              strokeDashoffset: highlightDashoffset,
-            }}
-            transition={{ duration: DURATION_SLOW, ease: EASE_APPLE }}
           />
         )}
     </>
