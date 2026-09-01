@@ -17,8 +17,11 @@ vi.stubGlobal('ResizeObserver', class {
 
 const SvgPathProto = (globalThis as unknown as { SVGPathElement?: { prototype: object } }).SVGPathElement?.prototype
   ?? Object.getPrototypeOf(document.createElementNS('http://www.w3.org/2000/svg', 'path'))
+// Path length equals the chart width so length-at-x is the identity map —
+// a shorter stub saturates the highlight's binary search and every bucket
+// resolves to the same dash window, hiding real movement.
 Object.assign(SvgPathProto, {
-  getTotalLength: () => 100,
+  getTotalLength: () => 800,
   getPointAtLength: (l: number) => ({ x: l, y: 0 }),
 })
 
@@ -162,6 +165,30 @@ describe('sticky cursor contract', () => {
     expect(dotCx(container)).toBeCloseTo(xs[4], 5)
     fireEvent.mouseMove(g, { clientX: ml + xs[7] - col * 0.3, clientY: 100 })
     expect(dotCx(container)).toBeCloseTo(xs[7], 5)
+  })
+
+  it('moves the lit highlight window with the hovered bucket — forward and back', async () => {
+    const { container } = await renderInteractive()
+    const xs = lineVertices(container)
+    const ml = marginLeft(container)
+    const g = interactiveG(container)
+    const col = xs[1] - xs[0]
+
+    const windowOf = () => {
+      const p = Array.from(container.querySelectorAll('path')).find((el) =>
+        (el.getAttribute('stroke-dasharray') ?? '').includes('100000'),
+      )
+      expect(p, 'highlight path must render while hovering').toBeDefined()
+      return `${p?.getAttribute('stroke-dashoffset')}/${p?.getAttribute('stroke-dasharray')}`
+    }
+
+    fireEvent.mouseMove(g, { clientX: ml + xs[3] + col * 0.2, clientY: 100 })
+    const atThree = windowOf()
+    fireEvent.mouseMove(g, { clientX: ml + xs[6] + col * 0.2, clientY: 100 })
+    const atSix = windowOf()
+    expect(atSix, 'the window must follow a forward move').not.toBe(atThree)
+    fireEvent.mouseMove(g, { clientX: ml + xs[3] + col * 0.2, clientY: 100 })
+    expect(windowOf(), 'the window must follow a move back').toBe(atThree)
   })
 
   it('hides the crosshair and dot immediately on mouse leave', async () => {
