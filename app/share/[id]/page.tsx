@@ -344,6 +344,7 @@ export default function PublicDashboardPage() {
             prevStats={prevStats}
             interval="day"
             intervalPicker={false}
+            period={period}
             dateRange={dateRange}
             todayInterval={todayInterval}
             setTodayInterval={setTodayInterval}

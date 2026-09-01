@@ -732,7 +732,7 @@ export interface TooltipRow {
 }
 
 interface TooltipContentProps {
-  title?: string;
+  title?: ReactNode;
   rows: TooltipRow[];
   children?: ReactNode;
 }
@@ -790,28 +790,28 @@ function TooltipContent({ title, rows, children }: TooltipContentProps) {
       initial={false}
       transition={shouldAnimate ? SPRING : { duration: 0 }}
     >
-      <div className="px-3 py-2.5" ref={measureRef}>
+      <div ref={measureRef}>
         {title && (
-          <div className="mb-2 font-medium text-neutral-400 text-xs">
+          <div className="border-b border-border bg-white/[0.04] px-3 py-2 font-semibold text-white text-xs">
             {title}
           </div>
         )}
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 px-3 py-2.5">
           {rows.map((row) => (
             <div
-              className="flex items-center justify-between gap-4"
+              className="flex items-center justify-between gap-5"
               key={`${row.label}-${row.color}`}
             >
               <div className="flex items-center gap-2">
                 <span
-                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
                   style={{ backgroundColor: row.color }}
                 />
-                <span className="text-neutral-400 text-sm">
+                <span className="font-medium text-neutral-300 text-sm">
                   {row.label}
                 </span>
               </div>
-              <span className="font-medium text-white text-sm tabular-nums">
+              <span className="font-semibold text-white text-sm tabular-nums">
                 {typeof row.value === "number"
                   ? row.value.toLocaleString()
                   : row.value}
@@ -824,7 +824,7 @@ function TooltipContent({ title, rows, children }: TooltipContentProps) {
           {children && (
             <motion.div
               animate={{ opacity: 1, filter: "blur(0px)" }}
-              className="mt-2"
+              className="px-3 pb-2.5"
               exit={{ opacity: 0, filter: "blur(4px)" }}
               initial={{ opacity: 0, filter: "blur(4px)" }}
               key={markerKey}
@@ -951,7 +951,7 @@ function TooltipBox({
     >
       <motion.div
         animate={{ scale: 1, opacity: 1, x: 0 }}
-        className="min-w-[140px] overflow-hidden rounded-none bg-popover border border-border text-white"
+        className="min-w-[150px] overflow-hidden rounded-none bg-popover border border-border text-white"
         initial={{ scale: 0.85, opacity: 0, x: isFlipped ? 20 : -20 }}
         key={flipKey}
         style={{ transformOrigin }}
@@ -977,6 +977,9 @@ export interface ChartTooltipProps {
     index: number;
   }) => ReactNode;
   rows?: (point: Record<string, unknown>) => TooltipRow[];
+  /** Custom header-strip content (e.g. an hourly bucket span). Falls back to
+   *  the bar accessor, then a full formatted date. */
+  title?: (point: Record<string, unknown>) => ReactNode;
   children?: ReactNode;
   className?: string;
 }
@@ -987,6 +990,7 @@ export function ChartTooltip({
   showDots = true,
   content,
   rows: rowsRenderer,
+  title: titleRenderer,
   children,
   className = "",
 }: ChartTooltipProps) {
@@ -1050,11 +1054,14 @@ export function ChartTooltip({
     if (!tooltipData) {
       return undefined;
     }
+    if (titleRenderer) {
+      return titleRenderer(tooltipData.point);
+    }
     if (barXAccessor) {
       return barXAccessor(tooltipData.point);
     }
     return formatDateFull(xAccessor(tooltipData.point));
-  }, [tooltipData, barXAccessor, xAccessor]);
+  }, [tooltipData, titleRenderer, barXAccessor, xAccessor]);
 
   const container = containerRef.current;
   if (!(mounted && container)) {
@@ -1070,7 +1077,6 @@ export function ChartTooltip({
           className="pointer-events-none absolute inset-0"
           height="100%"
           width="100%"
-          style={{ filter: 'drop-shadow(0 0 12px rgba(253, 94, 15, 0.4))' }}
         >
           <g transform={`translate(${margin.left},${margin.top})`}>
             <TooltipIndicator
@@ -1676,6 +1682,21 @@ export interface AreaProps {
   // continuity is a rendering choice, not a data claim. Mutually exclusive
   // with breakAtMissing.
   missingAsZero?: boolean;
+  /**
+   * Fade the stroke's first/last 15% via a gradient. Default preserves the
+   * house look; the dashboard charts pass false — the sharp-chart round
+   * (01-09-2026) wants the line crisp to both edges, and a faded edge would
+   * eat the dashed today-tail.
+   */
+  fadeStrokeEdges?: boolean;
+  /**
+   * Index of the LAST COMPLETE bucket. Everything after it renders as a
+   * dashed 5 5 tail sharing that transition point (the in-progress "today"
+   * bucket device, sharp-chart round 01-09-2026). The gradient underlay
+   * still covers the full series, so the fill runs continuously beneath the
+   * dashes. Undefined = no tail.
+   */
+  dashedTailFrom?: number;
 }
 
 export function Area({
@@ -1692,6 +1713,8 @@ export function Area({
   fadeEdges = false,
   breakAtMissing = false,
   missingAsZero = false,
+  fadeStrokeEdges = true,
+  dashedTailFrom,
 }: AreaProps) {
   const {
     data,
@@ -1964,25 +1987,49 @@ export function Area({
             />
           </g>
 
-          {showLine && (
-            <motion.g
-              initial={hasMounted ? false : { pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: 1 }}
-              transition={{ duration: 0.6, ease: EASE_APPLE }}
-            >
-              <LinePath
-                curve={curve}
-                data={data}
-                defined={breakAtMissing ? (d) => typeof d[dataKey] === "number" : undefined}
-                innerRef={pathRef}
-                stroke={`url(#${strokeGradientId})`}
-                strokeLinecap="round"
-                strokeWidth={strokeWidth}
-                x={(d) => xScale(xAccessor(d)) ?? 0}
-                y={getY}
-              />
-            </motion.g>
-          )}
+          {showLine && (() => {
+            const hasTail =
+              dashedTailFrom != null &&
+              dashedTailFrom >= 0 &&
+              dashedTailFrom < data.length - 1;
+            const solidData = hasTail ? data.slice(0, dashedTailFrom + 1) : data;
+            const strokePaint = fadeStrokeEdges
+              ? `url(#${strokeGradientId})`
+              : resolvedStroke;
+            return (
+              <motion.g
+                initial={hasMounted ? false : { pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 1 }}
+                transition={{ duration: 0.6, ease: EASE_APPLE }}
+              >
+                <LinePath
+                  curve={curve}
+                  data={solidData}
+                  defined={breakAtMissing ? (d) => typeof d[dataKey] === "number" : undefined}
+                  innerRef={pathRef}
+                  stroke={strokePaint}
+                  strokeLinecap="round"
+                  strokeWidth={strokeWidth}
+                  x={(d) => xScale(xAccessor(d)) ?? 0}
+                  y={getY}
+                />
+                {hasTail && (
+                  <LinePath
+                    curve={curve}
+                    data={data.slice(dashedTailFrom)}
+                    defined={breakAtMissing ? (d) => typeof d[dataKey] === "number" : undefined}
+                    stroke={resolvedStroke}
+                    strokeDasharray="5 5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={strokeWidth}
+                    x={(d) => xScale(xAccessor(d)) ?? 0}
+                    y={getY}
+                  />
+                )}
+              </motion.g>
+            );
+          })()}
 
         </motion.g>
       </g>
