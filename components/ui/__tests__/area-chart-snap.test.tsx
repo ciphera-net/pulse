@@ -191,6 +191,23 @@ describe('sticky cursor contract', () => {
     expect(windowOf(), 'the window must follow a move back').toBe(atThree)
   })
 
+  it('gives the card position a 100ms glide — the flip slides, never teleports', async () => {
+    const { container } = await renderInteractive()
+    const xs = lineVertices(container)
+    const ml = marginLeft(container)
+    const g = interactiveG(container)
+
+    fireEvent.mouseMove(g, { clientX: ml + xs[4], clientY: 100 })
+    const wrapper = Array.from(container.querySelectorAll('div')).find(
+      (el) =>
+        el.className.includes('pointer-events-none') &&
+        el.className.includes('z-50') &&
+        el.querySelector('div[class*="bg-popover"]'),
+    ) as HTMLElement | undefined
+    expect(wrapper, 'card wrapper must render while hovering').toBeDefined()
+    expect(wrapper?.style.transition).toContain('left 100ms')
+  })
+
   it('hides the crosshair and dot immediately on mouse leave', async () => {
     const { container } = await renderInteractive()
     const xs = lineVertices(container)
