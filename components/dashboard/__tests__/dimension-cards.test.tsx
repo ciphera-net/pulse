@@ -90,6 +90,16 @@ describe('TopReferrers', () => {
     fireEvent.click(screen.getByLabelText('Next page'))
     expect(screen.getByText('Startpage')).toBeTruthy()
   })
+
+  // The frozen-blocks bug (01-09-2026): full-list rows retained from another
+  // range must never outrank a fan-out that no longer overflows.
+  it('ignores leftover full-list rows when the list no longer overflows', () => {
+    useFullDimensionList.mockImplementation(() => ({ ...idle, data: referrers }))
+    render(<TopReferrers referrers={referrers.slice(0, 4)} siteId="site-1" dateRange={dateRange} totals={totals} />)
+    expect(screen.getByText('Google')).toBeTruthy()
+    expect(screen.queryByText('Startpage')).toBeNull()
+    expect(screen.queryByLabelText('Next page')).toBeNull()
+  })
 })
 
 describe('Audience', () => {
@@ -132,6 +142,14 @@ describe('Audience', () => {
     render(<Audience {...baseProps} totals={totals} />)
     fireEvent.click(screen.getByLabelText('Next page'))
     expect(screen.getByText('Spain')).toBeTruthy()
+  })
+
+  it('ignores leftover full-list rows when the list no longer overflows', () => {
+    useFullDimensionList.mockImplementation(() => ({ ...idle, data: countries }))
+    render(<Audience {...baseProps} countries={countries.slice(0, 4)} totals={totals} />)
+    expect(screen.getByText('United States')).toBeTruthy()
+    expect(screen.queryByText('Spain')).toBeNull()
+    expect(screen.queryByLabelText('Next page')).toBeNull()
   })
 })
 
@@ -176,6 +194,14 @@ describe('TechSpecs', () => {
     render(<TechSpecs {...baseProps} totals={totals} />)
     fireEvent.click(screen.getByLabelText('Next page'))
     expect(screen.getByText('Vivaldi')).toBeTruthy()
+  })
+
+  it('ignores leftover full-list rows when the list no longer overflows', () => {
+    useFullDimensionList.mockImplementation(() => ({ ...idle, data: browsers }))
+    render(<TechSpecs {...baseProps} browsers={browsers.slice(0, 4)} totals={totals} />)
+    expect(screen.getByText('Chrome')).toBeTruthy()
+    expect(screen.queryByText('Vivaldi')).toBeNull()
+    expect(screen.queryByLabelText('Next page')).toBeNull()
   })
 })
 

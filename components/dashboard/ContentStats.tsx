@@ -94,7 +94,9 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
     wantsFullList ? TAB_TO_KIND[activeTab] : null,
     siteId, dateRange?.start, dateRange?.end, 100, filters,
   )
-  const fullClean = fullData ? filterGenericPaths(fullData) : null
+  // Gate on wantsFullList: stale hook-state from another range must never
+  // outrank the fan-out rows (the frozen-blocks bug, 01-09-2026).
+  const fullClean = wantsFullList && fullData ? filterGenericPaths(fullData) : null
   const allData = fullClean && fullClean.length >= data.length ? fullClean : data
   const pageCount = Math.max(1, Math.ceil(allData.length / LIMIT))
   // Page state keys on the context: a tab/filter/range change reads as page 1,

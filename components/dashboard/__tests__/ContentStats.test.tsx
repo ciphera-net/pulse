@@ -106,6 +106,16 @@ describe('ContentStats pagination (blocks round, 01-09-2026)', () => {
     expect(screen.getByText('/contact')).toBeTruthy()
   })
 
+  it('ignores leftover full-list rows when the list no longer overflows', () => {
+    // The frozen-blocks bug (01-09-2026): rows retained from another range
+    // must never outrank a fan-out that no longer overflows.
+    useFullDimensionList.mockImplementation(() => ({ ...idle, data: topPages }))
+    render(<ContentStats {...baseProps} topPages={topPages.slice(0, 4)} totals={totals} />)
+    expect(screen.getByText('/')).toBeTruthy()
+    expect(screen.queryByText('/contact')).toBeNull()
+    expect(screen.queryByLabelText('Next page')).toBeNull()
+  })
+
   it('renders no pager at all for a single page', () => {
     render(<ContentStats {...baseProps} topPages={topPages.slice(0, 5)} totals={totals} />)
     expect(screen.queryByLabelText('Next page')).toBeNull()

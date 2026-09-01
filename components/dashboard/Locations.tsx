@@ -329,7 +329,9 @@ export default function Audience({ countries, cities, regions, languages, timezo
     wantsFullList ? (TAB_TO_KIND[activeTab] ?? null) : null,
     siteId, dateRange?.start, dateRange?.end, 250, filters,
   )
-  const fullClean = fullData ? filterUnknown(fullData) : null
+  // Gate on wantsFullList: stale hook-state from another range must never
+  // outrank the fan-out rows (the frozen-blocks bug, 01-09-2026).
+  const fullClean = wantsFullList && fullData ? filterUnknown(fullData) : null
   const allData = fullClean && fullClean.length >= data.length ? fullClean : data
   const pageCount = isVisualTab ? 1 : Math.max(1, Math.ceil(allData.length / LIMIT))
   // Page state keys on the context: a tab/filter/range change reads as page 1,

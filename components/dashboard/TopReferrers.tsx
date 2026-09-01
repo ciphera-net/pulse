@@ -88,7 +88,9 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
     wantsFullList ? 'referrers' : null,
     siteId, dateRange?.start, dateRange?.end, 100, filters,
   )
-  const fullMerged = fullData
+  // Gate on wantsFullList: hook-state left over from another range must never
+  // outrank the fan-out rows (the frozen-blocks bug, 01-09-2026).
+  const fullMerged = wantsFullList && fullData
     ? mergeReferrersByDisplayName(fullData.filter(ref => ref.referrer && ref.referrer !== 'Unknown' && ref.referrer !== ''))
     : null
   const allReferrers = fullMerged && fullMerged.length >= mergedReferrers.length ? fullMerged : mergedReferrers
