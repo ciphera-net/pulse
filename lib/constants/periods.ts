@@ -48,6 +48,28 @@ export const PERIOD_PRESETS: PeriodPreset[] = [
 
 export const PERIOD_GROUPS = ['Real-time', 'Relative', 'Previous', 'To date'] as const
 
+// Whether a period's LAST bucket is still accumulating (the range ends "now"
+// by the token's own definition). This is SEMANTICS, not date math — the
+// client never compares clocks (the server owns timezone resolution); a
+// custom range is deliberately absent and therefore never flagged. Drives the
+// chart's dashed today-tail (sharp-chart round, 01-09-2026).
+export const PERIOD_ENDS_NOW: Record<string, boolean> = {
+  '1h': true,
+  '24h': true,
+  'today': true,
+  '7': true,
+  '30': true,
+  'week': true,
+  'month': true,
+  'qtd': true,
+  'year': true,
+  'yesterday': false,
+  'last-week': false,
+  'last-month': false,
+  'last-quarter': false,
+  'last-year': false,
+}
+
 // URL-grammar period keys the SERVER can resolve itself (ResolvePeriod, in the
 // site's timezone). Keys absent here fall back to client-computed
 // start_date/end_date. week/month/year arrive via shared URLs from sibling

@@ -50,11 +50,13 @@ describe('command deck chart (approved C mockup fidelity)', () => {
     expect(deck).not.toContain('aspectRatio="2.9 / 1"')
   })
 
-  it('draws the shared monotone curve — the sharp C-mockup line was reverted 21-08-2026', () => {
-    // No curve override at all: the Area default is curveMonotoneX, like every
-    // other chart surface. Overriding it again is a deliberate decision, not a
-    // drive-by.
-    expect(deck).not.toContain('curve={')
+  it('draws curveLinear — the sharp-chart pick (01-09-2026) supersedes the 21-08 monotone call', () => {
+    // The owner picked the sharp instrument on mocks of their own data
+    // (artifact "The Sharp Line", three rounds). Reverting to monotone again
+    // is a deliberate decision, not a drive-by.
+    expect(deck).toContain('curve={curveLinear}')
+    expect(deck).toContain('dashedTailFrom=')
+    expect(deck).toContain('fadeStrokeEdges={false}')
   })
 })
 

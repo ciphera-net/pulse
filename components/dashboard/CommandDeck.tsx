@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip } from '@/components/ui/area-chart'
+import { curveLinear } from 'd3-shape'
+import { PERIOD_ENDS_NOW } from '@/lib/constants/periods'
 import { Card } from '@ciphera-net/facet'
 import { formatNumber, formatDuration } from '@/lib/utils/format'
 import { DownloadIcon } from '@ciphera-net/facet'
@@ -193,6 +195,7 @@ export default function CommandDeck({
                 data={data}
                 dataKey={m.key}
                 active={metric === m.key}
+                dashedTail={Boolean(period && PERIOD_ENDS_NOW[period])}
               />
               {metric === m.key && (
                 <motion.span
@@ -303,16 +306,21 @@ export default function CommandDeck({
                 <VisxGrid horizontal vertical={false} stroke="var(--chart-grid)" numTicksRows={6} />
                 <VisxArea
                   dataKey={metric}
-                  // Shared monotone default, not the C mockup's curveLinear —
-                  // reverted 21-08-2026 (owner call): four of six chart
-                  // surfaces were already smooth, and monotoneX cannot
-                  // overshoot a measured point (the tooltip carries exact
-                  // values, so nobody reads numbers off the curve).
+                  // curveLinear — the sharp-chart round (01-09-2026, artifact
+                  // "The Sharp Line") SUPERSEDES the 21-08 revert to monotone:
+                  // the owner picked the sharp instrument on mocks of their
+                  // own data, three rounds deep. The overshoot argument is
+                  // retired with it — linear cannot overshoot either.
+                  curve={curveLinear}
                   fill="var(--chart-1)"
                   fillOpacity={0.15}
                   stroke="var(--chart-1)"
                   strokeWidth={2}
                   gradientToOpacity={0}
+                  // Crisp to both edges + the dashed in-progress tail
+                  // (period-token semantics; custom ranges never dash).
+                  fadeStrokeEdges={false}
+                  dashedTailFrom={period && PERIOD_ENDS_NOW[period] && chartData.length >= 2 ? chartData.length - 2 : undefined}
                   // Rates/durations/ratios are null where unmeasured. They
                   // PLOT at zero so the line never disappears (owner decision
                   // 19-08-2026, superseding F11's gap rendering here); the
@@ -332,27 +340,25 @@ export default function CommandDeck({
                   formatValue={(v) => activeMetric ? activeMetric.format(v) : v.toString()}
                 />
                 <VisxChartTooltip
-                  content={({ point }) => {
+                  // The instrument's header-strip card owns the markup now;
+                  // the date pill retires — the bucket identity lives in the
+                  // strip (hourly buckets show their SPAN, per the copied
+                  // behaviour).
+                  showDatePill={false}
+                  title={(point) => {
                     const dateObj = point.dateObj instanceof Date ? point.dateObj : new Date(point.dateObj as string || Date.now())
-                    const value = point[metric] as number | null
-                    const title = (interval === 'minute' || interval === 'hour')
-                      ? formatTimeUTC(dateObj)
-                      : formatDateFullUTC(dateObj)
-                    return (
-                      <div className="px-3 py-2.5">
-                        <div className="mb-2 text-xs font-medium text-neutral-400">{title}</div>
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-2">
-                            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: 'var(--chart-1)' }} />
-                            <span className="text-sm text-neutral-400">{activeMetric?.label || metric}</span>
-                          </div>
-                          <span className="text-sm font-medium tabular-nums text-white">
-                            {activeMetric ? activeMetric.format(value) : value}
-                          </span>
-                        </div>
-                      </div>
-                    )
+                    if (interval === 'minute') return formatTimeUTC(dateObj)
+                    if (interval === 'hour') {
+                      const end = new Date(dateObj.getTime() + 59 * 60_000)
+                      return `${formatTimeUTC(dateObj)} – ${formatTimeUTC(end)}`
+                    }
+                    return formatDateFullUTC(dateObj)
                   }}
+                  rows={(point) => [{
+                    color: 'var(--chart-1)',
+                    label: activeMetric?.label || metric,
+                    value: activeMetric ? activeMetric.format(point[metric] as number | null) : String(point[metric] ?? '—'),
+                  }]}
                 />
               </VisxAreaChart>
             )}
