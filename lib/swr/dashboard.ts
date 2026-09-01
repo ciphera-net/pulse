@@ -987,7 +987,13 @@ export function useFullDimensionList<T>(
   return useSWR<T[]>(
     kind && siteId && start && end ? ['fullList', kind, siteId, start, end, limit, filters] : null,
     () => fullListFetchers[kind as FullListKind](siteId, start, end, limit, filters) as Promise<T[]>,
-    { ...dashboardSWRConfig, keepPreviousData: true }
+    // 🔴 NO keepPreviousData here. The cards arm this key only while their
+    // list overflows; on a range switch the key can go NULL, and
+    // keepPreviousData retains the OLD RANGE's rows on a null key forever —
+    // which is how the blocks froze on 30-day data after switching to Today
+    // (01-09-2026). While a new range's list loads, the dashboard fan-out
+    // rows are the correct same-range fallback, so nothing flashes empty.
+    { ...dashboardSWRConfig }
   )
 }
 
