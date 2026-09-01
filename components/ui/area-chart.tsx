@@ -6,11 +6,7 @@ import type { ScaleBand } from "d3-scale";
 import { localPoint, AreaClosed, LinePath, GridColumns, GridRows, ParentSize } from "@/lib/charts/primitives";
 import { formatDateShort, formatDateFull } from "@/lib/utils/formatDate";
 import { bisector } from "d3-array";
-import {
-  AnimatePresence,
-  motion,
-  useSpring,
-} from "framer-motion";
+import { motion, useSpring } from "framer-motion";
 import {
   Children,
   createContext,
@@ -29,7 +25,6 @@ import {
   type RefObject,
   type SetStateAction,
 } from "react";
-import useMeasure from "react-use-measure";
 import { createPortal } from "react-dom";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -737,104 +732,42 @@ interface TooltipContentProps {
 }
 
 function TooltipContent({ title, rows, children }: TooltipContentProps) {
-  const [measureRef, bounds] = useMeasure({ debounce: 0, scroll: false });
-  const [committedHeight, setCommittedHeight] = useState<number | null>(null);
-  const committedChildrenStateRef = useRef<boolean | null>(null);
-  const frameRef = useRef<number | null>(null);
-
-  const hasChildren = !!children;
-  const markerKey = hasChildren ? "has-marker" : "no-marker";
-
-  const isWaitingForSettlement =
-    committedChildrenStateRef.current !== null &&
-    committedChildrenStateRef.current !== hasChildren;
-
-  useEffect(() => {
-    if (bounds.height <= 0) {
-      return;
-    }
-
-    if (frameRef.current) {
-      cancelAnimationFrame(frameRef.current);
-      frameRef.current = null;
-    }
-
-    if (isWaitingForSettlement) {
-      frameRef.current = requestAnimationFrame(() => {
-        frameRef.current = requestAnimationFrame(() => {
-          setCommittedHeight(bounds.height);
-          committedChildrenStateRef.current = hasChildren;
-        });
-      });
-    } else {
-      setCommittedHeight(bounds.height);
-      committedChildrenStateRef.current = hasChildren;
-    }
-
-    return () => {
-      if (frameRef.current) {
-        cancelAnimationFrame(frameRef.current);
-      }
-    };
-  }, [bounds.height, hasChildren, isWaitingForSettlement]);
-
-  const shouldAnimate = committedHeight !== null;
-
+  // The card's box is NOT animated — no measured-height spring, no marker
+  // fade. Its size is a constant of the view (owner ruling, 01-09-2026:
+  // same height/width all the time), so nothing here may resize mid-hover.
   return (
-    <motion.div
-      animate={
-        committedHeight !== null ? { height: committedHeight } : undefined
-      }
-      className="overflow-hidden"
-      initial={false}
-      transition={shouldAnimate ? SPRING : { duration: 0 }}
-    >
-      <div ref={measureRef}>
-        {title && (
-          <div className="border-b border-border bg-white/[0.04] px-3 py-2 font-semibold text-white text-xs">
-            {title}
-          </div>
-        )}
-        <div className="space-y-1.5 px-3 py-2.5">
-          {rows.map((row) => (
-            <div
-              className="flex items-center justify-between gap-5"
-              key={`${row.label}-${row.color}`}
-            >
-              <div className="flex items-center gap-2">
-                <span
-                  className="h-1.5 w-1.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: row.color }}
-                />
-                <span className="font-medium text-neutral-300 text-sm">
-                  {row.label}
-                </span>
-              </div>
-              <span className="font-semibold text-white text-sm tabular-nums">
-                {typeof row.value === "number"
-                  ? row.value.toLocaleString()
-                  : row.value}
+    <div>
+      {title && (
+        <div className="border-b border-border bg-white/[0.04] px-3 py-2 font-semibold text-white text-xs">
+          {title}
+        </div>
+      )}
+      <div className="space-y-1.5 px-3 py-2.5">
+        {rows.map((row) => (
+          <div
+            className="flex items-center justify-between gap-5"
+            key={`${row.label}-${row.color}`}
+          >
+            <div className="flex items-center gap-2">
+              <span
+                className="h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ backgroundColor: row.color }}
+              />
+              <span className="font-medium text-neutral-300 text-sm">
+                {row.label}
               </span>
             </div>
-          ))}
-        </div>
-
-        <AnimatePresence mode="wait">
-          {children && (
-            <motion.div
-              animate={{ opacity: 1, filter: "blur(0px)" }}
-              className="px-3 pb-2.5"
-              exit={{ opacity: 0, filter: "blur(4px)" }}
-              initial={{ opacity: 0, filter: "blur(4px)" }}
-              key={markerKey}
-              transition={TIMING}
-            >
-              {children}
-            </motion.div>
-          )}
-        </AnimatePresence>
+            <span className="font-semibold text-white text-sm tabular-nums">
+              {typeof row.value === "number"
+                ? row.value.toLocaleString()
+                : row.value}
+            </span>
+          </div>
+        ))}
       </div>
-    </motion.div>
+
+      {children && <div className="px-3 pb-2.5">{children}</div>}
+    </div>
   );
 }
 
@@ -854,7 +787,6 @@ interface TooltipBoxProps {
   children: ReactNode;
   left?: number | ReturnType<typeof useSpring>;
   top?: number | ReturnType<typeof useSpring>;
-  flipped?: boolean;
 }
 
 function TooltipBox({
@@ -869,7 +801,6 @@ function TooltipBox({
   children,
   left: leftOverride,
   top: topOverride,
-  flipped: flippedOverride,
 }: TooltipBoxProps) {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [tooltipWidth, setTooltipWidth] = useState(180);
@@ -901,23 +832,11 @@ function TooltipBox({
     Math.min(y - tooltipHeight / 2, containerHeight - tooltipHeight - offset)
   );
 
-  const prevFlipRef = useRef(shouldFlipX);
-  const [flipKey, setFlipKey] = useState(0);
-
-  useEffect(() => {
-    if (prevFlipRef.current !== shouldFlipX) {
-      setFlipKey((k) => k + 1);
-      prevFlipRef.current = shouldFlipX;
-    }
-  }, [shouldFlipX]);
-
   // The card's position is NOT spring-animated: it steps bucket-to-bucket in
   // lockstep with the crosshair (only its show/hide fades, below). A gliding
   // card lags the snapped cursor and dissolves the stuck-to-the-point feel.
   const finalLeft = leftOverride ?? targetX;
   const finalTop = topOverride ?? targetY;
-  const isFlipped = flippedOverride ?? shouldFlipX;
-  const transformOrigin = isFlipped ? "right top" : "left top";
 
   const container = containerRef.current;
   if (!(mounted && container)) {
@@ -929,26 +848,22 @@ function TooltipBox({
     return null;
   }
 
+  // Opacity-only entrance, fixed w-48 box, and no re-mount on a side flip:
+  // the card's size may never change while hovering (owner ruling,
+  // 01-09-2026) — the mount scale, the flip-pop and the flexible min-width
+  // all read as the tooltip shrinking mid-hover.
   return createPortal(
     <motion.div
-      animate={{ opacity: 1, scale: 1, y: 0 }}
+      animate={{ opacity: 1 }}
       className={cn("pointer-events-none absolute z-50", className)}
-      exit={{ opacity: 0, scale: 0.92, y: 4 }}
-      initial={{ opacity: 0, scale: 0.92, y: 4 }}
+      initial={{ opacity: 0 }}
       ref={tooltipRef}
       style={{ left: finalLeft, top: finalTop }}
       transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
     >
-      <motion.div
-        animate={{ scale: 1, opacity: 1, x: 0 }}
-        className="min-w-[150px] overflow-hidden rounded-none bg-popover border border-border text-white"
-        initial={{ scale: 0.85, opacity: 0, x: isFlipped ? 20 : -20 }}
-        key={flipKey}
-        style={{ transformOrigin }}
-        transition={SPRING}
-      >
+      <div className="w-48 overflow-hidden rounded-none bg-popover border border-border text-white">
         {children}
-      </motion.div>
+      </div>
     </motion.div>,
     container
   );
@@ -2007,25 +1922,24 @@ export function Area({
         </motion.g>
       </g>
 
+      {/* Plain <path>, NOT motion.path: framer captures style dash values
+          into MotionValues at mount and ignores later plain updates, which
+          froze the lit window at its first-hover position (01-09). The
+          window must re-render per bucket; the fade feel comes from the
+          base line's animated dim, which sits pixel-identical underneath. */}
       {showHighlight &&
         showLine &&
         isHovering &&
         isLoaded &&
         pathRef.current && (
-          <motion.path
-            animate={{ opacity: 1 }}
+          <path
             d={pathRef.current.getAttribute("d") || ""}
-            exit={{ opacity: 0 }}
             fill="none"
-            initial={{ opacity: 0 }}
             stroke={resolvedStroke}
+            strokeDasharray={highlightDasharray}
+            strokeDashoffset={highlightDashoffset}
             strokeLinecap="round"
             strokeWidth={strokeWidth}
-            style={{
-              strokeDasharray: highlightDasharray,
-              strokeDashoffset: highlightDashoffset,
-            }}
-            transition={{ duration: DURATION_SLOW, ease: EASE_APPLE }}
           />
         )}
     </>
