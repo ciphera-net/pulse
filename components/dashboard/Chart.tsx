@@ -205,7 +205,7 @@ export default function Chart({
                   metric === m.key && 'bg-neutral-800/40',
                 )}
               >
-                <RailSparkline data={data} dataKey={m.key} active={metric === m.key} dashedTail={Boolean(period && PERIOD_ENDS_NOW[period])} />
+                <RailSparkline data={data} dataKey={m.key} active={metric === m.key} dashedTail={Boolean(period && PERIOD_ENDS_NOW[period])} missingAsZero={m.key === 'bounce_rate' || m.key === 'avg_duration'} />
                 <div className="relative z-10">
                   <div className="flex items-start justify-between mb-2">
                     <div className={cn('text-sm font-medium', metric === m.key ? 'text-brand-orange' : 'text-neutral-500 dark:text-neutral-400')}>{m.label}</div>

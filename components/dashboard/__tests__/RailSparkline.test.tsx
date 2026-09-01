@@ -73,3 +73,34 @@ describe('RailSparkline (M1)', () => {
     expect([...d.matchAll(/[ML]/g)].length).toBe(2)
   })
 })
+
+// The mini must draw the same shape the big chart draws (owner report
+// 01-09-2026: bounce/duration minis looked "nothing like the real charts").
+// The big chart plots those metrics missing-as-zero; without the flag the
+// mini dropped null buckets and compressed the survivors together.
+describe('RailSparkline gap rule (missingAsZero)', () => {
+  const gappy = [
+    { pageviews: 0, visitors: 0, bounce_rate: null, avg_duration: null },
+    { pageviews: 4, visitors: 2, bounce_rate: 100, avg_duration: 30 },
+    { pageviews: 0, visitors: 0, bounce_rate: null, avg_duration: null },
+    { pageviews: 0, visitors: 0, bounce_rate: null, avg_duration: null },
+    { pageviews: 6, visitors: 3, bounce_rate: 50, avg_duration: 60 },
+    { pageviews: 0, visitors: 0, bounce_rate: null, avg_duration: null },
+  ]
+
+  it('anchors every null bucket at the floor — one point per bucket', () => {
+    const { container } = render(
+      <RailSparkline active={false} data={gappy} dataKey="bounce_rate" missingAsZero />,
+    )
+    const d = linePaths(container)[0].getAttribute('d') ?? ''
+    const pts = [...d.matchAll(/[ML]\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)/g)].map((m) => ({
+      x: parseFloat(m[1]),
+      y: parseFloat(m[2]),
+    }))
+    expect(pts.length).toBe(gappy.length)
+    // h=52, padBottom=2 → the floor is y=50; null buckets sit exactly there.
+    for (const i of [0, 2, 3, 5]) expect(pts[i].y).toBeCloseTo(50, 3)
+    // The real values keep true proportion above the floor.
+    expect(pts[1].y).toBeLessThan(pts[4].y)
+  })
+})
