@@ -70,9 +70,3 @@ export function rowBarWidth(row: DimensionRateRow, rows: DimensionRateRow[]): nu
   const max = rows.reduce((m, r) => Math.max(m, r.visitors ?? 0), 0)
   return max > 0 ? ((row.visitors ?? 0) / max) * 75 : 0
 }
-
-/** The denominator sentence for "view all" modals. */
-export function shareDenominatorNote(totals?: { pageviews: number; visitors: number }): string | null {
-  if (!totals || !(totals.visitors > 0)) return null
-  return `Shares are of all ${formatNumber(totals.visitors)} visitors in the range — searching narrows the rows, not the denominator.`
-}
