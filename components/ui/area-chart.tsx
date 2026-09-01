@@ -9,7 +9,6 @@ import { bisector } from "d3-array";
 import {
   AnimatePresence,
   motion,
-  useMotionTemplate,
   useSpring,
 } from "framer-motion";
 import {
@@ -219,6 +218,18 @@ function useChartInteraction({
   const isDraggingRef = useRef(false);
   const dragStartXRef = useRef<number>(0);
 
+  // The tooltip target only ever changes when the pointer crosses into the
+  // next bucket's half — same index and same snapped x means the identical
+  // object stays, so nothing downstream (crosshair, dot, card, highlight
+  // segment) re-renders mid-bucket. This is what makes the cursor stick.
+  const applyTooltip = useCallback((tooltip: TooltipData) => {
+    setTooltipData((prev) =>
+      prev && prev.index === tooltip.index && prev.x === tooltip.x
+        ? prev
+        : tooltip
+    );
+  }, []);
+
   const resolveTooltipFromX = useCallback(
     (pixelX: number): TooltipData | null => {
       const x0 = xScale.invert(pixelX);
@@ -325,10 +336,10 @@ function useChartInteraction({
 
       const tooltip = resolveTooltipFromX(chartX);
       if (tooltip) {
-        setTooltipData(tooltip);
+        applyTooltip(tooltip);
       }
     },
-    [getChartX, resolveTooltipFromX, resolveIndexFromX]
+    [getChartX, resolveTooltipFromX, resolveIndexFromX, applyTooltip]
   );
 
   const handleMouseLeave = useCallback(() => {
@@ -370,7 +381,7 @@ function useChartInteraction({
         }
         const tooltip = resolveTooltipFromX(chartX);
         if (tooltip) {
-          setTooltipData(tooltip);
+          applyTooltip(tooltip);
         }
       } else if (event.touches.length === 2) {
         event.preventDefault();
@@ -391,7 +402,7 @@ function useChartInteraction({
         });
       }
     },
-    [getChartX, resolveTooltipFromX, resolveIndexFromX]
+    [getChartX, resolveTooltipFromX, resolveIndexFromX, applyTooltip]
   );
 
   const handleTouchMove = useCallback(
@@ -404,7 +415,7 @@ function useChartInteraction({
         }
         const tooltip = resolveTooltipFromX(chartX);
         if (tooltip) {
-          setTooltipData(tooltip);
+          applyTooltip(tooltip);
         }
       } else if (event.touches.length === 2) {
         event.preventDefault();
@@ -424,7 +435,7 @@ function useChartInteraction({
         });
       }
     },
-    [getChartX, resolveTooltipFromX, resolveIndexFromX]
+    [getChartX, resolveTooltipFromX, resolveIndexFromX, applyTooltip]
   );
 
   const handleTouchEnd = useCallback(() => {
@@ -599,29 +610,21 @@ function TooltipDot({
   strokeColor = chartCssVars.background,
   strokeWidth = 2,
 }: TooltipDotProps) {
-  const crosshairSpringConfig = { stiffness: 300, damping: 30 };
-  const animatedX = useSpring(x, crosshairSpringConfig);
-  const animatedY = useSpring(y, crosshairSpringConfig);
-
-  useEffect(() => {
-    animatedX.set(x);
-    animatedY.set(y);
-  }, [x, y, animatedX, animatedY]);
-
   if (!visible) {
     return null;
   }
 
+  // Position is NOT animated: the dot sits exactly on the hovered datum and
+  // steps bucket-to-bucket with the crosshair. Interpolating it draws points
+  // on the line that no datum occupies.
   return (
-    <motion.circle
-      cx={animatedX}
-      cy={animatedY}
+    <circle
+      cx={x}
+      cy={y}
       fill={color}
       r={size}
       stroke={strokeColor}
       strokeWidth={strokeWidth}
-      animate={{ scale: visible ? 1.15 : 1 }}
-      transition={SPRING}
     />
   );
 }
@@ -680,13 +683,6 @@ function TooltipIndicator({
       ? span * columnWidth
       : resolveWidth(width);
 
-  const crosshairSpringConfig = { stiffness: 300, damping: 30 };
-  const animatedX = useSpring(x - pixelWidth / 2, crosshairSpringConfig);
-
-  useEffect(() => {
-    animatedX.set(x - pixelWidth / 2);
-  }, [x, animatedX, pixelWidth]);
-
   if (!visible) {
     return null;
   }
@@ -710,11 +706,14 @@ function TooltipIndicator({
           />
         </linearGradient>
       </defs>
-      <motion.rect
+      {/* x is NOT animated: the cursor line snaps to the hovered datum's
+          exact scaled x and jumps bucket-to-bucket — the "stick" is the
+          whole interaction. */}
+      <rect
         fill={`url(#${gradientId})`}
         height={height}
         width={pixelWidth}
-        x={animatedX}
+        x={x - pixelWidth / 2}
         y={0}
       />
     </g>
@@ -912,20 +911,11 @@ function TooltipBox({
     }
   }, [shouldFlipX]);
 
-  const springConfig = { stiffness: 100, damping: 20 };
-  const animatedLeft = useSpring(targetX, springConfig);
-  const animatedTop = useSpring(targetY, springConfig);
-
-  useEffect(() => {
-    animatedLeft.set(targetX);
-  }, [targetX, animatedLeft]);
-
-  useEffect(() => {
-    animatedTop.set(targetY);
-  }, [targetY, animatedTop]);
-
-  const finalLeft = leftOverride ?? animatedLeft;
-  const finalTop = topOverride ?? animatedTop;
+  // The card's position is NOT spring-animated: it steps bucket-to-bucket in
+  // lockstep with the crosshair (only its show/hide fades, below). A gliding
+  // card lags the snapped cursor and dissolves the stuck-to-the-point feel.
+  const finalLeft = leftOverride ?? targetX;
+  const finalTop = topOverride ?? targetY;
   const isFlipped = flippedOverride ?? shouldFlipX;
   const transformOrigin = isFlipped ? "right top" : "left top";
 
@@ -1026,13 +1016,6 @@ export function ChartTooltip({
     ? (tooltipData?.yPositions[firstLineDataKey] ?? 0)
     : 0;
   const yWithMargin = firstLineY + margin.top;
-
-  const crosshairSpringConfig = { stiffness: 300, damping: 30 };
-  const animatedX = useSpring(xWithMargin, crosshairSpringConfig);
-
-  useEffect(() => {
-    animatedX.set(xWithMargin);
-  }, [xWithMargin, animatedX]);
 
   const tooltipRows = useMemo(() => {
     if (!tooltipData) {
@@ -1144,10 +1127,10 @@ export function ChartTooltip({
       </TooltipBox>
 
       {showDatePill && dateLabels.length > 0 && visible && !isHorizontal && (
-        <motion.div
+        <div
           className="pointer-events-none absolute z-50"
           style={{
-            left: animatedX,
+            left: xWithMargin,
             transform: "translateX(-50%)",
             bottom: 4,
           }}
@@ -1157,7 +1140,7 @@ export function ChartTooltip({
             labels={dateLabels}
             visible={visible}
           />
-        </motion.div>
+        </div>
       )}
     </>
   );
@@ -1849,26 +1832,16 @@ export function Area({
     findLengthAtX,
   ]);
 
-  const springConfig = { stiffness: 180, damping: 28 };
-  const offsetSpring = useSpring(0, springConfig);
-  const segmentLengthSpring = useSpring(0, springConfig);
-
   // The gap's ONLY job is "never repeat". Sizing it to the measured length
   // makes correctness depend on the measurement being current — the wrap bug
   // above. A large constant makes a second bright segment geometrically
   // impossible for any real chart, including the one frame between a path
   // change and the re-measure effect.
-  const animatedDasharray = useMotionTemplate`${segmentLengthSpring} 100000`;
-
-  useEffect(() => {
-    offsetSpring.set(-segmentBounds.startLength);
-    segmentLengthSpring.set(segmentBounds.segmentLength);
-  }, [
-    segmentBounds.startLength,
-    segmentBounds.segmentLength,
-    offsetSpring,
-    segmentLengthSpring,
-  ]);
+  // The dash window is NOT spring-animated: the lit segment steps
+  // bucket-to-bucket with the snapped crosshair; easing it leaves the
+  // highlight trailing a cursor that has already jumped.
+  const highlightDasharray = `${segmentBounds.segmentLength} 100000`;
+  const highlightDashoffset = -segmentBounds.startLength;
 
   const getY = useCallback(
     (d: Record<string, unknown>) => resolvePlottedY(d[dataKey], yScale, missingAsZero),
@@ -2049,8 +2022,8 @@ export function Area({
             strokeLinecap="round"
             strokeWidth={strokeWidth}
             style={{
-              strokeDasharray: animatedDasharray,
-              strokeDashoffset: offsetSpring,
+              strokeDasharray: highlightDasharray,
+              strokeDashoffset: highlightDashoffset,
             }}
             transition={{ duration: DURATION_SLOW, ease: EASE_APPLE }}
           />
