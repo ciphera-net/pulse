@@ -6,7 +6,14 @@ type PulseEventMap = {
   welcome_workspace_created: { had_pending_checkout: string }
   welcome_site_added: { added_site: string }
   welcome_site_skipped: Record<string, never>
+  welcome_install_skipped: Record<string, never>
   welcome_completed: { added_site: string }
+  // Fired at the OAuth-redirect chokepoints (lib/api/oauth.ts) so every
+  // marketing CTA is counted once, right before the cross-domain hop to
+  // id.ciphera.net. The script sends via sendBeacon/keepalive, so the event
+  // survives the navigation.
+  signup_flow_started: Record<string, never>
+  login_flow_started: Record<string, never>
   site_created_from_dashboard: Record<string, never>
   site_created_script_copied: Record<string, never>
   onboarding_chip_opened: { completed_count: string }
