@@ -2,63 +2,74 @@ import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
 import RailSparkline from '@/components/dashboard/RailSparkline'
 
-// The restored pre-deck ghost trace (owner pick S4, 19-08-2026): grey at
-// rest, brand orange on hover, orange while active. These pin the colour
-// mechanic and the null honesty — both are one-character regressions.
+// The M1 mini contract (sharp-chart round, 01-09-2026): linear joins,
+// zero-based scale (true highs and lows — a flat-low week must not stretch
+// into fake drama), grounded fill, dashed in-progress tail.
 
-const row = (visitors: number, over: Partial<{ bounce_rate: number | null; avg_duration: number | null }> = {}) => ({
-  pageviews: visitors + 3, visitors, bounce_rate: 50, avg_duration: 60, ...over,
+const day = (visitors: number, pageviews = visitors * 2) => ({
+  visitors, pageviews, bounce_rate: null, avg_duration: null,
 })
 
-describe('RailSparkline', () => {
-  it('rests grey and arms orange on hover — the like-before mechanic', () => {
+const paths = (c: HTMLElement) => Array.from(c.querySelectorAll('path'))
+const linePaths = (c: HTMLElement) => paths(c).filter((p) => p.getAttribute('fill') === 'none')
+
+describe('RailSparkline (M1)', () => {
+  it('draws linear joins — no curve commands in the line path', () => {
     const { container } = render(
-      <RailSparkline data={[row(5), row(9), row(7)]} dataKey="visitors" active={false} />
+      <RailSparkline data={[day(4), day(30), day(11), day(18)]} dataKey="visitors" active />,
     )
-    const line = container.querySelector('path[vector-effect="non-scaling-stroke"]')!
-    expect(line.getAttribute('class')).toContain('stroke-neutral-600')
-    expect(line.getAttribute('class')).toContain('group-hover:stroke-brand-orange')
+    const d = linePaths(container)[0].getAttribute('d') ?? ''
+    expect(d).toMatch(/^M/)
+    expect(d).not.toContain('C')
   })
 
-  it('the active metric is permanently orange', () => {
+  it('scales from ZERO: half the max sits half-way up the band, not min-stretched', () => {
     const { container } = render(
-      <RailSparkline data={[row(5), row(9), row(7)]} dataKey="visitors" active={true} />
+      <RailSparkline data={[day(10), day(20)]} dataKey="visitors" active />,
     )
-    const line = container.querySelector('path[vector-effect="non-scaling-stroke"]')!
-    expect(line.getAttribute('class')).toContain('stroke-brand-orange')
-    expect(line.getAttribute('class')).not.toContain('stroke-neutral-600')
+    // h=52, padBottom=2, padTop=4 → band 46. v=10 of max 20 → y = 50 - 23 = 27.
+    const d = linePaths(container)[0].getAttribute('d') ?? ''
+    const ys = [...d.matchAll(/[ML][0-9.]+,([0-9.]+)/g)].map((m) => parseFloat(m[1]))
+    expect(ys[0]).toBeCloseTo(27, 0)
+    expect(ys[1]).toBeCloseTo(4, 0)
   })
 
-  it('skips unmeasured buckets rather than fabricating dips — no NaN in the path', () => {
+  it('dashes the final segment when dashedTail is set', () => {
+    const { container } = render(
+      <RailSparkline data={[day(5), day(9), day(7)]} dataKey="visitors" active dashedTail />,
+    )
+    const dashed = linePaths(container).filter((p) => p.getAttribute('stroke-dasharray') === '4 4')
+    expect(dashed.length).toBe(1)
+    // Without the flag: no dashes.
+    const { container: c2 } = render(
+      <RailSparkline data={[day(5), day(9), day(7)]} dataKey="visitors" active />,
+    )
+    expect(linePaths(c2).filter((p) => p.getAttribute('stroke-dasharray')).length).toBe(0)
+  })
+
+  it('fills with a gradient grounded at the tile floor', () => {
+    const { container } = render(
+      <RailSparkline data={[day(5), day(9)]} dataKey="visitors" active />,
+    )
+    const fill = paths(container).find((p) => p.getAttribute('fill')?.startsWith('url(#'))
+    expect(fill).toBeTruthy()
+    expect(fill?.getAttribute('d')).toContain('L0,52 Z')
+  })
+
+  it('still drops unmeasured buckets instead of zeroing them', () => {
     const { container } = render(
       <RailSparkline
-        data={[row(5), row(9, { bounce_rate: null }), row(7), row(3)]}
+        data={[
+          { visitors: 1, pageviews: 2, bounce_rate: 40, avg_duration: null },
+          { visitors: 1, pageviews: 2, bounce_rate: null, avg_duration: null },
+          { visitors: 1, pageviews: 2, bounce_rate: 80, avg_duration: null },
+        ]}
         dataKey="bounce_rate"
-        active={false}
-      />
+        active
+      />,
     )
-    const line = container.querySelector('path[vector-effect="non-scaling-stroke"]')!
-    expect(line.getAttribute('d')).not.toContain('NaN')
-  })
-
-  it('renders nothing below two measured points — a dot is not a trend', () => {
-    const { container } = render(
-      <RailSparkline data={[row(5)]} dataKey="visitors" active={false} />
-    )
-    expect(container.querySelector('svg')).toBeNull()
-  })
-
-  it("the trace is smooth — monotone curve segments, the estate's chart grammar", () => {
-    const { container } = render(
-      <RailSparkline data={[
-        { pageviews: 8, visitors: 5, bounce_rate: 50, avg_duration: 60 },
-        { pageviews: 12, visitors: 9, bounce_rate: 50, avg_duration: 60 },
-        { pageviews: 10, visitors: 7, bounce_rate: 50, avg_duration: 60 },
-      ]} dataKey="visitors" active={false} />
-    )
-    const d = container.querySelector('path[vector-effect="non-scaling-stroke"]')!.getAttribute('d')!
-    // curveMonotoneX (sharp reverted, owner call 21-08-2026): Bezier segments
-    // in the path; monotone still cannot overshoot a measured point.
-    expect(d).toContain('C')
+    // Two measured points → two coordinates, gap compressed away.
+    const d = linePaths(container)[0].getAttribute('d') ?? ''
+    expect([...d.matchAll(/[ML]/g)].length).toBe(2)
   })
 })

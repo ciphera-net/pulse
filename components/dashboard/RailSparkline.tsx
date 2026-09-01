@@ -1,30 +1,39 @@
 'use client'
 
-import { line as shapeLine, curveMonotoneX } from 'd3-shape'
+import { useId } from 'react'
+import { line as shapeLine, curveLinear } from 'd3-shape'
 
-// ─── RailSparkline ───────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// The KPI tile mini chart, in the big chart's language (sharp-chart round,
+// 01-09-2026, artifact "The Sharp Line" — M1 "lifted" pick):
 //
-// The edge-to-edge ghost trace behind a KPI row: grey at rest, brand
-// orange on hover, permanently orange on the active metric (owner pick
-// "S4, like before", 19-08-2026 — the pre-deck tile sparkline, extracted
-// from Chart.tsx so the command deck and the share page render the same
-// instrument from one source). Smoothed with curveMonotoneX like the
-// hero chart and every other surface — the sharp-trace decision was
-// reverted 21-08-2026 (owner call; monotone cannot overshoot a measured
-// point, so it fabricates no peaks).
+//   - curveLinear. This SUPERSEDES the 21-08-2026 revert to monotone: the
+//     owner picked the sharp instrument on mocks of their own data.
+//   - ZERO-BASED scale, like the big chart's axis: y maps value/seriesMax
+//     from the tile floor, so highs and lows keep true proportion — a
+//     min/max-normalized stretch would fabricate drama in a flat week.
+//   - M1 lift: the series max rises to ~4px below the svg top (just under
+//     the tile's label row), grounded at the tile floor — never floaty.
+//   - Gradient fill (fades to nothing by the floor) instead of a flat wash,
+//     scaled down from the big chart's weight; the fade is also what keeps a
+//     high-riding series (Bounce ~90%) from flooding the tile.
+//   - Dashed tail on the in-progress bucket, same as the big chart
+//     (period-token semantics, passed down by the consumer).
 //
-// Unmeasured buckets (null) are SKIPPED, not plotted as zeros — this is
-// a decorative trend line with no time axis, and a fabricated dip to 0
-// is still a fabrication. (The hero chart's zero-fill decision is about
-// its time axis; a sparkline compresses to the measured points.)
+// A gap (null bucket) is still dropped, not zeroed — a decorative trend with
+// no time axis compresses gaps away rather than drawing a fabricated dip.
+// ---------------------------------------------------------------------------
 
-type SparkMetric = 'pageviews' | 'visitors' | 'pages_per_visit' | 'bounce_rate' | 'avg_duration'
+export type SparkMetric = 'visitors' | 'pageviews' | 'pages_per_visit' | 'bounce_rate' | 'avg_duration'
 
-export default function RailSparkline({ data, dataKey, active }: {
+export default function RailSparkline({ data, dataKey, active, dashedTail = false }: {
   data: { pageviews: number; visitors: number; bounce_rate: number | null; avg_duration: number | null }[]
   dataKey: SparkMetric
   active: boolean
+  /** The range ends now — dash the final segment like the big chart. */
+  dashedTail?: boolean
 }) {
+  const gradientId = useId()
   if (data.length < 2) return null
   const values = data
     .map((d) =>
@@ -34,30 +43,38 @@ export default function RailSparkline({ data, dataKey, active }: {
     )
     .filter((v): v is number => v != null)
   if (values.length < 2) return null
-  const max = Math.max(...values)
-  const min = Math.min(...values)
-  const range = max - min || 1
+  const max = Math.max(...values) || 1
   const h = 52
   const padBottom = 2
-  const padTop = 16
+  const padTop = 4
 
   const coords = values.map((v, i) => ({
     x: (i / (values.length - 1)) * 100,
-    y: h - padBottom - ((v - min) / range) * (h - padBottom - padTop),
+    y: h - padBottom - (v / max) * (h - padBottom - padTop),
   }))
 
-  // Monotone smoothing — the hero chart's grammar (reverted from sharp
-  // 21-08-2026), at the rail's scale too.
-  const linePath =
-    shapeLine<{ x: number; y: number }>()
-      .x((c) => c.x)
-      .y((c) => c.y)
-      .curve(curveMonotoneX)(coords) ?? ''
-  const fillPath = linePath + ` L100,${h} L0,${h} Z`
+  const mkLine = shapeLine<{ x: number; y: number }>()
+    .x((c) => c.x)
+    .y((c) => c.y)
+    .curve(curveLinear)
+  const n = coords.length
+  const hasTail = dashedTail && n >= 2
+  const solidCoords = hasTail ? coords.slice(0, n - 1) : coords
+  const linePath = mkLine(solidCoords) ?? ''
+  const tailPath = hasTail ? (mkLine(coords.slice(n - 2)) ?? '') : ''
+  const areaPath = (mkLine(coords) ?? '') + ` L100,${h} L0,${h} Z`
+
+  const ink = active ? 'rgb(253, 94, 15)' : 'rgb(82, 82, 82)'
 
   return (
     <svg viewBox={`0 0 100 ${h}`} className="absolute bottom-0 left-0 right-0 w-full z-0 transition-opacity duration-base opacity-30 group-hover:opacity-60 ease-apple" style={{ height: h }} preserveAspectRatio="none">
-      <path d={fillPath} className={active ? "fill-brand-orange/[0.08]" : "fill-neutral-600/[0.05] group-hover:fill-brand-orange/[0.08]"} />
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="5%" stopColor={ink} stopOpacity={active ? 0.22 : 0.16} />
+          <stop offset="95%" stopColor={ink} stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} fill={`url(#${gradientId})`} />
       <path
         d={linePath}
         fill="none"
@@ -67,6 +84,18 @@ export default function RailSparkline({ data, dataKey, active }: {
         strokeLinejoin="round"
         vectorEffect="non-scaling-stroke"
       />
+      {hasTail && (
+        <path
+          d={tailPath}
+          fill="none"
+          className={active ? "stroke-brand-orange" : "stroke-neutral-600 group-hover:stroke-brand-orange"}
+          strokeWidth={1.5}
+          strokeDasharray="4 4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
+      )}
     </svg>
   )
 }

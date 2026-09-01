@@ -4,6 +4,8 @@ import RailSparkline from '@/components/dashboard/RailSparkline'
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip, type TooltipRow } from '@/components/ui/area-chart'
+import { curveLinear } from 'd3-shape'
+import { PERIOD_ENDS_NOW } from '@/lib/constants/periods'
 import { Card, CardContent, CardHeader } from '@ciphera-net/facet'
 import { formatNumber, formatDuration } from '@/lib/utils/format'
 import { DownloadIcon } from '@ciphera-net/facet'
@@ -203,7 +205,7 @@ export default function Chart({
                   metric === m.key && 'bg-neutral-800/40',
                 )}
               >
-                <RailSparkline data={data} dataKey={m.key} active={metric === m.key} />
+                <RailSparkline data={data} dataKey={m.key} active={metric === m.key} dashedTail={Boolean(period && PERIOD_ENDS_NOW[period])} />
                 <div className="relative z-10">
                   <div className="flex items-start justify-between mb-2">
                     <div className={cn('text-sm font-medium', metric === m.key ? 'text-brand-orange' : 'text-neutral-500 dark:text-neutral-400')}>{m.label}</div>
@@ -309,11 +311,18 @@ export default function Chart({
                     <VisxGrid horizontal vertical={false} stroke="var(--chart-grid)" numTicksRows={6} />
                     <VisxArea
                       dataKey={metric}
+                      // curveLinear — sharp-chart round (01-09-2026, artifact
+                      // "The Sharp Line"); supersedes the 21-08 monotone call.
+                      curve={curveLinear}
                       fill={CHART_COLORS[metric]}
                       fillOpacity={0.15}
                       stroke={CHART_COLORS[metric]}
                       strokeWidth={2}
                       gradientToOpacity={0}
+                      // Crisp to both edges + the dashed in-progress tail
+                      // (period-token semantics; 'yesterday' never dashes).
+                      fadeStrokeEdges={false}
+                      dashedTailFrom={period && PERIOD_ENDS_NOW[period] && chartData.length >= 2 ? chartData.length - 2 : undefined}
                       // Rates and durations are null where unmeasured. They
                       // PLOT at zero so the line never disappears (owner
                       // decision 19-08-2026); the tooltip reads the null and
@@ -336,27 +345,27 @@ export default function Chart({
                       }}
                     />
                     <VisxChartTooltip
-                      content={({ point }) => {
+                      // Header-strip card lives in the instrument; the date
+                      // pill retires — the bucket identity (incl. hourly
+                      // SPANS) lives in the strip.
+                      showDatePill={false}
+                      title={(point) => {
                         const dateObj = point.dateObj instanceof Date ? point.dateObj : new Date(point.dateObj as string || Date.now())
+                        if (interval === 'minute') return formatTimeUTC(dateObj)
+                        if (interval === 'hour') {
+                          const end = new Date(dateObj.getTime() + 59 * 60_000)
+                          return `${formatTimeUTC(dateObj)} – ${formatTimeUTC(end)}`
+                        }
+                        return formatDateFullUTC(dateObj)
+                      }}
+                      rows={(point) => {
                         const config = METRIC_CONFIGS.find((m) => m.key === metric)
                         const value = point[metric] as number | null
-                        const title = (interval === 'minute' || interval === 'hour')
-                          ? formatTimeUTC(dateObj)
-                          : formatDateFullUTC(dateObj)
-                        return (
-                          <div className="px-3 py-2.5">
-                            <div className="mb-2 font-medium text-neutral-400 text-xs">{title}</div>
-                            <div className="flex items-center justify-between gap-4">
-                              <div className="flex items-center gap-2">
-                                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: CHART_COLORS[metric] }} />
-                                <span className="text-neutral-400 text-sm">{config?.label || metric}</span>
-                              </div>
-                              <span className="font-medium text-white text-sm tabular-nums">
-                                {config ? config.format(value) : value}
-                              </span>
-                            </div>
-                          </div>
-                        )
+                        return [{
+                          color: CHART_COLORS[metric],
+                          label: config?.label || metric,
+                          value: config ? config.format(value) : String(value ?? '—'),
+                        }]
                       }}
                     />
                   </VisxAreaChart>
