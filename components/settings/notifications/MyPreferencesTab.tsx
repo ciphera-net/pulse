@@ -637,6 +637,22 @@ function RetentionRow({
  * reports '' for any incomplete value, so a per-change write would fire a save
  * for every edited segment and an empty intermediate would clear stored state
  * mid-edit (review catch: the quiet-hours pair got nulled by half an edit).
+ *
+ * 🔴 THE PROP→DRAFT RESYNC IS DERIVED DURING RENDER, NEVER AN EFFECT.
+ * It used to be `useEffect(() => setDraft(value), [value])`, and an effect is
+ * the wrong instrument for it: React commits the mount and then schedules the
+ * passive effect as a SEPARATE task, so a keystroke landing in that window is
+ * silently thrown away — the effect's `setDraft(value)` is queued AFTER the
+ * keystroke's `setDraft(typed)` and wins, the field snaps back to the stored
+ * value, and the following blur sees nothing to commit. Reproduced
+ * deterministically (see the "a keystroke is never clobbered…" case): the
+ * typed 22:00 vanished and the save never fired. On CI's starved pod that
+ * window is wide enough to hit in the wild; the same interleaving reaches a
+ * real user whenever the browser defers the effect past their typing.
+ *
+ * Adjusting state during render is React's documented answer here: the reset
+ * is ORDERED with respect to the keystroke rather than racing it, so it can
+ * only ever run before a later event, never after one.
  */
 function TimeField({
   value,
@@ -650,7 +666,13 @@ function TimeField({
   'aria-label': string
 }) {
   const [draft, setDraft] = useState(value)
-  useEffect(() => setDraft(value), [value])
+  const [syncedTo, setSyncedTo] = useState(value)
+  if (value !== syncedTo) {
+    // A genuinely new stored value arrived (a save landed, or the document was
+    // re-read) — adopt it and drop any stale draft, in this same render.
+    setSyncedTo(value)
+    setDraft(value)
+  }
   return (
     <input
       type="time"

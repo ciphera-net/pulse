@@ -307,23 +307,108 @@ describe('MyPreferencesTab (round-3 family)', () => {
   })
 
   it('quiet-hours inputs commit on BLUR, never per keystroke, and an empty edit is abandoned', async () => {
+    // 🔴 THE FIXTURE HAS TO STORE, or the abandonment half proves nothing.
+    // With the static document (quiet hours permanently null) an emptied field
+    // is byte-identical to an untouched one, so "no second write" was
+    // satisfied by `draft === value` and NOT by the abandon branch — measured:
+    // deleting that branch outright left this test green. Store the schedule
+    // and re-read it, the way the proxy does, and the empty edit becomes a
+    // real clear attempt that has to be refused.
+    const schedule: { start: string | null; end: string | null } = { start: null, end: null }
+    getPrefsDocument.mockImplementation(async () => {
+      const d = doc()
+      d.recipient_preferences.quiet_hours_start = schedule.start
+      d.recipient_preferences.quiet_hours_end = schedule.end
+      return d
+    })
+    updatePrefsBooleans.mockImplementation(async (w: any) => {
+      if (w && !w.categories) {
+        schedule.start = w.quiet_hours_start
+        schedule.end = w.quiet_hours_end
+        return { ok: true } as any
+      }
+      return { ...doc(), ok: true }
+    })
+
     await renderTab()
     const start = screen.getByLabelText('Quiet hours start') as HTMLInputElement
     fireEvent.change(start, { target: { value: '22:00' } })
+    expect(start.value).toBe('22:00') // the edit is held, not written
     expect(updatePrefsBooleans).not.toHaveBeenCalled() // typing alone never writes
-    // React maps onBlur to focusout; jsdom's `blur` alone has not reliably
-    // reached it on CI — dispatch both (measured: green locally, red in CI).
+
+    // 🔴 NO waitFor, AND ONE DISPATCH — both deliberate, both were wrong here
+    // before. `fireEvent.blur` already dispatches focusout (React's real
+    // onBlur channel) and then blur, so the earlier extra `fireEvent.focusOut`
+    // fired the handler twice and left the count at one only because an
+    // in-flight `saving` flag happened to swallow the second. And the write is
+    // issued SYNCHRONOUSLY inside the blur handler, so there is no budget to
+    // widen: the old `{ timeout: 5000 }` could never turn a lost write into a
+    // found one, it only made the failure take five seconds to report.
     fireEvent.blur(start)
-    fireEvent.focusOut(start)
-    await waitFor(() => expect(updatePrefsBooleans).toHaveBeenCalledTimes(1), { timeout: 5000 })
+    expect(updatePrefsBooleans).toHaveBeenCalledTimes(1)
     const body = updatePrefsBooleans.mock.calls[0][0]
     expect(body.quiet_hours_start).toBe('22:00')
     expect(body.quiet_hours_end).toBe('08:00') // pairing at commit, not per keystroke
-    // An empty intermediate is abandoned, never written as a clear.
+
+    // Let that write land before testing abandonment — otherwise `saving` is
+    // still true and the "no second write" assertion below would pass for the
+    // wrong reason, proving nothing about abandonment at all.
+    await waitFor(() => expect(start.value).toBe('22:00'))
+    expect(getPrefsDocument).toHaveBeenCalledTimes(2) // {"ok":true} → re-read
+
+    // An empty intermediate is abandoned, never written as a clear, and the
+    // field snaps back to the STORED 22:00 rather than showing a half-edit.
     fireEvent.change(start, { target: { value: '' } })
+    expect(start.value).toBe('')
     fireEvent.blur(start)
-    fireEvent.focusOut(start)
-    await waitFor(() => expect(updatePrefsBooleans).toHaveBeenCalledTimes(1))
+    expect(updatePrefsBooleans).toHaveBeenCalledTimes(1)
+    expect(start.value).toBe('22:00')
+
+    // …and the field is genuinely writable here — so the line above measured
+    // abandonment, not a save still stuck in flight.
+    fireEvent.change(start, { target: { value: '23:15' } })
+    fireEvent.blur(start)
+    expect(updatePrefsBooleans).toHaveBeenCalledTimes(2)
+    expect(updatePrefsBooleans.mock.calls[1][0].quiet_hours_start).toBe('23:15')
+    await waitFor(() => expect(start.value).toBe('23:15'))
+  })
+
+  it('🔴 a keystroke is never clobbered by a late prop→draft resync (the CI flake)', async () => {
+    // Resolve in a MICROTASK on the commit that mounts the schedule fields:
+    // React has rendered them but its scheduled passive-effect task has not
+    // run yet. TimeField used to resync its draft from the prop in a
+    // `useEffect`, which flushed in exactly that window — the keystroke's
+    // setDraft was overwritten by the effect's, the typed time vanished, and
+    // the blur that followed had nothing to commit. That is the CI-only
+    // "expected 1 times, got 0" (pipelines 1089, 1180): not a slow budget, a
+    // lost edit. Starving CI widens the window; a real browser deferring the
+    // effect past a keystroke would do the same to a customer.
+    let bail: ReturnType<typeof setTimeout> | undefined
+    const mounted = new Promise<void>((resolve, reject) => {
+      const mo = new MutationObserver(() => {
+        if (document.querySelector('[aria-label="Quiet hours start"]')) {
+          mo.disconnect()
+          clearTimeout(bail)
+          resolve()
+        }
+      })
+      mo.observe(document.body, { childList: true, subtree: true })
+      bail = setTimeout(() => {
+        mo.disconnect()
+        reject(new Error('the schedule band never mounted'))
+      }, 4000)
+    })
+
+    render(<MyPreferencesTab />)
+    await mounted
+
+    const start = document.querySelector('[aria-label="Quiet hours start"]') as HTMLInputElement
+    fireEvent.change(start, { target: { value: '22:00' } })
+    expect(start.value).toBe('22:00') // survives whatever React flushes next
+    fireEvent.blur(start)
+    expect(updatePrefsBooleans).toHaveBeenCalledTimes(1)
+    expect(updatePrefsBooleans.mock.calls[0][0].quiet_hours_start).toBe('22:00')
+    await waitFor(() => expect(getPrefsDocument).toHaveBeenCalledTimes(2))
   })
 
   it('a failed load renders the error state, never an empty panel', async () => {
