@@ -31,6 +31,8 @@ export const FREE_PAGEVIEW_LIMIT = 5000
 export function formatPlanName(planId?: string | null): string {
   if (!planId || planId === 'free') return 'Hobby'
   if (planId.startsWith('price_')) return 'Pro'
+  // Grant-only tier: the generic capitalize fallback would render "Opensource".
+  if (planId === 'opensource') return 'Open Source'
   return planId.charAt(0).toUpperCase() + planId.slice(1)
 }
 
@@ -40,7 +42,7 @@ export function getSitesLimitForPlan(planId: string | null | undefined): number 
   switch (planId) {
     case 'solo': return 1
     case 'pioneer': return 3
-    case 'team': return 5
+    case 'team': case 'opensource': return 5
     case 'business': return 10
     default: return null
   }
@@ -245,7 +247,7 @@ export function getLimitForTierIndex(index: number): number {
 export function getMaxRetentionMonthsForPlan(planId: string | null | undefined): number {
   switch (planId) {
     case 'business': return 36
-    case 'team': case 'pioneer': return 24
+    case 'team': case 'pioneer': case 'opensource': return 24
     case 'solo': return 12
     default: return 6
   }
@@ -264,7 +266,7 @@ export function getRetentionOptionsForPlan(planId: string | null | undefined): {
 
   switch (planId) {
     case 'business': return business
-    case 'team': case 'pioneer': return team
+    case 'team': case 'pioneer': case 'opensource': return team
     case 'solo': return solo
     default: return base
   }
