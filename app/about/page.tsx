@@ -12,7 +12,7 @@ import { cdnUrl } from '@/lib/cdn'
 import { comparisonLogoUrl } from '@/lib/comparisons'
 
 const description =
-  'Pulse is privacy-first web analytics built by Ciphera BV in Belgium — open source, cookie-free, and counted on Swiss infrastructure.'
+  'Pulse is privacy-first web analytics built by Ciphera BV in Belgium — open-source client, cookie-free, and counted on Swiss infrastructure.'
 
 export const metadata: Metadata = {
   title: 'About',
@@ -43,7 +43,7 @@ const companyReceipts: Receipt[] = [
     },
   },
   {
-    title: 'Open source',
+    title: 'Open-source client',
     description: 'The dashboard and the tracking script are public — inspect every line before you run it.',
     proof: { label: 'Read the code', href: 'https://github.com/ciphera-net/pulse', external: true },
   },
@@ -96,7 +96,7 @@ export default function AboutPage() {
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
             Pulse is privacy-first web analytics built by Ciphera BV in Belgium —
-            open source, cookie-free, and counted on Swiss infrastructure.
+            open-source client, cookie-free, and counted on Swiss infrastructure.
           </p>
         </div>
       </section>

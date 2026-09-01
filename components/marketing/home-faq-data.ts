@@ -35,6 +35,11 @@ export const faqData: Record<string, FAQItem[]> = {
       answer:
         'The Pulse client — dashboard and tracking script — are open source and available on GitHub. You can inspect every line of code that runs on your site and verify our privacy claims.',
     },
+  {
+    question: "Why isn't the backend open source?",
+    answer:
+      "We open-source everything that runs where trust matters: the tracking script on your visitors' browsers, the dashboard, the CLI, and the API types — every line is on GitHub. The managed cloud backend is closed, the same model Proton uses: auditable clients, operated core. If you want to verify what we collect, the script is the place to look — and the live demo shows exactly what we see.",
+  },
     {
       question: 'How is Pulse different from Plausible or Fathom?',
       answer:
