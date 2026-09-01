@@ -103,4 +103,24 @@ describe('RailSparkline gap rule (missingAsZero)', () => {
     // The real values keep true proportion above the floor.
     expect(pts[1].y).toBeLessThan(pts[4].y)
   })
+
+  it('honours a precomputed pages_per_visit series — the deck divides by visits', () => {
+    const withPpv = [
+      { pageviews: 10, visitors: 10, bounce_rate: null, avg_duration: null, pages_per_visit: 5 },
+      { pageviews: 10, visitors: 10, bounce_rate: null, avg_duration: null, pages_per_visit: null },
+      { pageviews: 10, visitors: 10, bounce_rate: null, avg_duration: null, pages_per_visit: 2.5 },
+    ]
+    const { container } = render(
+      <RailSparkline active={false} data={withPpv} dataKey="pages_per_visit" missingAsZero />,
+    )
+    const d = linePaths(container)[0].getAttribute('d') ?? ''
+    const ys = [...d.matchAll(/[ML]\s*-?[\d.]+\s*,\s*(-?[\d.]+)/g)].map((m) => parseFloat(m[1]))
+    // Max 5 → top of band (y=4); null → floor (50); 2.5 → mid-band (y=27).
+    // Re-deriving pageviews/visitors would flat-line at 1 (10/10 everywhere),
+    // so three DISTINCT heights prove the precomputed series won.
+    expect(ys.length).toBe(3)
+    expect(ys[0]).toBeCloseTo(4, 0)
+    expect(ys[1]).toBeCloseTo(50, 3)
+    expect(ys[2]).toBeCloseTo(27, 0)
+  })
 })
