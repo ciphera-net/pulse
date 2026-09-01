@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { formatNumber } from '@/lib/utils/format'
@@ -8,14 +8,15 @@ import { Modal } from '@ciphera-net/facet'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { ListSkeleton } from '@/components/skeletons'
-import VirtualList from './VirtualList'
 import { type CampaignStat } from '@/lib/api/stats'
 import { useCampaignsList } from '@/lib/swr/dashboard'
 import { getReferrerFavicon, getReferrerIcon, getReferrerDisplayName } from '@/lib/utils/icons'
-import { Megaphone, FrameCornersIcon } from '@phosphor-icons/react'
+import { Megaphone } from '@phosphor-icons/react'
 import UtmBuilder from '@/components/tools/UtmBuilder'
 import { type DimensionFilter } from '@/lib/filters'
-import { MetricRowStat, MetricUnitLabel, rowBarWidth, shareDenominatorNote } from '@/components/dashboard/MetricRowStat'
+import { MetricRowStat, MetricUnitLabel, rowBarWidth } from '@/components/dashboard/MetricRowStat'
+import { CardPager, useCardPage } from '@/components/dashboard/CardPager'
+import { CascadeGroup, CascadeRow, RowBar } from '@/components/dashboard/Cascade'
 import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 interface CampaignsProps {
@@ -33,8 +34,6 @@ type UtmTab = 'source' | 'medium' | 'campaign' | 'term' | 'content'
 const LIMIT = 7
 
 export default function Campaigns({ siteId, dateRange, filters, totals, onFilter }: CampaignsProps) {
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [modalSearch, setModalSearch] = useState('')
   const [isBuilderOpen, setIsBuilderOpen] = useState(false)
   const [faviconFailed, setFaviconFailed] = useState<Set<string>>(new Set())
   const [activeTab, setActiveTab] = useState<UtmTab>('source')
@@ -55,20 +54,13 @@ export default function Campaigns({ siteId, dateRange, filters, totals, onFilter
     useCampaignsList(siteId, dateRange.start, dateRange.end, 10, filters)
   const data = cardData ?? []
 
-  // The view-all sheet fetches only while open — `enabled` keeps the key null
-  // rather than firing and discarding, which is what the old `else setFullData([])`
-  // branch was compensating for.
-  const { data: fullDataRaw, error: fullError, isLoading: isLoadingFull } =
-    useCampaignsList(siteId, dateRange.start, dateRange.end, 100, filters, isModalOpen)
-  const fullData = fullDataRaw ?? []
+  // Grouping happens below, so overflow is judged on the grouped rows — the
+  // full list (same endpoint the retired view-all modal used) arms only when
+  // the card genuinely has an eighth grouped row to page to.
 
   const sortedData = useMemo(
     () => [...data].sort((a, b) => b.visitors - a.visitors),
     [data]
-  )
-  const sortedFullData = useMemo(
-    () => [...(fullData.length > 0 ? fullData : data)].sort((a, b) => b.visitors - a.visitors),
-    [fullData, data]
   )
 
   const groupedData = useMemo(() => {
@@ -108,8 +100,53 @@ export default function Campaigns({ siteId, dateRange, filters, totals, onFilter
   }, [sortedData, activeTab])
 
   const hasData = data.length > 0
-  const displayedData = hasData ? groupedData.slice(0, LIMIT) : []
-  const showViewAll = hasData && groupedData.length > LIMIT
+  const wantsFullList = hasData && groupedData.length > LIMIT
+  const { data: fullDataRaw } =
+    useCampaignsList(siteId, dateRange.start, dateRange.end, 100, filters, wantsFullList)
+  const sortedFullData = useMemo(
+    () => [...((fullDataRaw && fullDataRaw.length > 0) ? fullDataRaw : data)].sort((a, b) => b.visitors - a.visitors),
+    [fullDataRaw, data]
+  )
+  const groupedAll = useMemo(() => {
+    type Acc = { visitors: number; pageviews: number; bounceW: number; bounceBase: number; durW: number; durBase: number }
+    const grouped = new Map<string, Acc>()
+    for (const item of sortedFullData) {
+      const raw = item[activeTab]
+      if (!raw) continue
+      let acc = grouped.get(raw)
+      if (!acc) {
+        acc = { visitors: 0, pageviews: 0, bounceW: 0, bounceBase: 0, durW: 0, durBase: 0 }
+        grouped.set(raw, acc)
+      }
+      acc.visitors += item.visitors
+      acc.pageviews += item.pageviews
+      if (item.bounce_rate != null && item.visitors > 0) {
+        acc.bounceW += item.bounce_rate * item.visitors
+        acc.bounceBase += item.visitors
+      }
+      if (item.avg_duration != null && item.visitors > 0) {
+        acc.durW += item.avg_duration * item.visitors
+        acc.durBase += item.visitors
+      }
+    }
+    return [...grouped.entries()]
+      .map(([name, a]) => ({
+        name,
+        visitors: a.visitors,
+        pageviews: a.pageviews,
+        bounce_rate: a.bounceBase > 0 ? a.bounceW / a.bounceBase : null,
+        avg_duration: a.durBase > 0 ? a.durW / a.durBase : null,
+      }))
+      .sort((a, b) => b.visitors - a.visitors)
+  }, [sortedFullData, activeTab])
+
+  const allData = groupedAll.length >= groupedData.length ? groupedAll : groupedData
+  const pageCount = Math.max(1, Math.ceil(allData.length / LIMIT))
+  // Page state keys on the context: a tab/filter/range change reads as page 1,
+  // and a shrinking list clamps at read time.
+  const [page, setPage] = useCardPage(`${activeTab}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}`, pageCount)
+
+  const displayedData = hasData ? allData.slice((page - 1) * LIMIT, page * LIMIT) : []
   const emptySlots = Math.max(0, LIMIT - displayedData.length)
 
   function renderSourceIcon(source: string) {
@@ -186,13 +223,12 @@ export default function Campaigns({ siteId, dateRange, filters, totals, onFilter
           <DimensionInfoTip tab={activeTab} className="ms-2 me-auto" />
           <div className="flex min-w-0 shrink items-center gap-2">
             <MetricUnitLabel />
-            {showViewAll && (
+            {hasData && (
               <button
-                onClick={() => setIsModalOpen(true)}
-                className="p-3 md:p-1.5 text-neutral-500 hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-none ease-apple"
-                aria-label="View all campaigns"
+                onClick={handleExportCampaigns}
+                className="text-xs font-medium text-neutral-500 hover:text-brand-orange transition-colors cursor-pointer ease-apple"
               >
-                <FrameCornersIcon className="w-4 h-4" weight="bold" />
+                Export
               </button>
             )}
             <button
@@ -204,7 +240,7 @@ export default function Campaigns({ siteId, dateRange, filters, totals, onFilter
           </div>
         </div>
 
-        <div className="space-y-2 flex-1 min-h-[270px]">
+        <div className="flex-1 min-h-[270px]">
           {isLoading ? (
             <ListSkeleton rows={LIMIT} />
           ) : cardError && !cardData ? (
@@ -219,21 +255,18 @@ export default function Campaigns({ siteId, dateRange, filters, totals, onFilter
               onRetry={() => refetchCard()}
             />
           ) : hasData ? (
-            <>
-              {displayedData.map((item) => {
-                const barWidth = rowBarWidth(item, displayedData)
+            <CascadeGroup flipKey={`${activeTab}-${page}`} className="space-y-2">
+              {displayedData.map((item, i) => {
+                const barWidth = rowBarWidth(item, allData)
                 const filterDimension = `utm_${activeTab}`
                 const Row = onFilter ? 'button' : 'div'
                 return (
+                  <CascadeRow key={item.name} index={i}>
                   <Row
-                    key={item.name}
                     {...(onFilter ? { type: 'button' as const, onClick: () => onFilter?.({ dimension: filterDimension, operator: 'is', values: [item.name] }) } : {})}
                     className={`interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
                   >
-                    <div
-                      className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-none transition-[width,background-color] ease-apple"
-                      style={{ width: `${barWidth}%` }}
-                    />
+                    <RowBar width={barWidth} index={i} />
                     <div className="relative flex-1 text-white flex items-center gap-3 min-w-0">
                       {activeTab === 'source' && renderSourceIcon(item.name)}
                       <div className="min-w-0">
@@ -244,12 +277,13 @@ export default function Campaigns({ siteId, dateRange, filters, totals, onFilter
                     </div>
                     <MetricRowStat row={item} totals={totals} />
                   </Row>
+                  </CascadeRow>
                 )
               })}
               {Array.from({ length: emptySlots }).map((_, i) => (
                 <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
               ))}
-            </>
+            </CascadeGroup>
           ) : (
             <EmptyState
               icon={<Megaphone />}
@@ -259,91 +293,9 @@ export default function Campaigns({ siteId, dateRange, filters, totals, onFilter
             />
           )}
         </div>
-      </div>
 
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => { setIsModalOpen(false); setModalSearch('') }}
-        title="Campaigns"
-        className="max-w-2xl max-h-[90vh] flex flex-col !bg-card !border-neutral-800"
-      >
-        <div>
-          <input
-            type="text"
-            value={modalSearch}
-            onChange={(e) => setModalSearch(e.target.value)}
-            placeholder="Search campaigns..."
-            className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-none text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
-          />
-          {shareDenominatorNote(totals) && (
-            <p className="mb-3 text-[11px] text-neutral-500">{shareDenominatorNote(totals)}</p>
-          )}
-        </div>
-        <div className="flex-1 overflow-y-auto min-h-0">
-          {fullError && !fullDataRaw ? (
-            <ErrorCard
-              title="Couldn’t load campaigns"
-              description="Close and reopen to try again."
-            />
-          ) : isLoadingFull ? (
-            <div className="py-4">
-              <ListSkeleton rows={10} />
-            </div>
-          ) : (() => {
-            const filteredCampaigns = !modalSearch ? sortedFullData : sortedFullData.filter(item => {
-              const search = modalSearch.toLowerCase()
-              return item.source.toLowerCase().includes(search) || (item.medium || '').toLowerCase().includes(search) || (item.campaign || '').toLowerCase().includes(search) || (item.term || '').toLowerCase().includes(search) || (item.content || '').toLowerCase().includes(search)
-            })
-            const Row = onFilter ? 'button' : 'div'
-            return (
-              <>
-                <div className="flex items-center justify-end mb-2">
-                  <button
-                    onClick={handleExportCampaigns}
-                    className="text-xs font-medium text-neutral-400 hover:text-brand-orange transition-colors cursor-pointer ease-apple"
-                  >
-                    Export CSV
-                  </button>
-                </div>
-                <VirtualList
-                  items={filteredCampaigns}
-                  estimateSize={36}
-                  className="pr-2"
-                  renderItem={(item) => (
-                    <Row
-                      key={`${item.source}|${item.medium}|${item.campaign}`}
-                      {...(onFilter ? { type: 'button' as const, onClick: () => { if (onFilter) { onFilter({ dimension: 'utm_source', operator: 'is', values: [item.source] }); setIsModalOpen(false) } } } : {})}
-                      className={`interactive-row w-full text-left flex items-center justify-between py-2 group rounded-none px-2${onFilter ? ' cursor-pointer' : ''}`}
-                    >
-                      <div className="flex-1 flex items-center gap-3 min-w-0">
-                        {renderSourceIcon(item.source)}
-                        <div className="min-w-0">
-                          <div className="text-white font-medium truncate text-sm" title={item.source}>
-                            {getReferrerDisplayName(item.source)}
-                          </div>
-                          <div className="flex items-center gap-1.5 text-caption text-neutral-500">
-                            <span>{item.medium || '—'}</span>
-                            <span>·</span>
-                            <span className="truncate">{item.campaign || '—'}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4 ml-4 text-sm">
-                        <MetricRowStat row={item} totals={totals} />
-                        {(
-                          <span className="text-neutral-500 w-16 text-right">
-                            {formatNumber(item.pageviews)} pv
-                          </span>
-                        )}
-                      </div>
-                    </Row>
-                  )}
-                />
-              </>
-            )
-          })()}
-        </div>
-      </Modal>
+        <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label="campaigns" />
+      </div>
 
       <Modal
         isOpen={isBuilderOpen}

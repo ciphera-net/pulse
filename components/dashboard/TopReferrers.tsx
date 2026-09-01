@@ -1,11 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { formatNumber } from '@/lib/utils/format'
 import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
 import {
   ArrowSquareOut,
-  FrameCornersIcon,
   Link as LinkIcon,
   MagnifyingGlass,
   UsersThree,
@@ -19,17 +17,15 @@ import {
   ChatCircle,
   Question,
 } from '@phosphor-icons/react'
-import { Modal } from '@ciphera-net/facet'
 import { Globe } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { ErrorCard } from '@/components/ui/ErrorCard'
-import { ListSkeleton } from '@/components/skeletons'
-import VirtualList from './VirtualList'
 import { TopReferrer } from '@/lib/api/stats'
 import { useFullDimensionList } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
-import { MetricRowStat, MetricUnitLabel, rowBarWidth, shareDenominatorNote } from '@/components/dashboard/MetricRowStat'
+import { MetricRowStat, MetricUnitLabel, rowBarWidth } from '@/components/dashboard/MetricRowStat'
 import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
+import { CardPager, useCardPage } from '@/components/dashboard/CardPager'
+import { CascadeGroup, CascadeRow, RowBar } from '@/components/dashboard/Cascade'
 
 interface TopReferrersProps {
   referrers: Array<{ referrer: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
@@ -40,9 +36,10 @@ interface TopReferrersProps {
   // True range totals — the F9 denominator. Both tabs count pageviews, so
   // both divide by totals.pageviews; no totals → no percentages.
   totals?: { pageviews: number; visitors: number }
-  // Active page filters, threaded into the modal fetch (F14).
+  // Active page filters, threaded into the full-list fetch (F14).
   filters?: string
-  // Hidden on the anonymous share surface (no full-list endpoints there).
+  // The anonymous share surface has no full-list endpoints; it paginates only
+  // what its own payload carries.
   memberFeatures?: boolean
   onFilter?: (filter: DimensionFilter) => void
 }
@@ -74,20 +71,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
   // because the condition is a prop and every row in this file shares it.
   const Row = onFilter ? 'button' : 'div'
   const [view, setView] = useState<'referrers' | 'channels'>('referrers')
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [modalSearch, setModalSearch] = useState('')
   const [faviconFailed, setFaviconFailed] = useState<Set<string>>(new Set())
-
-  // Modal data via SWR — armed only while open, filters on the key (F14/F17).
-  const {
-    data: fullData,
-    error: fullError,
-    isLoading: isLoadingFull,
-    mutate: refetchFull,
-  } = useFullDimensionList<TopReferrer>(
-    isModalOpen ? 'referrers' : null,
-    siteId, dateRange?.start, dateRange?.end, 100, filters,
-  )
 
   // Filter out empty/unknown referrers
   const filteredReferrers = (referrers || []).filter(
@@ -96,15 +80,33 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
 
   const mergedReferrers = mergeReferrersByDisplayName(filteredReferrers)
 
-  const hasData = mergedReferrers.length > 0
-  const displayedReferrers = hasData ? mergedReferrers.slice(0, LIMIT) : []
-  const emptySlots = Math.max(0, LIMIT - displayedReferrers.length)
-  const showViewAll = memberFeatures && hasData && mergedReferrers.length > LIMIT
+  // The dashboard fan-out carries only the top 10 — when it overflows the
+  // card, fetch the full list once and paginate it client-side (same endpoint
+  // the retired view-all modal used).
+  const wantsFullList = memberFeatures && view === 'referrers' && mergedReferrers.length > LIMIT
+  const { data: fullData } = useFullDimensionList<TopReferrer>(
+    wantsFullList ? 'referrers' : null,
+    siteId, dateRange?.start, dateRange?.end, 100, filters,
+  )
+  const fullMerged = fullData
+    ? mergeReferrersByDisplayName(fullData.filter(ref => ref.referrer && ref.referrer !== 'Unknown' && ref.referrer !== ''))
+    : null
+  const allReferrers = fullMerged && fullMerged.length >= mergedReferrers.length ? fullMerged : mergedReferrers
 
   // Channels data
   const filteredChannels = (channels || []).filter(c => c.channel && c.pageviews > 0)
   const hasChannelData = filteredChannels.length > 0
-  const displayedChannels = hasChannelData ? filteredChannels.slice(0, LIMIT) : []
+  const hasData = allReferrers.length > 0
+
+  const activeAll = view === 'referrers' ? allReferrers : filteredChannels
+  const pageCount = Math.max(1, Math.ceil(activeAll.length / LIMIT))
+  // Page state keys on the context: a tab/filter/range change reads as page 1,
+  // and a shrinking list clamps at read time.
+  const [page, setPage] = useCardPage(`${view}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}`, pageCount)
+
+  const displayedReferrers = allReferrers.slice((page - 1) * LIMIT, page * LIMIT)
+  const emptySlots = Math.max(0, LIMIT - displayedReferrers.length)
+  const displayedChannels = filteredChannels.slice((page - 1) * LIMIT, page * LIMIT)
   const channelEmptySlots = Math.max(0, LIMIT - displayedChannels.length)
 
   function renderReferrerIcon(referrer: string) {
@@ -134,188 +136,114 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
   }
 
   return (
-    <>
-      <div data-tour="dimension-card" data-tour-card="referrers" className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
-        <div className="flex items-center justify-between gap-2 mb-4">
-          {/* Matches the scrolling tab row every other dimension card uses, so a
-              narrow card can never push the header action off its right edge. */}
-          <div className="flex gap-1 min-w-0 overflow-x-auto scrollbar-hide pb-1 max-md:[mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)]" role="tablist" aria-label="Referrers view tabs">
-            {(['referrers', 'channels'] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setView(tab)}
-                role="tab"
-                aria-selected={view === tab}
-                className={`relative px-2.5 py-3 sm:py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-none cursor-pointer ${
-                  view === tab
-                    ? 'text-white'
-                    : 'text-neutral-500 hover:text-neutral-300'
+    <div data-tour="dimension-card" data-tour-card="referrers" className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
+      <div className="flex items-center justify-between gap-2 mb-4">
+        {/* Matches the scrolling tab row every other dimension card uses, so a
+            narrow card can never push the header action off its right edge. */}
+        <div className="flex gap-1 min-w-0 overflow-x-auto scrollbar-hide pb-1 max-md:[mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)]" role="tablist" aria-label="Referrers view tabs">
+          {(['referrers', 'channels'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setView(tab)}
+              role="tab"
+              aria-selected={view === tab}
+              className={`relative px-2.5 py-3 sm:py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-none cursor-pointer ${
+                view === tab
+                  ? 'text-white'
+                  : 'text-neutral-500 hover:text-neutral-300'
+              } ease-apple`}
+            >
+              {tab}
+              <span
+                className={`absolute inset-x-0 -bottom-px h-[3px] rounded-none transition-[width,background-color] duration-base ${
+                  view === tab ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
                 } ease-apple`}
-              >
-                {tab}
-                <span
-                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-none transition-[width,background-color] duration-base ${
-                    view === tab ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
-                  } ease-apple`}
-                />
-              </button>
-            ))}
-          </div>
-          <DimensionInfoTip tab={view} className="ms-2 me-auto" />
-          <div className="flex min-w-0 shrink items-center gap-1.5">
-            <MetricUnitLabel />
-            {view === 'referrers' && showViewAll && (
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="shrink-0 p-1.5 text-neutral-500 hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-none ease-apple"
-                aria-label="View all referrers"
-              >
-                <FrameCornersIcon className="w-4 h-4" weight="bold" />
-              </button>
-            )}
-          </div>
+              />
+            </button>
+          ))}
         </div>
+        <DimensionInfoTip tab={view} className="ms-2 me-auto" />
+        <div className="flex min-w-0 shrink items-center gap-1.5">
+          <MetricUnitLabel />
+        </div>
+      </div>
 
-        <div className="space-y-2 flex-1 min-h-[270px]">
-          {view === 'referrers' ? (
-            /* ── Referrers tab ── */
-            !collectReferrers ? (
-              <div className="h-full flex flex-col items-center justify-center text-center px-4">
-                <p className="text-neutral-400 text-sm">Referrer tracking is disabled in site settings</p>
-              </div>
-            ) : hasData ? (
-              <>
-                {displayedReferrers.map((ref) => {
-                  const barWidth = rowBarWidth(ref, displayedReferrers)
-                  return (
+      <div className="flex-1 min-h-[270px]">
+        {view === 'referrers' ? (
+          /* ── Referrers tab ── */
+          !collectReferrers ? (
+            <div className="h-full flex flex-col items-center justify-center text-center px-4">
+              <p className="text-neutral-400 text-sm">Referrer tracking is disabled in site settings</p>
+            </div>
+          ) : hasData ? (
+            <CascadeGroup flipKey={`referrers-${page}`} className="space-y-2">
+              {displayedReferrers.map((ref, i) => {
+                const barWidth = rowBarWidth(ref, allReferrers)
+                return (
+                  <CascadeRow key={ref.referrer} index={i}>
                     <Row
-                      key={ref.referrer}
                       {...(onFilter ? { type: 'button' as const, onClick: () => onFilter?.({ dimension: 'referrer', operator: 'is', values: ref.allReferrers ?? [ref.referrer] }) } : {})}
                       className={`interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
                     >
-                      <div
-                        className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-none transition-[width,background-color] ease-apple"
-                        style={{ width: `${barWidth}%` }}
-                      />
+                      <RowBar width={barWidth} index={i} />
                       <div className="relative flex-1 truncate text-white flex items-center gap-3">
                         {renderReferrerIcon(ref.referrer)}
                         <span className="truncate" title={getReferrerDisplayName(ref.referrer)}>{getReferrerDisplayName(ref.referrer)}</span>
                       </div>
                       <MetricRowStat row={ref} totals={totals} />
                     </Row>
-                  )
-                })}
-                {Array.from({ length: emptySlots }).map((_, i) => (
-                  <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
-                ))}
-              </>
-            ) : (
-              <EmptyState
-                icon={<Globe />}
-                title="Nobody's linked to you yet"
-                description="Traffic sources appear here when visitors come from other websites, social media, or search engines."
-                action={{ label: 'Install tracking script', href: '/installation' }}
-              />
-            )
+                  </CascadeRow>
+                )
+              })}
+              {Array.from({ length: emptySlots }).map((_, i) => (
+                <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
+              ))}
+            </CascadeGroup>
           ) : (
-            /* ── Channels tab ── */
-            hasChannelData ? (
-              <>
-                {displayedChannels.map((ch) => {
-                  const barWidth = rowBarWidth(ch, displayedChannels)
-                  return (
+            <EmptyState
+              icon={<Globe />}
+              title="Nobody's linked to you yet"
+              description="Traffic sources appear here when visitors come from other websites, social media, or search engines."
+              action={{ label: 'Install tracking script', href: '/installation' }}
+            />
+          )
+        ) : (
+          /* ── Channels tab ── */
+          hasChannelData ? (
+            <CascadeGroup flipKey={`channels-${page}`} className="space-y-2">
+              {displayedChannels.map((ch, i) => {
+                const barWidth = rowBarWidth(ch, filteredChannels)
+                return (
+                  <CascadeRow key={ch.channel} index={i}>
                     <Row
-                      key={ch.channel}
                       {...(onFilter ? { type: 'button' as const, onClick: () => onFilter?.({ dimension: 'channel', operator: 'is', values: [ch.channel] }) } : {})}
                       className={`interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
                     >
-                      <div
-                        className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-none transition-[width,background-color] ease-apple"
-                        style={{ width: `${barWidth}%` }}
-                      />
+                      <RowBar width={barWidth} index={i} />
                       <div className="relative flex-1 truncate text-white flex items-center gap-3">
                         <span className="flex-shrink-0">{getChannelIcon(ch.channel)}</span>
                         <span className="truncate" title={ch.channel}>{ch.channel}</span>
                       </div>
                       <MetricRowStat row={ch} totals={totals} />
                     </Row>
-                  )
-                })}
-                {Array.from({ length: channelEmptySlots }).map((_, i) => (
-                  <div key={`ch-empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
-                ))}
-              </>
-            ) : (
-              <EmptyState
-                icon={<Globe />}
-                title="No channel data yet"
-                description="Channels group your traffic by type — direct, organic, social, and referral — as visitors arrive."
-              />
-            )
-          )}
-        </div>
+                  </CascadeRow>
+                )
+              })}
+              {Array.from({ length: channelEmptySlots }).map((_, i) => (
+                <div key={`ch-empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
+              ))}
+            </CascadeGroup>
+          ) : (
+            <EmptyState
+              icon={<Globe />}
+              title="No channel data yet"
+              description="Channels group your traffic by type — direct, organic, social, and referral — as visitors arrive."
+            />
+          )
+        )}
       </div>
 
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => { setIsModalOpen(false); setModalSearch('') }}
-        title="Referrers"
-        className="max-w-2xl max-h-[90vh] flex flex-col !bg-card !border-neutral-800"
-      >
-        <div>
-          <input
-            type="text"
-            value={modalSearch}
-            onChange={(e) => setModalSearch(e.target.value)}
-            placeholder="Search referrers..."
-            className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-none text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
-          />
-          {shareDenominatorNote(totals) && (
-            <p className="mb-3 text-[11px] text-neutral-500">{shareDenominatorNote(totals)}</p>
-          )}
-        </div>
-        <div className="flex-1 overflow-y-auto min-h-0">
-          {isLoadingFull ? (
-            <div className="py-4">
-              <ListSkeleton rows={10} />
-            </div>
-          ) : fullError ? (
-            <ErrorCard
-              title="Couldn’t load the full list"
-              onRetry={() => refetchFull()}
-            />
-          ) : (() => {
-            const cleaned = (fullData ?? []).filter(
-              ref => ref.referrer && ref.referrer !== 'Unknown' && ref.referrer !== ''
-            )
-            const modalData = mergeReferrersByDisplayName(cleaned).filter(r => !modalSearch || getReferrerDisplayName(r.referrer).toLowerCase().includes(modalSearch.toLowerCase()))
-            return modalData.length > 0 ? (
-              <VirtualList
-                items={modalData}
-                estimateSize={36}
-                className="pr-2"
-                renderItem={(ref) => (
-                  <Row
-                    key={ref.referrer}
-                    {...(onFilter ? { type: 'button' as const, onClick: () => { if (onFilter) { onFilter({ dimension: 'referrer', operator: 'is', values: ref.allReferrers ?? [ref.referrer] }); setIsModalOpen(false) } } } : {})}
-                    className={`interactive-row w-full text-left flex items-center justify-between h-9 group rounded-none px-2${onFilter ? ' cursor-pointer' : ''}`}
-                  >
-                    <div className="flex-1 truncate text-white flex items-center gap-3">
-                      {renderReferrerIcon(ref.referrer)}
-                      <span className="truncate" title={getReferrerDisplayName(ref.referrer)}>{getReferrerDisplayName(ref.referrer)}</span>
-                    </div>
-                    <MetricRowStat row={ref} totals={totals} />
-                  </Row>
-                )}
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <p className="text-sm text-neutral-500">{modalSearch ? 'No referrers match your search' : 'No referrers in this range'}</p>
-              </div>
-            )
-          })()}
-        </div>
-      </Modal>
-    </>
+      <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label={view} />
+    </div>
   )
 }
