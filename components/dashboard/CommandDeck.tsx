@@ -167,7 +167,7 @@ export default function CommandDeck({
   // ─── Render ────────────────────────────────────────────────────────
   return (
     <Card className="w-full overflow-hidden rounded-none">
-      <div className="grid md:grid-cols-[236px_1fr]">
+      <div className="grid md:grid-cols-[236px_1fr] md:grid-rows-[500px]">
         {/* KPI rail. On md+ the rows flex-stretch so the rail bottoms out level
             with the chart; on mobile it is a 2-column grid above the chart. */}
         <div data-tour="metric-rail" className="grid grid-cols-2 border-b border-neutral-800 md:flex md:flex-col md:border-b-0 md:border-r">
@@ -277,11 +277,13 @@ export default function CommandDeck({
             </div>
           </div>
 
-          {/* The chart is the deck's height authority (the approved C mockup's
-              full-height chart): md+ pins a tall minimum and the rail rows
-              flex-stretch to match; mobile keeps a smaller floor. fillParent
-              (not aspectRatio) lets the plot use all of it. */}
-          <div className="min-h-[288px] flex-1 px-2.5 pb-2 pt-1 md:min-h-[500px]">
+          {/* The GRID ROW is the deck's height authority (H2 pick, 01-09-2026:
+              500px block — the rail's natural tile height had been silently
+              deciding 552). The row pin lives on the grid; the chart takes
+              what flex-1 gives it and the rail tiles flex-stretch into the
+              same 500. Mobile keeps its smaller floor. fillParent (not
+              aspectRatio) lets the plot use all of it. */}
+          <div className="min-h-[288px] flex-1 px-2.5 pb-2 pt-1">
             {!hasData ? (
               <div className="flex h-full min-h-72 flex-col items-center justify-center">
                 <EmptyState
