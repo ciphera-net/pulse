@@ -852,13 +852,22 @@ function TooltipBox({
   // the card's size may never change while hovering (owner ruling,
   // 01-09-2026) — the mount scale, the flip-pop and the flexible min-width
   // all read as the tooltip shrinking mid-hover.
+  // Position gets Vemetric's exact glide — 100ms ease on reposition (their
+  // tooltip wrapper's tuned animationDuration over the library default
+  // easing) — so the side-flip near the right edge slides instead of
+  // teleporting. Scoped to left/top only: the entrance fade is JS-driven
+  // and the crosshair/dot stay instant.
   return createPortal(
     <motion.div
       animate={{ opacity: 1 }}
       className={cn("pointer-events-none absolute z-50", className)}
       initial={{ opacity: 0 }}
       ref={tooltipRef}
-      style={{ left: finalLeft, top: finalTop }}
+      style={{
+        left: finalLeft,
+        top: finalTop,
+        transition: "left 100ms ease, top 100ms ease",
+      }}
       transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
     >
       <div className="w-48 overflow-hidden rounded-none bg-popover border border-border text-white">
