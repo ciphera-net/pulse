@@ -192,10 +192,16 @@ export default function CommandDeck({
                   active — the pre-deck tile sparkline, restored (owner pick
                   S4, 19-08-2026). Sits at z-0 under the z-10 content. */}
               <RailSparkline
-                data={data}
+                // chartData, not the raw payload: the mini must plot the SAME
+                // series the big chart plots — incl. pages_per_visit divided
+                // by VISITS (migration-164 rule), never re-derived per person.
+                data={chartData}
                 dataKey={m.key}
                 active={metric === m.key}
                 dashedTail={Boolean(period && PERIOD_ENDS_NOW[period])}
+                // Mirror the big chart's missing-as-zero rule (its VisxArea
+                // flag below) — the mini must draw the shape the chart draws.
+                missingAsZero={m.key === 'bounce_rate' || m.key === 'avg_duration' || m.key === 'pages_per_visit'}
               />
               {metric === m.key && (
                 <motion.span

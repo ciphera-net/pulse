@@ -20,27 +20,45 @@ import { line as shapeLine, curveLinear } from 'd3-shape'
 //   - Dashed tail on the in-progress bucket, same as the big chart
 //     (period-token semantics, passed down by the consumer).
 //
-// A gap (null bucket) is still dropped, not zeroed — a decorative trend with
-// no time axis compresses gaps away rather than drawing a fabricated dip.
+// Gaps follow THE BIG CHART's per-metric rule (owner report 01-09-2026: the
+// bounce/duration minis looked "nothing like the real charts"): a metric the
+// deck plots missing-as-zero anchors its empty buckets at the floor here too,
+// so the mini is the big chart in miniature. Only unflagged metrics keep the
+// old compress-the-gap behaviour (their series are dense in practice anyway).
 // ---------------------------------------------------------------------------
 
 export type SparkMetric = 'visitors' | 'pageviews' | 'pages_per_visit' | 'bounce_rate' | 'avg_duration'
 
-export default function RailSparkline({ data, dataKey, active, dashedTail = false }: {
-  data: { pageviews: number; visitors: number; bounce_rate: number | null; avg_duration: number | null }[]
+export default function RailSparkline({ data, dataKey, active, dashedTail = false, missingAsZero = false }: {
+  data: {
+    pageviews: number
+    visitors: number
+    bounce_rate: number | null
+    avg_duration: number | null
+    /** Precomputed by the consumer's chart pipeline (the deck divides by
+     *  VISITS, migration-164 rule). When present it wins — the mini must
+     *  plot the same series the big chart plots, never re-derive it. */
+    pages_per_visit?: number | null
+  }[]
   dataKey: SparkMetric
   active: boolean
   /** The range ends now — dash the final segment like the big chart. */
   dashedTail?: boolean
+  /** Plot a null bucket at zero, exactly like the big chart's flag for this
+   *  metric — the mini must draw the same shape the chart draws. */
+  missingAsZero?: boolean
 }) {
   const gradientId = useId()
   if (data.length < 2) return null
   const values = data
     .map((d) =>
       dataKey === 'pages_per_visit'
-        ? (d.visitors > 0 ? d.pageviews / d.visitors : 0)
+        ? d.pages_per_visit !== undefined
+          ? d.pages_per_visit
+          : (d.visitors > 0 ? d.pageviews / d.visitors : 0)
         : d[dataKey] as number | null
     )
+    .map((v) => (missingAsZero ? (v ?? 0) : v))
     .filter((v): v is number => v != null)
   if (values.length < 2) return null
   const max = Math.max(...values) || 1
