@@ -177,6 +177,6 @@ describe('highlight dash wiring (source pin)', () => {
   })
 
   it('the dash gap is a constant, never the measurement it must outlive', () => {
-    expect(src).toContain('useMotionTemplate`${segmentLengthSpring} 100000`')
+    expect(src).toContain('`${segmentBounds.segmentLength} 100000`')
   })
 })
