@@ -206,6 +206,13 @@ describe('sticky cursor contract', () => {
     ) as HTMLElement | undefined
     expect(wrapper, 'card wrapper must render while hovering').toBeDefined()
     expect(wrapper?.style.transition).toContain('left 100ms')
+
+    // Fixed one-line card: w-56 box, nowrap label/value (the 192px box
+    // wrapped "Visit duration | 15m 58s" onto two lines, 01-09 report).
+    const inner = wrapper?.querySelector('div[class*="bg-popover"]')
+    expect(inner?.className).toContain('w-56')
+    const label = inner?.querySelector('span[class*="text-neutral-300"]')
+    expect(label?.className).toContain('whitespace-nowrap')
   })
 
   it('hides the crosshair and dot immediately on mouse leave', async () => {
