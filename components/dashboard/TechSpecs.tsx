@@ -135,7 +135,9 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
     }))
   }, [fullRaw, activeTab])
 
-  const allData = fullRaw && fullData.length >= data.length ? fullData : data
+  // Gate on wantsFullList: stale hook-state from another range must never
+  // outrank the fan-out rows (the frozen-blocks bug, 01-09-2026).
+  const allData = wantsFullList && fullRaw && fullData.length >= data.length ? fullData : data
   const pageCount = Math.max(1, Math.ceil(allData.length / LIMIT))
   // Page state keys on the context: a tab/filter/range change reads as page 1,
   // and a shrinking list clamps at read time.
