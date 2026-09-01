@@ -196,6 +196,9 @@ export default function CommandDeck({
                 dataKey={m.key}
                 active={metric === m.key}
                 dashedTail={Boolean(period && PERIOD_ENDS_NOW[period])}
+                // Mirror the big chart's missing-as-zero rule (L329) — the
+                // mini must draw the same shape the chart draws.
+                missingAsZero={m.key === 'bounce_rate' || m.key === 'avg_duration' || m.key === 'pages_per_visit'}
               />
               {metric === m.key && (
                 <motion.span
