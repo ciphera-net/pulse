@@ -147,7 +147,7 @@ export default function ScrollDepthBars({ scrollDepth, preview, bare = false }: 
             className="interactive-row relative overflow-hidden flex items-center justify-between h-9 rounded-none px-2 -mx-2"
           >
             <div
-              className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-none transition-[width,background-color] ease-apple"
+              className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.16] md:group-hover:bg-brand-orange/[0.26] rounded-none transition-[width,background-color] ease-apple"
               style={{ width: `${barWidth}%` }}
               aria-hidden="true"
             />

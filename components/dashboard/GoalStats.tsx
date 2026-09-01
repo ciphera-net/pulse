@@ -97,7 +97,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false 
                   className="interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2 cursor-pointer"
                 >
                   <div
-                    className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-none transition-[width,background-color] ease-apple"
+                    className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.16] md:group-hover:bg-brand-orange/[0.26] rounded-none transition-[width,background-color] ease-apple"
                     style={{ width: `${barWidth}%` }}
                   />
                   <div className="relative flex items-center flex-1 min-w-0 gap-2">
@@ -157,7 +157,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false 
                                   className="relative overflow-hidden flex items-center justify-between h-7 rounded-none px-2 -mx-2"
                                 >
                                   <div
-                                    className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-none transition-[width,background-color] ease-apple"
+                                    className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.16] md:group-hover:bg-brand-orange/[0.26] rounded-none transition-[width,background-color] ease-apple"
                                     style={{ width: `${valBarWidth}%` }}
                                   />
                                   <span className="relative text-xs font-medium text-white truncate">

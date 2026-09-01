@@ -23,10 +23,14 @@ vi.mock('@/lib/swr/dashboard', () => ({
   useFullDimensionList: (...args: unknown[]) => useFullDimensionList(...args),
   useCampaignsList: (...args: unknown[]) => useCampaignsList(...args),
 }))
-vi.mock('@/components/dashboard/VirtualList', () => ({
-  default: ({ items, renderItem }: { items: unknown[]; renderItem: (item: never, index: number) => React.ReactNode }) => (
-    <div>{items.map((item, index) => renderItem(item as never, index))}</div>
+// Pin data behaviour, not motion: the cascade renders plain in tests so
+// AnimatePresence exit timing can never make a page flip flaky in jsdom.
+vi.mock('@/components/dashboard/Cascade', () => ({
+  CascadeGroup: ({ className, children }: { className?: string; children: React.ReactNode }) => (
+    <div className={className}>{children}</div>
   ),
+  CascadeRow: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  RowBar: ({ width }: { width: number }) => <div data-testid="row-bar" style={{ width: `${width}%` }} />,
 }))
 // MapView pulls a browser-only globe lib; the Audience tests use list tabs.
 vi.mock('@/components/dashboard/MapView', () => ({ default: () => null }))
@@ -51,7 +55,7 @@ describe('TopReferrers', () => {
     { referrer: 'google.com', pageviews: 142, visitors: 97 }, { referrer: 'linkedin.com', pageviews: 43, visitors: 30 },
     { referrer: 'chatgpt.com', pageviews: 11, visitors: 8 }, { referrer: 'bing.com', pageviews: 5, visitors: 3 },
     { referrer: 'ddg.gg', pageviews: 4, visitors: 3 }, { referrer: 'x.com', pageviews: 3, visitors: 2 },
-    { referrer: 'reddit.com', pageviews: 2, visitors: 1 }, { referrer: 'news.ycombinator.com', pageviews: 1, visitors: 1 },
+    { referrer: 'reddit.com', pageviews: 2, visitors: 2 }, { referrer: 'startpage.com', pageviews: 1, visitors: 1 },
   ]
 
   it('divides by the true visitor total (97/314 = 31%), not the row sum (97/145 = 67%)', () => {
@@ -62,28 +66,29 @@ describe('TopReferrers', () => {
     expect(screen.queryByText(/Shares are of all 314 visitors/)).toBeNull()
   })
 
-  it('threads filters into the modal fetch', () => {
+  it('arms the full-list fetch with filters as soon as the list overflows', () => {
     render(<TopReferrers referrers={referrers} siteId="site-1" dateRange={dateRange} totals={totals} filters="page:is:/" />)
-    fireEvent.click(screen.getByLabelText('View all referrers'))
+    // 8 rows > LIMIT 7 — no interaction needed.
     expect(useFullDimensionList).toHaveBeenLastCalledWith(
       'referrers', 'site-1', '2026-07-20', '2026-08-18', 100, 'page:is:/',
     )
   })
 
-  it('hides view-all when memberFeatures is false', () => {
+  it('never arms the fetch on the share surface, but still pages its payload', () => {
     render(<TopReferrers referrers={referrers} siteId="site-1" dateRange={dateRange} totals={totals} memberFeatures={false} />)
-    expect(screen.queryByLabelText('View all referrers')).toBeNull()
+    expect(useFullDimensionList).toHaveBeenLastCalledWith(
+      null, 'site-1', '2026-07-20', '2026-08-18', 100, undefined,
+    )
+    fireEvent.click(screen.getByLabelText('Next page'))
+    expect(screen.getByText('Startpage')).toBeTruthy()
   })
 
-  it('shows an error with retry when the modal fetch fails', () => {
-    const mutate = vi.fn()
+  it('falls back to paging the fan-out rows when the full-list fetch fails', () => {
     useFullDimensionList.mockImplementation((kind: unknown) =>
-      kind ? { data: undefined, error: new Error('boom'), isLoading: false, mutate } : idle)
+      kind ? { data: undefined, error: new Error('boom'), isLoading: false, mutate: vi.fn() } : idle)
     render(<TopReferrers referrers={referrers} siteId="site-1" dateRange={dateRange} totals={totals} />)
-    fireEvent.click(screen.getByLabelText('View all referrers'))
-    expect(screen.getByText(/Couldn.t load the full list/)).toBeTruthy()
-    fireEvent.click(screen.getByText('Retry'))
-    expect(mutate).toHaveBeenCalled()
+    fireEvent.click(screen.getByLabelText('Next page'))
+    expect(screen.getByText('Startpage')).toBeTruthy()
   })
 })
 
@@ -105,28 +110,28 @@ describe('Audience', () => {
     expect(screen.queryByText('41%')).toBeNull()
   })
 
-  it('threads filters and the 250 limit into the modal fetch', () => {
+  it('arms the full-list fetch with the 250 limit and filters on overflow', () => {
     render(<Audience {...baseProps} totals={totals} filters="browser:is:Chrome" />)
-    fireEvent.click(screen.getByLabelText('View all audience data'))
     expect(useFullDimensionList).toHaveBeenLastCalledWith(
       'countries', 'site-1', '2026-07-20', '2026-08-18', 250, 'browser:is:Chrome',
     )
   })
 
-  it('hides view-all when memberFeatures is false', () => {
+  it('never arms the fetch on the share surface, but still pages its payload', () => {
     render(<Audience {...baseProps} totals={totals} memberFeatures={false} />)
-    expect(screen.queryByLabelText('View all audience data')).toBeNull()
+    expect(useFullDimensionList).toHaveBeenLastCalledWith(
+      null, 'site-1', '2026-07-20', '2026-08-18', 250, undefined,
+    )
+    fireEvent.click(screen.getByLabelText('Next page'))
+    expect(screen.getByText('Spain')).toBeTruthy()
   })
 
-  it('shows an error with retry when the modal fetch fails', () => {
-    const mutate = vi.fn()
+  it('falls back to paging the fan-out rows when the full-list fetch fails', () => {
     useFullDimensionList.mockImplementation((kind: unknown) =>
-      kind ? { data: undefined, error: new Error('boom'), isLoading: false, mutate } : idle)
+      kind ? { data: undefined, error: new Error('boom'), isLoading: false, mutate: vi.fn() } : idle)
     render(<Audience {...baseProps} totals={totals} />)
-    fireEvent.click(screen.getByLabelText('View all audience data'))
-    expect(screen.getByText(/Couldn.t load the full list/)).toBeTruthy()
-    fireEvent.click(screen.getByText('Retry'))
-    expect(mutate).toHaveBeenCalled()
+    fireEvent.click(screen.getByLabelText('Next page'))
+    expect(screen.getByText('Spain')).toBeTruthy()
   })
 })
 
@@ -148,27 +153,29 @@ describe('TechSpecs', () => {
     expect(screen.queryByText('66%')).toBeNull()
   })
 
-  it('threads filters and maps raw rows in the modal', () => {
+  it('arms the full-list fetch on overflow and pages the mapped raw rows', () => {
+    const fullList = [
+      ...browsers.map(b => ({ ...b })),
+      { browser: 'Arc', pageviews: 2, visitors: 1 }, { browser: 'Ladybird', pageviews: 1, visitors: 1 },
+    ]
     useFullDimensionList.mockImplementation((kind: unknown) =>
-      kind ? { ...idle, data: [{ browser: 'Chrome', pageviews: 296, visitors: 204 }] } : idle)
+      kind ? { ...idle, data: fullList } : idle)
     render(<TechSpecs {...baseProps} totals={totals} filters="country:is:DE" />)
-    fireEvent.click(screen.getByLabelText('View all technology'))
     expect(useFullDimensionList).toHaveBeenLastCalledWith(
       'browsers', 'site-1', '2026-07-20', '2026-08-18', 100, 'country:is:DE',
     )
-    // The mapped row renders with the true-denominator share.
-    expect(screen.getAllByText('65%').length).toBeGreaterThan(0)
+    // 10 mapped rows → page 2 carries the tail the card never showed before.
+    expect(screen.queryByText('Ladybird')).toBeNull()
+    fireEvent.click(screen.getByLabelText('Next page'))
+    expect(screen.getByText('Ladybird')).toBeTruthy()
   })
 
-  it('shows an error with retry when the modal fetch fails', () => {
-    const mutate = vi.fn()
+  it('falls back to paging the fan-out rows when the full-list fetch fails', () => {
     useFullDimensionList.mockImplementation((kind: unknown) =>
-      kind ? { data: undefined, error: new Error('boom'), isLoading: false, mutate } : idle)
+      kind ? { data: undefined, error: new Error('boom'), isLoading: false, mutate: vi.fn() } : idle)
     render(<TechSpecs {...baseProps} totals={totals} />)
-    fireEvent.click(screen.getByLabelText('View all technology'))
-    expect(screen.getByText(/Couldn.t load the full list/)).toBeTruthy()
-    fireEvent.click(screen.getByText('Retry'))
-    expect(mutate).toHaveBeenCalled()
+    fireEvent.click(screen.getByLabelText('Next page'))
+    expect(screen.getByText('Vivaldi')).toBeTruthy()
   })
 })
 

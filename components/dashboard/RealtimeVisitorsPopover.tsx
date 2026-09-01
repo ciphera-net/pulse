@@ -141,7 +141,7 @@ export default function RealtimeVisitorsPopover({ siteId, count, onFilterPage }:
                     {/* Same proportional-bar device as the dashboard's Top Pages rows */}
                     <span
                       aria-hidden="true"
-                      className="absolute inset-y-0.5 left-0.5 rounded-none border-l-2 border-brand-orange/70 bg-brand-orange/[0.07] transition-[width] ease-apple"
+                      className="absolute inset-y-0.5 left-0.5 rounded-none bg-brand-orange/[0.16] md:group-hover:bg-brand-orange/[0.26] transition-[width] ease-apple"
                       style={{ width: `${barWidth}%` }}
                     />
                     <span className="relative min-w-0 flex-1 truncate text-sm text-foreground">

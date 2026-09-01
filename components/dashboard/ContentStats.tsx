@@ -3,15 +3,14 @@
 import { useState } from 'react'
 import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { TopPage } from '@/lib/api/stats'
-import { FrameCornersIcon, FileText } from '@phosphor-icons/react'
-import { Modal, ArrowUpRightIcon } from '@ciphera-net/facet'
+import { FileText } from '@phosphor-icons/react'
+import { ArrowUpRightIcon } from '@ciphera-net/facet'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { ErrorCard } from '@/components/ui/ErrorCard'
-import { ListSkeleton } from '@/components/skeletons'
-import VirtualList from './VirtualList'
 import { useFullDimensionList, type FullListKind } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
-import { MetricRowStat, MetricUnitLabel, rowBarWidth, shareDenominatorNote } from '@/components/dashboard/MetricRowStat'
+import { MetricRowStat, MetricUnitLabel, rowBarWidth } from '@/components/dashboard/MetricRowStat'
+import { CardPager, useCardPage } from '@/components/dashboard/CardPager'
+import { CascadeGroup, CascadeRow, RowBar } from '@/components/dashboard/Cascade'
 import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 interface ContentStatsProps {
@@ -50,9 +49,6 @@ const TAB_TO_KIND: Record<Tab, FullListKind> = {
 export default function ContentStats({ topPages, entryPages, exitPages, domain, collectPagePaths = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter }: ContentStatsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('top_pages')
   const handleTabKeyDown = useTabListKeyboard()
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [modalSearch, setModalSearch] = useState('')
-
   const tabs: Tab[] = ['top_pages', 'entry_pages', 'exit_pages']
 
   // Twin columns (O3, 01-09-2026): the Pages tab shows visitors + views —
@@ -60,18 +56,6 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
   // Entry/exit rows are visit-counts by construction (visitors == pageviews),
   // so a second column there would print the same number twice.
   const twinColumns = activeTab === 'top_pages'
-
-  // Modal data: conditional keys arm only while the modal is open on the
-  // matching tab. Filters ride the key (F14).
-  const {
-    data: fullData,
-    error: fullError,
-    isLoading: isLoadingFull,
-    mutate: refetchFull,
-  } = useFullDimensionList<TopPage>(
-    isModalOpen ? TAB_TO_KIND[activeTab] : null,
-    siteId, dateRange?.start, dateRange?.end, 100, filters,
-  )
 
   // Filter out generic "/" entries when page paths are disabled (all traffic shows as "/")
   const filterGenericPaths = (pages: TopPage[]) => {
@@ -101,13 +85,27 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
 
   const data = getData()
   const hasData = data && data.length > 0
-  const displayedData = hasData ? data.slice(0, LIMIT) : []
+
+  // The dashboard fan-out carries only the top 10 — when the active tab
+  // overflows the card, fetch the full list once (same endpoint the retired
+  // view-all modal used) and paginate it client-side.
+  const wantsFullList = memberFeatures && collectPagePaths && data.length > LIMIT
+  const { data: fullData } = useFullDimensionList<TopPage>(
+    wantsFullList ? TAB_TO_KIND[activeTab] : null,
+    siteId, dateRange?.start, dateRange?.end, 100, filters,
+  )
+  const fullClean = fullData ? filterGenericPaths(fullData) : null
+  const allData = fullClean && fullClean.length >= data.length ? fullClean : data
+  const pageCount = Math.max(1, Math.ceil(allData.length / LIMIT))
+  // Page state keys on the context: a tab/filter/range change reads as page 1,
+  // and a shrinking list clamps at read time.
+  const [page, setPage] = useCardPage(`${activeTab}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}`, pageCount)
+
+  const displayedData = hasData ? allData.slice((page - 1) * LIMIT, page * LIMIT) : []
   const emptySlots = Math.max(0, LIMIT - displayedData.length)
-  const showViewAll = memberFeatures && hasData && data.length > LIMIT
 
   return (
-    <>
-      <div data-tour="dimension-card" data-tour-card="content" className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
+    <div data-tour="dimension-card" data-tour-card="content" className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
         <div className="flex items-center justify-between mb-4">
           <div className="flex gap-1 min-w-0 overflow-x-auto scrollbar-hide pb-1 max-md:[mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)]" role="tablist" aria-label="Pages view tabs" onKeyDown={handleTabKeyDown}>
             {tabs.map((tab) => (
@@ -136,58 +134,46 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
               keeps its explanation, where search could otherwise mislead. */}
           <div className="flex min-w-0 shrink items-center gap-1.5">
             <MetricUnitLabel views={twinColumns} />
-            {showViewAll && (
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="p-3 md:p-1.5 text-neutral-500 hover:text-brand-orange hover:bg-neutral-800 transition-all cursor-pointer rounded-none ease-apple"
-                aria-label="View all pages"
-              >
-                <FrameCornersIcon className="w-4 h-4" weight="bold" />
-              </button>
-            )}
           </div>
         </div>
 
-        <div className="space-y-2 flex-1 min-h-[270px]">
+        <div className="flex-1 min-h-[270px]">
           {!collectPagePaths ? (
             <div className="h-full flex flex-col items-center justify-center text-center px-4">
               <p className="text-neutral-400 text-sm">Page path tracking is disabled in site settings</p>
             </div>
           ) : hasData ? (
-            <>
-              {displayedData.map((page) => {
-                const barWidth = rowBarWidth(page, displayedData)
+            <CascadeGroup flipKey={`${activeTab}-${page}`} className="space-y-2">
+              {displayedData.map((row, i) => {
+                const barWidth = rowBarWidth(row, allData)
                 return (
                   // This row cannot become a <button>: it contains a real
                   // "open this page" link, and a link inside a button is
                   // invalid — the control-inside-a-control pattern the info
                   // glyph round removed. It gets keyboard semantics instead,
                   // so it is reachable and operable without a mouse.
+                  <CascadeRow key={row.path} index={i}>
                   <div
-                    key={page.path}
                     {...(onFilter
                       ? {
                           role: 'button' as const,
                           tabIndex: 0,
-                          onClick: () => onFilter({ dimension: 'page', operator: 'is', values: [page.path] }),
+                          onClick: () => onFilter({ dimension: 'page', operator: 'is', values: [row.path] }),
                           onKeyDown: (e: React.KeyboardEvent) => {
                             if (e.key !== 'Enter' && e.key !== ' ') return
                             // Space scrolls the page by default; a control must not.
                             e.preventDefault()
-                            onFilter({ dimension: 'page', operator: 'is', values: [page.path] })
+                            onFilter({ dimension: 'page', operator: 'is', values: [row.path] })
                           },
                         }
                       : {})}
                     className={`interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
                   >
-                    <div
-                      className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.07] border-l-2 border-brand-orange/70 rounded-none transition-[width,background-color] ease-apple"
-                      style={{ width: `${barWidth}%` }}
-                    />
+                    <RowBar width={barWidth} index={i} />
                     <div className="relative flex-1 truncate text-white flex items-center">
-                      <span className="truncate">{page.path}</span>
+                      <span className="truncate">{row.path}</span>
                       <a
-                        href={`https://${domain.replace(/^https?:\/\//, '')}${page.path}`}
+                        href={`https://${domain.replace(/^https?:\/\//, '')}${row.path}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={e => e.stopPropagation()}
@@ -200,14 +186,15 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                         <ArrowUpRightIcon className="w-4 h-4 opacity-60 md:w-3 md:h-3 md:opacity-0 text-neutral-400 md:group-hover:opacity-100 transition-opacity hover:text-brand-orange ease-apple" />
                       </a>
                     </div>
-                    <MetricRowStat row={page} totals={totals} views={twinColumns} />
+                    <MetricRowStat row={row} totals={totals} views={twinColumns} />
                   </div>
+                  </CascadeRow>
                 )
               })}
               {Array.from({ length: emptySlots }).map((_, i) => (
                 <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
               ))}
-            </>
+            </CascadeGroup>
           ) : (
             <EmptyState
               icon={<FileText />}
@@ -217,68 +204,8 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
             />
           )}
         </div>
-      </div>
 
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => { setIsModalOpen(false); setModalSearch('') }}
-        title={getTabLabel(activeTab)}
-        className="max-w-2xl max-h-[90vh] flex flex-col !bg-card !border-neutral-800"
-      >
-        <div>
-          <input
-            type="text"
-            value={modalSearch}
-            onChange={(e) => setModalSearch(e.target.value)}
-            placeholder="Search pages..."
-            className="w-full px-3 py-2 mb-3 text-sm bg-neutral-800 border border-neutral-700 rounded-none text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange/50"
-          />
-          {shareDenominatorNote(totals) && (
-            <p className="mb-3 text-[11px] text-neutral-500">{shareDenominatorNote(totals)}</p>
-          )}
-        </div>
-        <div className="flex-1 overflow-y-auto min-h-0">
-          {isLoadingFull ? (
-            <div className="py-4">
-              <ListSkeleton rows={10} />
-            </div>
-          ) : fullError ? (
-            <ErrorCard
-              title="Couldn’t load the full list"
-              onRetry={() => refetchFull()}
-            />
-          ) : (() => {
-            const modalData = filterGenericPaths(fullData ?? []).filter(p => !modalSearch || p.path.toLowerCase().includes(modalSearch.toLowerCase()))
-            return modalData.length > 0 ? (
-              <VirtualList
-                items={modalData}
-                estimateSize={36}
-                className="pr-2"
-                renderItem={(page) => {
-                  const canFilter = onFilter && page.path
-                  const Row = canFilter ? 'button' : 'div'
-                  return (
-                    <Row
-                      key={page.path}
-                      {...(canFilter ? { type: 'button' as const, onClick: () => { if (canFilter) { onFilter({ dimension: 'page', operator: 'is', values: [page.path] }); setIsModalOpen(false) } } } : {})}
-                      className={`interactive-row w-full text-left flex items-center justify-between h-9 group rounded-none px-2${canFilter ? ' cursor-pointer' : ''}`}
-                    >
-                      <div className="flex-1 truncate text-white flex items-center">
-                        <span className="truncate">{page.path}</span>
-                      </div>
-                      <MetricRowStat row={page} totals={totals} views={twinColumns} />
-                    </Row>
-                  )
-                }}
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <p className="text-sm text-neutral-500">{modalSearch ? 'No pages match your search' : 'No pages in this range'}</p>
-              </div>
-            )
-          })()}
-        </div>
-      </Modal>
-    </>
+      <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label="pages" />
+    </div>
   )
 }

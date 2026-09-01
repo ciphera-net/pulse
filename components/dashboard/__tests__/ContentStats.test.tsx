@@ -5,17 +5,20 @@ import type { TopPage } from '@/lib/api/stats'
 
 // The hooks are the seam: these tests pin WHAT the card asks for (kind,
 // limit, filters — the F14 threading) and what it renders from the answer
-// (true denominators — F9; error states — F17).
+// (true denominators — F9; pagination since the blocks round, 01-09-2026).
 const useFullDimensionList = vi.fn()
 vi.mock('@/lib/swr/dashboard', () => ({
   useFullDimensionList: (...args: unknown[]) => useFullDimensionList(...args),
 }))
 
-// The virtualizer needs real layout measurement; render every row instead.
-vi.mock('@/components/dashboard/VirtualList', () => ({
-  default: ({ items, renderItem }: { items: unknown[]; renderItem: (item: never, index: number) => React.ReactNode }) => (
-    <div>{items.map((item, index) => renderItem(item as never, index))}</div>
+// Pin data behaviour, not motion: the cascade renders plain in tests so
+// AnimatePresence exit timing can never make a page flip flaky in jsdom.
+vi.mock('@/components/dashboard/Cascade', () => ({
+  CascadeGroup: ({ className, children }: { className?: string; children: React.ReactNode }) => (
+    <div className={className}>{children}</div>
   ),
+  CascadeRow: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  RowBar: ({ width }: { width: number }) => <div data-testid="row-bar" style={{ width: `${width}%` }} />,
 }))
 
 const idle = { data: undefined, error: undefined, isLoading: false, mutate: vi.fn() }
@@ -52,11 +55,9 @@ describe('ContentStats denominators (F9)', () => {
     expect(screen.queryByText('54%')).toBeNull()
   })
 
-  it('keeps the denominator note in the MODAL only (header note removed, owner call)', () => {
+  it('renders the denominator note nowhere — it retired with the view-all modal', () => {
     render(<ContentStats {...baseProps} totals={totals} />)
-    expect(screen.queryByText(/Shares are of all 314 visitors/)).toBeNull()
-    fireEvent.click(screen.getByLabelText('View all pages'))
-    expect(screen.getByText(/Shares are of all 314 visitors/)).toBeTruthy()
+    expect(screen.queryByText(/Shares are of all/)).toBeNull()
   })
 
   it('renders NO percentages without totals — never a fabricated denominator', () => {
@@ -65,42 +66,58 @@ describe('ContentStats denominators (F9)', () => {
   })
 })
 
-describe('ContentStats modal (F14 + F17)', () => {
-  it('threads the active filters and the tab kind into the full-list fetch', () => {
+describe('ContentStats pagination (blocks round, 01-09-2026)', () => {
+  it('arms the full-list fetch with kind, limit and filters as soon as the tab overflows', () => {
     render(<ContentStats {...baseProps} totals={totals} filters="country:is:DE" />)
-    fireEvent.click(screen.getByLabelText('View all pages'))
+    // 8 rows > LIMIT 7 — no interaction needed; the card fetches ahead so
+    // page flips are instant.
     expect(useFullDimensionList).toHaveBeenLastCalledWith(
       'pages', 'site-1', '2026-07-20', '2026-08-18', 100, 'country:is:DE',
     )
   })
 
-  it('keeps the true denominator when the modal search narrows the rows', () => {
+  it('pages the FULL list once it arrives: page 2 shows rows the fan-out never carried', () => {
+    const fullList = [
+      ...topPages,
+      page('/docs', 7), page('/careers', 6), page('/legal', 5), page('/status', 4),
+    ]
     useFullDimensionList.mockImplementation((kind: unknown) =>
-      kind ? { ...idle, data: topPages } : idle)
+      kind ? { ...idle, data: fullList } : idle)
     render(<ContentStats {...baseProps} totals={totals} />)
-    fireEvent.click(screen.getByLabelText('View all pages'))
-    fireEvent.change(screen.getByPlaceholderText('Search pages...'), { target: { value: '/blog' } })
-    // /blog alone remains visible in the modal; its share must stay
-    // 64/314 = 20%, not 64/64 = 100% of the narrowed list. (The card behind
-    // the modal shows the same 20%, so match all.)
-    expect(screen.getAllByText('20%').length).toBeGreaterThan(0)
-    expect(screen.queryByText('100%')).toBeNull()
+    // 12 rows → 2 pages. Page 1 shows the head, not the tail.
+    expect(screen.getByText('/')).toBeTruthy()
+    expect(screen.queryByText('/status')).toBeNull()
+    fireEvent.click(screen.getByLabelText('Next page'))
+    expect(screen.getByText('/status')).toBeTruthy()
+    expect(screen.queryByText('/blog')).toBeNull()
+    // Position is stated and the back chevron re-arms.
+    expect(screen.getByLabelText('Page 2').getAttribute('aria-current')).toBe('page')
+    fireEvent.click(screen.getByLabelText('Previous page'))
+    expect(screen.getByText('/blog')).toBeTruthy()
   })
 
-  it('shows an error with retry when the full-list fetch fails', () => {
-    const mutate = vi.fn()
+  it('falls back to paging the fan-out rows when the full-list fetch fails', () => {
     useFullDimensionList.mockImplementation((kind: unknown) =>
-      kind ? { data: undefined, error: new Error('boom'), isLoading: false, mutate } : idle)
+      kind ? { data: undefined, error: new Error('boom'), isLoading: false, mutate: vi.fn() } : idle)
     render(<ContentStats {...baseProps} totals={totals} />)
-    fireEvent.click(screen.getByLabelText('View all pages'))
-    expect(screen.getByText(/Couldn.t load the full list/)).toBeTruthy()
-    fireEvent.click(screen.getByText('Retry'))
-    expect(mutate).toHaveBeenCalled()
+    // 8 fan-out rows still paginate: nothing shown is wrong, the tail is
+    // simply capped at what the payload carried.
+    fireEvent.click(screen.getByLabelText('Next page'))
+    expect(screen.getByText('/contact')).toBeTruthy()
   })
 
-  it('hides the view-all affordance when memberFeatures is false (share surface)', () => {
+  it('renders no pager at all for a single page', () => {
+    render(<ContentStats {...baseProps} topPages={topPages.slice(0, 5)} totals={totals} />)
+    expect(screen.queryByLabelText('Next page')).toBeNull()
+  })
+
+  it('never arms the full-list fetch on the share surface, but still pages its payload', () => {
     render(<ContentStats {...baseProps} totals={totals} memberFeatures={false} />)
-    expect(screen.queryByLabelText('View all pages')).toBeNull()
+    expect(useFullDimensionList).toHaveBeenLastCalledWith(
+      null, 'site-1', '2026-07-20', '2026-08-18', 100, undefined,
+    )
+    fireEvent.click(screen.getByLabelText('Next page'))
+    expect(screen.getByText('/contact')).toBeTruthy()
   })
 
   it('has no Engagement tab on any surface — the feature left 01-09-2026', () => {
@@ -109,4 +126,3 @@ describe('ContentStats modal (F14 + F17)', () => {
     expect(screen.getByRole('tab', { name: 'Pages' })).toBeTruthy()
   })
 })
-
