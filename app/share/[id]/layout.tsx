@@ -2,8 +2,9 @@ import type { Metadata } from 'next'
 
 // * Static, static-safe metadata for the public share dashboard.
 // *
-// * /demo (the address the announcement links) 307-redirects here, so this is
-// * the card social crawlers actually unfurl. It is deliberately STATIC: the
+// * /demo (the address the announcement links) is a landing page whose CTA
+// * links here, so this is the card social crawlers unfurl for direct share
+// * links. It is deliberately STATIC: the
 // * previous generateMetadata did a per-request server-side fetch to build a
 // * per-domain title, but that call targeted the API without its `/api/v1`
 // * prefix, so it always 404'd and silently fell back to exactly the copy

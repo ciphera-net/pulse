@@ -99,7 +99,8 @@ export default function MarketingHome() {
         </div>
 
         {/* The artifact — a retina capture of the LIVE ciphera.net dashboard
-            (real data, last 30 days; same data as /demo) inside a dark-mode
+            (real data, last 30 days; /demo itself now shows a customer site,
+            waltonmarket.com, shared with permission) inside a dark-mode
             macOS window. The window is a complete closed frame floating on
             margins with air before the TrustStrip — a real window sitting on
             the page; its viewport cropping the dashboard mid-scroll is

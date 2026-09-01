@@ -42,7 +42,7 @@ const DIFFERENTIATORS: Differentiator[] = [
     icon: GithubIcon,
     title: 'Open client, public live demo',
     description:
-      'The dashboard and tracking script are open (AGPL) on GitHub, and a real, no-login demo runs on our own traffic. You can verify every claim, not just take our word.',
+      'The dashboard and tracking script are open (AGPL) on GitHub, and a real, no-login demo runs on a customer’s live traffic, shared with permission. You can verify every claim, not just take our word.',
     proof: { label: 'Open the live demo', href: '/demo' },
   },
 ]

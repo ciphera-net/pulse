@@ -4,24 +4,25 @@ import { ArrowRightIcon } from '@ciphera-net/facet'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
 
 // /demo is the public, linkable address of the live demo — the real
-// ciphera.net dashboard, exposed through the site's public share view
+// waltonmarket.com dashboard (a customer site, shared with the owner's
+// permission, 02-09-2026), exposed through the site's public share view
 // (is_public=true, no password). This page carries the crawlable metadata and
 // links out to that share view; the share view itself stays robots-Disallowed
 // (see app/robots.ts), so /demo is the one indexable entry point. The link is
 // RELATIVE so the same code lands on the right host on staging and production.
-const DEMO_SHARE_PATH = '/share/e6a95eb8-8edb-44d4-a4e2-c400aea174a4'
+const DEMO_SHARE_PATH = '/share/3dda0eaf-c5b7-41bd-a26e-1f19b7fcab4c'
 
 export const metadata: Metadata = {
   title: 'Live demo',
   description:
-    'See Pulse running on real traffic — the live analytics dashboard for ciphera.net, no signup required. Cookie-free, GDPR-compliant web analytics you can explore.',
+    'See Pulse running on real traffic — the live dashboard of waltonmarket.com, a Pulse customer, shared with their permission. Cookie-free, GDPR-compliant web analytics you can explore. No signup required.',
   alternates: {
     canonical: '/demo',
   },
   openGraph: {
     title: 'Live demo — see Pulse on real traffic',
     description:
-      'The live analytics dashboard for ciphera.net, open to anyone. Cookie-free, GDPR-compliant web analytics you can explore — no signup required.',
+      'The live dashboard of waltonmarket.com, a Pulse customer, shared with their permission. Cookie-free, GDPR-compliant web analytics you can explore — no signup required.',
     siteName: 'Pulse by Ciphera',
   },
 }
@@ -35,9 +36,10 @@ export default function DemoPage() {
           Live demo — see Pulse on real traffic
         </h1>
         <p className="mt-6 text-base leading-relaxed text-muted-foreground sm:text-lg">
-          This is our own dashboard, not a sandbox. It shows the last 30 days of
-          real visitor and pageview data for ciphera.net — the same
-          numbers we look at ourselves. No cookies were set to collect any of it.
+          This is a real customer&apos;s dashboard, not a sandbox. Walton Market
+          runs Pulse on waltonmarket.com and agreed to share their dashboard
+          publicly: the last 30 days of real visitor and pageview data. No
+          cookies were set to collect any of it.
         </p>
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">
           Open it, click around, break nothing. There is no signup and no login —
