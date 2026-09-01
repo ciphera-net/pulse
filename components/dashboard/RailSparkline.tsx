@@ -30,7 +30,16 @@ import { line as shapeLine, curveLinear } from 'd3-shape'
 export type SparkMetric = 'visitors' | 'pageviews' | 'pages_per_visit' | 'bounce_rate' | 'avg_duration'
 
 export default function RailSparkline({ data, dataKey, active, dashedTail = false, missingAsZero = false }: {
-  data: { pageviews: number; visitors: number; bounce_rate: number | null; avg_duration: number | null }[]
+  data: {
+    pageviews: number
+    visitors: number
+    bounce_rate: number | null
+    avg_duration: number | null
+    /** Precomputed by the consumer's chart pipeline (the deck divides by
+     *  VISITS, migration-164 rule). When present it wins — the mini must
+     *  plot the same series the big chart plots, never re-derive it. */
+    pages_per_visit?: number | null
+  }[]
   dataKey: SparkMetric
   active: boolean
   /** The range ends now — dash the final segment like the big chart. */
@@ -44,7 +53,9 @@ export default function RailSparkline({ data, dataKey, active, dashedTail = fals
   const values = data
     .map((d) =>
       dataKey === 'pages_per_visit'
-        ? (d.visitors > 0 ? d.pageviews / d.visitors : 0)
+        ? d.pages_per_visit !== undefined
+          ? d.pages_per_visit
+          : (d.visitors > 0 ? d.pageviews / d.visitors : 0)
         : d[dataKey] as number | null
     )
     .map((v) => (missingAsZero ? (v ?? 0) : v))
