@@ -23,7 +23,7 @@ const homepageSchema = [
     name: 'Pulse',
     alternateName: 'Ciphera Pulse',
     description:
-      'Privacy-first, cookie-free web analytics. GDPR compliant by architecture, open source, hosted in the EU/Switzerland.',
+      'Privacy-first, cookie-free web analytics. GDPR compliant by architecture, open-source client, hosted in the EU/Switzerland.',
     applicationCategory: 'BusinessApplication',
     operatingSystem: 'Web',
     url: 'https://pulse.ciphera.net',

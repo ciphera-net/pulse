@@ -151,7 +151,7 @@ const capabilities: Feature[] = [
 // * a numbered ledger literalizes "receipts, not promises".)
 const trustReceipts: Receipt[] = [
   {
-    title: 'Open source',
+    title: 'Open-source client',
     description: 'The dashboard and tracking script are public on GitHub — inspect every line.',
     proof: { label: 'Read the code', href: 'https://github.com/ciphera-net/pulse', external: true },
   },

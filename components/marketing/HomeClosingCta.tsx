@@ -72,7 +72,7 @@ export function HomeClosingCta({
         </Button>
       </div>
       <p className="mt-10 text-xs text-muted-foreground">
-        Cookie-free &middot; Open source &middot; GDPR compliant
+        Cookie-free &middot; Open-source client &middot; GDPR compliant
       </p>
       </div>
     </div>

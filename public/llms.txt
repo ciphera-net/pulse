@@ -41,7 +41,7 @@ Set `data-domain` to the domain you registered in Pulse. Everything else has sen
 ## About Ciphera
 - Ciphera BV — a Belgian (EU) company; GDPR and NIS2 jurisdiction is Belgium/EU
 - Infrastructure: EU and Swiss-hosted (Exoscale, Switzerland)
-- Open source: https://github.com/ciphera-net
+- Open-source client (dashboard, tracking script, CLI — AGPL/Apache-2.0): https://github.com/ciphera-net. The managed cloud backend is closed-source.
 - Website: https://ciphera.net
 - Contact: hello@ciphera.net
 

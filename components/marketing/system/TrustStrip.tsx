@@ -14,7 +14,7 @@ interface Badge {
 
 const DEFAULT_BADGES: Badge[] = [
   { icon: EyeOffIcon, label: 'Cookie-free' },
-  { icon: GithubIcon, label: 'Open source' },
+  { icon: GithubIcon, label: 'Open-source client' },
   { icon: CheckCircleIcon, label: 'GDPR compliant' },
   { icon: LockClosedIcon, label: '5 KB script' },
 ]
