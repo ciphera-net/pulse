@@ -10,8 +10,8 @@ import Campaigns from '@/components/dashboard/Campaigns'
 // the last one still on a bare useEffect fetch). Pin the HOOK, not the
 // fetcher, so its F9 denominator is testable without a network.
 const CAMPAIGN_ROWS = [
-  { source: 'google', medium: 'cpc', campaign: 'launch', term: '', content: '', visitors: 157, pageviews: 200 },
-  { source: 'linkedin', medium: 'social', campaign: 'launch', term: '', content: '', visitors: 31, pageviews: 40 },
+  { source: 'google', medium: 'cpc', campaign: 'launch', term: '', content: '', visitors: 157, pageviews: 200, bounce_rate: null, avg_duration: null },
+  { source: 'linkedin', medium: 'social', campaign: 'launch', term: '', content: '', visitors: 31, pageviews: 40, bounce_rate: null, avg_duration: null },
 ]
 const useCampaignsList = vi.fn()
 
@@ -259,8 +259,25 @@ describe('Campaigns', () => {
   it('keys its request on the resolved dates', () => {
     render(<Campaigns siteId="site-1" dateRange={dateRange} totals={totals} />)
     expect(useCampaignsList).toHaveBeenCalledWith(
-      'site-1', dateRange.start, dateRange.end, 10, undefined,
+      'site-1', dateRange.start, dateRange.end, 10, undefined, true,
     )
+  })
+
+  // The share surface's diet: rows arrive on the floored dashboard payload,
+  // and the `campaigns` prop must keep BOTH member-only fetches unarmed —
+  // every hook call carries enabled=false, so no request can ever leave a
+  // share view for an endpoint that would 403 it.
+  it('payload rows keep the member-only endpoint unarmed', () => {
+    useCampaignsList.mockClear()
+    render(
+      <Campaigns siteId="site-1" dateRange={dateRange} totals={totals} campaigns={CAMPAIGN_ROWS} />,
+    )
+    expect(useCampaignsList).toHaveBeenCalled()
+    for (const call of useCampaignsList.mock.calls) {
+      expect(call[5]).toBe(false)
+    }
+    // And the payload rows actually render.
+    expect(screen.queryByText(/No UTM data yet/)).toBeNull()
   })
 })
 

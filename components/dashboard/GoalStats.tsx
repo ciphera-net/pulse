@@ -16,6 +16,10 @@ interface GoalStatsProps {
   // Render only the list, no card chrome/header — for composition inside the
   // Content section's tabbed card (Scroll depth · Events).
   bare?: boolean
+  // Off on the public share surface (02-09-2026): expanding a row fetches the
+  // member-strict event-properties endpoints, so the rows render plain there —
+  // no chevron, no aria-expanded, no fetch to fail.
+  memberFeatures?: boolean
 }
 
 interface PropertyCache {
@@ -26,7 +30,7 @@ interface PropertyCache {
 
 const LIMIT = 7
 
-export default function GoalStats({ goalCounts, siteId, dateRange, bare = false }: GoalStatsProps) {
+export default function GoalStats({ goalCounts, siteId, dateRange, bare = false, memberFeatures = true }: GoalStatsProps) {
   const list = (goalCounts || []).slice(0, LIMIT)
   const hasData = list.length > 0
   const emptySlots = Math.max(0, LIMIT - list.length)
@@ -92,15 +96,16 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false 
                 {/* Event row */}
                 <button
                   type="button"
-                  aria-expanded={isExpanded}
-                  onClick={() => toggleExpand(row.event_name)}
-                  className="interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2 cursor-pointer"
+                  aria-expanded={memberFeatures ? isExpanded : undefined}
+                  onClick={memberFeatures ? () => toggleExpand(row.event_name) : undefined}
+                  className={`interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2 ${memberFeatures ? 'cursor-pointer' : 'cursor-default'}`}
                 >
                   <div
                     className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.16] md:group-hover:bg-brand-orange/[0.26] rounded-none transition-[width,background-color] ease-apple"
                     style={{ width: `${barWidth}%` }}
                   />
                   <div className="relative flex items-center flex-1 min-w-0 gap-2">
+                    {memberFeatures && (
                     <svg
                       className={`w-3.5 h-3.5 text-neutral-500 flex-shrink-0 transition-transform duration-base ${isExpanded ? 'rotate-90' : ''} ease-apple`}
                       fill="none"
@@ -110,6 +115,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false 
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                     </svg>
+                    )}
                     <span className="text-sm font-medium text-white truncate">
                       {row.display_name ?? row.event_name.replace(/_/g, ' ')}
                     </span>
