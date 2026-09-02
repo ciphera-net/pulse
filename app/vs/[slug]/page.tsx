@@ -19,6 +19,7 @@ import { SeoPageCta } from '@/components/marketing/seo/SeoPageCta'
 import { SeoCtaButtons } from '@/components/marketing/seo/SeoCtaButtons'
 import { cdnUrl } from '@/lib/cdn'
 import { comparisons, comparisonLogoUrl, getComparison } from '@/lib/comparisons'
+import { DEFAULT_OG_IMAGES } from '@/lib/og'
 
 const SITE_URL = 'https://pulse.ciphera.net'
 
@@ -43,6 +44,7 @@ export async function generateMetadata({
       title: `${title} | Pulse by Ciphera`,
       description: comparison.metaDescription,
       siteName: 'Pulse by Ciphera',
+      images: DEFAULT_OG_IMAGES,
     },
   }
 }

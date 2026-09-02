@@ -19,6 +19,7 @@ import {
   integrationDocsUrl,
 } from '@/lib/integrations'
 import { getIntegrationDeepDive } from '@/lib/integration-deep-dive'
+import { DEFAULT_OG_IMAGES } from '@/lib/og'
 
 // Render a paragraph string with `backtick`-delimited inline code as styled
 // <code> spans. Even segments are plain text, odd segments are code.
@@ -57,7 +58,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title,
     description: integration.description,
     alternates: { canonical: `/integrations/${slug}` },
-    openGraph: { title, description: integration.description, siteName: 'Pulse by Ciphera' },
+    openGraph: {
+      title,
+      description: integration.description,
+      siteName: 'Pulse by Ciphera',
+      images: DEFAULT_OG_IMAGES,
+    },
   }
 }
 

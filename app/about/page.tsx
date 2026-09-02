@@ -10,6 +10,7 @@ import { HomeClosingCta } from '@/components/marketing/HomeClosingCta'
 import { Eyebrow } from '@/components/marketing/system/Eyebrow'
 import { cdnUrl } from '@/lib/cdn'
 import { comparisonLogoUrl } from '@/lib/comparisons'
+import { DEFAULT_OG_IMAGES } from '@/lib/og'
 
 const description =
   'Pulse is privacy-first web analytics built by Ciphera BV in Belgium — open-source client, cookie-free, and counted on Swiss infrastructure.'
@@ -24,6 +25,7 @@ export const metadata: Metadata = {
     title: 'About',
     description,
     siteName: 'Pulse by Ciphera',
+    images: DEFAULT_OG_IMAGES,
   },
 }
 

@@ -9,6 +9,7 @@ import { CookieBannerLossCalculator } from '@/components/marketing/seo/CookieBan
 import { RelatedLinks } from '@/components/marketing/seo/RelatedLinks'
 import { SeoPageCta } from '@/components/marketing/seo/SeoPageCta'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
+import { DEFAULT_OG_IMAGES } from '@/lib/og'
 
 const SITE_URL = 'https://pulse.ciphera.net'
 
@@ -22,6 +23,7 @@ export const metadata: Metadata = {
     description:
       'How many visitors does your cookie banner hide from analytics? Put in your own numbers and find out.',
     siteName: 'Pulse by Ciphera',
+    images: DEFAULT_OG_IMAGES,
   },
 }
 

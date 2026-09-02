@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { DEFAULT_OG_IMAGES } from '@/lib/og'
 
 // The installation page is a client component (interactive code blocks) and so
 // cannot export metadata itself — this layout owns its title, description and
@@ -15,6 +16,7 @@ export const metadata: Metadata = {
     description:
       'Add privacy-first analytics to any site with a single script tag. Setup guides for 75+ frameworks — no cookies, no consent banner.',
     siteName: 'Pulse by Ciphera',
+    images: DEFAULT_OG_IMAGES,
   },
 }
 

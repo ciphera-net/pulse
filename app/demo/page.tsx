@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ArrowRightIcon } from '@ciphera-net/facet'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
+import { DEFAULT_OG_IMAGES } from '@/lib/og'
 
 // /demo is the public, linkable address of the live demo — the real
 // waltonmarket.com dashboard (a customer site, shared with the owner's
@@ -24,6 +25,7 @@ export const metadata: Metadata = {
     description:
       'The live dashboard of waltonmarket.com, a Pulse customer, shared with their permission. Cookie-free, GDPR-compliant web analytics you can explore — no signup required.',
     siteName: 'Pulse by Ciphera',
+    images: DEFAULT_OG_IMAGES,
   },
 }
 

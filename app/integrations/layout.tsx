@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { DEFAULT_OG_IMAGES } from '@/lib/og'
 
 export const metadata: Metadata = {
   // Re-declare the brand template here so the nested /integrations/[slug] guides
@@ -17,6 +18,7 @@ export const metadata: Metadata = {
     title: 'Integrations',
     description: 'Pulse works with 75+ frameworks, CMS platforms, and hosting providers. One script tag — any stack.',
     siteName: 'Pulse by Ciphera',
+    images: DEFAULT_OG_IMAGES,
   },
 }
 

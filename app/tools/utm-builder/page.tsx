@@ -8,6 +8,7 @@ import { UtmBuilder } from '@/components/marketing/seo/UtmBuilder'
 import { RelatedLinks } from '@/components/marketing/seo/RelatedLinks'
 import { SeoPageCta } from '@/components/marketing/seo/SeoPageCta'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
+import { DEFAULT_OG_IMAGES } from '@/lib/og'
 
 const SITE_URL = 'https://pulse.ciphera.net'
 
@@ -21,6 +22,7 @@ export const metadata: Metadata = {
     description:
       'Build tagged campaign URLs in seconds. Free, browser-only, and read automatically by Pulse’s cookieless analytics.',
     siteName: 'Pulse by Ciphera',
+    images: DEFAULT_OG_IMAGES,
   },
 }
 

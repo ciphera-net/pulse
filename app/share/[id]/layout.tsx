@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { DEFAULT_OG_IMAGE, DEFAULT_OG_IMAGES } from '@/lib/og'
 
 // * Static, static-safe metadata for the public share dashboard.
 // *
@@ -27,11 +28,17 @@ export const metadata: Metadata = {
     description: 'Privacy-first web analytics — view this site\'s public stats.',
     siteName: 'Pulse by Ciphera',
     type: 'website',
+    images: DEFAULT_OG_IMAGES,
   },
+  // summary_large_image + the site card, matching the root layout: 'summary'
+  // with no image rendered share links as a bare small-format stub on X while
+  // LinkedIn (og: tags) got the full card — the two crawlers saw different
+  // pages for the single most-shared URL family in the product.
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: 'Public Dashboard | Pulse',
     description: 'Privacy-first web analytics — view this site\'s public stats.',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

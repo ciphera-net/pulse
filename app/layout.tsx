@@ -5,7 +5,7 @@ import SWRProvider from '@/components/SWRProvider'
 import type { Metadata, Viewport } from 'next'
 import { Geist, JetBrains_Mono } from 'next/font/google'
 import LayoutContent from './layout-content'
-import { cdnUrl } from '@/lib/cdn'
+import { DEFAULT_OG_IMAGE, DEFAULT_OG_IMAGES } from '@/lib/og'
 import '@ciphera-net/facet/styles'
 import '../styles/globals.css'
 
@@ -19,10 +19,6 @@ const SITE_URL = 'https://pulse.ciphera.net'
 const SITE_TITLE = 'Pulse by Ciphera — Privacy-First Web Analytics'
 const SITE_DESCRIPTION =
   'Simple, privacy-focused web analytics. No cookies, no tracking. GDPR compliant.'
-// * 1200x630 social share card. cdnUrl() prepends NEXT_PUBLIC_CDN_URL
-// * (https://cdn.ciphera.net/pulse in prod) → an absolute URL crawlers can
-// * fetch. DEPLOY DEPENDENCY: og-pulse.png must exist at that CDN path.
-const OG_IMAGE = cdnUrl('/og-pulse.png')
 
 const geist = Geist({
   subsets: ['latin'],
@@ -77,21 +73,14 @@ export const metadata: Metadata = {
     siteName: 'Pulse by Ciphera',
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    images: [
-      {
-        url: OG_IMAGE,
-        width: 1200,
-        height: 630,
-        alt: 'Pulse — privacy-first web analytics',
-      },
-    ],
+    images: DEFAULT_OG_IMAGES,
   },
   twitter: {
     card: 'summary_large_image',
     site: '@CipheraNET',
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    images: [OG_IMAGE],
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 
