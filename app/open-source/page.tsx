@@ -18,6 +18,17 @@ import { cdnUrl } from '@/lib/cdn'
 const description =
   'Open-source projects and registered nonprofits run Pulse free — a real tier at €0 with five sites, 100k pageviews a month and every feature. In return, we get to say you use Pulse.'
 
+// Dedicated share card (owner pick 02-09-2026: the big-€0 composition; mocks
+// archived in docs/data/02-09-2026-oss-og-card-mocks/). Dated filename — the
+// CDN caches immutably, so a revision is a NEW path, never an overwrite.
+//
+// ⚠️ Next.js shallow-merges metadata per top-level field (see app/layout.tsx):
+// declaring `openGraph` here dropped the root's og-pulse.png wholesale, so
+// before this image the page shipped NO og:image at all. `twitter` must be
+// re-declared in full for the same reason — a partial block would silently
+// drop the root's site handle along with its image.
+const OG_IMAGE = cdnUrl('/marketing/og-open-source-02-09-2026.png')
+
 export const metadata: Metadata = {
   title: 'The open-source plan',
   description,
@@ -28,6 +39,21 @@ export const metadata: Metadata = {
     title: 'Analytics without the invoice',
     description,
     siteName: 'Pulse by Ciphera',
+    images: [
+      {
+        url: OG_IMAGE,
+        width: 1200,
+        height: 630,
+        alt: '€0 for open source — the Pulse open-source plan',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    site: '@CipheraNET',
+    title: 'Analytics without the invoice',
+    description,
+    images: [OG_IMAGE],
   },
 }
 
@@ -99,7 +125,7 @@ export default function OpenSourcePage() {
           <div className="max-h-[440px] overflow-hidden">
             <MacWindow docked>
               <Image
-                src={cdnUrl('/marketing/opensource-billing-02-09-2026-2x.png')}
+                src={cdnUrl('/marketing/opensource-billing-tessera-02-09-2026-2x.png')}
                 alt="The Pulse billing page on the Open Source plan — active, €0 a month, nothing billed"
                 width={2560}
                 height={1520}
