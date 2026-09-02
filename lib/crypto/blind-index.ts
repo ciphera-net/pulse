@@ -1,49 +1,22 @@
 /**
- * Client-side blind index computation using PBKDF2-SHA256.
+ * Blind index — thin alias over the shared implementation.
  *
- * Computes a truncated PBKDF2 hash of the user's email so the server
- * can look up accounts without storing plaintext email.
- * Web Crypto native — no WASM required.
+ * The implementation and its parameters (salt 'ciphera-blind-index-v2',
+ * 1,000,000 PBKDF2-SHA256 iterations, 16-byte output, hex, email normalised
+ * with .toLowerCase().trim()) now live in ONE place for the whole fleet:
+ * @ciphera-net/auth. This file stays as a re-export so existing import paths
+ * (`@/lib/crypto/blind-index`) keep working unchanged — no importer moves.
  *
- * Ported VERBATIM from id-frontend (lib/crypto/blind-index.ts). The constants
- * below are the account-lookup key on the OPAQUE wire; the server re-peppers the
- * result (auth.ApplyBlindIndexPepper). Any drift in salt / iterations / output
- * length produces a different lookup key and the account "disappears" from login
- * and email-change — so these MUST stay byte-exact with id-frontend. Guarded by a
- * known-answer test in blind-index.test.ts.
+ * Why one package: the blind index is the account-lookup key on the OPAQUE
+ * wire, so any drift in those parameters produces a different lookup key —
+ * the account "disappears" from login, and an email-change writes an index no
+ * future login will match (a permanent lockout). Verbatim copies had already
+ * been shown to drift; the wire contract and its known-answer vectors now ship
+ * together in the package.
+ *
+ * Guarded here by blind-index.test.ts (the fleet KAT, which now exercises the
+ * package build through this alias) and auth-package.test.ts (the package's
+ * own shipped vectors against the version this repo actually resolved).
  */
 
-const BLIND_INDEX_SALT = 'ciphera-blind-index-v2'
-const PBKDF2_ITERATIONS = 1_000_000
-const HASH_LEN = 16
-
-/**
- * Compute a blind index for the given email address using PBKDF2-SHA256.
- * Works on all browsers (Web Crypto native, no WASM).
- */
-export async function computeBlindIndex(email: string): Promise<string> {
-  const normalised = email.toLowerCase().trim()
-  const encoder = new TextEncoder()
-
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(normalised),
-    'PBKDF2',
-    false,
-    ['deriveBits']
-  )
-
-  const hashBits = await crypto.subtle.deriveBits(
-    {
-      name: 'PBKDF2',
-      hash: 'SHA-256',
-      salt: encoder.encode(BLIND_INDEX_SALT),
-      iterations: PBKDF2_ITERATIONS,
-    },
-    key,
-    HASH_LEN * 8
-  )
-
-  const bytes = new Uint8Array(hashBits)
-  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
-}
+export { computeBlindIndex } from '@ciphera-net/auth/blind-index'
