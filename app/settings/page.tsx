@@ -65,6 +65,7 @@ const ACCOUNT_ROWS: SectionRow[] = [
   { label: 'Security', href: '/settings/account/security', description: 'Password and two-factor authentication.' },
   { label: 'Devices', href: '/settings/account/devices', description: 'Trusted devices and security activity.' },
   { label: 'Notifications', href: '/settings/account/notifications', description: 'Your delivery preferences and quiet hours.' },
+  { label: 'Security alerts', href: '/settings/account/security-alerts', description: 'Emails Ciphera ID sends about your account.' },
 ]
 
 /**
