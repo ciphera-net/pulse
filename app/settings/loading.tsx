@@ -6,6 +6,11 @@
  * own here would double them). We fill only the content column with two
  * PanelRow-shaped ghost panels, reusing the SettingsLoadingState idioms
  * (animate-pulse, bg-input bars, semantic tokens only).
+ *
+ * 02-09-2026: this comment exists to shift the chunk's content hash — the
+ * previous chunk filename's object is wedged in Bunny Edge Storage ("Database
+ * update failed after 24 retries", PUT 400 / DELETE 500), which failed three
+ * production deploys at upload-static. A new hash sidesteps the stuck object.
  */
 export default function SettingsLoading() {
   return (
