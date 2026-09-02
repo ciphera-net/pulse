@@ -61,7 +61,6 @@ export default function SiteDashboardPage() {
   // custom range on reload. The chart intervals are view state, not identity —
   // plain React state, no persistence.
   const { period, dateRange, periodReady, setPeriod, shiftPeriod, pickerProps } = useUrlDateRange({ pageKey: 'dashboard' })
-  const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>('hour')
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
 
@@ -113,7 +112,7 @@ export default function SiteDashboardPage() {
   // '1h' narrows to minutes; '24h' narrows to hours — the server resolves 24h as
   // a genuine rolling window (D3), and drawing it as two daily bars split the
   // window mid-bar (F5). Other multi-day ranges keep the user's interval choice.
-  const interval = period === '1h' ? 'minute' : period === '24h' ? 'hour' : (dateRange.start === dateRange.end ? todayInterval : multiDayInterval)
+  const interval = period === '1h' ? 'minute' : period === '24h' ? 'hour' : (dateRange.start === dateRange.end ? 'hour' : multiDayInterval)
 
   // Single dashboard request replaces focused hooks (overview, pages, locations,
   // devices, referrers, goals). The backend runs all queries in parallel
@@ -380,8 +379,6 @@ export default function SiteDashboardPage() {
           interval={interval}
           dateRange={resolvedDateRange}
           period={period}
-          todayInterval={todayInterval}
-          setTodayInterval={setTodayInterval}
           multiDayInterval={multiDayInterval}
           setMultiDayInterval={setMultiDayInterval}
           onExport={canExport ? () => setIsExportModalOpen(true) : undefined}
