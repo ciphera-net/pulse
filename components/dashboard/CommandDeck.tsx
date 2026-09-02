@@ -52,8 +52,6 @@ interface CommandDeckProps {
   interval: 'minute' | 'hour' | 'day' | 'month'
   dateRange: { start: string; end: string }
   period?: string
-  todayInterval: 'minute' | 'hour'
-  setTodayInterval: (interval: 'minute' | 'hour') => void
   multiDayInterval: 'hour' | 'day'
   setMultiDayInterval: (interval: 'hour' | 'day') => void
   onExport?: () => void
@@ -123,8 +121,6 @@ export default function CommandDeck({
   intervalPicker = true,
   dateRange,
   period,
-  todayInterval,
-  setTodayInterval,
   multiDayInterval,
   setMultiDayInterval,
   onExport,
@@ -256,24 +252,16 @@ export default function CommandDeck({
                   <DownloadIcon className="h-3.5 w-3.5" />
                 </button>
               )}
-              {/* 1h and 24h are fixed-granularity rolling windows — a selector
-                  there would disagree with the chart it claims to control.
-                  intervalPicker=false (the public share surface) hides it
-                  entirely: the backend clamps public-scoped reads to day
-                  buckets (F2 — an hourly bucket with one visitor is that
-                  person's arrival time), so the selector there was a control
-                  wired to nothing. */}
-              {!intervalPicker || period === '1h' || period === '24h' ? null : dateRange.start === dateRange.end ? (
-                <Select
-                  variant="input"
-                  value={todayInterval}
-                  onChange={(value) => setTodayInterval(value as 'minute' | 'hour')}
-                  options={[
-                    { value: 'minute', label: '1 min' },
-                    { value: 'hour', label: '1 hour' },
-                  ]}
-                />
-              ) : (
+              {/* 1h and 24h are fixed-granularity rolling windows, and a
+                  single-day range is fixed HOURLY (owner ruling 02-09-2026:
+                  minute granularity belongs to the 1h range alone) — a
+                  selector on any of them would disagree with the chart it
+                  claims to control. intervalPicker=false (the public share
+                  surface) hides it entirely: the backend clamps public-scoped
+                  reads to day buckets (F2 — an hourly bucket with one visitor
+                  is that person's arrival time), so the selector there was a
+                  control wired to nothing. */}
+              {!intervalPicker || period === '1h' || period === '24h' || dateRange.start === dateRange.end ? null : (
                 <Select
                   variant="input"
                   value={multiDayInterval}
@@ -367,7 +355,9 @@ export default function CommandDeck({
                     const dateObj = point.dateObj instanceof Date ? point.dateObj : new Date(point.dateObj as string || Date.now())
                     if (interval === 'minute') return formatTimeUTC(dateObj)
                     if (interval === 'hour') {
-                      const end = new Date(dateObj.getTime() + 59 * 60_000)
+                      // Boundary to boundary (owner ruling 02-09-2026:
+                      // “19:00 – 20:00”, not the reference's literal :59).
+                      const end = new Date(dateObj.getTime() + 60 * 60_000)
                       return `${formatTimeUTC(dateObj)} – ${formatTimeUTC(end)}`
                     }
                     return formatDateFullUTC(dateObj)

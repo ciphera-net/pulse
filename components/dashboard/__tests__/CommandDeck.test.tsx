@@ -11,10 +11,17 @@ vi.mock('@/components/ui/animated-number', () => ({
     <span className={className}>{format(value)}</span>
   ),
 }))
+// The tooltip mock CAPTURES its props so the title renderer (the header
+// strip's bucket label) can be pinned directly, without a jsdom hover.
+const capturedTooltip = vi.hoisted(() => ({} as Record<string, unknown>))
 vi.mock('@/components/ui/area-chart', () => {
   const Box = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>
   const Nothing = () => null
-  return { AreaChart: Box, Area: Nothing, Grid: Nothing, XAxis: Nothing, YAxis: Nothing, ChartTooltip: Nothing }
+  const CapturingTooltip = (props: Record<string, unknown>) => {
+    Object.assign(capturedTooltip, props)
+    return null
+  }
+  return { AreaChart: Box, Area: Nothing, Grid: Nothing, XAxis: Nothing, YAxis: Nothing, ChartTooltip: CapturingTooltip }
 })
 
 const stats: Stats = {
@@ -49,8 +56,6 @@ const baseProps = {
   onMetricChange: noop,
   interval: 'day' as const,
   dateRange: { start: '2026-08-16', end: '2026-08-17' },
-  todayInterval: 'hour' as const,
-  setTodayInterval: noop,
   multiDayInterval: 'day' as const,
   setMultiDayInterval: noop,
 }
@@ -80,6 +85,43 @@ describe('CommandDeck rail', () => {
     render(<CommandDeck {...baseProps} stats={{ ...stats, avg_duration: null, bounce_rate: null }} />)
     expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2)
     expect(screen.queryByText('0s')).toBeNull()
+  })
+})
+
+describe('CommandDeck hourly tooltip span', () => {
+  it('spans boundary to boundary — 19:00 – 20:00, never the reference’s :59', () => {
+    render(<CommandDeck {...baseProps} interval="hour" />)
+    const title = capturedTooltip.title as (p: Record<string, unknown>) => string
+    expect(title({ dateObj: new Date('2026-09-02T19:00:00Z') })).toBe('19:00 – 20:00')
+    // Midnight rolls over cleanly.
+    expect(title({ dateObj: new Date('2026-09-02T23:00:00Z') })).toBe('23:00 – 00:00')
+  })
+})
+
+describe('CommandDeck interval selector scope', () => {
+  it('offers NO minute interval on a single-day range — and no one-option selector', () => {
+    const { container } = render(
+      <CommandDeck
+        {...baseProps}
+        interval="hour"
+        dateRange={{ start: '2026-08-16', end: '2026-08-16' }}
+      />,
+    )
+    // Minute granularity belongs to the 1h range alone (owner ruling
+    // 02-09-2026); a single-day range is fixed hourly, so the selector —
+    // which would have exactly one option left — does not render at all.
+    // Structural pin: the deck header carries NO listbox trigger (a closed
+    // Select hides its option labels, so text queries alone cannot tell a
+    // removed selector from a merely closed one).
+    expect(container.querySelectorAll('[aria-haspopup="listbox"]').length).toBe(0)
+    expect(screen.queryByText('1 min')).toBeNull()
+  })
+
+  it('keeps the hour/day selector on multi-day ranges', () => {
+    const { container } = render(<CommandDeck {...baseProps} />)
+    expect(container.querySelectorAll('[aria-haspopup="listbox"]').length).toBe(1)
+    expect(screen.getByText('1 day')).toBeTruthy()
+    expect(screen.queryByText('1 min')).toBeNull()
   })
 })
 

@@ -80,7 +80,6 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
   const [period, setPeriod] = useState('30')
   const [dateRange, setDateRange] = useState(getDateRange(30))
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
-  const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>('hour')
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
   // The deck's active rail metric. Local, not URL-persisted like the authed
   // page's — a share link should always open on visitors.
@@ -341,8 +340,6 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
             interval="day"
             dateRange={dateRange}
             period={period}
-            todayInterval={todayInterval}
-            setTodayInterval={setTodayInterval}
             multiDayInterval={multiDayInterval}
             setMultiDayInterval={setMultiDayInterval}
             onExport={() => setIsExportModalOpen(true)}
