@@ -62,7 +62,7 @@ import {
   type UptimeResponseTimesResponse,
   type UptimeCheck,
 } from '@/lib/api/uptime'
-import { getPerformanceConfig, getPerformanceLatest, getPerformanceHistory, getPagePreview, type PerformanceConfig, type PerformanceCheck, type PerformanceLatest, type PagePreview as PagePreviewData } from '@/lib/api/performance'
+import { getPerformanceConfig, getPerformanceLatest, getPerformanceHistory, getPagePreview, getPublicPagePreview, type PerformanceConfig, type PerformanceCheck, type PerformanceLatest, type PagePreview as PagePreviewData } from '@/lib/api/performance'
 import { listGoals, type Goal } from '@/lib/api/goals'
 import {
   getQuarantineStats,
@@ -1001,10 +1001,14 @@ export function useFullDimensionList<T>(
 // * (a state the card renders via its rails fallback); errors are real
 // * failures and also fall back. The image changes at most once per
 // * performance check, so no polling and a long dedupe.
-export function usePagePreview(siteId: string) {
+export function usePagePreview(siteId: string, member = true) {
+  // member=false is the anonymous share surface: same card, the public
+  // endpoint (is_public sites only; the capture is the site's own page).
+  // The flag is part of the key so a member view never shares an entry with
+  // a public one.
   return useSWR<PagePreviewData | null>(
-    siteId ? ['pagePreview', siteId] : null,
-    () => getPagePreview(siteId),
+    siteId ? ['pagePreview', siteId, member] : null,
+    () => (member ? getPagePreview(siteId) : getPublicPagePreview(siteId)),
     { ...dashboardSWRConfig, refreshInterval: 0, dedupingInterval: 5 * 60 * 1000, keepPreviousData: true }
   )
 }

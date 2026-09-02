@@ -35,8 +35,9 @@ import type { MetricType } from '@/lib/dashboard/metrics'
 // affects ONLY the chart — the dimension blocks are decoupled by owner
 // decision and hold fixed columns.
 //
-// The share page deliberately keeps the old Chart component: this deck is the
-// authenticated instrument; the share surface is a reduced, public-scoped view.
+// Since 02-09-2026 the share surface mounts this deck too (the /demo
+// catch-up: the authed dashboard is the spec) — with prevStats absent and
+// intervalPicker=false, the two constraints the public-scoped read imposes.
 // ---------------------------------------------------------------------------
 
 interface CommandDeckProps {
@@ -56,6 +57,9 @@ interface CommandDeckProps {
   multiDayInterval: 'hour' | 'day'
   setMultiDayInterval: (interval: 'hour' | 'day') => void
   onExport?: () => void
+  // False on the public share surface, where the backend clamps every read to
+  // day buckets (F2) and an interval selector would be a dead control.
+  intervalPicker?: boolean
 }
 
 // The four rail metrics read straight off Stats. Named explicitly rather than
@@ -116,6 +120,7 @@ export default function CommandDeck({
   metric,
   onMetricChange,
   interval,
+  intervalPicker = true,
   dateRange,
   period,
   todayInterval,
@@ -252,8 +257,13 @@ export default function CommandDeck({
                 </button>
               )}
               {/* 1h and 24h are fixed-granularity rolling windows — a selector
-                  there would disagree with the chart it claims to control. */}
-              {period === '1h' || period === '24h' ? null : dateRange.start === dateRange.end ? (
+                  there would disagree with the chart it claims to control.
+                  intervalPicker=false (the public share surface) hides it
+                  entirely: the backend clamps public-scoped reads to day
+                  buckets (F2 — an hourly bucket with one visitor is that
+                  person's arrival time), so the selector there was a control
+                  wired to nothing. */}
+              {!intervalPicker || period === '1h' || period === '24h' ? null : dateRange.start === dateRange.end ? (
                 <Select
                   variant="input"
                   value={todayInterval}
