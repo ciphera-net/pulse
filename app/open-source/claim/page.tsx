@@ -28,8 +28,10 @@ function ClaimInner() {
     setError(null)
     setNeedsAuth(false)
     try {
+      // billingGroup mounts at /api/billing (not /api/v1) — the leading /api/
+      // makes apiRequest pass the path through unprefixed.
       const res = await apiRequest<{ status: string; project: string }>(
-        '/billing/claim-opensource',
+        '/api/billing/claim-opensource',
         { method: 'POST', body: JSON.stringify({ token }) }
       )
       setProject(res.project)
