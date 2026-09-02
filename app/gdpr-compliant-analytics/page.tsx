@@ -11,6 +11,7 @@ import { FaqBlock } from '@/components/marketing/seo/FaqBlock'
 import { RelatedLinks } from '@/components/marketing/seo/RelatedLinks'
 import { SeoPageCta } from '@/components/marketing/seo/SeoPageCta'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
+import { DEFAULT_OG_IMAGES } from '@/lib/og'
 
 const SITE_URL = 'https://pulse.ciphera.net'
 
@@ -24,6 +25,7 @@ export const metadata: Metadata = {
     description:
       'Web analytics that collects no personal data as defined by GDPR — compliant by architecture, not by configuration.',
     siteName: 'Pulse by Ciphera',
+    images: DEFAULT_OG_IMAGES,
   },
 }
 

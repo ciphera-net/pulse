@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import PricingSection from '@/components/PricingSection'
 import { PricingCardsSkeleton } from '@/components/skeletons'
+import { DEFAULT_OG_IMAGES } from '@/lib/og'
 
 const description =
   'Every Pulse plan runs the full product — you pay for scale, not features. Start free with 5,000 pageviews/mo; no cookies, no consent banner.'
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
     title: 'Pricing',
     description,
     siteName: 'Pulse by Ciphera',
+    images: DEFAULT_OG_IMAGES,
   },
 }
 

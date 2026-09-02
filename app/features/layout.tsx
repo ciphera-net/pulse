@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { DEFAULT_OG_IMAGES } from '@/lib/og'
 
 export const metadata: Metadata = {
   title: 'Features',
@@ -10,6 +11,7 @@ export const metadata: Metadata = {
     title: 'Features',
     description: 'Dashboards, funnels, uptime monitoring, realtime visitors, and more — all without cookies.',
     siteName: 'Pulse by Ciphera',
+    images: DEFAULT_OG_IMAGES,
   },
 }
 
