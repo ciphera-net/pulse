@@ -12,6 +12,7 @@ const PUBLIC_ALLOW = [
   '/installation',
   '/integrations',
   '/demo',
+  '/open-source',
   '/vs',
   '/tools',
   '/cookieless-analytics',

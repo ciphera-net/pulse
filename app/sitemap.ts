@@ -18,6 +18,7 @@ const LAST_MODIFIED: Record<string, string> = {
   '/installation': '2026-07-21',
   '/integrations': '2026-07-21',
   '/demo': '2026-07-21',
+  '/open-source': '2026-09-02',
 }
 
 const INTEGRATIONS_LASTMOD = '2026-07-21'
@@ -49,6 +50,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: '/installation', priority: 0.8, changeFrequency: 'monthly' as const },
     { url: '/integrations', priority: 0.8, changeFrequency: 'monthly' as const },
     { url: '/demo', priority: 0.8, changeFrequency: 'weekly' as const },
+    { url: '/open-source', priority: 0.8, changeFrequency: 'monthly' as const },
   ]
 
   const staticEntries: MetadataRoute.Sitemap = publicRoutes.map((route) => ({

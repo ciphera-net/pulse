@@ -52,6 +52,21 @@ export const pricingFaqData: Record<string, FAQItem[]> = {
         'No — every plan runs the full product. Custom events, funnels and journeys, API access, uptime monitoring with alerts, the team dashboard and shared links are included everywhere, on Hobby too. Higher plans scale the limits: more sites, more pageviews, longer data retention — and Business adds priority support.',
     },
     {
+      question: 'Is there really a free plan for open source?',
+      answer: (
+        <>
+          Yes — a real tier at €0 for OSI-licensed projects with real users and
+          for registered nonprofits: five sites, 100k pageviews a month,
+          two-year retention, every feature. It&rsquo;s granted by application,
+          not self-served — the whole deal is on{' '}
+          <a href="/open-source" className="text-primary hover:text-primary/80">
+            the open-source plan page
+          </a>
+          .
+        </>
+      ),
+    },
+    {
       // Upgrade timing corrected 25-08-2026 (F-B16): upgrades are IMMEDIATE —
       // /switch charges the prorated difference today and the new limits are
       // live at once. "Takes effect on your next billing cycle" described a
