@@ -36,10 +36,11 @@ export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRa
 
   // The full-page capture behind the scroll tab's stacked sheets. null =
   // no capture (a state — the tab renders its rails fallback), and a fetch
-  // error falls back the same way rather than blocking the numbers.
-  // An empty siteId keeps the SWR key null, so the member-strict endpoint is
-  // never called from a share view.
-  const { data: pagePreview } = usePagePreview(memberFeatures ? siteId : '')
+  // error falls back the same way. Since 02-09-2026 the share surface gets
+  // the same backdrop through the public endpoint (is_public sites only) —
+  // memberFeatures now routes the fetch instead of suppressing it; only the
+  // events drill-down below stays member-gated.
+  const { data: pagePreview } = usePagePreview(siteId, memberFeatures)
 
   const scrollSessions = scrollDepth?.total_sessions ?? 0
 

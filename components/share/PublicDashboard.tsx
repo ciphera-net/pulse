@@ -15,7 +15,7 @@ import Campaigns from '@/components/dashboard/Campaigns'
 import ContentSignals from '@/components/dashboard/ContentSignals'
 import SectionHeader from '@/components/dashboard/SectionHeader'
 import { type MetricType } from '@/lib/dashboard/metrics'
-import { Captcha, DownloadIcon, ZapIcon } from '@ciphera-net/facet'
+import { Captcha, ZapIcon } from '@ciphera-net/facet'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { PERIOD_TO_API } from '@/lib/constants/periods'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
@@ -309,15 +309,11 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
               </div>
             </div>
 
+            {/* Only the picker: export lives on the deck's own icon (the
+                authed device), and the Powered-by badge was removed by owner
+                order 02-09-2026 — the marketing chrome around the page
+                already says whose product this is. */}
             <div className="flex gap-2">
-              <button
-                onClick={() => setIsExportModalOpen(true)}
-                className="hidden md:flex items-center gap-2 px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-none text-sm text-neutral-400 hover:text-brand-orange transition-colors ease-apple"
-              >
-                <DownloadIcon className="w-4 h-4" />
-                <span>Export</span>
-              </button>
-
               <DateRangePicker
                 period={period}
                 dateRange={dateRange}
@@ -326,16 +322,6 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
                 excludePresets={SHARE_EXCLUDED_PRESETS}
                 presetsOnly
               />
-              {/* Powered by Ciphera Badge */}
-              <a 
-                href="https://ciphera.net" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="hidden md:flex items-center gap-2 px-3 py-2 bg-neutral-900 border border-neutral-800 rounded-none text-sm text-neutral-400 hover:text-brand-orange transition-colors ease-apple"
-              >
-                <ZapIcon className="w-4 h-4" />
-                <span>Powered by Ciphera</span>
-              </a>
             </div>
           </div>
         </div>
@@ -360,6 +346,7 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
             multiDayInterval={multiDayInterval}
             setMultiDayInterval={setMultiDayInterval}
             onExport={() => setIsExportModalOpen(true)}
+            intervalPicker={false}
           />
         </div>
 

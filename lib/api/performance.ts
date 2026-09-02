@@ -170,3 +170,16 @@ export async function getPagePreview(siteId: string): Promise<PagePreview | null
     throw e
   }
 }
+
+// The anonymous twin (02-09-2026): the share surface's scroll-depth card
+// carries the same backdrop as the authed one. Serves only is_public sites —
+// the capture is a screenshot of the site's own public page, never visitor
+// data. 404 (no capture, or site not public) is the card's fallback state.
+export async function getPublicPagePreview(siteId: string): Promise<PagePreview | null> {
+  try {
+    return await apiRequest<PagePreview>(`/public/sites/${siteId}/page-preview`)
+  } catch (e) {
+    if ((e as { status?: number })?.status === 404) return null
+    throw e
+  }
+}
