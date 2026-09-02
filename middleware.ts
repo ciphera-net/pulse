@@ -15,6 +15,11 @@ const PUBLIC_ROUTES = new Set([
   '/demo', // * Public live-demo landing page — links out to the customer share view
   '/contact', // * Public contact page — form posts to pulse-backend /api/contact
   '/open-source', // * The open-source plan — anonymous application form (02-09-2026)
+  // * The claim page must be reachable UNAUTHENTICATED: the login round-trip
+  // * loses deep links (ledger 5-3), so a bounced claim link would drop its
+  // * token. The page itself tells a signed-out visitor to sign in and click
+  // * the (durable) email link again; the API behind it still requires auth.
+  '/open-source/claim',
 
   // * Category-SEO landing pages (21-07). Public marketing surface — must render
   // * for anonymous visitors and crawlers, same as /features or /pricing.
