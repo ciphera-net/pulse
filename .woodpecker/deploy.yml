@@ -166,7 +166,7 @@ steps:
               // further PUT to it 400s and DELETE 500s (three prod deploys
               // failed on one such object, 02-09-2026). Content-addressed
               // filenames make this safe to heal: if the stored bytes already
-              // equal the local bytes, the upload's goal is met.
+              // equal the local bytes, the upload goal is met.
               const rb = await fetch(DEST + "/" + rel, { headers: { AccessKey: PW } });
               if (rb.ok) {
                 const got = Buffer.from(await rb.arrayBuffer());
@@ -390,7 +390,7 @@ steps:
               // further PUT to it 400s and DELETE 500s (three prod deploys
               // failed on one such object, 02-09-2026). Content-addressed
               // filenames make this safe to heal: if the stored bytes already
-              // equal the local bytes, the upload's goal is met.
+              // equal the local bytes, the upload goal is met.
               const rb = await fetch(DEST + "/" + rel, { headers: { AccessKey: PW } });
               if (rb.ok) {
                 const got = Buffer.from(await rb.arrayBuffer());
