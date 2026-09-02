@@ -61,8 +61,6 @@ function propsFor(stats: Stats) {
     onMetricChange: noop,
     interval: 'day' as const,
     dateRange: { start: '2026-08-16', end: '2026-08-17' },
-    todayInterval: 'hour' as const,
-    setTodayInterval: noop,
     multiDayInterval: 'day' as const,
     setMultiDayInterval: noop,
   }

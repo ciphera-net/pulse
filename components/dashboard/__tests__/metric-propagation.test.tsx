@@ -68,8 +68,6 @@ describe('CommandDeck is controlled', () => {
       onMetricChange={onMetricChange}
       interval="day"
       dateRange={{ start: '2026-08-21', end: '2026-08-21' }}
-      todayInterval="hour"
-      setTodayInterval={noop}
       multiDayInterval="day"
       setMultiDayInterval={noop}
     />

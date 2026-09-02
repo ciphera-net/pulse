@@ -16,6 +16,7 @@ import {
   Lock,
   DeviceMobile,
   BellRinging,
+  EnvelopeSimple,
   Terminal,
 } from '@phosphor-icons/react'
 
@@ -89,6 +90,9 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Devices', href: '/settings/account/devices', icon: DeviceMobile },
       // BellRinging, deliberately distinct from the org tab's Bell.
       { label: 'Notifications', href: '/settings/account/notifications', icon: BellRinging },
+      // EnvelopeSimple, not a third bell: these are the emails Ciphera ID sends
+      // about the ACCOUNT, a different system from Pulse's own notifications.
+      { label: 'Security alerts', href: '/settings/account/security-alerts', icon: EnvelopeSimple },
     ],
   },
 ]

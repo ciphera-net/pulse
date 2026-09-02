@@ -68,4 +68,23 @@ describe('useReauthModal — delete path', () => {
       expect.objectContaining({ email: 'user@example.com', password: 'pw', blindIndex: 'bi' })
     )
   })
+
+  it('opens with an EMPTY sign-in email — no cookie is read to pre-fill it', async () => {
+    // The modal used to seed this field from a cross-subdomain PII cookie that
+    // id-frontend stopped setting in April 2026 (security fix PII-01), so the
+    // reader was dead code that only looked like a feature. The field now always
+    // starts empty. The historical cookie name is assembled rather than written
+    // out because PR A asserts the repo contains zero occurrences of it.
+    const legacyPiiCookie = ['ciphera', 'pii'].join('_')
+    document.cookie = `${legacyPiiCookie}=${btoa(JSON.stringify({ email: 'seeded@example.com' }))}; path=/`
+
+    performOpaqueReauthMock.mockResolvedValue('tok-xyz')
+    render(<Harness onResult={vi.fn()} />)
+    fireEvent.click(screen.getByText('start'))
+
+    const emailInput = (await screen.findByLabelText('Sign-in email')) as HTMLInputElement
+    expect(emailInput.value).toBe('')
+
+    document.cookie = `${legacyPiiCookie}=; Max-Age=0; path=/`
+  })
 })

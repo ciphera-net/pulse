@@ -10,11 +10,21 @@ import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
 import { useReauthModal, isReauthCancelled } from '@/components/settings/ReauthModal'
+import { unlockVaultPII } from '@/lib/auth/tessera/opaque-unlock'
 
 export default function AccountProfileTab() {
   const { user, refresh, logout } = useAuth()
   const { requestReauth, modal } = useReauthModal()
   const [displayName, setDisplayName] = useState('')
+  // Read-unlock: the name/email live only in the encrypted vault, opened by an
+  // OPAQUE ceremony against a re-entered password. The decrypted PII (never the
+  // key) is held for this tab only; a reload clears it and asks again.
+  const [unlockedPII, setUnlockedPII] = useState<{ email: string; display_name?: string } | null>(null)
+  const [showUnlock, setShowUnlock] = useState(false)
+  const [unlockEmail, setUnlockEmail] = useState('')
+  const [unlockPassword, setUnlockPassword] = useState('')
+  const [unlocking, setUnlocking] = useState(false)
+  const [unlockError, setUnlockError] = useState<string | null>(null)
   // Baseline snapshot is STATE, not a ref: committing it (after save/load)
   // must re-render so isDirty clears and the beforeunload guard disarms —
   // the old ref version kept the save bar dirty after a successful save.
@@ -40,6 +50,42 @@ export default function AccountProfileTab() {
   const handleDiscard = () => {
     setDisplayName(baseline)
   }
+
+  const handleUnlock = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (unlocking) return
+    if (!unlockEmail.trim() || !unlockPassword) {
+      setUnlockError('Enter the email and password you sign in with.')
+      return
+    }
+    setUnlocking(true)
+    setUnlockError(null)
+    try {
+      const pii = await unlockVaultPII({ email: unlockEmail, password: unlockPassword })
+      setUnlockedPII(pii)
+      setShowUnlock(false)
+      setUnlockPassword('')
+      // Surface the vault's display name if the account carries one and the
+      // field has not been edited away from its server baseline.
+      if (pii.display_name && displayName === baseline) {
+        setDisplayName(pii.display_name)
+        setBaseline(pii.display_name)
+      }
+    } catch (err) {
+      // No state changed on failure. Keep the form open so the user can retry —
+      // never a silent close, never a blank name substituted for the truth.
+      setUnlockError(
+        err instanceof Error && /no OPAQUE vault/.test(err.message)
+          ? 'This account has no encrypted profile to unlock.'
+          : 'That email or password didn’t match. Nothing was unlocked — please try again.'
+      )
+    } finally {
+      setUnlockPassword('')
+      setUnlocking(false)
+    }
+  }, [unlocking, unlockEmail, unlockPassword, displayName, baseline])
+
+  const displayedEmail = unlockedPII?.email ?? user?.email ?? ''
 
   const handleSave = useCallback(async () => {
     try {
@@ -95,52 +141,79 @@ export default function AccountProfileTab() {
   // shaped like the panel it will become — never a bare spinner (spec §2.3).
   if (!user) return <SettingsLoadingState rows={2} />
 
-  // * Zero-knowledge accounts: the server never stores PII, so name/email are
-  // * hydrated from the encrypted-vault cookie that Ciphera ID sets on
-  // * .ciphera.net. A sign-in through Pulse's own form never provisions that
-  // * cookie, leaving PII empty — say so instead of rendering blank fields.
-  const piiUnavailable = !user.email
+  // * Zero-knowledge accounts: the server never stores PII (the column was
+  // * dropped in migration 045) and the access token carries no email claim, so
+  // * name/email exist only inside the encrypted vault, which is unsealed by an
+  // * OPAQUE ceremony. Pulse runs that ceremony only for a sensitive write and
+  // * then drops the plaintext, so in a normal session there is nothing to show.
+  // * Say that plainly instead of rendering blank fields — and promise nothing:
+  // * there is no action a user can take today that unlocks them here.
+  const piiUnavailable = !user.email && !unlockedPII
 
   return (
     <div className="space-y-8">
-      {/* Zero-knowledge note (spec §6 Account · Profile). When PII is unlocked
-          this is the standing info banner; when it is not, it becomes the honest
-          "profile details unavailable" state — same slot, escalated tone. */}
+      {/* Zero-knowledge note (spec §6 Account · Profile). Same slot either way:
+          it states what is true, and asks the user for nothing. It used to tell
+          people to "sign in on Ciphera ID once, then reload Pulse to restore
+          them" — an instruction that stopped working in April 2026 when the
+          cross-subdomain PII cookie it depended on was removed (id-frontend
+          security fix PII-01), so it advertised a fix that no longer existed
+          while reading as the exception rather than the permanent state. An
+          in-app unlock is planned;
+          until it ships, this states the fact and promises nothing. */}
       {piiUnavailable ? (
         <Banner
-          tone="warning"
-          title="Profile details unavailable in this session"
+          tone="info"
+          title="Your name and email stay encrypted"
           action={
-            <a
-              href="https://id.ciphera.net"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="whitespace-nowrap text-sm font-medium text-foreground hover:underline"
-            >
-              Open Ciphera ID
-            </a>
+            !showUnlock ? (
+              <Button variant="outline" size="sm" onClick={() => { setShowUnlock(true); setUnlockError(null) }}>
+                Unlock
+              </Button>
+            ) : undefined
           }
         >
-          Your name and email are end-to-end encrypted and weren&apos;t unlocked when you signed
-          in here. Sign in on Ciphera ID once, then reload Pulse to restore them.
+          They are end-to-end encrypted and are not unlocked in this browser. Unlock with your
+          password to view them here — nothing is stored; a reload asks again.
+          {showUnlock && (
+            <form onSubmit={handleUnlock} className="mt-4 flex flex-col gap-3">
+              <Input
+                type="email"
+                value={unlockEmail}
+                onChange={e => setUnlockEmail(e.target.value)}
+                placeholder="Email you sign in with"
+                autoComplete="username"
+                disabled={unlocking}
+              />
+              <Input
+                type="password"
+                value={unlockPassword}
+                onChange={e => setUnlockPassword(e.target.value)}
+                placeholder="Password"
+                autoComplete="current-password"
+                disabled={unlocking}
+              />
+              {unlockError && <p className="text-sm text-destructive">{unlockError}</p>}
+              <div className="flex gap-2">
+                <Button type="submit" size="sm" disabled={unlocking}>
+                  {unlocking ? 'Unlocking…' : 'Unlock'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={unlocking}
+                  onClick={() => { setShowUnlock(false); setUnlockPassword(''); setUnlockError(null) }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          )}
         </Banner>
       ) : (
-        <Banner
-          tone="info"
-          title="Your profile is end-to-end encrypted"
-          action={
-            <a
-              href="https://id.ciphera.net/settings"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="whitespace-nowrap text-sm font-medium text-foreground hover:underline"
-            >
-              Manage on Ciphera ID
-            </a>
-          }
-        >
-          Pulse never stores your name or email in plain text. Email and password changes are
-          verified and managed on Ciphera ID.
+        <Banner tone="info" title="Your profile is end-to-end encrypted">
+          Pulse never stores your name or email in plain text.
         </Banner>
       )}
 
@@ -166,23 +239,11 @@ export default function AccountProfileTab() {
             caption="Read-only in Pulse."
           >
             <Input
-              value={user.email}
+              value={displayedEmail}
               disabled
-              placeholder="Not available in this session"
+              placeholder="Encrypted — not unlocked in this browser"
               className="bg-muted text-muted-foreground"
             />
-            <p className="mt-1.5 text-xs text-muted-foreground">
-              Changes require password verification — manage your email on{' '}
-              <a
-                href="https://id.ciphera.net/settings"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-foreground hover:underline"
-              >
-                Ciphera ID
-              </a>
-              .
-            </p>
           </PanelRow>
         </PanelRows>
       </SettingsPanel>

@@ -11,11 +11,11 @@
  * the moment of the operation, then drops the key material.
  *
  * The one input Pulse cannot supply from the session is the LOGIN EMAIL: the access
- * token carries no `email` claim (id-backend token_issuance.go), and `ciphera_pii`
- * is display-only and usually absent for ZKE accounts. So the modal collects the
- * login email as typed user input (pre-filled from `ciphera_pii` when present, but
- * never load-bearing). This is self-validating: a wrong email → wrong blind index →
- * the OPAQUE ceremony fails with NO write, so a typo can never corrupt a vault.
+ * token carries no `email` claim (id-backend token_issuance.go) and the server no
+ * longer stores one (migration 045). So the modal collects the login email as typed
+ * user input, always starting empty — there is no source to pre-fill it from. This
+ * is self-validating: a wrong email → wrong blind index → the OPAQUE ceremony fails
+ * with NO write, so a typo can never corrupt a vault.
  *
  * The password (and new password / new email) are already collected by the calling
  * surface (the Facet password form / email prompt, or AccountProfileTab's delete
@@ -145,19 +145,6 @@ interface Pending {
   reject: (err: Error) => void
 }
 
-/** Read the display-only email from the cross-subdomain ciphera_pii cookie (prefill only). */
-function prefillEmail(): string {
-  if (typeof document === 'undefined') return ''
-  const match = document.cookie.match(/(?:^|;\s*)ciphera_pii=([^;]+)/)
-  if (!match) return ''
-  try {
-    const pii = JSON.parse(atob(match[1])) as { email?: string }
-    return pii.email ?? ''
-  } catch {
-    return ''
-  }
-}
-
 function b64encode(bytes: Uint8Array): string {
   let binary = ''
   for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
@@ -204,7 +191,8 @@ export function useReauthModal(): {
   const handleRef = useRef<VaultKeyHandle | null>(null)
 
   const requestReauth = useCallback((request: ReauthRequest): Promise<ReauthResult> => {
-    setEmail(prefillEmail())
+    // No prefill source exists — the field starts empty and the user types it.
+    setEmail('')
     setError(null)
     setBusy(false)
     return new Promise<ReauthResult>((resolve, reject) => {
