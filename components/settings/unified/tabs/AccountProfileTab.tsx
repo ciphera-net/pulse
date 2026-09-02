@@ -12,6 +12,57 @@ import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels
 import { useReauthModal, isReauthCancelled } from '@/components/settings/ReauthModal'
 import { unlockVaultPII } from '@/lib/auth/tessera/opaque-unlock'
 
+/**
+ * Name the actual failure of an unlock attempt.
+ *
+ * Each branch is a DIFFERENT thing for the user to do, which is the whole point
+ * of separating them: wait (rate limit), retype (credentials), sign in again
+ * (session), or stop and report (server/network). A single catch-all told
+ * everyone to retype their password, including when the password was fine.
+ */
+export function unlockErrorMessage(err: unknown): string {
+  if (err instanceof Error && /no OPAQUE vault/.test(err.message)) {
+    return 'This account has no encrypted profile to unlock.'
+  }
+
+  // The Tessera SDK drives the transport, so an ApiError can reach us wrapped
+  // (as `cause`) rather than as itself. Duck-type the status off either, and
+  // fall back to the message — `instanceof` alone silently loses the status and
+  // lands every wrapped failure in the "wrong password" bucket, which is the
+  // bug this function exists to fix.
+  const status = readStatus(err)
+  if (status === 429) {
+    return 'Too many attempts in a short time. Wait about a minute, then try again — your password was not the problem.'
+  }
+  if (status === 401 || status === 403) {
+    return 'That email or password didn’t match. Nothing was unlocked — please try again.'
+  }
+  if (status !== null && status >= 500) {
+    return 'Ciphera ID could not be reached just now. Nothing was unlocked — please try again shortly.'
+  }
+  if (status !== null) {
+    return `Unlock failed (error ${status}). Nothing was unlocked.`
+  }
+  if (err instanceof Error && /network|fetch/i.test(err.message)) {
+    return 'Network error. Nothing was unlocked — please try again.'
+  }
+  return 'That email or password didn’t match. Nothing was unlocked — please try again.'
+}
+
+/** HTTP status from an ApiError, a wrapper carrying one, or a status in the text. */
+function readStatus(err: unknown): number | null {
+  for (const candidate of [err, (err as { cause?: unknown } | null)?.cause]) {
+    if (candidate instanceof ApiError) return candidate.status
+    const s = (candidate as { status?: unknown } | null)?.status
+    if (typeof s === 'number' && s >= 100 && s < 600) return s
+  }
+  if (err instanceof Error) {
+    const m = err.message.match(/\b(4\d{2}|5\d{2})\b/)
+    if (m) return Number(m[1])
+  }
+  return null
+}
+
 export default function AccountProfileTab() {
   const { user, refresh, logout } = useAuth()
   const { requestReauth, modal } = useReauthModal()
@@ -74,11 +125,14 @@ export default function AccountProfileTab() {
     } catch (err) {
       // No state changed on failure. Keep the form open so the user can retry —
       // never a silent close, never a blank name substituted for the truth.
-      setUnlockError(
-        err instanceof Error && /no OPAQUE vault/.test(err.message)
-          ? 'This account has no encrypted profile to unlock.'
-          : 'That email or password didn’t match. Nothing was unlocked — please try again.'
-      )
+      //
+      // 🔴 Say WHICH failure it was. The first cut of this handler reported
+      // every error as "that email or password didn't match", so a 429 from
+      // the re-auth limiter read as a credential failure — measured on
+      // pulse-staging, where it sent the reader hunting a password problem
+      // that did not exist. A wrong diagnosis is a silent failure wearing an
+      // error message.
+      setUnlockError(unlockErrorMessage(err))
     } finally {
       setUnlockPassword('')
       setUnlocking(false)
