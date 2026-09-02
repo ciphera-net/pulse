@@ -431,6 +431,27 @@ export default function PricingSection() {
               </Link>
             </Button>
           </div>
+
+          {/* Open source — grant-only tier, same strip anatomy as enterprise
+              above. Never a 5th card: the grid is a 4-up and a card would read
+              as self-serve, which this deliberately is not. */}
+          <div className="mt-6 flex flex-col items-start justify-between gap-4 border border-border bg-card px-6 py-5 sm:flex-row sm:items-center">
+            <div>
+              <p className="font-display text-lg font-semibold tracking-tight text-foreground">
+                Building open source, or running a nonprofit?
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                The Team tier at €0, by application — five sites, 100k
+                pageviews a month, every feature. We get to say you use Pulse.
+              </p>
+            </div>
+            <Button asChild variant="outline" className="shrink-0">
+              <Link href="/open-source">
+                The open-source plan
+                <ArrowRightIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+              </Link>
+            </Button>
+          </div>
         </div>
       </section>
 

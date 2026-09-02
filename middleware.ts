@@ -12,8 +12,9 @@ const PUBLIC_ROUTES = new Set([
   '/faq',
   '/changelog',
   '/installation',
-  '/demo', // * Public live-demo landing page — links out to the ciphera.net share view
+  '/demo', // * Public live-demo landing page — links out to the customer share view
   '/contact', // * Public contact page — form posts to pulse-backend /api/contact
+  '/open-source', // * The open-source plan — anonymous application form (02-09-2026)
 
   // * Category-SEO landing pages (21-07). Public marketing surface — must render
   // * for anonymous visitors and crawlers, same as /features or /pricing.
