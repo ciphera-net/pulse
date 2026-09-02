@@ -154,12 +154,30 @@ steps:
           let ok = 0;
           for (const f of files) {
             const rel = path.relative(BASE, f).split(path.sep).join("/");
+            const body = fs.readFileSync(f);
             const res = await fetch(DEST + "/" + rel, {
               method: "PUT",
               headers: { AccessKey: PW, "Content-Type": TYPES[path.extname(f)] || "application/octet-stream" },
-              body: fs.readFileSync(f),
+              body,
             });
-            if (!res.ok) { console.error("FAIL: PUT " + rel + " -> " + res.status); process.exit(1); }
+            if (!res.ok) {
+              // Bunny storage has a known wedge state ("Database update failed
+              // after 24 retries"): the object exists and is correct, but any
+              // further PUT to it 400s and DELETE 500s (three prod deploys
+              // failed on one such object, 02-09-2026). Content-addressed
+              // filenames make this safe to heal: if the stored bytes already
+              // equal the local bytes, the upload's goal is met.
+              const rb = await fetch(DEST + "/" + rel, { headers: { AccessKey: PW } });
+              if (rb.ok) {
+                const got = Buffer.from(await rb.arrayBuffer());
+                if (got.equals(body)) {
+                  console.log("WARN: PUT " + rel + " -> " + res.status + " but object already stored byte-identical; continuing");
+                  ok++;
+                  continue;
+                }
+              }
+              console.error("FAIL: PUT " + rel + " -> " + res.status); process.exit(1);
+            }
             ok++;
           }
           // Read one back FROM THE ORIGIN and compare bytes. A 2xx on the write is not
@@ -360,12 +378,30 @@ steps:
           let ok = 0;
           for (const f of files) {
             const rel = path.relative(BASE, f).split(path.sep).join("/");
+            const body = fs.readFileSync(f);
             const res = await fetch(DEST + "/" + rel, {
               method: "PUT",
               headers: { AccessKey: PW, "Content-Type": TYPES[path.extname(f)] || "application/octet-stream" },
-              body: fs.readFileSync(f),
+              body,
             });
-            if (!res.ok) { console.error("FAIL: PUT " + rel + " -> " + res.status); process.exit(1); }
+            if (!res.ok) {
+              // Bunny storage has a known wedge state ("Database update failed
+              // after 24 retries"): the object exists and is correct, but any
+              // further PUT to it 400s and DELETE 500s (three prod deploys
+              // failed on one such object, 02-09-2026). Content-addressed
+              // filenames make this safe to heal: if the stored bytes already
+              // equal the local bytes, the upload's goal is met.
+              const rb = await fetch(DEST + "/" + rel, { headers: { AccessKey: PW } });
+              if (rb.ok) {
+                const got = Buffer.from(await rb.arrayBuffer());
+                if (got.equals(body)) {
+                  console.log("WARN: PUT " + rel + " -> " + res.status + " but object already stored byte-identical; continuing");
+                  ok++;
+                  continue;
+                }
+              }
+              console.error("FAIL: PUT " + rel + " -> " + res.status); process.exit(1);
+            }
             ok++;
           }
           // Read one back FROM THE ORIGIN and compare bytes. A 2xx on the write is not
