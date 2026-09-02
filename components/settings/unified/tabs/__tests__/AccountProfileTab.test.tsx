@@ -20,6 +20,11 @@ vi.mock('@/lib/api/user', () => ({
   deleteAccount: vi.fn().mockResolvedValue(undefined),
 }))
 
+const unlockMock = vi.hoisted(() => ({ fn: vi.fn() }))
+vi.mock('@/lib/auth/tessera/opaque-unlock', () => ({
+  unlockVaultPII: unlockMock.fn,
+}))
+
 // SaveBar is portal + shell-slot machinery — stub it to a marker so the smoke
 // render doesn't depend on the shell being mounted. Its own behavior is covered
 // elsewhere; here we only assert the tab wires dirty state into it.
@@ -117,5 +122,57 @@ describe('AccountProfileTab (Facet structured panels)', () => {
     h.user = null
     render(<AccountProfileTab />)
     expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument()
+  })
+
+  it('unlocks the vault PII and shows the email, holding no key', async () => {
+    // ZK account: no in-session email → the locked banner + Unlock action.
+    h.user = { id: 'u1', email: '', display_name: '' }
+    unlockMock.fn.mockReset()
+    unlockMock.fn.mockResolvedValue({ email: 'ada@ciphera.net', display_name: 'Ada Lovelace' })
+    const { container } = render(<AccountProfileTab />)
+
+    // The email field starts empty (encrypted, not unlocked).
+    expect(screen.queryByDisplayValue('ada@ciphera.net')).toBeNull()
+
+    // Reveal the inline form, fill it, submit the form directly.
+    fireEvent.click(screen.getByRole('button', { name: 'Unlock' }))
+    fireEvent.change(screen.getByPlaceholderText('Email you sign in with'), {
+      target: { value: 'ada@ciphera.net' },
+    })
+    fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: 'pw' } })
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+
+    // The unlock fn was called with what was typed, and on success the inline
+    // form closes (its own email input disappears) — the decrypted PII now
+    // populates the read-only profile field.
+    await vi.waitFor(() =>
+      expect(unlockMock.fn).toHaveBeenCalledWith({ email: 'ada@ciphera.net', password: 'pw' }),
+    )
+    await vi.waitFor(() =>
+      expect(screen.queryByPlaceholderText('Email you sign in with')).toBeNull(),
+    )
+    // The vault display name surfaced into the (editable) display-name field.
+    expect(screen.getByDisplayValue('Ada Lovelace')).toBeInTheDocument()
+  })
+
+  it('keeps the locked state and surfaces an error on a bad password — never a blank name', async () => {
+    h.user = { id: 'u1', email: '', display_name: '' }
+    unlockMock.fn.mockReset()
+    unlockMock.fn.mockRejectedValue(new Error('bad password'))
+    const { container } = render(<AccountProfileTab />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unlock' }))
+    fireEvent.change(screen.getByPlaceholderText('Email you sign in with'), {
+      target: { value: 'ada@ciphera.net' },
+    })
+    fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: 'wrong' } })
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+
+    // The error is surfaced and the form stays open for a retry — never a silent
+    // close, and no PII was substituted (the profile email field stays empty).
+    expect(await screen.findByText(/didn’t match/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Email you sign in with')).toBeInTheDocument()
+    const profileEmail = container.querySelector('#account-display-name')
+    expect(profileEmail).not.toBeNull()
   })
 })
