@@ -61,7 +61,9 @@ describe('command deck chart (approved C mockup fidelity)', () => {
 })
 
 describe('share page wiring (Phase 3)', () => {
-  const share = read('app/share/[id]/page.tsx')
+  // The view moved out of the page on 02-09-2026 so /demo mounts the same
+  // surface — the wiring contract travels with the component, not the route.
+  const share = read('components/share/PublicDashboard.tsx')
 
   it('passes totals to all five cards and disables view-all (member-only endpoints)', () => {
     // Five since the 02-09 anatomy catch-up: the four dimension cards plus
