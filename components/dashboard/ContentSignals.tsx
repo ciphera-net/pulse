@@ -21,18 +21,25 @@ interface ContentSignalsProps {
   goalCounts: GoalCountStat[]
   siteId: string
   dateRange: { start: string; end: string }
+  // The public share surface (02-09-2026): the numbers on this card already
+  // ride the floored dashboard payload, but the page-preview capture and the
+  // events drill-down hit member-strict endpoints — off means neither fetch
+  // ever fires, and the scroll tab renders its rails fallback.
+  memberFeatures?: boolean
 }
 
 type Tab = 'scroll' | 'events'
 
-export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRange }: ContentSignalsProps) {
+export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRange, memberFeatures = true }: ContentSignalsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('scroll')
   const handleTabKeyDown = useTabListKeyboard()
 
   // The full-page capture behind the scroll tab's stacked sheets. null =
   // no capture (a state — the tab renders its rails fallback), and a fetch
   // error falls back the same way rather than blocking the numbers.
-  const { data: pagePreview } = usePagePreview(siteId)
+  // An empty siteId keeps the SWR key null, so the member-strict endpoint is
+  // never called from a share view.
+  const { data: pagePreview } = usePagePreview(memberFeatures ? siteId : '')
 
   const scrollSessions = scrollDepth?.total_sessions ?? 0
 
@@ -73,7 +80,7 @@ export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRa
         {activeTab === 'scroll' ? (
           <ScrollDepthBars scrollDepth={scrollDepth} preview={pagePreview} bare />
         ) : (
-          <GoalStats goalCounts={goalCounts} siteId={siteId} dateRange={dateRange} bare />
+          <GoalStats goalCounts={goalCounts} siteId={siteId} dateRange={dateRange} bare memberFeatures={memberFeatures} />
         )}
       </div>
     </div>

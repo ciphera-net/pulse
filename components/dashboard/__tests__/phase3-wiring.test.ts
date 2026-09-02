@@ -63,8 +63,14 @@ describe('command deck chart (approved C mockup fidelity)', () => {
 describe('share page wiring (Phase 3)', () => {
   const share = read('app/share/[id]/page.tsx')
 
-  it('passes totals to all four cards and disables view-all (member-only endpoints)', () => {
-    expect(share.match(/memberFeatures=\{false\}/g)?.length).toBe(4)
-    expect(share.match(/totals=\{data \? \{ pageviews: data\.stats\.pageviews/g)?.length).toBe(4)
+  it('passes totals to all five cards and disables view-all (member-only endpoints)', () => {
+    // Five since the 02-09 anatomy catch-up: the four dimension cards plus
+    // ContentSignals (whose page-preview + events drill-down are member-only).
+    // Campaigns carries no memberFeatures flag — its diet is the payload prop.
+    expect(share.match(/memberFeatures=\{false\}/g)?.length).toBe(5)
+    expect(share.match(/totals=\{totals\}/g)?.length).toBe(5)
+    // The payload-rows prop is what keeps Campaigns' member-only endpoint
+    // unarmed on the share surface — remove it and the card starts fetching.
+    expect(share).toContain('campaigns={data?.campaigns ?? []}')
   })
 })

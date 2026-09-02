@@ -8,17 +8,25 @@ import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { ApiError } from '@/lib/api/client'
 import { env } from '@/lib/env'
 import { LoadingOverlay, Button } from '@ciphera-net/facet'
-import Chart from '@/components/dashboard/Chart'
 import TopPages from '@/components/dashboard/ContentStats'
 import TopReferrers from '@/components/dashboard/TopReferrers'
 import Audience from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
+import Campaigns from '@/components/dashboard/Campaigns'
+import ContentSignals from '@/components/dashboard/ContentSignals'
+import SectionHeader from '@/components/dashboard/SectionHeader'
+import { type MetricType } from '@/lib/dashboard/metrics'
 import { Captcha, DownloadIcon, ZapIcon } from '@ciphera-net/facet'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { PERIOD_TO_API } from '@/lib/constants/periods'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import ExportModal from '@/components/dashboard/ExportModal'
 import { SiteFavicon } from '@/components/sites/SiteFavicon'
+// Static, unlike the authed page's dynamic() mount: there the deck defers
+// behind an app shell that renders regardless; here the deck IS the page's
+// content and renders only after data arrives anyway — a deferred chunk
+// would just add a loading pop to the page's one artifact.
+import CommandDeck from '@/components/dashboard/CommandDeck'
 
 // * The shared (public) dashboard is a public-scoped read. The backend serves only
 // * these fixed, day-granular windows there (see resolvePublicScopedRange); anything
@@ -68,6 +76,9 @@ export default function PublicDashboardPage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [todayInterval, setTodayInterval] = useState<'minute' | 'hour'>('hour')
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
+  // The deck's active rail metric. Local, not URL-persisted like the authed
+  // page's — a share link should always open on visitors.
+  const [metric, setMetric] = useState<MetricType>('visitors')
 
   // Previous period comparison is not available on the public share surface — it
   // required arbitrary-date fetches, which are the range-differencing primitive the
@@ -256,6 +267,8 @@ export default function PublicDashboardPage() {
   const safeOS = os || []
   const safeDevices = devices || []
   const safeScreenResolutions = screen_resolutions || []
+  // The F9 denominator, once — every card divides by the same totals.
+  const totals = { pageviews: safeStats.pageviews, visitors: safeStats.visitors }
 
   return (
     <div className={`min-h-screen ${fadeClass}`}>
@@ -336,21 +349,26 @@ export default function PublicDashboardPage() {
             </div>
         </div>
 
-        {/* Chart */}
+        {/* The deck — the same instrument as the authed dashboard (owner
+            ruling 02-09-2026, docs/plans/02-09-2026-demo-rebuild-design.md:
+            the share surface matches the authed anatomy). prevStats stays
+            undefined by the surface's own rule — the rail renders without
+            deltas — and the export button drives the share's existing modal. */}
         <div className="mb-8">
-          <Chart
+          <CommandDeck
             data={safeDailyStats}
             stats={safeStats}
             prevStats={prevStats}
+            metric={metric}
+            onMetricChange={setMetric}
             interval="day"
-            intervalPicker={false}
-            period={period}
             dateRange={dateRange}
+            period={period}
             todayInterval={todayInterval}
             setTodayInterval={setTodayInterval}
             multiDayInterval={multiDayInterval}
             setMultiDayInterval={setMultiDayInterval}
-            lastUpdatedAt={lastUpdatedAt}
+            onExport={() => setIsExportModalOpen(true)}
           />
         </div>
 
@@ -371,35 +389,38 @@ export default function PublicDashboardPage() {
           </p>
         )}
 
-        {/* Details Grid. totals: the same F9 denominator as the owner's
-            dashboard — the floor hides sub-5-visitor rows but never changes
-            site totals, so each visible row's % is its true share.
-            memberFeatures off: the full-list endpoints are member-only, so the
-            affordance would only ever error here. */}
-        <div className="grid gap-6 lg:grid-cols-2 mb-8">
-          <TopPages
-            topPages={safeTopPages}
-            entryPages={safeEntryPages}
-            exitPages={safeExitPages}
-            domain={site.domain}
-            collectPagePaths={site.collect_page_paths ?? true}
-            siteId={siteId}
-            dateRange={dateRange}
-            totals={data ? { pageviews: data.stats.pageviews, visitors: data.stats.visitors } : undefined}
-            memberFeatures={false}
-          />
+        {/* The authed dashboard's section anatomy (same order, same grid
+            classes — the authed page is the spec). totals: the same F9
+            denominator as the owner's dashboard — the floor hides
+            sub-5-visitor rows but never changes site totals, so each visible
+            row's % is its true share. memberFeatures off everywhere: the
+            full-list endpoints are member-only, so the affordance would only
+            ever error here. No Behaviour section: hour-of-day buckets are
+            refused on the public surface by design (F2 — an hourly bucket
+            with one visitor is that person's arrival time). */}
+        <SectionHeader title="Acquisition" note="whole site" />
+        <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
           <TopReferrers
             referrers={safeTopReferrers}
             channels={data?.channels ?? []}
             collectReferrers={site.collect_referrers ?? true}
             siteId={siteId}
             dateRange={dateRange}
-            totals={data ? { pageviews: data.stats.pageviews, visitors: data.stats.visitors } : undefined}
+            totals={totals}
             memberFeatures={false}
+          />
+          {/* Campaign rows arrive ON the payload (floored, capped) — the
+              campaigns prop is what keeps the member-only endpoint unarmed. */}
+          <Campaigns
+            siteId={siteId}
+            dateRange={dateRange}
+            totals={totals}
+            campaigns={data?.campaigns ?? []}
           />
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2 mb-8">
+        <SectionHeader title="Audience" note="whole site" />
+        <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
           <Audience
             countries={safeCountries}
             cities={safeCities}
@@ -410,7 +431,7 @@ export default function PublicDashboardPage() {
             collectAudienceData={site.collect_audience_data ?? true}
             siteId={siteId}
             dateRange={dateRange}
-            totals={data ? { pageviews: data.stats.pageviews, visitors: data.stats.visitors } : undefined}
+            totals={totals}
             memberFeatures={false}
           />
           <TechSpecs
@@ -422,7 +443,29 @@ export default function PublicDashboardPage() {
             collectScreenResolution={site.collect_screen_resolution ?? true}
             siteId={siteId}
             dateRange={dateRange}
-            totals={data ? { pageviews: data.stats.pageviews, visitors: data.stats.visitors } : undefined}
+            totals={totals}
+            memberFeatures={false}
+          />
+        </div>
+
+        <SectionHeader title="Content" note="whole site" />
+        <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
+          <TopPages
+            topPages={safeTopPages}
+            entryPages={safeEntryPages}
+            exitPages={safeExitPages}
+            domain={site.domain}
+            collectPagePaths={site.collect_page_paths ?? true}
+            siteId={siteId}
+            dateRange={dateRange}
+            totals={totals}
+            memberFeatures={false}
+          />
+          <ContentSignals
+            scrollDepth={data?.scroll_depth}
+            goalCounts={data?.goal_counts ?? []}
+            siteId={siteId}
+            dateRange={dateRange}
             memberFeatures={false}
           />
         </div>

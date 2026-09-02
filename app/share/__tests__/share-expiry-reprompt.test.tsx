@@ -10,7 +10,14 @@ import { ApiError } from '@/lib/api/client'
 
 const getPublicDashboard = vi.fn()
 const getPublicRealtime = vi.fn()
-vi.mock('@/lib/api/stats', () => ({
+// Partial mock via importOriginal: the share page now composes Campaigns,
+// whose SWR module references the full fetcher family at module scope — a
+// closed mock object goes stale on every such addition and fails at import
+// time, not in an assertion. The real exports are inert here (the heavy
+// dashboard children are mocked below); only the three the page itself calls
+// are overridden.
+vi.mock('@/lib/api/stats', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/api/stats')>()),
   getPublicDashboard: (...a: unknown[]) => getPublicDashboard(...a),
   getPublicRealtime: (...a: unknown[]) => getPublicRealtime(...a),
   authenticatePublicDashboard: vi.fn(),
@@ -23,7 +30,10 @@ vi.mock('next/navigation', () => ({
 
 // Heavy dashboard children — covered by their own tests; markers keep this
 // test about the page's own auth-state machine.
-vi.mock('@/components/dashboard/Chart', () => ({ default: () => <div data-testid="chart" /> }))
+vi.mock('@/components/dashboard/CommandDeck', () => ({ default: () => <div data-testid="deck" /> }))
+vi.mock('@/components/dashboard/Campaigns', () => ({ default: () => null }))
+vi.mock('@/components/dashboard/ContentSignals', () => ({ default: () => null }))
+vi.mock('@/components/dashboard/SectionHeader', () => ({ default: () => null }))
 vi.mock('@/components/dashboard/ContentStats', () => ({ default: () => null }))
 vi.mock('@/components/dashboard/TopReferrers', () => ({ default: () => null }))
 vi.mock('@/components/dashboard/Locations', () => ({ default: () => null }))
@@ -99,7 +109,7 @@ describe('protected share whose cookie expires mid-session', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(50) })
 
     // The dashboard rendered from the first (cookie-valid) load.
-    expect(screen.getByTestId('chart')).toBeTruthy()
+    expect(screen.getByTestId('deck')).toBeTruthy()
     expect(screen.queryByText('Protected Dashboard')).toBeNull()
 
     // 30s later the silent refresh hits the expired cookie.
@@ -109,6 +119,6 @@ describe('protected share whose cookie expires mid-session', () => {
 
     // The password form wins; the stale dashboard is gone.
     expect(screen.getByText('Protected Dashboard')).toBeTruthy()
-    expect(screen.queryByTestId('chart')).toBeNull()
+    expect(screen.queryByTestId('deck')).toBeNull()
   })
 })

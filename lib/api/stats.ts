@@ -337,6 +337,10 @@ export interface DashboardData {
   screen_resolutions: ScreenResolutionStat[]
   goal_counts?: GoalCountStat[]
   scroll_depth?: ScrollDepthDistribution
+  // Campaign rows joined the payload 02-09-2026 (floored on public-scoped
+  // reads like every dimension) so the share surface can render the
+  // Campaigns card without the member-only /campaigns endpoint.
+  campaigns?: CampaignStat[]
   date_range?: { start: string; end: string }
   /** What the minimum-cell-size floor withheld. Present ONLY on a shared dashboard
    *  and ONLY when something was withheld, so its presence is itself the signal that

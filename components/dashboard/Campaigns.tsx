@@ -27,13 +27,19 @@ interface CampaignsProps {
   // shares divide by totals.visitors; no totals → no percentages.
   totals?: { pageviews: number; visitors: number }
   onFilter?: (filter: DimensionFilter) => void
+  // The public share surface's diet (02-09-2026): rows arrive ON the dashboard
+  // payload — floored and capped by the backend's single public exit — instead
+  // of the member-only /campaigns endpoint. When provided, BOTH fetches below
+  // stay unarmed; the member-only full-list can never fire from a share view.
+  // Named like the sibling cards' payload props (referrers, countries, ...).
+  campaigns?: CampaignStat[]
 }
 
 type UtmTab = 'source' | 'medium' | 'campaign' | 'term' | 'content'
 
 const LIMIT = 7
 
-export default function Campaigns({ siteId, dateRange, filters, totals, onFilter }: CampaignsProps) {
+export default function Campaigns({ siteId, dateRange, filters, totals, onFilter, campaigns: payloadRows }: CampaignsProps) {
   const [isBuilderOpen, setIsBuilderOpen] = useState(false)
   const [faviconFailed, setFaviconFailed] = useState<Set<string>>(new Set())
   const [activeTab, setActiveTab] = useState<UtmTab>('source')
@@ -51,8 +57,8 @@ export default function Campaigns({ siteId, dateRange, filters, totals, onFilter
   // key's data wins, so a superseded in-flight response can no longer overwrite
   // a fresh one, and `error` is a real state the card can state out loud.
   const { data: cardData, error: cardError, isLoading, mutate: refetchCard } =
-    useCampaignsList(siteId, dateRange.start, dateRange.end, 10, filters)
-  const data = cardData ?? []
+    useCampaignsList(siteId, dateRange.start, dateRange.end, 10, filters, payloadRows === undefined)
+  const data = payloadRows ?? cardData ?? []
 
   // Grouping happens below, so overflow is judged on the grouped rows — the
   // full list (same endpoint the retired view-all modal used) arms only when
@@ -100,7 +106,7 @@ export default function Campaigns({ siteId, dateRange, filters, totals, onFilter
   }, [sortedData, activeTab])
 
   const hasData = data.length > 0
-  const wantsFullList = hasData && groupedData.length > LIMIT
+  const wantsFullList = hasData && groupedData.length > LIMIT && payloadRows === undefined
   const { data: fullDataRaw } =
     useCampaignsList(siteId, dateRange.start, dateRange.end, 100, filters, wantsFullList)
   const sortedFullData = useMemo(
