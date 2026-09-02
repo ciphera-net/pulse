@@ -16,14 +16,6 @@ import { isTransientRefreshFailure } from '@/lib/auth/refresh-outcome'
 import { reportClientEvent } from '@/lib/utils/clientEvents'
 import { isAuthedAppRoute } from '@/lib/auth/appRoutes'
 
-/** Read vault PII from the cross-subdomain cookie set by id-frontend. */
-function getVaultPII(): { email?: string; display_name?: string } {
-  if (typeof document === 'undefined') return {}
-  const match = document.cookie.match(/(?:^|;\s*)ciphera_pii=([^;]+)/)
-  if (!match) return {}
-  try { return JSON.parse(atob(match[1])) } catch { return {} }
-}
-
 interface User {
   id: string
   email: string
@@ -154,25 +146,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [rehydrateRoleSnapshot])
 
   const login = (userData: User) => {
-    // * Merge vault PII from cross-subdomain cookie (set by id-frontend)
-    const pii = getVaultPII()
+    // * Zero-knowledge accounts carry no server-side PII: the column was dropped
+    // * (migration 045) and the access token has no email claim. Normalise the
+    // * absent email to '' so every consumer takes the documented empty path.
     const enriched = {
       ...userData,
-      email: userData.email || pii.email || '',
-      display_name: userData.display_name || pii.display_name,
+      email: userData.email || '',
+      display_name: userData.display_name,
     }
     localStorage.setItem('user', JSON.stringify(enriched))
     localStorage.setItem('ciphera_token_refreshed_at', Date.now().toString())
     setUser(enriched)
     router.refresh()
-    // * Fetch full profile — merge with vault PII for any server-side fields
+    // * Fetch full profile — keep whatever the previous state already held for
+    // * the fields the server cannot return.
     apiRequest<User>('/auth/user/me')
       .then((fullProfile) => {
         setUser((prev) => {
           const merged = {
             ...fullProfile,
-            email: fullProfile.email || prev?.email || pii.email || '',
-            display_name: fullProfile.display_name || prev?.display_name || pii.display_name,
+            email: fullProfile.email || prev?.email || '',
+            display_name: fullProfile.display_name || prev?.display_name,
             org_id: prev?.org_id ?? fullProfile.org_id,
             role: prev?.role ?? fullProfile.role,
           }
@@ -194,8 +188,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     forgetAllPendingAuth()
     document.cookie = 'csrf_token=; Max-Age=0; path=/;'
     document.cookie = 'csrf_token=; Max-Age=0; path=/; domain=.ciphera.net;'
-    document.cookie = 'ciphera_pii=; Max-Age=0; path=/;'
-    document.cookie = 'ciphera_pii=; Max-Age=0; path=/; domain=.ciphera.net;'
     Object.keys(localStorage).forEach((key) => {
       if (key.startsWith('cw_auth_') || key.startsWith('cw_pubsub_')) {
         localStorage.removeItem(key)
@@ -231,12 +223,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setUser((prev) => {
         // * For ZKE users the server returns empty email/display_name.
-        // * Prefer state → cookie → empty.
-        const pii = getVaultPII()
+        // * Prefer server → state → empty.
         const merged = {
           ...userData,
-          email: userData.email || prev?.email || pii.email || '',
-          display_name: userData.display_name || prev?.display_name || pii.display_name,
+          email: userData.email || prev?.email || '',
+          display_name: userData.display_name || prev?.display_name,
           org_id: session?.org_id ?? userData.org_id,
           role: session?.role ?? userData.role,
         }
@@ -336,15 +327,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // * the values from the session (JWT payload / localStorage).
             try {
               const userData = await apiRequest<User>('/auth/user/me')
-              // * Check localStorage + cross-subdomain cookie for vault PII
+              // * Check localStorage for anything a previous session unlocked.
               let cachedPII: Partial<User> = {}
               const stored = localStorage.getItem('user')
               if (stored) { try { cachedPII = JSON.parse(stored) } catch { /* ignore */ } }
-              const pii = getVaultPII()
               const merged = {
                 ...userData,
-                email: userData.email || cachedPII.email || pii.email || session.email,
-                display_name: userData.display_name || cachedPII.display_name || pii.display_name,
+                email: userData.email || cachedPII.email || session.email,
+                display_name: userData.display_name || cachedPII.display_name,
                 org_id: session.org_id,
                 role: session.role,
               }

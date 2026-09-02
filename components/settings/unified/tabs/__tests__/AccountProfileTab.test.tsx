@@ -72,12 +72,31 @@ describe('AccountProfileTab (Facet structured panels)', () => {
     expect(screen.getByTestId('savebar').dataset.dirty).toBe('true')
   })
 
-  it('renders the honest "profile details unavailable" state when PII is not unlocked', () => {
+  it('states the locked-vault fact without instructing the user to go anywhere', () => {
     h.user = { id: 'u1', email: '', display_name: '' }
-    render(<AccountProfileTab />)
-    expect(screen.getByText(/Profile details unavailable in this session/i)).toBeInTheDocument()
-    // Recovery link to Ciphera ID survives.
-    expect(screen.getByRole('link', { name: /Open Ciphera ID/i })).toBeInTheDocument()
+    const { container } = render(<AccountProfileTab />)
+    expect(screen.getByText(/Your name and email stay encrypted/i)).toBeInTheDocument()
+    expect(screen.getByText(/not unlocked in this browser/i)).toBeInTheDocument()
+    // The banner must not promise a fix. Until April 2026 it told users to
+    // "sign in on Ciphera ID once, then reload Pulse to restore them" — an
+    // instruction that has been impossible since the cross-subdomain PII cookie
+    // was removed. No restore claim may come back without a working unlock.
+    expect(container.textContent).not.toMatch(/reload Pulse/i)
+    expect(container.textContent).not.toMatch(/restore them/i)
+    expect(container.textContent).not.toMatch(/Sign in on Ciphera ID/i)
+  })
+
+  it('renders no id.ciphera.net links in either PII state (the /settings URL is a 404)', () => {
+    for (const user of [
+      { id: 'u1', email: '', display_name: '' },
+      { id: 'u1', email: 'ada@ciphera.net', display_name: 'Ada' },
+    ]) {
+      h.user = user
+      const { container, unmount } = render(<AccountProfileTab />)
+      const hrefs = Array.from(container.querySelectorAll('a')).map(a => a.getAttribute('href'))
+      expect(hrefs.filter(href => href?.includes('id.ciphera.net'))).toEqual([])
+      unmount()
+    }
   })
 
   it('gates the typed-DELETE confirm: delete stays disabled until DELETE + password', () => {
