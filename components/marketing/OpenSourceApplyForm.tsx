@@ -144,7 +144,9 @@ export function OpenSourceApplyForm() {
             setCaptchaToken(token || '')
           }}
           apiUrl={env.NEXT_PUBLIC_CAPTCHA_API_URL}
-          action="opensource-application"
+          // Must match ossCaptchaAction in pulse-backend's handler — the
+          // captcha binds tokens to the action at solve time.
+          action="pulse_opensource_application"
         />
       </div>
       {error && (
