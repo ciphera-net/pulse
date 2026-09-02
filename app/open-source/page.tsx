@@ -5,6 +5,7 @@ import { ArrowRightIcon } from '@ciphera-net/facet'
 import { MacWindow } from '@/components/marketing/system/MacWindow'
 import { HomeClosingCta } from '@/components/marketing/HomeClosingCta'
 import { OpenSourceApplyForm } from '@/components/marketing/OpenSourceApplyForm'
+import OpenSourceFAQ from '@/components/marketing/OpenSourceFAQ'
 import { cdnUrl } from '@/lib/cdn'
 
 // /open-source — the open-source plan (design approved 02-09-2026, round 8;
@@ -37,24 +38,6 @@ const TERMS: { value: string; unit: string; label: string }[] = [
   { value: '2', unit: 'years', label: 'Data retention' },
 ]
 
-const FAQ: { q: string; a: React.ReactNode }[] = [
-  {
-    q: 'Why isn’t the backend open?',
-    a: 'Same model as Proton: open clients, managed closed cloud core. The part that runs on your visitors’ browsers — the part privacy actually turns on — is fully auditable. The backend stays closed so one small team can run it well. If that’s a dealbreaker, Plausible and Umami are self-hostable and genuinely good.',
-  },
-  {
-    q: 'What do you get out of it?',
-    a: 'Permission to show your project’s name and logo as a Pulse user, and honest usage that hardens the product. A testimonial only if the product earns one — never a condition.',
-  },
-  {
-    q: 'What if we outgrow 100k pageviews?',
-    a: 'Tell us. The limit is set per grant and gets raised for real projects — outgrowing it is the kind of problem we like.',
-  },
-  {
-    q: 'Can the plan be taken away?',
-    a: 'It runs for as long as the project qualifies. If a project goes closed or dormant, we talk first — and leaving takes an export, not a negotiation.',
-  },
-]
 
 export default function OpenSourcePage() {
   return (
@@ -157,12 +140,23 @@ export default function OpenSourcePage() {
         </div>
       </section>
 
-      {/* ── 01 · Apply — pitch left, the anonymous form right. ── */}
+      {/* ── 01 · FAQ — the shared category-rail pattern. ── */}
+      <section className="border-b border-border">
+        <div className="px-6 py-16 sm:py-20">
+          <p className="text-xs text-muted-foreground">01 · FAQ</p>
+          <h2 className="mt-4 font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+            Questions, answered.
+          </h2>
+          <OpenSourceFAQ />
+        </div>
+      </section>
+
+      {/* ── 02 · Apply — pitch left, the anonymous form right. ── */}
       <section className="border-b border-border" id="apply">
         <div className="px-6 py-16 sm:py-20">
           <div className="mx-auto grid max-w-5xl grid-cols-1 items-start gap-x-8 gap-y-1 sm:grid-cols-2">
             <div>
-              <p className="text-xs text-muted-foreground">01 · Apply</p>
+              <p className="text-xs text-muted-foreground">02 · Apply</p>
               <h2 className="mt-4 font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
                 Two doors, and a third for edge cases.
               </h2>
@@ -196,28 +190,6 @@ export default function OpenSourcePage() {
                 Rather write it yourself? hello@ciphera.net works too.
               </p>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── 02 · FAQ — the launch answers, pre-written, on the record. ── */}
-      <section className="border-b border-border">
-        <div className="px-6 py-16 sm:py-20">
-          <div>
-            <p className="text-xs text-muted-foreground">02 · Straight answers</p>
-            <h2 className="mt-4 font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-              The questions worth asking.
-            </h2>
-          </div>
-          <div className="mt-8 max-w-3xl border-t border-border">
-            {FAQ.map((item) => (
-              <div key={item.q} className="border-b border-border py-8">
-                <h3 className="text-base font-semibold text-foreground">{item.q}</h3>
-                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                  {item.a}
-                </p>
-              </div>
-            ))}
           </div>
         </div>
       </section>
