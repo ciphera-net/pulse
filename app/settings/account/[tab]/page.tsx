@@ -11,12 +11,17 @@ const AccountDevicesTab  = dynamic(() => import('@/components/settings/unified/t
 // * The delivery matrix, digest, quiet hours, and retention overrides that used
 // * to be the org section's "My preferences" sub-tab render here directly.
 const MyPreferencesTab   = dynamic(() => import('@/components/settings/notifications/MyPreferencesTab'))
+// * Ciphera ID's own account alert emails — a different system from Pulse's
+// * notification categories above, so a different tab rather than a section
+// * bolted onto one of them.
+const AccountSecurityAlertsTab = dynamic(() => import('@/components/settings/unified/tabs/AccountSecurityAlertsTab'))
 
 const TAB_COMPONENTS: Record<string, React.ComponentType> = {
   profile:       AccountProfileTab,
   security:      AccountSecurityTab,
   devices:       AccountDevicesTab,
   notifications: MyPreferencesTab,
+  'security-alerts': AccountSecurityAlertsTab,
 }
 
 export default function AccountSettingsTabPage() {
