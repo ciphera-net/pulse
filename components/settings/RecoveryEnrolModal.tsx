@@ -21,6 +21,7 @@ import { useCallback, useState } from 'react'
 import { Button, Input, RecoveryPhraseDisplay } from '@ciphera-net/facet'
 import { ApiError } from '@/lib/api/client'
 import { enrolRecoveryIdentity } from '@/lib/auth/tessera/recovery-enrol'
+import { MODAL_SCROLL_CLASS, MODAL_CENTER_CLASS, MODAL_PANEL_CLASS } from '@/components/settings/modalChrome'
 
 /**
  * What to SHOW the user for a failed enrolment.
@@ -138,80 +139,96 @@ export function useRecoveryEnrolModal(): {
 
   const modal = pending ? (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/70 p-4"
+      className={MODAL_SCROLL_CLASS}
       role="dialog"
       aria-modal="true"
     >
-      <div className="w-full max-w-sm border border-border bg-card p-6 shadow-xl">
-        {phrase ? (
-          // Facet's component, the same one id.ciphera.net shows at signup.
-          // `recoveryAvailable` is service policy and is passed in, never
-          // assumed by the component: recovery IS available now, and this
-          // phrase can be used at id.ciphera.net/recover today.
-          <RecoveryPhraseDisplay
-            phrase={phrase}
-            recoveryAvailable
-            onConfirmed={onConfirmed}
-          />
-        ) : (
-          <>
-            <h2 className="text-lg font-semibold text-foreground">Set up account recovery</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              We&apos;ll give you a recovery phrase to write down. It&apos;s the only way back into
-              your account if you forget your password — Ciphera cannot reset it for you. Enter the
-              email and password you sign in with to begin.
-            </p>
+      {/* 🔴 SCROLLING IS ON THE OUTER ELEMENT, CENTERING ON THIS ONE, and they
+          must not be combined. `flex items-center` on a scroll container
+          overflows a too-tall child EQUALLY IN BOTH DIRECTIONS, and the half
+          above the scroll origin is unreachable — `scrollTop` cannot go
+          negative. The bottom scrolls, the top is simply gone.
 
-            <form onSubmit={onSubmit} className="mt-5 space-y-4">
-              <div className="space-y-1.5">
-                <label htmlFor="recovery-email" className="block text-sm font-medium text-foreground/70">
-                  Sign-in email
-                </label>
-                <Input
-                  id="recovery-email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  autoFocus
-                  required
-                  disabled={busy}
-                />
-              </div>
+          Measured 03-09-2026 on a real user's laptop: the recovery-phrase
+          panel's own heading was clipped off the top of the screen while she
+          was copying down the only existing copy of her recovery phrase. On a
+          shorter window it would have cut WORDS.
 
-              <div className="space-y-1.5">
-                <label htmlFor="recovery-password" className="block text-sm font-medium text-foreground/70">
-                  Password
-                </label>
-                <Input
-                  id="recovery-password"
-                  type="password"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-                  required
-                  disabled={busy}
-                />
-              </div>
+          `min-h-full` is what keeps short dialogs centred: the wrapper fills
+          the viewport when the content is small, and grows past it when the
+          content is tall, so the scroll container can reach all of it. */}
+      <div className={MODAL_CENTER_CLASS}>
+        <div className={MODAL_PANEL_CLASS}>
+          {phrase ? (
+            // Facet's component, the same one id.ciphera.net shows at signup.
+            // `recoveryAvailable` is service policy and is passed in, never
+            // assumed by the component: recovery IS available now, and this
+            // phrase can be used at id.ciphera.net/recover today.
+            <RecoveryPhraseDisplay
+              phrase={phrase}
+              recoveryAvailable
+              onConfirmed={onConfirmed}
+            />
+          ) : (
+            <>
+              <h2 className="text-lg font-semibold text-foreground">Set up account recovery</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                We&apos;ll give you a recovery phrase to write down. It&apos;s the only way back into
+                your account if you forget your password — Ciphera cannot reset it for you. Enter the
+                email and password you sign in with to begin.
+              </p>
 
-              {error && (
-                <p className="text-sm text-destructive" role="alert">
-                  {error}
-                </p>
-              )}
+              <form onSubmit={onSubmit} className="mt-5 space-y-4">
+                <div className="space-y-1.5">
+                  <label htmlFor="recovery-email" className="block text-sm font-medium text-foreground/70">
+                    Sign-in email
+                  </label>
+                  <Input
+                    id="recovery-email"
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    autoFocus
+                    required
+                    disabled={busy}
+                  />
+                </div>
 
-              <div className="flex gap-2 pt-1">
-                <Button type="submit" disabled={busy || !email.trim() || !password}>
-                  {busy ? 'Setting up…' : 'Create my recovery phrase'}
-                </Button>
-                <Button type="button" variant="secondary" onClick={onCancel} disabled={busy}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </>
-        )}
+                <div className="space-y-1.5">
+                  <label htmlFor="recovery-password" className="block text-sm font-medium text-foreground/70">
+                    Password
+                  </label>
+                  <Input
+                    id="recovery-password"
+                    type="password"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+                    required
+                    disabled={busy}
+                  />
+                </div>
+
+                {error && (
+                  <p className="text-sm text-destructive" role="alert">
+                    {error}
+                  </p>
+                )}
+
+                <div className="flex gap-2 pt-1">
+                  <Button type="submit" disabled={busy || !email.trim() || !password}>
+                    {busy ? 'Setting up…' : 'Create my recovery phrase'}
+                  </Button>
+                  <Button type="button" variant="secondary" onClick={onCancel} disabled={busy}>
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </>
+          )}
+        </div>
       </div>
     </div>
   ) : null
