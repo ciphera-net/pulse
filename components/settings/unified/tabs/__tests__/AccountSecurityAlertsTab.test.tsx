@@ -21,18 +21,15 @@ vi.mock('@/lib/api/user', () => ({
   updateUserPreferences: vi.fn().mockResolvedValue(undefined),
 }))
 
-// Facet stand-ins. Toggle keeps its real switch semantics (role + aria-checked)
+// Facet stand-ins. The Banner stand-in went with the "not enforced yet" banner
+// on 03-09-2026 — a mock for a component the subject no longer imports would
+// let the banner come back without the mock ever being noticed as missing.
+// Toggle keeps its real switch semantics (role + aria-checked)
 // so the test queries the way a screen reader would, and the label association
 // is what names each switch — a toggle nobody can name is a toggle nobody can
 // use. StatusChip / SettingsPanel / the panel primitives render for real.
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...a: unknown[]) => a.filter(Boolean).join(' '),
-  Banner: ({ title, children }: any) => (
-    <div role="status">
-      <p>{title}</p>
-      <div>{children}</div>
-    </div>
-  ),
   Toggle: ({ checked, onChange, disabled }: any) => (
     <button
       role="switch"
@@ -156,16 +153,17 @@ describe('AccountSecurityAlertsTab', () => {
     expect(container.querySelectorAll('[role="switch"]')).toHaveLength(3)
   })
 
-  it('says out loud that the switches are not enforced yet', () => {
-    // Measured 02-09-2026: id-backend fires every alert unconditionally
-    // (totp.go, opaque_settings.go, opaque_login.go, recovery*.go) and Relay's
-    // suppressible-template map holds exactly two entries, neither an `id_*`.
-    // A switch that silently does nothing is the defect the profile-banner fix
-    // removed; this assertion is what stops it being re-added here by deleting
-    // one sentence. It comes out when a sender starts reading the preference.
+  it('no longer warns that the switches are unenforced', () => {
+    // The inverse of the assertion that stood here from 02-09 to 03-09-2026,
+    // and it is kept rather than deleted so the claim on this tab stays tied to
+    // a measurement in both directions. id-backend gates every one of these
+    // three categories at the sender since ciphera-id#64, so the banner would
+    // now be the false statement.
     render(<AccountSecurityAlertsTab />)
-    expect(screen.getByText(/not enforced yet/i)).toBeInTheDocument()
-    expect(screen.getByText(/no sender checks these preferences today/i)).toBeInTheDocument()
+    expect(screen.queryByText(/not enforced/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/no sender checks these preferences/i)).not.toBeInTheDocument()
+    // The one honest exception survives: it is a fact, not a disclaimer.
+    expect(screen.getByText('Always sent')).toBeInTheDocument()
   })
 
   it('renders the loading skeleton (not blank) while the session hydrates', () => {

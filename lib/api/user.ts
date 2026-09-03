@@ -84,6 +84,20 @@ export async function revokeSession(sessionId: string): Promise<void> {
   })
 }
 
+/**
+ * The PUT body. Every key is REQUIRED here on purpose: the write replaces the
+ * whole `email_notifications` block, so a partial body silently resets
+ * whatever it leaves out.
+ *
+ * ⚠️ The READ is not this shape. Since ciphera-id#64 id-backend omits a
+ * security-alert key it has never been given a value for, so that "never
+ * chosen" stays distinguishable from "switched off" — absent means ON and the
+ * sender treats it that way. Hydrate a UI from a defaults spread
+ * (AccountSecurityAlertsTab does), never by reading one of those keys direct.
+ * The auth-context type still declares them required because Facet's
+ * ProfileSettings prop type does; that surface has notifications suppressed
+ * and never reads them, so it is a naming mismatch rather than a live bug.
+ */
 export interface UserPreferences {
   email_notifications: {
     new_file_received: boolean
