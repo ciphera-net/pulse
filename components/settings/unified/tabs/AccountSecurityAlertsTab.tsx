@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Banner, Toggle, toast, getAuthErrorMessage } from '@ciphera-net/facet'
+import { Toggle, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
 import { updateUserPreferences, type UserPreferences } from '@/lib/api/user'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
@@ -26,17 +26,24 @@ import { StatusChip } from '@/components/settings/StatusChip'
  * that lists three of four alerts quietly tells the user the fourth does not
  * exist, and a disabled switch would imply a control we do not have.
  *
- * 🔴 AND NEITHER ARE THE OTHER THREE, TODAY. The preferences are stored and
- * served by id-backend, but nothing reads them before sending: every alert
- * call site fires unconditionally (`totp.go`, `opaque_settings.go`,
- * `opaque_login.go`, `recovery.go`, `recovery_opaque.go`), and Relay refuses
- * to make `id_*` mail suppressible at all — `internal/preferences/category.go`
- * lists exactly two suppressible templates and a test iterates the registry to
- * keep it that way. So the switches below write a real, persisted preference
- * that no sender consults yet. The banner says so. A control that silently
- * does nothing is the same defect as the profile banner that told people to
- * reload Pulse to restore their name; it does not get to ship unlabelled just
- * because the storage half works.
+ * ✅ The other three ARE enforced, since ciphera-id#64 (03-09-2026). Until then
+ * they were not: id-backend read the preferences it stored and then sent every
+ * alert anyway, so this tab carried a banner saying the switches were saved but
+ * not obeyed. The gate now lives in `NotifySender.notify()` — one place, keyed
+ * by a category declared beside each template name — and this tab is a plain
+ * settings surface again. Relay/Iris is unchanged and still refuses to make
+ * `id_*` mail suppressible (`internal/preferences/category.go`): mail that is
+ * never handed over never reaches it, so that refusal stays as the outer net.
+ *
+ * 🔴 If a sender ever stops consulting the preference again, the banner comes
+ * BACK. A switch that silently does nothing is the same defect as the profile
+ * banner that told people to reload Pulse to restore their name — it does not
+ * get to ship unlabelled just because the storage half works.
+ *
+ * ⚠️ Absent means ON, server-side. `DEFAULTS` below is not a cosmetic guess: a
+ * user who has never opened this tab has `preferences = {}` and id-backend
+ * omits the unset keys from the wire, so this spread and the server's own
+ * default must agree or the switch shows a state the sender does not hold.
  *
  * The PUT replaces the whole `email_notifications` block, so every key must be
  * written back on every save — including the two the ID account system carries
@@ -119,14 +126,6 @@ export default function AccountSecurityAlertsTab() {
 
   return (
     <div className="space-y-8">
-      {/* Not a disclaimer — a fact the user needs before they trust a switch.
-          See the file docblock for the measurement behind it. */}
-      <Banner tone="warning" title="These choices are saved, but not enforced yet">
-        Ciphera ID sends every alert below whatever the switches say — no sender checks
-        these preferences today. Your choice is recorded on your account, so it is not
-        lost, but turning one off does not stop the email.
-      </Banner>
-
       <SettingsPanel
         kicker="Security alerts"
         description="Emails Ciphera ID sends you when something changes on your account."
