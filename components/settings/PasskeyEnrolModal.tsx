@@ -25,7 +25,53 @@
 
 import { useCallback, useState } from 'react'
 import { Button, Input } from '@ciphera-net/facet'
+import { ApiError } from '@/lib/api/client'
 import { enrolPasskey } from '@/lib/auth/tessera/passkey-enrol'
+
+/**
+ * What to SHOW the user for a failed enrolment.
+ *
+ * 🔴 An `ApiError`'s `.message` MUST NOT be shown here. `lib/api/client.ts`
+ * replaces every HTTP error message with `authMessageFromStatus(status)` before
+ * it throws, and Facet maps 401 to "Session expired, please sign in again." The
+ * most likely failure on this dialog is a mistyped password, which id-backend
+ * answers 401 at `/auth/reauth/finish` — so rendering `err.message` verbatim
+ * told a user with a perfectly healthy session to sign in again. Following that
+ * instruction changes nothing, they return, retype the same wrong password, and
+ * read the same sentence: a loop with no hint that the password is the problem.
+ *
+ * This is the rule `ReauthModal` already follows for the identical ceremony —
+ * it discards `err.message` on purpose and writes its own. The modal's docblock
+ * claims it fills ReauthModal's gap "the same way"; on error text it did the
+ * opposite, and this is what makes the claim true.
+ *
+ * Plain `Error`s are the exception and are shown verbatim: those come from
+ * `passkey-enrol.ts`, which throws deliberate, specific sentences ("This
+ * account has no encrypted vault…", "…did not produce a vault key"). Those say
+ * more than any generic text could.
+ */
+function enrolErrorMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    // 0 is this client's own code for "the request never completed".
+    if (err.status === 0) {
+      return 'Could not reach Ciphera ID. Nothing was saved — check your connection and try again.'
+    }
+    if (err.status === 401 || err.status === 403) {
+      return 'That email or password didn\u2019t match. Nothing was saved — please try again.'
+    }
+    if (err.status === 429) {
+      return 'Too many attempts. Nothing was saved — wait a moment and try again.'
+    }
+    return 'Ciphera ID refused the request. Nothing was saved — please try again.'
+  }
+  // A cancelled or dismissed biometric prompt. The browser's own text is
+  // developer-facing, so it never reaches the user.
+  if (err instanceof DOMException || (err as { name?: string })?.name === 'NotAllowedError') {
+    return 'The passkey prompt was dismissed. Nothing was saved — try again when you are ready.'
+  }
+  if (err instanceof Error && err.message) return err.message
+  return 'Passkey setup failed. Nothing was saved — please try again.'
+}
 
 interface Pending {
   resolve: () => void
@@ -86,11 +132,7 @@ export function usePasskeyEnrolModal(): {
         // every client-side abort happens before that request is sent. Keep the
         // dialog open so the user can correct and retry.
         setBusy(false)
-        setError(
-          err instanceof Error && err.message
-            ? err.message
-            : 'Passkey setup failed. Nothing was saved — please try again.',
-        )
+        setError(enrolErrorMessage(err))
       }
     },
     [pending, busy, email, password, name, close],

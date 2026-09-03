@@ -59,6 +59,7 @@ vi.mock('@simplewebauthn/browser', () => ({
   startAuthentication: (...a: unknown[]) => startAuthentication(...a),
 }))
 
+import { PASSKEY_WRAP_CONTRACT } from '@ciphera-net/auth/passkey-vectors'
 import { authFetch } from '@/lib/api/client'
 import { enrolPasskey } from '../passkey-enrol'
 
@@ -277,5 +278,154 @@ describe('enrolPasskey', () => {
     wire()
     await enrolPasskey({ email: 'me@ciphera.test', password: 'pw', displayName: '   ' })
     expect('display_name' in finishBody()).toBe(false)
+  })
+})
+
+/**
+ * Consumer smoke test required by @ciphera-net/auth's README of any app that
+ * ENROLS passkeys ("asserting that what its enrolment code actually puts on
+ * the wire matches the shipped contract").
+ *
+ * 🔴 THIS IS NOT A DUPLICATE OF THE `61` AND `0x01` ASSERTIONS ABOVE, and the
+ * difference is the entire point. Those are literals written in this repo, so
+ * they pin what Pulse believed the contract was on the day they were typed.
+ * These read `PASSKEY_WRAP_CONTRACT` out of the package build this repo
+ * ACTUALLY RESOLVED, so they fail when the fleet contract moves and Pulse does
+ * not — the version-skew failure the package exists to catch. Two apps quietly
+ * installing different crypto is what put the blind index in this package in
+ * the first place.
+ *
+ * It matters most here because the wrap is the one thing an enrolment writes
+ * that cannot be recovered if it is wrong: id-backend is zero-knowledge, so it
+ * checks the length and the version byte and nothing else. A plausibly shaped
+ * wrong envelope is accepted, stored, and discovered by the user at their next
+ * sign-in — on a device that no longer offers them the password path.
+ */
+describe('the PRF output never reaches the server', () => {
+  beforeEach(() => {
+    authFetchSpy.mockReset()
+    startRegistration.mockReset()
+    startAuthentication.mockReset()
+    prfSeenBySdk = null
+    sdkOpaqueWrapSeen = null
+    sdkSkipPutWraps = false
+  })
+
+  /**
+   * 🔴 The single secret that keeps id-backend from opening the vault. It already
+   * stores `prf_wrapped_vault_key`; PRF output + wrap = the VMK. The leak would be
+   * silent and type-dependent — `@simplewebauthn` copies the extension results onto
+   * the object we post, and an `ArrayBuffer` stringifies to `{}` while a
+   * `Uint8Array` stringifies to every byte in the clear.
+   *
+   * These assert on the SERIALISED body, not the object, because `JSON.stringify`
+   * is the thing that decides whether the bytes travel.
+   */
+  function finishBodyRaw(): string {
+    const call = authFetchSpy.mock.calls.find((c) => c[0] === '/auth/webauthn/register/finish')
+    if (!call) throw new Error('register/finish was never called')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (call[1] as any).body as string
+  }
+
+  it('strips prf from clientExtensionResults before posting', async () => {
+    wire()
+    await enrolPasskey({ email: 'me@ciphera.test', password: 'pw' })
+
+    const sent = finishBody()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ext = (sent.response as any).clientExtensionResults
+    expect(ext).toBeDefined() // the field still travels...
+    expect(ext.prf).toBeUndefined() // ...without the one key that is a secret
+  })
+
+  it('leaks no PRF byte even when the authenticator returns a VIEW instead of a buffer', async () => {
+    // The case that makes this a real risk rather than a theoretical one: a
+    // Uint8Array serialises to {"0":..,"1":..}, an ArrayBuffer to {}.
+    const marker = Uint8Array.from({ length: 32 }, () => 0xab)
+    wire()
+    // Override AFTER wire(), which sets its own startRegistration.
+    startRegistration.mockImplementation(async () => ({
+      id: 'cred-id-b64url',
+      rawId: 'cred-id-b64url',
+      response: {},
+      type: 'public-key',
+      // NOT .buffer — the view itself, which is what leaks.
+      clientExtensionResults: { prf: { results: { first: marker } } },
+    }))
+    await enrolPasskey({ email: 'me@ciphera.test', password: 'pw' })
+
+    const raw = finishBodyRaw()
+    // The byte pattern a Uint8Array of 0xab would serialise to.
+    expect(raw).not.toContain('"0":171')
+    expect(raw).not.toContain('171,171')
+    // And prove the assertion could actually fire: the same view, stringified.
+    expect(JSON.stringify({ first: marker })).toContain('"0":171')
+  })
+})
+
+describe('@ciphera-net/auth passkey wrap contract (consumer smoke test)', () => {
+  beforeEach(() => {
+    authFetchSpy.mockReset()
+    startRegistration.mockReset()
+    startAuthentication.mockReset()
+    prfSeenBySdk = null
+    sdkOpaqueWrapSeen = null
+    sdkSkipPutWraps = false
+  })
+
+  it('sends a wrap and a salt matching the SHIPPED contract, not a local literal', async () => {
+    wire()
+    await enrolPasskey({ email: 'me@ciphera.test', password: 'pw' })
+
+    const body = finishBody()
+    const wrapB64 = body.prf_wrapped_vault_key as string
+    const saltB64 = body.prf_salt as string
+
+    // base64 STANDARD, not base64URL. The credential id on this SAME request is
+    // base64URL, so both alphabets travel in one body and are not interchangeable.
+    expect(PASSKEY_WRAP_CONTRACT.wireEncoding).toBe('base64-std')
+
+    // 🔴 Asserted DETERMINISTICALLY, not by scanning for '-' and '_'. The salt is
+    // 32 random bytes, so roughly a quarter of runs encode to a string with no
+    // '+' or '/' in it at all — under which a base64URL re-encoding is
+    // character-identical and an alphabet check passes by luck. A guard that
+    // holds three times in four is not a guard. The wrap is a fixed vector
+    // containing '/', so it can be checked directly; the salt is compared to the
+    // standard-base64 encoding of the very bytes the PRF was evaluated with.
+    expect(KAT_WRAP_B64).toMatch(/[+/]/) // the fixture can actually show the difference
+    expect(wrapB64).not.toMatch(/[-_]/)
+    const evalSalt: Uint8Array =
+      startRegistration.mock.calls[0][0].optionsJSON.extensions.prf.eval.first
+    expect(saltB64).toBe(b64std(evalSalt))
+
+    const wrap = Uint8Array.from(atob(wrapB64), (c) => c.charCodeAt(0))
+    expect(wrap.length).toBe(PASSKEY_WRAP_CONTRACT.envelopeLength)
+    expect(wrap[0]).toBe(PASSKEY_WRAP_CONTRACT.version)
+    expect(atob(saltB64).length).toBe(PASSKEY_WRAP_CONTRACT.saltLength)
+
+    // The envelope's own arithmetic, so a length change upstream cannot be
+    // satisfied by a differently-shaped 61 bytes.
+    expect(wrap.length).toBe(1 + PASSKEY_WRAP_CONTRACT.nonceLength + 32 + 16)
+  })
+
+  it('names the wire fields and the re-auth purpose the shipped contract declares', async () => {
+    wire()
+    await enrolPasskey({ email: 'me@ciphera.test', password: 'pw' })
+
+    const body = finishBody()
+    // Read through the contract rather than as string literals: if the fleet
+    // renames a field, this repo goes red instead of posting to a key the
+    // server ignores — which id-backend would answer 400, but only after the
+    // authenticator had already minted a credential.
+    expect(body).toHaveProperty(PASSKEY_WRAP_CONTRACT.wireFields.wrappedKey)
+    expect(body).toHaveProperty(PASSKEY_WRAP_CONTRACT.wireFields.salt)
+    expect(body).toHaveProperty(PASSKEY_WRAP_CONTRACT.wireFields.reauthToken)
+
+    const reauthFinish = authFetchSpy.mock.calls.find((c) => c[0] === '/auth/reauth/finish')!
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(JSON.parse((reauthFinish[1] as any).body).purpose).toBe(
+      PASSKEY_WRAP_CONTRACT.reauthPurpose,
+    )
   })
 })

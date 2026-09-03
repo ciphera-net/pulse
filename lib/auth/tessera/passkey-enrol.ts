@@ -202,7 +202,7 @@ export async function enrolPasskey(opts: EnrolPasskeyOptions): Promise<EnrolPass
     method: 'POST',
     body: JSON.stringify({
       sessionId: begin.sessionId,
-      response: registration,
+      response: withoutPrfResults(registration),
       reauth_token: reauthToken,
       prf_wrapped_vault_key: wrap,
       prf_salt: b64std(salt),
@@ -254,6 +254,43 @@ async function readPRFWithFallback(
   } catch {
     return null
   }
+}
+
+/**
+ * Strip the PRF extension output before the ceremony response goes to the server.
+ *
+ * 🔴 THIS IS THE ZERO-KNOWLEDGE BOUNDARY, and it is one `JSON.stringify` away
+ * from not holding. `@simplewebauthn` copies `getClientExtensionResults()` onto
+ * the object it returns, verbatim and unfiltered, and we post that object. The
+ * PRF output is the ONLY secret that keeps the server from opening the vault:
+ * id-backend already stores `prf_wrapped_vault_key`, so PRF output + wrap = the
+ * VMK. Handing it over would make the passkey path knowledgeable in exactly the
+ * way the whole design refuses to be.
+ *
+ * What makes it a live risk rather than a theoretical one is that the leak is
+ * TYPE-DEPENDENT and silent. The spec says `prf.results.first` is an
+ * `ArrayBuffer`, which `JSON.stringify` renders as `{}` — harmless, and why
+ * this has never leaked. But a `Uint8Array` renders as `{"0":12,"1":45,…}`:
+ * every byte, in the clear. Measured, not assumed:
+ *   JSON.stringify({first: new ArrayBuffer(32)})     -> {"first":{}}
+ *   JSON.stringify({first: new Uint8Array([1,2,3])}) -> {"first":{"0":1,"1":2,"2":3}}
+ * A browser, a platform authenticator or a passkey-provider extension returning
+ * a view instead of a buffer is all it takes — and `prf.ts`'s own
+ * `toArrayBuffer` handles exactly that case on the way IN, so this codebase
+ * already treats a view as a shape it must expect.
+ *
+ * Stripping is free: the server does not want this field. WebAuthn's signature
+ * covers `clientDataJSON` and `authenticatorData`, never the client extension
+ * outputs; go-webauthn declares `ClientExtensionResults` `omitempty` and reads
+ * exactly one key out of it — the legacy U2F `appid`, which id-backend does not
+ * use. Verified in `vendor/github.com/go-webauthn/webauthn/protocol/credential.go`.
+ */
+function withoutPrfResults<T extends { clientExtensionResults?: object }>(response: T): T {
+  const ext = response.clientExtensionResults
+  if (!ext) return response
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructuring IS the removal
+  const { prf: _prf, ...rest } = ext as Record<string, unknown>
+  return { ...response, clientExtensionResults: rest as T['clientExtensionResults'] }
 }
 
 function b64url(bytes: Uint8Array): string {

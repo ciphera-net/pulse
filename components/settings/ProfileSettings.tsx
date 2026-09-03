@@ -6,7 +6,7 @@ import { ProfileSettings as SharedProfileSettings } from '@ciphera-net/facet'
 import { deriveAuthKey } from '@/lib/crypto/password'
 import { deleteAccount, getUserSessions, revokeSession, updateUserPreferences, updateDisplayName } from '@/lib/api/user'
 import { setup2FA, verify2FA, disable2FA, regenerateRecoveryCodes } from '@/lib/api/2fa'
-import { listPasskeys, deletePasskey } from '@/lib/api/webauthn'
+import { listPasskeys, deletePasskey, renamePasskey } from '@/lib/api/webauthn'
 import { useReauthModal, isReauthCancelled } from '@/components/settings/ReauthModal'
 import { usePasskeyEnrolModal, isEnrolCancelled } from '@/components/settings/PasskeyEnrolModal'
 
@@ -138,6 +138,7 @@ export default function ProfileSettings({ activeTab, borderless, hideDangerZone 
         onRegisterPasskey={handleRegisterPasskey}
         onListPasskeys={listPasskeys}
         onDeletePasskey={deletePasskey}
+        onRenamePasskey={renamePasskey}
         onUpdatePreferences={updateUserPreferences}
         deriveAuthKey={wrappedDeriveAuthKey}
         refreshUser={refresh}
