@@ -204,24 +204,118 @@ export async function setSessionAction(accessToken: string, refreshToken?: strin
     }
 }
 
-export async function logoutAction() {
+/**
+ * What one sign-out attempt actually achieved.
+ *
+ * 🔴 `revoked` is the only honest signal, and it is NOT the same thing as
+ * `success`. `success` means the local cookies were cleared — which this action
+ * can always do. `revoked` means id-backend answered 2xx, so
+ * `RevokeFamilyByPresentedToken` ran and the refresh family is dead in the
+ * database. Before 03-09-2026 this action returned a bare `{ success: true }`
+ * and the two were silently conflated.
+ */
+export interface LogoutResult {
+  /** The local cookies were cleared. Always true — the user asked to leave. */
+  success: boolean
+  /** id-backend confirmed the revoke (2xx). The refresh family is dead. */
+  revoked: boolean
+  /** The upstream HTTP status, or `null` when we never got an answer at all. */
+  status: number | null
+}
+
+export async function logoutAction(): Promise<LogoutResult> {
   const cookieStore = await cookies()
   const cookieDomain = getCookieDomain()
-  const refreshToken = cookieStore.get('refresh_token')?.value
 
-  // Revoke the refresh token server-side before clearing local cookies.
+  // 🔴 ALL THREE COOKIES ARE LOAD-BEARING AND EACH FAILS DIFFERENTLY.
+  //
+  // This is a SERVER action. There is no browser attached to the outgoing
+  // fetch, so `credentials: 'include'` means nothing here — every cookie has to
+  // be forwarded by hand on a `Cookie:` header. (`app/api/auth/refresh/route.ts`
+  // gets away with a body because /refresh reads `refresh_token` from the body
+  // OR the cookie; /logout reads the COOKIE only.)
+  //
+  //   access_token   AuthMiddleware. Absent ⇒ 401 "Authorization header
+  //                  required" and CSRFMiddleware never even runs.
+  //   csrf_token     CSRFMiddleware step 1. Absent ⇒ 403 "CSRF token required".
+  //   refresh_token  LogoutHandler itself (internal/api/auth.go) reads this
+  //                  cookie and ONLY this cookie. Absent ⇒ 200 OK that revokes
+  //                  nothing — the worst outcome, because it looks like success.
+  const accessToken = cookieStore.get('access_token')?.value
+  const refreshToken = cookieStore.get('refresh_token')?.value
+  const csrfToken = cookieStore.get('csrf_token')?.value
+
+  let revoked = false
+  let status: number | null = null
+
+  // 🔴 THE DEFECT THIS REPLACES (03-09-2026). This used to be a server-side
+  // fetch carrying no cookie, no Authorization header and no CSRF header, with
+  // `{ refresh_token }` in the body. id-backend's AuthMiddleware answered 401
+  // before anything read the body — and the body is ignored by LogoutHandler
+  // anyway. So the browser looked signed out while the refresh family stayed
+  // live in `refresh_tokens` with `revoked = FALSE` for up to 30 days. Nothing
+  // reported it: the response was discarded and the return value was a
+  // hardcoded `{ success: true }`.
+  //
+  // `POST /api/v1/auth/logout` sits on id-backend's `protected` group —
+  // AuthMiddleware then CSRFMiddleware (cmd/server/main.go) — and /logout is NOT
+  // on CSRFMiddleware's skip list (internal/api/middleware.go: login, refresh,
+  // register, /oauth*, verify, authorize-session, forgot-password,
+  // reset-password). CSRFMiddleware requires, in order:
+  //
+  //   1. a `csrf_token` cookie                       ⇒ else 403
+  //   2. an `X-CSRF-Token` request header            ⇒ else 403
+  //   3. subtle.ConstantTimeCompare(cookie, header)  ⇒ else 403
+  //   4. the cookie in `nonce.hmac` form, hmac = HMAC-SHA256(nonce,
+  //      JWT_SECRET + userID)                        ⇒ else 403
   if (refreshToken) {
+    // Forwarded verbatim. The values are opaque to us and re-encoding one would
+    // break the constant-time comparison at step 3 above.
+    const cookieHeader = [
+      accessToken ? `access_token=${accessToken}` : null,
+      `refresh_token=${refreshToken}`,
+      csrfToken ? `csrf_token=${csrfToken}` : null,
+    ]
+      .filter(Boolean)
+      .join('; ')
+
     try {
-      await fetch(`${ID_API_URL}/api/v1/auth/logout`, {
+      const res = await fetch(`${ID_API_URL}/api/v1/auth/logout`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: refreshToken }),
+        headers: {
+          'Content-Type': 'application/json',
+          Cookie: cookieHeader,
+          // id-backend reads exactly this header name via
+          // `c.GetHeader("X-CSRF-Token")` and compares it to the cookie above.
+          ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
+        },
+        // No body. LogoutHandler never reads one — the old `{ refresh_token }`
+        // payload was inert, and sending it invited the belief that it worked.
       })
-    } catch {
-      // Best-effort — token expires naturally after 30 days.
+      status = res.status
+      revoked = res.ok
+      if (!res.ok) {
+        // 🔴 Never swallowed. A discarded response is exactly what let this
+        // live in production undetected.
+        logger.error('[logoutAction] Ciphera ID refused the sign-out; the refresh family was NOT revoked', {
+          status: res.status,
+        })
+      }
+    } catch (e) {
+      // A throw is a TRANSPORT failure: we never got a verdict, so we know
+      // nothing about whether the family was revoked. That is not a success.
+      logger.error('[logoutAction] Could not reach Ciphera ID; the refresh family was NOT revoked', e)
     }
+  } else {
+    // Nothing to revoke and nothing to ask. Report it as unrevoked rather than
+    // inventing a 2xx: "there was no session" and "the session survived" must
+    // not look the same to the caller.
+    logger.warn('[logoutAction] No refresh_token cookie — nothing to revoke upstream')
   }
 
+  // The local cookies go either way: the user asked to leave, and leaving them
+  // looking signed in is the worse of the two outcomes.
+  //
   // cookies().delete() uses Expires=epoch which is more reliable than
   // maxAge:0 (falsy in JS, some frameworks skip it).
   // ResponseCookies is keyed by name — can only hold one entry per cookie,
@@ -230,7 +324,8 @@ export async function logoutAction() {
   cookieStore.delete({ name: 'access_token', ...deleteOpts })
   cookieStore.delete({ name: 'refresh_token', ...deleteOpts })
   cookieStore.delete({ name: 'csrf_token', ...deleteOpts })
-  return { success: true }
+
+  return { success: true, revoked, status }
 }
 
 export async function getSessionAction() {

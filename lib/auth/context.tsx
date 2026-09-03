@@ -179,7 +179,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     setIsLoggingOut(true)
-    try { await logoutAction() } catch { /* stale build — continue with client-side cleanup */ }
+    // 🔴 The result is READ, not discarded. `revoked` is the only signal that
+    // id-backend actually killed the refresh family; `success` only means the
+    // local cookies were cleared. Until 03-09-2026 logoutAction reached
+    // id-backend with no cookie, no Authorization header and no CSRF header, so
+    // it was answered 401 every time — the browser looked signed out while the
+    // family stayed live in `refresh_tokens` for up to 30 days, and nothing
+    // anywhere said so.
+    try {
+      const result = await logoutAction()
+      if (!result.revoked) {
+        logger.error('Sign-out was not confirmed by Ciphera ID — the session may still be live elsewhere', {
+          status: result.status,
+        })
+      }
+    } catch (e) {
+      /* stale build — continue with client-side cleanup */
+      logger.error('logoutAction failed; continuing with client-side cleanup', e)
+    }
     localStorage.removeItem('user')
     localStorage.removeItem('ciphera_token_refreshed_at')
     localStorage.removeItem('ciphera_last_activity')
