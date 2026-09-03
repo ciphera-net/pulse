@@ -53,6 +53,22 @@ import { ApiError } from '@/lib/api/client'
 import { PasskeyPrfUnsupportedError } from '@/lib/auth/tessera/passkey-enrol'
 import { usePasskeyEnrolModal } from '../PasskeyEnrolModal'
 
+/**
+ * The mocked class, typed for construction.
+ *
+ * `vi.mock` replaces the MODULE, so at runtime this identifier is the two-arg
+ * class defined above — which is what the modal's `instanceof` sees, and why
+ * the error must be built from this exact reference rather than a lookalike.
+ * The TYPE, however, still resolves to the real one-argument class, whose
+ * message is derived from the profile rather than passed in. Constructing with
+ * a fixed message here keeps these tests asserting the modal's rendering rather
+ * than re-testing the copy builder, which has its own tests.
+ */
+const PrfUnsupported = PasskeyPrfUnsupportedError as unknown as new (
+  profile: { name: string; prf: string; note?: string } | null,
+  message: string,
+) => Error
+
 function Harness() {
   const { requestPasskeyEnrol, modal } = usePasskeyEnrolModal()
   return (
@@ -247,7 +263,7 @@ describe('the biometric comes before the password', () => {
    */
   it('a PRF-incapable authenticator costs one tap and NEVER asks for a password', async () => {
     beginMock.mockRejectedValueOnce(
-      new PasskeyPrfUnsupportedError(
+      new PrfUnsupported(
         { name: 'Bitwarden', prf: 'no' },
         'Bitwarden cannot do this yet — it has no PRF support for the passkeys it stores. Nothing was saved.',
       ),
