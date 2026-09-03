@@ -405,10 +405,17 @@ export function useCampaignsList(
   limit: number,
   filters?: string,
   enabled = true,
+  // 🔴 Sub-day rolling windows (1h/24h) MUST pass their period token: their
+  // resolved dates are whole DAYS, and a window that crosses midnight spans
+  // two of them — the date-only fetch then returns two full days of rows
+  // (04-09-2026: yesterday's campaigns shown on the Last-1-hour view). The
+  // server resolves the period; dates alone are only a sufficient identity
+  // for day-granular ranges.
+  period?: string,
 ) {
   return useSWR<CampaignStat[]>(
-    enabled && siteId && start && end ? ['campaignsList', siteId, start, end, limit, filters] : null,
-    () => getCampaigns(siteId, start, end, limit, filters),
+    enabled && siteId && start && end ? ['campaignsList', siteId, start, end, limit, filters, period ?? ''] : null,
+    () => getCampaigns(siteId, start, end, limit, filters, period),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,

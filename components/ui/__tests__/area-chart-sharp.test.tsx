@@ -30,7 +30,7 @@ vi.mock('@/lib/charts/primitives', async (importOriginal) => {
   }
 })
 
-import { AreaChart, Area } from '@/components/ui/area-chart'
+import { AreaChart, Area, YAxis } from '@/components/ui/area-chart'
 
 const data = Array.from({ length: 10 }, (_, i) => ({
   dateObj: new Date(Date.UTC(2026, 7, i + 1)),
@@ -79,5 +79,54 @@ describe('Area sharp contract', () => {
     const { container: c2 } = renderChart({})
     const faded = strokedPaths(c2).find((p) => !p.getAttribute('stroke-dasharray'))
     expect(faded?.getAttribute('stroke')).toMatch(/^url\(#/)
+  })
+})
+
+// The first-hour contract (04-09-2026): a one-point series shows a standing
+// marker (a lone bucket otherwise renders an EMPTY chart — no segment to
+// draw), a fixed xDomain pins it where the day will keep it (left edge),
+// and count charts never print duplicate y labels.
+describe('first-hour contract', () => {
+  const oneBucket = [{ dateObj: new Date(Date.UTC(2026, 8, 4, 0)), v: 1 }]
+  const day = (h: number, v: number) => ({ dateObj: new Date(Date.UTC(2026, 8, 4, h)), v })
+
+  it('renders a standing r=3 marker for a single plotted point, none for two', () => {
+    const { container } = render(
+      <AreaChart
+        data={oneBucket as unknown as Record<string, unknown>[]}
+        xDataKey="dateObj"
+        aspectRatio="3 / 1"
+        xDomain={[new Date(Date.UTC(2026, 8, 4, 0)), new Date(Date.UTC(2026, 8, 4, 23))]}
+      >
+        <Area dataKey="v" stroke="#FD5E0F" fadeStrokeEdges={false} />
+      </AreaChart>,
+    )
+    const dot = container.querySelector('circle[r="3"]')
+    expect(dot).toBeTruthy()
+    // The fixed full-day domain pins the 00:00 bucket at the LEFT EDGE —
+    // a data-derived domain would centre a lone point meaninglessly.
+    expect(Number.parseFloat(dot?.getAttribute('cx') ?? '')).toBeCloseTo(0, 3)
+
+    const { container: c2 } = renderChart({})
+    expect(c2.querySelector('circle[r="3"]')).toBeNull()
+  })
+
+  it('integerYTicks never prints duplicate y labels on a max-1 day', () => {
+    const { container } = render(
+      <AreaChart
+        data={[day(0, 1), day(1, 0)] as unknown as Record<string, unknown>[]}
+        xDataKey="dateObj"
+        aspectRatio="3 / 1"
+        integerYTicks
+      >
+        <Area dataKey="v" stroke="#FD5E0F" />
+        <YAxis numTicks={6} />
+      </AreaChart>,
+    )
+    const labels = Array.from(container.querySelectorAll('span'))
+      .map((el) => el.textContent?.trim())
+      .filter((t) => t && /^\d+$/.test(t))
+    expect(labels.length).toBeGreaterThanOrEqual(2)
+    expect(new Set(labels).size).toBe(labels.length)
   })
 })

@@ -157,3 +157,18 @@ describe('CommandDeck rail sparklines (S4 restore, 19-08-2026)', () => {
     }
   })
 })
+
+describe('CommandDeck tooltip zero semantics (04-09-2026)', () => {
+  it('counts read 0 for an empty bucket; rates keep the em dash', () => {
+    render(<CommandDeck {...baseProps} interval="hour" metric="visitors" />)
+    const rows = capturedTooltip.rows as (p: Record<string, unknown>) => { value: string | number }[]
+    // An hour with no events measurably HAD zero visitors — a true zero.
+    expect(String(rows({ visitors: null })[0].value)).toBe('0')
+
+    render(<CommandDeck {...baseProps} interval="hour" metric="bounce_rate" />)
+    const rateRows = capturedTooltip.rows as (p: Record<string, unknown>) => { value: string | number }[]
+    // No visits → no denominator → nothing measured. Zero here would claim
+    // a perfect bounce rate for an hour nobody visited.
+    expect(String(rateRows({ bounce_rate: null })[0].value)).toBe('—')
+  })
+})
