@@ -24,8 +24,8 @@ function JourneysSlideshow() {
       height={1184}
       alt="Pulse journeys for ciphera.net, live data"
       slides={[
-        { key: 'columns', label: 'Columns', file: '/marketing/journeys-columns-b-2x.png' },
-        { key: 'flow', label: 'Flow', file: '/marketing/journeys-flow-b-2x.png' },
+        { key: 'columns', label: 'Columns', file: '/marketing/journeys-columns-sep-2x.png' },
+        { key: 'flow', label: 'Flow', file: '/marketing/journeys-flow-sep-2x.png' },
       ]}
     />
   )
@@ -35,7 +35,7 @@ function PerformanceCapture() {
   return (
     <MacWindow>
       <Image
-        src={cdnUrl('/marketing/pagespeed-desktop-tall-2x.png')}
+        src={cdnUrl('/marketing/performance-desktop-sep-2x.png')}
         alt="Pulse Performance for ciphera.net — desktop Lighthouse scores, page-load filmstrip and Core Web Vitals"
         width={2468}
         height={1586}
@@ -52,7 +52,7 @@ function DashboardCapture() {
   return (
     <MacWindow>
       <Image
-        src={cdnUrl('/marketing/feature-dashboard-7d-2x.png')}
+        src={cdnUrl('/marketing/feature-dashboard-7d-sep-2x.png')}
         alt="The live Pulse dashboard for ciphera.net — a 7-day view of the visitor trend, top pages and referrers"
         width={2244}
         height={1652}
@@ -211,7 +211,7 @@ function ScriptMockup() {
               <span className="h-1.5 w-1.5 bg-green-500" />
               Script detected on ciphera.net
             </span>
-            <span className="tabular-nums">5.2 KB gzipped</span>
+            <span className="tabular-nums">5.5 KB gzipped</span>
           </div>
         </div>
       </MacWindow>

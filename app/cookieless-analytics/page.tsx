@@ -119,7 +119,7 @@ export default function CookielessAnalyticsPage() {
             Pulse still gives you the reports teams look at every day: real-time visitors,
             pageviews, unique visitors, top pages, referrers and UTM campaigns, entry and exit
             pages, device, browser and country breakdowns, and custom events for the actions that
-            matter. The tracking script is a couple of kilobytes and loads asynchronously, so it
+            matter. The tracking script is about five kilobytes and loads asynchronously, so it
             does not slow the page down. And because the dashboard and script are open (AGPL) with a{' '}
             <Link href="/demo" className="text-primary hover:text-primary/80">
               public live demo

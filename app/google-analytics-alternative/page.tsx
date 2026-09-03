@@ -96,7 +96,7 @@ export default function GoogleAnalyticsAlternativePage() {
       >
         <div className="mt-6 max-w-3xl space-y-5 text-base leading-relaxed text-muted-foreground">
           <p>
-            Moving to Pulse is deliberately dull. You drop a two-kilobyte script into your site —
+            Moving to Pulse is deliberately dull. You drop a five-kilobyte script into your site —
             there are step-by-step{' '}
             <Link href="/integrations" className="text-primary hover:text-primary/80">
               integration guides

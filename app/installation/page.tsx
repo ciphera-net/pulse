@@ -74,7 +74,7 @@ export default function InstallationPage() {
             </code>
           </pre>
           <div className="flex items-center gap-4 border-t border-border px-6 py-3 text-xs text-muted-foreground">
-            <span>5.2 KB gzipped</span>
+            <span>5.5 KB gzipped</span>
             <span className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 bg-green-500" />
               Non-blocking, async

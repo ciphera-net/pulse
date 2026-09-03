@@ -260,7 +260,7 @@ export default function UptimePage() {
           body={
             <>
               Check <span className="font-mono text-neutral-300">https://{site.domain}</span> every 5 minutes —
-              availability, response time and incident history, with alerts by email, Slack, Discord or webhook.
+              availability, response time and incident history, with alerts by email and in the dashboard.
             </>
           }
           canAct={canEdit}

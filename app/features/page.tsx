@@ -11,7 +11,7 @@
  * receipts ledger where every claim carries the link that proves it; and every
  * number on the page is measured or sourced (script size measured 06-08; plan
  * limits from lib/plans.ts — the old hero claimed "less than 1 KB" while the
- * script ships 5.2 KB gzipped).
+ * script ships about 5.5 KB gzipped).
  */
 
 import Link from 'next/link'
@@ -127,7 +127,7 @@ const capabilities: Feature[] = [
   {
     icon: GlobeIcon,
     title: 'Geographic insights',
-    description: 'Country, region, and city-level breakdowns on a live world map. IPs are never stored — derived at request time only.',
+    description: 'A live world map by country, with region and city breakdowns a tab away. IPs are never stored — derived at request time only.',
   },
   {
     icon: ZapIcon,
@@ -137,7 +137,7 @@ const capabilities: Feature[] = [
   {
     icon: BarChartIcon,
     title: 'Uptime alerts',
-    description: 'Uptime monitors with downtime and recovery alerts to email, Slack, Discord, or a webhook of yours.',
+    description: 'Uptime monitors with downtime and recovery alerts by email and in the dashboard, with the incident history kept.',
   },
   {
     icon: GlobeIcon,
@@ -176,7 +176,7 @@ const trustReceipts: Receipt[] = [
     proof: { label: 'Common questions', href: '/faq' },
   },
   {
-    title: '75+ integrations',
+    title: '75 integrations',
     description: 'React, Vue, WordPress, Shopify, and dozens more — a script tag away.',
     proof: { label: 'All integrations', href: '/integrations' },
   },
@@ -202,8 +202,8 @@ function JourneysSlides() {
       height={1184}
       alt="Pulse journeys for ciphera.net, live data"
       slides={[
-        { key: 'columns', label: 'Columns', file: '/marketing/journeys-columns-b-2x.png' },
-        { key: 'flow', label: 'Flow', file: '/marketing/journeys-flow-b-2x.png' },
+        { key: 'columns', label: 'Columns', file: '/marketing/journeys-columns-sep-2x.png' },
+        { key: 'flow', label: 'Flow', file: '/marketing/journeys-flow-sep-2x.png' },
       ]}
     />
   )
@@ -262,7 +262,7 @@ export default function FeaturesPage() {
             </p>
             <MacWindow>
               <Image
-                src={cdnUrl('/marketing/cdn-analytics-2x.png')}
+                src={cdnUrl('/marketing/cdn-analytics-sep-2x.png')}
                 alt="Pulse CDN analytics for ciphera.net — Bunny bandwidth, cache hit rate and origin latency"
                 width={2465}
                 height={1539}
@@ -283,7 +283,7 @@ export default function FeaturesPage() {
             </p>
             <MacWindow>
               <Image
-                src={cdnUrl('/marketing/pagespeed-desktop-tall-2x.png')}
+                src={cdnUrl('/marketing/performance-desktop-sep-2x.png')}
                 alt="Pulse Performance for ciphera.net — desktop Lighthouse scores and page-load filmstrip"
                 width={2468}
                 height={1586}
