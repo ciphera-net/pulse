@@ -3,6 +3,12 @@ import { computeBlindIndex } from '@ciphera-net/auth/blind-index'
 import { ensureTessera } from './init'
 import { makeOpaqueTransport } from './transport'
 import { performOpaqueReauth } from './opaque-reauth'
+import { authFetch } from '@/lib/api/client'
+
+interface VaultResponse {
+  encrypted_vault?: string
+  opaque_wrapped_key?: string
+}
 
 /** The re-auth purpose an enrolment must prove.
  *
@@ -61,9 +67,43 @@ export async function enrolRecoveryIdentity(opts: EnrolRecoveryOptions): Promise
     purpose: RECOVERY_REAUTH_PURPOSE,
   })
 
-  // (2) The enrolment itself. A fresh transport: the re-auth one has spent its
-  // ceremony and its buffered state belongs to that exchange, not this one.
-  const transport = makeOpaqueTransport({ blindIndex, mode: 'settings' })
+  // (2) The account's OPAQUE wrap. The SDK opens the vault key from THIS blob and
+  // re-wraps that same key; without it, enrolment throws after the password has
+  // already been spent.
+  const vault = await authFetch<VaultResponse>('/auth/user/vault', { skipAuthRetry: true })
+  if (!vault?.opaque_wrapped_key) {
+    throw new Error('This account has no encrypted vault to attach a recovery phrase to.')
+  }
+
+  // (3) The enrolment itself.
+  //
+  // 🔴 `basePath: '/auth/reauth'` IS LOAD-BEARING, and omitting it is the bug this
+  // comment exists to prevent recurring. The SDK runs its OWN OPAQUE login inside
+  // enrolRecoveryIdentity to re-derive the export_key — the vault key is a
+  // non-extractable CryptoKey and cannot be re-wrapped from a session. With the
+  // default base path that login hits the PRIMARY login endpoint, and two things
+  // go wrong:
+  //
+  //   1. On an account with TOTP enabled, /auth/opaque/login/finish answers
+  //      401 `require_2fa` and the enrolment fails with a message about the
+  //      password. Measured 03-09-2026 on a real account, which is how this was
+  //      found: the dialog said "That email or password didn't match" for a
+  //      correct email and a correct password.
+  //   2. Even without TOTP it would issue fresh JWT cookies and SWAP THE SESSION
+  //      underneath a settings page.
+  //
+  // /auth/reauth/* is the dedicated password-proof ceremony: session-authed, no
+  // 2FA gate, no cookies. `enrolPasskey` has always done this; this did not.
+  //
+  // The finish body on that path carries no vault material, so the wrap is seeded
+  // from the fetch above rather than read off the response.
+  const transport = makeOpaqueTransport({
+    blindIndex,
+    mode: 'login',
+    basePath: '/auth/reauth',
+    seedWraps: { opaque: vault.opaque_wrapped_key },
+    loginExtras: { purpose: RECOVERY_REAUTH_PURPOSE },
+  })
   const { recoveryPhrase } = await new Tessera(transport).enrolRecoveryIdentity({
     email,
     password: new TextEncoder().encode(opts.password),
