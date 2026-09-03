@@ -3,7 +3,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const reauthMock = vi.hoisted(() => vi.fn())
 const enrolMock = vi.hoisted(() => vi.fn())
 const blindIndexMock = vi.hoisted(() => vi.fn())
-const transportMock = vi.hoisted(() => vi.fn(() => ({ __t: true })))
+// Typed to ACCEPT its options object, so `mock.calls[0][0]` exists at the type
+// level — the whole point of these tests is inspecting what the transport was
+// configured with, and a no-arg mock makes that unreachable in tsc.
+const transportMock = vi.hoisted(() =>
+  vi.fn((_opts: Record<string, unknown>) => ({ __t: true })),
+)
 const authFetchMock = vi.hoisted(() => vi.fn())
 
 vi.mock('../opaque-reauth', () => ({ performOpaqueReauth: reauthMock }))
@@ -117,7 +122,7 @@ describe('enrolRecoveryIdentity', () => {
     await enrolRecoveryIdentity({ email: 'me@ciphera.test', password: 'pw' })
 
     expect(transportMock).toHaveBeenCalledTimes(1)
-    const cfg = transportMock.mock.calls[0][0] as Record<string, unknown>
+    const cfg = transportMock.mock.calls[0]![0]
     expect(cfg.basePath).toBe('/auth/reauth')
     // Purpose rides the finish body on that path.
     expect(cfg.loginExtras).toMatchObject({ purpose: 'enr' })
@@ -134,7 +139,7 @@ describe('enrolRecoveryIdentity', () => {
     await enrolRecoveryIdentity({ email: 'me@ciphera.test', password: 'pw' })
 
     expect(authFetchMock).toHaveBeenCalledWith('/auth/user/vault', { skipAuthRetry: true })
-    const cfg = transportMock.mock.calls[0][0] as Record<string, unknown>
+    const cfg = transportMock.mock.calls[0]![0]
     expect(cfg.seedWraps).toMatchObject({ opaque: 'WRAP' })
   })
 
