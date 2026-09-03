@@ -3,6 +3,27 @@ import type { Rendered, Resolvers } from './index'
 import { formatDateUTC } from '@/lib/utils/formatDate'
 import { formatMoneyCents } from '@/lib/utils/money'
 
+/**
+ * Renders an amount that arrives as a PRE-FORMATTED string alongside a separate
+ * ISO currency code — the pulse.billing_invoice_sent.v1 shape.
+ *
+ * 🔴 THE SCHEMA AND THE PRODUCER DISAGREE, AND THE READER PAID FOR IT. The
+ * schema documents `amount` as a bare decimal ("49.00"), so this renderer was
+ * written to prefix `currency`; the producer (odoosync.go) has always sent
+ * `fmt.Sprintf("€%.2f", …)`. The result on a real customer's screen was
+ * `EUR €8.47`. Prefixing only when the amount carries no symbol of its own
+ * renders both shapes correctly, so neither a legacy stored event nor a
+ * corrected producer can print the currency twice.
+ *
+ * New payloads must not use this shape at all — send minor units and an ISO
+ * code (billing_credit_note, billing_payment_failed) and let one formatter own
+ * presentation.
+ */
+function amountWithCurrency(amount: string, currency: string): string {
+  const hasSymbol = amount !== '' && !/^[\d.,-]/.test(amount)
+  return hasSymbol ? amount : `${currency} ${amount}`.trim()
+}
+
 export const billingRenderers = {
   billing_payment_failed: (r: Receipt, _resolvers?: Resolvers): Rendered => {
     const p = r.event.payload as { invoice_id: string; amount: number; currency: string; error_code: string; retry_at: string }
@@ -46,8 +67,26 @@ export const billingRenderers = {
   billing_invoice_sent: (r: Receipt, _resolvers?: Resolvers): Rendered => {
     const p = r.event.payload as { invoice_number: string; amount: string; currency: string; plan_name: string }
     return {
-      title: `Invoice #${p.invoice_number} — ${p.currency} ${p.amount}`,
+      title: `Invoice #${p.invoice_number} — ${amountWithCurrency(p.amount, p.currency)}`,
       body: `${p.plan_name} subscription`,
+      linkLabel: 'View billing',
+    }
+  },
+  // A refund. Its own type since iris migration 024, because until then a
+  // credit note was produced as billing_invoice_sent and read as a CHARGE:
+  // "Invoice #VF/2026/00029 — EUR €8.47 / Refund subscription", on the day the
+  // customer was refunded. The copy leads with the money and the verb, matching
+  // the pulse_credit_note email approved on 03-09 — a refund card that opens
+  // with a document number and a positive amount reads as a bill whatever noun
+  // it uses.
+  billing_credit_note: (r: Receipt, _resolvers?: Resolvers): Rendered => {
+    const p = r.event.payload as { credit_note_number: string; amount_cents: number; currency: string }
+    // Cents through the one formatter — the payload carries no symbol, so the
+    // double-currency class that produced "EUR €8.47" cannot reappear here.
+    const amount = formatMoneyCents(p.amount_cents, p.currency)
+    return {
+      title: `Refund processed — ${amount}`,
+      body: `Credit note ${p.credit_note_number}`,
       linkLabel: 'View billing',
     }
   },

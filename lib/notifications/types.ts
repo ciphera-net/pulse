@@ -4,6 +4,7 @@ export type NotificationType =
   | 'billing_usage_limit'
   | 'billing_subscription_canceled'
   | 'billing_invoice_sent'
+  | 'billing_credit_note'
   | 'billing_pageview_80'
   | 'billing_pageview_90'
   | 'billing_pageview_100'
@@ -66,6 +67,13 @@ export interface SystemAnnouncementPayload { title: string; body: string }
 export interface SystemMaintenancePayload { title: string; body: string; starts_at?: string; ends_at?: string }
 export interface BillingSubscriptionCanceledPayload { plan_id: string }
 export interface BillingInvoiceSentPayload { invoice_number: string; amount: string; currency: string; plan_name: string }
+// A refund, on its own type (iris migration 024). Minor units + an ISO code,
+// NOT a pre-formatted string like its invoice sibling above: that field is
+// documented as a bare decimal and has always arrived as "€8.47", and the
+// renderer prefixing `currency` onto it is what printed "EUR €8.47".
+// `plan_name` is deliberately absent — it carried the literal string "Refund",
+// which rendered as the sentence "Refund subscription".
+export interface BillingCreditNotePayload { credit_note_number: string; amount_cents: number; currency: string }
 export interface BillingPageview80Payload { }
 export interface BillingPageview90Payload { }
 export interface BillingPageview100Payload { }
@@ -81,6 +89,7 @@ export type PayloadForType<T extends NotificationType> =
   T extends 'billing_usage_limit' ? BillingUsageLimitPayload :
   T extends 'billing_subscription_canceled' ? BillingSubscriptionCanceledPayload :
   T extends 'billing_invoice_sent' ? BillingInvoiceSentPayload :
+  T extends 'billing_credit_note' ? BillingCreditNotePayload :
   T extends 'billing_pageview_80' ? BillingPageview80Payload :
   T extends 'billing_pageview_90' ? BillingPageview90Payload :
   T extends 'billing_pageview_100' ? BillingPageview100Payload :
