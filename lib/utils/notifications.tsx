@@ -43,6 +43,7 @@ export function getTypeIcon(type: string) {
     billing_usage_limit:           <Warning          className="w-5 h-5 shrink-0 text-amber-400"    aria-hidden="true" />,
     billing_subscription_canceled: <CreditCard       className="w-5 h-5 shrink-0 text-red-400"      aria-hidden="true" />,
     billing_invoice_sent:          <Receipt          className="w-5 h-5 shrink-0 text-neutral-400"  aria-hidden="true" />,
+    billing_credit_note:           <Receipt          className="w-5 h-5 shrink-0 text-green-400"    aria-hidden="true" />,
     billing_pageview_80:           <Warning          className="w-5 h-5 shrink-0 text-amber-400"    aria-hidden="true" />,
     billing_pageview_90:           <Warning          className="w-5 h-5 shrink-0 text-orange-400"   aria-hidden="true" />,
     billing_pageview_100:          <Warning          className="w-5 h-5 shrink-0 text-red-400"      aria-hidden="true" />,
