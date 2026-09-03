@@ -126,3 +126,23 @@ describe('PasskeyEnrolModal failure messages', () => {
     expect(document.querySelectorAll('input').length).toBeGreaterThanOrEqual(2)
   })
 })
+
+describe('the one-passkey cap', () => {
+  beforeEach(() => {
+    enrolPasskeyMock.mockReset()
+    document.body.innerHTML = ''
+  })
+
+  it('names the 409 rather than saying "refused"', async () => {
+    // ProfileSettings refuses before the modal opens, so reaching this means
+    // the count changed underneath us — another tab, another device. The user
+    // still needs the actionable sentence, not a generic refusal.
+    await submitWith(new ApiError('Conflict', 409))
+    await waitFor(() =>
+      expect(screen.getByText(/already has a passkey/i)).toBeInTheDocument(),
+    )
+    expect(screen.queryByText(/refused the request/i)).not.toBeInTheDocument()
+    // And not the wrong-password advice — retyping it would not help here.
+    expect(screen.queryByText(/email or password/i)).not.toBeInTheDocument()
+  })
+})

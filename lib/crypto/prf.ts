@@ -78,5 +78,27 @@ export function getPRFOutput(response: PRFResultCarrier | null | undefined): Arr
   if (ArrayBuffer.isView(first)) {
     return first.buffer.slice(first.byteOffset, first.byteOffset + first.byteLength) as ArrayBuffer
   }
+
+  // 🔑 1Password's browser extension returns `results.first` as a PLAIN ARRAY
+  // of byte values rather than an ArrayBuffer — a spec deviation they have
+  // acknowledged (FS-5593, reported 30-05-2026). Rejecting it told a 1Password
+  // user their device could not do PRF when it can, and the reason was OURS.
+  //
+  // Validated, not merely coerced: every element must be an integer in 0..255.
+  // A loose `Uint8Array.from` on arbitrary array-like input would silently turn
+  // undefined into 0 and hand a wrong key to HKDF — and a wrong key here does
+  // not fail loudly, it wraps a vault nothing can open.
+  // Widened deliberately: the two checks above narrow `first` to `never` under
+  // its declared BufferSource type, and this branch exists precisely because a
+  // real provider hands back something the type says is impossible.
+  const loose: unknown = first
+  if (
+    Array.isArray(loose) &&
+    loose.length > 0 &&
+    loose.every((b) => Number.isInteger(b) && b >= 0 && b <= 255)
+  ) {
+    return Uint8Array.from(loose as number[]).buffer
+  }
+
   return null
 }

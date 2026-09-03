@@ -59,6 +59,12 @@ function enrolErrorMessage(err: unknown): string {
     if (err.status === 401 || err.status === 403) {
       return 'That email or password didn\u2019t match. Nothing was saved — please try again.'
     }
+    if (err.status === 409) {
+      // The one-passkey cap (ciphera-id#67). ProfileSettings refuses before the
+      // modal opens, so reaching this means the count changed underneath us —
+      // another tab, another device. Say the actionable thing, not "refused".
+      return 'This account already has a passkey. Remove it before adding another.'
+    }
     if (err.status === 429) {
       return 'Too many attempts. Nothing was saved — wait a moment and try again.'
     }

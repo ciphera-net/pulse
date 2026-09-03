@@ -108,6 +108,23 @@ export default function ProfileSettings({ activeTab, borderless, hideDangerZone 
   // nothing ever needs the key bytes in this process.
   // ---------------------------------------------------------------------------
   const handleRegisterPasskey = async () => {
+    // 🔴 Refuse BEFORE the modal opens. id-backend caps an account at one
+    // passkey (ciphera-id#67) and answers 409 `passkey_limit_reached` — but by
+    // the time that answer arrives the user has typed their sign-in email, typed
+    // their password and touched a biometric. None of that should be spent to
+    // learn a fact this page already knows.
+    //
+    // ⚠️ This check FAILS OPEN on purpose. A transient list failure must not
+    // block a legitimate first enrolment; the server is the binding check and
+    // will refuse a genuine second one regardless. Courtesy here, enforcement
+    // there — and `enrolErrorMessage` still names the 409 if one gets through.
+    const existing = await listPasskeys().catch(() => null)
+    if (existing && existing.credentials.length >= 1) {
+      throw new Error(
+        'This account already has a passkey. Remove it before adding another.',
+      )
+    }
+
     try {
       await requestPasskeyEnrol()
     } catch (err) {
