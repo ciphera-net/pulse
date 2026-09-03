@@ -142,6 +142,18 @@ export default function CommandDeck({
     }
   }), [data])
 
+  // The Today/Yesterday axis is the FULL site day, not the data's extent: a
+  // day 34 minutes old otherwise collapses to a single floating dot, and
+  // every bucket slides left as new hours arrive (owner report 04-09-2026).
+  // The first bucket IS site midnight — the server resolves the site's
+  // timezone — so no client tz math; the domain ends at the 23:00 bucket,
+  // where a complete day's last point sits.
+  const dayDomain = useMemo<[Date, Date] | undefined>(() => {
+    if (interval !== 'hour' || dateRange.start !== dateRange.end || chartData.length === 0) return undefined
+    const d0 = chartData[0].dateObj
+    return [d0, new Date(d0.getTime() + 23 * 3_600_000)]
+  }, [interval, dateRange.start, dateRange.end, chartData])
+
   // ─── Rail rows ─────────────────────────────────────────────────────
   const rows = useMemo(() => {
     const prevBase = prevStats?.visitors ?? 0
@@ -305,6 +317,8 @@ export default function CommandDeck({
                 data={chartData as Record<string, unknown>[]}
                 xDataKey="dateObj"
                 yCap={metric === 'bounce_rate' ? 100 : undefined}
+                xDomain={dayDomain}
+                integerYTicks={metric === 'visitors' || metric === 'pageviews'}
                 fillParent
                 margin={{ top: 20, right: 20, bottom: 40, left: 50 }}
                 animationDuration={400}
@@ -335,7 +349,7 @@ export default function CommandDeck({
                   missingAsZero={metric === 'bounce_rate' || metric === 'avg_duration' || metric === 'pages_per_visit'}
                 />
                 <VisxXAxis
-                  numTicks={Math.min(chartData.length, 10)}
+                  numTicks={dayDomain ? 9 : Math.min(chartData.length, 10)}
                   formatLabel={(interval === 'minute' || interval === 'hour')
                     ? (d) => formatTimeUTC(d)
                     : (d) => formatDateShortUTC(d)
@@ -362,11 +376,19 @@ export default function CommandDeck({
                     }
                     return formatDateFullUTC(dateObj)
                   }}
-                  rows={(point) => [{
-                    color: 'var(--chart-1)',
-                    label: activeMetric?.label || metric,
-                    value: activeMetric ? activeMetric.format(point[metric] as number | null) : String(point[metric] ?? '—'),
-                  }]}
+                  rows={(point) => {
+                    // An hour with no events measurably HAD zero visitors —
+                    // counts' empty buckets read 0 (owner ruling 04-09-2026,
+                    // revising the 19-08 tooltip em dash for COUNTS only).
+                    // Rates keep the em dash: no visits, no denominator.
+                    const raw = point[metric] as number | null
+                    const v = (metric === 'visitors' || metric === 'pageviews') ? (raw ?? 0) : raw
+                    return [{
+                      color: 'var(--chart-1)',
+                      label: activeMetric?.label || metric,
+                      value: activeMetric ? activeMetric.format(v) : String(v ?? '—'),
+                    }]
+                  }}
                 />
               </VisxAreaChart>
             )}

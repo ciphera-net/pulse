@@ -256,10 +256,13 @@ describe('Campaigns', () => {
   // The card is handed already-resolved dates, so the DATES are its cache
   // identity. Keying on less is how one range's rows get served for another —
   // the 30-day window that produced the original report.
-  it('keys its request on the resolved dates', () => {
-    render(<Campaigns siteId="site-1" dateRange={dateRange} totals={totals} />)
+  it('keys its request on the resolved dates AND the period token', () => {
+    // Dates alone are only a sufficient identity for day-granular ranges: a
+    // sub-day rolling window that crosses midnight resolves to TWO whole
+    // days of dates (04-09-2026 — yesterday's campaigns on the 1h view).
+    render(<Campaigns siteId="site-1" dateRange={dateRange} period="1h" totals={totals} />)
     expect(useCampaignsList).toHaveBeenCalledWith(
-      'site-1', dateRange.start, dateRange.end, 10, undefined, true,
+      'site-1', dateRange.start, dateRange.end, 10, undefined, true, '1h',
     )
   })
 

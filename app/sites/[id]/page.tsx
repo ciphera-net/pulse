@@ -397,7 +397,7 @@ export default function SiteDashboardPage() {
           filters={filtersParam || undefined}
           onFilter={handleAddFilter}
         />
-        <Campaigns siteId={siteId} dateRange={resolvedDateRange} totals={totals} filters={filtersParam || undefined} onFilter={handleAddFilter} />
+        <Campaigns siteId={siteId} dateRange={resolvedDateRange} period={apiPeriod || undefined} totals={totals} filters={filtersParam || undefined} onFilter={handleAddFilter} />
       </div>
 
       <SectionHeader title="Audience" note={sectionNote} />

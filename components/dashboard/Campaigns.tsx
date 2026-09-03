@@ -22,6 +22,10 @@ import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
 interface CampaignsProps {
   siteId: string
   dateRange: { start: string, end: string }
+  // The API period token (1h/24h/…): sub-day rolling windows resolve on the
+  // SERVER — the card's date bounds alone span two whole days when the
+  // window crosses midnight.
+  period?: string
   filters?: string
   // True range totals — the F9 denominator. Campaign rows count VISITORS, so
   // shares divide by totals.visitors; no totals → no percentages.
@@ -39,7 +43,7 @@ type UtmTab = 'source' | 'medium' | 'campaign' | 'term' | 'content'
 
 const LIMIT = 7
 
-export default function Campaigns({ siteId, dateRange, filters, totals, onFilter, campaigns: payloadRows }: CampaignsProps) {
+export default function Campaigns({ siteId, dateRange, period, filters, totals, onFilter, campaigns: payloadRows }: CampaignsProps) {
   const [isBuilderOpen, setIsBuilderOpen] = useState(false)
   const [faviconFailed, setFaviconFailed] = useState<Set<string>>(new Set())
   const [activeTab, setActiveTab] = useState<UtmTab>('source')
@@ -57,7 +61,7 @@ export default function Campaigns({ siteId, dateRange, filters, totals, onFilter
   // key's data wins, so a superseded in-flight response can no longer overwrite
   // a fresh one, and `error` is a real state the card can state out loud.
   const { data: cardData, error: cardError, isLoading, mutate: refetchCard } =
-    useCampaignsList(siteId, dateRange.start, dateRange.end, 10, filters, payloadRows === undefined)
+    useCampaignsList(siteId, dateRange.start, dateRange.end, 10, filters, payloadRows === undefined, period)
   const data = payloadRows ?? cardData ?? []
 
   // Grouping happens below, so overflow is judged on the grouped rows — the
@@ -108,7 +112,7 @@ export default function Campaigns({ siteId, dateRange, filters, totals, onFilter
   const hasData = data.length > 0
   const wantsFullList = hasData && groupedData.length > LIMIT && payloadRows === undefined
   const { data: fullDataRaw } =
-    useCampaignsList(siteId, dateRange.start, dateRange.end, 100, filters, wantsFullList)
+    useCampaignsList(siteId, dateRange.start, dateRange.end, 100, filters, wantsFullList, period)
   const sortedFullData = useMemo(
     () => [...((fullDataRaw && fullDataRaw.length > 0) ? fullDataRaw : data)].sort((a, b) => b.visitors - a.visitors),
     [fullDataRaw, data]
