@@ -6,8 +6,9 @@ import { ProfileSettings as SharedProfileSettings } from '@ciphera-net/facet'
 import { deriveAuthKey } from '@/lib/crypto/password'
 import { deleteAccount, getUserSessions, revokeSession, updateUserPreferences, updateDisplayName } from '@/lib/api/user'
 import { setup2FA, verify2FA, disable2FA, regenerateRecoveryCodes } from '@/lib/api/2fa'
-import { listPasskeys, deletePasskey } from '@/lib/api/webauthn'
+import { listPasskeys, deletePasskey, renamePasskey } from '@/lib/api/webauthn'
 import { useReauthModal, isReauthCancelled } from '@/components/settings/ReauthModal'
+import { usePasskeyEnrolModal, isEnrolCancelled } from '@/components/settings/PasskeyEnrolModal'
 
 interface Props {
   activeTab?: 'profile' | 'security' | 'preferences' | 'danger-zone'
@@ -18,6 +19,7 @@ interface Props {
 export default function ProfileSettings({ activeTab, borderless, hideDangerZone }: Props = {}) {
   const { user, refresh, logout } = useAuth()
   const { requestReauth, modal } = useReauthModal()
+  const { requestPasskeyEnrol, modal: passkeyModal } = usePasskeyEnrolModal()
 
   // The Facet component calls deriveAuthKey(password, email) and hands the DERIVED
   // digest to the callbacks. OPAQUE needs the RAW password bytes, not a digest, so
@@ -95,6 +97,44 @@ export default function ProfileSettings({ activeTab, borderless, hideDangerZone 
     // Facet's own handler calls logout() next.
   }
 
+  // ---------------------------------------------------------------------------
+  // Add a passkey — OPAQUE re-auth ('pky') → VMK re-wrapped under the
+  // authenticator's PRF output → one atomic write at register/finish.
+  //
+  // This replaces the "coming soon" stub. That stub was correct at the time for
+  // the reason it stated (a non-extractable VMK has no key bytes to hand to a
+  // wrapper), and it stops being correct now for the same reason: the SDK
+  // re-derives export_key from a live ceremony and re-wraps the SAME VMK, so
+  // nothing ever needs the key bytes in this process.
+  // ---------------------------------------------------------------------------
+  const handleRegisterPasskey = async () => {
+    // 🔴 Refuse BEFORE the modal opens. id-backend caps an account at one
+    // passkey (ciphera-id#67) and answers 409 `passkey_limit_reached` — but by
+    // the time that answer arrives the user has typed their sign-in email, typed
+    // their password and touched a biometric. None of that should be spent to
+    // learn a fact this page already knows.
+    //
+    // ⚠️ This check FAILS OPEN on purpose. A transient list failure must not
+    // block a legitimate first enrolment; the server is the binding check and
+    // will refuse a genuine second one regardless. Courtesy here, enforcement
+    // there — and `enrolErrorMessage` still names the 409 if one gets through.
+    const existing = await listPasskeys().catch(() => null)
+    if (existing && existing.credentials.length >= 1) {
+      throw new Error(
+        'This account already has a passkey. Remove it before adding another.',
+      )
+    }
+
+    try {
+      await requestPasskeyEnrol()
+    } catch (err) {
+      // Facet toasts whatever this throws. A cancel is not a failure.
+      if (isEnrolCancelled(err)) throw new Error('Passkey setup cancelled.')
+      throw err
+    }
+    // Facet re-lists the passkeys itself on success.
+  }
+
   // Reset the password-capture counter before each render cycle (mirrors id-frontend).
   passwordCaptureCountRef.current = 0
 
@@ -112,16 +152,10 @@ export default function ProfileSettings({ activeTab, borderless, hideDangerZone 
         onRegenerateRecoveryCodes={regenerateRecoveryCodes}
         onGetSessions={getUserSessions}
         onRevokeSession={revokeSession}
-        onRegisterPasskey={async () => {
-          // An OPAQUE VMK is a non-extractable CryptoKey — there are no key bytes to
-          // wrap under a passkey PRF, so registerPasskey(vaultKey) has nothing to
-          // pass. A correct enrollment re-authenticates with the password
-          // (Tessera.enablePasskey) and needs WEBAUTHN_RP_ID widened to the apex
-          // (id-frontend-scoped today). Ship the same guarded stub as id-frontend.
-          throw new Error('Passkey setup for this account is coming soon. Sign in on Ciphera ID with your password or recovery phrase.')
-        }}
+        onRegisterPasskey={handleRegisterPasskey}
         onListPasskeys={listPasskeys}
         onDeletePasskey={deletePasskey}
+        onRenamePasskey={renamePasskey}
         onUpdatePreferences={updateUserPreferences}
         deriveAuthKey={wrappedDeriveAuthKey}
         refreshUser={refresh}
@@ -133,6 +167,7 @@ export default function ProfileSettings({ activeTab, borderless, hideDangerZone 
         hideDangerZone={hideDangerZone}
       />
       {modal}
+      {passkeyModal}
     </>
   )
 }
