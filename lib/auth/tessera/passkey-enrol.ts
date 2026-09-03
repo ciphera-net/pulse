@@ -9,6 +9,13 @@ import { ensureTessera } from './init'
 import { makeOpaqueTransport } from './transport'
 import { prfExtension, getPRFOutput } from '@/lib/crypto/prf'
 import { authFetch } from '@/lib/api/client'
+import {
+  aaguidFromRegistration,
+  profileForAaguid,
+  prfUnsupportedMessage,
+  type AuthenticatorProfile,
+} from '@/lib/auth/passkey/authenticators'
+import { forgetOrphanedCredential } from '@/lib/auth/passkey/signal'
 
 interface VaultResponse {
   encrypted_vault?: string
@@ -130,9 +137,72 @@ export interface EnrolPasskeyResult {
  * older handler the extra fields are ignored and a WRAPLESS row is written —
  * which is exactly the state that PR exists to make unrepresentable.
  */
-export async function enrolPasskey(opts: EnrolPasskeyOptions): Promise<EnrolPasskeyResult> {
+/**
+ * A ceremony that has passed the biometric and is waiting for a password.
+ *
+ * Holds live secrets — `prfOutput` is half of what opens the vault — so it is
+ * created, spent and zeroed inside one user interaction. It is never stored,
+ * never serialised, and `abandonPasskeyEnrol` exists so that a flow which does
+ * not complete still wipes it.
+ */
+export interface PasskeyEnrolHandle {
+  /** Which authenticator answered, when it identified itself. Copy only. */
+  profile: AuthenticatorProfile | null
+  /** The credential id the authenticator minted, base64url. */
+  credentialId: string
+  /** @internal */
+  readonly _sessionId: string
+  /** @internal */
+  readonly _registration: RegistrationResponseJSON
+  /** @internal */
+  readonly _prfOutput: ArrayBuffer
+  /** @internal */
+  readonly _salt: Uint8Array
+  /** @internal */
+  readonly _opaqueWrap: string
+  /** @internal */
+  readonly _rpId?: string
+}
+
+/** Raised when the authenticator completed a ceremony but returned no PRF secret. */
+export class PasskeyPrfUnsupportedError extends Error {
+  readonly profile: AuthenticatorProfile | null
+  constructor(profile: AuthenticatorProfile | null) {
+    super(prfUnsupportedMessage(profile))
+    this.name = 'PasskeyPrfUnsupportedError'
+    this.profile = profile
+  }
+}
+
+/**
+ * PHASE ONE — everything that needs no password.
+ *
+ * 🔑 THE SPLIT IS THE FEATURE. This used to be one function that the modal
+ * called after collecting an email and a password, so the running order the
+ * USER experienced was: type an email, type a password, touch the sensor, be
+ * told your authenticator cannot do this. Two of the providers people actually
+ * use (Bitwarden, Proton Pass on iOS) fail at that last step every time, and no
+ * check can predict it — `getClientCapabilities()` reports on the BROWSER, not
+ * the authenticator, and the spec says so normatively. The earliest honest
+ * signal is the ceremony itself.
+ *
+ * What CAN be reordered is everything else. Splitting here makes a failed
+ * attempt cost one tap instead of a tap plus a password entry, which is the
+ * entire fix available to us.
+ *
+ * Steps 1–4 of the original sequence, unchanged in substance:
+ *   1. GET /auth/user/vault — fail before any prompt if there is no vault.
+ *   2. POST /auth/webauthn/register/begin — the server's challenge and
+ *      excludeCredentials; never client-built.
+ *   3. create() with the PRF extension and a fresh 32-byte salt.
+ *   4. Read the PRF output, with the create()-withholds-results fallback.
+ *
+ * On a PRF failure this signals the provider to forget the credential it just
+ * minted, then throws `PasskeyPrfUnsupportedError` carrying copy that names the
+ * provider where we recognise it.
+ */
+export async function beginPasskeyEnrol(): Promise<PasskeyEnrolHandle> {
   await ensureTessera()
-  const email = opts.email.trim()
 
   // (1) The OPAQUE wrap. Without it there is no VMK to re-wrap and the SDK
   // would throw AFTER the user had already completed a biometric ceremony.
@@ -161,13 +231,50 @@ export async function enrolPasskey(opts: EnrolPasskeyOptions): Promise<EnrolPass
     },
   })
 
+  // Read BEFORE the PRF check — a failing authenticator is exactly the one
+  // whose name we need, and the AAGUID is present either way.
+  const profile = profileForAaguid(
+    aaguidFromRegistration(registration.response?.authenticatorData),
+  )
+
   // (4) The PRF output, with the create()-withholds-results fallback.
   const prfOutput = await readPRFWithFallback(registration, optionsJSON.rp?.id, salt)
   if (!prfOutput || prfOutput.byteLength === 0) {
-    throw new Error(
-      'This device did not provide the key material a Ciphera passkey needs. Nothing was saved — try a different device or security key.',
-    )
+    // The credential exists on the authenticator and this site will never
+    // accept it. Ask the provider to drop it rather than leaving an entry the
+    // user has to recognise as dead. Best-effort; never awaited for a decision.
+    void forgetOrphanedCredential(optionsJSON.rp?.id, registration.id)
+    throw new PasskeyPrfUnsupportedError(profile)
   }
+
+  return {
+    profile,
+    credentialId: registration.id,
+    _sessionId: begin.sessionId,
+    _registration: registration,
+    _prfOutput: prfOutput,
+    _salt: salt,
+    _opaqueWrap: vault.opaque_wrapped_key,
+    _rpId: optionsJSON.rp?.id,
+  }
+}
+
+/**
+ * PHASE TWO — the password, the wrap, and the one write.
+ *
+ * Steps 5–6 of the original sequence. Failure here still persists nothing
+ * server-side: the server writes the credential, the wrap and the salt in ONE
+ * statement (ciphera-id #65) or not at all.
+ *
+ * 🔴 A wrong password now leaves an orphan on the authenticator, which is the
+ * cost of the reordering and is paid deliberately. `abandonPasskeyEnrol` is how
+ * the caller settles it when the user gives up rather than retries.
+ */
+export async function completePasskeyEnrol(
+  handle: PasskeyEnrolHandle,
+  opts: EnrolPasskeyOptions,
+): Promise<EnrolPasskeyResult> {
+  const email = opts.email.trim()
 
   // (5) The re-auth ceremony that produces the wrap AND the proof.
   const transport = makeOpaqueTransport({
@@ -176,7 +283,7 @@ export async function enrolPasskey(opts: EnrolPasskeyOptions): Promise<EnrolPass
     basePath: '/auth/reauth',
     // The reauth finish body carries no wrap; feed it the one we fetched so the
     // SDK opens the VMK from it and re-wraps THAT key (never a new one).
-    seedWraps: { opaque: vault.opaque_wrapped_key },
+    seedWraps: { opaque: handle._opaqueWrap },
     loginExtras: { purpose: PASSKEY_REAUTH_PURPOSE },
   })
 
@@ -185,7 +292,7 @@ export async function enrolPasskey(opts: EnrolPasskeyOptions): Promise<EnrolPass
     password: new TextEncoder().encode(opts.password),
     // CONTRACT: the SDK zeroes the buffer it is handed. Return a fresh copy per
     // call so a retry inside the SDK can never be given wiped bytes.
-    prf: async () => new Uint8Array(prfOutput.slice(0)),
+    prf: async () => new Uint8Array(handle._prfOutput.slice(0)),
   })
 
   const wrap = transport.drainSignupBuffer().wraps.webauthn
@@ -201,17 +308,47 @@ export async function enrolPasskey(opts: EnrolPasskeyOptions): Promise<EnrolPass
   await authFetch('/auth/webauthn/register/finish', {
     method: 'POST',
     body: JSON.stringify({
-      sessionId: begin.sessionId,
-      response: withoutPrfResults(registration),
+      sessionId: handle._sessionId,
+      response: withoutPrfResults(handle._registration),
       reauth_token: reauthToken,
       prf_wrapped_vault_key: wrap,
-      prf_salt: b64std(salt),
+      prf_salt: b64std(handle._salt),
       ...(opts.displayName?.trim() ? { display_name: opts.displayName.trim() } : {}),
     }),
     skipAuthRetry: true,
   })
 
-  return { credentialId: registration.id }
+  return { credentialId: handle.credentialId }
+}
+
+/**
+ * Give up on a handle: wipe its secrets and ask the provider to forget the
+ * credential nothing will ever accept.
+ *
+ * Called when the user closes the dialog at the password step. Idempotent, and
+ * safe to call on a handle that was already completed.
+ */
+export function abandonPasskeyEnrol(handle: PasskeyEnrolHandle): void {
+  handle._salt.fill(0)
+  new Uint8Array(handle._prfOutput).fill(0)
+  void forgetOrphanedCredential(handle._rpId, handle.credentialId)
+}
+
+/**
+ * The original one-shot enrolment, kept as the composition of the two phases.
+ *
+ * Retained because it is the honest description of the ceremony and is what the
+ * contract tests drive; the modal uses the phases so it can put the biometric
+ * first. Behaviour is identical — the split moved no step and changed no order.
+ */
+export async function enrolPasskey(opts: EnrolPasskeyOptions): Promise<EnrolPasskeyResult> {
+  const handle = await beginPasskeyEnrol()
+  try {
+    return await completePasskeyEnrol(handle, opts)
+  } catch (err) {
+    abandonPasskeyEnrol(handle)
+    throw err
+  }
 }
 
 /**
