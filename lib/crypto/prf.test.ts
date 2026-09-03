@@ -82,3 +82,51 @@ describe('getPRFOutput', () => {
     ).toBeNull()
   })
 })
+
+describe('getPRFOutput — non-spec carrier shapes', () => {
+  /**
+   * 🔑 1Password's browser extension returns `results.first` as a PLAIN ARRAY
+   * of byte values rather than an ArrayBuffer — a spec deviation they have
+   * acknowledged (FS-5593, reported 30-05-2026). Before this, we returned null
+   * and told a 1Password user their device could not do PRF when it can. The
+   * reason was ours, not theirs.
+   */
+  it('accepts a plain Array of bytes (1Password extension shape)', () => {
+    const bytes = Array.from({ length: 32 }, (_, i) => (i * 7) & 0xff)
+    const out = getPRFOutput({
+      clientExtensionResults: { prf: { results: { first: bytes } } },
+    } as never)
+    expect(out).not.toBeNull()
+    expect(Array.from(new Uint8Array(out as ArrayBuffer))).toEqual(bytes)
+  })
+
+  /**
+   * 🔴 Validated, not merely coerced. `Uint8Array.from` turns undefined, null,
+   * NaN and strings into 0 without complaint — so a loose conversion would hand
+   * HKDF a key made partly of zeroes. That does not fail loudly: it wraps a
+   * vault nothing can ever open.
+   */
+  it.each([
+    ['a hole', [1, undefined, 3]],
+    ['a negative', [1, -1, 3]],
+    ['a value over 255', [1, 256, 3]],
+    ['a float', [1, 2.5, 3]],
+    ['a numeric string', [1, '2', 3]],
+    ['null', [1, null, 3]],
+    ['NaN', [1, NaN, 3]],
+    ['an empty array', []],
+  ])('rejects an array containing %s rather than coercing it', (_label, bad) => {
+    expect(
+      getPRFOutput({
+        clientExtensionResults: { prf: { results: { first: bad } } },
+      } as never),
+    ).toBeNull()
+  })
+
+  it('still rejects a shape that carries no PRF at all', () => {
+    expect(
+      getPRFOutput({ clientExtensionResults: { prf: { enabled: true } } } as never),
+    ).toBeNull()
+    expect(getPRFOutput({ clientExtensionResults: {} } as never)).toBeNull()
+  })
+})
