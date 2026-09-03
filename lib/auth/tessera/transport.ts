@@ -71,6 +71,9 @@ export interface OpaqueTransportOptions {
    *  SAME ceremony code drives the dedicated session-authed re-auth endpoint. Only the
    *  login start/finish paths derive from this — register/putWraps signup paths never do. */
   basePath?: string
+  /** Injectable PUT. Only `enrolRecoveryIdentity` needs it — it is the one
+   *  recovery route that is session-authenticated and not a POST. */
+  put?: (path: string, body: unknown) => Promise<unknown>
   /** Injectable POST (defaults to authFetch → `${ID_API_URL}/api/v1${path}`). */
   post?: PostFn
 }
@@ -90,8 +93,35 @@ export interface OpaqueTransport extends Transport {
 const defaultPost: PostFn = (path, body) =>
   authFetch(path, { method: 'POST', body: JSON.stringify(body), skipAuthRetry: true })
 
+// Enrolment is made from INSIDE a session, so unlike the ceremony routes it DOES
+// want the normal auth-refresh retry: a 401 here can genuinely be an expired
+// access token rather than a bad credential.
+const defaultPut = (path: string, body: unknown) =>
+  authFetch(path, { method: 'PUT', body: JSON.stringify(body) })
+
+/**
+ * The three recovery-CEREMONY methods the Transport interface requires and this
+ * app does not implement.
+ *
+ * 🔴 A deliberate throw, not a stub that returns something plausible. Recovery
+ * — proving a phrase and resetting a password without being signed in — happens
+ * on id.ciphera.net, which owns that flow and its anti-enumeration properties.
+ * Pulse only ENROLS a recovery identity, from inside an authenticated session.
+ *
+ * Implementing these here "for completeness" would be worse than not having
+ * them: it would put a second, untested recovery path in an app with no UI to
+ * exercise it, and the first person to wire it up would inherit a ceremony
+ * nobody had ever run. A throw names the boundary; a stub hides it.
+ */
+function notImplementedHere(method: string): never {
+  throw new Error(
+    `tessera: ${method} is not implemented in Pulse — the recovery ceremony lives on Ciphera ID`,
+  )
+}
+
 export function makeOpaqueTransport(o: OpaqueTransportOptions): OpaqueTransport {
   const post = o.post ?? defaultPost
+  const put = o.put ?? defaultPut
   const loginBasePath = o.basePath ?? '/auth/opaque/login'
   let credentialId: string | null = o.credentialId ?? null
   const buf: { uploadB64?: string; wraps: Record<string, string> } = { wraps: {} }
@@ -145,6 +175,43 @@ export function makeOpaqueTransport(o: OpaqueTransportOptions): OpaqueTransport 
       // Recovery / passkey: seeded from their recovery/init or passkey-login response.
       const seeded = o.seedWraps?.[method as WrapMethod]
       return seeded ? { blobB64: seeded } : null
+    },
+
+    // ── recovery identity (tessera 0.2.0) ─────────────────────────────────
+
+    /**
+     * Register (or REPLACE) the account's recovery identity.
+     *
+     * 🔴 Record AND wrap in ONE request. The record is what the phrase
+     * authenticates against and the wrap is the vault key sealed under it; an
+     * account holding one without a matching other passes recovery login and
+     * then cannot decrypt. The server writes both in a single UPDATE for the
+     * same reason (ciphera-id#68), and this is the client half of that.
+     *
+     * The credential id is the SERVER's, minted at register/start — never the
+     * SDK's own Argon2id index, which this backend does not know.
+     */
+    async enrolRecoveryIdentity({ uploadB64, recoveryWrappedKeyB64, reauthToken }) {
+      const credId = credentialId
+      if (!credId) {
+        throw new Error('tessera: no server credential id — register/start did not run')
+      }
+      await put('/auth/user/recovery-opaque', {
+        registration_upload_b64: uploadB64,
+        credential_id: credId,
+        recovery_wrapped_key: recoveryWrappedKeyB64,
+        reauth_token: reauthToken,
+      })
+    },
+
+    async recoveryLoginStart() {
+      notImplementedHere('recoveryLoginStart')
+    },
+    async recoveryLoginFinish() {
+      notImplementedHere('recoveryLoginFinish')
+    },
+    async recoveryResetPassword() {
+      notImplementedHere('recoveryResetPassword')
     },
 
     drainSignupBuffer() {

@@ -13,13 +13,13 @@ export interface OpaqueReauthOptions {
    *  so a delete-account token can never buy an email change or vice versa.
    *  Required once ciphera-id #51 deploys; the older backend ignores the extra
    *  field, which is why the frontends ship it FIRST. */
-  purpose: 'del' | 'eml'
+  purpose: 'del' | 'eml' | 'enr'
 }
 
 /**
  * Drive a full OPAQUE ceremony against the DEDICATED session-authed re-auth
  * endpoint (`/auth/reauth/*`, Slice 4) purely to prove a *fresh* password and
- * mint a single-use server re-auth token. Used ONLY by the delete-account step-up.
+ * mint a single-use server re-auth token. Used by the delete-account step-up and by recovery-identity enrolment.
  *
  * This runs the SAME proven ceremony as performOpaqueLogin (Tessera(transport).login),
  * with two deliberate differences:
