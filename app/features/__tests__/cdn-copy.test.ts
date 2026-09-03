@@ -62,6 +62,12 @@ describe('CDN analytics marketing copy', () => {
 
   it('leaves the real visitor-geography claim alone', () => {
     // The separate, accurate feature — this one MAY talk about countries.
-    expect(cardDescription('Geographic insights')).toMatch(/Country, region, and city-level/)
+    // Pinned by granularity rather than by sentence: the card must keep
+    // claiming all three levels, but the wording was corrected on 03-09-2026
+    // because the map itself is country-only and region/city live in tabs.
+    const geo = cardDescription('Geographic insights')
+    expect(geo).toMatch(/countr/i)
+    expect(geo).toMatch(/region/i)
+    expect(geo).toMatch(/cit(y|ies)/i)
   })
 })
