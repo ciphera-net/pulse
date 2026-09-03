@@ -21,12 +21,34 @@
  * The chrome is ReauthModal's, deliberately unchanged — same overlay, same card,
  * same field stack, same button pair. This surface introduces no new visual
  * vocabulary; it is the existing step-up dialog with two more inputs.
+ *
+ * 🔑 THE BIOMETRIC COMES FIRST (R1, 03-09-2026). The dialog opens on a single
+ * button, runs `create()` on the first click, and only asks for an email and a
+ * password once the authenticator has proved it can produce a PRF secret.
+ *
+ * The reason is measured, not theoretical. Whether an authenticator supports
+ * PRF CANNOT be known before the ceremony — `getClientCapabilities()` reports
+ * on the browser, not the authenticator, and the spec says so normatively — and
+ * two providers people actually use (Bitwarden always; Proton Pass on iOS) fail
+ * every time. Under the old order those users typed an email and a password
+ * first and were then told their device could not do it. Detection cannot be
+ * moved earlier; everything else can. A failed attempt now costs one tap.
+ *
+ * ⚠️ The trade this makes: abandoning the password step leaves a credential on
+ * the authenticator that this site will never accept. `abandonPasskeyEnrol`
+ * signals the provider to forget it on every exit from that step.
  */
 
 import { useCallback, useState } from 'react'
 import { Button, Input } from '@ciphera-net/facet'
 import { ApiError } from '@/lib/api/client'
-import { enrolPasskey } from '@/lib/auth/tessera/passkey-enrol'
+import {
+  beginPasskeyEnrol,
+  completePasskeyEnrol,
+  abandonPasskeyEnrol,
+  PasskeyPrfUnsupportedError,
+  type PasskeyEnrolHandle,
+} from '@/lib/auth/tessera/passkey-enrol'
 
 /**
  * What to SHOW the user for a failed enrolment.
@@ -51,6 +73,11 @@ import { enrolPasskey } from '@/lib/auth/tessera/passkey-enrol'
  * more than any generic text could.
  */
 function enrolErrorMessage(err: unknown): string {
+  // Named-provider copy, built from the AAGUID the ceremony just reported. This
+  // is the difference between "your device cannot do this" and "Bitwarden
+  // cannot do this yet — use Touch ID instead", and it is checked FIRST because
+  // it is the most specific thing we will ever be able to say.
+  if (err instanceof PasskeyPrfUnsupportedError) return err.message
   if (err instanceof ApiError) {
     // 0 is this client's own code for "the request never completed".
     if (err.status === 0) {
@@ -99,6 +126,8 @@ export function usePasskeyEnrolModal(): {
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** Null until the biometric has succeeded; the presence of it IS the step. */
+  const [handle, setHandle] = useState<PasskeyEnrolHandle | null>(null)
 
   const requestPasskeyEnrol = useCallback((): Promise<void> => {
     setEmail('')
@@ -106,6 +135,7 @@ export function usePasskeyEnrolModal(): {
     setName('')
     setError(null)
     setBusy(false)
+    setHandle(null)
     return new Promise<void>((resolve, reject) => setPending({ resolve, reject }))
   }, [])
 
@@ -115,12 +145,34 @@ export function usePasskeyEnrolModal(): {
     setPassword('')
     setError(null)
     setBusy(false)
+    setHandle(null)
   }, [])
 
+  /**
+   * Step one: the ceremony, on the first click.
+   *
+   * Nothing is asked for and nothing is written. Either the authenticator
+   * produces a PRF secret and we advance, or it does not and the user has spent
+   * a single tap finding out.
+   */
+  const onBegin = useCallback(async () => {
+    if (!pending || busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      setHandle(await beginPasskeyEnrol())
+    } catch (err) {
+      setError(enrolErrorMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }, [pending, busy])
+
+  /** Step two: the password, and the single server write. */
   const onSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault()
-      if (!pending || busy) return
+      if (!pending || busy || !handle) return
       if (!email.trim() || !password) {
         setError('Enter the email and password you sign in with.')
         return
@@ -128,7 +180,7 @@ export function usePasskeyEnrolModal(): {
       setBusy(true)
       setError(null)
       try {
-        await enrolPasskey({ email, password, displayName: name })
+        await completePasskeyEnrol(handle, { email, password, displayName: name })
         const { resolve } = pending
         close()
         resolve()
@@ -136,20 +188,26 @@ export function usePasskeyEnrolModal(): {
         // Nothing was written on any failure path — the server writes the
         // credential, the wrap and the salt in ONE statement or not at all, and
         // every client-side abort happens before that request is sent. Keep the
-        // dialog open so the user can correct and retry.
+        // dialog open, and keep the HANDLE: the overwhelmingly likely cause is a
+        // mistyped password, and making the user touch the sensor again to
+        // correct a typo would undo the point of the reordering.
         setBusy(false)
         setError(enrolErrorMessage(err))
       }
     },
-    [pending, busy, email, password, name, close],
+    [pending, busy, handle, email, password, name, close],
   )
 
   const onCancel = useCallback(() => {
     if (!pending) return
+    // Abandoning after the biometric leaves a credential on the authenticator
+    // that this site will never accept. Signal the provider to forget it, and
+    // wipe the PRF secret we are holding.
+    if (handle) abandonPasskeyEnrol(handle)
     const { reject } = pending
     close()
     reject(new Error('__passkey_enrol_cancelled__'))
-  }, [pending, close])
+  }, [pending, handle, close])
 
   const modal = pending ? (
     <div
@@ -159,74 +217,102 @@ export function usePasskeyEnrolModal(): {
     >
       <div className="w-full max-w-sm border border-border bg-card p-6 shadow-xl">
         <h2 className="text-lg font-semibold text-foreground">Add a passkey</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Enter the email and password you sign in with. We use them once to link this device to your
-          encrypted vault — after that you can sign in with the passkey alone.
-        </p>
 
-        <form onSubmit={onSubmit} className="mt-5 space-y-4">
-          <div className="space-y-1.5">
-            <label htmlFor="passkey-email" className="block text-sm font-medium text-foreground/70">
-              Sign-in email
-            </label>
-            <Input
-              id="passkey-email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              autoFocus
-              required
-              disabled={busy}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label htmlFor="passkey-password" className="block text-sm font-medium text-foreground/70">
-              Password
-            </label>
-            <Input
-              id="passkey-password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-              required
-              disabled={busy}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label htmlFor="passkey-name" className="block text-sm font-medium text-foreground/70">
-              Passkey name <span className="text-muted-foreground">(optional)</span>
-            </label>
-            <Input
-              id="passkey-name"
-              type="text"
-              value={name}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
-              placeholder="MacBook"
-              maxLength={64}
-              disabled={busy}
-            />
-          </div>
-
-          {error && (
-            <p className="text-sm text-destructive" role="alert">
-              {error}
+        {!handle ? (
+          <>
+            <p className="mt-2 text-sm text-muted-foreground">
+              We&apos;ll ask your device or password manager for a passkey first, so you find out
+              straight away whether it can unlock your vault. Nothing is saved yet.
             </p>
-          )}
 
-          <div className="flex gap-2 pt-1">
-            <Button type="submit" disabled={busy || !email.trim() || !password}>
-              {busy ? 'Setting up…' : 'Continue'}
-            </Button>
-            <Button type="button" variant="secondary" onClick={onCancel} disabled={busy}>
-              Cancel
-            </Button>
-          </div>
-        </form>
+            {error && (
+              <p className="mt-4 text-sm text-destructive" role="alert">
+                {error}
+              </p>
+            )}
+
+            <div className="flex gap-2 pt-5">
+              <Button type="button" onClick={onBegin} disabled={busy}>
+                {busy ? 'Waiting for your device\u2026' : 'Continue'}
+              </Button>
+              <Button type="button" variant="secondary" onClick={onCancel} disabled={busy}>
+                Cancel
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {handle.profile
+                ? `${handle.profile.name} can unlock your vault. Now enter the email and password you sign in with — we use them once to link it.`
+                : 'That passkey can unlock your vault. Now enter the email and password you sign in with — we use them once to link it.'}
+            </p>
+
+            <form onSubmit={onSubmit} className="mt-5 space-y-4">
+              <div className="space-y-1.5">
+                <label htmlFor="passkey-email" className="block text-sm font-medium text-foreground/70">
+                  Sign-in email
+                </label>
+                <Input
+                  id="passkey-email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  autoFocus
+                  required
+                  disabled={busy}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="passkey-password" className="block text-sm font-medium text-foreground/70">
+                  Password
+                </label>
+                <Input
+                  id="passkey-password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+                  required
+                  disabled={busy}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="passkey-name" className="block text-sm font-medium text-foreground/70">
+                  Passkey name <span className="text-muted-foreground">(optional)</span>
+                </label>
+                <Input
+                  id="passkey-name"
+                  type="text"
+                  value={name}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+                  placeholder="MacBook"
+                  maxLength={64}
+                  disabled={busy}
+                />
+              </div>
+
+              {error && (
+                <p className="text-sm text-destructive" role="alert">
+                  {error}
+                </p>
+              )}
+
+              <div className="flex gap-2 pt-1">
+                <Button type="submit" disabled={busy || !email.trim() || !password}>
+                  {busy ? 'Setting up\u2026' : 'Link this passkey'}
+                </Button>
+                <Button type="button" variant="secondary" onClick={onCancel} disabled={busy}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </>
+        )}
       </div>
     </div>
   ) : null
