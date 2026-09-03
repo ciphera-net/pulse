@@ -63,6 +63,7 @@ import { getSessionAction, setSessionAction } from '@/app/actions/auth'
 import { switchContext } from '@/lib/api/organization'
 import { logger } from '@/lib/utils/logger'
 import type { VaultKeyHandle } from '@/lib/auth/vault-key'
+import { MODAL_SCROLL_CLASS, MODAL_CENTER_CLASS, MODAL_PANEL_CLASS } from '@/components/settings/modalChrome'
 
 /** The current session as the server sees it (JWT claims), captured before the
  *  OPAQUE ceremony overwrites the auth cookies. */
@@ -339,47 +340,63 @@ export function useReauthModal(): {
 
   const modal = pending ? (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4"
+      className={MODAL_SCROLL_CLASS}
       role="dialog"
       aria-modal="true"
     >
-      <div className="w-full max-w-sm border border-border bg-card p-6 shadow-xl">
-        <h2 className="text-lg font-semibold text-foreground">{TITLES[pending.request.op]}</h2>
-        <p className="mt-2 text-sm text-muted-foreground">{BLURBS[pending.request.op]}</p>
+      {/* 🔴 SCROLLING IS ON THE OUTER ELEMENT, CENTERING ON THIS ONE, and they
+          must not be combined. `flex items-center` on a scroll container
+          overflows a too-tall child EQUALLY IN BOTH DIRECTIONS, and the half
+          above the scroll origin is unreachable — `scrollTop` cannot go
+          negative. The bottom scrolls, the top is simply gone.
 
-        <form onSubmit={onSubmit} className="mt-5 space-y-4">
-          <div className="space-y-1.5">
-            <label htmlFor="reauth-email" className="block text-sm font-medium text-foreground/70">
-              Sign-in email
-            </label>
-            <Input
-              id="reauth-email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              autoFocus
-              required
-              disabled={busy}
-            />
-          </div>
+          Measured 03-09-2026 on a real user's laptop: the recovery-phrase
+          panel's own heading was clipped off the top of the screen while she
+          was copying down the only existing copy of her recovery phrase. On a
+          shorter window it would have cut WORDS.
 
-          {error && (
-            <p className="text-sm text-destructive" role="alert">
-              {error}
-            </p>
-          )}
+          `min-h-full` is what keeps short dialogs centred: the wrapper fills
+          the viewport when the content is small, and grows past it when the
+          content is tall, so the scroll container can reach all of it. */}
+      <div className={MODAL_CENTER_CLASS}>
+        <div className={MODAL_PANEL_CLASS}>
+          <h2 className="text-lg font-semibold text-foreground">{TITLES[pending.request.op]}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{BLURBS[pending.request.op]}</p>
 
-          <div className="flex gap-2 pt-1">
-            <Button type="submit" disabled={busy || !email.trim()}>
-              {busy ? 'Verifying…' : 'Verify'}
-            </Button>
-            <Button type="button" variant="secondary" onClick={onCancel} disabled={busy}>
-              Cancel
-            </Button>
-          </div>
-        </form>
+          <form onSubmit={onSubmit} className="mt-5 space-y-4">
+            <div className="space-y-1.5">
+              <label htmlFor="reauth-email" className="block text-sm font-medium text-foreground/70">
+                Sign-in email
+              </label>
+              <Input
+                id="reauth-email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                autoFocus
+                required
+                disabled={busy}
+              />
+            </div>
+
+            {error && (
+              <p className="text-sm text-destructive" role="alert">
+                {error}
+              </p>
+            )}
+
+            <div className="flex gap-2 pt-1">
+              <Button type="submit" disabled={busy || !email.trim()}>
+                {busy ? 'Verifying…' : 'Verify'}
+              </Button>
+              <Button type="button" variant="secondary" onClick={onCancel} disabled={busy}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   ) : null

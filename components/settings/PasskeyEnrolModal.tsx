@@ -49,6 +49,7 @@ import {
   PasskeyPrfUnsupportedError,
   type PasskeyEnrolHandle,
 } from '@/lib/auth/tessera/passkey-enrol'
+import { MODAL_SCROLL_CLASS, MODAL_CENTER_CLASS, MODAL_PANEL_CLASS } from '@/components/settings/modalChrome'
 
 /**
  * What to SHOW the user for a failed enrolment.
@@ -211,108 +212,124 @@ export function usePasskeyEnrolModal(): {
 
   const modal = pending ? (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4"
+      className={MODAL_SCROLL_CLASS}
       role="dialog"
       aria-modal="true"
     >
-      <div className="w-full max-w-sm border border-border bg-card p-6 shadow-xl">
-        <h2 className="text-lg font-semibold text-foreground">Add a passkey</h2>
+      {/* 🔴 SCROLLING IS ON THE OUTER ELEMENT, CENTERING ON THIS ONE, and they
+          must not be combined. `flex items-center` on a scroll container
+          overflows a too-tall child EQUALLY IN BOTH DIRECTIONS, and the half
+          above the scroll origin is unreachable — `scrollTop` cannot go
+          negative. The bottom scrolls, the top is simply gone.
 
-        {!handle ? (
-          <>
-            <p className="mt-2 text-sm text-muted-foreground">
-              We&apos;ll ask your device or password manager for a passkey first, so you find out
-              straight away whether it can unlock your vault. Nothing is saved yet.
-            </p>
+          Measured 03-09-2026 on a real user's laptop: the recovery-phrase
+          panel's own heading was clipped off the top of the screen while she
+          was copying down the only existing copy of her recovery phrase. On a
+          shorter window it would have cut WORDS.
 
-            {error && (
-              <p className="mt-4 text-sm text-destructive" role="alert">
-                {error}
+          `min-h-full` is what keeps short dialogs centred: the wrapper fills
+          the viewport when the content is small, and grows past it when the
+          content is tall, so the scroll container can reach all of it. */}
+      <div className={MODAL_CENTER_CLASS}>
+        <div className={MODAL_PANEL_CLASS}>
+          <h2 className="text-lg font-semibold text-foreground">Add a passkey</h2>
+
+          {!handle ? (
+            <>
+              <p className="mt-2 text-sm text-muted-foreground">
+                We&apos;ll ask your device or password manager for a passkey first, so you find out
+                straight away whether it can unlock your vault. Nothing is saved yet.
               </p>
-            )}
-
-            <div className="flex gap-2 pt-5">
-              <Button type="button" onClick={onBegin} disabled={busy}>
-                {busy ? 'Waiting for your device\u2026' : 'Continue'}
-              </Button>
-              <Button type="button" variant="secondary" onClick={onCancel} disabled={busy}>
-                Cancel
-              </Button>
-            </div>
-          </>
-        ) : (
-          <>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {handle.profile
-                ? `${handle.profile.name} can unlock your vault. Now enter the email and password you sign in with — we use them once to link it.`
-                : 'That passkey can unlock your vault. Now enter the email and password you sign in with — we use them once to link it.'}
-            </p>
-
-            <form onSubmit={onSubmit} className="mt-5 space-y-4">
-              <div className="space-y-1.5">
-                <label htmlFor="passkey-email" className="block text-sm font-medium text-foreground/70">
-                  Sign-in email
-                </label>
-                <Input
-                  id="passkey-email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  autoFocus
-                  required
-                  disabled={busy}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label htmlFor="passkey-password" className="block text-sm font-medium text-foreground/70">
-                  Password
-                </label>
-                <Input
-                  id="passkey-password"
-                  type="password"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-                  required
-                  disabled={busy}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label htmlFor="passkey-name" className="block text-sm font-medium text-foreground/70">
-                  Passkey name <span className="text-muted-foreground">(optional)</span>
-                </label>
-                <Input
-                  id="passkey-name"
-                  type="text"
-                  value={name}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
-                  placeholder="MacBook"
-                  maxLength={64}
-                  disabled={busy}
-                />
-              </div>
 
               {error && (
-                <p className="text-sm text-destructive" role="alert">
+                <p className="mt-4 text-sm text-destructive" role="alert">
                   {error}
                 </p>
               )}
 
-              <div className="flex gap-2 pt-1">
-                <Button type="submit" disabled={busy || !email.trim() || !password}>
-                  {busy ? 'Setting up\u2026' : 'Link this passkey'}
+              <div className="flex gap-2 pt-5">
+                <Button type="button" onClick={onBegin} disabled={busy}>
+                  {busy ? 'Waiting for your device\u2026' : 'Continue'}
                 </Button>
                 <Button type="button" variant="secondary" onClick={onCancel} disabled={busy}>
                   Cancel
                 </Button>
               </div>
-            </form>
-          </>
-        )}
+            </>
+          ) : (
+            <>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {handle.profile
+                  ? `${handle.profile.name} can unlock your vault. Now enter the email and password you sign in with — we use them once to link it.`
+                  : 'That passkey can unlock your vault. Now enter the email and password you sign in with — we use them once to link it.'}
+              </p>
+
+              <form onSubmit={onSubmit} className="mt-5 space-y-4">
+                <div className="space-y-1.5">
+                  <label htmlFor="passkey-email" className="block text-sm font-medium text-foreground/70">
+                    Sign-in email
+                  </label>
+                  <Input
+                    id="passkey-email"
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    autoFocus
+                    required
+                    disabled={busy}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="passkey-password" className="block text-sm font-medium text-foreground/70">
+                    Password
+                  </label>
+                  <Input
+                    id="passkey-password"
+                    type="password"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+                    required
+                    disabled={busy}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="passkey-name" className="block text-sm font-medium text-foreground/70">
+                    Passkey name <span className="text-muted-foreground">(optional)</span>
+                  </label>
+                  <Input
+                    id="passkey-name"
+                    type="text"
+                    value={name}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+                    placeholder="MacBook"
+                    maxLength={64}
+                    disabled={busy}
+                  />
+                </div>
+
+                {error && (
+                  <p className="text-sm text-destructive" role="alert">
+                    {error}
+                  </p>
+                )}
+
+                <div className="flex gap-2 pt-1">
+                  <Button type="submit" disabled={busy || !email.trim() || !password}>
+                    {busy ? 'Setting up\u2026' : 'Link this passkey'}
+                  </Button>
+                  <Button type="button" variant="secondary" onClick={onCancel} disabled={busy}>
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </>
+          )}
+        </div>
       </div>
     </div>
   ) : null
