@@ -142,18 +142,6 @@ export default function CommandDeck({
     }
   }), [data])
 
-  // The Today/Yesterday axis is the FULL site day, not the data's extent: a
-  // day 34 minutes old otherwise collapses to a single floating dot, and
-  // every bucket slides left as new hours arrive (owner report 04-09-2026).
-  // The first bucket IS site midnight — the server resolves the site's
-  // timezone — so no client tz math; the domain ends at the 23:00 bucket,
-  // where a complete day's last point sits.
-  const dayDomain = useMemo<[Date, Date] | undefined>(() => {
-    if (interval !== 'hour' || dateRange.start !== dateRange.end || chartData.length === 0) return undefined
-    const d0 = chartData[0].dateObj
-    return [d0, new Date(d0.getTime() + 23 * 3_600_000)]
-  }, [interval, dateRange.start, dateRange.end, chartData])
-
   // ─── Rail rows ─────────────────────────────────────────────────────
   const rows = useMemo(() => {
     const prevBase = prevStats?.visitors ?? 0
@@ -317,7 +305,6 @@ export default function CommandDeck({
                 data={chartData as Record<string, unknown>[]}
                 xDataKey="dateObj"
                 yCap={metric === 'bounce_rate' ? 100 : undefined}
-                xDomain={dayDomain}
                 integerYTicks={metric === 'visitors' || metric === 'pageviews'}
                 fillParent
                 margin={{ top: 20, right: 20, bottom: 40, left: 50 }}
@@ -349,7 +336,7 @@ export default function CommandDeck({
                   missingAsZero={metric === 'bounce_rate' || metric === 'avg_duration' || metric === 'pages_per_visit'}
                 />
                 <VisxXAxis
-                  numTicks={dayDomain ? 9 : Math.min(chartData.length, 10)}
+                  numTicks={Math.min(chartData.length, 10)}
                   formatLabel={(interval === 'minute' || interval === 'hour')
                     ? (d) => formatTimeUTC(d)
                     : (d) => formatDateShortUTC(d)

@@ -2218,12 +2218,6 @@ export interface AreaChartProps {
   // it, nice-step rounding can print a 125% gridline over a bounce-rate
   // series — an axis claiming a value the metric cannot take.
   yCap?: number;
-  // Fixed x domain (e.g. the full site day for the Today view). Without it
-  // the axis is data-derived, and a day 34 minutes old collapses to a single
-  // instant — one floating dot on an axis-less void (04-09-2026). The line
-  // GROWS into a fixed domain instead; future buckets stay empty, never
-  // zero-filled.
-  xDomain?: [Date, Date];
   // Count metrics only: whole-number y ticks. The nice-step ladder emits
   // fractional ticks for tiny domains and the integer formatter collapses
   // them into duplicates ("2, 1, 1, 0" on a max-1 day, 04-09-2026).
@@ -2242,7 +2236,6 @@ interface ChartInnerProps {
   margin: Margin;
   animationDuration: number;
   yCap?: number;
-  xDomain?: [Date, Date];
   integerYTicks?: boolean;
   children: ReactNode;
   containerRef: RefObject<HTMLDivElement | null>;
@@ -2256,7 +2249,6 @@ function ChartInner({
   margin,
   animationDuration,
   yCap,
-  xDomain,
   integerYTicks,
   children,
   containerRef,
@@ -2286,13 +2278,10 @@ function ChartInner({
     const minTime = Math.min(...dates.map((d) => d.getTime()));
     const maxTime = Math.max(...dates.map((d) => d.getTime()));
 
-    // A fixed domain (the Today view's full site day) wins over the data's
-    // extent: the line grows into it, and a bucket's x never shifts as the
-    // day fills in. Data-derived otherwise.
     return scaleTime()
       .range([0, innerWidth])
-      .domain(xDomain ? [xDomain[0].getTime(), xDomain[1].getTime()] : [minTime, maxTime]);
-  }, [innerWidth, data, xAccessor, xDomain]);
+      .domain([minTime, maxTime]);
+  }, [innerWidth, data, xAccessor]);
 
   const columnWidth = useMemo(() => {
     if (data.length < 2) {
@@ -2324,8 +2313,14 @@ function ChartInner({
     if (integerYTicks) {
       // Count metrics: whole-number ticks only. On a tiny domain the nice
       // ladder emits fractions that an integer formatter collapses into
-      // duplicate labels ("2, 1, 1, 0" on a max-1 day).
-      ticks = Array.from(new Set(ticks.map((t) => Math.round(t)))).filter((t) => t <= top);
+      // duplicate labels ("2, 1, 1, 0" on a max-1 day). The domain top is
+      // ceiled and always ticked — filtering it out left its gridline
+      // floating mid-air with nothing above.
+      top = Math.max(1, Math.ceil(top));
+      const wholes = new Set(ticks.map((t) => Math.round(t)).filter((t) => t >= 0 && t <= top));
+      wholes.add(0);
+      wholes.add(top);
+      ticks = Array.from(wholes).sort((a, b) => a - b);
     }
     return {
       yScale: scaleLinear().range([innerHeight, 0]).domain([0, top]),
@@ -2467,7 +2462,6 @@ export function AreaChart({
   aspectRatio = "2 / 1",
   fillParent = false,
   yCap,
-  xDomain,
   integerYTicks,
   className = "",
   children,
@@ -2492,7 +2486,6 @@ export function AreaChart({
             margin={margin}
             width={width}
             xDataKey={xDataKey}
-            xDomain={xDomain}
             yCap={yCap}
           >
             {children}

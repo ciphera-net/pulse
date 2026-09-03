@@ -92,20 +92,11 @@ describe('first-hour contract', () => {
 
   it('renders a standing r=3 marker for a single plotted point, none for two', () => {
     const { container } = render(
-      <AreaChart
-        data={oneBucket as unknown as Record<string, unknown>[]}
-        xDataKey="dateObj"
-        aspectRatio="3 / 1"
-        xDomain={[new Date(Date.UTC(2026, 8, 4, 0)), new Date(Date.UTC(2026, 8, 4, 23))]}
-      >
+      <AreaChart data={oneBucket as unknown as Record<string, unknown>[]} xDataKey="dateObj" aspectRatio="3 / 1">
         <Area dataKey="v" stroke="#FD5E0F" fadeStrokeEdges={false} />
       </AreaChart>,
     )
-    const dot = container.querySelector('circle[r="3"]')
-    expect(dot).toBeTruthy()
-    // The fixed full-day domain pins the 00:00 bucket at the LEFT EDGE —
-    // a data-derived domain would centre a lone point meaninglessly.
-    expect(Number.parseFloat(dot?.getAttribute('cx') ?? '')).toBeCloseTo(0, 3)
+    expect(container.querySelector('circle[r="3"]')).toBeTruthy()
 
     const { container: c2 } = renderChart({})
     expect(c2.querySelector('circle[r="3"]')).toBeNull()
@@ -128,5 +119,9 @@ describe('first-hour contract', () => {
       .filter((t) => t && /^\d+$/.test(t))
     expect(labels.length).toBeGreaterThanOrEqual(2)
     expect(new Set(labels).size).toBe(labels.length)
+    // The integer TOP is always ticked — a filtered-out top left its
+    // gridline floating mid-air (04-09, first cut of this fix).
+    expect(labels).toContain('1')
+    expect(labels).toContain('0')
   })
 })

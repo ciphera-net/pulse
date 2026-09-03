@@ -112,7 +112,15 @@ export default function SiteDashboardPage() {
   // '1h' narrows to minutes; '24h' narrows to hours — the server resolves 24h as
   // a genuine rolling window (D3), and drawing it as two daily bars split the
   // window mid-bar (F5). Other multi-day ranges keep the user's interval choice.
-  const interval = period === '1h' ? 'minute' : period === '24h' ? 'hour' : (dateRange.start === dateRange.end ? 'hour' : multiDayInterval)
+  const [firstHourOfDay, setFirstHourOfDay] = useState(false)
+
+  // ≤1 hourly bucket cannot draw a line — the first hour of the site's day
+  // renders MINUTE buckets instead, the Last-1-hour instrument (owner ruling
+  // 04-09-2026; supersedes the full-day-axis attempt of the same night).
+  // The signal is the series' own span: first→last bucket under EITHER
+  // interval is < 1h exactly while only the first hour exists, so the rule
+  // cannot oscillate. It rides one render behind the fetch by design.
+  const interval = period === '1h' ? 'minute' : period === '24h' ? 'hour' : (dateRange.start === dateRange.end ? (firstHourOfDay ? 'minute' : 'hour') : multiDayInterval)
 
   // Single dashboard request replaces focused hooks (overview, pages, locations,
   // devices, referrers, goals). The backend runs all queries in parallel
@@ -233,6 +241,18 @@ export default function SiteDashboardPage() {
   const stats: Stats = dashboard?.stats ?? { pageviews: 0, visitors: 0, bounce_rate: null, avg_duration: null, avg_scroll_depth: null, avg_visible_duration: null }
   const realtime = realtimeData?.visitors ?? dashboard?.realtime_visitors ?? 0
   const dailyStats: DailyStat[] = dashboard?.daily_stats ?? []
+
+  // Span of the returned series (offset-safe: both ends carry the same site
+  // offset). < 1h ⇔ only the site day's first hour exists yet.
+  useEffect(() => {
+    if (dateRange.start !== dateRange.end || dailyStats.length === 0) {
+      setFirstHourOfDay(false)
+      return
+    }
+    const first = new Date(dailyStats[0].date).getTime()
+    const last = new Date(dailyStats[dailyStats.length - 1].date).getTime()
+    setFirstHourOfDay(last - first < 3_600_000)
+  }, [dateRange.start, dateRange.end, dailyStats])
 
 
 
