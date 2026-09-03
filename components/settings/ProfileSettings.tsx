@@ -9,6 +9,8 @@ import { setup2FA, verify2FA, disable2FA, regenerateRecoveryCodes } from '@/lib/
 import { listPasskeys, deletePasskey, renamePasskey } from '@/lib/api/webauthn'
 import { useReauthModal, isReauthCancelled } from '@/components/settings/ReauthModal'
 import { usePasskeyEnrolModal, isEnrolCancelled } from '@/components/settings/PasskeyEnrolModal'
+import { useRecoveryEnrolModal, isRecoveryEnrolCancelled } from '@/components/settings/RecoveryEnrolModal'
+import RecoveryCard, { RecoveryNudge, useRecoveryNudge } from '@/components/settings/RecoveryCard'
 
 interface Props {
   activeTab?: 'profile' | 'security' | 'preferences' | 'danger-zone'
@@ -20,6 +22,8 @@ export default function ProfileSettings({ activeTab, borderless, hideDangerZone 
   const { user, refresh, logout } = useAuth()
   const { requestReauth, modal } = useReauthModal()
   const { requestPasskeyEnrol, modal: passkeyModal } = usePasskeyEnrolModal()
+  const { requestRecoveryEnrol, modal: recoveryModal } = useRecoveryEnrolModal()
+  const { shouldNudge, dismissNudge, markPasskeyEnrolled } = useRecoveryNudge()
 
   // The Facet component calls deriveAuthKey(password, email) and hands the DERIVED
   // digest to the callbacks. OPAQUE needs the RAW password bytes, not a digest, so
@@ -132,7 +136,25 @@ export default function ProfileSettings({ activeTab, borderless, hideDangerZone 
       if (isEnrolCancelled(err)) throw new Error('Passkey setup cancelled.')
       throw err
     }
+    // 🔑 The one moment recovery is worth raising: this user has just
+    // demonstrably thought about getting into their account. Armed only on
+    // SUCCESS — nudging somebody whose enrolment just failed would pile a
+    // second ask onto a first that did not work.
+    markPasskeyEnrolled()
     // Facet re-lists the passkeys itself on success.
+  }
+
+  // ---------------------------------------------------------------------------
+  // Recovery-identity enrolment. Opens the dialog and lets it own the outcome;
+  // the card re-reads the server's status either way.
+  // ---------------------------------------------------------------------------
+  const handleEnrolRecovery = async () => {
+    try {
+      await requestRecoveryEnrol()
+    } catch (err) {
+      if (isRecoveryEnrolCancelled(err)) return
+      throw err
+    }
   }
 
   // Reset the password-capture counter before each render cycle (mirrors id-frontend).
@@ -166,8 +188,26 @@ export default function ProfileSettings({ activeTab, borderless, hideDangerZone 
         borderless={borderless}
         hideDangerZone={hideDangerZone}
       />
+      {/* Siblings, because Facet owns the Security tab itself. Rendered only
+          on that tab — a recovery card under the Preferences pane would be
+          somebody else's setting in the wrong room. */}
+      {activeTab === 'security' ? (
+        <>
+          {shouldNudge ? (
+            <RecoveryNudge
+              onSetUp={() => {
+                dismissNudge()
+                void handleEnrolRecovery()
+              }}
+              onDismiss={dismissNudge}
+            />
+          ) : null}
+          <RecoveryCard onEnrol={handleEnrolRecovery} />
+        </>
+      ) : null}
       {modal}
       {passkeyModal}
+      {recoveryModal}
     </>
   )
 }

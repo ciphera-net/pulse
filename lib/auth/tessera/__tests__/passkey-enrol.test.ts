@@ -61,7 +61,12 @@ vi.mock('@simplewebauthn/browser', () => ({
 
 import { PASSKEY_WRAP_CONTRACT } from '@ciphera-net/auth/passkey-vectors'
 import { authFetch } from '@/lib/api/client'
-import { enrolPasskey } from '../passkey-enrol'
+import {
+  enrolPasskey,
+  beginPasskeyEnrol,
+  abandonPasskeyEnrol,
+  PasskeyPrfUnsupportedError,
+} from '../passkey-enrol'
 
 const authFetchSpy = vi.mocked(authFetch)
 
@@ -239,13 +244,59 @@ describe('enrolPasskey', () => {
 
   it('ABORTS with nothing sent to finish when there is no PRF at all', async () => {
     wire({ createPrf: null }) // and the fallback assertion throws
-    await expect(enrolPasskey({ email: 'me@ciphera.test', password: 'pw' })).rejects.toThrow(
-      /did not provide the key material/i,
+    const err = await enrolPasskey({ email: 'me@ciphera.test', password: 'pw' }).then(
+      () => null,
+      (e: unknown) => e,
     )
+    // A TYPE, not a phrase. The copy is now built from the AAGUID so it varies
+    // by provider — asserting a sentence here would pin the wrong thing and
+    // break every time the wording improves.
+    expect(err).toBeInstanceOf(PasskeyPrfUnsupportedError)
+    expect((err as Error).message).toMatch(/nothing was saved/i)
+
     // The loudest requirement in this file: a passkey with no PRF cannot open
     // the vault, so it must never reach the server looking like one that can.
     expect(paths()).not.toContain('/auth/webauthn/register/finish')
     expect(paths()).not.toContain('/auth/reauth/start')
+  })
+
+  /**
+   * 🔴 R1's structural guarantee, asserted where it cannot be undone by a UI
+   * refactor: phase one must not need a password.
+   *
+   * The modal enforces the ORDER the user sees; this enforces that the order is
+   * even possible. If `beginPasskeyEnrol` ever grew a credential argument, the
+   * biometric-first flow would silently become impossible and only the modal's
+   * tests would notice.
+   */
+  it('phase one completes the ceremony with no credentials at all', async () => {
+    wire({})
+    const handle = await beginPasskeyEnrol()
+    expect(handle.credentialId).toBe('cred-id-b64url')
+    expect(startRegistration).toHaveBeenCalledTimes(1)
+    // The biometric happened; the password ceremony did not.
+    expect(paths()).toContain('/auth/webauthn/register/begin')
+    expect(paths()).not.toContain('/auth/reauth/start')
+    expect(paths()).not.toContain('/auth/webauthn/register/finish')
+  })
+
+  it('abandoning a handle zeroes the PRF secret it holds', () => {
+    const prf = new ArrayBuffer(32)
+    new Uint8Array(prf).fill(7)
+    const salt = new Uint8Array(32).fill(9)
+    abandonPasskeyEnrol({
+      profile: null,
+      credentialId: 'cred-id-b64url',
+      _sessionId: 's',
+      _registration: {} as never,
+      _prfOutput: prf,
+      _salt: salt,
+      _opaqueWrap: 'w',
+      _rpId: 'ciphera.net',
+    })
+    // Half of what opens the vault must not survive a cancelled dialog.
+    expect(Array.from(new Uint8Array(prf))).toEqual(new Array(32).fill(0))
+    expect(Array.from(salt)).toEqual(new Array(32).fill(0))
   })
 
   it('ABORTS before the biometric prompt when the account has no OPAQUE vault', async () => {
