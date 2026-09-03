@@ -3,10 +3,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const reauthMock = vi.hoisted(() => vi.fn())
 const enrolMock = vi.hoisted(() => vi.fn())
 const blindIndexMock = vi.hoisted(() => vi.fn())
+const transportMock = vi.hoisted(() => vi.fn(() => ({ __t: true })))
+const authFetchMock = vi.hoisted(() => vi.fn())
 
 vi.mock('../opaque-reauth', () => ({ performOpaqueReauth: reauthMock }))
 vi.mock('../init', () => ({ ensureTessera: vi.fn().mockResolvedValue(undefined) }))
-vi.mock('../transport', () => ({ makeOpaqueTransport: vi.fn(() => ({ __t: true })) }))
+vi.mock('../transport', () => ({ makeOpaqueTransport: transportMock }))
+vi.mock('@/lib/api/client', () => ({ authFetch: authFetchMock }))
 vi.mock('@ciphera-net/auth/blind-index', () => ({ computeBlindIndex: blindIndexMock }))
 vi.mock('@ciphera-net/tessera', () => ({
   Tessera: class {
@@ -20,7 +23,9 @@ describe('enrolRecoveryIdentity', () => {
   beforeEach(() => {
     reauthMock.mockReset()
     enrolMock.mockReset()
+    transportMock.mockClear()
     blindIndexMock.mockReset().mockResolvedValue('bi-123')
+    authFetchMock.mockReset().mockResolvedValue({ opaque_wrapped_key: 'WRAP' })
   })
 
   /**
@@ -92,5 +97,56 @@ describe('enrolRecoveryIdentity', () => {
     await expect(
       enrolRecoveryIdentity({ email: 'me@ciphera.test', password: 'pw' }),
     ).rejects.toThrow(/did not produce a phrase/i)
+  })
+
+  /**
+   * 🔴 THE REGRESSION TEST. This shipped broken on 03-09-2026 and the suite was
+   * green, because these tests mocked `makeOpaqueTransport` and never looked at
+   * what it was CONFIGURED with — they measured something adjacent to the thing
+   * that mattered.
+   *
+   * The SDK runs its own OPAQUE login inside enrolRecoveryIdentity to re-derive
+   * the export_key. With the default base path that login hits the PRIMARY login
+   * endpoint, which (a) answers 401 `require_2fa` on any account with TOTP
+   * enabled, so a correct password reports as a wrong one, and (b) issues fresh
+   * cookies, swapping the session underneath a settings page.
+   */
+  it('drives the ceremony against /auth/reauth, never the primary login endpoint', async () => {
+    reauthMock.mockResolvedValue('tok-1')
+    enrolMock.mockResolvedValue({ recoveryPhrase: 'w1 w2 w3' })
+    await enrolRecoveryIdentity({ email: 'me@ciphera.test', password: 'pw' })
+
+    expect(transportMock).toHaveBeenCalledTimes(1)
+    const cfg = transportMock.mock.calls[0][0] as Record<string, unknown>
+    expect(cfg.basePath).toBe('/auth/reauth')
+    // Purpose rides the finish body on that path.
+    expect(cfg.loginExtras).toMatchObject({ purpose: 'enr' })
+  })
+
+  /**
+   * The reauth finish body carries no vault material, so the wrap has to be
+   * seeded or the SDK throws `no opaque wrap for this account` — AFTER the
+   * password has already been spent.
+   */
+  it('seeds the opaque wrap it fetched, so the SDK can open the vault key', async () => {
+    reauthMock.mockResolvedValue('tok-1')
+    enrolMock.mockResolvedValue({ recoveryPhrase: 'w1 w2 w3' })
+    await enrolRecoveryIdentity({ email: 'me@ciphera.test', password: 'pw' })
+
+    expect(authFetchMock).toHaveBeenCalledWith('/auth/user/vault', { skipAuthRetry: true })
+    const cfg = transportMock.mock.calls[0][0] as Record<string, unknown>
+    expect(cfg.seedWraps).toMatchObject({ opaque: 'WRAP' })
+  })
+
+  /**
+   * Fetched FIRST, so an account with no OPAQUE vault fails before a password is
+   * spent rather than after.
+   */
+  it('refuses before the ceremony when there is no vault to attach to', async () => {
+    authFetchMock.mockResolvedValue({ encrypted_vault: 'ENC' })
+    await expect(
+      enrolRecoveryIdentity({ email: 'me@ciphera.test', password: 'pw' }),
+    ).rejects.toThrow(/no encrypted vault/i)
+    expect(enrolMock).not.toHaveBeenCalled()
   })
 })
