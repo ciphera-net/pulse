@@ -23,7 +23,7 @@ export const faqData: Record<string, FAQItem[]> = {
     {
       question: 'Is Pulse free?',
       answer:
-        'Yes, Pulse is free for personal websites. We plan to offer a paid Pro tier for teams and high-traffic sites in the future, but the free tier will always be available.',
+        'The Hobby plan is free forever — one site, 5,000 pageviews a month, no card. Paid plans start at €7/month and differ only in sites, pageview volume and data retention; every feature ships on every plan, Hobby included. Open-source projects and registered nonprofits get the Team plan at €0 by application.',
     },
     {
       question: 'Can I migrate from Google Analytics?',
@@ -124,7 +124,7 @@ export const faqData: Record<string, FAQItem[]> = {
     {
       question: 'Does Pulse support custom events?',
       answer:
-        'Custom event tracking is on our roadmap. Currently, Pulse focuses on pageview analytics. We plan to add lightweight custom event support that maintains our zero-personal-data architecture.',
+        'Yes, on every plan including the free one. One call — pulse.track(\'event_name\') — records a custom event with no cookies and no personal data, and the dashboard shows counts and conversion rates alongside your pageviews.',
     },
   ],
 }

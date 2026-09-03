@@ -151,7 +151,7 @@ export default function AboutPage() {
         <div className="mx-auto mt-12 w-full max-w-4xl">
           <MacWindow>
             <Image
-              src={cdnUrl('/marketing/dashboard-hero-aug-2x.png')}
+              src={cdnUrl('/marketing/dashboard-hero-sep-2x.png')}
               alt="The Pulse dashboard for ciphera.net — 30 days of real visitor and pageview data"
               width={2244}
               height={1922}

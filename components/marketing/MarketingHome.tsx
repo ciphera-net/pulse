@@ -99,8 +99,8 @@ export default function MarketingHome() {
         </div>
 
         {/* The artifact — a retina capture of the LIVE ciphera.net dashboard
-            (real data, last 30 days; /demo itself now shows a customer site,
-            waltonmarket.com, shared with permission) inside a dark-mode
+            (real data, last 30 days; /demo shows this same dashboard,
+            live and public, since the 02-09-2026 rebuild) inside a dark-mode
             macOS window. The window is a complete closed frame floating on
             margins with air before the TrustStrip — a real window sitting on
             the page; its viewport cropping the dashboard mid-scroll is
@@ -108,7 +108,7 @@ export default function MarketingHome() {
         <div className="relative mx-auto mt-14 w-full max-w-5xl px-6 pb-16 sm:mt-16 sm:pb-20">
           <MacWindow>
             <Image
-              src={cdnUrl('/marketing/dashboard-hero-aug-2x.png')}
+              src={cdnUrl('/marketing/dashboard-hero-sep-2x.png')}
               alt="The Pulse dashboard for ciphera.net — 30 days of real visitor and pageview data"
               width={2244}
               height={1922}

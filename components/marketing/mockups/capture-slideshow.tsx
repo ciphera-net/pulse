@@ -19,7 +19,7 @@ import { MacWindow } from '../system/MacWindow'
 export interface CaptureSlide {
   key: string
   label: string
-  /** cdnUrl() path of the capture, e.g. '/marketing/panel-countries-aug2-2x.png' */
+  /** cdnUrl() path of the capture, e.g. '/marketing/panel-countries-sep-2x.png' */
   file: string
 }
 

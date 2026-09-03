@@ -15,11 +15,11 @@ export function VisitorsSlideshow() {
       height={835}
       alt="Pulse audience panel for ciphera.net, live data"
       slides={[
-        { key: 'map', label: 'Map', file: '/marketing/panel-map-aug2-2x.png' },
-        { key: 'countries', label: 'Countries', file: '/marketing/panel-countries-aug2-2x.png' },
-        { key: 'pages', label: 'Top pages', file: '/marketing/panel-pages-aug2-2x.png' },
-        { key: 'referrers', label: 'Referrers', file: '/marketing/panel-referrers-aug2-2x.png' },
-        { key: 'browsers', label: 'Browsers', file: '/marketing/panel-browsers-aug2-2x.png' },
+        { key: 'map', label: 'Map', file: '/marketing/panel-map-sep-2x.png' },
+        { key: 'countries', label: 'Countries', file: '/marketing/panel-countries-sep-2x.png' },
+        { key: 'pages', label: 'Top pages', file: '/marketing/panel-pages-sep-2x.png' },
+        { key: 'referrers', label: 'Referrers', file: '/marketing/panel-referrers-sep-2x.png' },
+        { key: 'browsers', label: 'Browsers', file: '/marketing/panel-browsers-sep-2x.png' },
       ]}
     />
   )
