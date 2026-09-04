@@ -3,10 +3,23 @@
  * Lightweight, no cookies, no localStorage, no client-side identifiers. GDPR compliant.
  * Visits and visitors are identified server-side: a daily-rotating session hash and a
  * monthly-rotating visitor hash of IP + UA + domain, salted on the site's own calendar.
+ *
+ * v1.2.0 (04-09-2026): time on page is ENGAGED time — seconds the page was visible and the
+ * visitor active — accumulated in bounded ticks, so a sleeping laptop, a frozen background
+ * tab or a tab left open overnight can add at most one tick, never an hour. A pageview is a
+ * person seeing a page: a document that loads hidden waits until it is shown, and a URL
+ * rewrite that only changes the query string is state, not a navigation.
+ * Audit: Pulse/docs/audits/04-09-2026-visit-duration-audit.md
  */
 
 (function() {
   'use strict';
+
+  // * One tracker per document. A second copy (a theme AND a plugin both embedding the
+  // * snippet, or a tag manager firing twice) would double every pageview and patch
+  // * history twice.
+  if (window.__pulseInstalled) return;
+  window.__pulseInstalled = true;
 
   // * Respect Do Not Track
   if (navigator.doNotTrack === '1' || navigator.doNotTrack === 'yes' || navigator.msDoNotTrack === '1') {
@@ -44,6 +57,7 @@
   // * so we also search by src URL and support a global config object.
   const script = document.currentScript
     || document.querySelector('script[data-domain]')
+    || document.querySelector('script[src*="js.ciphera.net/script"]')
     || document.querySelector('script[src*="pulse.ciphera.net/script"]');
 
   const globalConfig = window.pulseConfig || {};
@@ -83,18 +97,61 @@
   // * See Pulse/docs/audits/26-08-2026-psi-err-blocked-by-client-metrics.md
   var ENGAGEMENT_PATH = '/api/v1/engagement';
 
-  let currentEventId = null;
+  // * ─── Engagement accounting ───────────────────────────────────────────────────────
+  // * The clock is a ledger, not a stopwatch. Every TICK_MS an accounting tick credits the
+  // * time since the previous tick — capped at TICK_CAP_MS — and only while the document is
+  // * visible and the visitor has been active within IDLE_PAUSE_MS. The cap is what makes a
+  // * system sleep, a frozen tab or a throttled timer worth one tick instead of the whole
+  // * gap; the idle window is what stops a tab left in front of an empty chair from
+  // * counting. The wall-clock since load is still sent as `duration` — it is what the
+  // * server's bot detection compares against visible time — but the product reads
+  // * `engaged_duration`.
+  var TICK_MS = 1000;
+  var TICK_CAP_MS = 2000;
+  var IDLE_PAUSE_MS = 120000;
+  var HEARTBEAT_MS = 10000;
+  var EARLY_BEACON_MS = 3500;
 
-  // * Time-on-page tracking: records when the current pageview started
+  var currentEventId = null;
   var pageStartTime = 0;
-
+  var engagedMs = 0;
+  var visibleMs = 0;
+  var lastTick = Date.now();
+  var lastActivity = 0;
+  var lastSentEngaged = -1;
+  var lastSentScroll = -1;
   var metricsSent = false;
-
-  var visibleStart = 0;
-  var visibleTotal = 0;
-  var hasVisibilityAPI = typeof document.hidden !== 'undefined';
+  var pendingPath = null;
   var earlyBeaconTimer = null;
   var heartbeatInterval = null;
+  var hasVisibilityAPI = typeof document.hidden !== 'undefined';
+
+  function isVisible() {
+    // * In WebViews (Facebook/Instagram in-app browsers) without the Page Visibility API
+    // * every second is treated as visible, as before; the tick cap and idle window still bound it.
+    return !hasVisibilityAPI || !document.hidden;
+  }
+
+  function tick() {
+    var t = Date.now();
+    var delta = t - lastTick;
+    lastTick = t;
+    if (!currentEventId) return;
+    // * A negative delta is a clock that moved backwards (NTP, resume); a huge one is a
+    // * machine that was asleep or a tab that was frozen. Neither is time anyone spent here.
+    if (delta < 0) delta = 0;
+    if (delta > TICK_CAP_MS) delta = TICK_CAP_MS;
+    if (!isVisible()) return;
+    visibleMs += delta;
+    if (t - lastActivity <= IDLE_PAUSE_MS) engagedMs += delta;
+  }
+  // * One accounting interval for the document's whole life. Per-page timers are the ones
+  // * below; this one never needs clearing, and cannot be leaked by a racing response.
+  setInterval(tick, TICK_MS);
+
+  function noteActivity() {
+    lastActivity = Date.now();
+  }
 
   // * Cerberus: human signal bitmask for bot detection
   var humanSignals = 0;
@@ -113,42 +170,14 @@
   document.addEventListener('touchstart', onHumanInput, { passive: true });
   document.addEventListener('keydown', onHumanInput, { passive: true });
 
-  function sendMetrics() {
-    if (!currentEventId || metricsSent) return;
+  // * Activity for the idle window: anything a person does to a page. Scroll is added
+  // * below where it is measured.
+  var ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'pointerdown', 'keydown', 'touchstart', 'wheel', 'click'];
+  for (var ai = 0; ai < ACTIVITY_EVENTS.length; ai++) {
+    document.addEventListener(ACTIVITY_EVENTS[ai], noteActivity, { passive: true, capture: true });
+  }
 
-    // * Cerberus proof-of-engagement: only send metrics if genuine human interaction detected
-    // * Prevents bots from producing non-null metrics that bypass the delayed evaluator
-    var engaged = (typeof maxScrollPct !== 'undefined' && maxScrollPct > 0) ||
-                  (humanSignals & 1) !== 0 ||
-                  visibleTotal >= 5000;
-    if (!engaged) return;
-
-    var durationSec = pageStartTime > 0 ? Math.round((Date.now() - pageStartTime) / 1000) : 0;
-    if (durationSec <= 0) return;
-
-    // * Finalize visible duration — add time since last visibility change if still visible
-    // * In WebViews (Facebook/Instagram in-app browsers) where Page Visibility API isn't
-    // * available, fall back to wall-clock duration (all time treated as visible)
-    if (hasVisibilityAPI) {
-      if (!document.hidden) visibleTotal += Date.now() - visibleStart;
-    } else {
-      visibleTotal = Date.now() - pageStartTime;
-    }
-    var visibleSec = Math.round(visibleTotal / 1000);
-
-    metricsSent = true;
-    clearTimeout(earlyBeaconTimer);
-    clearInterval(heartbeatInterval);
-
-    var payload = { event_id: currentEventId, duration: durationSec, visible_duration: visibleSec };
-
-    // * Include scroll depth if scroll tracking is enabled and user scrolled
-    if (typeof maxScrollPct !== 'undefined' && maxScrollPct > 0) {
-      payload.scroll_depth = maxScrollPct;
-    }
-
-    var data = JSON.stringify(payload);
-
+  function beacon(data) {
     if (navigator.sendBeacon) {
       navigator.sendBeacon(apiUrl + ENGAGEMENT_PATH, new Blob([data], {type: 'application/json'}));
     } else {
@@ -161,43 +190,74 @@
     }
   }
 
-  function sendHeartbeat() {
-    if (!currentEventId) return;
-    var durationSec = pageStartTime > 0 ? Math.round((Date.now() - pageStartTime) / 1000) : 0;
-    if (durationSec <= 0) return;
-    var vt = visibleTotal;
-    if (hasVisibilityAPI) {
-      if (!document.hidden) vt += Date.now() - visibleStart;
-    } else {
-      vt = Date.now() - pageStartTime;
-    }
-    var visibleSec = Math.round(vt / 1000);
-    var payload = { event_id: currentEventId, duration: durationSec, visible_duration: visibleSec };
+  function engagementPayload() {
+    var wallSec = pageStartTime > 0 ? Math.round((Date.now() - pageStartTime) / 1000) : 0;
+    var payload = {
+      event_id: currentEventId,
+      duration: wallSec,
+      visible_duration: Math.round(visibleMs / 1000),
+      engaged_duration: Math.round(engagedMs / 1000)
+    };
+    // * Include scroll depth if scroll tracking is enabled and user scrolled
     if (typeof maxScrollPct !== 'undefined' && maxScrollPct > 0) {
       payload.scroll_depth = maxScrollPct;
     }
-    if (navigator.sendBeacon) {
-      navigator.sendBeacon(apiUrl + ENGAGEMENT_PATH, new Blob([JSON.stringify(payload)], {type: 'application/json'}));
-    }
+    return payload;
   }
 
-  // * Accumulate visible time — pause when tab is hidden, resume when visible
+  // * Send the page's engagement so far. `final` closes the page (SPA navigation,
+  // * pagehide); a non-final send is a progress report and is skipped when nothing has
+  // * advanced since the last one, so a hidden or idle tab sends nothing. `force` sends
+  // * even without progress — used when the tab is hidden, because that may be the last
+  // * chance to get the numbers out on a mobile app kill.
+  function sendMetrics(final, force) {
+    if (!currentEventId || metricsSent) return;
+    tick();
+    var payload = engagementPayload();
+    if (payload.duration <= 0) return;
+
+    // * Cerberus proof-of-engagement: only report a page that showed evidence of a person —
+    // * engaged time, a scroll, or an input event. A bot that renders the page and leaves
+    // * produces no beacon, exactly as before, and the delayed evaluator sees the silence.
+    var engaged = payload.engaged_duration > 0 ||
+                  (typeof maxScrollPct !== 'undefined' && maxScrollPct > 0) ||
+                  (humanSignals & 1) !== 0;
+    if (!engaged) return;
+
+    var scroll = payload.scroll_depth || 0;
+    if (!final && !force && payload.engaged_duration === lastSentEngaged && scroll === lastSentScroll) return;
+    lastSentEngaged = payload.engaged_duration;
+    lastSentScroll = scroll;
+
+    if (final) {
+      metricsSent = true;
+      clearTimeout(earlyBeaconTimer);
+      clearInterval(heartbeatInterval);
+    }
+    rememberPageview();
+    beacon(JSON.stringify(payload));
+  }
+
   document.addEventListener('visibilitychange', function() {
     if (document.hidden) {
-      visibleTotal += Date.now() - visibleStart;
+      // * Flush, do not close: the tab may come back, and the server keeps the largest
+      // * value it has seen, so a later report can only extend this one.
+      sendMetrics(false, true);
     } else {
-      visibleStart = Date.now();
+      lastTick = Date.now();
+      noteActivity();
       humanSignals |= 4;
+      if (pendingPath !== null) {
+        var path = pendingPath;
+        pendingPath = null;
+        sendPageview(path);
+      }
     }
   });
 
-  // * Send metrics when user leaves or hides the page
-  // * visibilitychange is the primary signal, pagehide is the fallback
-  // * for browsers/scenarios where visibilitychange doesn't fire (tab close, mobile app kill)
-  document.addEventListener('visibilitychange', function() {
-    if (document.visibilityState === 'hidden') sendMetrics();
-  });
-  window.addEventListener('pagehide', sendMetrics);
+  // * pagehide is the page's real end (navigation away, tab close, or entry into the
+  // * back-forward cache). A restore from that cache is a new pageview, below.
+  window.addEventListener('pagehide', function() { sendMetrics(true, true); });
 
   // * Session ID is computed server-side from a daily-rotating hash of IP + UA + domain.
   // * No client-side visitor ID storage needed.
@@ -214,46 +274,99 @@
   }
 
   // * Refresh dedup: skip pageview if the same path was tracked within 5 seconds
-  // * Prevents inflated pageview counts from F5/refresh while allowing genuine revisits
+  // * Prevents inflated pageview counts from F5/refresh while allowing genuine revisits.
+  // * The record also carries the pageview's id and engagement so far, so the reloaded
+  // * document can carry on reporting against the same pageview instead of going dark.
   var REFRESH_DEDUP_WINDOW = 5000;
   var DEDUP_STORAGE_KEY = 'ciphera_last_pv';
 
-  function isDuplicatePageview(path) {
+  function readLastPageview() {
     try {
       var raw = sessionStorage.getItem(DEDUP_STORAGE_KEY);
-      if (raw) {
-        var last = JSON.parse(raw);
-        if (last.p === path && Date.now() - last.t < REFRESH_DEDUP_WINDOW) {
-          return true;
-        }
-      }
+      if (raw) return JSON.parse(raw);
     } catch (e) {}
-    return false;
+    return null;
   }
 
-  function recordPageview(path) {
+  function rememberPageview() {
+    if (!currentEventId) return;
     try {
-      sessionStorage.setItem(DEDUP_STORAGE_KEY, JSON.stringify({ p: path, t: Date.now() }));
+      sessionStorage.setItem(DEDUP_STORAGE_KEY, JSON.stringify({
+        p: cleanPath(), t: pageStartTime, id: currentEventId,
+        e: Math.round(engagedMs / 1000), v: Math.round(visibleMs / 1000)
+      }));
     } catch (e) {}
   }
+
+  function adoptPageview(last) {
+    currentEventId = last.id;
+    pageStartTime = last.t;
+    engagedMs = (last.e || 0) * 1000;
+    visibleMs = (last.v || 0) * 1000;
+    startPageClocks();
+  }
+
+  function resetPage() {
+    clearTimeout(earlyBeaconTimer);
+    clearInterval(heartbeatInterval);
+    currentEventId = null;
+    pageStartTime = 0;
+    engagedMs = 0;
+    visibleMs = 0;
+    lastSentEngaged = -1;
+    lastSentScroll = -1;
+    metricsSent = false;
+    pendingPath = null;
+    if (trackScroll) { maxScrollPct = 0; }
+  }
+
+  function startPageClocks() {
+    lastTick = Date.now();
+    noteActivity();
+    metricsSent = false;
+    lastSentEngaged = -1;
+    lastSentScroll = -1;
+    earlyBeaconTimer = setTimeout(function() { sendMetrics(false, false); }, EARLY_BEACON_MS);
+    heartbeatInterval = setInterval(function() { if (isVisible()) sendMetrics(false, false); }, HEARTBEAT_MS);
+  }
+
+  var lastPath = null;
 
   // * Track pageview
   function trackPageview() {
     const path = cleanPath();
+    lastPath = path;
 
-    // * Skip if same path was just tracked (refresh dedup)
-    if (isDuplicatePageview(path)) {
+    // * Skip if same path was just tracked (refresh dedup) — and keep reporting against it.
+    // * A negative age is a clock that stepped backwards; treating it as "just tracked"
+    // * would blackout every pageview until the clock caught up.
+    var last = readLastPageview();
+    var age = last ? Date.now() - last.t : -1;
+    if (last && last.p === path && last.id && age >= 0 && age < REFRESH_DEDUP_WINDOW) {
+      if (currentEventId !== last.id) {
+        if (currentEventId) sendMetrics(true, true);
+        resetPage();
+        adoptPageview(last);
+      }
       return;
     }
 
-    if (currentEventId) {
-        // * SPA nav: visibilitychange may not fire, so send previous page's metrics + duration now
-        sendMetrics();
+    // * SPA nav: close the previous page with its engaged time now — visibilitychange
+    // * will not fire for it.
+    if (currentEventId) sendMetrics(true, true);
+    resetPage();
+
+    // * A document nobody can see is not a pageview yet: a background-tab restore, a tab
+    // * that reloaded itself after a deploy, a prerender. Wait until it is shown; the
+    // * clock starts then.
+    if (hasVisibilityAPI && document.hidden) {
+      pendingPath = path;
+      return;
     }
+    sendPageview(path);
+  }
 
-    currentEventId = null;
-    pageStartTime = 0;
-
+  function sendPageview(path) {
     const screenSize = {
       width: window.innerWidth || window.screen.width,
       height: window.innerHeight || window.screen.height,
@@ -285,6 +398,8 @@
       client_os_hint: clientOSHint,
     };
 
+    var startedAt = Date.now();
+
     // * Send event
     fetch(apiUrl + '/api/v1/events', {
       method: 'POST',
@@ -295,19 +410,13 @@
       keepalive: true,
     }).then(res => res.json())
     .then(data => {
-      recordPageview(path);
+      // * The document navigated on while this was in flight: that page is gone.
+      if (cleanPath() !== path || currentEventId) return;
       if (data && data.id) {
         currentEventId = data.id;
-        pageStartTime = Date.now();
-        visibleStart = Date.now();
-        visibleTotal = 0;
-        metricsSent = false;
-        earlyBeaconTimer = setTimeout(function() {
-          if (currentEventId && !metricsSent) sendHeartbeat();
-        }, 3500);
-        heartbeatInterval = setInterval(function() {
-          if (currentEventId && !metricsSent && !document.hidden) sendHeartbeat();
-        }, 5000);
+        pageStartTime = startedAt;
+        rememberPageview();
+        startPageClocks();
       }
     }).catch(() => {
       // * Silently fail - don't interrupt user experience
@@ -323,17 +432,21 @@
     trackPageview();
   }
 
+  // * A page restored from the back-forward cache was closed by pagehide; the person is
+  // * looking at it again, so it is a pageview again (the refresh dedup absorbs a fast
+  // * back-and-forth).
+  window.addEventListener('pageshow', function(e) {
+    if (e && e.persisted) trackPageview();
+  });
+
   // * Track SPA navigation: MutationObserver (DOM updates) and history.pushState/replaceState
-  // * (some SPAs change the URL without a DOM mutation we observe)
-  let lastUrl = location.href;
+  // * (some SPAs change the URL without a DOM mutation we observe).
+  // * A navigation is a PATH change. Query-string and hash rewrites — a dashboard writing
+  // * ?metric=, a shop writing ?variant=, an in-page anchor — are state on the same page,
+  // * and counting them minted a pageview per click on every SPA.
   function onUrlChange() {
-    var url = location.href;
-    if (url !== lastUrl) {
-      lastUrl = url;
-      clearTimeout(earlyBeaconTimer);
-      clearInterval(heartbeatInterval);
+    if (cleanPath() !== lastPath) {
       trackPageview();
-      if (trackScroll) { maxScrollPct = 0; }
     }
   }
   new MutationObserver(onUrlChange).observe(document, { subtree: true, childList: true });
@@ -343,15 +456,7 @@
   history.replaceState = function() { _replace.apply(this, arguments); onUrlChange(); };
 
   // * Track popstate (browser back/forward)
-  window.addEventListener('popstate', function() {
-    var url = location.href;
-    if (url === lastUrl) return;
-    lastUrl = url;
-    clearTimeout(earlyBeaconTimer);
-    clearInterval(heartbeatInterval);
-    trackPageview();
-    if (trackScroll) { maxScrollPct = 0; }
-  });
+  window.addEventListener('popstate', onUrlChange);
 
   // * Custom events / goals
   function trackCustomEvent(eventName, props, revenue) {
@@ -408,6 +513,7 @@
     }
 
     window.addEventListener('scroll', function() {
+      noteActivity();
       if (!scrollTicking) {
         scrollTicking = true;
         requestAnimationFrame(checkScroll);

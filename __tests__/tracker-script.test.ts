@@ -46,7 +46,9 @@ describe('tracker script endpoints', () => {
     // * Every send site must go through the constant. A reintroduced literal would
     // * pass the assertion above while sending somewhere else.
     expect(code).toContain('apiUrl + ENGAGEMENT_PATH')
-    expect(code.match(/apiUrl \+ ENGAGEMENT_PATH/g)).toHaveLength(3)
+    // * v1.2.0: one beacon() function carries both transports (sendBeacon, keepalive
+    // * fetch), so exactly two send sites remain and both go through the constant.
+    expect(code.match(/apiUrl \+ ENGAGEMENT_PATH/g)).toHaveLength(2)
   })
 
   // * Two call sites: the pageview in trackPageview and the custom event in
