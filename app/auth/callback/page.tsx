@@ -5,7 +5,7 @@ import { logger } from '@/lib/utils/logger'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import apiRequest from '@/lib/api/client'
-import { exchangeAuthCode } from '@/app/actions/auth'
+import { exchangeAuthCode, getSessionAction } from '@/app/actions/auth'
 import { AuthErrorState, LoadingOverlay, type AuthErrorType } from '@ciphera-net/facet'
 import { safeRedirectUrl } from '@/lib/utils/safe-redirect'
 import { claimPendingAuth, forgetAllPendingAuth } from '@/lib/api/oauth-store'
@@ -23,6 +23,44 @@ function AuthCallbackContent() {
   // * The verifier claimed for this callback. Held so a retry can re-run the
   // * exchange without re-claiming an entry that has already been consumed.
   const verifierRef = useRef<string | null>(null)
+
+  // * Where a completed sign-in lands. Extracted so the rescue path below cannot
+  // * drift from the success path — both honour a stored return, then ?returnTo.
+  const landInApp = useCallback(() => {
+    const storedReturn = localStorage.getItem('pulse_auth_return_to')
+    if (storedReturn) {
+      localStorage.removeItem('pulse_auth_return_to')
+      window.location.assign(safeRedirectUrl(storedReturn))
+      return
+    }
+    window.location.assign(safeRedirectUrl(searchParams.get('returnTo')))
+  }, [searchParams])
+
+  // * A callback that cannot complete its own handshake is NOT automatically a
+  // * failed sign-in. ID sets its cookies on .ciphera.net before redirecting
+  // * here, so the person can already be authenticated while this page has
+  // * nothing to exchange — measured 04-09-2026, when a Safari profile lost the
+  // * pending attempt from localStorage and a genuinely signed-in new user was
+  // * shown "This sign-in link has expired" with no working way forward.
+  // *
+  // * 🔴 This asks the SERVER whether a session exists; it never infers one, and
+  // * it never exchanges an unvalidated code. State validation is untouched: a
+  // * missing pending attempt still refuses the exchange. The only thing that
+  // * changes is what an ALREADY-authenticated person is shown afterwards.
+  const continueIfAlreadySignedIn = useCallback(async (): Promise<boolean> => {
+    let session: Awaited<ReturnType<typeof getSessionAction>> = null
+    try {
+      session = await getSessionAction()
+    } catch {
+      // * Stale build or unreachable action — no session proven, fall through
+      // * to the error surface rather than guessing.
+      return false
+    }
+    if (!session) return false
+    forgetAllPendingAuth()
+    landInApp()
+    return true
+  }, [landInApp])
 
   const runCodeExchange = useCallback(
     async (codeVerifier: string | null) => {
@@ -56,13 +94,7 @@ function AuthCallbackContent() {
         // * by exchangeAuthCode is guaranteed committed before AuthProvider re-initializes
         // * on the destination route. Eliminates the post-login SWR race where useSites()
         // * fires before cookies are observable and caches an empty/401 result for 30s.
-        const storedReturn = localStorage.getItem('pulse_auth_return_to')
-        if (storedReturn) {
-          localStorage.removeItem('pulse_auth_return_to')
-          window.location.assign(safeRedirectUrl(storedReturn))
-        } else {
-          window.location.assign(safeRedirectUrl(searchParams.get('returnTo')))
-        }
+        landInApp()
       } else {
         if (result.error === 'server') {
           // * The exchange likely succeeded server-side (code was consumed) but the
@@ -77,7 +109,7 @@ function AuthCallbackContent() {
         setError(result.error as AuthErrorType)
       }
     },
-    [searchParams, login]
+    [searchParams, login, landInApp]
   )
 
   useEffect(() => {
@@ -87,8 +119,16 @@ function AuthCallbackContent() {
     if (!code) {
       // * No code param (stale link, prefetch, or a direct visit) — without an
       // * error the loading overlay would spin forever.
+      // * 🔑 Logged distinctly from the missing-attempt case below. Both used to
+      // * render the same `stale_attempt` copy with nothing to tell them apart,
+      // * which cost a whole investigation on 04-09-2026: "ID never sent a code"
+      // * and "this device lost its pending attempt" have different causes, live
+      // * in different codebases, and looked identical from the outside.
+      logger.error('Auth callback: no code parameter on the callback URL')
       processedRef.current = true
-      setError('stale_attempt')
+      void continueIfAlreadySignedIn().then((rescued) => {
+        if (!rescued) setError('stale_attempt')
+      })
       return
     }
 
@@ -101,11 +141,18 @@ function AuthCallbackContent() {
       // * another tab resolves against its own entry instead of clobbering this one.
       const pending = claimPendingAuth(state)
       if (!pending) {
-        // * Unknown, forged, expired or already-claimed state. This is a real
-        // * error: never fall through to an unvalidated exchange.
-        logger.error('No pending sign-in attempt for the returned state')
+        // * Unknown, forged, expired or already-claimed state. The exchange is
+        // * refused here and always — an unvalidated code is never exchanged.
+        logger.error('Auth callback: no pending sign-in attempt for the returned state')
         processedRef.current = true
-        setError('stale_attempt')
+        // * But refusing the exchange is not the same as telling somebody their
+        // * sign-in failed. If ID already authenticated them (its cookies are on
+        // * .ciphera.net and arrive before this page runs), send them into the
+        // * app instead of to a dead end whose only working escape is a link
+        // * labelled "Back to the homepage".
+        void continueIfAlreadySignedIn().then((rescued) => {
+          if (!rescued) setError('stale_attempt')
+        })
         return
       }
       codeVerifier = pending.verifier
@@ -117,7 +164,7 @@ function AuthCallbackContent() {
     verifierRef.current = codeVerifier
     processedRef.current = true
     runCodeExchange(codeVerifier)
-  }, [searchParams, runCodeExchange])
+  }, [searchParams, runCodeExchange, continueIfAlreadySignedIn])
 
   const handleRetry = useCallback(() => {
     setError(null)
