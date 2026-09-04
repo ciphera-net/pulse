@@ -10,6 +10,7 @@ import { usePagePreview } from '@/lib/swr/dashboard'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 import { formatNumber } from '@/lib/utils/format'
 import { useCan } from '@/lib/auth/permissions'
+import { displayDomain } from '@/lib/utils/displayDomain'
 
 /** Bottom-third mean luminance above this ⇒ light capture ⇒ stronger scrim. */
 const LIGHT_CAPTURE_LUMINANCE = 0.55
@@ -266,7 +267,7 @@ export function FleetCard({ site, overview, overviewError }: FleetCardProps) {
           </span>
           <div className="min-w-0">
             <div className="truncate text-[15px] font-semibold leading-tight text-neutral-50">{site.name}</div>
-            <div className="truncate text-xs text-neutral-400">{site.domain}</div>
+            <div className="truncate text-xs text-neutral-400">{displayDomain(site)}</div>
           </div>
           {!neverInstalled && (
             <div className="ml-auto text-right">

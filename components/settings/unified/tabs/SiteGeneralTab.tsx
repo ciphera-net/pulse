@@ -14,6 +14,7 @@ import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
+import { displayDomain } from '@/lib/utils/displayDomain'
 
 // Full IANA zone list with each zone's live short-offset, resolved once. Feeds
 // the timezone Select; the hand-rolled combobox it replaces is retired (spec §3
@@ -157,7 +158,7 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
             />
           </PanelRow>
           <PanelRow label="Domain" caption="Set at creation and can't be changed." htmlFor="site-domain">
-            <Input id="site-domain" value={site.domain} disabled className="opacity-60" />
+            <Input id="site-domain" value={displayDomain(site)} disabled className="opacity-60" />
           </PanelRow>
           <PanelRow label="Timezone" caption="Used to bucket stats into local days." htmlFor="site-timezone">
             <Select
