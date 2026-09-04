@@ -10,7 +10,7 @@ import { getSubscription } from '@/lib/api/billing'
 import { getSitesLimitForPlan, formatPlanName } from '@/lib/plans'
 import { trackSiteCreatedFromDashboard, trackSiteCreatedScriptCopied } from '@/lib/welcomeAnalytics'
 import { toast } from '@ciphera-net/facet'
-import { getAuthErrorMessage } from '@ciphera-net/facet'
+import { siteCreateError } from '@/lib/api/siteErrors'
 import { Button, Input } from '@ciphera-net/facet'
 import { CheckCircleIcon } from '@ciphera-net/facet'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
@@ -86,7 +86,7 @@ export default function NewSitePage() {
         sessionStorage.setItem(LAST_CREATED_SITE_KEY, JSON.stringify({ id: site.id }))
       }
     } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to create site. Please try again.')
+      toast.error(siteCreateError(error).message)
     } finally {
       setLoading(false)
     }

@@ -7,6 +7,7 @@ import { motion } from 'framer-motion'
 import { WarningCircle, Prohibit } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
 import { useSetup } from '@/lib/setup/context'
+import { useSites } from '@/lib/swr/sites'
 import { completeOnboarding } from '@/lib/api/organization'
 import { getSubscription } from '@/lib/api/billing'
 import { trackWelcomeCompleted } from '@/lib/welcomeAnalytics'
@@ -36,6 +37,9 @@ export default function SetupDonePage() {
   const router = useRouter()
   const { user } = useAuth()
   const { site, completeStep } = useSetup()
+  // The sites fetch's own loading flag: completion must not be decided while it
+  // is still in flight (see the one-way-door effect below).
+  const { isLoading: sitesLoading } = useSites()
   const [payment, setPayment] = useState<PaymentState>('init')
   // Bumped by "Check again" on the error state — restarts the poll.
   const [pollNonce, setPollNonce] = useState(0)
@@ -93,6 +97,9 @@ export default function SetupDonePage() {
   // (no payment was attempted) or 'confirmed'. They used to fire on MOUNT,
   // while the confirming spinner was still up, so an abandoned checkout
   // counted as a completed onboarding and polluted the funnel (F-B14).
+  // The wizard-local step + the analytics event fire once when payment settles.
+  // These are safe to fire regardless of the sites fetch and must not be coupled
+  // to the one-way onboarding write below.
   const completionFiredRef = useRef(false)
   useEffect(() => {
     if (payment !== 'none' && payment !== 'confirmed') return
@@ -100,10 +107,30 @@ export default function SetupDonePage() {
     completionFiredRef.current = true
     completeStep('done')
     trackWelcomeCompleted(Boolean(site))
-    if (user?.org_id) {
-      completeOnboarding(user.org_id).catch(() => {})
-    }
-  }, [payment, completeStep, site, user?.org_id])
+  }, [payment, completeStep, site])
+
+  // 🔴 best-way-B: onboarding_completed_at is the estate's ONE write of that flag,
+  // a one-way door, and what the resume flow reads to stop re-offering the site
+  // step. It must fire iff a site exists — never site-less (that stranded the two
+  // internal orgs) and never MISSED for a real site.
+  //
+  // 🔴 Its own latch, NOT the shared completionFiredRef: `site` is derived
+  // asynchronously from useSites() by the setup context, and useSites() swallows
+  // a transient fetch failure to []. On a cold mount (deep-link, stale tab) the
+  // effect could fire while `site` is momentarily null, and a shared one-shot ref
+  // would lock the write out permanently for a user who genuinely has a site.
+  // Instead: wait for the fetch to settle, write only with a site, and let the
+  // effect re-run and fire when `site` flips truthy after an SWR retry.
+  const onboardingWrittenRef = useRef(false)
+  useEffect(() => {
+    if (payment !== 'none' && payment !== 'confirmed') return
+    if (onboardingWrittenRef.current) return
+    if (!user?.org_id) return
+    if (sitesLoading) return // the sites fetch is still in flight — decide nothing yet
+    if (!site) return        // settled with no site → the layout guard redirects; never write site-less
+    onboardingWrittenRef.current = true
+    completeOnboarding(user.org_id).catch(() => {})
+  }, [payment, site, sitesLoading, user?.org_id])
 
   if (payment === 'init') return null
 
