@@ -337,9 +337,15 @@ export default function CommandDeck({
                 />
                 <VisxXAxis
                   numTicks={Math.min(chartData.length, 10)}
-                  formatLabel={(interval === 'minute' || interval === 'hour')
+                  // Time-only labels are unambiguous inside one day (or the
+                  // rolling 24h window); an hourly range spanning several
+                  // days repeats them ("00:00, 00:00, 00:00" — refuted 05-09),
+                  // so those carry the date too.
+                  formatLabel={interval === 'minute' || (interval === 'hour' && (dateRange.start === dateRange.end || period === '24h'))
                     ? (d) => formatTimeUTC(d)
-                    : (d) => formatDateShortUTC(d)
+                    : interval === 'hour'
+                      ? (d) => `${formatDateShortUTC(d)} ${formatTimeUTC(d)}`
+                      : (d) => formatDateShortUTC(d)
                   }
                 />
                 <VisxYAxis

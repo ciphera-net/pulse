@@ -8,6 +8,7 @@ import { useActiveSite } from '@/components/settings/active-site'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { SiteFavicon } from '@/components/sites/SiteFavicon'
 import type { Site } from '@/lib/api/sites'
+import { displayDomain } from '@/lib/utils/displayDomain'
 
 /**
  * SiteStatusChip — the band's one live-state signal, driven by the server's
@@ -117,7 +118,7 @@ export default function SiteContextBand() {
             <SiteStatusChip site={activeSite} />
           </span>
         </div>
-        <span className="block truncate text-xs text-muted-foreground">{activeSite.domain}</span>
+        <span className="block truncate text-xs text-muted-foreground">{displayDomain(activeSite)}</span>
       </div>
 
       {sites.length > 1 && (
@@ -168,7 +169,7 @@ export default function SiteContextBand() {
                       />
                       <span className="flex min-w-0 flex-1 flex-col">
                         <span className="truncate">{site.name}</span>
-                        <span className="truncate text-xs text-muted-foreground">{site.domain}</span>
+                        <span className="truncate text-xs text-muted-foreground">{displayDomain(site)}</span>
                       </span>
                       {active && <Check className="h-4 w-4 shrink-0 text-primary" weight="bold" />}
                     </button>

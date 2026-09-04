@@ -9,6 +9,7 @@ import { SettingsPanel } from '@/components/settings/panels/SettingsPanel'
 import { PanelRows } from '@/components/settings/panels/PanelRow'
 import { EmptyRow } from '@/components/settings/panels/EmptyRow'
 import { StatusChip } from '@/components/settings/StatusChip'
+import { displayDomain } from '@/lib/utils/displayDomain'
 
 interface SectionRow {
   label: string
@@ -127,7 +128,7 @@ export default function SettingsLandingPage() {
                 <div className="flex min-w-0 items-center gap-2 border-b border-border bg-muted/40 px-5 py-3">
                   <div className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-center sm:gap-2">
                     <span className="min-w-0 truncate text-sm font-medium text-foreground">{activeSite.name}</span>
-                    <span className="min-w-0 truncate text-xs text-muted-foreground">{activeSite.domain}</span>
+                    <span className="min-w-0 truncate text-xs text-muted-foreground">{displayDomain(activeSite)}</span>
                   </div>
                   <StatusChip
                     tone={activeSite.is_verified ? 'success' : 'warning'}
