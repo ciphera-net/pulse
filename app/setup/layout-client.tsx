@@ -55,9 +55,15 @@ function SetupGuard({ children }: { children: React.ReactNode }) {
             return
           }
 
-          // No site but on install step — skip to plan
-          if (!hasSites && pathname === '/setup/install') {
-            router.replace('/setup/plan')
+          // best-way-B hard gate: a workspace cannot finish setup without a
+          // site. Any step that requires one — install, or the terminal
+          // /setup/done — reached without a site returns to /setup/site, the
+          // one place a site is created. /setup/plan is deliberately NOT gated:
+          // a purchase before a site exists is legitimate, and /setup/done then
+          // catches the completion. This replaces the old redirect that routed
+          // a site-less user AROUND install to /setup/plan (further from a site).
+          if (!hasSites && (pathname === '/setup/install' || pathname === '/setup/done')) {
+            router.replace('/setup/site')
             return
           }
         } else {

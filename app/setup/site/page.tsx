@@ -6,8 +6,9 @@ import { useSetup } from '@/lib/setup/context'
 import { preservePlanParams } from '@/lib/setup/utils'
 import { createSite, detectFramework, type Site } from '@/lib/api/sites'
 import { useSites, mutateSites } from '@/lib/swr/sites'
-import { trackWelcomeSiteAdded, trackWelcomeSiteSkipped } from '@/lib/welcomeAnalytics'
-import { getAuthErrorMessage, Button, Input, Spinner, GlobeIcon } from '@ciphera-net/facet'
+import { trackWelcomeSiteAdded } from '@/lib/welcomeAnalytics'
+import { siteCreateError } from '@/lib/api/siteErrors'
+import { Button, Input, Spinner, GlobeIcon } from '@ciphera-net/facet'
 
 function domainFromUrl(input: string): string {
   let d = input.trim().toLowerCase()
@@ -76,17 +77,11 @@ export default function SetupSitePage() {
       }).catch(() => {})
       router.push(`/setup/install${preservePlanParams(searchParams)}`)
     } catch (err) {
-      setError(getAuthErrorMessage(err as Error) || 'Failed to add site')
+      // Show the server's own reason (why the domain was refused), not auth copy.
+      // With no skip on this step, an unintelligible error would be a dead end.
+      setError(siteCreateError(err).message)
       setLoading(false)
     }
-  }
-
-  const handleSkip = () => {
-    // Deliberately NOT completeStep('site'): skipped is not done, and the
-    // stepper marking a skipped step with a checkmark was part of the lie the
-    // server-truth stepper replaced.
-    trackWelcomeSiteSkipped()
-    router.push(`/setup/plan${preservePlanParams(searchParams)}`)
   }
 
   // Sites are being fetched — don't flash the create form at someone who is
@@ -163,7 +158,7 @@ export default function SetupSitePage() {
           {addingAnother ? 'Add another site' : 'Add your first site'}
         </h1>
         <p className="mt-2 text-sm text-neutral-400 max-w-sm mx-auto">
-          Enter the domain you want to track. You can add more later.
+          Enter the domain you want to track. Pulse needs one site to start; you can add more later.
         </p>
       </div>
 
@@ -191,21 +186,17 @@ export default function SetupSitePage() {
         </Button>
       </form>
 
-      {addingAnother ? (
+      {/* No skip here (best-way-B hard gate): a workspace needs one site to
+          produce any data, and the only forward move is to create it. The
+          install step that follows stays skippable — you can wire the script
+          up later. "Back" survives only for the add-another-site flow. */}
+      {addingAnother && (
         <button
           type="button"
           onClick={() => setAddingAnother(false)}
           className="mt-4 w-full min-h-11 md:min-h-0 text-center text-sm text-neutral-500 hover:text-neutral-400 transition-colors"
         >
           Back
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={handleSkip}
-          className="mt-4 w-full min-h-11 md:min-h-0 text-center text-sm text-neutral-500 hover:text-neutral-400 transition-colors"
-        >
-          Skip for now
         </button>
       )}
     </>

@@ -13,8 +13,18 @@ vi.mock('@/lib/auth/context', () => ({
 }))
 
 const completeStep = vi.fn()
+// best-way-B: onboarding cannot complete without a site, so the site the wizard
+// holds is now the pivot these tests turn on. Mutable, reset to null each test.
+let mockSite: { id: string; domain: string } | null = null
 vi.mock('@/lib/setup/context', () => ({
-  useSetup: () => ({ site: null, completeStep: (...args: unknown[]) => completeStep(...args) }),
+  useSetup: () => ({ site: mockSite, completeStep: (...args: unknown[]) => completeStep(...args) }),
+}))
+const A_SITE = { id: 'site_1', domain: 'example.com' }
+// The done page now reads the sites fetch's own loading flag to decide the
+// one-way onboarding write. Controllable so the load→settle race is testable.
+let mockSitesLoading = false
+vi.mock('@/lib/swr/sites', () => ({
+  useSites: () => ({ isLoading: mockSitesLoading }),
 }))
 
 const completeOnboarding = vi.fn().mockResolvedValue({})
@@ -59,6 +69,8 @@ function setSearch(search: string) {
 }
 
 beforeEach(() => {
+  mockSite = null
+  mockSitesLoading = false
   getSubscription.mockReset()
   mockPush.mockClear()
   completeStep.mockClear()
@@ -131,13 +143,53 @@ describe('SetupDonePage payment confirmation', () => {
 })
 
 describe('SetupDonePage completion gating (ruled B1 — F-B14)', () => {
-  it('fires completion exactly once for a settled non-checkout arrival', async () => {
+  it('fires completion exactly once for a settled non-checkout arrival WITH a site', async () => {
+    mockSite = A_SITE
     setSearch('')
     render(<SetupDonePage />)
     expect(screen.getByText(/You're all set!/)).toBeTruthy()
     expect(completeStep).toHaveBeenCalledWith('done')
     expect(trackWelcomeCompleted).toHaveBeenCalledTimes(1)
     expect(completeOnboarding).toHaveBeenCalledWith('org_1')
+  })
+
+  // 🔴 best-way-B: the one write of onboarding_completed_at must NOT fire for a
+  // site-less workspace — that is the one-way door that stranded the two internal
+  // orgs. The step and analytics still fire; only the server completion is gated.
+  it('does NOT complete onboarding without a site, even when settled', async () => {
+    mockSite = null
+    setSearch('')
+    render(<SetupDonePage />)
+    expect(completeStep).toHaveBeenCalledWith('done')
+    expect(trackWelcomeCompleted).toHaveBeenCalledTimes(1)
+    expect(completeOnboarding).not.toHaveBeenCalled()
+  })
+
+  it('does NOT write completion while the sites fetch is still loading', () => {
+    mockSitesLoading = true
+    mockSite = null
+    setSearch('')
+    render(<SetupDonePage />)
+    expect(completeOnboarding).not.toHaveBeenCalled()
+  })
+
+  // 🔴 The race the review caught: a shared one-shot ref would fire (and lock)
+  // during the null-site load window, permanently missing the one-way write for
+  // a user who DOES have a site. With a separate latch, the write survives the
+  // load→settle transition and fires once the site resolves. This FAILS on the
+  // shared-ref version.
+  it('writes completion once a site resolves after the fetch settles', () => {
+    mockSitesLoading = true
+    mockSite = null
+    setSearch('')
+    const { rerender } = render(<SetupDonePage />)
+    expect(completeOnboarding).not.toHaveBeenCalled()
+    // fetch settles and the setup context resolves the site
+    mockSitesLoading = false
+    mockSite = A_SITE
+    rerender(<SetupDonePage />)
+    expect(completeOnboarding).toHaveBeenCalledWith('org_1')
+    expect(completeOnboarding).toHaveBeenCalledTimes(1)
   })
 
   it('fires NOTHING while the confirming spinner is up', async () => {
@@ -168,7 +220,8 @@ describe('SetupDonePage completion gating (ruled B1 — F-B14)', () => {
     expect(completeOnboarding).not.toHaveBeenCalled()
   })
 
-  it('fires completion once the payment is CONFIRMED', async () => {
+  it('fires completion once the payment is CONFIRMED (with a site)', async () => {
+    mockSite = A_SITE
     setSearch('?from=checkout')
     getSubscription.mockResolvedValue({ subscription_status: 'active' })
     render(<SetupDonePage />)
