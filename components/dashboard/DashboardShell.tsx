@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { PlusIcon, ExternalLinkIcon, LayoutDashboardIcon, PathIcon, FunnelIcon, CursorClickIcon, SearchIcon, CloudUploadIcon, HeartbeatIcon, SettingsIcon, UserMenu } from '@ciphera-net/facet'
+import { PlusIcon, LayoutDashboardIcon, PathIcon, FunnelIcon, CursorClickIcon, SearchIcon, CloudUploadIcon, HeartbeatIcon, SettingsIcon, UserMenu } from '@ciphera-net/facet'
 import { formatUpdatedAgo } from '@/lib/utils/format'
 import { useFunnelDetail } from '@/lib/swr/dashboard'
 import { useAuth } from '@/lib/auth/context'
@@ -26,29 +26,9 @@ import { getSite } from '@/lib/api/sites'
 import { useSites } from '@/lib/swr/sites'
 import { SiteFavicon } from '@/components/sites/SiteFavicon'
 import ContentHeader from './ContentHeader'
-import { CIPHERA_APPS } from '@/lib/ciphera-apps'
 import { ShortcutHandler } from '@/components/keyboard/ShortcutHandler'
 import { ShortcutsOverlay } from '@/components/keyboard/ShortcutsOverlay'
 import { CommandPalette } from '@/components/command/CommandPalette'
-
-
-/**
- * App tile icon with the same graceful monogram fallback as SiteFavicon — a
- * missing CDN asset must degrade to a lettered tile, not the broken-image box
- * with alt text bleeding through (exactly how the dead ID/Help URLs presented).
- * `alt` is empty: the app name is printed right under the tile.
- */
-function AppSwitcherIcon({ src, name }: { src: string; name: string }) {
-  const [failed, setFailed] = useState(false)
-  if (failed) {
-    return (
-      <div aria-hidden className="flex h-8 w-8 items-center justify-center bg-neutral-800 text-sm font-semibold text-neutral-400">
-        {name.trim()[0]?.toUpperCase() ?? '?'}
-      </div>
-    )
-  }
-  return <img src={src} alt="" className="w-8 h-8 object-contain" onError={() => setFailed(true)} />
-}
 
 type PageMeta = {
   title: string
@@ -146,105 +126,6 @@ const Sidebar = dynamic(() => import('./Sidebar'), {
     </div>
   ),
 })
-
-// ─── Breadcrumb App Switcher ───────────────────────────────
-
-function BreadcrumbAppSwitcher() {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  const panelRef = useRef<HTMLDivElement>(null)
-  const buttonRef = useRef<HTMLButtonElement>(null)
-  const [fixedPos, setFixedPos] = useState<{ left: number; top: number } | null>(null)
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      const target = e.target as Node
-      if (
-        ref.current && !ref.current.contains(target) &&
-        (!panelRef.current || !panelRef.current.contains(target))
-      ) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
-  useEffect(() => {
-    if (open && buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect()
-      let top = rect.bottom + 4
-      if (panelRef.current) {
-        const maxTop = window.innerHeight - panelRef.current.offsetHeight - 8
-        top = Math.min(top, Math.max(8, maxTop))
-      }
-      setFixedPos({ left: rect.left, top })
-      requestAnimationFrame(() => {
-        if (buttonRef.current) {
-          const r = buttonRef.current.getBoundingClientRect()
-          setFixedPos({ left: r.left, top: r.bottom + 4 })
-        }
-      })
-    }
-  }, [open])
-
-  const dropdown = (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          ref={panelRef}
-          initial={{ opacity: 0, y: 10, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 10, scale: 0.95 }}
-          transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-          className="fixed z-50 w-72 bg-popover rounded-none border border-border overflow-hidden origin-top-left"
-          style={fixedPos ? { left: fixedPos.left, top: fixedPos.top } : undefined}
-        >
-          <div className="p-4">
-            <div className="text-xs font-medium text-neutral-400 tracking-wider mb-3">Ciphera Apps</div>
-            <div className="grid grid-cols-3 gap-3">
-              {CIPHERA_APPS.map((app) => {
-                const isCurrent = app.id === 'pulse'
-                return (
-                  <a
-                    key={app.id}
-                    href={app.href}
-                    onClick={(e) => { if (isCurrent) { e.preventDefault(); setOpen(false) } else setOpen(false) }}
-                    className={`group flex flex-col items-center gap-2 p-3 rounded-none transition-all ${
-                      isCurrent ? 'bg-neutral-800/50 cursor-default' : 'hover:bg-neutral-800/50'
-                    } ease-apple`}
-                  >
-                    <div className="w-10 h-10 flex items-center justify-center shrink-0">
-                      <AppSwitcherIcon src={app.icon} name={app.name} />
-                    </div>
-                    <span className="text-xs font-medium text-white text-center">{app.name}</span>
-                  </a>
-                )
-              })}
-            </div>
-            <div className="h-px bg-neutral-800 my-3" />
-            <a href="https://ciphera.net/products" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1 text-xs text-brand-orange hover:underline">
-              View all products
-              <ExternalLinkIcon className="h-3 w-3" />
-            </a>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  )
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        ref={buttonRef}
-        onClick={() => setOpen(!open)}
-        className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer ease-apple"
-      >
-        <span>Pulse</span>
-        <CaretDown className="w-3 h-3 shrink-0 translate-y-px" />
-      </button>
-      {typeof document !== 'undefined' ? createPortal(dropdown, document.body) : dropdown}
-    </div>
-  )
-}
 
 // ─── Breadcrumb Site Picker ────────────────────────────────
 
@@ -444,7 +325,20 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
           <SidebarSimple className="size-5" weight={collapsed ? 'regular' : 'fill'} />
         </button>
         <nav className="flex items-center gap-1 text-sm font-medium">
-          <BreadcrumbAppSwitcher />
+          {/*
+            The product crumb. This was an app switcher until 04-09-2026; its
+            menu had shrunk to a single reachable destination (Help), which the
+            sidebar already links — and to Ciphera ID, whose /settings and
+            /account both 404 since the 02-09 decommission left that host
+            serving auth ceremonies only.
+
+            It stays a crumb rather than disappearing because warden-frontend's
+            Shell.tsx adopted this exact device from Pulse, noting that without
+            it "nothing on screen said which Ciphera tool you were looking at".
+            Deleting it would reintroduce that in the app the pattern came from.
+            Non-interactive: there is nowhere else to switch to.
+          */}
+          <span className="inline-flex items-center gap-1 text-neutral-500">Pulse</span>
           <CaretRight className="w-3 h-3 text-neutral-600" />
           {siteId ? (
             siteName ? (
