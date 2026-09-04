@@ -129,10 +129,14 @@ beforeEach(() => {
 })
 
 afterEach(async () => {
-  // * Let a pending MutationObserver microtask run before the window goes away.
+  // * Let pending timers and observer callbacks settle, then drop the window without
+  // * closing it: jsdom's MutationObserver can still deliver after close(), and the
+  // * tracker's URL check reads location on a window that no longer has one — noise on
+  // * stderr, never a failure. Twelve unreferenced windows are cheaper than that noise.
   await flush(0)
-  win.close()
   vi.useRealTimers()
+  win = null
+  doc = null as any
 })
 
 describe('pageviews are people seeing pages', () => {
