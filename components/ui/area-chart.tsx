@@ -1077,6 +1077,122 @@ export function ChartTooltip({
 
 ChartTooltip.displayName = "ChartTooltip";
 
+// ─── Time ticks ───────────────────────────────────────────────────────────────
+
+const TICK_MINUTE = 60_000;
+const TICK_HOUR = 3_600_000;
+const TICK_DAY = 86_400_000;
+
+function ticksFrom(first: number, step: number, endTime: number): Date[] {
+  const out: Date[] = [];
+  for (let t = first; t <= endTime; t += step) out.push(new Date(t));
+  return out;
+}
+
+/**
+ * Axis ticks for a time domain: the smallest "nice" step at the range's
+ * natural level (minutes ≤ 2h, hours ≤ 3d, days ≤ 90d, else months) that
+ * yields BETWEEN 2 AND `tickCount` ticks, emitted at exact multiples of that
+ * step so every gap is equal (in calendar months at the month level — those
+ * gaps differ in milliseconds by design). Dates carry the SITE wall clock
+ * stamped as UTC (see parseSiteWallClock), so epoch alignment IS clock
+ * alignment: a step that divides the hour or the day lands on :00/:20/:40,
+ * 00:00/06:00/… boundaries, and a whole-day multiple is site midnight.
+ *
+ * The gate is two-sided on purpose. Tick counts fall monotonically as the
+ * step widens, and a one-sided "≤ budget" test let a ladder jump (2→5 min,
+ * 1→2 h) or the doubling fallback sail from budget+1 straight to ONE tick —
+ * a 7-minute range at three ticks drew a lone "00:10", a 48-hour chart at
+ * two ticks a single label floating mid-axis (refuted 05-09-2026). So the
+ * answer is the widest step that still places two ticks, never fewer.
+ * Exported for the property test that sweeps ranges × widths × offsets.
+ */
+export function niceTimeTicks(startTime: number, endTime: number, tickCount: number): Date[] {
+  const count = Math.max(2, tickCount);
+  const range = endTime - startTime;
+  if (!(range > 0)) return [new Date(startTime)];
+
+  // Walk the ladder (then keep doubling past its end — the budget is a hard
+  // ceiling, never a suggestion, or a narrow chart prints colliding labels).
+  // Accept the first step inside [2, count]. When the ladder skips straight
+  // from over-budget to fewer than two ticks (a 7-minute range at two
+  // ticks: 2-min → 4, 5-min → 1), stride-subsample the finest overflowing
+  // rung: every k-th tick of a uniform grid is still uniform and
+  // grid-aligned, and k = ceil((n-1)/(count-1)) lands inside the budget
+  // with at least two ticks. Only a range shorter than the finest step
+  // ever yields a single tick.
+  const subsample = (ticks: Date[]): Date[] => {
+    const stride = Math.max(1, Math.ceil((ticks.length - 1) / (count - 1)));
+    const out: Date[] = [];
+    for (let i = 0; i < ticks.length; i += stride) out.push(ticks[i]);
+    return out;
+  };
+  const chooseFrom = (candidates: () => Iterable<Date[]>): Date[] => {
+    let previous: Date[] | null = null;
+    for (const ticks of candidates()) {
+      if (ticks.length >= 2 && ticks.length <= count) return ticks;
+      if (ticks.length < 2) return previous ? subsample(previous) : ticks;
+      previous = ticks;
+    }
+    return previous ? subsample(previous) : [];
+  };
+  const pick = (steps: number[]): Date[] =>
+    chooseFrom(function* () {
+      const attempt = (step: number) => ticksFrom(Math.ceil(startTime / step) * step, step, endTime);
+      for (const step of steps) yield attempt(step);
+      let step = steps[steps.length - 1];
+      for (let i = 0; i < 16; i++) {
+        step *= 2;
+        yield attempt(step);
+      }
+    });
+
+  if (range <= 2 * TICK_HOUR) {
+    // Doubling past 60 min reaches 2h/4h/8h — all divide the day, so they
+    // stay clock-aligned. 16h would not, but a ≤2h range never needs more
+    // than a 2h step; widen this level's ceiling and that changes.
+    return pick([1, 2, 5, 10, 15, 20, 30, 60].map((m) => m * TICK_MINUTE));
+  }
+  if (range <= 3 * TICK_DAY) {
+    // Past 24h the honest rungs are whole DAYS from the range's first
+    // midnight, not epoch-doubled 48h grids (which pick "midnight on an
+    // arbitrary day" by epoch parity — refuted 05-09-2026).
+    const firstMidnight = Math.ceil(startTime / TICK_DAY) * TICK_DAY;
+    return chooseFrom(function* () {
+      const attempt = (step: number) => ticksFrom(Math.ceil(startTime / step) * step, step, endTime);
+      for (const h of [1, 2, 3, 4, 6, 8, 12, 24]) yield attempt(h * TICK_HOUR);
+      for (const d of [2, 3, 4]) yield ticksFrom(firstMidnight, d * TICK_DAY, endTime);
+    });
+  }
+  if (range <= 90 * TICK_DAY) {
+    // Multi-day steps walk from the range's first midnight (the epoch-aligned
+    // whole day IS site midnight under the wall-clock-as-UTC convention), so
+    // a 7-day step repeats the range's opening weekday. The ladder's top rung
+    // (120d) exceeds this level's 90d ceiling, which is what guarantees the
+    // gate resolves without a doubling fallback — keep the two in step.
+    const firstMidnight = Math.ceil(startTime / TICK_DAY) * TICK_DAY;
+    return chooseFrom(function* () {
+      for (const d of [1, 2, 3, 5, 7, 14, 15, 30, 60, 120]) yield ticksFrom(firstMidnight, d * TICK_DAY, endTime);
+    });
+  }
+  // Month level: 1st of each Nth month from the first 1st inside the range.
+  const first = new Date(startTime);
+  first.setUTCDate(1);
+  first.setUTCHours(0, 0, 0, 0);
+  if (first.getTime() < startTime) first.setUTCMonth(first.getUTCMonth() + 1);
+  return chooseFrom(function* () {
+    for (const m of [1, 2, 3, 6, 12, 24, 48, 96]) {
+      const months: Date[] = [];
+      const cursor = new Date(first);
+      while (cursor.getTime() <= endTime) {
+        months.push(new Date(cursor));
+        cursor.setUTCMonth(cursor.getUTCMonth() + m);
+      }
+      yield months;
+    }
+  });
+}
+
 // ─── Grid ────────────────────────────────────────────────────────────────────
 
 /**
@@ -1391,66 +1507,18 @@ export function XAxis({ numTicks = 5, tickerHalfWidth = 50, formatLabel }: XAxis
 
     const startTime = startDate.getTime();
     const endTime = endDate.getTime();
-    const rangeMs = endTime - startTime;
     // numTicks is an upper bound — narrow charts (mobile 390px) fit fewer
     // DD/MM labels before they collide, so budget ~80px per tick.
     const widthBudget = innerWidth > 0 ? Math.floor(innerWidth / 80) : numTicks;
     const tickCount = Math.max(2, Math.min(numTicks, widthBudget));
 
-    // Generate all natural boundary dates, then thin to fit numTicks
-    const allDates: Date[] = [];
-
-    const HOUR = 3_600_000;
-    const DAY = 86_400_000;
-
-    if (rangeMs <= 2 * HOUR) {
-      // Minute-level: snap to 5-minute boundaries
-      const first = new Date(startDate);
-      first.setUTCSeconds(0, 0);
-      first.setUTCMinutes(Math.ceil(first.getUTCMinutes() / 5) * 5);
-      for (let t = first.getTime(); t <= endTime; t += 5 * 60_000) {
-        allDates.push(new Date(t));
-      }
-    } else if (rangeMs <= 3 * DAY) {
-      // Hour-level: snap to 3-hour boundaries (00:00, 03:00, 06:00, ...)
-      const step = 3;
-      const first = new Date(startDate);
-      first.setUTCMinutes(0, 0, 0);
-      first.setUTCHours(Math.ceil(first.getUTCHours() / step) * step);
-      for (let t = first.getTime(); t <= endTime; t += step * HOUR) {
-        allDates.push(new Date(t));
-      }
-    } else if (rangeMs <= 90 * DAY) {
-      // Day-level: snap to midnight of each day
-      const first = new Date(startDate);
-      first.setUTCHours(0, 0, 0, 0);
-      if (first.getTime() < startTime) first.setUTCDate(first.getUTCDate() + 1);
-      for (let t = first.getTime(); t <= endTime; t += DAY) {
-        allDates.push(new Date(t));
-      }
-    } else {
-      // Month-level: snap to 1st of each month
-      const first = new Date(startDate);
-      first.setUTCDate(1);
-      first.setUTCHours(0, 0, 0, 0);
-      if (first.getTime() < startTime) first.setUTCMonth(first.getUTCMonth() + 1);
-      while (first.getTime() <= endTime) {
-        allDates.push(new Date(first));
-        first.setUTCMonth(first.getUTCMonth() + 1);
-      }
-    }
-
-    // Thin to numTicks by picking evenly spaced indices
-    let dates: Date[];
-    if (allDates.length <= tickCount) {
-      dates = allDates;
-    } else {
-      dates = [];
-      for (let i = 0; i < tickCount; i++) {
-        const idx = Math.round(i * (allDates.length - 1) / (tickCount - 1));
-        dates.push(allDates[idx]);
-      }
-    }
+    // Nice-step ticks: the smallest boundary step whose tick count fits, at
+    // exact multiples of that step — uniform by construction. The previous
+    // generator listed every 5-minute/3-hour/day boundary and THINNED it by
+    // evenly spaced array indices, so with 18 candidates for 10 ticks the
+    // rounding alternated between skipping one and two: labels landed
+    // 10, 10, 10, 10, 5, 10 minutes apart (owner report 05-09-2026).
+    const dates = niceTimeTicks(startTime, endTime, tickCount);
 
     const defaultFormat = (d: Date) => formatDateShort(d);
     const fmt = formatLabel ?? defaultFormat;
