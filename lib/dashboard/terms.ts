@@ -39,7 +39,7 @@ export const METRIC_TERMS: Record<MetricType, GlossaryTerm> = {
   pageviews: {
     title: 'Total pageviews',
     definition:
-      'Every page load in the range, bots and excluded traffic removed — a reload counts again.',
+      'Every page a visitor saw in the range, bots and excluded traffic removed. A reload counts again. In a single-page app each change of path counts, but a link that only changes the query string or the # fragment does not — that is state on the same page. A page that loads in a background tab counts when it is first shown.',
     docs: 'dashboard#total-pageviews',
   },
   pages_per_visit: {
