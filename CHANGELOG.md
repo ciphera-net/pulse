@@ -47,6 +47,36 @@ public read API's — see that entry for what it does and does not cover.
 
 ### Changed
 
+- **Visit duration measures time people spent, and 04-09-2026 is a measurement
+  boundary.** The tracking script used to report the wall-clock time since a page loaded
+  as its time on page. A tab left open overnight counted — even on a laptop that was
+  asleep — and a hidden background tab that reloaded itself after a deploy started a
+  visit nobody was on. Measured on production: 73% of the Pulse dashboard's own summed
+  visit time came from single pages carrying more than 30 minutes, and one page carried
+  eight and a half hours. Two defects in the server's arithmetic compounded it: the
+  first page of a second visit in a day contributed zero instead of its own time, and a
+  multi-page visit counted its first page twice while never counting its last.
+
+  Tracking script **v1.2.0** now measures **engaged time** — seconds the page was
+  visible and the visitor active — in bounded one-second ticks, so a sleeping machine, a
+  frozen tab or a walked-away desk adds at most a tick. The clock pauses while a tab is
+  hidden and after two minutes without scrolling, clicking or typing, and resumes on
+  activity. A page that loads hidden is not a pageview until it is shown; a URL rewrite
+  that only changes the query string or hash is state, not a navigation (the dashboard's
+  own metric picker had been minting a pageview per click). A page's time is credited to
+  that page and never exceeds the gap to the next one.
+
+  **Expect visit duration to step down on most sites and pageviews to step down on
+  single-page apps.** Pages recorded before the boundary carry no engaged measurement
+  and cannot be re-measured; they are bounded by their visible time and capped at 30
+  minutes each, and history is recomputed on that basis — on a few sites the average
+  steps *up*, because the old arithmetic never read a visit's last page. The public read
+  API's `avg_duration` is the same field with the corrected meaning, no wire change, as
+  with `visitors` on 26-08-2026. An SRI-pinned embed on v1.1.0 keeps the old bytes and
+  the old measurement until the tag is updated; the rolling `js.ciphera.net/script.js`
+  embed picks the change up automatically. Audit:
+  `Pulse/docs/audits/04-09-2026-visit-duration-audit.md`.
+
 - **Funnels, redrawn and simplified.** The funnel page is now one chart and one
   sentence: tall gradient columns show each step's survivors against the entry total,
   the loss between steps is drawn as the wedge between columns with the drop and the

@@ -57,7 +57,7 @@ export const METRIC_TERMS: Record<MetricType, GlossaryTerm> = {
   avg_duration: {
     title: 'Visit duration',
     definition:
-      'Average length of a visit, over visits that carried a duration signal — unmeasured visits are excluded, not counted as zero. A visit ends after 30 minutes of inactivity.',
+      'Average length of a visit — the time its pages were visible and in use. The clock pauses while the tab is hidden and after two minutes without scrolling, clicking or typing, so a tab left open does not count. Unmeasured visits are excluded, not counted as zero. A visit ends after 30 minutes of inactivity.',
     docs: 'dashboard#visit-duration',
   },
 }
