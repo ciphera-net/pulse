@@ -65,7 +65,11 @@ def run():
         page.goto(base + "/index.html?pulse-ignore", wait_until="networkidle")
         page.wait_for_timeout(500)
         evs = events_for(base, page)
-        check("?pulse-ignore sends nothing", len(evs) == 0, f"got {len(evs)}")
+        # The previous case's page sends its exit beacon (an /engagement POST for ITS
+        # pageview) while this navigation is in flight; that is that page's data, not
+        # this one's. The ignore short-circuit is about what THIS document sends.
+        own = [e for e in evs if not e["path"].endswith("/engagement")]
+        check("?pulse-ignore sends nothing", len(own) == 0, f"got {len(own)}")
         # Undo the localStorage ignore flag for subsequent cases.
         page.goto(base + "/index.html?pulse-ignore", wait_until="networkidle")
         page.wait_for_timeout(300)
@@ -81,6 +85,34 @@ def run():
         check("SPA route change fires a second pageview", len(pvs) >= 2, f"got {len(pvs)}")
         if len(pvs) >= 2:
             check("second pageview URL is the pushState path", pvs[-1]["body"].get("url", "").endswith("/about"))
+
+        # 3b) A URL rewrite that changes only the query string or the hash is state on
+        #     the same page, not a navigation — no pageview (v1.2.0).
+        reset(base, page)
+        page.goto(base + "/spa.html", wait_until="networkidle")
+        page.wait_for_timeout(400)
+        page.evaluate("history.replaceState({}, '', '/spa.html?metric=avg_duration')")
+        page.evaluate("history.pushState({}, '', '/spa.html?metric=bounce_rate#section')")
+        page.wait_for_timeout(6000)
+        evs = events_for(base, page)
+        pvs = [e for e in evs if e["path"].endswith("/events") and not e["body"].get("name")]
+        check("query-string and hash rewrites are not pageviews", len(pvs) == 1, f"got {len(pvs)}")
+
+        # 3c) Engagement beacons carry engaged time bounded by the wall-clock (v1.2.0).
+        reset(base, page)
+        page.goto(base + "/index.html", wait_until="networkidle")
+        page.mouse.move(100, 100)
+        page.wait_for_timeout(1500)
+        page.mouse.move(200, 150)
+        page.wait_for_timeout(3500)
+        evs = events_for(base, page)
+        beacons = [e for e in evs if e["path"].endswith("/engagement")]
+        check("an engagement beacon arrives within a few seconds", len(beacons) >= 1, f"got {len(beacons)}")
+        if beacons:
+            b = beacons[-1]["body"]
+            check("the beacon carries engaged_duration", "engaged_duration" in b, str(b))
+            check("engaged time never exceeds the wall-clock", b.get("engaged_duration", 0) <= b.get("duration", 0), str(b))
+            check("engaged time is real seconds, not zero", b.get("engaged_duration", 0) >= 1, str(b))
 
         # 4) Privacy short-circuit: an automated (webdriver) browser sends nothing.
         wd_ctx = browser.new_context()  # webdriver=true (Playwright default)

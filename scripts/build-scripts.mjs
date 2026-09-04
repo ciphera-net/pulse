@@ -33,7 +33,7 @@ const DIST_ROOT = join(ROOT, 'dist', 'scripts')
 
 // * Bump this to publish a new immutable version. Bytes for an existing version
 // * must never change — CI enforces immutability on publish.
-const SCRIPT_VERSION = '1.1.0'
+const SCRIPT_VERSION = '1.2.0'
 const BASE_URL = 'https://js.ciphera.net'
 
 const SCRIPTS = ['script.js']

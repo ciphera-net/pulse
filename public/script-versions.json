@@ -1,11 +1,11 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "baseUrl": "https://js.ciphera.net",
   "files": {
     "script.js": {
-      "path": "/v1.1.0/script.js",
-      "sha384": "sha384-6MKLlZRp92pgRyJ5DYfSnYiYYp7xcbVBi5oL68mM5hb6xuxYO1z/ybYc7sBwaDIz",
-      "sha512": "sha512-2JujvhXn8w+w1iR3/NbgmHi0NOaAaJ8Qz0xR3FxwfT7+jCEfV9T+UqJpYf3xE61YiuNqJBpt40i0RRzaXgU+zA=="
+      "path": "/v1.2.0/script.js",
+      "sha384": "sha384-buYMs1+LPU2s3adPKSeC+TLES+pcII/SXbDkLdc6T/TfgzXLumTSaI+CzYp/p9xZ",
+      "sha512": "sha512-0T2lI+zyBlJeYUnZf+ACuqRNqgpktNGvGSVxusCw8KIoluO8meBx2E4fevPIn4+G0D3AHrRcPi4EYGTcYuqj3A=="
     }
   }
 }
