@@ -100,7 +100,13 @@ export default function SetupDonePage() {
     completionFiredRef.current = true
     completeStep('done')
     trackWelcomeCompleted(Boolean(site))
-    if (user?.org_id) {
+    // 🔴 best-way-B: onboarding is not "complete" without a site. This is the
+    // one write of onboarding_completed_at in the estate, it is a one-way door,
+    // and it is what the resume flow reads to stop re-offering the site step —
+    // so firing it site-less is exactly what stranded the two internal orgs.
+    // The guard also redirects a site-less arrival away from /setup/done; this
+    // is the defence that holds even if that redirect is ever bypassed.
+    if (user?.org_id && site) {
       completeOnboarding(user.org_id).catch(() => {})
     }
   }, [payment, completeStep, site, user?.org_id])

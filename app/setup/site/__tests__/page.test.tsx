@@ -101,13 +101,15 @@ describe('SetupSitePage', () => {
     expect(screen.queryByText('Pick up where you left off')).toBeNull()
   })
 
-  it('skip does NOT complete the step — skipped is not done', () => {
+  // best-way-B (owner ruling 05-09): the site step is a hard gate — there is no
+  // skip. A workspace needs one site to produce any data, so the only forward
+  // move on the create form is to add a site. This test used to assert the skip
+  // existed and routed to /setup/plan; it now pins that it is GONE.
+  it('has NO skip control — the step is a hard gate', () => {
     render(<SetupSitePage />)
-    // getByText, not queryByText+if: a missing skip control must FAIL, never
-    // silently pass (a self-skipping test kills nothing).
-    fireEvent.click(screen.getByText('Skip for now'))
-    expect(completeStep).not.toHaveBeenCalled()
-    expect(trackSkipped).toHaveBeenCalled()
-    expect(mockPush).toHaveBeenCalledWith('/setup/plan')
+    expect(screen.queryByText('Skip for now')).toBeNull()
+    // and nothing here routes to /setup/plan (the old skip's destination)
+    expect(mockPush).not.toHaveBeenCalledWith('/setup/plan')
+    expect(trackSkipped).not.toHaveBeenCalled()
   })
 })
