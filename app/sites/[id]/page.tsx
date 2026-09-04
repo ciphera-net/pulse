@@ -46,6 +46,7 @@ import InstallBanner from '@/components/dashboard/InstallBanner'
 import { useLiveIndicator } from '@/lib/live-indicator-context'
 import { type MetricType, isMetricType } from '@/lib/dashboard/metrics'
 import { useCan } from '@/lib/auth/permissions'
+import { displayDomain } from '@/lib/utils/displayDomain'
 
 
 export default function SiteDashboardPage() {
@@ -276,7 +277,7 @@ export default function SiteDashboardPage() {
   }, [dashboard, markUpdated])
 
   useEffect(() => {
-    if (site?.domain) document.title = `${site.domain} | Pulse`
+    if (site?.domain) document.title = `${displayDomain(site)} | Pulse`
   }, [site?.domain])
 
   // Skip the minimum-loading skeleton when SWR already has cached data

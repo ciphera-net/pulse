@@ -12,6 +12,12 @@ export interface Site {
   id: string
   user_id: string
   domain: string
+  /**
+   * The domain rendered for a human: a site stored as "xn--mller-kva.de" reads
+   * back "müller.de". Server-computed, display only — see lib/utils/displayDomain.
+   * Never send this back to the API and never put it in an install snippet.
+   */
+  display_domain?: string
   name: string
   timezone?: string
   is_public?: boolean

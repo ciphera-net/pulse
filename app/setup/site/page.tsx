@@ -9,6 +9,7 @@ import { useSites, mutateSites } from '@/lib/swr/sites'
 import { trackWelcomeSiteAdded } from '@/lib/welcomeAnalytics'
 import { siteCreateError } from '@/lib/api/siteErrors'
 import { Button, Input, Spinner, GlobeIcon } from '@ciphera-net/facet'
+import { displayDomain } from '@/lib/utils/displayDomain'
 
 function domainFromUrl(input: string): string {
   let d = input.trim().toLowerCase()
@@ -119,7 +120,7 @@ export default function SetupSitePage() {
 
         <div className="flex items-center justify-between border border-neutral-800 px-4 py-3">
           <div>
-            <p className="text-sm font-medium text-white">{resumeSite.domain}</p>
+            <p className="text-sm font-medium text-white">{displayDomain(resumeSite)}</p>
             <p className="text-xs text-neutral-500">
               {added ? `Added ${added} · ` : ''}{installStateLabel(resumeSite)}
             </p>

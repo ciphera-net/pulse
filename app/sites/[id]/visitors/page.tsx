@@ -24,6 +24,7 @@ import {
   presenceTicks,
 } from '@/lib/visitors/range'
 import type { VisitorRow } from '@/lib/api/visitors'
+import { displayDomain } from '@/lib/utils/displayDomain'
 
 // ─── The Visitors roster (approved design §9a, "The list page") ─────
 //
@@ -86,7 +87,7 @@ export default function VisitorsPage() {
   })
 
   useEffect(() => {
-    if (site?.domain) document.title = `Visitors · ${site.domain} | Pulse`
+    if (site?.domain) document.title = `Visitors · ${displayDomain(site)} | Pulse`
   }, [site?.domain])
 
   if (site && site.visitor_views_enabled === false) {
