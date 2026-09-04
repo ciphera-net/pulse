@@ -137,15 +137,25 @@ beforeEach(() => {
 })
 
 describe('SiteBotSpamTab', () => {
-  it('renders the detection stats as mono numerals', () => {
+  // Renamed 04-09-2026. The old labels named OUR MECHANISM rather than what happened to the
+  // customer's numbers: "Quarantine activity", "Quarantined", "Detection types". A site owner does
+  // not quarantine anything and has no detection types; their stats had bot traffic excluded from
+  // them. The numerals are `tabular-nums`, NOT `font-mono` — this test used to be called "mono
+  // numerals", which described a rule the component never broke.
+  it('renders the excluded-traffic stats with their customer-facing labels', () => {
     primeHooks()
     render(<SiteBotSpamTab siteId="site-1" />)
     expect(screen.getByText('42')).toBeInTheDocument()
     expect(screen.getByText('7')).toBeInTheDocument()
-    // Detection types = keys of by_reason (a, b) = 2.
+    // Kinds of bot = keys of by_reason (a, b) = 2.
     expect(screen.getByText('2')).toBeInTheDocument()
-    expect(screen.getByText('Last 24h')).toBeInTheDocument()
-    expect(screen.getByText('Detection types')).toBeInTheDocument()
+    expect(screen.getByText('Excluded traffic')).toBeInTheDocument()
+    expect(screen.getByText('Excluded from your stats')).toBeInTheDocument()
+    expect(screen.getByText('In the last 24 hours')).toBeInTheDocument()
+    expect(screen.getByText('Kinds of bot')).toBeInTheDocument()
+    // The old vocabulary must not survive anywhere on the panel.
+    expect(screen.queryByText('Quarantine activity')).not.toBeInTheDocument()
+    expect(screen.queryByText('Detection types')).not.toBeInTheDocument()
   })
 
   it('shows suspicious sessions in the review view and switches to quarantined', () => {

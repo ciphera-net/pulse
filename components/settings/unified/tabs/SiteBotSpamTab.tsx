@@ -237,7 +237,7 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
 
       {/* ── Detection stats — RailGrid of mono numerals ───────────────── */}
       <section className="space-y-3">
-        <SectionLabel>Quarantine activity</SectionLabel>
+        <SectionLabel>Excluded traffic</SectionLabel>
         {botStatsError ? (
           /* A failed fetch must read as a server error, not a clean site. */
           <SettingsErrorState
@@ -250,9 +250,9 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
           // Fixed 3-up: an auto-fill track left a trailing empty filler tile
           // beside the three real stats (§2.2 RailGrid).
           <RailGrid columns={3}>
-            <StatTile value={botStats.total_quarantined ?? 0} label="Quarantined" />
-            <StatTile value={botStats.last_24h ?? 0} label="Last 24h" />
-            <StatTile value={Object.keys(botStats.by_reason || {}).length} label="Detection types" />
+            <StatTile value={botStats.total_quarantined ?? 0} label="Excluded from your stats" />
+            <StatTile value={botStats.last_24h ?? 0} label="In the last 24 hours" />
+            <StatTile value={Object.keys(botStats.by_reason || {}).length} label="Kinds of bot" />
           </RailGrid>
         ) : (
           <RailGrid columns={3}>
