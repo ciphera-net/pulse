@@ -58,7 +58,17 @@ describe('RecoveryCard', () => {
   it('names replacement as replacement when already enrolled', async () => {
     statusMock.mockResolvedValue({ enrolled: true })
     render(<RecoveryCard onEnrol={async () => {}} />)
-    expect(await screen.findByRole('button')).toHaveTextContent('Replace phrase')
+    // 🔴 Wait on text that exists ONLY in the enrolled state, never on the
+    // button. The Button renders on the very first pass — the test above pins
+    // that it is present and disabled while `enrolled` is still null — and its
+    // label is `enrolled ? 'Replace phrase' : 'Set up recovery'`, so at that
+    // point it reads "Set up recovery". `findByRole('button')` therefore
+    // resolves immediately, against the pre-load label, and gates on nothing;
+    // the assertion that follows then races the status fetch. This is the same
+    // defect as WorkspaceAuditTab's `findByText('Created site')` barrier, which
+    // matched an <option> that was always in the DOM.
+    expect(await screen.findByText(/^Set up\./)).toBeInTheDocument()
+    expect(screen.getByRole('button')).toHaveTextContent('Replace phrase')
     expect(screen.getByText(/replaces the phrase you have/)).toBeInTheDocument()
   })
 
