@@ -83,10 +83,8 @@ export function ClaimInner({ programme }: { programme: Programme }) {
         {state === 'done' ? (
           <>
             <p className="mt-6 text-base leading-relaxed text-muted-foreground">
-              {project ? `${project} now runs` : 'Your workspace now runs'} on the
-              Open Source plan — five sites, 100,000 pageviews a month, 2-year
-              retention, every feature, €0. It shows on your billing page
-              immediately.
+              {project ? `${project} now runs` : 'Your workspace now runs'} on the{' '}
+              {copy.plan}: {copy.terms} It shows on your billing page immediately.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Button asChild>
@@ -103,10 +101,8 @@ export function ClaimInner({ programme }: { programme: Programme }) {
         ) : (
           <>
             <p className="mt-6 text-base leading-relaxed text-muted-foreground">
-              This link came with your approval email. Claiming attaches the
-              Open Source plan to the workspace you&rsquo;re signed in to —
-              five sites, 100,000 pageviews a month, 2-year retention, every
-              feature, €0.
+              This link came with your approval email. Claiming attaches the{' '}
+              {copy.plan} to the workspace you&rsquo;re signed in to: {copy.terms}
             </p>
             {!token && (
               <p className="mt-4 text-sm text-red-500" role="alert">
@@ -144,7 +140,7 @@ export function ClaimInner({ programme }: { programme: Programme }) {
 export default function OpenSourceClaimPage() {
   return (
     <Suspense fallback={null}>
-      <ClaimInner />
+      <ClaimInner programme="opensource" />
     </Suspense>
   )
 }
