@@ -31,6 +31,8 @@ vi.mock('@/lib/charts/primitives', async (importOriginal) => {
   const mod = await importOriginal<typeof import('@/lib/charts/primitives')>()
   return {
     ...mod,
+    // The stack measures its own container (not ParentSize) since the 05-09 collapse fix.
+    useContainerSize: () => ({ width: 800, height: 300 }),
     ParentSize: ({ children }: { children: (size: { width: number; height: number }) => React.ReactNode }) =>
       <div>{children({ width: 800, height: 300 })}</div>,
   }
