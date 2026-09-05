@@ -15,6 +15,12 @@ const BASE = process.env.SMOKE_BASE_URL ?? 'https://pulse-staging.ciphera.net'
 
 test('a spent code shows "This sign-in link has expired" and reports invalid_grant', async ({ browser }) => {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
+  // * reportClientEvent prefers navigator.sendBeacon, whose body Playwright cannot
+  // * read — the first run of this spec saw the POST answered 204 and asserted on an
+  // * empty body. The helper already falls back to fetch when sendBeacon is absent;
+  // * removing it in the test context exercises the same event path with a body the
+  // * harness can see. Measured 05-09-2026 against the deployed C build.
+  await ctx.addInitScript(() => { Object.defineProperty(navigator, 'sendBeacon', { value: undefined, configurable: true }) })
   const page = await ctx.newPage()
 
   const events: string[] = []
