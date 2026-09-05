@@ -65,7 +65,10 @@ describe('WorkspaceAuditTab', () => {
     mockGetAuditLog.mockResolvedValue({ entries: [entry()], total: 1 })
     render(<WorkspaceAuditTab />)
 
-    await screen.findByText('Created site')
+    // Wait on the table, never on an action label: the filter <select> carries an
+    // <option> of every label and renders before the fetch resolves, so awaiting
+    // one resolves against the option and gates on nothing.
+    await screen.findByRole('table')
     expect(screen.getByText('admin@ciphera.net')).toBeInTheDocument()
     // Pagination + filter semantics: first load is limit 20 / offset 0.
     expect(mockGetAuditLog).toHaveBeenCalledWith(
@@ -129,7 +132,7 @@ describe('WorkspaceAuditTab', () => {
     mockGetAuditLog.mockResolvedValue({ entries: [entry()], total: 1 })
     render(<WorkspaceAuditTab />)
 
-    await screen.findByText('Created site')
+    await screen.findByRole('table')
     // Payload is collapsed until the row is expanded.
     expect(screen.queryByText('site id')).not.toBeInTheDocument()
 
@@ -145,7 +148,7 @@ describe('WorkspaceAuditTab', () => {
     mockGetAuditLog.mockResolvedValue({ entries: [entry()], total: 1 })
     render(<WorkspaceAuditTab />)
 
-    await screen.findByText('Created site')
+    await screen.findByRole('table')
     expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled()
     expect(screen.getByText('1–1 of 1')).toBeInTheDocument()
@@ -155,7 +158,7 @@ describe('WorkspaceAuditTab', () => {
     mockGetAuditLog.mockResolvedValue({ entries: [entry()], total: 1 })
     render(<WorkspaceAuditTab />)
 
-    await screen.findByText('Created site')
+    await screen.findByRole('table')
     fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-07-10' } })
     fireEvent.change(screen.getByLabelText('To'), { target: { value: '2026-07-01' } })
 
