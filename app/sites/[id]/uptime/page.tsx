@@ -309,6 +309,7 @@ export default function UptimePage() {
               siteId={siteId}
               monitor={monitor}
               dateRange={apiRange}
+              period={period}
               incidents={incidentsError ? undefined : incidentsData?.incidents}
               timezone={site?.timezone ?? null}
               utcDaysBefore={uptimeData?.utc_days_before}

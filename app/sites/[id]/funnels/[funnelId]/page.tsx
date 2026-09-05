@@ -363,6 +363,7 @@ export default function FunnelDetailPage() {
                 siteId={siteId}
                 funnelId={funnelId}
                 dateRange={fetchRange}
+                period={period}
                 filters={filtersParam || undefined}
                 stats={stats}
                 prevStats={prevStats}

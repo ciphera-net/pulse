@@ -91,7 +91,7 @@ function interactiveG(container: HTMLElement): SVGGElement {
 }
 
 const crosshairX = (container: HTMLElement): number | null => {
-  const rect = container.querySelector('rect[fill="url(#tooltip-indicator-gradient)"]')
+  const rect = container.querySelector('rect[fill^="url(#tooltip-indicator-gradient"]')
   return rect ? Number.parseFloat(rect.getAttribute('x') ?? '') : null
 }
 

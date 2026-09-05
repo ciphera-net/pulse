@@ -14,6 +14,7 @@ import {
   type SVGProps,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -267,6 +268,11 @@ export function ParentSize({ debounceTime = 0, children }: ParentSizeProps) {
   useEffect(() => {
     if (!ref.current) return;
     update();
+    // No ResizeObserver (jsdom, very old browsers): measure once and stop.
+    // Throwing here made every page test that mounts a chart fail on a
+    // ReferenceError rather than on what it was testing (chart-consistency
+    // round, 05-09-2026 — the performance page was the first).
+    if (typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(() => {
       if (debounceTime > 0) {
         clearTimeout(timeoutRef.current);
@@ -327,3 +333,46 @@ export function LinearGradient({
 }
 
 LinearGradient.displayName = "LinearGradient";
+
+// ─── useContainerSize ────────────────────────────────────────────────────────
+
+/**
+ * Measures a container the caller owns (width and height) and follows resizes.
+ *
+ * 🔴 Unlike `ParentSize` it NEVER withholds children — it only reports. Use it
+ * for a CONTENT-SIZED box whose height comes from what it contains (a column of
+ * strips): gating such a box on its own height collapses it — no children →
+ * height 0 → gate closed → no children. That is what shipped to production on
+ * 05-09-2026 (chart-consistency promote #575) through ChartStack: every stack
+ * page rendered an empty card until prod was rolled back by hand. `ParentSize`
+ * stays correct for a FIXED-height box that fills its parent (the deck, the
+ * performance trend, each 92px strip).
+ *
+ * Width is read in a layout effect so the first paint already has the real
+ * plot width. Without ResizeObserver (jsdom, very old browsers) it measures
+ * once and stops — never throws, so a page test that mounts a stack fails on
+ * what it tests. Tests that need a declared size mock THIS export the same way
+ * they mock `ParentSize`.
+ */
+export function useContainerSize(ref: React.RefObject<HTMLElement | null>): {
+  width: number;
+  height: number;
+} {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const { width, height } = el.getBoundingClientRect();
+      setSize((prev) => (prev.width === width && prev.height === height ? prev : { width, height }));
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref]);
+
+  return size;
+}
