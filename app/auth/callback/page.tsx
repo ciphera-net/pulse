@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import apiRequest from '@/lib/api/client'
 import { exchangeAuthCode, getSessionAction } from '@/app/actions/auth'
-import { setAccessToken } from '@/lib/api/client'
+import { setAccessToken, APP_URL } from '@/lib/api/client'
 import { AuthErrorState, LoadingOverlay, type AuthErrorType } from '@ciphera-net/facet'
 import { safeRedirectUrl } from '@/lib/utils/safe-redirect'
 import { claimPendingAuth, forgetAllPendingAuth } from '@/lib/api/oauth-store'
@@ -24,6 +24,9 @@ function AuthCallbackContent() {
   // * The verifier claimed for this callback. Held so a retry can re-run the
   // * exchange without re-claiming an entry that has already been consumed.
   const verifierRef = useRef<string | null>(null)
+  // * The redirect_uri this attempt actually sent at authorize. Held for the same
+  // * reason, and never recomputed — see runCodeExchange.
+  const redirectUriRef = useRef<string | null>(null)
 
   // * Where a completed sign-in lands. Extracted so the rescue path below cannot
   // * drift from the success path — both honour a stored return, then ?returnTo.
@@ -64,9 +67,8 @@ function AuthCallbackContent() {
   }, [landInApp])
 
   const runCodeExchange = useCallback(
-    async (codeVerifier: string | null) => {
+    async (codeVerifier: string | null, redirectUri: string) => {
       const code = searchParams.get('code')
-      const redirectUri = typeof window !== 'undefined' ? window.location.origin + '/auth/callback' : ''
       if (!code) return
       let result: Awaited<ReturnType<typeof exchangeAuthCode>>
       try {
@@ -143,6 +145,15 @@ function AuthCallbackContent() {
 
     const state = searchParams.get('state')
     let codeVerifier: string | null = null
+    // * 🔴 THE redirect_uri IS RESOLVED, NOT RECOMPUTED. id-backend compares the
+    // * exchange's value against the one recorded at authorize with Go's `!=` —
+    // * no normalisation of any kind — and answers 400 `invalid_grant` on any
+    // * difference, which renders here as "This sign-in link has expired". Until
+    // * 05-09-2026 this page derived its own value from window.location.origin
+    // * while lib/api/oauth.ts had sent a build-time APP_URL, so the two agreed
+    // * only by coincidence of the two constants matching. Each branch below
+    // * names where its value comes from; none of them guesses.
+    let redirectUri: string
 
     if (state) {
       // * Full OAuth flow (app-initiated). The entry is looked up by the state the
@@ -165,20 +176,36 @@ function AuthCallbackContent() {
         return
       }
       codeVerifier = pending.verifier
+      // * Case 1 — this attempt stored what it sent. The single source.
+      // * Case 2 — an attempt started before this shipped has no stored value.
+      // * The code that created it sent APP_URL, so APP_URL is what id-backend
+      // * recorded; this is the recovered original, not a guess. The window is
+      // * bounded by PENDING_MAX_AGE_MS, so it stops mattering ten minutes
+      // * after deploy and this branch can go with the next cleanup.
+      redirectUri = pending.redirectUri ?? `${APP_URL.replace(/\/$/, '')}/auth/callback`
+    } else {
+      // * Case 3 — session flow (from the ID auth hub): the redirect carries a
+      // * code but no state, no PKCE verifier, and there is no pending entry to
+      // * read, because this app never started the attempt. id-backend recorded
+      // * the redirect_uri the hub sent, which is this origin's callback — the
+      // * value this page has always sent on this path, and the reason the path
+      // * works today. Pending attempts are left alone: another tab may still be
+      // * mid-flow and owns its own entry.
+      redirectUri = `${window.location.origin}/auth/callback`
     }
-    // * Session flow (from the ID auth hub): the redirect carries a code but no
-    // * state, and no PKCE verifier is sent. Pending attempts are left alone —
-    // * another tab may still be mid-flow and owns its own entry.
 
     verifierRef.current = codeVerifier
+    redirectUriRef.current = redirectUri
     processedRef.current = true
-    runCodeExchange(codeVerifier)
+    runCodeExchange(codeVerifier, redirectUri)
   }, [searchParams, runCodeExchange, continueIfAlreadySignedIn])
 
   const handleRetry = useCallback(() => {
     setError(null)
-    // * Re-run the exchange with the verifier already claimed for this callback.
-    runCodeExchange(verifierRef.current)
+    // * Re-run the exchange with the verifier AND the redirect_uri already
+    // * resolved for this callback. Recomputing either here would reintroduce
+    // * exactly the divergence this change removes.
+    runCodeExchange(verifierRef.current, redirectUriRef.current ?? '')
   }, [runCodeExchange])
 
   // * The recovery action that actually repairs a broken sign-in: drop the

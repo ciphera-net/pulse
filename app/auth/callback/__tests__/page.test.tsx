@@ -34,6 +34,10 @@ vi.mock('@/lib/api/client', () => ({
   default: vi.fn().mockRejectedValue(new Error('no profile')),
   // S3: the callback primes the in-memory Bearer with the exchange's token.
   setAccessToken: (t: string | null) => setAccessToken(t),
+  // The build-time constant the PREVIOUS release sent at authorize. The callback
+  // uses it only to recover the value for an attempt stored before the
+  // redirect_uri travelled with it.
+  APP_URL: 'https://app-url-from-the-build.example',
 }))
 vi.mock('@/lib/cdn', () => ({ cdnUrl: (p: string) => p }))
 vi.mock('@/lib/utils/logger', () => ({ logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() } }))
@@ -93,15 +97,90 @@ describe('auth callback — pending attempt missing', () => {
   })
 
   it('a valid attempt still exchanges normally', async () => {
-    claimPendingAuth.mockReturnValue({ verifier: 'V', createdAt: Date.now() })
+    // A modern attempt carries the redirect_uri it sent at authorize.
+    claimPendingAuth.mockReturnValue({
+      verifier: 'V',
+      createdAt: Date.now(),
+      redirectUri: 'https://pulse.ciphera.net/auth/callback',
+    })
     exchangeAuthCode.mockResolvedValue({ success: true, user: { id: 'u1', org_id: 'o1', role: 'owner' }, access_token: 'tok-from-exchange' })
 
     render(<AuthCallback />)
 
-    await waitFor(() => expect(exchangeAuthCode).toHaveBeenCalledWith('CODE', 'V', expect.any(String)))
+    await waitFor(() => expect(exchangeAuthCode).toHaveBeenCalledWith('CODE', 'V', 'https://pulse.ciphera.net/auth/callback'))
     expect(getSessionAction).not.toHaveBeenCalled()
     // S3: the token the exchange returned becomes the in-memory Bearer BEFORE
     // the profile call, or /auth/user/me would go out with no credential.
     await waitFor(() => expect(setAccessToken).toHaveBeenCalledWith('tok-from-exchange'))
   })
 })
+
+// ---------------------------------------------------------------------------
+// The redirect_uri the exchange sends is RESOLVED, never recomputed.
+//
+// 🔴 id-backend compares it byte-for-byte with the one recorded at authorize and
+// answers 400 `invalid_grant` on any difference — which this page renders as
+// "This sign-in link has expired", indistinguishable from a spent code. Until
+// 05-09-2026 authorize sent a build-time APP_URL while this page sent
+// window.location.origin, so the two agreed only by coincidence.
+//
+// Each test below makes the stored value DIFFERENT from window.location.origin,
+// so a page that recomputes cannot pass by accident.
+// ---------------------------------------------------------------------------
+describe('auth callback — the redirect_uri comes from the attempt', () => {
+  beforeEach(() => {
+    exchangeAuthCode.mockResolvedValue({
+      success: true,
+      user: { id: 'u1', org_id: 'o1', role: 'owner' },
+      access_token: 'tok',
+    })
+  })
+
+  it('sends the redirect_uri the attempt was started with, not this origin', async () => {
+    // The attempt began on staging; the test window claims to be production.
+    claimPendingAuth.mockReturnValue({
+      verifier: 'V',
+      createdAt: Date.now(),
+      redirectUri: 'https://pulse-staging.ciphera.net/auth/callback',
+    })
+    render(<AuthCallback />)
+    await waitFor(() =>
+      expect(exchangeAuthCode).toHaveBeenCalledWith(
+        'CODE',
+        'V',
+        'https://pulse-staging.ciphera.net/auth/callback',
+      ),
+    )
+  })
+
+  it('recovers APP_URL for an attempt stored before the redirect_uri travelled with it', async () => {
+    // The previous release wrote no redirectUri and sent APP_URL at authorize,
+    // so APP_URL is what id-backend recorded. This is the original value
+    // recovered, not a guess — and it is deliberately not this origin.
+    claimPendingAuth.mockReturnValue({ verifier: 'V', createdAt: Date.now() })
+    render(<AuthCallback />)
+    await waitFor(() =>
+      expect(exchangeAuthCode).toHaveBeenCalledWith(
+        'CODE',
+        'V',
+        'https://app-url-from-the-build.example/auth/callback',
+      ),
+    )
+  })
+
+  it('uses this origin for the session flow, which has no attempt to read', async () => {
+    // A code with no state: started at the ID auth hub, which registers this
+    // origin's callback. There is no pending entry, and none is claimed.
+    search = new URLSearchParams('code=CODE')
+    render(<AuthCallback />)
+    await waitFor(() =>
+      expect(exchangeAuthCode).toHaveBeenCalledWith(
+        'CODE',
+        null,
+        'https://pulse.ciphera.net/auth/callback',
+      ),
+    )
+    expect(claimPendingAuth).not.toHaveBeenCalled()
+  })
+})
+
