@@ -20,6 +20,10 @@ function ClaimInner() {
   const token = useSearchParams().get('token') ?? ''
   const [state, setState] = useState<'idle' | 'working' | 'done' | 'error'>('idle')
   const [project, setProject] = useState<string | null>(null)
+  // Which programme the token belonged to is only known once the backend
+  // answers; before that the copy stays plan-agnostic. The same claim page
+  // serves both programmes on purpose (one token contract, one route).
+  const [planLabel, setPlanLabel] = useState<'open-source' | 'startups'>('open-source')
   const [error, setError] = useState<string | null>(null)
   const [needsAuth, setNeedsAuth] = useState(false)
 
@@ -30,11 +34,12 @@ function ClaimInner() {
     try {
       // billingGroup mounts at /api/billing (not /api/v1) — the leading /api/
       // makes apiRequest pass the path through unprefixed.
-      const res = await apiRequest<{ status: string; project: string }>(
+      const res = await apiRequest<{ status: string; project: string; plan_id?: string; kind?: string }>(
         '/api/billing/claim-opensource',
         { method: 'POST', body: JSON.stringify({ token }) }
       )
       setProject(res.project)
+      setPlanLabel(res.kind === 'startups' ? 'startups' : 'open-source')
       setState('done')
     } catch (err) {
       setState('error')
@@ -54,9 +59,9 @@ function ClaimInner() {
   return (
     <section className="border-b border-border">
       <div className="mx-auto max-w-2xl px-6 py-20 sm:py-28">
-        <p className="text-xs text-muted-foreground">Pulse · Open source</p>
+        <p className="text-xs text-muted-foreground">Pulse · {state === 'done' ? (planLabel === 'startups' ? 'Startups' : 'Open source') : 'Programme plan'}</p>
         <h1 className="mt-6 font-display text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-5xl">
-          {state === 'done' ? 'The plan is yours.' : 'Claim the open-source plan.'}
+          {state === 'done' ? 'The plan is yours.' : 'Claim your plan.'}
         </h1>
 
         {state === 'done' ? (

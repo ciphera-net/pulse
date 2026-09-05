@@ -3,21 +3,43 @@
 import { useRef, useState } from 'react'
 import { PlusIcon } from '@ciphera-net/facet'
 import { cn } from '@/lib/utils'
-import { opensourceFaqCategories, opensourceFaqData } from '@/components/marketing/opensource-faq-data'
+import {
+  opensourceFaqCategories,
+  opensourceFaqData,
+  type FAQItem,
+} from '@/components/marketing/opensource-faq-data'
 
 // The shared category-rail FAQ, mirrored from PricingFAQ/HomeFAQ so the
 // /open-source page reads as the same system. Continuous 01–NN numbering.
-let runningIndex = 0
-const GROUPS = Object.entries(opensourceFaqCategories).map(([key, label]) => ({
-  key,
-  label,
-  items: (opensourceFaqData[key] ?? []).map((item) => ({
-    ...item,
-    n: String(++runningIndex).padStart(2, '0'),
-  })),
-}))
+//
+// Parametrised (05-09-2026) so /startups can reuse the exact component with
+// its own questions: the defaults are the open-source set, so that page is
+// unchanged. `idPrefix` keeps the two pages' ARIA ids from colliding if both
+// ever render in one document.
+function buildGroups(categories: Record<string, string>, data: Record<string, FAQItem[]>) {
+  let runningIndex = 0
+  return Object.entries(categories).map(([key, label]) => ({
+    key,
+    label,
+    items: (data[key] ?? []).map((item) => ({
+      ...item,
+      n: String(++runningIndex).padStart(2, '0'),
+    })),
+  }))
+}
 
-export default function OpenSourceFAQ() {
+export default function OpenSourceFAQ({
+  categories = opensourceFaqCategories,
+  data = opensourceFaqData,
+  idPrefix = 'opensource',
+  ariaLabel = 'Open-source FAQ categories',
+}: {
+  categories?: Record<string, string>
+  data?: Record<string, FAQItem[]>
+  idPrefix?: string
+  ariaLabel?: string
+} = {}) {
+  const GROUPS = buildGroups(categories, data)
   const [activeKey, setActiveKey] = useState(GROUPS[0].key)
   const [openId, setOpenId] = useState<string | null>(null)
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
@@ -49,7 +71,7 @@ export default function OpenSourceFAQ() {
       {/* Category selector — horizontal on mobile, vertical rail on desktop */}
       <div
         role="tablist"
-        aria-label="Open-source FAQ categories"
+        aria-label={ariaLabel}
         aria-orientation="vertical"
         className="flex flex-wrap gap-x-6 gap-y-2 lg:flex-col lg:gap-y-1"
       >
@@ -63,10 +85,10 @@ export default function OpenSourceFAQ() {
               }}
               type="button"
               role="tab"
-              id={`opensource-faq-tab-${i}`}
+              id={`${idPrefix}-faq-tab-${i}`}
               tabIndex={isActive ? 0 : -1}
               aria-selected={isActive}
-              aria-controls={isActive ? 'opensource-faq-panel' : undefined}
+              aria-controls={isActive ? `${idPrefix}-faq-panel` : undefined}
               onClick={() => selectGroup(g.key)}
               onKeyDown={(e) => handleTabKeyDown(e, i)}
               className={cn(
@@ -86,13 +108,13 @@ export default function OpenSourceFAQ() {
       {/* Active category's rows — continuous global numbering preserved */}
       <div
         role="tabpanel"
-        id="opensource-faq-panel"
-        aria-labelledby={`opensource-faq-tab-${activeIndex}`}
+        id={`${idPrefix}-faq-panel`}
+        aria-labelledby={`${idPrefix}-faq-tab-${activeIndex}`}
         className="border border-border"
       >
         {group.items.map((item) => {
           const isOpen = openId === item.n
-          const answerId = `opensource-faq-answer-${item.n}`
+          const answerId = `${idPrefix}-faq-answer-${item.n}`
           return (
             <div key={item.n} className="border-b border-border last:border-b-0">
               <button
