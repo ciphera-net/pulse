@@ -31,6 +31,10 @@ describe('middleware', () => {
       // * origin at all. Same failure class as the next-pwa precache note in
       // * middleware.ts directly below the /script-sri.json entry.
       '/script.debug.js',
+      // * /startups is the startups programme's anonymous application page
+      // * (05-09-2026), a sibling of /open-source; without its PUBLIC_ROUTES
+      // * entry it 307s to /login, the exact failure script.debug.js shipped with.
+      '/startups',
     ]
 
     publicPaths.forEach((path) => {

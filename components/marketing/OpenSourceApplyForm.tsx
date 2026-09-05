@@ -12,7 +12,10 @@ import { env } from '@/lib/env'
 const INPUT_CLASS =
   'w-full px-4 py-2 border border-neutral-700 rounded-none bg-neutral-800 text-white placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-brand-orange focus:border-transparent'
 
-export function OpenSourceApplyForm() {
+// The one form serves both programmes: /open-source posts kind='opensource'
+// (the default the backend assumes if the field is absent), /startups posts
+// kind='startups'. Same endpoint, same captcha action, same review queue.
+export function OpenSourceApplyForm({ kind = 'opensource' }: { kind?: 'opensource' | 'startups' } = {}) {
   const [projectName, setProjectName] = useState('')
   const [projectUrl, setProjectUrl] = useState('')
   const [email, setEmail] = useState('')
@@ -39,6 +42,7 @@ export function OpenSourceApplyForm() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            kind,
             project_name: projectName,
             project_url: projectUrl,
             contact_email: email,
@@ -87,7 +91,7 @@ export function OpenSourceApplyForm() {
           maxLength={200}
           value={projectName}
           onChange={(e) => setProjectName(e.target.value)}
-          placeholder="curl, or Médecins Sans Frontières"
+          placeholder={kind === 'startups' ? 'Your company' : 'curl, or Médecins Sans Frontières'}
           className={`mt-2 ${INPUT_CLASS}`}
         />
       </div>
@@ -102,7 +106,7 @@ export function OpenSourceApplyForm() {
           maxLength={500}
           value={projectUrl}
           onChange={(e) => setProjectUrl(e.target.value)}
-          placeholder="github.com/… or your-nonprofit.org"
+          placeholder={kind === 'startups' ? 'yourstartup.com' : 'github.com/… or your-nonprofit.org'}
           className={`mt-2 ${INPUT_CLASS}`}
         />
       </div>
@@ -132,7 +136,11 @@ export function OpenSourceApplyForm() {
           rows={4}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="License, who uses it, which site(s) you want on Pulse."
+          placeholder={
+            kind === 'startups'
+              ? 'What you build, when you started, team size, which site(s) you want on Pulse.'
+              : 'License, who uses it, which site(s) you want on Pulse.'
+          }
           className={`mt-2 ${INPUT_CLASS}`}
         />
       </div>

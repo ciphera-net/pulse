@@ -15,6 +15,7 @@ const PUBLIC_ROUTES = new Set([
   '/demo', // * Public live-demo landing page — links out to the customer share view
   '/contact', // * Public contact page — form posts to pulse-backend /api/contact
   '/open-source', // * The open-source plan — anonymous application form (02-09-2026)
+  '/startups', // * The startups plan — same anonymous form, kind='startups' (05-09-2026)
   // * The claim page must be reachable UNAUTHENTICATED: the login round-trip
   // * loses deep links (ledger 5-3), so a bounced claim link would drop its
   // * token. The page itself tells a signed-out visitor to sign in and click
