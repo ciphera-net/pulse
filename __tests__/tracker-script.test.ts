@@ -135,3 +135,49 @@ describe('the served tracking script', () => {
     expect(debugCopy).toBe(script)
   })
 })
+
+/**
+ * The published size claim, guarded as a FORBIDDEN-STRING check.
+ *
+ * 🔴 This is deliberately NOT the cross-repo claims ledger that was weighed and
+ * rejected on 05-09-2026: that one had to compare copy against LIVE bytes, so a
+ * tracker deploy reddened every open PR for a reason unrelated to its diff, and
+ * the standing repair for that is a blanket allowlist — worse than no guard.
+ *
+ * This compares against nothing. It forbids four literal strings that are known
+ * to be superseded, so it cannot go red for an unrelated reason and cannot
+ * drift: if the real number changes, the ceiling assertion above fails first and
+ * loudly. The number has now been wrong three times in a month (1.6 KB against a
+ * shipped 5.2, then 5 KB against a shipped 7.5), always because nothing linked
+ * the copy to the artifact.
+ *
+ * Analysis: Pulse/docs/plans/05-09-2026-script-size-claim-durability.md
+ */
+import { readdirSync, statSync } from 'node:fs'
+
+const SUPERSEDED = ['under 2KB', 'under 2 KB', '5 KB gzipped', '5.5 KB gzipped', '1.6 KB gzipped']
+
+function walk(dir: string, out: string[] = []): string[] {
+  for (const name of readdirSync(dir)) {
+    if (['node_modules', '.next', '.git', 'dist', 'tracker', 'coverage'].includes(name)) continue
+    const full = join(dir, name)
+    if (statSync(full).isDirectory()) walk(full, out)
+    else if (/\.(tsx?|txt|mdx)$/.test(name)) out.push(full)
+  }
+  return out
+}
+
+describe('the published script-size claim', () => {
+  it('carries no superseded figure anywhere in the marketing surface', () => {
+    const offenders: string[] = []
+    for (const file of walk(ROOT)) {
+      // This spec names the strings it forbids, so it must not indict itself.
+      if (file.endsWith('__tests__/tracker-script.test.ts')) continue
+      const body = readFileSync(file, 'utf8')
+      for (const bad of SUPERSEDED) {
+        if (body.includes(bad)) offenders.push(`${file.replace(ROOT + '/', '')}: "${bad}"`)
+      }
+    }
+    expect(offenders, `superseded size claims found:\n${offenders.join('\n')}`).toEqual([])
+  })
+})
