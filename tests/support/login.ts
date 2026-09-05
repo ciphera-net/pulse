@@ -197,6 +197,25 @@ export async function handleLogin(page: Page): Promise<void> {
  * only need the session established, and each test re-navigates to its route
  * with an already-authed goto.
  */
+/**
+ * Answers Ciphera ID's account chooser when `prompt=select_account` finds an
+ * existing apex session.
+ *
+ * 🔴 WITHOUT THIS, AN ALREADY-SIGNED-IN RUN HANGS AND LOOKS LIKE A BROKEN APP.
+ * The authorize URL Pulse builds carries `prompt=select_account`, so a browser
+ * that already holds the ceremony's `.ciphera.net` session is NOT redirected
+ * back — id.ciphera.net renders "Continue as <email>" and waits for a click
+ * that no harness ever made. Measured 05-09-2026: the run sat on the chooser,
+ * never received a code, and the absence of a code read as "the exchange
+ * failed" (design §10.11.4).
+ */
+async function passThroughAccountChooser(page: Page): Promise<boolean> {
+  const cont = page.getByRole('button', { name: /^Continue as/ }).first()
+  if (!(await cont.isVisible({ timeout: 5_000 }).catch(() => false))) return false
+  await cont.click()
+  return true
+}
+
 export async function login(page: Page, baseURL: string): Promise<void> {
   await page.goto(`${baseURL}/settings`)
 
@@ -207,11 +226,15 @@ export async function login(page: Page, baseURL: string): Promise<void> {
     .catch(() => {})
 
   if (onIdOrigin(page.url())) {
-    const { email, password } = requireCredentials()
-    await page.fill('input[placeholder="you@example.com"]', email)
-    await page.fill('input[placeholder="Enter your password"]', password)
-    await page.click('button:has-text("Sign in")')
-    await handleSecondFactor(page)
+    // * An existing apex session lands on the account chooser, not the form.
+    // * Clicking through it is a complete sign-in and costs no second factor.
+    if (!(await passThroughAccountChooser(page))) {
+      const { email, password } = requireCredentials()
+      await page.fill('input[placeholder="you@example.com"]', email)
+      await page.fill('input[placeholder="Enter your password"]', password)
+      await page.click('button:has-text("Sign in")')
+      await handleSecondFactor(page)
+    }
     await page.waitForURL((url) => !onIdOrigin(url.toString()), { timeout: 60_000 })
   }
 

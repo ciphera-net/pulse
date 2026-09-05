@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import apiRequest from '@/lib/api/client'
 import { exchangeAuthCode, getSessionAction } from '@/app/actions/auth'
+import { setAccessToken } from '@/lib/api/client'
 import { AuthErrorState, LoadingOverlay, type AuthErrorType } from '@ciphera-net/facet'
 import { safeRedirectUrl } from '@/lib/utils/safe-redirect'
 import { claimPendingAuth, forgetAllPendingAuth } from '@/lib/api/oauth-store'
@@ -76,8 +77,8 @@ function AuthCallbackContent() {
         return
       }
       if (result.success && result.user) {
-        // * Vault PII is read from .ciphera.net cookie by login() in auth context.
-        // * Just fetch full profile and call login — the cookie merge happens automatically.
+        // * The Bearer for everything that follows, /auth/user/me included (S3).
+        setAccessToken(result.access_token)
         try {
           const fullProfile = await apiRequest<{ id: string; email: string; display_name?: string; totp_enabled: boolean; org_id?: string; role?: string }>('/auth/user/me')
           login({
