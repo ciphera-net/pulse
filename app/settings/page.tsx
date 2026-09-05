@@ -48,7 +48,7 @@ const SITE_ROWS: SectionRow[] = [
   { label: 'Goals', href: '/settings/site/goals', description: 'Track conversions and key actions.', requires: 'goals.manage' },
   { label: 'Visibility', href: '/settings/site/visibility', description: 'Public dashboard and share links.', requires: 'sites.edit' },
   { label: 'Privacy', href: '/settings/site/privacy', description: 'Data collection and retention controls.', requires: 'sites.edit' },
-  { label: 'Bot & Spam', href: '/settings/site/bot-spam', description: 'Filtering and quarantine review.' },
+  { label: 'Bot & Spam', href: '/settings/site/bot-spam', description: 'Filtering and excluded traffic.' },
   { label: 'Integrations', href: '/settings/site/integrations', description: 'Search Console and Bunny CDN.', requires: 'integrations.manage' },
 ]
 
