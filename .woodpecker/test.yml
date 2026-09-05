@@ -29,6 +29,23 @@ steps:
     commands:
       - export NODE_AUTH_TOKEN="$NPM_READ_TOKEN"
       - npm ci
+      # 🔴 05-09-2026 — THE BUDGET NOW BLOCKS A MERGE, WHICH IT NEVER DID.
+      # scripts/build-scripts.mjs has enforced GZIP_BUDGET (3072 B) since it was
+      # written, but it runs from `prebuild`, and `npm run build` runs only in
+      # push.yml's next-build step — which is gated `event: push, branch: [main,
+      # staging]`. So the budget could red MAIN and could never stop the merge that
+      # caused it. This line is what makes the ceiling real, and the published
+      # "under 3 KB gzipped" claim honest.
+      #
+      # It also pins public/script.js, which is now BUILT from tracker/script.js
+      # rather than hand-edited: the deploy step is bare alpine with no node, so the
+      # built bytes have to be committed for it to upload them. Same contract as
+      # script-sri.json below — the gate FAILS rather than fixes, because a step
+      # that regenerates and carries on leaves the wrong bytes in the commit and
+      # still reports green.
+      - git ls-files --error-unmatch public/script.js public/script.debug.js public/script-versions.json
+      - npm run build:scripts
+      - git diff --exit-code public/script.js public/script.debug.js public/script-versions.json
       # 🔴 public/script-sri.json is DERIVED from public/script.js, and until now
       # NOTHING made them agree at commit time. On 26-08-2026 commit e2c98da1
       # edited script.js without regenerating the manifest, leaving a hash in git
