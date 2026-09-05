@@ -30,6 +30,12 @@ const PUBLIC_ROUTES = new Set([
   '/eu-web-analytics',
 
   '/script.js', // * Tracking script – must load without auth for embedded sites (Shopify, etc.)
+  // * The readable source published beside the minified script.js (05-09-2026).
+  // * It is a public static asset for exactly the same reason script.js is, and
+  // * WITHOUT this line it 307s to /login — measured on staging before promotion,
+  // * which would have shipped a debuggability aid nobody outside an authenticated
+  // * session could actually fetch from this origin.
+  '/script.debug.js',
   '/script-sri.json', // * Subresource Integrity manifest (sha384 of the tracking script); consumed by ciphera-website build to pin <script integrity="">.
   // * Static file in public/, so next-pwa precaches it. A 307 to /login here fails
   // * the WHOLE service worker install (workbox aborts on one bad precache

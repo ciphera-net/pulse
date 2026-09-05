@@ -7,7 +7,7 @@
     "dev": "next dev",
     "generate:sri": "node scripts/generate-sri.js",
     "build:scripts": "node scripts/build-scripts.mjs",
-    "prebuild": "npm run generate:sri && npm run build:scripts",
+    "prebuild": "npm run build:scripts && npm run generate:sri",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint .",

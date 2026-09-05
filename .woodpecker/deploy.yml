@@ -727,7 +727,12 @@ steps:
       # storage.bunnycdn.com on 25-07-2026); the .env twin named
       # BUNNY_STORAGE_SCRIPTS_PASSWORD returns 401.
       - |
-        for file in script.js script-sri.json; do
+        # script.debug.js is the readable source, published beside the minified
+        # script.js (05-09-2026). Minifying the served artifact is what makes the
+        # 3 KB budget load-bearing; this is what buys back debuggability on a
+        # customer's site. It is NOT referenced by any snippet — nothing loads it
+        # unless a human asks for it by name.
+        for file in script.js script.debug.js script-sri.json; do
           [ -f "public/$file" ] || continue
           ct="application/javascript"
           [ "$file" = "script-sri.json" ] && ct="application/json"
@@ -748,7 +753,7 @@ steps:
       # geo-replicas sync asynchronously; purging early can re-cache a stale replica copy for the full TTL
       - sleep 30
       - |
-        for path in script.js script-sri.json; do
+        for path in script.js script.debug.js script-sri.json; do
           curl -fsS -X POST \
             "https://api.bunny.net/purge?url=https://js.ciphera.net/$path&async=false" \
             -H "AccessKey: $BUNNY_API_KEY"
