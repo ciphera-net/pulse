@@ -13,7 +13,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ParentSize } from "@/lib/charts/primitives";
+import { useContainerSize } from "@/lib/charts/primitives";
 import { formatDateShort } from "@/lib/utils/formatDate";
 import {
   ChartTooltipCard,
@@ -143,29 +143,38 @@ export function ChartStack({
     [xDataKey]
   );
 
+  const size = useContainerSize(containerRef);
+
+  // 🔴 The stack's CONTENT is always rendered — never gated on its own
+  // measured size. This container is content-sized (a column of strips gives
+  // it its height), so a size-gated wrapper like ParentSize collapses it:
+  // no children → height 0 → gate closed → no children. That is exactly what
+  // shipped to production on 05-09-2026 (promote #575): every ChartStack
+  // consumer — Search, CDN, Uptime, Funnel-daily — rendered an empty card,
+  // while the deck, performance and fleet (fixed-height boxes) were fine.
+  // The unit tests mock ParentSize to 800×300, which hid the collapse; the
+  // regression test for this file deliberately does NOT mock the measurer.
+  // Width is what the shared scale needs; height is only read for the card's
+  // clamping and is correct once the strips have laid out.
   return (
     <div className={`relative ${className}`} ref={containerRef}>
-      <ParentSize debounceTime={10}>
-        {({ width, height }) => (
-          <StackInner
-            containerHeight={height}
-            containerRef={containerRef}
-            containerWidth={width}
-            data={data}
-            hoverIndex={hoverIndex}
-            margin={margin}
-            onMeasureRail={setMeasuredRail}
-            railWidth={measuredRail ?? railWidthProp ?? 0}
-            rows={rows}
-            setHoverIndex={setHoverIndex}
-            title={title}
-            cardTop={cardTop}
-            xAccessor={xAccessor}
-          >
-            {children}
-          </StackInner>
-        )}
-      </ParentSize>
+      <StackInner
+        containerHeight={size.height}
+        containerRef={containerRef}
+        containerWidth={size.width}
+        data={data}
+        hoverIndex={hoverIndex}
+        margin={margin}
+        onMeasureRail={setMeasuredRail}
+        railWidth={measuredRail ?? railWidthProp ?? 0}
+        rows={rows}
+        setHoverIndex={setHoverIndex}
+        title={title}
+        cardTop={cardTop}
+        xAccessor={xAccessor}
+      >
+        {children}
+      </StackInner>
     </div>
   );
 }
