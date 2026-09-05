@@ -6,6 +6,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -83,6 +84,15 @@ export interface ChartStackProps {
   rows: (point: Record<string, unknown>, index: number) => TooltipRow[];
   /** Card pin, in stack pixels from the top. */
   cardTop?: number;
+  /**
+   * Controlled hover: two stacks that must light the same date (the CDN's
+   * Edge and Origin cards) share one index owned by their parent.
+   */
+  hoverIndex?: number | null;
+  onHoverChange?: (index: number | null) => void;
+  /** Changes reset the hover — a range switch replaces the buckets, and a
+   *  surviving index would pin the cursor to whatever bucket now shares it. */
+  resetKey?: unknown;
   className?: string;
   children: ReactNode;
 }
@@ -95,18 +105,35 @@ export function ChartStack({
   title,
   rows,
   cardTop = 12,
+  hoverIndex: controlledIndex,
+  onHoverChange,
+  resetKey,
   className = "",
   children,
 }: ChartStackProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [hoverIndex, setHoverIndexState] = useState<number | null>(null);
+  const [internalIndex, setHoverIndexState] = useState<number | null>(null);
   const [measuredRail, setMeasuredRail] = useState<number | null>(null);
+  const isControlled = typeof onHoverChange === "function";
+  const hoverIndex = isControlled ? (controlledIndex ?? null) : internalIndex;
 
   // Same-index calls are no-ops at the state layer already; this keeps the
   // callback identity stable so member charts do not re-bind handlers.
-  const setHoverIndex = useCallback((index: number | null) => {
-    setHoverIndexState((prev) => (prev === index ? prev : index));
-  }, []);
+  const setHoverIndex = useCallback(
+    (index: number | null) => {
+      if (onHoverChange) {
+        if (index !== controlledIndex) onHoverChange(index);
+        return;
+      }
+      setHoverIndexState((prev) => (prev === index ? prev : index));
+    },
+    [onHoverChange, controlledIndex]
+  );
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: resetKey is the trigger by design
+  useEffect(() => {
+    setHoverIndex(null);
+  }, [resetKey]);
 
   const xAccessor = useCallback(
     (d: Record<string, unknown>): Date => {
