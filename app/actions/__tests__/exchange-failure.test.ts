@@ -15,7 +15,8 @@ vi.mock('next/headers', () => ({
 vi.mock('@/lib/env', () => ({ env: { NEXT_PUBLIC_ID_API_URL: 'https://api.id.test' } }))
 vi.mock('@/lib/utils/logger', () => ({ logger: { error: vi.fn(), warn: vi.fn() } }))
 
-import { classifyExchangeFailure, exchangeAuthCode } from '../auth'
+import { exchangeAuthCode } from '../auth'
+import { classifyExchangeFailure } from '@/lib/auth/exchange-failure'
 
 describe('classifyExchangeFailure — the body code decides above 400, the status below it', () => {
   it('🔴 a spent or mismatched code is a STALE ATTEMPT, not a server fault', () => {
