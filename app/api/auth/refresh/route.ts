@@ -1,16 +1,31 @@
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { getCookieDomain } from '@/lib/utils/cookies'
 import { env } from '@/lib/env'
+import { clearAccess, clearSession, readSession, writeSession } from '@/lib/auth/session-cookies'
 
 // Server-side runtime code. Reads from the same Zod-validated env schema
 // the client bundle imports — both phases see identical values, and Zod
 // throws at module load on any missing/malformed input.
 const ID_API_URL = env.NEXT_PUBLIC_ID_API_URL
 
+/**
+ * Renews Pulse's OWN session (per-app sessions S3).
+ *
+ * The refresh token lives in the httpOnly, host-only `pulse_refresh` cookie
+ * that only this origin's server can read, and travels to id-backend in the
+ * JSON BODY. 🔴 No Cookie header is forwarded, and this matters more than it
+ * did before S3: id-backend's handler reads a `refresh_token` COOKIE before the
+ * body, and the browser still holds the ceremony's apex `refresh_token` until
+ * S5 — forwarding it would rotate the ceremony's family in Pulse's name.
+ *
+ * The new access token goes back to the browser in the body, where the auth
+ * context holds it in memory as the Bearer for pulse-api. Nothing this route
+ * writes has a `Domain` attribute, and nothing it deletes is an apex cookie.
+ */
 export async function POST(request: Request) {
   const cookieStore = await cookies()
-  const refreshToken = cookieStore.get('refresh_token')?.value
+  const session = readSession(cookieStore)
+  const refreshToken = session.refresh
 
   if (!refreshToken) {
     return NextResponse.json({ error: 'No refresh token' }, { status: 401 })
@@ -22,15 +37,14 @@ export async function POST(request: Request) {
   } catch { /* no body or invalid JSON — device signals will be omitted */ }
 
   // * Preserve whatever organization the user is currently scoped to so the
-  // * rotated token keeps that context. Prefers the access_token cookie (still
+  // * rotated token keeps that context. Prefers the access cookie (still
   // * valid), then falls back to the client-supplied org_id from localStorage
   // * (survives cookie expiry). Without either, the auth backend embeds the
   // * user's primary org automatically.
   let previousOrgId = ''
-  const existingToken = cookieStore.get('access_token')?.value
-  if (existingToken) {
+  if (session.access) {
     try {
-      const payload = JSON.parse(Buffer.from(existingToken.split('.')[1], 'base64').toString())
+      const payload = JSON.parse(Buffer.from(session.access.split('.')[1], 'base64').toString())
       if (typeof payload.org_id === 'string') previousOrgId = payload.org_id
     } catch { /* token may be malformed, proceed without org */ }
   }
@@ -52,6 +66,7 @@ export async function POST(request: Request) {
           'Content-Type': 'application/json',
           'User-Agent': request.headers.get('user-agent') || '',
         },
+        cache: 'no-store',
         body: JSON.stringify({
           refresh_token: refreshToken,
           ...(orgId ? { organization_id: orgId } : {}),
@@ -71,17 +86,14 @@ export async function POST(request: Request) {
       }
     }
 
-    const cookieDomain = getCookieDomain()
-
     if (!res.ok) {
       const upstream = await res.json().catch(() => ({ error: 'Unknown' }))
       const reason = upstream?.error || 'Refresh failed'
-      const deleteOpts = { path: '/', domain: cookieDomain } as const
 
       // * ═══ ONLY A VERDICT MAY DESTROY THE SESSION ═══
       // *
-      // * 🔴 This block used to delete access_token on ANY non-OK status, and
-      // * refresh_token too unless the status was exactly 403. So a 500, a 502
+      // * 🔴 This block used to delete the access cookie on ANY non-OK status, and
+      // * the refresh cookie too unless the status was exactly 403. So a 500, a 502
       // * while id-backend rolled, or a gateway blip permanently destroyed a
       // * session that was never invalid — the user was signed out by an
       // * infrastructure hiccup. That is very likely the origin of "I get logged
@@ -97,12 +109,11 @@ export async function POST(request: Request) {
       const transient = !credentialRejected && !orgContextRejected
 
       if (credentialRejected) {
-        cookieStore.delete({ name: 'access_token', ...deleteOpts })
-        cookieStore.delete({ name: 'refresh_token', ...deleteOpts })
+        clearSession(cookieStore)
       } else if (orgContextRejected) {
         // * Drop only the access token so the client's retry falls back to the
         // * org_id it carries in its body. The refresh token is still good.
-        cookieStore.delete({ name: 'access_token', ...deleteOpts })
+        clearAccess(cookieStore)
       }
       // * transient → touch nothing. The cookies are the only copy of the session.
 
@@ -115,20 +126,12 @@ export async function POST(request: Request) {
     const data = await res.json()
     const csrfToken = res.headers.get('X-CSRF-Token')
 
-    cookieStore.set('access_token', data.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      domain: cookieDomain,
-      maxAge: 60 * 15
-    })
-
     // * ═══ ONLY STORE A REFRESH TOKEN THE SERVER ACTUALLY ROTATED TO ═══
     // *
     // * id-backend answers a refresh in one of TWO ways, both with 200 OK:
     // *   1. It rotated  → `refresh_token` is a NEW token. Store it.
-    // *   2. It did NOT  → `refresh_token` is the token we just sent BACK to us.
+    // *   2. It did NOT  → `refresh_token` is the token we just sent BACK to us,
+    // *                    or absent altogether (the current handler omits it).
     // *
     // * (2) is the "benign reuse" grace path (id-backend internal/api/refresh.go).
     // * It fires when two things refresh the same cookie at once: the first call
@@ -141,36 +144,21 @@ export async function POST(request: Request) {
     // * `ReuseGracePeriod` (60s), so nothing looks wrong — and then the NEXT
     // * refresh, up to 13 minutes later, presents a revoked token outside its
     // * grace window, which id-backend correctly classifies as token theft and
-    // * answers with RevokeAllUserTokens: every session, on every device, killed.
-    // * Measured 20-08-2026 — 38 account-wide revocations in 10 days, no audit
-    // * trail, and the timing gap is why it read as "random".
+    // * answers with a family revocation. Measured 20-08-2026 — 38 account-wide
+    // * revocations in 10 days, no audit trail, and the timing gap is why it read
+    // * as "random".
     // *
     // * The guard is the inequality. On the grace path we simply leave the cookie
     // * alone: the winning caller's Set-Cookie already put the live T2 in the jar,
     // * so "don't touch it" is exactly right. There is no case where re-storing a
     // * token we ourselves just sent is the correct outcome.
     const rotated = Boolean(data.refresh_token) && data.refresh_token !== refreshToken
-    if (rotated) {
-      cookieStore.set('refresh_token', data.refresh_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        domain: cookieDomain,
-        maxAge: 60 * 60 * 24 * 30
-      })
-    }
 
-    if (csrfToken) {
-      cookieStore.set('csrf_token', csrfToken, {
-        httpOnly: false, // * Must be readable by JS for CSRF protection
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        domain: cookieDomain,
-        maxAge: 60 * 60 * 24 * 30
-      })
-    }
+    writeSession(cookieStore, {
+      access: data.access_token,
+      refresh: rotated ? data.refresh_token : null,
+      csrf: csrfToken,
+    })
 
     return NextResponse.json({ success: true, access_token: data.access_token })
   } catch {

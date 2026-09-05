@@ -1,9 +1,10 @@
 'use server'
 
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { logger } from '@/lib/utils/logger'
-import { getCookieDomain } from '@/lib/utils/cookies'
 import { env } from '@/lib/env'
+import { clearSession, readSession, writeSession } from '@/lib/auth/session-cookies'
+import { endPulseSession } from '@/lib/auth/id-session.server'
 
 // Server-side runtime code. Reads from the Zod-validated env schema.
 const ID_API_URL = env.NEXT_PUBLIC_ID_API_URL
@@ -26,17 +27,59 @@ interface UserPayload {
 /** Error type returned to client for mapping to user-facing copy (no sensitive details). */
 export type AuthExchangeErrorType = 'network' | 'expired' | 'invalid' | 'server'
 
+function decodeUser(accessToken: string): UserPayload {
+  const payloadPart = accessToken.split('.')[1]
+  if (!payloadPart) throw new Error('Invalid token format')
+  // * Decoded without verification: the token came straight from id-backend over
+  // * this server's own HTTPS call, or from a cookie only this server writes.
+  return JSON.parse(Buffer.from(payloadPart, 'base64').toString())
+}
+
+function userOf(payload: UserPayload) {
+  return {
+    id: payload.sub,
+    email: payload.email || '',
+    totp_enabled: payload.totp_enabled || false,
+    org_id: payload.org_id,
+    role: payload.role,
+  }
+}
+
+async function browserUserAgent(): Promise<string | null> {
+  try {
+    return (await headers()).get('user-agent')
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The authorization-code exchange. Per-app sessions S3: the tokens go into
+ * Pulse's OWN host-only cookies (lib/auth/session-cookies.ts) and the access
+ * token is also returned to the browser, which holds it in memory and sends it
+ * to pulse-api as a Bearer — the cookie would never reach that host.
+ *
+ * 🔴 id-backend's /oauth/token ALSO answers with Set-Cookie for the apex trio
+ * (`access_token`, `refresh_token`, `csrf_token` on Domain=ciphera.net), even
+ * on a server-to-server call. Until S3 this action MIRRORED them onto
+ * `.ciphera.net` — Pulse re-writing the estate's session on every login. They
+ * are discarded now: the body carries the tokens, the `X-CSRF-Token` HEADER
+ * carries the CSRF value, and nothing this action writes has a domain.
+ *
+ * The browser's User-Agent is forwarded because id-backend binds the refresh
+ * token to its UA class at mint and re-checks it at every rotation; the
+ * refresh route forwards the same header, so the two agree.
+ */
 export async function exchangeAuthCode(code: string, codeVerifier: string | null, redirectUri: string) {
   try {
-    // * IMPORTANT: credentials: 'include' is required to receive httpOnly cookies from Auth API
-    // * The Auth API sets access_token, refresh_token, and csrf_token as httpOnly cookies
-    // * We must forward these to the browser for cross-subdomain auth to work
+    const userAgent = await browserUserAgent()
     const res = await fetch(`${ID_API_URL}/oauth/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(userAgent ? { 'User-Agent': userAgent } : {}),
       },
-      credentials: 'include', // * Critical: receives httpOnly cookies from Auth API
+      cache: 'no-store',
       body: JSON.stringify({
         grant_type: 'authorization_code',
         code,
@@ -57,97 +100,24 @@ export async function exchangeAuthCode(code: string, codeVerifier: string | null
     if (!data?.access_token || typeof data.access_token !== 'string') {
       throw new Error('Invalid token response')
     }
-    // * Decode payload (without verification, we trust the direct channel to Auth Server)
-    const payloadPart = data.access_token.split('.')[1]
-    if (!payloadPart) {
-      throw new Error('Invalid token format')
+    if (!data.refresh_token || typeof data.refresh_token !== 'string') {
+      throw new Error('Token response carried no refresh token')
     }
-    const payload: UserPayload = JSON.parse(Buffer.from(payloadPart, 'base64').toString())
+    const payload = decodeUser(data.access_token)
 
-    // * Set Cookies
     const cookieStore = await cookies()
-    const cookieDomain = getCookieDomain()
-    
-    // * Access Token
-    cookieStore.set('access_token', data.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      domain: cookieDomain,
-      maxAge: 60 * 15 // 15 minutes (short lived)
+    writeSession(cookieStore, {
+      access: data.access_token,
+      refresh: data.refresh_token,
+      csrf: res.headers.get('X-CSRF-Token'),
     })
-
-    // * Refresh Token (Long lived)
-    cookieStore.set('refresh_token', data.refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      domain: cookieDomain,
-      maxAge: 60 * 60 * 24 * 30 // 30 days
-    })
-
-    // * Forward cookies from Auth API response to browser
-    // * The Auth API sets httpOnly cookies on id.ciphera.net - we need to mirror them on pulse.ciphera.net
-    const setCookieHeaders = res.headers.getSetCookie()
-    if (setCookieHeaders && setCookieHeaders.length > 0) {
-      for (const cookieStr of setCookieHeaders) {
-        // * Parse Set-Cookie header (format: name=value; attributes...)
-        const [nameValue] = cookieStr.split(';')
-        const eqIdx = nameValue.indexOf('=')
-        if (eqIdx === -1) continue
-        const name = nameValue.slice(0, eqIdx).trim()
-        const value = nameValue.slice(eqIdx + 1).trim()
-
-        if (name === 'access_token' || name === 'refresh_token') continue
-
-        if (name && value) {
-          // * Determine if httpOnly (default true for security)
-          const isHttpOnly = cookieStr.toLowerCase().includes('httponly')
-          // * Determine sameSite (default lax)
-          const sameSiteMatch = cookieStr.match(/samesite=(\w+)/i)
-          const sameSite = (sameSiteMatch?.[1]?.toLowerCase() as 'strict' | 'lax' | 'none') || 'lax'
-          // * Extract max-age if present
-          const maxAgeMatch = cookieStr.match(/max-age=(\d+)/i)
-          const maxAge = maxAgeMatch ? parseInt(maxAgeMatch[1], 10) : 60 * 60 * 24 * 30
-
-          cookieStore.set(name.trim(), decodeURIComponent(value.trim()), {
-            httpOnly: isHttpOnly,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: sameSite,
-            path: '/',
-            domain: cookieDomain,
-            maxAge: maxAge
-          })
-        }
-      }
-    }
-
-    // * Also check for CSRF token in response header (fallback)
-    const csrfToken = res.headers.get('X-CSRF-Token')
-    if (csrfToken && !cookieStore.get('csrf_token')) {
-      cookieStore.set('csrf_token', csrfToken, {
-        httpOnly: false, // * Must be readable by JS for CSRF protection
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        domain: cookieDomain,
-        maxAge: 60 * 60 * 24 * 30
-      })
-    }
 
     return {
-      success: true,
-      user: {
-        id: payload.sub,
-        email: payload.email || '',
-        totp_enabled: payload.totp_enabled || false,
-        org_id: payload.org_id,
-        role: payload.role
-      }
+      success: true as const,
+      user: userOf(payload),
+      // * For the browser's in-memory Bearer — see lib/api/client.ts.
+      access_token: data.access_token,
     }
-
   } catch (error: unknown) {
     logger.error('Auth Exchange Error:', error)
     const isNetwork =
@@ -157,99 +127,71 @@ export async function exchangeAuthCode(code: string, codeVerifier: string | null
   }
 }
 
+/**
+ * Stores a token the browser obtained itself (the organization switch): the
+ * browser also keeps it in memory, so the two copies always agree.
+ */
 export async function setSessionAction(accessToken: string, refreshToken?: string) {
-    try {
-        if (!accessToken) throw new Error('Access token is missing')
-        
-        const payloadPart = accessToken.split('.')[1]
-        const payload: UserPayload = JSON.parse(Buffer.from(payloadPart, 'base64').toString())
-        
-        const cookieStore = await cookies()
-        const cookieDomain = getCookieDomain()
+  try {
+    if (!accessToken) throw new Error('Access token is missing')
+    const payload = decodeUser(accessToken)
 
-        cookieStore.set('access_token', accessToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            path: '/',
-            domain: cookieDomain,
-            maxAge: 60 * 15
-        })
+    const cookieStore = await cookies()
+    writeSession(cookieStore, { access: accessToken, refresh: refreshToken || null })
 
-        // * Only update refresh token if provided
-        if (refreshToken) {
-            cookieStore.set('refresh_token', refreshToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
-                path: '/',
-                domain: cookieDomain,
-                maxAge: 60 * 60 * 24 * 30
-            })
-        }
-        
-        return {
-            success: true,
-            user: {
-                id: payload.sub,
-                email: payload.email || '',
-                totp_enabled: payload.totp_enabled || false,
-                org_id: payload.org_id,
-                role: payload.role
-            }
-        }
-    } catch (e) {
-        logger.error('[setSessionAction] Error:', e)
-        return { success: false as const, error: 'invalid' }
-    }
+    return { success: true as const, user: userOf(payload), access_token: accessToken }
+  } catch (e) {
+    logger.error('[setSessionAction] Error:', e)
+    return { success: false as const, error: 'invalid' as const }
+  }
 }
 
+/**
+ * Signs out of PULSE — its own family at id-backend, its own cookies here.
+ * id.ciphera.net's ceremony session and every other app are left alone.
+ *
+ * Until S3 this posted `{refresh_token}` in a body id-backend never reads
+ * (design §2) and reported success regardless: no Pulse sign-out had ever
+ * revoked anything. The revocation is now real (lib/auth/id-session.server.ts)
+ * and the answer says what id-backend confirmed. The cookies are expired
+ * whatever the answer — a person who asked to leave must not be left looking
+ * signed in.
+ */
 export async function logoutAction() {
   const cookieStore = await cookies()
-  const cookieDomain = getCookieDomain()
-  const refreshToken = cookieStore.get('refresh_token')?.value
+  const session = readSession(cookieStore)
+  const userAgent = await browserUserAgent()
 
-  // Revoke the refresh token server-side before clearing local cookies.
-  if (refreshToken) {
-    try {
-      await fetch(`${ID_API_URL}/api/v1/auth/logout`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: refreshToken }),
-      })
-    } catch {
-      // Best-effort — token expires naturally after 30 days.
+  let revoked = false
+  let status: number | null = null
+  let alreadyInvalid = false
+  if (session.refresh) {
+    const outcome = await endPulseSession(session, userAgent)
+    revoked = outcome.revoked
+    status = outcome.status
+    alreadyInvalid = outcome.alreadyInvalid
+    if (!revoked && !alreadyInvalid) {
+      logger.warn('[logoutAction] id-backend did not confirm the revocation', { status })
     }
   }
 
-  // cookies().delete() uses Expires=epoch which is more reliable than
-  // maxAge:0 (falsy in JS, some frameworks skip it).
-  // ResponseCookies is keyed by name — can only hold one entry per cookie,
-  // so we clear on the domain they were set on (.ciphera.net in prod).
-  const deleteOpts = { path: '/', domain: cookieDomain } as const
-  cookieStore.delete({ name: 'access_token', ...deleteOpts })
-  cookieStore.delete({ name: 'refresh_token', ...deleteOpts })
-  cookieStore.delete({ name: 'csrf_token', ...deleteOpts })
-  return { success: true }
+  clearSession(cookieStore)
+  return { success: true as const, revoked, status, already_invalid: alreadyInvalid }
 }
 
+/**
+ * The session as this server sees it — from Pulse's own access cookie — plus
+ * the token itself, so the browser can re-prime its in-memory Bearer on load.
+ */
 export async function getSessionAction() {
-    const cookieStore = await cookies()
-    const token = cookieStore.get('access_token')
-    
-    if (!token) return null
+  const cookieStore = await cookies()
+  const { access } = readSession(cookieStore)
+  if (!access) return null
 
-    try {
-        const payloadPart = token.value.split('.')[1]
-        const payload: UserPayload = JSON.parse(Buffer.from(payloadPart, 'base64').toString())
-        return {
-            id: payload.sub,
-            email: payload.email || '',
-            totp_enabled: payload.totp_enabled || false,
-            org_id: payload.org_id,
-            role: payload.role
-        }
-    } catch {
-        return null
-    }
+  try {
+    const payload = decodeUser(access)
+    return { ...userOf(payload), access_token: access }
+  } catch {
+    return null
+  }
 }
