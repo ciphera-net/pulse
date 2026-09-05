@@ -93,6 +93,26 @@ export function useCan(perm: Permission): boolean {
 // role check (team mutation: owner-or-admin; workspace deletion: owner). The
 // slug comes from the JWT ciphera-id minted — the server still enforces on
 // its side; these only decide what the UI offers.
+// 🔴 Who the onboarding wall may legitimately hold (05-09-2026).
+//
+// `onboarding_completed_at` is an ORG-level flag, but ciphera-id lets ONLY the
+// owner write it — CompleteOnboardingHandler hard-403s any other role. So
+// walling a non-owner aimed them at a wizard whose last step they are refused:
+// walked through the site, install and BILLING steps, 403'd, and bounced back
+// with the error swallowed. No exit but /settings/*.
+//
+// ⚠️ An UNKNOWN role is still walled, deliberately. We relax only on positive
+// evidence that the viewer cannot clear the flag — never merely because we
+// failed to find out what they are. Getting that backwards would let a real
+// owner past the wall whenever their role had not loaded yet.
+//
+// Pure and exported so it is testable without standing up AuthProvider; the
+// wall in lib/auth/context.tsx is its only caller.
+export function isSubjectToOnboardingWall(role: string | undefined | null): boolean {
+  if (!role) return true // unknown → behave exactly as before
+  return role === 'owner'
+}
+
 export function useIsOwner(): boolean {
   const { user } = useAuth()
   return user?.role === 'owner'

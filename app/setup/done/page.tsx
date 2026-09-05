@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth/context'
 import { useSetup } from '@/lib/setup/context'
 import { useSites } from '@/lib/swr/sites'
 import { completeOnboarding } from '@/lib/api/organization'
+import { ApiError } from '@/lib/api/client'
 import { getSubscription } from '@/lib/api/billing'
 import { trackWelcomeCompleted } from '@/lib/welcomeAnalytics'
 import { Button, CheckCircleIcon, UsersIcon, BookOpenIcon, FunnelIcon } from '@ciphera-net/facet'
@@ -121,16 +122,60 @@ export default function SetupDonePage() {
   // would lock the write out permanently for a user who genuinely has a site.
   // Instead: wait for the fetch to settle, write only with a site, and let the
   // effect re-run and fire when `site` flips truthy after an SWR retry.
+  // 🔴 THE LATCH GUARDS THE WRITE, NOT THE ATTEMPT (05-09-2026).
+  //
+  // It used to be set on the line BEFORE the await, and the failure was
+  // swallowed by `.catch(() => {})`. One line then produced two different
+  // outcomes and made them indistinguishable:
+  //
+  //   - an OWNER hitting a transient 5xx/network error had the write skipped and
+  //     the latch locked, so the flag was never written; the org wall bounced
+  //     them, /setup/done remounted, the ref reset and it retried. Self-healing
+  //     BY ACCIDENT, through a loop that reads to the user as a bug.
+  //   - a NON-OWNER got a permanent 403 ("Only the owner can complete
+  //     onboarding", ciphera-id organization.go) by exactly the same mechanics —
+  //     but a 403 never resolves, so the loop never ends and no error is ever
+  //     shown. Their only exit is /settings/*.
+  //
+  // Permanent and transient failures need OPPOSITE handling, and a bare
+  // `.catch(() => {})` is the one construct that guarantees they get the same.
+  // So: latch only once the call has actually succeeded, treat 403 as terminal
+  // and say so, and let anything else fall through to a retry on the next run.
+  //
+  // This is the request-failure sibling of the async-state trap the 05-09 review
+  // caught — see the comment above onboardingWrittenRef's introduction.
   const onboardingWrittenRef = useRef(false)
+  const onboardingInFlightRef = useRef(false)
+  const [completionForbidden, setCompletionForbidden] = useState(false)
   useEffect(() => {
     if (payment !== 'none' && payment !== 'confirmed') return
     if (onboardingWrittenRef.current) return
+    if (onboardingInFlightRef.current) return // one request at a time, not one attempt ever
+    if (completionForbidden) return           // 403 is terminal; retrying cannot change it
     if (!user?.org_id) return
     if (sitesLoading) return // the sites fetch is still in flight — decide nothing yet
     if (!site) return        // settled with no site → the layout guard redirects; never write site-less
-    onboardingWrittenRef.current = true
-    completeOnboarding(user.org_id).catch(() => {})
-  }, [payment, site, sitesLoading, user?.org_id])
+
+    onboardingInFlightRef.current = true
+    completeOnboarding(user.org_id)
+      .then(() => {
+        onboardingWrittenRef.current = true // the WRITE happened; never repeat it
+      })
+      .catch((err: unknown) => {
+        if (err instanceof ApiError && err.status === 403) {
+          // Not ours to write. Stop, and let the render say something true
+          // instead of claiming the workspace is ready.
+          setCompletionForbidden(true)
+          return
+        }
+        // Transient (5xx, network, timeout). Deliberately leaves BOTH refs
+        // clear so the next effect run retries — the previous code's silent
+        // give-up is what stranded a legitimate owner.
+      })
+      .finally(() => {
+        onboardingInFlightRef.current = false
+      })
+  }, [payment, site, sitesLoading, user?.org_id, completionForbidden])
 
   if (payment === 'init') return null
 
@@ -259,10 +304,18 @@ export default function SetupDonePage() {
           <p className="mb-3 text-sm font-semibold text-pos">✓ Payment confirmed</p>
         )}
         <h1 className="text-2xl font-bold tracking-tight text-white">
-          You&apos;re all set!
+          {completionForbidden ? 'You\u2019re in' : (<>You&apos;re all set!</>)}
         </h1>
+        {/* 🔴 A non-owner reaching here cannot write onboarding_completed_at —
+            ciphera-id refuses it — so the workspace is genuinely NOT finished and
+            saying "your workspace is ready" would be a claim the app knows to be
+            false. It also is not this person's job to fix, so the copy names the
+            owner rather than handing them an action they cannot take.
+            Colour lives in a single word, never a tinted panel (house rule). */}
         <p className="mt-2 text-sm text-neutral-400 max-w-sm mx-auto">
-          Your workspace is ready. Here are some things to do next.
+          {completionForbidden
+            ? 'Your account is active. The workspace owner still has a step left to finish setting it up \u2014 that part isn\u2019t yours to complete.'
+            : 'Your workspace is ready. Here are some things to do next.'}
         </p>
       </div>
 
