@@ -169,6 +169,7 @@ public read API's — see that entry for what it does and does not cover.
 - **Custom roles are gone.** Roles are now the built-in three — Owner, Admin, Member — assigned through invite links. The Roles view remains as a read-only matrix of what each role can do. Existing memberships were unaffected; the only custom role ever created was a test artifact and was removed.
 - **The CDN page's world map is gone.** It plotted bandwidth by Bunny edge datacenter, which read as visitor geography and was nothing of the kind. The ranked "Served from" region list — the honest version of the same data — remains, as does the Audience map (which really is visitor geography).
 - **The "Visitor recognition" setting is gone.** The tracking script never read the storage attributes the control emitted — visitor identification has been fully server-side for months. Removing the control removes the pretense; nothing about tracking behavior changed.
+- **The Campaigns card's Export and Build URL buttons are gone.** The card's own CSV download and the in-dashboard UTM builder (including the empty state's "Build a UTM URL" button) have been removed; the Source / Medium / Campaign / Term / Content tabs are unchanged. Campaign rows still ship in the dashboard's Export (the Campaigns sheet in the spreadsheet and the Campaigns table in the PDF), and the public UTM builder at `/tools/utm-builder` is untouched.
 
 ### Changed
 

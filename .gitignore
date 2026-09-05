@@ -66,6 +66,7 @@ tests/*
 !tests/ws4-staging-tour-verify.spec.ts
 !tests/visitors-staging.spec.ts
 !tests/s3-host-only-session.spec.ts
+!tests/campaigns-header-smoke.spec.ts
 !tests/support/
 tests/support/*
 !tests/support/login.ts
