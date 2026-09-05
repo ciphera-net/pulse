@@ -27,7 +27,7 @@ vi.mock('@/lib/api/oauth-store', () => ({
   forgetAllPendingAuth: vi.fn(),
 }))
 vi.mock('@/lib/api/oauth', () => ({ initiateOAuthFlow: vi.fn() }))
-vi.mock('@/lib/api/client', () => ({ default: vi.fn().mockRejectedValue(new Error('no profile')), setAccessToken: vi.fn() }))
+vi.mock('@/lib/api/client', () => ({ default: vi.fn().mockRejectedValue(new Error('no profile')), setAccessToken: vi.fn(), APP_URL: 'https://pulse.ciphera.net' }))
 vi.mock('@/lib/cdn', () => ({ cdnUrl: (p: string) => p }))
 
 const reportClientEvent = vi.fn()
