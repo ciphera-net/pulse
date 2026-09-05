@@ -1,10 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import Link from 'next/link'
 import Image from 'next/image'
-import { formatNumber } from '@/lib/utils/format'
-import { Modal } from '@ciphera-net/facet'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { ListSkeleton } from '@/components/skeletons'
@@ -12,7 +9,6 @@ import { type CampaignStat } from '@/lib/api/stats'
 import { useCampaignsList } from '@/lib/swr/dashboard'
 import { getReferrerFavicon, getReferrerIcon, getReferrerDisplayName } from '@/lib/utils/icons'
 import { Megaphone } from '@phosphor-icons/react'
-import UtmBuilder from '@/components/tools/UtmBuilder'
 import { type DimensionFilter } from '@/lib/filters'
 import { MetricRowStat, MetricUnitLabel, rowBarWidth } from '@/components/dashboard/MetricRowStat'
 import { CardPager, useCardPage } from '@/components/dashboard/CardPager'
@@ -44,7 +40,6 @@ type UtmTab = 'source' | 'medium' | 'campaign' | 'term' | 'content'
 const LIMIT = 7
 
 export default function Campaigns({ siteId, dateRange, period, filters, totals, onFilter, campaigns: payloadRows }: CampaignsProps) {
-  const [isBuilderOpen, setIsBuilderOpen] = useState(false)
   const [faviconFailed, setFaviconFailed] = useState<Set<string>>(new Set())
   const [activeTab, setActiveTab] = useState<UtmTab>('source')
 
@@ -178,144 +173,93 @@ export default function Campaigns({ siteId, dateRange, period, filters, totals, 
     return <span className="w-5 h-5 flex-shrink-0 flex items-center justify-center">{getReferrerIcon(source)}</span>
   }
 
-  const handleExportCampaigns = () => {
-    const rows = sortedFullData.length > 0 ? sortedFullData : sortedData
-    if (rows.length === 0) return
-    const header = ['Source', 'Medium', 'Campaign', 'Term', 'Content', 'Visitors', 'Pageviews']
-    const csvRows = [
-      header.join(','),
-      ...rows.map(r =>
-        [r.source, r.medium || '', r.campaign || '', r.term || '', r.content || '', r.visitors, r.pageviews].join(',')
-      ),
-    ]
-    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.setAttribute('href', url)
-    link.setAttribute('download', `campaigns_${dateRange.start}_${dateRange.end}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-  }
-
   return (
-    <>
-      <div data-tour="dimension-card" data-tour-card="campaigns" className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
-        <div className="flex items-center justify-between gap-2 mb-4">
-          {/* The five dimension tabs measure ~319px; on a phone that left no room
-              for "Build URL", which was pushed 12px off the card. Every other
-              dimension card (ContentStats, Locations, TechSpecs)
-              already scrolls its tab row — this one and TopReferrers were the two
-              that missed the pattern. */}
-          <div className="flex gap-1 min-w-0 overflow-x-auto scrollbar-hide pb-1 max-md:[mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)]" role="tablist" aria-label="Campaign dimension tabs">
-            {(['source', 'medium', 'campaign', 'term', 'content'] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                role="tab"
-                aria-selected={activeTab === tab}
-                className={`relative px-2.5 py-3 sm:py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-none cursor-pointer ${
-                  activeTab === tab
-                    ? 'text-white'
-                    : 'text-neutral-500 hover:text-neutral-300'
-                } ease-apple`}
-              >
-                {tab}
-                <span
-                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-none transition-[width,background-color] duration-base ${
-                    activeTab === tab ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
-                  } ease-apple`}
-                />
-              </button>
-            ))}
-          </div>
-          <DimensionInfoTip tab={activeTab} className="ms-2 me-auto" />
-          <div className="flex min-w-0 shrink items-center gap-2">
-            <MetricUnitLabel />
-            {hasData && (
-              <button
-                onClick={handleExportCampaigns}
-                className="text-xs font-medium text-neutral-500 hover:text-brand-orange transition-colors cursor-pointer ease-apple"
-              >
-                Export
-              </button>
-            )}
+    <div data-tour="dimension-card" data-tour-card="campaigns" className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
+      <div className="flex items-center justify-between gap-2 mb-4">
+        {/* Matches the scrolling tab row every other dimension card uses, so a
+            narrow card can never push the unit label off its right edge. */}
+        <div className="flex gap-1 min-w-0 overflow-x-auto scrollbar-hide pb-1 max-md:[mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)]" role="tablist" aria-label="Campaign dimension tabs">
+          {(['source', 'medium', 'campaign', 'term', 'content'] as const).map((tab) => (
             <button
-              onClick={() => setIsBuilderOpen(true)}
-              className="text-xs font-medium text-neutral-500 hover:text-brand-orange transition-colors cursor-pointer ease-apple"
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              role="tab"
+              aria-selected={activeTab === tab}
+              className={`relative px-2.5 py-3 sm:py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-none cursor-pointer ${
+                activeTab === tab
+                  ? 'text-white'
+                  : 'text-neutral-500 hover:text-neutral-300'
+              } ease-apple`}
             >
-              Build URL
+              {tab}
+              <span
+                className={`absolute inset-x-0 -bottom-px h-[3px] rounded-none transition-[width,background-color] duration-base ${
+                  activeTab === tab ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
+                } ease-apple`}
+              />
             </button>
-          </div>
+          ))}
         </div>
-
-        <div className="flex-1 min-h-[270px]">
-          {isLoading ? (
-            <ListSkeleton rows={LIMIT} />
-          ) : cardError && !cardData ? (
-            // The anti-fake-empty. Before this branch existed a failed request
-            // rendered "No UTM data yet" — telling a customer they have no
-            // campaign traffic when in fact we simply could not find out.
-            // `!cardData` so a background revalidation failure keeps the last
-            // good rows on screen instead of blanking a working card.
-            <ErrorCard
-              title="Couldn’t load campaigns"
-              description="The rest of the dashboard is unaffected."
-              onRetry={() => refetchCard()}
-            />
-          ) : hasData ? (
-            <CascadeGroup flipKey={`${activeTab}-${page}`} className="space-y-2">
-              {displayedData.map((item, i) => {
-                const barWidth = rowBarWidth(item, allData)
-                const filterDimension = `utm_${activeTab}`
-                const Row = onFilter ? 'button' : 'div'
-                return (
-                  <CascadeRow key={item.name} index={i}>
-                  <Row
-                    {...(onFilter ? { type: 'button' as const, onClick: () => onFilter?.({ dimension: filterDimension, operator: 'is', values: [item.name] }) } : {})}
-                    className={`interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
-                  >
-                    <RowBar width={barWidth} index={i} />
-                    <div className="relative flex-1 text-white flex items-center gap-3 min-w-0">
-                      {activeTab === 'source' && renderSourceIcon(item.name)}
-                      <div className="min-w-0">
-                        <div className="truncate font-medium text-sm" title={item.name}>
-                          {activeTab === 'source' ? getReferrerDisplayName(item.name) : item.name}
-                        </div>
-                      </div>
-                    </div>
-                    <MetricRowStat row={item} totals={totals} />
-                  </Row>
-                  </CascadeRow>
-                )
-              })}
-              {Array.from({ length: emptySlots }).map((_, i) => (
-                <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
-              ))}
-            </CascadeGroup>
-          ) : (
-            <EmptyState
-              icon={<Megaphone />}
-              title="No UTM data yet"
-              description="Tag your links with UTM parameters to track which campaigns drive the most traffic."
-              action={{ label: 'Build a UTM URL', onClick: () => setIsBuilderOpen(true) }}
-            />
-          )}
+        <DimensionInfoTip tab={activeTab} className="ms-2 me-auto" />
+        <div className="flex min-w-0 shrink items-center gap-1.5">
+          <MetricUnitLabel />
         </div>
-
-        <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label="campaigns" />
       </div>
 
-      <Modal
-        isOpen={isBuilderOpen}
-        onClose={() => setIsBuilderOpen(false)}
-        title="Campaign URL Builder"
-      >
-        <div className="p-1">
-          <UtmBuilder initialSiteId={siteId} />
-        </div>
-      </Modal>
-    </>
+      <div className="flex-1 min-h-[270px]">
+        {isLoading ? (
+          <ListSkeleton rows={LIMIT} />
+        ) : cardError && !cardData ? (
+          // The anti-fake-empty. Before this branch existed a failed request
+          // rendered "No UTM data yet" — telling a customer they have no
+          // campaign traffic when in fact we simply could not find out.
+          // `!cardData` so a background revalidation failure keeps the last
+          // good rows on screen instead of blanking a working card.
+          <ErrorCard
+            title="Couldn’t load campaigns"
+            description="The rest of the dashboard is unaffected."
+            onRetry={() => refetchCard()}
+          />
+        ) : hasData ? (
+          <CascadeGroup flipKey={`${activeTab}-${page}`} className="space-y-2">
+            {displayedData.map((item, i) => {
+              const barWidth = rowBarWidth(item, allData)
+              const filterDimension = `utm_${activeTab}`
+              const Row = onFilter ? 'button' : 'div'
+              return (
+                <CascadeRow key={item.name} index={i}>
+                <Row
+                  {...(onFilter ? { type: 'button' as const, onClick: () => onFilter?.({ dimension: filterDimension, operator: 'is', values: [item.name] }) } : {})}
+                  className={`interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
+                >
+                  <RowBar width={barWidth} index={i} />
+                  <div className="relative flex-1 text-white flex items-center gap-3 min-w-0">
+                    {activeTab === 'source' && renderSourceIcon(item.name)}
+                    <div className="min-w-0">
+                      <div className="truncate font-medium text-sm" title={item.name}>
+                        {activeTab === 'source' ? getReferrerDisplayName(item.name) : item.name}
+                      </div>
+                    </div>
+                  </div>
+                  <MetricRowStat row={item} totals={totals} />
+                </Row>
+                </CascadeRow>
+              )
+            })}
+            {Array.from({ length: emptySlots }).map((_, i) => (
+              <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
+            ))}
+          </CascadeGroup>
+        ) : (
+          <EmptyState
+            icon={<Megaphone />}
+            title="No UTM data yet"
+            description="Tag your links with UTM parameters to track which campaigns drive the most traffic."
+          />
+        )}
+      </div>
+
+      <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label="campaigns" />
+    </div>
   )
 }

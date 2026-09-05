@@ -282,6 +282,25 @@ describe('Campaigns', () => {
     // And the payload rows actually render.
     expect(screen.queryByText(/No UTM data yet/)).toBeNull()
   })
+
+  // 05-09-2026: the card's own CSV export and the in-dashboard UTM builder are
+  // gone (owner ruling). The header holds the five dimension tabs and the unit
+  // label, nothing else, and the empty state carries no builder action. The
+  // public /tools/utm-builder page is a separate component and is untouched.
+  it('offers neither an Export nor a Build URL action, with rows or without', () => {
+    const { unmount } = render(<Campaigns siteId="site-1" dateRange={dateRange} totals={totals} />)
+    expect(screen.queryByRole('button', { name: 'Export' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Build URL' })).toBeNull()
+    expect(screen.getAllByRole('tab')).toHaveLength(5)
+    unmount()
+
+    useCampaignsList.mockReturnValue({
+      data: [], error: undefined, isLoading: false, mutate: vi.fn(),
+    })
+    render(<Campaigns siteId="site-1" dateRange={dateRange} totals={totals} />)
+    expect(screen.getByText(/No UTM data yet/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Build a UTM URL/ })).toBeNull()
+  })
 })
 
 describe('GoalStats', () => {
