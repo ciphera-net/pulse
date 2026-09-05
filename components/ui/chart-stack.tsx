@@ -6,6 +6,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -70,8 +71,12 @@ export interface ChartStackProps {
   xDataKey?: string;
   /** The members' plot margin. Compact strips typically {top: 8, right: 16, bottom: 6, left: 44}. */
   margin: Margin;
-  /** Pixel width of the rail column to the left of every plot. */
-  railWidth: number;
+  /**
+   * Pixel width of the rail column to the left of every plot. Optional when
+   * the rail carries `data-chart-stack-rail` — the stack then measures it, so
+   * a responsive rail (w-40 sm:w-48) stays in step with the plots.
+   */
+  railWidth?: number;
   /** Card header for the hovered bucket (the bucket's identity). */
   title: (point: Record<string, unknown>, index: number) => ReactNode;
   /** Card rows for the hovered bucket — one per visible strip. */
@@ -86,7 +91,7 @@ export function ChartStack({
   data,
   xDataKey = "date",
   margin,
-  railWidth,
+  railWidth: railWidthProp,
   title,
   rows,
   cardTop = 12,
@@ -95,6 +100,7 @@ export function ChartStack({
 }: ChartStackProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoverIndex, setHoverIndexState] = useState<number | null>(null);
+  const [measuredRail, setMeasuredRail] = useState<number | null>(null);
 
   // Same-index calls are no-ops at the state layer already; this keeps the
   // callback identity stable so member charts do not re-bind handlers.
@@ -121,7 +127,8 @@ export function ChartStack({
             data={data}
             hoverIndex={hoverIndex}
             margin={margin}
-            railWidth={railWidth}
+            onMeasureRail={setMeasuredRail}
+            railWidth={measuredRail ?? railWidthProp ?? 0}
             rows={rows}
             setHoverIndex={setHoverIndex}
             title={title}
@@ -146,6 +153,7 @@ interface StackInnerProps {
   railWidth: number;
   hoverIndex: number | null;
   setHoverIndex: (index: number | null) => void;
+  onMeasureRail: (width: number | null) => void;
   title: ChartStackProps["title"];
   rows: ChartStackProps["rows"];
   cardTop: number;
@@ -162,11 +170,19 @@ function StackInner({
   railWidth,
   hoverIndex,
   setHoverIndex,
+  onMeasureRail,
   title,
   rows,
   cardTop,
   children,
 }: StackInnerProps) {
+  // The rail is measured, not declared: `w-40 sm:w-48` is 160 or 192px
+  // depending on the viewport, and the card's x must add the real one.
+  useLayoutEffect(() => {
+    const rail = containerRef.current?.querySelector<HTMLElement>("[data-chart-stack-rail]");
+    onMeasureRail(rail ? rail.getBoundingClientRect().width : null);
+  }, [containerRef, containerWidth, onMeasureRail]);
+
   const plotWidth = Math.max(0, containerWidth - railWidth);
   const innerWidth = Math.max(0, plotWidth - margin.left - margin.right);
 
@@ -244,6 +260,13 @@ function StackInner({
 export interface ChartStackAxisProps {
   numTicks?: number;
   formatLabel?: (date: Date) => string;
+  /**
+   * "nice" (default): nice-step ticks from niceTimeTicks — the instrument's
+   * rule for calendar buckets. "buckets": ticks ON bucket dates, subsampled to
+   * the budget — for rolled-up series (weeks, months) where a nice calendar
+   * step would label instants no bucket starts on.
+   */
+  ticks?: "nice" | "buckets";
   className?: string;
 }
 
@@ -253,7 +276,7 @@ export interface ChartStackAxisProps {
  * laid out on the stack's own scale so it agrees with every member. Render
  * it in the plot column (after the rail spacer); it fills its holder.
  */
-export function ChartStackAxis({ numTicks = 10, formatLabel, className = "" }: ChartStackAxisProps) {
+export function ChartStackAxis({ numTicks = 10, formatLabel, ticks = "nice", className = "" }: ChartStackAxisProps) {
   const { xScale, margin, innerWidth, hoverIndex, data, xAccessor } = useChartStack();
 
   const labels = useMemo(() => {
@@ -261,12 +284,20 @@ export function ChartStackAxis({ numTicks = 10, formatLabel, className = "" }: C
     if (!(start && end) || innerWidth <= 0) return [];
     const budget = Math.max(2, Math.min(numTicks, Math.floor(innerWidth / 80)));
     const fmt = formatLabel ?? ((d: Date) => formatDateShort(d));
-    return niceTimeTicks(start.getTime(), end.getTime(), budget).map((date) => ({
+    let dates: Date[];
+    if (ticks === "buckets") {
+      const all = data.map((d) => xAccessor(d));
+      const stride = Math.max(1, Math.ceil((all.length - 1) / Math.max(1, budget - 1)));
+      dates = all.filter((_, i) => i % stride === 0);
+    } else {
+      dates = niceTimeTicks(start.getTime(), end.getTime(), budget);
+    }
+    return dates.map((date) => ({
       key: date.getTime(),
       x: margin.left + (xScale(date) ?? 0),
       label: fmt(date),
     }));
-  }, [xScale, innerWidth, numTicks, formatLabel, margin.left]);
+  }, [xScale, innerWidth, numTicks, formatLabel, margin.left, ticks, data, xAccessor]);
 
   const hovered = hoverIndex != null ? data[hoverIndex] : undefined;
   const crosshairX = hovered !== undefined ? margin.left + (xScale(xAccessor(hovered)) ?? 0) : null;
