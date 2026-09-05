@@ -1,6 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { isSubjectToOnboardingWall } from '@/lib/auth/permissions'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSWRConfig } from 'swr'
 import apiRequest, { setAccessToken, setRefreshHandler } from '@/lib/api/client'
@@ -520,6 +521,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // * on every render when the `user` object reference changes.
   const isAuthenticated = !!user
   const userOrgId = user?.org_id
+  // * Same reason as the two above: a primitive, so the wall effect does not
+  // * re-run on every render just because the `user` object identity changed.
+  const userRole = user?.role
 
   // * Organization Wall & Auto-Switch
   useEffect(() => {
@@ -540,8 +544,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // * /settings/* is EXEMPT (ruled C1, 25-08-2026): the wall used to gate every
           // * app route, so an org abandoned mid-wizard could not be managed or even
           // * DELETED — the danger zone sat behind the wall it needed to escape.
+          // 🔴 THE WALL ONLY BINDS SOMEONE WHO CAN CLEAR IT (05-09-2026).
+          //
+          // onboarding_completed_at is an ORG-level flag, but ciphera-id lets
+          // ONLY the owner write it (CompleteOnboardingHandler hard-403s
+          // role != "owner"). So walling a non-owner pointed them at a wizard
+          // whose final step they are refused, forever: walked through
+          // /setup/site, /setup/install and /setup/plan — a BILLING step — then
+          // bounced back, with the 403 swallowed and no error ever rendered.
+          // Self-removal is blocked server-side and there is no leave-org
+          // client, so the only exit was /settings/*, or deleting the account.
+          //
+          // Measured 05-09: population zero (no org has >1 member and no invite
+          // link has ever been created) — but the invite flow IS shipped and
+          // mounted (id-backend main.go: the public /invite-links/:code GET, the
+          // accept POST, and owner/admin CRUD; pulse-frontend's own
+          // InviteLinksSection creates them from the wall-EXEMPT /settings). It
+          // is one invitation away, and the invite handlers never look at
+          // onboarding state.
+          //
+          // ⚠️ Deliberately relaxed only on POSITIVE evidence. An absent role is
+          // still walled, exactly as before: we skip the wall when we KNOW the
+          // viewer is not the owner, never merely because we failed to find out.
           if (
             userOrgId &&
+            isSubjectToOnboardingWall(userRole) &&
             !pathname?.startsWith('/setup') &&
             !pathname?.startsWith('/settings')
           ) {
@@ -615,7 +642,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     
     checkOrg()
-  }, [loading, isAuthenticated, userOrgId, pathname, router])
+  }, [loading, isAuthenticated, userOrgId, userRole, pathname, router])
 
   return (
     <AuthContext.Provider value={{ user, loading, hadPriorSession, recovering, login, logout, refresh, refreshSession }}>

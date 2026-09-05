@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, act } from '@testing-library/react'
+import { render, screen, act, waitFor } from '@testing-library/react'
 
 // --- Mocks ---------------------------------------------------------------
 
@@ -62,6 +62,7 @@ vi.mock('@ciphera-net/facet', () => ({
   FunnelIcon: () => <span />,
 }))
 
+import { ApiError } from '@/lib/api/client'
 import SetupDonePage from '../page'
 
 function setSearch(search: string) {
@@ -74,7 +75,8 @@ beforeEach(() => {
   getSubscription.mockReset()
   mockPush.mockClear()
   completeStep.mockClear()
-  completeOnboarding.mockClear()
+  completeOnboarding.mockReset()
+  completeOnboarding.mockResolvedValue({})
   trackWelcomeCompleted.mockClear()
 })
 
@@ -230,5 +232,76 @@ describe('SetupDonePage completion gating (ruled B1 — F-B14)', () => {
     expect(completeStep).toHaveBeenCalledWith('done')
     expect(completeOnboarding).toHaveBeenCalledWith('org_1')
     expect(trackWelcomeCompleted).toHaveBeenCalledTimes(1)
+  })
+})
+
+
+// ---------------------------------------------------------------------------
+// 🔴 Permanent vs transient completion failure.
+//
+// The write used to latch BEFORE the call resolved and swallow the outcome with
+// `.catch(() => {})`, so a non-owner's permanent 403 and an owner's transient
+// 5xx were handled identically — and neither was ever shown. These four tests
+// pin the two apart; each fails against that version.
+// ---------------------------------------------------------------------------
+describe('SetupDonePage completion failure handling', () => {
+  // * Same-mount rerender, NO key: a key change remounts and resets the refs in
+  // * every version, which made the first draft of these tests vacuous — they
+  // * passed against the very code they were written to condemn. The effect
+  // * re-runs when a dep changes, so `sitesLoading` is flipped to drive it.
+  function forceEffectRerun(rerender: (ui: React.ReactElement) => void) {
+    mockSitesLoading = true
+    rerender(<SetupDonePage />)
+    mockSitesLoading = false
+    mockSite = A_SITE
+    rerender(<SetupDonePage />)
+  }
+
+  it('does NOT latch on a transient failure — it retries when the effect re-runs', async () => {
+    mockSite = A_SITE
+    completeOnboarding.mockReset()
+    completeOnboarding.mockRejectedValueOnce(new ApiError('upstream blew up', 500))
+    completeOnboarding.mockResolvedValue({})
+
+    const { rerender } = render(<SetupDonePage />)
+    await waitFor(() => expect(completeOnboarding).toHaveBeenCalledTimes(1))
+
+    // The old code latched BEFORE awaiting, so a legitimate owner's transient
+    // 5xx permanently skipped the estate's ONE write of onboarding_completed_at
+    // and the org wall bounced them.
+    forceEffectRerun(rerender)
+    await waitFor(() => expect(completeOnboarding).toHaveBeenCalledTimes(2))
+  })
+
+  it('does NOT retry after a 403 — a permission answer cannot change', async () => {
+    mockSite = A_SITE
+    completeOnboarding.mockReset()
+    completeOnboarding.mockRejectedValue(new ApiError('Only the owner can complete onboarding', 403))
+
+    const { rerender } = render(<SetupDonePage />)
+    await waitFor(() => expect(completeOnboarding).toHaveBeenCalledTimes(1))
+
+    // Guards the OTHER regression the retry above invites: with the terminal
+    // 403 state removed, every dep change would fire another doomed request.
+    forceEffectRerun(rerender)
+    await new Promise((r) => setTimeout(r, 20))
+    expect(completeOnboarding).toHaveBeenCalledTimes(1)
+  })
+
+  it('never claims the workspace is ready when completion was forbidden', async () => {
+    mockSite = A_SITE
+    completeOnboarding.mockReset()
+    completeOnboarding.mockRejectedValue(new ApiError('Only the owner can complete onboarding', 403))
+
+    render(<SetupDonePage />)
+    await waitFor(() => expect(screen.queryByText(/You're all set!/)).toBeNull())
+    expect(screen.getByText(/workspace owner still has a step left/i)).toBeTruthy()
+  })
+
+  it('still says "all set" on the happy path', async () => {
+    mockSite = A_SITE
+    render(<SetupDonePage />)
+    await waitFor(() => expect(completeOnboarding).toHaveBeenCalledTimes(1))
+    expect(screen.getByText(/You're all set!/)).toBeTruthy()
   })
 })
