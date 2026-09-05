@@ -8,7 +8,13 @@ import { cdnUrl } from '@/lib/cdn'
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import type { DailyStat } from './Chart'
+import type { DailyStat } from '@/lib/api/stats'
+
+// The export's field set. `visits` (migration 164) is deliberately not
+// offered: the modal's columns are the ones it has always written, and adding
+// one is a product decision, not a side effect of retiring the old chart file
+// that used to own this type.
+type ExportRow = Omit<DailyStat, 'visits'>
 import { formatNumber, formatDuration } from '@/lib/utils/format'
 import { formatDateISO, formatDate, formatDateUTC, formatTimeUTC, formatCalendarDate, parseSiteWallClock } from '@/lib/utils/formatDate'
 import { getReferrerDisplayName, mergeReferrersByDisplayName } from '@/lib/utils/icons'
@@ -58,7 +64,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
   const [isExporting, setIsExporting] = useState(false)
   const [exportDone, setExportDone] = useState(false)
   const [exportProgress, setExportProgress] = useState({ step: 0, total: 1, label: '' })
-  const [selectedFields, setSelectedFields] = useState<Record<keyof DailyStat, boolean>>({
+  const [selectedFields, setSelectedFields] = useState<Record<keyof ExportRow, boolean>>({
     date: true,
     pageviews: true,
     visitors: true,
@@ -68,7 +74,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
     avg_visible_duration: true,
   })
 
-  const handleFieldChange = (field: keyof DailyStat, checked: boolean) => {
+  const handleFieldChange = (field: keyof ExportRow, checked: boolean) => {
     setSelectedFields((prev) => ({ ...prev, [field]: checked }))
   }
 
@@ -95,7 +101,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
       setTimeout(async () => {
         try {
           // Filter fields
-          const fields = (Object.keys(selectedFields) as Array<keyof DailyStat>).filter((k) => selectedFields[k])
+          const fields = (Object.keys(selectedFields) as Array<keyof ExportRow>).filter((k) => selectedFields[k])
 
           // Prepare data. null stays null — a bucket nobody measured exports as
           // an empty cell, not a zero someone will chart.
