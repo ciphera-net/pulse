@@ -25,6 +25,12 @@ describe('middleware', () => {
       '/changelog',
       '/installation',
       '/script.js',
+      // * Measured on staging 05-09-2026 BEFORE promotion: without its
+      // * PUBLIC_ROUTES entry this 307s to /login, so the readable copy published
+      // * to make the minified tracker debuggable could not be fetched from this
+      // * origin at all. Same failure class as the next-pwa precache note in
+      // * middleware.ts directly below the /script-sri.json entry.
+      '/script.debug.js',
     ]
 
     publicPaths.forEach((path) => {
