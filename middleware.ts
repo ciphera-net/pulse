@@ -21,6 +21,11 @@ const PUBLIC_ROUTES = new Set([
   // * token. The page itself tells a signed-out visitor to sign in and click
   // * the (durable) email link again; the API behind it still requires auth.
   '/open-source/claim',
+  // * Its startups sibling, for the same reason. The route shipped in #568
+  // * WITHOUT this entry — measured on staging and prod 05-09-2026: the
+  // * open-source link answered 200 and the startups link 307'd to /login,
+  // * which is precisely the bounce that drops the token.
+  '/startups/claim',
 
   // * Category-SEO landing pages (21-07). Public marketing surface — must render
   // * for anonymous visitors and crawlers, same as /features or /pricing.
