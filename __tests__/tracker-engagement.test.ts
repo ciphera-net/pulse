@@ -24,7 +24,7 @@ import { JSDOM } from 'jsdom'
  */
 
 const ROOT = join(__dirname, '..')
-const SCRIPT = readFileSync(join(ROOT, 'public/script.js'), 'utf8')
+const SCRIPT = readFileSync(join(ROOT, 'tracker/script.js'), 'utf8')
 
 type Beacon = { url: string; body: any }
 
