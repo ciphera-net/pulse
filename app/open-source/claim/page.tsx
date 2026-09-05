@@ -16,14 +16,31 @@ import apiRequest, { ApiError } from '@/lib/api/client'
 // the OAuth flow and dropping the token on the floor. The email link is
 // durable — clicking it twice is the recovery path.
 
-function ClaimInner() {
+// One claim flow, two routes. The programme is known from the ROUTE before
+// the backend answers, so every word on the page can be right up front —
+// the plan-agnostic copy this page briefly shipped with was wrong: a startup
+// following /startups/claim must never read "Open Source plan".
+export type Programme = 'opensource' | 'startups'
+
+const PROGRAMME_COPY: Record<Programme, { eyebrow: string; plan: string; terms: string }> = {
+  opensource: {
+    eyebrow: 'Open source',
+    plan: 'Open Source plan',
+    terms: 'five sites, 100,000 pageviews a month, 2-year retention, every feature, €0.',
+  },
+  startups: {
+    eyebrow: 'Startups',
+    plan: 'Startups plan',
+    terms: 'five sites, 100,000 pageviews a month, 2-year retention, every feature, €0 for a year.',
+  },
+}
+
+export function ClaimInner({ programme }: { programme: Programme }) {
+  const copy = PROGRAMME_COPY[programme]
   const token = useSearchParams().get('token') ?? ''
   const [state, setState] = useState<'idle' | 'working' | 'done' | 'error'>('idle')
   const [project, setProject] = useState<string | null>(null)
-  // Which programme the token belonged to is only known once the backend
-  // answers; before that the copy stays plan-agnostic. The same claim page
-  // serves both programmes on purpose (one token contract, one route).
-  const [planLabel, setPlanLabel] = useState<'open-source' | 'startups'>('open-source')
+
   const [error, setError] = useState<string | null>(null)
   const [needsAuth, setNeedsAuth] = useState(false)
 
@@ -39,7 +56,6 @@ function ClaimInner() {
         { method: 'POST', body: JSON.stringify({ token }) }
       )
       setProject(res.project)
-      setPlanLabel(res.kind === 'startups' ? 'startups' : 'open-source')
       setState('done')
     } catch (err) {
       setState('error')
@@ -59,9 +75,9 @@ function ClaimInner() {
   return (
     <section className="border-b border-border">
       <div className="mx-auto max-w-2xl px-6 py-20 sm:py-28">
-        <p className="text-xs text-muted-foreground">Pulse · {state === 'done' ? (planLabel === 'startups' ? 'Startups' : 'Open source') : 'Programme plan'}</p>
+        <p className="text-xs text-muted-foreground">Pulse · {copy.eyebrow}</p>
         <h1 className="mt-6 font-display text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-5xl">
-          {state === 'done' ? 'The plan is yours.' : 'Claim your plan.'}
+          {state === 'done' ? 'The plan is yours.' : `Claim the ${programme === 'startups' ? 'startups' : 'open-source'} plan.`}
         </h1>
 
         {state === 'done' ? (
