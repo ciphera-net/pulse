@@ -25,7 +25,31 @@ interface UserPayload {
 }
 
 /** Error type returned to client for mapping to user-facing copy (no sensitive details). */
-export type AuthExchangeErrorType = 'network' | 'expired' | 'invalid' | 'server'
+export type AuthExchangeErrorType = 'network' | 'expired' | 'invalid' | 'server' | 'stale_attempt'
+
+/**
+ * Which screen a failed exchange earns. Facet's vocabulary has a type for each.
+ *
+ * 🔴 THE STATUS ALONE CANNOT DECIDE THIS. id-backend answers 400 for EVERY
+ * OAuth-protocol failure — a spent code, an expired one, a redirect_uri or PKCE
+ * mismatch, the wrong client — and 401/403 only for two exotic account states
+ * (deleted mid-login, operator-disabled). So the body's `error` code is the only
+ * signal above 400, and the modal failure in production is `invalid_grant`: a
+ * code that was already used, which any retry, double-fire or stale tab produces.
+ *
+ * That is `stale_attempt` — "This sign-in link has expired… Starting again takes
+ * a second" — the same screen a missing pending attempt gets, because it is the
+ * same situation: this attempt is done and a fresh one fixes it. `server` is kept
+ * for what its copy actually describes: the service did not answer properly.
+ */
+export function classifyExchangeFailure(status: number, upstreamError: string | null): AuthExchangeErrorType {
+  if (status === 401) return 'expired'
+  if (status === 403) return 'invalid'
+  if (status === 400 && upstreamError && /^(invalid_grant|invalid_client|invalid_request|unsupported_grant_type)$/.test(upstreamError)) {
+    return 'stale_attempt'
+  }
+  return 'server'
+}
 
 function decodeUser(accessToken: string): UserPayload {
   const payloadPart = accessToken.split('.')[1]
@@ -91,9 +115,20 @@ export async function exchangeAuthCode(code: string, codeVerifier: string | null
 
     if (!res.ok) {
       const status = res.status
-      const errorType: AuthExchangeErrorType =
-        status === 401 ? 'expired' : status === 403 ? 'invalid' : 'server'
-      return { success: false as const, error: errorType }
+      // * The body was discarded here until 05-09-2026, which left every 400 —
+      // * the modal failure — indistinguishable from a 5xx. See classifyExchangeFailure.
+      let upstreamError: string | null = null
+      try {
+        const body = (await res.json()) as { error?: unknown }
+        if (typeof body?.error === 'string' && body.error.length <= 64) upstreamError = body.error
+      } catch { /* no body, or not JSON — the status still decides */ }
+      return {
+        success: false as const,
+        error: classifyExchangeFailure(status, upstreamError),
+        // * For telemetry only — the raw code is what makes a misconfigured
+        // * redirect_uri distinguishable from a spent code after the fact.
+        upstream: upstreamError ?? `http_${status}`,
+      }
     }
 
     const data: AuthResponse = await res.json()
