@@ -35,6 +35,12 @@ describe('middleware', () => {
       // * (05-09-2026), a sibling of /open-source; without its PUBLIC_ROUTES
       // * entry it 307s to /login, the exact failure script.debug.js shipped with.
       '/startups',
+      // * Both claim pages must render UNAUTHENTICATED (the login round-trip
+      // * loses deep links, so a bounced claim link drops its token). The
+      // * startups one shipped in #568 without its entry — measured live
+      // * 05-09-2026: /open-source/claim 200, /startups/claim 307 → /login.
+      '/open-source/claim',
+      '/startups/claim',
     ]
 
     publicPaths.forEach((path) => {
