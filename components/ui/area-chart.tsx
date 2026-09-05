@@ -36,6 +36,12 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// useId yields ":r1:"-style tokens; strip the punctuation so the value is a
+// safe SVG id inside url(#…) and CSS selectors alike.
+function safeId(id: string): string {
+  return id.replace(/[^a-zA-Z0-9_-]/g, "");
+}
+
 // ─── Chart Context ───────────────────────────────────────────────────────────
 
 // biome-ignore lint/suspicious/noExplicitAny: d3 curve factory type
@@ -178,6 +184,16 @@ interface UseChartInteractionParams {
     lo: number
   ) => number;
   canInteract: boolean;
+  /**
+   * Linked hover (chart-consistency round, 05-09-2026). When `onIndexChange`
+   * is given the chart becomes CONTROLLED: pointer motion reports the snapped
+   * bucket index upward and the rendered tooltip/crosshair derive from
+   * `controlledIndex` — so N stacked charts driven by one parent move as one
+   * cursor. The bisector snap, the per-bucket identity bail and touch
+   * handling are unchanged; only where the index lives moves.
+   */
+  controlledIndex?: number | null;
+  onIndexChange?: (index: number | null) => void;
 }
 
 interface ChartInteractionResult {
@@ -206,9 +222,27 @@ function useChartInteraction({
   xAccessor,
   bisectDate,
   canInteract,
+  controlledIndex,
+  onIndexChange,
 }: UseChartInteractionParams): ChartInteractionResult {
-  const [tooltipData, setTooltipData] = useState<TooltipData | null>(null);
+  const [internalTooltip, setTooltipData] = useState<TooltipData | null>(null);
   const [selection, setSelection] = useState<ChartSelection | null>(null);
+  const isControlled = typeof onIndexChange === "function";
+
+  // Controlled: the tooltip is a pure function of the parent's index, so a
+  // sibling chart hovering bucket 7 renders THIS chart's bucket 7 too.
+  const controlledTooltip = useMemo<TooltipData | null>(() => {
+    if (!isControlled || controlledIndex == null) return null;
+    const d = data[controlledIndex];
+    if (!d) return null;
+    return {
+      point: d,
+      index: controlledIndex,
+      x: xScale(xAccessor(d)) ?? 0,
+      yPositions: resolveTooltipYPositions(d, lines, yScale),
+    };
+  }, [isControlled, controlledIndex, data, xScale, yScale, lines, xAccessor]);
+  const tooltipData = isControlled ? controlledTooltip : internalTooltip;
 
   const isDraggingRef = useRef(false);
   const dragStartXRef = useRef<number>(0);
@@ -218,12 +252,23 @@ function useChartInteraction({
   // object stays, so nothing downstream (crosshair, dot, card, highlight
   // segment) re-renders mid-bucket. This is what makes the cursor stick.
   const applyTooltip = useCallback((tooltip: TooltipData) => {
+    if (onIndexChange) {
+      // Same bucket → no call: the parent's state (and every sibling) stays
+      // put while the pointer moves inside the bucket's half.
+      if (tooltip.index !== controlledIndex) onIndexChange(tooltip.index);
+      return;
+    }
     setTooltipData((prev) =>
       prev && prev.index === tooltip.index && prev.x === tooltip.x
         ? prev
         : tooltip
     );
-  }, []);
+  }, [onIndexChange, controlledIndex]);
+
+  const clearTooltip = useCallback(() => {
+    if (onIndexChange) onIndexChange(null);
+    else setTooltipData(null);
+  }, [onIndexChange]);
 
   const resolveTooltipFromX = useCallback(
     (pixelX: number): TooltipData | null => {
@@ -338,12 +383,12 @@ function useChartInteraction({
   );
 
   const handleMouseLeave = useCallback(() => {
-    setTooltipData(null);
+    clearTooltip();
     if (isDraggingRef.current) {
       isDraggingRef.current = false;
     }
     setSelection(null);
-  }, []);
+  }, [clearTooltip]);
 
   const handleMouseDown = useCallback(
     (event: React.MouseEvent<SVGGElement>) => {
@@ -353,10 +398,10 @@ function useChartInteraction({
       }
       isDraggingRef.current = true;
       dragStartXRef.current = chartX;
-      setTooltipData(null);
+      clearTooltip();
       setSelection(null);
     },
-    [getChartX]
+    [getChartX, clearTooltip]
   );
 
   const handleMouseUp = useCallback(() => {
@@ -380,7 +425,7 @@ function useChartInteraction({
         }
       } else if (event.touches.length === 2) {
         event.preventDefault();
-        setTooltipData(null);
+        clearTooltip();
         const x0 = getChartX(event, 0);
         const x1 = getChartX(event, 1);
         if (x0 === null || x1 === null) {
@@ -397,7 +442,7 @@ function useChartInteraction({
         });
       }
     },
-    [getChartX, resolveTooltipFromX, resolveIndexFromX, applyTooltip]
+    [getChartX, resolveTooltipFromX, resolveIndexFromX, applyTooltip, clearTooltip]
   );
 
   const handleTouchMove = useCallback(
@@ -434,9 +479,9 @@ function useChartInteraction({
   );
 
   const handleTouchEnd = useCallback(() => {
-    setTooltipData(null);
+    clearTooltip();
     setSelection(null);
-  }, []);
+  }, [clearTooltip]);
 
   const clearSelection = useCallback(() => {
     setSelection(null);
@@ -889,6 +934,12 @@ export interface ChartTooltipProps {
   showDatePill?: boolean;
   showCrosshair?: boolean;
   showDots?: boolean;
+  /**
+   * Render the card. A stack of linked charts renders ONE card itself
+   * (ChartStack) and turns this off on every member — the crosshair and dot
+   * still draw here, per chart, because they live in each plot.
+   */
+  showCard?: boolean;
   content?: (props: {
     point: Record<string, unknown>;
     index: number;
@@ -905,6 +956,7 @@ export function ChartTooltip({
   showDatePill = true,
   showCrosshair = true,
   showDots = true,
+  showCard = true,
   content,
   rows: rowsRenderer,
   title: titleRenderer,
@@ -927,6 +979,10 @@ export function ChartTooltip({
   } = useChart();
 
   const isHorizontal = orientation === "horizontal";
+  // One gradient per chart: N charts on a page each defined the same
+  // "tooltip-indicator-gradient" id, which only worked because they were
+  // identical. Stable and unique now (useId, sanitised for url()).
+  const crosshairGradientId = `tooltip-indicator-gradient-${safeId(useId())}`;
 
   const [mounted, setMounted] = useState(false);
 
@@ -994,6 +1050,7 @@ export function ChartTooltip({
               colorMid={chartCssVars.crosshair}
               columnWidth={columnWidth}
               fadeEdges
+              gradientId={crosshairGradientId}
               height={innerHeight}
               visible={visible}
               width="line"
@@ -1031,27 +1088,29 @@ export function ChartTooltip({
         </svg>
       )}
 
-      <TooltipBox
-        className={className}
-        containerHeight={height}
-        containerRef={containerRef}
-        containerWidth={width}
-        top={isHorizontal ? undefined : margin.top}
-        visible={visible}
-        x={xWithMargin}
-        y={isHorizontal ? yWithMargin : margin.top}
-      >
-        {content ? (
-          content({
-            point: tooltipData?.point ?? {},
-            index: tooltipData?.index ?? 0,
-          })
-        ) : (
-          <TooltipContent rows={tooltipRows} title={title}>
-            {children}
-          </TooltipContent>
-        )}
-      </TooltipBox>
+      {showCard && (
+        <TooltipBox
+          className={className}
+          containerHeight={height}
+          containerRef={containerRef}
+          containerWidth={width}
+          top={isHorizontal ? undefined : margin.top}
+          visible={visible}
+          x={xWithMargin}
+          y={isHorizontal ? yWithMargin : margin.top}
+        >
+          {content ? (
+            content({
+              point: tooltipData?.point ?? {},
+              index: tooltipData?.index ?? 0,
+            })
+          ) : (
+            <TooltipContent rows={tooltipRows} title={title}>
+              {children}
+            </TooltipContent>
+          )}
+        </TooltipBox>
+      )}
 
       {showDatePill && dateLabels.length > 0 && visible && !isHorizontal && (
         <div
@@ -1076,6 +1135,102 @@ export function ChartTooltip({
 }
 
 ChartTooltip.displayName = "ChartTooltip";
+
+// ─── Exported hover primitives (chart-consistency round, 05-09-2026) ────────
+//
+// Every surface that is not an AreaChart used to re-implement the card, the
+// cursor and the dot because they were private — and drifted (a resizing
+// box, a dashed cursor, an off-brand orange). These are the SAME components
+// the dashboard renders, exported so a heatmap, a map, a bar strip or a stack
+// of charts can consume the language without hosting the instrument.
+
+export { TooltipContent };
+
+export interface ChartTooltipCardProps {
+  /** Anchor x in CONTAINER pixels (already including any margin/rail offset). */
+  x: number;
+  /** Pinned top in container pixels. The dashboard pins to its margin.top. */
+  top: number;
+  visible: boolean;
+  containerRef: RefObject<HTMLDivElement | null>;
+  containerWidth: number;
+  containerHeight: number;
+  title?: ReactNode;
+  rows: TooltipRow[];
+  offset?: number;
+  className?: string;
+  children?: ReactNode;
+}
+
+/** The dashboard's card — fixed w-56, header strip, dot rows, opacity fade,
+ *  100ms glide, right-edge flip — anchored wherever the caller says. */
+export function ChartTooltipCard({
+  x,
+  top,
+  visible,
+  containerRef,
+  containerWidth,
+  containerHeight,
+  title,
+  rows,
+  offset,
+  className,
+  children,
+}: ChartTooltipCardProps) {
+  return (
+    <TooltipBox
+      className={className}
+      containerHeight={containerHeight}
+      containerRef={containerRef}
+      containerWidth={containerWidth}
+      offset={offset}
+      top={top}
+      visible={visible}
+      x={x}
+      y={top}
+    >
+      <TooltipContent rows={rows} title={title}>
+        {children}
+      </TooltipContent>
+    </TooltipBox>
+  );
+}
+
+ChartTooltipCard.displayName = "ChartTooltipCard";
+
+export interface ChartCrosshairProps {
+  /** x in the caller's plot coordinates (inside its own translate). */
+  x: number;
+  height: number;
+  visible: boolean;
+}
+
+/** The 1px neutral crosshair with faded ends, for a hand-rolled plot that
+ *  lives beside instrument charts and must share their cursor. */
+export function ChartCrosshair({ x, height, visible }: ChartCrosshairProps) {
+  const gradientId = `chart-crosshair-${safeId(useId())}`;
+  return (
+    <TooltipIndicator
+      colorEdge={chartCssVars.crosshair}
+      colorMid={chartCssVars.crosshair}
+      fadeEdges
+      gradientId={gradientId}
+      height={height}
+      visible={visible}
+      width="line"
+      x={x}
+    />
+  );
+}
+
+ChartCrosshair.displayName = "ChartCrosshair";
+
+/** The r=5 hover dot with the background halo. */
+export function ChartHoverDot({ x, y, visible, color }: { x: number; y: number; visible: boolean; color: string }) {
+  return <TooltipDot color={color} strokeColor={chartCssVars.background} visible={visible} x={x} y={y} />;
+}
+
+ChartHoverDot.displayName = "ChartHoverDot";
 
 // ─── Time ticks ───────────────────────────────────────────────────────────────
 
@@ -1675,6 +1830,22 @@ export interface AreaProps {
    * dashes. Undefined = no tail.
    */
   dashedTailFrom?: number;
+  /**
+   * Custom "this point is measured" predicate — a gap wherever it is false.
+   * Generalises breakAtMissing (which tests only null-ness): the funnel's
+   * conversion line breaks where FEWER THAN FIVE entrants exist even though a
+   * rate is present (the n≥5 floor), which a null test cannot express.
+   */
+  defined?: (d: Record<string, unknown>) => boolean;
+  /**
+   * Draw a small static dot per datum from ANOTHER key of the same row — the
+   * performance trend's "line = trailing median, dots = individual checks".
+   * Rows whose value is not a number draw nothing. Distinct from the hover dot.
+   */
+  pointsKey?: string;
+  pointRadius?: number;
+  pointFill?: string;
+  pointOpacity?: number;
 }
 
 export function Area({
@@ -1693,6 +1864,11 @@ export function Area({
   missingAsZero = false,
   fadeStrokeEdges = true,
   dashedTailFrom,
+  defined: definedProp,
+  pointsKey,
+  pointRadius = 1.8,
+  pointFill = chartCssVars.foregroundMuted,
+  pointOpacity = 0.5,
 }: AreaProps) {
   const {
     data,
@@ -1714,18 +1890,24 @@ export function Area({
 
   useEffect(() => { setHasMounted(true); }, []);
 
-  const uniqueId = useId();
-  const gradientId = useMemo(
-    () => `area-gradient-${dataKey}-${Math.random().toString(36).slice(2, 9)}`,
-    [dataKey]
-  );
-  const strokeGradientId = useMemo(
-    () =>
-      `area-stroke-gradient-${dataKey}-${Math.random().toString(36).slice(2, 9)}`,
-    [dataKey]
-  );
+  // Stable, unique per instance: Math.random() ids regenerated on every
+  // dataKey change and were SSR-unstable (the deck hid it behind ssr:false);
+  // N charts on one page — the stacks — need ids that never collide.
+  const uniqueId = safeId(useId());
+  const gradientId = `area-gradient-${dataKey}-${uniqueId}`;
+  const strokeGradientId = `area-stroke-gradient-${dataKey}-${uniqueId}`;
+  const growClipId = `grow-clip-area-${dataKey}-${uniqueId}`;
   const edgeMaskId = `area-edge-mask-${dataKey}-${uniqueId}`;
   const edgeGradientId = `${edgeMaskId}-gradient`;
+
+  // One predicate for every path: the caller's `defined`, else the
+  // null-ness test breakAtMissing always meant, else everything is defined.
+  const definedFn = useMemo(
+    () =>
+      definedProp ??
+      (breakAtMissing ? (d: Record<string, unknown>) => typeof d[dataKey] === "number" : undefined),
+    [definedProp, breakAtMissing, dataKey]
+  );
 
   const resolvedStroke = stroke || fill;
 
@@ -1920,7 +2102,7 @@ export function Area({
 
       {animate && (
         <defs>
-          <clipPath id={`grow-clip-area-${dataKey}`}>
+          <clipPath id={growClipId}>
             <rect
               height={innerHeight + 20}
               style={{
@@ -1937,7 +2119,7 @@ export function Area({
         </defs>
       )}
 
-      <g clipPath={animate ? `url(#grow-clip-area-${dataKey})` : undefined}>
+      <g clipPath={animate ? `url(#${growClipId})` : undefined}>
         <motion.g
           animate={{ opacity: isHovering && showHighlight ? 0.6 : 1 }}
           initial={{ opacity: 1 }}
@@ -1947,7 +2129,7 @@ export function Area({
             <AreaClosed
               curve={curve}
               data={data}
-              defined={breakAtMissing ? (d) => typeof d[dataKey] === "number" : undefined}
+              defined={definedFn}
               fill={`url(#${gradientId})`}
               x={(d) => xScale(xAccessor(d)) ?? 0}
               y={getY}
@@ -1973,7 +2155,7 @@ export function Area({
                 <LinePath
                   curve={curve}
                   data={solidData}
-                  defined={breakAtMissing ? (d) => typeof d[dataKey] === "number" : undefined}
+                  defined={definedFn}
                   innerRef={pathRef}
                   stroke={strokePaint}
                   strokeLinecap="round"
@@ -1999,7 +2181,7 @@ export function Area({
                   <LinePath
                     curve={curve}
                     data={data.slice(dashedTailFrom)}
-                    defined={breakAtMissing ? (d) => typeof d[dataKey] === "number" : undefined}
+                    defined={definedFn}
                     stroke={resolvedStroke}
                     strokeDasharray="5 5"
                     strokeLinecap="round"
@@ -2012,6 +2194,24 @@ export function Area({
               </motion.g>
             );
           })()}
+
+          {pointsKey &&
+            data.map((d, i) => {
+              const v = d[pointsKey];
+              if (typeof v !== "number") return null;
+              const cy = yScale(v);
+              if (cy === undefined || !Number.isFinite(cy)) return null;
+              return (
+                <circle
+                  cx={xScale(xAccessor(d)) ?? 0}
+                  cy={cy}
+                  fill={pointFill}
+                  key={`pt-${i}`}
+                  opacity={pointOpacity}
+                  r={pointRadius}
+                />
+              );
+            })}
 
         </motion.g>
       </g>
@@ -2041,6 +2241,66 @@ export function Area({
 }
 
 Area.displayName = "Area";
+
+// ─── ReferenceLine ───────────────────────────────────────────────────────────
+
+export interface ReferenceLineProps {
+  /** The instant to mark. Anything the chart's x accessor understands. */
+  x: Date | number | string;
+  /** Optional caption, drawn as HTML chrome to the LEFT of the line, top. */
+  label?: string;
+  stroke?: string;
+  strokeDasharray?: string;
+}
+
+/**
+ * A vertical annotation at an instant — the performance trend's
+ * "instrument changed here" boundary. Drawn in the crosshair ink, dashed,
+ * with an HTML label in axis chrome so it never scales with the svg.
+ */
+export function ReferenceLine({
+  x,
+  label,
+  stroke = chartCssVars.crosshair,
+  strokeDasharray = "3 4",
+}: ReferenceLineProps) {
+  const { xScale, innerHeight, innerWidth, margin, containerRef } = useChart();
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
+  useEffect(() => {
+    setContainer(containerRef.current);
+  }, [containerRef]);
+
+  const date = x instanceof Date ? x : new Date(x);
+  const px = xScale(date);
+  if (px === undefined || !Number.isFinite(px) || px < 0 || px > innerWidth) return null;
+
+  return (
+    <>
+      <line
+        stroke={stroke}
+        strokeDasharray={strokeDasharray}
+        strokeWidth={1}
+        x1={px}
+        x2={px}
+        y1={0}
+        y2={innerHeight}
+      />
+      {label &&
+        container &&
+        createPortal(
+          <div
+            className="pointer-events-none absolute"
+            style={{ left: margin.left + px - 6, top: margin.top + 2, transform: "translateX(-100%)" }}
+          >
+            <span className="whitespace-nowrap text-neutral-500 text-xs">{label}</span>
+          </div>,
+          container
+        )}
+    </>
+  );
+}
+
+ReferenceLine.displayName = "ReferenceLine";
 
 // ─── Segment Components ──────────────────────────────────────────────────────
 
@@ -2290,6 +2550,20 @@ export interface AreaChartProps {
   // fractional ticks for tiny domains and the integer formatter collapses
   // them into duplicates ("2, 1, 1, 0" on a max-1 day, 04-09-2026).
   integerYTicks?: boolean;
+  /**
+   * Fixed y domain, e.g. [0, 100] for a score whose range IS 0–100 — the
+   * data-derived nice domain would let a week of 55–65 fill the plot and read
+   * as a collapse (the performance trend's reason for refusing the chart).
+   * Pair with `yTicks` for gridlines at meaningful values.
+   */
+  yDomain?: [number, number];
+  /** Explicit tick values (overrides the nice ladder). */
+  yTicks?: number[];
+  /** Lower is better (search position): 0 at the top, the maximum at the bottom. */
+  invertY?: boolean;
+  /** Linked hover — see useChartInteraction. */
+  hoverIndex?: number | null;
+  onHoverChange?: (index: number | null) => void;
   className?: string;
   children: ReactNode;
 }
@@ -2305,6 +2579,11 @@ interface ChartInnerProps {
   animationDuration: number;
   yCap?: number;
   integerYTicks?: boolean;
+  yDomain?: [number, number];
+  yTicks?: number[];
+  invertY?: boolean;
+  hoverIndex?: number | null;
+  onHoverChange?: (index: number | null) => void;
   children: ReactNode;
   containerRef: RefObject<HTMLDivElement | null>;
 }
@@ -2318,6 +2597,11 @@ function ChartInner({
   animationDuration,
   yCap,
   integerYTicks,
+  yDomain,
+  yTicks,
+  invertY = false,
+  hoverIndex,
+  onHoverChange,
   children,
   containerRef,
 }: ChartInnerProps) {
@@ -2390,11 +2674,24 @@ function ChartInner({
       wholes.add(top);
       ticks = Array.from(wholes).sort((a, b) => a - b);
     }
+    let bottom = 0;
+    if (yDomain) {
+      // A fixed frame: the axis claims exactly the range the metric can take.
+      bottom = yDomain[0];
+      top = yDomain[1];
+      ticks = niceYDomain(top - bottom).ticks.map((t) => t + bottom).filter((t) => t <= top);
+      if (ticks[ticks.length - 1] !== top) ticks.push(top);
+    }
+    if (yTicks) ticks = yTicks;
     return {
-      yScale: scaleLinear().range([innerHeight, 0]).domain([0, top]),
+      // invertY: lower is better — 0 sits at the TOP. The area's baseline
+      // (AreaClosed's max range) is then the plot bottom, i.e. the worst value.
+      yScale: scaleLinear()
+        .range(invertY ? [0, innerHeight] : [innerHeight, 0])
+        .domain([bottom, top]),
       yTickValues: ticks,
     };
-  }, [innerHeight, data, lines, yCap, integerYTicks]);
+  }, [innerHeight, data, lines, yCap, integerYTicks, yDomain, yTicks, invertY]);
 
   const dateLabels = useMemo(() => {
     if (data.length < 2) return data.map((d) => xAccessor(d).toLocaleDateString("en-GB", { month: "short", day: "numeric" }));
@@ -2436,6 +2733,8 @@ function ChartInner({
     xAccessor,
     bisectDate,
     canInteract,
+    controlledIndex: hoverIndex,
+    onIndexChange: onHoverChange,
   });
 
   if (width < 10 || height < 10) {
@@ -2483,22 +2782,6 @@ function ChartInner({
   return (
     <ChartProvider value={contextValue}>
       <svg aria-hidden="true" height={height} width={width}>
-        <defs>
-          <clipPath id="chart-area-grow-clip">
-            <rect
-              height={innerHeight + 20}
-              style={{
-                transition: isLoaded
-                  ? "none"
-                  : `width ${animationDuration}ms var(--ease-apple)`,
-              }}
-              width={isLoaded ? innerWidth : 0}
-              x={0}
-              y={0}
-            />
-          </clipPath>
-        </defs>
-
         <rect fill="transparent" height={height} width={width} x={0} y={0} />
 
         <g
@@ -2531,6 +2814,11 @@ export function AreaChart({
   fillParent = false,
   yCap,
   integerYTicks,
+  yDomain,
+  yTicks,
+  invertY,
+  hoverIndex,
+  onHoverChange,
   className = "",
   children,
 }: AreaChartProps) {
@@ -2550,11 +2838,16 @@ export function AreaChart({
             containerRef={containerRef}
             data={data}
             height={height}
+            hoverIndex={hoverIndex}
             integerYTicks={integerYTicks}
+            invertY={invertY}
             margin={margin}
+            onHoverChange={onHoverChange}
             width={width}
             xDataKey={xDataKey}
             yCap={yCap}
+            yDomain={yDomain}
+            yTicks={yTicks}
           >
             {children}
           </ChartInner>
