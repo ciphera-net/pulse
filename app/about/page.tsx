@@ -56,9 +56,9 @@ const companyReceipts: Receipt[] = [
     proof: { label: 'Trust hub', href: 'https://ciphera.net/trust', external: true },
   },
   {
-    title: 'A 5 KB script',
+    title: 'A 2.6 KB script',
     description:
-      'Measured, not rounded: 5 KB gzipped — about 25× lighter than Google Analytics. When it shrinks, this number changes.',
+      'Measured, not rounded: 2.6 KB gzipped — about 55× lighter than Google Analytics. When it shrinks, this number changes.',
     proof: { label: 'Installation', href: '/installation' },
   },
   {
@@ -80,7 +80,7 @@ const companyReceipts: Receipt[] = [
 const vsLinks = [
   { slug: 'google-analytics', label: 'vs Google Analytics', description: 'A cookie-based tool versus a cookieless one, side by side.' },
   { slug: 'plausible', label: 'vs Plausible', description: 'Two privacy-first tools compared honestly — including where we differ.' },
-  { slug: 'matomo', label: 'vs Matomo', description: 'Self-hosted heavyweight versus a 5 KB script.' },
+  { slug: 'matomo', label: 'vs Matomo', description: 'Self-hosted heavyweight versus a 2.6 KB script.' },
   { slug: 'fathom', label: 'vs Fathom', description: 'Feature gates and pricing models, laid out.' },
   { slug: 'simple-analytics', label: 'vs Simple Analytics', description: 'Two EU-minded tools, measured against each other.' },
   { slug: 'umami', label: 'vs Umami', description: 'Open-source options compared: hosted, self-hosted, both.' },
