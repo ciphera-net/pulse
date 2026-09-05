@@ -371,7 +371,7 @@ export function useDashboardGoals(siteId: string, start: string, end: string, fi
   )
 }
 
-// * Hook for campaigns data (used by export modal)
+// * Hook for campaigns data (the Campaigns card's rows and its paged full list)
 /**
  * Campaigns for a CARD — explicit dates, filter-aware, keyed on every argument
  * that changes the answer.
