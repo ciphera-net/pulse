@@ -146,7 +146,7 @@ const ROWS: FeatureRow[] = [
     description:
       'No npm packages, no build steps, no configuration files. Add a single line to your HTML and start collecting privacy-respecting analytics instantly.',
     features: [
-      '5 KB gzipped — 25× lighter than Google Analytics',
+      '2.6 KB gzipped — 55× lighter than Google Analytics',
       'Async loading with defer — never blocks rendering',
       'Works with any framework or static site',
     ],
@@ -159,8 +159,11 @@ const ROWS: FeatureRow[] = [
 // quiet line numbers, brand-orange for attribute names and nothing else. No
 // invented editor chrome (tabs, copy chips, status cells): restraint IS the
 // quality here. The URL is the canonical loader (js.ciphera.net; the /js/
-// variant 307s) and the size is measured, not claimed — the old block said
-// 1.6 KB while the script shipped 5.2 (curl, 06-08-2026).
+// variant 307s) and the size is measured, not claimed. This number has been
+// wrong three times: the block once said 1.6 KB while the script shipped 5.2
+// (curl, 06-08-2026), then 5 KB while it shipped 7.5 (04-09-2026). Since
+// 05-09-2026 the deploy ships the MINIFIED build and CI fails over 3 KB
+// gzipped, so the ceiling is enforced rather than asserted.
 const SCRIPT_LINES: [string, React.ReactNode][] = [
   ['1', <span key="1" className="text-neutral-500">{'<!-- Add before </head> -->'}</span>],
   ['2', <span key="2" className="text-foreground">{'<script'}</span>],
@@ -211,7 +214,7 @@ function ScriptMockup() {
               <span className="h-1.5 w-1.5 bg-green-500" />
               Script detected on ciphera.net
             </span>
-            <span className="tabular-nums">5.5 KB gzipped</span>
+            <span className="tabular-nums">2.6 KB gzipped</span>
           </div>
         </div>
       </MacWindow>
