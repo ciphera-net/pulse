@@ -64,35 +64,35 @@ describe('middleware', () => {
       expect(res.headers.get('Location')).toContain('/login')
     })
 
-    it('allows access with access_token cookie', () => {
-      const res = middleware(createRequest('/sites', { access_token: 'tok' }))
+    it('allows access with the pulse_access cookie (S3, host-only)', () => {
+      const res = middleware(createRequest('/sites', { pulse_access: 'tok' }))
       expect(res.headers.get('Location')).toBeNull()
     })
 
-    it('allows access with refresh_token cookie only', () => {
-      const res = middleware(createRequest('/sites', { refresh_token: 'tok' }))
+    it('allows access with the pulse_refresh cookie only', () => {
+      const res = middleware(createRequest('/sites', { pulse_refresh: 'tok' }))
       expect(res.headers.get('Location')).toBeNull()
     })
   })
 
   describe('auth-only route redirects', () => {
     it('redirects authenticated user from /login to the authed home', () => {
-      const res = middleware(createRequest('/login', { access_token: 'tok' }))
+      const res = middleware(createRequest('/login', { pulse_access: 'tok' }))
       const location = res.headers.get('Location')
       expect(location).not.toBeNull()
       expect(new URL(location!).pathname).toBe('/sites')
     })
 
     it('redirects authenticated user from /signup to the authed home', () => {
-      const res = middleware(createRequest('/signup', { access_token: 'tok' }))
+      const res = middleware(createRequest('/signup', { pulse_access: 'tok' }))
       const location = res.headers.get('Location')
       expect(location).not.toBeNull()
       expect(new URL(location!).pathname).toBe('/sites')
     })
 
-    it('does NOT redirect from /login with only refresh_token (stale session)', () => {
-      const res = middleware(createRequest('/login', { refresh_token: 'tok' }))
-      // Should allow through to /login since only refresh_token is present
+    it('does NOT redirect from /login with only pulse_refresh (stale session)', () => {
+      const res = middleware(createRequest('/login', { pulse_refresh: 'tok' }))
+      // Should allow through to /login since only pulse_refresh is present
       expect(res.headers.get('Location')).toBeNull()
     })
   })

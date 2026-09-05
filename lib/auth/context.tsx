@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSWRConfig } from 'swr'
-import apiRequest, { setRefreshHandler } from '@/lib/api/client'
+import apiRequest, { setAccessToken, setRefreshHandler } from '@/lib/api/client'
 import { LoadingOverlay, useSessionSync, SessionExpiryWarning, useSessionRefresh } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 import { logoutAction, getSessionAction, setSessionAction } from '@/app/actions/auth'
@@ -58,6 +58,23 @@ const AuthContext = createContext<AuthContextType>({
   refreshSession: async () => {},
 })
 
+/**
+ * The session as the server sees it, with the in-memory Bearer primed as a side
+ * effect (per-app sessions S3). The access token is deliberately STRIPPED from
+ * what comes back: every caller stores the result in state and localStorage,
+ * and the token must live in neither — lib/api/client.ts holds it, in memory.
+ */
+type ServerSession = NonNullable<Awaited<ReturnType<typeof getSessionAction>>>
+type SessionUser = Omit<ServerSession, 'access_token'>
+
+async function loadSession(): Promise<SessionUser | null> {
+  const session = await getSessionAction()
+  if (!session) return null
+  const { access_token, ...user } = session
+  setAccessToken(access_token)
+  return user
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
@@ -83,7 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // quietly rotates every ~13 minutes.
   const rehydrateRoleSnapshot = useCallback(async () => {
     try {
-      const session = await getSessionAction()
+      const session = await loadSession()
       if (!session) return
       setUser((prev) => {
         if (!prev) return prev
@@ -121,8 +138,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const cachedUser = localStorage.getItem('user')
       const lastOrgId = cachedUser ? (JSON.parse(cachedUser).org_id ?? '') : ''
 
+      // * The route answers with the new access token in the body; it becomes
+      // * the in-memory Bearer (S3). rehydrateRoleSnapshot primes it too, from
+      // * the cookie — the two say the same thing.
+      const prime = async (r: Response) => {
+        const data = await r.clone().json().catch(() => null)
+        if (typeof data?.access_token === 'string' && data.access_token) setAccessToken(data.access_token)
+      }
+
       const res = await post(lastOrgId)
       if (res.ok) {
+        await prime(res)
         await rehydrateRoleSnapshot()
         return { ok: true, transient: false }
       }
@@ -131,6 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data?.retryable) {
         const retry = await post(lastOrgId)
         if (retry.ok) {
+          await prime(retry)
           await rehydrateRoleSnapshot()
           return { ok: true, transient: false }
         }
@@ -179,15 +206,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     setIsLoggingOut(true)
-    try { await logoutAction() } catch { /* stale build — continue with client-side cleanup */ }
+    // * Signs out of PULSE: its own family at id-backend, its own cookies. The
+    // * ceremony's apex cookies are not ours to expire any more (S3) — the two
+    // * document.cookie deletes that used to live here reached across to the
+    // * estate's csrf_token, and with it the "already signed in" pass-through
+    // * into every other app.
+    try {
+      const outcome = await logoutAction()
+      if (!outcome.revoked && !outcome.already_invalid) {
+        reportClientEvent('logout_unconfirmed', String(outcome.status ?? 'unreachable'))
+      }
+    } catch { /* stale build — continue with client-side cleanup */ }
+    setAccessToken(null)
     localStorage.removeItem('user')
     localStorage.removeItem('ciphera_token_refreshed_at')
     localStorage.removeItem('ciphera_last_activity')
     // * Logout ends with a full navigation to /login, which starts a fresh
     // * attempt. Anything still pending belongs to the session being ended.
     forgetAllPendingAuth()
-    document.cookie = 'csrf_token=; Max-Age=0; path=/;'
-    document.cookie = 'csrf_token=; Max-Age=0; path=/; domain=.ciphera.net;'
     Object.keys(localStorage).forEach((key) => {
       if (key.startsWith('cw_auth_') || key.startsWith('cw_pubsub_')) {
         localStorage.removeItem(key)
@@ -218,7 +254,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = useCallback(async () => {
     try {
-      const session = await getSessionAction()
+      const session = await loadSession()
       const userData = await apiRequest<User>('/auth/user/me')
 
       setUser((prev) => {
@@ -258,9 +294,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         cleanupStaleStorage()
 
         // * 1. Check server-side session (cookies)
-        let session: Awaited<ReturnType<typeof getSessionAction>> = null
+        let session: Awaited<ReturnType<typeof loadSession>> = null
         try {
-          session = await getSessionAction()
+          session = await loadSession()
         } catch {
           // * Stale build — treat as no session. The login page will redirect
           // * to the auth service via window.location.href (full navigation),
@@ -285,7 +321,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const outcome = await refreshDetailed()
             if (outcome.ok) {
               try {
-                session = await getSessionAction()
+                session = await loadSession()
               } catch {
                 // * Stale build — fall through (cache kept: the refresh proved
                 // * the session alive; a full navigation re-hydrates).
@@ -402,12 +438,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (cancelled || probing) return
       probing = true
       try {
-        let session = await getSessionAction().catch(() => null)
+        let session = await loadSession().catch(() => null)
         if (!session) {
           // * No live access token — the refresh cookie may still be good.
           const outcome = await refreshDetailed()
           if (outcome.ok) {
-            session = await getSessionAction().catch(() => null)
+            session = await loadSession().catch(() => null)
           }
         }
         if (!cancelled && session) {
@@ -452,6 +488,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // * Sync session across browser tabs using BroadcastChannel
   useSessionSync({
     onLogout: () => {
+      setAccessToken(null)
       localStorage.removeItem('user')
       localStorage.removeItem('ciphera_token_refreshed_at')
       localStorage.removeItem('ciphera_last_activity')
@@ -537,9 +574,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
              
              try {
                  const { access_token } = await switchContext(firstOrg.organization_id)
-                 
-                 // * Update session cookie
+
+                 // * Update the session cookie, and the in-memory Bearer with it.
                  const result = await setSessionAction(access_token)
+                 if (result.success) setAccessToken(access_token)
                  if (result.success && result.user) {
                      try {
                        const fullProfile = await apiRequest<{ id: string; email: string; display_name?: string; totp_enabled: boolean; org_id?: string; role?: string }>('/auth/user/me')

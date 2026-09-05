@@ -29,7 +29,12 @@ vi.mock('@/lib/api/oauth-store', () => ({
 }))
 
 vi.mock('@/lib/api/oauth', () => ({ initiateOAuthFlow: vi.fn() }))
-vi.mock('@/lib/api/client', () => ({ default: vi.fn().mockRejectedValue(new Error('no profile')) }))
+const setAccessToken = vi.fn()
+vi.mock('@/lib/api/client', () => ({
+  default: vi.fn().mockRejectedValue(new Error('no profile')),
+  // S3: the callback primes the in-memory Bearer with the exchange's token.
+  setAccessToken: (t: string | null) => setAccessToken(t),
+}))
 vi.mock('@/lib/cdn', () => ({ cdnUrl: (p: string) => p }))
 vi.mock('@/lib/utils/logger', () => ({ logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() } }))
 
@@ -89,11 +94,14 @@ describe('auth callback — pending attempt missing', () => {
 
   it('a valid attempt still exchanges normally', async () => {
     claimPendingAuth.mockReturnValue({ verifier: 'V', createdAt: Date.now() })
-    exchangeAuthCode.mockResolvedValue({ success: true, user: { id: 'u1', org_id: 'o1', role: 'owner' } })
+    exchangeAuthCode.mockResolvedValue({ success: true, user: { id: 'u1', org_id: 'o1', role: 'owner' }, access_token: 'tok-from-exchange' })
 
     render(<AuthCallback />)
 
     await waitFor(() => expect(exchangeAuthCode).toHaveBeenCalledWith('CODE', 'V', expect.any(String)))
     expect(getSessionAction).not.toHaveBeenCalled()
+    // S3: the token the exchange returned becomes the in-memory Bearer BEFORE
+    // the profile call, or /auth/user/me would go out with no credential.
+    await waitFor(() => expect(setAccessToken).toHaveBeenCalledWith('tok-from-exchange'))
   })
 })
