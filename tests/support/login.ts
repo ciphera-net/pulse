@@ -238,5 +238,20 @@ export async function login(page: Page, baseURL: string): Promise<void> {
     await page.waitForURL((url) => !onIdOrigin(url.toString()), { timeout: 60_000 })
   }
 
+  // * 🔴 LEAVING THE ID ORIGIN IS NOT BEING SIGNED IN.
+  // * The redirect back lands on /auth/callback, which is the app origin but has
+  // * done nothing yet: the page still has to run the code exchange, and only
+  // * then does it navigate into the app. Returning here — which "back on the app
+  // * origin" literally allows — hands the caller a browser whose session cookies
+  // * have not been written, so every assertion about them races the exchange.
+  // * Measured against production 05-09-2026: the jar was read while the exchange
+  // * was still in flight, the run failed on a missing `pulse_refresh`, and
+  // * id-backend's own tables showed the family minted the same second.
+  await page
+    .waitForURL((url) => !onIdOrigin(url.toString()) && !url.pathname.startsWith('/auth/callback'), {
+      timeout: 60_000,
+    })
+    .catch(() => {})
+
   await page.waitForLoadState('networkidle').catch(() => {})
 }
