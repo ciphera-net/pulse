@@ -143,16 +143,12 @@ describe('FleetCard', () => {
     const a = render(
       <FleetCard site={makeSite({ is_verified: true })} overview={overview} overviewError={false} />
     )
-    // useId tokens are render-instance identity, not content: the sparkline's
-    // gradient id differs between two roots by construction. Normalise them so
-    // the comparison stays about what is_verified does (nothing).
-    const stripIds = (html: string) => html.replace(/id="[^"]+"/g, 'id="ID"').replace(/url\(#[^)]+\)/g, 'url(#ID)')
-    const verifiedHtml = stripIds(a.container.innerHTML)
+    const verifiedHtml = a.container.innerHTML
     a.unmount()
     const b = render(
       <FleetCard site={makeSite({ is_verified: false })} overview={overview} overviewError={false} />
     )
-    expect(stripIds(b.container.innerHTML)).toBe(verifiedHtml)
+    expect(b.container.innerHTML).toBe(verifiedHtml)
   })
 
   it('shows the capture from the VERY TOP of the page, full-bleed', () => {

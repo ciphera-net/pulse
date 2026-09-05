@@ -50,14 +50,3 @@ process.env.NEXT_PUBLIC_ID_API_URL  ??= 'http://test.invalid/id-api'
 process.env.NEXT_PUBLIC_CAPTCHA_API_URL ??= 'http://test.invalid/captcha/api/v1'
 
 import '@testing-library/jest-dom/vitest'
-
-// 🔴 A 1-SECOND waitFor IS A LOAD TEST, NOT A CORRECTNESS TEST (06-09-2026).
-// testing-library's default asyncUtilTimeout is 1000ms. The full suite takes
-// ~780s on the CI runner (a shared BuildKit host; the environment phase alone
-// measured 906s), and SitePrivacyTab.visitorViews' `waitFor(getByText(...))`
-// timed out there while passing every time in isolation — it gated the
-// staging deploy of a change that never touched settings. Raise the ceiling
-// once, here, for every waitFor: a real regression still fails (the element
-// never appears); only a slow render stops counting as one.
-import { configure } from '@testing-library/react'
-configure({ asyncUtilTimeout: 5000 })

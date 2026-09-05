@@ -267,11 +267,6 @@ export function ParentSize({ debounceTime = 0, children }: ParentSizeProps) {
   useEffect(() => {
     if (!ref.current) return;
     update();
-    // No ResizeObserver (jsdom, very old browsers): measure once and stop.
-    // Throwing here made every page test that mounts a chart fail on a
-    // ReferenceError rather than on what it was testing (chart-consistency
-    // round, 05-09-2026 — the performance page was the first).
-    if (typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(() => {
       if (debounceTime > 0) {
         clearTimeout(timeoutRef.current);

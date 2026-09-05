@@ -1,7 +1,13 @@
 'use client'
 
-import { Sparkline } from '@/components/ui/sparkline'
+import { curveMonotoneX } from 'd3-shape'
+import { LinePath, AreaClosed } from '@/lib/charts/primitives'
 import type { SiteOverviewDay } from '@/lib/api/sites'
+
+const VIEW_W = 100
+const VIEW_H = 64
+const PAD_TOP = 10
+const PAD_BOTTOM = 6
 
 interface FleetSparklineProps {
   days: SiteOverviewDay[]
@@ -11,28 +17,47 @@ interface FleetSparklineProps {
 
 /**
  * The Fleet Deck card's 7-day ghost sparkline — rides the scrim full-bleed.
- * Drawn by the shared mini core (components/ui/sparkline.tsx) since the
- * chart-consistency round (05-09-2026): linear joins, zero-based scale,
- * gradient to the floor, and the dashed tail on the final bucket — the
- * overview window is the server's "today-6 … today" (lib/api/sites.ts), so
- * the last point is ALWAYS the in-progress day; no client date math decides
- * that. Decorative (aria-hidden, pointer-events-none): the card's one number
- * is the datum; this is its shape. One opacity channel, on the svg.
+ * curveMonotoneX via d3-shape, the same curve as every shipped chart. Decorative
+ * (aria-hidden): the card's one number is the datum; this is its shape.
  */
 export function FleetSparkline({ days, dim = false }: FleetSparklineProps) {
   if (days.length < 2) return null
+  const max = Math.max(...days.map((d) => d.visitors), 1)
+  const step = VIEW_W / (days.length - 1)
+  const x = (_: SiteOverviewDay, i: number) => i * step
+  const y = (d: SiteOverviewDay) =>
+    VIEW_H - PAD_BOTTOM - (d.visitors / max) * (VIEW_H - PAD_TOP - PAD_BOTTOM)
+
   return (
-    <Sparkline
-      active={!dim}
-      className={`pointer-events-none absolute inset-x-0 bottom-0 h-16 w-full transition-opacity duration-base ease-apple ${
-        dim ? 'opacity-50' : 'opacity-60 group-hover:opacity-80'
+    <svg
+      viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+      preserveAspectRatio="none"
+      aria-hidden
+      className={`pointer-events-none absolute inset-x-0 bottom-0 h-16 w-full opacity-80 ${
+        dim ? 'text-neutral-600' : 'text-brand-orange'
       }`}
-      dashedTail
-      height={64}
-      padBottom={6}
-      padTop={10}
-      restHoverInk={false}
-      values={days.map((d) => d.visitors)}
-    />
+    >
+      <AreaClosed
+        data={days}
+        x={x}
+        y={y}
+        yScale={{ range: () => [0, VIEW_H] }}
+        curve={curveMonotoneX}
+        fill="currentColor"
+        fillOpacity={dim ? 0.08 : 0.1}
+      />
+      <LinePath
+        data={days}
+        x={x}
+        y={y}
+        curve={curveMonotoneX}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        opacity={0.55}
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
   )
 }
