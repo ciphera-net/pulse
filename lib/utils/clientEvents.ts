@@ -24,6 +24,17 @@ export type ClientEventName =
   | 'session_takeover_rendered'
   /** A sign-out id-backend did not confirm (S3: Pulse's own revocation). Detail = status or 'unreachable'. */
   | 'logout_unconfirmed'
+  /**
+   * The authorization-code exchange failed. Detail = id-backend's own `error` code
+   * (`invalid_grant`, `invalid_client`, …) or `http_<status>` when the body carried none.
+   * 🔴 The raw code, not our mapped type: a misconfigured redirect_uri and a spent code
+   * both render as "expired" on screen, and only this detail tells them apart.
+   */
+  | 'oauth_exchange_failed'
+  /** The callback arrived with no `code` parameter — ID never sent one, or a prefetch/direct visit. */
+  | 'oauth_callback_no_code'
+  /** The callback's `state` matched no pending attempt on this device. */
+  | 'oauth_callback_no_pending_attempt'
 
 export function reportClientEvent(name: ClientEventName, detail?: string): void {
   if (typeof window === 'undefined') return
