@@ -42,6 +42,7 @@ labels:
 
 depends_on:
   - push
+  - test
 
 when:
   - event: push
