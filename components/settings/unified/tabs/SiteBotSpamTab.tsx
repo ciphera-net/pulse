@@ -120,9 +120,13 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
           // Fixed 3-up: an auto-fill track left a trailing empty filler tile
           // beside the three real stats (§2.2 RailGrid).
           <RailGrid columns={3}>
+            {/* Owner decision 05-09-2026 (§7.0 #5): three counts of the SAME thing at three
+                windows — all time, seven days, one day. "Kinds of bot" counted verdict families,
+                which is structurally 1–6 and read 2 on every site: the least informative number on
+                the panel. The spec named the tiles and their order, which replaced the options round. */}
             <StatTile value={botStats.total_quarantined ?? 0} label="Excluded from your stats" />
+            <StatTile value={botStats.last_7d ?? 0} label="In the last 7 days" />
             <StatTile value={botStats.last_24h ?? 0} label="In the last 24 hours" />
-            <StatTile value={Object.keys(botStats.by_reason || {}).length} label="Kinds of bot" />
           </RailGrid>
         ) : (
           <RailGrid columns={3}>

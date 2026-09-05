@@ -80,13 +80,14 @@ describe('SiteBotSpamTab', () => {
 
     expect(screen.getByText('42')).toBeInTheDocument()
     expect(screen.getByText('7')).toBeInTheDocument()
-    // Kinds of bot = keys of by_reason (a, b) = 2.
-    expect(screen.getByText('2')).toBeInTheDocument()
 
     expect(screen.getByText('Excluded traffic')).toBeInTheDocument()
     expect(screen.getByText('Excluded from your stats')).toBeInTheDocument()
+    expect(screen.getByText('In the last 7 days')).toBeInTheDocument()
     expect(screen.getByText('In the last 24 hours')).toBeInTheDocument()
-    expect(screen.getByText('Kinds of bot')).toBeInTheDocument()
+    // Owner decision 05-09-2026: the family count is gone; the three tiles are one thing at three windows.
+    expect(screen.queryByText('Kinds of bot')).not.toBeInTheDocument()
+    expect(screen.getByText('10')).toBeInTheDocument() // last_7d from the fixture
 
     // The old vocabulary must not survive anywhere on the panel.
     expect(screen.queryByText('Quarantine activity')).not.toBeInTheDocument()
