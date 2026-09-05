@@ -50,3 +50,24 @@ process.env.NEXT_PUBLIC_ID_API_URL  ??= 'http://test.invalid/id-api'
 process.env.NEXT_PUBLIC_CAPTCHA_API_URL ??= 'http://test.invalid/captcha/api/v1'
 
 import '@testing-library/jest-dom/vitest'
+import { configure } from '@testing-library/react'
+
+// 🔴 THE HARNESS HAS TWO BUDGETS, AND vitest.config.ts RAISES ONLY ONE OF THEM.
+//
+// vitest.config.ts already lifts testTimeout/hookTimeout to 20 s in CI, for the
+// reason written there: the test pod requests 500m CPU and waitFor budgets
+// starve. But Testing Library's `findBy*` / `waitFor` run on THEIR OWN default —
+// asyncUtilTimeout = 1000 ms — which that config cannot reach. Measured
+// 05-09-2026, five pipelines in a row with 2–4 suites sharing one agent node:
+//   1478/1479/1481  SitePrivacyTab.visitorViews  (waitFor → getByText)
+//   1482            setup/done page              (findByText)
+//   1483            AccountDevicesTab             (findByText, died at 1266 ms)
+// Four different files, none touched by any of the diffs, every one green in
+// its own PR run minutes earlier. That is the 1 s ceiling meeting a starved
+// CPU, not four bugs.
+//
+// Raise it in CI only, to the same order as the vitest budgets: an assertion
+// that never becomes true still fails, just against a budget the pod can meet;
+// local runs keep the sharp 1 s default so real slowness is felt where a human
+// is watching. (Woodpecker sets CI=woodpecker.)
+if (process.env.CI) configure({ asyncUtilTimeout: 10_000 })

@@ -62,8 +62,15 @@ vi.mock('@/lib/api/performance', () => ({ updatePerformanceConfig: vi.fn() }))
 
 beforeEach(() => updateSite.mockClear())
 
+// The tab is imported at module level, not inside the tests: vitest hoists the
+// vi.mock() calls above every import, so the mocks are in place either way, but
+// a dynamic `await import()` inside a test charges the whole module graph's load
+// (this tab pulls in most of the settings shell) to that test's 20 s CI budget —
+// which is exactly where it died three pipelines running, 05-09-2026, on runs
+// that never touched this file. The import phase has no per-test clock.
+import SitePrivacyTab from '../SitePrivacyTab'
+
 async function renderTab() {
-  const { default: SitePrivacyTab } = await import('../SitePrivacyTab')
   return render(<SitePrivacyTab siteId="s1" />)
 }
 
