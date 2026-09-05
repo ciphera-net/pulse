@@ -8,6 +8,9 @@ import {
 } from '../oauth-store'
 
 const T0 = 1_700_000_000_000
+// * The redirect_uri an attempt sends at authorize. Stored with the attempt so the
+// * exchange can send the same bytes back — id-backend compares them exactly.
+const RURI = 'https://pulse.ciphera.net/auth/callback'
 
 beforeEach(() => {
   localStorage.clear()
@@ -17,8 +20,8 @@ describe('oauth-store — concurrent attempts', () => {
   it('keeps every attempt separately, so a later one cannot clobber an earlier one', () => {
     // * The reported failure: /login mounts twice (logout redirect, then a return
     // * through Pulse). Attempt A must still complete after B has started.
-    rememberPendingAuth('state-A', 'verifier-A', T0)
-    rememberPendingAuth('state-B', 'verifier-B', T0 + 1_000)
+    rememberPendingAuth('state-A', 'verifier-A', RURI, T0)
+    rememberPendingAuth('state-B', 'verifier-B', RURI, T0 + 1_000)
 
     expect(claimPendingAuth('state-A', T0 + 2_000)?.verifier).toBe('verifier-A')
     expect(claimPendingAuth('state-B', T0 + 2_000)?.verifier).toBe('verifier-B')
@@ -26,7 +29,7 @@ describe('oauth-store — concurrent attempts', () => {
 
   it('resolves the right verifier with many attempts in flight', () => {
     for (let i = 0; i < 5; i++) {
-      rememberPendingAuth(`state-${i}`, `verifier-${i}`, T0 + i)
+      rememberPendingAuth(`state-${i}`, `verifier-${i}`, RURI, T0 + i)
     }
     // * Deliberately out of order — completion order is not start order.
     expect(claimPendingAuth('state-3', T0 + 10)?.verifier).toBe('verifier-3')
@@ -35,8 +38,8 @@ describe('oauth-store — concurrent attempts', () => {
   })
 
   it('does not disturb other attempts when one is claimed', () => {
-    rememberPendingAuth('state-A', 'verifier-A', T0)
-    rememberPendingAuth('state-B', 'verifier-B', T0)
+    rememberPendingAuth('state-A', 'verifier-A', RURI, T0)
+    rememberPendingAuth('state-B', 'verifier-B', RURI, T0)
 
     claimPendingAuth('state-A', T0 + 1_000)
 
@@ -46,7 +49,7 @@ describe('oauth-store — concurrent attempts', () => {
 
 describe('oauth-store — unknown and forged state', () => {
   it('returns null for a state that was never issued', () => {
-    rememberPendingAuth('state-A', 'verifier-A', T0)
+    rememberPendingAuth('state-A', 'verifier-A', RURI, T0)
     // * The negative control. A forged state must not resolve to some other
     // * attempt's verifier, and must not fall through to "no validation needed".
     expect(claimPendingAuth('forged-state', T0)).toBeNull()
@@ -57,7 +60,7 @@ describe('oauth-store — unknown and forged state', () => {
   })
 
   it('never stores an attempt under an empty state', () => {
-    rememberPendingAuth('', 'verifier-A', T0)
+    rememberPendingAuth('', 'verifier-A', RURI, T0)
     expect(localStorage.getItem('oauth_pending:')).toBeNull()
   })
 
@@ -86,17 +89,17 @@ describe('oauth-store — unknown and forged state', () => {
 
 describe('oauth-store — expiry by age', () => {
   it('accepts an attempt just inside the window', () => {
-    rememberPendingAuth('state-A', 'verifier-A', T0)
+    rememberPendingAuth('state-A', 'verifier-A', RURI, T0)
     expect(claimPendingAuth('state-A', T0 + PENDING_MAX_AGE_MS)?.verifier).toBe('verifier-A')
   })
 
   it('rejects an attempt past the window', () => {
-    rememberPendingAuth('state-A', 'verifier-A', T0)
+    rememberPendingAuth('state-A', 'verifier-A', RURI, T0)
     expect(claimPendingAuth('state-A', T0 + PENDING_MAX_AGE_MS + 1)).toBeNull()
   })
 
   it('rejects an entry created in the future (clock change or tampering)', () => {
-    rememberPendingAuth('state-A', 'verifier-A', T0 + 60_000)
+    rememberPendingAuth('state-A', 'verifier-A', RURI, T0 + 60_000)
     expect(claimPendingAuth('state-A', T0)).toBeNull()
   })
 
@@ -104,7 +107,7 @@ describe('oauth-store — expiry by age', () => {
     // * The silent security bug: cleanup keyed on route deleted the in-flight
     // * keys whenever the user touched any page that was not the callback, so
     // * the callback then skipped state validation entirely.
-    rememberPendingAuth('state-A', 'verifier-A', T0)
+    rememberPendingAuth('state-A', 'verifier-A', RURI, T0)
 
     prunePendingAuth(T0 + 1_000) // an app init on some other route, mid-flow
 
@@ -112,8 +115,8 @@ describe('oauth-store — expiry by age', () => {
   })
 
   it('prune drops only the aged-out attempts', () => {
-    rememberPendingAuth('old', 'verifier-old', T0)
-    rememberPendingAuth('fresh', 'verifier-fresh', T0 + PENDING_MAX_AGE_MS)
+    rememberPendingAuth('old', 'verifier-old', RURI, T0)
+    rememberPendingAuth('fresh', 'verifier-fresh', RURI, T0 + PENDING_MAX_AGE_MS)
 
     prunePendingAuth(T0 + PENDING_MAX_AGE_MS + 1)
 
@@ -124,7 +127,7 @@ describe('oauth-store — expiry by age', () => {
   it('prune removes every aged-out attempt, not just the first', () => {
     // * Guards the index-shift bug: removing while walking localStorage by index
     // * skips entries, which would leave stale attempts behind.
-    for (let i = 0; i < 6; i++) rememberPendingAuth(`old-${i}`, `v-${i}`, T0)
+    for (let i = 0; i < 6; i++) rememberPendingAuth(`old-${i}`, `v-${i}`, RURI, T0)
 
     prunePendingAuth(T0 + PENDING_MAX_AGE_MS + 1)
 
@@ -135,14 +138,14 @@ describe('oauth-store — expiry by age', () => {
 
 describe('oauth-store — single use', () => {
   it('consumes the entry so a replayed callback URL cannot be exchanged twice', () => {
-    rememberPendingAuth('state-A', 'verifier-A', T0)
+    rememberPendingAuth('state-A', 'verifier-A', RURI, T0)
 
     expect(claimPendingAuth('state-A', T0)?.verifier).toBe('verifier-A')
     expect(claimPendingAuth('state-A', T0)).toBeNull()
   })
 
   it('consumes an expired entry too', () => {
-    rememberPendingAuth('state-A', 'verifier-A', T0)
+    rememberPendingAuth('state-A', 'verifier-A', RURI, T0)
     claimPendingAuth('state-A', T0 + PENDING_MAX_AGE_MS + 1)
     expect(localStorage.getItem('oauth_pending:state-A')).toBeNull()
   })
@@ -150,8 +153,8 @@ describe('oauth-store — single use', () => {
 
 describe('oauth-store — housekeeping', () => {
   it('forgets every attempt on demand (logout, restarting a failed sign-in)', () => {
-    rememberPendingAuth('state-A', 'verifier-A', T0)
-    rememberPendingAuth('state-B', 'verifier-B', T0)
+    rememberPendingAuth('state-A', 'verifier-A', RURI, T0)
+    rememberPendingAuth('state-B', 'verifier-B', RURI, T0)
 
     forgetAllPendingAuth()
 
@@ -172,7 +175,7 @@ describe('oauth-store — housekeeping', () => {
   it('leaves unrelated storage alone', () => {
     localStorage.setItem('user', '{"id":"u1"}')
     localStorage.setItem('pulse_auth_return_to', '/sites')
-    rememberPendingAuth('state-A', 'verifier-A', T0)
+    rememberPendingAuth('state-A', 'verifier-A', RURI, T0)
 
     forgetAllPendingAuth()
 
@@ -180,3 +183,59 @@ describe('oauth-store — housekeeping', () => {
     expect(localStorage.getItem('pulse_auth_return_to')).toBe('/sites')
   })
 })
+
+// ---------------------------------------------------------------------------
+// The redirect_uri travels WITH the attempt.
+//
+// 🔴 id-backend compares the exchange's redirect_uri against the one recorded at
+// authorize using Go's `!=` — no trailing-slash normalisation, no scheme
+// coercion — and answers 400 `invalid_grant` on any difference, which Pulse
+// renders as "This sign-in link has expired". Before 05-09-2026 the value was
+// computed twice from two different sources (a build-time APP_URL at authorize,
+// window.location.origin at the exchange) and agreed only by coincidence. These
+// pin that it is stored once and read back, never derived a second time.
+// ---------------------------------------------------------------------------
+describe('the redirect_uri is remembered, not recomputed', () => {
+  it('returns the exact string the attempt was started with', () => {
+    rememberPendingAuth('state-A', 'verifier-A', RURI, T0)
+    expect(claimPendingAuth('state-A', T0 + 1_000)?.redirectUri).toBe(RURI)
+  })
+
+  it('keeps each concurrent attempt on its own origin', () => {
+    // Two tabs, two hosts, two attempts in the one shared localStorage.
+    rememberPendingAuth('state-A', 'verifier-A', 'https://pulse.ciphera.net/auth/callback', T0)
+    rememberPendingAuth('state-B', 'verifier-B', 'https://pulse-staging.ciphera.net/auth/callback', T0)
+    expect(claimPendingAuth('state-B', T0)?.redirectUri).toBe('https://pulse-staging.ciphera.net/auth/callback')
+    expect(claimPendingAuth('state-A', T0)?.redirectUri).toBe('https://pulse.ciphera.net/auth/callback')
+  })
+
+  it('reads an attempt written before this shipped as having no redirect_uri, not as a broken entry', () => {
+    // The exact shape the previous release wrote. It must still be claimable —
+    // the callback recovers what that release sent — and it must report the
+    // field as absent rather than inventing a value.
+    localStorage.setItem(
+      'oauth_pending:legacy',
+      JSON.stringify({ verifier: 'verifier-legacy', createdAt: T0 }),
+    )
+    const claimed = claimPendingAuth('legacy', T0 + 1_000)
+    expect(claimed?.verifier).toBe('verifier-legacy')
+    expect(claimed?.redirectUri).toBeUndefined()
+  })
+
+  it('treats a non-string redirect_uri as absent rather than passing it through', () => {
+    localStorage.setItem(
+      'oauth_pending:tampered',
+      JSON.stringify({ verifier: 'v', createdAt: T0, redirectUri: 42 }),
+    )
+    expect(claimPendingAuth('tampered', T0)?.redirectUri).toBeUndefined()
+  })
+
+  it('treats an empty redirect_uri as absent — an empty string is not an origin', () => {
+    localStorage.setItem(
+      'oauth_pending:empty',
+      JSON.stringify({ verifier: 'v', createdAt: T0, redirectUri: '' }),
+    )
+    expect(claimPendingAuth('empty', T0)?.redirectUri).toBeUndefined()
+  })
+})
+

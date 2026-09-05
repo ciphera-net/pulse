@@ -29,6 +29,22 @@ export interface PendingAuthAttempt {
   verifier: string
   /** Epoch ms the attempt started — the only expiry input. */
   createdAt: number
+  /**
+   * The EXACT `redirect_uri` string sent to the authorization server for this
+   * attempt, so the token exchange can send the same bytes back.
+   *
+   * 🔴 id-backend compares `authCode.RedirectURI != req.RedirectURI` with Go's
+   * `!=` — no trailing-slash normalisation, no scheme coercion — and answers
+   * `400 invalid_grant` on any difference. Pulse used to compute the value
+   * twice: a build-time `APP_URL` at authorize, `window.location.origin` at
+   * exchange. Two computations that must agree byte-for-byte will eventually
+   * not, and the failure renders as "This sign-in link has expired", which is
+   * a configuration error wearing a spent code's clothes.
+   *
+   * Optional only for an attempt written before this shipped; see
+   * `LEGACY_AUTHORIZE_REDIRECT_URI` at the callback.
+   */
+  redirectUri?: string
 }
 
 // * localStorage throws in private browsing and when storage is disabled. Every
@@ -52,11 +68,15 @@ function parseEntry(raw: string | null): PendingAuthAttempt | null {
   try {
     const parsed = JSON.parse(raw) as unknown
     if (typeof parsed !== 'object' || parsed === null) return null
-    const { verifier, createdAt } = parsed as Partial<PendingAuthAttempt>
+    const { verifier, createdAt, redirectUri } = parsed as Partial<PendingAuthAttempt>
     // * A malformed entry is treated as absent, never as a permissive default.
     if (typeof verifier !== 'string' || verifier.length === 0) return null
     if (typeof createdAt !== 'number' || !Number.isFinite(createdAt)) return null
-    return { verifier, createdAt }
+    // * An entry from before redirectUri was stored parses fine and reports the
+    // * field as absent — the caller decides what that means. A present-but-wrong
+    // * type is treated as absent rather than passed through.
+    const uri = typeof redirectUri === 'string' && redirectUri.length > 0 ? redirectUri : undefined
+    return uri ? { verifier, createdAt, redirectUri: uri } : { verifier, createdAt }
   } catch {
     return null
   }
@@ -102,10 +122,11 @@ export function prunePendingAuth(now: number = Date.now()): void {
   }
 }
 
-/** Record an attempt so the callback can find its verifier by `state`. */
+/** Record an attempt so the callback can find its verifier AND its redirect_uri by `state`. */
 export function rememberPendingAuth(
   state: string,
   verifier: string,
+  redirectUri: string,
   now: number = Date.now()
 ): void {
   const store = storage()
@@ -113,7 +134,7 @@ export function rememberPendingAuth(
   // * Bound growth: abandoned attempts are collected as new ones are started.
   prunePendingAuth(now)
   try {
-    const entry: PendingAuthAttempt = { verifier, createdAt: now }
+    const entry: PendingAuthAttempt = { verifier, createdAt: now, redirectUri }
     store.setItem(keyFor(state), JSON.stringify(entry))
   } catch {
     // * Quota or disabled storage. The callback will report a stale attempt
