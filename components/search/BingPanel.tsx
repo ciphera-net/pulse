@@ -115,6 +115,7 @@ export default function BingPanel({
         rows={rows}
         series={series}
         granularity={granularity}
+        rangeEnd={dateRange.end}
         active={active}
         onToggle={toggleMetric}
         isValidating={overviewValidating && !!overview}
