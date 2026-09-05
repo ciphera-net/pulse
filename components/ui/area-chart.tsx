@@ -2195,8 +2195,23 @@ export function Area({
             );
           })()}
 
+          {/* An isolated measured bucket between two gaps draws no segment —
+              it still deserves a mark (the r=3 single-point rule, per gap). */}
+          {definedFn &&
+            data.map((d, i) => {
+              if (!definedFn(d)) return null;
+              const prevDefined = i > 0 && definedFn(data[i - 1]);
+              const nextDefined = i < data.length - 1 && definedFn(data[i + 1]);
+              if (prevDefined || nextDefined) return null;
+              const y = getY(d);
+              return Number.isFinite(y) ? (
+                <circle cx={xScale(xAccessor(d)) ?? 0} cy={y} fill={resolvedStroke} key={`iso-${i}`} r={2} />
+              ) : null;
+            })}
+
           {pointsKey &&
             data.map((d, i) => {
+              if (definedFn && !definedFn(d)) return null;
               const v = d[pointsKey];
               if (typeof v !== "number") return null;
               const cy = yScale(v);
