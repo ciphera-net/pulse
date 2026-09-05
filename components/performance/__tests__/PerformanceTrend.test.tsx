@@ -1,7 +1,41 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render } from '@testing-library/react'
-import { PerformanceTrend, trailingMedian, provenanceBoundary } from '../PerformanceTrend'
 import type { PerformanceCheck } from '@/lib/api/performance'
+
+// The trend renders on the shared instrument (chart-consistency round,
+// 05-09-2026). jsdom measures nothing, so ParentSize is mocked to 800×300 and
+// the path prototype gets the geometry stubs the instrument's own suites use.
+vi.stubGlobal('ResizeObserver', class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+})
+const SvgPathProto = (globalThis as unknown as { SVGPathElement?: { prototype: object } }).SVGPathElement?.prototype
+  ?? Object.getPrototypeOf(document.createElementNS('http://www.w3.org/2000/svg', 'path'))
+Object.assign(SvgPathProto, {
+  getTotalLength: () => 800,
+  getPointAtLength: (l: number) => ({ x: l, y: 0 }),
+})
+vi.mock('@/lib/charts/primitives', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('@/lib/charts/primitives')>()
+  return {
+    ...mod,
+    ParentSize: ({ children }: { children: (size: { width: number; height: number }) => React.ReactNode }) =>
+      <div>{children({ width: 800, height: 300 })}</div>,
+  }
+})
+
+import { PerformanceTrend, trailingMedian, provenanceBoundary } from '../PerformanceTrend'
+
+// Instrument geometry under the mock: margin {top 20, right 20, bottom 40,
+// left 50} → inner height 240; y(v) = 240 · (1 − v/100) in inner coordinates.
+const INNER_H = 300 - 20 - 40
+const yOf = (v: number) => INNER_H * (1 - v / 100)
+const sampleDots = (c: HTMLElement) => [...c.querySelectorAll('circle[r="1.8"]')] as SVGCircleElement[]
+const medianLine = (c: HTMLElement) =>
+  [...c.querySelectorAll('path')].find(
+    p => p.getAttribute('fill') === 'none' && p.getAttribute('stroke') === 'var(--chart-1)' && !p.getAttribute('stroke-dasharray'),
+  )
 
 // The old chart auto-scaled its y axis, so a 71→91 swing between two single
 // runs of an UNCHANGED page filled the plot and read as a collapse. These tests
@@ -129,26 +163,24 @@ describe('PerformanceTrend', () => {
     // This IS the fix. With an auto-scaled axis these two points would sit at
     // the very top and very bottom of the chart.
     const { container } = render(<PerformanceTrend checks={series([71, 91])} timezone={null} />)
-    const labels = [...container.querySelectorAll('text')]
-      .map(t => t.textContent)
-      .filter(t => t && /^\d+$/.test(t))
+    // The axis is HTML chrome on the instrument (spans, not svg text).
+    const labels = [...container.querySelectorAll('span.tabular-nums')].map(t => t.textContent)
     expect(labels).toEqual(['0', '50', '90', '100'])
 
     // And geometrically: neither dot may touch the top or bottom of the plot,
     // because 71 and 91 are nowhere near 0 or 100.
-    const dots = [...container.querySelectorAll('circle')] as SVGCircleElement[]
+    const dots = sampleDots(container)
     expect(dots.length).toBe(2)
     const cys = dots.map(d => Number(d.getAttribute('cy')))
-    // padT=12, plot height 202 => y(100)=12, y(0)=214.
     for (const cy of cys) {
-      expect(cy).toBeGreaterThan(12)
-      expect(cy).toBeLessThan(214)
+      expect(cy).toBeGreaterThan(yOf(100))
+      expect(cy).toBeLessThan(yOf(0))
     }
-    // 91 must sit ABOVE 71 (smaller y), and the gap must be ~20% of the plot,
+    // 91 must sit ABOVE 71 (smaller y), and the gap must be 20% of the plot,
     // not the whole of it.
     const gap = Math.abs(cys[0] - cys[1])
-    expect(gap).toBeGreaterThan(30)
-    expect(gap).toBeLessThan(50)
+    expect(gap).toBeCloseTo(yOf(71) - yOf(91), 3)
+    expect(gap).toBeLessThan(INNER_H * 0.25)
   })
 
   it('draws the LINE from the median and the DOTS from the raw scores', () => {
@@ -162,7 +194,7 @@ describe('PerformanceTrend', () => {
     // the line must not.
     const { container } = render(<PerformanceTrend checks={series([80, 80, 80, 80, 80, 60, 80])} timezone={null} />)
 
-    const linePath = container.querySelector('path[fill="none"]')
+    const linePath = medianLine(container)
     expect(linePath).toBeTruthy()
     const ys = (linePath!.getAttribute('d') ?? '')
       .replace(/^M/, '')
@@ -170,26 +202,24 @@ describe('PerformanceTrend', () => {
       .map(pair => Number(pair.split(',')[1]))
     expect(ys.length).toBe(7)
 
-    const dots = [...container.querySelectorAll('circle')] as SVGCircleElement[]
-    const dotYs = dots.map(d => Number(d.getAttribute('cy')))
+    const dotYs = sampleDots(container).map(d => Number(d.getAttribute('cy')))
 
-    // y is pinned 0-100 over the plot: padT=12, plot height 202, so a LOWER
-    // score sits FURTHER DOWN (a larger y).
+    // y is pinned 0-100 over the plot, so a LOWER score sits FURTHER DOWN.
     expect(dotYs[5]).toBeGreaterThan(dotYs[4]) // the dot shows the dip
     expect(ys[5]).toBeCloseTo(ys[4], 1) // the line does not
-    // And the line is genuinely above the dipped dot, by roughly the 20 points
+    // And the line is genuinely above the dipped dot, by exactly the 20 points
     // the median smoothed away.
-    expect(dotYs[5] - ys[5]).toBeGreaterThan(30)
+    expect(dotYs[5] - ys[5]).toBeCloseTo(yOf(60) - yOf(80), 3)
   })
 
   it('draws one dot per check — the spread, not just the trend', () => {
     const { container } = render(<PerformanceTrend checks={series([70, 75, 80, 85, 90])} timezone={null} />)
-    expect(container.querySelectorAll('circle').length).toBe(5)
+    expect(sampleDots(container).length).toBe(5)
   })
 
   it('drops checks with no score rather than plotting them as zero', () => {
     const { container } = render(<PerformanceTrend checks={series([70, null, 80])} timezone={null} />)
-    expect(container.querySelectorAll('circle').length).toBe(2)
+    expect(sampleDots(container).length).toBe(2)
   })
 
   it('annotates where the measuring instrument changed', () => {
@@ -217,8 +247,11 @@ describe('PerformanceTrend', () => {
     // The app shell's ancestors lack min-width:0, so a wide grid child forces
     // the shell to scroll — and the shell's overflow-x-hidden then DELETES the
     // overflowing content rather than revealing it.
+    // The instrument owns the svg's immediate parent; the load-bearing
+    // min-width sits on the chart's box one level up.
     const { container } = render(<PerformanceTrend checks={series([70, 80])} timezone={null} />)
-    const svgWrapper = container.querySelector('svg')?.parentElement
-    expect(svgWrapper?.className).toContain('min-w-0')
+    const svg = container.querySelector('svg')
+    expect(svg).toBeTruthy()
+    expect(svg?.closest('.min-w-0')).toBeTruthy()
   })
 })
