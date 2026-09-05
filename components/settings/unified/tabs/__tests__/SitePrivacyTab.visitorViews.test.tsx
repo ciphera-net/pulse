@@ -62,8 +62,17 @@ vi.mock('@/lib/api/performance', () => ({ updatePerformanceConfig: vi.fn() }))
 
 beforeEach(() => updateSite.mockClear())
 
+// 🔴 STATIC import, on purpose (06-09-2026). This used to be a dynamic
+// `import('../SitePrivacyTab')` INSIDE each test, so the tab's whole module
+// graph was transformed inside the test's own 20s budget. On the CI runner —
+// where the suite's import phase alone measured 1508s across workers — the
+// first test timed out mid-render, its DOM leaked into the next one ("Found
+// multiple elements with the text: Visitor-level views"), and the file gated
+// deploys of changes that never touched settings (pipelines 1478, 1479).
+// vi.mock calls are hoisted above imports, so the mocks still apply.
+import SitePrivacyTab from '../SitePrivacyTab'
+
 async function renderTab() {
-  const { default: SitePrivacyTab } = await import('../SitePrivacyTab')
   return render(<SitePrivacyTab siteId="s1" />)
 }
 
