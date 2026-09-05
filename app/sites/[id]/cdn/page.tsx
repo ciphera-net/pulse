@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
@@ -30,6 +30,11 @@ export default function CDNPage() {
     pageKey: 'cdn',
     extraPresets: CDN_PICKER_PRESETS,
   })
+  // * One cursor for both cards (chart-consistency round, 05-09-2026): the
+  // * hovered UTC day is page state, so Edge and Origin light the same date.
+  // * Declared with the other hooks — the not-connected early return below
+  // * would otherwise make it conditional.
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null)
   // * bunny_data days are UTC days (Bunny's chart convention, verified live).
   // * Preset windows anchor to the current UTC day — west of UTC, a local
   // * anchor would silently drop the newest day. An explicitly picked custom
@@ -123,6 +128,8 @@ export default function CDNPage() {
   const cardProps = {
     series,
     overview,
+    hoverIndex,
+    onHoverChange: setHoverIndex,
     regions: regionsData?.regions,
     regionsTotal: regionsData?.total_bandwidth ?? 0,
     regionsError: !!regionsError,
