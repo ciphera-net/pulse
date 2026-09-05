@@ -216,7 +216,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!outcome.revoked && !outcome.already_invalid) {
         reportClientEvent('logout_unconfirmed', String(outcome.status ?? 'unreachable'))
       }
-    } catch { /* stale build — continue with client-side cleanup */ }
+    } catch (e) {
+      // * A throw is a TRANSPORT failure, not a refusal: we never got a verdict,
+      // * so we know nothing about whether the family was revoked. Reported
+      // * rather than swallowed — a discarded response is exactly what let
+      // * sign-out revoke nothing in production, undetected, for months.
+      logger.error('logoutAction failed; continuing with client-side cleanup', e)
+      reportClientEvent('logout_unconfirmed', 'threw')
+    }
     setAccessToken(null)
     localStorage.removeItem('user')
     localStorage.removeItem('ciphera_token_refreshed_at')
