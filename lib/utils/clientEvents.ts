@@ -22,6 +22,8 @@ export type ClientEventName =
   | 'session_recovered_on_live_tab'
   | 'marketing_fallthrough_on_app_route'
   | 'session_takeover_rendered'
+  /** A sign-out id-backend did not confirm (S3: Pulse's own revocation). Detail = status or 'unreachable'. */
+  | 'logout_unconfirmed'
 
 export function reportClientEvent(name: ClientEventName, detail?: string): void {
   if (typeof window === 'undefined') return

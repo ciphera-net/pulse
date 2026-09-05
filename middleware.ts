@@ -81,8 +81,14 @@ export function middleware(request: NextRequest) {
     return withStagingHeader(NextResponse.next(), isStaging)
   }
 
-  const hasAccess = request.cookies.has('access_token')
-  const hasRefresh = request.cookies.has('refresh_token')
+  // * Pulse's OWN session cookies (per-app sessions S3), host-only on this
+  // * origin. The apex `access_token` / `refresh_token` the ceremony writes on
+  // * .ciphera.net still reach this host until S5, and they are deliberately
+  // * NOT a session here: a browser holding only those is signed in to
+  // * Ciphera ID, not to Pulse, and gets the sign-in gate — which passes it
+  // * straight through the OAuth hop without a ceremony.
+  const hasAccess = request.cookies.has('pulse_access')
+  const hasRefresh = request.cookies.has('pulse_refresh')
   const hasSession = hasAccess || hasRefresh
 
   // * Authenticated user (with access token) hitting /login or /signup → send them home.

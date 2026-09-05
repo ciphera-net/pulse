@@ -72,6 +72,35 @@ export class ApiError extends Error {
   }
 }
 
+// * ============================================================================
+// * The access token, held in memory (per-app sessions S3)
+// * ============================================================================
+// *
+// * Pulse's session cookies are host-only on pulse.ciphera.net since S3, and the
+// * API lives on a different host (pulse-api.ciphera.net), so no cookie can
+// * carry the credential there any more. The browser holds the 15-minute access
+// * token HERE — a module variable, never localStorage, never sessionStorage —
+// * and sends it as `Authorization: Bearer`. It arrives from three places, all
+// * same-origin: getSessionAction() on load (from the httpOnly pulse_access
+// * cookie), the /api/auth/refresh route's body on every renewal, and the OAuth
+// * exchange's return. A full page load starts empty and is re-primed by the
+// * auth context before any data hook can fire.
+// *
+// * Stated trade, accepted by the owner 05-09-2026: a script injected into this
+// * origin can read this value for its 15-minute life. It cannot read the
+// * refresh token (httpOnly), and it cannot reach Warden or the ceremony.
+let accessToken: string | null = null
+
+/** Called by the auth context whenever a fresh token is known; null on sign-out. */
+export function setAccessToken(token: string | null): void {
+  accessToken = token && token.length > 0 ? token : null
+}
+
+/** Exposed for tests and the auth context; never persist what this returns. */
+export function getAccessToken(): string | null {
+  return accessToken
+}
+
 // * Shared refresh handler — injected by AuthProvider via setRefreshHandler().
 // * Routes all 401 refresh attempts through useSessionRefresh's mutex,
 // * preventing concurrent refresh calls that trigger token reuse detection.
@@ -209,11 +238,22 @@ async function apiRequest<T>(
     })
   }
 
-  // * We rely on HttpOnly cookies, so no manual Authorization header injection.
-  // * We MUST set credentials: 'include' for the browser to send cookies cross-origin (or same-site).
-  
+  // * The credential is the in-memory access token, sent as a Bearer (S3).
+  // * pulse-backend checks the header before any cookie and skips its CSRF
+  // * double-submit for a Bearer; id-backend accepts the header too. A caller
+  // * that already set Authorization (the OPAQUE transports) keeps its own.
+  // *
+  // * `credentials: 'include'` stays for the transition: the ceremony's apex
+  // * cookies still satisfy id-backend's CSRF pair on the /auth/* routes until
+  // * S5 makes the ceremony host-only, and the browser still holds them.
+  const bearer = getAccessToken()
+  if (bearer && !headers['Authorization'] && !headers['authorization']) {
+    headers['Authorization'] = `Bearer ${bearer}`
+  }
+
   // * Add CSRF token for all state-changing requests (Pulse API and Auth API).
-  // * Both backends enforce the double-submit cookie pattern server-side.
+  // * pulse-backend ignores it on a Bearer request; id-backend still requires
+  // * the apex pair until S5.
   if (isStateChangingMethod(method)) {
     const csrfToken = getCSRFToken()
     if (csrfToken) {
@@ -264,6 +304,11 @@ async function apiRequest<T>(
                 retryHeaders[key] = value
               })
             }
+            // * The renewal just primed a NEW access token; the retry must carry it.
+            const renewed = getAccessToken()
+            if (renewed && !retryHeaders['Authorization'] && !retryHeaders['authorization']) {
+              retryHeaders['Authorization'] = `Bearer ${renewed}`
+            }
             if (isStateChangingMethod(method)) {
               const csrfToken = getCSRFToken()
               if (csrfToken) retryHeaders['X-CSRF-Token'] = csrfToken
@@ -289,6 +334,7 @@ async function apiRequest<T>(
           // * data fetch still fails now, but the session can come back.
           if (!outcome.transient) {
             localStorage.removeItem('user')
+            setAccessToken(null)
           }
           throw new ApiError(authMessageFromStatus(401), 401, { transient: outcome.transient })
         }
