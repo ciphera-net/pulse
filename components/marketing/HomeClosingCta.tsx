@@ -12,7 +12,7 @@ import { initiateOAuthFlow } from '@/lib/api/oauth'
 // recycling the hero capture a third time diluted the end of the page, and
 // the true "first step" surface (the add-site form) can't be captured without
 // mutating a live account (05/06-08 audit). Copy is receipts, not promises —
-// every fact verified (free Hobby tier per /pricing; 5 KB measured;
+// every fact verified (free Hobby tier per /pricing; under 3 KB, CI-enforced;
 // cookieless by architecture).
 // Reused beyond the homepage (/pricing, the /vs compare pages) — the eyebrow,
 // heading/dek and the secondary button are parameterized because the
@@ -21,7 +21,7 @@ import { initiateOAuthFlow } from '@/lib/api/oauth'
 export function HomeClosingCta({
   eyebrow = '05 · Get started',
   heading = 'Start counting in minutes.',
-  dek = 'Paste one 5 KB script tag and watch the first pageview arrive — free Hobby tier included, no cookies to configure, nothing to consent to.',
+  dek = 'Paste one script tag under 3 KB and watch the first pageview arrive — free Hobby tier included, no cookies to configure, nothing to consent to.',
   secondaryHref = '/pricing',
   secondaryLabel = 'View pricing',
 }: {

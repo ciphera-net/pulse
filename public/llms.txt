@@ -1,12 +1,12 @@
 # Pulse by Ciphera
 > Privacy-first web analytics. No cookies, no fingerprinting, no personal data collection. GDPR compliant by architecture.
 
-Pulse is a lightweight, privacy-focused website analytics platform built by Ciphera. It provides meaningful traffic insights without compromising visitor privacy. The tracking script is under 2KB and requires no cookie banners.
+Pulse is a lightweight, privacy-focused website analytics platform built by Ciphera. It provides meaningful traffic insights without compromising visitor privacy. The tracking script is under 3 KB gzipped and requires no cookie banners.
 
 ## Key Features
 - No cookies, no fingerprinting, no personal data collection
 - GDPR, CCPA, and PECR compliant by design — no consent banners needed
-- Lightweight tracking script (under 2KB, no impact on page speed)
+- Lightweight tracking script (under 3 KB gzipped, no impact on page speed)
 - Real-time dashboard with pageviews, visitors, referrers, and geographic data
 - UTM campaign tracking and custom event tracking
 - Public/shared dashboard support

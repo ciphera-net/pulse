@@ -10,7 +10,7 @@ import { HomeClosingCta } from '@/components/marketing/HomeClosingCta'
  */
 export function SeoPageCta({
   title = 'Try privacy-first analytics free',
-  body = 'One 5 KB script, no cookies to configure, no consent banner to build. Start on the free Hobby tier, or explore the live demo on real traffic first — no signup required.',
+  body = 'One script under 3 KB, no cookies to configure, no consent banner to build. Start on the free Hobby tier, or explore the live demo on real traffic first — no signup required.',
 }: {
   title?: string
   body?: string
