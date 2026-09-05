@@ -5,6 +5,7 @@ import { logger } from '@/lib/utils/logger'
 import { env } from '@/lib/env'
 import { clearSession, readSession, writeSession } from '@/lib/auth/session-cookies'
 import { endPulseSession } from '@/lib/auth/id-session.server'
+import { classifyExchangeFailure } from '@/lib/auth/exchange-failure'
 
 // Server-side runtime code. Reads from the Zod-validated env schema.
 const ID_API_URL = env.NEXT_PUBLIC_ID_API_URL
@@ -25,7 +26,8 @@ interface UserPayload {
 }
 
 /** Error type returned to client for mapping to user-facing copy (no sensitive details). */
-export type AuthExchangeErrorType = 'network' | 'expired' | 'invalid' | 'server'
+export type { AuthExchangeErrorType } from '@/lib/auth/exchange-failure'
+
 
 function decodeUser(accessToken: string): UserPayload {
   const payloadPart = accessToken.split('.')[1]
@@ -91,9 +93,20 @@ export async function exchangeAuthCode(code: string, codeVerifier: string | null
 
     if (!res.ok) {
       const status = res.status
-      const errorType: AuthExchangeErrorType =
-        status === 401 ? 'expired' : status === 403 ? 'invalid' : 'server'
-      return { success: false as const, error: errorType }
+      // * The body was discarded here until 05-09-2026, which left every 400 —
+      // * the modal failure — indistinguishable from a 5xx. See classifyExchangeFailure.
+      let upstreamError: string | null = null
+      try {
+        const body = (await res.json()) as { error?: unknown }
+        if (typeof body?.error === 'string' && body.error.length <= 64) upstreamError = body.error
+      } catch { /* no body, or not JSON — the status still decides */ }
+      return {
+        success: false as const,
+        error: classifyExchangeFailure(status, upstreamError),
+        // * For telemetry only — the raw code is what makes a misconfigured
+        // * redirect_uri distinguishable from a spent code after the fact.
+        upstream: upstreamError ?? `http_${status}`,
+      }
     }
 
     const data: AuthResponse = await res.json()

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, Suspense, useRef, useCallback } from 'react'
-import { logger } from '@/lib/utils/logger'
+import { reportClientEvent } from '@/lib/utils/clientEvents'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import apiRequest from '@/lib/api/client'
@@ -97,16 +97,23 @@ function AuthCallbackContent() {
         // * fires before cookies are observable and caches an empty/401 result for 30s.
         landInApp()
       } else {
-        if (result.error === 'server') {
-          // * The exchange likely succeeded server-side (code was consumed) but the
-          // * server action response failed to reach the browser (cold start, network).
-          // * Try navigating to home — if cookies were set, user lands on dashboard.
-          // * If not, the home page redirects to login naturally.
-          const returnTo = searchParams.get('returnTo') || '/'
-          const safe = (typeof returnTo === 'string' && returnTo.startsWith('/') && !returnTo.startsWith('//')) ? returnTo : '/'
-          window.location.href = safe
-          return
-        }
+        // * Every failed exchange gets a screen and a trace. Until 05-09-2026 the
+        // * 'server' branch instead sent the browser to `/` — the marketing homepage —
+        // * on the theory that the exchange had succeeded and only the response was
+        // * lost, so the dashboard would work anyway. That was true before S3, when
+        // * the apex cookies carried the session regardless. Since S3 the exchange
+        // * response IS the session: nothing was written, `/` is public, and the
+        // * person saw a homepage, apparently signed out, with no word and no log.
+        // *
+        // * It was also the DEFAULT outcome, not an edge case: id-backend answers
+        // * 400 for every OAuth-protocol failure and the action mapped everything
+        // * but 401/403 to 'server'. The modal case — a spent code — now reads as
+        // * `stale_attempt`, which is what it is (app/actions/auth.ts).
+        // *
+        // * 🔴 The raw upstream code goes to telemetry, not the mapped type: a
+        // * misconfigured redirect_uri and a spent code render identically, and this
+        // * detail is the only thing that tells them apart afterwards.
+        reportClientEvent('oauth_exchange_failed', result.upstream ?? result.error)
         setError(result.error as AuthErrorType)
       }
     },
@@ -125,7 +132,8 @@ function AuthCallbackContent() {
       // * which cost a whole investigation on 04-09-2026: "ID never sent a code"
       // * and "this device lost its pending attempt" have different causes, live
       // * in different codebases, and looked identical from the outside.
-      logger.error('Auth callback: no code parameter on the callback URL')
+      // * reportClientEvent, not logger: the browser logger is silenced in production.
+      reportClientEvent('oauth_callback_no_code')
       processedRef.current = true
       void continueIfAlreadySignedIn().then((rescued) => {
         if (!rescued) setError('stale_attempt')
@@ -144,7 +152,7 @@ function AuthCallbackContent() {
       if (!pending) {
         // * Unknown, forged, expired or already-claimed state. The exchange is
         // * refused here and always — an unvalidated code is never exchanged.
-        logger.error('Auth callback: no pending sign-in attempt for the returned state')
+        reportClientEvent('oauth_callback_no_pending_attempt')
         processedRef.current = true
         // * But refusing the exchange is not the same as telling somebody their
         // * sign-in failed. If ID already authenticated them (its cookies are on
@@ -189,7 +197,12 @@ function AuthCallbackContent() {
         type={error}
         primaryAction={{ label: 'Start sign-in again', onClick: handleRestart }}
         secondaryAction={{ label: 'Back to the homepage', onClick: () => window.location.assign('/') }}
-        onRetry={handleRetry}
+        // * Retry re-sends the SAME code. That can only succeed when the request
+        // * never reached id-backend — `network`. For everything else the code is
+        // * spent or the app is misconfigured, and the honest control is the
+        // * primary one: start again, which mints a fresh code through the
+        // * pass-through in about a second.
+        onRetry={error === 'network' ? handleRetry : undefined}
         busy={restarting}
       />
     )
