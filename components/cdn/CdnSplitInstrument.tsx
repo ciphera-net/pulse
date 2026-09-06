@@ -13,7 +13,7 @@ import { AnimatedNumber } from '@/components/ui/animated-number'
 import { CountryFlag } from '@/components/ui/CountryFlag'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
-import { AreaChart, Area, Grid, YAxis, ChartTooltip } from '@/components/ui/area-chart'
+import { AreaChart, Area, Grid, YAxis, ChartTooltip, ChartCrosshair } from '@/components/ui/area-chart'
 import { ChartStack, ChartStackAxis, useChartStack, STRIP_INK, STRIP_MARKER } from '@/components/ui/chart-stack'
 import {
   type CdnPoint,
@@ -190,6 +190,7 @@ function CdnErrorBars({ series }: { series: CdnPoint[] }) {
 
   const slot = innerWidth / Math.max(1, series.length)
   const barW = Math.max(2, Math.min(18, slot * 0.6))
+  const hovered = hoverIndex != null ? series[hoverIndex] : null
 
   return (
     <div className="relative" style={{ height: STRIP_H }}>
@@ -208,6 +209,9 @@ function CdnErrorBars({ series }: { series: CdnPoint[] }) {
               </g>
             )
           })}
+          <g transform={`translate(0,${padT})`}>
+            <ChartCrosshair height={innerH} visible={hovered != null} x={hovered ? (xScale(hovered.date) ?? 0) : 0} />
+          </g>
           <rect
             fill="transparent"
             height={STRIP_H}

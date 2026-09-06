@@ -5,7 +5,7 @@ import { curveLinear } from 'd3-shape'
 import { useFunnelTrends } from '@/lib/swr/dashboard'
 import type { FunnelStats } from '@/lib/api/funnels'
 import { ErrorCard } from '@/components/ui/ErrorCard'
-import { AreaChart, Area, Grid, YAxis, ChartTooltip } from '@/components/ui/area-chart'
+import { AreaChart, Area, Grid, YAxis, ChartTooltip, ChartCrosshair } from '@/components/ui/area-chart'
 import { ChartStack, ChartStackAxis, useChartStack, STRIP_INK, STRIP_MARKER } from '@/components/ui/chart-stack'
 import { PERIOD_ENDS_NOW } from '@/lib/constants/periods'
 import { formatNumber, formatConvertTime } from '@/lib/utils/format'
@@ -238,6 +238,7 @@ function CompletedBars({ series }: { series: DayPoint[] }) {
   const max = Math.max(1, ...series.map((p) => p.completed ?? 0)) * 1.12
   const y = (v: number) => padT + innerH - (v / max) * innerH
   const barW = Math.max(2, Math.min(10, (innerWidth / series.length) * 0.55))
+  const hovered = hoverIndex != null ? series[hoverIndex] : null
 
   return (
     <div className="relative" style={{ height: STRIP_H }}>
@@ -257,6 +258,9 @@ function CompletedBars({ series }: { series: DayPoint[] }) {
               />
             ),
           )}
+          <g transform={`translate(0,${padT})`}>
+            <ChartCrosshair height={innerH} visible={hovered != null} x={hovered ? (xScale(hovered.date) ?? 0) : 0} />
+          </g>
           <rect
             fill="transparent"
             height={STRIP_H}
