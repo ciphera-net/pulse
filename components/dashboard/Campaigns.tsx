@@ -14,6 +14,7 @@ import { MetricRowStat, MetricUnitLabel, rowBarWidth } from '@/components/dashbo
 import { CardPager, useCardPage } from '@/components/dashboard/CardPager'
 import { CascadeGroup, CascadeRow, RowBar } from '@/components/dashboard/Cascade'
 import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
+import { Switcher } from '@ciphera-net/facet'
 
 interface CampaignsProps {
   siteId: string
@@ -178,27 +179,22 @@ export default function Campaigns({ siteId, dateRange, period, filters, totals, 
       <div className="flex items-center justify-between gap-2 mb-4">
         {/* Matches the scrolling tab row every other dimension card uses, so a
             narrow card can never push the unit label off its right edge. */}
-        <div className="flex gap-1 min-w-0 overflow-x-auto scrollbar-hide pb-1 max-md:[mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)]" role="tablist" aria-label="Campaign dimension tabs">
-          {(['source', 'medium', 'campaign', 'term', 'content'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              role="tab"
-              aria-selected={activeTab === tab}
-              className={`relative px-2.5 py-3 sm:py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-none cursor-pointer ${
-                activeTab === tab
-                  ? 'text-white'
-                  : 'text-neutral-500 hover:text-neutral-300'
-              } ease-apple`}
-            >
-              {tab}
-              <span
-                className={`absolute inset-x-0 -bottom-px h-[3px] rounded-none transition-[width,background-color] duration-base ${
-                  activeTab === tab ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
-                } ease-apple`}
-              />
-            </button>
-          ))}
+        {/* One Facet Switcher for every dimension card (owner pick C0, 06-09-2026);
+            the overflow wrapper keeps a narrow card scrollable, as the tab row was. */}
+        <div className="min-w-0 overflow-x-auto scrollbar-hide pb-1">
+          <Switcher
+            size="sm"
+            aria-label="Campaign dimension"
+            options={[
+              { value: 'source', label: 'Source' },
+              { value: 'medium', label: 'Medium' },
+              { value: 'campaign', label: 'Campaign' },
+              { value: 'term', label: 'Term' },
+              { value: 'content', label: 'Content' },
+            ]}
+            value={activeTab}
+            onChange={(v) => setActiveTab(v as UtmTab)}
+          />
         </div>
         <DimensionInfoTip tab={activeTab} className="ms-2 me-auto" />
         <div className="flex min-w-0 shrink items-center gap-1.5">

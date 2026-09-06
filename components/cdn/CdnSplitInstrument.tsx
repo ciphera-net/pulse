@@ -14,7 +14,7 @@ import { CountryFlag } from '@/components/ui/CountryFlag'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { AreaChart, Area, Grid, YAxis, ChartTooltip, ChartCrosshair } from '@/components/ui/area-chart'
-import { ChartStack, ChartStackAxis, useChartStack } from '@/components/ui/chart-stack'
+import { ChartStack, ChartStackAxis, useChartStack, STRIP_INK, STRIP_MARKER } from '@/components/ui/chart-stack'
 import {
   type CdnPoint,
   type StatusMix,
@@ -148,10 +148,11 @@ function CdnStrip({ series, metric }: { series: StripRow[]; metric: Exclude<CdnM
           curve={curveLinear}
           dataKey={metric}
           fadeStrokeEdges={false}
-          fill="var(--chart-1)"
+          fill={STRIP_INK}
           fillOpacity={0.15}
           gradientToOpacity={0}
-          stroke="var(--chart-1)"
+          stroke={STRIP_INK}
+          dotColor={STRIP_MARKER}
           strokeWidth={2}
         />
         <YAxis formatValue={(v) => fmtMetric(metric, v)} numTicks={3} />
@@ -462,14 +463,15 @@ export interface CdnCardsProps {
   ghost?: boolean
   /** Range loaded but holds no rows. */
   empty?: boolean
-  /** One cursor for both cards: the page owns the hovered day index. */
-  hoverIndex?: number | null
-  onHoverChange?: (index: number | null) => void
 }
+
+// * Edge and Origin are INDEPENDENT instruments (owner ruling 06-09-2026, reversing
+// * Train 5's "one cursor for both cards"): hovering one card lights nothing on the
+// * other. Each card's ChartStack owns its own hover index.
 
 const cardTitle = (p: Record<string, unknown>) => `${cdnDayLabelLong(p.date as Date)} · UTC`
 
-export function EdgeCard({ series, overview, regions, regionsTotal, regionsError, onRetryRegions, ghost = false, empty = false, hoverIndex, onHoverChange }: CdnCardsProps) {
+export function EdgeCard({ series, overview, regions, regionsTotal, regionsError, onRetryRegions, ghost = false, empty = false }: CdnCardsProps) {
   const railGhost = ghost || empty
   const stripRows = useMemo(() => toStripRows(series), [series])
 
@@ -533,7 +535,7 @@ export function EdgeCard({ series, overview, regions, regionsTotal, regionsError
 
   return (
     <CardShell title="Edge" subtitle="what Bunny absorbed">
-      <ChartStack data={stripRows} hoverIndex={hoverIndex} margin={STRIP_MARGIN} onHoverChange={onHoverChange} resetKey={series} rows={cardRows} title={cardTitle} xDataKey="date">
+      <ChartStack data={stripRows} margin={STRIP_MARGIN} resetKey={series} rows={cardRows} title={cardTitle} xDataKey="date">
         <MetricRows rows={rows} series={series} stripRows={stripRows} ghost={ghost} emptyText={empty ? 'No data in this range' : undefined} />
         <AxisRow series={series} ghost={ghost} />
       </ChartStack>
@@ -571,7 +573,7 @@ export function EdgeCard({ series, overview, regions, regionsTotal, regionsError
   )
 }
 
-export function OriginCard({ series, overview, mix, ghost = false, empty = false, hoverIndex, onHoverChange }: CdnCardsProps) {
+export function OriginCard({ series, overview, mix, ghost = false, empty = false }: CdnCardsProps) {
   const railGhost = ghost || empty
   const stripRows = useMemo(() => toStripRows(series), [series])
 
@@ -645,7 +647,7 @@ export function OriginCard({ series, overview, mix, ghost = false, empty = false
 
   return (
     <CardShell title="Origin" subtitle="what got through to you">
-      <ChartStack data={stripRows} hoverIndex={hoverIndex} margin={STRIP_MARGIN} onHoverChange={onHoverChange} resetKey={series} rows={cardRows} title={cardTitle} xDataKey="date">
+      <ChartStack data={stripRows} margin={STRIP_MARGIN} resetKey={series} rows={cardRows} title={cardTitle} xDataKey="date">
         <MetricRows rows={rows} series={series} stripRows={stripRows} ghost={ghost} emptyText={empty ? 'No data in this range' : undefined} />
         <AxisRow series={series} ghost={ghost} />
       </ChartStack>

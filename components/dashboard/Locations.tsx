@@ -3,12 +3,11 @@
 import { useState, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { formatNumber } from '@/lib/utils/format'
-import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { CountryFlag } from '@/components/ui/CountryFlag'
 import iso3166 from 'iso-3166-2'
 
 const MapView = dynamic(() => import('./MapView'), { ssr: false })
-import { GlobeIcon } from '@ciphera-net/facet'
+import { GlobeIcon, Switcher } from '@ciphera-net/facet'
 import { GlobeHemisphereWest } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ShieldCheck, Detective, Broadcast } from '@phosphor-icons/react'
@@ -155,7 +154,6 @@ function formatTimezone(tz: string): string {
 
 export default function Audience({ countries, cities, regions, languages, timezones, geoDataLevel = 'full', collectAudienceData = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter }: AudienceProps) {
   const [activeTab, setActiveTab] = useState<Tab>('countries')
-  const handleTabKeyDown = useTabListKeyboard()
   type AudienceItem = { country?: string; city?: string; region?: string; language?: string; timezone?: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }
 
 
@@ -357,27 +355,23 @@ export default function Audience({ countries, cities, regions, languages, timezo
   return (
     <div ref={containerRef} data-tour="dimension-card" data-tour-card="locations" className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex gap-1 min-w-0 overflow-x-auto scrollbar-hide pb-1 max-md:[mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)]" role="tablist" aria-label="Audience view tabs" onKeyDown={handleTabKeyDown}>
-            {(['map', 'countries', 'regions', 'cities', 'languages', 'timezones'] as Tab[]).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                role="tab"
-                aria-selected={activeTab === tab}
-                className={`relative px-2.5 py-3 sm:py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-none cursor-pointer ${
-                  activeTab === tab
-                    ? 'text-white'
-                    : 'text-neutral-500 hover:text-neutral-300'
-                } ease-apple`}
-              >
-                {tab}
-                <span
-                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-none transition-[width,background-color] duration-base ${
-                    activeTab === tab ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
-                  } ease-apple`}
-                />
-              </button>
-            ))}
+          {/* One Facet Switcher for every dimension card (owner pick C0, 06-09-2026);
+              the overflow wrapper keeps a narrow card scrollable, as the tab row was. */}
+          <div className="min-w-0 overflow-x-auto scrollbar-hide pb-1">
+            <Switcher
+              size="sm"
+              aria-label="Audience view"
+              options={[
+                { value: 'map', label: 'Map' },
+                { value: 'countries', label: 'Countries' },
+                { value: 'regions', label: 'Regions' },
+                { value: 'cities', label: 'Cities' },
+                { value: 'languages', label: 'Languages' },
+                { value: 'timezones', label: 'Timezones' },
+              ]}
+              value={activeTab}
+              onChange={(v) => setActiveTab(v as Tab)}
+            />
           </div>
           <DimensionInfoTip tab={activeTab} className="ms-2 me-auto" />
           <div className="flex min-w-0 shrink items-center gap-1.5">

@@ -9,7 +9,7 @@ import { UpdatingChip } from '@/components/ui/UpdatingChip'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { AreaChart, Area, Grid, YAxis, ChartTooltip } from '@/components/ui/area-chart'
-import { ChartStack, ChartStackAxis, useChartStack } from '@/components/ui/chart-stack'
+import { ChartStack, ChartStackAxis, useChartStack, STRIP_INK, STRIP_MARKER } from '@/components/ui/chart-stack'
 import { guardedPctChange, type PctChangeResult } from '@/lib/utils/pctChange'
 import { formatDateFullUTC, formatDateShortUTC } from '@/lib/utils/formatDate'
 import { cn } from '@/lib/utils'
@@ -149,11 +149,12 @@ function Strip({ series, metric, dashedTail }: { series: SeriesPoint[]; metric: 
           dashedTailFrom={dashedTail && series.length >= 2 ? series.length - 2 : undefined}
           dataKey={metric}
           fadeStrokeEdges={false}
-          fill="var(--chart-1)"
+          fill={STRIP_INK}
           // No fill under an inverted line: the area would shade the WORSE side.
           fillOpacity={inverted ? 0 : 0.15}
           gradientToOpacity={0}
-          stroke="var(--chart-1)"
+          stroke={STRIP_INK}
+          dotColor={STRIP_MARKER}
           strokeWidth={2}
         />
         <YAxis formatValue={(v) => formatMetricValue(metric, v)} numTicks={3} />

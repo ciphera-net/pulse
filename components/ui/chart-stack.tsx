@@ -41,6 +41,20 @@ import {
  * member's x scale, and the card lands on the datum every strip is showing.
  */
 
+/**
+ * The ink of every INSTRUMENT strip inside a stack (owner ruling 06-09-2026,
+ * "old grey ink like before" — applied to Search, CDN, Uptime and Funnel-daily).
+ * Four stacked strips in the brand orange read as four blocks of one colour;
+ * the pre-round strips drew a muted grey line and kept ONLY the hover marker
+ * in orange. The stacks keep that: grey line + faint grey fill, orange dot,
+ * orange crosshair, orange card bullets. Hand-rolled bar members keep their
+ * semantic colours (availability green, error reds, completed orange). The
+ * dashboard deck, the performance trend and the fleet sparklines are NOT
+ * stacks and stay in the brand ink.
+ */
+export const STRIP_INK = "#b3b1ad";
+export const STRIP_MARKER = "var(--chart-1)";
+
 export interface ChartStackContextValue {
   data: Record<string, unknown>[];
   xAccessor: (d: Record<string, unknown>) => Date;

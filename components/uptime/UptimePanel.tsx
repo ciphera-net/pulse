@@ -10,7 +10,7 @@ import { UpdatingChip } from '@/components/ui/UpdatingChip'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 import { AreaChart, Area, Grid, YAxis, ChartTooltip, ChartCrosshair } from '@/components/ui/area-chart'
-import { ChartStack, ChartStackAxis, useChartStack } from '@/components/ui/chart-stack'
+import { ChartStack, ChartStackAxis, useChartStack, STRIP_INK, STRIP_MARKER } from '@/components/ui/chart-stack'
 import { PERIOD_ENDS_NOW } from '@/lib/constants/periods'
 import { cn } from '@/lib/utils'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
@@ -156,10 +156,11 @@ function ResponseStrip({ series, dashedTail }: { series: UptimePoint[]; dashedTa
           dashedTailFrom={dashedTail && series.length >= 2 ? series.length - 2 : undefined}
           dataKey="avgMs"
           fadeStrokeEdges={false}
-          fill="var(--chart-1)"
+          fill={STRIP_INK}
           fillOpacity={0.15}
           gradientToOpacity={0}
-          stroke="var(--chart-1)"
+          stroke={STRIP_INK}
+          dotColor={STRIP_MARKER}
           strokeWidth={2}
         />
         <YAxis formatValue={(v) => fmtMs(v)} numTicks={3} />

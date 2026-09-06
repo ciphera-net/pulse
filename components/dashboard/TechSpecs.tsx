@@ -1,7 +1,6 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { getBrowserIcon, getOSIcon, getDeviceIcon } from '@/lib/utils/icons'
 import { Monitor } from '@phosphor-icons/react'
 import { DeviceMobile } from '@phosphor-icons/react'
@@ -12,6 +11,7 @@ import { MetricRowStat, MetricUnitLabel, rowBarWidth } from '@/components/dashbo
 import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { CardPager, useCardPage } from '@/components/dashboard/CardPager'
 import { CascadeGroup, CascadeRow, RowBar } from '@/components/dashboard/Cascade'
+import { Switcher } from '@ciphera-net/facet'
 
 interface TechSpecsProps {
   browsers: Array<{ browser: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
@@ -64,7 +64,6 @@ const TAB_TO_DIMENSION: Record<string, string> = { browsers: 'browser', os: 'os'
 
 export default function TechSpecs({ browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter }: TechSpecsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('browsers')
-  const handleTabKeyDown = useTabListKeyboard()
   type TechItem = { name: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null; icon: React.ReactNode }
 
 
@@ -149,27 +148,21 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
   return (
     <div data-tour="dimension-card" data-tour-card="tech" className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
       <div className="flex items-center justify-between mb-4">
-        <div className="flex gap-1 min-w-0 overflow-x-auto scrollbar-hide pb-1 max-md:[mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)]" role="tablist" aria-label="Technology view tabs" onKeyDown={handleTabKeyDown}>
-          {(['browsers', 'os', 'devices', 'screens'] as Tab[]).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              role="tab"
-              aria-selected={activeTab === tab}
-              className={`relative px-2.5 py-3 sm:py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-none cursor-pointer ${
-                activeTab === tab
-                  ? 'text-white'
-                  : 'text-neutral-500 hover:text-neutral-300'
-              } ease-apple`}
-            >
-              {{ browsers: 'Browsers', os: 'OS', devices: 'Devices', screens: 'Screens' }[tab]}
-              <span
-                className={`absolute inset-x-0 -bottom-px h-[3px] rounded-none transition-[width,background-color] duration-base ${
-                  activeTab === tab ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
-                } ease-apple`}
-              />
-            </button>
-          ))}
+        {/* One Facet Switcher for every dimension card (owner pick C0, 06-09-2026);
+            the overflow wrapper keeps a narrow card scrollable, as the tab row was. */}
+        <div className="min-w-0 overflow-x-auto scrollbar-hide pb-1">
+          <Switcher
+            size="sm"
+            aria-label="Technology view"
+            options={[
+              { value: 'browsers', label: 'Browsers' },
+              { value: 'os', label: 'OS' },
+              { value: 'devices', label: 'Devices' },
+              { value: 'screens', label: 'Screens' },
+            ]}
+            value={activeTab}
+            onChange={(v) => setActiveTab(v as Tab)}
+          />
         </div>
         <DimensionInfoTip tab={activeTab} className="ms-2 me-auto" />
         <div className="flex min-w-0 shrink items-center gap-1.5">
