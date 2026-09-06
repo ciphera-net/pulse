@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import TopReferrers from '@/components/dashboard/TopReferrers'
+import Sources from '@/components/dashboard/Sources'
 import CommandDeck from '@/components/dashboard/CommandDeck'
 import type { Stats, DailyStat } from '@/lib/api/stats'
 
@@ -40,14 +40,14 @@ const base = {
 // reach them; this file pins that it stays unreachable.
 describe('dimension blocks are decoupled from the selected metric', () => {
   it('shows visitors with the visitors unit label', () => {
-    render(<TopReferrers {...base} />)
+    render(<Sources {...base} />)
     expect(screen.getByText('61')).toBeTruthy()
     expect(screen.getByText('3')).toBeTruthy()
     expect(screen.getByTestId('metric-unit').textContent).toBe('visitors')
   })
 
   it('never shows the pageview count as the row stat', () => {
-    render(<TopReferrers {...base} />)
+    render(<Sources {...base} />)
     expect(screen.queryByText('134')).toBeNull()
     expect(screen.queryByText('9')).toBeNull()
   })
