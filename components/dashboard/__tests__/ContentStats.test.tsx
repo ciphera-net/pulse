@@ -133,6 +133,6 @@ describe('ContentStats pagination (blocks round, 01-09-2026)', () => {
   it('has no Engagement tab on any surface — the feature left 01-09-2026', () => {
     render(<ContentStats {...baseProps} totals={totals} />)
     expect(screen.queryByRole('tab', { name: 'Engagement' })).toBeNull()
-    expect(screen.getByRole('tab', { name: 'Pages' })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: 'Pages' })).toBeTruthy()
   })
 })

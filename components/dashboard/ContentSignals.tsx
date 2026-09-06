@@ -2,12 +2,12 @@
 
 import { useState } from 'react'
 import { formatNumber } from '@/lib/utils/format'
-import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { usePagePreview } from '@/lib/swr/dashboard'
 import type { GoalCountStat, ScrollDepthDistribution } from '@/lib/api/stats'
 import ScrollDepthBars from './ScrollDepthBars'
 import GoalStats from './GoalStats'
 import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
+import { Switcher } from '@ciphera-net/facet'
 
 // ---------------------------------------------------------------------------
 // The Content section's second card in the approved C mockup: scroll depth and
@@ -32,7 +32,6 @@ type Tab = 'scroll' | 'events'
 
 export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRange, memberFeatures = true }: ContentSignalsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('scroll')
-  const handleTabKeyDown = useTabListKeyboard()
 
   // The full-page capture behind the scroll tab's stacked sheets. null =
   // no capture (a state — the tab renders its rails fallback), and a fetch
@@ -47,27 +46,19 @@ export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRa
   return (
     <div data-tour="dimension-card" data-tour-card="content-signals" className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
       <div className="flex items-center justify-between mb-4">
-        <div className="flex gap-1 min-w-0" role="tablist" aria-label="Content signals tabs" onKeyDown={handleTabKeyDown}>
-          {([['scroll', 'Scroll depth'], ['events', 'Events']] as [Tab, string][]).map(([tab, label]) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              role="tab"
-              aria-selected={activeTab === tab}
-              className={`relative px-2.5 py-3 sm:py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-none cursor-pointer ${
-                activeTab === tab
-                  ? 'text-white'
-                  : 'text-neutral-500 hover:text-neutral-300'
-              } ease-apple`}
-            >
-              {label}
-              <span
-                className={`absolute inset-x-0 -bottom-px h-[3px] rounded-none transition-[width,background-color] duration-base ${
-                  activeTab === tab ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
-                } ease-apple`}
-              />
-            </button>
-          ))}
+        {/* One Facet Switcher for every dimension card (owner pick C0, 06-09-2026);
+            the overflow wrapper keeps a narrow card scrollable, as the tab row was. */}
+        <div className="min-w-0 overflow-x-auto scrollbar-hide pb-1">
+          <Switcher
+            size="sm"
+            aria-label="Content signals"
+            options={[
+              { value: 'scroll', label: 'Scroll depth' },
+              { value: 'events', label: 'Events' },
+            ]}
+            value={activeTab}
+            onChange={(v) => setActiveTab(v as Tab)}
+          />
         </div>
         <DimensionInfoTip tab={activeTab} className="ms-2 me-auto" />
         {activeTab === 'scroll' && scrollSessions > 0 && (
