@@ -52,6 +52,11 @@ import { Select, Switcher } from '@ciphera-net/facet'
 
 type View = 'referrers' | 'channels' | 'campaigns'
 type UtmDimension = 'source' | 'medium' | 'campaign' | 'term' | 'content'
+// The ids that reach the InfoTip registry: the two list views plus the five
+// UTM dimensions. The `campaigns` VIEW never reaches it — on that view the
+// dimension is the key. The terms guard (lib/dashboard/__tests__/terms.test.ts)
+// reads this union, so it must stay exact.
+type Tab = 'referrers' | 'channels' | 'source' | 'medium' | 'campaign' | 'term' | 'content'
 
 const UTM_OPTIONS: { value: UtmDimension; label: string }[] = [
   { value: 'source', label: 'Source' },
@@ -245,7 +250,7 @@ export default function Sources({
   }
 
   const rowClass = `interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`
-  const infoTipKey = view === 'campaigns' ? utm : view
+  const infoTipKey: Tab = view === 'campaigns' ? utm : view
 
   return (
     <div data-tour="dimension-card" data-tour-card="referrers" className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
