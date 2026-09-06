@@ -9,6 +9,7 @@ import { DURATION_FAST, DURATION_SLOW, EASE_APPLE } from '@/lib/motion'
 import { useDailyStats } from '@/lib/swr/dashboard'
 import { parseSiteWallClock } from '@/lib/utils/formatDate'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
+import { Switcher } from '@ciphera-net/facet'
 
 interface PeakHoursProps {
   // The page's selected metric. PeakHours keeps its own 4-way control as an
@@ -203,23 +204,14 @@ export default function PeakHours({ siteId, dateRange, filters }: PeakHoursProps
     <div className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-1 flex-wrap">
-          {METRICS.map((m) => (
-            <button
-              key={m.key}
-              type="button"
-              onClick={() => setMetric(m.key)}
-              className={`relative px-2.5 py-3 sm:py-1 text-xs font-medium transition-colors duration-fast rounded-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
-                metric === m.key ? 'text-white' : 'text-neutral-400 hover:text-neutral-200'
-              } ease-apple`}
-            >
-              {m.label}
-              <span
-                className={`absolute inset-x-0 -bottom-px h-[3px] rounded-none transition-all duration-base ease-apple ${
-                  metric === m.key ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
-                }`}
-              />
-            </button>
-          ))}
+          {/* One Facet Switcher for every dimension card (owner pick C0, 06-09-2026). */}
+          <Switcher
+            size="sm"
+            aria-label="Peak hours metric"
+            options={METRICS.map((m) => ({ value: m.key, label: m.label }))}
+            value={metric}
+            onChange={(v) => setMetric(v as Metric)}
+          />
           {/* Glyph closes the tab row — the dimension-card device (P2). The
               entry existed registry-complete but unwired (closeout C1). */}
           <TermInfoTip term="peak_hours" />

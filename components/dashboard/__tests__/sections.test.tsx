@@ -39,7 +39,7 @@ describe('ContentSignals', () => {
 
   it('switches to events on its tab — counts only, no percentages', () => {
     render(<ContentSignals {...props} />)
-    fireEvent.click(screen.getByRole('tab', { name: 'Events' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Events' }))
     expect(screen.getByText('30')).toBeTruthy()
     expect(screen.queryByText(/\d+%/)).toBeNull()
     // The scroll session count belongs to the scroll tab's header only.

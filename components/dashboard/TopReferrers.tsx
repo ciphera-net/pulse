@@ -26,6 +26,7 @@ import { MetricRowStat, MetricUnitLabel, rowBarWidth } from '@/components/dashbo
 import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { CardPager, useCardPage } from '@/components/dashboard/CardPager'
 import { CascadeGroup, CascadeRow, RowBar } from '@/components/dashboard/Cascade'
+import { Switcher } from '@ciphera-net/facet'
 
 interface TopReferrersProps {
   referrers: Array<{ referrer: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
@@ -142,27 +143,19 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
       <div className="flex items-center justify-between gap-2 mb-4">
         {/* Matches the scrolling tab row every other dimension card uses, so a
             narrow card can never push the header action off its right edge. */}
-        <div className="flex gap-1 min-w-0 overflow-x-auto scrollbar-hide pb-1 max-md:[mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)]" role="tablist" aria-label="Referrers view tabs">
-          {(['referrers', 'channels'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setView(tab)}
-              role="tab"
-              aria-selected={view === tab}
-              className={`relative px-2.5 py-3 sm:py-1 text-xs font-medium transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-none cursor-pointer ${
-                view === tab
-                  ? 'text-white'
-                  : 'text-neutral-500 hover:text-neutral-300'
-              } ease-apple`}
-            >
-              {tab}
-              <span
-                className={`absolute inset-x-0 -bottom-px h-[3px] rounded-none transition-[width,background-color] duration-base ${
-                  view === tab ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
-                } ease-apple`}
-              />
-            </button>
-          ))}
+        {/* One Facet Switcher for every dimension card (owner pick C0, 06-09-2026);
+            the overflow wrapper keeps a narrow card scrollable, as the tab row was. */}
+        <div className="min-w-0 overflow-x-auto scrollbar-hide pb-1">
+          <Switcher
+            size="sm"
+            aria-label="Referrers view"
+            options={[
+              { value: 'referrers', label: 'Referrers' },
+              { value: 'channels', label: 'Channels' },
+            ]}
+            value={view}
+            onChange={(v) => setView(v as 'referrers' | 'channels')}
+          />
         </div>
         <DimensionInfoTip tab={view} className="ms-2 me-auto" />
         <div className="flex min-w-0 shrink items-center gap-1.5">

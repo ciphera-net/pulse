@@ -291,7 +291,7 @@ describe('Campaigns', () => {
     const { unmount } = render(<Campaigns siteId="site-1" dateRange={dateRange} totals={totals} />)
     expect(screen.queryByRole('button', { name: 'Export' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Build URL' })).toBeNull()
-    expect(screen.getAllByRole('tab')).toHaveLength(5)
+    expect(screen.getAllByRole('radio')).toHaveLength(5)
     unmount()
 
     useCampaignsList.mockReturnValue({

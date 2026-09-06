@@ -110,7 +110,7 @@ test.describe('Campaigns card header (dev-server smoke)', () => {
     await expect(card.getByLabel('Next page')).toBeVisible()
 
     // The header: five dimension tabs, the unit label, and nothing actionable.
-    await expect(card.getByRole('tab')).toHaveCount(5)
+    await expect(card.getByRole('radio')).toHaveCount(5)
     await expect(card.getByText('visitors', { exact: true }).first()).toBeVisible()
     await expect(card.getByRole('button', { name: 'Export' })).toHaveCount(0)
     await expect(card.getByRole('button', { name: 'Build URL' })).toHaveCount(0)
@@ -147,7 +147,7 @@ test.describe('Campaigns card header (dev-server smoke)', () => {
     await expect(card.getByRole('button', { name: /Build a UTM URL/ })).toHaveCount(0)
     await expect(card.getByRole('link', { name: /Build a UTM URL/ })).toHaveCount(0)
     await expect(card.getByText('Build URL')).toHaveCount(0)
-    await expect(card.getByRole('tab')).toHaveCount(5)
+    await expect(card.getByRole('radio')).toHaveCount(5)
 
     await card.scrollIntoViewIfNeeded()
     await page.waitForTimeout(600)
