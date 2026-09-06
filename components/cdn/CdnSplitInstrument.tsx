@@ -217,7 +217,6 @@ function CdnErrorBars({ series }: { series: CdnPoint[] }) {
             height={STRIP_H}
             onMouseLeave={() => setHoverIndex(null)}
             onMouseMove={handleMove}
-            style={{ cursor: 'crosshair' }}
             width={innerWidth}
             x={0}
             y={-padT}

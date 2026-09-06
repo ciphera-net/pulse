@@ -503,7 +503,9 @@ function useChartInteraction({
     : {};
 
   const interactionStyle: React.CSSProperties = {
-    cursor: canInteract ? "crosshair" : "default",
+    // The pointer stays the arrow (owner, 06-09-2026): the line marks the
+    // bucket; a crosshair pointer on top of it was the thing to remove.
+    cursor: "default",
     touchAction: "none",
   };
 

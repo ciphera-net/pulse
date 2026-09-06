@@ -123,7 +123,6 @@ function AvailabilityStrip({ series }: { series: UptimePoint[] }) {
             const rect = event.currentTarget.getBoundingClientRect()
             setHoverIndex(resolveIndex(event.clientX - rect.left))
           }}
-          style={{ cursor: 'crosshair' }}
           width={innerWidth}
           x={0}
           y={0}
@@ -214,7 +213,6 @@ function ChecksStrip({ series }: { series: UptimePoint[] }) {
               const rect = event.currentTarget.getBoundingClientRect()
               setHoverIndex(resolveIndex(event.clientX - rect.left))
             }}
-            style={{ cursor: 'crosshair' }}
             width={innerWidth}
             x={0}
             y={0}

@@ -84,7 +84,7 @@ function marginLeft(container: HTMLElement): number {
 
 function interactiveG(container: HTMLElement): SVGGElement {
   const g = Array.from(container.querySelectorAll('g')).find(
-    (el) => (el as SVGGElement).style.cursor === 'crosshair',
+    (el) => (el as SVGGElement).style.cursor === 'default',
   )
   expect(g).toBeDefined()
   return g as SVGGElement
