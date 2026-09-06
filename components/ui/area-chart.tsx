@@ -94,6 +94,9 @@ export interface LineConfig {
   dataKey: string;
   stroke: string;
   strokeWidth: number;
+  /** Hover-dot ink when it must differ from the line's (a grey strip with the
+   *  brand-orange marker — the stacks' rule since 06-09-2026). Defaults to stroke. */
+  dotColor?: string;
   // Mirrors the Area's own missingAsZero so the tooltip layer anchors a
   // missing bucket exactly where the line plots it — see
   // resolveTooltipYPositions.
@@ -1075,7 +1078,7 @@ export function ChartTooltip({
               const dotY = tooltipData?.yPositions[line.dataKey];
               return (
                 <TooltipDot
-                  color={line.stroke}
+                  color={line.dotColor ?? line.stroke}
                   key={line.dataKey}
                   strokeColor={chartCssVars.background}
                   visible={visible && dotY !== undefined}
@@ -1846,6 +1849,14 @@ export interface AreaProps {
   pointRadius?: number;
   pointFill?: string;
   pointOpacity?: number;
+  /**
+   * Ink for the HOVER dot when it must differ from the line's own. The stacked
+   * instruments (Search, CDN, Uptime, Funnel-daily) draw a muted grey line and
+   * keep the brand-orange marker — the pre-round look the owner asked back
+   * (06-09-2026). Defaults to `stroke`. Read by the chart's tooltip layer via
+   * LineConfig; the Area itself does not draw the hover dot.
+   */
+  dotColor?: string;
 }
 
 export function Area({
@@ -1869,6 +1880,8 @@ export function Area({
   pointRadius = 1.8,
   pointFill = chartCssVars.foregroundMuted,
   pointOpacity = 0.5,
+  // dotColor is consumed by the tooltip layer through LineConfig, not here.
+  dotColor: _dotColor,
 }: AreaProps) {
   const {
     data,
@@ -2539,6 +2552,7 @@ function extractAreaConfigs(children: ReactNode): LineConfig[] {
         dataKey: props.dataKey,
         stroke: props.stroke || props.fill || "var(--chart-line-primary)",
         strokeWidth: props.strokeWidth || 2,
+        dotColor: props.dotColor,
         missingAsZero: props.missingAsZero ?? false,
       });
     }

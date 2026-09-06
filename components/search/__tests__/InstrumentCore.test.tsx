@@ -77,11 +77,11 @@ async function renderCore(active: MetricKey[] = ['clicks', 'impressions', 'ctr',
 
 const solidLines = (c: HTMLElement) =>
   Array.from(c.querySelectorAll('path')).filter(
-    (p) => p.getAttribute('fill') === 'none' && p.getAttribute('stroke') === 'var(--chart-1)' && !p.getAttribute('stroke-dasharray'),
+    (p) => p.getAttribute('fill') === 'none' && p.getAttribute('stroke') === '#b3b1ad' && !p.getAttribute('stroke-dasharray'),
   )
 
 describe('Search InstrumentCore on the shared instrument', () => {
-  it('renders one instrument chart per active metric, linear, in the brand ink', async () => {
+  it('renders one instrument chart per active metric, linear, in the muted strip ink (#b3b1ad)', async () => {
     const { container } = await renderCore()
     const lines = solidLines(container)
     expect(lines.length).toBe(4)
@@ -115,6 +115,11 @@ describe('Search InstrumentCore on the shared instrument', () => {
     expect(rects.length).toBe(4)
     for (const r of rects) expect(Number(r.getAttribute('x'))).toBeCloseTo(xs[8] - 0.5, 3)
     // exactly one card — the stack's — with the bucket's identity and four rows
+    // Grey line, ORANGE marker (owner ruling 06-09-2026 — the pre-round look):
+    // every hover dot is the brand ink even though every line is #b3b1ad.
+    const dots = Array.from(container.querySelectorAll('circle[r="5"]'))
+    expect(dots.length).toBeGreaterThanOrEqual(1)
+    for (const d of dots) expect(d.getAttribute('fill')).toBe('var(--chart-1)')
     const cards = container.querySelectorAll('.w-56')
     expect(cards.length).toBe(1)
     expect(cards[0].textContent).toContain('09/08/2026')

@@ -1,10 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { useTabListKeyboard } from '@/lib/hooks/useTabListKeyboard'
 import { TopPage } from '@/lib/api/stats'
 import { FileText } from '@phosphor-icons/react'
-import { ArrowUpRightIcon } from '@ciphera-net/facet'
+import { ArrowUpRightIcon, Switcher } from '@ciphera-net/facet'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useFullDimensionList, type FullListKind } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
@@ -48,7 +47,6 @@ const TAB_TO_KIND: Record<Tab, FullListKind> = {
 
 export default function ContentStats({ topPages, entryPages, exitPages, domain, collectPagePaths = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter }: ContentStatsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('top_pages')
-  const handleTabKeyDown = useTabListKeyboard()
   const tabs: Tab[] = ['top_pages', 'entry_pages', 'exit_pages']
 
   // Twin columns (O3, 01-09-2026): the Pages tab shows visitors + views —
@@ -109,27 +107,16 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
   return (
     <div data-tour="dimension-card" data-tour-card="content" className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex gap-1 min-w-0 overflow-x-auto scrollbar-hide pb-1 max-md:[mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)]" role="tablist" aria-label="Pages view tabs" onKeyDown={handleTabKeyDown}>
-            {tabs.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                role="tab"
-                aria-selected={activeTab === tab}
-                className={`relative px-2.5 py-3 sm:py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-none cursor-pointer ${
-                  activeTab === tab
-                    ? 'text-white'
-                    : 'text-neutral-500 hover:text-neutral-300'
-                } ease-apple`}
-              >
-                {getTabLabel(tab)}
-                <span
-                  className={`absolute inset-x-0 -bottom-px h-[3px] rounded-none transition-[width,background-color] duration-base ${
-                    activeTab === tab ? 'bg-brand-orange scale-x-100' : 'bg-transparent scale-x-0'
-                  } ease-apple`}
-                />
-              </button>
-            ))}
+          {/* One Facet Switcher for every dimension card (owner pick C0, 06-09-2026);
+              the overflow wrapper keeps a narrow card scrollable, as the tab row was. */}
+          <div className="min-w-0 overflow-x-auto scrollbar-hide pb-1">
+            <Switcher
+              size="sm"
+              aria-label="Pages view"
+              options={tabs.map((tab) => ({ value: tab, label: getTabLabel(tab) }))}
+              value={activeTab}
+              onChange={(v) => setActiveTab(v as Tab)}
+            />
           </div>
           <DimensionInfoTip tab={activeTab} className="ms-2 me-auto" />
           {/* No denominator note in the header (owner call 19-08) — the modal

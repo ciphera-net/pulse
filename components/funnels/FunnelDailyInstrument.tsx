@@ -6,7 +6,7 @@ import { useFunnelTrends } from '@/lib/swr/dashboard'
 import type { FunnelStats } from '@/lib/api/funnels'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { AreaChart, Area, Grid, YAxis, ChartTooltip, ChartCrosshair } from '@/components/ui/area-chart'
-import { ChartStack, ChartStackAxis, useChartStack } from '@/components/ui/chart-stack'
+import { ChartStack, ChartStackAxis, useChartStack, STRIP_INK, STRIP_MARKER } from '@/components/ui/chart-stack'
 import { PERIOD_ENDS_NOW } from '@/lib/constants/periods'
 import { formatNumber, formatConvertTime } from '@/lib/utils/format'
 import { guardedPctChange, guardedPointChange } from '@/lib/utils/pctChange'
@@ -209,7 +209,7 @@ function DayStrip({ series, kind, dashedTail }: { series: DayPoint[]; kind: 'rat
           // The n≥5 floor: a rate is a measurement only with enough entrants.
           defined={isRate ? measured : undefined}
           fadeStrokeEdges={false}
-          fill="var(--chart-1)"
+          fill={STRIP_INK}
           fillOpacity={isRate ? 0 : 0.15}
           gradientToOpacity={0}
           // The evidence marks: one dot per measured day on the rate strip.
@@ -217,7 +217,8 @@ function DayStrip({ series, kind, dashedTail }: { series: DayPoint[]; kind: 'rat
           pointOpacity={0.9}
           pointRadius={2.1}
           pointsKey={isRate ? 'rate' : undefined}
-          stroke="var(--chart-1)"
+          stroke={STRIP_INK}
+          dotColor={STRIP_MARKER}
           strokeWidth={2}
         />
         <YAxis formatValue={(v) => (isRate ? `${Math.round(v)}%` : formatNumber(Math.round(v)))} numTicks={3} />

@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@ciphera-net/auth": "0.2.0",
-    "@ciphera-net/facet": "^0.14.0",
+    "@ciphera-net/facet": "^0.15.0",
     "@ciphera-net/facet-tailwind": "^0.2.0",
     "@ciphera-net/facet-tokens": "^0.1.0",
     "@ciphera-net/tessera": "0.2.2",
