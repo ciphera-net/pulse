@@ -360,6 +360,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
           <div className="min-w-0 overflow-x-auto scrollbar-hide pb-1">
             <Switcher
               size="sm"
+              tone="solid"
               aria-label="Audience view"
               options={[
                 { value: 'map', label: 'Map' },
