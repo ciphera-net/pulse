@@ -14,7 +14,7 @@ import { CountryFlag } from '@/components/ui/CountryFlag'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { AreaChart, Area, Grid, YAxis, ChartTooltip, ChartCrosshair } from '@/components/ui/area-chart'
-import { ChartStack, ChartStackAxis, useChartStack } from '@/components/ui/chart-stack'
+import { ChartStack, ChartStackAxis, useChartStack, STRIP_INK, STRIP_MARKER } from '@/components/ui/chart-stack'
 import {
   type CdnPoint,
   type StatusMix,
@@ -148,10 +148,11 @@ function CdnStrip({ series, metric }: { series: StripRow[]; metric: Exclude<CdnM
           curve={curveLinear}
           dataKey={metric}
           fadeStrokeEdges={false}
-          fill="var(--chart-1)"
+          fill={STRIP_INK}
           fillOpacity={0.15}
           gradientToOpacity={0}
-          stroke="var(--chart-1)"
+          stroke={STRIP_INK}
+          dotColor={STRIP_MARKER}
           strokeWidth={2}
         />
         <YAxis formatValue={(v) => fmtMetric(metric, v)} numTicks={3} />
