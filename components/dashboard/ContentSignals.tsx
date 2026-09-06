@@ -51,6 +51,7 @@ export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRa
         <div className="min-w-0 overflow-x-auto scrollbar-hide pb-1">
           <Switcher
             size="sm"
+            tone="solid"
             aria-label="Content signals"
             options={[
               { value: 'scroll', label: 'Scroll depth' },

@@ -41,7 +41,7 @@ export const TOUR_STEPS: readonly TourStepDef[] = [
     anchor: TOUR_ANCHORS.dimensionCard,
     card: 'referrers',
     title: 'Break it down',
-    body: 'Referrers, campaigns, locations, tech and content each get a card. Click any row to filter the whole dashboard by it; tabs switch the view.',
+    body: 'Sources, locations, tech and content each get a card. Click any row to filter the whole dashboard by it; the switcher changes the view.',
     side: 'right',
     align: 'start',
   },

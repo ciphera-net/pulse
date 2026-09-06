@@ -207,6 +207,7 @@ export default function PeakHours({ siteId, dateRange, filters }: PeakHoursProps
           {/* One Facet Switcher for every dimension card (owner pick C0, 06-09-2026). */}
           <Switcher
             size="sm"
+            tone="solid"
             aria-label="Peak hours metric"
             options={METRICS.map((m) => ({ value: m.key, label: m.label }))}
             value={metric}

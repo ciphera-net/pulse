@@ -22,13 +22,12 @@ import FilterBuilder from '@/components/dashboard/filter/FilterBuilder'
 import { useFilterBuilder } from '@/components/dashboard/filter/useFilterBuilder'
 const CommandDeck = dynamic(() => import('@/components/dashboard/CommandDeck'), { ssr: false })
 import ContentStats from '@/components/dashboard/ContentStats'
-import TopReferrers from '@/components/dashboard/TopReferrers'
+import Sources from '@/components/dashboard/Sources'
 import Audience from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
 import SectionHeader from '@/components/dashboard/SectionHeader'
 
 const ContentSignals = dynamic(() => import('@/components/dashboard/ContentSignals'))
-const Campaigns = dynamic(() => import('@/components/dashboard/Campaigns'))
 const PeakHours = dynamic(() => import('@/components/dashboard/PeakHours'))
 const ExportModal = dynamic(() => import('@/components/dashboard/ExportModal'))
 // Client-only and off the critical path: driver.js only matters once the
@@ -408,22 +407,21 @@ export default function SiteDashboardPage() {
       </div>
 
       <SectionHeader title="Acquisition" note={sectionNote} />
+      {/* One Sources card (owner pick BH, 06-09-2026): Referrers · Channels ·
+          Campaigns, the UTM dimension behind a Select. The Locations card moved
+          up to fill the row the Campaigns card left. */}
       <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
-        <TopReferrers
+        <Sources
           referrers={dashboard?.top_referrers ?? []}
           channels={dashboard?.channels ?? []}
           collectReferrers={site.collect_referrers ?? true}
           siteId={siteId}
           dateRange={resolvedDateRange}
+          period={apiPeriod || undefined}
           totals={totals}
           filters={filtersParam || undefined}
           onFilter={handleAddFilter}
         />
-        <Campaigns siteId={siteId} dateRange={resolvedDateRange} period={apiPeriod || undefined} totals={totals} filters={filtersParam || undefined} onFilter={handleAddFilter} />
-      </div>
-
-      <SectionHeader title="Audience" note={sectionNote} />
-      <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
         <Audience
           countries={dashboard?.countries ?? []}
           cities={dashboard?.cities ?? []}
@@ -438,6 +436,10 @@ export default function SiteDashboardPage() {
           filters={filtersParam || undefined}
           onFilter={handleAddFilter}
         />
+      </div>
+
+      <SectionHeader title="Audience" note={sectionNote} />
+      <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
         <TechSpecs
           browsers={dashboard?.browsers ?? []}
           os={dashboard?.os ?? []}
