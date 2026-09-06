@@ -1,11 +1,11 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, fireEvent, act } from '@testing-library/react'
-import { useState } from 'react'
 
 // The CDN split instrument on the shared chart (chart-consistency round,
 // 05-09-2026, owner pick B): every line strip is the dashboard's chart at strip
 // height, the errors row keeps its stacked bars on the same scale and cursor,
-// and BOTH cards light the same day from one page-owned index.
+// and Edge and Origin are INDEPENDENT: hovering one lights nothing on the other
+// (owner ruling 06-09-2026, reversing the one-cursor-for-both-cards design).
 
 vi.stubGlobal('ResizeObserver', class {
   observe() {}
@@ -55,8 +55,7 @@ const series: CdnPoint[] = Array.from({ length: N }, (_, i) => ({
 const mix: StatusMix = { total: 1000, c2xx: 900, c3xx: 50, c4xx: 45, c5xx: 5 }
 
 function Split() {
-  const [idx, setIdx] = useState<number | null>(null)
-  const common = { series, overview: undefined, regions: [], regionsTotal: 0, regionsError: false, onRetryRegions: () => {}, mix, hoverIndex: idx, onHoverChange: setIdx }
+  const common = { series, overview: undefined, regions: [], regionsTotal: 0, regionsError: false, onRetryRegions: () => {}, mix }
   return (
     <div>
       <div data-testid="edge"><EdgeCard {...common} /></div>
@@ -89,7 +88,7 @@ describe('CDN split instrument on the shared chart', () => {
     expect((hitRate.getAttribute('d')?.match(/M/g) ?? []).length).toBe(2)
   })
 
-  it('one page-owned index lights the same day on BOTH cards, with one card per stack', async () => {
+  it('hovering the Edge card lights ONLY the Edge card — Origin stays untouched (independent instruments)', async () => {
     const { container, getByTestId } = render(<Split />)
     await act(() => new Promise((r) => setTimeout(r, 450)))
     const edge = getByTestId('edge')
@@ -100,14 +99,15 @@ describe('CDN split instrument on the shared chart', () => {
     fireEvent.mouseMove(hit, { clientX: 56 + xs[9], clientY: 40 })
     const edgeRects = edge.querySelectorAll('rect[fill^="url(#tooltip-indicator-gradient"], rect[fill^="url(#chart-crosshair"]')
     const originRects = origin.querySelectorAll('rect[fill^="url(#tooltip-indicator-gradient"], rect[fill^="url(#chart-crosshair"]')
-    expect(edgeRects.length).toBe(2) // two line strips
-    expect(originRects.length).toBe(3) // two line strips + the bar strip's crosshair
-    for (const r of [...edgeRects, ...originRects]) expect(Number(r.getAttribute('x'))).toBeCloseTo(xs[9] - 0.5, 3)
+    expect(edgeRects.length).toBe(2) // two line strips on Edge light up
+    for (const r of edgeRects) expect(Number(r.getAttribute('x'))).toBeCloseTo(xs[9] - 0.5, 3)
+    // Origin: no crosshair, no card — nothing on the other card reacts.
+    expect(originRects.length).toBe(0)
+    expect(origin.querySelector('.w-56')).toBeNull()
     const cards = container.querySelectorAll('.w-56')
-    expect(cards.length).toBe(2)
+    expect(cards.length).toBe(1)
     expect(cards[0].textContent).toContain('UTC')
     expect(cards[0].textContent).toContain('Served from cache')
-    expect(cards[1].textContent).toContain('5xx')
     fireEvent.mouseLeave(hit)
     expect(container.querySelector('.w-56')).toBeNull()
   })
