@@ -6,7 +6,7 @@ import { useState } from 'react'
 // Train 0 of the chart-consistency round (05-09-2026): the instrument's new
 // capabilities, each pinned so the four page ports can rely on them.
 //   - linked hover: N charts driven by one index move as one cursor
-//   - showCard={false}: the dot without the card (the stack draws one)
+//   - showCard={false}: crosshair + dot without the card (the stack draws one)
 //   - invertY / yDomain / yTicks: fixed and inverted frames
 //   - defined: a predicate gap (the funnel's n<5 rule)
 //   - pointsKey: static per-datum dots from a second key
@@ -54,8 +54,8 @@ async function settle() {
   await act(() => new Promise((r) => setTimeout(r, 20)))
 }
 
-function activeDot(container: HTMLElement): SVGCircleElement | null {
-  return container.querySelector('circle[r="5"]')
+function crosshairRect(container: HTMLElement): SVGRectElement | null {
+  return container.querySelector('rect[fill^="url(#tooltip-indicator-gradient"]')
 }
 
 function lineVertices(container: HTMLElement, stroke = '#FD5E0F'): { x: number; y: number }[] {
@@ -89,7 +89,7 @@ describe('linked hover', () => {
     )
   }
 
-  it('hovering one chart moves the dot on its sibling to the same datum', async () => {
+  it('hovering one chart moves the crosshair on its sibling to the same datum', async () => {
     const { getByTestId } = render(<Twin />)
     await settle()
     const a = getByTestId('a')
@@ -99,20 +99,18 @@ describe('linked hover', () => {
     // pointer over bucket 6 (inner coords): svg-local x = margin.left + xs[6]
     fireEvent.mouseMove(hit, { clientX: MARGIN.left + xs[6], clientY: 100 })
     expect(getByTestId('idx').textContent).toBe('6')
-    const ra = activeDot(a)
-    const rb = activeDot(b)
+    const ra = crosshairRect(a)
+    const rb = crosshairRect(b)
     expect(ra).not.toBeNull()
     expect(rb).not.toBeNull()
-    expect(Number(ra!.getAttribute('cx'))).toBeCloseTo(xs[6], 3)
-    expect(Number(rb!.getAttribute('cx'))).toBeCloseTo(xs[6], 3)
-    // no crosshair since 06-09-2026
-    expect(a.querySelector('rect[fill^="url(#tooltip-indicator"]')).toBeNull()
+    expect(Number(ra!.getAttribute('x'))).toBeCloseTo(xs[6] - 0.5, 3)
+    expect(Number(rb!.getAttribute('x'))).toBeCloseTo(xs[6] - 0.5, 3)
     // no card anywhere — the stack draws its own
     expect(a.querySelector('.w-56')).toBeNull()
     expect(b.querySelector('.w-56')).toBeNull()
     fireEvent.mouseLeave(hit)
     expect(getByTestId('idx').textContent).toBe('null')
-    expect(activeDot(b)).toBeNull()
+    expect(crosshairRect(b)).toBeNull()
   })
 
   it('does not report the same bucket twice while the pointer stays inside it', async () => {

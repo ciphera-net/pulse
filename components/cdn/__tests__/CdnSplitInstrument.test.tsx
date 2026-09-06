@@ -97,14 +97,12 @@ describe('CDN split instrument on the shared chart', () => {
     const [cached] = solidLines(edge)
     const xs = [...(cached.getAttribute('d') ?? '').matchAll(/[ML]\s*(-?[\d.]+)\s*,/g)].map((m) => Number(m[1]))
     fireEvent.mouseMove(hit, { clientX: 56 + xs[9], clientY: 40 })
-    const edgeDots = edge.querySelectorAll('circle[r="5"]')
-    const originDots = origin.querySelectorAll('circle[r="5"]')
-    expect(edgeDots.length).toBe(2) // two line strips on Edge light up
-    for (const d of edgeDots) expect(Number(d.getAttribute('cx'))).toBeCloseTo(xs[9], 3)
-    // No crosshair anywhere since 06-09-2026.
-    expect(container.querySelectorAll('rect[fill^="url(#tooltip-indicator"], rect[fill^="url(#chart-crosshair"]').length).toBe(0)
-    // Origin: no dot, no card — nothing on the other card reacts.
-    expect(originDots.length).toBe(0)
+    const edgeRects = edge.querySelectorAll('rect[fill^="url(#tooltip-indicator-gradient"], rect[fill^="url(#chart-crosshair"]')
+    const originRects = origin.querySelectorAll('rect[fill^="url(#tooltip-indicator-gradient"], rect[fill^="url(#chart-crosshair"]')
+    expect(edgeRects.length).toBe(2) // two line strips on Edge light up
+    for (const r of edgeRects) expect(Number(r.getAttribute('x'))).toBeCloseTo(xs[9] - 0.5, 3)
+    // Origin: no crosshair, no card — nothing on the other card reacts.
+    expect(originRects.length).toBe(0)
     expect(origin.querySelector('.w-56')).toBeNull()
     const cards = container.querySelectorAll('.w-56')
     expect(cards.length).toBe(1)

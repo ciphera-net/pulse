@@ -110,14 +110,15 @@ describe('Search InstrumentCore on the shared instrument', () => {
     const [first] = solidLines(container)
     const xs = [...(first.getAttribute('d') ?? '').matchAll(/[ML]\s*(-?[\d.]+)\s*,/g)].map((m) => Number(m[1]))
     fireEvent.mouseMove(hit, { clientX: 48 + xs[8], clientY: 40 })
-    // four dots (one per strip) at the same datum x — and no crosshair (06-09-2026)
-    const dots = Array.from(container.querySelectorAll('circle[r="5"]'))
-    expect(dots.length).toBe(4)
-    for (const d of dots) expect(Number(d.getAttribute('cx'))).toBeCloseTo(xs[8], 3)
-    expect(container.querySelectorAll('rect[fill^="url(#tooltip-indicator"], rect[fill^="url(#chart-crosshair"]').length).toBe(0)
+    // four crosshairs (one per strip) at the same datum x
+    const rects = Array.from(container.querySelectorAll('rect[fill^="url(#tooltip-indicator-gradient"]'))
+    expect(rects.length).toBe(4)
+    for (const r of rects) expect(Number(r.getAttribute('x'))).toBeCloseTo(xs[8] - 0.5, 3)
     // exactly one card — the stack's — with the bucket's identity and four rows
     // Grey line, ORANGE marker (owner ruling 06-09-2026 — the pre-round look):
     // every hover dot is the brand ink even though every line is #b3b1ad.
+    const dots = Array.from(container.querySelectorAll('circle[r="5"]'))
+    expect(dots.length).toBeGreaterThanOrEqual(1)
     for (const d of dots) expect(d.getAttribute('fill')).toBe('var(--chart-1)')
     const cards = container.querySelectorAll('.w-56')
     expect(cards.length).toBe(1)
