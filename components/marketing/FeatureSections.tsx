@@ -52,10 +52,10 @@ function DashboardCapture() {
   return (
     <MacWindow>
       <Image
-        src={cdnUrl('/marketing/feature-dashboard-7d-sep-2x.png')}
+        src={cdnUrl('/marketing/feature-dashboard-7d-06-09-2026-deck-2x.png')}
         alt="The live Pulse dashboard for ciphera.net — a 7-day view of the visitor trend, top pages and referrers"
-        width={2244}
-        height={1652}
+        width={2520}
+        height={2146}
         unoptimized
         className="block w-full"
       />

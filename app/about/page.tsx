@@ -151,10 +151,10 @@ export default function AboutPage() {
         <div className="mx-auto mt-12 w-full max-w-4xl">
           <MacWindow>
             <Image
-              src={cdnUrl('/marketing/dashboard-hero-06-09-2026-2x.png')}
+              src={cdnUrl('/marketing/dashboard-hero-06-09-2026-deck-2x.png')}
               alt="The Pulse dashboard for ciphera.net — 30 days of real visitor and pageview data"
-              width={2460}
-              height={2106}
+              width={2520}
+              height={2146}
               unoptimized
               className="block w-full"
             />

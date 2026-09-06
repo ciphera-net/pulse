@@ -108,10 +108,10 @@ export default function MarketingHome() {
         <div className="relative mx-auto mt-14 w-full max-w-5xl px-6 pb-16 sm:mt-16 sm:pb-20">
           <MacWindow>
             <Image
-              src={cdnUrl('/marketing/dashboard-hero-06-09-2026-2x.png')}
+              src={cdnUrl('/marketing/dashboard-hero-06-09-2026-deck-2x.png')}
               alt="The Pulse dashboard for ciphera.net — 30 days of real visitor and pageview data"
-              width={2460}
-              height={2106}
+              width={2520}
+              height={2146}
               priority
               unoptimized
               className="block w-full"
