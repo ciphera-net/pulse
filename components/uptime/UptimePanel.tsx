@@ -9,7 +9,7 @@ import { useUptimeResponseTimes } from '@/lib/swr/dashboard'
 import { UpdatingChip } from '@/components/ui/UpdatingChip'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { AnimatedNumber } from '@/components/ui/animated-number'
-import { AreaChart, Area, Grid, YAxis, ChartTooltip, ChartCrosshair } from '@/components/ui/area-chart'
+import { AreaChart, Area, Grid, YAxis, ChartTooltip } from '@/components/ui/area-chart'
 import { ChartStack, ChartStackAxis, useChartStack, STRIP_INK, STRIP_MARKER } from '@/components/ui/chart-stack'
 import { PERIOD_ENDS_NOW } from '@/lib/constants/periods'
 import { cn } from '@/lib/utils'
@@ -91,7 +91,6 @@ function AvailabilityStrip({ series }: { series: UptimePoint[] }) {
   // * with bucket count: 91 day-slots stay slim, 24 hour-slots read solid.
   const slot = series.length > 1 ? innerWidth / (series.length - 1) : innerWidth
   const barW = Math.max(2, Math.min(series.length <= 40 ? 22 : 10, slot * 0.72))
-  const hovered = hoverIndex != null ? series[hoverIndex] : null
 
   return (
     <svg aria-hidden="true" height={STRIP_H} style={{ display: 'block' }} width="100%">
@@ -112,9 +111,6 @@ function AvailabilityStrip({ series }: { series: UptimePoint[] }) {
             />
           )
         })}
-        <g transform={`translate(0,${barY - 6})`}>
-          <ChartCrosshair height={barH + 12} visible={hovered != null} x={hovered ? (xScale(hovered.date) ?? 0) : 0} />
-        </g>
         <rect
           fill="transparent"
           height={STRIP_H}
@@ -182,7 +178,6 @@ function ChecksStrip({ series }: { series: UptimePoint[] }) {
   const max = Math.max(1, ...series.map((p) => p.samples))
   const slot = series.length > 1 ? innerWidth / (series.length - 1) : innerWidth
   const barW = Math.max(2, Math.min(10, slot * 0.72))
-  const hovered = hoverIndex != null ? series[hoverIndex] : null
 
   return (
     <div className="relative" style={{ height: STRIP_H }}>
@@ -203,9 +198,6 @@ function ChecksStrip({ series }: { series: UptimePoint[] }) {
               />
             )
           })}
-          <g transform={`translate(0,${padT})`}>
-            <ChartCrosshair height={innerH} visible={hovered != null} x={hovered ? (xScale(hovered.date) ?? 0) : 0} />
-          </g>
           <rect
             fill="transparent"
             height={STRIP_H}

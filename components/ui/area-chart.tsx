@@ -935,6 +935,9 @@ TooltipBox.displayName = "TooltipBox";
 
 export interface ChartTooltipProps {
   showDatePill?: boolean;
+  /** The 1px vertical through the plot at the hovered bucket. OFF by default
+   *  since 06-09-2026 (owner): the dot, the lit segment and the card already
+   *  mark the bucket, and on a strip with no value a line points at nothing. */
   showCrosshair?: boolean;
   showDots?: boolean;
   /**
@@ -957,7 +960,7 @@ export interface ChartTooltipProps {
 
 export function ChartTooltip({
   showDatePill = true,
-  showCrosshair = true,
+  showCrosshair = false,
   showDots = true,
   showCard = true,
   content,
@@ -1201,32 +1204,6 @@ export function ChartTooltipCard({
 
 ChartTooltipCard.displayName = "ChartTooltipCard";
 
-export interface ChartCrosshairProps {
-  /** x in the caller's plot coordinates (inside its own translate). */
-  x: number;
-  height: number;
-  visible: boolean;
-}
-
-/** The 1px neutral crosshair with faded ends, for a hand-rolled plot that
- *  lives beside instrument charts and must share their cursor. */
-export function ChartCrosshair({ x, height, visible }: ChartCrosshairProps) {
-  const gradientId = `chart-crosshair-${safeId(useId())}`;
-  return (
-    <TooltipIndicator
-      colorEdge={chartCssVars.crosshair}
-      colorMid={chartCssVars.crosshair}
-      fadeEdges
-      gradientId={gradientId}
-      height={height}
-      visible={visible}
-      width="line"
-      x={x}
-    />
-  );
-}
-
-ChartCrosshair.displayName = "ChartCrosshair";
 
 /** The r=5 hover dot with the background halo. */
 export function ChartHoverDot({ x, y, visible, color }: { x: number; y: number; visible: boolean; color: string }) {
@@ -1591,38 +1568,18 @@ Grid.displayName = "Grid";
 
 export interface XAxisProps {
   numTicks?: number;
-  tickerHalfWidth?: number;
   formatLabel?: (date: Date) => string;
 }
 
 interface XAxisLabelProps {
   label: string;
   x: number;
-  crosshairX: number | null;
-  isHovering: boolean;
-  tickerHalfWidth: number;
 }
 
-function XAxisLabel({
-  label,
-  x,
-  crosshairX,
-  isHovering,
-  tickerHalfWidth,
-}: XAxisLabelProps) {
-  const fadeBuffer = 20;
-  const fadeRadius = tickerHalfWidth + fadeBuffer;
-
-  let opacity = 1;
-  if (isHovering && crosshairX !== null) {
-    const distance = Math.abs(x - crosshairX);
-    if (distance < tickerHalfWidth) {
-      opacity = 0;
-    } else if (distance < fadeRadius) {
-      opacity = (distance - tickerHalfWidth) / fadeBuffer;
-    }
-  }
-
+// Labels do not step aside for the cursor any more (06-09-2026): the fade made
+// room for a date pill every chart has turned off, and once the crosshair went
+// it left a hole under the cursor with nothing in it. The card names the bucket.
+function XAxisLabel({ label, x }: XAxisLabelProps) {
   return (
     <div
       className="absolute"
@@ -1634,20 +1591,13 @@ function XAxisLabel({
         justifyContent: "center",
       }}
     >
-      <motion.span
-        animate={{ opacity }}
-        className="whitespace-nowrap text-neutral-500 text-xs"
-        initial={{ opacity: 1 }}
-        transition={{ duration: DURATION_SLOW, ease: EASE_APPLE }}
-      >
-        {label}
-      </motion.span>
+      <span className="whitespace-nowrap text-neutral-500 text-xs">{label}</span>
     </div>
   );
 }
 
-export function XAxis({ numTicks = 5, tickerHalfWidth = 50, formatLabel }: XAxisProps) {
-  const { xScale, margin, tooltipData, containerRef, innerWidth } = useChart();
+export function XAxis({ numTicks = 5, formatLabel }: XAxisProps) {
+  const { xScale, margin, containerRef, innerWidth } = useChart();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -1688,9 +1638,6 @@ export function XAxis({ numTicks = 5, tickerHalfWidth = 50, formatLabel }: XAxis
     }));
   }, [xScale, margin.left, numTicks, formatLabel, innerWidth]);
 
-  const isHovering = tooltipData !== null;
-  const crosshairX = tooltipData ? tooltipData.x + margin.left : null;
-
   const container = containerRef.current;
   if (!(mounted && container)) {
     return null;
@@ -1701,11 +1648,8 @@ export function XAxis({ numTicks = 5, tickerHalfWidth = 50, formatLabel }: XAxis
     <div className="pointer-events-none absolute inset-0">
       {labelsToShow.map((item) => (
         <XAxisLabel
-          crosshairX={crosshairX}
-          isHovering={isHovering}
           key={`${item.label}-${item.x}`}
           label={item.label}
-          tickerHalfWidth={tickerHalfWidth}
           x={item.x}
         />
       ))}
