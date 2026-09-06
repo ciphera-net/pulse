@@ -503,9 +503,10 @@ function useChartInteraction({
     : {};
 
   const interactionStyle: React.CSSProperties = {
-    // The pointer stays the arrow (owner, 06-09-2026): the line marks the
-    // bucket; a crosshair pointer on top of it was the thing to remove.
-    cursor: "default",
+    // No pointer over the plot (owner, 07-09-2026): the line IS the cursor —
+    // it snaps to the bucket, the dot sits on the value, the card names it. The
+    // arrow comes back at the plot edge; keyboard and touch are unaffected.
+    cursor: canInteract ? "none" : "default",
     touchAction: "none",
   };
 

@@ -117,6 +117,7 @@ function AvailabilityStrip({ series }: { series: UptimePoint[] }) {
         </g>
         <rect
           fill="transparent"
+          style={{ cursor: 'none' }}
           height={STRIP_H}
           onMouseLeave={() => setHoverIndex(null)}
           onMouseMove={(event) => {
@@ -207,6 +208,7 @@ function ChecksStrip({ series }: { series: UptimePoint[] }) {
           </g>
           <rect
             fill="transparent"
+            style={{ cursor: 'none' }}
             height={STRIP_H}
             onMouseLeave={() => setHoverIndex(null)}
             onMouseMove={(event) => {
