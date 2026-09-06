@@ -8,10 +8,9 @@ import { ApiError } from '@/lib/api/client'
 import { env } from '@/lib/env'
 import { LoadingOverlay, Button } from '@ciphera-net/facet'
 import TopPages from '@/components/dashboard/ContentStats'
-import TopReferrers from '@/components/dashboard/TopReferrers'
+import Sources from '@/components/dashboard/Sources'
 import Audience from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
-import Campaigns from '@/components/dashboard/Campaigns'
 import ContentSignals from '@/components/dashboard/ContentSignals'
 import SectionHeader from '@/components/dashboard/SectionHeader'
 import { type MetricType } from '@/lib/dashboard/metrics'
@@ -375,7 +374,9 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
             with one visitor is that person's arrival time). */}
         <SectionHeader title="Acquisition" note="whole site" />
         <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
-          <TopReferrers
+          {/* Campaign rows arrive ON the payload (floored, capped) — the
+              campaigns prop is what keeps the member-only endpoint unarmed. */}
+          <Sources
             referrers={safeTopReferrers}
             channels={data?.channels ?? []}
             collectReferrers={site.collect_referrers ?? true}
@@ -383,19 +384,8 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
             dateRange={dateRange}
             totals={totals}
             memberFeatures={false}
-          />
-          {/* Campaign rows arrive ON the payload (floored, capped) — the
-              campaigns prop is what keeps the member-only endpoint unarmed. */}
-          <Campaigns
-            siteId={siteId}
-            dateRange={dateRange}
-            totals={totals}
             campaigns={data?.campaigns ?? []}
           />
-        </div>
-
-        <SectionHeader title="Audience" note="whole site" />
-        <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
           <Audience
             countries={safeCountries}
             cities={safeCities}
@@ -409,6 +399,10 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
             totals={totals}
             memberFeatures={false}
           />
+        </div>
+
+        <SectionHeader title="Audience" note="whole site" />
+        <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
           <TechSpecs
             browsers={safeBrowsers}
             os={safeOS}

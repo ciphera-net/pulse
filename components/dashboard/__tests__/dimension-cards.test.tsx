@@ -1,10 +1,10 @@
+import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import TopReferrers from '@/components/dashboard/TopReferrers'
+import Sources from '@/components/dashboard/Sources'
 import Audience from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
 import GoalStats from '@/components/dashboard/GoalStats'
-import Campaigns from '@/components/dashboard/Campaigns'
 
 // Campaigns gets its rows from SWR like every other card in the row (it was
 // the last one still on a bare useEffect fetch). Pin the HOOK, not the
@@ -48,9 +48,12 @@ const dateRange = { start: '2026-07-20', end: '2026-08-18' }
 
 beforeEach(() => {
   useFullDimensionList.mockReset().mockReturnValue(idle)
+  // Sources always calls the campaigns hook (armed only on its Campaigns
+  // view), so every block needs an idle return, not just the campaigns one.
+  useCampaignsList.mockReset().mockReturnValue(idle)
 })
 
-describe('TopReferrers', () => {
+describe('Sources — referrers view', () => {
   const referrers = [
     { referrer: 'google.com', pageviews: 142, visitors: 97 }, { referrer: 'linkedin.com', pageviews: 43, visitors: 30 },
     { referrer: 'chatgpt.com', pageviews: 11, visitors: 8 }, { referrer: 'bing.com', pageviews: 5, visitors: 3 },
@@ -59,7 +62,7 @@ describe('TopReferrers', () => {
   ]
 
   it('divides by the true visitor total (97/314 = 31%), not the row sum (97/145 = 67%)', () => {
-    render(<TopReferrers referrers={referrers} siteId="site-1" dateRange={dateRange} totals={totals} />)
+    render(<Sources referrers={referrers} siteId="site-1" dateRange={dateRange} totals={totals} />)
     expect(screen.getByText('31%')).toBeTruthy()
     expect(screen.queryByText('67%')).toBeNull()
     // Header note removed by owner call — the modal keeps its explanation.
@@ -67,7 +70,7 @@ describe('TopReferrers', () => {
   })
 
   it('arms the full-list fetch with filters as soon as the list overflows', () => {
-    render(<TopReferrers referrers={referrers} siteId="site-1" dateRange={dateRange} totals={totals} filters="page:is:/" />)
+    render(<Sources referrers={referrers} siteId="site-1" dateRange={dateRange} totals={totals} filters="page:is:/" />)
     // 8 rows > LIMIT 7 — no interaction needed.
     expect(useFullDimensionList).toHaveBeenLastCalledWith(
       'referrers', 'site-1', '2026-07-20', '2026-08-18', 100, 'page:is:/',
@@ -75,7 +78,7 @@ describe('TopReferrers', () => {
   })
 
   it('never arms the fetch on the share surface, but still pages its payload', () => {
-    render(<TopReferrers referrers={referrers} siteId="site-1" dateRange={dateRange} totals={totals} memberFeatures={false} />)
+    render(<Sources referrers={referrers} siteId="site-1" dateRange={dateRange} totals={totals} memberFeatures={false} />)
     expect(useFullDimensionList).toHaveBeenLastCalledWith(
       null, 'site-1', '2026-07-20', '2026-08-18', 100, undefined,
     )
@@ -86,7 +89,7 @@ describe('TopReferrers', () => {
   it('falls back to paging the fan-out rows when the full-list fetch fails', () => {
     useFullDimensionList.mockImplementation((kind: unknown) =>
       kind ? { data: undefined, error: new Error('boom'), isLoading: false, mutate: vi.fn() } : idle)
-    render(<TopReferrers referrers={referrers} siteId="site-1" dateRange={dateRange} totals={totals} />)
+    render(<Sources referrers={referrers} siteId="site-1" dateRange={dateRange} totals={totals} />)
     fireEvent.click(screen.getByLabelText('Next page'))
     expect(screen.getByText('Startpage')).toBeTruthy()
   })
@@ -95,7 +98,7 @@ describe('TopReferrers', () => {
   // range must never outrank a fan-out that no longer overflows.
   it('ignores leftover full-list rows when the list no longer overflows', () => {
     useFullDimensionList.mockImplementation(() => ({ ...idle, data: referrers }))
-    render(<TopReferrers referrers={referrers.slice(0, 4)} siteId="site-1" dateRange={dateRange} totals={totals} />)
+    render(<Sources referrers={referrers.slice(0, 4)} siteId="site-1" dateRange={dateRange} totals={totals} />)
     expect(screen.getByText('Google')).toBeTruthy()
     expect(screen.queryByText('Startpage')).toBeNull()
     expect(screen.queryByLabelText('Next page')).toBeNull()
@@ -205,7 +208,14 @@ describe('TechSpecs', () => {
   })
 })
 
-describe('Campaigns', () => {
+describe('Sources — campaigns view', () => {
+  // The Campaigns card folded into Sources (owner pick BH, 06-09-2026): the
+  // UTM rows live behind the third view, so every case opens it first. The
+  // campaigns hook is armed only while that view is open.
+  const Campaigns = (props: Omit<React.ComponentProps<typeof Sources>, 'referrers'>) => (
+    <Sources referrers={[]} {...props} />
+  )
+  const openCampaigns = () => fireEvent.click(screen.getByRole('radio', { name: 'Campaigns' }))
   beforeEach(() => {
     useCampaignsList.mockReturnValue({
       data: CAMPAIGN_ROWS, error: undefined, isLoading: false, mutate: vi.fn(),
@@ -214,6 +224,7 @@ describe('Campaigns', () => {
 
   it('divides by the true visitor total (157/314 = 50%), not the row sum (157/188 = 84%)', async () => {
     render(<Campaigns siteId="site-1" dateRange={dateRange} totals={totals} />)
+    openCampaigns()
     expect(await screen.findByText('50%')).toBeTruthy()
     expect(screen.queryByText('84%')).toBeNull()
     expect(screen.queryByText(/share of 314 visitors/)).toBeNull()
@@ -221,6 +232,7 @@ describe('Campaigns', () => {
 
   it('renders NO percentages without totals', async () => {
     render(<Campaigns siteId="site-1" dateRange={dateRange} />)
+    openCampaigns()
     expect(await screen.findByText('157')).toBeTruthy()
     expect(screen.queryByText(/\d+%/)).toBeNull()
   })
@@ -236,6 +248,7 @@ describe('Campaigns', () => {
       data: undefined, error: new Error('boom'), isLoading: false, mutate,
     })
     render(<Campaigns siteId="site-1" dateRange={dateRange} totals={totals} />)
+    openCampaigns()
     expect(screen.getByText(/Couldn.t load campaigns/)).toBeTruthy()
     expect(screen.queryByText(/No UTM data yet/)).toBeNull()
     fireEvent.click(screen.getByText('Retry'))
@@ -249,6 +262,7 @@ describe('Campaigns', () => {
       data: [], error: undefined, isLoading: false, mutate: vi.fn(),
     })
     render(<Campaigns siteId="site-1" dateRange={dateRange} totals={totals} />)
+    openCampaigns()
     expect(screen.getByText(/No UTM data yet/)).toBeTruthy()
     expect(screen.queryByText(/Couldn.t load campaigns/)).toBeNull()
   })
@@ -261,6 +275,7 @@ describe('Campaigns', () => {
     // sub-day rolling window that crosses midnight resolves to TWO whole
     // days of dates (04-09-2026 — yesterday's campaigns on the 1h view).
     render(<Campaigns siteId="site-1" dateRange={dateRange} period="1h" totals={totals} />)
+    openCampaigns()
     expect(useCampaignsList).toHaveBeenCalledWith(
       'site-1', dateRange.start, dateRange.end, 10, undefined, true, '1h',
     )
@@ -275,6 +290,7 @@ describe('Campaigns', () => {
     render(
       <Campaigns siteId="site-1" dateRange={dateRange} totals={totals} campaigns={CAMPAIGN_ROWS} />,
     )
+    openCampaigns()
     expect(useCampaignsList).toHaveBeenCalled()
     for (const call of useCampaignsList.mock.calls) {
       expect(call[5]).toBe(false)
@@ -289,15 +305,17 @@ describe('Campaigns', () => {
   // public /tools/utm-builder page is a separate component and is untouched.
   it('offers neither an Export nor a Build URL action, with rows or without', () => {
     const { unmount } = render(<Campaigns siteId="site-1" dateRange={dateRange} totals={totals} />)
+    openCampaigns()
     expect(screen.queryByRole('button', { name: 'Export' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Build URL' })).toBeNull()
-    expect(screen.getAllByRole('radio')).toHaveLength(5)
+    expect(screen.getAllByRole('radio')).toHaveLength(3)
     unmount()
 
     useCampaignsList.mockReturnValue({
       data: [], error: undefined, isLoading: false, mutate: vi.fn(),
     })
     render(<Campaigns siteId="site-1" dateRange={dateRange} totals={totals} />)
+    openCampaigns()
     expect(screen.getByText(/No UTM data yet/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Build a UTM URL/ })).toBeNull()
   })

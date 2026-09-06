@@ -31,11 +31,10 @@ vi.mock('next/navigation', () => ({
 // Heavy dashboard children — covered by their own tests; markers keep this
 // test about the page's own auth-state machine.
 vi.mock('@/components/dashboard/CommandDeck', () => ({ default: () => <div data-testid="deck" /> }))
-vi.mock('@/components/dashboard/Campaigns', () => ({ default: () => null }))
 vi.mock('@/components/dashboard/ContentSignals', () => ({ default: () => null }))
 vi.mock('@/components/dashboard/SectionHeader', () => ({ default: () => null }))
 vi.mock('@/components/dashboard/ContentStats', () => ({ default: () => null }))
-vi.mock('@/components/dashboard/TopReferrers', () => ({ default: () => null }))
+vi.mock('@/components/dashboard/Sources', () => ({ default: () => null }))
 vi.mock('@/components/dashboard/Locations', () => ({ default: () => null }))
 vi.mock('@/components/dashboard/TechSpecs', () => ({ default: () => null }))
 vi.mock('@/components/dashboard/ExportModal', () => ({ default: () => null }))
