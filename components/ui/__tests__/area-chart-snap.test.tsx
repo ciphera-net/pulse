@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, fireEvent, act } from '@testing-library/react'
 import { curveLinear } from 'd3-shape'
 
-// The sticky-cursor contract (01-09-2026): the crosshair, dot, highlight and
+// The sticky-cursor contract (01-09-2026): the dot, highlight and
 // tooltip card SNAP to the hovered datum's exact scaled x, synchronously, and
 // hold that position for every pointer position inside the bucket's half.
 // The mutation these tests kill is any easing/spring re-introduced on the
@@ -90,18 +90,13 @@ function interactiveG(container: HTMLElement): SVGGElement {
   return g as SVGGElement
 }
 
-const crosshairX = (container: HTMLElement): number | null => {
-  const rect = container.querySelector('rect[fill^="url(#tooltip-indicator-gradient"]')
-  return rect ? Number.parseFloat(rect.getAttribute('x') ?? '') : null
-}
-
 const dotCx = (container: HTMLElement): number | null => {
   const dot = container.querySelector('circle[r="5"]')
   return dot ? Number.parseFloat(dot.getAttribute('cx') ?? '') : null
 }
 
 describe('sticky cursor contract', () => {
-  it('snaps the crosshair to the hovered datum synchronously, with no easing', async () => {
+  it('snaps the dot to the hovered datum synchronously, with no easing', async () => {
     const { container } = await renderInteractive()
     const xs = lineVertices(container)
     const ml = marginLeft(container)
@@ -111,11 +106,11 @@ describe('sticky cursor contract', () => {
     // Land inside bucket 3 (not at its center, not near a midpoint).
     fireEvent.mouseMove(g, { clientX: ml + xs[3] + col * 0.2, clientY: 100 })
     // Read IMMEDIATELY: a spring would still be at/near its previous value.
-    expect(crosshairX(container)).toBeCloseTo(xs[3] - 0.5, 5)
+    expect(dotCx(container)).toBeCloseTo(xs[3], 5)
 
     // Cross three buckets in one move — still exact, still synchronous.
     fireEvent.mouseMove(g, { clientX: ml + xs[6] - col * 0.2, clientY: 100 })
-    expect(crosshairX(container)).toBeCloseTo(xs[6] - 0.5, 5)
+    expect(dotCx(container)).toBeCloseTo(xs[6], 5)
   })
 
   it('holds one fixed position for every pointer x inside the same bucket', async () => {
@@ -129,12 +124,12 @@ describe('sticky cursor contract', () => {
     const seen = new Set<number>()
     for (const f of offsets) {
       fireEvent.mouseMove(g, { clientX: ml + xs[5] + col * f, clientY: 100 })
-      const x = crosshairX(container)
+      const x = dotCx(container)
       expect(x).not.toBeNull()
       seen.add(x as number)
     }
     expect(seen.size).toBe(1)
-    expect([...seen][0]).toBeCloseTo(xs[5] - 0.5, 5)
+    expect([...seen][0]).toBeCloseTo(xs[5], 5)
   })
 
   it('steps through exactly one position per datum across a full sweep', async () => {
@@ -145,16 +140,16 @@ describe('sticky cursor contract', () => {
     const seen = new Set<number>()
     for (let px = 0; px <= 800; px += 3) {
       fireEvent.mouseMove(g, { clientX: px, clientY: 100 })
-      const x = crosshairX(container)
+      const x = dotCx(container)
       if (x !== null) seen.add(x)
     }
     // Every datum is a stick position, and nothing between them ever renders.
     expect(seen.size).toBe(POINTS)
     const sorted = [...seen].sort((a, b) => a - b)
-    sorted.forEach((x, i) => expect(x).toBeCloseTo(xs[i] - 0.5, 5))
+    sorted.forEach((x, i) => expect(x).toBeCloseTo(xs[i], 5))
   })
 
-  it('keeps the active dot glued to the crosshair at the exact datum x', async () => {
+  it('keeps the active dot at the exact datum x', async () => {
     const { container } = await renderInteractive()
     const xs = lineVertices(container)
     const ml = marginLeft(container)
@@ -215,16 +210,17 @@ describe('sticky cursor contract', () => {
     expect(label?.className).toContain('whitespace-nowrap')
   })
 
-  it('hides the crosshair and dot immediately on mouse leave', async () => {
+  it('hides the dot immediately on mouse leave', async () => {
     const { container } = await renderInteractive()
     const xs = lineVertices(container)
     const ml = marginLeft(container)
     const g = interactiveG(container)
 
     fireEvent.mouseMove(g, { clientX: ml + xs[2], clientY: 100 })
-    expect(crosshairX(container)).not.toBeNull()
+    expect(dotCx(container)).not.toBeNull()
     fireEvent.mouseLeave(g)
-    expect(crosshairX(container)).toBeNull()
     expect(dotCx(container)).toBeNull()
+    // no crosshair since 06-09-2026 — the rect must never mount
+    expect(container.querySelector('rect[fill^="url(#tooltip-indicator"]')).toBeNull()
   })
 })

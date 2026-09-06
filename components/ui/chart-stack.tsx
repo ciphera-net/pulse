@@ -34,7 +34,7 @@ import {
  * the dashboard's card once at the hovered bucket's x, and draws the shared
  * x-axis row in the instrument's chrome. Hand-rolled members (bar strips that
  * the instrument cannot express) read the same scale and index through
- * `useChartStack` and draw the exported crosshair themselves.
+ * `useChartStack` and light their own hovered column (no crosshair since 06-09-2026).
  *
  * Geometry contract: every member's plot spans the stack's width minus
  * `railWidth`, with the same `margin` — so the stack's own time scale IS each
@@ -327,7 +327,7 @@ export interface ChartStackAxisProps {
  * it in the plot column (after the rail spacer); it fills its holder.
  */
 export function ChartStackAxis({ numTicks = 10, formatLabel, ticks = "nice", className = "" }: ChartStackAxisProps) {
-  const { xScale, margin, innerWidth, hoverIndex, data, xAccessor } = useChartStack();
+  const { xScale, margin, innerWidth, data, xAccessor } = useChartStack();
 
   const labels = useMemo(() => {
     const [start, end] = xScale.domain();
@@ -349,34 +349,17 @@ export function ChartStackAxis({ numTicks = 10, formatLabel, ticks = "nice", cla
     }));
   }, [xScale, innerWidth, numTicks, formatLabel, margin.left, ticks, data, xAccessor]);
 
-  const hovered = hoverIndex != null ? data[hoverIndex] : undefined;
-  const crosshairX = hovered !== undefined ? margin.left + (xScale(xAccessor(hovered)) ?? 0) : null;
-
   return (
     <div className={`pointer-events-none relative h-7 ${className}`}>
-      {labels.map((l) => {
-        // Same fade rule as the instrument's XAxis: labels within 50px of the
-        // crosshair step out of the way (20px ramp).
-        let opacity = 1;
-        if (crosshairX !== null) {
-          const dist = Math.abs(l.x - crosshairX);
-          opacity = dist < 50 ? 0 : dist < 70 ? (dist - 50) / 20 : 1;
-        }
-        return (
-          <div
-            className="absolute flex justify-center"
-            key={l.key}
-            style={{ left: l.x, top: 6, width: 0 }}
-          >
-            <span
-              className="whitespace-nowrap text-neutral-500 text-xs"
-              style={{ opacity, transition: "opacity 400ms var(--ease-apple)" }}
-            >
-              {l.label}
-            </span>
-          </div>
-        );
-      })}
+      {labels.map((l) => (
+        <div
+          className="absolute flex justify-center"
+          key={l.key}
+          style={{ left: l.x, top: 6, width: 0 }}
+        >
+          <span className="whitespace-nowrap text-neutral-500 text-xs">{l.label}</span>
+        </div>
+      ))}
     </div>
   );
 }
