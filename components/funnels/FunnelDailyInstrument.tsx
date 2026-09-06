@@ -263,6 +263,7 @@ function CompletedBars({ series }: { series: DayPoint[] }) {
           </g>
           <rect
             fill="transparent"
+            style={{ cursor: 'none' }}
             height={STRIP_H}
             onMouseLeave={() => setHoverIndex(null)}
             onMouseMove={(event) => {
