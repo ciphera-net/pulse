@@ -14,10 +14,9 @@
  * lives in `app/layout-content.tsx` and is untouched here.
  */
 
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowRightIcon, Button, SearchIcon, XIcon } from '@ciphera-net/facet'
-import { cn } from '@/lib/utils'
+import { ArrowRightIcon, Button, SearchIcon, Switcher, XIcon } from '@ciphera-net/facet'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
 import { TierBadge } from '@/components/integrations/TierBadge'
 import {
@@ -73,7 +72,6 @@ export default function IntegrationsPage() {
   const [activeCategory, setActiveCategory] = useState<IntegrationCategory | 'all'>('all')
   const [activeTier, setActiveTier] = useState<SupportTier | 'all'>('all')
   const searchRef = useRef<HTMLInputElement>(null)
-  const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -117,26 +115,6 @@ export default function IntegrationsPage() {
   const hasResults = filteredGroups.length > 0
   const isFiltering = query.length > 0 || activeCategory !== 'all' || activeTier !== 'all'
   const showFeatured = !isFiltering
-
-  const selectCategory = useCallback((cat: IntegrationCategory | 'all') => {
-    setActiveCategory(cat)
-  }, [])
-
-  const handleTabKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
-      const last = CATEGORY_TABS.length - 1
-      let next: number | null = null
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = index === last ? 0 : index + 1
-      else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = index === 0 ? last : index - 1
-      else if (e.key === 'Home') next = 0
-      else if (e.key === 'End') next = last
-      if (next === null) return
-      e.preventDefault()
-      selectCategory(CATEGORY_TABS[next].key)
-      tabRefs.current[next]?.focus()
-    },
-    [selectCategory],
-  )
 
   return (
     <>
@@ -202,59 +180,28 @@ export default function IntegrationsPage() {
             </p>
           )}
 
-          {/* Category tabs (roving tabindex) */}
-          <div
-            role="tablist"
-            aria-label="Filter integrations by category"
-            className="mt-6 flex flex-wrap gap-x-6 gap-y-2"
-          >
-            {CATEGORY_TABS.map((tab, i) => {
-              const isActive = tab.key === activeCategory
-              return (
-                <button
-                  key={tab.key}
-                  ref={(el) => {
-                    tabRefs.current[i] = el
-                  }}
-                  type="button"
-                  role="tab"
-                  tabIndex={isActive ? 0 : -1}
-                  aria-selected={isActive}
-                  onClick={() => selectCategory(tab.key)}
-                  onKeyDown={(e) => handleTabKeyDown(e, i)}
-                  className={cn(
-                    'border-b py-1.5 text-left text-xs transition-colors duration-150 motion-reduce:transition-none',
-                    isActive
-                      ? 'border-brand-orange text-foreground'
-                      : 'border-transparent text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {tab.label}
-                </button>
-              )
-            })}
+          {/* Category filter */}
+          <div className="mt-6 min-w-0 overflow-x-auto scrollbar-hide pb-1">
+            <Switcher
+              size="sm"
+              tone="solid"
+              aria-label="Filter integrations by category"
+              options={CATEGORY_TABS.map((tab) => ({ value: tab.key, label: tab.label }))}
+              value={activeCategory}
+              onChange={(v) => setActiveCategory(v as IntegrationCategory | 'all')}
+            />
           </div>
 
           {/* Tier filter */}
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            {TIER_FILTERS.map((t) => {
-              const isActive = t.key === activeTier
-              return (
-                <button
-                  key={t.key}
-                  type="button"
-                  onClick={() => setActiveTier(t.key)}
-                  className={cn(
-                    'rounded-none border px-2.5 py-1 text-[11px] uppercase tracking-[0.08em] transition-colors duration-150 ease-apple motion-reduce:transition-none',
-                    isActive
-                      ? 'border-brand-orange bg-brand-orange/10 text-brand-orange'
-                      : 'border-border text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {t.label}
-                </button>
-              )
-            })}
+          <div className="mt-4">
+            <Switcher
+              size="sm"
+              tone="solid"
+              aria-label="Filter integrations by support tier"
+              options={TIER_FILTERS.map((t) => ({ value: t.key, label: t.label }))}
+              value={activeTier}
+              onChange={(v) => setActiveTier(v as SupportTier | 'all')}
+            />
           </div>
         </div>
       </MarketingSection>

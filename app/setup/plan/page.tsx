@@ -13,7 +13,7 @@ import TierSlider from '@/components/billing/TierSlider'
 import PlanChoiceCard from '@/components/billing/PlanChoiceCard'
 import PlanSummary from '@/components/checkout/PlanSummary'
 import PaymentForm from '@/components/checkout/PaymentForm'
-import { Button, toast } from '@ciphera-net/facet'
+import { Button, Switcher, toast } from '@ciphera-net/facet'
 import { TIMING } from '@/lib/motion'
 
 const DEFAULT_LIMIT = 10_000
@@ -196,24 +196,20 @@ export default function SetupPlanPage() {
 
             {/* Billing interval */}
             <div className="flex flex-col items-center gap-2 mb-6">
-              <div className="bg-neutral-800/80 border border-neutral-800 p-1 rounded-none flex">
-                <button
-                  onClick={() => setIsYearly(false)}
-                  className={`px-4 py-1.5 rounded-none text-sm font-medium transition-all ease-apple ${
-                    !isYearly ? 'bg-neutral-700 text-white' : 'text-neutral-500 hover:text-white'
-                  }`}
-                >
-                  Monthly
-                </button>
-                <button
-                  onClick={() => setIsYearly(true)}
-                  className={`px-4 py-1.5 rounded-none text-sm font-medium transition-all ease-apple ${
-                    isYearly ? 'bg-neutral-700 text-white' : 'text-neutral-500 hover:text-white'
-                  }`}
-                >
-                  Yearly <span className={isYearly ? 'text-brand-orange' : 'text-neutral-600'}>· 1 mo free</span>
-                </button>
-              </div>
+              <Switcher
+                size="sm"
+                tone="solid"
+                aria-label="Billing interval"
+                options={[
+                  { value: 'monthly', label: 'Monthly' },
+                  { value: 'yearly', label: 'Yearly' },
+                ]}
+                value={isYearly ? 'yearly' : 'monthly'}
+                onChange={(v) => setIsYearly(v === 'yearly')}
+              />
+              {/* The incentive is a note beside the control, never inside the selected segment
+                  (orange text on the orange thumb is invisible) — the pricing page's own shape. */}
+              <span className="text-xs text-neutral-500">1 month free with yearly</span>
             </div>
 
             {/* Traffic tier */}

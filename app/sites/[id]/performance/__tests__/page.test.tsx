@@ -49,6 +49,18 @@ vi.mock('@ciphera-net/facet', () => ({
   Button: ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
     <button onClick={onClick}>{children}</button>
   ),
+  // The strategy switcher is the shared Facet Switcher since 07-09-2026. The stub keeps the
+  // real component's contract — a radiogroup of radios, one checked — so a test can click
+  // "Desktop" the way a person does.
+  Switcher: ({ options, value, onChange, 'aria-label': ariaLabel }: { options: { value: string; label: React.ReactNode }[]; value: string; onChange: (v: string) => void; 'aria-label'?: string }) => (
+    <div role="radiogroup" aria-label={ariaLabel}>
+      {options.map((o) => (
+        <button key={o.value} type="button" role="radio" aria-checked={o.value === value} onClick={() => onChange(o.value)}>
+          {o.label}
+        </button>
+      ))}
+    </div>
+  ),
   // lib/utils re-exports cn from facet, so ErrorCard breaks without it.
   cn: (...parts: unknown[]) => parts.filter(Boolean).join(' '),
   // The page grew InfoTip glyphs with the metric info layer; without a stub

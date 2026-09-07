@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { SPRING, TIMING } from '@/lib/motion'
+import { TIMING } from '@/lib/motion'
+import { Switcher } from '@ciphera-net/facet'
 import Select from '@/components/ui/select'
 import useSWR from 'swr'
 import { TRAFFIC_TIERS, formatPlanName } from '@/lib/plans'
@@ -130,26 +131,18 @@ export default function PlanSummary({ plan, interval, onIntervalChange, limit, c
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-semibold text-white">{formatPlanName(plan)}</h2>
         </div>
-        <div className="flex items-center gap-1 p-1 bg-neutral-800/50 rounded-none sm:ml-auto">
-          {(['month', 'year'] as const).map((iv) => (
-            <button
-              key={iv}
-              type="button"
-              onClick={() => onIntervalChange(iv)}
-              className={`relative px-3.5 py-1.5 text-sm font-medium rounded-none transition-colors duration-base ${
-                interval === iv ? 'text-white' : 'text-neutral-400 hover:text-white'
-              } ease-apple`}
-            >
-              {interval === iv && (
-                <motion.div
-                  layoutId="checkout-interval-bg"
-                  className="absolute inset-0 bg-neutral-700 rounded-none"
-                  transition={SPRING}
-                />
-              )}
-              <span className="relative z-10">{iv === 'month' ? 'Monthly' : 'Yearly'}</span>
-            </button>
-          ))}
+        <div className="sm:ml-auto">
+          <Switcher
+            size="sm"
+            tone="solid"
+            aria-label="Billing interval"
+            options={[
+              { value: 'month', label: 'Monthly' },
+              { value: 'year', label: 'Yearly' },
+            ]}
+            value={interval}
+            onChange={(v) => onIntervalChange(v as 'month' | 'year')}
+          />
         </div>
       </div>
 
