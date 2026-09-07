@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CaretDown, Check } from '@phosphor-icons/react'
-import { OPERATORS, OPERATOR_LABELS, type DimensionFilter } from '@/lib/filters'
+import { OPERATOR_LABELS, operatorsFor, type DimensionFilter } from '@/lib/filters'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 
 // ---------------------------------------------------------------------------
@@ -15,10 +15,15 @@ import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 export interface OperatorChipProps {
   operator: DimensionFilter['operator']
   onChange: (operator: DimensionFilter['operator']) => void
+  /** The draft's dimension — narrows the operator set (e.g. the entry page is `is` only). */
+  dimension?: string | null
 }
 
-export default function OperatorChip({ operator, onChange }: OperatorChipProps) {
+export default function OperatorChip({ operator, onChange, dimension }: OperatorChipProps) {
   const [open, setOpen] = useState(false)
+  const operators = operatorsFor(dimension)
+  // * One operator = nothing to choose: the chip is a label, not a menu.
+  const locked = operators.length === 1
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -31,8 +36,9 @@ export default function OperatorChip({ operator, onChange }: OperatorChipProps) 
   }, [open])
 
   const cycle = (delta: 1 | -1) => {
-    const index = OPERATORS.indexOf(operator)
-    onChange(OPERATORS[(index + delta + OPERATORS.length) % OPERATORS.length])
+    if (locked) return
+    const index = operators.indexOf(operator)
+    onChange(operators[(index + delta + operators.length) % operators.length])
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -52,10 +58,11 @@ export default function OperatorChip({ operator, onChange }: OperatorChipProps) 
     <div className="relative" ref={ref}>
       <button
         type="button"
-        aria-haspopup="menu"
-        aria-expanded={open}
+        aria-haspopup={locked ? undefined : "menu"}
+        aria-expanded={locked ? undefined : open}
+        aria-disabled={locked || undefined}
         aria-label={`Operator: ${OPERATOR_LABELS[operator]}`}
-        onClick={() => setOpen(o => !o)}
+        onClick={() => { if (!locked) setOpen(o => !o) }}
         onKeyDown={handleKeyDown}
         className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-none border transition-colors cursor-pointer ease-apple ${
           open
@@ -64,7 +71,7 @@ export default function OperatorChip({ operator, onChange }: OperatorChipProps) 
         }`}
       >
         {OPERATOR_LABELS[operator]}
-        <CaretDown className="w-3 h-3 text-neutral-500" weight="bold" />
+        {!locked && <CaretDown className="w-3 h-3 text-neutral-500" weight="bold" />}
       </button>
 
       <AnimatePresence>
@@ -77,7 +84,7 @@ export default function OperatorChip({ operator, onChange }: OperatorChipProps) 
           transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
           className="absolute top-full left-0 mt-1 z-10 min-w-[180px] bg-popover border border-border rounded-none shadow-lg py-1 origin-top-left"
         >
-          {OPERATORS.map(op => (
+          {operators.map(op => (
             <button
               key={op}
               type="button"

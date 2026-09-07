@@ -12,6 +12,7 @@ import {
   getDevices,
   getCampaigns,
 } from '@/lib/api/stats'
+import { getJourneyEntryPoints } from '@/lib/api/journeys'
 import type { FilterSuggestion } from '@/lib/filters'
 import { logger } from '@/lib/utils/logger'
 
@@ -46,6 +47,11 @@ export function useFilterSuggestions(
         })()
 
         switch (dimension) {
+          case 'entry_path': {
+            // * Journeys only: the pages sessions began on, with their session counts.
+            const data = await getJourneyEntryPoints(siteId, start, end, f)
+            return data.map(e => ({ value: e.path, label: e.path, count: e.session_count }))
+          }
           case 'page': {
             const data = await getTopPages(siteId, start, end, limit, f)
             return data.map(p => ({ value: p.path, label: p.path, count: p.pageviews }))

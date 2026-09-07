@@ -30,6 +30,7 @@ export const DIMENSION_LABELS: Record<string, string> = {
   utm_term: 'UTM Term',
   utm_content: 'UTM Content',
   event_name: 'Event',
+  entry_path: 'Entry page',
 }
 
 export const OPERATOR_LABELS: Record<string, string> = {
@@ -42,12 +43,33 @@ export const OPERATOR_LABELS: Record<string, string> = {
 export const DIMENSIONS = Object.keys(DIMENSION_LABELS)
 export const OPERATORS = Object.keys(OPERATOR_LABELS) as DimensionFilter['operator'][]
 
+// * Dimensions a page has to ALLOW explicitly (FilterBuilder's `allowedDimensions`)
+// * — never offered by default. `entry_path` is the journeys API's own parameter
+// * (not a `filters=` dimension), so the dashboard and funnels pickers, which
+// * pass no allowlist, must not see it: their backend would 400 on it.
+export const SCOPED_DIMENSIONS: ReadonlySet<string> = new Set(['entry_path'])
+
+// * Where a dimension takes fewer operators than the full set. The entry page
+// * is an exact path the API matches on — there is no "is not" or "contains".
+export const DIMENSION_OPERATORS: Record<string, readonly DimensionFilter['operator'][]> = {
+  entry_path: ['is'],
+}
+
+export function operatorsFor(dimension: string | null | undefined): readonly DimensionFilter['operator'][] {
+  return (dimension && DIMENSION_OPERATORS[dimension]) || OPERATORS
+}
+
+// * Dimensions that carry exactly ONE value (the API takes a single entry path;
+// * a pill claiming "/a (+1)" while only /a applied would be a fabrication).
+export const SINGLE_VALUE_DIMENSIONS: ReadonlySet<string> = new Set(['entry_path'])
+
 export const DIMENSION_CATEGORIES = [
   { label: 'Pages', dimensions: ['page'] },
   { label: 'Sources', dimensions: ['referrer', 'channel'] },
   { label: 'Campaigns', dimensions: ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] },
   { label: 'Device', dimensions: ['browser', 'os', 'device', 'screen_resolution'] },
   { label: 'Audience', dimensions: ['country', 'region', 'city'] },
+  { label: 'Journey', dimensions: ['entry_path'] },
   { label: 'Events', dimensions: ['event_name'] },
 ] as const
 

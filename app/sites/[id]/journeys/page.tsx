@@ -2,17 +2,14 @@
 
 import { useCallback, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { FlowArrow, FunnelSimple, Rows, TreeStructure, X } from '@phosphor-icons/react'
+import { FunnelSimple, TreeStructure, X } from '@phosphor-icons/react'
+import { Switcher } from '@ciphera-net/facet'
 import { aggregateJourney } from '@/lib/journeys/aggregate'
 import { buildLinks, spineThrough } from '@/lib/journeys/chain'
 import { formatDate } from '@/lib/utils/dateRanges'
 import { formatDate as formatDisplayDate } from '@/lib/utils/formatDate'
 import DateRangePicker from '@/components/ui/DateRangePicker'
-import ColumnJourney from '@/components/journeys/ColumnJourney'
 import SankeyJourney from '@/components/journeys/SankeyJourney'
-import { StepperControl } from '@/components/ui/stepper-control'
-import { SegmentedControl } from '@ciphera-net/facet'
-import { EntryCombobox } from '@/components/journeys/EntryCombobox'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { UpdatingChip } from '@/components/ui/UpdatingChip'
@@ -23,23 +20,31 @@ import FilterPills from '@/components/dashboard/FilterPills'
 import FilterBuilder from '@/components/dashboard/filter/FilterBuilder'
 import { useFilterBuilder } from '@/components/dashboard/filter/useFilterBuilder'
 import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
+import { TERMS } from '@/lib/dashboard/terms'
 import type { DimensionFilter } from '@/lib/filters'
 import {
   useJourneyFilters,
   JOURNEY_FILTER_DIMENSIONS,
-  DEPTH_MIN,
-  DEPTH_MAX,
-  DEPTH_STEP,
-  DENSITY_MIN,
-  DENSITY_MAX,
-  DENSITY_STEP,
+  ENTRY_DIMENSION,
+  DEPTH_OPTIONS,
+  DENSITY_OPTIONS,
   type Period,
 } from '@/lib/hooks/useJourneyFilters'
-import {
-  useDashboard,
-  useJourneyTransitions,
-  useJourneyEntryPoints,
-} from '@/lib/swr/dashboard'
+import { useDashboard, useJourneyTransitions } from '@/lib/swr/dashboard'
+
+// ---------------------------------------------------------------------------
+// Journeys (07-09-2026 simplification, owner pick "A solid"):
+//   - ONE view — the flow. The columns view, its switcher and `view=` are gone.
+//   - Depth and Paths are solid Switchers over a short ladder, and they REMEMBER.
+//   - Filter lives in the page header beside the date range, dashboard order
+//     (pills · Filter · range). The entry point is a filter like any other —
+//     "Entry page" in the popover, a pill in the header — not a control of
+//     its own, and there is no Reset: every filter has its own ×.
+//   - The block carries one note line saying what the canvas shows.
+// ---------------------------------------------------------------------------
+
+const DEPTH_SWITCH = DEPTH_OPTIONS.map((n) => ({ value: String(n), label: String(n) }))
+const DENSITY_SWITCH = DENSITY_OPTIONS.map((n) => ({ value: String(n), label: String(n) }))
 
 export default function JourneysPage() {
   const params = useParams()
@@ -67,6 +72,8 @@ export default function JourneysPage() {
     filters.setPeriod('custom', newRange)
   }, [filters.dateRange, filters.setPeriod])
 
+  // * The fetch waits for memory (one render): an empty siteId is a null SWR key.
+  const fetchSiteId = filters.ready ? siteId : ''
   const {
     data: transitionsData,
     error: transitionsError,
@@ -74,7 +81,7 @@ export default function JourneysPage() {
     isValidating: transitionsValidating,
     mutate: retryTransitions,
   } = useJourneyTransitions(
-    siteId,
+    fetchSiteId,
     filters.dateRange.start,
     filters.dateRange.end,
     filters.committedDepth,
@@ -82,44 +89,44 @@ export default function JourneysPage() {
     filters.entryPath || undefined,
     filters.filtersParam || undefined,
   )
-  const { data: entryPoints } = useJourneyEntryPoints(
-    siteId,
-    filters.dateRange.start,
-    filters.dateRange.end,
-    filters.filtersParam || undefined,
-  )
 
-  // ── Dashboard filter system restricted to journeys dimensions ──
+  // ── The dashboard filter system, restricted to journeys' dimensions ──
   const fetchSuggestions = useFilterSuggestions(siteId, filters.dateRange, filters.filtersParam || undefined)
   const filterBuilder = useFilterBuilder(fetchSuggestions)
   const handleFilterApply = useCallback(
     (filter: DimensionFilter, editingIndex: number | null) => {
       if (editingIndex !== null) {
         filters.setDimensionFilters(filters.dimensionFilters.map((f, i) => (i === editingIndex ? filter : f)))
-      } else {
-        const dup = filters.dimensionFilters.some(
-          (f) => f.dimension === filter.dimension && f.operator === filter.operator && f.values.join(';') === filter.values.join(';'),
-        )
-        if (!dup) filters.setDimensionFilters([...filters.dimensionFilters, filter])
+        return
       }
+      const dup = filters.dimensionFilters.some(
+        (f) => f.dimension === filter.dimension && f.operator === filter.operator && f.values.join(';') === filter.values.join(';'),
+      )
+      if (dup) return
+      // * One entry page at a time — the API takes a single path.
+      const rest =
+        filter.dimension === ENTRY_DIMENSION
+          ? filters.dimensionFilters.filter((f) => f.dimension !== ENTRY_DIMENSION)
+          : filters.dimensionFilters
+      filters.setDimensionFilters([...rest, filter])
     },
     [filters],
   )
-  const { data: dashboard } = useDashboard(
-    siteId,
-    filters.dateRange.start,
-    filters.dateRange.end,
+  const clearEntry = useCallback(
+    () => filters.setDimensionFilters(filters.dimensionFilters.filter((f) => f.dimension !== ENTRY_DIMENSION)),
+    [filters],
   )
+
+  const { data: dashboard } = useDashboard(siteId, filters.dateRange.start, filters.dateRange.end)
 
   useEffect(() => {
     const domain = dashboard?.site?.domain
-    document.title = domain ? `Journeys \u00b7 ${domain} | Pulse` : 'Journeys | Pulse'
+    document.title = domain ? `Journeys · ${domain} | Pulse` : 'Journeys | Pulse'
   }, [dashboard?.site?.domain])
 
   // * First-ever load only — keepPreviousData keeps the canvas mounted with
   // * stale data on every later refetch, so this is true once per mount.
-  const showSkeleton = transitionsLoading && !transitionsData
-
+  const showSkeleton = !filters.ready || (transitionsLoading && !transitionsData)
   if (showSkeleton) return <JourneysSkeleton />
 
   const totalSessions = transitionsData?.total_sessions ?? 0
@@ -143,9 +150,11 @@ export default function JourneysPage() {
     router.push(`/sites/${siteId}/funnels?prefill=${encodeURIComponent(JSON.stringify(prefill))}`)
   }
 
+  const hasFilters = filters.dimensionFilters.length > 0
+
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-      {/* Header */}
+      {/* Header — title on the left; pills · Filter · date range on the right (the dashboard's order) */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-lg font-semibold text-neutral-200 mb-1">
@@ -155,128 +164,95 @@ export default function JourneysPage() {
             How visitors navigate through your site
           </p>
         </div>
-        <DateRangePicker
-          period={filters.period}
-          dateRange={filters.dateRange}
-          onPeriodChange={(p) => filters.setPeriod(p as Period)}
-          onDateRangeChange={(range) => filters.setPeriod('custom', range)}
-          onShift={shiftPeriod}
-        />
-      </div>
-
-      {/* Single card: toolbar + chart */}
-      <div className="bg-card border border-border rounded-none overflow-hidden">
-        {/* Toolbar — one h-10 row; wraps to two rows <sm (steppers / combobox+view) */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-border p-4">
-          <div className="flex items-center gap-2">
-            <StepperControl
-              label="Depth"
-              value={filters.depth}
-              min={DEPTH_MIN}
-              max={DEPTH_MAX}
-              step={DEPTH_STEP}
-              onChange={filters.setDepth}
-            />
-            <StepperControl
-              label="Paths"
-              value={filters.density}
-              min={DENSITY_MIN}
-              max={DENSITY_MAX}
-              step={DENSITY_STEP}
-              onChange={filters.setDensity}
-            />
-            {/* One sentence covers BOTH steppers ("Steps plotted … and pages
-                kept per step"), so it sits beside the pair rather than inside
-                either one — a StepperControl is role="spinbutton", and a glyph
-                button nested in a composite widget steals its arrow keys. */}
-            <TermInfoTip term="journey_depth_density" />
-          </div>
-          {/* Below sm this group takes a FULL row of its own and wraps inside
-              itself. As a `flex-1 min-w-[280px]` sibling it was ~294px wide but
-              held ~325px of shrink-0 controls, so the Columns/Flow segmented
-              control was pushed past the card edge. sm+ keeps the original
-              single-row, 280px-floor behaviour exactly. */}
-          <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:min-w-[280px] sm:flex-1 sm:flex-nowrap">
-            <EntryCombobox
-              value={filters.entryPath}
-              onChange={filters.setEntryPath}
-              entries={entryPoints ?? []}
-              className="w-full min-w-0 sm:w-64 sm:flex-none"
-            />
-            {filters.lens && (
-              <div className="inline-flex h-10 max-w-64 items-center gap-1.5 rounded-none border border-neutral-800 px-2.5">
-                <span className="flex items-center gap-1 text-xs text-neutral-500">
-                  Lens
-                  <TermInfoTip term="journey_lens" />
-                </span>
-                <span className="truncate text-sm text-white" title={filters.lens}>
-                  {filters.lens}
-                </span>
-                <button
-                  type="button"
-                  aria-label="Create funnel from this path"
-                  title="Create funnel from this path"
-                  onClick={createFunnelFromLens}
-                  className="ml-0.5 rounded-none p-0.5 text-neutral-500 transition-colors duration-fast ease-apple hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
-                >
-                  <FunnelSimple className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Clear lens"
-                  onClick={() => filters.setLens(null)}
-                  className="rounded-none p-0.5 text-neutral-500 transition-colors duration-fast ease-apple hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            )}
-            <FilterButton
-              hasActiveFilters={filters.dimensionFilters.length > 0}
-              active={filterBuilder.open}
-              onClick={(anchor) => filterBuilder.openCreate(anchor)}
-            />
-            <span className="hidden flex-1 sm:block" />
-            <button
-              onClick={filters.resetFilters}
-              disabled={filters.isDefault}
-              /* The opacity-0 trick keeps the desktop row from shifting when
-                 Reset appears — but it still RESERVES ~62px, which on a wrapped
-                 mobile toolbar is a visible dead gap. Below md take it out of
-                 layout entirely; md+ keeps the no-shift behaviour. */
-              className={`text-sm whitespace-nowrap transition-all duration-fast px-3 py-2 ${
-                filters.isDefault
-                  ? 'hidden md:inline-block opacity-0 pointer-events-none'
-                  : 'opacity-100 text-neutral-500 hover:text-white'
-              } ease-apple`}
-            >
-              Reset
-            </button>
-            <SegmentedControl
-              aria-label="Journey view"
-              value={filters.viewMode}
-              onChange={(v) => filters.setViewMode(v as 'columns' | 'flow')}
-              options={[
-                { value: 'columns', label: <span className="flex items-center gap-1.5"><Rows className="h-4 w-4" />Columns</span> },
-                { value: 'flow', label: <span className="flex items-center gap-1.5"><FlowArrow className="h-4 w-4" />Flow</span> },
-              ]}
-            />
-          </div>
-        </div>
-
-        {/* Active filter pills — only present when filters are applied */}
-        {filters.dimensionFilters.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          {hasFilters && (
             <FilterPills
               filters={filters.dimensionFilters}
               onEdit={(index, anchor) => filterBuilder.openEdit(filters.dimensionFilters[index], index, anchor)}
               onRemove={(index) => filters.setDimensionFilters(filters.dimensionFilters.filter((_, i) => i !== index))}
               onClear={() => filters.setDimensionFilters([])}
             />
-          </div>
-        )}
+          )}
+          <FilterButton
+            hasActiveFilters={hasFilters}
+            active={filterBuilder.open}
+            onClick={(anchor) => filterBuilder.openCreate(anchor)}
+          />
+          <DateRangePicker
+            period={filters.period}
+            dateRange={filters.dateRange}
+            onPeriodChange={(p) => filters.setPeriod(p as Period)}
+            onDateRangeChange={(range) => filters.setPeriod('custom', range)}
+            onShift={shiftPeriod}
+          />
+        </div>
+      </div>
 
-        {/* Journey canvas — error and settled-empty states before either view */}
+      {/* The block: toolbar · note · canvas */}
+      <div className="bg-card border border-border rounded-none overflow-hidden">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border p-4">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-neutral-500">Depth</span>
+            <Switcher
+              size="sm"
+              tone="solid"
+              aria-label="Depth"
+              options={DEPTH_SWITCH}
+              value={String(filters.depth)}
+              onChange={(v) => filters.setDepth(Number(v))}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-neutral-500">Paths</span>
+            <Switcher
+              size="sm"
+              tone="solid"
+              aria-label="Paths"
+              options={DENSITY_SWITCH}
+              value={String(filters.density)}
+              onChange={(v) => filters.setDensity(Number(v))}
+            />
+          </div>
+          {/* One sentence covers BOTH ladders ("Steps plotted … and pages kept per step"). */}
+          <TermInfoTip term="journey_depth_density" />
+          {filters.lens && (
+            <div className="inline-flex h-10 max-w-64 items-center gap-1.5 rounded-none border border-neutral-800 px-2.5 sm:ml-auto">
+              <span className="flex items-center gap-1 text-xs text-neutral-500">
+                Lens
+                <TermInfoTip term="journey_lens" />
+              </span>
+              <span className="truncate text-sm text-white" title={filters.lens}>
+                {filters.lens}
+              </span>
+              <button
+                type="button"
+                aria-label="Create funnel from this path"
+                title="Create funnel from this path"
+                onClick={createFunnelFromLens}
+                className="ml-0.5 rounded-none p-0.5 text-neutral-500 transition-colors duration-fast ease-apple hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+              >
+                <FunnelSimple className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                aria-label="Clear lens"
+                onClick={() => filters.setLens(null)}
+                className="rounded-none p-0.5 text-neutral-500 transition-colors duration-fast ease-apple hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* The note: what the canvas shows */}
+        <p className="border-b border-border px-4 py-2.5 text-xs text-neutral-500" data-testid="journeys-note">
+          {filters.entryPath
+            ? `Journeys that began on ${filters.entryPath}.`
+            : TERMS.journey_entry_point.definition}
+        </p>
+
+        {/* The canvas — error and settled-empty states before the flow */}
         <div data-tour="journeys-canvas" className="relative p-6">
           <UpdatingChip active={transitionsValidating} />
           {transitionsError ? (
@@ -290,10 +266,10 @@ export default function JourneysPage() {
               <EmptyState
                 icon={<TreeStructure />}
                 title={`No journeys start at ${filters.entryPath}`}
-                description="No sessions entered through this page in this period. Try another entry point or widen the date range."
-                action={{ label: 'Clear entry filter', onClick: () => filters.setEntryPath('') }}
+                description="No sessions entered through this page in this period. Try another entry page or widen the date range."
+                action={{ label: 'Remove the entry page filter', onClick: clearEntry }}
               />
-            ) : filters.dimensionFilters.length > 0 ? (
+            ) : hasFilters ? (
               <EmptyState
                 icon={<TreeStructure />}
                 title="No journeys match these filters"
@@ -308,18 +284,6 @@ export default function JourneysPage() {
                 action={{ label: 'View setup guide', href: '/installation' }}
               />
             )
-          ) : filters.viewMode === 'columns' ? (
-            <ColumnJourney
-              transitions={transitions}
-              depth={filters.committedDepth}
-              /* Columns stay readable at ≤10 rows/step; the flow view is the
-                 detailed lens for higher densities. */
-              maxPagesPerStep={Math.min(filters.committedDensity, 10)}
-              lens={filters.lens}
-              onLensChange={filters.setLens}
-              totalSessions={totalSessions}
-              periodLabel={periodLabel}
-            />
           ) : (
             <SankeyJourney
               transitions={transitions}
@@ -334,7 +298,7 @@ export default function JourneysPage() {
         </div>
       </div>
 
-      {/* Filter popover — dimensions restricted to journeys' V1 set */}
+      {/* Filter popover — journeys' dimensions: the entry page + the session_flows set */}
       <FilterBuilder
         builder={filterBuilder}
         filters={filters.dimensionFilters}
