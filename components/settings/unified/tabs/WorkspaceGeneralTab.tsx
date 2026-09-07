@@ -100,7 +100,14 @@ export default function WorkspaceGeneralTab() {
     setDeleting(true)
     try {
       await deleteOrganization(user.org_id)
-      localStorage.clear()
+      // 🔴 NO localStorage.clear() HERE. It used to run on this line and wiped
+      // the WHOLE origin — including the product tour's "seen it" stamp, every
+      // OTHER workspace's checklist dismissal, the remembered date range and
+      // the sidebar state. Deleting one workspace has nothing to say about any
+      // of them, and the tour reappearing afterwards is exactly what the owner
+      // reported. Org-scoped caches are cleared by the full page navigation
+      // below; the session is repointed by switchContext, which is what the
+      // comment beside the clear() was actually describing.
       // Land somewhere REAL. The session JWT still names the deleted org, so
       // a bare navigation used to resume the setup wizard for whichever org
       // the guard happened to find. Switch the session to a surviving org and
