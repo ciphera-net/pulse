@@ -18,6 +18,8 @@ export interface ValuePickerProps {
   dimension: string | null
   values: string[]
   onChange: (values: string[]) => void
+  /** Exactly one value: picking replaces, never accumulates. */
+  single?: boolean
   onFetchSuggestions?: (dimension: string) => Promise<FilterSuggestion[]>
   autoFocus?: boolean
   /** Enter with an empty search box — the popover uses it to apply the draft. */
@@ -26,7 +28,7 @@ export interface ValuePickerProps {
   onBackspaceWhenEmpty?: () => void
 }
 
-export default function ValuePicker({ dimension, values, onChange, onFetchSuggestions, autoFocus, onSubmit, onBackspaceWhenEmpty }: ValuePickerProps) {
+export default function ValuePicker({ dimension, values, onChange, onFetchSuggestions, single = false, autoFocus, onSubmit, onBackspaceWhenEmpty }: ValuePickerProps) {
   const [search, setSearch] = useState('')
   const [suggestions, setSuggestions] = useState<FilterSuggestion[]>([])
   // * Lazily true so the very first paint is already the loading state — a
@@ -87,13 +89,17 @@ export default function ValuePicker({ dimension, values, onChange, onFetchSugges
   )
 
   function toggle(val: string) {
+    if (single) {
+      onChange(values.includes(val) ? [] : [val])
+      return
+    }
     onChange(values.includes(val) ? values.filter(v => v !== val) : [...values, val])
   }
 
   function handleAddCustom() {
     const trimmed = search.trim()
     if (!trimmed || values.includes(trimmed)) return
-    onChange([...values, trimmed])
+    onChange(single ? [trimmed] : [...values, trimmed])
     setSearch('')
   }
 

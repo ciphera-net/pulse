@@ -35,9 +35,7 @@ describe('useJourneyFilters', () => {
     expect(result.current.density).toBe(20)
     expect(result.current.entryPath).toBe('')
     expect(result.current.lens).toBeNull()
-    expect(result.current.viewMode).toBe('columns')
     expect(result.current.period).toBe('30')
-    expect(result.current.isDefault).toBe(true)
   })
 
   it('reads depth from URL when present', () => {
@@ -70,18 +68,6 @@ describe('useJourneyFilters', () => {
     expect(result.current.density).toBe(50)
   })
 
-  it('falls back to default for unknown viewMode', () => {
-    mockSearchParams = new URLSearchParams('view=garbage')
-    const { result } = renderHook(() => useJourneyFilters())
-    expect(result.current.viewMode).toBe('columns')
-  })
-
-  it('reads valid viewMode from URL', () => {
-    mockSearchParams = new URLSearchParams('view=flow')
-    const { result } = renderHook(() => useJourneyFilters())
-    expect(result.current.viewMode).toBe('flow')
-  })
-
   it('setDepth calls router.replace with new URL', () => {
     const { result } = renderHook(() => useJourneyFilters())
     act(() => {
@@ -104,38 +90,16 @@ describe('useJourneyFilters', () => {
     expect(calledWith).toContain('density=30')
   })
 
-  it('resetFilters clears all filter params', () => {
-    mockSearchParams = new URLSearchParams('depth=6&density=30&entry=%2F&lens=%2Flogin&view=flow')
-    const { result } = renderHook(() => useJourneyFilters())
-    act(() => {
-      result.current.resetFilters()
-    })
-    const calledWith = mockReplace.mock.calls[0][0] as string
-    expect(calledWith).not.toContain('depth=')
-    expect(calledWith).not.toContain('density=')
-    expect(calledWith).not.toContain('entry=')
-    expect(calledWith).not.toContain('lens=')
-    expect(calledWith).not.toContain('view=')
-  })
-
-  it('isDefault is false when any non-default value present', () => {
-    mockSearchParams = new URLSearchParams('depth=6')
-    const { result } = renderHook(() => useJourneyFilters())
-    expect(result.current.isDefault).toBe(false)
-  })
-
   it('reads lens from URL when present', () => {
     mockSearchParams = new URLSearchParams('lens=%2Flogin')
     const { result } = renderHook(() => useJourneyFilters())
     expect(result.current.lens).toBe('/login')
-    expect(result.current.isDefault).toBe(false)
   })
 
   it('treats an empty lens param as null', () => {
     mockSearchParams = new URLSearchParams('lens=')
     const { result } = renderHook(() => useJourneyFilters())
     expect(result.current.lens).toBeNull()
-    expect(result.current.isDefault).toBe(true)
   })
 
   it('setLens writes the path to the URL', () => {
@@ -166,7 +130,6 @@ describe('useJourneyFilters', () => {
     ])
     // re-serialized for API calls in the versioned v2 format
     expect(result.current.filtersParam).toBe('v2:country|is|US')
-    expect(result.current.isDefault).toBe(false)
   })
 
   it('has no dimension filters by default', () => {
@@ -193,17 +156,6 @@ describe('useJourneyFilters', () => {
     const calledWith = mockReplace.mock.calls[0][0] as string
     expect(calledWith).not.toContain('filters=')
     expect(calledWith).toContain('depth=6')
-  })
-
-  it('resetFilters clears the filters param too', () => {
-    mockSearchParams = new URLSearchParams('filters=country%7Cis%7CUS&depth=6')
-    const { result } = renderHook(() => useJourneyFilters())
-    act(() => {
-      result.current.resetFilters()
-    })
-    const calledWith = mockReplace.mock.calls[0][0] as string
-    expect(calledWith).not.toContain('filters=')
-    expect(calledWith).not.toContain('depth=')
   })
 
   it('clamps depth on write when value exceeds max', () => {
@@ -264,5 +216,87 @@ describe('useJourneyFilters', () => {
     mockSearchParams = new URLSearchParams('period=custom&start=nonsense&end=also-bad')
     const { result } = renderHook(() => useJourneyFilters())
     expect(result.current.period).toBe('30')
+  })
+
+  it('derives entryPath from an entry_path filter and keeps it OUT of filtersParam', () => {
+    mockSearchParams = new URLSearchParams('filters=v2%3Aentry_path%7Cis%7C%2Fblog%2Cdevice%7Cis%7Cmobile')
+    const { result } = renderHook(() => useJourneyFilters())
+    expect(result.current.entryPath).toBe('/blog')
+    expect(result.current.dimensionFilters.map((f) => f.dimension)).toEqual(['entry_path', 'device'])
+    expect(result.current.filtersParam).not.toContain('entry_path')
+    expect(result.current.filtersParam).toContain('device')
+  })
+
+  it('reads a pre-07-09 entry= link as an entry_path filter and rewrites it on the next write', () => {
+    mockSearchParams = new URLSearchParams('entry=%2Fpricing')
+    const { result } = renderHook(() => useJourneyFilters())
+    expect(result.current.entryPath).toBe('/pricing')
+    expect(result.current.dimensionFilters[0]).toEqual({ dimension: 'entry_path', operator: 'is', values: ['/pricing'] })
+    act(() => {
+      result.current.setDimensionFilters(result.current.dimensionFilters)
+    })
+    const calledWith = mockReplace.mock.calls[0][0] as string
+    expect(calledWith).toContain('filters=')
+    expect(calledWith).not.toContain('entry=')
+  })
+
+  it('snaps a legacy density to the ladder', () => {
+    mockSearchParams = new URLSearchParams('density=30')
+    const { result } = renderHook(() => useJourneyFilters())
+    expect(result.current.density).toBe(20)
+  })
+
+  describe('memory', () => {
+    beforeEach(() => {
+      window.localStorage.clear()
+    })
+
+    it('remembers depth and paths across visits when the URL carries none', () => {
+      window.localStorage.setItem('pulse_last_journeys:depth', '6')
+      window.localStorage.setItem('pulse_last_journeys:density', '50')
+      const { result } = renderHook(() => useJourneyFilters())
+      expect(result.current.ready).toBe(true)
+      expect(result.current.depth).toBe(6)
+      expect(result.current.density).toBe(50)
+    })
+
+    it('the URL wins over memory', () => {
+      window.localStorage.setItem('pulse_last_journeys:depth', '6')
+      mockSearchParams = new URLSearchParams('depth=3')
+      const { result } = renderHook(() => useJourneyFilters())
+      expect(result.current.depth).toBe(3)
+    })
+
+    it('ignores garbage in storage', () => {
+      window.localStorage.setItem('pulse_last_journeys:depth', '99')
+      window.localStorage.setItem('pulse_last_journeys:density', 'lots')
+      window.localStorage.setItem('pulse_last_period:journeys', 'custom')
+      const { result } = renderHook(() => useJourneyFilters())
+      expect(result.current.depth).toBe(4)
+      expect(result.current.density).toBe(20)
+      expect(result.current.period).toBe('30')
+    })
+
+    it('writes depth, paths and a preset period on change', () => {
+      const { result } = renderHook(() => useJourneyFilters())
+      act(() => { result.current.setDepth(5) })
+      act(() => { result.current.setDensity(10) })
+      act(() => { result.current.setPeriod('7') })
+      expect(window.localStorage.getItem('pulse_last_journeys:depth')).toBe('5')
+      expect(window.localStorage.getItem('pulse_last_journeys:density')).toBe('10')
+      expect(window.localStorage.getItem('pulse_last_period:journeys')).toBe('7')
+    })
+
+    it('never remembers a custom range', () => {
+      const { result } = renderHook(() => useJourneyFilters())
+      act(() => { result.current.setPeriod('custom', { start: '2026-01-01', end: '2026-01-31' }) })
+      expect(window.localStorage.getItem('pulse_last_period:journeys')).toBeNull()
+    })
+
+    it('remembers the period like the timeframe on every other page', () => {
+      window.localStorage.setItem('pulse_last_period:journeys', '7')
+      const { result } = renderHook(() => useJourneyFilters())
+      expect(result.current.period).toBe('7')
+    })
   })
 })
