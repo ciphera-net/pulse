@@ -63,6 +63,27 @@ vi.mock('@/lib/auth/context', () => ({
   useAuth: () => ({ user: mockUser }),
 }))
 
+/**
+ * The server's answer to "has this person seen the tour?" (pulse-backend
+ * migration 180). Default 'no' — the common case these tests exercise.
+ *
+ * 🔴 'unknown' is a REAL state, not a test artefact: it is what the controller
+ * sees while the fetch is in flight, and the tour must stay shut then. A test
+ * that only ever supplies 'yes'/'no' cannot catch a controller that treats
+ * unknown as no, which would open the overlay on every cold load.
+ */
+let mockTourCompleted: 'unknown' | 'no' | 'yes' = 'no'
+const stampMock = vi.fn(async () => true)
+vi.mock('@/lib/hooks/usePreferences', () => ({
+  usePreferences: () => ({
+    preferences: undefined,
+    tourCompleted: mockTourCompleted,
+    recoveryPromptDismissed: 'no' as const,
+    stamp: stampMock,
+    mutate: vi.fn(),
+  }),
+}))
+
 const expandMock = vi.fn()
 const collapseMock = vi.fn()
 let sidebarCollapsed = false
@@ -116,6 +137,8 @@ beforeEach(() => {
   collapseMock.mockClear()
   toastError.mockClear()
   mockUser = { id: 'user-1' }
+  mockTourCompleted = 'no'
+  stampMock.mockClear()
   sidebarCollapsed = false
   mdMatches = true
   stubMatchMedia()
@@ -136,7 +159,42 @@ describe('TourController auto-start', () => {
     expect(started).toHaveBeenCalledWith('auto')
   })
 
-  it('does not auto-start when the per-user done-key is present', async () => {
+  it('does not auto-start when the SERVER says this person has seen it', async () => {
+    // The stamp now follows the account, so this holds on a machine that has
+    // never run the tour — which is the whole point of moving it off the
+    // browser. No localStorage key is set here on purpose.
+    mockTourCompleted = 'yes'
+    render(<TourController />)
+    await new Promise((r) => setTimeout(r, 80))
+    expect(driveMock).not.toHaveBeenCalled()
+  })
+
+  it('does not auto-start while the answer is still UNKNOWN', async () => {
+    // 🔴 The regression this exists to catch: treating an unresolved fetch as
+    // "never seen it" opens the overlay over the dashboard on every cold load,
+    // for people who finished the tour months ago.
+    mockTourCompleted = 'unknown'
+    render(<TourController />)
+    await new Promise((r) => setTimeout(r, 120))
+    expect(driveMock).not.toHaveBeenCalled()
+  })
+
+  it('starts once the answer arrives, not at mount', async () => {
+    // The decision is made on a state transition, so it must survive the fetch
+    // resolving AFTER the component mounted — the case a single mount-time ref
+    // would suppress forever.
+    mockTourCompleted = 'unknown'
+    const { rerender } = render(<TourController />)
+    await new Promise((r) => setTimeout(r, 60))
+    expect(driveMock).not.toHaveBeenCalled()
+    mockTourCompleted = 'no'
+    rerender(<TourController />)
+    await waitFor(() => expect(driveMock).toHaveBeenCalledTimes(1))
+  })
+
+  it('still respects a local stamp the server read has not caught up with', async () => {
+    // The cache can suppress, never summon: it covers the window between a
+    // stamp written on this device and the read that would show it.
     localStorage.setItem(`${TOUR_DONE_PREFIX}user-1`, '1')
     render(<TourController />)
     await new Promise((r) => setTimeout(r, 80))

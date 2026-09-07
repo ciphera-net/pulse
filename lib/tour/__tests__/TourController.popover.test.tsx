@@ -20,6 +20,19 @@ vi.mock('@/lib/auth/context', () => ({
   useAuth: () => ({ user: mockUser }),
 }))
 
+// The server's answer to "has this person seen the tour?" (migration 180).
+// These tests drive the REAL driver.js, so the controller has to actually
+// start: 'no' is the answer that lets it.
+vi.mock('@/lib/hooks/usePreferences', () => ({
+  usePreferences: () => ({
+    preferences: undefined,
+    tourCompleted: 'no' as const,
+    recoveryPromptDismissed: 'no' as const,
+    stamp: vi.fn(async () => true),
+    mutate: vi.fn(),
+  }),
+}))
+
 const expandMock = vi.fn()
 const collapseMock = vi.fn()
 vi.mock('@/lib/sidebar-context', () => ({

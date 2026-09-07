@@ -167,6 +167,10 @@ export function useRecoveryEnrolModal(): {
             <RecoveryPhraseDisplay
               phrase={phrase}
               recoveryAvailable
+              // One checkbox, no three-word retype — the same confirmation
+              // signup shows since 07-09-2026. Two surfaces asking for the
+              // same thing in two different ways is how they drift.
+              confirmation="acknowledge"
               onConfirmed={onConfirmed}
             />
           ) : (
