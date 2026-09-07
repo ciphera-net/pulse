@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useReducer, useRef, useState } from 'react'
-import type { DimensionFilter, FilterSuggestion } from '@/lib/filters'
+import { operatorsFor, type DimensionFilter, type FilterSuggestion } from '@/lib/filters'
 
 // ---------------------------------------------------------------------------
 // Filter builder draft state — a pure reducer so the transition rules are
@@ -55,6 +55,8 @@ export function filterBuilderReducer(draft: FilterDraft, action: FilterBuilderAc
         ...draft,
         stage: 'value',
         dimension: action.dimension,
+        // * A dimension with a narrower operator set snaps the operator into it.
+        operator: operatorsFor(action.dimension).includes(draft.operator) ? draft.operator : operatorsFor(action.dimension)[0],
         // * Switching dimension invalidates chosen values; re-picking the same
         // * one (back-and-forth) keeps them.
         values: action.dimension === draft.dimension ? draft.values : [],
