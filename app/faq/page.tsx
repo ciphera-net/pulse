@@ -71,11 +71,10 @@ function FaqRail() {
   const group = GROUPS[activeIndex] ?? GROUPS[0]
 
   return (
-    <div className="mt-12 grid items-start gap-8 lg:grid-cols-[200px_1fr]">
-      {/* Category selector — the one Facet Switcher, per the switcher round
-          06-09-2026 (device: components/dashboard/TechSpecs.tsx); the overflow
-          wrapper keeps the 200px rail scrollable at the longest label. */}
-      <div className="min-w-0 overflow-x-auto scrollbar-hide pb-1 lg:pb-0">
+    <div className="mt-12 flex flex-col gap-6">
+      {/* Category selector — the shared Switcher on its own row above the list
+          (a 200px rail column was built for a vertical list and clips a horizontal one). */}
+      <div className="min-w-0 overflow-x-auto scrollbar-hide pb-1">
         <Switcher
           size="sm"
           tone="solid"

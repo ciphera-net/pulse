@@ -51,9 +51,9 @@ export default function OpenSourceFAQ({
   const group = GROUPS[activeIndex] ?? GROUPS[0]
 
   return (
-    <div className="mt-10 grid items-start gap-8 lg:grid-cols-[200px_1fr]">
-      {/* Category selector — horizontal on mobile, vertical rail on desktop */}
-      <div className="min-w-0 overflow-x-auto scrollbar-hide pb-1 lg:overflow-visible">
+    <div className="mt-10 flex flex-col gap-6">
+      {/* Category selector — the shared Switcher on its own row above the list (a 200px rail column was built for a vertical list and clips a horizontal one) */}
+      <div className="min-w-0 overflow-x-auto scrollbar-hide pb-1">
         <Switcher
           size="sm"
           tone="solid"
@@ -63,7 +63,7 @@ export default function OpenSourceFAQ({
             label: (
               <span className="flex items-baseline gap-2">
                 {g.label}
-                <span className="tabular-nums text-muted-foreground">
+                <span className="tabular-nums opacity-70">
                   {String(g.items.length).padStart(2, '0')}
                 </span>
               </span>
