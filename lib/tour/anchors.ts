@@ -68,6 +68,7 @@ export function tourSelector(anchor: TourAnchor): string {
  */
 export const DIMENSION_CARD_KEYS = [
   'referrers',
+  'campaigns',
   'locations',
   'tech',
   'content',
