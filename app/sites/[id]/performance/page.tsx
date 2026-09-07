@@ -13,11 +13,10 @@ import {
   type AuditSummary,
 } from '@/lib/api/performance'
 import { useQueryParamsWriter } from '@/lib/hooks/useQueryParamsWriter'
-import { toast, Button } from '@ciphera-net/facet'
+import { toast, Button, Switcher } from '@ciphera-net/facet'
 import { Gauge } from '@phosphor-icons/react'
 import { InstrumentOffState } from '@/components/ui/InstrumentOffState'
 import Select from '@/components/ui/select'
-import { motion } from 'framer-motion'
 import ScoreGauge from '@/components/performance/ScoreGauge'
 import { PerformanceStatusLine } from '@/components/performance/PerformanceStatusLine'
 import { formatSiteStampShort } from '@/lib/utils/siteTime'
@@ -541,30 +540,19 @@ export default function PerformancePage() {
             auth — so the row it measured was missing exactly the elements that
             overflow. Authed geometry has to be checked in an authed browser. */}
         <div className="flex flex-wrap items-center gap-3 sm:flex-shrink-0">
-          {/* The page's own switcher, kept verbatim: text tabs with a motion
-              underline, not a boxed segmented control. */}
-          <div className="flex gap-1" role="tablist" aria-label="Strategy">
-            {(['mobile', 'desktop'] as const).map(tab => (
-              <button
-                key={tab}
-                onClick={() => setStrategy(tab)}
-                role="tab"
-                aria-selected={strategy === tab}
-                className={`relative cursor-pointer rounded-none px-3 py-1.5 text-sm font-medium transition-colors ease-apple focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ${
-                  strategy === tab ? 'text-white' : 'text-neutral-500 hover:text-neutral-300'
-                }`}
-              >
-                {tab === 'mobile' ? 'Mobile' : 'Desktop'}
-                {strategy === tab && (
-                  <motion.div
-                    layoutId="pagespeedStrategyTab"
-                    className="absolute inset-x-0 -bottom-px h-0.5 bg-brand-orange"
-                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                  />
-                )}
-              </button>
-            ))}
-          </div>
+          {/* The shared Switcher (owner, 07-09-2026: "replace it with our shared switcher"
+              everywhere) — this page kept its own text tabs with a motion underline until now. */}
+          <Switcher
+            size="sm"
+            tone="solid"
+            aria-label="Strategy"
+            options={[
+              { value: 'mobile', label: 'Mobile' },
+              { value: 'desktop', label: 'Desktop' },
+            ]}
+            value={strategy}
+            onChange={(v) => setStrategy(v as Strategy)}
+          />
 
           {canEdit && (
             <>
