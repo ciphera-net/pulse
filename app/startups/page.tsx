@@ -6,6 +6,7 @@ import { HomeClosingCta } from '@/components/marketing/HomeClosingCta'
 import { OpenSourceApplyForm } from '@/components/marketing/OpenSourceApplyForm'
 import OpenSourceFAQ from '@/components/marketing/OpenSourceFAQ'
 import { startupsFaqCategories, startupsFaqData } from '@/components/marketing/startups-faq-data'
+import { cdnUrl } from '@/lib/cdn'
 
 // /startups — the startups plan (05-09-2026). A content variant of the
 // approved /open-source page: same hero grammar, same terms strip, same
@@ -17,21 +18,47 @@ import { startupsFaqCategories, startupsFaqData } from '@/components/marketing/s
 // granted workspace's billing page; a startups workspace has not been granted
 // yet, so there is nothing honest to show. Add the capture once one exists —
 // house rule: captures of the live product only, never a mock.
-//
-// ⚠️ No `openGraph` block on purpose. Next.js shallow-merges metadata per
-// top-level field (see app/layout.tsx and the note on /open-source), so
-// declaring one here without its own image would DROP the root og-pulse.png.
-// Omitting the block inherits the root card, which is correct until this page
-// earns a dedicated one.
 
 const description =
   'Early-stage startups run Pulse free for a year — a real tier at €0 with five sites, 100k pageviews a month and every feature. In return, we get to say you use Pulse.'
+
+// Dedicated share card (owner pick 08-09-2026: the big-€0 composition, the
+// twin of /open-source's; mocks archived in
+// docs/data/08-09-2026-startups-og-card-mocks/). Dated filename — the CDN
+// caches immutably, so a revision is a NEW path, never an overwrite.
+//
+// ⚠️ Next.js shallow-merges metadata per top-level field (see app/layout.tsx):
+// declaring `openGraph` here replaces the root's block wholesale, so this page
+// carried NO card of its own until now and inherited og-pulse.png. `twitter`
+// must be re-declared in full for the same reason — a partial block would
+// silently drop the root's site handle along with its image.
+const OG_IMAGE = cdnUrl('/marketing/og-startups-08-09-2026.png')
 
 export const metadata: Metadata = {
   title: 'The startups plan',
   description,
   alternates: {
     canonical: '/startups',
+  },
+  openGraph: {
+    title: 'Analytics before the revenue',
+    description,
+    siteName: 'Pulse by Ciphera',
+    images: [
+      {
+        url: OG_IMAGE,
+        width: 1200,
+        height: 630,
+        alt: '€0 for startups — the Pulse startups plan',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    site: '@CipheraNET',
+    title: 'Analytics before the revenue',
+    description,
+    images: [OG_IMAGE],
   },
 }
 
