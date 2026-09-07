@@ -8,7 +8,7 @@ import apiRequest, { setAccessToken, setRefreshHandler } from '@/lib/api/client'
 import { LoadingOverlay, useSessionSync, SessionExpiryWarning, useSessionRefresh } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 import { logoutAction, getSessionAction, setSessionAction } from '@/app/actions/auth'
-import { getUserOrganizations, switchContext, getOrganization } from '@/lib/api/organization'
+import { getUserOrganizations, switchContext, getOrganization, ensureDefaultOrganization } from '@/lib/api/organization'
 import { listSites } from '@/lib/api/sites'
 import { logger } from '@/lib/utils/logger'
 import { cleanupStaleStorage } from '@/lib/utils/storage-cleanup'
@@ -535,9 +535,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const organizations = await getUserOrganizations()
 
           if (organizations.length === 0) {
+            // 🔴 THE /join EXEMPTION IS LOAD-BEARING, TWICE OVER. It already
+            // stopped somebody deciding whether to accept an invite from being
+            // bounced into the wizard; now it also stops them being handed a
+            // stray workspace of their own seconds before they join somebody
+            // else's. /setup is exempt for the same reason it always was.
             if (pathname?.startsWith('/setup') || pathname?.startsWith('/join')) return
-            router.push('/setup/org')
-            return
+
+            // The catch-all. The auth callback provisions on the way in, so
+            // this normally finds a workspace already there; it covers the
+            // paths that skip the callback, and a callback whose call failed.
+            // Idempotent server-side, so firing both is free.
+            try {
+              const ensured = await ensureDefaultOrganization()
+              const { access_token } = await switchContext(ensured.organization.id)
+              const result = await setSessionAction(access_token)
+              if (result.success) setAccessToken(access_token)
+              if (result.success && result.user) {
+                setUser(result.user)
+                localStorage.setItem('user', JSON.stringify(result.user))
+              }
+              router.refresh()
+              return
+            } catch (e) {
+              // Never strand somebody with no way forward: the manual form is
+              // still there, and it is now a genuine fallback rather than the
+              // first thing a new person meets.
+              logger.error('Could not provision a default workspace', e)
+              router.push('/setup/org')
+              return
+            }
           }
 
           // * Onboarding lock: if current org hasn't completed onboarding, redirect to setup.

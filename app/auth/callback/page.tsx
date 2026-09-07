@@ -12,6 +12,8 @@ import { safeRedirectUrl } from '@/lib/utils/safe-redirect'
 import { claimPendingAuth, forgetAllPendingAuth } from '@/lib/api/oauth-store'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import { cdnUrl } from '@/lib/cdn'
+import { ensureDefaultOrganization, shouldProvisionWorkspace } from '@/lib/api/organization'
+import { logger } from '@/lib/utils/logger'
 
 function AuthCallbackContent() {
   const searchParams = useSearchParams()
@@ -38,6 +40,28 @@ function AuthCallbackContent() {
       return
     }
     window.location.assign(safeRedirectUrl(searchParams.get('returnTo')))
+  }, [searchParams])
+
+  // * Provision the default workspace, unless this sign-in is on its way to an
+  // * invite. Reads the same stored return target landInApp() will consume, and
+  // * deliberately does not consume it.
+  const provisionWorkspaceUnlessJoining = useCallback(async () => {
+    let storedReturn: string | null = null
+    try {
+      storedReturn = localStorage.getItem('pulse_auth_return_to')
+    } catch {
+      // * Storage unreadable — treat it as "no invite pending" rather than
+      // * skipping provisioning for everybody whose browser blocks storage.
+    }
+    const target = storedReturn ?? searchParams.get('returnTo')
+    if (!shouldProvisionWorkspace(target)) return
+    try {
+      await ensureDefaultOrganization()
+    } catch (e) {
+      // * Not fatal, and not silent. The org wall calls this again on the
+      // * destination route, and the manual form is still the last resort.
+      logger.error('Could not provision a default workspace', e)
+    }
   }, [searchParams])
 
   // * A callback that cannot complete its own handshake is NOT automatically a
@@ -93,6 +117,17 @@ function AuthCallbackContent() {
         }
         // * Signed in — every other attempt still on this device is abandoned.
         forgetAllPendingAuth()
+        // * Give a brand-new account its workspace before it lands, so nobody
+        // * meets a "name your organisation" form before seeing the product.
+        // * Awaited on purpose: the org wall runs on the destination route and
+        // * would bounce an org-less arrival into the wizard in the meantime.
+        // *
+        // * 🔴 NOT on the /join path. Someone accepting an invite is about to
+        // * belong to somebody else's workspace and must not be handed a stray
+        // * one of their own; the server cannot know an invite is pending.
+        // * Failure is not fatal — the org wall retries on the next route, and
+        // * the manual form is still there behind it.
+        await provisionWorkspaceUnlessJoining()
         // * Use full-page navigation (not router.push) so the access_token cookie set
         // * by exchangeAuthCode is guaranteed committed before AuthProvider re-initializes
         // * on the destination route. Eliminates the post-login SWR race where useSites()

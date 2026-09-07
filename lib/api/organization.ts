@@ -52,6 +52,47 @@ export async function createOrganization(name: string, slug: string): Promise<Or
   })
 }
 
+/** What ensure-default answers with. `created` distinguishes a workspace this
+ *  call made from one the account already had. */
+export interface EnsureDefaultOrganizationResult {
+  created: boolean
+  organization: { id: string; name: string; slug: string }
+}
+
+/**
+ * Give this account a workspace if it has none, and answer with its primary
+ * either way.
+ *
+ * 🔴 IDEMPOTENT AND SERIALISED SERVER-SIDE, which is what lets both call sites
+ * (the auth callback and the org wall) fire without racing to create two.
+ * ciphera-id generates the name — it owns organisation names, and Warden reads
+ * them as the authoritative identity — so there is nothing to pass.
+ *
+ * ⚠️ NEVER call this on the /join path. Someone accepting an invite has no
+ * workspace yet and must not be handed a stray one; the server cannot know an
+ * invite is pending, so the exemption is ours to keep.
+ */
+/**
+ * Whether a sign-in landing on `target` should be given a default workspace.
+ *
+ * 🔴 THE ONE RULE, AND WHY IT IS A FUNCTION. Somebody arriving on a /join link
+ * is about to belong to somebody else's workspace. Provisioning one for them
+ * first leaves a stray, permanently, named after nothing they chose — and the
+ * server cannot make this call, because only Pulse knows an invite is pending.
+ * It lives here, exported and tested, rather than inline in a callback nobody
+ * can reach from a test.
+ */
+export function shouldProvisionWorkspace(target: string | null | undefined): boolean {
+  return !(target ?? '').startsWith('/join')
+}
+
+export async function ensureDefaultOrganization(): Promise<EnsureDefaultOrganizationResult> {
+  return await authFetch<EnsureDefaultOrganizationResult>('/auth/organizations/ensure-default', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+}
+
 // List organizations user belongs to
 export async function getUserOrganizations(): Promise<OrganizationMember[]> {
   const data = await authFetch<{ organizations: OrganizationMember[] }>('/auth/organizations')
