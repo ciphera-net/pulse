@@ -1,7 +1,7 @@
 'use client'
 
 import { CaretLeft } from '@phosphor-icons/react'
-import { DIMENSION_LABELS, type DimensionFilter, type FilterSuggestion } from '@/lib/filters'
+import { DIMENSION_LABELS, SINGLE_VALUE_DIMENSIONS, type DimensionFilter, type FilterSuggestion } from '@/lib/filters'
 import type { FilterDraft } from './useFilterBuilder'
 import OperatorChip from './OperatorChip'
 import ValuePicker from './ValuePicker'
@@ -64,7 +64,7 @@ export default function ValueStage({
         >
           {dimLabel}
         </button>
-        <OperatorChip operator={draft.operator} onChange={onOperatorChange} />
+        <OperatorChip operator={draft.operator} dimension={draft.dimension} onChange={onOperatorChange} />
       </div>
 
       {/* Values */}
@@ -73,6 +73,7 @@ export default function ValueStage({
         values={draft.values}
         onChange={onValuesChange}
         onFetchSuggestions={fetchSuggestions}
+        single={SINGLE_VALUE_DIMENSIONS.has(draft.dimension ?? '')}
         autoFocus
         onSubmit={handleApply}
         onBackspaceWhenEmpty={onBack}

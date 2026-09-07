@@ -13,12 +13,13 @@ import {
   DeviceMobile,
   FrameCorners,
   GlobeHemisphereWest,
+  SignIn,
   MapPin,
   Buildings,
   CursorClick,
   type Icon,
 } from '@phosphor-icons/react'
-import { DIMENSION_CATEGORIES, DIMENSION_LABELS } from '@/lib/filters'
+import { DIMENSION_CATEGORIES, DIMENSION_LABELS, SCOPED_DIMENSIONS } from '@/lib/filters'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { moveHighlight } from './useFilterBuilder'
 
@@ -41,6 +42,7 @@ const DIMENSION_ICONS: Record<string, Icon> = {
   region: MapPin,
   city: Buildings,
   event_name: CursorClick,
+  entry_path: SignIn,
 }
 
 // ---------------------------------------------------------------------------
@@ -79,7 +81,8 @@ export default function DimensionStage({ activeDimensions, onPick, onClose, allo
       .map(cat => ({
         label: cat.label,
         dimensions: cat.dimensions.filter(
-          d => (!allowSet || allowSet.has(d)) && DIMENSION_LABELS[d].toLowerCase().includes(query),
+          // * No allowlist = the page's full vocabulary MINUS the scoped dimensions.
+          d => (allowSet ? allowSet.has(d) : !SCOPED_DIMENSIONS.has(d)) && DIMENSION_LABELS[d].toLowerCase().includes(query),
         ),
       }))
       .filter(g => g.dimensions.length > 0)

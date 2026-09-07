@@ -534,9 +534,9 @@ export const TERMS: Record<string, GlossaryTerm> = {
     docs: 'user-journeys#journey-dropoff',
   },
   journey_entry_point: {
-    title: 'Entry point (journeys)',
+    title: 'Entry page (journeys)',
     definition:
-      'Filtering by one narrows the whole canvas to sessions that began on that page.',
+      'Journeys start on any page. To follow the ones that began on one page, add an Entry page filter.',
     docs: 'user-journeys#journey-entry-point',
   },
   journey_exit: {
