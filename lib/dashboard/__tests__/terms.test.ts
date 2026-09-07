@@ -66,10 +66,8 @@ const TEMPLATES = [
  * catch a silent gate — the ids below are asserted against the source.
  */
 const CARD_TABS: Record<string, string[]> = {
-  // Sources (06-09-2026) holds Referrers · Channels · Campaigns; its `Tab`
-  // union is the set of ids that reach the InfoTip — the two list views plus
-  // the five UTM dimensions (the campaigns VIEW itself never reaches it).
-  'components/dashboard/Sources.tsx': ['referrers', 'channels', 'source', 'medium', 'campaign', 'term', 'content'],
+  'components/dashboard/TopReferrers.tsx': ['referrers', 'channels'],
+  'components/dashboard/Campaigns.tsx': ['source', 'medium', 'campaign', 'term', 'content'],
   'components/dashboard/Locations.tsx': ['map', 'countries', 'regions', 'cities', 'languages', 'timezones'],
   'components/dashboard/TechSpecs.tsx': ['browsers', 'os', 'devices', 'screens'],
   'components/dashboard/ContentStats.tsx': ['top_pages', 'entry_pages', 'exit_pages'],
@@ -152,7 +150,7 @@ describe('terms registry', () => {
     for (const [file, tabs] of Object.entries(CARD_TABS)) {
       const source = read(file)
       // A named union where the card declares one, else the inline union on
-      // the tab useState (a card may keep its views inline).
+      // the tab useState (TopReferrers keeps its two views inline).
       const union =
         source.match(/^type (?:Utm)?Tab = ([^\n]+)$/m)?.[1] ??
         source.match(/useState<((?:'[a-z_]+'(?:\s*\|\s*)?)+)>/)?.[1]
