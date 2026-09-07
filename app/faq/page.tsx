@@ -17,9 +17,8 @@
  */
 
 import Link from 'next/link'
-import { useRef, useState } from 'react'
-import { ArrowRightIcon, Button, MailIcon, PlusIcon } from '@ciphera-net/facet'
-import { cn } from '@/lib/utils'
+import { useState } from 'react'
+import { ArrowRightIcon, Button, MailIcon, PlusIcon, Switcher } from '@ciphera-net/facet'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
 import { faqCategories, faqData } from '@/components/marketing/home-faq-data'
 
@@ -62,76 +61,42 @@ const GROUPS = Object.entries(faqCategories).map(([key, label]) => ({
 function FaqRail() {
   const [activeKey, setActiveKey] = useState(GROUPS[0].key)
   const [openId, setOpenId] = useState<string | null>(null)
-  const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
 
   function selectGroup(key: string) {
     setActiveKey(key)
     setOpenId(null)
   }
 
-  // Roving tabindex: arrow keys move both selection and focus along the rail.
-  function handleTabKeyDown(e: React.KeyboardEvent<HTMLButtonElement>, index: number) {
-    const last = GROUPS.length - 1
-    let next: number | null = null
-    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') next = index === last ? 0 : index + 1
-    else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') next = index === 0 ? last : index - 1
-    else if (e.key === 'Home') next = 0
-    else if (e.key === 'End') next = last
-    if (next === null) return
-    e.preventDefault()
-    selectGroup(GROUPS[next].key)
-    tabRefs.current[next]?.focus()
-  }
-
   const activeIndex = GROUPS.findIndex((g) => g.key === activeKey)
   const group = GROUPS[activeIndex] ?? GROUPS[0]
 
   return (
-    <div className="mt-12 grid items-start gap-8 lg:grid-cols-[200px_1fr]">
-      {/* Category selector — horizontal on mobile, vertical rail on desktop */}
-      <div
-        role="tablist"
-        aria-label="FAQ categories"
-        aria-orientation="vertical"
-        className="flex flex-wrap gap-x-6 gap-y-2 lg:flex-col lg:gap-y-1"
-      >
-        {GROUPS.map((g, i) => {
-          const isActive = g.key === activeKey
-          return (
-            <button
-              key={g.key}
-              ref={(el) => {
-                tabRefs.current[i] = el
-              }}
-              type="button"
-              role="tab"
-              id={`faq-tab-${i}`}
-              tabIndex={isActive ? 0 : -1}
-              aria-selected={isActive}
-              aria-controls={isActive ? 'faq-panel' : undefined}
-              onClick={() => selectGroup(g.key)}
-              onKeyDown={(e) => handleTabKeyDown(e, i)}
-              className={cn(
-                'flex min-h-11 items-baseline justify-between gap-3 py-3 text-left text-xs transition-colors lg:min-h-0 lg:py-1.5 duration-150 motion-reduce:transition-none',
-                isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {g.label}
-              <span className="tabular-nums text-muted-foreground">
-                {String(g.items.length).padStart(2, '0')}
+    <div className="mt-12 flex flex-col gap-6">
+      {/* Category selector — the shared Switcher on its own row above the list
+          (a 200px rail column was built for a vertical list and clips a horizontal one). */}
+      <div className="min-w-0 overflow-x-auto scrollbar-hide pb-1">
+        <Switcher
+          size="sm"
+          tone="solid"
+          aria-label="FAQ categories"
+          options={GROUPS.map((g) => ({
+            value: g.key,
+            label: (
+              <span className="flex items-center gap-2">
+                {g.label}
+                <span className="tabular-nums text-[10px] opacity-70">
+                  {String(g.items.length).padStart(2, '0')}
+                </span>
               </span>
-            </button>
-          )
-        })}
+            ),
+          }))}
+          value={activeKey}
+          onChange={(v) => selectGroup(v)}
+        />
       </div>
 
       {/* Active category's rows — continuous global numbering preserved */}
-      <div
-        role="tabpanel"
-        id="faq-panel"
-        aria-labelledby={`faq-tab-${activeIndex}`}
-        className="border border-border"
-      >
+      <div className="border border-border">
         {group.items.map((item) => {
           const isOpen = openId === item.n
           const answerId = `faq-answer-${item.n}`

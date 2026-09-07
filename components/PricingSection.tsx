@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
-import { toast, Button, ArrowRightIcon, CheckIcon } from '@ciphera-net/facet'
+import { toast, Button, ArrowRightIcon, CheckIcon, Switcher } from '@ciphera-net/facet'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { getUserOrganizations } from '@/lib/api/organization'
 import PricingFAQ from '@/components/marketing/PricingFAQ'
@@ -128,20 +128,6 @@ export default function PricingSection() {
     }
   }
 
-  // Roving arrow-key handling for the billing segmented control. DOM focus
-  // must move with the roving tabindex — flipping ARIA state alone strands
-  // focus on a tabindex="-1" tab.
-  const monthlyTabRef = useRef<HTMLButtonElement>(null)
-  const yearlyTabRef = useRef<HTMLButtonElement>(null)
-  function handleToggleKeyDown(e: React.KeyboardEvent<HTMLButtonElement>) {
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-      e.preventDefault()
-      const nextYearly = !isYearly
-      setIsYearly(nextYearly)
-      ;(nextYearly ? yearlyTabRef : monthlyTabRef).current?.focus()
-    }
-  }
-
   return (
     <>
       {/* Header — eyebrow, semantic h1, short dek */}
@@ -156,48 +142,19 @@ export default function PricingSection() {
             Start free; no cookies, no consent banner, ever.
           </p>
 
-          {/* Billing toggle — segmented control, h-10 bordered container */}
+          {/* Billing toggle */}
           <div className="mt-10 flex flex-col items-center gap-3">
-            <div
-              role="tablist"
+            <Switcher
+              size="sm"
+              tone="solid"
               aria-label="Billing interval"
-              className="flex h-10 items-stretch border border-border p-1"
-            >
-              <button
-                ref={monthlyTabRef}
-                type="button"
-                role="tab"
-                aria-selected={!isYearly}
-                tabIndex={!isYearly ? 0 : -1}
-                onClick={() => setIsYearly(false)}
-                onKeyDown={handleToggleKeyDown}
-                className={cn(
-                  'min-w-[96px] px-4 text-sm font-medium transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none',
-                  !isYearly
-                    ? 'bg-muted text-foreground'
-                    : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                Monthly
-              </button>
-              <button
-                ref={yearlyTabRef}
-                type="button"
-                role="tab"
-                aria-selected={isYearly}
-                tabIndex={isYearly ? 0 : -1}
-                onClick={() => setIsYearly(true)}
-                onKeyDown={handleToggleKeyDown}
-                className={cn(
-                  'min-w-[96px] px-4 text-sm font-medium transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none',
-                  isYearly
-                    ? 'bg-muted text-foreground'
-                    : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                Yearly
-              </button>
-            </div>
+              options={[
+                { value: 'monthly', label: 'Monthly' },
+                { value: 'yearly', label: 'Yearly' },
+              ]}
+              value={isYearly ? 'yearly' : 'monthly'}
+              onChange={(v) => setIsYearly(v === 'yearly')}
+            />
             <span className="text-xs text-muted-foreground">
               Get 1 month free with yearly · prices excl. VAT
             </span>

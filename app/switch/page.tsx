@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import useSWR from 'swr'
 import { CheckCircle, ClockCountdown, ArrowRight, WarningCircle, Prohibit } from '@phosphor-icons/react'
-import { toast, Button, Spinner, LoadingOverlay } from '@ciphera-net/facet'
+import { toast, Button, Spinner, LoadingOverlay, Switcher } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { getPrices, getSubscription, changePlan, estimatePlanChange, type PlanChangeEstimate } from '@/lib/api/billing'
@@ -479,24 +479,17 @@ function SwitchPlanContent() {
 
               {/* Billing interval */}
               <div className="flex flex-col items-center gap-2 mb-6">
-                <div className="bg-neutral-800/80 border border-neutral-800 p-1 rounded-none flex">
-                  <button
-                    onClick={() => setIsYearly(false)}
-                    className={`px-4 py-1.5 rounded-none text-sm font-medium transition-all ease-apple ${
-                      !isYearly ? 'bg-neutral-700 text-white' : 'text-neutral-500 hover:text-white'
-                    }`}
-                  >
-                    Monthly
-                  </button>
-                  <button
-                    onClick={() => setIsYearly(true)}
-                    className={`px-4 py-1.5 rounded-none text-sm font-medium transition-all ease-apple ${
-                      isYearly ? 'bg-neutral-700 text-white' : 'text-neutral-500 hover:text-white'
-                    }`}
-                  >
-                    Yearly <span className={isYearly ? 'text-brand-orange' : 'text-neutral-600'}>· 1 mo free</span>
-                  </button>
-                </div>
+                <Switcher
+                  size="sm"
+                  tone="solid"
+                  aria-label="Billing interval"
+                  options={[
+                    { value: 'month', label: 'Monthly' },
+                    { value: 'year', label: 'Yearly' },
+                  ]}
+                  value={isYearly ? 'year' : 'month'}
+                  onChange={(v) => setIsYearly(v === 'year')}
+                />
               </div>
 
               {/* Traffic tier */}

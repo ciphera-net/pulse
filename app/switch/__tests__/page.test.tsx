@@ -60,6 +60,21 @@ vi.mock('@ciphera-net/facet', () => ({
   Spinner: () => <div data-testid="spinner" />,
   LoadingOverlay: () => <div data-testid="overlay" />,
   Input: (props: any) => <input {...props} />,
+  Switcher: ({ options, value, onChange, 'aria-label': ariaLabel }: any) => (
+    <div role="radiogroup" aria-label={ariaLabel}>
+      {options.map((o: any) => (
+        <button
+          key={o.value}
+          type="button"
+          role="radio"
+          aria-checked={o.value === value}
+          onClick={() => onChange(o.value)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  ),
   toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() },
   getAuthErrorMessage: () => 'error',
   cn: (...args: any[]) => args.filter((a) => typeof a === 'string').join(' '),

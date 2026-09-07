@@ -13,7 +13,7 @@ import RegisterRow from './RegisterRow'
 import PurgeConfirmDialog from './PurgeConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { BellSimple } from '@phosphor-icons/react'
-import { toast, getAuthErrorMessage } from '@ciphera-net/facet'
+import { toast, getAuthErrorMessage, Switcher } from '@ciphera-net/facet'
 import useSWR from 'swr'
 
 /**
@@ -137,41 +137,35 @@ function NotificationsContent() {
 
       {/* B2 — the register panel */}
       <section className="border border-border bg-card rounded-none overflow-hidden">
-        {/* Tab row */}
-        <div className="flex items-center gap-1 border-b border-border px-4 flex-wrap">
-          {TAB_ORDER.map((id) => {
-            const isActive = active === id
-            const label = id === 'all' ? 'All' : shortLabel(displayName(id))
-            const unread = id === 'all' ? unreadCount : (categoryCounts?.[id]?.unread ?? 0)
-            return (
-              <button
-                key={id}
-                type="button"
-                title={id === 'all' ? 'All categories' : displayName(id)}
-                onClick={() => setFilter({ category: id })}
-                className={`relative px-2.5 py-3 text-xs font-medium rounded-none cursor-pointer ${
-                  isActive ? 'text-white' : 'text-neutral-500 hover:text-neutral-300'
-                }`}
-              >
-                {label}
-                {unread > 0 && (
-                  <span
-                    className={`ml-1.5 text-[11px] tabular-nums ${
-                      isActive ? 'text-brand-orange' : 'text-neutral-500'
-                    }`}
-                  >
-                    {unread}
-                  </span>
-                )}
-                {isActive && (
-                  <span
-                    data-testid="active-tab-underline"
-                    className="absolute inset-x-0 -bottom-px h-[3px] bg-brand-orange"
-                  />
-                )}
-              </button>
-            )
-          })}
+        {/* Tab row — Facet Switcher for the category filter (owner pick C0,
+            06-09-2026: one Switcher per dimension/filter row estate-wide);
+            the overflow wrapper keeps 7 segments from wrapping on narrow
+            viewports, as the dashboard cards already do. */}
+        <div className="flex items-center gap-3 border-b border-border px-4 py-2 flex-wrap">
+          <div className="min-w-0 overflow-x-auto scrollbar-hide pb-1">
+            <Switcher
+              size="sm"
+              tone="solid"
+              aria-label="Filter by category"
+              options={TAB_ORDER.map((id) => {
+                const label = id === 'all' ? 'All' : shortLabel(displayName(id))
+                const unread = id === 'all' ? unreadCount : (categoryCounts?.[id]?.unread ?? 0)
+                return {
+                  value: id,
+                  label: (
+                    <>
+                      {label}
+                      {unread > 0 && (
+                        <span className="ml-1.5 text-[11px] tabular-nums">{unread}</span>
+                      )}
+                    </>
+                  ),
+                }
+              })}
+              value={active}
+              onChange={(v) => setFilter({ category: v })}
+            />
+          </div>
           <span className="ml-auto text-[11px] text-neutral-500 whitespace-nowrap">
             {unreadCount} unread · {totalCount ?? '—'} total
           </span>

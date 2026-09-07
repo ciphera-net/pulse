@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, within, fireEvent } from '@testing-library/react'
 
 // --- Mocks ---------------------------------------------------------------
 
@@ -36,6 +36,23 @@ vi.mock('framer-motion', () => ({
 vi.mock('@ciphera-net/facet', () => ({
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
   Spinner: () => <div>loading</div>,
+  // Minimal stand-in that keeps the real radiogroup-of-radios contract, so
+  // queries by role/name behave the same as against the real Switcher.
+  Switcher: ({ options, value, onChange, 'aria-label': ariaLabel }: any) => (
+    <div role="radiogroup" aria-label={ariaLabel}>
+      {options.map((o: any) => (
+        <button
+          key={o.value}
+          type="button"
+          role="radio"
+          aria-checked={o.value === value}
+          onClick={() => onChange(o.value)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  ),
   // lib/utils re-exports cn from the facet package — keep it callable for the
   // real Slider/PlanChoiceCard rendered under this page.
   cn: (...classes: unknown[]) => classes.filter(Boolean).join(' '),
@@ -76,7 +93,9 @@ beforeEach(() => {
 describe('SetupPlanPage plan-tier keyboard nav', () => {
   it('selects the next plan as ArrowDown moves focus', () => {
     render(<SetupPlanPage />)
-    const radios = screen.getAllByRole('radio')
+    // Scoped to the plan radiogroup — the billing-interval Switcher is also a
+    // radiogroup of radios and would otherwise shift these indices.
+    const radios = within(screen.getByRole('radiogroup', { name: 'Choose a paid plan' })).getAllByRole('radio')
     // Order matches PLANS: solo, team, business.
     fireEvent.keyDown(radios[0], { key: 'ArrowDown' })
     // Selecting a plan transitions to the checkout view for that plan.
@@ -85,14 +104,14 @@ describe('SetupPlanPage plan-tier keyboard nav', () => {
 
   it('wraps to the last plan as ArrowUp moves focus from the first', () => {
     render(<SetupPlanPage />)
-    const radios = screen.getAllByRole('radio')
+    const radios = within(screen.getByRole('radiogroup', { name: 'Choose a paid plan' })).getAllByRole('radio')
     fireEvent.keyDown(radios[0], { key: 'ArrowUp' })
     expect(screen.getByTestId('payment-form').textContent).toBe('payment:business')
   })
 
   it('selects on ArrowRight/ArrowLeft too', () => {
     render(<SetupPlanPage />)
-    const radios = screen.getAllByRole('radio')
+    const radios = within(screen.getByRole('radiogroup', { name: 'Choose a paid plan' })).getAllByRole('radio')
     fireEvent.keyDown(radios[1], { key: 'ArrowRight' })
     expect(screen.getByTestId('payment-form').textContent).toBe('payment:business')
   })

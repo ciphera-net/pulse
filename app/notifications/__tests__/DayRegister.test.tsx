@@ -68,6 +68,24 @@ vi.mock('@ciphera-net/facet', () => ({
   Input: (props: any) => <input {...props} />,
   toast: { error: vi.fn(), success: vi.fn() },
   getAuthErrorMessage: (e: Error) => e?.message ?? '',
+  // Minimal stub keeping the real contract: a radiogroup of radio buttons,
+  // selection driven by `value`/`onChange` (the real Switcher's own
+  // rendering — thumb, sizing, tone — is out of scope for this page's tests).
+  Switcher: ({ options, value, onChange, 'aria-label': ariaLabel }: any) => (
+    <div role="radiogroup" aria-label={ariaLabel}>
+      {options.map((o: any) => (
+        <button
+          key={o.value}
+          type="button"
+          role="radio"
+          aria-checked={o.value === value}
+          onClick={() => onChange(o.value)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  ),
 }))
 
 import NotificationsPage from '../page'
@@ -141,31 +159,32 @@ beforeEach(() => {
 // --- Tests ---------------------------------------------------------------
 
 describe('the Day Register (/notifications, round-3 Direction B)', () => {
-  it('renders the tab row with per-tab unread counts and the global edge summary', () => {
+  it('renders the category switcher with per-option unread counts and the global edge summary', () => {
     render(<NotificationsPage />)
-    expect(screen.getByRole('button', { name: /^All/ })).toBeInTheDocument()
-    const uptimeTab = screen.getByRole('button', { name: /Uptime\s*2/ })
+    expect(screen.getByRole('radio', { name: /^All/ })).toBeInTheDocument()
+    const uptimeTab = screen.getByRole('radio', { name: /Uptime\s*2/ })
     expect(uptimeTab).toBeInTheDocument()
     expect(screen.getByText('5 unread · 87 total')).toBeInTheDocument()
   })
 
-  it('the active tab carries the 3px orange underline; inactive tabs do not', () => {
+  it('exactly one category option is checked, matching the active filter', () => {
     render(<NotificationsPage />)
-    const underlines = screen.getAllByTestId('active-tab-underline')
-    expect(underlines.length).toBe(1)
-    expect(underlines[0].className).toContain('h-[3px]')
-    expect(underlines[0].className).toContain('bg-brand-orange')
+    const radios = screen.getAllByRole('radio')
+    const checked = radios.filter((r) => r.getAttribute('aria-checked') === 'true')
+    expect(checked.length).toBe(1)
+    expect(checked[0]).toHaveTextContent(/^All/)
   })
 
   it('tab counts come from the GLOBAL category_counts, not the filtered list', () => {
-    // A filtered view (uptime) still shows every tab's own unread number.
+    // A filtered view (uptime) still shows every option's own unread number.
     search = new URLSearchParams('category=uptime')
     useNotifications.mockReturnValue(
       baseHook({ receipts: [receipt('r1', 'uptime_monitor_down', todayISO)] }),
     )
     render(<NotificationsPage />)
-    expect(screen.getByRole('button', { name: /Billing\s*1/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Site activity\s*1/ })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /Billing\s*1/ })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /Site activity\s*1/ })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /^Uptime/ })).toHaveAttribute('aria-checked', 'true')
   })
 
   it('the controls row carries the FULL registry name and the self-naming mark-read', () => {
