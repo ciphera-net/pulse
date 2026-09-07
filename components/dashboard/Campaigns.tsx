@@ -184,6 +184,7 @@ export default function Campaigns({ siteId, dateRange, period, filters, totals, 
         <div className="min-w-0 overflow-x-auto scrollbar-hide pb-1">
           <Switcher
             size="sm"
+            tone="solid"
             aria-label="Campaign dimension"
             options={[
               { value: 'source', label: 'Source' },

@@ -153,6 +153,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
         <div className="min-w-0 overflow-x-auto scrollbar-hide pb-1">
           <Switcher
             size="sm"
+            tone="solid"
             aria-label="Technology view"
             options={[
               { value: 'browsers', label: 'Browsers' },

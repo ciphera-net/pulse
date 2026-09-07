@@ -148,6 +148,7 @@ export default function TopReferrers({ referrers, channels = [], collectReferrer
         <div className="min-w-0 overflow-x-auto scrollbar-hide pb-1">
           <Switcher
             size="sm"
+            tone="solid"
             aria-label="Referrers view"
             options={[
               { value: 'referrers', label: 'Referrers' },

@@ -112,6 +112,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
           <div className="min-w-0 overflow-x-auto scrollbar-hide pb-1">
             <Switcher
               size="sm"
+              tone="solid"
               aria-label="Pages view"
               options={tabs.map((tab) => ({ value: tab, label: getTabLabel(tab) }))}
               value={activeTab}
