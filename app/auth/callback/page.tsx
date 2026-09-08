@@ -5,14 +5,14 @@ import { reportClientEvent } from '@/lib/utils/clientEvents'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import apiRequest from '@/lib/api/client'
-import { exchangeAuthCode, getSessionAction } from '@/app/actions/auth'
+import { exchangeAuthCode, getSessionAction, setSessionAction } from '@/app/actions/auth'
 import { setAccessToken, APP_URL } from '@/lib/api/client'
 import { AuthErrorState, LoadingOverlay, type AuthErrorType } from '@ciphera-net/facet'
 import { safeRedirectUrl } from '@/lib/utils/safe-redirect'
 import { claimPendingAuth, forgetAllPendingAuth } from '@/lib/api/oauth-store'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import { cdnUrl } from '@/lib/cdn'
-import { ensureDefaultOrganization, shouldProvisionWorkspace } from '@/lib/api/organization'
+import { ensureDefaultOrganization, shouldProvisionWorkspace, switchContext } from '@/lib/api/organization'
 import { logger } from '@/lib/utils/logger'
 
 function AuthCallbackContent() {
@@ -56,7 +56,18 @@ function AuthCallbackContent() {
     const target = storedReturn ?? searchParams.get('returnTo')
     if (!shouldProvisionWorkspace(target)) return
     try {
-      await ensureDefaultOrganization()
+      const ensured = await ensureDefaultOrganization()
+      // 🔴 AND SWITCH INTO IT BEFORE LANDING. The access token was minted at the
+      // exchange, a moment BEFORE this workspace existed, so it carries no
+      // org_id. Landing on it makes the destination page discover the mismatch
+      // and repair it — switchContext, a new session, router.refresh() — which
+      // is a second render the person sees as a flicker on their very first
+      // screen (reported by the owner, 08-09-2026: "it flicker a lot").
+      // Repairing it here costs the same two calls and happens behind the
+      // redirect that is already running.
+      const { access_token } = await switchContext(ensured.organization.id)
+      const result = await setSessionAction(access_token)
+      if (result.success) setAccessToken(access_token)
     } catch (e) {
       // * Not fatal, and not silent. The org wall calls this again on the
       // * destination route, and the manual form is still the last resort.

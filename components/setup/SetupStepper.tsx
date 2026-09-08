@@ -3,8 +3,18 @@
 import { Fragment } from 'react'
 import { usePathname } from 'next/navigation'
 
+// 🔴 NO 'Create workspace' STEP. It was removed 08-09-2026, when the workspace
+// stopped being something a person does: it is provisioned for them before they
+// arrive (ciphera-id's ensure-default). Leaving it in showed a step nobody could
+// visit, already ticked, at the top of a four-step flow — the owner's words on
+// seeing it: "i couldn't go to it. but it shouldn't show."
+//
+// /setup/org still EXISTS and is still reachable, as the fallback when
+// provisioning fails and via the "create another workspace" path; it simply is
+// not part of the ladder a new person is walked along, so it renders no stepper
+// entry. `steps.findIndex` returns -1 there, which the component already
+// handles.
 const steps = [
-  { key: 'org', label: 'Create workspace', path: '/setup/org' },
   { key: 'site', label: 'Add site', path: '/setup/site' },
   { key: 'install', label: 'Install script', path: '/setup/install' },
   { key: 'plan', label: 'Choose plan', path: '/setup/plan', optional: true },
