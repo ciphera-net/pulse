@@ -88,3 +88,77 @@ describe('useReauthModal — delete path', () => {
     document.cookie = `${legacyPiiCookie}=; Max-Age=0; path=/`
   })
 })
+
+// ---------------------------------------------------------------------------
+// #17 — a mistyped password must be correctable.
+//
+// The catch has always said it keeps the modal open "so the user can correct
+// the email/password and retry", but the password lived frozen in
+// pending.request, captured once from the calling form, and no field for it
+// was ever rendered. So a retry replayed the SAME wrong password against a
+// newly typed email, forever. RecoveryEnrolModal has held its own editable
+// password since it was written.
+// ---------------------------------------------------------------------------
+describe('useReauthModal — correcting a wrong password', () => {
+  beforeEach(() => performOpaqueReauthMock.mockReset())
+
+  it('shows no password field until something has actually failed', async () => {
+    // The first attempt is unchanged: the calling form already collected it,
+    // and asking twice up front would be its own friction.
+    performOpaqueReauthMock.mockResolvedValue('tok-xyz')
+    render(<Harness onResult={vi.fn()} />)
+    fireEvent.click(screen.getByText('start'))
+
+    await screen.findByLabelText('Sign-in email')
+    expect(screen.queryByLabelText('Password')).toBeNull()
+  })
+
+  it('offers the field after a failure, and sends what was typed', async () => {
+    performOpaqueReauthMock.mockRejectedValueOnce(new Error('bad credentials'))
+    const onResult = vi.fn()
+    render(<Harness onResult={onResult} />)
+    fireEvent.click(screen.getByText('start'))
+
+    fireEvent.change(await screen.findByLabelText('Sign-in email'), {
+      target: { value: 'user@example.com' },
+    })
+    fireEvent.click(screen.getByText('Verify'))
+
+    // The failure reveals it.
+    const pw = (await screen.findByLabelText('Password')) as HTMLInputElement
+    expect(pw.type).toBe('password')
+
+    performOpaqueReauthMock.mockResolvedValue('tok-xyz')
+    fireEvent.change(pw, { target: { value: 'the-right-one' } })
+    fireEvent.click(screen.getByText('Verify'))
+
+    await waitFor(() => expect(onResult).toHaveBeenCalledWith({ reauthToken: 'tok-xyz' }))
+    // 🔴 The whole point: the SECOND call carries the corrected secret, not
+    // the one frozen at request time.
+    expect(performOpaqueReauthMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ password: 'the-right-one' })
+    )
+  })
+
+  it('an empty box reuses the password already entered, rather than sending nothing', async () => {
+    performOpaqueReauthMock.mockRejectedValueOnce(new Error('network'))
+    const onResult = vi.fn()
+    render(<Harness onResult={onResult} />)
+    fireEvent.click(screen.getByText('start'))
+
+    fireEvent.change(await screen.findByLabelText('Sign-in email'), {
+      target: { value: 'user@example.com' },
+    })
+    fireEvent.click(screen.getByText('Verify'))
+    await screen.findByLabelText('Password')
+
+    performOpaqueReauthMock.mockResolvedValue('tok-xyz')
+    fireEvent.click(screen.getByText('Verify'))
+
+    await waitFor(() => expect(onResult).toHaveBeenCalledWith({ reauthToken: 'tok-xyz' }))
+    expect(performOpaqueReauthMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ password: 'pw' })
+    )
+  })
+})
+

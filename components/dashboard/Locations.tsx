@@ -393,7 +393,11 @@ export default function Audience({ countries, cities, regions, languages, timezo
                 icon={<GlobeHemisphereWest />}
                 title="Your first visitor hasn't arrived"
                 description="Countries and cities will light up on this map as traffic flows in from around the world."
-                action={{ label: 'Install tracking script', href: '/installation' }}
+                action={{
+                label: 'Install tracking script',
+                href: '/settings/site/general',
+                onClick: () => sessionStorage.setItem('pulse_active_site', siteId),
+              }}
               />
             )
           ) : (

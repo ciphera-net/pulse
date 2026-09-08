@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
-import { initiateOAuthFlow } from '@/lib/api/oauth'
+import { initiateSignupFlow } from '@/lib/api/oauth'
 import { toast, Button, ArrowRightIcon, CheckIcon, Switcher } from '@ciphera-net/facet'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { getUserOrganizations } from '@/lib/api/organization'
@@ -106,8 +106,11 @@ export default function PricingSection() {
     const planParams = `plan=${planId}&interval=${selectedInterval}&limit=${selectedLimit}`
 
     if (!user) {
+      // Signup, not sign-in — see HeroCtas. The stored return target is
+      // unchanged: whichever door they come through, they land on the plan
+      // they picked.
       localStorage.setItem('pulse_auth_return_to', `/setup/org?${planParams}`)
-      initiateOAuthFlow()
+      initiateSignupFlow()
       return
     }
 
@@ -337,7 +340,8 @@ export default function PricingSection() {
                       if (isCurrent) return
                       if (isFree) {
                         if (!user) {
-                          initiateOAuthFlow()
+                          // "Get started free" — signup, not sign-in.
+                          initiateSignupFlow()
                           return
                         }
                         window.location.href = '/'

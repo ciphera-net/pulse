@@ -60,6 +60,34 @@ export default function SetupPlanPage() {
     }
   }, [])
 
+  // 🔴 REFILL THE BILLING DETAILS FROM SERVER TRUTH AFTER A CANCELLED PAYMENT.
+  //
+  // Going to Mollie is a full document navigation, so the app unmounts and
+  // every answer typed into this form dies with it. Coming back, the person met
+  // an empty form and had to enter all six fields again — which is the moment
+  // they were already having second thoughts (finding #18).
+  //
+  // Nothing is stored in the browser to achieve this: the checkout handler
+  // persists these with UpdateBillingProfile BEFORE it ever redirects, so they
+  // are already server-side and simply were not read back. The plan, interval
+  // and limit come home in the cancel URL instead, via pendingPlan.
+  //
+  // ⚠️ ONE SHOT, and never over something already typed. The functional form
+  // is what makes the second condition true — a plain setState here would
+  // clobber an in-flight edit if the subscription resolved late.
+  const billingRefilled = useRef(false)
+  useEffect(() => {
+    if (!subscription || billingRefilled.current) return
+    billingRefilled.current = true
+    setBusinessName((v) => v || subscription.business_name || '')
+    setBillingEmail((v) => v || subscription.billing_email || '')
+    setAddress((v) => v || subscription.billing_address || '')
+    setCity((v) => v || subscription.billing_city || '')
+    setPostalCode((v) => v || subscription.billing_postal_code || '')
+    setCountry((v) => v || subscription.billing_country || '')
+    setVatId((v) => v || subscription.tax_id?.value || '')
+  }, [subscription])
+
   const handleSkip = () => {
     completeStep('plan')
     router.push('/setup/done')

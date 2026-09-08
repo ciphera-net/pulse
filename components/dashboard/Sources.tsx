@@ -320,7 +320,11 @@ export default function Sources({
               icon={<Globe />}
               title="Nobody's linked to you yet"
               description="Traffic sources appear here when visitors come from other websites, social media, or search engines."
-              action={{ label: 'Install tracking script', href: '/installation' }}
+              action={{
+                label: 'Install tracking script',
+                href: '/settings/site/general',
+                onClick: () => sessionStorage.setItem('pulse_active_site', siteId),
+              }}
             />
           )
         ) : view === 'channels' ? (

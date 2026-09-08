@@ -25,7 +25,7 @@ import {
   GlobeIcon,
   Share2Icon,
 } from '@ciphera-net/facet'
-import { initiateOAuthFlow } from '@/lib/api/oauth'
+import { initiateSignupFlow } from '@/lib/api/oauth'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
 import { HairlineGrid } from '@/components/marketing/system/HairlineGrid'
 import { ReceiptsLedger, ProofLink, type Receipt } from '@/components/marketing/ReceiptsLedger'
@@ -351,7 +351,8 @@ export default function FeaturesPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Button size="lg" onClick={() => initiateOAuthFlow()}>
+            {/* Signup, not sign-in — see HeroCtas. */}
+            <Button size="lg" onClick={() => initiateSignupFlow()}>
               Get started free
               <ArrowRightIcon className="ml-2 h-4 w-4" aria-hidden="true" />
             </Button>

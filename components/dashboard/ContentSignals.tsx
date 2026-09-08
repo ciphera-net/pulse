@@ -71,7 +71,7 @@ export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRa
 
       <div className="flex flex-1 flex-col min-h-[270px]">
         {activeTab === 'scroll' ? (
-          <ScrollDepthBars scrollDepth={scrollDepth} preview={pagePreview} bare />
+          <ScrollDepthBars scrollDepth={scrollDepth} preview={pagePreview} bare siteId={siteId} />
         ) : (
           <GoalStats goalCounts={goalCounts} siteId={siteId} dateRange={dateRange} bare memberFeatures={memberFeatures} />
         )}
