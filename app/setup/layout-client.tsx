@@ -19,8 +19,15 @@ import { cdnUrl } from '@/lib/cdn'
 // while recording step 3 and every funnel drop-off read one step early.
 // (Analytics note, 25-08-2026: welcome_step_view rows before this date carry
 // the OLD numbering for steps 3/4.)
+// 🔴 THE NUMBERS DO NOT MOVE, and /setup/org simply leaves.
+//
+// Renumbering is the landmine this map already carries a scar from (25-08-2026:
+// the stepper and the events disagreed, and every funnel drop-off read one step
+// early). So when the workspace step stopped being a step a person takes
+// (08-09-2026, it is provisioned before they arrive), its ROW was deleted and
+// site/install/plan/done kept 2/3/4/5. Historical rows keep meaning exactly what
+// they meant; step 1 simply stops occurring, which is the true statement.
 const SETUP_STEPS: Record<string, number> = {
-  '/setup/org': 1,
   '/setup/site': 2,
   '/setup/install': 3,
   '/setup/plan': 4,
