@@ -159,7 +159,14 @@ const SUPERSEDED = ['under 2KB', 'under 2 KB', '5 KB gzipped', '5.5 KB gzipped',
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
-    if (['node_modules', '.next', '.git', 'dist', 'tracker', 'coverage'].includes(name)) continue
+    // 🔴 `.worktrees` IS ON THIS LIST BECAUSE IT ONLY EXISTS ON A DEVELOPER'S
+    // DISK. Git worktrees hold whole copies of the repo at older commits, so a
+    // superseded figure retired months ago still sits in half a dozen of them
+    // — and this guard failed locally, permanently, on prose nobody publishes,
+    // while passing in CI where no worktree exists. A check that is red for
+    // everyone who has ever run `git worktree add` gets ignored, which is the
+    // one thing a guard must not be.
+    if (['node_modules', '.next', '.git', '.worktrees', 'dist', 'tracker', 'coverage'].includes(name)) continue
     const full = join(dir, name)
     if (statSync(full).isDirectory()) walk(full, out)
     else if (/\.(tsx?|txt|mdx)$/.test(name)) out.push(full)

@@ -140,6 +140,27 @@ export interface ReauthResult {
   reauthToken?: string
 }
 
+/**
+ * The request with a corrected password substituted in.
+ *
+ * Written as an exhaustive switch rather than a spread onto a shared key,
+ * because the three ops do NOT share one: a password change re-proves itself
+ * with `oldPassword`, the other two with `password`. A generic
+ * `{...req, password: pw}` would compile and silently leave a password change
+ * replaying the original wrong secret.
+ */
+function withCorrectedPassword(req: ReauthRequest, pw: string): ReauthRequest {
+  if (!pw) return req
+  switch (req.op) {
+    case 'password':
+      return { ...req, oldPassword: pw }
+    case 'email':
+      return { ...req, password: pw }
+    case 'delete':
+      return { ...req, password: pw }
+  }
+}
+
 interface Pending {
   request: ReauthRequest
   resolve: (result: ReauthResult) => void
@@ -185,6 +206,18 @@ export function useReauthModal(): {
 } {
   const [pending, setPending] = useState<Pending | null>(null)
   const [email, setEmail] = useState('')
+  // 🔴 THE CORRECTION THE RETRY NEVER HAD. The catch below has always said it
+  // keeps the modal open "so the user can correct the email/password" — but the
+  // password lived frozen in pending.request, captured once from the calling
+  // form, and the modal rendered no field for it. So a mistyped password could
+  // only be retried by replaying the SAME wrong password against a newly typed
+  // email, forever. RecoveryEnrolModal has held its own editable password since
+  // it was written; this is that, and nothing more.
+  //
+  // Deliberately EMPTY until something fails: the first attempt is unchanged,
+  // because the calling form already collected the password and asking twice
+  // would be its own friction.
+  const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // The VMK handle lives only for the duration of one write. Non-extractable —
@@ -194,6 +227,7 @@ export function useReauthModal(): {
   const requestReauth = useCallback((request: ReauthRequest): Promise<ReauthResult> => {
     // No prefill source exists — the field starts empty and the user types it.
     setEmail('')
+    setPassword('')
     setError(null)
     setBusy(false)
     return new Promise<ReauthResult>((resolve, reject) => {
@@ -204,6 +238,7 @@ export function useReauthModal(): {
   const close = useCallback(() => {
     setPending(null)
     setEmail('')
+    setPassword('')
     setError(null)
     setBusy(false)
   }, [])
@@ -305,7 +340,11 @@ export function useReauthModal(): {
         // overwrite the auth cookies. `sub` drives the session-swap guard; `org_id`
         // drives the post-op org-context restore.
         const sessionBefore = await getSessionAction()
-        const result = await runCeremony(pending.request, email, sessionBefore)
+        const result = await runCeremony(
+          withCorrectedPassword(pending.request, password),
+          email,
+          sessionBefore,
+        )
         const { resolve } = pending
         close()
         resolve(result)
@@ -327,7 +366,7 @@ export function useReauthModal(): {
         }
       }
     },
-    [pending, busy, email, runCeremony, close]
+    [pending, busy, email, password, runCeremony, close]
   )
 
   const onCancel = useCallback(() => {
@@ -380,6 +419,26 @@ export function useReauthModal(): {
                 disabled={busy}
               />
             </div>
+
+            {error && (
+              <div className="space-y-1.5">
+                <label htmlFor="reauth-password" className="block text-sm font-medium text-foreground/70">
+                  {pending.request.op === 'password' ? 'Current password' : 'Password'}
+                </label>
+                <Input
+                  id="reauth-password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  disabled={busy}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Leave this blank to reuse the password you already entered.
+                </p>
+              </div>
+            )}
 
             {error && (
               <p className="text-sm text-destructive" role="alert">
