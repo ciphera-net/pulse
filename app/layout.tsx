@@ -103,9 +103,16 @@ export default function RootLayout({
         >
           Skip to content
         </a>
+        {/* Outbound-link tracking is OFF on Pulse's own install. A customer
+            clicking a link from inside their dashboard would otherwise record
+            THEIR destination — their own pages, and the sites they link out to —
+            into Pulse's own analytics (owner ruling, 08-09-2026). File downloads
+            stay on: they resolve to Ciphera's own domains and carry no customer
+            destination. */}
         <Script
           defer
           data-domain="pulse.ciphera.net"
+          data-no-outbound=""
           src="https://js.ciphera.net/script.js"
         />
         <SWRProvider>
