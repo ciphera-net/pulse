@@ -174,7 +174,10 @@ export default function Outbound({ siteId, dateRange, period, totals, goalCounts
       </div>
 
       <div className="flex-1 min-h-[270px]">
-        {error && !data ? (
+        {error && !hasData ? (
+          // Stale rows outlive a failed revalidation (the house SWR stance, as
+          // in Sources); but with NOTHING to show, an error is an error — it
+          // must never read as "no clicks yet".
           <ErrorCard title="Couldn’t load outbound links" description="The outbound clicks did not arrive. Reload the page to try again." />
         ) : hasData ? (
           <>

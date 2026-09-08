@@ -423,9 +423,23 @@ describe('Outbound', () => {
 
   it('states an ERROR rather than claiming there are no clicks', () => {
     useOutboundLinks.mockReturnValue({ data: undefined, error: new Error('500'), isLoading: false })
+    const { unmount } = render(<Outbound {...baseProps} />)
+    expect(screen.getByText(/Couldn’t load outbound links/)).toBeTruthy()
+    expect(screen.queryByText(/No outbound clicks yet/)).toBeNull()
+    unmount()
+    // A failed revalidation after an EMPTY first fetch leaves stale empty
+    // lists behind — still an error, never the empty state.
+    useOutboundLinks.mockReturnValue({ data: { urls: [], paths: [] }, error: new Error('502'), isLoading: false })
     render(<Outbound {...baseProps} />)
     expect(screen.getByText(/Couldn’t load outbound links/)).toBeTruthy()
     expect(screen.queryByText(/No outbound clicks yet/)).toBeNull()
+  })
+
+  it('keeps stale rows on screen through a failed revalidation', () => {
+    useOutboundLinks.mockReturnValue({ data: lists, error: new Error('502'), isLoading: false })
+    render(<Outbound {...baseProps} />)
+    expect(screen.getByText('pulse.ciphera.net')).toBeTruthy()
+    expect(screen.queryByText(/Couldn’t load outbound links/)).toBeNull()
   })
 
   it('shows the empty state for a range with no outbound clicks, and nothing while loading', () => {
