@@ -11,11 +11,13 @@ describe('dashboard page wiring (Phase 3)', () => {
   const page = read('app/sites/[id]/page.tsx')
 
   it('passes the true totals and filters to every list card', () => {
-    // Five cards take totals (incl. Campaigns, whose unit is visitors);
+    // Five cards take totals — Sources (Referrers · Channels · Campaigns in
+    // one card since 06-09-2026), Audience, TechSpecs, ContentStats, and
+    // Outbound (08-09-2026, for its "% of visitors left through a link");
     // ContentSignals carries no % by design.
     expect(page.match(/totals=\{totals\}/g)?.length).toBe(5)
-    // ContentStats, TopReferrers, Audience, TechSpecs, Campaigns, PeakHours
-    // all thread the page's filters.
+    // ContentStats, Sources, Audience, TechSpecs, Outbound, PeakHours all
+    // thread the page's filters (Outbound to LABEL itself whole-site).
     expect(page.match(/filters=\{filtersParam \|\| undefined\}/g)?.length).toBe(6)
   })
 
@@ -66,12 +68,12 @@ describe('share page wiring (Phase 3)', () => {
   const share = read('components/share/PublicDashboard.tsx')
 
   it('passes totals to all five cards and disables view-all (member-only endpoints)', () => {
-    // Five since the 02-09 anatomy catch-up: the four dimension cards plus
-    // ContentSignals (whose page-preview + events drill-down are member-only).
-    // Campaigns carries no memberFeatures flag — its diet is the payload prop.
+    // Five: Sources, Audience, TechSpecs, ContentStats plus ContentSignals
+    // (whose page-preview + events drill-down are member-only).
     expect(share.match(/memberFeatures=\{false\}/g)?.length).toBe(5)
-    expect(share.match(/totals=\{totals\}/g)?.length).toBe(5)
-    // The payload-rows prop is what keeps Campaigns' member-only endpoint
+    // Four take totals — the Campaigns rows now live inside Sources.
+    expect(share.match(/totals=\{totals\}/g)?.length).toBe(4)
+    // The payload-rows prop is what keeps the campaigns member-only endpoint
     // unarmed on the share surface — remove it and the card starts fetching.
     expect(share).toContain('campaigns={data?.campaigns ?? []}')
   })
