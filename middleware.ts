@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { AUTHED_HOME } from '@/lib/routes'
 
 const PUBLIC_ROUTES = new Set([
   '/',
@@ -70,7 +71,13 @@ const AUTH_ONLY_ROUTES = new Set(['/login', '/signup'])
 // * The authenticated home. The public marketing homepage lives at `/` and must
 // * server-render for crawlers, so signed-in visitors are redirected here (the
 // * site list / last-site entry point) instead of `/`.
-const AUTHED_HOME = '/sites'
+// *
+// * 🔑 It now lives in lib/routes.ts because the auth callback needs the same
+// * answer. A fresh signup used to land on `/` with no target, get redirected
+// * here, RENDER the empty site list, and only then be pushed into the setup
+// * wizard by a client effect — reported 08-09-2026 as a flash of "you have no
+// * sites" on a brand-new account. The callback resolves its own destination
+// * now, and this is the string it names when there is nothing else to resume.
 
 const STAGING_HOST = 'pulse-staging.ciphera.net'
 const STAGING_ROBOTS = 'User-agent: *\nDisallow: /\n'

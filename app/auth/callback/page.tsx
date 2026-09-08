@@ -13,6 +13,7 @@ import { claimPendingAuth, forgetAllPendingAuth } from '@/lib/api/oauth-store'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import { cdnUrl } from '@/lib/cdn'
 import { ensureDefaultOrganization, shouldProvisionWorkspace, switchContext } from '@/lib/api/organization'
+import { resolveLandingTarget } from '@/lib/auth/landing-target'
 import { logger } from '@/lib/utils/logger'
 
 function AuthCallbackContent() {
@@ -32,20 +33,38 @@ function AuthCallbackContent() {
 
   // * Where a completed sign-in lands. Extracted so the rescue path below cannot
   // * drift from the success path — both honour a stored return, then ?returnTo.
-  const landInApp = useCallback(() => {
+  // *
+  // * 🔴 `fallback` IS THE DESTINATION THIS PAGE RESOLVED, not a default it hopes
+  // * is right. Until 08-09-2026 there was none: a fresh signup fell through to
+  // * `'/'`, the edge redirected that to `/sites`, and the empty-fleet
+  // * placeholder RENDERED before the onboarding wall — a client effect, one
+  // * render later — pushed the person into the wizard. They were shown "you
+  // * have no sites" by a page already on its way somewhere else.
+  // *
+  // * A stored return still wins, and still wins over the resolved target: it is
+  // * an explicit request (an invite, a deep link) and this page does not know
+  // * better. The resolved value only replaces the guess.
+  const landInApp = useCallback((fallback?: string | null) => {
+    const target = fallback || '/'
     const storedReturn = localStorage.getItem('pulse_auth_return_to')
     if (storedReturn) {
       localStorage.removeItem('pulse_auth_return_to')
-      window.location.assign(safeRedirectUrl(storedReturn))
+      window.location.assign(safeRedirectUrl(storedReturn, target))
       return
     }
-    window.location.assign(safeRedirectUrl(searchParams.get('returnTo')))
+    window.location.assign(safeRedirectUrl(searchParams.get('returnTo'), target))
   }, [searchParams])
 
   // * Provision the default workspace, unless this sign-in is on its way to an
   // * invite. Reads the same stored return target landInApp() will consume, and
   // * deliberately does not consume it.
-  const provisionWorkspaceUnlessJoining = useCallback(async () => {
+  // *
+  // * Answers with the destination the caller should land on, or null when there
+  // * is nothing better to say than the old default — a /join arrival, or a
+  // * failure the org wall will pick up on the next route.
+  const provisionWorkspaceUnlessJoining = useCallback(async (
+    sessionRole: string | null | undefined,
+  ): Promise<string | null> => {
     let storedReturn: string | null = null
     try {
       storedReturn = localStorage.getItem('pulse_auth_return_to')
@@ -54,7 +73,7 @@ function AuthCallbackContent() {
       // * skipping provisioning for everybody whose browser blocks storage.
     }
     const target = storedReturn ?? searchParams.get('returnTo')
-    if (!shouldProvisionWorkspace(target)) return
+    if (!shouldProvisionWorkspace(target)) return null
     try {
       const ensured = await ensureDefaultOrganization()
       // 🔴 AND SWITCH INTO IT BEFORE LANDING. The access token was minted at the
@@ -68,10 +87,21 @@ function AuthCallbackContent() {
       const { access_token } = await switchContext(ensured.organization.id)
       const result = await setSessionAction(access_token)
       if (result.success) setAccessToken(access_token)
+      // * 🔑 The role AFTER the switch, not before it. The exchange's token was
+      // * minted against whatever context the account had a moment ago; the one
+      // * that decides whether this person is walled is the one they are landing
+      // * with. Falls back to the pre-switch role rather than to nothing —
+      // * an absent role is treated as walled, which is the safe side.
+      return await resolveLandingTarget({
+        orgId: ensured.organization.id,
+        role: result.user?.role ?? sessionRole,
+        createdWorkspace: ensured.created,
+      })
     } catch (e) {
       // * Not fatal, and not silent. The org wall calls this again on the
       // * destination route, and the manual form is still the last resort.
       logger.error('Could not provision a default workspace', e)
+      return null
     }
   }, [searchParams])
 
@@ -97,7 +127,13 @@ function AuthCallbackContent() {
     }
     if (!session) return false
     forgetAllPendingAuth()
-    landInApp()
+    // * The rescue path lands somebody who is ALREADY signed in, so it resolves
+    // * from the session it just proved rather than provisioning anything. It
+    // * gets the same destination for the same reason: the flash it would
+    // * otherwise cause is identical, and a rescued fresh signup is exactly the
+    // * case this path exists for.
+    const target = await resolveLandingTarget({ orgId: session.org_id, role: session.role })
+    landInApp(target)
     return true
   }, [landInApp])
 
@@ -138,12 +174,14 @@ function AuthCallbackContent() {
         // * one of their own; the server cannot know an invite is pending.
         // * Failure is not fatal — the org wall retries on the next route, and
         // * the manual form is still there behind it.
-        await provisionWorkspaceUnlessJoining()
+        const landing = await provisionWorkspaceUnlessJoining(
+          result.user.role ?? undefined,
+        )
         // * Use full-page navigation (not router.push) so the access_token cookie set
         // * by exchangeAuthCode is guaranteed committed before AuthProvider re-initializes
         // * on the destination route. Eliminates the post-login SWR race where useSites()
         // * fires before cookies are observable and caches an empty/401 result for 30s.
-        landInApp()
+        landInApp(landing)
       } else {
         // * Every failed exchange gets a screen and a trace. Until 05-09-2026 the
         // * 'server' branch instead sent the browser to `/` — the marketing homepage —
@@ -165,7 +203,7 @@ function AuthCallbackContent() {
         setError(result.error as AuthErrorType)
       }
     },
-    [searchParams, login, landInApp]
+    [searchParams, login, landInApp, provisionWorkspaceUnlessJoining]
   )
 
   useEffect(() => {
