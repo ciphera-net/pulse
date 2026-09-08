@@ -41,7 +41,9 @@ import {
   getDevices,
   getScreenResolutions,
   getTimezones,
+  getEventPropertyValues,
   type RealtimePageVisitors,
+  type EventPropertyValue,
 } from '@/lib/api/stats'
 import {
   getJourneyTransitions,
@@ -958,6 +960,28 @@ export function useFullDimensionList<T>(
     // (01-09-2026). While a new range's list loads, the dashboard fan-out
     // rows are the correct same-range fallback, so nothing flashes empty.
     { ...dashboardSWRConfig }
+  )
+}
+
+// * The Outbound card's two lists: every outbound_link destination and the
+// * page each click happened on, as EVENT counts (the property endpoints do
+// * not count people and take no filters — the card labels both facts).
+// * Keyed on the resolved dates AND the period token, like Sources' campaigns.
+export interface OutboundLists {
+  urls: EventPropertyValue[]
+  paths: EventPropertyValue[]
+}
+export function useOutboundLinks(siteId: string, start: string, end: string, period?: string) {
+  return useSWR<OutboundLists>(
+    siteId && start && end ? ['outbound', siteId, start, end, period ?? ''] : null,
+    async () => {
+      const [urls, paths] = await Promise.all([
+        getEventPropertyValues(siteId, 'outbound_link', 'url', start, end, 100),
+        getEventPropertyValues(siteId, 'outbound_link', 'page_path', start, end, 100),
+      ])
+      return { urls, paths }
+    },
+    { ...dashboardSWRConfig, refreshInterval: 60_000, dedupingInterval: 10_000 }
   )
 }
 

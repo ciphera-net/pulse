@@ -91,8 +91,11 @@ async function openShare(page: Page) {
   await page.goto(`${BASE_URL}/share/${SITE_ID}`)
   // The card mounts once the payload lands; assert we are still on the local
   // origin (a bounce anywhere else is a failure, never a capture).
-  const card = page.locator('[data-tour-card="campaigns"]')
+  // Since 06-09-2026 the campaign rows live behind the Sources card's third
+  // view (owner pick BH) — open it before asserting on the header.
+  const card = page.locator('[data-tour-card="referrers"]')
   await expect(card).toBeVisible({ timeout: 60_000 })
+  await card.getByRole('radio', { name: 'Campaigns' }).click()
   expect(new URL(page.url()).origin).toBe(new URL(BASE_URL).origin)
   return card
 }
@@ -110,7 +113,7 @@ test.describe('Campaigns card header (dev-server smoke)', () => {
     await expect(card.getByLabel('Next page')).toBeVisible()
 
     // The header: five dimension tabs, the unit label, and nothing actionable.
-    await expect(card.getByRole('radio')).toHaveCount(5)
+    await expect(card.getByRole('radio')).toHaveCount(3)
     await expect(card.getByText('visitors', { exact: true }).first()).toBeVisible()
     await expect(card.getByRole('button', { name: 'Export' })).toHaveCount(0)
     await expect(card.getByRole('button', { name: 'Build URL' })).toHaveCount(0)
@@ -147,7 +150,7 @@ test.describe('Campaigns card header (dev-server smoke)', () => {
     await expect(card.getByRole('button', { name: /Build a UTM URL/ })).toHaveCount(0)
     await expect(card.getByRole('link', { name: /Build a UTM URL/ })).toHaveCount(0)
     await expect(card.getByText('Build URL')).toHaveCount(0)
-    await expect(card.getByRole('radio')).toHaveCount(5)
+    await expect(card.getByRole('radio')).toHaveCount(3)
 
     await card.scrollIntoViewIfNeeded()
     await page.waitForTimeout(600)

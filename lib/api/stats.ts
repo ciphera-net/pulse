@@ -53,7 +53,10 @@ export interface ScreenResolutionStat {
 
 export interface GoalCountStat {
   event_name: string
+  /** Events, not people. */
   count: number
+  /** Distinct visitors who fired the event (the server sends it; older callers ignore it). */
+  visitors?: number
   display_name?: string | null
 }
 
