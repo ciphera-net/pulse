@@ -53,7 +53,10 @@ export interface ScreenResolutionStat {
 
 export interface GoalCountStat {
   event_name: string
+  /** Events, not people. */
   count: number
+  /** Distinct visitors who fired the event (the server sends it; older callers ignore it). */
+  visitors?: number
   display_name?: string | null
 }
 
@@ -472,8 +475,11 @@ export function getEventPropertyKeys(siteId: string, eventName: string, startDat
     .then(r => r?.keys || [])
 }
 
-export function getEventPropertyValues(siteId: string, eventName: string, propName: string, startDate?: string, endDate?: string, limit = 20): Promise<EventPropertyValue[]> {
-  return apiRequest<{ values: EventPropertyValue[] }>(`/sites/${siteId}/goals/${encodeURIComponent(eventName)}/properties/${encodeURIComponent(propName)}${buildQuery({ startDate, endDate, limit })}`)
+// `period` wins over the dates when given (buildQuery): the server resolves a
+// token like `1h` or `today` in the SITE's timezone, which a date-only fetch
+// cannot express — the same reason the campaigns fetch threads it.
+export function getEventPropertyValues(siteId: string, eventName: string, propName: string, startDate?: string, endDate?: string, limit = 20, period?: string): Promise<EventPropertyValue[]> {
+  return apiRequest<{ values: EventPropertyValue[] }>(`/sites/${siteId}/goals/${encodeURIComponent(eventName)}/properties/${encodeURIComponent(propName)}${buildQuery({ startDate, endDate, limit, period })}`)
     .then(r => r?.values || [])
 }
 

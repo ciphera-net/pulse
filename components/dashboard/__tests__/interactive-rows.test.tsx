@@ -22,9 +22,8 @@ import type { TopPage } from '@/lib/api/stats'
 
 const ROOT = path.resolve(__dirname, '../../..')
 const CARDS = [
-  'components/dashboard/TopReferrers.tsx',
+  'components/dashboard/Sources.tsx',
   'components/dashboard/GoalStats.tsx',
-  'components/dashboard/Campaigns.tsx',
   'components/dashboard/Locations.tsx',
   'components/dashboard/TechSpecs.tsx',
   'components/dashboard/ContentStats.tsx',
@@ -83,7 +82,7 @@ describe('dashboard filter rows are reachable without a mouse', () => {
   it('the conditional tag keeps a non-filtering row inert', () => {
     // `Row` resolves to a plain div when the card cannot filter, so a
     // read-only dashboard gains no empty tab stops.
-    const src = fs.readFileSync(path.join(ROOT, 'components/dashboard/TopReferrers.tsx'), 'utf8')
+    const src = fs.readFileSync(path.join(ROOT, 'components/dashboard/Sources.tsx'), 'utf8')
     expect(src).toMatch(/const Row = onFilter \? 'button' : 'div'/)
   })
 })

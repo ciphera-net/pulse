@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 /**
@@ -96,8 +96,14 @@ describe('the onboarding wall exempts /join in BOTH branches', () => {
 // own snippet, was the one thing not on the page they were sent to.
 // ---------------------------------------------------------------------------
 describe('install CTAs point at the real snippet', () => {
+  // ⚠️ SIX, not the five this batch started with. TopReferrers was deleted on
+  // main while this branch was open (#607, "Sources is one card again") and
+  // Sources took its place; Outbound is new in the same change and arrived
+  // carrying the same /installation link. A list like this goes stale the
+  // moment a card is renamed — hence the sweep below, which is the real guard.
   const panels = [
-    'components/dashboard/TopReferrers.tsx',
+    'components/dashboard/Sources.tsx',
+    'components/dashboard/Outbound.tsx',
     'components/dashboard/TechSpecs.tsx',
     'components/dashboard/Locations.tsx',
     'components/dashboard/ContentStats.tsx',
@@ -115,6 +121,21 @@ describe('install CTAs point at the real snippet', () => {
       expect(src).toMatch(/pulse_active_site/)
     })
   }
+
+  it('NO dashboard panel anywhere still points an install button at /installation', () => {
+    // The list above names what exists today; this catches the next card
+    // somebody adds — or renames — with the marketing link copied in.
+    const dir = join(ROOT, 'components/dashboard')
+    const stale: string[] = []
+    for (const name of readdirSync(dir)) {
+      if (!name.endsWith('.tsx')) continue
+      const src = stripComments(readFileSync(join(dir, name), 'utf8'))
+      if (/label: 'Install tracking script'[\s\S]{0,80}href: '\/installation'/.test(src)) {
+        stale.push(name)
+      }
+    }
+    expect(stale, 'these send you to a marketing page whose snippet says your-site.com').toEqual([])
+  })
 
   it("the goals panel keeps a docs link, because that is what its copy is about", () => {
     // Its label is "Read the docs" over copy about pulse.track('event').
