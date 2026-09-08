@@ -16,6 +16,7 @@ import { forgetAllPendingAuth } from '@/lib/api/oauth-store'
 import { isTransientRefreshFailure } from '@/lib/auth/refresh-outcome'
 import { reportClientEvent } from '@/lib/utils/clientEvents'
 import { isAuthedAppRoute } from '@/lib/auth/appRoutes'
+import { onboardingDoneCacheKey, resumeTargetForSites } from '@/lib/auth/landing-target'
 
 interface User {
   id: string
@@ -599,7 +600,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             !pathname?.startsWith('/setup') &&
             !pathname?.startsWith('/settings')
           ) {
-            const cacheKey = `pulse_onboarding_done_${userOrgId}`
+            const cacheKey = onboardingDoneCacheKey(userOrgId)
             const cached = typeof window !== 'undefined' && localStorage.getItem(cacheKey)
             if (!cached) {
               try {
@@ -608,14 +609,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   // * Resume at the furthest incomplete step, computed from server
                   // * state — the fixed '/setup/site' target invited a duplicate
                   // * site from every org that already had one.
+                  // *
+                  // * 🔑 ONE DEFINITION. The auth callback resolves the same
+                  // * destination before it lands, so this mapping lives in
+                  // * lib/auth/landing-target.ts and neither caller owns a copy.
                   let target = '/setup/site'
                   try {
-                    const sites = await listSites()
-                    if (sites.length > 0) {
-                      target = sites.some(s => s.install_status && s.install_status !== 'never_installed')
-                        ? '/setup/plan'
-                        : '/setup/install'
-                    }
+                    target = resumeTargetForSites(await listSites())
                   } catch {
                     // sites fetch failed — the default target still resumes the wizard
                   }
