@@ -5,6 +5,7 @@ import { driver, type Driver, type DriveStep } from 'driver.js'
 import 'driver.js/dist/driver.css'
 import { toast } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
+import { usePreferences } from '@/lib/hooks/usePreferences'
 import { useSidebar } from '@/lib/sidebar-context'
 import {
   TOUR_DONE_PREFIX,
@@ -20,8 +21,11 @@ import { trackTourCompleted, trackTourSkipped, trackTourStarted, trackTourStepVi
  * The product tour (driver.js), mounted by the site dashboard page.
  * Renders nothing — driver.js draws the overlay imperatively.
  *
- * Auto-starts once per user (localStorage `pulse_tour_done_{userId}`) on a
- * dashboard visit; restarts on demand via the ⌘K action (sessionStorage
+ * Auto-starts once per PERSON on a dashboard visit — the "seen it" stamp is
+ * server-side (`user_preferences.tour_completed_at`, pulse-backend migration
+ * 180), so it survives a workspace deletion and follows the account to another
+ * computer; localStorage is kept only as a same-tab cache that the server
+ * answer always overrides. Restarts on demand via the ⌘K action (sessionStorage
  * one-shot + window event, see lib/tour/constants.ts). Desktop md+ only —
  * the owner ruled out a mobile tour, which is what lets every step take the
  * first *visible* anchor mount and skip nothing.
@@ -49,6 +53,7 @@ import { trackTourCompleted, trackTourSkipped, trackTourStarted, trackTourStepVi
  */
 export default function TourController() {
   const { user } = useAuth()
+  const { tourCompleted, stamp } = usePreferences()
   const sidebar = useSidebar()
 
   const userIdRef = useRef<string | null>(null)
@@ -57,6 +62,15 @@ export default function TourController() {
   const driverRef = useRef<Driver | null>(null)
   const activeRef = useRef(false)
   const autoTriedRef = useRef(false)
+  // 🔴 A SECOND ref, deliberately not autoTriedRef. That one fires on mount to
+  // consume the one-shot manual request, which is synchronous; the auto-start
+  // decision now waits for a fetch. Sharing one ref would mark the decision
+  // "tried" at mount, before the server answer exists, and the tour would never
+  // auto-start for anyone again — a regression visible only as silence.
+  const autoStartedRef = useRef(false)
+  // Set when the mount effect consumed a fresh manual request, so the async
+  // auto-start branch does not also fire and start a second tour.
+  const manualHandledRef = useRef(false)
   const unmountedRef = useRef(false)
   const completedRef = useRef(false)
   const finishedRef = useRef(false)
@@ -117,6 +131,7 @@ export default function TourController() {
     ringRef.current?.remove()
     ringRef.current = null
   }
+  const stampRef = useRef(stamp)
   const detachDrawingRef = useRef(detachDrawing)
   const onViewportChangeRef = useRef(onViewportChange)
 
@@ -138,8 +153,12 @@ export default function TourController() {
       try {
         localStorage.setItem(`${TOUR_DONE_PREFIX}${uid}`, String(Date.now()))
       } catch {
-        // storage unavailable — the tour may auto-offer again next visit
+        // storage unavailable — the server stamp below is the real record
       }
+      // The durable half. Inside finish()'s idempotency guard, so the several
+      // overlapping exit paths (driver's hooks, the explicit destroys, the
+      // unmount cleanup) produce exactly one write.
+      void stampRef.current({ tour_completed_at: new Date().toISOString() })
     }
     restoreSidebar()
     if (completedRef.current) trackTourCompleted()
@@ -331,6 +350,7 @@ export default function TourController() {
   // the initial no-op in place on the first commit and kill auto-start.
   useEffect(() => {
     userIdRef.current = user?.id ?? null
+    stampRef.current = stamp
     sidebarRef.current = sidebar
     startRef.current = start
     finishRef.current = finish
@@ -354,11 +374,11 @@ export default function TourController() {
     return () => window.removeEventListener(TOUR_START_EVENT, onStart)
   }, [])
 
-  // Mount decision: a FRESH manual request wins (and ignores the done-key);
-  // otherwise auto-start only for a user who has never seen the tour. The
-  // request is timestamped and always consumed — a stale one (its navigation
-  // never landed, e.g. a load error ate the dashboard) must not force-start
-  // the tour on an unrelated visit minutes later.
+  // Mount: consume the one-shot manual request. Synchronous and unconditional —
+  // the request is timestamped and always consumed, so a stale one (its
+  // navigation never landed, e.g. a load error ate the dashboard) cannot
+  // force-start the tour on an unrelated visit minutes later. A fresh request
+  // wins over everything and ignores the "seen it" stamp entirely.
   useEffect(() => {
     if (!user?.id || autoTriedRef.current) return
     autoTriedRef.current = true
@@ -370,17 +390,36 @@ export default function TourController() {
       // ignore
     }
     if (requestedAt && Date.now() - requestedAt < TOUR_REQUEST_TTL_MS) {
+      manualHandledRef.current = true
       void startRef.current('manual')
-      return
     }
-    let done = true
-    try {
-      done = localStorage.getItem(`${TOUR_DONE_PREFIX}${user.id}`) !== null
-    } catch {
-      // storage unreadable — do not auto-open an overlay on guesswork
-    }
-    if (!done) void startRef.current('auto')
   }, [user?.id])
+
+  // Auto-start: only once the SERVER has answered whether this person has seen
+  // the tour.
+  //
+  // 🔴 THREE STATES, AND ONLY ONE OF THEM STARTS ANYTHING. While the fetch is
+  // in flight `tourCompleted` is 'unknown' and this effect does nothing —
+  // treating unknown as "never seen it" would open the overlay over the
+  // dashboard on every cold load, before the answer arrives. It runs on the
+  // transition to a real answer, which is why it cannot live in the mount
+  // effect above.
+  useEffect(() => {
+    if (!user?.id || autoStartedRef.current || manualHandledRef.current) return
+    if (tourCompleted === 'unknown') return
+    autoStartedRef.current = true
+    if (tourCompleted === 'yes') return
+    // The server says never. The local cache is consulted only to cover the
+    // window where a stamp has been written on this device but the read that
+    // would show it has not refreshed — it can suppress, never summon.
+    let seenHere = false
+    try {
+      seenHere = localStorage.getItem(`${TOUR_DONE_PREFIX}${user.id}`) !== null
+    } catch {
+      // storage unreadable — the server answer stands on its own
+    }
+    if (!seenHere) void startRef.current('auto')
+  }, [user?.id, tourCompleted])
 
   useEffect(() => {
     unmountedRef.current = false
