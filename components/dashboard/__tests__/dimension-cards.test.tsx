@@ -376,6 +376,22 @@ describe('Outbound', () => {
     expect(screen.getByTestId('outbound-footnote').textContent).toMatch(/^4% of visitors left through a link/)
   })
 
+  it('divides by the goal count (every click in the range), not by the capped rows it received', () => {
+    // 20 clicks in the rows, 25 on the goal count: a site with more distinct
+    // destinations than the row limit must not inflate every share.
+    useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
+    render(<Outbound {...baseProps} goalCounts={[{ event_name: 'outbound_link', count: 25, visitors: 14 }]} />)
+    expect(screen.getByText('56%')).toBeTruthy() // 14 / 25
+    expect(screen.queryByText('70%')).toBeNull()
+  })
+
+  it('falls back to the summed rows when the goal count is not on the payload', () => {
+    useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
+    render(<Outbound {...baseProps} goalCounts={[]} />)
+    expect(screen.getByText('70%')).toBeTruthy() // 14 / 20
+    expect(screen.getByTestId('outbound-footnote').textContent).toMatch(/^Clicks, not people/)
+  })
+
   it('the Links view keeps one row per link, opens it in a new tab, and dims the path', () => {
     useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
     render(<Outbound {...baseProps} />)

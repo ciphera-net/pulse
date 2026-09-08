@@ -121,7 +121,13 @@ export default function Outbound({ siteId, dateRange, period, totals, goalCounts
 
   // The share denominator is EVERY outbound click in the range, not the
   // visible page — the same rule the dimension cards apply to visitors (F9).
-  const totalClicks = useMemo(() => (data?.urls ?? []).reduce((n, v) => n + v.count, 0), [data])
+  // The fan-out's goal count IS that total (one row per event name, no row
+  // cap); the summed lists are the fallback, and they are capped at 1,000
+  // distinct values, so on a site with more destinations than that the
+  // fallback would under-count and inflate every share.
+  const outboundGoal = goalCounts?.find((g) => g.event_name === 'outbound_link')
+  const summedClicks = useMemo(() => (data?.urls ?? []).reduce((n, v) => n + v.count, 0), [data])
+  const totalClicks = outboundGoal?.count ?? summedClicks
   const list = rows[activeTab]
   const pageCount = Math.max(1, Math.ceil(list.length / LIMIT))
   const [page, setPage] = useCardPage(`${activeTab}|${filters ?? ''}|${dateRange.start}|${dateRange.end}`, pageCount)
@@ -129,7 +135,7 @@ export default function Outbound({ siteId, dateRange, period, totals, goalCounts
   const emptySlots = Math.max(0, LIMIT - displayed.length)
   const maxClicks = list.reduce((m, r) => Math.max(m, r.clicks), 0)
 
-  const outboundVisitors = goalCounts?.find((g) => g.event_name === 'outbound_link')?.visitors
+  const outboundVisitors = outboundGoal?.visitors
   const hasFilters = Boolean(filters)
   const hasData = list.length > 0
 
