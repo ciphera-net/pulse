@@ -128,9 +128,21 @@ export function middleware(request: NextRequest) {
     return withStagingHeader(NextResponse.next(), isStaging)
   }
 
-  // * Protected route without a session → redirect to login
+  // * Protected route without a session → redirect to login, CARRYING THE PATH.
+  // 🔴 It used to redirect to a bare `/login`, so a cold visit to a deep link —
+  // an emailed dashboard URL, a bookmarked settings page — signed you in and
+  // then dropped you at the app's front door with no explanation, and the link
+  // you followed appeared not to work. The mechanism to carry it already
+  // existed and was already honoured by the auth callback
+  // (`pulse_auth_return_to`); only this hop never filled it in.
+  //
+  // ⚠️ The value is NOT trusted here. The edge only echoes back a path it was
+  // asked for; `/login` validates it with safeRedirectUrl before storing it,
+  // and the callback validates it again on the way out.
   if (!hasSession) {
     const loginUrl = new URL('/login', request.url)
+    const wanted = pathname + (request.nextUrl.search || '')
+    if (wanted && wanted !== '/') loginUrl.searchParams.set('returnTo', wanted)
     return withStagingHeader(NextResponse.redirect(loginUrl), isStaging)
   }
 

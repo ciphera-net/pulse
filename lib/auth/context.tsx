@@ -594,11 +594,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // ⚠️ Deliberately relaxed only on POSITIVE evidence. An absent role is
           // still walled, exactly as before: we skip the wall when we KNOW the
           // viewer is not the owner, never merely because we failed to find out.
+          // 🔴 `/join` IS EXEMPT HERE TOO. The zero-orgs branch above has
+          // always exempted it; this one did not — so somebody who already has
+          // a workspace of their own, abandoned mid-wizard, and then clicks a
+          // colleague's invite link was bounced OUT of the invite and into
+          // their own unfinished setup. They accepted nothing, and the link
+          // they were sent appeared to be broken.
           if (
             userOrgId &&
             isSubjectToOnboardingWall(userRole) &&
             !pathname?.startsWith('/setup') &&
-            !pathname?.startsWith('/settings')
+            !pathname?.startsWith('/settings') &&
+            !pathname?.startsWith('/join')
           ) {
             const cacheKey = onboardingDoneCacheKey(userOrgId)
             const cached = typeof window !== 'undefined' && localStorage.getItem(cacheKey)

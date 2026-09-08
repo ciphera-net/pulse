@@ -20,6 +20,17 @@ vi.mock('@/lib/auth/permissions', () => ({
   useCan: () => canEdit,
 }))
 
+// The banner's own live reading. It used to read only the site LIST, which
+// nothing refreshes while you sit on the dashboard — so somebody who pasted
+// the snippet in another tab watched the charts fill in around a banner still
+// telling them to install it.
+let liveStatus: string | undefined
+vi.mock('@/lib/swr/dashboard', () => ({
+  useInstallStatus: () => ({
+    data: liveStatus === undefined ? undefined : { install_status: liveStatus },
+  }),
+}))
+
 vi.mock('next/link', () => ({
   default: ({ children, href, ...rest }: any) => (
     <a href={href} {...rest}>
@@ -37,6 +48,7 @@ const site = (install_status?: string) => [
 beforeEach(() => {
   sites = site('never_installed')
   canEdit = true
+  liveStatus = undefined
 })
 
 describe('InstallBanner', () => {
@@ -86,5 +98,35 @@ describe('InstallBanner', () => {
     expect(screen.queryByRole('link', { name: 'Set up →' })).toBeNull()
     // The docs link is still there — a viewer can still learn what is wrong.
     expect(screen.getByRole('link', { name: 'Read the docs' })).toBeTruthy()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// #16 — the banner must clear itself.
+// ---------------------------------------------------------------------------
+describe('InstallBanner — it watches the thing it is about', () => {
+  it('disappears when the poll says the script started reporting', () => {
+    // The site LIST still says never_installed — nothing refreshes it while
+    // you sit here. The live reading is what changed, and it must win.
+    sites = site('never_installed')
+    liveStatus = 'active'
+    const { container } = render(<InstallBanner siteId="s1" />)
+    expect(container.firstChild).toBeNull()
+  })
+
+  it('falls back to the list for the first frame, before the poll answers', () => {
+    sites = site('never_installed')
+    liveStatus = undefined
+    render(<InstallBanner siteId="s1" />)
+    expect(screen.getByText('Waiting for the first event')).toBeTruthy()
+  })
+
+  it('still says nothing when neither source knows', () => {
+    // An unknown status is not a licence to guess. Absence of a banner is the
+    // good state, and it is also the honest one here.
+    sites = []
+    liveStatus = undefined
+    const { container } = render(<InstallBanner siteId="s1" />)
+    expect(container.firstChild).toBeNull()
   })
 })

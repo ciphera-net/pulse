@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useCan } from '@/lib/auth/permissions'
 import { useSites } from '@/lib/swr/sites'
+import { useInstallStatus } from '@/lib/swr/dashboard'
 
 // ---------------------------------------------------------------------------
 // The dashboard's install-health banner (design round 24-08-2026, B1).
@@ -18,11 +19,20 @@ import { useSites } from '@/lib/swr/sites'
 // fact about the RANGE and changes with the picker. Two facts, two places.
 // The chart's own copy is deliberately left alone.
 //
-// WHERE THE DATA COMES FROM: `useSites()`, which the shell already fetches for
-// the site switcher (same SWR key, 30 s dedupe) — so this costs no extra
-// request. The dashboard's own payload cannot be used: it is the same DTO
-// served to anonymous share viewers and install status is deliberately
-// stripped from it.
+// WHERE THE DATA COMES FROM: the site's own install status, via
+// `useInstallStatus(siteId, { poll: true })` — which polls every 4 s while the
+// install is not yet active and drops to 60 s the moment it is.
+//
+// 🔴 IT USED TO READ `useSites()`, AND THEREFORE NEVER CLEARED ITSELF. That
+// hook is the site switcher's list: nothing refreshes it while you sit on the
+// dashboard, so somebody who pasted the snippet in another tab watched the
+// charts and KPIs fill in around a banner still telling them to install it.
+// The 4 s hook already existed and was used by the setup wizard — the one
+// place where somebody is definitely watching for the first event. So is this.
+//
+// `useSites()` is still read, for the DOMAIN the copy names. The dashboard's
+// own payload cannot be used for either: it is the same DTO served to
+// anonymous share viewers and install status is deliberately stripped from it.
 //
 // Vocabulary is the fleet card's, verbatim, so the two surfaces say the same
 // thing the same way.
@@ -35,7 +45,11 @@ export default function InstallBanner({ siteId }: { siteId: string }) {
   const { sites } = useSites()
   const canEdit = useCan('sites.edit')
   const site = sites.find((s) => s.id === siteId)
-  const status = site?.install_status
+  const { data: live } = useInstallStatus(siteId, { poll: true })
+  // * The live reading wins; the list is the fallback for the first frame,
+  // * before the poll has answered. Neither may be invented — an unknown
+  // * status renders nothing at all (below).
+  const status = live?.install_status ?? site?.install_status
 
   // Unknown or healthy — say nothing. Absence of a banner is the good state.
   if (!status || status === 'active') return null

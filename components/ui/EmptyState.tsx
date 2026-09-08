@@ -8,7 +8,15 @@ interface EmptyStateProps {
   icon?: React.ReactNode
   title: string
   description?: string
-  action?: { label: string; href?: string; onClick?: () => void }
+  /**
+   * The one thing to do next. `href` navigates, `onClick` acts — and they may
+   * now be given TOGETHER: the in-app install links have to record which site
+   * they came from (`pulse_active_site`) before the settings page reads it,
+   * exactly as InstallBanner does. Before this, an href-action silently
+   * dropped its onClick and the settings page opened on whichever site
+   * happened to be remembered.
+   */
+  action?: { label: string; href?: string; onClick?: () => void; external?: boolean }
   className?: string
 }
 
@@ -26,6 +34,8 @@ export function EmptyState({ icon, title, description, action, className }: Empt
     action.href ? (
       <Link
         href={action.href}
+        onClick={action.onClick}
+        {...(action.external ? { target: '_blank', rel: 'noreferrer' } : {})}
         className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-none bg-brand-orange text-white text-sm font-medium hover:bg-brand-orange-hover transition-colors duration-fast ease-apple active:scale-[0.97]"
       >
         {action.label}

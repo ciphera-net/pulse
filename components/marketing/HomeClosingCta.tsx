@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowRightIcon, Button } from '@ciphera-net/facet'
-import { initiateOAuthFlow } from '@/lib/api/oauth'
+import { initiateSignupFlow } from '@/lib/api/oauth'
 
 // The closer — type left, the glyph-ember BLOOM right: the website hero's own
 // composition (bold, full-presence, beside the copy), which is where this
@@ -63,7 +63,9 @@ export function HomeClosingCta({
         {dek}
       </p>
       <div className="mt-10 flex flex-wrap items-center gap-3">
-        <Button size="lg" onClick={() => initiateOAuthFlow()}>
+        {/* Signup, not sign-in — see HeroCtas. This block is reused on the
+            homepage, /pricing and the /vs pages, so it is three surfaces. */}
+        <Button size="lg" onClick={() => initiateSignupFlow()}>
           Try Pulse Free
           <ArrowRightIcon className="ml-2 h-4 w-4" aria-hidden="true" />
         </Button>

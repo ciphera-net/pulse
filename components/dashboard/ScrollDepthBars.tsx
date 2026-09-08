@@ -36,13 +36,18 @@ function dimFor(share: number): number {
 
 const CAPTIONS = ['to 25%', 'to 50%', 'to 75%', 'to the end']
 
-export default function ScrollDepthBars({ scrollDepth, preview, bare = false }: {
+export default function ScrollDepthBars({ scrollDepth, preview, bare = false, siteId }: {
   scrollDepth?: ScrollDepthDistribution
+  // * Which site this belongs to. Only the empty state needs it — the install
+  // * link has to record the site before /settings/site/general reads it, or
+  // * it opens on whichever site happened to be remembered last. Optional so
+  // * the existing render tests keep passing unchanged.
   // The newest full-page capture; null/undefined = render the rails fallback.
   preview?: PagePreview | null
   // Render only the content, no card chrome/header — for composition inside
   // the Content section's tabbed card (Scroll depth · Events).
   bare?: boolean
+  siteId?: string
 }) {
   const total = scrollDepth?.total_sessions ?? 0
   const hasData = total > 0
@@ -186,7 +191,11 @@ export default function ScrollDepthBars({ scrollDepth, preview, bare = false }: 
           icon={<ArrowLineDown />}
           title="No scrolls recorded yet"
           description="Scroll tracking is automatic — depth data appears once visitors start reading your pages."
-          action={{ label: 'Install tracking script', href: '/installation' }}
+          action={{
+            label: 'Install tracking script',
+            href: '/settings/site/general',
+            onClick: siteId ? () => sessionStorage.setItem('pulse_active_site', siteId) : undefined,
+          }}
         />
       )}
     </>
