@@ -25,7 +25,44 @@ function isOwnsOrgsBody(b: unknown): b is OwnsOrgsBody {
 // forward that token as `reauth_token`; the delete handler GETDELs it and requires
 // `tokenUserID == sessionUserID` before any state mutation. The old `password`
 // placeholder (a vestigial `len=64` bind field the handler never read) is retired.
-export async function deleteAccount(reauthToken: string): Promise<void> {
+/** One workspace deletion would take with the account, as the server reports it. */
+export interface DeletionBlocker {
+  id: string
+  name: string
+  slug: string
+  member_count: number
+  other_admins: number
+  action_required: 'transfer_ownership' | 'delete_workspace'
+  promotable_admins: string[]
+  /**
+   * What the workspace holds.
+   *
+   * 🔴 `undefined` means the server COULD NOT ASK — never "the workspace is
+   * empty". Rendering the two alike would tell somebody they are about to lose
+   * nothing, immediately before they lose three sites, so every consumer must
+   * branch on it explicitly.
+   */
+  contents?: {
+    site_count: number
+    domains: string[]
+    plan_id?: string
+    subscription_status?: string
+  }
+}
+
+/**
+ * What deleting this account would take with it, read BEFORE anything is typed.
+ *
+ * 🔑 The same read the refusal uses. Pulse could list its own organizations
+ * instead, but then the screen a person agrees to and the check that enforces it
+ * would be two answers, free to drift apart.
+ */
+export async function getDeletionPreview(): Promise<DeletionBlocker[]> {
+  const res = await apiRequest<{ organizations?: DeletionBlocker[] }>('/auth/user/deletion-preview')
+  return res.organizations ?? []
+}
+
+export async function deleteAccount(reauthToken: string, organizationIds: string[] = []): Promise<void> {
   // Loud-fail: never POST an empty token (the ceremony returning "" means the mint
   // failed — the caller must retry a fresh ceremony, not send a blank credential).
   if (!reauthToken) throw new Error('Re-authentication token missing')
@@ -33,7 +70,11 @@ export async function deleteAccount(reauthToken: string): Promise<void> {
   try {
     await apiRequest<void>('/auth/user', {
       method: 'DELETE',
-      body: JSON.stringify({ reauth_token: reauthToken }),
+      // 🔴 The ids are an ECHO of what the person was SHOWN, not a "yes to
+      // everything" flag. A workspace that appeared after the panel was drawn is
+      // not in this list, so the server refuses again and shows the new one,
+      // rather than destroying something nobody agreed to.
+      body: JSON.stringify({ reauth_token: reauthToken, delete_organizations: organizationIds }),
     })
   } catch (err) {
     // * B.1 D1: server returns HTTP 409 with a structured list of organizations

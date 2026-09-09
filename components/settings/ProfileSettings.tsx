@@ -6,7 +6,8 @@ import { ProfileSettings as SharedProfileSettings } from '@ciphera-net/facet'
 import { deriveAuthKey } from '@/lib/crypto/password'
 import { authFetch } from '@/lib/api/client'
 import { performOpaqueChangePassword } from '@/lib/auth/tessera/opaque-change-password'
-import { deleteAccount, getUserSessions, revokeSession, updateUserPreferences, updateDisplayName } from '@/lib/api/user'
+import { performSessionOpaqueReauth } from '@/lib/auth/tessera/opaque-reauth'
+import { deleteAccount, getDeletionPreview, getUserSessions, revokeSession, updateUserPreferences, updateDisplayName } from '@/lib/api/user'
 import { setup2FA, verify2FA, disable2FA, regenerateRecoveryCodes } from '@/lib/api/2fa'
 import { listPasskeys, deletePasskey, renamePasskey } from '@/lib/api/webauthn'
 import { useReauthModal, isReauthCancelled } from '@/components/settings/ReauthModal'
@@ -109,15 +110,16 @@ export default function ProfileSettings({ activeTab, borderless, hideDangerZone 
     // display email was available); else the arg is already the raw password (Facet
     // passes it through when user.email is empty — the common ZKE case).
     const password = passwordCaptureCountRef.current > 0 ? capturedPasswordsRef.current.current : passwordArg
-    let reauthToken: string | undefined
-    try {
-      ;({ reauthToken } = await requestReauth({ op: 'delete', password }))
-    } catch (err) {
-      if (isReauthCancelled(err)) throw new Error('Account deletion cancelled.')
-      throw err
-    }
-    // Slice 4: the delete op resolves with the server-minted single-use re-auth token.
-    await deleteAccount(reauthToken!)
+    // 🔴 THE SAME CEREMONY AS THE LIVE PANEL, deliberately. This copy is not
+    // reachable from Pulse today (Facet's danger-zone tab is never rendered
+    // here), and a second, differently-built delete is exactly how password
+    // change kept a fixed bug for six days while its sibling was correct. If it
+    // is unreachable it should behave identically, or it should not exist.
+    const reauthToken = await performSessionOpaqueReauth({ password, purpose: 'del' })
+    // The workspaces to take along come from the same read the server refuses
+    // on; a failed read sends none, and the server's 409 then says why.
+    const blockers = await getDeletionPreview().catch(() => [])
+    await deleteAccount(reauthToken, blockers.map((b) => b.id))
     // Facet's own handler calls logout() next.
   }
 
