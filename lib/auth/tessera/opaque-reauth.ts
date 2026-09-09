@@ -70,3 +70,57 @@ export async function performOpaqueReauth(opts: OpaqueReauthOptions): Promise<st
   }
   return token
 }
+
+/** What the SDK is handed as an identity. The AKE never sees it: our transport
+ *  posts `blind_index` instead, and the SDK's own credential id is discarded on
+ *  the wire. Same seed the password-change ceremony uses. */
+const SDK_CREDENTIAL_SEED = 'session'
+
+/**
+ * The same ceremony, for somebody who is already signed in — no typed email.
+ *
+ * 🔑 THE EMAIL WAS NEVER A CRYPTOGRAPHIC INPUT. `/auth/reauth/start` is
+ * session-authenticated: `AuthMiddleware` sets `userID` from the JWT before the
+ * body is parsed, and since ciphera-id#95 an absent blind index means "resolve
+ * the session's own account". tessera-go's LoginStartSealed/LoginFinishSealed
+ * take no identity parameter at all. So asking for the email was a UI choice —
+ * and it is the ONLY thing the second dialog on the delete path ever collected.
+ *
+ * 🔴 `basePath: '/auth/reauth'` IS LOAD-BEARING. Without it the SDK's internal
+ * login runs against the PRIMARY login endpoint, which answers 401
+ * `{"require_2fa": true}` for every account with 2FA and nothing here supplies a
+ * code — the defect that broke recovery enrolment (03-09) and then password
+ * change (09-09), six days apart, in sibling files.
+ *
+ * The vault throw is expected and swallowed exactly as above: deletion needs no
+ * VMK, so the finish body carries no wrap and the SDK's vault step fails AFTER
+ * the ceremony has already succeeded and the token has landed.
+ */
+export async function performSessionOpaqueReauth(opts: {
+  password: string
+  purpose: OpaqueReauthOptions['purpose']
+}): Promise<string> {
+  await ensureTessera()
+  const transport = makeOpaqueTransport({
+    // Empty on purpose: the server reads this as "the session's own account".
+    // There is nothing to put here — nobody typed an email.
+    blindIndex: '',
+    mode: 'login',
+    basePath: '/auth/reauth',
+    loginExtras: { purpose: opts.purpose },
+  })
+  try {
+    await new Tessera(transport).login({
+      email: SDK_CREDENTIAL_SEED,
+      password: new TextEncoder().encode(opts.password),
+    })
+  } catch (err) {
+    if (!transport.lastFinish()?.reauth_token) throw err
+  }
+  const token = transport.lastFinish()?.reauth_token
+  if (!token) {
+    // Loud-fail, same contract as above: never resolve with an empty token.
+    throw new Error('Re-authentication did not return a token')
+  }
+  return token
+}

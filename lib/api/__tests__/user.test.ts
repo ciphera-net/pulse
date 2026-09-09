@@ -29,7 +29,7 @@ const apiRequestSpy = vi.mocked(apiRequest)
 describe('deleteAccount', () => {
   beforeEach(() => apiRequestSpy.mockClear())
 
-  it('POSTs DELETE /auth/user with { reauth_token }', async () => {
+  it('POSTs DELETE /auth/user with { reauth_token } and no workspaces by default', async () => {
     apiRequestSpy.mockResolvedValueOnce(undefined)
 
     await deleteAccount('tok-abc123')
@@ -38,7 +38,24 @@ describe('deleteAccount', () => {
     const [path, options] = apiRequestSpy.mock.calls[0]
     expect(path).toBe('/auth/user')
     expect(options).toMatchObject({ method: 'DELETE' })
-    expect(JSON.parse((options as { body: string }).body)).toEqual({ reauth_token: 'tok-abc123' })
+    // An empty list is the server's OLD behaviour byte for byte: it refuses and
+    // says what blocks. A caller that names nothing has agreed to nothing.
+    expect(JSON.parse((options as { body: string }).body)).toEqual({
+      reauth_token: 'tok-abc123',
+      delete_organizations: [],
+    })
+  })
+
+  it('echoes exactly the workspace ids it was given', async () => {
+    apiRequestSpy.mockResolvedValueOnce(undefined)
+
+    await deleteAccount('tok-abc123', ['org-1', 'org-2'])
+
+    const [, options] = apiRequestSpy.mock.calls[0]
+    expect(JSON.parse((options as { body: string }).body)).toEqual({
+      reauth_token: 'tok-abc123',
+      delete_organizations: ['org-1', 'org-2'],
+    })
   })
 
   it('throws before any fetch when the token is empty (loud-fail)', async () => {

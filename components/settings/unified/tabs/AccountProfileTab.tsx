@@ -3,14 +3,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button, Input, Banner, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
-import { updateDisplayName, deleteAccount } from '@/lib/api/user'
+import { updateDisplayName, deleteAccount, getDeletionPreview, type DeletionBlocker } from '@/lib/api/user'
 import { ApiError } from '@/lib/api/client'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
-import { useReauthModal, isReauthCancelled } from '@/components/settings/ReauthModal'
 import { unlockVaultPII } from '@/lib/auth/tessera/opaque-unlock'
+import { performSessionOpaqueReauth } from '@/lib/auth/tessera/opaque-reauth'
 
 /**
  * Name the actual failure of an unlock attempt.
@@ -65,7 +65,6 @@ function readStatus(err: unknown): number | null {
 
 export default function AccountProfileTab() {
   const { user, refresh, logout } = useAuth()
-  const { requestReauth, modal } = useReauthModal()
   const [displayName, setDisplayName] = useState('')
   // Read-unlock: the name/email live only in the encrypted vault, opened by an
   // OPAQUE ceremony against a re-entered password. The decrypted PII (never the
@@ -85,6 +84,14 @@ export default function AccountProfileTab() {
   const [deleteText, setDeleteText] = useState('')
   const [deletePassword, setDeletePassword] = useState('')
   const [deleting, setDeleting] = useState(false)
+  // What deletion would take with the account.
+  //
+  // 🔴 THREE STATES, AND THEY MUST NOT COLLAPSE. `null` = not read yet,
+  // `'unavailable'` = the server could not be asked, `[]` = nothing else goes.
+  // An empty array is a MEASUREMENT; the other two are the absence of one, and
+  // rendering either as "nothing else will be deleted" is how somebody agrees to
+  // lose three sites they were never shown.
+  const [blockers, setBlockers] = useState<DeletionBlocker[] | 'unavailable' | null>(null)
 
   useEffect(() => {
     if (!user || hasInitialized.current) return
@@ -92,6 +99,19 @@ export default function AccountProfileTab() {
     setBaseline(user.display_name || '')
     hasInitialized.current = true
   }, [user])
+
+  // Read it when the panel opens, not on mount: this costs a round trip and
+  // most visits to this tab are not on their way to deleting anything.
+  useEffect(() => {
+    if (!showDeleteConfirm) return
+    let live = true
+    setBlockers(null)
+    getDeletionPreview()
+      .then((orgs) => { if (live) setBlockers(orgs) })
+      // Not silent, and NOT an empty list: the panel says it could not check.
+      .catch(() => { if (live) setBlockers('unavailable') })
+    return () => { live = false }
+  }, [showDeleteConfirm])
 
   // Track dirty state
   const isDirty = hasInitialized.current
@@ -156,21 +176,25 @@ export default function AccountProfileTab() {
     if (deleteText !== 'DELETE' || !deletePassword) return
     setDeleting(true)
     try {
-      // * Deletion is authorized by a FRESH OPAQUE proof: the reauth modal collects
-      // * the sign-in email (Pulse has no in-session email for ZKE accounts) and runs
-      // * an OPAQUE ceremony against id-backend's dedicated re-auth endpoint with the
-      // * typed email + this password. A wrong email/password fails the ceremony with
-      // * NO token and NO deletion. On success it mints a single-use, session-bound
-      // * re-auth token which we forward to DELETE; the server GETDELs + re-checks it.
-      const { reauthToken } = await requestReauth({ op: 'delete', password: deletePassword })
-      await deleteAccount(reauthToken!)
+      // * Deletion is authorized by a FRESH OPAQUE proof: the ceremony runs against
+      // * id-backend's dedicated /auth/reauth endpoint with this password. A wrong
+      // * password fails it with NO token and NO deletion. On success it mints a
+      // * single-use, session-bound re-auth token which we forward to DELETE; the
+      // * server GETDELs + re-checks it.
+      //
+      // 🔑 NO SECOND DIALOG. This used to open ReauthModal on top of the panel
+      // that had just collected the password, and the only thing that dialog
+      // asked for was the sign-in email — an identifier the session already
+      // knows and the ceremony never needed (ciphera-id#95). Same removal as
+      // password change, for the same reason.
+      const reauthToken = await performSessionOpaqueReauth({ password: deletePassword, purpose: 'del' })
+      // 🔴 What the person was SHOWN, echoed back. Never a blanket "yes": the
+      // server refuses anything it is about to destroy that is not named here,
+      // so a workspace created after this panel was drawn survives and the
+      // refusal comes back naming it.
+      await deleteAccount(reauthToken, Array.isArray(blockers) ? blockers.map((b) => b.id) : [])
       logout()
     } catch (err) {
-      if (isReauthCancelled(err)) {
-        // User backed out of the verification step — no toast, just re-enable.
-        setDeleting(false)
-        return
-      }
       // * A 409 from deleteAccount carries a humanized, per-workspace message
       // * (WS2 Slice 1 — "You own N workspaces that must be resolved first…").
       // * getAuthErrorMessage maps by status and would replace it with the
@@ -178,6 +202,14 @@ export default function AccountProfileTab() {
       // * when the ApiError already spells out what to do.
       if (err instanceof ApiError && err.status === 409 && err.message) {
         toast.error(err.message)
+        // The list this panel showed is now known to be stale — that is what a
+        // 409 means once the ids are being sent. Re-read it so the next attempt
+        // agrees with the server instead of resending what it just refused.
+        getDeletionPreview().then(setBlockers).catch(() => setBlockers('unavailable'))
+      } else if (readStatus(err) === 401) {
+        // 🔑 The ceremony no longer asks for an email, so the message must not
+        // mention one. A 401 here is the OPAQUE finish refusing the password.
+        toast.error("That password didn't match. Try again.")
       } else {
         toast.error(getAuthErrorMessage(err as Error) || 'Failed to delete account')
       }
@@ -189,6 +221,9 @@ export default function AccountProfileTab() {
     setShowDeleteConfirm(false)
     setDeleteText('')
     setDeletePassword('')
+    // Forget what was read: reopening asks again, so the list can never be
+    // older than the panel showing it.
+    setBlockers(null)
   }
 
   // While the auth context is still hydrating the session, render the skeleton
@@ -325,6 +360,25 @@ export default function AccountProfileTab() {
                 <li>Your account and all personal data</li>
                 <li>All sessions and trusted devices</li>
                 <li>Your membership in every organization</li>
+                {/* The workspaces that go with it. Direction A (owner, 09-09-2026):
+                    the panel already enumerates what deletion destroys, so a
+                    workspace is one more line in that list rather than a second
+                    block — read before anything is typed, no new device to learn. */}
+                {blockers === null && <li>Checking whether any workspace goes with it…</li>}
+                {blockers === 'unavailable' && (
+                  <li>We could not check which workspaces go with it. Deletion will say before it proceeds.</li>
+                )}
+                {Array.isArray(blockers) && blockers.map((b) => (
+                  <li key={b.id}>
+                    Your workspace <span className="font-medium">{b.name}</span>
+                    {b.contents
+                      ? b.contents.site_count > 0
+                        ? ` — ${b.contents.site_count} ${b.contents.site_count === 1 ? 'site' : 'sites'}: ${b.contents.domains.join(', ')}`
+                        : ' — no sites'
+                      : ', and everything in it'}
+                    {b.contents?.plan_id ? `, and the ${b.contents.plan_id} subscription on it` : ''}
+                  </li>
+                ))}
               </ul>
             </div>
             <PanelRows>
@@ -373,7 +427,6 @@ export default function AccountProfileTab() {
         onDiscard={handleDiscard}
       />
 
-      {modal}
     </div>
   )
 }
