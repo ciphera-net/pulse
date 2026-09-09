@@ -4,6 +4,8 @@ import { useCallback, useRef } from 'react'
 import { useAuth } from '@/lib/auth/context'
 import { ProfileSettings as SharedProfileSettings } from '@ciphera-net/facet'
 import { deriveAuthKey } from '@/lib/crypto/password'
+import { authFetch } from '@/lib/api/client'
+import { performOpaqueChangePassword } from '@/lib/auth/tessera/opaque-change-password'
 import { deleteAccount, getUserSessions, revokeSession, updateUserPreferences, updateDisplayName } from '@/lib/api/user'
 import { setup2FA, verify2FA, disable2FA, regenerateRecoveryCodes } from '@/lib/api/2fa'
 import { listPasskeys, deletePasskey, renamePasskey } from '@/lib/api/webauthn'
@@ -65,16 +67,34 @@ export default function ProfileSettings({ activeTab, borderless, hideDangerZone 
   // ---------------------------------------------------------------------------
   // Password change — OPAQUE re-registration under the new password. On success
   // ALL sessions are revoked server-side, so route to sign-in (never auto-retry).
+  //
+  // 🔑 NO SECOND DIALOG. This used to open ReauthModal on top of the form that
+  // had just collected both passwords, and the only thing that dialog asked for
+  // was the sign-in email — an identifier the session already knows and the
+  // ceremony never needed. performOpaqueChangePassword now runs on
+  // /auth/reauth/* (session-authed, no 2FA gate, no cookies), which both
+  // removes the ask and fixes the change failing outright on 2FA accounts.
+  //
+  // The session-swap guard went with it, and its absence is deliberate rather
+  // than an oversight: it existed because the PRIMARY login endpoint issues
+  // fresh cookies mid-ceremony, so a different account's credentials could move
+  // the session under the page. /auth/reauth issues no cookies and binds the
+  // ceremony to the session server-side at BOTH ends — start refuses a blind
+  // index that is not the session's account, finish refuses unless the
+  // login_id's binding is the session's own user. The identity is enforced
+  // where it cannot be skipped, instead of re-checked in the client.
   // ---------------------------------------------------------------------------
   const handleUpdatePassword = async () => {
-    const oldPassword = capturedPasswordsRef.current.current
-    const newPassword = capturedPasswordsRef.current.new_
-    try {
-      await requestReauth({ op: 'password', oldPassword, newPassword })
-    } catch (err) {
-      if (isReauthCancelled(err)) throw new Error('Password change cancelled.')
-      throw err
-    }
+    const { payload } = await performOpaqueChangePassword({
+      oldPassword: capturedPasswordsRef.current.current,
+      newPassword: capturedPasswordsRef.current.new_,
+    })
+    // skipAuthRetry: a retry would re-post single-use registration state.
+    await authFetch('/auth/user/password/opaque', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+      skipAuthRetry: true,
+    })
     // Sessions are revoked on success — send the user to sign in again with the
     // new password. Do not await; logout() navigates to /login.
     logout()
