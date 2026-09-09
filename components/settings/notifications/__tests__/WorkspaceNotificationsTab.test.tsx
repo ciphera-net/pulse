@@ -18,6 +18,11 @@ beforeEach(() => {
       { category_id: 'site', display_name: 'Site activity' },
       { category_id: 'team', display_name: 'Team' },
       { category_id: 'system', display_name: 'System' },
+      // lifecycle arrived with iris migration 026 (the D7 nudge). The mock
+      // mirrors the wire deliberately: the tab falls back to the local
+      // NOTIFICATION_CATEGORIES entry when the wire has no row, so a mock that
+      // lagged the registry would still pass and hide a real divergence.
+      { category_id: 'lifecycle', display_name: 'Getting started' },
     ],
   })
 })
@@ -39,7 +44,9 @@ describe('WorkspaceNotificationsTab (round-3 org page)', () => {
   it('suppressible categories route to member settings, not to an org control', async () => {
     render(<WorkspaceNotificationsTab />)
     await waitFor(() =>
-      expect(screen.getAllByText('Delivered per member settings').length).toBe(4),
+      // 5 suppressible categories: uptime, site, team, system, lifecycle.
+      // Only billing and security are always-on.
+      expect(screen.getAllByText('Delivered per member settings').length).toBe(5),
     )
   })
 

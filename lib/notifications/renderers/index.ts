@@ -6,6 +6,7 @@ import { securityRenderers } from './security'
 import { siteRenderers } from './site'
 import { teamRenderers } from './team'
 import { systemRenderers } from './system'
+import { lifecycleRenderers } from './lifecycle'
 
 export interface Rendered {
   title: string
@@ -34,6 +35,7 @@ const registry = {
   ...siteRenderers,
   ...teamRenderers,
   ...systemRenderers,
+  ...lifecycleRenderers,
 } satisfies Record<NotificationType, Renderer>
 
 export function renderNotification(r: Receipt, resolvers?: Resolvers): Rendered {

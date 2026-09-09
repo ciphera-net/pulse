@@ -13,7 +13,7 @@ import type { Category } from './types'
  * 3-of-6 drift the ruling killed.
  *
  * This list also fixes the FAMILY ORDER (page tabs, settings bands): billing,
- * security, uptime, site, team, system.
+ * security, uptime, site, team, system, lifecycle.
  */
 export interface NotificationCategory {
   id: Category
@@ -29,6 +29,12 @@ export const NOTIFICATION_CATEGORIES: NotificationCategory[] = [
   { id: 'site', label: 'Site activity', critical: false },
   { id: 'team', label: 'Team', critical: false },
   { id: 'system', label: 'System', critical: false },
+  // lifecycle joined with iris migration 026 (the D7 nudge). It goes LAST so
+  // adding it reorders nothing above it. 🔴 This list is what
+  // WorkspaceNotificationsTab actually maps over, so a category missing from
+  // it is invisible in settings and cannot be toggled there, however
+  // correctly the wire reports it.
+  { id: 'lifecycle', label: 'Getting started', critical: false },
 ]
 
 /**
