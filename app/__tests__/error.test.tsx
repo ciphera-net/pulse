@@ -31,6 +31,16 @@ function chunkError() {
   return e
 }
 
+// What React actually throws for an infinite render loop. The production build
+// ships the CODE, not the sentence — this exact string is what the owner's PWA
+// beaconed from /sites/<id> on 07-09, 08-09 and 09-09-2026.
+function renderLoopError() {
+  return new Error(
+    'Minified React error #185; visit https://react.dev/errors/185 for the full message ' +
+      'or use the non-minified dev environment for full errors and additional helpful warnings.',
+  )
+}
+
 describe('error boundaries self-heal chunk-load failures', () => {
   let reloadMock: ReturnType<typeof vi.fn>
   const realLocation = window.location
@@ -89,5 +99,83 @@ describe('error boundaries self-heal chunk-load failures', () => {
 
     expect(reloadMock).not.toHaveBeenCalled()
     expect(getByText('Something went wrong')).toBeInTheDocument()
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Render loops (09-09-2026). The self-heal used to match six chunk strings and
+// nothing else, so React #185 — "Maximum update depth exceeded" — was painted on
+// the first frame with no recovery attempted. The owner met that screen most
+// mornings for three days.
+//
+// reset() cannot fix it: production logged two crashes two seconds apart on one
+// site, which is the boundary's own "Try again" re-entering the same loop with the
+// module-level SWR cache still warm. A reload drops that state, which is why the
+// owner's manual Refresh always worked.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('error boundaries self-heal render loops (React #185)', () => {
+  let reloadMock: ReturnType<typeof vi.fn>
+  const realLocation = window.location
+
+  beforeEach(() => {
+    sessionStorage.clear()
+    reloadMock = vi.fn()
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...realLocation, reload: reloadMock },
+    })
+  })
+
+  afterEach(() => {
+    Object.defineProperty(window, 'location', { configurable: true, value: realLocation })
+    vi.restoreAllMocks()
+  })
+
+  it('EVERY route boundary reloads instead of rendering an error page', async () => {
+    for (const [path, load] of Object.entries(boundaryModules)) {
+      const { default: Boundary } = await load()
+      sessionStorage.clear()
+      reloadMock.mockClear()
+
+      const { container } = render(<Boundary error={renderLoopError()} reset={vi.fn()} />)
+
+      expect(reloadMock, `${path} did not self-heal a render loop`).toHaveBeenCalledTimes(1)
+      expect(container, `${path} rendered error UI during recovery`).toBeEmptyDOMElement()
+      cleanup()
+    }
+  })
+
+  it('recognises the development build’s wording too', () => {
+    const dev = new Error(
+      'Maximum update depth exceeded. This can happen when a component calls setState inside useEffect.',
+    )
+    render(<GlobalError error={dev} reset={vi.fn()} />)
+    expect(reloadMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('reloads ONCE per tab, then shows the error page — never a silent refresh loop', () => {
+    render(<GlobalError error={renderLoopError()} reset={vi.fn()} />)
+    expect(reloadMock).toHaveBeenCalledTimes(1)
+    cleanup()
+
+    // Same tab, the loop came straight back: a second reload would be a refresh
+    // loop the user watches, so the boundary must surrender the screen instead.
+    reloadMock.mockClear()
+    const { getByText } = render(<GlobalError error={renderLoopError()} reset={vi.fn()} />)
+    expect(reloadMock).not.toHaveBeenCalled()
+    expect(getByText('Something went wrong')).toBeInTheDocument()
+  })
+
+  it('is stricter than the chunk guard: expiring the 60s window does not re-arm it', () => {
+    render(<GlobalError error={renderLoopError()} reset={vi.fn()} />)
+    expect(reloadMock).toHaveBeenCalledTimes(1)
+    cleanup()
+
+    // A chunk failure would be recoverable again after 60s. A render loop is a code
+    // defect, so its guard is per-tab and has no window to expire.
+    sessionStorage.setItem('pulse-chunk-recovery-at', String(Date.now() - 120_000))
+    reloadMock.mockClear()
+    render(<GlobalError error={renderLoopError()} reset={vi.fn()} />)
+    expect(reloadMock).not.toHaveBeenCalled()
   })
 })
