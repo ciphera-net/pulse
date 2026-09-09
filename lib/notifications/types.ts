@@ -28,8 +28,9 @@ export type NotificationType =
   | 'team_role_changed'
   | 'system_announcement'
   | 'system_maintenance'
+  | 'lifecycle_no_site'
 
-export type Category = 'billing' | 'uptime' | 'security' | 'site' | 'team' | 'system'
+export type Category = 'billing' | 'uptime' | 'security' | 'site' | 'team' | 'system' | 'lifecycle'
 
 // categoryOf — the split-the-type-key derivation — is DELETED (Phase 2 FE-1,
 // spec §6.3 demolition family): category is registry data owned by the
@@ -37,6 +38,22 @@ export type Category = 'billing' | 'uptime' | 'security' | 'site' | 'team' | 'sy
 // was an invitation to grow one.
 
 // Payload shape per type. Mirror of Go payload structs in pulse-backend/internal/notifications/payloads.go.
+
+/**
+ * lifecycle_no_site (iris migration 026). Deliberately tiny, and the absences
+ * matter: there is no workspace name and no domain here because pulse-backend
+ * cannot read either. It dropped its own `organizations` table in pulse
+ * migration 019, so org name, slug and created_at live only in ciphera-id.
+ *
+ * `step` is which message in the sequence this is. Exactly one exists today
+ * (owner ruling 09-09-2026: day 3, once); the field is what lets a second one
+ * be added later without a second registry migration, which is also why no
+ * copy here may claim this is the only message the reader will get.
+ */
+export interface LifecycleNoSitePayload {
+  days_since_created: number
+  step: number
+}
 export interface BillingPaymentFailedPayload {
   invoice_id: string
   amount: number
