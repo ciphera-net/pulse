@@ -58,7 +58,6 @@ import { encryptVaultH } from '@/lib/crypto/vault-ops'
 import { getRelayPublicKey, sealForRelay } from '@/lib/crypto/relay'
 import { performOpaqueLogin } from '@/lib/auth/tessera/opaque-login'
 import { performOpaqueReauth } from '@/lib/auth/tessera/opaque-reauth'
-import { performOpaqueChangePassword } from '@/lib/auth/tessera/opaque-change-password'
 import { getSessionAction, setSessionAction } from '@/app/actions/auth'
 import { switchContext } from '@/lib/api/organization'
 import { logger } from '@/lib/utils/logger'
@@ -126,8 +125,18 @@ async function restoreOrgContext(sessionBefore: SessionSnapshot): Promise<void> 
  *    re-auth token, no VMK and no session swap. The token is handed back to the
  *    caller, which performs the DELETE (keeping its own 409 handling).
  */
+// 🔴 'password' is GONE from this union on purpose (09-09-2026), not merely
+// unused. It ran the SDK's internal login on the PRIMARY login endpoint, which
+// answers 401 require_2fa on any TOTP account and swaps the session cookies
+// mid-ceremony — so the change failed outright for every 2FA user. It now runs
+// on /auth/reauth/* straight from the settings form, with no dialog at all
+// (ProfileSettings.tsx handleUpdatePassword, lib/auth/tessera/opaque-change-password.ts).
+//
+// Leaving the branch here "in case" would leave a working example of the wrong
+// way to build this ceremony one file away from the right one, which is exactly
+// how the same defect survived in password change after recovery enrolment was
+// fixed for it on 03-09-2026.
 export type ReauthRequest =
-  | { op: 'password'; oldPassword: string; newPassword: string }
   | { op: 'email'; password: string; newEmail: string }
   | { op: 'delete'; password: string }
 
@@ -152,8 +161,6 @@ export interface ReauthResult {
 function withCorrectedPassword(req: ReauthRequest, pw: string): ReauthRequest {
   if (!pw) return req
   switch (req.op) {
-    case 'password':
-      return { ...req, oldPassword: pw }
     case 'email':
       return { ...req, password: pw }
     case 'delete':
@@ -174,14 +181,11 @@ function b64encode(bytes: Uint8Array): string {
 }
 
 const TITLES: Record<ReauthRequest['op'], string> = {
-  password: 'Confirm your password change',
   email: 'Confirm your email change',
   delete: 'Confirm account deletion',
 }
 
 const BLURBS: Record<ReauthRequest['op'], string> = {
-  password:
-    'Enter the email you sign in with to verify it’s you. You’ll be signed out of all devices and asked to sign in again with your new password.',
   email:
     'Enter the email you currently sign in with. We use it to unlock your encrypted vault and re-seal it under your new address — nothing is changed if it doesn’t match.',
   delete:
@@ -249,26 +253,6 @@ export function useReauthModal(): {
       // The account the user believes they are acting on. login/finish inside the
       // ceremony will overwrite the auth cookies, so this MUST be read beforehand.
       const expectedSub = sessionBefore?.id
-
-      if (request.op === 'password') {
-        // OPAQUE re-registration under the new password; the SDK re-wraps the SAME
-        // VMK internally (vault untouched). Then PUT the new record. skipAuthRetry:
-        // a retry would re-post single-use registration state and fail.
-        const { payload, userId } = await performOpaqueChangePassword({
-          email: trimmed,
-          oldPassword: request.oldPassword,
-          newPassword: request.newPassword,
-        })
-        // Session-swap guard: the internal re-auth may have signed us in as another
-        // account. Refuse the PUT unless it resolved to THIS account.
-        assertSameAccount(expectedSub, userId)
-        await apiRequest('/auth/user/password/opaque', {
-          method: 'PUT',
-          body: JSON.stringify(payload),
-          skipAuthRetry: true,
-        })
-        return {}
-      }
 
       if (request.op === 'email') {
         // Fresh OPAQUE login yields a live VMK handle + the already-decrypted vault.
@@ -423,7 +407,7 @@ export function useReauthModal(): {
             {error && (
               <div className="space-y-1.5">
                 <label htmlFor="reauth-password" className="block text-sm font-medium text-foreground/70">
-                  {pending.request.op === 'password' ? 'Current password' : 'Password'}
+                  Password
                 </label>
                 <Input
                   id="reauth-password"
