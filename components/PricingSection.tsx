@@ -27,6 +27,7 @@ import { PlanComparisonTable } from '@/components/marketing/PlanComparisonTable'
 import { HomeClosingCta } from '@/components/marketing/HomeClosingCta'
 import { getPrices } from '@/lib/api/billing'
 import { cn } from '@/lib/utils'
+import { rememberReturnTarget } from '@/lib/auth/return-target'
 
 // One matrix for every surface: the marketing cards render the same catalog
 // the in-app pickers (/setup/plan, /switch) consume — copy edits happen in
@@ -109,7 +110,7 @@ export default function PricingSection() {
       // Signup, not sign-in — see HeroCtas. The stored return target is
       // unchanged: whichever door they come through, they land on the plan
       // they picked.
-      localStorage.setItem('pulse_auth_return_to', `/setup/org?${planParams}`)
+      rememberReturnTarget(`/setup/org?${planParams}`)
       initiateSignupFlow()
       return
     }

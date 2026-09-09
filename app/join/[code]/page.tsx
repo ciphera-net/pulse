@@ -9,6 +9,7 @@ import { acceptInviteLink, switchContext, InviteLinkInfo } from '@/lib/api/organ
 import { setSessionAction } from '@/app/actions/auth'
 import { initiateOAuthFlow, initiateSignupFlow } from '@/lib/api/oauth'
 import { ApiError } from '@/lib/api/client'
+import { rememberReturnTarget } from '@/lib/auth/return-target'
 
 type PageState =
   | { type: 'loading' }
@@ -64,7 +65,7 @@ function JoinContent() {
     submittingRef.current = true
 
     if (!user) {
-      localStorage.setItem('pulse_auth_return_to', `/join/${code}`)
+      rememberReturnTarget(`/join/${code}`)
       initiateOAuthFlow()
       return
     }
@@ -82,7 +83,7 @@ function JoinContent() {
     } catch (err: unknown) {
       const apiErr = err as ApiError
       if (apiErr.status === 401) {
-        localStorage.setItem('pulse_auth_return_to', `/join/${code}`)
+        rememberReturnTarget(`/join/${code}`)
         initiateOAuthFlow()
       } else if (apiErr.status === 409) {
         const orgName = pageState.info.organization_name
@@ -102,7 +103,7 @@ function JoinContent() {
 
   const handleSignup = () => {
     if (!code) return
-    localStorage.setItem('pulse_auth_return_to', `/join/${code}`)
+    rememberReturnTarget(`/join/${code}`)
     initiateSignupFlow()
   }
 
