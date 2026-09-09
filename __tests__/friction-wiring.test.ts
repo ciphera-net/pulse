@@ -56,8 +56,10 @@ describe('every get-started CTA opens signup, not sign-in', () => {
     const src = stripComments(read('components/PricingSection.tsx'))
     expect(src).not.toMatch(/initiateOAuthFlow\(\)/)
     expect((src.match(/initiateSignupFlow\(\)/g) ?? []).length).toBe(2)
-    // The plan the visitor picked must still survive the round trip.
-    expect(src).toMatch(/pulse_auth_return_to/)
+    // The plan the visitor picked must still survive the round trip. It is
+    // stored through lib/auth/return-target now (the slot gained a lifetime,
+    // audit §4n) — the guard follows the writer, not the key's spelling.
+    expect(src).toMatch(/rememberReturnTarget\(/)
   })
 
   it('the header still offers a real sign-in — this is not a blanket swap', () => {

@@ -6,6 +6,7 @@ import { initiateOAuthFlow } from '@/lib/api/oauth'
 import { safeRedirectUrl } from '@/lib/utils/safe-redirect'
 import { LoadingOverlay } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
+import { rememberReturnTarget } from '@/lib/auth/return-target'
 
 function LoginRedirect() {
   const searchParams = useSearchParams()
@@ -33,7 +34,7 @@ function LoginRedirect() {
       const safe = safeRedirectUrl(wanted)
       if (safe !== '/') {
         try {
-          localStorage.setItem('pulse_auth_return_to', safe)
+          rememberReturnTarget(safe)
         } catch {
           // * Storage blocked — sign-in still works, the deep link is simply
           // * not resumed. Never let this stop the flow.

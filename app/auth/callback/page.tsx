@@ -15,6 +15,7 @@ import { cdnUrl } from '@/lib/cdn'
 import { ensureDefaultOrganization, shouldProvisionWorkspace, switchContext } from '@/lib/api/organization'
 import { resolveLandingTarget } from '@/lib/auth/landing-target'
 import { logger } from '@/lib/utils/logger'
+import { claimReturnTarget, peekReturnTarget } from '@/lib/auth/return-target'
 
 function AuthCallbackContent() {
   const searchParams = useSearchParams()
@@ -46,9 +47,13 @@ function AuthCallbackContent() {
   // * better. The resolved value only replaces the guess.
   const landInApp = useCallback((fallback?: string | null) => {
     const target = fallback || '/'
-    const storedReturn = localStorage.getItem('pulse_auth_return_to')
+    // 🔴 A STORED TARGET EXPIRES (audit §4n). It still outranks the resolved
+    // destination — an invite or a deep link is an explicit request — but the
+    // slot used to have no lifetime, so a target written days ago by an
+    // unrelated visit hijacked the next sign-in, once, and then vanished on
+    // read. claimReturnTarget() drops anything older than ten minutes.
+    const storedReturn = claimReturnTarget()
     if (storedReturn) {
-      localStorage.removeItem('pulse_auth_return_to')
       window.location.assign(safeRedirectUrl(storedReturn, target))
       return
     }
@@ -65,13 +70,12 @@ function AuthCallbackContent() {
   const provisionWorkspaceUnlessJoining = useCallback(async (
     sessionRole: string | null | undefined,
   ): Promise<string | null> => {
-    let storedReturn: string | null = null
-    try {
-      storedReturn = localStorage.getItem('pulse_auth_return_to')
-    } catch {
-      // * Storage unreadable — treat it as "no invite pending" rather than
-      // * skipping provisioning for everybody whose browser blocks storage.
-    }
+    // * PEEK, never claim: landInApp() still needs this value, and a read that
+    // * spent it here would send every invited person to the default landing
+    // * instead of their invite. Storage unreadable is treated as "no invite
+    // * pending" rather than skipping provisioning for everybody whose browser
+    // * blocks storage — peekReturnTarget() answers null for both.
+    const storedReturn = peekReturnTarget()
     const target = storedReturn ?? searchParams.get('returnTo')
     if (!shouldProvisionWorkspace(target)) return null
     try {

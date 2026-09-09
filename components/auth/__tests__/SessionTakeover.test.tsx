@@ -2,6 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import SessionTakeover from '../SessionTakeover'
 import { isAuthedAppRoute } from '@/lib/auth/appRoutes'
+import { peekReturnTarget } from '@/lib/auth/return-target'
 
 // The D takeover (approved 26-08-2026): a dead session on an app route renders
 // exactly ONE thing — this room. These pin its three states and the sign-in
@@ -66,8 +67,11 @@ describe('SessionTakeover', () => {
     fireEvent.click(screen.getByRole('button', { name: /sign in — back to your dashboard/i }))
 
     // 🔴 The room's promise ("returns you to it") is this line — the callback
-    // consumes pulse_auth_return_to and navigates there after the exchange.
-    expect(localStorage.getItem('pulse_auth_return_to')).toBe('/sites/abc-123')
+    // claims the stored return target and navigates there after the exchange.
+    // Read it the way the callback does: the slot holds a timestamped record
+    // now (audit §4n), so asserting the raw string would pin a storage shape
+    // rather than the promise.
+    expect(peekReturnTarget()).toBe('/sites/abc-123')
     // 🔴 Through logout(): the dead session's cookies still exist, and
     // middleware bounces /login back to /sites while an access_token cookie is
     // present — a client-side push loops back to this room (measured on
