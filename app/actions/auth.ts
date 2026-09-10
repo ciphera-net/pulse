@@ -15,6 +15,14 @@ interface AuthResponse {
   refresh_token: string
   id_token: string
   expires_in: number
+  /**
+   * The one-time vault-key hand-off nonce (ciphera-id#98).
+   *
+   * ⚠️ OPTIONAL, AND ABSENT IS THE NORMAL CASE UNTIL THE BRIDGE IS ENABLED.
+   * id-backend omits it when there is no Redis or no allowlisted origin, and a
+   * client that does not see one asks for a password exactly as it always has.
+   */
+  vault_handoff?: string
 }
 
 interface UserPayload {
@@ -130,6 +138,12 @@ export async function exchangeAuthCode(code: string, codeVerifier: string | null
       user: userOf(payload),
       // * For the browser's in-memory Bearer — see lib/api/client.ts.
       access_token: data.access_token,
+      // * 🔴 THE NONCE GOES TO THE BROWSER AND NOWHERE ELSE. It is spent by the
+      // * hidden bridge frame on id.ciphera.net, which only the browser can
+      // * open, and it is never written to a cookie or a URL: it is single-use
+      // * and short-lived precisely so that a copy left lying anywhere is
+      // * worthless in seconds. See lib/auth/vault-bridge.ts.
+      vault_handoff: typeof data.vault_handoff === 'string' ? data.vault_handoff : null,
     }
   } catch (error: unknown) {
     logger.error('Auth Exchange Error:', error)
