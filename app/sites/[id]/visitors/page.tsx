@@ -171,10 +171,14 @@ export default function VisitorsPage() {
 
       <div className="mt-4 rounded-none border border-border bg-card">
         <div className="flex h-12 items-center justify-between border-b border-border px-4">
-          <span className="flex items-center gap-1 text-sm font-medium text-white">
+          {/* A HEADING, not a styled span. Preflight resets h1–h6 to inherit their
+              size, weight and margin (verified in the shipped bundle), so this is the
+              same pixels — and it is the only way a screen-reader user can jump to the
+              roster, or know that the rows beneath belong to it. */}
+          <h2 className="flex items-center gap-1 text-sm font-medium text-white">
             {live ? 'On the site now' : "This month's readers"}
             <TermInfoTip term="visitor_identity" />
-          </span>
+          </h2>
           <span className="bg-brand-orange/10 px-2 py-1 text-xs tabular-nums text-brand-orange">
             {live ? `${activeNow} right now` : `${total} in range`}
           </span>
@@ -188,15 +192,24 @@ export default function VisitorsPage() {
           <SortHeader label="Last seen" col="last_seen" sort={sort} order={order} onSort={applySort} className="w-24" />
         </div>
 
+        {/* Pressing a sort header re-orders the rows silently: nothing moves focus and
+            nothing is announced, so a screen-reader user has no way to tell the press
+            worked. The button's own aria-label carries the state for anyone who returns
+            to it; this says it at the moment it changes. */}
+        <span aria-live="polite" className="sr-only">
+          Sorted by {sort.replace('_', ' ')}, {order === 'desc' ? 'descending' : 'ascending'}
+        </span>
+
         {error && !isToggleOff(error) ? (
           <ErrorCard
             title="Couldn't load this view"
             description="The visitor list didn't come back. Try again."
           />
         ) : isLoading && visitors.length === 0 ? (
-          <div className="p-4">
+          <div className="p-4" role="status">
+            <span className="sr-only">Loading visitors…</span>
             {Array.from({ length: 6 }, (_, i) => (
-              <div key={i} className="mb-3 h-10 animate-pulse rounded-none bg-neutral-800/50" />
+              <div key={i} aria-hidden="true" className="mb-3 h-10 animate-pulse rounded-none bg-neutral-800/50" />
             ))}
           </div>
         ) : visitors.length === 0 ? (
@@ -371,11 +384,22 @@ function VisitorRowLink({
         <span className="flex items-center gap-2">
           <span className="truncate text-sm font-medium text-white">{name}</span>
           {visitor.active_now && (
-            <span
-              className="size-1.5 shrink-0 rounded-full bg-green-500"
-              style={{ boxShadow: '0 0 0 3px rgb(34 197 94 / 0.18)' }}
-              aria-label="on the site now"
-            />
+            <>
+              {/* 🔴 THE aria-label MOVED OFF THE DOT. `aria-label` on a bare <span> is
+                  an `aria-prohibited-attr` violation — axe rates it SERIOUS — because a
+                  span with no role maps to `generic`, and `generic` forbids naming, so
+                  assistive technology is entitled to drop the name entirely. The
+                  visually-hidden text beside it is the house device (CommandDeck,
+                  UptimePanel, InstrumentPanel all use it) and cannot be dropped.
+                  It also fixes the reading: the name used to run into the pseudonym as
+                  "Quiet Readeron the site now". */}
+              <span
+                aria-hidden="true"
+                className="size-1.5 shrink-0 rounded-full bg-green-500"
+                style={{ boxShadow: '0 0 0 3px rgb(34 197 94 / 0.18)' }}
+              />
+              <span className="sr-only">on the site now</span>
+            </>
           )}
         </span>
         <VisitorMeta
@@ -390,17 +414,50 @@ function VisitorRowLink({
         />
       </div>
 
+      {/* The column header says "Last journey" and the cell under it was a decorative
+          SVG marked aria-hidden — a labelled column with nothing in it. */}
       <span className="hidden w-24 justify-end sm:flex">
         <JourneyStrand pages={visitor.pageviews} eventAt={visitor.events > 0 ? [1] : []} />
+        <span className="sr-only">
+          last journey: {visitor.pageviews} {visitor.pageviews === 1 ? 'page' : 'pages'}
+          {visitor.events > 0 ? ', with an event' : ''}.{' '}
+        </span>
+      </span>
+      {/*
+        🔴 THREE BARE NUMBERS. Measured with dom-accessibility-api: a row's whole
+        accessible name ended
+            "…viaGoogle 372h ago"
+        — that is 3 visits, 7 pages and "2h ago", run together with no labels and no
+        separators, because this is a flex layout and not a table, so nothing associates
+        a cell with its column header. A screen reader reads "three seventy-two h ago".
+
+        The labels are visually hidden rather than rendered: the column headers already
+        carry them for a sighted reader, and repeating them in every row would be the
+        wrong design. `.sr-only` is `position:absolute` and clipped to 1px, so the
+        numerals' geometry is untouched (verified against the shipped bundle's rule).
+      */}
+      {/*
+        ⚠️ THE WHOLE PHRASE GOES IN THE HIDDEN NODE, and the visible numeral is
+        hidden from AT — rather than hiding just the word beside a visible number.
+        Measured: the accessible-name algorithm joins adjacent inline text WITHOUT
+        a separator, so `3` + `<sr-only> visits</sr-only>` came out as "3visits".
+        One self-contained text node cannot be run together with its neighbour.
+      */}
+      <span className="w-16 shrink-0 text-right text-sm tabular-nums text-neutral-300">
+        <span aria-hidden="true">{visitor.visits}</span>
+        <span className="sr-only">
+          {visitor.visits} {visitor.visits === 1 ? 'visit' : 'visits'},{' '}
+        </span>
       </span>
       <span className="w-16 shrink-0 text-right text-sm tabular-nums text-neutral-300">
-        {visitor.visits}
-      </span>
-      <span className="w-16 shrink-0 text-right text-sm tabular-nums text-neutral-300">
-        {visitor.pageviews}
+        <span aria-hidden="true">{visitor.pageviews}</span>
+        <span className="sr-only">
+          {visitor.pageviews} {visitor.pageviews === 1 ? 'page' : 'pages'},{' '}
+        </span>
       </span>
       <span className="w-24 shrink-0 text-right text-sm tabular-nums text-neutral-500">
-        {formatLastSeen(visitor.last_seen, siteTimezone)}
+        <span aria-hidden="true">{formatLastSeen(visitor.last_seen, siteTimezone)}</span>
+        <span className="sr-only">last seen {formatLastSeen(visitor.last_seen, siteTimezone)}</span>
       </span>
     </Link>
   )
