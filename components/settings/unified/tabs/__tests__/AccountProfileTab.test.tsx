@@ -124,7 +124,11 @@ describe('AccountProfileTab (Facet structured panels)', () => {
     // Panel kicker + rows present.
     expect(screen.getByText('Profile')).toBeInTheDocument()
     // Zero-knowledge info note (PII available branch).
-    expect(screen.getByText(/end-to-end encrypted/i)).toBeInTheDocument()
+    // ⚠️ `find`, not `get`. The plain "end-to-end encrypted" note is the THIRD
+    // branch — it renders once the key question has an answer. Before that the
+    // banner slot is deliberately empty, because every branch of it makes a
+    // claim about this device and none of them is known yet.
+    expect(await screen.findByText(/end-to-end encrypted/i)).toBeInTheDocument()
 
     // 🔑 The email row USED to be permanently disabled ("Read-only in Pulse").
     // Direction A makes it the thing you edit, so once the status read says

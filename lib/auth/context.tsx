@@ -11,7 +11,8 @@ import { logoutAction, getSessionAction, setSessionAction } from '@/app/actions/
 import { getUserOrganizations, switchContext, getOrganization, ensureDefaultOrganization } from '@/lib/api/organization'
 import { listSites } from '@/lib/api/sites'
 import { logger } from '@/lib/utils/logger'
-import { forgetVaultKeys } from '@/lib/auth/vault-store'
+import { forgetVaultKeys, loadVaultKey } from '@/lib/auth/vault-store'
+import { openVaultWithKey } from '@/lib/auth/vault-restore'
 import { cleanupStaleStorage } from '@/lib/utils/storage-cleanup'
 import { forgetAllPendingAuth } from '@/lib/api/oauth-store'
 import { isTransientRefreshFailure } from '@/lib/auth/refresh-outcome'
@@ -35,6 +36,32 @@ interface User {
       two_factor_alerts: boolean
     }
   }
+}
+
+/**
+ * Land vault-opened PII on the session — the two rules worth testing.
+ *
+ * 🔴 IT MUST NOT LAND ON A DIFFERENT ACCOUNT. The read is async; a person can
+ * switch accounts while it is in flight, and inheriting the previous person's
+ * name is the exact failure a shared vault store exists to prevent.
+ *
+ * 🔴 AND IT MUST NOT OVERWRITE AN ADDRESS WE ALREADY HAVE. A ceremony that
+ * completed while this was reading is FRESHER than the envelope it opened — the
+ * same "never install a stale value over a live one" rule the vault-key holder
+ * follows.
+ *
+ * Exported for its tests; the provider is not renderable without standing up
+ * half the app, and mocking that would measure the mocks.
+ */
+export function mergeVaultPii(
+  prev: User | null,
+  forUserId: string,
+  pii: { email?: string; display_name?: string },
+): User | null {
+  if (!prev || prev.id !== forUserId) return prev
+  if (prev.email) return prev
+  if (!pii.email) return prev
+  return { ...prev, email: pii.email, display_name: pii.display_name ?? prev.display_name }
 }
 
 interface AuthContextType {
@@ -267,6 +294,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setRefreshHandler(refreshDetailed)
     return () => setRefreshHandler(null)
   }, [refreshDetailed])
+
+  /**
+   * Open the vault ONCE, here, so the whole app can name the person.
+   *
+   * 🔴 THE KEY BRIDGE DELIVERED A KEY THAT ONE COMPONENT USED. Until this,
+   * `AccountProfileTab` opened the vault into its OWN state — so a
+   * zero-knowledge account could be named on exactly one screen, and the
+   * account menu rendered "Signed in as" over two empty rows while a perfectly
+   * good key sat in IndexedDB. Reported by the owner, 11-09-2026; the write-up
+   * is the friction audit §4v.
+   *
+   * 🔑 NOTHING DOWNSTREAM NEEDS CHANGING. Facet's `UserMenu` already reads
+   * `auth.user.display_name` and `auth.user.email`; it was being handed empty
+   * ones. Everything reading this context gets the values for free.
+   *
+   * ⚠️ FAILS SOFT AND SILENTLY TO THE USER, by design: no key, an expired one,
+   * or a vault re-sealed in another browser all end with an unnamed session —
+   * the state that existed before this, and the one the Settings password
+   * prompt exists to resolve. It is logged, never surfaced: a lock that is
+   * simply still locked is not an error.
+   *
+   * ⚠️ It never overwrites an address we already have, and never lands a value
+   * on a DIFFERENT account than the one it started for — an account switch
+   * mid-flight must not inherit the previous person's name.
+   */
+  useEffect(() => {
+    const id = user?.id
+    // Already named (a ceremony just ran, or a legacy session carries it), or
+    // nobody to name.
+    if (!id || user?.email) return
+
+    let cancelled = false
+    void (async () => {
+      try {
+        const key = await loadVaultKey(id)
+        if (cancelled || !key) return
+        const pii = await openVaultWithKey(key)
+        if (cancelled || !pii?.email) return
+        setUser((prev) => mergeVaultPii(prev, id, pii))
+      } catch (e) {
+        logger.warn('vault: could not open this account’s vault for the session', e)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [user?.id, user?.email])
 
   const refresh = useCallback(async () => {
     try {
