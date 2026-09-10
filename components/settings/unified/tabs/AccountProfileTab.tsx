@@ -741,18 +741,26 @@ export default function AccountProfileTab() {
    * every other loading surface in Pulse already does.
    */
   const decryptingField = (widthClass: string) => (
-    <div className="relative" aria-busy="true">
-      <Input value="" readOnly tabIndex={-1} aria-hidden="true" />
-      {/* 🔴 CENTRED BY LAYOUT, NEVER BY A TRANSFORM. `top-1/2
-          -translate-y-1/2` looked right and shipped WRONG: `SkeletonLine`
-          carries `animate-skeleton-fade`, whose keyframes end on
-          `transform: translateY(0)` — the animation wins, the translate is
-          discarded, and the bar sits with its TOP at the middle of the field.
-          Measured on production. An overlay pinned to `inset-0` with
-          `items-center` cannot be overridden by anything the child animates. */}
-      <span className="pointer-events-none absolute inset-0 flex items-center px-3.5">
-        <SkeletonLine className={`h-3.5 ${widthClass}`} />
-      </span>
+    <div aria-busy="true">
+      {/* 🔴 THE POSITIONING CONTEXT IS ITS OWN BLOCK, AND THAT IS THE FIX.
+          Two earlier attempts both centred in the wrong box:
+
+            1. `top-1/2 -translate-y-1/2` — discarded, because `SkeletonLine`
+               carries `animate-skeleton-fade` and those keyframes end on
+               `transform: translateY(0)`. The animation wins.
+            2. `relative` on the OUTER element — that element is the row's flex
+               item and gets STRETCHED, so `inset-0` covered a taller box than
+               the input, which sits at its top. Measured 8px low, both fields.
+
+          A plain block wrapper takes its height from its only in-flow child —
+          facet's `Input` is a bare `<input class="h-11">` with no wrapper of its
+          own — so `inset-0` is exactly the field, whatever the row does. */}
+      <div className="relative">
+        <Input value="" readOnly tabIndex={-1} aria-hidden="true" />
+        <span className="pointer-events-none absolute inset-0 flex items-center px-3.5">
+          <SkeletonLine className={`h-3.5 ${widthClass}`} />
+        </span>
+      </div>
       <span className="sr-only">Decrypting your details…</span>
     </div>
   )
