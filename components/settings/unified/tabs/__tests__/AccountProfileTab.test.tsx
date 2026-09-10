@@ -18,11 +18,22 @@ vi.mock('@/lib/auth/context', () => ({
 const api = vi.hoisted(() => ({
   deleteAccount: vi.fn().mockResolvedValue(undefined),
   getDeletionPreview: vi.fn().mockResolvedValue([]),
+  getPendingEmailChange: vi.fn().mockResolvedValue(null),
+  cancelEmailChange: vi.fn().mockResolvedValue(undefined),
+  resendEmailChangeLink: vi.fn().mockResolvedValue(undefined),
 }))
 vi.mock('@/lib/api/user', () => ({
   updateDisplayName: vi.fn().mockResolvedValue(undefined),
   deleteAccount: api.deleteAccount,
   getDeletionPreview: api.getDeletionPreview,
+  getPendingEmailChange: api.getPendingEmailChange,
+  cancelEmailChange: api.cancelEmailChange,
+  resendEmailChangeLink: api.resendEmailChangeLink,
+}))
+
+const emailCeremony = vi.hoisted(() => ({ fn: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('@/lib/auth/tessera/email-change', () => ({
+  performEmailChangeRequest: emailCeremony.fn,
 }))
 
 const reauth = vi.hoisted(() => ({ fn: vi.fn().mockResolvedValue('tok') }))
@@ -70,17 +81,25 @@ beforeEach(() => {
   api.deleteAccount.mockClear().mockResolvedValue(undefined)
   api.getDeletionPreview.mockClear().mockResolvedValue([])
   reauth.fn.mockClear().mockResolvedValue('tok')
+  api.getPendingEmailChange.mockClear().mockResolvedValue(null)
+  api.cancelEmailChange.mockClear().mockResolvedValue(undefined)
+  api.resendEmailChangeLink.mockClear().mockResolvedValue(undefined)
+  emailCeremony.fn.mockClear().mockResolvedValue(undefined)
 })
 
 describe('AccountProfileTab (Facet structured panels)', () => {
-  it('renders the Profile panel with the display name and disabled email', () => {
+  it('renders the Profile panel, the display name, and the email row carrying the current address', async () => {
     render(<AccountProfileTab />)
     // Panel kicker + rows present.
     expect(screen.getByText('Profile')).toBeInTheDocument()
-    const email = screen.getByDisplayValue('ada@ciphera.net') as HTMLInputElement
-    expect(email.disabled).toBe(true)
     // Zero-knowledge info note (PII available branch).
     expect(screen.getByText(/end-to-end encrypted/i)).toBeInTheDocument()
+
+    // 🔑 The email row USED to be permanently disabled ("Read-only in Pulse").
+    // Direction A makes it the thing you edit, so once the status read says
+    // nothing is pending it carries the current address and accepts a new one.
+    const email = await screen.findByDisplayValue('ada@ciphera.net') as HTMLInputElement
+    await vi.waitFor(() => expect(email.disabled).toBe(false))
   })
 
   it('flips SaveBar to dirty when the display name changes', () => {
@@ -292,7 +311,242 @@ describe('AccountProfileTab — the workspace that goes with the account', () =>
     api.getDeletionPreview.mockResolvedValue([WORKSPACE])
     const { container } = await openDangerPanel()
     await screen.findByText(/Distant Clockhouse/)
-    expect(container.querySelectorAll('input[type="email"]').length).toBe(0)
-    expect(container.textContent).not.toMatch(/email you sign in with/i)
+    // ⚠️ Scoped to the DELETE panel. The page-wide form of this assertion
+    // stopped meaning what it said the moment the email row became editable
+    // (10-09-2026) — it would have failed on a change that added an email field
+    // nowhere near this panel, which is not what it is guarding.
+    const panel = (container.querySelector('#account-delete-password') as HTMLElement)
+      .closest('section') as HTMLElement
+    expect(panel).not.toBeNull()
+    expect(panel.querySelectorAll('input[type="email"]').length).toBe(0)
+    expect(panel.textContent).not.toMatch(/email you sign in with/i)
+  })
+})
+
+// ── The email-change entry point (ceremonies design §9/§10) ────────────────
+//
+// Direction A, chosen by the owner 10-09-2026: the address is changed in the
+// row that shows it, and the pending ledger sits directly beneath.
+//
+// Most of these tests are about ONE property: the panel must not confuse
+// "nothing is pending" with "we have not asked yet" or "we could not find out".
+// Getting that wrong offers a fresh change to somebody whose confirmation link
+// is already sitting in an inbox.
+
+/** Render and let the mount-time status read settle. */
+async function renderProfile() {
+  const view = render(<AccountProfileTab />)
+  await act(async () => { await Promise.resolve() })
+  return view
+}
+
+const PENDING = { expiresAt: new Date(Date.now() + 20 * 60_000).toISOString() }
+
+describe('AccountProfileTab — changing your email address', () => {
+  it('asks the server whether a link is live, on mount', async () => {
+    await renderProfile()
+    expect(api.getPendingEmailChange).toHaveBeenCalledTimes(1)
+  })
+
+  /**
+   * 🔴 The state that must never be rendered as "nothing pending". Before the
+   * answer arrives there is no form at all — a form that appears and then
+   * vanishes when the read lands is worse than one that arrives a moment late.
+   */
+  it('offers no form while the answer is still unknown', () => {
+    let settle: (v: null) => void = () => {}
+    api.getPendingEmailChange.mockReturnValue(new Promise((r) => { settle = r }))
+    const { container } = render(<AccountProfileTab />)
+    expect(container.textContent).toMatch(/Checking whether a change is already waiting/i)
+    expect(container.querySelector('#account-email-password')).toBeNull()
+    expect(container.querySelector('#account-new-email')).toBeNull()
+    settle(null)
+  })
+
+  /**
+   * 🔴 AND the state that must never be rendered as "nothing pending" either.
+   * A failed read is ignorance, not absence — so the panel says so, in the
+   * ledger's own bordered box, and still lets the change proceed: refusing the
+   * feature because a status check failed would be a worse failure than the one
+   * being reported.
+   */
+  it('says it could not check — and still lets the change proceed', async () => {
+    api.getPendingEmailChange.mockRejectedValue(new Error('503'))
+    const { container } = await renderProfile()
+    expect(container.textContent).toMatch(/couldn’t check whether a confirmation is already waiting/i)
+    // Never the ledger's claim, which would assert a link exists.
+    expect(container.textContent).not.toMatch(/Confirmation sent to/i)
+    expect(container.querySelector('#account-email-password')).not.toBeNull()
+  })
+
+  it('runs the ceremony with the typed address and password, and asks for no email twice', async () => {
+    const { container } = await renderProfile()
+    fireEvent.change(container.querySelector('#account-new-email') as HTMLInputElement, {
+      target: { value: 'new@example.test' },
+    })
+    fireEvent.change(container.querySelector('#account-email-password') as HTMLInputElement, {
+      target: { value: 'hunter2' },
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Send confirmation link/i }))
+    })
+    expect(emailCeremony.fn).toHaveBeenCalledWith({
+      newEmail: 'new@example.test',
+      password: 'hunter2',
+    })
+  })
+
+  /**
+   * A ceremony that never ran cannot have changed anything, and the panel has
+   * to say which of its several failures happened — a 503 from the mail leg
+   * reads as a wrong password to somebody told only "that didn't match".
+   */
+  it('names the failure and leaves the form standing', async () => {
+    emailCeremony.fn.mockRejectedValue(Object.assign(new Error('boom'), { status: 502 }))
+    const { container } = await renderProfile()
+    fireEvent.change(container.querySelector('#account-new-email') as HTMLInputElement, {
+      target: { value: 'new@example.test' },
+    })
+    fireEvent.change(container.querySelector('#account-email-password') as HTMLInputElement, {
+      target: { value: 'hunter2' },
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Send confirmation link/i }))
+    })
+    expect(container.textContent).toMatch(/could not send the confirmation email/i)
+    expect(container.textContent).toMatch(/Nothing has changed/i)
+    // Never a ledger — no link exists.
+    expect(container.textContent).not.toMatch(/Confirmation sent to/i)
+    // And the password is never left in the field to be replayed.
+    expect((container.querySelector('#account-email-password') as HTMLInputElement).value).toBe('')
+  })
+
+  it('shows the ledger, naming the address this tab typed', async () => {
+    const { container } = await renderProfile()
+    fireEvent.change(container.querySelector('#account-new-email') as HTMLInputElement, {
+      target: { value: 'New@Example.TEST' },
+    })
+    fireEvent.change(container.querySelector('#account-email-password') as HTMLInputElement, {
+      target: { value: 'hunter2' },
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Send confirmation link/i }))
+    })
+    expect(container.textContent).toMatch(/Confirmation sent to/i)
+    expect(container.textContent).toMatch(/new@example\.test/)
+    expect(container.textContent).toMatch(/everything stays on your current address/i)
+    expect(container.textContent).toMatch(/heads-up with a way to object/i)
+    // The form is gone while a link is live.
+    expect(container.querySelector('#account-email-password')).toBeNull()
+  })
+
+  /**
+   * 🔴 A reload cannot name the address, and must not pretend to. id-backend is
+   * zero-knowledge and never holds a readable one, so only the tab that typed
+   * it can say where the link went — persisting it would put plaintext PII at
+   * rest in a second origin, which is the open custody question.
+   */
+  it('reports a pending change it did not start, without inventing an address', async () => {
+    api.getPendingEmailChange.mockResolvedValue(PENDING)
+    const { container } = await renderProfile()
+    expect(container.textContent).toMatch(/A confirmation link is waiting in your new inbox/i)
+    expect(container.textContent).not.toMatch(/Confirmation sent to/i)
+    // The horizon is the server's, rendered as a real remaining time.
+    expect(container.textContent).toMatch(/expires in about \d+ minutes/i)
+  })
+
+  it('cancels the live link and returns to the form', async () => {
+    api.getPendingEmailChange.mockResolvedValue(PENDING)
+    const { container } = await renderProfile()
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Cancel request/i }))
+    })
+    expect(api.cancelEmailChange).toHaveBeenCalledTimes(1)
+    expect(container.querySelector('#account-email-password')).not.toBeNull()
+  })
+
+  /**
+   * 🔴 A cancel that did not land must NOT clear the ledger. Telling somebody
+   * the link is dead when it is live is the one thing worse than the button not
+   * working.
+   */
+  it('keeps the ledger when the cancel fails', async () => {
+    api.getPendingEmailChange.mockResolvedValue(PENDING)
+    api.cancelEmailChange.mockRejectedValue(new Error('502'))
+    const { container } = await renderProfile()
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Cancel request/i }))
+    })
+    expect(container.textContent).toMatch(/waiting in your new inbox/i)
+    expect(container.querySelector('#account-email-password')).toBeNull()
+  })
+
+  /**
+   * Resend re-mails the SAME link; a 404 means this panel was stale. It does
+   * NOT decide that on its own — it re-reads, so the status endpoint stays the
+   * single authority on whether a link is live. (If the two disagree, the later
+   * read wins: they touch the same keys, so disagreement means the link was
+   * consumed between the calls.)
+   */
+  it('re-reads rather than deciding, when a resend says nothing is pending', async () => {
+    api.getPendingEmailChange.mockResolvedValue(PENDING)
+    api.resendEmailChangeLink.mockRejectedValue(Object.assign(new Error('gone'), { status: 404 }))
+    const { container } = await renderProfile()
+    api.getPendingEmailChange.mockResolvedValue(null)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Resend link/i }))
+    })
+    expect(api.getPendingEmailChange).toHaveBeenCalledTimes(2)
+    expect(container.textContent).not.toMatch(/waiting in your new inbox/i)
+    expect(container.querySelector('#account-email-password')).not.toBeNull()
+  })
+
+  /**
+   * 🔴 Stage 2 happens in a mail client, and nothing tells this tab. When the
+   * server stops reporting the change, the address on screen is no longer
+   * proven — so the cached plaintext goes, rather than being displayed as
+   * current. The note is honest about what it cannot distinguish.
+   */
+  it('drops the unlocked address when a pending change resolves elsewhere', async () => {
+    h.user = { id: 'u1', email: '', display_name: '' }
+    unlockMock.fn.mockReset().mockResolvedValue({ email: 'ada@ciphera.net' })
+    api.getPendingEmailChange.mockResolvedValue(PENDING)
+    const { container } = await renderProfile()
+
+    // Unlock, so there is a plaintext address on screen to go stale.
+    fireEvent.click(screen.getByRole('button', { name: 'Unlock' }))
+    fireEvent.change(screen.getByPlaceholderText('Email you sign in with'), {
+      target: { value: 'ada@ciphera.net' },
+    })
+    fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: 'pw' } })
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+    await vi.waitFor(() => expect(screen.queryByDisplayValue('ada@ciphera.net')).not.toBeNull())
+
+    // The link is opened somewhere else. The next status read says nothing is
+    // pending — reached here through resend's 404, which routes to the SAME
+    // readPending the 30-second tick uses.
+    api.getPendingEmailChange.mockResolvedValue(null)
+    api.resendEmailChangeLink.mockRejectedValue(Object.assign(new Error('gone'), { status: 404 }))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Resend link/i }))
+    })
+
+    await vi.waitFor(() => expect(container.textContent).toMatch(/no longer pending/i))
+    expect(container.textContent).toMatch(/confirmed, or it expired/i)
+    expect(screen.queryByDisplayValue('ada@ciphera.net')).toBeNull()
+  })
+
+  /**
+   * ...but a cancel from THIS tab is not a confirmation elsewhere. Without the
+   * distinction, cancelling would clear the unlocked address and tell the user
+   * their change had resolved — when they are the one who killed it.
+   */
+  it('does not claim a change resolved when this tab cancelled it', async () => {
+    api.getPendingEmailChange.mockResolvedValue(PENDING)
+    const { container } = await renderProfile()
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Cancel request/i }))
+    })
+    expect(container.textContent).not.toMatch(/no longer pending/i)
   })
 })

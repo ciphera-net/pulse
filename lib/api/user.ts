@@ -20,7 +20,7 @@ function isOwnsOrgsBody(b: unknown): b is OwnsOrgsBody {
 }
 
 // Delete authorization is a server-side single-use re-auth token (Slice 4): the
-// ReauthModal drives a fresh OPAQUE ceremony against id-backend's dedicated
+// the caller drives a fresh OPAQUE ceremony against id-backend's dedicated
 // `/auth/reauth/*` endpoint, which mints the token bound to the session user. We
 // forward that token as `reauth_token`; the delete handler GETDELs it and requires
 // `tokenUserID == sessionUserID` before any state mutation. The old `password`
@@ -161,4 +161,65 @@ export async function updateDisplayName(displayName: string): Promise<void> {
     method: 'PUT',
     body: JSON.stringify({ display_name: displayName }),
   })
+}
+
+// ---------------------------------------------------------------------------
+// The two-stage email change (ceremonies design §9/§10).
+//
+// Stage 1 (`performEmailChangeRequest`, lib/auth/tessera/email-change.ts) is a
+// crypto ceremony and lives with the other ceremonies. What is left here is the
+// plain session-authed half: asking whether a link is live, killing it, and
+// re-mailing it.
+// ---------------------------------------------------------------------------
+
+/** A live confirmation link, as the SERVER reports it. */
+export interface PendingEmailChange {
+  /**
+   * When the link dies, absolute and UTC.
+   *
+   * 🔑 `null` means the server reported a pending change without a horizon.
+   * Rendering that as "expires in 0 minutes" would be a countdown the server
+   * never gave — say the change is pending and leave the clock out.
+   */
+  expiresAt: string | null
+}
+
+/**
+ * Is an email change in flight?
+ *
+ * 🔴 THREE OUTCOMES, and they must not collapse:
+ *   - `null`      — nothing is pending. The server looked and found none.
+ *   - an object   — a link is live until `expiresAt`.
+ *   - **a throw** — we could not find out. NEVER render this as "nothing
+ *     pending": a Redis blip, a 401, or a backend that predates the endpoint
+ *     would then tell somebody their change is not in flight while their link
+ *     sits live in an inbox.
+ *
+ * The same discipline `DeletionBlocker.contents` follows for "empty" versus
+ * "could not ask", on the same screen.
+ */
+export async function getPendingEmailChange(): Promise<PendingEmailChange | null> {
+  const res = await apiRequest<{ pending?: boolean; expires_at?: string }>(
+    '/auth/user/email/pending',
+  )
+  if (!res?.pending) return null
+  return { expiresAt: res.expires_at ?? null }
+}
+
+/**
+ * Kill the live link server-side. This is a CANCEL, not a dismiss: the mailed
+ * link stops working immediately, not merely in this tab. Idempotent — the
+ * server answers 200 when there was nothing to cancel.
+ */
+export async function cancelEmailChange(): Promise<void> {
+  await apiRequest<void>('/auth/user/email/cancel', { method: 'POST' })
+}
+
+/**
+ * Re-mail the SAME link. The ref is stable, so resend can never mint a second
+ * valid link, and it needs no fresh re-auth: it does not change what the spent
+ * one authorised. 404 when nothing is pending.
+ */
+export async function resendEmailChangeLink(): Promise<void> {
+  await apiRequest<void>('/auth/user/email/resend', { method: 'POST' })
 }
