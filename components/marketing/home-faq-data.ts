@@ -87,7 +87,7 @@ export const faqData: Record<string, FAQItem[]> = {
     {
       question: 'What happens to IP addresses?',
       answer:
-        'IP addresses are used only at the network edge for country-level geolocation. They are immediately discarded after the geo lookup — never stored, never logged, never written to disk. We can’t retrieve them even if asked.',
+        'IP addresses are used only at the network edge to derive an approximate location — country, region and city, or less if you narrow it in your site settings. They are immediately discarded after the geo lookup — never stored, never logged, never written to disk. We can’t retrieve them even if asked.',
     },
     {
       question: 'Where is my analytics data stored?',
@@ -114,7 +114,7 @@ export const faqData: Record<string, FAQItem[]> = {
     {
       question: 'What metrics does Pulse track?',
       answer:
-        'Pulse tracks pageviews, unique visitors, bounce rate, visit duration, referrer sources, UTM parameters, device type, browser, operating system, and country-level geolocation.',
+        'Pulse tracks pageviews, unique visitors, bounce rate, visit duration, referrer sources, UTM parameters, device type, browser, operating system, and approximate location — country, region and city by default, narrowable to country only or off.',
     },
     {
       question: 'Can I export my data?',
