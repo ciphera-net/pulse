@@ -54,11 +54,12 @@ const vault = vi.hoisted(() => ({
   load: vi.fn().mockResolvedValue(null),
   open: vi.fn(),
   saveName: vi.fn().mockResolvedValue(undefined),
+  forget: vi.fn().mockResolvedValue(undefined),
 }))
 vi.mock('@/lib/auth/vault-store', () => ({
   saveVaultKey: vault.save,
   loadVaultKey: vault.load,
-  forgetVaultKeys: vi.fn(),
+  forgetVaultKeys: vault.forget,
 }))
 vi.mock('@/lib/auth/vault-restore', () => ({
   openVaultWithKey: vault.open,
@@ -110,6 +111,7 @@ beforeEach(() => {
   // earlier tests in the file — which is how a passing suite can hide a
   // never-checked assertion.
   unlockMock.fn.mockClear()
+  vault.forget.mockClear().mockResolvedValue(undefined)
   vault.save.mockClear().mockResolvedValue(undefined)
   vault.load.mockClear().mockResolvedValue(null)
   vault.open.mockClear()
@@ -293,6 +295,63 @@ describe('AccountProfileTab — a key this browser already holds', () => {
       fireEvent.click(screen.getByTestId('savebar-save'))
     })
     expect(vault.saveName).toHaveBeenCalledWith('u1', 'Ada Lovelace')
+  })
+})
+
+describe('AccountProfileTab — "Unlocked on this device" (rule 6, direction A)', () => {
+  /**
+   * 🔴 THE SENTENCE FOLLOWS THE STORAGE, NOT THE SCREEN. It may only appear
+   * when a key really is at rest — a tab-only unlock is gone on reload, and
+   * this copy would be a promise about the next visit that nothing kept.
+   */
+  it('says so, and offers the way back, when a key is actually stored', async () => {
+    h.user = { id: 'u1', email: '', display_name: '' }
+    vault.load.mockResolvedValue({ extractable: false })
+    vault.open.mockResolvedValue({ email: 'ada@ciphera.net' })
+    const { container } = await renderProfile()
+
+    expect(await screen.findByText(/Unlocked on this device/i)).toBeInTheDocument()
+    expect(container.textContent).toMatch(/Ciphera cannot read them/i)
+    expect(screen.getByRole('button', { name: /^Lock$/ })).toBeInTheDocument()
+    // The locked state's own words are gone — a removal, asserted.
+    expect(container.textContent).not.toMatch(/not unlocked in this browser/i)
+  })
+
+  it('does NOT claim it when the vault is open but nothing was stored', async () => {
+    // A private window, blocked site data, a quota refusal: the unlock worked,
+    // the write did not, and saveVaultKey swallows that on purpose.
+    h.user = { id: 'u1', email: '', display_name: '' }
+    vault.load.mockResolvedValue(null)
+    unlockMock.fn.mockResolvedValue({ pii: { email: 'ada@ciphera.net' }, vaultKey: { extractable: false } })
+    const { container } = await renderProfile()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unlock' }))
+    fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: 'pw' } })
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+
+    await vi.waitFor(() => expect(screen.queryByDisplayValue('ada@ciphera.net')).not.toBeNull())
+    expect(container.textContent).not.toMatch(/Unlocked on this device/i)
+    expect(container.textContent).toMatch(/end-to-end encrypted/i)
+  })
+
+  /** Rule 6's second half: the person must be able to UNDO it. */
+  it('locking clears every stored key and returns to the prompt', async () => {
+    h.user = { id: 'u1', email: '', display_name: '' }
+    vault.load.mockResolvedValue({ extractable: false })
+    vault.open.mockResolvedValue({ email: 'ada@ciphera.net' })
+    const { container } = await renderProfile()
+    await screen.findByText(/Unlocked on this device/i)
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /^Lock$/ }))
+    })
+
+    expect(vault.forget).toHaveBeenCalledTimes(1)
+    expect(await screen.findByText(/Your name and email stay encrypted/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Unlock' })).toBeInTheDocument()
+    // And the plaintext went with the key.
+    expect(container.querySelector('#account-new-email')).not.toBeNull()
+    expect((container.querySelector('#account-new-email') as HTMLInputElement).value).toBe('')
   })
 })
 
