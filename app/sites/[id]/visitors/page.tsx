@@ -16,7 +16,7 @@ import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
 import { useSite, useVisitors } from '@/lib/swr/dashboard'
 import { visitorPseudonym } from '@/lib/visitors/pseudonym'
-import { formatLastSeen } from '@/lib/visitors/format'
+import { formatLastSeen, SITE_TIMEZONE_FALLBACK } from '@/lib/visitors/format'
 import {
   VISITORS_MIN_DATE,
   VISITORS_ROLLING_MINUTES,
@@ -111,11 +111,20 @@ export default function VisitorsPage() {
   }
 
   const visitors = data?.visitors ?? []
+  // 🔴 THE SITE'S ZONE, TAKEN FROM THE SAME RESPONSE AS THE ROWS. Every date on this
+  // page is a calendar judgement about data the server bucketed in the site's timezone,
+  // so it may never be made in the reader's (audit §2.4). Reading it off `data` rather
+  // than off `useSite` keeps the rows and their calendar in one payload — a separate
+  // fetch could arrive later, or not at all, and render a page of dates in the meantime.
+  // The `useSite` arm covers a response held in an SWR cache from before the field
+  // existed; UTC last, because it is the server's own column default and never a guess
+  // about where the reader is standing.
+  const siteTimezone = data?.site_timezone || site?.timezone || SITE_TIMEZONE_FALLBACK
   const total = data?.total ?? 0
   const activeNow = data?.active_now ?? 0
   const live = rollingMinutes != null
 
-  const { from, to, ticks } = presenceTicks(dateRange, rollingMinutes)
+  const { from, to, ticks } = presenceTicks(dateRange, rollingMinutes, siteTimezone)
   const returningShare =
     visitors.length > 0
       ? Math.round((visitors.filter((v) => v.visits > 1).length / visitors.length) * 100)
@@ -208,6 +217,7 @@ export default function VisitorsPage() {
                 siteId={siteId}
                 visitor={v}
                 collectsReferrers={site?.collect_referrers ?? false}
+                siteTimezone={siteTimezone}
               />
             ))}
             {/*
@@ -344,10 +354,12 @@ function VisitorRowLink({
   siteId,
   visitor,
   collectsReferrers,
+  siteTimezone,
 }: {
   siteId: string
   visitor: VisitorRow
   collectsReferrers: boolean
+  siteTimezone: string
 }) {
   const name = visitorPseudonym(visitor.visitor_key)
   return (
@@ -388,7 +400,7 @@ function VisitorRowLink({
         {visitor.pageviews}
       </span>
       <span className="w-24 shrink-0 text-right text-sm tabular-nums text-neutral-500">
-        {formatLastSeen(visitor.last_seen)}
+        {formatLastSeen(visitor.last_seen, siteTimezone)}
       </span>
     </Link>
   )
