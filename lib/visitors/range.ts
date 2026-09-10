@@ -1,6 +1,6 @@
 import type { PeriodPreset } from '@/lib/constants/periods'
 import type { Period } from '@/lib/hooks/periodUrl'
-import { formatSiteTime, shiftDayKey, zoneDayStartMs, zoneParts } from '@/lib/utils/siteTime'
+import { formatSiteDay, formatSiteTime, shiftDayKey, zoneDayStartMs, zoneParts } from '@/lib/utils/siteTime'
 import {
   getLast30MinutesRange,
   getLast1HourRange,
@@ -102,6 +102,47 @@ export function presenceTicks(
     return { at, label: formatSiteDayNumeric(at, siteTimezone) }
   })
   return { from, to, ticks }
+}
+
+/**
+ * monthBoundaries finds every identity reset inside a window, in the SITE's zone.
+ *
+ * An identity is minted per site-local calendar MONTH, so the instant a month
+ * begins is the instant every visitor before it became a different visitor. The
+ * presence field's x axis is pure recency and cannot say that on its own — across
+ * a straddle the same person is two dots with nothing between them (measured:
+ * 322 of one site's 517 rows in a 30-day range were already-reset identities).
+ *
+ * Returns at most a couple of entries for any range this surface offers, and an
+ * empty array for a rolling window, which never spans a month.
+ */
+export function monthBoundaries(
+  from: number,
+  to: number,
+  siteTimezone: string,
+): { at: number; label: string }[] {
+  if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) return []
+  const out: { at: number; label: string }[] = []
+  // Walk months from the one containing `from`, using the zone's own parts so a
+  // 31-day month, a leap February and a DST transition are all somebody else's
+  // problem — zoneDayStartMs resolves the real midnight in two passes.
+  const p = zoneParts(new Date(from), siteTimezone)
+  let year = p.year
+  let month = p.month
+  for (let i = 0; i < 14; i++) {
+    month += 1
+    if (month > 12) {
+      month = 1
+      year += 1
+    }
+    const key = `${year}-${String(month).padStart(2, '0')}-01`
+    const at = zoneDayStartMs(key, siteTimezone)
+    if (at > to) break
+    if (at > from) {
+      out.push({ at, label: `${formatSiteDay(at, siteTimezone)} · identities reset` })
+    }
+  }
+  return out
 }
 
 /** "26/08" — the field's gridline label, in the SITE's calendar. */

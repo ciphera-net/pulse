@@ -9,7 +9,6 @@ import { ErrorCard } from '@/components/ui/ErrorCard'
 import { Pagination } from '@/components/search/rowPrimitives'
 import { JourneyStrand } from '@/components/visitors/JourneyStrand'
 import { MonthRibbon } from '@/components/visitors/MonthRibbon'
-import { VisitorMeta } from '@/components/visitors/VisitorMeta'
 import { VisitTrail } from '@/components/visitors/VisitTrail'
 import { CountryFlag } from '@/components/ui/CountryFlag'
 import { BrowserMark, OSMark, ReferrerMark, DeviceGlyph, referrerLabel } from '@/components/visitors/VisitorIcons'
@@ -140,7 +139,11 @@ export default function VisitorDetailPage() {
       <div className="flex flex-wrap items-start justify-between gap-4 pt-6">
         <div className="min-w-0">
           <BackLink siteId={siteId} />
-          <h1 className="mt-2 flex items-center gap-3 text-2xl font-medium text-white">
+          {/* text-lg/font-semibold, not text-2xl/font-medium — the size every
+              other detail room in the product uses (funnels is the reference).
+              Part of the owner's 10-09 note: "make it consistent like the other
+              screens in pulse". */}
+          <h1 className="mt-2 flex items-center gap-3 text-lg font-semibold text-white">
             {name}
             {/* The hash is the TRUE key and is always shown here. Pseudonyms
                 collide by design; this is what makes two "Quiet Readers"
@@ -170,21 +173,21 @@ export default function VisitorDetailPage() {
                 <span>{localTime} where they are</span>
               </>
             )}
-            {profile && (
-              <>
-                {(profile.active_now || localTime) && <span className="text-neutral-700">·</span>}
-                <VisitorMeta
-                  className="text-sm"
-                  country={profile.country}
-                  city={profile.city}
-                  browser={profile.browser}
-                  os={profile.os}
-                  deviceType={profile.device_type}
-                  referrer={profile.referrer}
-                  collectsReferrers={site?.collect_referrers ?? false}
-                />
-              </>
-            )}
+            {/*
+              🔴 THE DIMENSION LINE IS GONE FROM THE HEADER (approved round 5b, §4 A).
+              Owner, 10-09-2026: the screen "shows a lot of duplicate data".
+              Measured: it repeated FIVE of the Profile card's eight cells —
+              country, city, browser, OS, device and referrer — 200px above them,
+              and "Channel" down there is derived from the referrer beside it.
+
+              ⚠️ IT MOVED, IT WAS NOT DELETED. The Profile card below keeps every
+              one of those values AND its icon kit — CountryFlag, BrowserMark,
+              OSMark, DeviceGlyph, ReferrerMark — untouched. Owner: "don't remove
+              all the logos/icons from the block below". The header keeps its
+              STATUS clause ("Active now · 16:29 where they are"), which the card
+              only half-repeats and which answers a question at a glance:
+              is it reasonable that they are reading this right now?
+            */}
           </div>
 
           {profile && (

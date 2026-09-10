@@ -213,6 +213,7 @@ describe('the presence field is a signposted summary, not silence', () => {
         to={Date.parse('2026-09-10T00:00:00Z')}
         ticks={[{ at: Date.parse('2026-09-01T00:00:00Z'), label: '01/09' }]}
         activeCount={active}
+        undrawn={0}
         caption="Each dot is one visitor"
         emptyLabel="No visitors in this range"
       />,
@@ -228,7 +229,7 @@ describe('the presence field is a signposted summary, not silence', () => {
     expect(text).toMatch(/also appears in the roster below, as text/)
   })
 
-  it('hides every dot, so a labelled one cannot drop a bare pseudonym', () => {
+  it('hides every dot from the reading order', () => {
     const { container } = field(3)
     const dots = [...container.querySelectorAll('div[style*="left"]')]
     expect(dots.length).toBeGreaterThan(0)
