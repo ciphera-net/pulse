@@ -148,11 +148,17 @@ export default function VisitorDetailPage() {
                 it is machine data, not chrome. */}
             <span className="font-mono text-sm text-neutral-500">{visitorKey.slice(0, 8)}</span>
             {profile?.active_now && (
-              <span
-                className="size-2 rounded-full bg-brand-orange"
-                style={{ boxShadow: '0 0 0 4px rgb(255 92 0 / 0.18)' }}
-                aria-label="on the site now"
-              />
+              <>
+                {/* aria-label on a bare span is an aria-prohibited-attr violation —
+                    see the roster row's note. The visually-hidden text is the house
+                    device and cannot be dropped by assistive technology. */}
+                <span
+                  aria-hidden="true"
+                  className="size-2 rounded-full bg-brand-orange"
+                  style={{ boxShadow: '0 0 0 4px rgb(255 92 0 / 0.18)' }}
+                />
+                <span className="sr-only">on the site now</span>
+              </>
             )}
           </h1>
 
@@ -247,14 +253,15 @@ export default function VisitorDetailPage() {
       {/* ─── Visits ─── */}
       <div className="mt-6 rounded-none border border-border bg-card">
         <div className="flex h-12 items-center justify-between border-b border-border px-4">
-          <span className="text-sm font-medium text-white">Visits</span>
+          <h2 className="text-sm font-medium text-white">Visits</h2>
           <span className="text-xs text-neutral-500">newest first</span>
         </div>
 
         {visitsLoading && visits.length === 0 ? (
-          <div className="p-4">
+          <div className="p-4" role="status">
+            <span className="sr-only">Loading visits…</span>
             {Array.from({ length: 4 }, (_, i) => (
-              <div key={i} className="mb-3 h-9 animate-pulse rounded-none bg-neutral-800/50" />
+              <div key={i} aria-hidden="true" className="mb-3 h-9 animate-pulse rounded-none bg-neutral-800/50" />
             ))}
           </div>
         ) : visits.length === 0 ? (
@@ -290,7 +297,7 @@ export default function VisitorDetailPage() {
       {profile && (
         <div className="mt-6 rounded-none border border-border bg-card">
           <div className="flex h-12 items-center justify-between border-b border-border px-4">
-            <span className="text-sm font-medium text-white">Profile</span>
+            <h2 className="text-sm font-medium text-white">Profile</h2>
             <span className="text-xs text-neutral-500">first touch · latest observed</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2">
@@ -437,6 +444,7 @@ function VisitRowItem({
           pages={visit.pageviews}
           eventAt={visit.events > 0 ? [Math.min(2, Math.max(0, visit.pageviews - 1))] : []}
         />
+        {visit.events > 0 && <span className="sr-only">an event fired on this visit. </span>}
         <span className="min-w-0 flex-1 truncate text-sm text-neutral-300">
           <span className="text-neutral-500">
             {formatVisitStart(visit.started_at, siteTimezone)}

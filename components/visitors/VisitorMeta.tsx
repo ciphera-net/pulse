@@ -49,11 +49,23 @@ export function deviceLabel(device: string): string {
   return device.charAt(0).toUpperCase() + device.slice(1)
 }
 
+/**
+ * The segment separator.
+ *
+ * ⚠️ The middot is aria-hidden (a screen reader saying "middle dot" five times
+ * per row is noise), but hiding it alone left the segments RUNNING TOGETHER:
+ * measured, a row's accessible name read "Brussels, BelgiumFirefoxLinuxDesktop".
+ * The accessible-name algorithm joins adjacent inline text with no separator, so
+ * the pause has to be a real character — a comma, in a visually-hidden node.
+ */
 function Dot() {
   return (
-    <span className="text-neutral-700" aria-hidden="true">
-      ·
-    </span>
+    <>
+      <span className="text-neutral-700" aria-hidden="true">
+        ·
+      </span>
+      <span className="sr-only">, </span>
+    </>
   )
 }
 

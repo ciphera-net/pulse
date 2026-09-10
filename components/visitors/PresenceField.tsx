@@ -116,8 +116,32 @@ export function PresenceField({
 
   const hidden = Math.max(0, visitors.length - MAX_DOTS)
 
+  /**
+   * The field's text equivalent.
+   *
+   * 🔴 MEASURED 10-09-2026: the panel rendered its dots as positioned <div>s with
+   * no role and no name — nothing for a screen reader but, worse, the LABELLED
+   * ones dropped a bare pseudonym into the reading order with no context at all
+   * ("Quiet Reader", alone, between two paragraphs).
+   *
+   * The device is a visually-hidden sentence plus `aria-hidden` on every dot,
+   * rather than a name per dot: the field is a redundant visual summary of the
+   * roster underneath it, and reading out a hundred names in hash-lane order
+   * would be a worse answer than the roster's own sorted, paginated list. The
+   * last clause says so, so the sentence is a signpost and not a dead end.
+   */
+  const summary =
+    dots.length === 0
+      ? emptyLabel
+      : `${visitors.length} ${visitors.length === 1 ? 'visitor' : 'visitors'}, drawn as dots ` +
+        'positioned by how recently each was seen — furthest right is most recent. ' +
+        `${activeCount} on the site now. ` +
+        (hidden > 0 ? `${hidden} more are not drawn. ` : '') +
+        'Every visitor drawn here also appears in the roster below, as text.'
+
   return (
     <div className="relative rounded-none border border-border bg-card" style={{ height: FIELD_HEIGHT }}>
+      <p className="sr-only">{summary}</p>
       <p className="absolute left-3 top-2.5 z-10 text-xs text-neutral-500">{caption}</p>
       {activeCount > 0 && (
         <p className="absolute right-3 top-2.5 z-10 flex items-center gap-1.5 text-xs text-brand-orange">
@@ -154,6 +178,10 @@ export function PresenceField({
         dots.map((d) => (
           <div
             key={d.key}
+            // Hidden from assistive technology, deliberately: the sr-only summary
+            // above carries the field's meaning, and a labelled dot would otherwise
+            // read out its pseudonym with nothing to attach it to.
+            aria-hidden="true"
             className="absolute -translate-y-1/2"
             style={{
               // Inset the plot so a dot at either extreme is not clipped and the

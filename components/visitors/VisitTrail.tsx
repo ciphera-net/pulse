@@ -86,9 +86,12 @@ export function VisitTrail({ siteId, visitorKey, visitKey, range }: VisitTrailPr
 
   if (isLoading && events.length === 0) {
     return (
-      <div className="px-4 pb-4 pl-12">
+      <div className="px-4 pb-4 pl-12" role="status">
+        {/* A pulsing grey rectangle says "wait" to a sighted reader and nothing at
+            all to anyone else — the row simply expands into silence. */}
+        <span className="sr-only">Loading this visit&rsquo;s steps…</span>
         {Array.from({ length: 3 }, (_, i) => (
-          <div key={i} className="mb-2 h-6 animate-pulse rounded-none bg-neutral-800/50" />
+          <div key={i} aria-hidden="true" className="mb-2 h-6 animate-pulse rounded-none bg-neutral-800/50" />
         ))}
       </div>
     )
