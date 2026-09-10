@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useLayoutEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { type Site } from '@/lib/api/sites'
@@ -99,6 +99,97 @@ function SidebarTooltip({ children, label }: { children: React.ReactNode; label:
   )
 }
 
+// ─── The gliding selection highlight ────────────────────────
+//
+// The orange block behind the selected item TRAVELS to the item you pick
+// instead of vanishing here and appearing there (owner, 10-09-2026: "that glow
+// should have an animation that it glides to the other item you go to. like the
+// switchers we have on the dashboard blocks").
+//
+// 🔑 Same device as Facet's `Switcher` thumb, deliberately — one measured,
+// absolutely-positioned block, moved with a CSS transition on `transform`. Not
+// framer-motion `layoutId`: the Switcher is the house precedent for this exact
+// motion, and matching it means the sidebar and the dashboard cards move the
+// same way rather than nearly the same way.
+//
+// Each link marks itself with `data-sidebar-active` and draws NO background of
+// its own; the nav owns the single block. That keeps every link's own rule for
+// what "active" means (prefix match, pending href, external links never) exactly
+// where it was, and leaves this component with one job: measure and move.
+//
+// ⚠️ `offsetTop`/`offsetLeft` are read against the nav, which is why the nav is
+// `relative` — it must be the offsetParent. The nav is also the scroll
+// container, so the block scrolls with the list for free.
+//
+// ⚠️ The first placement does not animate. A block that slides in from the
+// sidebar's top-left corner on every full page load reads as a glitch, not as
+// polish — the same reason the Switcher has its `settled` flag.
+
+interface HighlightBox { left: number; top: number; width: number; height: number }
+
+function SidebarNav({
+  activeKey, collapsed, children, ...props
+}: { activeKey: string; collapsed: boolean; children: React.ReactNode } & React.HTMLAttributes<HTMLElement>) {
+  const navRef = useRef<HTMLElement | null>(null)
+  const [box, setBox] = useState<HighlightBox | null>(null)
+  const [settled, setSettled] = useState(false)
+
+  const measure = useCallback(() => {
+    const nav = navRef.current
+    const el = nav?.querySelector<HTMLElement>('[data-sidebar-active]')
+    if (!nav || !el) {
+      setBox(null)
+      return
+    }
+    const next = { left: el.offsetLeft, top: el.offsetTop, width: el.offsetWidth, height: el.offsetHeight }
+    setBox((prev) =>
+      prev && prev.left === next.left && prev.top === next.top && prev.width === next.width && prev.height === next.height
+        ? prev
+        : next,
+    )
+  }, [])
+
+  // Before paint, so the first frame already has the block in place.
+  useLayoutEffect(() => { measure() }, [measure, activeKey, collapsed, children])
+
+  // Only then allow the glide.
+  useEffect(() => {
+    if (settled || box === null) return
+    const id = requestAnimationFrame(() => setSettled(true))
+    return () => cancelAnimationFrame(id)
+  }, [settled, box])
+
+  // The rail collapses, labels reflow, the site list loads late — follow them.
+  useEffect(() => {
+    const nav = navRef.current
+    if (!nav || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measure)
+    observer.observe(nav)
+    for (const child of Array.from(nav.children)) observer.observe(child)
+    return () => observer.disconnect()
+  }, [measure, children])
+
+  return (
+    <nav ref={navRef} {...props} className="relative flex-1 overflow-y-auto overflow-x-hidden px-2 space-y-4">
+      <span
+        aria-hidden="true"
+        data-sidebar-highlight=""
+        className={`pointer-events-none absolute left-0 top-0 z-0 rounded-none bg-brand-orange/10 ${
+          settled ? 'transition-[transform,width,height,opacity] duration-base ease-apple motion-reduce:transition-none' : ''
+        }`}
+        style={
+          box
+            ? { transform: `translateX(${box.left}px) translateY(${box.top}px)`, width: box.width, height: box.height, opacity: 1 }
+            : // No selection on this route: fade out where it stands rather than
+              // collapsing to the corner, which would read as a block flying away.
+              { opacity: 0 }
+        }
+      />
+      {children}
+    </nav>
+  )
+}
+
 // ─── Nav Item ───────────────────────────────────────────────
 
 function NavLink({
@@ -117,9 +208,13 @@ function NavLink({
     <Link
       href={href}
       onClick={() => { onNavigate(href); onClick?.() }}
-      className={`group/nav flex items-center gap-2.5 rounded-none px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-fast ${
+      data-sidebar-active={active ? '' : undefined}
+      className={`group/nav relative z-10 flex items-center gap-2.5 rounded-none px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-fast ${
         active
-          ? 'bg-brand-orange/10 text-brand-orange'
+          // No background here — the nav draws ONE block and glides it (see
+          // SidebarNav). The ink still switches on the item itself, and
+          // transition-all above cross-fades it as the block arrives.
+          ? 'text-brand-orange'
           : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
       } ease-apple`}
     >
@@ -159,10 +254,14 @@ function HomeNavLink({
     <Link
       href={href}
       onClick={onClick}
+      data-sidebar-active={active ? '' : undefined}
       {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-      className={`flex items-center gap-2.5 rounded-none px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-fast ${
+      className={`relative z-10 flex items-center gap-2.5 rounded-none px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-fast ${
         active
-          ? 'bg-brand-orange/10 text-brand-orange'
+          // No background here — the nav draws ONE block and glides it (see
+          // SidebarNav). The ink still switches on the item itself, and
+          // transition-all above cross-fades it as the block arrives.
+          ? 'text-brand-orange'
           : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
       } ease-apple`}
     >
@@ -192,9 +291,13 @@ function HomeSiteLink({
     <Link
       href={href}
       onClick={onClick}
-      className={`flex items-center gap-2.5 rounded-none px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-fast ${
+      data-sidebar-active={active ? '' : undefined}
+      className={`relative z-10 flex items-center gap-2.5 rounded-none px-2.5 py-2 text-sm font-medium overflow-hidden transition-all duration-fast ${
         active
-          ? 'bg-brand-orange/10 text-brand-orange'
+          // No background here — the nav draws ONE block and glides it (see
+          // SidebarNav). The ink still switches on the item itself, and
+          // transition-all above cross-fades it as the block arrives.
+          ? 'text-brand-orange'
           : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
       } ease-apple`}
     >
@@ -235,6 +338,11 @@ function SidebarContent({
   onOpenPalette,
 }: SidebarContentProps) {
   const c = isMobile ? false : collapsed
+  // What the highlight follows. `pendingHref` first, so the block starts moving
+  // on the click rather than when the route finally commits — the same optimism
+  // the links already use to paint themselves active.
+  const pathname = usePathname()
+  const activeKey = pendingHref ?? pathname
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -276,7 +384,7 @@ function SidebarContent({
 
       {/* Nav Groups */}
       {siteId ? (
-        <nav data-tour="sidebar-nav" className="flex-1 overflow-y-auto overflow-x-hidden px-2 space-y-4">
+        <SidebarNav data-tour="sidebar-nav" activeKey={activeKey} collapsed={c}>
           {NAV_GROUPS.map((group) => (
             <div key={group.label}>
               <div className="h-5 flex items-center overflow-hidden">
@@ -298,9 +406,9 @@ function SidebarContent({
               </div>
             </div>
           ))}
-        </nav>
+        </SidebarNav>
       ) : (
-        <nav data-tour="sidebar-nav" className="flex-1 overflow-y-auto overflow-x-hidden px-2 space-y-4">
+        <SidebarNav data-tour="sidebar-nav" activeKey={activeKey} collapsed={c}>
           {/* Your Sites */}
           <div>
             {c ? (
@@ -353,7 +461,7 @@ function SidebarContent({
               <HomeNavLink href="https://help.ciphera.net/docs/pulse" icon={BookOpenIcon} label="Documentation" collapsed={c} onClick={isMobile ? onMobileClose : undefined} external />
             </div>
           </div>
-        </nav>
+        </SidebarNav>
       )}
 
       {/* Help & Support — sidebar bottom */}
