@@ -5,7 +5,6 @@ import { decryptVaultH } from '@/lib/crypto/vault-ops'
 import type { VaultData } from '@/lib/crypto/vault'
 import type { VaultKeyHandle } from '@/lib/auth/vault-key'
 import { authFetch } from '@/lib/api/client'
-import { computeBlindIndex } from '@ciphera-net/auth/blind-index'
 
 interface VaultResponse {
   encrypted_vault?: string
@@ -37,15 +36,27 @@ interface VaultResponse {
  *      spendable NOWHERE (id #61) — we never read it.
  *   3. decrypt encrypted_vault with the live handle, then drop the handle.
  *
+ * 🔑 It takes a PASSWORD AND NOTHING ELSE. It used to ask for the sign-in email
+ * as well, which on this screen meant typing the address in order to be shown
+ * the address. The email was never a cryptographic input — see the transport's
+ * blindIndex below.
+ *
  * The returned handle is deliberately NOT exposed — only the decrypted PII
  * leaves this function, and the caller caches that (never the key) for the tab.
  *
  * Throws on a wrong password (the ceremony 401s) or a vault with no wrap
  * (an account that predates OPAQUE — the caller shows the encrypted state).
  */
-export async function unlockVaultPII(opts: { email: string; password: string }): Promise<VaultData> {
+/**
+ * What the SDK is handed as an identity. The AKE never sees it: the transport
+ * posts `blind_index` instead (empty here — "resolve the session's own
+ * account"), and the SDK's own credential id is discarded on the wire. Same
+ * seed the password-change, session-reauth and email-change ceremonies use.
+ */
+const SDK_CREDENTIAL_SEED = 'session'
+
+export async function unlockVaultPII(opts: { password: string }): Promise<VaultData> {
   await ensureTessera()
-  const email = opts.email.trim()
 
   const vault = await authFetch<VaultResponse>('/auth/user/vault', { skipAuthRetry: true })
   if (!vault?.encrypted_vault || !vault.opaque_wrapped_key) {
@@ -56,7 +67,15 @@ export async function unlockVaultPII(opts: { email: string; password: string }):
   }
 
   const transport = makeOpaqueTransport({
-    blindIndex: await computeBlindIndex(email),
+    // 🔴 EMPTY, AND NOBODY TYPES AN EMAIL ANY MORE. `/auth/reauth/start` is
+    // session-authenticated and resolves the account itself when no blind index
+    // is sent (ciphera-id#95); the SDK's credential id is discarded by the
+    // transport; and the AKE never sees either. So asking for the address was a
+    // UI choice — and on THIS screen it was an absurd one, because the address
+    // is the very thing the unlock exists to reveal. Same removal as password
+    // change (pulse#615) and account deletion (pulse#616); this was the last
+    // ceremony still asking.
+    blindIndex: '',
     mode: 'login',
     basePath: '/auth/reauth',
     // The reauth finish body has no wrap; feed it the one we fetched so the
@@ -66,7 +85,7 @@ export async function unlockVaultPII(opts: { email: string; password: string }):
   })
 
   const session = await new Tessera(transport).login({
-    email,
+    email: SDK_CREDENTIAL_SEED,
     password: new TextEncoder().encode(opts.password),
   })
 

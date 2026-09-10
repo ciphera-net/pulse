@@ -183,7 +183,6 @@ export default function AccountProfileTab() {
   // key) is held for this tab only; a reload clears it and asks again.
   const [unlockedPII, setUnlockedPII] = useState<{ email: string; display_name?: string } | null>(null)
   const [showUnlock, setShowUnlock] = useState(false)
-  const [unlockEmail, setUnlockEmail] = useState('')
   const [unlockPassword, setUnlockPassword] = useState('')
   const [unlocking, setUnlocking] = useState(false)
   const [unlockError, setUnlockError] = useState<string | null>(null)
@@ -422,14 +421,14 @@ export default function AccountProfileTab() {
   const handleUnlock = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     if (unlocking) return
-    if (!unlockEmail.trim() || !unlockPassword) {
-      setUnlockError('Enter the email and password you sign in with.')
+    if (!unlockPassword) {
+      setUnlockError('Enter the password you sign in with.')
       return
     }
     setUnlocking(true)
     setUnlockError(null)
     try {
-      const pii = await unlockVaultPII({ email: unlockEmail, password: unlockPassword })
+      const pii = await unlockVaultPII({ password: unlockPassword })
       setUnlockedPII(pii)
       setShowUnlock(false)
       setUnlockPassword('')
@@ -454,7 +453,7 @@ export default function AccountProfileTab() {
       setUnlockPassword('')
       setUnlocking(false)
     }
-  }, [unlocking, unlockEmail, unlockPassword, displayName, baseline])
+  }, [unlocking, unlockPassword, displayName, baseline])
 
 
   const handleSave = useCallback(async () => {
@@ -541,6 +540,21 @@ export default function AccountProfileTab() {
   // that appears and then vanishes is worse than one that arrives a moment late.
   const emailFormOpen = emailChange.kind === 'idle' || emailChange.kind === 'unavailable'
 
+  /**
+   * 🔴 THE PLACEHOLDER IS ONLY EVER SEEN WHEN THE VAULT IS LOCKED — an unlocked
+   * row carries the real address as its value. So it has to say THAT, not
+   * "you@example.com", which reads as "this account has no email set".
+   *
+   * Shipped wrong on 10-09-2026 and reported within the hour: making the field
+   * editable silently dropped the row's honest label ("Encrypted — not unlocked
+   * in this browser"), so a locked account looked like an account with no
+   * address. Turning a read-only field into an editable one takes its label
+   * with it — put the truth back.
+   */
+  const emailPlaceholder = displayedEmail
+    ? 'you@example.com'
+    : 'Encrypted — unlock above, or type a new address'
+
   const emailRowCaption =
     emailChange.kind === 'unknown'
       ? 'Checking whether a change is already waiting…'
@@ -578,16 +592,15 @@ export default function AccountProfileTab() {
         >
           They are end-to-end encrypted and are not unlocked in this browser. Unlock with your
           password to view them here — nothing is stored; a reload asks again.
+          {/* 🔴 ONE FIELD. This used to ask for the sign-in email as well —
+              i.e. it asked you to type the address in order to be shown the
+              address. The email was never a cryptographic input: since
+              ciphera-id#95 `/auth/reauth/start` resolves the account from the
+              session when no blind index is sent. Same removal as password
+              change (#615) and account deletion (#616); this ceremony was the
+              last one still asking. */}
           {showUnlock && (
             <form onSubmit={handleUnlock} className="mt-4 flex flex-col gap-3">
-              <Input
-                type="email"
-                value={unlockEmail}
-                onChange={e => setUnlockEmail(e.target.value)}
-                placeholder="Email you sign in with"
-                autoComplete="username"
-                disabled={unlocking}
-              />
               <Input
                 type="password"
                 value={unlockPassword}
@@ -666,7 +679,7 @@ export default function AccountProfileTab() {
                 autoComplete="email"
                 value={emailFieldValue}
                 onChange={e => setNewEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder={emailPlaceholder}
                 disabled={sendingLink}
               />
             ) : (
