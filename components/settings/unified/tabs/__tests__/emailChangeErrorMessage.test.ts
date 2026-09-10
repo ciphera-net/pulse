@@ -20,7 +20,13 @@ describe('emailChangeErrorMessage', () => {
     ['a refused body (400)', { status: 400 }, /refused/i],
     ['a network failure', new Error('network down'), /Network error/i],
     ['an account with no vault', new Error('This account has no encrypted vault, so…'), /no encrypted vault/i],
-    ['anything else', new Error('???'), /could not be sent/i],
+    // 🔴 The fallback, and the reason it is the credential message. Measured on
+    // production 10-09-2026: a wrong password makes the ceremony post
+    // `/auth/reauth/start` (200) and then never post `/auth/reauth/finish` at
+    // all — OPAQUE's client detects the mismatch in its own AKE and throws, so
+    // the commonest failure on this path carries NO HTTP status. A mapper that
+    // reads status first will always misfile it.
+    ['a status-less SDK throw — an OPAQUE AKE rejecting the password', new Error('opaque: finish failed'), /didn’t match/i],
   ]
 
   for (const [name, err, expected] of cases) {

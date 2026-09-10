@@ -99,7 +99,24 @@ export function emailChangeErrorMessage(err: unknown): string {
   if (err instanceof Error && /network|fetch/i.test(err.message)) {
     return 'Network error. Nothing has changed — please try again.'
   }
-  return 'The confirmation link could not be sent. Nothing has changed — please try again.'
+
+  // 🔴 THE DEFAULT IS "wrong password", and that is a MEASUREMENT rather than a
+  // guess. Verified on production 10-09-2026 with a deliberately wrong
+  // password: the ceremony posts `/auth/reauth/start` (200) and then NEVER
+  // POSTS `/auth/reauth/finish` AT ALL. OPAQUE is an asymmetric PAKE — the
+  // client detects that the server's response cannot be reconciled with the
+  // password it holds, and throws inside its own AKE. So the single most
+  // likely failure on this path arrives with **no HTTP status of any kind**,
+  // and a status-first mapper files it under whatever its fallback happens to
+  // be. Ours said "The confirmation link could not be sent", which is the
+  // wrong-diagnosis-wearing-an-error-message failure `unlockErrorMessage` was
+  // split apart to fix — and `unlockErrorMessage` gets it right only because
+  // its fallback IS the credential message.
+  //
+  // Everything that is genuinely not a credential failure has already been
+  // named above: it either carries a status (the server answered) or reads as
+  // a network error (the request never landed).
+  return 'That password didn’t match. Nothing was changed — please try again.'
 }
 
 /**
