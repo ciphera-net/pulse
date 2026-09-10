@@ -1,5 +1,6 @@
 import type { PeriodPreset } from '@/lib/constants/periods'
 import type { Period } from '@/lib/hooks/periodUrl'
+import { formatSiteTime, shiftDayKey, zoneDayStartMs, zoneParts } from '@/lib/utils/siteTime'
 import {
   getLast30MinutesRange,
   getLast1HourRange,
@@ -66,6 +67,7 @@ export const VISITORS_PRESETS: { group: string; presets: PeriodPreset[] } = {
 export function presenceTicks(
   dateRange: { start: string; end: string },
   rollingMinutes: number | null,
+  siteTimezone: string,
 ): { from: number; to: number; ticks: { at: number; label: string }[] } {
   const now = Date.now()
 
@@ -73,27 +75,37 @@ export function presenceTicks(
     const from = now - rollingMinutes * 60_000
     const ticks = Array.from({ length: 4 }, (_, i) => {
       const at = from + ((now - from) * i) / 3
-      return {
-        at,
-        label: new Date(at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-      }
+      // The SITE's clock, like every other time on this surface. A live window is
+      // the one case where the two zones' labels differ but their dots do not,
+      // which makes a wrong label here especially quiet.
+      return { at, label: formatSiteTime(at, siteTimezone) }
     })
     return { from, to: now, ticks }
   }
 
-  const from = new Date(`${dateRange.start}T00:00:00`).getTime()
+  // 🔴 THE DOMAIN IS THE SITE'S DAYS, NOT THE READER'S.
+  //
+  // `new Date('2026-08-26T00:00:00')` — no zone suffix — is midnight in the
+  // BROWSER, but `start`/`end` are the days the SERVER resolved in the site's
+  // timezone and queried with. A reader in Auckland was therefore positioning
+  // Brussels dots against an axis 10 hours out of step with the window the rows
+  // actually came from, and clamping the earliest of them onto the left edge.
+  const from = zoneDayStartMs(dateRange.start, siteTimezone)
   // The end DAY is inclusive, so the domain runs to its final instant — a dot
   // for an event at 23:50 on the last day belongs inside the field, not past
   // its right edge.
-  const to = new Date(`${dateRange.end}T23:59:59`).getTime()
+  const to = zoneDayStartMs(shiftDayKey(dateRange.end, 1), siteTimezone) - 1_000
   const span = Math.max(1, to - from)
   const count = span > 21 * 86_400_000 ? 5 : 4
   const ticks = Array.from({ length: count }, (_, i) => {
     const at = from + (span * i) / (count - 1)
-    return {
-      at,
-      label: new Date(at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' }),
-    }
+    return { at, label: formatSiteDayNumeric(at, siteTimezone) }
   })
   return { from, to, ticks }
+}
+
+/** "26/08" — the field's gridline label, in the SITE's calendar. */
+function formatSiteDayNumeric(at: number, siteTimezone: string): string {
+  const p = zoneParts(new Date(at), siteTimezone)
+  return `${String(p.day).padStart(2, '0')}/${String(p.month).padStart(2, '0')}`
 }

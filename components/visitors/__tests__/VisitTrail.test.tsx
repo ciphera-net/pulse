@@ -33,7 +33,7 @@ function step(path: string): VisitEvent {
 }
 
 function payload(page: number, events: VisitEvent[], total: number): VisitEventsResponse {
-  return { events, total, page, page_size: 200 }
+  return { events, total, page, page_size: 200, site_timezone: 'Europe/Brussels' }
 }
 
 const PAGE_1 = [step('/one'), step('/two')]

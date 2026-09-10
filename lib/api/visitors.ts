@@ -38,6 +38,16 @@ export interface VisitorsResponse {
   total: number
   page: number
   page_size: number
+  /**
+   * The SITE's IANA timezone — the calendar every instant in this payload must be
+   * rendered in.
+   *
+   * 🔑 It travels WITH the data rather than being fetched separately, so the rows and
+   * the calendar they are read in can never be out of step and no second request gates
+   * rendering a date. Not to be confused with `VisitorProfile.timezone`, which is the
+   * VISITOR's self-reported zone — a different fact, spelled differently on purpose.
+   */
+  site_timezone: string
   /** RFC3339. The earliest instant this site can be asked about. */
   range_floor: string
   /** Distinct visitors on the site RIGHT NOW — a property of now, not of the range. */
@@ -45,6 +55,16 @@ export interface VisitorsResponse {
 }
 
 export interface VisitorProfile extends Omit<VisitorRow, 'active_now'> {
+  /**
+   * When this identity expires, as an RFC3339 INSTANT computed by the server in the
+   * SITE's timezone — never derived here from `month`.
+   *
+   * The client used to compute it as `new Date(y, m, 1)` from the 'YYYY-MM' string,
+   * which is midnight in the BROWSER against a month the server bucketed
+   * `AT TIME ZONE <site tz>`. Null when the server could not compute it, and the page
+   * then says nothing about the reset rather than printing a guess.
+   */
+  month_resets_at: string | null
   /** Null when no visit's duration was measured — never 0, which reads as "left instantly". */
   avg_visit_seconds: number | null
   /** The visitor's self-reported IANA zone, for the "where they are" clock. */
@@ -55,6 +75,16 @@ export interface VisitorProfile extends Omit<VisitorRow, 'active_now'> {
 export interface VisitorProfileResponse {
   visitor: VisitorProfile
   range_floor: string
+  /**
+   * The SITE's IANA timezone — the calendar every instant in this payload must be
+   * rendered in.
+   *
+   * 🔑 It travels WITH the data rather than being fetched separately, so the rows and
+   * the calendar they are read in can never be out of step and no second request gates
+   * rendering a date. Not to be confused with `VisitorProfile.timezone`, which is the
+   * VISITOR's self-reported zone — a different fact, spelled differently on purpose.
+   */
+  site_timezone: string
 }
 
 export interface VisitRow {
@@ -75,6 +105,16 @@ export interface VisitsResponse {
   total: number
   page: number
   page_size: number
+  /**
+   * The SITE's IANA timezone — the calendar every instant in this payload must be
+   * rendered in.
+   *
+   * 🔑 It travels WITH the data rather than being fetched separately, so the rows and
+   * the calendar they are read in can never be out of step and no second request gates
+   * rendering a date. Not to be confused with `VisitorProfile.timezone`, which is the
+   * VISITOR's self-reported zone — a different fact, spelled differently on purpose.
+   */
+  site_timezone: string
 }
 
 export interface VisitEvent {
@@ -97,6 +137,16 @@ export interface VisitEventsResponse {
   total: number
   page: number
   page_size: number
+  /**
+   * The SITE's IANA timezone — the calendar every instant in this payload must be
+   * rendered in.
+   *
+   * 🔑 It travels WITH the data rather than being fetched separately, so the rows and
+   * the calendar they are read in can never be out of step and no second request gates
+   * rendering a date. Not to be confused with `VisitorProfile.timezone`, which is the
+   * VISITOR's self-reported zone — a different fact, spelled differently on purpose.
+   */
+  site_timezone: string
 }
 
 /**
@@ -145,7 +195,17 @@ export function getVisitors(
     // ApiError with status 403 and the page branches on it.
   ).then(
     (r) =>
-      r ?? { visitors: [], total: 0, page: 1, page_size: 50, range_floor: '', active_now: 0 },
+      r ?? {
+        visitors: [],
+        total: 0,
+        page: 1,
+        page_size: 50,
+        range_floor: '',
+        // An empty string, not the reader's zone: a body that never arrived carries no
+        // calendar, and the pages fall back to the server's own UTC default for it.
+        site_timezone: '',
+        active_now: 0,
+      },
   )
 }
 
@@ -170,7 +230,7 @@ export function getVisitorVisits(
       page: opts?.page,
       page_size: opts?.pageSize,
     })}`,
-  ).then((r) => r ?? { visits: [], total: 0, page: 1, page_size: 20 })
+  ).then((r) => r ?? { visits: [], total: 0, page: 1, page_size: 20, site_timezone: '' })
 }
 
 export function getVisitEvents(
@@ -185,5 +245,5 @@ export function getVisitEvents(
       range,
       { page },
     )}`,
-  ).then((r) => r ?? { events: [], total: 0, page: 1, page_size: 200 })
+  ).then((r) => r ?? { events: [], total: 0, page: 1, page_size: 200, site_timezone: '' })
 }

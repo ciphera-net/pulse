@@ -56,8 +56,18 @@ export function formatSiteStampShort(iso: string, tz: string | null | undefined)
   return `${date}, ${time}`
 }
 
+/** "23:15" — clock-only label for an instant in the site's zone. */
+export function formatSiteTime(iso: string | number | Date, tz: string | null | undefined): string {
+  return new Date(iso).toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: safeTimeZone(tz),
+  })
+}
+
 /** "13 Aug" — day label for an instant (axis ticks and the like). */
-export function formatSiteDay(iso: string, tz: string | null | undefined): string {
+export function formatSiteDay(iso: string | number | Date, tz: string | null | undefined): string {
   return new Date(iso).toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'short',
