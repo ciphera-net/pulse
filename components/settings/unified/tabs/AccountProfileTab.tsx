@@ -342,6 +342,11 @@ export default function AccountProfileTab() {
         if (pii.display_name && baselineRef.current === '') setBaseline(pii.display_name)
       } catch (e) {
         logger.error('vault: a stored key did not open this account’s vault; asking for the password', e)
+        // 🔴 AND SAY SO, so the screen can resolve. A key that does not open
+        // this vault is not a key this screen can use — leaving `keyStored`
+        // true would hold the waiting state forever and the password prompt
+        // would never appear. `false` is what "ask for the password" means.
+        setKeyStored(false)
       }
     })()
     return () => { live = false }
@@ -670,7 +675,25 @@ export default function AccountProfileTab() {
    * which is exactly what the effect below sets it away from. The render simply
    * never consulted it. Nullable state over sentinel values.
    */
-  const vaultResolving = !!user.id && keyStored === null && !unlockedPII && !user.email
+  /**
+   * 🔴 `keyStored !== false`, NOT `=== null` — TWO windows, and the second is
+   * the bigger one. Measured on production after the first attempt at this fix:
+   *
+   *     t=269 ms  skeleton                       (keyStored === null)
+   *     t=285 ms  LOCKED banner + Unlock  ← 68ms (keyStored === true, no PII)
+   *     t=379 ms  the address and the line
+   *
+   * `setKeyStored(true)` fires the moment a key is FOUND, but opening the vault
+   * with it — a fetch plus an AES open — resolves later. In between,
+   * `piiUnavailable` goes true again and the locked banner came back. Guarding
+   * only "have not asked yet" fixed 16 ms of a 103 ms problem and moved the
+   * rest.
+   *
+   * `false` is the one state that genuinely means locked: no key, or a key that
+   * would not open this vault (the effect below sets it on that failure, for
+   * exactly this reason).
+   */
+  const vaultResolving = !!user.id && !user.email && !unlockedPII && keyStored !== false
 
   // The form is offered whenever we know there is no live link — and also when
   // we could not find out, because a failed status read must not take the
