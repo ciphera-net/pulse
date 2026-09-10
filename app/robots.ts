@@ -14,6 +14,12 @@ const PUBLIC_ALLOW = [
   '/demo',
   '/open-source',
   '/startups',
+  // * /contact was in neither this list nor the sitemap, while serving 200 (found
+  // * 10-09-2026). It was always crawlable — `allow: '/'` is the first entry — so
+  // * this changes nothing for a crawler and everything for the next reader: this
+  // * list is what CLAUDE.md points Phase 4 at for its route stubs, and a marketing
+  // * page missing from it would silently miss its SEO stub too.
+  '/contact',
   '/vs',
   '/tools',
   '/cookieless-analytics',

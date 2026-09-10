@@ -53,6 +53,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: '/demo', priority: 0.8, changeFrequency: 'weekly' as const },
     { url: '/open-source', priority: 0.8, changeFrequency: 'monthly' as const },
     { url: '/startups', priority: 0.8, changeFrequency: 'monthly' as const },
+    // * /contact was a real 200 page that no sitemap and no robots Allow line ever
+    // * mentioned (found 10-09-2026). robots.txt opens with `Allow: /`, so it was
+    // * crawlable all along — it was simply never advertised, which is the half a
+    // * sitemap exists to do.
+    { url: '/contact', priority: 0.6, changeFrequency: 'yearly' as const },
   ]
 
   const staticEntries: MetadataRoute.Sitemap = publicRoutes.map((route) => ({
