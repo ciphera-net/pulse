@@ -37,6 +37,50 @@ function monthLabel(month: string): string {
   return new Date(y, m - 1, 1).toLocaleDateString('en-GB', { month: 'long' })
 }
 
+/**
+ * ribbonSummary is the ribbon's TEXT EQUIVALENT, and it is not optional.
+ *
+ * 🔴 MEASURED 10-09-2026: all 30 cells carried their data ONLY in a `title`
+ * attribute on a roleless <div>. `title` is a mouse-hover affordance — not
+ * focusable, not reachable by touch, not reliably announced. The ribbon's whole
+ * accessible text was "September, day by dayidentity resets in 21 days18152229":
+ * the captions, then the bare day-axis numbers, and nothing at all about when
+ * this visitor was here. That information exists nowhere else on the page.
+ *
+ * ⚠️ AXE FOUND NOTHING HERE. Automated tooling has no rule for "conveys
+ * information with no text equivalent", because it cannot know there was any
+ * information — a strip of empty divs is indistinguishable from decoration.
+ * This one had to be read.
+ *
+ * It enumerates every active day rather than summarising, because a summary
+ * would be a different, smaller answer than the picture gives. It sits on a
+ * role="img", so it is read on demand and never barges into the page's flow.
+ */
+function ribbonSummary(
+  month: string,
+  visitsByDay: Record<number, number>,
+  today: number | null,
+  totalDays: number,
+): string {
+  const label = monthLabel(month)
+  const active = Object.keys(visitsByDay)
+    .map(Number)
+    .filter((d) => (visitsByDay[d] ?? 0) > 0)
+    .sort((a, b) => a - b)
+
+  const todayPart = today !== null ? ` Today is ${today} ${label}.` : ''
+  if (active.length === 0) {
+    // "no visits", never "0 visits": a day with a measured zero and a month with
+    // none at all are different statements, and the ribbon draws them
+    // differently too (an outline, not a faint fill).
+    return `${label}, day by day: no visits on any of its ${totalDays} days.${todayPart}`
+  }
+  const each = active
+    .map((d) => `${d} ${label}, ${visitsByDay[d]} ${visitsByDay[d] === 1 ? 'visit' : 'visits'}`)
+    .join('; ')
+  return `${label}, day by day. Visits on ${active.length} of ${totalDays} days: ${each}.${todayPart}`
+}
+
 export function MonthRibbon({ month, visitsByDay, today, resetsInDays }: MonthRibbonProps) {
   const total = daysInMonth(month)
   const max = useMemo(
@@ -58,43 +102,50 @@ export function MonthRibbon({ month, visitsByDay, today, resetsInDays }: MonthRi
         )}
       </div>
 
-      <div className="flex gap-1">
-        {Array.from({ length: total }, (_, i) => {
-          const day = i + 1
-          const visits = visitsByDay[day] ?? 0
-          const isToday = today === day
-          return (
-            <div
-              key={day}
-              title={`${day} ${monthLabel(month)} — ${visits} ${visits === 1 ? 'visit' : 'visits'}`}
-              className={
-                'h-6 flex-1 rounded-none ' +
-                (visits > 0
-                  ? 'bg-brand-orange'
-                  : 'border border-border') +
-                (isToday ? ' ring-1 ring-brand-orange ring-offset-1 ring-offset-background' : '')
-              }
-              // Opacity carries intensity so the ribbon has depth without a second
-              // hue. A zero-visit day is NOT a faint orange — it is an outline, so
-              // "no data" and "a little data" can never be confused.
-              style={visits > 0 ? { opacity: 0.35 + 0.65 * (visits / max) } : undefined}
-            />
-          )
-        })}
-      </div>
+      {/* The strip AND its day axis are ONE image with one label. The captions
+          above stay outside it: role="img" makes its subtree presentational, and
+          "identity resets in N days" is real text a reader should hear in the
+          page's flow rather than only when inspecting a graphic.
+          The wrapper adds no box — both children are block-level either way. */}
+      <div role="img" aria-label={ribbonSummary(month, visitsByDay, today, total)}>
+        <div className="flex gap-1">
+          {Array.from({ length: total }, (_, i) => {
+            const day = i + 1
+            const visits = visitsByDay[day] ?? 0
+            const isToday = today === day
+            return (
+              <div
+                key={day}
+                title={`${day} ${monthLabel(month)} — ${visits} ${visits === 1 ? 'visit' : 'visits'}`}
+                className={
+                  'h-6 flex-1 rounded-none ' +
+                  (visits > 0
+                    ? 'bg-brand-orange'
+                    : 'border border-border') +
+                  (isToday ? ' ring-1 ring-brand-orange ring-offset-1 ring-offset-background' : '')
+                }
+                // Opacity carries intensity so the ribbon has depth without a second
+                // hue. A zero-visit day is NOT a faint orange — it is an outline, so
+                // "no data" and "a little data" can never be confused.
+                style={visits > 0 ? { opacity: 0.35 + 0.65 * (visits / max) } : undefined}
+              />
+            )
+          })}
+        </div>
 
-      <div className="relative mt-1 h-4 text-xs text-neutral-600">
-        {[1, 8, 15, 22, 29]
-          .filter((d) => d <= total)
-          .map((d) => (
-            <span
-              key={d}
-              className="absolute tabular-nums"
-              style={{ left: `${((d - 1) / total) * 100}%` }}
-            >
-              {d}
-            </span>
-          ))}
+        <div className="relative mt-1 h-4 text-xs text-neutral-600">
+          {[1, 8, 15, 22, 29]
+            .filter((d) => d <= total)
+            .map((d) => (
+              <span
+                key={d}
+                className="absolute tabular-nums"
+                style={{ left: `${((d - 1) / total) * 100}%` }}
+              >
+                {d}
+              </span>
+            ))}
+        </div>
       </div>
     </div>
   )

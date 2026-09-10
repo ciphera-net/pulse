@@ -17,6 +17,7 @@ import { type MetricType } from '@/lib/dashboard/metrics'
 import { Captcha, ZapIcon } from '@ciphera-net/facet'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { PERIOD_TO_API } from '@/lib/constants/periods'
+import { DEFAULT_GEO_DATA_LEVEL } from '@/lib/api/sites'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import ExportModal from '@/components/dashboard/ExportModal'
 import { SiteFavicon } from '@/components/sites/SiteFavicon'
@@ -392,7 +393,7 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
             regions={safeRegions}
             languages={safeLanguages}
             timezones={safeTimezones}
-            geoDataLevel={site.collect_geo_data || 'full'}
+            geoDataLevel={site.collect_geo_data || DEFAULT_GEO_DATA_LEVEL}
             collectAudienceData={site.collect_audience_data ?? true}
             siteId={siteId}
             dateRange={dateRange}

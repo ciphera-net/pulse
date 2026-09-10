@@ -9,7 +9,6 @@ import { ErrorCard } from '@/components/ui/ErrorCard'
 import { Pagination } from '@/components/search/rowPrimitives'
 import { JourneyStrand } from '@/components/visitors/JourneyStrand'
 import { MonthRibbon } from '@/components/visitors/MonthRibbon'
-import { VisitorMeta } from '@/components/visitors/VisitorMeta'
 import { VisitTrail } from '@/components/visitors/VisitTrail'
 import { CountryFlag } from '@/components/ui/CountryFlag'
 import { BrowserMark, OSMark, ReferrerMark, DeviceGlyph, referrerLabel } from '@/components/visitors/VisitorIcons'
@@ -18,6 +17,7 @@ import { useSite, useVisitorProfile, useVisitorVisits } from '@/lib/swr/dashboar
 import { visitorPseudonym } from '@/lib/visitors/pseudonym'
 import {
   EM_DASH,
+  SITE_TIMEZONE_FALLBACK,
   countryName,
   daysUntilMonthReset,
   formatDuration,
@@ -25,6 +25,8 @@ import {
   formatVisitStart,
   monthResetDate,
   visitorLocalTime,
+  zonedDayOfMonth,
+  zonedMonthKey,
 } from '@/lib/visitors/format'
 import { VISITORS_MIN_DATE, VISITORS_ROLLING_MINUTES, VISITORS_PRESETS } from '@/lib/visitors/range'
 import { deviceLabel } from '@/components/visitors/VisitorMeta'
@@ -78,6 +80,13 @@ export default function VisitorDetailPage() {
   const profile = data?.visitor
   const name = visitorPseudonym(visitorKey)
 
+  // 🔴 THE SITE'S ZONE — see the roster page's note. It arrives on the same payloads as
+  // the instants it applies to, so a date can never be rendered against a calendar that
+  // has not arrived yet. `useSite` is the fallback for a response cached before the
+  // field shipped; UTC is the server's own default and is never the reader's zone.
+  const siteTimezone =
+    data?.site_timezone || visitsData?.site_timezone || site?.timezone || SITE_TIMEZONE_FALLBACK
+
   useEffect(() => {
     document.title = `${name} · Visitors | Pulse`
   }, [name])
@@ -89,14 +98,18 @@ export default function VisitorDetailPage() {
   // The ribbon's day buckets come from the VISITS the page already has, not
   // from a second request. It is therefore honest about its own scope: it
   // shows the visits in this range, and the caption says which month.
+  //
+  // 🔴 Bucketed by the SITE's day-of-month, not `getDate()`. A visit at 02:30 in
+  // Brussels read from New York used to land in the previous day's cell — and could fall
+  // outside the month whose label is printed above the ribbon.
   const visitsByDay = useMemo(() => {
     const acc: Record<number, number> = {}
     for (const v of visits) {
-      const d = new Date(v.started_at)
-      if (Number.isFinite(d.getTime())) acc[d.getDate()] = (acc[d.getDate()] ?? 0) + 1
+      const day = zonedDayOfMonth(v.started_at, siteTimezone)
+      if (day !== null) acc[day] = (acc[day] ?? 0) + 1
     }
     return acc
-  }, [visits])
+  }, [visits, siteTimezone])
 
   if (error) {
     const status = (error as { status?: number }).status
@@ -117,7 +130,8 @@ export default function VisitorDetailPage() {
     )
   }
 
-  const resetsIn = profile ? daysUntilMonthReset(profile.month) : null
+  const resetsIn = profile ? daysUntilMonthReset(profile.month_resets_at) : null
+  const resetDate = profile ? monthResetDate(profile.month_resets_at, siteTimezone) : null
   const localTime = visitorLocalTime(profile?.timezone)
 
   return (
@@ -125,7 +139,11 @@ export default function VisitorDetailPage() {
       <div className="flex flex-wrap items-start justify-between gap-4 pt-6">
         <div className="min-w-0">
           <BackLink siteId={siteId} />
-          <h1 className="mt-2 flex items-center gap-3 text-2xl font-medium text-white">
+          {/* text-lg/font-semibold, not text-2xl/font-medium — the size every
+              other detail room in the product uses (funnels is the reference).
+              Part of the owner's 10-09 note: "make it consistent like the other
+              screens in pulse". */}
+          <h1 className="mt-2 flex items-center gap-3 text-lg font-semibold text-white">
             {name}
             {/* The hash is the TRUE key and is always shown here. Pseudonyms
                 collide by design; this is what makes two "Quiet Readers"
@@ -133,11 +151,17 @@ export default function VisitorDetailPage() {
                 it is machine data, not chrome. */}
             <span className="font-mono text-sm text-neutral-500">{visitorKey.slice(0, 8)}</span>
             {profile?.active_now && (
-              <span
-                className="size-2 rounded-full bg-brand-orange"
-                style={{ boxShadow: '0 0 0 4px rgb(255 92 0 / 0.18)' }}
-                aria-label="on the site now"
-              />
+              <>
+                {/* aria-label on a bare span is an aria-prohibited-attr violation —
+                    see the roster row's note. The visually-hidden text is the house
+                    device and cannot be dropped by assistive technology. */}
+                <span
+                  aria-hidden="true"
+                  className="size-2 rounded-full bg-brand-orange"
+                  style={{ boxShadow: '0 0 0 4px rgb(255 92 0 / 0.18)' }}
+                />
+                <span className="sr-only">on the site now</span>
+              </>
             )}
           </h1>
 
@@ -149,27 +173,48 @@ export default function VisitorDetailPage() {
                 <span>{localTime} where they are</span>
               </>
             )}
-            {profile && (
-              <>
-                {(profile.active_now || localTime) && <span className="text-neutral-700">·</span>}
-                <VisitorMeta
-                  className="text-sm"
-                  country={profile.country}
-                  city={profile.city}
-                  browser={profile.browser}
-                  os={profile.os}
-                  deviceType={profile.device_type}
-                  referrer={profile.referrer}
-                  collectsReferrers={site?.collect_referrers ?? false}
-                />
-              </>
-            )}
+            {/*
+              🔴 THE DIMENSION LINE IS GONE FROM THE HEADER (approved round 5b, §4 A).
+              Owner, 10-09-2026: the screen "shows a lot of duplicate data".
+              Measured: it repeated FIVE of the Profile card's eight cells —
+              country, city, browser, OS, device and referrer — 200px above them,
+              and "Channel" down there is derived from the referrer beside it.
+
+              ⚠️ IT MOVED, IT WAS NOT DELETED. The Profile card below keeps every
+              one of those values AND its icon kit — CountryFlag, BrowserMark,
+              OSMark, DeviceGlyph, ReferrerMark — untouched. Owner: "don't remove
+              all the logos/icons from the block below". The header keeps its
+              STATUS clause ("Active now · 16:29 where they are"), which the card
+              only half-repeats and which answers a question at a glance:
+              is it reasonable that they are reading this right now?
+            */}
           </div>
 
           {profile && (
             <p className="mt-1 text-xs text-neutral-600">
-              First seen {formatShortDate(profile.first_seen)} · this identity resets{' '}
-              {monthResetDate(profile.month)} — a returning reader becomes a new visitor
+              {/*
+                🔴 TENSE FOLLOWS THE CLOCK. This line read "this identity resets 1 Sep"
+                UNCONDITIONALLY, so on 10-09-2026 — nine days after the boundary — it was
+                still saying so in the present tense on 322 of themodestyhouse's 517 rows.
+                MonthRibbon twelve lines below already got this right by hiding its
+                caption when `resetsInDays` is null; the header now reads the same
+                nullable, so the two can never disagree again.
+
+                When the server sent no reset instant at all (`resetDate` null) the
+                sentence says nothing about the reset rather than guessing at a date.
+              */}
+              First seen {formatShortDate(profile.first_seen, siteTimezone)}
+              {resetDate !== null &&
+                (resetsIn !== null ? (
+                  <> · this identity resets {resetDate} — a returning reader becomes a new visitor</>
+                ) : (
+                  // Owner decision 10-09-2026: once the reset is PAST the clause stops
+                  // there. The mechanic ("a returning reader becomes a new visitor") is
+                  // a thing about to happen; on a historical identity it has already
+                  // happened, and MonthRibbon's caption below carries what is left to
+                  // say. Less text on a row nobody can act on.
+                  <> · this identity reset {resetDate}</>
+                ))}
             </p>
           )}
 
@@ -202,7 +247,7 @@ export default function VisitorDetailPage() {
           <MonthRibbon
             month={profile.month}
             visitsByDay={visitsByDay}
-            today={todayInMonth(profile.month)}
+            today={todayInMonth(profile.month, siteTimezone)}
             resetsInDays={resetsIn}
           />
         </div>
@@ -211,14 +256,15 @@ export default function VisitorDetailPage() {
       {/* ─── Visits ─── */}
       <div className="mt-6 rounded-none border border-border bg-card">
         <div className="flex h-12 items-center justify-between border-b border-border px-4">
-          <span className="text-sm font-medium text-white">Visits</span>
+          <h2 className="text-sm font-medium text-white">Visits</h2>
           <span className="text-xs text-neutral-500">newest first</span>
         </div>
 
         {visitsLoading && visits.length === 0 ? (
-          <div className="p-4">
+          <div className="p-4" role="status">
+            <span className="sr-only">Loading visits…</span>
             {Array.from({ length: 4 }, (_, i) => (
-              <div key={i} className="mb-3 h-9 animate-pulse rounded-none bg-neutral-800/50" />
+              <div key={i} aria-hidden="true" className="mb-3 h-9 animate-pulse rounded-none bg-neutral-800/50" />
             ))}
           </div>
         ) : visits.length === 0 ? (
@@ -233,6 +279,7 @@ export default function VisitorDetailPage() {
                 siteId={siteId}
                 visitorKey={visitorKey}
                 visit={v}
+                siteTimezone={siteTimezone}
                 range={range}
                 open={openVisit === v.visit_key}
                 onToggle={() => setOpenVisit((k) => (k === v.visit_key ? null : v.visit_key))}
@@ -253,7 +300,7 @@ export default function VisitorDetailPage() {
       {profile && (
         <div className="mt-6 rounded-none border border-border bg-card">
           <div className="flex h-12 items-center justify-between border-b border-border px-4">
-            <span className="text-sm font-medium text-white">Profile</span>
+            <h2 className="text-sm font-medium text-white">Profile</h2>
             <span className="text-xs text-neutral-500">first touch · latest observed</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2">
@@ -371,6 +418,7 @@ function VisitRowItem({
   visitorKey,
   visit,
   range,
+  siteTimezone,
   open,
   onToggle,
 }: {
@@ -378,6 +426,7 @@ function VisitRowItem({
   visitorKey: string
   visit: VisitRow
   range: { startDate?: string; endDate?: string; minutes?: number | null }
+  siteTimezone: string
   open: boolean
   onToggle: () => void
 }) {
@@ -398,8 +447,11 @@ function VisitRowItem({
           pages={visit.pageviews}
           eventAt={visit.events > 0 ? [Math.min(2, Math.max(0, visit.pageviews - 1))] : []}
         />
+        {visit.events > 0 && <span className="sr-only">an event fired on this visit. </span>}
         <span className="min-w-0 flex-1 truncate text-sm text-neutral-300">
-          <span className="text-neutral-500">{formatVisitStart(visit.started_at)}</span>{' '}
+          <span className="text-neutral-500">
+            {formatVisitStart(visit.started_at, siteTimezone)}
+          </span>{' '}
           <span className="text-neutral-700">·</span> {visit.entry_path ?? EM_DASH}
           {visit.exit_path && visit.exit_path !== visit.entry_path && (
             <>
@@ -421,9 +473,16 @@ function VisitRowItem({
   )
 }
 
-/** Today's day-of-month, but only when today falls inside the identity's month. */
-function todayInMonth(month: string): number | null {
-  const now = new Date()
-  const label = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  return label === month ? now.getDate() : null
+/**
+ * Today's day-of-month, but only when today falls inside the identity's month.
+ *
+ * 🔴 Resolved in the SITE's calendar. `profile.month` was computed by Postgres as
+ * `to_char(… AT TIME ZONE <site tz>, 'YYYY-MM')`, so comparing it against the browser's
+ * own month put the ribbon's "today" ring on the wrong cell — or on no cell at all —
+ * for any reader whose date differs from the site's, which is most of a working day
+ * somewhere.
+ */
+function todayInMonth(month: string, siteTimezone: string): number | null {
+  const now = Date.now()
+  return zonedMonthKey(now, siteTimezone) === month ? zonedDayOfMonth(now, siteTimezone) : null
 }
