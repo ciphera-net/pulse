@@ -11,10 +11,16 @@ vi.mock('@/lib/swr/dashboard', () => ({
 
 
 describe('SectionHeader', () => {
-  it('renders the title with its provenance note', () => {
-    render(<SectionHeader title="Acquisition" note="events · filtered with the page" />)
+  // 🔴 The provenance note was removed 10-09-2026 (owner: "get rid of whole
+  // site & site timezone from on top right of all the blocks... its
+  // unnecessary"). The header is a title and nothing else now — the one card
+  // whose scope genuinely differs from its neighbours, Outbound, says so in its
+  // own footnote, and only when a page filter is actually on.
+  it('renders the title, and nothing beside it', () => {
+    const { container } = render(<SectionHeader title="Acquisition" />)
     expect(screen.getByRole('heading', { name: 'Acquisition' })).toBeTruthy()
-    expect(screen.getByText('events · filtered with the page')).toBeTruthy()
+    expect(container.textContent).toBe('Acquisition')
+    expect(container.querySelectorAll('span')).toHaveLength(0)
   })
 })
 

@@ -23,23 +23,23 @@ describe('dashboard page wiring (Phase 3)', () => {
     expect(page.match(/filters=\{filtersParam \|\| undefined\}/g)?.length).toBe(6)
   })
 
-  it('labels each section with its filter scope, and Behaviour with the timezone', () => {
-    // Scope only, NO unit word — the cards state their own unit ("share of
-    // N pageviews/visitors"); a unit here contradicted them (review finding).
-    expect(page).toContain("'filtered with the page'")
-    expect(page).toContain("'whole site'")
-    expect(page).not.toContain("'events · whole site'")
-    expect(page).toContain('· site timezone')
-    // Outbound became its own section on 10-09-2026 (owner: "add an Outbound
-    // title like there is Audience on the left of it") — it used to share the
-    // Audience row with Technology and take its name from that header.
+  it('names each section, and says nothing else beside the name', () => {
+    // Five headings. Outbound got its own on 10-09-2026 (owner: "add an
+    // Outbound title like there is Audience on the left of it") — it used to
+    // take its name from the header describing its neighbour.
     for (const title of ['Acquisition', 'Audience', 'Outbound', 'Content', 'Behaviour']) {
-      expect(page).toContain(`<SectionHeader title="${title}"`)
+      expect(page).toContain(`<SectionHeader title="${title}" />`)
     }
-    // 🔑 Its note is the literal 'whole site', never `sectionNote`. The property
-    // endpoints behind the card take no filters, so under a page filter every
-    // other section is 'filtered with the page' and this one is genuinely not.
-    expect(page).toContain('<SectionHeader title="Outbound" note="whole site" />')
+    // 🔴 The provenance note is GONE (owner, same day: "get rid of whole site &
+    // site timezone from on top right of all the blocks... its unnecessary").
+    // It stated each section's filter scope on every load, whether or not
+    // anything was filtered. The one card whose scope genuinely differs from its
+    // neighbours is Outbound, whose endpoints take no filters — and that card
+    // says so itself, in its own footnote, only when a filter is actually on.
+    expect(page).not.toContain('note=')
+    expect(page).not.toContain('sectionNote')
+    expect(page).not.toContain("'filtered with the page'")
+    expect(page).not.toContain('· site timezone')
   })
 
   // ── The Audience row carries a header PER COLUMN (owner, 10-09-2026) ───────
@@ -57,7 +57,7 @@ describe('dashboard page wiring (Phase 3)', () => {
     const rowStart = page.lastIndexOf('grid gap-3 lg:grid-cols-2', audienceAt)
     expect(rowStart).toBeGreaterThan(-1)
     const row = page.slice(rowStart, rowEnd)
-    expect(row).toContain('<SectionHeader title="Outbound" note="whole site" />')
+    expect(row).toContain('<SectionHeader title="Outbound" />')
     // TechSpecs and Outbound share exactly ONE grid — not two stacked sections.
     // Splitting them left both rows half empty, which the owner rejected on
     // staging.
