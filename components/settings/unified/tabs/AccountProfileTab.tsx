@@ -18,7 +18,7 @@ import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
 import { logger } from '@/lib/utils/logger'
 import { unlockVaultPII } from '@/lib/auth/tessera/opaque-unlock'
-import { loadVaultKey, saveVaultKey } from '@/lib/auth/vault-store'
+import { loadVaultKey, saveVaultKey, forgetVaultKeys } from '@/lib/auth/vault-store'
 import { openVaultWithKey, saveDisplayName } from '@/lib/auth/vault-restore'
 import { performSessionOpaqueReauth } from '@/lib/auth/tessera/opaque-reauth'
 import { performEmailChangeRequest } from '@/lib/auth/tessera/email-change'
@@ -185,6 +185,17 @@ export default function AccountProfileTab() {
   // key) is held for this tab only; a reload clears it and asks again.
   const [unlockedPII, setUnlockedPII] = useState<{ email: string; display_name?: string } | null>(null)
   const [showUnlock, setShowUnlock] = useState(false)
+  /**
+   * Is a key actually at rest for this account on this device?
+   *
+   * 🔴 THREE-VALUED, AND `null` IS NOT `false`. The banner says "Unlocked on
+   * this device" only when a key really was persisted — never merely because
+   * the vault happens to be open in this tab. Those are different facts and
+   * they behave differently on the next reload, so the sentence has to follow
+   * the storage rather than the screen.
+   */
+  const [keyStored, setKeyStored] = useState<boolean | null>(null)
+  const [locking, setLocking] = useState(false)
   const [unlockPassword, setUnlockPassword] = useState('')
   const [unlocking, setUnlocking] = useState(false)
   const [unlockError, setUnlockError] = useState<string | null>(null)
@@ -257,6 +268,27 @@ export default function AccountProfileTab() {
 
   // The address as this browser currently knows it: the vault's, once unlocked;
   // otherwise whatever the session carries (empty for a zero-knowledge account).
+  /**
+   * Put the lock back — rule 6 of the custody decision: the person should be
+   * able to see which state they are in, AND undo it.
+   *
+   * Clears every stored key, not just this account's: the button says "lock
+   * this device", and a row belonging to an account signed in earlier is
+   * exactly the row nobody would think to clear. Same reasoning as sign-out.
+   */
+  const handleLock = useCallback(async () => {
+    if (locking) return
+    setLocking(true)
+    try {
+      await forgetVaultKeys()
+      setKeyStored(false)
+      setUnlockedPII(null)
+      toast.success('Locked. Pulse will ask for your password again.')
+    } finally {
+      setLocking(false)
+    }
+  }, [locking])
+
   const displayedEmail = unlockedPII?.email ?? user?.email ?? ''
   // Untouched (`null`) shows the current address; typing replaces it. So the
   // row reads as the thing it is changing, and a locked account — which has no
@@ -285,10 +317,19 @@ export default function AccountProfileTab() {
   // showing an error for a lock that is simply still locked.
   useEffect(() => {
     if (!user?.id || unlockedPII) return
+    // 🔴 `keyStored === false` STOPS THIS, and that is the Lock button working.
+    // Locking clears the plaintext, which re-runs this effect — and without the
+    // guard it would immediately re-open the vault from the store it is racing
+    // to clear. It happens to win that race today; a lock that depends on
+    // winning a race is not a lock. `null` still means "not asked yet", so a
+    // first load is unaffected.
+    if (keyStored === false) return
     let live = true
     void (async () => {
       const key = await loadVaultKey(user.id)
-      if (!key || !live) return
+      if (!live) return
+      setKeyStored(!!key)
+      if (!key) return
       try {
         const pii = await openVaultWithKey(key)
         if (!live) return
@@ -303,7 +344,7 @@ export default function AccountProfileTab() {
       }
     })()
     return () => { live = false }
-  }, [user?.id, unlockedPII])
+  }, [user?.id, unlockedPII, keyStored])
 
   // ── Is a confirmation link live? ─────────────────────────────────────────
   //
@@ -474,7 +515,15 @@ export default function AccountProfileTab() {
       // Option 1). Before this, every reload asked again; the key now outlives
       // the tab so it does not. vault-store holds the five rules that came with
       // the decision, including the throw if the key is ever extractable.
-      if (user?.id) await saveVaultKey(user.id, vaultKey)
+      if (user?.id) {
+        await saveVaultKey(user.id, vaultKey)
+        // 🔑 Read it BACK. saveVaultKey swallows a write failure on purpose —
+        // the unlock already succeeded and a private window should not be an
+        // error — but that means "it did not throw" is not evidence anything
+        // was stored. The banner is about to make a claim about this device, so
+        // the claim is measured, not inferred.
+        setKeyStored(!!(await loadVaultKey(user.id)))
+      }
       setUnlockedPII(pii)
       setShowUnlock(false)
       setUnlockPassword('')
@@ -694,7 +743,38 @@ export default function AccountProfileTab() {
             </form>
           )}
         </Banner>
+      ) : keyStored ? (
+        /* 🔴 RULE 6 of the vault-key custody decision (owner, 10-09-2026):
+           "'Unlocked on this device' is a different sentence from 'encrypted',
+           and the person should be able to see which one they are in — and undo
+           it." Direction A, chosen from a round mocked on the live app
+           (Pulse/docs/data/10-09-2026-unlocked-on-this-device-round/).
+
+           It reuses the LOCKED banner's shape exactly — same tone, same action
+           slot — so `Lock` lands where `Unlock` used to be and the sentence that
+           mattered when it was locked is the sentence that matters now that it
+           is not. One place, two states.
+
+           ⚠️ Rendered only when `keyStored` is TRUE, never merely because the
+           vault is open in this tab: a tab-only unlock is gone on reload, and
+           this sentence would be a promise about the next visit that nothing
+           kept. */
+        <Banner
+          tone="info"
+          title="Unlocked on this device"
+          action={
+            <Button variant="outline" size="sm" onClick={handleLock} disabled={locking}>
+              {locking ? 'Locking…' : 'Lock'}
+            </Button>
+          }
+        >
+          Your name and email are decrypted here so Pulse can show them. They stay encrypted
+          everywhere else — Ciphera cannot read them. Lock this device to be asked for your
+          password again.
+        </Banner>
       ) : (
+        /* Readable, but nothing is stored — a tab-only unlock, or an account
+           whose session already carries the address. The plain fact, unchanged. */
         <Banner tone="info" title="Your profile is end-to-end encrypted">
           Pulse never stores your name or email in plain text.
         </Banner>
