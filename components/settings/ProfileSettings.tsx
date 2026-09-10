@@ -8,7 +8,8 @@ import { authFetch } from '@/lib/api/client'
 import { performOpaqueChangePassword } from '@/lib/auth/tessera/opaque-change-password'
 import { performSessionOpaqueReauth } from '@/lib/auth/tessera/opaque-reauth'
 import { performEmailChangeRequest } from '@/lib/auth/tessera/email-change'
-import { deleteAccount, getDeletionPreview, getUserSessions, revokeSession, updateUserPreferences, updateDisplayName } from '@/lib/api/user'
+import { deleteAccount, getDeletionPreview, getUserSessions, revokeSession, updateUserPreferences } from '@/lib/api/user'
+import { saveDisplayName } from '@/lib/auth/vault-restore'
 import { setup2FA, verify2FA, disable2FA, regenerateRecoveryCodes } from '@/lib/api/2fa'
 import { listPasskeys, deletePasskey, renamePasskey } from '@/lib/api/webauthn'
 import { usePasskeyEnrolModal, isEnrolCancelled } from '@/components/settings/PasskeyEnrolModal'
@@ -47,6 +48,17 @@ export default function ProfileSettings({ activeTab, borderless, hideDangerZone 
   }, [])
 
   if (!user) return null
+
+  // ---------------------------------------------------------------------------
+  // Display name — re-seals the encrypted vault, because that is where the name
+  // lives (migration 045 dropped the column). This used to pass `lib/api/user`'s
+  // `updateDisplayName` straight through, which sent `{display_name}` and got a
+  // 400 every time; that function is deleted rather than fixed, so the two
+  // surfaces cannot drift apart again.
+  // ---------------------------------------------------------------------------
+  const handleUpdateDisplayName = async (displayName: string) => {
+    await saveDisplayName(user.id, displayName)
+  }
 
   // ---------------------------------------------------------------------------
   // Email change — STAGE 1 of the two-stage ceremony: prove the password,
@@ -198,7 +210,7 @@ export default function ProfileSettings({ activeTab, borderless, hideDangerZone 
       <SharedProfileSettings
         user={user}
         onUpdateProfile={handleUpdateProfile}
-        onUpdateDisplayName={updateDisplayName}
+        onUpdateDisplayName={handleUpdateDisplayName}
         onUpdatePassword={handleUpdatePassword}
         onDeleteAccount={handleDeleteAccount}
         onSetup2FA={setup2FA}

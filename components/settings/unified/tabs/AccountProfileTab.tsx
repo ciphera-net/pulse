@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button, Input, Banner, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
 import {
-  updateDisplayName,
   deleteAccount,
   getDeletionPreview,
   getPendingEmailChange,
@@ -17,7 +16,10 @@ import { DangerZone } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
+import { logger } from '@/lib/utils/logger'
 import { unlockVaultPII } from '@/lib/auth/tessera/opaque-unlock'
+import { loadVaultKey, saveVaultKey } from '@/lib/auth/vault-store'
+import { openVaultWithKey, saveDisplayName } from '@/lib/auth/vault-restore'
 import { performSessionOpaqueReauth } from '@/lib/auth/tessera/opaque-reauth'
 import { performEmailChangeRequest } from '@/lib/auth/tessera/email-change'
 
@@ -190,6 +192,10 @@ export default function AccountProfileTab() {
   // must re-render so isDirty clears and the beforeunload guard disarms —
   // the old ref version kept the save bar dirty after a successful save.
   const [baseline, setBaseline] = useState('')
+  // Mirrors `baseline` for the restore effect below, which must READ it without
+  // re-running every time it changes (it would re-open the vault on every save).
+  const baselineRef = useRef('')
+  baselineRef.current = baseline
   const hasInitialized = useRef(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteText, setDeleteText] = useState('')
@@ -263,6 +269,41 @@ export default function AccountProfileTab() {
   const emailIsDirty =
     emailFieldValue.trim().length > 0 &&
     emailFieldValue.trim().toLowerCase() !== displayedEmail.trim().toLowerCase()
+
+  // ── Unlocked on this device? ─────────────────────────────────────────────
+  //
+  // 🔑 THE WHOLE POINT OF PERSISTING THE KEY. If this browser already holds one
+  // for this account, the vault opens with no password and no ceremony, and the
+  // person never learns there was a lock. Owner ruling 10-09-2026 (Option 1 of
+  // the vault-key custody design); the five rules that came with it live in
+  // `lib/auth/vault-store.ts`.
+  //
+  // ⚠️ It fails SOFT, and that is correct here: every way this can go wrong —
+  // no stored key, an expired one, a vault re-sealed in another browser — ends
+  // at the password prompt, which is the honest state and the one this replaced.
+  // The failure is not swallowed silently, it is logged; what is not done is
+  // showing an error for a lock that is simply still locked.
+  useEffect(() => {
+    if (!user?.id || unlockedPII) return
+    let live = true
+    void (async () => {
+      const key = await loadVaultKey(user.id)
+      if (!key || !live) return
+      try {
+        const pii = await openVaultWithKey(key)
+        if (!live) return
+        setUnlockedPII(pii)
+        // Same rule the password path follows: surface the vault's display name
+        // only while the field still matches its server baseline, so a restore
+        // never overwrites something half-typed.
+        setDisplayName((current) => (pii.display_name && current === baselineRef.current ? pii.display_name : current))
+        if (pii.display_name && baselineRef.current === '') setBaseline(pii.display_name)
+      } catch (e) {
+        logger.error('vault: a stored key did not open this account’s vault; asking for the password', e)
+      }
+    })()
+    return () => { live = false }
+  }, [user?.id, unlockedPII])
 
   // ── Is a confirmation link live? ─────────────────────────────────────────
   //
@@ -428,7 +469,12 @@ export default function AccountProfileTab() {
     setUnlocking(true)
     setUnlockError(null)
     try {
-      const pii = await unlockVaultPII({ password: unlockPassword })
+      const { pii, vaultKey } = await unlockVaultPII({ password: unlockPassword })
+      // 🔴 KEPT ON PURPOSE (owner ruling, 10-09-2026 — the custody design's
+      // Option 1). Before this, every reload asked again; the key now outlives
+      // the tab so it does not. vault-store holds the five rules that came with
+      // the decision, including the throw if the key is ever extractable.
+      if (user?.id) await saveVaultKey(user.id, vaultKey)
       setUnlockedPII(pii)
       setShowUnlock(false)
       setUnlockPassword('')
@@ -453,19 +499,40 @@ export default function AccountProfileTab() {
       setUnlockPassword('')
       setUnlocking(false)
     }
-  }, [unlocking, unlockPassword, displayName, baseline])
+  }, [unlocking, unlockPassword, displayName, baseline, user?.id])
 
 
+  /**
+   * 🔴 THIS SAVE HAS BEEN ANSWERING 400 FOR AS LONG AS ANYONE HAS TRIED IT.
+   * `display_name` stopped being a column in migration 045 and moved inside the
+   * encrypted vault, so `PUT /auth/user/display-name` requires an
+   * `encrypted_vault` and ignores the `display_name` field it is handed. Pulse
+   * sent `{display_name}` and nothing else, and got
+   * `{"error":"Missing required field"}` every time.
+   *
+   * It could not be fixed in the client alone: re-sealing the vault needs the
+   * vault key, and Pulse did not keep one. It works now because it does — the
+   * bug was the custody question wearing a client bug's clothes.
+   *
+   * ⚠️ Needs the vault UNLOCKED, and says so rather than failing obscurely. If
+   * this browser has no key, there is nothing to re-seal with.
+   */
   const handleSave = useCallback(async () => {
     try {
-      await updateDisplayName(displayName.trim())
+      await saveDisplayName(user?.id ?? '', displayName)
       setBaseline(displayName.trim())
+      setUnlockedPII((prev) => (prev ? { ...prev, display_name: displayName.trim() || undefined } : prev))
       await refresh()
       toast.success('Profile updated')
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to update profile')
+      // The unlock-first message is ours and already says what to do; only a
+      // transport/HTTP failure needs the generic mapper.
+      const msg = err instanceof Error && /Unlock your profile/i.test(err.message)
+        ? err.message
+        : getAuthErrorMessage(err as Error) || 'Failed to update profile'
+      toast.error(msg)
     }
-  }, [displayName, refresh])
+  }, [displayName, refresh, user?.id])
 
   const handleDelete = async () => {
     if (deleteText !== 'DELETE' || !deletePassword) return

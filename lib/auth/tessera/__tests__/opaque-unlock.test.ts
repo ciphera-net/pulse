@@ -47,7 +47,8 @@ vi.mock('@ciphera-net/tessera', () => {
       const wrap = await this.transport.getWrap({ credentialId: 'cid', method: 'opaque' })
       seenWrap = wrap?.blobB64 ?? null
       if (!wrap) throw new Error('tessera: no opaque VMK wrap')
-      return { vault: { seal: vi.fn(), open: vi.fn() } }
+      // Mirrors the real sessionFor since 0.3.0: the Session carries the key.
+      return { vault: { seal: vi.fn(), open: vi.fn() }, vaultKey: { __vaultKey: true } }
     }
   }
   return { Tessera }
@@ -89,9 +90,14 @@ describe('unlockVaultPII', () => {
   it('fetches the vault, seeds the fetched wrap into the ceremony, and returns decrypted PII', async () => {
     wireFetch({ encrypted_vault: 'ENC', opaque_wrapped_key: 'WRAP-B64' })
 
-    const pii = await unlockVaultPII({ password: 'pw' })
+    const { pii, vaultKey } = await unlockVaultPII({ password: 'pw' })
 
     expect(pii.email).toBe('me@ciphera.test')
+    // 🔴 THE KEY COMES BACK NOW, and that is a decision (owner, 10-09-2026 —
+    // the custody design's Option 1), not a leak. It used to be deliberately
+    // withheld: "only the decrypted PII leaves this function". The caller
+    // persists it under the rules in lib/auth/vault-store.
+    expect(vaultKey).toBeDefined()
     // The wrap the SDK opened the VMK with is exactly the one /user/vault returned.
     expect(seenWrap).toBe('WRAP-B64')
     // The ciphertext decrypted is exactly the one fetched (see the mock echo).
