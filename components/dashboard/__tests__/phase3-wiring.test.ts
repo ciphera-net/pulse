@@ -11,11 +11,13 @@ describe('dashboard page wiring (Phase 3)', () => {
   const page = read('app/sites/[id]/page.tsx')
 
   it('passes the true totals and filters to every list card', () => {
-    // Five cards take totals — Sources (Referrers · Channels · Campaigns in
-    // one card since 06-09-2026), Audience, TechSpecs, ContentStats, and
-    // Outbound (08-09-2026, for its "% of visitors left through a link");
-    // ContentSignals carries no % by design.
-    expect(page.match(/totals=\{totals\}/g)?.length).toBe(5)
+    // FOUR cards take totals — Sources (Referrers · Channels · Campaigns in
+    // one card since 06-09-2026), Audience, TechSpecs and ContentStats.
+    // ContentSignals carries no % by design, and Outbound stopped taking them
+    // on 10-09-2026: its only use was the "N% of visitors left through a link"
+    // footnote, which the owner had removed. A prop kept for a deleted sentence
+    // is a denominator nobody divides by.
+    expect(page.match(/totals=\{totals\}/g)?.length).toBe(4)
     // ContentStats, Sources, Audience, TechSpecs, Outbound, PeakHours all
     // thread the page's filters (Outbound to LABEL itself whole-site).
     expect(page.match(/filters=\{filtersParam \|\| undefined\}/g)?.length).toBe(6)
@@ -28,9 +30,49 @@ describe('dashboard page wiring (Phase 3)', () => {
     expect(page).toContain("'whole site'")
     expect(page).not.toContain("'events · whole site'")
     expect(page).toContain('· site timezone')
-    for (const title of ['Acquisition', 'Audience', 'Content', 'Behaviour']) {
+    // Outbound became its own section on 10-09-2026 (owner: "add an Outbound
+    // title like there is Audience on the left of it") — it used to share the
+    // Audience row with Technology and take its name from that header.
+    for (const title of ['Acquisition', 'Audience', 'Outbound', 'Content', 'Behaviour']) {
       expect(page).toContain(`<SectionHeader title="${title}"`)
     }
+    // 🔑 Its note is the literal 'whole site', never `sectionNote`. The property
+    // endpoints behind the card take no filters, so under a page filter every
+    // other section is 'filtered with the page' and this one is genuinely not.
+    expect(page).toContain('<SectionHeader title="Outbound" note="whole site" />')
+  })
+
+  // ── The Audience row carries a header PER COLUMN (owner, 10-09-2026) ───────
+  // Technology and Outbound do not share a heading the way Sources/Locations
+  // and Pages/Content-signals do: one is who visited, the other is where they
+  // went. So "Audience" sits over the left card and "Outbound" over the right.
+  it('gives the Audience row two headers, each inside its own grid cell', () => {
+    // The row runs from the grid that OPENS it (the last one declared before the
+    // Audience header — the header sits inside that grid, not above it) to the
+    // Content header.
+    const audienceAt = page.indexOf('<SectionHeader title="Audience"')
+    const rowEnd = page.indexOf('<SectionHeader title="Content"')
+    expect(audienceAt).toBeGreaterThan(-1)
+    expect(rowEnd).toBeGreaterThan(audienceAt)
+    const rowStart = page.lastIndexOf('grid gap-3 lg:grid-cols-2', audienceAt)
+    expect(rowStart).toBeGreaterThan(-1)
+    const row = page.slice(rowStart, rowEnd)
+    expect(row).toContain('<SectionHeader title="Outbound" note="whole site" />')
+    // TechSpecs and Outbound share exactly ONE grid — not two stacked sections.
+    // Splitting them left both rows half empty, which the owner rejected on
+    // staging.
+    expect(row).toContain('<TechSpecs')
+    expect(row).toContain('<Outbound')
+    expect(row.match(/grid gap-3 lg:grid-cols-2/g)?.length ?? 0).toBe(1)
+
+    // 🔴 Each header must sit INSIDE its grid cell. A separate two-title header
+    // row would read correctly at desktop width and then, below `lg` where the
+    // grid collapses to one column, stack both titles above both cards — every
+    // title detached from the card it names. The cell wrapper is what prevents
+    // that, and the card's `flex-1 min-h-0` box is what stops its own `h-full`
+    // from overflowing the cell by the header's height.
+    expect(row.match(/<div className="flex flex-col">/g)?.length ?? 0).toBe(2)
+    expect(row.match(/<div className="flex-1 min-h-0">/g)?.length ?? 0).toBe(2)
   })
 
   it('keeps the blocks decoupled — no metric prop reaches any card (01-09-2026)', () => {
