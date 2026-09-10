@@ -3,19 +3,48 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useVisitEvents } from '@/lib/swr/dashboard'
 import { EM_DASH, formatDuration } from '@/lib/visitors/format'
+import {
+  TRAIL_KINDS,
+  autoSentence,
+  chipProps,
+  countByKind,
+  groupTrail,
+  kindOf,
+  type TrailGroup,
+  type TrailKind,
+} from '@/lib/visitors/trail'
 import type { VisitEvent } from '@/lib/api/visitors'
 
-// ─── The rail timeline (approved §9a, detail 3) ─────────────────────
+// ─── The rail timeline (approved §9a detail 3; reorganised in round 6) ──────
 //
-// One expanded visit, step by step: a 7px node on a 1px rail, the path on the
-// left, the dwell on the right. A custom event turns its node orange and hangs
-// an event-name chip plus one chip per property beneath it.
+// One expanded visit, page by page. A 7px node on a 1px rail, the path on the
+// left, the dwell on the right — and the events that fired while that page was
+// open hanging beneath it.
+//
+// 🔴 ROUND 6 (owner, 10-09-2026): events GROUP UNDER THEIR PAGE, and the card
+// carries per-type filter chips. Before this the trail rendered one row per
+// EVENT, so a visit with 8 pageviews and 9 events was 17 rows with the path
+// restated on every one and nine em dashes in the dwell column — which read as
+// pages being printed twice. Nothing was ever duplicated; the rows were events.
+//
+// The reorganisation is not cosmetic: interaction auto-capture is decided
+// (docs/plans/10-09-2026-interaction-autocapture-design.md), and at the measured
+// ratio a 10-page visit becomes a 28-row trail. Grouping and the type chips are
+// what keep it readable — which is exactly why the reference product has them.
 //
 // Fetched per EXPANDED row (the SearchExpansion per-row-SWR pattern), so a
 // collapsed visit costs nothing and a page of twenty visits is one request, not
 // twenty-one.
 
 const PAGE_SIZE = 200
+
+/** Chip labels. Plain English — these are not machine keys, so they are not mono. */
+const KIND_LABEL: Record<TrailKind, string> = {
+  pageview: 'Pages',
+  outbound: 'Outbound',
+  download: 'Downloads',
+  event: 'Events',
+}
 
 interface VisitTrailProps {
   siteId: string
@@ -44,12 +73,17 @@ export function VisitTrail({ siteId, visitorKey, visitKey, range }: VisitTrailPr
   // reads the new one; keying on local state would file page 1's steps under 2.
   const [pages, setPages] = useState<Record<number, VisitEvent[]>>({})
 
+  // Which kinds are shown. All four, until somebody says otherwise.
+  const [active, setActive] = useState<Set<TrailKind>>(() => new Set(TRAIL_KINDS))
+
   // The subject changing (a different visit, or a new range) invalidates
-  // everything accumulated for the old one.
+  // everything accumulated for the old one — and resets the filter, because a
+  // chip left switched off would silently hide steps of the NEXT visit.
   const subject = `${siteId}|${visitorKey}|${visitKey}|${range.startDate ?? ''}|${range.endDate ?? ''}|${range.minutes ?? ''}`
   useEffect(() => {
     setPage(1)
     setPages({})
+    setActive(new Set(TRAIL_KINDS))
   }, [subject])
 
   useEffect(() => {
@@ -71,6 +105,8 @@ export function VisitTrail({ siteId, visitorKey, visitKey, range }: VisitTrailPr
         .flatMap((n) => pages[n]),
     [pages],
   )
+  const counts = useMemo(() => countByKind(events), [events])
+  const groups = useMemo(() => groupTrail(events, active), [events, active])
   const total = data?.total ?? 0
   // True by construction now, which also repairs TrailStep's `last` prop — it
   // used to end the rail at the end of every PAGE rather than of the trail.
@@ -97,10 +133,58 @@ export function VisitTrail({ siteId, visitorKey, visitKey, range }: VisitTrailPr
     )
   }
 
+  const shown = TRAIL_KINDS.filter((k) => counts[k] > 0)
+
   return (
     <div className="pb-3 pl-12 pr-4">
-      {events.map((e, i) => (
-        <TrailStep key={`${e.timestamp}-${i}`} event={e} last={i === events.length - 1} />
+      {/* ─── Type filter ───────────────────────────────────────────────
+          Counts are over every LOADED step and never change as you filter — a
+          chip whose own count dropped to zero when you clicked it could not be
+          clicked back. A kind with no steps in this visit is not rendered at
+          all rather than shown greyed: an absent kind is not a control. */}
+      {shown.length > 1 && (
+        <div className="mb-2 flex flex-wrap items-center gap-1.5 pb-1">
+          {shown.map((k) => {
+            const on = active.has(k)
+            return (
+              <button
+                key={k}
+                type="button"
+                aria-pressed={on}
+                onClick={() =>
+                  setActive((prev) => {
+                    const next = new Set(prev)
+                    // Never let the last one be switched off — an empty trail
+                    // looks identical to a visit that recorded nothing.
+                    if (next.has(k) && next.size > 1) next.delete(k)
+                    else next.add(k)
+                    return next
+                  })
+                }
+                className={
+                  'flex items-center gap-1.5 border px-2 py-0.5 text-xs transition-colors duration-fast ease-apple focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange ' +
+                  (on
+                    ? 'border-neutral-700 text-neutral-300'
+                    : 'border-border text-neutral-600 hover:text-neutral-400')
+                }
+              >
+                <span
+                  aria-hidden="true"
+                  className={
+                    'size-1.5 rounded-full ' +
+                    (!on ? 'bg-neutral-700' : k === 'pageview' ? 'bg-neutral-500' : 'bg-brand-orange')
+                  }
+                />
+                {KIND_LABEL[k]}
+                <span className="tabular-nums text-neutral-500">{counts[k]}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {groups.map((g, i) => (
+        <TrailRow key={`${g.timestamp}-${i}`} group={g} last={i === groups.length - 1} />
       ))}
 
       {/* 🔴 A trail longer than one page shows this, never a silently truncated
@@ -125,61 +209,103 @@ export function VisitTrail({ siteId, visitorKey, visitKey, range }: VisitTrailPr
   )
 }
 
-function TrailStep({ event, last }: { event: VisitEvent; last: boolean }) {
-  const isCustom = event.type === 'custom'
-  const props = Object.entries(event.properties ?? {})
+function TrailRow({ group, last }: { group: TrailGroup; last: boolean }) {
+  const isPage = group.page !== null
+  const orphanKind = !isPage && group.events.length > 0 ? kindOf(group.events[0]) : null
 
   return (
     <div className="relative flex gap-3 pl-4">
-      {/* The rail: a 1px line behind the nodes, stopped at the last step so it
-          does not trail off into nothing. */}
+      {/* 🔴 THE RAIL IS CENTRED ON THE NODE, which it was not.
+          It used to be `left-[7px]` while the node is a flex child sitting after
+          this row's `pl-4`, so the line ran 12px to the LEFT of the dots it
+          connects — measured on production: rail centre 314.5px, dot centre
+          326.5px. The arithmetic, stated once so it cannot drift again:
+          pl-4 (16px) + half of the 7px node = 19.5px. */}
       {!last && (
         <span
           aria-hidden="true"
-          className="absolute bottom-0 left-[7px] top-4 w-px bg-border"
+          className="absolute bottom-0 left-[19.5px] top-4 w-px -translate-x-1/2 bg-border"
         />
       )}
       <span
         aria-hidden="true"
         className={
           'relative z-10 mt-2 size-[7px] shrink-0 rounded-full ' +
-          (isCustom ? 'bg-brand-orange' : 'bg-neutral-500')
+          (isPage ? 'bg-neutral-500' : 'bg-brand-orange')
         }
       />
 
-      <div className="min-w-0 flex-1 pb-1">
+      <div className="min-w-0 flex-1 pb-1.5">
         <div className="flex items-baseline justify-between gap-3">
           {/* An em dash, never a "/": a site that collects no page paths must
               not be shown a page its visitor may never have been on. */}
-          <span className="min-w-0 truncate text-sm text-neutral-300">{event.path ?? EM_DASH}</span>
-          <span className="shrink-0 text-xs tabular-nums text-neutral-500">
-            {/* Dwell is the STORED event duration, never recomputed from the gap
-                to the next step. A missing beacon is an em dash, not a zero. */}
-            {event.duration == null ? EM_DASH : formatDuration(event.duration)}
+          <span className="min-w-0 truncate text-sm text-neutral-300">
+            {isPage ? (
+              (group.path ?? EM_DASH)
+            ) : (
+              // An orphan: an event whose page is filtered away, or whose own
+              // path disagrees with the page that was open. It describes itself.
+              <EventLabel event={group.events[0]} kind={orphanKind} />
+            )}
           </span>
+          {isPage && (
+            <span className="shrink-0 text-xs tabular-nums text-neutral-500">
+              {/* Dwell is the STORED event duration, never recomputed from the gap
+                  to the next step. A missing beacon is an em dash, not a zero. */}
+              {group.dwell == null ? EM_DASH : formatDuration(group.dwell)}
+            </span>
+          )}
         </div>
 
-        {isCustom && (
-          <div className="mt-1 flex flex-wrap items-center gap-1.5">
-            <span className="bg-brand-orange/10 px-1.5 py-0.5 font-mono text-xs text-brand-orange">
-              {event.event_name}
-            </span>
-            {/* D6: FULL properties. Values are truncated for LAYOUT only, with
-                the whole value in the title — a 253-character URL (the longest
-                measured in production) cannot sit in a chip, but nothing is
-                withheld. */}
-            {props.map(([k, v]) => (
-              <span
-                key={k}
-                title={`${k}: ${v}`}
-                className="max-w-[22rem] truncate bg-white/[0.06] px-1.5 py-0.5 font-mono text-xs text-neutral-300"
-              >
-                {k}: {v}
-              </span>
+        {isPage && group.events.length > 0 && (
+          <div className="mt-1 flex flex-col gap-1">
+            {group.events.map((e, j) => (
+              <div key={`${e.timestamp}-${j}`} className="flex flex-wrap items-center gap-1.5">
+                <EventLabel event={e} kind={kindOf(e)} />
+              </div>
             ))}
           </div>
         )}
       </div>
     </div>
+  )
+}
+
+/**
+ * One event, described.
+ *
+ * An event Pulse captured itself gets a sentence — "Left for stripe.com/pricing"
+ * — because the tracker guarantees its property shape. A customer's own event
+ * keeps its name chip and every property, unchanged: D6 pinned FULL properties,
+ * truncated for LAYOUT only, with the whole value in the title.
+ */
+function EventLabel({ event, kind }: { event: VisitEvent; kind: TrailKind | null }) {
+  const sentence = autoSentence(event)
+  const props = chipProps(event)
+
+  return (
+    <>
+      {sentence !== null ? (
+        // 🔑 A sentence is prose, so it is NOT monospace, even though the thing
+        // it names is a URL. The name chip below is a machine key and is.
+        <span className="truncate text-sm text-neutral-400">{sentence}</span>
+      ) : (
+        <span className="bg-brand-orange/10 px-1.5 py-0.5 font-mono text-xs text-brand-orange">
+          {event.event_name}
+        </span>
+      )}
+      {props.map(([k, v]) => (
+        <span
+          key={k}
+          title={`${k}: ${v}`}
+          className="max-w-[22rem] truncate bg-white/[0.06] px-1.5 py-0.5 font-mono text-xs text-neutral-300"
+        >
+          {k}: {v}
+        </span>
+      ))}
+      {kind !== null && kind !== 'pageview' && sentence === null && event.path === null && (
+        <span className="sr-only">on an unrecorded page</span>
+      )}
+    </>
   )
 }
