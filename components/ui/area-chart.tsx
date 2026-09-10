@@ -1594,38 +1594,35 @@ Grid.displayName = "Grid";
 
 export interface XAxisProps {
   numTicks?: number;
-  tickerHalfWidth?: number;
   formatLabel?: (date: Date) => string;
 }
 
 interface XAxisLabelProps {
   label: string;
   x: number;
-  crosshairX: number | null;
-  isHovering: boolean;
-  tickerHalfWidth: number;
 }
 
-function XAxisLabel({
-  label,
-  x,
-  crosshairX,
-  isHovering,
-  tickerHalfWidth,
-}: XAxisLabelProps) {
-  const fadeBuffer = 20;
-  const fadeRadius = tickerHalfWidth + fadeBuffer;
-
-  let opacity = 1;
-  if (isHovering && crosshairX !== null) {
-    const distance = Math.abs(x - crosshairX);
-    if (distance < tickerHalfWidth) {
-      opacity = 0;
-    } else if (distance < fadeRadius) {
-      opacity = (distance - tickerHalfWidth) / fadeBuffer;
-    }
-  }
-
+/**
+ * An axis tick. It does NOT step aside for the cursor.
+ *
+ * 🔴 It used to. The tick faded to zero within 50 px of the crosshair (and
+ * linearly out to 70 px) to clear room for the DateTicker pill that once rode
+ * the axis under the cursor. **Every consumer of ChartTooltip passes
+ * `showDatePill={false}`** — CommandDeck, Search, CDN, Funnels, Performance and
+ * Uptime, all of them — so since the deck turned the pill off, the fade has been
+ * clearing a 100 px hole for something that is never drawn. The effect on screen
+ * is that hovering a point erases the date you are hovering, which is the one
+ * label you most want to read (owner, 10-09-2026: "the date/hour in the
+ * horizontal axis goes away. it shouldn't go away").
+ *
+ * The crosshair round (#587) removed this fade once already; #589 reverted that
+ * commit wholesale to restore the hover LINE, and the fade came back with it.
+ *
+ * ⚠️ If the date pill is ever re-enabled, the overlap it avoided is real — bring
+ * the fade back in the same change, driven by whether a pill is actually shown
+ * rather than by a hard-coded width.
+ */
+function XAxisLabel({ label, x }: XAxisLabelProps) {
   return (
     <div
       className="absolute"
@@ -1637,20 +1634,13 @@ function XAxisLabel({
         justifyContent: "center",
       }}
     >
-      <motion.span
-        animate={{ opacity }}
-        className="whitespace-nowrap text-neutral-500 text-xs"
-        initial={{ opacity: 1 }}
-        transition={{ duration: DURATION_SLOW, ease: EASE_APPLE }}
-      >
-        {label}
-      </motion.span>
+      <span className="whitespace-nowrap text-neutral-500 text-xs">{label}</span>
     </div>
   );
 }
 
-export function XAxis({ numTicks = 5, tickerHalfWidth = 50, formatLabel }: XAxisProps) {
-  const { xScale, margin, tooltipData, containerRef, innerWidth } = useChart();
+export function XAxis({ numTicks = 5, formatLabel }: XAxisProps) {
+  const { xScale, margin, containerRef, innerWidth } = useChart();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -1691,9 +1681,6 @@ export function XAxis({ numTicks = 5, tickerHalfWidth = 50, formatLabel }: XAxis
     }));
   }, [xScale, margin.left, numTicks, formatLabel, innerWidth]);
 
-  const isHovering = tooltipData !== null;
-  const crosshairX = tooltipData ? tooltipData.x + margin.left : null;
-
   const container = containerRef.current;
   if (!(mounted && container)) {
     return null;
@@ -1703,14 +1690,7 @@ export function XAxis({ numTicks = 5, tickerHalfWidth = 50, formatLabel }: XAxis
   return createPortal(
     <div className="pointer-events-none absolute inset-0">
       {labelsToShow.map((item) => (
-        <XAxisLabel
-          crosshairX={crosshairX}
-          isHovering={isHovering}
-          key={`${item.label}-${item.x}`}
-          label={item.label}
-          tickerHalfWidth={tickerHalfWidth}
-          x={item.x}
-        />
+        <XAxisLabel key={`${item.label}-${item.x}`} label={item.label} x={item.x} />
       ))}
     </div>,
     container

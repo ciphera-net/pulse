@@ -11,11 +11,13 @@ describe('dashboard page wiring (Phase 3)', () => {
   const page = read('app/sites/[id]/page.tsx')
 
   it('passes the true totals and filters to every list card', () => {
-    // Five cards take totals — Sources (Referrers · Channels · Campaigns in
-    // one card since 06-09-2026), Audience, TechSpecs, ContentStats, and
-    // Outbound (08-09-2026, for its "% of visitors left through a link");
-    // ContentSignals carries no % by design.
-    expect(page.match(/totals=\{totals\}/g)?.length).toBe(5)
+    // FOUR cards take totals — Sources (Referrers · Channels · Campaigns in
+    // one card since 06-09-2026), Audience, TechSpecs and ContentStats.
+    // ContentSignals carries no % by design, and Outbound stopped taking them
+    // on 10-09-2026: its only use was the "N% of visitors left through a link"
+    // footnote, which the owner had removed. A prop kept for a deleted sentence
+    // is a denominator nobody divides by.
+    expect(page.match(/totals=\{totals\}/g)?.length).toBe(4)
     // ContentStats, Sources, Audience, TechSpecs, Outbound, PeakHours all
     // thread the page's filters (Outbound to LABEL itself whole-site).
     expect(page.match(/filters=\{filtersParam \|\| undefined\}/g)?.length).toBe(6)
@@ -28,9 +30,16 @@ describe('dashboard page wiring (Phase 3)', () => {
     expect(page).toContain("'whole site'")
     expect(page).not.toContain("'events · whole site'")
     expect(page).toContain('· site timezone')
-    for (const title of ['Acquisition', 'Audience', 'Content', 'Behaviour']) {
+    // Outbound became its own section on 10-09-2026 (owner: "add an Outbound
+    // title like there is Audience on the left of it") — it used to share the
+    // Audience row with Technology and take its name from that header.
+    for (const title of ['Acquisition', 'Audience', 'Outbound', 'Content', 'Behaviour']) {
       expect(page).toContain(`<SectionHeader title="${title}"`)
     }
+    // 🔑 Its note is the literal 'whole site', never `sectionNote`. The property
+    // endpoints behind the card take no filters, so under a page filter every
+    // other section is 'filtered with the page' and this one is genuinely not.
+    expect(page).toContain('<SectionHeader title="Outbound" note="whole site" />')
   })
 
   it('keeps the blocks decoupled — no metric prop reaches any card (01-09-2026)', () => {
