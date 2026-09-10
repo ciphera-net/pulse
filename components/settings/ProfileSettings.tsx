@@ -7,10 +7,10 @@ import { deriveAuthKey } from '@/lib/crypto/password'
 import { authFetch } from '@/lib/api/client'
 import { performOpaqueChangePassword } from '@/lib/auth/tessera/opaque-change-password'
 import { performSessionOpaqueReauth } from '@/lib/auth/tessera/opaque-reauth'
+import { performEmailChangeRequest } from '@/lib/auth/tessera/email-change'
 import { deleteAccount, getDeletionPreview, getUserSessions, revokeSession, updateUserPreferences, updateDisplayName } from '@/lib/api/user'
 import { setup2FA, verify2FA, disable2FA, regenerateRecoveryCodes } from '@/lib/api/2fa'
 import { listPasskeys, deletePasskey, renamePasskey } from '@/lib/api/webauthn'
-import { useReauthModal, isReauthCancelled } from '@/components/settings/ReauthModal'
 import { usePasskeyEnrolModal, isEnrolCancelled } from '@/components/settings/PasskeyEnrolModal'
 import { useRecoveryEnrolModal, isRecoveryEnrolCancelled } from '@/components/settings/RecoveryEnrolModal'
 import RecoveryCard, { RecoveryNudge, useRecoveryNudge } from '@/components/settings/RecoveryCard'
@@ -23,7 +23,6 @@ interface Props {
 
 export default function ProfileSettings({ activeTab, borderless, hideDangerZone }: Props = {}) {
   const { user, refresh, logout } = useAuth()
-  const { requestReauth, modal } = useReauthModal()
   const { requestPasskeyEnrol, modal: passkeyModal } = usePasskeyEnrolModal()
   const { requestRecoveryEnrol, modal: recoveryModal } = useRecoveryEnrolModal()
   const { shouldNudge, dismissNudge, markPasskeyEnrolled } = useRecoveryNudge()
@@ -50,19 +49,31 @@ export default function ProfileSettings({ activeTab, borderless, hideDangerZone 
   if (!user) return null
 
   // ---------------------------------------------------------------------------
-  // Email change — re-auth (fresh OPAQUE login) → re-seal vault → PUT the 3 fields.
-  // Not reachable from Pulse's live Security tab (email is read-only there and
-  // managed on Ciphera ID), but wired correctly for any surface that renders it.
+  // Email change — STAGE 1 of the two-stage ceremony: prove the password,
+  // re-seal the vault under the new address, and have relay mail a confirmation
+  // link to it. Nothing about the account changes until that link is opened.
+  //
+  // 🔴 THIS USED TO OPEN ReauthModal WITH `op: 'email'`, and that branch was
+  // wrong three ways: it PUT to `/auth/user/email` (measured 404 on production
+  // 10-09-2026 — the route was deleted with the two-stage rewrite), it ran the
+  // ceremony on the PRIMARY login endpoint (401 `require_2fa` on every TOTP
+  // account, the defect fixed for recovery enrolment on 03-09 and password
+  // change on 09-09), and it minted no `eml` token, which stage 1 requires. The
+  // modal went with it: after 09-09 removed its password op and 10-09 its
+  // delete op, this was the only branch left, and it was the broken one.
+  //
+  // Pulse's live email-change surface is AccountProfileTab (design §10,
+  // direction A — in the row it changes). This path stays wired because Facet's
+  // `onUpdateProfile` is a required prop, and it now runs the SAME single
+  // implementation rather than a second, wrong one.
   // ---------------------------------------------------------------------------
   const handleUpdateProfile = async (newEmail: string) => {
-    const password = capturedPasswordsRef.current.current
-    try {
-      await requestReauth({ op: 'email', password, newEmail })
-    } catch (err) {
-      if (isReauthCancelled(err)) throw new Error('Email change cancelled.')
-      throw err
-    }
-    // Facet's own handler calls refreshUser() next; the write already happened.
+    await performEmailChangeRequest({
+      newEmail,
+      password: capturedPasswordsRef.current.current,
+    })
+    // Facet's own handler calls refreshUser() next. Nothing has changed yet —
+    // the address moves at stage 2, in whichever browser opens the link.
   }
 
   // ---------------------------------------------------------------------------
@@ -227,7 +238,6 @@ export default function ProfileSettings({ activeTab, borderless, hideDangerZone 
           <RecoveryCard onEnrol={handleEnrolRecovery} />
         </>
       ) : null}
-      {modal}
       {passkeyModal}
       {recoveryModal}
     </>

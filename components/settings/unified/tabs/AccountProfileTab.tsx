@@ -3,7 +3,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button, Input, Banner, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
-import { updateDisplayName, deleteAccount, getDeletionPreview, type DeletionBlocker } from '@/lib/api/user'
+import {
+  updateDisplayName,
+  deleteAccount,
+  getDeletionPreview,
+  getPendingEmailChange,
+  cancelEmailChange,
+  resendEmailChangeLink,
+  type DeletionBlocker,
+} from '@/lib/api/user'
 import { ApiError } from '@/lib/api/client'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
@@ -11,6 +19,7 @@ import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
 import { unlockVaultPII } from '@/lib/auth/tessera/opaque-unlock'
 import { performSessionOpaqueReauth } from '@/lib/auth/tessera/opaque-reauth'
+import { performEmailChangeRequest } from '@/lib/auth/tessera/email-change'
 
 /**
  * Name the actual failure of an unlock attempt.
@@ -47,6 +56,92 @@ export function unlockErrorMessage(err: unknown): string {
     return 'Network error. Nothing was unlocked — please try again.'
   }
   return 'That email or password didn’t match. Nothing was unlocked — please try again.'
+}
+
+/**
+ * Name the actual failure of an email-change request, and say what it left
+ * behind — which for every branch here is *nothing*.
+ *
+ * Stage 1 has more ways to fail than an unlock does, and they are not the
+ * user's fault in the same proportions: relay refusing to send (502) and the
+ * ceremony being unavailable (503) both look like a wrong password to somebody
+ * who is only told "that didn't match". Each branch names a different thing to
+ * do, which is the point of separating them.
+ *
+ * 🔑 Every message ends with the same fact: the address has not moved. Stage 1
+ * changes nothing about the account by construction, so saying so is not
+ * reassurance — it is the contract.
+ */
+export function emailChangeErrorMessage(err: unknown): string {
+  if (err instanceof Error && /no encrypted vault/i.test(err.message)) {
+    return 'This account has no encrypted vault, so its address cannot be changed here.'
+  }
+
+  const status = readStatus(err)
+  if (status === 429) {
+    return 'Too many attempts in a short time. Wait about a minute, then try again — your password was not the problem.'
+  }
+  if (status === 401 || status === 403) {
+    return 'That password didn\u2019t match. Nothing was changed — please try again.'
+  }
+  if (status === 502) {
+    return 'We could not send the confirmation email to that address. Nothing has changed — check the address and try again.'
+  }
+  if (status === 503) {
+    return 'Email changes are temporarily unavailable. Nothing has changed — please try again shortly.'
+  }
+  if (status !== null && status >= 500) {
+    return 'Ciphera ID could not be reached just now. Nothing has changed — please try again shortly.'
+  }
+  if (status === 400) {
+    return 'That request was refused. Nothing has changed — check the address and try again.'
+  }
+  if (err instanceof Error && /network|fetch/i.test(err.message)) {
+    return 'Network error. Nothing has changed — please try again.'
+  }
+  return 'The confirmation link could not be sent. Nothing has changed — please try again.'
+}
+
+/**
+ * What this tab knows about a live confirmation link.
+ *
+ * 🔴 FOUR STATES, AND THE FIRST THREE MUST NOT COLLAPSE INTO ONE ANOTHER.
+ * `unknown` is "we have not asked yet", `unavailable` is "we asked and could
+ * not find out", `idle` is "the server looked and there is none". Only the
+ * third is a measurement. Rendering either of the first two as `idle` offers a
+ * fresh change to somebody whose link is already sitting in an inbox — the same
+ * lie `DeletionBlocker.contents` refuses to tell about an empty workspace, on
+ * this same screen.
+ *
+ * `newEmail` is nullable for a reason that is not laziness: id-backend is
+ * zero-knowledge and never holds a readable address, so the ONLY party that can
+ * name the destination is the tab that typed it. After a reload nobody can, and
+ * the ledger says so rather than inventing one. Persisting it would put
+ * plaintext PII at rest in a second origin — precisely the trade the vault-key
+ * custody design is still with the owner (Option 3, "strictly worse").
+ */
+type EmailChangeState =
+  | { kind: 'unknown' }
+  | { kind: 'unavailable' }
+  | { kind: 'idle' }
+  | { kind: 'pending'; expiresAt: string | null; newEmail: string | null }
+
+/**
+ * How long the link has left, in the ledger's own words.
+ *
+ * Rendered from an ABSOLUTE server timestamp, so a tab left open does not keep
+ * promising the thirty minutes it had when it loaded. Facet's ledger says
+ * "it expires in 30 minutes" because it had no horizon to read; this one does,
+ * and a sentence that is true at minute 29 is worth the divergence.
+ */
+export function expiryPhrase(expiresAt: string | null, now: number): string {
+  if (!expiresAt) return 'it expires 30 minutes after it was sent'
+  const ms = Date.parse(expiresAt) - now
+  if (Number.isNaN(ms)) return 'it expires 30 minutes after it was sent'
+  if (ms <= 0) return 'it may already have expired'
+  const minutes = Math.round(ms / 60000)
+  if (minutes < 1) return 'it expires in less than a minute'
+  return `it expires in about ${minutes} minute${minutes === 1 ? '' : 's'}`
 }
 
 /** HTTP status from an ApiError, a wrapper carrying one, or a status in the text. */
@@ -93,6 +188,31 @@ export default function AccountProfileTab() {
   // lose three sites they were never shown.
   const [blockers, setBlockers] = useState<DeletionBlocker[] | 'unavailable' | null>(null)
 
+  // ── The email-change ceremony (design §10, direction A: in the row it changes)
+  const [emailChange, setEmailChange] = useState<EmailChangeState>({ kind: 'unknown' })
+  // 🔑 NULL means "untouched — mirror whatever address we currently know",
+  // which is not the same as an empty box. Direction A edits the row IN PLACE,
+  // so the field has to carry the current address when there is one (exactly as
+  // Facet's own email form does) and start empty when the vault is locked and
+  // there is none. A sentinel '' could not tell those apart, and seeding it
+  // from an effect would fight every later unlock.
+  const [newEmail, setNewEmail] = useState<string | null>(null)
+  const [emailPassword, setEmailPassword] = useState('')
+  const [sendingLink, setSendingLink] = useState(false)
+  const [pendingBusy, setPendingBusy] = useState(false)
+  const [emailError, setEmailError] = useState<string | null>(null)
+  // Set when a pending change stopped being pending WITHOUT this tab cancelling
+  // it — i.e. somebody opened the link, or it expired. The two are
+  // indistinguishable from here and the note says so rather than guessing.
+  const [emailResolvedNote, setEmailResolvedNote] = useState(false)
+  // Drives the ledger's countdown. State, not a ref: the sentence has to
+  // re-render as the clock moves, or it freezes at whatever it said on arrival.
+  const [now, setNow] = useState(() => Date.now())
+  // 🔴 A cancel from THIS tab must not be mistaken for a confirmation
+  // elsewhere. Without it, cancelling would clear the unlocked address and tell
+  // the user their change had resolved — when they are the one who killed it.
+  const cancelledHere = useRef(false)
+
   useEffect(() => {
     if (!user || hasInitialized.current) return
     setDisplayName(user.display_name || '')
@@ -112,6 +232,166 @@ export default function AccountProfileTab() {
       .catch(() => { if (live) setBlockers('unavailable') })
     return () => { live = false }
   }, [showDeleteConfirm])
+
+  // The address as this browser currently knows it: the vault's, once unlocked;
+  // otherwise whatever the session carries (empty for a zero-knowledge account).
+  const displayedEmail = unlockedPII?.email ?? user?.email ?? ''
+  // Untouched (`null`) shows the current address; typing replaces it. So the
+  // row reads as the thing it is changing, and a locked account — which has no
+  // current address to show — simply starts empty.
+  const emailFieldValue = newEmail ?? displayedEmail
+  // 🔑 Dirty means "different from what we know", and on a locked account we
+  // know nothing — so any address at all is a change. Comparing normalised
+  // forms stops a pure case edit from arming a whole ceremony that would
+  // resolve to the same account.
+  const emailIsDirty =
+    emailFieldValue.trim().length > 0 &&
+    emailFieldValue.trim().toLowerCase() !== displayedEmail.trim().toLowerCase()
+
+  // ── Is a confirmation link live? ─────────────────────────────────────────
+  //
+  // Read on MOUNT, unlike the deletion preview below, because the answer
+  // decides what this panel may offer: a person whose link is already waiting
+  // must not be handed a fresh form as though nothing were in flight. One GET
+  // on the general limiter — the endpoint sits there for exactly this reason.
+  const readPending = useCallback(async () => {
+    try {
+      const live = await getPendingEmailChange()
+      setEmailChange((prev) => {
+        if (live) {
+          // Keep the address this tab typed. The server cannot supply it, so a
+          // re-read must never overwrite what we know with what it does not.
+          return {
+            kind: 'pending',
+            expiresAt: live.expiresAt,
+            newEmail: prev.kind === 'pending' ? prev.newEmail : null,
+          }
+        }
+        if (prev.kind === 'pending' && !cancelledHere.current) {
+          // 🔴 It resolved somewhere else. Either the link was opened — in
+          // which case the address this tab is displaying is now the OLD one —
+          // or it expired. Both are indistinguishable from here, so drop the
+          // cached plaintext rather than keep showing a value that may be a
+          // lie, and say which two things could have happened.
+          setUnlockedPII(null)
+          setEmailResolvedNote(true)
+          void refresh()
+        }
+        cancelledHere.current = false
+        return { kind: 'idle' }
+      })
+    } catch {
+      // 🔴 NOT `idle`. A 401, a Redis blip, or a backend that predates the
+      // endpoint all mean "we could not find out" — reporting that as "nothing
+      // is pending" is the one failure this state machine exists to prevent.
+      //
+      // 🔑 And it never downgrades a measurement we already hold. A refresh
+      // that fails while a link is KNOWN live must leave the ledger standing:
+      // we saw the 200 that created it, and swapping that for "we couldn't
+      // check" would replace a fact with an absence. The next successful tick
+      // corrects it either way, and cancel/resend answer 404 if it has gone.
+      setEmailChange((prev) => (prev.kind === 'pending' ? prev : { kind: 'unavailable' }))
+    }
+  }, [refresh])
+
+  useEffect(() => {
+    if (!user) return
+    void readPending()
+  }, [user, readPending])
+
+  // While a link is live, tick the countdown and re-read the server's answer.
+  //
+  // The re-read is the half that matters: stage 2 finishes in a mail client, on
+  // another device as often as not, and nothing tells this tab. Without it the
+  // ledger would sit there claiming a link is live for as long as the tab
+  // stays open. 30s is chosen against a 30-minute link — cheap, and no worse
+  // than half a minute stale.
+  //
+  // ⚠️ Keyed on `kind`, not on the whole state object: every re-read writes a
+  // fresh `expiresAt`, so depending on the object would tear this interval down
+  // and rebuild it on each tick.
+  useEffect(() => {
+    if (emailChange.kind !== 'pending') return
+    const id = setInterval(() => {
+      setNow(Date.now())
+      void readPending()
+    }, 30_000)
+    return () => clearInterval(id)
+  }, [emailChange.kind, readPending])
+
+  // ── Stage 1: prove the password, re-seal the vault, ask for the link ─────
+  const handleSendLink = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (sendingLink) return
+    if (!emailIsDirty || !emailPassword) {
+      setEmailError('Enter the new address and the password you sign in with.')
+      return
+    }
+    setSendingLink(true)
+    setEmailError(null)
+    try {
+      await performEmailChangeRequest({ newEmail: emailFieldValue, password: emailPassword })
+      const sentTo = emailFieldValue.trim().toLowerCase()
+      setNewEmail(null)
+      setEmailResolvedNote(false)
+      // 🔑 The FACT is measured — the request returned 200, so a link is live —
+      // and the HORIZON is deliberately left null until the ticking re-read
+      // supplies the server's own. The ledger reads "it expires 30 minutes
+      // after it was sent" for those first seconds, which is true, rather than
+      // duplicating the server's TTL constant here to render a countdown that
+      // would silently drift if it ever changed.
+      setEmailChange({ kind: 'pending', expiresAt: null, newEmail: sentTo })
+      toast.success('Confirmation link sent. Open it in the new inbox to finish.')
+    } catch (err) {
+      // Stage 1 changes nothing about the account, so a failure leaves the form
+      // exactly as it was — with the password cleared, never replayed.
+      setEmailError(emailChangeErrorMessage(err))
+    } finally {
+      setEmailPassword('')
+      setSendingLink(false)
+    }
+  }, [sendingLink, emailIsDirty, emailFieldValue, emailPassword])
+
+  const handleCancelPending = useCallback(async () => {
+    if (pendingBusy) return
+    setPendingBusy(true)
+    try {
+      cancelledHere.current = true
+      await cancelEmailChange()
+      setEmailChange({ kind: 'idle' })
+      toast.success('Email change cancelled — that link no longer works.')
+    } catch {
+      // 🔴 Do NOT fall back to `idle`. Claiming the link is dead when the
+      // cancel did not land would tell somebody a live link is harmless.
+      cancelledHere.current = false
+      toast.error('Could not cancel the change. That link may still work — please try again.')
+    } finally {
+      setPendingBusy(false)
+    }
+  }, [pendingBusy])
+
+  const handleResendLink = useCallback(async () => {
+    if (pendingBusy) return
+    setPendingBusy(true)
+    try {
+      await resendEmailChangeLink()
+      toast.success('Confirmation link re-sent — check the new inbox.')
+    } catch (err) {
+      if (readStatus(err) === 404) {
+        // The server says nothing is pending, so this panel was stale. Believe
+        // it — but route through `readPending` rather than setting `idle` here,
+        // so ONE place decides what "no longer pending" means and the stale
+        // address on screen is dropped by the same code path the ticking read
+        // uses.
+        toast.error('That change is no longer pending. Start again to send a new link.')
+        await readPending()
+      } else {
+        toast.error('Could not resend the link. Please try again.')
+      }
+    } finally {
+      setPendingBusy(false)
+    }
+  }, [pendingBusy, readPending])
 
   // Track dirty state
   const isDirty = hasInitialized.current
@@ -159,7 +439,6 @@ export default function AccountProfileTab() {
     }
   }, [unlocking, unlockEmail, unlockPassword, displayName, baseline])
 
-  const displayedEmail = unlockedPII?.email ?? user?.email ?? ''
 
   const handleSave = useCallback(async () => {
     try {
@@ -238,6 +517,24 @@ export default function AccountProfileTab() {
   // * Say that plainly instead of rendering blank fields — and promise nothing:
   // * there is no action a user can take today that unlocks them here.
   const piiUnavailable = !user.email && !unlockedPII
+
+  // The form is offered whenever we know there is no live link — and also when
+  // we could not find out, because a failed status read must not take the
+  // feature away. It is NOT offered while the answer is still unknown: a form
+  // that appears and then vanishes is worse than one that arrives a moment late.
+  const emailFormOpen = emailChange.kind === 'idle' || emailChange.kind === 'unavailable'
+
+  const emailRowCaption =
+    emailChange.kind === 'unknown'
+      ? 'Checking whether a change is already waiting…'
+      : emailChange.kind === 'pending'
+        ? 'A change is waiting on the new inbox.'
+        : emailResolvedNote
+          // Honest about an ambiguity we cannot resolve from here: the link was
+          // either opened or it timed out, and this tab cannot tell which. What
+          // it CAN say is that the address it was showing is no longer proven.
+          ? 'That change is no longer pending — it was confirmed, or it expired. Unlock to see your current address.'
+          : 'Changing it takes your password and a confirmation from the new inbox.'
 
   return (
     <div className="space-y-8">
@@ -322,19 +619,172 @@ export default function AccountProfileTab() {
               maxLength={100}
             />
           </PanelRow>
+        </PanelRows>
 
+        {/* 🔑 ITS OWN <form>, and a second PanelRows to hold it.
+            The display-name row above is saved by the SaveBar; these two are
+            submitted by the bar below. One form around all three would make
+            Enter in the name field start an email-change ceremony — so the
+            grouping follows what submits what, and `border-t` puts back the
+            hairline the split would otherwise drop. */}
+        <form onSubmit={handleSendLink}>
+        <PanelRows className={emailFormOpen ? 'border-t border-border' : undefined}>
+          {/* 🔴 DIRECTION A (owner, 10-09-2026): the address is changed IN THE
+              ROW THAT SHOWS IT. The row already says "Email address"; making it
+              the thing you edit adds no new place to look, and the pending
+              ledger sits on the thing it is about. The cost, accepted with it:
+              this panel now holds two different jobs — a display name you just
+              save, and an address that takes a ceremony — separated only by
+              their captions. Round + mocks:
+              Pulse/docs/data/10-09-2026-email-change-round/. */}
           <PanelRow
             label="Email address"
-            caption="Read-only in Pulse."
+            htmlFor={emailFormOpen ? 'account-new-email' : undefined}
+            caption={emailRowCaption}
           >
-            <Input
-              value={displayedEmail}
-              disabled
-              placeholder="Encrypted — not unlocked in this browser"
-              className="bg-muted text-muted-foreground"
-            />
+            {emailFormOpen ? (
+              <Input
+                id="account-new-email"
+                type="email"
+                autoComplete="email"
+                value={emailFieldValue}
+                onChange={e => setNewEmail(e.target.value)}
+                placeholder="you@example.com"
+                disabled={sendingLink}
+              />
+            ) : (
+              <Input
+                value={displayedEmail}
+                disabled
+                placeholder="Encrypted — not unlocked in this browser"
+                className="bg-muted text-muted-foreground"
+              />
+            )}
           </PanelRow>
+
+          {/* The second half of direction A: one more row, immediately under
+              the one it authorises. The ceremony needs no email — since
+              ciphera-id#95 the re-auth endpoint resolves the account from the
+              session — so a password is the whole of what is asked for. */}
+          {emailFormOpen && (
+            <PanelRow
+              label="Your password"
+              htmlFor="account-email-password"
+              caption="Required to confirm it’s you."
+            >
+              <Input
+                id="account-email-password"
+                type="password"
+                autoComplete="current-password"
+                value={emailPassword}
+                onChange={e => setEmailPassword(e.target.value)}
+                placeholder="Enter your password"
+                disabled={sendingLink}
+              />
+            </PanelRow>
+          )}
         </PanelRows>
+
+        {/* Nothing has changed when this fails — stage 1 mutates no account
+            state by construction — so the message says so, every branch. */}
+        {emailFormOpen && emailError && (
+          <p className="border-t border-border px-5 pt-4 text-sm text-destructive" role="alert">
+            {emailError}
+          </p>
+        )}
+
+        {emailFormOpen && (
+          <div className="flex gap-2 border-t border-border px-5 py-4">
+            <Button
+              type="submit"
+              disabled={sendingLink || !emailIsDirty || !emailPassword}
+            >
+              {sendingLink ? 'Sending…' : 'Send confirmation link'}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => { setNewEmail(null); setEmailPassword(''); setEmailError(null) }}
+              disabled={sendingLink || (!emailIsDirty && !emailPassword)}
+            >
+              Cancel
+            </Button>
+          </div>
+        )}
+        </form>
+
+        {/* 🔑 The pending ledger is FACET'S OWN, shipped in ProfileSettings
+            0.12.0 (29-08-2026, "Direction A — inline ledger") and reused here
+            rather than redesigned: the amber dot, "Confirmation sent to
+            <address>", the expiry, the heads-up to the old address, then
+            Cancel request / Resend link. Pulse renders it itself because
+            Facet's email form sits behind an inline password prompt of its own,
+            which would put a THIRD step in front of a ceremony 09-09 spent the
+            day flattening. */}
+        {emailChange.kind === 'pending' && (
+          <div className="px-5 pb-4">
+            <div className="space-y-3 border border-border p-4">
+              <div className="flex items-center gap-2">
+                <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
+                <span className="text-sm font-medium text-foreground">
+                  {emailChange.newEmail ? (
+                    <>Confirmation sent to <span className="text-foreground">{emailChange.newEmail}</span></>
+                  ) : (
+                    // 🔴 NOT a guess and not a blank. id-backend never holds a
+                    // readable address, so only the tab that typed it can name
+                    // it — and after a reload none can. Storing it to survive
+                    // one would put plaintext PII at rest in a second origin,
+                    // which is the open custody question, not a detail.
+                    <>A confirmation link is waiting in your new inbox</>
+                  )}
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Open the link in that inbox to finish — {expiryPhrase(emailChange.expiresAt, now)}.
+                Until then, everything stays on your current address.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Your current address has been sent a heads-up with a way to object.
+              </p>
+              <div className="flex justify-end gap-2 pt-1">
+                <Button variant="ghost" size="sm" onClick={handleCancelPending} disabled={pendingBusy}>
+                  Cancel request
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleResendLink} disabled={pendingBusy}>
+                  Resend link
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Could not ask. The SAME bordered box the ledger uses — the
+            established device for "there is something to know about this row" —
+            with a neutral dot, because this is not a live link. The form stays
+            usable: refusing to let somebody change their address because a
+            status read failed would be a worse failure than the one being
+            reported. */}
+        {emailChange.kind === 'unavailable' && (
+          <div className="px-5 pb-4">
+            <div className="space-y-3 border border-border p-4">
+              <div className="flex items-center gap-2">
+                <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">
+                  We couldn’t check whether a confirmation is already waiting
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                You can still send one — a new link replaces any earlier one, and nothing
+                changes until it is opened.
+              </p>
+              <div className="flex justify-end pt-1">
+                <Button variant="outline" size="sm" onClick={() => void readPending()}>
+                  Check again
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </SettingsPanel>
 
       {/* Danger zone — trigger row via the shared DangerZone API. */}
