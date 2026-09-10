@@ -359,6 +359,46 @@ describe('AccountProfileTab — before the vault has answered', () => {
     expect(container.textContent).toMatch(/Decrypting your details/i)
   })
 
+  /**
+   * 🔴 THE WINDOW THE FIRST ATTEMPT MISSED, AND IT WAS THE BIGGER HALF.
+   *
+   * `setKeyStored(true)` fires the moment a key is FOUND; opening the vault
+   * with it resolves later. Measured on production between the two attempts:
+   * the skeleton showed for 16 ms, then the LOCKED banner and an Unlock button
+   * came back for 68 ms, and only then the address. Guarding
+   * `keyStored === null` alone moved the bug rather than removing it.
+   *
+   * So: a key is found, and the open never settles.
+   */
+  it('keeps waiting while a FOUND key is still being opened', async () => {
+    h.user = { id: 'u1', email: '', display_name: '' }
+    vault.load.mockResolvedValue({ extractable: false })
+    vault.open.mockReturnValue(new Promise(() => {}))
+    const { container } = render(<AccountProfileTab />)
+    await act(async () => { await Promise.resolve() })
+    await act(async () => { await Promise.resolve() })
+
+    expect(container.textContent).not.toMatch(/Your name and email stay encrypted/i)
+    expect(screen.queryByRole('button', { name: 'Unlock' })).toBeNull()
+    expect(container.querySelectorAll('[aria-busy="true"]').length).toBe(2)
+  })
+
+  /**
+   * ⚠️ AND IT MUST STILL END. A key that does not open this vault leaves
+   * `unlockedPII` null forever, so without the effect setting `keyStored` false
+   * on that failure the screen would wait for something that never arrives and
+   * the password prompt would never appear.
+   */
+  it('resolves to the prompt when a found key does NOT open the vault', async () => {
+    h.user = { id: 'u1', email: '', display_name: '' }
+    vault.load.mockResolvedValue({ extractable: false })
+    vault.open.mockRejectedValue(new Error('tag mismatch'))
+    const { container } = render(<AccountProfileTab />)
+
+    expect(await screen.findByText(/Your name and email stay encrypted/i)).toBeInTheDocument()
+    expect(container.querySelectorAll('[aria-busy="true"]').length).toBe(0)
+  })
+
   it('resolves to the LOCKED state when there is genuinely no key', async () => {
     h.user = { id: 'u1', email: '', display_name: '' }
     vault.load.mockResolvedValue(null)
