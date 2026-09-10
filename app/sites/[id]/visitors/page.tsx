@@ -21,6 +21,7 @@ import {
   VISITORS_MIN_DATE,
   VISITORS_ROLLING_MINUTES,
   VISITORS_PRESETS,
+  monthBoundaries,
   presenceTicks,
 } from '@/lib/visitors/range'
 import type { VisitorRow } from '@/lib/api/visitors'
@@ -32,6 +33,17 @@ import { displayDomain } from '@/lib/utils/displayDomain'
 // (and round4-live-v4.png for the rolling window).
 
 const PAGE_SIZE = 10
+
+/**
+ * How many dots the presence field is fed.
+ *
+ * 🔴 IT IS NOT 200, AND IT CANNOT BE. `visitorsMaxPageSize` is 100 on the server
+ * and `ParseLimit` REJECTS rather than clamps, so `pageSize: 200` returns 400 and
+ * this page renders an error card. Raising the cap is a wire-contract change and
+ * was not taken; the field gets its own bounded request instead, and says how
+ * many it is not drawing.
+ */
+const FIELD_SIZE = 100
 
 function isToggleOff(error: unknown): boolean {
   // A 403 here is not a failure — it is the site's own visitor_views_enabled
@@ -86,9 +98,55 @@ export default function VisitorsPage() {
     enabled: periodReady,
   })
 
+  /**
+   * 🔴 THE FIELD GETS ITS OWN REQUEST, DECOUPLED FROM THE ROSTER'S PAGING.
+   *
+   * It used to be handed `data.visitors` — one page of ten — while its caption
+   * said "Each dot is one visitor" and the stats line 12px below printed the real
+   * range total. Measured on production: 101 in range, 10 dots; 517 on the
+   * busiest site. Its own "+N more not drawn" note was unreachable code.
+   *
+   * Always page 1 sorted by `last_seen`, whatever the roster is sorted by: the
+   * field's x axis IS recency, so feeding it the roster's ordering would draw
+   * "the ten least active" as the population the moment somebody pressed
+   * "Visits ↑".
+   */
+  const { data: fieldData } = useVisitors(siteId, range, {
+    sort: 'last_seen',
+    order: 'desc',
+    page: 1,
+    pageSize: FIELD_SIZE,
+    enabled: periodReady,
+  })
+
+  /** The visitor whose dot is lit — set by hovering or focusing a roster row. */
+  const [highlightKey, setHighlightKey] = useState<string | null>(null)
+
   useEffect(() => {
     if (site?.domain) document.title = `Visitors · ${displayDomain(site)} | Pulse`
   }, [site?.domain])
+
+  // 🔴 THE SITE'S ZONE, TAKEN FROM THE SAME RESPONSE AS THE ROWS. Every date on this
+  // page is a calendar judgement about data the server bucketed in the site's timezone,
+  // so it may never be made in the reader's (audit §2.4). Reading it off `data` rather
+  // than off `useSite` keeps the rows and their calendar in one payload — a separate
+  // fetch could arrive later, or not at all, and render a page of dates in the meantime.
+  // The `useSite` arm covers a response held in an SWR cache from before the field
+  // existed; UTC last, because it is the server's own column default and never a guess
+  // about where the reader is standing.
+  const siteTimezone = data?.site_timezone || site?.timezone || SITE_TIMEZONE_FALLBACK
+
+  // 🔴 EVERYTHING BELOW IS ABOVE THE EARLY RETURNS ON PURPOSE. `boundaries` is a
+  // useMemo, and a hook after a conditional `return` runs in a different order on
+  // the render where the toggle-off room shows — React's rules-of-hooks error,
+  // caught by eslint before it could ship. The two lines it depends on come with
+  // it so the three stay together.
+  const { from, to, ticks } = presenceTicks(dateRange, rollingMinutes, siteTimezone)
+  // A rolling window never spans a month, so live mode gets no boundary.
+  const boundaries = useMemo(
+    () => (rollingMinutes != null ? [] : monthBoundaries(from, to, siteTimezone)),
+    [rollingMinutes, from, to, siteTimezone],
+  )
 
   if (site && site.visitor_views_enabled === false) {
     return (
@@ -111,20 +169,14 @@ export default function VisitorsPage() {
   }
 
   const visitors = data?.visitors ?? []
-  // 🔴 THE SITE'S ZONE, TAKEN FROM THE SAME RESPONSE AS THE ROWS. Every date on this
-  // page is a calendar judgement about data the server bucketed in the site's timezone,
-  // so it may never be made in the reader's (audit §2.4). Reading it off `data` rather
-  // than off `useSite` keeps the rows and their calendar in one payload — a separate
-  // fetch could arrive later, or not at all, and render a page of dates in the meantime.
-  // The `useSite` arm covers a response held in an SWR cache from before the field
-  // existed; UTC last, because it is the server's own column default and never a guess
-  // about where the reader is standing.
-  const siteTimezone = data?.site_timezone || site?.timezone || SITE_TIMEZONE_FALLBACK
   const total = data?.total ?? 0
   const activeNow = data?.active_now ?? 0
   const live = rollingMinutes != null
 
-  const { from, to, ticks } = presenceTicks(dateRange, rollingMinutes, siteTimezone)
+  const fieldVisitors = fieldData?.visitors ?? []
+  // What the field is NOT drawing. The field cannot compute this — it is handed a
+  // bounded page on purpose — so the page, which knows the range total, tells it.
+  const undrawn = Math.max(0, total - fieldVisitors.length)
   const returningShare =
     visitors.length > 0
       ? Math.round((visitors.filter((v) => v.visits > 1).length / visitors.length) * 100)
@@ -146,11 +198,14 @@ export default function VisitorsPage() {
 
       <div className="mt-5">
         <PresenceField
-          visitors={visitors}
+          visitors={fieldVisitors}
           from={from}
           to={to}
           ticks={ticks}
           activeCount={activeNow}
+          undrawn={undrawn}
+          boundaries={boundaries}
+          highlightKey={highlightKey}
           caption="Each dot is one visitor · nearer the right, more recently seen"
           emptyLabel={isLoading ? 'Loading…' : 'No visitors in this range'}
         />
@@ -187,8 +242,15 @@ export default function VisitorsPage() {
         <div className="flex h-8 items-center border-b border-border px-4 text-xs text-neutral-500">
           <span className="min-w-0 flex-1">Visitor</span>
           <span className="hidden w-24 text-right sm:inline-block">Last journey</span>
-          <SortHeader label="Visits" col="visits" sort={sort} order={order} onSort={applySort} className="w-16" />
-          <SortHeader label="Pages" col="pageviews" sort={sort} order={order} onSort={applySort} className="w-16" />
+          {/* 🔴 HIDDEN BELOW sm, with their rows (approved round 5, §2 B).
+              Measured at 375px: the row is 339px and leaves 47px for the
+              pseudonym AND the whole five-segment meta line, because 224px of
+              numerals are shrink-0 beside it. The name truncated to "Thou…".
+              Below sm the roster answers WHO and WHEN; visits and pages retreat
+              one click deeper, which is the same retreat the journey strand
+              already makes at this width. */}
+          <SortHeader label="Visits" col="visits" sort={sort} order={order} onSort={applySort} className="hidden w-16 sm:inline-block" />
+          <SortHeader label="Pages" col="pageviews" sort={sort} order={order} onSort={applySort} className="hidden w-16 sm:inline-block" />
           <SortHeader label="Last seen" col="last_seen" sort={sort} order={order} onSort={applySort} className="w-24" />
         </div>
 
@@ -231,6 +293,7 @@ export default function VisitorsPage() {
                 visitor={v}
                 collectsReferrers={site?.collect_referrers ?? false}
                 siteTimezone={siteTimezone}
+                onHighlight={setHighlightKey}
               />
             ))}
             {/*
@@ -368,16 +431,29 @@ function VisitorRowLink({
   visitor,
   collectsReferrers,
   siteTimezone,
+  onHighlight,
 }: {
   siteId: string
   visitor: VisitorRow
   collectsReferrers: boolean
   siteTimezone: string
+  onHighlight: (key: string | null) => void
 }) {
   const name = visitorPseudonym(visitor.visitor_key)
   return (
     <Link
       href={`/sites/${siteId}/visitors/${visitor.visitor_key}`}
+      /*
+        🔑 FOCUS, NOT ONLY HOVER. The row lights its dot in the field above on
+        pointer-enter — and on keyboard focus, because hover does not exist on a
+        phone, which is exactly where the field is most crowded. The row is
+        already a link, so it is already in the tab order; this costs nothing and
+        gives the pairing to anyone tabbing the roster.
+      */
+      onMouseEnter={() => onHighlight(visitor.visitor_key)}
+      onMouseLeave={() => onHighlight(null)}
+      onFocus={() => onHighlight(visitor.visitor_key)}
+      onBlur={() => onHighlight(null)}
       className="flex items-center gap-3 border-b border-border/60 px-4 py-2.5 transition-colors duration-fast ease-apple last:border-b-0 hover:bg-neutral-800/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange"
     >
       <div className="min-w-0 flex-1">
@@ -443,13 +519,13 @@ function VisitorRowLink({
         a separator, so `3` + `<sr-only> visits</sr-only>` came out as "3visits".
         One self-contained text node cannot be run together with its neighbour.
       */}
-      <span className="w-16 shrink-0 text-right text-sm tabular-nums text-neutral-300">
+      <span className="hidden w-16 shrink-0 text-right text-sm tabular-nums text-neutral-300 sm:inline-block">
         <span aria-hidden="true">{visitor.visits}</span>
         <span className="sr-only">
           {visitor.visits} {visitor.visits === 1 ? 'visit' : 'visits'},{' '}
         </span>
       </span>
-      <span className="w-16 shrink-0 text-right text-sm tabular-nums text-neutral-300">
+      <span className="hidden w-16 shrink-0 text-right text-sm tabular-nums text-neutral-300 sm:inline-block">
         <span aria-hidden="true">{visitor.pageviews}</span>
         <span className="sr-only">
           {visitor.pageviews} {visitor.pageviews === 1 ? 'page' : 'pages'},{' '}
