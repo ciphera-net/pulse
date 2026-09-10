@@ -42,8 +42,6 @@ interface OutboundProps {
   siteId: string
   dateRange: { start: string; end: string }
   period?: string
-  /** True range totals — the denominator for "N% of visitors left through a link". */
-  totals?: { pageviews: number; visitors: number }
   /** The dashboard fan-out's goal counts; the outbound_link row carries the visitor count. */
   goalCounts?: GoalCountStat[]
   /** Active page filters — the endpoints ignore them, so the card labels itself whole-site. */
@@ -92,7 +90,7 @@ function DestinationIcon({ host, failed, onFail }: { host: string; failed: boole
   )
 }
 
-export default function Outbound({ siteId, dateRange, period, totals, goalCounts, filters, onFilter }: OutboundProps) {
+export default function Outbound({ siteId, dateRange, period, goalCounts, filters, onFilter }: OutboundProps) {
   const [activeTab, setActiveTab] = useState<Tab>('domains')
   const [faviconFailed, setFaviconFailed] = useState<Set<string>>(() => new Set())
   const { data, error, isLoading } = useOutboundLinks(siteId, dateRange.start, dateRange.end, period)
@@ -135,18 +133,20 @@ export default function Outbound({ siteId, dateRange, period, totals, goalCounts
   const emptySlots = Math.max(0, LIMIT - displayed.length)
   const maxClicks = list.reduce((m, r) => Math.max(m, r.clicks), 0)
 
-  const outboundVisitors = outboundGoal?.visitors
   const hasFilters = Boolean(filters)
   const hasData = list.length > 0
 
-  const footnote = (() => {
-    if (hasFilters) return 'Outbound is not filtered yet — these are whole-site clicks.'
-    if (outboundVisitors != null && totals && totals.visitors > 0) {
-      const share = Math.round((outboundVisitors / totals.visitors) * 100)
-      return `${share}% of visitors left through a link · clicks, not people — a visitor who clicked twice counts twice`
-    }
-    return 'Clicks, not people — a visitor who clicked twice counts twice'
-  })()
+  // 🔴 The share sentence is GONE (owner, 10-09-2026): "i wanna get rid of
+  // 4% of visitors left through a link · clicks, not people — a visitor who
+  // clicked twice counts twice". The card already says `clicks` in its header,
+  // which is where the unit belongs; a paragraph restating it under every row
+  // was chrome explaining chrome.
+  //
+  // ⚠️ What survives is the FILTER warning, and it must. The property endpoints
+  // take no filters, so under page filters this card is whole-site while every
+  // other card on the screen is filtered. Dropping that line too would leave
+  // the card silently answering a different question than the one asked.
+  const footnote = hasFilters ? 'Outbound is not filtered yet — these are whole-site clicks.' : null
 
   return (
     <div data-tour="dimension-card" data-tour-card="outbound" className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">
@@ -239,7 +239,9 @@ export default function Outbound({ siteId, dateRange, period, totals, goalCounts
                 <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
               ))}
             </CascadeGroup>
-            <p className="mt-3 text-[11px] text-neutral-500" data-testid="outbound-footnote">{footnote}</p>
+            {footnote && (
+              <p className="mt-3 text-[11px] text-neutral-500" data-testid="outbound-footnote">{footnote}</p>
+            )}
           </>
         ) : isLoading && !data ? (
           // Height-stable while the first fetch is in flight — the card must not

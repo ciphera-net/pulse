@@ -455,15 +455,25 @@ export default function SiteDashboardPage() {
           filters={filtersParam || undefined}
           onFilter={handleAddFilter}
         />
-        {/* Outbound (owner pick A, 08-09-2026): where visitors go when they
-            leave — Domains · Links · From page, from the outbound_link events
-            the tracker already records. Clicks, not people; whole-site under
-            page filters until the aggregate learns them. */}
+      </div>
+
+      {/* Outbound is its OWN section (owner, 10-09-2026: "add an Outbound title
+          like there is Audience on the left of it"). It shared the Audience row
+          with Technology from 08-09; a card the owner thinks of by name was
+          taking its name from a header that described its neighbour.
+
+          🔑 Its note is 'whole site' UNCONDITIONALLY, not `sectionNote`. The
+          property endpoints behind this card take no filters, so when a page
+          filter is on, every other section is honestly 'filtered with the page'
+          and this one is not. Reusing the shared note would have printed the one
+          word that is never true here. The card keeps its own in-card warning,
+          which says what the consequence is; this says what the population is. */}
+      <SectionHeader title="Outbound" note="whole site" />
+      <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
         <Outbound
           siteId={siteId}
           dateRange={resolvedDateRange}
           period={apiPeriod || undefined}
-          totals={totals}
           goalCounts={dashboard?.goal_counts ?? []}
           filters={filtersParam || undefined}
           onFilter={handleAddFilter}

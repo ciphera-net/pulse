@@ -1,6 +1,6 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import Sources from '@/components/dashboard/Sources'
 import Audience from '@/components/dashboard/Locations'
 import TechSpecs from '@/components/dashboard/TechSpecs'
@@ -358,7 +358,7 @@ describe('Outbound', () => {
     ],
   }
   const goalCounts = [{ event_name: 'outbound_link', count: 20, visitors: 14 }]
-  const baseProps = { siteId: 'site-1', dateRange, totals, goalCounts }
+  const baseProps = { siteId: 'site-1', dateRange, goalCounts }
 
   it('groups links by host (www stripped) and shows CLICKS, with the share of ALL clicks on hover', () => {
     useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
@@ -372,8 +372,9 @@ describe('Outbound', () => {
     // 14 of 20 clicks = 70% — the denominator is every click, not the visible rows.
     expect(screen.getByText('70%')).toBeTruthy()
     expect(screen.getByTestId('metric-unit').textContent).toBe('clicks')
-    // 14 of 314 visitors clicked out — the one people-number the card can state.
-    expect(screen.getByTestId('outbound-footnote').textContent).toMatch(/^4% of visitors left through a link/)
+    // The unit lives in the header. There is no footnote restating it — see the
+    // dedicated test below.
+    expect(screen.queryByTestId('outbound-footnote')).toBeNull()
   })
 
   it('divides by the goal count (every click in the range), not by the capped rows it received', () => {
@@ -389,7 +390,7 @@ describe('Outbound', () => {
     useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
     render(<Outbound {...baseProps} goalCounts={[]} />)
     expect(screen.getByText('70%')).toBeTruthy() // 14 / 20
-    expect(screen.getByTestId('outbound-footnote').textContent).toMatch(/^Clicks, not people/)
+    expect(screen.queryByTestId('outbound-footnote')).toBeNull()
   })
 
   it('the Links view keeps one row per link, opens it in a new tab, and dims the path', () => {
@@ -419,6 +420,61 @@ describe('Outbound', () => {
     render(<Outbound {...baseProps} filters="country:is:DE" />)
     expect(screen.getByTestId('outbound-footnote').textContent).toMatch(/not filtered yet/)
     expect(screen.queryByText(/of visitors left through a link/)).toBeNull()
+  })
+
+  // ── The footnote (owner, 10-09-2026) ──────────────────────────────────────
+  // "i wanna get rid of 4% of visitors left through a link · clicks, not people
+  // — a visitor who clicked twice counts twice". The unit is stated once, in the
+  // header, and the paragraph under the rows is gone.
+  it('shows NO footnote when the card is answering the question that was asked', () => {
+    useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
+    render(<Outbound {...baseProps} />)
+    expect(screen.queryByTestId('outbound-footnote')).toBeNull()
+    expect(screen.queryByText(/of visitors left through a link/)).toBeNull()
+    expect(screen.queryByText(/clicks, not people/i)).toBeNull()
+    expect(screen.queryByText(/counts twice/i)).toBeNull()
+    // The unit still has exactly one home.
+    expect(screen.getByTestId('metric-unit').textContent).toBe('clicks')
+  })
+
+  // ── Pagination (owner, 10-09-2026: "make sure the users can also click through
+  // multiple pages of options in the outbound block like the other blocks") ────
+  // The card pages at 7 rows like every other dimension card. It was never
+  // broken — the pager correctly renders nothing at a single page, and the sites
+  // it was looked at had 7 destinations or fewer. These pin it so a regression
+  // is a red test rather than another report.
+  const manyLists = {
+    urls: Array.from({ length: 18 }, (_, i) => ({ value: `https://dest-${i}.example/x`, count: 18 - i })),
+    paths: Array.from({ length: 12 }, (_, i) => ({ value: `/page-${i}`, count: 12 - i })),
+  }
+
+  it('pages through the rows, seven at a time, on every view', () => {
+    useOutboundLinks.mockReturnValue({ data: manyLists, error: undefined, isLoading: false })
+    render(<Outbound {...baseProps} />)
+
+    // Domains: 18 distinct hosts → 3 pages.
+    const pager = screen.getByRole('navigation', { name: /Pages of domains/i })
+    expect(pager).toBeTruthy()
+    expect(screen.getByText('dest-0.example')).toBeTruthy()
+    expect(screen.queryByText('dest-7.example')).toBeNull()
+
+    fireEvent.click(within(pager).getByRole('button', { name: 'Page 2' }))
+    expect(screen.getByText('dest-7.example')).toBeTruthy()
+    expect(screen.queryByText('dest-0.example')).toBeNull()
+
+    // From page: 12 paths → 2 pages, and switching views starts at page 1.
+    fireEvent.click(screen.getByRole('radio', { name: 'From page' }))
+    expect(screen.getByText('/page-0')).toBeTruthy()
+    const pagesPager = screen.getByRole('navigation', { name: /Pages of pages/i })
+    fireEvent.click(within(pagesPager).getByRole('button', { name: 'Next page' }))
+    expect(screen.getByText('/page-7')).toBeTruthy()
+  })
+
+  it('renders no pager when everything fits on one page', () => {
+    useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
+    render(<Outbound {...baseProps} />)
+    // 3 hosts — a pager here would be chrome with nothing to do.
+    expect(screen.queryByRole('navigation', { name: /Pages of/i })).toBeNull()
   })
 
   it('states an ERROR rather than claiming there are no clicks', () => {
