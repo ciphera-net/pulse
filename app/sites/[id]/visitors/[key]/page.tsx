@@ -257,7 +257,11 @@ export default function VisitorDetailPage() {
       <div className="mt-6 rounded-none border border-border bg-card">
         <div className="flex h-12 items-center justify-between border-b border-border px-4">
           <h2 className="text-sm font-medium text-white">Visits</h2>
-          <span className="text-xs text-neutral-500">newest first</span>
+          {/* Round-6 decision B: the page still holds the newest visits, and reads
+              forwards in time — the same direction as the ribbon above and the
+              trail inside. The caption has to say BOTH, or "oldest first" alone
+              reads as "page 1 is the beginning of time", which it is not. */}
+          <span className="text-xs text-neutral-500">oldest first &middot; newest {VISITS_PAGE_SIZE}</span>
         </div>
 
         {visitsLoading && visits.length === 0 ? (
