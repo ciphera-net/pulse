@@ -156,12 +156,17 @@ export async function updateUserPreferences(preferences: UserPreferences): Promi
   })
 }
 
-export async function updateDisplayName(displayName: string): Promise<void> {
-  return apiRequest<void>('/auth/user/display-name', {
-    method: 'PUT',
-    body: JSON.stringify({ display_name: displayName }),
-  })
-}
+// 🔴 `updateDisplayName` IS GONE, not merely unused. It POSTed
+// `{display_name}` to `PUT /auth/user/display-name`, which requires an
+// `encrypted_vault` and treats `display_name` as wire compatibility it never
+// reads — so it answered `400 {"error":"Missing required field"}` every single
+// time, on both surfaces that called it.
+//
+// The name lives INSIDE the encrypted vault (migration 045 dropped the column),
+// so saving one means re-sealing the vault, which needs the vault key. That now
+// exists: `lib/auth/vault-restore.ts` → `saveDisplayName(userId, name)`, and it
+// is the only implementation. Leaving this function here "until the callers
+// move" is exactly how it stayed broken on two surfaces at once.
 
 // ---------------------------------------------------------------------------
 // The two-stage email change (ceremonies design §9/§10).

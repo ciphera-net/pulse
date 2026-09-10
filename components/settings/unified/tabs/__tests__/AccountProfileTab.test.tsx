@@ -46,12 +46,33 @@ vi.mock('@/lib/auth/tessera/opaque-unlock', () => ({
   unlockVaultPII: unlockMock.fn,
 }))
 
+// Persisting the vault key is a custody decision (owner, 10-09-2026). The tab
+// stores one on unlock and restores from one on mount, so both halves are
+// mocked — the store's own rules are tested in lib/auth/__tests__/vault-store.
+const vault = vi.hoisted(() => ({
+  save: vi.fn().mockResolvedValue(undefined),
+  load: vi.fn().mockResolvedValue(null),
+  open: vi.fn(),
+  saveName: vi.fn().mockResolvedValue(undefined),
+}))
+vi.mock('@/lib/auth/vault-store', () => ({
+  saveVaultKey: vault.save,
+  loadVaultKey: vault.load,
+  forgetVaultKeys: vi.fn(),
+}))
+vi.mock('@/lib/auth/vault-restore', () => ({
+  openVaultWithKey: vault.open,
+  saveDisplayName: vault.saveName,
+}))
+
 // SaveBar is portal + shell-slot machinery — stub it to a marker so the smoke
 // render doesn't depend on the shell being mounted. Its own behavior is covered
 // elsewhere; here we only assert the tab wires dirty state into it.
 vi.mock('@/components/settings/SettingsSaveBar', () => ({
-  default: ({ isDirty }: { isDirty: boolean }) => (
-    <div data-testid="savebar" data-dirty={String(isDirty)} />
+  default: ({ isDirty, onSave }: { isDirty: boolean; onSave: () => void }) => (
+    <div data-testid="savebar" data-dirty={String(isDirty)}>
+      <button data-testid="savebar-save" onClick={onSave}>Save</button>
+    </div>
   ),
 }))
 
@@ -85,6 +106,14 @@ beforeEach(() => {
   api.cancelEmailChange.mockClear().mockResolvedValue(undefined)
   api.resendEmailChangeLink.mockClear().mockResolvedValue(undefined)
   emailCeremony.fn.mockClear().mockResolvedValue(undefined)
+  // 🔑 Was NOT reset here, so `toHaveBeenCalled` on it counted calls made by
+  // earlier tests in the file — which is how a passing suite can hide a
+  // never-checked assertion.
+  unlockMock.fn.mockClear()
+  vault.save.mockClear().mockResolvedValue(undefined)
+  vault.load.mockClear().mockResolvedValue(null)
+  vault.open.mockClear()
+  vault.saveName.mockClear().mockResolvedValue(undefined)
 })
 
 describe('AccountProfileTab (Facet structured panels)', () => {
@@ -158,11 +187,14 @@ describe('AccountProfileTab (Facet structured panels)', () => {
     expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument()
   })
 
-  it('unlocks the vault PII and shows the email, holding no key', async () => {
+  it('unlocks the vault PII, shows the email, and KEEPS the key for next time', async () => {
     // ZK account: no in-session email → the locked banner + Unlock action.
     h.user = { id: 'u1', email: '', display_name: '' }
     unlockMock.fn.mockReset()
-    unlockMock.fn.mockResolvedValue({ email: 'ada@ciphera.net', display_name: 'Ada Lovelace' })
+    unlockMock.fn.mockResolvedValue({
+      pii: { email: 'ada@ciphera.net', display_name: 'Ada Lovelace' },
+      vaultKey: { extractable: false },
+    })
     const { container } = render(<AccountProfileTab />)
 
     // The email field starts empty (encrypted, not unlocked).
@@ -181,6 +213,9 @@ describe('AccountProfileTab (Facet structured panels)', () => {
     await vi.waitFor(() => expect(screen.queryByPlaceholderText('Password')).toBeNull())
     // The vault display name surfaced into the (editable) display-name field.
     expect(screen.getByDisplayValue('Ada Lovelace')).toBeInTheDocument()
+    // 🔴 And the key is kept — the owner's custody decision, 10-09-2026. Before
+    // it, every reload asked again.
+    expect(vault.save).toHaveBeenCalledWith('u1', expect.objectContaining({ extractable: false }))
   })
 
   it('keeps the locked state and surfaces an error on a bad password — never a blank name', async () => {
@@ -199,6 +234,65 @@ describe('AccountProfileTab (Facet structured panels)', () => {
     expect(screen.getByPlaceholderText('Password')).toBeInTheDocument()
     const profileEmail = container.querySelector('#account-display-name')
     expect(profileEmail).not.toBeNull()
+  })
+})
+
+// ── Unlocked on this device (custody decision, owner 10-09-2026) ──────────
+//
+// The owner's complaint was simply "I can't see my name and email". Persisting
+// the vault key is what makes the second visit not ask — so these two tests are
+// the feature, and the rest of the file is its guard rails.
+
+describe('AccountProfileTab — a key this browser already holds', () => {
+  it('opens the vault on mount with NO password, when a key is stored', async () => {
+    h.user = { id: 'u1', email: '', display_name: '' }
+    vault.load.mockResolvedValue({ extractable: false })
+    vault.open.mockResolvedValue({ email: 'ada@ciphera.net', display_name: 'Ada Lovelace' })
+
+    render(<AccountProfileTab />)
+
+    await vi.waitFor(() => expect(screen.queryByDisplayValue('ada@ciphera.net')).not.toBeNull())
+    expect(screen.getByDisplayValue('Ada Lovelace')).toBeInTheDocument()
+    // The lock is gone, and it was never shown.
+    expect(screen.queryByText(/Your name and email stay encrypted/i)).toBeNull()
+    expect(unlockMock.fn).not.toHaveBeenCalled()
+  })
+
+  /**
+   * 🔴 FAILS SOFT, ON PURPOSE. A stored key that no longer opens this vault —
+   * the address was changed and confirmed in another browser, say — must land
+   * on the password prompt, which is the honest state and the one this replaced.
+   * Never an error screen for a lock that is simply still locked.
+   */
+  it('falls back to the prompt when a stored key does not open the vault', async () => {
+    h.user = { id: 'u1', email: '', display_name: '' }
+    vault.load.mockResolvedValue({ extractable: false })
+    vault.open.mockRejectedValue(new Error('tag mismatch'))
+
+    render(<AccountProfileTab />)
+    await act(async () => { await Promise.resolve() })
+
+    expect(await screen.findByText(/Your name and email stay encrypted/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Unlock' })).toBeInTheDocument()
+  })
+
+  /**
+   * 🔴 THE 400 THAT WAS NEVER A CLIENT BUG. `display_name` stopped being a
+   * column in migration 045 and moved inside the encrypted vault, so saving one
+   * means RE-SEALING the vault — which needs the key Pulse did not keep. Both
+   * surfaces sent `{display_name}` and got "Missing required field" every time.
+   */
+  it('saves a display name by re-sealing the vault, not by posting a field', async () => {
+    vault.load.mockResolvedValue({ extractable: false })
+    vault.open.mockResolvedValue({ email: 'ada@ciphera.net' })
+    render(<AccountProfileTab />)
+    await act(async () => { await Promise.resolve() })
+
+    fireEvent.change(screen.getByDisplayValue('Ada'), { target: { value: 'Ada Lovelace' } })
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('savebar-save'))
+    })
+    expect(vault.saveName).toHaveBeenCalledWith('u1', 'Ada Lovelace')
   })
 })
 
@@ -525,7 +619,7 @@ describe('AccountProfileTab — changing your email address', () => {
    */
   it('drops the unlocked address when a pending change resolves elsewhere', async () => {
     h.user = { id: 'u1', email: '', display_name: '' }
-    unlockMock.fn.mockReset().mockResolvedValue({ email: 'ada@ciphera.net' })
+    unlockMock.fn.mockReset().mockResolvedValue({ pii: { email: 'ada@ciphera.net' }, vaultKey: { extractable: false } })
     api.getPendingEmailChange.mockResolvedValue(PENDING)
     const { container } = await renderProfile()
 

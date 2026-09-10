@@ -4,6 +4,7 @@ import { makeOpaqueTransport } from './transport'
 import { decryptVaultH } from '@/lib/crypto/vault-ops'
 import type { VaultData } from '@/lib/crypto/vault'
 import type { VaultKeyHandle } from '@/lib/auth/vault-key'
+import type { VaultKey } from '@ciphera-net/tessera'
 import { authFetch } from '@/lib/api/client'
 
 interface VaultResponse {
@@ -41,8 +42,16 @@ interface VaultResponse {
  * the address. The email was never a cryptographic input — see the transport's
  * blindIndex below.
  *
- * The returned handle is deliberately NOT exposed — only the decrypted PII
- * leaves this function, and the caller caches that (never the key) for the tab.
+ * 🔴 IT NOW RETURNS THE KEY, AND THAT IS A DECISION, NOT A DRIFT. This function
+ * used to say "the returned handle is deliberately NOT exposed — only the
+ * decrypted PII leaves this function", and that was right for as long as
+ * nothing in the estate persisted a vault key. On 10-09-2026 the owner ruled
+ * otherwise (Option 1 of
+ * `Infra/Auth/docs/plans/10-09-2026-vault-key-custody-design.md`), so the caller
+ * may keep it — see `lib/auth/vault-store.ts`, which holds the five rules that
+ * came with the decision. The old sentence is quoted here rather than deleted,
+ * because a contract that changed by ruling should not look like one that was
+ * forgotten.
  *
  * Throws on a wrong password (the ceremony 401s) or a vault with no wrap
  * (an account that predates OPAQUE — the caller shows the encrypted state).
@@ -55,7 +64,13 @@ interface VaultResponse {
  */
 const SDK_CREDENTIAL_SEED = 'session'
 
-export async function unlockVaultPII(opts: { password: string }): Promise<VaultData> {
+export interface UnlockedVault {
+  pii: VaultData
+  /** The VMK the vault opened with — non-extractable, and storable (0.3.0). */
+  vaultKey: VaultKey
+}
+
+export async function unlockVaultPII(opts: { password: string }): Promise<UnlockedVault> {
   await ensureTessera()
 
   const vault = await authFetch<VaultResponse>('/auth/user/vault', { skipAuthRetry: true })
@@ -90,11 +105,5 @@ export async function unlockVaultPII(opts: { password: string }): Promise<VaultD
   })
 
   const handle: VaultKeyHandle = { kind: 'opaque', vault: session.vault }
-  try {
-    return await decryptVaultH(handle, vault.encrypted_vault)
-  } finally {
-    // Non-extractable; dropping the reference lets the GC reclaim the key.
-    // The decrypted PII the caller keeps is data, not a key.
-    void handle
-  }
+  return { pii: await decryptVaultH(handle, vault.encrypted_vault), vaultKey: session.vaultKey }
 }

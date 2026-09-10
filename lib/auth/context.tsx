@@ -11,6 +11,7 @@ import { logoutAction, getSessionAction, setSessionAction } from '@/app/actions/
 import { getUserOrganizations, switchContext, getOrganization, ensureDefaultOrganization } from '@/lib/api/organization'
 import { listSites } from '@/lib/api/sites'
 import { logger } from '@/lib/utils/logger'
+import { forgetVaultKeys } from '@/lib/auth/vault-store'
 import { cleanupStaleStorage } from '@/lib/utils/storage-cleanup'
 import { forgetAllPendingAuth } from '@/lib/api/oauth-store'
 import { isTransientRefreshFailure } from '@/lib/auth/refresh-outcome'
@@ -230,6 +231,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('user')
     localStorage.removeItem('ciphera_token_refreshed_at')
     localStorage.removeItem('ciphera_last_activity')
+    // 🔴 RULE 1 of the vault-key custody decision (owner, 10-09-2026): the
+    // stored vault key is cleared HERE, in the same call that ends the session
+    // — not "on next load". Sign-out is the moment this device stops being
+    // trusted, and a key that survives it is a key nobody chose to keep.
+    // Awaited: the navigation below would otherwise race the delete.
+    await forgetVaultKeys()
     // * Logout ends with a full navigation to /login, which starts a fresh
     // * attempt. Anything still pending belongs to the session being ended.
     forgetAllPendingAuth()
@@ -397,6 +404,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (!cachedUser || definitiveReject) {
               localStorage.removeItem('user')
             }
+            // The session is GONE, not merely interrupted — so the vault key
+            // goes with it. Deliberately NOT done on the expiry/takeover path
+            // below, where the recovery effect can bring the session back and
+            // re-locking would cost a password for a blip.
+            if (definitiveReject) void forgetVaultKeys()
             if (definitiveReject && cachedUser) {
               reportClientEvent('session_lost_on_live_tab', 'init_definitive_reject')
             }
@@ -501,6 +513,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('user')
       localStorage.removeItem('ciphera_token_refreshed_at')
       localStorage.removeItem('ciphera_last_activity')
+      // A sibling tab signed out, which is a sign-out. Same rule 1.
+      void forgetVaultKeys()
       setUser(null)
       // * hadPriorSession deliberately NOT cleared: this browser demonstrably
       // * had a session (a sibling tab just ended it). Clearing it here was one
