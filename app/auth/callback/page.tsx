@@ -16,6 +16,7 @@ import { ensureDefaultOrganization, shouldProvisionWorkspace, switchContext } fr
 import { resolveLandingTarget } from '@/lib/auth/landing-target'
 import { logger } from '@/lib/utils/logger'
 import { claimReturnTarget, peekReturnTarget } from '@/lib/auth/return-target'
+import { collectVaultKeyFromBridge } from '@/lib/auth/vault-bridge'
 
 function AuthCallbackContent() {
   const searchParams = useSearchParams()
@@ -168,6 +169,35 @@ function AuthCallbackContent() {
         }
         // * Signed in — every other attempt still on this device is abandoned.
         forgetAllPendingAuth()
+
+        // 🔑 COLLECT THE VAULT KEY WHILE THE HAND-OFF IS STILL GOOD.
+        //
+        // The nonce the exchange returned is single-use and lives for seconds,
+        // so this is the only moment it can be spent. Doing it here — rather
+        // than lazily, the first time Settings wants a name — is the whole
+        // point: the person should never meet a password prompt on a browser
+        // where they have just signed in.
+        //
+        // ⚠️ AWAITED, WITH A SHORT BUDGET, AND FAILURE IS NOT AN ERROR. Not
+        // awaiting would start an iframe round trip and then navigate away
+        // mid-flight, which is the reliable way to make this never work. The
+        // budget (3s, inside lib/auth/vault-bridge.ts) is what keeps a bridge
+        // that will never answer from turning a login into a spinner — and
+        // every failure lands on the password prompt this replaced, which is
+        // exactly today's behaviour.
+        //
+        // 🔴 ABSENT IS THE NORMAL CASE until an origin is allowlisted on
+        // id-backend. No nonce, no frame, no delay.
+        if (result.vault_handoff) {
+          const userId = result.user.id
+          try {
+            await collectVaultKeyFromBridge(result.vault_handoff, userId)
+          } catch (e) {
+            // Belt and braces: the binding already swallows its own failures.
+            // A sign-in must never fail because a convenience did.
+            logger.warn('Could not collect the vault key at sign-in', e)
+          }
+        }
         // * Give a brand-new account its workspace before it lands, so nobody
         // * meets a "name your organisation" form before seeing the product.
         // * Awaited on purpose: the org wall runs on the destination route and
