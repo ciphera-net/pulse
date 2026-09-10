@@ -140,10 +140,17 @@ describe('AccountProfileTab (Facet structured panels)', () => {
     expect(screen.getByTestId('savebar').dataset.dirty).toBe('true')
   })
 
-  it('states the locked-vault fact without instructing the user to go anywhere', () => {
+  /**
+   * ⚠️ `await`, AND THAT IS THE POINT. This used to assert synchronously,
+   * because "locked" was the component's DEFAULT — it said so before it had
+   * asked, and on a browser that held a key it then contradicted itself 103 ms
+   * later. The locked state is now an answer, so the test has to wait for one.
+   * See the resolving-state describe block below.
+   */
+  it('states the locked-vault fact without instructing the user to go anywhere', async () => {
     h.user = { id: 'u1', email: '', display_name: '' }
     const { container } = render(<AccountProfileTab />)
-    expect(screen.getByText(/Your name and email stay encrypted/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Your name and email stay encrypted/i)).toBeInTheDocument()
     expect(screen.getByText(/not unlocked in this browser/i)).toBeInTheDocument()
     // The banner must not promise a fix. Until April 2026 it told users to
     // "sign in on Ciphera ID once, then reload Pulse to restore them" — an
@@ -203,7 +210,7 @@ describe('AccountProfileTab (Facet structured panels)', () => {
     expect(screen.queryByDisplayValue('ada@ciphera.net')).toBeNull()
 
     // Reveal the inline form, fill it, submit the form directly.
-    fireEvent.click(screen.getByRole('button', { name: 'Unlock' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Unlock' }))
     fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: 'pw' } })
     fireEvent.submit(container.querySelector('form') as HTMLFormElement)
 
@@ -226,7 +233,8 @@ describe('AccountProfileTab (Facet structured panels)', () => {
     unlockMock.fn.mockRejectedValue(new Error('bad password'))
     const { container } = render(<AccountProfileTab />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Unlock' }))
+    // ⚠️ `find`, not `get`: the locked state is an answer now, not a default.
+    fireEvent.click(await screen.findByRole('button', { name: 'Unlock' }))
     fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: 'wrong' } })
     fireEvent.submit(container.querySelector('form') as HTMLFormElement)
 
@@ -298,7 +306,97 @@ describe('AccountProfileTab — a key this browser already holds', () => {
   })
 })
 
-describe('AccountProfileTab — "Unlocked on this device" (rule 6, direction A)', () => {
+/**
+ * ── The 103 ms this component used to spend lying ────────────────────────────
+ *
+ * 🔴 THE BUG, AS THE OWNER SAW IT: "everytime i go to the settings, it doesn't
+ * show the name & email for a millisecond & then it shows it." Measured on
+ * production 11-09-2026 — the profile card painted at 220 ms and the vault
+ * opened at 323 ms, and in between the screen rendered the LOCKED state IN
+ * FULL: "Your name and email stay encrypted", an Unlock button, and a field
+ * reading "Encrypted — not unlocked in this browser". Then it said the
+ * opposite.
+ *
+ * The cause was a sentinel where a null belonged. `piiUnavailable` is
+ * `!user.email && !unlockedPII`, which is trivially true before an async read
+ * finishes, so "locked" was the DEFAULT rather than an answer. `keyStored` was
+ * already `null` for "not asked yet"; the render just never consulted it.
+ *
+ * These tests hold the read open on purpose. A component that asserts anything
+ * about this device while that promise is pending has the bug back.
+ */
+describe('AccountProfileTab — before the vault has answered', () => {
+  /** A read that never settles: the window this component used to fill wrongly. */
+  const holdTheRead = () => {
+    vault.load.mockReturnValue(new Promise(() => {}))
+    h.user = { id: 'u1', email: '', display_name: '' }
+  }
+
+  it('claims NOTHING about this device while the read is still in flight', async () => {
+    holdTheRead()
+    const { container } = render(<AccountProfileTab />)
+    await act(async () => { await Promise.resolve() })
+
+    // 🔴 The exact words that used to flash. All three are assertions about a
+    // device we have not looked at yet.
+    expect(container.textContent).not.toMatch(/Your name and email stay encrypted/i)
+    expect(container.textContent).not.toMatch(/not unlocked in this browser/i)
+    expect(container.textContent).not.toMatch(/Unlocked on this device/i)
+    // And no control that would act on a state we do not know.
+    expect(screen.queryByRole('button', { name: 'Unlock' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Lock$/ })).toBeNull()
+  })
+
+  it('says it is working, in the fields, without asserting a value', async () => {
+    holdTheRead()
+    const { container } = render(<AccountProfileTab />)
+    await act(async () => { await Promise.resolve() })
+
+    // The house skeleton, inside field frames that do not move when the values
+    // land — the whole reason it is a skeleton and not a held-back card.
+    expect(container.querySelectorAll('[aria-busy="true"]').length).toBe(2)
+    expect(container.querySelector('.animate-skeleton-fade')).not.toBeNull()
+    expect(container.textContent).toMatch(/Decrypting your details/i)
+  })
+
+  it('resolves to the LOCKED state when there is genuinely no key', async () => {
+    h.user = { id: 'u1', email: '', display_name: '' }
+    vault.load.mockResolvedValue(null)
+    const { container } = render(<AccountProfileTab />)
+
+    expect(await screen.findByText(/Your name and email stay encrypted/i)).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Unlock' })).toBeInTheDocument()
+    // The waiting state is over, not merely covered up.
+    expect(container.querySelectorAll('[aria-busy="true"]').length).toBe(0)
+  })
+
+  it('resolves to the UNLOCKED line when a key opens the vault', async () => {
+    h.user = { id: 'u1', email: '', display_name: '' }
+    vault.load.mockResolvedValue({ extractable: false })
+    vault.open.mockResolvedValue({ email: 'ada@ciphera.net', display_name: 'Ada Lovelace' })
+    const { container } = render(<AccountProfileTab />)
+
+    expect(await screen.findByDisplayValue('ada@ciphera.net')).toBeInTheDocument()
+    expect(container.textContent).toMatch(/Unlocked on this device/i)
+    expect(container.querySelectorAll('[aria-busy="true"]').length).toBe(0)
+  })
+
+  /**
+   * ⚠️ A LEGACY SESSION NEVER WAITS. It carries a readable address, so there is
+   * nothing to decrypt and nothing to be uncertain about — showing a skeleton
+   * there would invent a delay that does not exist.
+   */
+  it('does not wait at all when the session already carries the address', async () => {
+    h.user = { id: 'u1', email: 'ada@ciphera.net', display_name: 'Ada' }
+    vault.load.mockReturnValue(new Promise(() => {}))
+    const { container } = render(<AccountProfileTab />)
+
+    expect(container.querySelectorAll('[aria-busy="true"]').length).toBe(0)
+    expect(screen.getByDisplayValue('ada@ciphera.net')).toBeInTheDocument()
+  })
+})
+
+describe('AccountProfileTab — "Unlocked on this device" (rule 6, direction B)', () => {
   /**
    * 🔴 THE SENTENCE FOLLOWS THE STORAGE, NOT THE SCREEN. It may only appear
    * when a key really is at rest — a tab-only unlock is gone on reload, and
@@ -311,10 +409,19 @@ describe('AccountProfileTab — "Unlocked on this device" (rule 6, direction A)'
     const { container } = await renderProfile()
 
     expect(await screen.findByText(/Unlocked on this device/i)).toBeInTheDocument()
-    expect(container.textContent).toMatch(/Ciphera cannot read them/i)
     expect(screen.getByRole('button', { name: /^Lock$/ })).toBeInTheDocument()
     // The locked state's own words are gone — a removal, asserted.
     expect(container.textContent).not.toMatch(/not unlocked in this browser/i)
+
+    /**
+     * 🔴 DIRECTION B (owner, 11-09-2026): ONE LINE, NOT A PANEL. The three-line
+     * explanation went with the banner — it narrated an unlock nobody performs
+     * any more, in the loudest device on a screen where nothing had happened.
+     * Asserted as a REMOVAL so it cannot quietly come back.
+     */
+    expect(container.textContent).not.toMatch(/Ciphera cannot read them/i)
+    expect(container.textContent).not.toMatch(/so Pulse can show them/i)
+    expect(container.textContent).toMatch(/decrypted here only/i)
   })
 
   it('does NOT claim it when the vault is open but nothing was stored', async () => {
@@ -325,7 +432,7 @@ describe('AccountProfileTab — "Unlocked on this device" (rule 6, direction A)'
     unlockMock.fn.mockResolvedValue({ pii: { email: 'ada@ciphera.net' }, vaultKey: { extractable: false } })
     const { container } = await renderProfile()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Unlock' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Unlock' }))
     fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: 'pw' } })
     fireEvent.submit(container.querySelector('form') as HTMLFormElement)
 
@@ -683,7 +790,7 @@ describe('AccountProfileTab — changing your email address', () => {
     const { container } = await renderProfile()
 
     // Unlock, so there is a plaintext address on screen to go stale.
-    fireEvent.click(screen.getByRole('button', { name: 'Unlock' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Unlock' }))
     fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: 'pw' } })
     fireEvent.submit(container.querySelector('form') as HTMLFormElement)
     await vi.waitFor(() => expect(screen.queryByDisplayValue('ada@ciphera.net')).not.toBeNull())

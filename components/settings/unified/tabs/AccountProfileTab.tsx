@@ -16,6 +16,7 @@ import { DangerZone } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
+import { SkeletonLine } from '@/components/skeletons'
 import { logger } from '@/lib/utils/logger'
 import { unlockVaultPII } from '@/lib/auth/tessera/opaque-unlock'
 import { loadVaultKey, saveVaultKey, forgetVaultKeys } from '@/lib/auth/vault-store'
@@ -650,6 +651,27 @@ export default function AccountProfileTab() {
   // * there is no action a user can take today that unlocks them here.
   const piiUnavailable = !user.email && !unlockedPII
 
+  /**
+   * 🔴 "WE DO NOT KNOW YET" IS A THIRD STATE, AND IT USED TO RENDER AS "LOCKED".
+   *
+   * Reading the stored key and opening the vault with it are both async. Until
+   * they settle `unlockedPII` is null and the session carries no address, so
+   * `piiUnavailable` above is TRUE — and the screen took the locked branch:
+   * "Your name and email stay encrypted", an Unlock button, and a field reading
+   * "Encrypted — not unlocked in this browser". Then it said the opposite.
+   *
+   * Measured on production 11-09-2026: the card paints at 220 ms, the vault
+   * opens at 323 ms, so the wrong state was held for 103 ms — 8 frames — on
+   * EVERY cold load. In-app navigation shows none of it, because the plaintext
+   * is already in state; the key bridge (10-09) is what made every browser hold
+   * a key and therefore meet this every time.
+   *
+   * `keyStored` was already the honest signal — `null` means "not asked yet",
+   * which is exactly what the effect below sets it away from. The render simply
+   * never consulted it. Nullable state over sentinel values.
+   */
+  const vaultResolving = !!user.id && keyStored === null && !unlockedPII && !user.email
+
   // The form is offered whenever we know there is no live link — and also when
   // we could not find out, because a failed status read must not take the
   // feature away. It is NOT offered while the answer is still unknown: a form
@@ -683,6 +705,28 @@ export default function AccountProfileTab() {
           ? 'That change is no longer pending — it was confirmed, or it expired. Unlock to see your current address.'
           : 'Changing it takes your password and a confirmation from the new inbox.'
 
+  /**
+   * A field whose value is still being decrypted.
+   *
+   * 🔑 THE FRAME STAYS AND THE SKELETON SITS INSIDE IT. Swapping the whole
+   * input for a bar would make the box itself disappear and reappear, which is
+   * the layout shift a skeleton exists to prevent — the point is that nothing
+   * moves when the value lands.
+   *
+   * 🔑 It is the HOUSE skeleton (`components/skeletons.tsx`:
+   * `animate-skeleton-fade bg-neutral-800`), not a new one, so it fades the way
+   * every other loading surface in Pulse already does.
+   */
+  const decryptingField = (widthClass: string) => (
+    <div className="relative" aria-busy="true">
+      <Input value="" readOnly tabIndex={-1} aria-hidden="true" />
+      <SkeletonLine
+        className={`pointer-events-none absolute left-3.5 top-1/2 h-3.5 -translate-y-1/2 ${widthClass}`}
+      />
+      <span className="sr-only">Decrypting your details…</span>
+    </div>
+  )
+
   return (
     <div className="space-y-8">
       {/* Zero-knowledge note (spec §6 Account · Profile). Same slot either way:
@@ -694,7 +738,12 @@ export default function AccountProfileTab() {
           while reading as the exception rather than the permanent state. An
           in-app unlock is planned;
           until it ships, this states the fact and promises nothing. */}
-      {piiUnavailable ? (
+      {/* 🔴 NOTHING AT ALL WHILE WE DO NOT KNOW. Every branch below asserts
+          something about this device, and for the first ~103 ms of a cold load
+          none of them is known to be true. Saying nothing is the only honest
+          option, and it is also the still one — the panel below keeps its place
+          either way, so nothing jumps when the answer lands. */}
+      {vaultResolving ? null : piiUnavailable ? (
         <Banner
           tone="info"
           title="Your name and email stay encrypted"
@@ -744,34 +793,47 @@ export default function AccountProfileTab() {
           )}
         </Banner>
       ) : keyStored ? (
-        /* 🔴 RULE 6 of the vault-key custody decision (owner, 10-09-2026):
-           "'Unlocked on this device' is a different sentence from 'encrypted',
-           and the person should be able to see which one they are in — and undo
-           it." Direction A, chosen from a round mocked on the live app
-           (Pulse/docs/data/10-09-2026-unlocked-on-this-device-round/).
+        /* 🔴 RULE 6, DIRECTION B (owner, 11-09-2026) — this replaced a filled
+           `Banner` that said the same thing in three lines.
+           Round: Pulse/docs/data/11-09-2026-profile-chrome-round/.
 
-           It reuses the LOCKED banner's shape exactly — same tone, same action
-           slot — so `Lock` lands where `Unlock` used to be and the sentence that
-           mattered when it was locked is the sentence that matters now that it
-           is not. One place, two states.
+           The banner was chosen on 10-09, when unlocking was something you did
+           on purpose, once per browser. The key bridge made that act invisible,
+           so a panel narrating an unlock nobody performed became the loudest
+           thing on a screen where nothing had happened.
+
+           🔑 A DOT AND A SENTENCE IS THE HOUSE DEVICE. Colour lives in a small
+           dot or a single word, never a panel background — SyncStatusLine,
+           UptimeStatusLine and FleetCard all do it this way; the tinted alert
+           panel is the exception, kept for states that need an ACTION from you.
+           This one needs none: the vault is open, and `Lock` is an offer.
 
            ⚠️ Rendered only when `keyStored` is TRUE, never merely because the
            vault is open in this tab: a tab-only unlock is gone on reload, and
            this sentence would be a promise about the next visit that nothing
            kept. */
-        <Banner
-          tone="info"
-          title="Unlocked on this device"
-          action={
-            <Button variant="outline" size="sm" onClick={handleLock} disabled={locking}>
+        <p className="flex items-start gap-2.5 text-sm text-muted-foreground">
+          {/* 🔑 THE SAME DOT THIS FILE ALREADY DRAWS. The pending-change row
+              below uses `h-2 w-2 shrink-0 rounded-full bg-amber-500`; this is
+              that, in green, so the screen has one dot size and one colour
+              scale rather than a third of each. `mt-1.5` centres it on the
+              first line of `text-sm`. */}
+          <span
+            aria-hidden="true"
+            className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-emerald-500"
+          />
+          <span>
+            Unlocked on this device — your name and email are decrypted here only.{' '}
+            <button
+              type="button"
+              onClick={handleLock}
+              disabled={locking}
+              className="underline underline-offset-2 hover:text-foreground disabled:opacity-60"
+            >
               {locking ? 'Locking…' : 'Lock'}
-            </Button>
-          }
-        >
-          Your name and email are decrypted here so Pulse can show them. They stay encrypted
-          everywhere else — Ciphera cannot read them. Lock this device to be asked for your
-          password again.
-        </Banner>
+            </button>
+          </span>
+        </p>
       ) : (
         /* Readable, but nothing is stored — a tab-only unlock, or an account
            whose session already carries the address. The plain fact, unchanged. */
@@ -788,13 +850,15 @@ export default function AccountProfileTab() {
             htmlFor="account-display-name"
             caption="Shown to your teammates across Pulse."
           >
-            <Input
-              id="account-display-name"
-              value={displayName}
-              onChange={e => setDisplayName(e.target.value)}
-              placeholder="Your name"
-              maxLength={100}
-            />
+            {vaultResolving ? decryptingField('w-32') : (
+              <Input
+                id="account-display-name"
+                value={displayName}
+                onChange={e => setDisplayName(e.target.value)}
+                placeholder="Your name"
+                maxLength={100}
+              />
+            )}
           </PanelRow>
         </PanelRows>
 
@@ -819,7 +883,13 @@ export default function AccountProfileTab() {
             htmlFor={emailFormOpen ? 'account-new-email' : undefined}
             caption={emailRowCaption}
           >
-            {emailFormOpen ? (
+            {/* ⚠️ THE GUARD IS OUTSIDE `emailFormOpen`, NOT INSIDE ONE BRANCH.
+                While the vault is resolving the ledger has not answered either,
+                so `emailChange.kind` is 'unknown' — which is not `emailFormOpen`
+                — and a guard placed inside the open branch alone would leave the
+                closed branch showing "Encrypted — not unlocked in this browser"
+                for exactly the 103 ms this change exists to remove. */}
+            {vaultResolving ? decryptingField('w-44') : emailFormOpen ? (
               <Input
                 id="account-new-email"
                 type="email"
