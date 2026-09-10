@@ -18,6 +18,7 @@ import { useSite, useVisitorProfile, useVisitorVisits } from '@/lib/swr/dashboar
 import { visitorPseudonym } from '@/lib/visitors/pseudonym'
 import {
   EM_DASH,
+  SITE_TIMEZONE_FALLBACK,
   countryName,
   daysUntilMonthReset,
   formatDuration,
@@ -25,6 +26,8 @@ import {
   formatVisitStart,
   monthResetDate,
   visitorLocalTime,
+  zonedDayOfMonth,
+  zonedMonthKey,
 } from '@/lib/visitors/format'
 import { VISITORS_MIN_DATE, VISITORS_ROLLING_MINUTES, VISITORS_PRESETS } from '@/lib/visitors/range'
 import { deviceLabel } from '@/components/visitors/VisitorMeta'
@@ -78,6 +81,13 @@ export default function VisitorDetailPage() {
   const profile = data?.visitor
   const name = visitorPseudonym(visitorKey)
 
+  // 🔴 THE SITE'S ZONE — see the roster page's note. It arrives on the same payloads as
+  // the instants it applies to, so a date can never be rendered against a calendar that
+  // has not arrived yet. `useSite` is the fallback for a response cached before the
+  // field shipped; UTC is the server's own default and is never the reader's zone.
+  const siteTimezone =
+    data?.site_timezone || visitsData?.site_timezone || site?.timezone || SITE_TIMEZONE_FALLBACK
+
   useEffect(() => {
     document.title = `${name} · Visitors | Pulse`
   }, [name])
@@ -89,14 +99,18 @@ export default function VisitorDetailPage() {
   // The ribbon's day buckets come from the VISITS the page already has, not
   // from a second request. It is therefore honest about its own scope: it
   // shows the visits in this range, and the caption says which month.
+  //
+  // 🔴 Bucketed by the SITE's day-of-month, not `getDate()`. A visit at 02:30 in
+  // Brussels read from New York used to land in the previous day's cell — and could fall
+  // outside the month whose label is printed above the ribbon.
   const visitsByDay = useMemo(() => {
     const acc: Record<number, number> = {}
     for (const v of visits) {
-      const d = new Date(v.started_at)
-      if (Number.isFinite(d.getTime())) acc[d.getDate()] = (acc[d.getDate()] ?? 0) + 1
+      const day = zonedDayOfMonth(v.started_at, siteTimezone)
+      if (day !== null) acc[day] = (acc[day] ?? 0) + 1
     }
     return acc
-  }, [visits])
+  }, [visits, siteTimezone])
 
   if (error) {
     const status = (error as { status?: number }).status
@@ -117,7 +131,8 @@ export default function VisitorDetailPage() {
     )
   }
 
-  const resetsIn = profile ? daysUntilMonthReset(profile.month) : null
+  const resetsIn = profile ? daysUntilMonthReset(profile.month_resets_at) : null
+  const resetDate = profile ? monthResetDate(profile.month_resets_at, siteTimezone) : null
   const localTime = visitorLocalTime(profile?.timezone)
 
   return (
@@ -168,8 +183,29 @@ export default function VisitorDetailPage() {
 
           {profile && (
             <p className="mt-1 text-xs text-neutral-600">
-              First seen {formatShortDate(profile.first_seen)} · this identity resets{' '}
-              {monthResetDate(profile.month)} — a returning reader becomes a new visitor
+              {/*
+                🔴 TENSE FOLLOWS THE CLOCK. This line read "this identity resets 1 Sep"
+                UNCONDITIONALLY, so on 10-09-2026 — nine days after the boundary — it was
+                still saying so in the present tense on 322 of themodestyhouse's 517 rows.
+                MonthRibbon twelve lines below already got this right by hiding its
+                caption when `resetsInDays` is null; the header now reads the same
+                nullable, so the two can never disagree again.
+
+                When the server sent no reset instant at all (`resetDate` null) the
+                sentence says nothing about the reset rather than guessing at a date.
+              */}
+              First seen {formatShortDate(profile.first_seen, siteTimezone)}
+              {resetDate !== null &&
+                (resetsIn !== null ? (
+                  <> · this identity resets {resetDate} — a returning reader becomes a new visitor</>
+                ) : (
+                  // Owner decision 10-09-2026: once the reset is PAST the clause stops
+                  // there. The mechanic ("a returning reader becomes a new visitor") is
+                  // a thing about to happen; on a historical identity it has already
+                  // happened, and MonthRibbon's caption below carries what is left to
+                  // say. Less text on a row nobody can act on.
+                  <> · this identity reset {resetDate}</>
+                ))}
             </p>
           )}
 
@@ -202,7 +238,7 @@ export default function VisitorDetailPage() {
           <MonthRibbon
             month={profile.month}
             visitsByDay={visitsByDay}
-            today={todayInMonth(profile.month)}
+            today={todayInMonth(profile.month, siteTimezone)}
             resetsInDays={resetsIn}
           />
         </div>
@@ -233,6 +269,7 @@ export default function VisitorDetailPage() {
                 siteId={siteId}
                 visitorKey={visitorKey}
                 visit={v}
+                siteTimezone={siteTimezone}
                 range={range}
                 open={openVisit === v.visit_key}
                 onToggle={() => setOpenVisit((k) => (k === v.visit_key ? null : v.visit_key))}
@@ -371,6 +408,7 @@ function VisitRowItem({
   visitorKey,
   visit,
   range,
+  siteTimezone,
   open,
   onToggle,
 }: {
@@ -378,6 +416,7 @@ function VisitRowItem({
   visitorKey: string
   visit: VisitRow
   range: { startDate?: string; endDate?: string; minutes?: number | null }
+  siteTimezone: string
   open: boolean
   onToggle: () => void
 }) {
@@ -399,7 +438,9 @@ function VisitRowItem({
           eventAt={visit.events > 0 ? [Math.min(2, Math.max(0, visit.pageviews - 1))] : []}
         />
         <span className="min-w-0 flex-1 truncate text-sm text-neutral-300">
-          <span className="text-neutral-500">{formatVisitStart(visit.started_at)}</span>{' '}
+          <span className="text-neutral-500">
+            {formatVisitStart(visit.started_at, siteTimezone)}
+          </span>{' '}
           <span className="text-neutral-700">·</span> {visit.entry_path ?? EM_DASH}
           {visit.exit_path && visit.exit_path !== visit.entry_path && (
             <>
@@ -421,9 +462,16 @@ function VisitRowItem({
   )
 }
 
-/** Today's day-of-month, but only when today falls inside the identity's month. */
-function todayInMonth(month: string): number | null {
-  const now = new Date()
-  const label = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  return label === month ? now.getDate() : null
+/**
+ * Today's day-of-month, but only when today falls inside the identity's month.
+ *
+ * 🔴 Resolved in the SITE's calendar. `profile.month` was computed by Postgres as
+ * `to_char(… AT TIME ZONE <site tz>, 'YYYY-MM')`, so comparing it against the browser's
+ * own month put the ribbon's "today" ring on the wrong cell — or on no cell at all —
+ * for any reader whose date differs from the site's, which is most of a working day
+ * somewhere.
+ */
+function todayInMonth(month: string, siteTimezone: string): number | null {
+  const now = Date.now()
+  return zonedMonthKey(now, siteTimezone) === month ? zonedDayOfMonth(now, siteTimezone) : null
 }
