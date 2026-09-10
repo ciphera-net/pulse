@@ -743,9 +743,16 @@ export default function AccountProfileTab() {
   const decryptingField = (widthClass: string) => (
     <div className="relative" aria-busy="true">
       <Input value="" readOnly tabIndex={-1} aria-hidden="true" />
-      <SkeletonLine
-        className={`pointer-events-none absolute left-3.5 top-1/2 h-3.5 -translate-y-1/2 ${widthClass}`}
-      />
+      {/* 🔴 CENTRED BY LAYOUT, NEVER BY A TRANSFORM. `top-1/2
+          -translate-y-1/2` looked right and shipped WRONG: `SkeletonLine`
+          carries `animate-skeleton-fade`, whose keyframes end on
+          `transform: translateY(0)` — the animation wins, the translate is
+          discarded, and the bar sits with its TOP at the middle of the field.
+          Measured on production. An overlay pinned to `inset-0` with
+          `items-center` cannot be overridden by anything the child animates. */}
+      <span className="pointer-events-none absolute inset-0 flex items-center px-3.5">
+        <SkeletonLine className={`h-3.5 ${widthClass}`} />
+      </span>
       <span className="sr-only">Decrypting your details…</span>
     </div>
   )
