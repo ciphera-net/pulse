@@ -170,21 +170,15 @@ describe('AccountProfileTab (Facet structured panels)', () => {
 
     // Reveal the inline form, fill it, submit the form directly.
     fireEvent.click(screen.getByRole('button', { name: 'Unlock' }))
-    fireEvent.change(screen.getByPlaceholderText('Email you sign in with'), {
-      target: { value: 'ada@ciphera.net' },
-    })
     fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: 'pw' } })
     fireEvent.submit(container.querySelector('form') as HTMLFormElement)
 
-    // The unlock fn was called with what was typed, and on success the inline
-    // form closes (its own email input disappears) — the decrypted PII now
-    // populates the read-only profile field.
-    await vi.waitFor(() =>
-      expect(unlockMock.fn).toHaveBeenCalledWith({ email: 'ada@ciphera.net', password: 'pw' }),
-    )
-    await vi.waitFor(() =>
-      expect(screen.queryByPlaceholderText('Email you sign in with')).toBeNull(),
-    )
+    // 🔴 A PASSWORD AND NOTHING ELSE. The form used to ask for the sign-in
+    // email too — i.e. it asked for the address in order to reveal the address.
+    // On success the inline form closes and the decrypted PII populates the
+    // profile fields.
+    await vi.waitFor(() => expect(unlockMock.fn).toHaveBeenCalledWith({ password: 'pw' }))
+    await vi.waitFor(() => expect(screen.queryByPlaceholderText('Password')).toBeNull())
     // The vault display name surfaced into the (editable) display-name field.
     expect(screen.getByDisplayValue('Ada Lovelace')).toBeInTheDocument()
   })
@@ -196,16 +190,13 @@ describe('AccountProfileTab (Facet structured panels)', () => {
     const { container } = render(<AccountProfileTab />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Unlock' }))
-    fireEvent.change(screen.getByPlaceholderText('Email you sign in with'), {
-      target: { value: 'ada@ciphera.net' },
-    })
     fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: 'wrong' } })
     fireEvent.submit(container.querySelector('form') as HTMLFormElement)
 
     // The error is surfaced and the form stays open for a retry — never a silent
     // close, and no PII was substituted (the profile email field stays empty).
     expect(await screen.findByText(/didn’t match/i)).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Email you sign in with')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Password')).toBeInTheDocument()
     const profileEmail = container.querySelector('#account-display-name')
     expect(profileEmail).not.toBeNull()
   })
@@ -343,6 +334,31 @@ async function renderProfile() {
 const PENDING = { expiresAt: new Date(Date.now() + 20 * 60_000).toISOString() }
 
 describe('AccountProfileTab — changing your email address', () => {
+  /**
+   * 🔴 THE REGRESSION THIS PINS, shipped 10-09-2026 and reported within the
+   * hour. Making the email row editable silently dropped its honest label:
+   * a LOCKED account showed the placeholder "you@example.com", which reads as
+   * "this account has no email set" rather than "your address is encrypted".
+   *
+   * The placeholder is only ever visible when the vault is locked — an unlocked
+   * row carries the real address as its value — so it must say that.
+   */
+  it('says the address is ENCRYPTED, not that there isn’t one, while the vault is locked', async () => {
+    h.user = { id: 'u1', email: '', display_name: '' }
+    const { container } = await renderProfile()
+    const row = container.querySelector('#account-new-email') as HTMLInputElement
+    expect(row.value).toBe('')
+    expect(row.placeholder).toMatch(/Encrypted/i)
+    expect(row.placeholder).not.toBe('you@example.com')
+  })
+
+  it('offers a plain example only once the address is known', async () => {
+    const { container } = await renderProfile()
+    const row = container.querySelector('#account-new-email') as HTMLInputElement
+    expect(row.value).toBe('ada@ciphera.net')
+    expect(row.placeholder).toBe('you@example.com')
+  })
+
   it('asks the server whether a link is live, on mount', async () => {
     await renderProfile()
     expect(api.getPendingEmailChange).toHaveBeenCalledTimes(1)
@@ -515,9 +531,6 @@ describe('AccountProfileTab — changing your email address', () => {
 
     // Unlock, so there is a plaintext address on screen to go stale.
     fireEvent.click(screen.getByRole('button', { name: 'Unlock' }))
-    fireEvent.change(screen.getByPlaceholderText('Email you sign in with'), {
-      target: { value: 'ada@ciphera.net' },
-    })
     fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: 'pw' } })
     fireEvent.submit(container.querySelector('form') as HTMLFormElement)
     await vi.waitFor(() => expect(screen.queryByDisplayValue('ada@ciphera.net')).not.toBeNull())
