@@ -2,6 +2,29 @@ import apiRequest from './client'
 
 export type GeoDataLevel = 'full' | 'country' | 'none'
 
+/**
+ * What a site's geographic collection level is when the client has no value for it.
+ *
+ * 🔴 THREE PLACES MUST HOLD THE SAME ANSWER AND ONLY ONE OF THEM IS IN THIS REPO:
+ *
+ *   1. this constant,
+ *   2. `sites.collect_geo_data`'s column DEFAULT (pulse-backend migration 181), and
+ *   3. the LITERAL in `database.CreateSite`'s INSERT — which is the one that actually
+ *      decides a new site's value, because that INSERT never falls through to the
+ *      column default.
+ *
+ * They disagreed until 10-09-2026: the client resolved an absent value to 'full' while
+ * the server created every new site as 'country'. The client's answer was the more
+ * permissive one, which is the wrong direction for a fallback about a privacy setting —
+ * it was unreachable in practice only because the server always sends the field.
+ *
+ * The owner's decision that day moved the server to 'full', so all three now agree.
+ * Changing any one of them without the others reintroduces exactly that disagreement,
+ * silently, and a customer's geographic collection is what it disagrees about.
+ * pulse-backend's `TestCreateSiteGeoDefaultMatchesTheColumnDefault` pins 2 against 3.
+ */
+export const DEFAULT_GEO_DATA_LEVEL: GeoDataLevel = 'full'
+
 export interface PageRule {
   type: 'exclude' | 'group'
   pattern: string

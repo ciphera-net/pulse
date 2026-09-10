@@ -17,7 +17,7 @@ import {
   getAuthErrorMessage,
 } from '@ciphera-net/facet'
 import { useSite, useSubscription, usePerformanceConfig } from '@/lib/swr/dashboard'
-import { updateSite, type PageRule } from '@/lib/api/sites'
+import { updateSite, DEFAULT_GEO_DATA_LEVEL, type PageRule } from '@/lib/api/sites'
 import { updatePerformanceConfig } from '@/lib/api/performance'
 import { getRetentionOptionsForPlan, formatRetentionMonths, formatPlanName } from '@/lib/plans'
 import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
@@ -141,7 +141,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
     setCollectDeviceInfo(site.collect_device_info ?? true)
     setCollectScreenRes(site.collect_screen_resolution ?? true)
     setCollectAudienceData(site.collect_audience_data ?? true)
-    setCollectGeoData(site.collect_geo_data ?? 'full')
+    setCollectGeoData(site.collect_geo_data ?? DEFAULT_GEO_DATA_LEVEL)
     setHideUnknownLocations(site.hide_unknown_locations ?? false)
     // 🔴 THIS LINE WAS MISSING, and its absence caused two visible bugs at once.
     // The BASELINE below reads visitor_views_enabled from the site, but the state
@@ -164,7 +164,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
       collectDeviceInfo: site.collect_device_info ?? true,
       collectScreenRes: site.collect_screen_resolution ?? true,
       collectAudienceData: site.collect_audience_data ?? true,
-      collectGeoData: site.collect_geo_data ?? 'full',
+      collectGeoData: site.collect_geo_data ?? DEFAULT_GEO_DATA_LEVEL,
       hideUnknownLocations: site.hide_unknown_locations ?? false,
       visitorViewsEnabled: site.visitor_views_enabled ?? false,
       dataRetention: site.data_retention_months ?? 6,

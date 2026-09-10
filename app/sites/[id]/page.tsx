@@ -11,6 +11,7 @@ import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
 import { toast } from '@ciphera-net/facet'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { PERIOD_TO_API } from '@/lib/constants/periods'
+import { DEFAULT_GEO_DATA_LEVEL } from '@/lib/api/sites'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
 import { resolveDashboardRange } from '@/lib/dashboard/resolveRange'
 import dynamic from 'next/dynamic'
@@ -429,7 +430,7 @@ export default function SiteDashboardPage() {
           regions={dashboard?.regions ?? []}
           languages={dashboard?.languages ?? []}
           timezones={dashboard?.timezones ?? []}
-          geoDataLevel={site.collect_geo_data || 'full'}
+          geoDataLevel={site.collect_geo_data || DEFAULT_GEO_DATA_LEVEL}
           collectAudienceData={site.collect_audience_data ?? true}
           siteId={siteId}
           dateRange={resolvedDateRange}
