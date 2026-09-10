@@ -440,44 +440,64 @@ export default function SiteDashboardPage() {
         />
       </div>
 
-      <SectionHeader title="Audience" note={sectionNote} />
-      <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
-        <TechSpecs
-          browsers={dashboard?.browsers ?? []}
-          os={dashboard?.os ?? []}
-          devices={dashboard?.devices ?? []}
-          screenResolutions={dashboard?.screen_resolutions ?? []}
-          collectDeviceInfo={site.collect_device_info ?? true}
-          collectScreenResolution={site.collect_screen_resolution ?? true}
-          siteId={siteId}
-          dateRange={resolvedDateRange}
-          totals={totals}
-          filters={filtersParam || undefined}
-          onFilter={handleAddFilter}
-        />
-      </div>
+      {/* 🔑 THE ONLY ROW WITH A HEADER PER COLUMN (owner, 10-09-2026).
+          Everywhere else the two cards in a row genuinely share one heading —
+          Sources and Locations are both Acquisition, Pages and Content signals
+          are both Content. Technology and Outbound do not: one is who visited,
+          the other is where they went. So this row carries "Audience" over the
+          left card and "Outbound" over the right.
 
-      {/* Outbound is its OWN section (owner, 10-09-2026: "add an Outbound title
-          like there is Audience on the left of it"). It shared the Audience row
-          with Technology from 08-09; a card the owner thinks of by name was
-          taking its name from a header that described its neighbour.
+          It got there the long way. Outbound first became a section of its own,
+          which named it but left both rows half empty (seen on staging); then
+          the titles were nearly moved INSIDE the cards. The owner's answer is
+          better than either: keep the full row, and put the two titles outside
+          the cards, each above its own column.
 
-          🔑 Its note is 'whole site' UNCONDITIONALLY, not `sectionNote`. The
-          property endpoints behind this card take no filters, so when a page
-          filter is on, every other section is honestly 'filtered with the page'
-          and this one is not. Reusing the shared note would have printed the one
-          word that is never true here. The card keeps its own in-card warning,
-          which says what the consequence is; this says what the population is. */}
-      <SectionHeader title="Outbound" note="whole site" />
+          ⚠️ The header lives INSIDE the grid cell, not in a header row of its
+          own. Below `lg` this grid collapses to one column, and a separate
+          two-title row would then stack both titles above both cards — every
+          title detached from the card it names. This way each title stays glued
+          to its own card at every width.
+
+          The card is wrapped in `flex-1 min-h-0` because it sets `h-full`: with
+          the header as a sibling, 100% of the cell would overflow by exactly the
+          header's height. */}
       <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
-        <Outbound
-          siteId={siteId}
-          dateRange={resolvedDateRange}
-          period={apiPeriod || undefined}
-          goalCounts={dashboard?.goal_counts ?? []}
-          filters={filtersParam || undefined}
-          onFilter={handleAddFilter}
-        />
+        <div className="flex flex-col">
+          <SectionHeader title="Audience" note={sectionNote} />
+          <div className="flex-1 min-h-0">
+            <TechSpecs
+              browsers={dashboard?.browsers ?? []}
+              os={dashboard?.os ?? []}
+              devices={dashboard?.devices ?? []}
+              screenResolutions={dashboard?.screen_resolutions ?? []}
+              collectDeviceInfo={site.collect_device_info ?? true}
+              collectScreenResolution={site.collect_screen_resolution ?? true}
+              siteId={siteId}
+              dateRange={resolvedDateRange}
+              totals={totals}
+              filters={filtersParam || undefined}
+              onFilter={handleAddFilter}
+            />
+          </div>
+        </div>
+        <div className="flex flex-col">
+          {/* 'whole site' unconditionally, never `sectionNote`: the property
+              endpoints behind this card take no filters, so under a page filter
+              every other heading is honestly 'filtered with the page' and this
+              one is not. */}
+          <SectionHeader title="Outbound" note="whole site" />
+          <div className="flex-1 min-h-0">
+            <Outbound
+              siteId={siteId}
+              dateRange={resolvedDateRange}
+              period={apiPeriod || undefined}
+              goalCounts={dashboard?.goal_counts ?? []}
+              filters={filtersParam || undefined}
+              onFilter={handleAddFilter}
+            />
+          </div>
+        </div>
       </div>
 
       <SectionHeader title="Content" note={sectionNote} />
