@@ -387,11 +387,6 @@ export default function SiteDashboardPage() {
         // One denominator for every card % (F9): the range's true totals,
         // filtered exactly as the rows are.
         const totals = { pageviews: stats.pageviews, visitors: stats.visitors }
-        const hasFilters = filters.length > 0
-        // The note states filter SCOPE only — each card states its own unit
-        // ("share of N pageviews/visitors"). Naming a unit here contradicted
-        // the cards (review finding: "events" above a pageview-share card).
-        const sectionNote = hasFilters ? 'filtered with the page' : 'whole site'
         return <><div className="mb-3 space-y-2">
         <CommandDeck
           data={dailyStats}
@@ -408,7 +403,7 @@ export default function SiteDashboardPage() {
         />
       </div>
 
-      <SectionHeader title="Acquisition" note={sectionNote} />
+      <SectionHeader title="Acquisition" />
       {/* One Sources card (owner pick BH, 06-09-2026): Referrers · Channels ·
           Campaigns, the UTM dimension behind a Select. The Locations card moved
           up to fill the row the Campaigns card left. */}
@@ -464,7 +459,7 @@ export default function SiteDashboardPage() {
           header's height. */}
       <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
         <div className="flex flex-col">
-          <SectionHeader title="Audience" note={sectionNote} />
+          <SectionHeader title="Audience" />
           <div className="flex-1 min-h-0">
             <TechSpecs
               browsers={dashboard?.browsers ?? []}
@@ -482,11 +477,7 @@ export default function SiteDashboardPage() {
           </div>
         </div>
         <div className="flex flex-col">
-          {/* 'whole site' unconditionally, never `sectionNote`: the property
-              endpoints behind this card take no filters, so under a page filter
-              every other heading is honestly 'filtered with the page' and this
-              one is not. */}
-          <SectionHeader title="Outbound" note="whole site" />
+          <SectionHeader title="Outbound" />
           <div className="flex-1 min-h-0">
             <Outbound
               siteId={siteId}
@@ -500,7 +491,7 @@ export default function SiteDashboardPage() {
         </div>
       </div>
 
-      <SectionHeader title="Content" note={sectionNote} />
+      <SectionHeader title="Content" />
       <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
         <ContentStats
           topPages={dashboard?.top_pages ?? []}
@@ -525,7 +516,7 @@ export default function SiteDashboardPage() {
         />
       </div>
 
-      <SectionHeader title="Behaviour" note={`${sectionNote} · site timezone`} />
+      <SectionHeader title="Behaviour" />
       <div className="grid gap-3 mb-3 [&>*]:min-w-0">
         <PeakHours siteId={siteId} dateRange={resolvedDateRange} filters={filtersParam || undefined} />
       </div></>

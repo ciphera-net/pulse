@@ -373,7 +373,7 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
             ever error here. No Behaviour section: hour-of-day buckets are
             refused on the public surface by design (F2 — an hourly bucket
             with one visitor is that person's arrival time). */}
-        <SectionHeader title="Acquisition" note="whole site" />
+        <SectionHeader title="Acquisition" />
         <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
           {/* Campaign rows arrive ON the payload (floored, capped) — the
               campaigns prop is what keeps the member-only endpoint unarmed. */}
@@ -402,7 +402,7 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
           />
         </div>
 
-        <SectionHeader title="Audience" note="whole site" />
+        <SectionHeader title="Audience" />
         <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
           <TechSpecs
             browsers={safeBrowsers}
@@ -418,7 +418,7 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
           />
         </div>
 
-        <SectionHeader title="Content" note="whole site" />
+        <SectionHeader title="Content" />
         <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
           <TopPages
             topPages={safeTopPages}
