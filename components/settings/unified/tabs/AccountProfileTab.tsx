@@ -693,7 +693,34 @@ export default function AccountProfileTab() {
    * would not open this vault (the effect below sets it on that failure, for
    * exactly this reason).
    */
-  const vaultResolving = !!user.id && !user.email && !unlockedPII && keyStored !== false
+  /**
+   * 🔴 TWO QUESTIONS, NOT ONE — and conflating them re-introduced the flash from
+   * a different direction on 11-09-2026.
+   *
+   * The BANNER is about the KEY: does this browser hold one? The FIELDS are
+   * about the VALUES: can we show a name and an address? They used to share a
+   * single flag, which was fine only while this component was the only thing
+   * that ever opened the vault.
+   *
+   * `AuthProvider` now opens it for the whole app (friction audit §4v), so
+   * `user.email` can arrive BEFORE `keyStored` is known. With one flag that
+   * meant: not resolving → not `piiUnavailable` → `keyStored` still null →
+   * the third branch, "Your profile is end-to-end encrypted", for a beat, then
+   * the unlocked line. A brand-new wrong-state flash, caused by fixing the menu.
+   */
+  const valuesResolving = !!user.id && !user.email && !unlockedPII && keyStored !== false
+  /**
+   * The banner says nothing until BOTH questions are answered — and it is a
+   * UNION, not a replacement.
+   *
+   * ⚠️ `keyStored === null` alone is not enough: it drops the window this file
+   * fixed on 11-09 (a key FOUND but the vault still opening, 68ms), where
+   * `keyStored` is already `true` and `piiUnavailable` is still true, so the
+   * locked banner comes back. Narrowing this gate re-broke that within minutes
+   * of writing it, and the test that caught it is
+   * "keeps waiting while a FOUND key is still being opened".
+   */
+  const bannerUnknown = !!user.id && (keyStored === null || valuesResolving)
 
   // The form is offered whenever we know there is no live link — and also when
   // we could not find out, because a failed status read must not take the
@@ -781,7 +808,7 @@ export default function AccountProfileTab() {
           none of them is known to be true. Saying nothing is the only honest
           option, and it is also the still one — the panel below keeps its place
           either way, so nothing jumps when the answer lands. */}
-      {vaultResolving ? null : piiUnavailable ? (
+      {bannerUnknown ? null : piiUnavailable ? (
         <Banner
           tone="info"
           title="Your name and email stay encrypted"
@@ -888,7 +915,7 @@ export default function AccountProfileTab() {
             htmlFor="account-display-name"
             caption="Shown to your teammates across Pulse."
           >
-            {vaultResolving ? decryptingField('w-32') : (
+            {valuesResolving ? decryptingField('w-32') : (
               <Input
                 id="account-display-name"
                 value={displayName}
@@ -927,7 +954,7 @@ export default function AccountProfileTab() {
                 — and a guard placed inside the open branch alone would leave the
                 closed branch showing "Encrypted — not unlocked in this browser"
                 for exactly the 103 ms this change exists to remove. */}
-            {vaultResolving ? decryptingField('w-44') : emailFormOpen ? (
+            {valuesResolving ? decryptingField('w-44') : emailFormOpen ? (
               <Input
                 id="account-new-email"
                 type="email"
