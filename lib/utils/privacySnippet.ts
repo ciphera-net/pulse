@@ -1,4 +1,4 @@
-import type { Site } from '@/lib/api/sites'
+import { DEFAULT_GEO_DATA_LEVEL, type Site } from '@/lib/api/sites'
 import { formatRetentionMonths } from '@/lib/plans'
 import { env } from '@/lib/env'
 
@@ -21,7 +21,7 @@ export function generatePrivacySnippet(site: Site): string {
   const paths = site.collect_page_paths ?? true
   const referrers = site.collect_referrers ?? true
   const device = site.collect_device_info ?? true
-  const geo = site.collect_geo_data || 'full'
+  const geo = site.collect_geo_data || DEFAULT_GEO_DATA_LEVEL
   const screen = site.collect_screen_resolution ?? true
   const audience = site.collect_audience_data ?? true
   const filterBots = site.filter_bots ?? true
