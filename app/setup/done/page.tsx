@@ -12,17 +12,21 @@ import { completeOnboarding } from '@/lib/api/organization'
 import { ApiError } from '@/lib/api/client'
 import { getSubscription } from '@/lib/api/billing'
 import { trackWelcomeCompleted } from '@/lib/welcomeAnalytics'
-import { Button, CheckCircleIcon, UsersIcon, BookOpenIcon, FunnelIcon } from '@ciphera-net/facet'
+import { SETUP_COPY } from '@/lib/setup/copy'
+import { Button } from '@ciphera-net/facet'
 import InstallStateBlock from '@/components/setup/InstallStateBlock'
+import SiteChip from '@/components/setup/SiteChip'
+import Confetti from '@/components/setup/Confetti'
+import { SiteFavicon } from '@/components/sites/SiteFavicon'
 
 /**
  * Payment-confirmation state machine for arrivals from the Mollie checkout
  * (?from=checkout on the redirect URL). Mollie sends failed/expired/pending
- * returns to the same redirect URL as successes, so "you're all set" must be
+ * returns to the same redirect URL as successes, so "you're in" must be
  * EARNED by observing an active subscription — never assumed.
  *
  * 'init'        — first render, URL not yet inspected (one frame).
- * 'none'        — not a checkout arrival (Hobby / skip path): settled by definition.
+ * 'none'        — not a checkout arrival (the normal path): settled by definition.
  * 'confirming'  — polling for the payment to land (ruled B1 state).
  * 'confirmed'   — subscription observed active/trialing.
  * 'failed'      — a TERMINAL negative (past_due/canceled) — resolves immediately,
@@ -101,18 +105,47 @@ export default function SetupDonePage() {
   // The wizard-local step + the analytics event fire once when payment settles.
   // These are safe to fire regardless of the sites fetch and must not be coupled
   // to the one-way onboarding write below.
+  //
+  // ⚠️ F-B14 IS ABOUT THE ANALYTICS FUNNEL, not about the org flag, and the
+  // distinction started mattering on 11-09-2026 when the flag moved to site
+  // creation. `welcome_completed` measures who finished the WIZARD and must
+  // keep its payment gate. The flag measures whether the workspace can receive
+  // data, which a pricing decision has never had anything to do with.
+  //
+  // 🎉 THE CONFETTI TAKES THE SAME GATE. It is the visual twin of
+  // welcome_completed: once, only when settled or confirmed, never while the
+  // confirming spinner is up and never on a failed or unconfirmed payment. A
+  // celebration over an abandoned checkout would be the F-B14 mistake in
+  // pixels. `celebrate` is state, not a ref, because the canvas has to MOUNT;
+  // the ref is what keeps it to one mount per completion.
   const completionFiredRef = useRef(false)
+  const [celebrate, setCelebrate] = useState(false)
   useEffect(() => {
     if (payment !== 'none' && payment !== 'confirmed') return
     if (completionFiredRef.current) return
     completionFiredRef.current = true
     completeStep('done')
     trackWelcomeCompleted(Boolean(site))
+    setCelebrate(true)
   }, [payment, completeStep, site])
 
-  // 🔴 best-way-B: onboarding_completed_at is the estate's ONE write of that flag,
-  // a one-way door, and what the resume flow reads to stop re-offering the site
-  // step. It must fire iff a site exists — never site-less (that stranded the two
+  // 🔴 NO LONGER THE ONLY WRITE, AND NO LONGER THE ONE THAT MATTERS (11-09-2026).
+  // `onboarding_completed_at` is now written the moment a site is created
+  // (app/setup/site/page.tsx), because that is when the workspace can receive
+  // data — which is the only thing the onboarding wall is waiting for. While
+  // this page was the sole writer, the wall was cleared only by completing a
+  // funnel that ends in a PRICING decision, so a stranger who would not pick a
+  // plan and could not install was locked out of the product. Design:
+  // `Pulse/docs/plans/11-09-2026-onboarding-wall-fix-design.md`.
+  //
+  // ⚠️ THE WRITE STAYS HERE ANYWAY, and deleting it would be the wrong tidy-up:
+  // it costs one idempotent request and it covers a wizard already in flight
+  // when this shipped, an org whose site predates the change, and any future
+  // path to /setup/done that does not pass through the site step. The one-way
+  // guard is in ciphera-id's SQL (`WHERE onboarding_completed_at IS NULL`), so
+  // a second writer cannot move a timestamp that is already set.
+  //
+  // It must fire iff a site exists — never site-less (that stranded the two
   // internal orgs) and never MISSED for a real site.
   //
   // 🔴 Its own latch, NOT the shared completionFiredRef: `site` is derived
@@ -141,9 +174,6 @@ export default function SetupDonePage() {
   // `.catch(() => {})` is the one construct that guarantees they get the same.
   // So: latch only once the call has actually succeeded, treat 403 as terminal
   // and say so, and let anything else fall through to a retry on the next run.
-  //
-  // This is the request-failure sibling of the async-state trap the 05-09 review
-  // caught — see the comment above onboardingWrittenRef's introduction.
   const onboardingWrittenRef = useRef(false)
   const onboardingInFlightRef = useRef(false)
   const [completionForbidden, setCompletionForbidden] = useState(false)
@@ -285,101 +315,61 @@ export default function SetupDonePage() {
     )
   }
 
+  // ── The moment (direction B, owner pick 11-09-2026) ─────────────────────
+  // The site's own icon in a hairline frame where a generic check tile used
+  // to be; one big heading; one line; the chip; the install state; ONE button.
+  // The three "next steps" cards are gone — they duplicated the sidebar, and
+  // a completion screen with a to-do list on it is not a completion screen.
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5 }}
     >
-      <div className="text-center mb-10">
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-          className="mx-auto flex h-16 w-16 items-center justify-center rounded-none border border-neutral-800 mb-5"
-        >
-          <CheckCircleIcon className="h-8 w-8 text-pos" />
-        </motion.div>
+      {celebrate && !completionForbidden && <Confetti />}
+
+      <div className="text-center mb-8">
+        {site && (
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+            className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-none border border-neutral-800"
+            data-testid="done-favicon-frame"
+          >
+            <SiteFavicon domain={site.domain} name={site.name} size={32} className="h-8 w-8" />
+          </motion.div>
+        )}
         {payment === 'confirmed' && (
           <p className="mb-3 text-sm font-semibold text-pos">✓ Payment confirmed</p>
         )}
-        <h1 className="text-2xl font-bold tracking-tight text-white">
-          {completionForbidden ? 'You\u2019re in' : (<>You&apos;re all set!</>)}
+        <h1 className="text-3xl font-bold tracking-tight text-white">
+          {completionForbidden ? 'You’re in' : SETUP_COPY.done.heading}
         </h1>
         {/* 🔴 A non-owner reaching here cannot write onboarding_completed_at —
             ciphera-id refuses it — so the workspace is genuinely NOT finished and
-            saying "your workspace is ready" would be a claim the app knows to be
-            false. It also is not this person's job to fix, so the copy names the
-            owner rather than handing them an action they cannot take.
-            Colour lives in a single word, never a tinted panel (house rule). */}
-        <p className="mt-2 text-sm text-neutral-400 max-w-sm mx-auto">
+            a celebration would be a claim the app knows to be false. The copy
+            names the owner rather than handing them an action they cannot take,
+            and no confetti fires. Colour lives in a single word, never a tinted
+            panel (house rule). */}
+        <p className="mt-3 text-sm text-neutral-400 max-w-md mx-auto">
           {completionForbidden
-            ? 'Your account is active. The workspace owner still has a step left to finish setting it up \u2014 that part isn\u2019t yours to complete.'
-            : 'Your workspace is ready. Here are some things to do next.'}
+            ? 'Your account is active. The workspace owner still has a step left to finish setting it up — that part isn’t yours to complete.'
+            : SETUP_COPY.done.dek}
         </p>
+        {site && (
+          <div className="mt-4 flex justify-center">
+            <SiteChip domain={site.domain} name={site.name} />
+          </div>
+        )}
       </div>
 
       {/* First-event state — the server's own install status, not a live
-          visitor count, and with a watch window that admits when it lapses.
-          The old block here polled /realtime 30x3s and then stopped WITHOUT
-          any state for having stopped, so the spinner claimed to still be
-          checking forever. */}
+          visitor count, and with a watch window that admits when it lapses. */}
       {site && <InstallStateBlock siteId={site.id} domain={site.domain} />}
 
-      {/* Next steps cards — hairline icon squares, colour only in the glyph
-          (ruled A2). The goal card is site-scoped, so a site-less org (site
-          step skipped) doesn't get a link into settings for a site that
-          doesn't exist. */}
-      <div className="space-y-3 mb-8">
-        {site && (
-          <Link
-            href="/settings/site/goals"
-            className="flex items-center gap-3 p-3 rounded-none border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/30 transition-all"
-            onClick={() => {
-              sessionStorage.setItem('pulse_active_site', site.id)
-            }}
-          >
-            <div className="h-9 w-9 rounded-none border border-neutral-800 flex items-center justify-center shrink-0">
-              <FunnelIcon className="h-4.5 w-4.5 text-brand-orange" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-white">Set up a goal</p>
-              <p className="text-xs text-neutral-500">Track conversions and key events</p>
-            </div>
-          </Link>
-        )}
-
-        <Link
-          href="/settings/organization/members"
-          className="flex items-center gap-3 p-3 rounded-none border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/30 transition-all"
-        >
-          <div className="h-9 w-9 rounded-none border border-neutral-800 flex items-center justify-center shrink-0">
-            <UsersIcon className="h-4.5 w-4.5 text-brand-orange" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-white">Invite your team</p>
-            <p className="text-xs text-neutral-500">Add members to your workspace</p>
-          </div>
-        </Link>
-
-        <a
-          href="https://help.ciphera.net/docs/pulse"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-3 p-3 rounded-none border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800/30 transition-all"
-        >
-          <div className="h-9 w-9 rounded-none border border-neutral-800 flex items-center justify-center shrink-0">
-            <BookOpenIcon className="h-4.5 w-4.5 text-brand-orange" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-white">Read the docs</p>
-            <p className="text-xs text-neutral-500">Guides, API reference, and more</p>
-          </div>
-        </a>
-      </div>
-
       <Button onClick={() => router.push('/')} className="w-full h-11 md:h-9">
-        Go to dashboard
+        {SETUP_COPY.doneButton}
       </Button>
     </motion.div>
   )

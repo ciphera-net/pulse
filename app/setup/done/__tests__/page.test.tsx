@@ -56,13 +56,20 @@ vi.mock('framer-motion', () => ({
 vi.mock('@ciphera-net/facet', () => ({
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
   Spinner: (props: any) => <div data-testid="spinner" {...props} />,
-  CheckCircleIcon: () => <span />,
-  UsersIcon: () => <span />,
-  BookOpenIcon: () => <span />,
-  FunnelIcon: () => <span />,
 }))
 
+// The rebuilt page (direction B, 11-09-2026): the site's icon in a frame, the
+// chip, and the confetti. Confetti is mocked to a marker so its MOUNTS can be
+// counted — the gate it must obey is the same one welcome_completed obeys.
+const confettiMounts = vi.fn()
+vi.mock('@/components/setup/Confetti', () => ({
+  default: () => { confettiMounts(); return <div data-testid="confetti" /> },
+}))
+vi.mock('@/components/setup/SiteChip', () => ({ default: ({ domain }: any) => <span data-testid="site-chip">{domain}</span> }))
+vi.mock('@/components/sites/SiteFavicon', () => ({ SiteFavicon: () => <span data-testid="favicon" /> }))
+
 import { ApiError } from '@/lib/api/client'
+import { SETUP_COPY } from '@/lib/setup/copy'
 import SetupDonePage from '../page'
 
 function setSearch(search: string) {
@@ -78,6 +85,7 @@ beforeEach(() => {
   completeOnboarding.mockReset()
   completeOnboarding.mockResolvedValue({})
   trackWelcomeCompleted.mockClear()
+  confettiMounts.mockClear()
 })
 
 afterEach(() => {
@@ -89,7 +97,7 @@ describe('SetupDonePage payment confirmation', () => {
   it('renders the success content directly for Hobby skippers (no from=checkout)', () => {
     setSearch('')
     render(<SetupDonePage />)
-    expect(screen.getByText(/You're all set!/)).toBeTruthy()
+    expect(screen.getByText(SETUP_COPY.done.heading)).toBeTruthy()
     expect(getSubscription).not.toHaveBeenCalled()
   })
 
@@ -100,7 +108,7 @@ describe('SetupDonePage payment confirmation', () => {
     // The success claim must be earned — confirming state first…
     expect(screen.getByText(/Confirming your payment/)).toBeTruthy()
     // …then flips once the subscription reads active.
-    expect(await screen.findByText(/You're all set!/)).toBeTruthy()
+    expect(await screen.findByText(SETUP_COPY.done.heading)).toBeTruthy()
   })
 
   it('shows the unconfirmed state when the subscription never activates', async () => {
@@ -115,7 +123,7 @@ describe('SetupDonePage payment confirmation', () => {
     expect(screen.getByText(/couldn't confirm your payment/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'View billing' })).toBeTruthy()
-    expect(screen.queryByText(/You're all set!/)).toBeNull()
+    expect(screen.queryByText(SETUP_COPY.done.heading)).toBeNull()
   })
 
   it('resolves a TERMINAL status immediately — no 75s burn on a definitively failed payment', async () => {
@@ -125,7 +133,7 @@ describe('SetupDonePage payment confirmation', () => {
     // First poll answers past_due — the failed state appears without any timer advance.
     expect(await screen.findByText(/Your payment didn't go through/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()
-    expect(screen.queryByText(/You're all set!/)).toBeNull()
+    expect(screen.queryByText(SETUP_COPY.done.heading)).toBeNull()
   })
 
   it('gives persistent POLL failures their own state — never "couldn\'t confirm your payment"', async () => {
@@ -149,7 +157,7 @@ describe('SetupDonePage completion gating (ruled B1 — F-B14)', () => {
     mockSite = A_SITE
     setSearch('')
     render(<SetupDonePage />)
-    expect(screen.getByText(/You're all set!/)).toBeTruthy()
+    expect(screen.getByText(SETUP_COPY.done.heading)).toBeTruthy()
     expect(completeStep).toHaveBeenCalledWith('done')
     expect(trackWelcomeCompleted).toHaveBeenCalledTimes(1)
     expect(completeOnboarding).toHaveBeenCalledWith('org_1')
@@ -227,7 +235,7 @@ describe('SetupDonePage completion gating (ruled B1 — F-B14)', () => {
     setSearch('?from=checkout')
     getSubscription.mockResolvedValue({ subscription_status: 'active' })
     render(<SetupDonePage />)
-    expect(await screen.findByText(/You're all set!/)).toBeTruthy()
+    expect(await screen.findByText(SETUP_COPY.done.heading)).toBeTruthy()
     expect(screen.getByText(/Payment confirmed/)).toBeTruthy()
     expect(completeStep).toHaveBeenCalledWith('done')
     expect(completeOnboarding).toHaveBeenCalledWith('org_1')
@@ -294,14 +302,73 @@ describe('SetupDonePage completion failure handling', () => {
     completeOnboarding.mockRejectedValue(new ApiError('Only the owner can complete onboarding', 403))
 
     render(<SetupDonePage />)
-    await waitFor(() => expect(screen.queryByText(/You're all set!/)).toBeNull())
+    await waitFor(() => expect(screen.queryByText(SETUP_COPY.done.heading)).toBeNull())
     expect(screen.getByText(/workspace owner still has a step left/i)).toBeTruthy()
   })
 
-  it('still says "all set" on the happy path', async () => {
+  it('still shows the completion heading on the happy path', async () => {
     mockSite = A_SITE
     render(<SetupDonePage />)
     await waitFor(() => expect(completeOnboarding).toHaveBeenCalledTimes(1))
-    expect(screen.getByText(/You're all set!/)).toBeTruthy()
+    expect(screen.getByText(SETUP_COPY.done.heading)).toBeTruthy()
+  })
+})
+
+describe('SetupDonePage confetti (the visual twin of welcome_completed — F-B14)', () => {
+  it('fires once for a settled non-checkout arrival with a site', async () => {
+    setSearch('')
+    mockSite = A_SITE
+    render(<SetupDonePage />)
+    await waitFor(() => expect(confettiMounts).toHaveBeenCalledTimes(1))
+    expect(screen.getByTestId('confetti')).toBeTruthy()
+  })
+
+  it('fires NOTHING while the confirming spinner is up', async () => {
+    setSearch('?from=checkout')
+    mockSite = A_SITE
+    getSubscription.mockImplementation(() => new Promise(() => {})) // never resolves
+    render(<SetupDonePage />)
+    await act(async () => { await new Promise((r) => setTimeout(r, 30)) })
+    expect(confettiMounts).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('confetti')).toBeNull()
+  })
+
+  it('fires NOTHING for a failed payment — a celebration over an abandoned checkout is F-B14 in pixels', async () => {
+    setSearch('?from=checkout')
+    mockSite = A_SITE
+    getSubscription.mockResolvedValue({ subscription_status: 'canceled' })
+    render(<SetupDonePage />)
+    expect(await screen.findByText(/didn.t go through/)).toBeTruthy()
+    expect(confettiMounts).not.toHaveBeenCalled()
+  })
+
+  it('fires once the payment is CONFIRMED', async () => {
+    setSearch('?from=checkout')
+    mockSite = A_SITE
+    getSubscription.mockResolvedValue({ subscription_status: 'active' })
+    render(<SetupDonePage />)
+    expect(await screen.findByText(SETUP_COPY.done.heading)).toBeTruthy()
+    await waitFor(() => expect(confettiMounts).toHaveBeenCalledTimes(1))
+  })
+
+  it('never celebrates for a non-owner whose completion was refused (403)', async () => {
+    setSearch('')
+    mockSite = A_SITE
+    completeOnboarding.mockReset()
+    completeOnboarding.mockRejectedValue(new ApiError('Only the owner can complete onboarding', 403))
+    render(<SetupDonePage />)
+    await waitFor(() => expect(completeOnboarding).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(screen.getByText(/isn.t yours to complete/)).toBeTruthy())
+    expect(screen.queryByTestId('confetti')).toBeNull()
+  })
+
+  it('shows the site as a chip and its icon in the frame, and exactly one button', async () => {
+    setSearch('')
+    mockSite = A_SITE
+    render(<SetupDonePage />)
+    expect(screen.getByTestId('site-chip').textContent).toBe('example.com')
+    expect(screen.getByTestId('favicon')).toBeTruthy()
+    expect(screen.getAllByRole('button')).toHaveLength(1)
+    expect(screen.getByRole('button', { name: SETUP_COPY.doneButton })).toBeTruthy()
   })
 })
