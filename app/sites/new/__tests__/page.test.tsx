@@ -22,10 +22,11 @@ vi.mock('next/navigation', () => ({
 
 const listSites = vi.fn<() => Promise<Site[]>>()
 const createSite = vi.fn<(d: unknown) => Promise<Site>>()
+const getSite = vi.fn<(id: string) => Promise<Site>>()
 vi.mock('@/lib/api/sites', () => ({
   listSites: () => listSites(),
   createSite: (d: unknown) => createSite(d),
-  getSite: vi.fn(),
+  getSite: (id: string) => getSite(id),
   getSitesOverview: vi.fn().mockResolvedValue([]),
 }))
 vi.mock('@/lib/api/billing', () => ({
@@ -69,6 +70,7 @@ beforeEach(() => {
   toastError.mockClear()
   listSites.mockReset()
   createSite.mockReset()
+  getSite.mockReset()
   sessionStorage.clear()
 })
 
@@ -91,6 +93,47 @@ describe('NewSitePage plan-limit gate', () => {
     expect(screen.getByTestId('script-setup-block').textContent).toBe('three')
     expect(replace).not.toHaveBeenCalled()
     expect(toastError).not.toHaveBeenCalled()
+  })
+
+  it('"Edit site details" after filling the limit returns to the form with the at-limit notice — never a bounce', async () => {
+    listSites.mockResolvedValue([mk('one'), mk('two')])
+    createSite.mockResolvedValue(mk('three'))
+    renderPage()
+    const submit = await screen.findByRole('button', { name: /create|add/i })
+    await waitFor(() => expect(submit).not.toBeDisabled())
+    fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'three' } })
+    fireEvent.change(screen.getByLabelText(/domain/i), { target: { value: 'three.example' } })
+    fireEvent.click(submit)
+    await screen.findByTestId('script-setup-block')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit site details' }))
+    // The form is back, it says why nothing more can be created, and submit is off.
+    await screen.findByText(/Plan limit reached/)
+    expect(screen.getByRole('button', { name: /create|add/i })).toBeDisabled()
+    expect(replace).not.toHaveBeenCalled()
+    expect(toastError).not.toHaveBeenCalled()
+  })
+
+  it('reloading the success screen at the limit is not an arrival — even when the sites list settles before the site does', async () => {
+    // sessionStorage still names the created site; the page rehydrates it with
+    // getSite. Make the unrelated sites list resolve FIRST (3 of 3) and hold the
+    // site fetch back, which is the ordering that used to bounce.
+    sessionStorage.setItem('pulse_last_created_site', JSON.stringify({ id: 'three' }))
+    listSites.mockResolvedValue([mk('one'), mk('two'), mk('three')])
+    let releaseSite!: (s: Site) => void
+    getSite.mockReturnValue(new Promise<Site>((r) => { releaseSite = r }))
+    renderPage()
+
+    await waitFor(() => expect(listSites).toHaveBeenCalled())
+    // Give the limit effect every chance to fire on the settled list.
+    await waitFor(() => expect(getSite).toHaveBeenCalledWith('three'))
+    await new Promise((r) => setTimeout(r, 50))
+    expect(replace).not.toHaveBeenCalled()
+    expect(toastError).not.toHaveBeenCalled()
+
+    releaseSite(mk('three'))
+    await screen.findByTestId('script-setup-block')
+    expect(screen.getByTestId('script-setup-block').textContent).toBe('three')
   })
 
   it('arriving AT the limit still bounces home with the limit toast, as before', async () => {

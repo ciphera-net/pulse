@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { logger } from '@/lib/utils/logger'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -29,6 +29,10 @@ export default function NewSitePage() {
   const { addSite } = useSitesCache()
   const [atLimit, setAtLimit] = useState(false)
   const [limitsChecked, setLimitsChecked] = useState(false)
+  // True once THIS session created a site here — or is returning to the
+  // success screen of one it created (sessionStorage). Never reset. See the
+  // limit gate below for why a ref, and why not `createdSite`.
+  const createdHereRef = useRef(false)
 
   // * Restore step 2 from sessionStorage after refresh (e.g. pulse_last_created_site = { id } )
   useEffect(() => {
@@ -38,6 +42,10 @@ export default function NewSitePage() {
       if (!raw) return
       const { id } = JSON.parse(raw) as { id?: string }
       if (!id) return
+      // Set BEFORE the fetch: this effect is declared before the limit gate,
+      // so it runs first in the same commit, and the gate must not treat a
+      // reload of the success screen as an arrival (see below).
+      createdHereRef.current = true
       getSite(id)
         .then((site) => {
           setCreatedSite(site)
@@ -51,24 +59,33 @@ export default function NewSitePage() {
     }
   }, [createdSite])
 
-  // * Check for plan limits when sites are loaded.
-  // 🔴 A GATE ON THE FORM, NOT ON THE SUCCESS SCREEN (11-09-2026). Once a site
-  // has been created here (`createdSite`), the list legitimately holds one more
-  // row — and since the created site is written straight into the shared sites
-  // cache, `sites` changes in the same render. Without this guard, creating
-  // the site that fills the plan's limit re-ran the check, hit
-  // `sites.length >= siteLimit`, and bounced the person off the install
-  // snippet for the site they were just allowed to create (reproduced in
-  // __tests__/page.test.tsx). The same bounce hit a refresh of the success
-  // screen before the cache write existed; the guard covers both.
+  // * Plan-limit gate.
+  // 🔴 THE REDIRECT IS FOR ARRIVALS ONLY (11-09-2026). Someone who lands here
+  // already at the limit is sent home with the toast, as before. Someone who
+  // CREATED a site in this session is never redirected, whatever the count:
+  // the created site is written straight into the shared sites cache, so
+  // `sites` legitimately grows by one in the same render, and filling the
+  // plan's limit used to re-run this check on the new count and bounce the
+  // person off the install snippet for the site they had just been allowed to
+  // create. For them the consequence of being at the limit is the at-limit
+  // notice and a disabled submit — true, and not a dead end.
+  //
+  // Keyed on a REF, not on `createdSite`: "Edit site details" clears
+  // `createdSite` to show the form again (that would re-arm a state-keyed
+  // guard and bounce), and on a reload of the success screen `createdSite` is
+  // set only after `getSite` resolves while this effect fires as soon as the
+  // unrelated sites list settles — two responses nothing orders. The ref is
+  // set synchronously at submit and at the start of rehydration, before either
+  // fetch. Reproductions of all three paths: __tests__/page.test.tsx.
   useEffect(() => {
     if (sitesLoading || createdSite) return
     const checkLimits = async () => {
       try {
         const subscription = await getSubscription()
         const siteLimit = subscription?.plan_id ? getSitesLimitForPlan(subscription.plan_id) : null
-        if (siteLimit != null && sites.length >= siteLimit) {
-          setAtLimit(true)
+        const over = siteLimit != null && sites.length >= siteLimit
+        setAtLimit(over)
+        if (over && !createdHereRef.current) {
           toast.error(`${formatPlanName(subscription.plan_id)} plan limit reached (${siteLimit} site${siteLimit === 1 ? '' : 's'}). Please upgrade to add more sites.`)
           router.replace('/')
         }
@@ -89,6 +106,7 @@ export default function NewSitePage() {
     try {
       const site = await createSite(formData)
       toast.success('Site created successfully')
+      createdHereRef.current = true
       setCreatedSite(site)
       // Into the shared sites cache now, not "revalidate later": the sidebar
       // switcher and the fleet read it, and the old mutateSites() was a
