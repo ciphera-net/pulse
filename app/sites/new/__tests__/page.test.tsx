@@ -95,7 +95,7 @@ describe('NewSitePage plan-limit gate', () => {
     expect(toastError).not.toHaveBeenCalled()
   })
 
-  it('"Edit site details" after filling the limit returns to the form with the at-limit notice — never a bounce', async () => {
+  it('"Edit site details" after filling the limit returns to the form with the at-limit notice and Create OFF at once — never a bounce', async () => {
     listSites.mockResolvedValue([mk('one'), mk('two')])
     createSite.mockResolvedValue(mk('three'))
     renderPage()
@@ -107,11 +107,26 @@ describe('NewSitePage plan-limit gate', () => {
     await screen.findByTestId('script-setup-block')
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit site details' }))
-    // The form is back, it says why nothing more can be created, and submit is off.
-    await screen.findByText(/Plan limit reached/)
+    // The form is back and Create is off in the SAME render — `atLimit` is
+    // derived from the live list, not a flag that catches up after a fetch.
     expect(screen.getByRole('button', { name: /create|add/i })).toBeDisabled()
+    expect(screen.getByText(/Plan limit reached/)).toBeTruthy()
+    // Even a submit that bypasses the disabled button never reaches the API.
+    fireEvent.submit(screen.getByRole('button', { name: /create|add/i }).closest('form')!)
+    await new Promise((r) => setTimeout(r, 30))
+    expect(createSite).toHaveBeenCalledTimes(1)
     expect(replace).not.toHaveBeenCalled()
     expect(toastError).not.toHaveBeenCalled()
+  })
+
+  it('a stored site that no longer exists makes the visit an ARRIVAL — at the limit it bounces like one', async () => {
+    sessionStorage.setItem('pulse_last_created_site', JSON.stringify({ id: 'gone' }))
+    listSites.mockResolvedValue([mk('one'), mk('two'), mk('three')]) // 3 of 3, none of them "gone"
+    getSite.mockRejectedValue(new Error('404'))
+    renderPage()
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/'))
+    expect(toastError).toHaveBeenCalledWith(expect.stringMatching(/limit reached \(3 sites\)/))
+    expect(sessionStorage.getItem('pulse_last_created_site')).toBeNull()
   })
 
   it('reloading the success screen at the limit is not an arrival — even when the sites list settles before the site does', async () => {
