@@ -115,6 +115,15 @@ export default function RootLayout({
           data-no-outbound=""
           src="https://js.ciphera.net/script.js"
         />
+        {/* Interaction capture — the optional companion (11-09-2026). Records the
+            label of a clicked control, how MUCH was copied (never the text) and a
+            form's field count (never a value, never a field name).
+            🔑 data-no-outbound above is on the CORE tag and has no companion
+            equivalent: the companion deliberately leaves outbound links alone, so
+            one click never becomes two events, and the 08-09 ruling that Pulse
+            must not record customers' destinations is unaffected by this tag.
+            It carries no data-domain: it calls the core through window.pulse. */}
+        <Script defer src="https://js.ciphera.net/script.interactions.js" />
         <SWRProvider>
           <AuthProvider>
             <LayoutContent>{children}</LayoutContent>
