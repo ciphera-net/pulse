@@ -7,7 +7,7 @@ export interface TaxID {
 }
 
 /**
- * Subscription lifecycle status. `''` means never subscribed (free/Hobby tier).
+ * Subscription lifecycle status. `''` means never subscribed (free/Personal tier).
  * Mirrors the backend state machine (`internal/billing/state.go`).
  */
 export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'canceled' | ''

@@ -143,7 +143,7 @@ export default function AnalyticsWithoutCookieBannerPage() {
 
       <SeoPageCta
         title="Ditch the banner, keep the data"
-        body="Pulse needs no cookie banner because it sets no cookies. Start free on the Hobby tier, or open the live demo to see it running on real traffic."
+        body="Pulse needs no cookie banner because it sets no cookies. Start free on the Personal tier, or open the live demo to see it running on real traffic."
       />
     </>
   )

@@ -40,7 +40,7 @@ export const opensourceFaqData: Record<string, FAQItem[]> = {
     {
       question: 'What exactly is included?',
       answer:
-        'The Team tier’s limits, free: five sites, 100,000 pageviews a month, 2-year data retention, and every feature — funnels, journeys, uptime, performance, the API. No plan gates any.',
+        'The Business tier’s limits, free: five sites, 100,000 pageviews a month, 2-year data retention, and every feature — funnels, journeys, uptime, performance, the API. No plan gates any.',
     },
     {
       question: 'What if we outgrow 100,000 pageviews?',

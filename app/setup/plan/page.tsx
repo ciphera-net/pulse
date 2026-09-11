@@ -8,7 +8,7 @@ import { useSetup } from '@/lib/setup/context'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { getPrices } from '@/lib/api/billing'
 import useSWR from 'swr'
-import { PLAN_CATALOG, getPlanPricing } from '@/lib/plans'
+import { PLAN_CATALOG, TRAFFIC_TIERS, getPlanPricing } from '@/lib/plans'
 import TierSlider from '@/components/billing/TierSlider'
 import PlanChoiceCard from '@/components/billing/PlanChoiceCard'
 import PlanSummary from '@/components/checkout/PlanSummary'
@@ -16,7 +16,7 @@ import PaymentForm from '@/components/checkout/PaymentForm'
 import { Button, Switcher, toast } from '@ciphera-net/facet'
 import { TIMING } from '@/lib/motion'
 
-const DEFAULT_LIMIT = 10_000
+const DEFAULT_LIMIT = TRAFFIC_TIERS[0].value
 
 export default function SetupPlanPage() {
   const router = useRouter()
@@ -194,7 +194,7 @@ export default function SetupPlanPage() {
               <div className="flex items-start justify-between mb-2">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-white">Hobby</span>
+                    <span className="text-sm font-semibold text-white">Personal</span>
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-300 bg-neutral-800 border border-neutral-700 px-1.5 py-0.5 rounded-none">
                       Free forever
                     </span>
@@ -216,11 +216,7 @@ export default function SetupPlanPage() {
               </div>
             </button>
 
-            <div className="relative flex items-center justify-center mb-6">
-              <div className="h-px flex-1 bg-neutral-800" />
-              <span className="px-3 text-xs text-neutral-600">or pick a paid plan</span>
-              <div className="h-px flex-1 bg-neutral-800" />
-            </div>
+            {/* No "or pick a paid plan" divider: there is one paid plan (11-09-2026). */}
 
             {/* Billing interval */}
             <div className="flex flex-col items-center gap-2 mb-6">

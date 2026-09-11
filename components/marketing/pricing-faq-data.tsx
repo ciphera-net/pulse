@@ -42,14 +42,14 @@ export const pricingFaqData: Record<string, FAQItem[]> = {
       // offer refunds" contradicted the product's own screen.
       question: 'Can I get a refund?',
       answer:
-        "Cancelling doesn't refund the current period — your plan stays active until the end of what you've paid for. Switching a yearly plan to a smaller one is different: the unused remainder is refunded to your payment method automatically, and the exact amount is shown before you confirm the change. The Hobby plan is free forever, so you can always try Pulse before committing.",
+        "Cancelling doesn't refund the current period — your plan stays active until the end of what you've paid for. Switching a yearly plan to a smaller one is different: the unused remainder is refunded to your payment method automatically, and the exact amount is shown before you confirm the change. The Personal plan is free forever, so you can always try Pulse before committing.",
     },
   ],
   plans: [
     {
       question: 'Do higher plans unlock more features?',
       answer:
-        'No — every plan runs the full product. Custom events, funnels and journeys, API access, uptime monitoring with alerts, the team dashboard and shared links are included everywhere, on Hobby too. Higher plans scale the limits: more sites, more pageviews, longer data retention — and Business adds priority support.',
+        'No — every plan runs the full product. Custom events, funnels and journeys, API access, uptime monitoring with alerts, the team dashboard and shared links are included everywhere, on Personal too. Business scales the limits: more sites, more pageviews, longer data retention, and adds priority support.',
     },
     {
       question: 'Is there really a free plan for open source?',
@@ -100,9 +100,9 @@ export const pricingFaqData: Record<string, FAQItem[]> = {
       ),
     },
     {
-      question: "What's the difference between Solo and Team?",
+      question: "What's the difference between Personal and Business?",
       answer:
-        'Scale, not features — both run the full product. Team covers up to 5 sites instead of 1 and extends data retention from 1 year to 2. Business steps up again: 10 sites, 3-year retention, and priority support.',
+        'Personal is one site, 5,000 pageviews a month and 6 months of data; Business is up to five sites, the pageview tier you choose, 2 years of data and priority support; every feature is on both.',
     },
     {
       question: 'Do yearly plans include a discount?',
@@ -129,7 +129,7 @@ export const pricingFaqData: Record<string, FAQItem[]> = {
     {
       question: 'Can I export my data?',
       answer:
-        'Yes. You own 100% of your data and can export it anytime from the dashboard as CSV, JSON, or Excel — or via the API, which is included on every plan. Canceling a paid plan never locks you out: your workspace continues on the free Hobby tier with your data in it.',
+        'Yes. You own 100% of your data and can export it anytime from the dashboard as CSV, JSON, or Excel — or via the API, which is included on every plan. Canceling a paid plan never locks you out: your workspace continues on the free Personal tier with your data in it.',
     },
   ],
 }

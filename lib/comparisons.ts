@@ -62,7 +62,7 @@ export interface Comparison {
 
 /** Pulse's own column values — constant across every comparison. */
 const PULSE = {
-  pricing: { text: 'Free Hobby tier; paid plans — see pricing', tone: 'neutral' as const },
+  pricing: { text: 'Free Personal tier; paid plans — see pricing', tone: 'neutral' as const },
   cookies: { text: 'None', tone: 'pos' as const },
   banner: { text: 'Not needed', tone: 'pos' as const },
   openSource: { text: 'Frontend + client open (AGPL)', tone: 'pos' as const },
