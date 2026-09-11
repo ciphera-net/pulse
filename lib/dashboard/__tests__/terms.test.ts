@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
-import { DIMENSION_TERM, METRIC_TERMS, TERMS, UPTIME_TERM, docsHref, visitorsTerm } from '@/lib/dashboard/terms'
+import { DIMENSION_TERM, METRIC_TERMS, TERMS, UPTIME_TERM, docsHref, visitorsTerm, visitorIdentityTerm } from '@/lib/dashboard/terms'
 import { METRIC_TYPES } from '@/lib/dashboard/metrics'
 
 // ---------------------------------------------------------------------------
@@ -110,6 +110,28 @@ describe('terms registry', () => {
     expect(visitorsTerm(-1).definition).toContain('never recognised')
     expect(visitorsTerm(0).definition).toContain('within each calendar month')
     expect(visitorsTerm(30).definition).toContain('up to 30 days')
+  })
+
+  /**
+   * The Visitors roster heading's glyph (review finding, 11-09-2026): the
+   * static `visitor_identity` sentence asserted a monthly key on every site.
+   * Same rule as the deck: the static entry is window-neutral, and
+   * visitorIdentityTerm() names this site's window.
+   */
+  it('the static visitor-identity sentences assert no window; visitorIdentityTerm() specialises', () => {
+    for (const key of ['visitor_identity', 'visitor_month_reset'] as const) {
+      expect(TERMS[key].definition, key).not.toMatch(/monthly key|each calendar month|next month/)
+    }
+    const base = TERMS.visitor_identity
+    expect(visitorIdentityTerm(undefined)).toBe(base)
+    for (const days of [-1, 0, 1, 7, 30] as const) {
+      const t = visitorIdentityTerm(days)
+      expect(t.title).toBe(base.title)
+      expect(t.definition).not.toBe(base.definition)
+    }
+    expect(visitorIdentityTerm(0).definition).toContain('monthly key')
+    expect(visitorIdentityTerm(-1).definition).toContain('never recognised')
+    expect(visitorIdentityTerm(7).definition).toContain('lasts up to 7 days')
   })
 
   it('every term referenced by a template exists in the registry', () => {

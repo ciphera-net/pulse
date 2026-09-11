@@ -42,6 +42,7 @@ import {
   useRealtime,
   useStats,
   useCampaigns,
+  useSite,
 } from '@/lib/swr/dashboard'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import InstallBanner from '@/components/dashboard/InstallBanner'
@@ -240,6 +241,14 @@ export default function SiteDashboardPage() {
   const { data: campaigns } = useCampaigns(siteId, resolvedDateRange?.start ?? '', resolvedDateRange?.end ?? '', 100, apiPeriod)
   // Derive typed values from single dashboard response
   const site = dashboard?.site ?? null
+  // 🔴 `dashboard.site` IS THE SANITIZED PUBLIC SHAPE — the backend builds it
+  // with NewPublicSiteResponse, the same whitelist the share surface gets — so
+  // it does not carry identity_window_days, and the deck rendered the
+  // window-NEUTRAL visitors sentence on a site set to 7 days (measured on
+  // staging, 11-09-2026). The authed site record does carry it; SWR dedupes
+  // the read with the sidebar's, and the deck says what "Unique visitors"
+  // means on THIS site.
+  const { data: siteRecord } = useSite(siteId)
   // The four averages default to null ("not measured"), never 0 — a fabricated
   // zero is indistinguishable from a measured one (F11).
   const stats: Stats = dashboard?.stats ?? { pageviews: 0, visitors: 0, bounce_rate: null, avg_duration: null, avg_scroll_depth: null, avg_visible_duration: null }
@@ -401,7 +410,7 @@ export default function SiteDashboardPage() {
           multiDayInterval={multiDayInterval}
           setMultiDayInterval={setMultiDayInterval}
           onExport={canExport ? () => setIsExportModalOpen(true) : undefined}
-          identityWindowDays={identityWindowOf(site)}
+          identityWindowDays={identityWindowOf(siteRecord)}
         />
       </div>
 

@@ -136,12 +136,17 @@ describe('SitePrivacyTab — the unset default (decision D1)', () => {
     expect(options()).toEqual(['Session only', '24 hours', '7 days', '30 days', 'Calendar month (current)'])
   })
 
-  it('treats a payload that predates the column as unset, not as 30 days', () => {
+  it('treats a payload that predates the column as unset, not as 30 days — and the copy agrees with the control', () => {
     const site = makeSite()
     delete (site as Record<string, unknown>).identity_window_days
-    const { select } = mountWith(site)
+    const { select, footer } = mountWith(site)
     expect(select().value).toBe('0')
     expect(select().selectedOptions[0].textContent).toBe('Calendar month (current)')
+    // The Select says the calendar month, so the footer and the caption beside
+    // it must say the same — the authed record's column is NOT NULL DEFAULT 0,
+    // and one screen may not call the same site "unset" and "unknown" at once.
+    expect(footer().textContent).toContain('rest of the calendar month')
+    expect(screen.getByText(/reset every calendar month/)).toBeInTheDocument()
   })
 
   it('drops the "(current)" entry the moment a real window is chosen', () => {

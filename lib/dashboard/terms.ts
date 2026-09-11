@@ -84,6 +84,17 @@ export function visitorsTerm(identityWindowDays: IdentityWindowDays | undefined)
 }
 
 /**
+ * The "Visitor identity" term for a site whose window is KNOWN — the roster
+ * heading's InfoTip on the Visitors page, where a reader is looking at
+ * individual rows and is most likely to assume more permanence than there is.
+ * Same title; the definition names this site's window.
+ */
+export function visitorIdentityTerm(identityWindowDays: IdentityWindowDays | undefined): GlossaryTerm {
+  if (identityWindowDays === undefined) return TERMS.visitor_identity
+  return { ...TERMS.visitor_identity, definition: describeIdentityWindow(identityWindowDays).identityDefinition }
+}
+
+/**
  * Everything else: dimension-card tabs, instrument metrics, and the
  * provenance caveats that say how a number was recorded. Keyed by a stable
  * TERM slug, so the glyph explains the card the reader is looking at rather
@@ -100,15 +111,22 @@ export const TERMS: Record<string, GlossaryTerm> = {
   // glossary's `visitors` entry says, at the surface where a reader is looking
   // at individual rows and is most likely to assume more permanence than there
   // is — one sentence family, three places, no third definition.
+  // 🔴 Window-neutral, like METRIC_TERMS.visitors: since 11-09-2026 a site
+  // chooses its identity window, so the static entry may not assert the month.
+  // The Visitors roster resolves through visitorIdentityTerm() below with the
+  // site's window and gets the sentence for THAT window.
   visitor_identity: {
     title: 'Visitor identity',
-    definition:
-      'A pseudonym derived server-side from a monthly key, scoped to this site. It cannot be linked to a person, to another site, or to the same reader next month — the key is re-minted at the start of each calendar month in your site’s timezone, so a returning reader becomes a new visitor. There is no cookie and nothing stored on their device.',
+    definition: describeIdentityWindow(undefined).identityDefinition,
   },
+  // Kept as a registry entry for the docs link contract, but no surface has
+  // referenced it since the window shipped — a "monthly reset" is only one of
+  // five windows now, and the roster's heading InfoTip carries the reset
+  // mechanics per window instead.
   visitor_month_reset: {
-    title: 'Monthly reset',
+    title: 'Identity reset',
     definition:
-      'Identities reset on the first day of each calendar month in your site’s timezone. A range that spans a boundary therefore shows a returning reader once per month, under two different names — that is the identity genuinely resetting, not a duplicate.',
+      'Identities reset at the end of the site’s identity window — the calendar month unless its owner chose a shorter one. A range that spans a boundary therefore shows a returning reader once per window, under two different names — that is the identity genuinely resetting, not a duplicate.',
   },
   availability: {
     title: 'Availability',
