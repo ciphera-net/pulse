@@ -103,8 +103,44 @@ const CHIP_GLYPH: Record<TrailKind, Icon> = { ...KIND_GLYPH, pageview: FileText 
 function StepGlyph({ kind }: { kind: TrailKind }) {
   if (kind === 'pageview') return null
   const Glyph = KIND_GLYPH[kind]
+  // 16px since round 8 (was 14): the step sentence went from text-sm to
+  // text-base, and the mark keeps pace with the line it sits on.
   return (
-    <Glyph size={14} aria-hidden="true" className="shrink-0 text-brand-orange" />
+    <Glyph size={16} aria-hidden="true" className="shrink-0 text-brand-orange" />
+  )
+}
+
+/**
+ * The tick from the rail to a step (round 8, option B — owner, 11-09-2026:
+ * "make these steps a bit bigger & maybe more integrated in the block").
+ *
+ * The hierarchy is drawn along the line the reader is already following: a 1px
+ * branch from the rail to each event step, so a step hangs OFF its page rather
+ * than merely sitting under it. Option C (each page as a bordered block) was
+ * mocked and rejected — on a 14-page visit it is fourteen cards inside a card,
+ * and the rail turns into decoration beside them. This costs zero height.
+ *
+ * The arithmetic, stated the way the rail's own is so it cannot drift: the
+ * content column starts at pl-4 (16px) + the 7px node + gap-3 (12px) = 35px
+ * from the row's left edge; the rail's centre is at 19.5px; so a tick is
+ * `left:-15.5px` from the column's edge and 11px wide, spanning 19.5 → 30.5px,
+ * and sits at the row's vertical centre (`top-1/2`, pulled up by half its own
+ * 1px). Its shade is the rail's — `neutral-700`, one step up from `border`, so
+ * the ticks hang off something.
+ *
+ * ⚠️ The mock drew this in `#3f3f46`, calling it `neutral-700`. In this app
+ * `neutral-700` is Tailwind's default `#404040` (`#3f3f46` is `zinc-700`) — a
+ * difference of at most 6 units per channel. The palette token wins over a
+ * hex: a literal colour in a component is a second registry with one entry.
+ *
+ * `aria-hidden`: it is the rail's decoration, exactly like the rail.
+ */
+function StepTick() {
+  return (
+    <span
+      aria-hidden="true"
+      className="absolute -left-[15.5px] top-1/2 h-px w-[11px] -translate-y-1/2 bg-neutral-700"
+    />
   )
 }
 
@@ -302,40 +338,57 @@ function TrailRow({ group, last }: { group: TrailGroup; last: boolean }) {
           connects — measured on production: rail centre 314.5px, dot centre
           326.5px. The arithmetic, stated once so it cannot drift again:
           pl-4 (16px) + half of the 7px node = 19.5px. */}
+      {/* Round 8: the rail is `neutral-700`, one shade up from `border` and the
+          same shade as the ticks that branch off it (see StepTick). */}
       {!last && (
         <span
           aria-hidden="true"
-          className="absolute bottom-0 left-[19.5px] top-4 w-px -translate-x-1/2 bg-border"
+          className="absolute bottom-0 left-[19.5px] top-4 w-px -translate-x-1/2 bg-neutral-700"
         />
       )}
+      {/* mt-2.5 since round 8: the path grew to text-base, and the node keeps
+          to the optical centre of its first line. */}
       <span
         aria-hidden="true"
         className={
-          'relative z-10 mt-2 size-[7px] shrink-0 rounded-full ' +
+          'relative z-10 mt-2.5 size-[7px] shrink-0 rounded-full ' +
           (isPage ? 'bg-neutral-500' : 'bg-brand-orange')
         }
       />
 
       <div className="min-w-0 flex-1 pb-1.5">
-        <div className="flex items-baseline justify-between gap-3">
+        {/* An orphan step gets the same tick a nested step does — `relative`
+            here is what the tick positions against, so a filtered trail does
+            not silently change what a step looks like. */}
+        <div className={'flex items-baseline justify-between gap-3' + (isPage ? '' : ' relative')}>
+          {!isPage && <StepTick />}
           {/* An em dash, never a "/": a site that collects no page paths must
-              not be shown a page its visitor may never have been on. */}
-          <span className="min-w-0 truncate text-sm text-neutral-300">
+              not be shown a page its visitor may never have been on.
+
+              Round 8 (the size step, option A): a page path is text-base,
+              medium, foreground — the row that carries the spine reads as the
+              heading of the steps beneath it. An orphan is a STEP, so it takes a
+              step's ink (text-neutral-300) and no weight. */}
+          <span
+            className={
+              'min-w-0 truncate text-base ' +
+              (isPage ? 'font-medium text-foreground' : 'text-neutral-300')
+            }
+          >
             {isPage ? (
               (group.path ?? EM_DASH)
             ) : (
               // An orphan: an event whose page is filtered away, or whose own
               // path disagrees with the page that was open. It describes itself —
-              // and carries the same glyph a nested step would, so a filtered
-              // trail does not silently change what a step looks like.
-              <span className="inline-flex min-w-0 items-center gap-1.5">
+              // and carries the same glyph a nested step would.
+              <span className="inline-flex min-w-0 items-center gap-2">
                 {orphanKind !== null && <StepGlyph kind={orphanKind} />}
                 <EventLabel event={group.events[0]} kind={orphanKind} />
               </span>
             )}
           </span>
           {isPage && (
-            <span className="shrink-0 text-xs tabular-nums text-neutral-500">
+            <span className="shrink-0 text-sm tabular-nums text-neutral-500">
               {/* Dwell is the STORED event duration, never recomputed from the gap
                   to the next step. A missing beacon is an em dash, not a zero. */}
               {group.dwell == null ? EM_DASH : formatDuration(group.dwell)}
@@ -344,11 +397,15 @@ function TrailRow({ group, last }: { group: TrailGroup; last: boolean }) {
         </div>
 
         {isPage && group.events.length > 0 && (
-          <div className="mt-1 flex flex-col gap-1">
+          // mt-1.5 / gap-1.5 since round 8 (was mt-1 / gap-1): the steps grew a
+          // size, and their spacing grew with them. Each row is `relative` so
+          // its tick can position against it.
+          <div className="mt-1.5 flex flex-col gap-1.5">
             {group.events.map((e, j) => {
               const kind = kindOf(e)
               return (
-                <div key={`${e.timestamp}-${j}`} className="flex flex-wrap items-center gap-1.5">
+                <div key={`${e.timestamp}-${j}`} className="relative flex flex-wrap items-center gap-2">
+                  <StepTick />
                   <StepGlyph kind={kind} />
                   <EventLabel event={e} kind={kind} />
                 </div>
@@ -378,9 +435,15 @@ function EventLabel({ event, kind }: { event: VisitEvent; kind: TrailKind | null
       {sentence !== null ? (
         // 🔑 A sentence is prose, so it is NOT monospace, even though the thing
         // it names is a URL. The name chip below is a machine key and is.
-        <span className="truncate text-sm text-neutral-400">{sentence}</span>
+        //
+        // Round 8 (the size step): text-base in neutral-300 — one size and one
+        // shade up from text-sm neutral-400, so a step reads at the same size
+        // as the page it hangs under, in a lighter ink than the path.
+        <span className="truncate text-base text-neutral-300">{sentence}</span>
       ) : (
-        <span className="bg-brand-orange/10 px-1.5 py-0.5 font-mono text-xs text-brand-orange">
+        // The chips step up too (text-xs → text-sm), so a customer's own event
+        // is not smaller than the sentences beside it.
+        <span className="bg-brand-orange/10 px-1.5 py-0.5 font-mono text-sm text-brand-orange">
           {event.event_name}
         </span>
       )}
@@ -388,7 +451,7 @@ function EventLabel({ event, kind }: { event: VisitEvent; kind: TrailKind | null
         <span
           key={k}
           title={`${k}: ${v}`}
-          className="max-w-[22rem] truncate bg-white/[0.06] px-1.5 py-0.5 font-mono text-xs text-neutral-300"
+          className="max-w-[22rem] truncate bg-white/[0.06] px-1.5 py-0.5 font-mono text-sm text-neutral-300"
         >
           {k}: {v}
         </span>

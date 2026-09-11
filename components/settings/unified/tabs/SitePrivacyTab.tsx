@@ -22,6 +22,14 @@ import { updatePerformanceConfig } from '@/lib/api/performance'
 import { getRetentionOptionsForPlan, formatRetentionMonths, formatPlanName } from '@/lib/plans'
 import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
 import {
+  IDENTITY_WINDOW_CHANGE_WARNING,
+  IDENTITY_WINDOW_OPTIONS,
+  describeIdentityWindow,
+  identityWindowLabel,
+  identityWindowOf,
+  isIdentityWindowDays,
+} from '@/lib/visitors/identityWindow'
+import {
   Copy,
   CheckCircle,
   EyeSlash,
@@ -46,11 +54,12 @@ const GEO_OPTIONS = [
   { value: 'none', label: 'Disabled' },
 ]
 
-// The 8 anchored sections — ids are load-bearing deep-link targets and must not
+// The anchored sections — ids are load-bearing deep-link targets and must not
 // change (spec §6 [keep]: section anchors deep-link).
 const SECTIONS = [
   { id: 'section-data-privacy', label: 'Data & Privacy' },
   { id: 'section-visitor-views', label: 'Visitor views' },
+  { id: 'section-visitor-identity', label: 'Visitor identity' },
   { id: 'section-geographic', label: 'Geographic' },
   { id: 'section-data-retention', label: 'Data Retention' },
   { id: 'section-path-grouping', label: 'Path Grouping' },
@@ -119,6 +128,10 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
   const [hideUnknownLocations, setHideUnknownLocations] = useState(false)
   // A DISPLAY gate, unlike every other toggle on this tab. See its panel below.
   const [visitorViewsEnabled, setVisitorViewsEnabled] = useState(false)
+  // How long a returning reader keeps one identity. Stored as the raw column
+  // value (-1 / 0 / 1 / 7 / 30); 0 is the calendar-month default and is NOT one
+  // of the four menu options — see the panel below.
+  const [identityWindow, setIdentityWindow] = useState(0)
   const [dataRetention, setDataRetention] = useState(6)
   const [autoGroupDynamic, setAutoGroupDynamic] = useState(true)
   const [pageRules, setPageRules] = useState<PageRule[]>([])
@@ -154,6 +167,10 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
     // feature off. Seeding state and baseline from the same source is the whole
     // contract of this effect; every other field here already honoured it.
     setVisitorViewsEnabled(site.visitor_views_enabled ?? false)
+    // Seeded here AND in the baseline below, from the same source — the
+    // visitor_views_enabled lesson above. The column is NOT NULL DEFAULT 0 on
+    // the server, so `?? 0` only ever covers a payload that predates it.
+    setIdentityWindow(site.identity_window_days ?? 0)
     setDataRetention(site.data_retention_months ?? 6)
     setAutoGroupDynamic(site.auto_group_dynamic_paths ?? true)
     setPageRules(site.page_rules || [])
@@ -167,6 +184,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
       collectGeoData: site.collect_geo_data ?? DEFAULT_GEO_DATA_LEVEL,
       hideUnknownLocations: site.hide_unknown_locations ?? false,
       visitorViewsEnabled: site.visitor_views_enabled ?? false,
+      identityWindow: site.identity_window_days ?? 0,
       dataRetention: site.data_retention_months ?? 6,
       autoGroupDynamic: site.auto_group_dynamic_paths ?? true,
       pageRules: site.page_rules || [],
@@ -221,8 +239,19 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
 
   // Track dirty state
   const isDirty = baseline
-    ? JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, visitorViewsEnabled, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency }) !== baseline
+    ? JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, visitorViewsEnabled, identityWindow, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency }) !== baseline
     : false
+
+  // Decision E2 (owner, 11-09-2026): the identity panel's footer stays quiet
+  // until the Select differs from the SAVED value, then states the consequence.
+  // "Saved" is the baseline — what Save wrote and what Discard restores — so
+  // the warning clears the instant either happens, without waiting for the
+  // site row to refetch.
+  const savedIdentityWindow = useMemo<number | null>(
+    () => (baseline ? ((JSON.parse(baseline) as { identityWindow?: number }).identityWindow ?? 0) : null),
+    [baseline],
+  )
+  const identityWindowPending = savedIdentityWindow !== null && identityWindow !== savedIdentityWindow
 
   const handleDiscard = () => {
     if (!baseline) return
@@ -235,6 +264,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
     setCollectGeoData(snap.collectGeoData)
     setHideUnknownLocations(snap.hideUnknownLocations)
     setVisitorViewsEnabled(snap.visitorViewsEnabled)
+    setIdentityWindow(snap.identityWindow ?? 0)
     setDataRetention(snap.dataRetention)
     setAutoGroupDynamic(snap.autoGroupDynamic)
     setPageRules(snap.pageRules)
@@ -256,6 +286,9 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
         collect_geo_data: collectGeoData as 'full' | 'country' | 'none',
         hide_unknown_locations: hideUnknownLocations,
         visitor_views_enabled: visitorViewsEnabled,
+        // The raw column value. The server 400s anything outside its CHECK set
+        // and audit-logs every change as site_identity_window_changed.
+        identity_window_days: identityWindow,
         data_retention_months: dataRetention,
         page_rules: pageRules,
         auto_group_dynamic_paths: autoGroupDynamic,
@@ -266,7 +299,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
         await updatePerformanceConfig(siteId, { enabled: psiConfig.enabled, frequency: psiFrequency })
         await mutatePSIConfig()
       }
-      setBaseline(JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, visitorViewsEnabled, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency }))
+      setBaseline(JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, visitorViewsEnabled, identityWindow, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency }))
       await mutate()
       toast.success('Privacy settings updated')
     } catch (err) {
@@ -274,7 +307,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
     } finally {
       setSaving(false)
     }
-  }, [saving, siteId, collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, visitorViewsEnabled, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency, psiConfig, mutatePSIConfig, mutate])
+  }, [saving, siteId, collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, visitorViewsEnabled, identityWindow, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency, psiConfig, mutatePSIConfig, mutate])
 
   const updateRule = (index: number, updates: Partial<PageRule>) => {
     setPageRules(rules => rules.map((r, i) => i === index ? { ...r, ...updates } : r))
@@ -318,6 +351,17 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
 
   const isFreePlan = !subscription || subscription.plan_id?.includes('free')
 
+  // What the site does TODAY — the saved window — drives every sentence that
+  // describes the site as it is: the Visitor views caption and the identity
+  // panel's quiet footer. A pending, unsaved choice changes neither; it is
+  // described by the warning until it is saved.
+  //
+  // `?? 0`, agreeing with the Select: this is the AUTHED site record, whose
+  // column is NOT NULL DEFAULT 0, so a missing field can only be a cached
+  // pre-deploy payload — and the control already reads that as the calendar
+  // month, so the copy beside it must say the same thing.
+  const savedIdentityCopy = describeIdentityWindow(identityWindowOf(site) ?? 0)
+
   return (
     <div className="flex gap-8">
       <PrivacySectionNav activeId={activeSection} onSelect={scrollToSection} />
@@ -354,10 +398,76 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
             <PanelRows>
               <PanelRow
                 label="Visitor-level views"
-                caption="Turns on the Visitors page: individual readers, their visits and their journeys. Pulse collects the same data either way — this controls whether anyone can look at it one reader at a time. Identities are pseudonymous, scoped to this site, and reset every calendar month. Turning it on or off is recorded in your audit trail, and it is never exposed on a public share link or the public API."
+                // 🔴 The identity sentence FOLLOWS THE SAVED WINDOW. This caption
+                // used to assert "reset every calendar month" as a fact — which
+                // is false on this very screen the moment the panel below sets a
+                // window. The options round for that panel found it (design doc
+                // §9.5); it changed in the same release the panel shipped.
+                caption={`Turns on the Visitors page: individual readers, their visits and their journeys. Pulse collects the same data either way — this controls whether anyone can look at it one reader at a time. ${savedIdentityCopy.scope} Turning it on or off is recorded in your audit trail, and it is never exposed on a public share link or the public API.`}
                 control={<Toggle checked={visitorViewsEnabled} onChange={() => setVisitorViewsEnabled(v => !v)} disabled={!canEdit} />}
               />
             </PanelRows>
+          </SettingsPanel>
+        </section>
+
+        {/*
+          Visitor identity — its OWN panel, directly below Visitor views
+          (decision B, owner 11-09-2026; artifact c42c362f). One row, cloned
+          from the Data Retention device: a `w-56` Select and a footer under a
+          hairline. Design: docs/plans/11-09-2026-configurable-identity-window-design.md.
+
+          🔴 THE UNSET DEFAULT READS "Calendar month (current)" (decision D1).
+          The stored default is 0, which is not one of the four menu options,
+          and it is NOT the same key as 30 days even though the two measure
+          alike — saving 30 on an unset site re-mints every identity on it. So
+          the stored value is pushed into the list as "… (current)" when it is
+          not an option, exactly as Data Retention does, and disappears the
+          moment a real window is chosen.
+
+          The footer (decision E2) is quiet — what the site does today — until
+          the Select differs from the saved value; then it states the
+          consequence with the house device for one: a 2px brand-orange left
+          rule and no fill.
+        */}
+        <section id="section-visitor-identity" className="scroll-mt-24">
+          <SettingsPanel
+            kicker="Visitor identity"
+            description="How long a returning reader is recognised as the same visitor. This does not change what is collected."
+          >
+            <PanelRows>
+              <PanelRow
+                label="Recognise a returning reader for"
+                caption="A reader who comes back within this window is counted once. The window is a ceiling: a reader first seen near its end is recognised for less. Changing it re-mints every future identity; past data keeps the identities it was written with, and cannot be recalculated."
+                control={
+                  <Select
+                    value={String(identityWindow)}
+                    onChange={(v) => setIdentityWindow(Number(v))}
+                    options={(() => {
+                      const opts = IDENTITY_WINDOW_OPTIONS.map(o => ({ value: String(o.value), label: o.label }))
+                      if (!opts.some(o => o.value === String(identityWindow))) {
+                        const label = isIdentityWindowDays(identityWindow) ? identityWindowLabel(identityWindow) : String(identityWindow)
+                        opts.push({ value: String(identityWindow), label: `${label} (current)` })
+                      }
+                      return opts
+                    })()}
+                    className="w-56"
+                    disabled={!canEdit}
+                    aria-label="Visitor identity window"
+                  />
+                }
+              />
+            </PanelRows>
+            <div
+              data-identity-window-footer={identityWindowPending ? 'warning' : 'quiet'}
+              className={cn(
+                'border-t border-border px-5 py-3',
+                identityWindowPending && 'border-l-2 border-l-brand-orange',
+              )}
+            >
+              <p className="text-xs text-muted-foreground">
+                {identityWindowPending ? IDENTITY_WINDOW_CHANGE_WARNING : savedIdentityCopy.quietFooter}
+              </p>
+            </div>
           </SettingsPanel>
         </section>
 

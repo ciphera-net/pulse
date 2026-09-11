@@ -19,9 +19,10 @@ import { RailDelta } from '@/components/funnels/FunnelRail'
 import RailSparkline from '@/components/dashboard/RailSparkline'
 import { EmptyState } from '@/components/ui/EmptyState'
 import type { DailyStat, Stats } from '@/lib/api/stats'
-import { METRIC_TERMS } from '@/lib/dashboard/terms'
+import { METRIC_TERMS, visitorsTerm } from '@/lib/dashboard/terms'
 import { MetricInfoTip, buildExample } from '@/components/dashboard/MetricInfoTip'
 import type { MetricType } from '@/lib/dashboard/metrics'
+import type { IdentityWindowDays } from '@/lib/visitors/identityWindow'
 
 // ---------------------------------------------------------------------------
 // The command deck — Direction C's headline device (dashboard overhaul Phase 2,
@@ -58,6 +59,13 @@ interface CommandDeckProps {
   // False on the public share surface, where the backend clamps every read to
   // day buckets (F2) and an interval selector would be a dead control.
   intervalPicker?: boolean
+  // The site's identity window (Settings → Privacy → Visitor identity, since
+  // 11-09-2026). It changes what "Unique visitors" MEANS — on "Session only" a
+  // returning reader is never recognised — so the rail row's sentence and the
+  // toolbar InfoTip say so here, where the number is shown, not only where it
+  // is configured. Omitted on the share surface, whose payload lacks the
+  // column; the window-neutral registry sentence is used there.
+  identityWindowDays?: IdentityWindowDays
 }
 
 // The four rail metrics read straight off Stats. Named explicitly rather than
@@ -124,6 +132,7 @@ export default function CommandDeck({
   multiDayInterval,
   setMultiDayInterval,
   onExport,
+  identityWindowDays,
 }: CommandDeckProps) {
   // ─── Chart data (site wall clock, F10) ─────────────────────────────
   const chartData = useMemo(() => data.map((item) => {
@@ -157,9 +166,12 @@ export default function CommandDeck({
             ? guardedPointChange(value, previousValue, prevBase)
             : guardedPctChange(value, previousValue, prevBase))
         : null
-      return { ...m, value, change }
+      // The visitors sentence follows the site's window; the other four are
+      // the same on every site.
+      const title = m.key === 'visitors' ? visitorsTerm(identityWindowDays).definition : m.title
+      return { ...m, title, value, change }
     })
-  }, [stats, prevStats])
+  }, [stats, prevStats, identityWindowDays])
 
   const hasData = data.length > 0
   const hasAnyNonZero = hasData && chartData.some((d) => ((d[metric] as number | null) ?? 0) > 0)
@@ -240,7 +252,7 @@ export default function CommandDeck({
                 (metric info layer, 22-08-2026). */}
             <span data-tour="chart-toolbar" className="flex items-center gap-1 text-xs font-medium text-neutral-400">
               {metric === 'visitors' && interval === 'day' ? 'Daily unique visitors' : activeMetric?.label}
-              <MetricInfoTip metric={metric} example={buildExample(metric, stats)} />
+              <MetricInfoTip metric={metric} example={buildExample(metric, stats)} identityWindowDays={identityWindowDays} />
             </span>
             <div className="flex items-center gap-2">
               {onExport && (

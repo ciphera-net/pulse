@@ -18,6 +18,12 @@ import { useSite, useVisitors } from '@/lib/swr/dashboard'
 import { visitorPseudonym } from '@/lib/visitors/pseudonym'
 import { formatLastSeen, SITE_TIMEZONE_FALLBACK } from '@/lib/visitors/format'
 import {
+  IDENTITY_WINDOW_CALENDAR_MONTH,
+  describeIdentityWindow,
+  identityWindowOf,
+  type IdentityWindowDays,
+} from '@/lib/visitors/identityWindow'
+import {
   VISITORS_MIN_DATE,
   VISITORS_ROLLING_MINUTES,
   VISITORS_PRESETS,
@@ -136,6 +142,14 @@ export default function VisitorsPage() {
   // about where the reader is standing.
   const siteTimezone = data?.site_timezone || site?.timezone || SITE_TIMEZONE_FALLBACK
 
+  // The site's identity window (Settings → Privacy → Visitor identity). Every
+  // sentence on this page that used to assert "the calendar month" reads it
+  // instead: on a site set to "Session only" a returning reader is never
+  // recognised, and the page has to say so where the readers are listed.
+  // Unknown while the site row is still loading, and the copy says something
+  // true of every window until it arrives.
+  const identityWindow = identityWindowOf(site)
+
   // 🔴 EVERYTHING BELOW IS ABOVE THE EARLY RETURNS ON PURPOSE. `boundaries` is a
   // useMemo, and a hook after a conditional `return` runs in a different order on
   // the render where the toggle-off room shows — React's rules-of-hooks error,
@@ -143,15 +157,27 @@ export default function VisitorsPage() {
   // it so the three stay together.
   const { from, to, ticks } = presenceTicks(dateRange, rollingMinutes, siteTimezone)
   // A rolling window never spans a month, so live mode gets no boundary.
+  //
+  // 🔴 AND ONLY A CALENDAR-MONTH SITE GETS THE MONTH MARKERS. The field draws
+  // "identities reset" at each month boundary; on a site set to 7 days or
+  // Session only that is not where identities reset, so the marker would be a
+  // false label on a true line. A windowed site gets no markers rather than
+  // wrong ones — its bucket edges are the backend's civil-day arithmetic, and
+  // drawing them here would be a second implementation of it (the per-site
+  // marker on reads is owed in the design doc, §9.6 item 3). None while the
+  // site row is still unknown, either.
   const boundaries = useMemo(
-    () => (rollingMinutes != null ? [] : monthBoundaries(from, to, siteTimezone)),
-    [rollingMinutes, from, to, siteTimezone],
+    () =>
+      rollingMinutes != null || identityWindow !== IDENTITY_WINDOW_CALENDAR_MONTH
+        ? []
+        : monthBoundaries(from, to, siteTimezone),
+    [rollingMinutes, identityWindow, from, to, siteTimezone],
   )
 
   if (site && site.visitor_views_enabled === false) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
-        <PageHeader live={0} showToolbar={false} />
+        <PageHeader live={0} showToolbar={false} identityWindow={identityWindow} />
         <VisitorsOffRoom site={site} onEnabled={() => refreshSite()} />
       </div>
     )
@@ -162,7 +188,7 @@ export default function VisitorsPage() {
     // SWR copy after somebody disabled it in another tab). Trust the API.
     return (
       <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
-        <PageHeader live={0} showToolbar={false} />
+        <PageHeader live={0} showToolbar={false} identityWindow={identityWindow} />
         <VisitorsOffRoom site={site} onEnabled={() => refreshSite()} />
       </div>
     )
@@ -194,6 +220,7 @@ export default function VisitorsPage() {
         onDateRangeChange={(r) => setPeriod('custom', r)}
         onShift={shiftPeriod}
         pickerProps={pickerProps}
+        identityWindow={identityWindow}
       />
 
       <div className="mt-5">
@@ -231,8 +258,10 @@ export default function VisitorsPage() {
               same pixels — and it is the only way a screen-reader user can jump to the
               roster, or know that the rows beneath belong to it. */}
           <h2 className="flex items-center gap-1 text-sm font-medium text-white">
-            {live ? 'On the site now' : "This month's readers"}
-            <TermInfoTip term="visitor_identity" />
+            {/* The heading and its InfoTip follow the site's window: "This
+                month's readers" is only true of a calendar-month site. */}
+            {live ? 'On the site now' : describeIdentityWindow(identityWindow).rosterHeading}
+            <TermInfoTip term="visitor_identity" identityWindowDays={identityWindow} />
           </h2>
           <span className="bg-brand-orange/10 px-2 py-1 text-xs tabular-nums text-brand-orange">
             {live ? `${activeNow} right now` : `${total} in range`}
@@ -281,7 +310,7 @@ export default function VisitorsPage() {
             description={
               live
                 ? 'This updates on its own — a reader arriving in the next few minutes will appear here.'
-                : 'Identities begin on 26 August 2026 and reset each calendar month. Try a wider range.'
+                : describeIdentityWindow(identityWindow).emptyRangeHint
             }
           />
         ) : (
@@ -339,6 +368,7 @@ function PageHeader({
   onDateRangeChange,
   onShift,
   pickerProps,
+  identityWindow,
 }: {
   live: number
   showToolbar: boolean
@@ -348,17 +378,16 @@ function PageHeader({
   onDateRangeChange?: (r: { start: string; end: string }) => void
   onShift?: (d: -1 | 1) => void
   pickerProps?: Record<string, unknown>
+  /** The site's identity window; undefined while unknown. */
+  identityWindow?: IdentityWindowDays
 }) {
+  const copy = describeIdentityWindow(identityWindow)
   return (
     <div className="flex flex-wrap items-start justify-between gap-4 pt-6">
       <div>
         <h1 className="text-2xl font-medium text-white">Visitors</h1>
-        <p className="mt-1 text-sm text-neutral-400">
-          Every reader is a month-long pseudonym — then the slate wipes clean
-        </p>
-        <p className="mt-1 text-xs text-neutral-600">
-          Data begins 26 Aug 2026 · identities reset each calendar month
-        </p>
+        <p className="mt-1 text-sm text-neutral-400">{copy.headline}</p>
+        <p className="mt-1 text-xs text-neutral-600">Data begins 26 Aug 2026 · {copy.resetCaption}</p>
       </div>
 
       {showToolbar && (
