@@ -355,7 +355,12 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
   // describes the site as it is: the Visitor views caption and the identity
   // panel's quiet footer. A pending, unsaved choice changes neither; it is
   // described by the warning until it is saved.
-  const savedIdentityCopy = describeIdentityWindow(identityWindowOf(site))
+  //
+  // `?? 0`, agreeing with the Select: this is the AUTHED site record, whose
+  // column is NOT NULL DEFAULT 0, so a missing field can only be a cached
+  // pre-deploy payload — and the control already reads that as the calendar
+  // month, so the copy beside it must say the same thing.
+  const savedIdentityCopy = describeIdentityWindow(identityWindowOf(site) ?? 0)
 
   return (
     <div className="flex gap-8">
@@ -432,7 +437,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
             <PanelRows>
               <PanelRow
                 label="Recognise a returning reader for"
-                caption="A reader who comes back within this window is counted once — for up to the window, never exactly it. Changing it re-mints every future identity; past data keeps the identities it was written with, and cannot be recalculated."
+                caption="A reader who comes back within this window is counted once. The window is a ceiling: a reader first seen near its end is recognised for less. Changing it re-mints every future identity; past data keeps the identities it was written with, and cannot be recalculated."
                 control={
                   <Select
                     value={String(identityWindow)}

@@ -19,9 +19,12 @@ import {
  */
 
 const EVERY: (IdentityWindowDays | undefined)[] = [undefined, -1, 0, 1, 7, 30]
+/** Every sentence that NAMES the window (and so must name it as a ceiling). */
 const KEYS: (keyof IdentityWindowCopy)[] = [
-  'scope', 'headline', 'resetCaption', 'emptyRangeHint', 'notFoundHint', 'quietFooter', 'metricDefinition', 'policySentence',
+  'scope', 'headline', 'identityDefinition', 'resetCaption', 'emptyRangeHint', 'notFoundHint', 'quietFooter', 'metricDefinition', 'policySentence',
 ]
+/** The roster heading is a label over a list; it names no window. */
+const ALL_KEYS: (keyof IdentityWindowCopy)[] = [...KEYS, 'rosterHeading']
 
 describe('the option set', () => {
   it('is the four the owner chose, in that order, and never the default', () => {
@@ -135,7 +138,37 @@ describe('describeIdentityWindow — what each window says', () => {
   it('every window fills every sentence — no surface is left with an empty string', () => {
     for (const days of EVERY) {
       const c = describeIdentityWindow(days)
-      for (const k of KEYS) expect(c[k].length, `${days} ${k}`).toBeGreaterThan(20)
+      for (const k of ALL_KEYS) expect(c[k].length, `${days} ${k}`).toBeGreaterThan(12)
     }
+  })
+
+  /**
+   * The roster heading (review finding, 11-09-2026): "This month's readers"
+   * over the list was true of every site until the window shipped. It is a
+   * label, not a definition, so it names the month only where the month is
+   * the window.
+   */
+  it('the roster heading says "this month" only on a calendar-month site', () => {
+    expect(describeIdentityWindow(0).rosterHeading).toBe('This month’s readers')
+    expect(describeIdentityWindow(-1).rosterHeading).toBe('Readers, one day at a time')
+    for (const days of [1, 7, 30, undefined] as const) {
+      expect(describeIdentityWindow(days).rosterHeading, String(days)).toBe('Readers in this range')
+    }
+  })
+
+  it('the identity definition names the key’s lifetime per window', () => {
+    expect(describeIdentityWindow(0).identityDefinition).toContain('monthly key')
+    expect(describeIdentityWindow(-1).identityDefinition).toContain('daily key')
+    expect(describeIdentityWindow(7).identityDefinition).toContain('lasts up to 7 days')
+    expect(describeIdentityWindow(undefined).identityDefinition).toContain('short-lived key')
+  })
+
+  /** One typographic apostrophe throughout — the product copy around these sentences uses ’, never '. */
+  it('uses the typographic apostrophe, not the straight one', () => {
+    for (const days of EVERY) {
+      const c = describeIdentityWindow(days)
+      for (const k of ALL_KEYS) expect(c[k], `${days} ${k}`).not.toMatch(/'/)
+    }
+    expect(IDENTITY_WINDOW_CHANGE_WARNING).not.toMatch(/'/)
   })
 })

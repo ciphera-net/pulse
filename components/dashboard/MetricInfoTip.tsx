@@ -1,7 +1,7 @@
 'use client'
 
 import { InfoTip } from '@ciphera-net/facet'
-import { DIMENSION_TERM, METRIC_TERMS, TERMS, docsHref, visitorsTerm, type GlossaryTerm } from '@/lib/dashboard/terms'
+import { DIMENSION_TERM, METRIC_TERMS, TERMS, docsHref, visitorsTerm, visitorIdentityTerm, type GlossaryTerm } from '@/lib/dashboard/terms'
 import type { MetricType } from '@/lib/dashboard/metrics'
 import type { Stats } from '@/lib/api/stats'
 import type { IdentityWindowDays } from '@/lib/visitors/identityWindow'
@@ -88,12 +88,20 @@ export function TermInfoTip({
   term: key,
   example,
   className,
+  identityWindowDays,
 }: {
   term: keyof typeof TERMS | string
   example?: React.ReactNode
   className?: string
+  /**
+   * The site's identity window, for the one term that depends on it
+   * (`visitor_identity`, on the Visitors roster heading). Same contract as
+   * MetricInfoTip: omit where unknown and the neutral registry sentence is used.
+   */
+  identityWindowDays?: IdentityWindowDays
 }) {
-  const term: GlossaryTerm | undefined = TERMS[key]
+  const term: GlossaryTerm | undefined =
+    key === 'visitor_identity' ? visitorIdentityTerm(identityWindowDays) : TERMS[key]
   // No entry, no glyph — the registry gate, enforced before render.
   if (!term) return null
   return (
