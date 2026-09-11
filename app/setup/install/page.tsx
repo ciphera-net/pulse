@@ -4,22 +4,35 @@ import { useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSetup } from '@/lib/setup/context'
 import { preservePlanParams } from '@/lib/setup/utils'
+import { SETUP_COPY } from '@/lib/setup/copy'
 import { verifySite } from '@/lib/api/sites'
 import { useSites } from '@/lib/swr/sites'
-import { Button, CheckCircleIcon, GlobeIcon, Spinner } from '@ciphera-net/facet'
+import { Button, Spinner } from '@ciphera-net/facet'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 import InstallStateBlock from '@/components/setup/InstallStateBlock'
-import { trackWelcomeInstallSkipped } from '@/lib/welcomeAnalytics'
+import SiteChip from '@/components/setup/SiteChip'
 
 export default function SetupInstallPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { site, completeStep } = useSetup()
+  const { site, pendingPlan, completeStep } = useSetup()
   const { isLoading: sitesLoading } = useSites()
 
+  // 🔴 CONTINUE GOES TO DONE, NOT TO A PRICING PAGE (11-09-2026). Step 4 of
+  // the old ladder was /setup/plan — a full pricing page shown to somebody who
+  // had not yet seen a single chart. Two of two external signups reached it
+  // and left. The plan step is out of the forward path.
+  //
+  // 🔑 THE ONE EXCEPTION IS INTENT THE PERSON BROUGHT WITH THEM. Somebody who
+  // clicked a plan on the pricing page and THEN signed up carries it through
+  // the wizard as `pendingPlan` (preservePlanParams threads ?plan=&interval=
+  // &limit= from /setup/org onward, and the context validates it against the
+  // catalog). For them, checkout is what they came for, so Continue still
+  // finishes there. Cutting this edge unconditionally would land a buyer on
+  // /setup/done and never ask them to pay.
   const handleContinue = () => {
     completeStep('install')
-    router.push(`/setup/plan${preservePlanParams(searchParams)}`)
+    router.push(pendingPlan ? `/setup/plan${preservePlanParams(searchParams)}` : '/setup/done')
   }
 
   // An observed event IS the verification a human used to give by pressing
@@ -51,22 +64,23 @@ export default function SetupInstallPage() {
 
   return (
     <>
+      {/* Direction B (owner pick, 11-09-2026): one big centred heading, one
+          line under it, and the person's own site as a chip — so the step is
+          visibly about THEIR site and no heading has to repeat the domain.
+          The icon tile above the heading is gone: tinted panels are the
+          retired device, and colour here lives in the rail and the button. */}
       <div className="text-center mb-8">
-        {/* success check only when a site actually exists; the no-site state
-            showed a green check over "no site is attached" copy */}
-        <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-none mb-5 ${
-          site ? 'bg-emerald-500/10 text-emerald-400' : 'bg-neutral-800 text-neutral-400'
-        }`}>
-          {site ? <CheckCircleIcon className="h-7 w-7" /> : <GlobeIcon className="h-7 w-7" />}
-        </div>
-        <h1 className="text-2xl font-bold tracking-tight text-white">
-          Install the tracking script
+        <h1 className="text-3xl font-bold tracking-tight text-white">
+          {SETUP_COPY.install.heading}
         </h1>
-        <p className="mt-2 text-sm text-neutral-400 max-w-sm mx-auto">
-          {site
-            ? `Add this snippet to "${site.name}" to start collecting data.`
-            : 'Each site gets its own snippet once it exists.'}
+        <p className="mt-3 text-sm text-neutral-400 max-w-md mx-auto">
+          {site ? SETUP_COPY.install.dek : 'Each site gets its own snippet once it exists.'}
         </p>
+        {site && (
+          <div className="mt-4 flex justify-center">
+            <SiteChip domain={site.domain} name={site.name} />
+          </div>
+        )}
       </div>
 
       {site && (
@@ -81,18 +95,20 @@ export default function SetupInstallPage() {
 
       {/* The install state, from the server's own install status. This page
           used to poll /realtime 15x2s, but only if the reader pressed
-          "Verify installation" — pressing "Continue" or "Skip for now" gave
-          no feedback at all. */}
+          "Verify installation" — pressing "Continue" gave no feedback at all. */}
       {site && (
         <InstallStateBlock siteId={site.id} domain={site.domain} onFirstEvent={markVerified} />
       )}
 
+      {/* ONE forward control. There is no separate "Skip for now" any more:
+          it existed to bypass a pricing step that is no longer on the path,
+          and it wrote nothing server-side — a door that was not a door
+          (measured on Pulse's first external signup). Leaving is free
+          because Continue leads to the dashboard, and the dek says so. */}
       {site && (
-        <div className="flex gap-3">
-          <Button onClick={handleContinue} className="flex-1 h-11 md:h-9">
-            Continue
-          </Button>
-        </div>
+        <Button onClick={handleContinue} className="w-full h-11 md:h-9">
+          {pendingPlan ? SETUP_COPY.installContinueToCheckout : SETUP_COPY.installContinue}
+        </Button>
       )}
 
       {!site && (
@@ -116,17 +132,6 @@ export default function SetupInstallPage() {
           </Button>
         </div>
       )}
-
-      <button
-        type="button"
-        onClick={() => {
-          trackWelcomeInstallSkipped()
-          handleContinue()
-        }}
-        className="mt-4 w-full min-h-11 md:min-h-0 text-center text-sm text-neutral-500 hover:text-neutral-400 transition-colors"
-      >
-        Skip for now
-      </button>
     </>
   )
 }

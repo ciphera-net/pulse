@@ -5,8 +5,8 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import { getUserOrganizations } from '@/lib/api/organization'
 import { listSites } from '@/lib/api/sites'
-import { SetupProvider, useSetup } from '@/lib/setup/context'
-import SetupStepper from '@/components/setup/SetupStepper'
+import { SetupProvider } from '@/lib/setup/context'
+import SetupRail from '@/components/setup/SetupRail'
 import { trackWelcomeStepView } from '@/lib/welcomeAnalytics'
 import { LoadingOverlay } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
@@ -39,7 +39,6 @@ function SetupGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { user, loading: authLoading } = useAuth()
-  const { completedSteps } = useSetup()
   const [resolved, setResolved] = useState(false)
   const isNewOrg = searchParams.get('new') === '1'
 
@@ -103,7 +102,10 @@ function SetupGuard({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-4 py-12 sm:px-6 lg:px-10">
-      <SetupStepper completedSteps={completedSteps} />
+      {/* The progress rail (direction B, 11-09-2026) replaced the five-square
+          stepper: three steps, plus the plan step only when the person brought a
+          plan with them from the pricing page. See SetupRail. */}
+      <SetupRail />
       <div className="w-full max-w-lg">
         {children}
       </div>
