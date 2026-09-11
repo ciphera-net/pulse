@@ -16,6 +16,11 @@ import { CheckCircleIcon } from '@ciphera-net/facet'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 
 const LAST_CREATED_SITE_KEY = 'pulse_last_created_site'
+/** How long the form waits for the plan check before failing OPEN. The server
+ *  enforces the cap regardless (pulse-backend CreateSiteHandler), so a check
+ *  that never settles — the API client's post-401 retry carries no timeout —
+ *  must not hold the form hostage; it only spares a request known to fail. */
+const LIMIT_CHECK_FAIL_OPEN_MS = 8_000
 
 /** Whether this tab is coming back to the success screen of a site it created
  *  (step 2 is restored from sessionStorage after a refresh). Read synchronously
@@ -106,7 +111,11 @@ export default function NewSitePage() {
   // (hence `atLimit` is derived from `siteLimit` and the live list). A
   // restore that FAILS — the stored site is gone — is an arrival.
   useEffect(() => {
-    if (sitesLoading || restoring || createdSite) return
+    // `loading`: never bounce a person whose own creation is in flight — the
+    // shared list can reach the limit from another session's creation while
+    // this request is pending, and the answer to THIS request (its success
+    // screen, or its own error) must be what they see.
+    if (sitesLoading || restoring || createdSite || loading) return
     const checkLimits = async () => {
       try {
         const subscription = await getSubscription()
@@ -124,7 +133,15 @@ export default function NewSitePage() {
     }
 
     checkLimits()
-  }, [sitesLoading, restoring, sites, router, createdSite])
+  }, [sitesLoading, restoring, sites, router, createdSite, loading])
+
+  // The submit is held until the plan check has run once (below). Fail OPEN if
+  // it never settles: the server is the backstop, a dead form is not.
+  useEffect(() => {
+    if (limitsChecked) return
+    const t = setTimeout(() => setLimitsChecked(true), LIMIT_CHECK_FAIL_OPEN_MS)
+    return () => clearTimeout(t)
+  }, [limitsChecked])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

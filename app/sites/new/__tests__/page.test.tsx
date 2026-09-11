@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { SWRConfig } from 'swr'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import { SWRConfig, useSWRConfig } from 'swr'
 import type { Site } from '@/lib/api/sites'
 
 // /sites/new's plan-limit gate vs. the shared sites cache (11-09-2026).
@@ -55,10 +55,20 @@ import NewSitePage from '../page'
 const mk = (id: string): Site =>
   ({ id, user_id: 'u', domain: `${id}.example`, name: id, uptime_enabled: false, created_at: '2026-09-11T20:00:00Z' }) as Site
 
+// A sibling inside the same provider, standing in for the other useSites()
+// consumers mounted alongside /sites/new (the shell, the sidebar switcher):
+// its bound mutate lets a test change the shared list from "elsewhere".
+let mutateShared: ReturnType<typeof useSWRConfig>['mutate']
+function Elsewhere() {
+  mutateShared = useSWRConfig().mutate
+  return null
+}
+
 function renderPage() {
   const cache = new Map<string, unknown>()
   render(
     <SWRConfig value={{ provider: () => cache as never }}>
+      <Elsewhere />
       <NewSitePage />
     </SWRConfig>,
   )
@@ -167,6 +177,46 @@ describe('NewSitePage plan-limit gate', () => {
     releasePlan({ plan_id: 'pioneer' })
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/')) // and then the arrival rule applies
     expect(createSite).not.toHaveBeenCalled()
+  })
+
+  it('a plan check that never settles fails OPEN after the wait — the server is the backstop, a dead form is not', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      listSites.mockResolvedValue([mk('one')])
+      getSubscription.mockReturnValueOnce(new Promise(() => {})) // hangs forever
+      renderPage()
+      const submit = await screen.findByRole('button', { name: /create|add/i })
+      expect(submit).toBeDisabled()
+      await act(async () => { vi.advanceTimersByTime(8_100) })
+      expect(submit).not.toBeDisabled()
+      expect(replace).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('never bounces a person whose own creation is in flight, even if the list fills up from elsewhere meanwhile', async () => {
+    listSites.mockResolvedValue([mk('one'), mk('two')]) // 2 of 3
+    let releaseCreate!: (s: Site) => void
+    createSite.mockReturnValue(new Promise<Site>((r) => { releaseCreate = r }))
+    renderPage()
+    const submit = await screen.findByRole('button', { name: /create|add/i })
+    await waitFor(() => expect(submit).not.toBeDisabled())
+    fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'three' } })
+    fireEvent.change(screen.getByLabelText(/domain/i), { target: { value: 'three.example' } })
+    fireEvent.click(submit)
+    await waitFor(() => expect(createSite).toHaveBeenCalledTimes(1))
+
+    // A teammate's creation lands in the shared list while ours is pending.
+    await act(async () => { await mutateShared('sites', [mk('one'), mk('two'), mk('theirs')], { revalidate: false }) })
+    await new Promise((r) => setTimeout(r, 30))
+    expect(replace).not.toHaveBeenCalled()
+    expect(toastError).not.toHaveBeenCalled()
+
+    // Ours resolves: its own outcome is what the person sees.
+    releaseCreate(mk('three'))
+    await screen.findByTestId('script-setup-block')
+    expect(replace).not.toHaveBeenCalled()
   })
 
   it('arriving AT the limit still bounces home with the limit toast, as before', async () => {
