@@ -29,8 +29,9 @@ vi.mock('@/lib/api/sites', () => ({
   getSite: (id: string) => getSite(id),
   getSitesOverview: vi.fn().mockResolvedValue([]),
 }))
+const getSubscription = vi.fn().mockResolvedValue({ plan_id: 'pioneer' }) // limit 3 (lib/plans.ts)
 vi.mock('@/lib/api/billing', () => ({
-  getSubscription: vi.fn().mockResolvedValue({ plan_id: 'pioneer' }), // limit 3 (lib/plans.ts)
+  getSubscription: () => getSubscription(),
 }))
 vi.mock('@/lib/utils/favicon', () => ({ FAVICON_SERVICE_URL: 'https://icons.example' }))
 vi.mock('@/lib/utils/logger', () => ({ logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() } }))
@@ -149,6 +150,23 @@ describe('NewSitePage plan-limit gate', () => {
     releaseSite(mk('three'))
     await screen.findByTestId('script-setup-block')
     expect(screen.getByTestId('script-setup-block').textContent).toBe('three')
+  })
+
+  it('a submit before the plan check has settled never reaches the API', async () => {
+    listSites.mockResolvedValue([mk('one'), mk('two'), mk('three')]) // at the limit, not yet known to the client
+    let releasePlan!: (v: unknown) => void
+    getSubscription.mockReturnValueOnce(new Promise((r) => { releasePlan = r }))
+    renderPage()
+    const submit = await screen.findByRole('button', { name: /create|add/i })
+    expect(submit).toBeDisabled() // held until the check has run once
+    fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'four' } })
+    fireEvent.change(screen.getByLabelText(/domain/i), { target: { value: 'four.example' } })
+    fireEvent.submit(submit.closest('form')!) // Enter-key path, bypassing the disabled button
+    await new Promise((r) => setTimeout(r, 30))
+    expect(createSite).not.toHaveBeenCalled()
+    releasePlan({ plan_id: 'pioneer' })
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/')) // and then the arrival rule applies
+    expect(createSite).not.toHaveBeenCalled()
   })
 
   it('arriving AT the limit still bounces home with the limit toast, as before', async () => {

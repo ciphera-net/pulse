@@ -128,9 +128,12 @@ export default function NewSitePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // The button is disabled at the limit; this is the same rule for a submit
-    // that arrives another way (Enter in a field), so it never reaches the API.
-    if (atLimit) return
+    // The button is off until the plan check has run once and while at the
+    // limit; this is the same rule for a submit that arrives another way
+    // (Enter in a field), so neither ever reaches the API. The server enforces
+    // the cap too (pulse-backend CreateSiteHandler) — this only spares the
+    // person a request that is known to fail.
+    if (atLimit || !limitsChecked) return
     setLoading(true)
 
     try {
@@ -267,7 +270,7 @@ export default function NewSitePage() {
         <div className="flex gap-4">
           <Button
             type="submit"
-            disabled={loading || atLimit}
+            disabled={loading || atLimit || !limitsChecked}
             isLoading={loading}
           >
             Create Site
