@@ -55,6 +55,17 @@ export interface FrameworkSnippet {
   label: string
   /** Copy-paste code block, if the platform needs framework-specific wiring. */
   code?: string
+  /**
+   * How `data-no-*` flags are written in THIS snippet's syntax.
+   *
+   * 🔴 Syntax-aware on purpose. Five of the six framework snippets take HTML/JSX
+   * attributes (`data-no-outbound`), and nuxt's is an object literal
+   * (`'data-no-outbound': '',`). A single regex that injected attributes into
+   * arbitrary code would emit valid-looking nonsense in nuxt's config, so each
+   * snippet declares its own style and places `PULSE_FLAGS` where its
+   * attributes belong.
+   */
+  flagStyle?: 'attr' | 'object'
   /** Prose note for plan-gated / special-handling platforms. */
   note?: string
   /** Optional call to action (e.g. install the official plugin). */
@@ -1247,6 +1258,52 @@ const rawIntegrations: RawIntegration[] = [
   },
 ]
 
+/**
+ * The token a framework snippet puts where its `data-no-*` flags belong.
+ *
+ * 🔴 IT IS EXPLICIT BECAUSE THE ALTERNATIVE SHIPPED BROKEN FOR MONTHS. Until
+ * 11-09-2026 `scriptSnippet` substituted only DOMAIN into a framework snippet
+ * and never applied the feature flags — so on the six platforms that carry one
+ * (nextjs, nuxt, astro, svelte, remix, gatsby) the panel's own toggles did not
+ * reach the snippet it showed you. Turning "Outbound links" off on a Next.js
+ * site produced a `<Script>` with no `data-no-outbound`, and the only thing that
+ * made the toggles work was enabling SRI, which bypasses the framework path
+ * entirely.
+ *
+ * A placeholder makes the omission impossible rather than unlikely: the guard
+ * test in `lib/__tests__/` fails if a snippet carries `code` without it.
+ */
+export const SNIPPET_FLAG_TOKEN = 'PULSE_FLAGS'
+
+/**
+ * Render a framework snippet: substitute the domain, and write the flags in the
+ * snippet's own syntax at the indentation its placeholder sits on.
+ *
+ * With no flags the placeholder LINE is removed entirely — not left blank,
+ * which would leave a stray empty line in the middle of somebody's config.
+ *
+ * 🔴 THE PLACEHOLDER MUST BE ALONE ON ITS LINE. Removing the line is what keeps
+ * a flagless snippet byte-identical to the original, so a token sharing a line
+ * with real code would take that code with it. The guard test enforces it; this
+ * comment says why it is a rule rather than a habit.
+ */
+export function renderSnippet(
+  snippet: Pick<FrameworkSnippet, 'code' | 'flagStyle'>,
+  domain: string,
+  flags: readonly string[],
+): string {
+  const code = (snippet.code ?? '').replace(/DOMAIN/g, domain)
+  const lines = code.split('\n')
+  const at = lines.findIndex((l) => l.includes(SNIPPET_FLAG_TOKEN))
+  if (at === -1) return code
+  const indent = /^\s*/.exec(lines[at])?.[0] ?? ''
+  const written = flags.map((f) =>
+    snippet.flagStyle === 'object' ? `${indent}'${f}': '',` : `${indent}${f}`,
+  )
+  lines.splice(at, 1, ...written)
+  return lines.join('\n')
+}
+
 // * ─── Install snippets (single source of truth) ──────────────────────────────
 // Moved off ScriptSetupBlock so the registry, install UI, and docs cannot drift.
 // `DOMAIN` is replaced with the real site domain when rendered.
@@ -1264,6 +1321,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Script
           defer
           data-domain="DOMAIN"
+          PULSE_FLAGS
           src="https://js.ciphera.net/script.js"
           strategy="afterInteractive"
         />
@@ -1274,6 +1332,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   },
   nuxt: {
     label: 'nuxt.config.ts',
+    // The only snippet whose script is an object literal, not a tag.
+    flagStyle: 'object',
     code: `export default defineNuxtConfig({
   app: {
     head: {
@@ -1281,6 +1341,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {
           defer: true,
           'data-domain': 'DOMAIN',
+          PULSE_FLAGS
           src: 'https://js.ciphera.net/script.js',
         },
       ],
@@ -1298,6 +1359,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <script
       defer
       data-domain="DOMAIN"
+      PULSE_FLAGS
       src="https://js.ciphera.net/script.js"
     ></script>
   </head>
@@ -1314,6 +1376,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <script
       defer
       data-domain="DOMAIN"
+      PULSE_FLAGS
       src="https://js.ciphera.net/script.js"
     ></script>
     %sveltekit.head%
@@ -1334,6 +1397,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script
           defer
           data-domain="DOMAIN"
+          PULSE_FLAGS
           src="https://js.ciphera.net/script.js"
         />
       </head>
@@ -1353,6 +1417,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       key="pulse"
       defer
       data-domain="DOMAIN"
+      PULSE_FLAGS
       src="https://js.ciphera.net/script.js"
     />,
   ])

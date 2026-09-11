@@ -14,6 +14,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { ArrowUpRight, CaretDown, MagnifyingGlass } from '@phosphor-icons/react'
 import {
   getIntegration,
+  renderSnippet,
   getPickerIntegrations,
   categoryLabels,
   integrationDocsUrl,
@@ -176,10 +177,24 @@ export default function ScriptSetupBlock({
   // * variants were retired, so there is no longer a "minimal tag" form.
   // * SRI ⇒ the immutable versioned URL + integrity + crossorigin, never the
   // * rolling URL.
+  /**
+   * The `data-no-*` flags the current toggles imply — ONE list, used by the raw
+   * tag and by every framework snippet.
+   *
+   * 🔴 It exists because the two paths disagreed. `buildTag` applied the flags;
+   * the framework path substituted only DOMAIN and dropped them, so on the six
+   * platforms carrying snippet code the panel's toggles never reached the
+   * snippet it showed you. Deriving both from one list is what stops that
+   * recurring.
+   */
+  const coreFlags = useMemo(
+    () => FEATURES.filter((f) => !features[f.key]).map((f) => f.attr),
+    [features],
+  )
+
   const buildTag = useCallback(
     (file: string): string => {
-      const attrs: string[] = ['defer', `data-domain="${safeDomain}"`]
-      for (const f of FEATURES) if (!features[f.key]) attrs.push(f.attr)
+      const attrs: string[] = ['defer', `data-domain="${safeDomain}"`, ...coreFlags]
       const meta = VERSION_MANIFEST.files[file]
       if (showSRI && meta) {
         attrs.push(`src="${VERSION_MANIFEST.baseUrl}${meta.path}"`)
@@ -190,17 +205,20 @@ export default function ScriptSetupBlock({
       }
       return `<script ${attrs.join(' ')}></script>`
     },
-    [safeDomain, features, showSRI],
+    [safeDomain, coreFlags, showSRI],
   )
 
   const scriptSnippet = useMemo(() => {
     // Idiomatic framework wiring (e.g. next/script) — only when NOT using SRI,
     // since SRI requires the literal tag form with an integrity attribute.
     if (selected?.snippet?.code && !showSRI) {
-      return selected.snippet.code.replace(/DOMAIN/g, safeDomain)
+      // renderSnippet, never a bare .replace(): it writes the flags in this
+      // snippet's own syntax (nuxt's is an object literal) at the indentation
+      // its PULSE_FLAGS placeholder sits on.
+      return renderSnippet(selected.snippet, safeDomain, coreFlags)
     }
     return buildTag('script.js')
-  }, [selected, showSRI, safeDomain, buildTag])
+  }, [selected, showSRI, safeDomain, buildTag, coreFlags])
 
   const copyScript = useCallback(() => {
     navigator.clipboard.writeText(scriptSnippet)
