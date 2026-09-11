@@ -38,11 +38,19 @@ vi.mock('@/lib/api/oauth-store', () => ({
   forgetAllPendingAuth: vi.fn(),
 }))
 vi.mock('@/lib/api/oauth', () => ({ initiateOAuthFlow: vi.fn() }))
-vi.mock('@/lib/api/client', () => ({
-  default: vi.fn().mockRejectedValue(new Error('no profile')),
-  setAccessToken: vi.fn(),
-  APP_URL: 'https://pulse.ciphera.net',
-}))
+// ⚠️ PARTIAL, not shape-based. A shape mock re-declares the module's whole
+// surface, so the day production code imports one more symbol from it (here:
+// ApiError, which markOnboardingComplete uses to tell a permanent 403 from a
+// transient 5xx) an unrelated suite fails on a missing export.
+vi.mock('@/lib/api/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/api/client')>()
+  return {
+    ...actual,
+    default: vi.fn().mockRejectedValue(new Error('no profile')),
+    setAccessToken: vi.fn(),
+    APP_URL: 'https://pulse.ciphera.net',
+  }
+})
 vi.mock('@/lib/cdn', () => ({ cdnUrl: (p: string) => p }))
 vi.mock('@/lib/utils/logger', () => ({ logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() } }))
 
@@ -59,9 +67,11 @@ vi.mock('@/lib/api/organization', async (importOriginal) => {
     ensureDefaultOrganization: (...a: unknown[]) => ensureDefaultOrganization(...a),
     switchContext: (...a: unknown[]) => switchContext(...a),
     getOrganization: (...a: unknown[]) => getOrganization(...a),
+    completeOnboarding: (...a: unknown[]) => completeOnboarding(...a),
   }
 })
 
+const completeOnboarding = vi.fn().mockResolvedValue(undefined)
 const listSites = vi.fn()
 vi.mock('@/lib/api/sites', () => ({ listSites: (...a: unknown[]) => listSites(...a) }))
 
@@ -128,7 +138,12 @@ describe('auth callback — where a completed sign-in lands', () => {
     await waitFor(() => expect(assign).toHaveBeenCalledWith('/sites'))
   })
 
-  it('resumes a half-finished workspace at the step its sites imply', async () => {
+  it('lands a workspace whose SITE IS SILENT on the product, not the install step', async () => {
+    // 🔴 11-09-2026. This test used to assert '/setup/install' — the behaviour
+    // that trapped Pulse's first external signup. A site that has never
+    // reported an event is normal: installing happens in a CMS, a repo or a
+    // deploy pipeline, usually on another machine. The account is finished
+    // setting up; the install is a task ON the dashboard.
     exchangeSucceedsAs('owner')
     ensureDefaultOrganization.mockResolvedValue({
       created: false,
@@ -139,7 +154,8 @@ describe('auth callback — where a completed sign-in lands', () => {
 
     render(<AuthCallback />)
 
-    await waitFor(() => expect(assign).toHaveBeenCalledWith('/setup/install'))
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('/sites'))
+    expect(completeOnboarding).toHaveBeenCalledWith('o1')
   })
 
   it('never sends a NON-OWNER into the wizard, even with onboarding unfinished', async () => {

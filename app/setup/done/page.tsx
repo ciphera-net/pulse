@@ -98,6 +98,12 @@ export default function SetupDonePage() {
   // (no payment was attempted) or 'confirmed'. They used to fire on MOUNT,
   // while the confirming spinner was still up, so an abandoned checkout
   // counted as a completed onboarding and polluted the funnel (F-B14).
+  //
+  // ⚠️ F-B14 IS ABOUT THE ANALYTICS FUNNEL, not about the org flag, and the
+  // distinction started mattering on 11-09-2026 when the flag moved to site
+  // creation. `welcome_completed` measures who finished the WIZARD and must
+  // keep its payment gate. The flag measures whether the workspace can receive
+  // data, which a pricing decision has never had anything to do with.
   // The wizard-local step + the analytics event fire once when payment settles.
   // These are safe to fire regardless of the sites fetch and must not be coupled
   // to the one-way onboarding write below.
@@ -110,9 +116,23 @@ export default function SetupDonePage() {
     trackWelcomeCompleted(Boolean(site))
   }, [payment, completeStep, site])
 
-  // 🔴 best-way-B: onboarding_completed_at is the estate's ONE write of that flag,
-  // a one-way door, and what the resume flow reads to stop re-offering the site
-  // step. It must fire iff a site exists — never site-less (that stranded the two
+  // 🔴 NO LONGER THE ONLY WRITE, AND NO LONGER THE ONE THAT MATTERS (11-09-2026).
+  // `onboarding_completed_at` is now written the moment a site is created
+  // (app/setup/site/page.tsx), because that is when the workspace can receive
+  // data — which is the only thing the onboarding wall is waiting for. While
+  // this page was the sole writer, the wall was cleared only by completing a
+  // funnel that ends in a PRICING decision, so a stranger who would not pick a
+  // plan and could not install was locked out of the product. Design:
+  // `Pulse/docs/plans/11-09-2026-onboarding-wall-fix-design.md`.
+  //
+  // ⚠️ THE WRITE STAYS HERE ANYWAY, and deleting it would be the wrong tidy-up:
+  // it costs one idempotent request and it covers a wizard already in flight
+  // when this shipped, an org whose site predates the change, and any future
+  // path to /setup/done that does not pass through the site step. The one-way
+  // guard is in ciphera-id's SQL (`WHERE onboarding_completed_at IS NULL`), so
+  // a second writer cannot move a timestamp that is already set.
+  //
+  // It must fire iff a site exists — never site-less (that stranded the two
   // internal orgs) and never MISSED for a real site.
   //
   // 🔴 Its own latch, NOT the shared completionFiredRef: `site` is derived

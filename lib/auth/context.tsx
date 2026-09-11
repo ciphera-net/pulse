@@ -9,7 +9,7 @@ import { LoadingOverlay, useSessionSync, SessionExpiryWarning, useSessionRefresh
 import { cdnUrl } from '@/lib/cdn'
 import { logoutAction, getSessionAction, setSessionAction } from '@/app/actions/auth'
 import { getUserOrganizations, switchContext, getOrganization, ensureDefaultOrganization } from '@/lib/api/organization'
-import { listSites } from '@/lib/api/sites'
+import { listSites, type Site } from '@/lib/api/sites'
 import { logger } from '@/lib/utils/logger'
 import { forgetVaultKeys, loadVaultKey } from '@/lib/auth/vault-store'
 import { openVaultWithKey } from '@/lib/auth/vault-restore'
@@ -18,7 +18,7 @@ import { forgetAllPendingAuth } from '@/lib/api/oauth-store'
 import { isTransientRefreshFailure } from '@/lib/auth/refresh-outcome'
 import { reportClientEvent } from '@/lib/utils/clientEvents'
 import { isAuthedAppRoute } from '@/lib/auth/appRoutes'
-import { onboardingDoneCacheKey, resumeTargetForSites } from '@/lib/auth/landing-target'
+import { markOnboardingComplete, onboardingDoneCacheKey, resumeTargetForSites } from '@/lib/auth/landing-target'
 
 interface User {
   id: string
@@ -699,23 +699,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               try {
                 const org = await getOrganization(userOrgId)
                 if (!org.onboarding_completed_at) {
-                  // * Resume at the furthest incomplete step, computed from server
-                  // * state — the fixed '/setup/site' target invited a duplicate
-                  // * site from every org that already had one.
+                  // * Resume at the step the org's sites imply, computed from
+                  // * server state — the fixed '/setup/site' target invited a
+                  // * duplicate site from every org that already had one.
                   // *
                   // * 🔑 ONE DEFINITION. The auth callback resolves the same
                   // * destination before it lands, so this mapping lives in
                   // * lib/auth/landing-target.ts and neither caller owns a copy.
-                  let target = '/setup/site'
+                  //
+                  // 🔴 THE WALL'S REAL QUESTION IS "CAN THIS WORKSPACE RECEIVE
+                  // DATA YET" (11-09-2026), not "did somebody finish the
+                  // wizard". Until today the only writer of the flag was
+                  // /setup/done, AFTER payment state settles — so the wall was
+                  // cleared only by completing a funnel that ends in a PRICING
+                  // decision, and a stranger who would not pick a plan and
+                  // could not install was locked out of the product entirely.
+                  // Measured: pomofocus.io, Pulse's first external signup,
+                  // reached /sites, was pushed back to /setup/install two
+                  // seconds later, and never returned.
+                  //
+                  // A site IS that moment, so a site-owning org passes and its
+                  // flag is healed forward in the background. The flag stays a
+                  // one-way door (ciphera-id's UPDATE ... WHERE ... IS NULL);
+                  // only its trigger moved.
+                  let sites: Site[] | null = null
                   try {
-                    target = resumeTargetForSites(await listSites())
+                    sites = await listSites()
                   } catch {
-                    // sites fetch failed — the default target still resumes the wizard
+                    // ⚠️ DO NOT FALL BACK TO THE WIZARD. A sites fetch that
+                    // failed says nothing about whether this org has a site,
+                    // and pushing on no evidence is how the wall produced a
+                    // redirect that read as the app glitching. The wall
+                    // re-asks on the next route; letting the page render is
+                    // the safe wrong answer, and usually the right one.
                   }
-                  router.push(target)
-                  return
+                  if (sites) {
+                    const target = resumeTargetForSites(sites)
+                    if (target) {
+                      router.push(target)
+                      return
+                    }
+                    // A site exists. Record it and let them through — never
+                    // await, because nothing about this person's navigation
+                    // should wait on a write they did not ask for.
+                    void markOnboardingComplete(userOrgId)
+                  }
+                } else {
+                  localStorage.setItem(cacheKey, '1')
                 }
-                localStorage.setItem(cacheKey, '1')
               } catch {
                 // org fetch failed — don't block
               }

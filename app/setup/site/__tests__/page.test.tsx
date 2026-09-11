@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
 // P5 wizard-step tests (25-08-2026): the site step's ruled-C1 resume view —
 // an org that already has a site gets "Pick up where you left off" (fact row,
@@ -11,6 +11,15 @@ const mockPush = vi.fn()
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush, replace: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
+}))
+
+vi.mock('@/lib/auth/context', () => ({
+  useAuth: () => ({ user: { org_id: 'org-1' } }),
+}))
+
+const markOnboardingComplete = vi.fn().mockResolvedValue(undefined)
+vi.mock('@/lib/auth/landing-target', () => ({
+  markOnboardingComplete: (...a: unknown[]) => markOnboardingComplete(...a),
 }))
 
 const setSite = vi.fn()
@@ -25,8 +34,9 @@ vi.mock('@/lib/swr/sites', () => ({
   mutateSites: vi.fn().mockResolvedValue(undefined),
 }))
 
+const createSite = vi.fn()
 vi.mock('@/lib/api/sites', () => ({
-  createSite: vi.fn(),
+  createSite: (...a: unknown[]) => createSite(...a),
   detectFramework: vi.fn().mockResolvedValue({}),
 }))
 
@@ -58,6 +68,8 @@ beforeEach(() => {
   setSite.mockClear()
   completeStep.mockClear()
   trackSkipped.mockClear()
+  markOnboardingComplete.mockClear()
+  createSite.mockReset()
   sitesState = { sites: [], isLoading: false }
 })
 
@@ -111,5 +123,29 @@ describe('SetupSitePage', () => {
     // and nothing here routes to /setup/plan (the old skip's destination)
     expect(mockPush).not.toHaveBeenCalledWith('/setup/plan')
     expect(trackSkipped).not.toHaveBeenCalled()
+  })
+
+  // 🔴 11-09-2026: THE SITE IS THE FINISH LINE. onboarding_completed_at used to
+  // be written in exactly one place — /setup/done, after payment state settles
+  // — so the onboarding wall was cleared only by completing a funnel that ends
+  // in a PRICING decision. A stranger who would not pick a plan yet AND could
+  // not paste a script tag was locked out of the product entirely, whatever
+  // "Skip for now" did. Measured live on Pulse's first external signup.
+  it('records onboarding completion the moment the site is created', async () => {
+    createSite.mockResolvedValue({ id: 's1', name: 'example.com', domain: 'example.com' })
+    render(<SetupSitePage />)
+    fireEvent.change(screen.getByLabelText('Domain'), { target: { value: 'example.com' } })
+    fireEvent.submit(screen.getByText('Add site').closest('form')!)
+    await waitFor(() => expect(markOnboardingComplete).toHaveBeenCalledWith('org-1'))
+    expect(mockPush).toHaveBeenCalledWith('/setup/install')
+  })
+
+  it('does NOT record completion when the site was refused', async () => {
+    createSite.mockRejectedValue(new Error('domain already in use'))
+    render(<SetupSitePage />)
+    fireEvent.change(screen.getByLabelText('Domain'), { target: { value: 'taken.com' } })
+    fireEvent.submit(screen.getByText('Add site').closest('form')!)
+    await waitFor(() => expect(screen.queryByText('Adding...')).toBeNull())
+    expect(markOnboardingComplete).not.toHaveBeenCalled()
   })
 })
