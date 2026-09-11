@@ -33,11 +33,12 @@ function ValueCell({ value }: { value: PlanFeatureValue }) {
 
 /**
  * The detailed plan-comparison grid under the pricing cards — VerdictTable's
- * anatomy at four plan columns: hairline table, muted feature rail, the
- * popular plan's column emphasized with bg-card and a primary top edge.
+ * anatomy at two plan columns (Personal, Business — since 11-09-2026; it was
+ * four): hairline table, muted feature rail, the recommended plan's column
+ * emphasized with bg-card and a primary top edge. Widths: 28% + 2 × 36%.
  *
- * TWO renderings. Five columns cannot fit a phone: the table is min-w-[720px]
- * inside a ~340px box, so Solo, Team (the "popular" one) and Business were all
+ * TWO renderings. Even three columns cannot fit a phone: the table is min-w-[720px]
+ * inside a ~340px box, so (at four plans) Solo, Team and Business were all
  * 100% off-screen with no scrollbar or fade to suggest otherwise, and the 720px
  * min-content made /pricing the only route in the estate with document-level
  * horizontal overflow. Below md we render the same `groups` data as one card per
@@ -108,7 +109,7 @@ export function PlanComparisonTable({ groups }: { groups: PlanFeatureGroup[] }) 
                 key={plan.id}
                 scope="col"
                 className={cn(
-                  'relative w-[18%] px-5 py-4 text-xs font-normal uppercase tracking-[0.08em] text-muted-foreground',
+                  'relative w-[36%] px-5 py-4 text-xs font-normal uppercase tracking-[0.08em] text-muted-foreground',
                   plan.popular && 'bg-card text-foreground',
                 )}
               >

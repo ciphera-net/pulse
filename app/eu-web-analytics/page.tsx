@@ -142,7 +142,7 @@ export default function EuWebAnalyticsPage() {
 
       <SeoPageCta
         title="Keep your analytics in Europe"
-        body="EU company, Swiss/EU residency, no US transfer. Start free on the Hobby tier, or open the live demo to see Pulse on real traffic."
+        body="EU company, Swiss/EU residency, no US transfer. Start free on the Personal tier, or open the live demo to see Pulse on real traffic."
       />
     </>
   )

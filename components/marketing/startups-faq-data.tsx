@@ -38,7 +38,7 @@ export const startupsFaqData: Record<string, FAQItem[]> = {
     {
       question: 'What exactly is included?',
       answer:
-        'The Team tier\u2019s limits, free for a year: five sites, 100,000 pageviews a month, 2-year data retention, and every feature. Funnels, journeys, uptime, performance, the API. No plan gates any.',
+        'The Business tier\u2019s limits, free for a year: five sites, 100,000 pageviews a month, 2-year data retention, and every feature. Funnels, journeys, uptime, performance, the API. No plan gates any.',
     },
     {
       question: 'What happens after the year?',
