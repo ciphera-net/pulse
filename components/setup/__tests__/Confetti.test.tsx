@@ -173,6 +173,24 @@ describe('<Confetti />', () => {
     expect(onDone).toHaveBeenCalledTimes(1)
   })
 
+  // 🔴 12-09-2026: the done page mounts this inside a framer-motion wrapper that
+  // scales 0.95 → 1. A transformed ancestor is the containing block for its
+  // position:fixed descendants, so the canvas was anchored to the setup card and
+  // snapped to the viewport when the animation ended. The canvas therefore lives
+  // in <body>, wherever the component is rendered.
+  it('mounts the canvas directly in <body>, not under a transformed ancestor', () => {
+    window.matchMedia = vi.fn().mockReturnValue({ matches: false }) as unknown as typeof window.matchMedia
+    const { container, getByTestId } = render(
+      <div style={{ transform: 'scale(0.95)' }} data-testid="animated-card">
+        <Confetti />
+      </div>,
+    )
+    const canvas = getByTestId('setup-confetti')
+    expect(canvas.parentElement).toBe(document.body)
+    expect(container.querySelector('[data-testid="setup-confetti"]')).toBeNull()
+    expect(rafSpy).toHaveBeenCalledTimes(1) // and it still fires, from the portalled canvas
+  })
+
   it('fires once per mount, not once per render', () => {
     window.matchMedia = vi.fn().mockReturnValue({ matches: false }) as unknown as typeof window.matchMedia
     const { rerender } = render(<Confetti />)
