@@ -58,6 +58,31 @@ const FEATURES = [
 
 type FeatureKey = (typeof FEATURES)[number]['key']
 
+/**
+ * The interaction companion's three kinds — one per `data-no-*` the script
+ * actually honours, so nothing here is reachable only by hand-editing the tag.
+ *
+ * 🔴 The captions carry the privacy promise PER KIND, which is why this is three
+ * rows and not one toggle: "never the text" is true of copies and meaningless of
+ * clicks, and a single shared caption could only say the weaker thing.
+ */
+const INTERACTION_KINDS = [
+  { key: 'clicks', label: 'Clicks', description: 'Button and link labels, capped and redacted in the browser', attr: 'data-no-clicks' },
+  { key: 'copy', label: 'Copies', description: 'How much was copied and from what — never the text', attr: 'data-no-copy' },
+  { key: 'forms', label: 'Form submits', description: 'Field count and the form’s name — never a value or a field name', attr: 'data-no-forms' },
+] as const
+
+type InteractionKey = (typeof INTERACTION_KINDS)[number]['key']
+
+/**
+ * Once the companion tag is added, all three kinds are on.
+ *
+ * ⚠️ The companion itself defaults OFF and always will: it is a second tag a
+ * site has to paste, so there is no version of "on by default" for it. The
+ * question the design doc leaves open (§8.2) is only about these three.
+ */
+const DEFAULT_INTERACTIONS: Record<InteractionKey, boolean> = { clicks: true, copy: true, forms: true }
+
 const DEFAULT_FEATURES: Record<FeatureKey, boolean> = {
   scroll: true,
   outbound: true,
@@ -112,6 +137,13 @@ export default function ScriptSetupBlock({
   // * SRI is now PERSISTED (sf.sri) so Pulse can enumerate SRI users before any
   // * rolling-script change.
   const [showSRI, setShowSRI] = useState(sf.sri != null ? Boolean(sf.sri) : false)
+  // The companion: off unless a site has opted in, and its three kinds.
+  const [interactions, setInteractions] = useState(Boolean(sf.interactions))
+  const [kinds, setKinds] = useState<Record<InteractionKey, boolean>>({
+    clicks: sf.clicks != null ? Boolean(sf.clicks) : DEFAULT_INTERACTIONS.clicks,
+    copy: sf.copy != null ? Boolean(sf.copy) : DEFAULT_INTERACTIONS.copy,
+    forms: sf.forms != null ? Boolean(sf.forms) : DEFAULT_INTERACTIONS.forms,
+  })
   const [framework, setFramework] = useState(site.detected_framework ?? '')
   const [copied, setCopied] = useState(false)
   const [cspCopied, setCspCopied] = useState(false)
@@ -192,6 +224,20 @@ export default function ScriptSetupBlock({
     [features],
   )
 
+  /**
+   * The companion's own opt-outs, or `null` when the companion is off.
+   *
+   * 🔑 `null` and `[]` mean different things and must not be conflated: `[]` is
+   * "companion on, every kind on"; `null` is "no companion tag at all".
+   */
+  const interactionFlags = useMemo(
+    () =>
+      interactions
+        ? INTERACTION_KINDS.filter((k) => !kinds[k.key]).map((k) => k.attr)
+        : null,
+    [interactions, kinds],
+  )
+
   const buildTag = useCallback(
     (file: string): string => {
       const attrs: string[] = ['defer', `data-domain="${safeDomain}"`, ...coreFlags]
@@ -208,6 +254,25 @@ export default function ScriptSetupBlock({
     [safeDomain, coreFlags, showSRI],
   )
 
+  /**
+   * The companion tag. No `data-domain` and no `data-api`: it reads nothing of
+   * its own and calls the core through `window.pulse`, which is also why the two
+   * tags work in either order.
+   */
+  const buildInteractionTag = useCallback((): string => {
+    const file = 'script.interactions.js'
+    const attrs: string[] = ['defer', ...(interactionFlags ?? [])]
+    const meta = VERSION_MANIFEST.files[file]
+    if (showSRI && meta) {
+      attrs.push(`src="${VERSION_MANIFEST.baseUrl}${meta.path}"`)
+      attrs.push(`integrity="${meta.sha384}"`)
+      attrs.push('crossorigin="anonymous"')
+    } else {
+      attrs.push(`src="${ROLLING_BASE}/${file}"`)
+    }
+    return `<script ${attrs.join(' ')}></script>`
+  }, [interactionFlags, showSRI])
+
   const scriptSnippet = useMemo(() => {
     // Idiomatic framework wiring (e.g. next/script) — only when NOT using SRI,
     // since SRI requires the literal tag form with an integrity attribute.
@@ -215,10 +280,12 @@ export default function ScriptSetupBlock({
       // renderSnippet, never a bare .replace(): it writes the flags in this
       // snippet's own syntax (nuxt's is an object literal) at the indentation
       // its PULSE_FLAGS placeholder sits on.
-      return renderSnippet(selected.snippet, safeDomain, coreFlags)
+      return renderSnippet(selected.snippet, safeDomain, coreFlags, interactionFlags)
     }
-    return buildTag('script.js')
-  }, [selected, showSRI, safeDomain, buildTag, coreFlags])
+    // The universal path: two lines when the companion is on, one when it is not.
+    const core = buildTag('script.js')
+    return interactionFlags === null ? core : `${core}\n${buildInteractionTag()}`
+  }, [selected, showSRI, safeDomain, buildTag, coreFlags, interactionFlags, buildInteractionTag])
 
   const copyScript = useCallback(() => {
     navigator.clipboard.writeText(scriptSnippet)
@@ -255,7 +322,23 @@ export default function ScriptSetupBlock({
   const toggleFeature = (key: FeatureKey) => {
     setFeatures((prev) => {
       const next = { ...prev, [key]: !prev[key] }
-      onFeaturesChange?.({ ...next, sri: showSRI })
+      onFeaturesChange?.({ ...next, sri: showSRI, interactions, ...kinds })
+      return next
+    })
+  }
+
+  const toggleInteractions = () => {
+    setInteractions((prev) => {
+      const next = !prev
+      onFeaturesChange?.({ ...features, sri: showSRI, interactions: next, ...kinds })
+      return next
+    })
+  }
+
+  const toggleKind = (key: InteractionKey) => {
+    setKinds((prev) => {
+      const next = { ...prev, [key]: !prev[key] }
+      onFeaturesChange?.({ ...features, sri: showSRI, interactions, ...next })
       return next
     })
   }
@@ -263,7 +346,7 @@ export default function ScriptSetupBlock({
   const toggleSRI = () => {
     setShowSRI((prev) => {
       const next = !prev
-      onFeaturesChange?.({ ...features, sri: next })
+      onFeaturesChange?.({ ...features, sri: next, interactions, ...kinds })
       return next
     })
   }
@@ -554,6 +637,29 @@ export default function ScriptSetupBlock({
                 control={<Toggle checked={features[f.key]} onChange={() => toggleFeature(f.key)} disabled={disabled} />}
               />
             ))}
+            {/* ─── Interaction capture (option B, owner 11-09-2026) ───────
+                One row turns the companion tag on; three indented rows then
+                expose the kinds. The children render ONLY while the parent is
+                on, so the panel does not grow for a site that does not use it.
+                Each kind carries its own caption, which is where the privacy
+                promise can be stated per kind — "never the text" is true of
+                copies and meaningless of clicks. */}
+            <PanelRow
+              label="Interaction capture"
+              caption="Clicks, copies and form submits · adds a second script tag to your snippet"
+              control={<Toggle checked={interactions} onChange={toggleInteractions} disabled={disabled} />}
+            />
+            {interactions &&
+              INTERACTION_KINDS.map((k) => (
+                <PanelRow
+                  key={k.key}
+                  className="md:grid-cols-[220px_1fr_auto]"
+                  label={<span className="pl-5">{k.label}</span>}
+                  caption={<span className="pl-5">{k.description}</span>}
+                  control={<Toggle checked={kinds[k.key]} onChange={() => toggleKind(k.key)} disabled={disabled} />}
+                />
+              ))}
+
             {/* SRI — emits the immutable versioned URL (never the rolling one) */}
             <PanelRow
               label="Subresource Integrity (SRI)"
