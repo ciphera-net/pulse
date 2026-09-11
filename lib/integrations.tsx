@@ -66,6 +66,19 @@ export interface FrameworkSnippet {
    * attributes belong.
    */
   flagStyle?: 'attr' | 'object'
+  /**
+   * The OPTIONAL interaction-capture companion, written in THIS snippet's own
+   * idiom, with its own `PULSE_FLAGS` placeholder for the per-kind opt-outs.
+   *
+   * 🔴 Hand-written per platform because there is no shared shape to derive it
+   * from: next/script takes a `<Script strategy=…/>`, nuxt takes an object in
+   * `head.script[]`, astro and svelte take plain HTML, remix takes self-closing
+   * JSX, and gatsby needs its OWN React `key` or the two scripts collide.
+   *
+   * It carries no `data-domain` and no `data-api`: it reads nothing of its own
+   * and calls the core through `window.pulse`.
+   */
+  interactions?: string
   /** Prose note for plan-gated / special-handling platforms. */
   note?: string
   /** Optional call to action (e.g. install the official plugin). */
@@ -1287,20 +1300,67 @@ export const SNIPPET_FLAG_TOKEN = 'PULSE_FLAGS'
  * with real code would take that code with it. The guard test enforces it; this
  * comment says why it is a rule rather than a habit.
  */
+export const SNIPPET_INTERACTIONS_TOKEN = 'PULSE_INTERACTIONS'
+
+/** Write one flag in a snippet's syntax, at a given indent. */
+function writeFlag(f: string, indent: string, style: FrameworkSnippet['flagStyle']): string {
+  return style === 'object' ? `${indent}'${f}': '',` : `${indent}${f}`
+}
+
+/**
+ * Replace the single line holding `token` with `written`, or remove the line
+ * when there is nothing to write. Returns the lines unchanged if the token is
+ * absent, so a snippet that predates a placeholder still renders.
+ */
+function fillSlot(
+  lines: string[],
+  token: string,
+  write: (indent: string) => string[],
+): string[] {
+  const at = lines.findIndex((l) => l.includes(token))
+  if (at === -1) return lines
+  const indent = /^\s*/.exec(lines[at])?.[0] ?? ''
+  const out = [...lines]
+  out.splice(at, 1, ...write(indent))
+  return out
+}
+
 export function renderSnippet(
-  snippet: Pick<FrameworkSnippet, 'code' | 'flagStyle'>,
+  snippet: Pick<FrameworkSnippet, 'code' | 'flagStyle' | 'interactions'>,
   domain: string,
   flags: readonly string[],
+  /**
+   * The interaction companion's own per-kind opt-outs, or `null` to leave the
+   * companion out entirely. `[]` means "companion on, every kind on" — which is
+   * NOT the same as null, and the distinction is the whole point of the type.
+   */
+  interactionFlags: readonly string[] | null = null,
 ): string {
-  const code = (snippet.code ?? '').replace(/DOMAIN/g, domain)
-  const lines = code.split('\n')
-  const at = lines.findIndex((l) => l.includes(SNIPPET_FLAG_TOKEN))
-  if (at === -1) return code
-  const indent = /^\s*/.exec(lines[at])?.[0] ?? ''
-  const written = flags.map((f) =>
-    snippet.flagStyle === 'object' ? `${indent}'${f}': '',` : `${indent}${f}`,
+  let lines = (snippet.code ?? '').replace(/DOMAIN/g, domain).split('\n')
+
+  // The companion first: its block carries its OWN flag token, so filling it in
+  // before the core pass lets one fillSlot handle both. The block is authored at
+  // the snippet's own indentation, so the slot's indent is not reapplied to it.
+  lines = fillSlot(lines, SNIPPET_INTERACTIONS_TOKEN, () =>
+    interactionFlags !== null && snippet.interactions
+      ? snippet.interactions.split('\n')
+      : [],
   )
-  lines.splice(at, 1, ...written)
+
+  // Both flag slots — the core's and, if present, the companion's — in document
+  // order, each taking the flags belonging to its own script.
+  const coreAt = lines.findIndex((l) => l.includes(SNIPPET_FLAG_TOKEN))
+  lines = fillSlot(lines, SNIPPET_FLAG_TOKEN, (indent) =>
+    flags.map((f) => writeFlag(f, indent, snippet.flagStyle)),
+  )
+  if (coreAt !== -1 && interactionFlags) {
+    lines = fillSlot(lines, SNIPPET_FLAG_TOKEN, (indent) =>
+      interactionFlags.map((f) => writeFlag(f, indent, snippet.flagStyle)),
+    )
+  } else {
+    // No core slot consumed above, or no companion: clear any remaining token.
+    lines = fillSlot(lines, SNIPPET_FLAG_TOKEN, () => [])
+  }
   return lines.join('\n')
 }
 
@@ -1310,6 +1370,12 @@ export function renderSnippet(
 
 const SNIPPETS: Record<string, FrameworkSnippet> = {
   nextjs: {
+    interactions: `        <Script
+          defer
+          PULSE_FLAGS
+          src="https://js.ciphera.net/script.interactions.js"
+          strategy="afterInteractive"
+        />`,
     label: 'app/layout.tsx',
     code: `import Script from 'next/script'
 
@@ -1325,12 +1391,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           src="https://js.ciphera.net/script.js"
           strategy="afterInteractive"
         />
+        PULSE_INTERACTIONS
       </body>
     </html>
   )
 }`,
   },
   nuxt: {
+    interactions: `        {
+          defer: true,
+          PULSE_FLAGS
+          src: 'https://js.ciphera.net/script.interactions.js',
+        },`,
     label: 'nuxt.config.ts',
     // The only snippet whose script is an object literal, not a tag.
     flagStyle: 'object',
@@ -1344,12 +1416,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           PULSE_FLAGS
           src: 'https://js.ciphera.net/script.js',
         },
+        PULSE_INTERACTIONS
       ],
     },
   },
 })`,
   },
   astro: {
+    interactions: `    <script
+      defer
+      PULSE_FLAGS
+      src="https://js.ciphera.net/script.interactions.js"
+    ></script>`,
     label: 'src/layouts/Layout.astro',
     code: `---
 // Your frontmatter
@@ -1362,6 +1440,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       PULSE_FLAGS
       src="https://js.ciphera.net/script.js"
     ></script>
+    PULSE_INTERACTIONS
   </head>
   <body>
     <slot />
@@ -1369,6 +1448,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 </html>`,
   },
   svelte: {
+    interactions: `    <script
+      defer
+      PULSE_FLAGS
+      src="https://js.ciphera.net/script.interactions.js"
+    ></script>`,
     label: 'src/app.html',
     code: `<!doctype html>
 <html>
@@ -1379,6 +1463,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       PULSE_FLAGS
       src="https://js.ciphera.net/script.js"
     ></script>
+    PULSE_INTERACTIONS
     %sveltekit.head%
   </head>
   <body>
@@ -1387,6 +1472,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 </html>`,
   },
   remix: {
+    interactions: `        <script
+          defer
+          PULSE_FLAGS
+          src="https://js.ciphera.net/script.interactions.js"
+        />`,
     label: 'app/root.tsx',
     code: `export default function App() {
   return (
@@ -1400,6 +1490,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           PULSE_FLAGS
           src="https://js.ciphera.net/script.js"
         />
+        PULSE_INTERACTIONS
       </head>
       <body>
         <Outlet />
@@ -1410,6 +1501,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }`,
   },
   gatsby: {
+    interactions: `    <script
+      key="pulse-interactions"
+      defer
+      PULSE_FLAGS
+      src="https://js.ciphera.net/script.interactions.js"
+    />,`,
     label: 'gatsby-ssr.js',
     code: `export const onRenderBody = ({ setHeadComponents }) => {
   setHeadComponents([
@@ -1420,6 +1517,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       PULSE_FLAGS
       src="https://js.ciphera.net/script.js"
     />,
+    PULSE_INTERACTIONS
   ])
 }`,
   },
