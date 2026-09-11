@@ -6,6 +6,7 @@ import { UsersThree } from '@phosphor-icons/react'
 import { toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { updateSite, type Site } from '@/lib/api/sites'
 import { useCan } from '@/lib/auth/permissions'
+import { describeIdentityWindow, identityWindowOf } from '@/lib/visitors/identityWindow'
 
 // ─── The default-OFF room (approved round 1, §9a.6) ─────────────────
 //
@@ -97,8 +98,11 @@ export function VisitorsOffRoom({ site, onEnabled }: VisitorsOffRoomProps) {
 
       <p className="mx-auto mt-3 max-w-md text-center text-sm leading-relaxed text-neutral-400">
         Pulse collects the same data either way — this switch controls whether anyone can read
-        it at visitor grain. Identities are pseudonymous, scoped to this site, and reset every
-        calendar month.
+        it at visitor grain.{' '}
+        {/* The identity sentence follows the site's SAVED window (Settings →
+            Privacy → Visitor identity): this used to assert the calendar month
+            as a fact, which is false the moment a site sets a window. */}
+        {describeIdentityWindow(identityWindowOf(site)).scope}
       </p>
 
       <div className="mt-6 flex items-center justify-between border border-border px-3 py-2.5">

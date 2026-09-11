@@ -66,6 +66,12 @@ export interface Site {
   // writes the same columns either way, and this controls whether anyone can
   // read them at visitor grain. Default false; flipping it is audit-logged.
   visitor_views_enabled?: boolean
+  // How long a returning reader keeps ONE visitor_id (migration 182):
+  // -1 session only · 0 calendar month (the default) · 1 / 7 / 30 days.
+  // Optional on the type because the PUBLIC share payload does not carry it —
+  // read it through lib/visitors/identityWindow's identityWindowOf, which
+  // keeps "missing" as UNKNOWN rather than quietly reading it as the default.
+  identity_window_days?: number
   // Script feature toggles
   script_features?: Record<string, unknown>
   // Uptime monitoring toggle
@@ -124,6 +130,11 @@ export interface UpdateSiteRequest {
   data_retention_months?: number
   // Visitor-grain read surface (display gate — see the Site interface above)
   visitor_views_enabled?: boolean
+  // The identity window — see the Site interface above. A POINTER on the
+  // backend, so a tab that omits it merges against the stored value; only the
+  // Privacy tab carries it, and it must never be sent as 0 "to be safe": 0 and
+  // 30 are different keys, and any change re-mints every identity on the site.
+  identity_window_days?: number
 }
 
 export async function listSites(): Promise<Site[]> {

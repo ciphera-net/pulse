@@ -150,7 +150,10 @@ describe('VisitTrail round 6', () => {
    */
   it('positions the rail on the node it connects, not 12px to its left', () => {
     const { container } = renderTrail()
-    const rails = [...container.querySelectorAll('span.absolute')]
+    // The rail is the absolute span that is a DIRECT child of the row (the
+    // `pl-4` flex row). Round 8 added a tick per step — also an absolute span,
+    // one level deeper — so a bare `span.absolute` would sweep those up too.
+    const rails = [...container.querySelectorAll('div.relative.pl-4 > span.absolute')]
     expect(rails.length).toBeGreaterThan(0)
     for (const r of rails) {
       expect(r.className).toContain('left-[19.5px]')

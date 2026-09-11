@@ -1,4 +1,5 @@
 import type { MetricType } from '@/lib/dashboard/metrics'
+import { describeIdentityWindow, type IdentityWindowDays } from '@/lib/visitors/identityWindow'
 
 // ---------------------------------------------------------------------------
 // The copy registry behind every InfoTip (metric info layer).
@@ -32,8 +33,15 @@ export interface GlossaryTerm {
 export const METRIC_TERMS: Record<MetricType, GlossaryTerm> = {
   visitors: {
     title: 'Unique visitors',
-    definition:
-      "People, not visits: a returning reader counts once. Identity is deduplicated within each calendar month in your site's timezone, so a range that spans months counts a returning reader once per month. Before 26 Aug 2026, deduplication was per day.",
+    // 🔴 THE STATIC SENTENCE IS THE ONE TRUE OF EVERY SITE. Since 11-09-2026 a
+    // site chooses how long a returning reader is recognised (Settings →
+    // Privacy → Visitor identity), and on a site set to "Session only" the
+    // number no longer counts people across days at all. A call site that
+    // knows the site's window resolves through visitorsTerm() below and gets
+    // the sentence for THAT window; a call site that cannot know it (the
+    // public share payload does not carry the column) gets this, which
+    // asserts nothing a window could make false.
+    definition: describeIdentityWindow(undefined).metricDefinition,
     docs: 'dashboard#unique-visitors',
   },
   pageviews: {
@@ -60,6 +68,19 @@ export const METRIC_TERMS: Record<MetricType, GlossaryTerm> = {
       'Average length of a visit — the time its pages were visible and in use. The clock pauses while the tab is hidden and after two minutes without scrolling, clicking or typing, so a tab left open does not count. Unmeasured visits are excluded, not counted as zero. A visit ends after 30 minutes of inactivity.',
     docs: 'dashboard#visit-duration',
   },
+}
+
+/**
+ * The "Unique visitors" term for a site whose identity window is KNOWN.
+ *
+ * Same title, same docs link, a definition that says what the number means on
+ * this site: the calendar month by default, "up to 7 days" on a rolling
+ * window, and on "Session only" that a returning reader is never recognised.
+ * Passing `undefined` returns the static entry — the sentence true everywhere.
+ */
+export function visitorsTerm(identityWindowDays: IdentityWindowDays | undefined): GlossaryTerm {
+  if (identityWindowDays === undefined) return METRIC_TERMS.visitors
+  return { ...METRIC_TERMS.visitors, definition: describeIdentityWindow(identityWindowDays).metricDefinition }
 }
 
 /**
