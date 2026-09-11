@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 // ---------------------------------------------------------------------------
 // Orange confetti for the end of setup (owner's brief, 11-09-2026).
@@ -23,6 +24,21 @@ import { useEffect, useRef } from 'react'
 // No dependency. ~90 lines is cheaper to own than to import, and the estate has
 // no motion library beyond framer-motion, which is the wrong tool for a
 // particle burst.
+//
+// 🔴 THE CANVAS IS PORTALLED TO <body> (12-09-2026). `position: fixed` resolves
+// against the viewport ONLY while no ancestor has a transform, filter,
+// backdrop-filter, perspective or will-change: transform — any of those makes
+// that ancestor the containing block. The done page mounts this inside a
+// framer-motion wrapper that scales 0.95 → 1 over 0.5 s, so the burst was
+// anchored to the setup card: the left origin landed at 54 % of the screen,
+// the right origin off it (measured: canvas at (520,185) on a 1440-px
+// viewport, right origin at x≈1700), and when the animation finished and the
+// transform went to `none` the whole canvas snapped to the viewport corner —
+// the owner's "starts middle-right, right half off-screen, then suddenly
+// finishes at the top". Every headless capture had looked right because it
+// sampled the canvas's own pixels, not where the canvas was. <body> has no
+// transform, so a portal is the one place a fixed overlay is actually fixed.
+// Same trap as Facet's CommandPalette (0.11.3).
 // ---------------------------------------------------------------------------
 
 const PALETTE = ['#FD5E0F', '#FD5E0F', '#E54E00', '#CC4C0C', '#f4f4f4', '#8a8a8a'] as const
@@ -127,8 +143,13 @@ export function stepPieces(pieces: Piece[], elapsedS: number): void {
 export default function Confetti({ onDone }: { onDone?: () => void } = {}) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const firedRef = useRef(false)
+  // The portal target, known only on the client; the canvas mounts on the
+  // render after this is set, and the burst starts on the effect after that.
+  const [host, setHost] = useState<HTMLElement | null>(null)
+  useEffect(() => { setHost(document.body) }, [])
 
   useEffect(() => {
+    if (!host) return
     if (firedRef.current) return
     firedRef.current = true
     if (prefersReducedMotion()) { onDone?.(); return }
@@ -179,14 +200,16 @@ export default function Confetti({ onDone }: { onDone?: () => void } = {}) {
     return () => {
       if (!finished) cancelAnimationFrame(raf)
     }
-  }, [onDone])
+  }, [host, onDone])
 
-  return (
+  if (!host) return null
+  return createPortal(
     <canvas
       ref={canvasRef}
       aria-hidden="true"
       data-testid="setup-confetti"
       className="pointer-events-none fixed inset-0 z-50 h-screen w-screen"
-    />
+    />,
+    host,
   )
 }
