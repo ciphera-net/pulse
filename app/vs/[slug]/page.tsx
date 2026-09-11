@@ -210,7 +210,7 @@ export default async function ComparisonPage({
 
       <SeoPageCta
         title={`Switch from ${comparison.name} without the banner`}
-        body="Start free on the Hobby tier — one script tag, no cookies, no consent banner. Or open the live demo first and see Pulse running on real traffic."
+        body="Start free on the Personal tier — one script tag, no cookies, no consent banner. Or open the live demo first and see Pulse running on real traffic."
       />
     </>
   )

@@ -102,7 +102,7 @@ export default function CookieBannerLossCalculatorPage() {
 
       <SeoPageCta
         title="Count every visitor, not just the “yes” pile"
-        body="Pulse needs no cookie banner, so it measures everyone. Start free on the Hobby tier, or open the live demo to see the full picture on real traffic."
+        body="Pulse needs no cookie banner, so it measures everyone. Start free on the Personal tier, or open the live demo to see the full picture on real traffic."
       />
     </>
   )

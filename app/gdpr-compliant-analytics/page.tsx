@@ -152,7 +152,7 @@ export default function GdprCompliantAnalyticsPage() {
 
       <SeoPageCta
         title="GDPR-compliant analytics, out of the box"
-        body="No cookies, no consent, no personal data. Start free on the Hobby tier, or open the live demo to see exactly what Pulse measures on real traffic."
+        body="No cookies, no consent, no personal data. Start free on the Personal tier, or open the live demo to see exactly what Pulse measures on real traffic."
       />
     </>
   )

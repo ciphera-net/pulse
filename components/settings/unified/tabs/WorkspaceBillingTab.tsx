@@ -209,7 +209,7 @@ export default function WorkspaceBillingTab() {
   }
 
   // A failed fetch is NOT "no subscription": the old fall-through rendered
-  // "You're on the free Hobby plan" to a paying customer whose request blipped.
+  // "You're on the free Personal plan" to a paying customer whose request blipped.
   // Ruled error device (F1, options round 25-08) — named blast radius + retry.
   if (subscriptionError && !subscription) {
     return (
@@ -227,7 +227,7 @@ export default function WorkspaceBillingTab() {
         <EmptyRow
           icon={<CreditCard />}
           title="No subscription"
-          caption="You're on the free Hobby plan."
+          caption="You're on the free Personal plan."
           action={
             <Button variant="secondary" size="sm" onClick={() => router.push('/setup/plan')}>
               View plans
@@ -244,7 +244,7 @@ export default function WorkspaceBillingTab() {
   const isTrialing = subscription.subscription_status === 'trialing'
   const isCanceled = subscription.subscription_status === 'canceled'
   const isPastDue = subscription.subscription_status === 'past_due'
-  // Hobby/free orgs have a subscription row but no live Mollie subscription —
+  // Personal/free orgs have a subscription row but no live Mollie subscription —
   // payment-method and cancel actions would only error for them.
   const isFree = subscription.plan_id === 'free' && subscription.subscription_status === ''
 
@@ -301,7 +301,7 @@ export default function WorkspaceBillingTab() {
   const isGrant = Boolean(subscription.grant_expires_on) && !subscription.next_charge_on
 
   // Non-CTA management actions live in the plan-band footer. Hidden for
-  // Hobby/free, cancelled AND granted orgs: there is no Mollie customer or
+  // Personal/free, cancelled AND granted orgs: there is no Mollie customer or
   // subscription behind any of them, so both calls would only error.
   const showActions = !isCanceled && !isFree && !isGrant && canManageBilling
 
@@ -404,7 +404,7 @@ export default function WorkspaceBillingTab() {
             )}
             {planPricing && !isFree && (
               // No fallback tile for plan ids without a prices entry (grants,
-              // Hobby): the old "Limit" tile repeated the Pageviews tile's
+              // Personal): the old "Limit" tile repeated the Pageviews tile's
               // denominator one track over. Absence is the honest render.
               <StatTile
                 label="Price"
@@ -624,7 +624,7 @@ export default function WorkspaceBillingTab() {
             : <>You&apos;ll keep access until the end of your current billing period and won&apos;t be charged again.</>}
         </p>
         <p className="mb-5 text-sm text-muted-foreground">
-          After that, your workspace moves to the free Hobby plan ({FREE_PAGEVIEW_LIMIT.toLocaleString()} pageviews/month, 1 site). Your data stays in place.
+          After that, your workspace moves to the free Personal plan ({FREE_PAGEVIEW_LIMIT.toLocaleString()} pageviews/month, 1 site). Your data stays in place.
         </p>
         <div className="flex justify-end gap-3">
           <Button variant="secondary" onClick={() => setShowCancelConfirm(false)} disabled={cancelling}>

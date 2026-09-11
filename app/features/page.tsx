@@ -346,7 +346,7 @@ export default function FeaturesPage() {
             </h2>
             {/* Plan facts from lib/plans.ts (1 site, FREE_PAGEVIEW_LIMIT). */}
             <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-              Start for free — no credit card required. The Hobby plan includes one site and
+              Start for free — no credit card required. The Personal plan includes one site and
               5,000 pageviews a month.
             </p>
           </div>

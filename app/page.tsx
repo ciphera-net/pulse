@@ -27,13 +27,13 @@ const homepageSchema = [
     applicationCategory: 'BusinessApplication',
     operatingSystem: 'Web',
     url: 'https://pulse.ciphera.net',
-    // * Live pricing is tiered (Hobby free, then Solo/Team/Business scaling by
+    // * Live pricing is two plans (Personal free, then Business scaling by
     // * pageview volume). A free tier exists, so lowPrice is 0; currency EUR.
     offers: {
       '@type': 'AggregateOffer',
       priceCurrency: 'EUR',
       lowPrice: '0',
-      offerCount: 4,
+      offerCount: 2,
     },
     publisher: { '@id': 'https://ciphera.net/#organization' },
   },

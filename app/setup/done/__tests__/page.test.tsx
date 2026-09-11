@@ -94,7 +94,7 @@ afterEach(() => {
 })
 
 describe('SetupDonePage payment confirmation', () => {
-  it('renders the success content directly for Hobby skippers (no from=checkout)', () => {
+  it('renders the success content directly for Personal skippers (no from=checkout)', () => {
     setSearch('')
     render(<SetupDonePage />)
     expect(screen.getByText(SETUP_COPY.done.heading)).toBeTruthy()

@@ -23,7 +23,7 @@ export const faqData: Record<string, FAQItem[]> = {
     {
       question: 'Is Pulse free?',
       answer:
-        'The Hobby plan is free forever — one site, 5,000 pageviews a month, no card. Paid plans start at €7/month and differ only in sites, pageview volume and data retention; every feature ships on every plan, Hobby included. Open-source projects and registered nonprofits get the Team plan at €0 by application.',
+        'The Personal plan is free forever — one site, 5,000 pageviews a month, no card. Business starts at €11/month and scales with pageview volume; every feature ships on every plan, Personal included. Open-source projects and registered nonprofits get the Business plan at €0 by application.',
     },
     {
       question: 'Can I migrate from Google Analytics?',
