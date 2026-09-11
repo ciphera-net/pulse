@@ -11,6 +11,45 @@ public read API's — see that entry for what it does and does not cover.
 
 ### Added
 
+- **A visitor's visits now read oldest to newest, and their steps group by page.**
+  The Visits list was the only thing on the visitor page running newest-first, while
+  the month ribbon above it reads day 1 to 31 and the steps inside each visit read
+  forwards in time — so you went *down* the steps forwards and *up* the visits
+  backwards. Page 1 still holds the most recent visits; it just reads in the same
+  direction as everything around it.
+
+  **Nothing was ever shown twice.** Opening a visit used to print one row per
+  *event*, and a custom event carries the page it fired on — so a page with two
+  events on it appeared on three consecutive rows. Now a row is a **page**, with the
+  events that fired while it was open listed beneath it. One real example went from
+  17 rows to 8, and the "—" that used to sit in the duration column of every event
+  row is gone: an event has no duration to report, which is what the dash was saying
+  nine times over.
+
+  **A page you genuinely visited twice still appears twice**, because those are two
+  separate pageviews.
+
+- **Filter a visit's steps by type.** An expanded visit now carries small counters —
+  Pages, Outbound, Downloads, Events — and clicking one hides or shows that kind.
+  The counts describe everything loaded and do not change as you filter, so a
+  counter you switched off can always be switched back on. The last active one
+  cannot be switched off, because an empty list looks identical to a visit that
+  recorded nothing.
+
+- **Outbound clicks and downloads are described in words.** Instead of an event name
+  beside a `url` chip beside a `page_path` chip repeating the row's own path, a step
+  now reads *"Left for stripe.com/pricing"* or *"Downloaded price-list.pdf"*.
+
+  Your **own** custom events are unchanged, and deliberately so: only you know what
+  `checkout_step` means, so Pulse shows its name and every property rather than
+  guessing at a sentence. The distinction is drawn from the event's exact shape, not
+  its name — one site sends an event called `outbound_click` that is about garments.
+
+### Fixed
+
+- **The line connecting the steps of a visit now runs through them.** It sat 12
+  pixels to the left of the dots it was joining.
+
 - **Visitors — a per-visitor view of your own analytics, off by default.** A new page
   under Analytics (`G V`) lists the readers seen in a range and drills into one of
   them: their visits, the pages of each visit in order, dwell per page, and any custom
