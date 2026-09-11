@@ -68,6 +68,7 @@ tests/*
 !tests/s3-host-only-session.spec.ts
 !tests/callback-failure-staging.spec.ts
 !tests/campaigns-header-smoke.spec.ts
+!tests/interactions-staging-verify.spec.ts
 !tests/support/
 tests/support/*
 !tests/support/login.ts
