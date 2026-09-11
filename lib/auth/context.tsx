@@ -8,8 +8,8 @@ import apiRequest, { setAccessToken, setRefreshHandler } from '@/lib/api/client'
 import { LoadingOverlay, useSessionSync, SessionExpiryWarning, useSessionRefresh } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 import { logoutAction, getSessionAction, setSessionAction } from '@/app/actions/auth'
-import { getUserOrganizations, switchContext, getOrganization, ensureDefaultOrganization } from '@/lib/api/organization'
-import { listSites } from '@/lib/api/sites'
+import { getUserOrganizations, switchContext, getOrganization, ensureDefaultOrganization, completeOnboarding } from '@/lib/api/organization'
+import { listSites, type Site } from '@/lib/api/sites'
 import { logger } from '@/lib/utils/logger'
 import { cleanupStaleStorage } from '@/lib/utils/storage-cleanup'
 import { forgetAllPendingAuth } from '@/lib/api/oauth-store'
@@ -605,24 +605,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               try {
                 const org = await getOrganization(userOrgId)
                 if (!org.onboarding_completed_at) {
-                  // * Resume at the furthest incomplete step, computed from server
-                  // * state — the fixed '/setup/site' target invited a duplicate
-                  // * site from every org that already had one.
-                  let target = '/setup/site'
+                  // 🔴 THE WALL'S REAL QUESTION IS "CAN THIS WORKSPACE RECEIVE
+                  // DATA YET" (11-09-2026), not "did somebody finish the
+                  // wizard". This block used to resume a site-owning org at
+                  // '/setup/install' whenever its site had never reported an
+                  // event — and installing means LEAVING: a CMS, a repo, a
+                  // deploy pipeline, usually another machine and often another
+                  // person. "Skip for now" wrote nothing server-side, so every
+                  // attempt to leave recomputed the same answer and pushed the
+                  // person back. Measured on Pulse's first external signup
+                  // (pomofocus.io): two seconds on /sites, then /setup/install,
+                  // skipped again, gone.
+                  //
+                  // Worse, the flag was written in exactly ONE place —
+                  // /setup/done, after payment state settles — so the wall was
+                  // cleared only by finishing a funnel that ends in a PRICING
+                  // decision. A site now records completion itself, and a
+                  // site-owning org whose flag predates the rule is healed
+                  // forward here. Design:
+                  // Pulse/docs/plans/11-09-2026-onboarding-wall-fix-design.md
+                  let sites: Site[] | null = null
                   try {
-                    const sites = await listSites()
-                    if (sites.length > 0) {
-                      target = sites.some(s => s.install_status && s.install_status !== 'never_installed')
-                        ? '/setup/plan'
-                        : '/setup/install'
-                    }
+                    sites = await listSites()
                   } catch {
-                    // sites fetch failed — the default target still resumes the wizard
+                    // ⚠️ DO NOT FALL BACK TO THE WIZARD. A sites fetch that
+                    // failed says nothing about whether this org has a site,
+                    // and pushing on no evidence is how the wall produced a
+                    // redirect that read as the app glitching. The wall
+                    // re-asks on the next route.
                   }
-                  router.push(target)
-                  return
+                  if (sites) {
+                    if (sites.length === 0) {
+                      // The case the wall was built for, and it is unchanged.
+                      router.push('/setup/site')
+                      return
+                    }
+                    // A site exists, so onboarding is satisfied. Record it and
+                    // let them through — never awaited: nothing about this
+                    // person's navigation should wait on a write they did not
+                    // ask for. ciphera-id's UPDATE ... WHERE ... IS NULL keeps
+                    // it one-way, and a 403 (non-owner) is terminal and silent.
+                    completeOnboarding(userOrgId)
+                      .then(() => {
+                        try {
+                          localStorage.setItem(cacheKey, '1')
+                        } catch {
+                          // Cache write failed; the server answer still stands.
+                        }
+                      })
+                      .catch(() => {
+                        // Never cache a failure: the next evaluation retries,
+                        // and a site-owning org passes on site presence anyway.
+                      })
+                  }
+                } else {
+                  localStorage.setItem(cacheKey, '1')
                 }
-                localStorage.setItem(cacheKey, '1')
               } catch {
                 // org fetch failed — don't block
               }
