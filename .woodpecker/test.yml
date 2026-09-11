@@ -43,9 +43,13 @@ steps:
       # script-sri.json below — the gate FAILS rather than fixes, because a step
       # that regenerates and carries on leaves the wrong bytes in the commit and
       # still reports green.
-      - git ls-files --error-unmatch public/script.js public/script.debug.js public/script-versions.json
+      # 🔴 EVERY built artifact must be listed TWICE here — once to prove it is
+      # tracked, once to prove the commit agrees with a fresh build. A file
+      # missing from either list is committed but unverified, which is exactly
+      # the drift the comment above describes.
+      - git ls-files --error-unmatch public/script.js public/script.debug.js public/script.interactions.js public/script.interactions.debug.js public/script-versions.json
       - npm run build:scripts
-      - git diff --exit-code public/script.js public/script.debug.js public/script-versions.json
+      - git diff --exit-code public/script.js public/script.debug.js public/script.interactions.js public/script.interactions.debug.js public/script-versions.json
       # 🔴 public/script-sri.json is DERIVED from public/script.js, and until now
       # NOTHING made them agree at commit time. On 26-08-2026 commit e2c98da1
       # edited script.js without regenerating the manifest, leaving a hash in git

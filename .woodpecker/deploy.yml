@@ -698,7 +698,7 @@ steps:
       - |
         echo -n '{' > public/script-sri.json
         first=true
-        for file in script.js; do
+        for file in script.js script.interactions.js; do
           [ -f "public/$file" ] || continue
           hash=$(openssl dgst -sha384 -binary "public/$file" | openssl base64 -A)
           $first || echo -n ',' >> public/script-sri.json
@@ -733,7 +733,7 @@ steps:
         # 3 KB budget load-bearing; this is what buys back debuggability on a
         # customer's site. It is NOT referenced by any snippet — nothing loads it
         # unless a human asks for it by name.
-        for file in script.js script.debug.js script-sri.json; do
+        for file in script.js script.debug.js script.interactions.js script.interactions.debug.js script-sri.json; do
           [ -f "public/$file" ] || continue
           ct="application/javascript"
           [ "$file" = "script-sri.json" ] && ct="application/json"
@@ -754,7 +754,7 @@ steps:
       # geo-replicas sync asynchronously; purging early can re-cache a stale replica copy for the full TTL
       - sleep 30
       - |
-        for path in script.js script.debug.js script-sri.json; do
+        for path in script.js script.debug.js script.interactions.js script.interactions.debug.js script-sri.json; do
           curl -fsS -X POST \
             "https://api.bunny.net/purge?url=https://js.ciphera.net/$path&async=false" \
             -H "AccessKey: $BUNNY_API_KEY"

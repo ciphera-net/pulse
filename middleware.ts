@@ -42,6 +42,13 @@ const PUBLIC_ROUTES = new Set([
   // * which would have shipped a debuggability aid nobody outside an authenticated
   // * session could actually fetch from this origin.
   '/script.debug.js',
+  // * The optional interaction-capture companion and its readable source.
+  // * ⚠️ js.ciphera.net is the PRIMARY path every customer snippet uses; these
+  // * entries only keep the pulse.ciphera.net mirror consistent with script.js,
+  // * which is public for embedded sites. Without them the mirror 307s while the
+  // * core serves 200 — an asymmetry that reads as a broken deploy.
+  '/script.interactions.js',
+  '/script.interactions.debug.js',
   '/script-sri.json', // * Subresource Integrity manifest (sha384 of the tracking script); consumed by ciphera-website build to pin <script integrity="">.
   // * Static file in public/, so next-pwa precaches it. A 307 to /login here fails
   // * the WHOLE service worker install (workbox aborts on one bad precache
