@@ -1,6 +1,16 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import {
+  CursorClick,
+  Copy,
+  PaperPlaneTilt,
+  ArrowSquareOut,
+  DownloadSimple,
+  Tag,
+  FileText,
+  type Icon,
+} from '@phosphor-icons/react'
 import { useVisitEvents } from '@/lib/swr/dashboard'
 import { EM_DASH, formatDuration } from '@/lib/visitors/format'
 import {
@@ -41,9 +51,61 @@ const PAGE_SIZE = 200
 /** Chip labels. Plain English — these are not machine keys, so they are not mono. */
 const KIND_LABEL: Record<TrailKind, string> = {
   pageview: 'Pages',
+  click: 'Clicks',
+  copy: 'Copies',
+  form: 'Forms',
   outbound: 'Outbound',
   download: 'Downloads',
   event: 'Events',
+}
+
+/**
+ * One glyph per kind (round 7, options B + E — owner, 11-09-2026).
+ *
+ * 🔴 PHOSPHOR, WHICH IS THE HOUSE GLYPH SOURCE. `lib/utils/icons.tsx` already
+ * imports `CursorClick` from it. There is no second icon registry here and there
+ * must not be — the Visitors surface shipped one by accident in round 4 and the
+ * owner caught it in one look.
+ *
+ * `pageview` has no glyph in the trail: a page row is the SPINE, marked by the
+ * rail's node, and a glyph on it would compete with the path it carries. It does
+ * get one in the chip row, where there is no node to stand in for it.
+ *
+ * ⚠️ The `event` bucket is the CUSTOMER's own event — a tag, not one of ours.
+ */
+const KIND_GLYPH: Record<Exclude<TrailKind, 'pageview'>, Icon> = {
+  click: CursorClick,
+  copy: Copy,
+  form: PaperPlaneTilt,
+  outbound: ArrowSquareOut,
+  download: DownloadSimple,
+  event: Tag,
+}
+
+/** The chip row labels every bucket, so `pageview` needs a glyph there. */
+const CHIP_GLYPH: Record<TrailKind, Icon> = { ...KIND_GLYPH, pageview: FileText }
+
+/**
+ * The mark that precedes a step's sentence.
+ *
+ * 🔴 IT IS THE BRAND, AND ONE INK (option B1, owner 11-09-2026 — "i think we
+ * should implement our brand color more into it. or more orange"). Five
+ * treatments were mocked on the real 37-step visit and B1 chosen: every glyph at
+ * full `brand-orange`, which is the same orange the trail's own event dots and
+ * the filter chips already use. The rejected alternative that coloured each type
+ * differently reads as confetti and breaks the house rule that colour lives in a
+ * small dot or a single word.
+ *
+ * `aria-hidden`, because the sentence beside it already says which type it is —
+ * the glyph is a decorative duplicate of adjacent text, like every mark in
+ * VisitorIcons.
+ */
+function StepGlyph({ kind }: { kind: TrailKind }) {
+  if (kind === 'pageview') return null
+  const Glyph = KIND_GLYPH[kind]
+  return (
+    <Glyph size={14} aria-hidden="true" className="shrink-0 text-brand-orange" />
+  )
 }
 
 interface VisitTrailProps {
@@ -154,9 +216,17 @@ export function VisitTrail({ siteId, visitorKey, visitKey, range }: VisitTrailPr
                 onClick={() =>
                   setActive((prev) => {
                     const next = new Set(prev)
-                    // Never let the last one be switched off — an empty trail
-                    // looks identical to a visit that recorded nothing.
-                    if (next.has(k) && next.size > 1) next.delete(k)
+                    // 🔴 Never let the LAST VISIBLE chip be switched off — an
+                    // empty trail looks identical to a visit that recorded
+                    // nothing.
+                    //
+                    // ⚠️ COUNTED OVER THE KINDS THIS VISIT HAS, not over the
+                    // set. Round 7 took TRAIL_KINDS from four to seven, and the
+                    // set-size guard this replaces then let every visible chip
+                    // be switched off: three kinds with no steps and no chip
+                    // kept `next.size` above one. Round 6's own test caught it.
+                    const stillOn = shown.filter((kind) => next.has(kind)).length
+                    if (next.has(k) && stillOn > 1) next.delete(k)
                     else next.add(k)
                     return next
                   })
@@ -168,13 +238,24 @@ export function VisitTrail({ siteId, visitorKey, visitKey, range }: VisitTrailPr
                     : 'border-border text-neutral-600 hover:text-neutral-400')
                 }
               >
-                <span
-                  aria-hidden="true"
-                  className={
-                    'size-1.5 rounded-full ' +
-                    (!on ? 'bg-neutral-700' : k === 'pageview' ? 'bg-neutral-500' : 'bg-brand-orange')
-                  }
-                />
+                {/* Option E (owner, 11-09-2026): the bucket's own glyph, in place
+                    of the dot it had. The glyph vocabulary carries from the trail
+                    into the bar, so the same mark means the same thing in both —
+                    which is the whole reason E was chosen over keeping the dot.
+                    A switched-off chip greys its glyph along with its text. */}
+                {(() => {
+                  const Glyph = CHIP_GLYPH[k]
+                  return (
+                    <Glyph
+                      size={12}
+                      aria-hidden="true"
+                      className={
+                        'shrink-0 ' +
+                        (!on ? 'text-neutral-700' : k === 'pageview' ? 'text-neutral-500' : 'text-brand-orange')
+                      }
+                    />
+                  )
+                })()}
                 {KIND_LABEL[k]}
                 <span className="tabular-nums text-neutral-500">{counts[k]}</span>
               </button>
@@ -244,8 +325,13 @@ function TrailRow({ group, last }: { group: TrailGroup; last: boolean }) {
               (group.path ?? EM_DASH)
             ) : (
               // An orphan: an event whose page is filtered away, or whose own
-              // path disagrees with the page that was open. It describes itself.
-              <EventLabel event={group.events[0]} kind={orphanKind} />
+              // path disagrees with the page that was open. It describes itself —
+              // and carries the same glyph a nested step would, so a filtered
+              // trail does not silently change what a step looks like.
+              <span className="inline-flex min-w-0 items-center gap-1.5">
+                {orphanKind !== null && <StepGlyph kind={orphanKind} />}
+                <EventLabel event={group.events[0]} kind={orphanKind} />
+              </span>
             )}
           </span>
           {isPage && (
@@ -259,11 +345,15 @@ function TrailRow({ group, last }: { group: TrailGroup; last: boolean }) {
 
         {isPage && group.events.length > 0 && (
           <div className="mt-1 flex flex-col gap-1">
-            {group.events.map((e, j) => (
-              <div key={`${e.timestamp}-${j}`} className="flex flex-wrap items-center gap-1.5">
-                <EventLabel event={e} kind={kindOf(e)} />
-              </div>
-            ))}
+            {group.events.map((e, j) => {
+              const kind = kindOf(e)
+              return (
+                <div key={`${e.timestamp}-${j}`} className="flex flex-wrap items-center gap-1.5">
+                  <StepGlyph kind={kind} />
+                  <EventLabel event={e} kind={kind} />
+                </div>
+              )
+            })}
           </div>
         )}
       </div>

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   autoSentence,
+  orderTrail,
   chipProps,
   countByKind,
   downloadName,
@@ -225,7 +226,9 @@ describe('groupTrail', () => {
 
 describe('countByKind', () => {
   it('counts the real trail as 8 pages and 9 events', () => {
-    expect(countByKind(REAL_TRAIL)).toEqual({ pageview: 8, outbound: 0, download: 0, event: 9 })
+    expect(countByKind(REAL_TRAIL)).toEqual({
+      pageview: 8, click: 0, copy: 0, form: 0, outbound: 0, download: 0, event: 9,
+    })
   })
 
   it('separates our two auto-captured kinds from customer events', () => {
@@ -235,6 +238,284 @@ describe('countByKind', () => {
       ev('file_download', '/a', 't3', { url: 'https://x.test/f.pdf', page_path: '/a' }),
       ev('outbound_click', '/a', 't4', { brand: 'Acme' }),
     ]
-    expect(countByKind(trail)).toEqual({ pageview: 1, outbound: 1, download: 1, event: 1 })
+    expect(countByKind(trail)).toEqual({
+      pageview: 1, click: 0, copy: 0, form: 0, outbound: 1, download: 1, event: 1,
+    })
+  })
+})
+
+describe('round 7 — the three types the companion records', () => {
+  it('describes a click and NAMES THE CONTROL', () => {
+    const link = ev('pulse_click', '/', 't', { text: 'Explore Products', tag: 'a', page_path: '/' })
+    expect(kindOf(link)).toBe('click')
+    expect(autoSentence(link)).toBe('Clicked the link \u201cExplore Products\u201d')
+
+    const button = ev('pulse_click', '/login', 't', { text: 'Sign in', tag: 'button', page_path: '/login' })
+    expect(autoSentence(button)).toBe('Clicked the button \u201cSign in\u201d')
+
+    // A role=button on something else reports its own tag. The noun must never
+    // be an empty string in the middle of a sentence.
+    const div = ev('pulse_click', '/', 't', { text: 'Open', tag: 'div', page_path: '/' })
+    expect(autoSentence(div)).toBe('Clicked the control \u201cOpen\u201d')
+  })
+
+  it('describes a copy by its COUNT and its SOURCE, and can never quote it', () => {
+    const e = ev('pulse_copy', '/', 't', { chars: '29', source_tag: 'p', page_path: '/' })
+    expect(kindOf(e)).toBe('copy')
+    expect(autoSentence(e)).toBe('Copied 29 characters from a paragraph')
+    // 🔴 The payload has no text to leak, and the sentence must not invent one.
+    expect(autoSentence(e)).not.toMatch(/\u201c|\u201d/)
+
+    expect(autoSentence(ev('pulse_copy', '/', 't', { chars: '1', source_tag: 'p', page_path: '/' })))
+      .toBe('Copied 1 character from a paragraph') // singular
+    expect(autoSentence(ev('pulse_copy', '/', 't', { chars: '1350', source_tag: 'li', page_path: '/' })))
+      .toBe('Copied 1,350 characters from a list item') // grouped
+    expect(autoSentence(ev('pulse_copy', '/', 't', { chars: '12', source_tag: 'h2', page_path: '/' })))
+      .toBe('Copied 12 characters from a heading')
+    // An unmapped source is "the page", never an empty noun.
+    expect(autoSentence(ev('pulse_copy', '/', 't', { chars: '12', source_tag: 'section', page_path: '/' })))
+      .toBe('Copied 12 characters from the page')
+  })
+
+  /**
+   * 🔴 Measured over every such row in production: `pulse_form_submit` carries
+   * {fields, page_path} and NOTHING ELSE. No form on any of our sites has an id
+   * or a name — ciphera.net/contact is 8 unnamed fields, the ID login form 5 —
+   * so the unnamed wording is the NORMAL case, not the fallback.
+   */
+  it('describes a form submit without a name, because no form has one', () => {
+    const e = ev('pulse_form_submit', '/login', 't', { fields: '5', page_path: '/login' })
+    expect(kindOf(e)).toBe('form')
+    expect(autoSentence(e)).toBe('Submitted a form with 5 fields')
+    expect(autoSentence(ev('pulse_form_submit', '/x', 't', { fields: '1', page_path: '/x' })))
+      .toBe('Submitted a form with 1 field') // singular
+  })
+
+  it('names a form when one ever does carry a name', () => {
+    expect(autoSentence(ev('pulse_form_submit', '/c', 't', { fields: '4', form_name: 'contact', page_path: '/c' })))
+      .toBe('Submitted the \u201ccontact\u201d form with 4 fields')
+    // form_name wins over form_id — it is the more human of the two.
+    expect(autoSentence(ev('pulse_form_submit', '/c', 't', {
+      fields: '4', form_id: 'f1', form_name: 'contact', page_path: '/c',
+    }))).toBe('Submitted the \u201ccontact\u201d form with 4 fields')
+    expect(autoSentence(ev('pulse_form_submit', '/c', 't', { fields: '4', form_id: 'signup', page_path: '/c' })))
+      .toBe('Submitted the \u201csignup\u201d form with 4 fields')
+  })
+
+  it('accepts our shape with the optional key present, and with it absent', () => {
+    // `id` has never appeared in production, but the shape allows it.
+    const withId = ev('pulse_click', '/', 't', { text: 'Go', tag: 'a', id: 'cta', page_path: '/' })
+    expect(kindOf(withId)).toBe('click')
+    expect(autoSentence(withId)).toBe('Clicked the link \u201cGo\u201d')
+  })
+
+  /**
+   * 🔴 THE SCHEMA GUARD, ON THE NEW NAMES. The counter-example that made this
+   * rule (`outbound_click` with {brand, garment, surface}) applies identically:
+   * a customer could emit `pulse_click`, and an extra key means it is not ours.
+   */
+  it('refuses our new names when the shape carries an extra key', () => {
+    for (const [name, props] of [
+      ['pulse_click', { text: 'Buy', tag: 'a', page_path: '/', brand: 'Acme' }],
+      ['pulse_copy', { chars: '5', source_tag: 'p', page_path: '/', sku: 'x' }],
+      ['pulse_form_submit', { fields: '3', page_path: '/', step: '2' }],
+    ] as const) {
+      const e = ev(name, '/', 't', props as Record<string, string>)
+      expect(kindOf(e), name).toBe('event')
+      expect(autoSentence(e), name).toBeNull()
+      expect(chipProps(e).length, name).toBeGreaterThan(0)
+    }
+  })
+
+  /**
+   * The schema guard checks the KEYS. A count is also arithmetic, and a sentence
+   * may not say "Copied NaN characters" or "Copied 1e3 characters", so the value
+   * is checked too — and an unusable one costs the event its sentence rather
+   * than producing a broken one.
+   */
+  it('refuses a count that is not a plain integer', () => {
+    for (const chars of ['', 'lots', '1e3', '-5', '1.5', '00012345678901234567', ' 12']) {
+      expect(autoSentence(ev('pulse_copy', '/', 't', { chars, source_tag: 'p', page_path: '/' })), chars).toBeNull()
+    }
+    for (const fields of ['', 'three', '-1', '2.0']) {
+      expect(autoSentence(ev('pulse_form_submit', '/', 't', { fields, page_path: '/' })), fields).toBeNull()
+    }
+    // 0 is a real answer — a form with no fields submitted.
+    expect(autoSentence(ev('pulse_form_submit', '/', 't', { fields: '0', page_path: '/' })))
+      .toBe('Submitted a form with 0 fields')
+  })
+
+  it('renders no chips for any of the three, and every chip for a customer event', () => {
+    expect(chipProps(ev('pulse_click', '/', 't', { text: 'Go', tag: 'a', page_path: '/' }))).toEqual([])
+    expect(chipProps(ev('pulse_copy', '/', 't', { chars: '5', source_tag: 'p', page_path: '/' }))).toEqual([])
+    expect(chipProps(ev('pulse_form_submit', '/', 't', { fields: '2', page_path: '/' }))).toEqual([])
+    expect(chipProps(ev('my_own_event', '/', 't', { a: '1', b: '2' }))).toHaveLength(2)
+  })
+
+  it('counts the new kinds into their own buckets', () => {
+    const trail = [
+      ev('pageview', '/', 'ta'),
+      ev('pulse_click', '/', 'tb', { text: 'A', tag: 'a', page_path: '/' }),
+      ev('pulse_click', '/', 'tc', { text: 'B', tag: 'a', page_path: '/' }),
+      ev('pulse_copy', '/', 'td', { chars: '9', source_tag: 'p', page_path: '/' }),
+      ev('pulse_form_submit', '/', 'te', { fields: '3', page_path: '/' }),
+      ev('outbound_click', '/', 'tf', { brand: 'Acme' }),
+    ]
+    expect(countByKind(trail)).toEqual({
+      pageview: 1, click: 2, copy: 1, form: 1, outbound: 0, download: 0, event: 1,
+    })
+  })
+})
+
+describe('orderTrail — the causal order inside one gesture', () => {
+  const T = (msOffset: number) => new Date(Date.UTC(2026, 8, 11, 11, 23, 58, msOffset)).toISOString()
+
+  /**
+   * 🔴 THE CASE THE OWNER REPORTED, from the real rows on ciphera.net/pricing.
+   * The departure was recorded 38.5ms BEFORE the click that caused it, so the
+   * trail printed the effect above its cause.
+   */
+  it('puts the click before the departure it caused', () => {
+    const trail = [
+      ev('outbound_link', '/pricing', T(541), { url: 'https://pulse.ciphera.net/signup', page_path: '/pricing' }),
+      ev('header_cta_get_started', '/pricing', T(580)),
+    ]
+    expect(orderTrail(trail).map((e) => e.event_name)).toEqual(['header_cta_get_started', 'outbound_link'])
+  })
+
+  it('puts the click before the form submit it triggered', () => {
+    // The real pair from id.ciphera.net/login: the submit landed 186\u00b5s first.
+    const trail = [
+      ev('pulse_form_submit', '/login', T(0), { fields: '5', page_path: '/login' }),
+      ev('pulse_click', '/login', T(1), { text: 'Sign in', tag: 'button', page_path: '/login' }),
+    ]
+    expect(orderTrail(trail).map((e) => e.event_name)).toEqual(['pulse_click', 'pulse_form_submit'])
+  })
+
+  it('leaves a pair whose order is already causal exactly as it is', () => {
+    const trail = [
+      ev('header_cta_get_started', '/pricing', T(0)),
+      ev('outbound_link', '/pricing', T(40), { url: 'https://x.test/', page_path: '/pricing' }),
+    ]
+    expect(orderTrail(trail).map((e) => e.event_name)).toEqual(['header_cta_get_started', 'outbound_link'])
+  })
+
+  /**
+   * 🔴 NEVER MOVE A PAGEVIEW. An outbound_link on /a and the pageview for /b
+   * 20ms later are one gesture by the clock, and hoisting the pageview above the
+   * departure would file the departure under the page the visitor had not
+   * reached yet — which is the grouping bug, arriving from the ordering side.
+   */
+  /**
+   * 🔴 THE FIXTURE USES NULL PATHS, AND THAT IS THE POINT. The first version of
+   * this test put the pageview on a DIFFERENT path, so the cluster's same-path
+   * condition refused it and the pageview guard did nothing — removing the guard
+   * left the test green. Found by mutation, not by reading.
+   *
+   * A site with `collect_page_paths` off (D7) nulls every path, so every event in
+   * the visit shares one, and the pageview guard is then the ONLY thing standing
+   * between a departure and the page row it would be re-filed under.
+   *
+   * MUTATION CHECK: delete either pageview check in orderTrail and this goes red
+   * with the pageview hoisted above the departure — and the grouping assertion
+   * below shows what that costs.
+   */
+  it('does not move a pageview, even on a site that collects no paths', () => {
+    const trail = [
+      ev('outbound_link', null, T(0), { url: 'https://x.test/', page_path: '/' }),
+      ev('pageview', null, T(20), undefined, 4),
+    ]
+    expect(orderTrail(trail).map((e) => e.event_name)).toEqual(['outbound_link', 'pageview'])
+    // The departure keeps its own row; it does NOT get filed under a page that
+    // had not loaded when it happened.
+    const groups = groupTrail(trail, ALL)
+    expect(groups.map((g) => [g.page !== null, g.events.length])).toEqual([[false, 1], [true, 0]])
+  })
+
+  it('does not reorder a pageview that shares the page it is on', () => {
+    const trail = [
+      ev('outbound_link', '/a', T(0), { url: 'https://x.test/', page_path: '/a' }),
+      ev('pageview', '/a', T(20), undefined, 3),
+    ]
+    expect(orderTrail(trail).map((e) => e.event_name)).toEqual(['outbound_link', 'pageview'])
+  })
+
+  it('does not reorder across two different pages', () => {
+    const trail = [
+      ev('outbound_link', '/a', T(0), { url: 'https://x.test/', page_path: '/a' }),
+      ev('thing_on_b', '/b', T(20)),
+    ]
+    expect(orderTrail(trail).map((e) => e.event_name)).toEqual(['outbound_link', 'thing_on_b'])
+  })
+
+  it('does not reorder beyond the measured 250ms window', () => {
+    const trail = [
+      ev('outbound_link', '/a', T(0), { url: 'https://x.test/', page_path: '/a' }),
+      ev('later_click', '/a', T(251)),
+    ]
+    expect(orderTrail(trail).map((e) => e.event_name)).toEqual(['outbound_link', 'later_click'])
+    // 250 exactly is inside it
+    const atTheEdge = [
+      ev('outbound_link', '/a', T(0), { url: 'https://x.test/', page_path: '/a' }),
+      ev('later_click', '/a', T(250)),
+    ]
+    expect(orderTrail(atTheEdge).map((e) => e.event_name)).toEqual(['later_click', 'outbound_link'])
+  })
+
+  /**
+   * 🔴 A CLUSTER IS BOUNDED BY ITS FIRST MEMBER, not the previous one. Otherwise
+   * three events 200ms apart chain into one 600ms "gesture" and the last gets
+   * hoisted past the first — reordering events that are genuinely sequential.
+   */
+  /**
+   * 🔴 THE CONSEQUENCE MUST BE FIRST IN THE FIXTURE. The first version of this
+   * test put the outbound LAST, where bounding by the cluster's start and
+   * bounding by the previous member produce the same answer — so the test passed
+   * under both and proved nothing. Found by mutation.
+   *
+   * Here the departure leads. Bounded by the start, only the event 200ms in joins
+   * it; the one at 400ms is a separate step and stays put. Chaining off the
+   * previous member would swallow all three and hoist the departure past an event
+   * 400ms away from it, which is no longer one gesture by any reading.
+   *
+   * MUTATION CHECK: bound the window off `events[j-1]` instead of `start` and
+   * this goes red with ['click_two', 'click_three', 'outbound_link'].
+   */
+  it('does not let events chain into one long cluster', () => {
+    const trail = [
+      ev('outbound_link', '/a', T(0), { url: 'https://x.test/', page_path: '/a' }),
+      ev('click_two', '/a', T(200)),
+      ev('click_three', '/a', T(400)),
+    ]
+    expect(orderTrail(trail).map((e) => e.event_name)).toEqual(['click_two', 'outbound_link', 'click_three'])
+  })
+
+  it('keeps same-rank events in the order the server gave them', () => {
+    const trail = [
+      ev('b_event', '/a', T(0)),
+      ev('a_event', '/a', T(10)),
+      ev('c_event', '/a', T(20)),
+    ]
+    expect(orderTrail(trail).map((e) => e.event_name)).toEqual(['b_event', 'a_event', 'c_event'])
+  })
+
+  it('moves nothing when the timestamps will not parse', () => {
+    // Fixtures using 't1'/'t2' must behave exactly as they did before round 7.
+    const trail = [
+      ev('outbound_link', '/a', 't1', { url: 'https://x.test/', page_path: '/a' }),
+      ev('some_click', '/a', 't2'),
+    ]
+    expect(orderTrail(trail).map((e) => e.event_name)).toEqual(['outbound_link', 'some_click'])
+  })
+
+  it('is applied by groupTrail, so no caller can forget it', () => {
+    const trail = [
+      ev('pageview', '/pricing', T(0), undefined, 4),
+      ev('outbound_link', '/pricing', T(541), { url: 'https://x.test/', page_path: '/pricing' }),
+      ev('header_cta_get_started', '/pricing', T(580)),
+    ]
+    const groups = groupTrail(trail, ALL)
+    expect(groups).toHaveLength(1)
+    expect(groups[0].events.map((e) => e.event_name)).toEqual(['header_cta_get_started', 'outbound_link'])
   })
 })

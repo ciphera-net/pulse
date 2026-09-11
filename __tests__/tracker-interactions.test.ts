@@ -101,6 +101,50 @@ describe('clicks', () => {
     expect(propsOf('pulse_click').text).toBe('Close dialog')
   })
 
+  /**
+   * 🔴 THE WELDED LABEL. `textContent` concatenates every descendant text node
+   * with NO separator, so a card-shaped link records as one run-together word.
+   *
+   * This is the exact markup of a ciphera.net/blog card, and the exact string it
+   * produced in production on 11-09-2026:
+   *
+   *     text: "Privacy7 min readPulse Is Free for Open-Source Projects and …"
+   *
+   * It was invisible while the trail rendered events as property chips and became
+   * unmissable the moment round 7 started reading them as sentences.
+   *
+   * MUTATION CHECK: put `hit.textContent` back and this goes red with the welded
+   * string. The two assertions are deliberate — the negative one alone would pass
+   * against a label of "", and the positive one alone would pass against
+   * textContent if the fixture happened to have spaces at its node boundaries.
+   */
+  it('joins a card link\u2019s parts with spaces instead of welding them', () => {
+    load()
+    document.body.innerHTML =
+      '<a href="/blog/x"><span>Privacy</span><span>7 min read</span>' +
+      '<h3>Pulse Is Free for Open-Source Projects</h3></a>'
+    ;(document.querySelector('a') as HTMLElement).click()
+    const text = propsOf('pulse_click').text
+    expect(text).toBe('Privacy 7 min read Pulse Is Free for Open-Source Projects')
+    expect(text).not.toContain('Privacy7')
+  })
+
+  it('leaves a label that was already one text node exactly as it was', () => {
+    // The control shot. A fix that inserted separators everywhere would show up
+    // here as "Save  changes" or a leading space.
+    load()
+    document.body.innerHTML = '<button>Save changes</button>'
+    document.querySelector('button')!.click()
+    expect(propsOf('pulse_click').text).toBe('Save changes')
+  })
+
+  it('still prefers aria-label over the joined text', () => {
+    load()
+    document.body.innerHTML = '<a aria-label="Read the post"><span>Privacy</span><span>7 min read</span></a>'
+    ;(document.querySelector('a') as HTMLElement).click()
+    expect(propsOf('pulse_click').text).toBe('Read the post')
+  })
+
   it('ignores a click on page prose — that would be capturing content', () => {
     load()
     document.body.innerHTML = '<p>Just a paragraph of text</p>'
