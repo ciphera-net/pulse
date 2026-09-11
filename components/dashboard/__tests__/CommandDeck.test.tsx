@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import fs from 'node:fs'
+import path from 'node:path'
 import CommandDeck from '@/components/dashboard/CommandDeck'
 import type { Stats, DailyStat } from '@/lib/api/stats'
 
@@ -155,6 +157,61 @@ describe('CommandDeck rail sparklines (S4 restore, 19-08-2026)', () => {
     for (const p of resting) {
       expect(p.getAttribute('class')).toContain('group-hover:stroke-brand-orange')
     }
+  })
+})
+
+describe('CommandDeck — the visitors sentence follows the site’s identity window (11-09-2026)', () => {
+  // The rail row's canonical sentence reaches the reader through
+  // aria-describedby → #deck-def-visitors. It is the one place the NUMBER and
+  // its meaning sit together, so it is where a site's window has to be said.
+  const sentence = (container: HTMLElement) =>
+    container.querySelector('#deck-def-visitors')?.textContent ?? ''
+
+  it('says a returning reader is never recognised on a site set to Session only', () => {
+    const { container } = render(<CommandDeck {...baseProps} identityWindowDays={-1} />)
+    expect(sentence(container)).toContain('never recognised')
+    expect(sentence(container)).not.toMatch(/within each calendar month/)
+  })
+
+  it('names the window as a ceiling on a rolling window', () => {
+    const { container } = render(<CommandDeck {...baseProps} identityWindowDays={7} />)
+    expect(sentence(container)).toContain('up to 7 days')
+    expect(sentence(container)).not.toMatch(/calendar month/)
+  })
+
+  it('asserts the calendar month only on a site that is on it', () => {
+    const { container } = render(<CommandDeck {...baseProps} identityWindowDays={0} />)
+    expect(sentence(container)).toContain('within each calendar month')
+  })
+
+  it('🔴 asserts NO window when the call site cannot know it (the share surface)', () => {
+    const { container } = render(<CommandDeck {...baseProps} />)
+    expect(sentence(container)).not.toMatch(/within each calendar month|never recognised|up to \d/)
+    // and it still explains the number rather than falling silent
+    expect(sentence(container)).toContain('People, not visits')
+  })
+
+  it('leaves the other four sentences alone whatever the window', () => {
+    const { container } = render(<CommandDeck {...baseProps} identityWindowDays={-1} />)
+    expect(container.querySelector('#deck-def-bounce_rate')?.textContent).toContain('exactly one pageview')
+    expect(container.querySelector('#deck-def-pageviews')?.textContent).toContain('A reload counts again')
+  })
+
+  /**
+   * 🔴 MEASURED ON STAGING, 11-09-2026: the deck rendered the window-NEUTRAL
+   * sentence on a site set to 7 days, because the authed dashboard page hands
+   * it `dashboard.site` — which the backend builds with NewPublicSiteResponse,
+   * the same whitelist the share surface gets, and which does not carry
+   * identity_window_days. The page must read the window off the AUTHED site
+   * record (useSite), never off the dashboard payload's site. A source pin,
+   * because rendering the page pulls in twenty hooks and the defect was one
+   * identifier.
+   */
+  it('the authed dashboard feeds the deck the window from the site RECORD, not the dashboard payload', () => {
+    const page = fs.readFileSync(path.resolve(__dirname, '../../../app/sites/[id]/page.tsx'), 'utf8')
+    expect(page).toMatch(/const \{ data: siteRecord \} = useSite\(siteId\)/)
+    expect(page).toContain('identityWindowDays={identityWindowOf(siteRecord)}')
+    expect(page).not.toContain('identityWindowOf(site)')
   })
 })
 

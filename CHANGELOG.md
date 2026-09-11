@@ -11,6 +11,31 @@ public read API's — see that entry for what it does and does not cover.
 
 ### Added
 
+- **Choose how long a returning reader is recognised.** Settings → Privacy has a new
+  **Visitor identity** panel: *Session only*, *24 hours*, *7 days* or *30 days*. Until
+  you choose, a site keeps today's behaviour — a returning reader is recognised for the
+  rest of the calendar month in your site's timezone — and the menu shows that as
+  *Calendar month (current)*.
+
+  **A window is a ceiling, not a promise.** A reader first seen near the end of a
+  window is recognised for less than it, exactly as a reader first seen on the 30th is
+  recognised for one day today. Every sentence in the product now says "up to".
+
+  **Session only changes what "visitors" means on that site.** No visitor identity is
+  written at all, so a reader is counted once per day and never recognised on a later
+  visit — the number becomes daily session counting, the way it was for every site
+  before 26 August 2026. The dashboard's *Unique visitors* definition, the Visitors
+  page and the privacy-policy snippet all say so on a site set that way, rather than
+  asserting the month. The public read API's `visitors` field keeps its name and its
+  shape; on such a site it inherits the same meaning, and **the day you change the
+  window is a measurement boundary for that site** — identities before it cannot be
+  re-derived, so a range that crosses it counts a returning reader once on each side.
+
+  **Changing the window is deliberate and recorded.** The panel says what the change
+  costs before you save it — every identity is re-minted from that moment, readers
+  recognised under the old window count as new people, and nothing can be applied
+  backwards — and every change is written to your audit trail.
+
 - **Optional interaction capture: see what visitors did, not only which pages they
   saw.** A second, optional script records the **label of a button or link that was
   clicked**, **how much text was copied** and **which forms were submitted** — and the
@@ -106,6 +131,13 @@ public read API's — see that entry for what it does and does not cover.
   true the moment this page existed, so it has been rewritten rather than left to age.
 
 ### Changed
+
+- **The steps of a visit are bigger, and each one branches off the line.** In an
+  expanded visit the page path, the sentences beneath it and their marks all stepped up
+  a size, and every step now hangs from the visit's line by a short tick instead of
+  merely sitting under its page. A 14-step visit is about a fifth taller than before;
+  nothing new is boxed or bordered, because the line the eye already follows is what
+  draws the hierarchy.
 
 - **Visit duration measures time people spent, and 04-09-2026 is a measurement
   boundary.** The tracking script used to report the wall-clock time since a page loaded
