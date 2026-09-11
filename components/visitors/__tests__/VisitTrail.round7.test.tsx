@@ -95,7 +95,7 @@ describe('VisitTrail round 7 — the mark (option B1)', () => {
     const { container } = renderTrail()
     // Six events hang under the one page row; the page row itself has no glyph —
     // the rail's node is its mark.
-    const glyphs = container.querySelectorAll('div.mt-1 svg')
+    const glyphs = container.querySelectorAll('div.mt-1\\.5 svg')
     expect(glyphs).toHaveLength(6)
   })
 
@@ -110,7 +110,7 @@ describe('VisitTrail round 7 — the mark (option B1)', () => {
   it('draws every step glyph in brand-orange and nothing else', () => {
     const { container } = renderTrail()
     const inks = new Set(
-      [...container.querySelectorAll('div.mt-1 svg')].map((g) =>
+      [...container.querySelectorAll('div.mt-1\\.5 svg')].map((g) =>
         [...g.classList].filter((c) => c.startsWith('text-')).join(' '),
       ),
     )
@@ -119,7 +119,7 @@ describe('VisitTrail round 7 — the mark (option B1)', () => {
 
   it('hides the glyph from assistive tech — the sentence beside it already says the type', () => {
     const { container } = renderTrail()
-    for (const g of container.querySelectorAll('div.mt-1 svg')) {
+    for (const g of container.querySelectorAll('div.mt-1\\.5 svg')) {
       expect(g.getAttribute('aria-hidden')).toBe('true')
     }
   })
@@ -191,7 +191,7 @@ describe('VisitTrail round 7 — the causal order, rendered', () => {
       isLoading: false,
     })
     const { container } = renderTrail()
-    const rows = [...container.querySelectorAll('div.mt-1 > div')].map((d) => (d.textContent ?? '').trim())
+    const rows = [...container.querySelectorAll('div.mt-1\\.5 > div')].map((d) => (d.textContent ?? '').trim())
     expect(rows).toEqual(['header_cta_get_started', 'Left for pulse.ciphera.net/signup'])
   })
 })

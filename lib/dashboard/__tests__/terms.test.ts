@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
-import { DIMENSION_TERM, METRIC_TERMS, TERMS, UPTIME_TERM, docsHref } from '@/lib/dashboard/terms'
+import { DIMENSION_TERM, METRIC_TERMS, TERMS, UPTIME_TERM, docsHref, visitorsTerm } from '@/lib/dashboard/terms'
 import { METRIC_TYPES } from '@/lib/dashboard/metrics'
 
 // ---------------------------------------------------------------------------
@@ -89,6 +89,27 @@ describe('terms registry', () => {
       expect(term.definition.length, `${key} has an empty definition`).toBeGreaterThan(10)
       expect(term.title.length).toBeGreaterThan(0)
     }
+  })
+
+  /**
+   * Since 11-09-2026 a site chooses its identity window, so the STATIC
+   * visitors sentence — the one a call site gets when it cannot know the
+   * window — may not assert any particular window. The window-specific
+   * sentence comes from visitorsTerm(), same title, same docs link.
+   */
+  it('the static visitors sentence asserts no window; visitorsTerm() specialises it', () => {
+    const base = METRIC_TERMS.visitors
+    expect(base.definition).not.toMatch(/within each calendar month|never recognised|up to \d/)
+    expect(visitorsTerm(undefined)).toBe(base)
+    for (const days of [-1, 0, 1, 7, 30] as const) {
+      const t = visitorsTerm(days)
+      expect(t.title).toBe(base.title)
+      expect(t.docs).toBe(base.docs)
+      expect(t.definition).not.toBe(base.definition)
+    }
+    expect(visitorsTerm(-1).definition).toContain('never recognised')
+    expect(visitorsTerm(0).definition).toContain('within each calendar month')
+    expect(visitorsTerm(30).definition).toContain('up to 30 days')
   })
 
   it('every term referenced by a template exists in the registry', () => {

@@ -17,6 +17,7 @@ import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
 import { useSite, useVisitors } from '@/lib/swr/dashboard'
 import { visitorPseudonym } from '@/lib/visitors/pseudonym'
 import { formatLastSeen, SITE_TIMEZONE_FALLBACK } from '@/lib/visitors/format'
+import { describeIdentityWindow, identityWindowOf, type IdentityWindowDays } from '@/lib/visitors/identityWindow'
 import {
   VISITORS_MIN_DATE,
   VISITORS_ROLLING_MINUTES,
@@ -136,6 +137,14 @@ export default function VisitorsPage() {
   // about where the reader is standing.
   const siteTimezone = data?.site_timezone || site?.timezone || SITE_TIMEZONE_FALLBACK
 
+  // The site's identity window (Settings → Privacy → Visitor identity). Every
+  // sentence on this page that used to assert "the calendar month" reads it
+  // instead: on a site set to "Session only" a returning reader is never
+  // recognised, and the page has to say so where the readers are listed.
+  // Unknown while the site row is still loading, and the copy says something
+  // true of every window until it arrives.
+  const identityWindow = identityWindowOf(site)
+
   // 🔴 EVERYTHING BELOW IS ABOVE THE EARLY RETURNS ON PURPOSE. `boundaries` is a
   // useMemo, and a hook after a conditional `return` runs in a different order on
   // the render where the toggle-off room shows — React's rules-of-hooks error,
@@ -151,7 +160,7 @@ export default function VisitorsPage() {
   if (site && site.visitor_views_enabled === false) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
-        <PageHeader live={0} showToolbar={false} />
+        <PageHeader live={0} showToolbar={false} identityWindow={identityWindow} />
         <VisitorsOffRoom site={site} onEnabled={() => refreshSite()} />
       </div>
     )
@@ -162,7 +171,7 @@ export default function VisitorsPage() {
     // SWR copy after somebody disabled it in another tab). Trust the API.
     return (
       <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
-        <PageHeader live={0} showToolbar={false} />
+        <PageHeader live={0} showToolbar={false} identityWindow={identityWindow} />
         <VisitorsOffRoom site={site} onEnabled={() => refreshSite()} />
       </div>
     )
@@ -194,6 +203,7 @@ export default function VisitorsPage() {
         onDateRangeChange={(r) => setPeriod('custom', r)}
         onShift={shiftPeriod}
         pickerProps={pickerProps}
+        identityWindow={identityWindow}
       />
 
       <div className="mt-5">
@@ -281,7 +291,7 @@ export default function VisitorsPage() {
             description={
               live
                 ? 'This updates on its own — a reader arriving in the next few minutes will appear here.'
-                : 'Identities begin on 26 August 2026 and reset each calendar month. Try a wider range.'
+                : describeIdentityWindow(identityWindow).emptyRangeHint
             }
           />
         ) : (
@@ -339,6 +349,7 @@ function PageHeader({
   onDateRangeChange,
   onShift,
   pickerProps,
+  identityWindow,
 }: {
   live: number
   showToolbar: boolean
@@ -348,17 +359,16 @@ function PageHeader({
   onDateRangeChange?: (r: { start: string; end: string }) => void
   onShift?: (d: -1 | 1) => void
   pickerProps?: Record<string, unknown>
+  /** The site's identity window; undefined while unknown. */
+  identityWindow?: IdentityWindowDays
 }) {
+  const copy = describeIdentityWindow(identityWindow)
   return (
     <div className="flex flex-wrap items-start justify-between gap-4 pt-6">
       <div>
         <h1 className="text-2xl font-medium text-white">Visitors</h1>
-        <p className="mt-1 text-sm text-neutral-400">
-          Every reader is a month-long pseudonym — then the slate wipes clean
-        </p>
-        <p className="mt-1 text-xs text-neutral-600">
-          Data begins 26 Aug 2026 · identities reset each calendar month
-        </p>
+        <p className="mt-1 text-sm text-neutral-400">{copy.headline}</p>
+        <p className="mt-1 text-xs text-neutral-600">Data begins 26 Aug 2026 · {copy.resetCaption}</p>
       </div>
 
       {showToolbar && (

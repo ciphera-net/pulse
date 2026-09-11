@@ -12,6 +12,7 @@ import { toast } from '@ciphera-net/facet'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { PERIOD_TO_API } from '@/lib/constants/periods'
 import { DEFAULT_GEO_DATA_LEVEL } from '@/lib/api/sites'
+import { identityWindowOf } from '@/lib/visitors/identityWindow'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
 import { resolveDashboardRange } from '@/lib/dashboard/resolveRange'
 import dynamic from 'next/dynamic'
@@ -400,6 +401,7 @@ export default function SiteDashboardPage() {
           multiDayInterval={multiDayInterval}
           setMultiDayInterval={setMultiDayInterval}
           onExport={canExport ? () => setIsExportModalOpen(true) : undefined}
+          identityWindowDays={identityWindowOf(site)}
         />
       </div>
 

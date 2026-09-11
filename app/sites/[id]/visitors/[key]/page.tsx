@@ -29,6 +29,11 @@ import {
   zonedMonthKey,
 } from '@/lib/visitors/format'
 import { VISITORS_MIN_DATE, VISITORS_ROLLING_MINUTES, VISITORS_PRESETS } from '@/lib/visitors/range'
+import {
+  IDENTITY_WINDOW_CALENDAR_MONTH,
+  describeIdentityWindow,
+  identityWindowOf,
+} from '@/lib/visitors/identityWindow'
 import { deviceLabel } from '@/components/visitors/VisitorMeta'
 import type { VisitRow } from '@/lib/api/visitors'
 
@@ -121,7 +126,7 @@ export default function VisitorDetailPage() {
             title={status === 404 ? 'No such visitor in this range' : "Couldn't load this visitor"}
             description={
               status === 404
-                ? 'This identity has no visible activity in the selected range. It may belong to a different month — identities reset monthly.'
+                ? describeIdentityWindow(identityWindowOf(site)).notFoundHint
                 : 'The visitor did not come back. Try again.'
             }
           />
@@ -130,8 +135,18 @@ export default function VisitorDetailPage() {
     )
   }
 
-  const resetsIn = profile ? daysUntilMonthReset(profile.month_resets_at) : null
-  const resetDate = profile ? monthResetDate(profile.month_resets_at, siteTimezone) : null
+  // 🔴 THE SERVER'S `month_resets_at` IS THE END OF THE CALENDAR MONTH, WHATEVER
+  // THE SITE'S WINDOW. The read path does not know the window yet (design
+  // §9.6, item 3 — the per-site boundary marker is still owed), so on a site
+  // set to "7 days" or "Session only" that instant is not when this identity
+  // resets, and printing it would caption a 7-day identity with next month's
+  // date. The page already has a contract for "cannot say": null, and then it
+  // says nothing about the reset rather than guessing. So the month reset is
+  // shown only where it is true — a site on the calendar month — and stays
+  // silent while the site row (and so the window) is still unknown.
+  const monthlyIdentity = identityWindowOf(site) === IDENTITY_WINDOW_CALENDAR_MONTH
+  const resetsIn = profile && monthlyIdentity ? daysUntilMonthReset(profile.month_resets_at) : null
+  const resetDate = profile && monthlyIdentity ? monthResetDate(profile.month_resets_at, siteTimezone) : null
   const localTime = visitorLocalTime(profile?.timezone)
 
   return (

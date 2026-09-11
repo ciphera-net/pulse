@@ -1,9 +1,10 @@
 'use client'
 
 import { InfoTip } from '@ciphera-net/facet'
-import { DIMENSION_TERM, METRIC_TERMS, TERMS, docsHref, type GlossaryTerm } from '@/lib/dashboard/terms'
+import { DIMENSION_TERM, METRIC_TERMS, TERMS, docsHref, visitorsTerm, type GlossaryTerm } from '@/lib/dashboard/terms'
 import type { MetricType } from '@/lib/dashboard/metrics'
 import type { Stats } from '@/lib/api/stats'
+import type { IdentityWindowDays } from '@/lib/visitors/identityWindow'
 import { formatNumber } from '@/lib/utils/format'
 
 // ---------------------------------------------------------------------------
@@ -27,11 +28,19 @@ interface MetricInfoTipProps {
   metric: MetricType
   example?: React.ReactNode
   className?: string
+  /**
+   * The site's identity window, when the call site knows it. It changes what
+   * "Unique visitors" MEANS on that site (a site on "Session only" never
+   * recognises a returning reader), so the definition must say so where the
+   * number is shown. Omit where it is unknown — the public share payload does
+   * not carry it — and the registry's window-neutral sentence is used.
+   */
+  identityWindowDays?: IdentityWindowDays
 }
 
 /** The InfoTip for one of the deck's six metrics. */
-export function MetricInfoTip({ metric, example, className }: MetricInfoTipProps) {
-  const term = METRIC_TERMS[metric]
+export function MetricInfoTip({ metric, example, className, identityWindowDays }: MetricInfoTipProps) {
+  const term = metric === 'visitors' ? visitorsTerm(identityWindowDays) : METRIC_TERMS[metric]
   if (!term) return null
   return (
     <InfoTip
