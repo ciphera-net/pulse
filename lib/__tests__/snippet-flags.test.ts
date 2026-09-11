@@ -3,6 +3,7 @@ import {
   getIntegration,
   renderSnippet,
   SNIPPET_FLAG_TOKEN,
+  SNIPPET_INTERACTIONS_TOKEN,
   integrations,
 } from '@/lib/integrations'
 
@@ -112,9 +113,10 @@ describe('renderSnippet', () => {
     // placeholder line — nothing else about somebody's config may move.
     for (const id of FRAMEWORKS_WITH_CODE) {
       const code = getIntegration(id)!.snippet!.code!
+      // Both placeholder lines vanish: no flags, and no companion.
       const expected = code
         .split('\n')
-        .filter((l) => !l.includes(SNIPPET_FLAG_TOKEN))
+        .filter((l) => !l.includes(SNIPPET_FLAG_TOKEN) && !l.includes(SNIPPET_INTERACTIONS_TOKEN))
         .join('\n')
         .replace(/DOMAIN/g, 'example.com')
       expect(renderSnippet(getIntegration(id)!.snippet!, 'example.com', [])).toBe(expected)
