@@ -30,9 +30,20 @@ const PIECES = 140
 const DURATION_S = 2.2
 const FADE_FROM_S = 1.5
 
+// The motion constants were tuned by eye at 60 Hz, so a "frame" below is one
+// sixtieth of a second of ELAPSED TIME — never a frame the browser delivered.
+const FRAME_MS = 1000 / 60
+/** Added to vy once per frame (px per frame, per frame). */
+const GRAVITY = 0.32
+/** Fraction of velocity kept per frame. */
+const DRAG = 0.985
+
 interface Piece {
-  x: number; y: number; vx: number; vy: number
-  w: number; h: number; r: number; vr: number
+  // Launch state, fixed for the life of the burst.
+  x0: number; y0: number; vx0: number; vy0: number; r0: number; vr: number
+  // Where the piece is at the elapsed time of the last `stepPieces` call.
+  x: number; y: number; vx: number; vy: number; r: number
+  w: number; h: number
   col: string; a: number
 }
 
@@ -50,15 +61,20 @@ export function makePieces(width: number, height: number, random: () => number =
   const out: Piece[] = []
   for (let i = 0; i < PIECES; i++) {
     const fromLeft = i % 2 === 0
+    const x = fromLeft ? width * 0.18 : width * 0.82
+    const y = height * 0.32
+    // The order of the `random()` calls is part of the contract with the
+    // seeded tests — keep it.
+    const vx = (fromLeft ? 1 : -1) * (3 + random() * 7) + (random() - 0.5) * 4
+    const vy = -(6 + random() * 9)
+    const w = 4 + random() * 5
+    const h = 7 + random() * 7
+    const r = random() * Math.PI
+    const vr = (random() - 0.5) * 0.35
     out.push({
-      x: fromLeft ? width * 0.18 : width * 0.82,
-      y: height * 0.32,
-      vx: (fromLeft ? 1 : -1) * (3 + random() * 7) + (random() - 0.5) * 4,
-      vy: -(6 + random() * 9),
-      w: 4 + random() * 5,
-      h: 7 + random() * 7,
-      r: random() * Math.PI,
-      vr: (random() - 0.5) * 0.35,
+      x0: x, y0: y, vx0: vx, vy0: vy, r0: r, vr,
+      x, y, vx, vy, r,
+      w, h,
       col: PALETTE[i % PALETTE.length],
       a: 1,
     })
@@ -66,16 +82,45 @@ export function makePieces(width: number, height: number, random: () => number =
   return out
 }
 
-/** One physics step. Exported so the maths is testable without a canvas. */
+/**
+ * Place every piece where it is `elapsedS` seconds after launch.
+ *
+ * 🔴 A FUNCTION OF TIME, NOT OF FRAMES (11-09-2026). The first version added
+ * gravity, applied drag and moved each piece ONCE PER requestAnimationFrame,
+ * which is right only at 60 Hz. On a 120 Hz screen — every recent MacBook
+ * Pro — the burst ran twice as fast and twice as far. Reproduced under a
+ * deterministic 120 Hz RAF shim: the state at 0.5 s was pixel-identical to
+ * the 60 Hz state at 1.0 s, 80 % of the pieces had left the viewport by 1 s,
+ * and nothing was left at 1.5 s, when the fade begins. Every headless capture
+ * had looked right because headless Chromium runs at 60 Hz.
+ *
+ * The 60 Hz recurrence the look was approved in is, per frame,
+ *     v' = (v + g)·k          p' = p + v'
+ * and this is its CLOSED FORM at a real-valued frame count τ = elapsed / 16.667 ms:
+ *     v(τ) = k^τ·v₀ + g·k·(1 − k^τ)/(1 − k)
+ *     p(τ) = p₀ + v₀·S(τ) + g·k/(1 − k)·(τ − S(τ)),   S(τ) = k·(1 − k^τ)/(1 − k) = Σᵢ₌₁^τ kⁱ
+ * At whole frames it lands exactly on the approved positions; between them it
+ * interpolates. Nothing accumulates, so the refresh rate, a dropped frame or a
+ * background tab can change WHEN a piece is drawn, never WHERE. (Stepping by a
+ * variable dt was the obvious alternative and is not exact: 60 steps of dt=1
+ * and 120 steps of dt=0.5 disagree by ~3 px at 1 s.)
+ */
 export function stepPieces(pieces: Piece[], elapsedS: number): void {
+  const tau = (Math.max(0, elapsedS) * 1000) / FRAME_MS
+  const kt = Math.pow(DRAG, tau)
+  const sum = (DRAG * (1 - kt)) / (1 - DRAG)
+  const gravityV = (GRAVITY * DRAG * (1 - kt)) / (1 - DRAG)
+  const gravityP = ((GRAVITY * DRAG) / (1 - DRAG)) * (tau - sum)
+  const alpha = elapsedS > FADE_FROM_S
+    ? Math.max(0, 1 - (elapsedS - FADE_FROM_S) / (DURATION_S - FADE_FROM_S))
+    : 1
   for (const p of pieces) {
-    p.vy += 0.32
-    p.vx *= 0.985
-    p.vy *= 0.985
-    p.x += p.vx
-    p.y += p.vy
-    p.r += p.vr
-    if (elapsedS > FADE_FROM_S) p.a = Math.max(0, 1 - (elapsedS - FADE_FROM_S) / (DURATION_S - FADE_FROM_S))
+    p.vx = p.vx0 * kt
+    p.vy = p.vy0 * kt + gravityV
+    p.x = p.x0 + p.vx0 * sum
+    p.y = p.y0 + p.vy0 * sum + gravityP
+    p.r = p.r0 + p.vr * tau
+    p.a = alpha
   }
 }
 
@@ -105,6 +150,8 @@ export default function Confetti({ onDone }: { onDone?: () => void } = {}) {
     let start: number | null = null
     let finished = false
 
+    // Each frame places the pieces at the wall-clock elapsed time and draws
+    // them; the frame count plays no part (see stepPieces).
     const frame = (t: number) => {
       if (start === null) start = t
       const elapsed = (t - start) / 1000

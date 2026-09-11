@@ -5,7 +5,7 @@ import { logger } from '@/lib/utils/logger'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createSite, getSite, type Site } from '@/lib/api/sites'
-import { useSites, mutateSites } from '@/lib/swr/sites'
+import { useSites, useSitesCache } from '@/lib/swr/sites'
 import { getSubscription } from '@/lib/api/billing'
 import { getSitesLimitForPlan, formatPlanName } from '@/lib/plans'
 import { trackSiteCreatedFromDashboard, trackSiteCreatedScriptCopied } from '@/lib/welcomeAnalytics'
@@ -26,6 +26,7 @@ export default function NewSitePage() {
   })
   const [createdSite, setCreatedSite] = useState<Site | null>(null)
   const { sites, isLoading: sitesLoading } = useSites()
+  const { addSite } = useSitesCache()
   const [atLimit, setAtLimit] = useState(false)
   const [limitsChecked, setLimitsChecked] = useState(false)
 
@@ -80,7 +81,10 @@ export default function NewSitePage() {
       const site = await createSite(formData)
       toast.success('Site created successfully')
       setCreatedSite(site)
-      mutateSites()
+      // Into the shared sites cache now, not "revalidate later": the sidebar
+      // switcher and the fleet read it, and the old mutateSites() was a
+      // global-cache mutate the provider never saw (lib/swr/sites.tsx).
+      void addSite(site)
       trackSiteCreatedFromDashboard()
       if (typeof window !== 'undefined') {
         sessionStorage.setItem(LAST_CREATED_SITE_KEY, JSON.stringify({ id: site.id }))

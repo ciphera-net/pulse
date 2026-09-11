@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, act, waitFor } from '@testing-library/react'
+import { render, screen, act, waitFor, fireEvent } from '@testing-library/react'
 
 // --- Mocks ---------------------------------------------------------------
 
@@ -370,5 +370,23 @@ describe('SetupDonePage confetti (the visual twin of welcome_completed — F-B14
     expect(screen.getByTestId('favicon')).toBeTruthy()
     expect(screen.getAllByRole('button')).toHaveLength(1)
     expect(screen.getByRole('button', { name: SETUP_COPY.doneButton })).toBeTruthy()
+  })
+
+  // Owner's ruling 11-09-2026: the CTA lands on the site that was just added,
+  // not on a fleet of one card.
+  it('lands the CTA on the new site\'s own dashboard', async () => {
+    setSearch('')
+    mockSite = A_SITE
+    render(<SetupDonePage />)
+    fireEvent.click(screen.getByRole('button', { name: SETUP_COPY.doneButton }))
+    expect(mockPush).toHaveBeenCalledWith('/sites/site_1')
+  })
+
+  it('falls back to the fleet only when the wizard has no site to name', async () => {
+    setSearch('')
+    mockSite = null
+    render(<SetupDonePage />)
+    fireEvent.click(screen.getByRole('button', { name: SETUP_COPY.doneButton }))
+    expect(mockPush).toHaveBeenCalledWith('/')
   })
 })
