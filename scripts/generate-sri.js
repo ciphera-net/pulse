@@ -10,9 +10,18 @@ const fs = require('fs');
 const path = require('path');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
-// * Pulse ships exactly one tracking script. The frustration and interactions
-// * add-ons were retired (14-08-2026) and their hashes removed with them.
-const SCRIPTS = ['script.js'];
+// * script.frustration.js stays retired (14-08-2026): it recorded a CSS selector,
+// * a click count and viewport x/y — the only thing Pulse ever collected below
+// * page level, and the reason that decision was taken on principle.
+// *
+// * script.interactions.js is BACK (11-09-2026), and deliberately: the 14-08
+// * decision retired the old one because it had a verified ZERO READ SURFACE and
+// * had never produced a single event in five months. The read surface now exists
+// * — the visit trail groups events under their page, filters by type and
+// * describes them in words (round 6). Same file name, different contents, and it
+// * carries no selectors and no coordinates. Supersession recorded in
+// * docs/plans/14-08-2026-behavioral-tracking-removal.md.
+const SCRIPTS = ['script.js', 'script.interactions.js'];
 
 const out = {};
 for (const name of SCRIPTS) {
