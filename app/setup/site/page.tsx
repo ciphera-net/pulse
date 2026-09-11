@@ -10,8 +10,9 @@ import { createSite, detectFramework, type Site } from '@/lib/api/sites'
 import { useSites, mutateSites } from '@/lib/swr/sites'
 import { trackWelcomeSiteAdded } from '@/lib/welcomeAnalytics'
 import { siteCreateError } from '@/lib/api/siteErrors'
-import { Button, Input, Spinner, GlobeIcon } from '@ciphera-net/facet'
+import { Button, Input, Spinner } from '@ciphera-net/facet'
 import { displayDomain } from '@/lib/utils/displayDomain'
+import { SETUP_COPY } from '@/lib/setup/copy'
 
 function domainFromUrl(input: string): string {
   let d = input.trim().toLowerCase()
@@ -123,13 +124,10 @@ export default function SetupSitePage() {
     return (
       <>
         <div className="text-center mb-8">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-none bg-brand-orange/10 text-brand-orange mb-5">
-            <GlobeIcon className="h-7 w-7" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">
+          <h1 className="text-3xl font-bold tracking-tight text-white">
             Pick up where you left off
           </h1>
-          <p className="mt-2 text-sm text-neutral-400 max-w-sm mx-auto">
+          <p className="mt-3 text-sm text-neutral-400 max-w-md mx-auto">
             Your workspace and site are already set up.
           </p>
         </div>
@@ -168,14 +166,14 @@ export default function SetupSitePage() {
   return (
     <>
       <div className="text-center mb-8">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-none bg-brand-orange/10 text-brand-orange mb-5">
-          <GlobeIcon className="h-7 w-7" />
-        </div>
-        <h1 className="text-2xl font-bold tracking-tight text-white">
-          {addingAnother ? 'Add another site' : 'Add your first site'}
+        {/* Direction B (owner pick, 11-09-2026): one big centred heading and one
+            line, from lib/setup/copy.ts. The icon tile that used to sit above
+            is gone — tinted panels are the retired device. */}
+        <h1 className="text-3xl font-bold tracking-tight text-white">
+          {addingAnother ? 'Add another site' : SETUP_COPY.site.heading}
         </h1>
-        <p className="mt-2 text-sm text-neutral-400 max-w-sm mx-auto">
-          Enter the domain you want to track. Pulse needs one site to start; you can add more later.
+        <p className="mt-3 text-sm text-neutral-400 max-w-md mx-auto">
+          {addingAnother ? 'Enter the domain you want to track.' : SETUP_COPY.site.dek}
         </p>
       </div>
 
