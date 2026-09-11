@@ -114,7 +114,7 @@ function SwitchPlanContent() {
 
   const [step, setStep] = useState(0)
   const [isYearly, setIsYearly] = useState(false)
-  const [selectedLimit, setSelectedLimit] = useState(10_000)
+  const [selectedLimit, setSelectedLimit] = useState<number>(TRAFFIC_TIERS[0].value)
   const [selectedPlan, setSelectedPlan] = useState('')
 
   const [estimate, setEstimate] = useState<PlanChangeEstimate | null>(null)
@@ -224,7 +224,7 @@ function SwitchPlanContent() {
       ? paramLimit
       : isValidTier(subscription.pageview_limit)
         ? subscription.pageview_limit
-        : 10_000
+        : TRAFFIC_TIERS[0].value
     setSelectedLimit(limit)
 
     // Prefill checkout billing details from what the org already told us —

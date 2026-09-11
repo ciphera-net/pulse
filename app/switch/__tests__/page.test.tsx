@@ -37,11 +37,12 @@ const estimatePlanChange = vi.fn()
 const changePlan = vi.fn()
 const getSubscription = vi.fn()
 vi.mock('@/lib/api/billing', () => ({
-  // Every plan needs a price at the tier the tests select (10000 — the solo
-  // subscription's own tier): an unpriced card is DISABLED by design (F-B12),
-  // which is a nice accidental proof the guard works, but not what these
-  // tests are for.
-  getPrices: vi.fn().mockResolvedValue({ solo: { 10000: 700 }, team: { 10000: 1600 }, business: { 10000: 3100 } }),
+  // The one purchasable plan (business) needs a price at the tier the tests
+  // select (10000 — the legacy solo subscriber's own tier): an unpriced card
+  // is DISABLED by design (F-B12), which is a nice accidental proof the guard
+  // works, but not what these tests are for. The backend's
+  // GET /api/billing/prices returns only a `business` key since 11-09-2026.
+  getPrices: vi.fn().mockResolvedValue({ business: { 10000: 3100 } }),
   getSubscription: (...a: unknown[]) => getSubscription(...a),
   changePlan: (...a: unknown[]) => changePlan(...a),
   estimatePlanChange: (...a: unknown[]) => estimatePlanChange(...a),
@@ -168,8 +169,8 @@ describe('/switch checkout mode (no mandate on file)', () => {
       next_charge_on: null,
     }
     render(<SwitchPage />)
-    const teamCard = await screen.findByText('Team')
-    fireEvent.click(teamCard.closest('button')!)
+    const businessCard = await screen.findByText('Business')
+    fireEvent.click(businessCard.closest('button')!)
 
     expect(await screen.findByTestId('payment-form')).toBeTruthy()
     // The whole point of E1's backend half: the Mollie return lands back on
@@ -187,8 +188,8 @@ describe('/switch checkout mode (no mandate on file)', () => {
       grant_expires_on: '2027-04-27',
     }
     render(<SwitchPage />)
-    const teamCard = await screen.findByText('Team')
-    fireEvent.click(teamCard.closest('button')!)
+    const businessCard = await screen.findByText('Business')
+    fireEvent.click(businessCard.closest('button')!)
     expect(await screen.findByTestId('payment-form')).toBeTruthy()
     expect(estimatePlanChange).not.toHaveBeenCalled()
   })
@@ -205,8 +206,8 @@ describe('/switch in-place review (mandate on file)', () => {
       refund_amount: 0,
     })
     render(<SwitchPage />)
-    const teamCard = await screen.findByText('Team')
-    fireEvent.click(teamCard.closest('button')!)
+    const businessCard = await screen.findByText('Business')
+    fireEvent.click(businessCard.closest('button')!)
 
     // 2026-09-15 is a Tuesday; the weekday comes from the calendar date itself.
     expect(await screen.findByText('Tue, 15/09/2026')).toBeTruthy()
@@ -221,8 +222,8 @@ describe('/switch in-place review (mandate on file)', () => {
       next_renewal: '2026-09-15',
     })
     render(<SwitchPage />)
-    const teamCard = await screen.findByText('Team')
-    fireEvent.click(teamCard.closest('button')!)
+    const businessCard = await screen.findByText('Business')
+    fireEvent.click(businessCard.closest('button')!)
 
     expect(await screen.findByText('On file')).toBeTruthy()
     expect(screen.getByText(/You stay on this page — no checkout redirect, no onboarding screens\./)).toBeTruthy()
@@ -241,8 +242,8 @@ describe('/switch done step honesty (F-B17)', () => {
     })
     changePlan.mockResolvedValue({ ok: true })
     render(<SwitchPage />)
-    const teamCard = await screen.findByText('Team')
-    fireEvent.click(teamCard.closest('button')!)
+    const businessCard = await screen.findByText('Business')
+    fireEvent.click(businessCard.closest('button')!)
     // The Confirm button exists (disabled) before the estimate lands — wait
     // for the estimate panel so the click actually fires.
     await screen.findByText('Change summary')
@@ -264,12 +265,12 @@ describe('/switch done step honesty (F-B17)', () => {
     })
     changePlan.mockResolvedValue({ ok: true })
     render(<SwitchPage />)
-    const teamCard = await screen.findByText('Team')
-    fireEvent.click(teamCard.closest('button')!)
+    const businessCard = await screen.findByText('Business')
+    fireEvent.click(businessCard.closest('button')!)
     const pay = await screen.findByRole('button', { name: /Pay .* & switch/ })
     await act(async () => { fireEvent.click(pay) })
 
-    expect(await screen.findByText(/You're now on Team/)).toBeTruthy()
+    expect(await screen.findByText(/You're now on Business/)).toBeTruthy()
   })
 })
 

@@ -221,7 +221,7 @@ describe('WorkspaceBillingTab banners & states', () => {
       ).toBeTruthy(),
     )
     // The consequences line is always present.
-    expect(screen.getByText(/moves to the free Hobby plan/i)).toBeTruthy()
+    expect(screen.getByText(/moves to the free Personal plan/i)).toBeTruthy()
   })
 
   it('renders a direction-neutral pending plan-change banner via formatPlanName', async () => {
@@ -456,7 +456,7 @@ describe('WorkspaceBillingTab grant presentation (ruled D2, 25-08-2026)', () => 
 })
 
 describe('WorkspaceBillingTab subscription fetch error (ruled F1)', () => {
-  it('a failed fetch renders the error card, never the Hobby empty state', async () => {
+  it('a failed fetch renders the error card, never the Personal empty state', async () => {
     mockSubscription = undefined
     mockSubscriptionError = new Error('network')
     renderTab()
@@ -468,7 +468,7 @@ describe('WorkspaceBillingTab subscription fetch error (ruled F1)', () => {
       screen.getByText(/temporarily unavailable\. Your subscription itself is unaffected/i),
     ).toBeTruthy()
     // The old fall-through told a paying customer they were on the free plan.
-    expect(screen.queryByText(/free Hobby plan/i)).toBeNull()
+    expect(screen.queryByText(/free Personal plan/i)).toBeNull()
     expect(screen.queryByText('No subscription')).toBeNull()
   })
 })

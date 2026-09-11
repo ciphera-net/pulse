@@ -29,9 +29,11 @@ beforeEach(() => {
 
 describe('SetupContext pendingPlan validation (F-B12)', () => {
   it('parses a valid catalog triple', () => {
-    mockSearch = 'plan=team&interval=year&limit=100000'
+    // PLAN_CATALOG has exactly one entry (business) since 11-09-2026 — 'team'
+    // is no longer catalog-valid and would fail this for the wrong reason.
+    mockSearch = 'plan=business&interval=year&limit=100000'
     const { result } = renderHook(() => useSetup(), { wrapper })
-    expect(result.current.pendingPlan).toEqual({ planId: 'team', interval: 'year', limit: 100000 })
+    expect(result.current.pendingPlan).toEqual({ planId: 'business', interval: 'year', limit: 100000 })
   })
 
   it('rejects an off-catalog plan id — ?plan=bogus used to open a €0.00 checkout for "Bogus"', () => {
@@ -41,13 +43,15 @@ describe('SetupContext pendingPlan validation (F-B12)', () => {
   })
 
   it('rejects a limit that is not a traffic tier', () => {
-    mockSearch = 'plan=solo&interval=month&limit=7'
+    // Plan id must itself be catalog-valid, or this fails for the wrong
+    // reason (an off-catalog plan) instead of the bad limit it's named for.
+    mockSearch = 'plan=business&interval=month&limit=7'
     const { result } = renderHook(() => useSetup(), { wrapper })
     expect(result.current.pendingPlan).toBeNull()
   })
 
   it('rejects an unknown interval', () => {
-    mockSearch = 'plan=solo&interval=weekly&limit=10000'
+    mockSearch = 'plan=business&interval=weekly&limit=10000'
     const { result } = renderHook(() => useSetup(), { wrapper })
     expect(result.current.pendingPlan).toBeNull()
   })

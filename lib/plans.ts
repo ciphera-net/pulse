@@ -1,6 +1,9 @@
 /**
  * Shared plan and traffic tier definitions for pricing and billing (Change plan).
- * Backend supports plan_id solo, team, business and limit 10k–10M; month/year interval.
+ * Two plans are sold since 11-09-2026: free (Personal) and business (Business).
+ * business inherits the former team plan's entitlements (5 sites, 24 months). solo and
+ * team are retired as purchasable but stay valid ids for existing rows; their constants
+ * remain exported for the legacy switch arms below. limit 10k–10M; month/year interval.
  */
 
 export interface PlanPrices {
@@ -9,12 +12,13 @@ export interface PlanPrices {
   }
 }
 
+/** Retired 11-09-2026 — no longer sold, still valid ids on existing rows. */
 export const PLAN_ID_SOLO = 'solo'
 export const PLAN_ID_TEAM = 'team'
 export const PLAN_ID_BUSINESS = 'business'
 
 /**
- * Monthly pageview allowance on the free (Hobby) tier. Single source of truth
+ * Monthly pageview allowance on the free (Personal) tier. Single source of truth
  * for the free-tier limit shown in downgrade/expiry copy — do not re-hardcode
  * "5,000" at call sites.
  */
@@ -25,11 +29,11 @@ export const FREE_PAGEVIEW_LIMIT = 5000
  * Ad-hoc ternaries drift (the Privacy tab once recognised only 'pro' and
  * labelled a Pioneer org "Free").
  *
- * plan_id shapes seen in the wild: 'free' (marketing name: Hobby), legacy
+ * plan_id shapes seen in the wild: 'free' (marketing name: Personal), legacy
  * Stripe 'price_…' ids (Pro), and plain ids like 'solo' / 'team' / 'pioneer'.
  */
 export function formatPlanName(planId?: string | null): string {
-  if (!planId || planId === 'free') return 'Hobby'
+  if (!planId || planId === 'free') return 'Personal'
   if (planId.startsWith('price_')) return 'Pro'
   // Grant-only tier: the generic capitalize fallback would render "Opensource".
   if (planId === 'opensource') return 'Open Source'
@@ -42,8 +46,12 @@ export function getSitesLimitForPlan(planId: string | null | undefined): number 
   switch (planId) {
     case 'solo': return 1
     case 'pioneer': return 3
-    case 'team': case 'opensource': return 5
-    case 'business': return 10
+    // business inherits team's 5-site cap (11-09-2026). Each grant tier gets its
+    // own arm so a future edit to one can't silently move the others.
+    case 'business': return 5
+    case 'team': return 5
+    case 'opensource': return 5
+    case 'startups': return 5
     default: return null
   }
 }
@@ -63,7 +71,7 @@ export interface PlanCatalogEntry {
 }
 
 /**
- * The free (Hobby) tier's card, kept beside PLAN_CATALOG so the marketing
+ * The free (Personal) tier's card, kept beside PLAN_CATALOG so the marketing
  * pricing page renders every tier from this module. Not part of PLAN_CATALOG
  * because the in-app pickers (/setup/plan, /switch) only offer paid plans.
  */
@@ -73,8 +81,8 @@ export interface PlanCatalogEntry {
 // reintroduce feature-gate lines here — there are no feature gates.
 export const FREE_PLAN: PlanCatalogEntry = {
   id: 'free',
-  name: 'Hobby',
-  description: 'For side projects and exploration',
+  name: 'Personal',
+  description: 'For personal sites and side projects',
   highlights: [
     '1 site',
     `${FREE_PAGEVIEW_LIMIT.toLocaleString('en-US')} pageviews/mo`,
@@ -84,33 +92,21 @@ export const FREE_PLAN: PlanCatalogEntry = {
 }
 
 // Retention highlights mirror getMaxRetentionMonthsForPlan below. Keep in sync.
+// ONE purchasable plan since 11-09-2026. Solo and Team were retired (their ids
+// stay valid for existing rows — see the switch arms above); Business inherits
+// Team's numbers and Team's price column. `popular` is what the pricing page,
+// /switch and /setup/plan render as the accent + "Recommended" (owner pick C,
+// 11-09-2026): with one paid plan the word "popular" would be a claim.
 export const PLAN_CATALOG: PlanCatalogEntry[] = [
   {
-    id: PLAN_ID_SOLO,
-    name: 'Solo',
-    description: 'For personal sites and freelancers',
-    highlights: ['1 site', 'Your pageview tier', '1-year data retention', 'Every feature included'],
-  },
-  {
-    id: PLAN_ID_TEAM,
-    name: 'Team',
-    description: 'For startups and growing agencies',
+    id: PLAN_ID_BUSINESS,
+    name: 'Business',
+    description: 'For larger organizations',
     popular: true,
     highlights: [
       'Up to 5 sites',
       'Your pageview tier',
       '2-year data retention',
-      'Every feature included',
-    ],
-  },
-  {
-    id: PLAN_ID_BUSINESS,
-    name: 'Business',
-    description: 'For larger organizations',
-    highlights: [
-      'Up to 10 sites',
-      'Your pageview tier',
-      '3-year data retention',
       'Priority support',
       'Every feature included',
     ],
@@ -139,7 +135,7 @@ export interface PlanFeatureGroup {
   rows: PlanFeatureRow[]
 }
 
-const MATRIX_PLAN_IDS = ['free', PLAN_ID_SOLO, PLAN_ID_TEAM, PLAN_ID_BUSINESS] as const
+const MATRIX_PLAN_IDS = ['free', PLAN_ID_BUSINESS] as const
 
 function acrossPlans(value: PlanFeatureValue): Record<string, PlanFeatureValue> {
   return Object.fromEntries(MATRIX_PLAN_IDS.map((id) => [id, value]))
@@ -158,7 +154,7 @@ export const PLAN_FEATURE_MATRIX: PlanFeatureGroup[] = [
       // paid-plan cells read the live tier slider, so it can't be static here.
       {
         label: 'Sites',
-        values: { free: '1', solo: '1', team: 'Up to 5', business: 'Up to 10' },
+        values: { free: '1', business: 'Up to 5' },
       },
       {
         label: 'Data retention',
@@ -220,7 +216,7 @@ export function getPlanPricing(
   return { monthly, effectiveMonthly, yearlyTotal }
 }
 
-/** Traffic tiers available for Solo plan (pageview limits). */
+/** The nine pageview tiers the paid plan is priced at (owner ruling 11-09-2026: keep nine). */
 export const TRAFFIC_TIERS = [
   { label: '10k', value: 10000 },
   { label: '50k', value: 50000 },
@@ -239,15 +235,19 @@ export function getTierIndexForLimit(limit: number): number {
 }
 
 export function getLimitForTierIndex(index: number): number {
-  if (index < 0 || index >= TRAFFIC_TIERS.length) return 10000
+  if (index < 0 || index >= TRAFFIC_TIERS.length) return TRAFFIC_TIERS[0].value
   return TRAFFIC_TIERS[index].value
 }
 
 /** Maximum data retention (months) allowed per plan. */
 export function getMaxRetentionMonthsForPlan(planId: string | null | undefined): number {
   switch (planId) {
-    case 'business': return 36
-    case 'team': case 'pioneer': case 'opensource': return 24
+    // business inherits team's 24-month retention (11-09-2026).
+    case 'business': return 24
+    case 'team': return 24
+    case 'pioneer': return 24
+    case 'opensource': return 24
+    case 'startups': return 24
     case 'solo': return 12
     default: return 6
   }
@@ -262,11 +262,15 @@ export function getRetentionOptionsForPlan(planId: string | null | undefined): {
   ]
   const solo = [...base, { label: '1 year', value: 12 }]
   const team = [...solo, { label: '2 years', value: 24 }]
-  const business = [...team, { label: '3 years', value: 36 }]
 
   switch (planId) {
-    case 'business': return business
-    case 'team': case 'pioneer': case 'opensource': return team
+    // business now tops out at 2 years, same as team (11-09-2026); the old
+    // 3-year (36mo) option is gone with the 10-site business tier.
+    case 'business': return team
+    case 'team': return team
+    case 'pioneer': return team
+    case 'opensource': return team
+    case 'startups': return team
     case 'solo': return solo
     default: return base
   }

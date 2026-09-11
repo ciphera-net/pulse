@@ -79,8 +79,6 @@ export default function PricingSection() {
               label: 'Monthly pageviews',
               values: {
                 free: FREE_PAGEVIEW_LIMIT.toLocaleString('en-US'),
-                solo: paidPageviews,
-                team: paidPageviews,
                 business: paidPageviews,
               },
             },
@@ -204,10 +202,10 @@ export default function PricingSection() {
                 value={String(sliderIndex)}
                 onChange={(v) => setSliderIndex(Number(v))}
                 options={ALL_SLIDER_TIERS.map((tier, i) => {
-                  const soloCents = prices?.['solo']?.[(tier as { value: number }).value]
+                  const businessCents = prices?.['business']?.[(tier as { value: number }).value]
                   return {
                     value: String(i),
-                    label: `${tier.label} pageviews/month${soloCents ? ` — from ${formatEuro(soloCents / 100)}/mo` : ' — Custom'}`,
+                    label: `${tier.label} pageviews/month${businessCents ? ` — from ${formatEuro(businessCents / 100)}/mo` : ' — Custom'}`,
                   }
                 })}
               />
@@ -216,10 +214,11 @@ export default function PricingSection() {
         </div>
       </section>
 
-      {/* Tier cards — one hairline grid, four cells */}
+      {/* Tier cards — one hairline grid, two cells, held at the width two of the
+          former four occupied and centred under the slider (owner pick C, 11-09-2026) */}
       <section className="border-b border-border">
         <div className="px-6 py-16 sm:py-20">
-          <HairlineGrid columns={4}>
+          <HairlineGrid columns={2} className="mx-auto max-w-2xl">
             {PLANS.map((plan) => {
               const priceDetails = getPrice(plan.id)
               const isFree = plan.id === 'free'
@@ -247,7 +246,7 @@ export default function PricingSection() {
                     </span>
                     {isPopular && (
                       <span className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
-                        Most popular
+                        Recommended
                       </span>
                     )}
                   </div>
@@ -398,7 +397,7 @@ export default function PricingSection() {
                 Building open source, or running a nonprofit?
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                The Team tier at €0, by application — five sites, 100k
+                The Business tier at €0, by application — five sites, 100k
                 pageviews a month, every feature. We get to say you use Pulse.
               </p>
             </div>
@@ -421,7 +420,7 @@ export default function PricingSection() {
           </h2>
           <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
             No feature gates. Plans differ on three things — sites, pageviews and
-            data retention — and everything else ships everywhere, on Hobby too.
+            data retention — and everything else ships everywhere, on Personal too.
           </p>
           <PlanComparisonTable groups={comparisonGroups} />
         </div>

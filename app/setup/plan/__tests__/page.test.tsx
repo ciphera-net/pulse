@@ -76,9 +76,9 @@ vi.mock('@/components/ui/slider', () => ({
 
 import SetupPlanPage from '../page'
 
+// One purchasable plan since 11-09-2026 — the backend's GET /api/billing/prices
+// returns only a `business` key.
 const PRICES = {
-  solo: { 10000: 900 },
-  team: { 10000: 1900 },
   business: { 10000: 2900 },
 }
 
@@ -91,30 +91,25 @@ beforeEach(() => {
 })
 
 describe('SetupPlanPage plan-tier keyboard nav', () => {
-  it('selects the next plan as ArrowDown moves focus', () => {
-    render(<SetupPlanPage />)
-    // Scoped to the plan radiogroup — the billing-interval Switcher is also a
-    // radiogroup of radios and would otherwise shift these indices.
-    const radios = within(screen.getByRole('radiogroup', { name: 'Choose a paid plan' })).getAllByRole('radio')
-    // Order matches PLANS: solo, team, business.
-    fireEvent.keyDown(radios[0], { key: 'ArrowDown' })
-    // Selecting a plan transitions to the checkout view for that plan.
-    expect(screen.getByTestId('payment-form').textContent).toBe('payment:team')
-  })
-
-  it('wraps to the last plan as ArrowUp moves focus from the first', () => {
-    render(<SetupPlanPage />)
-    const radios = within(screen.getByRole('radiogroup', { name: 'Choose a paid plan' })).getAllByRole('radio')
-    fireEvent.keyDown(radios[0], { key: 'ArrowUp' })
-    expect(screen.getByTestId('payment-form').textContent).toBe('payment:business')
-  })
-
-  it('selects on ArrowRight/ArrowLeft too', () => {
-    render(<SetupPlanPage />)
-    const radios = within(screen.getByRole('radiogroup', { name: 'Choose a paid plan' })).getAllByRole('radio')
-    fireEvent.keyDown(radios[1], { key: 'ArrowRight' })
-    expect(screen.getByTestId('payment-form').textContent).toBe('payment:business')
-  })
+  // PLAN_CATALOG has exactly one entry (business) since 11-09-2026 — Solo and
+  // Team were retired as purchasable. The modulo wrap in onPlanKeyDown
+  // ((index ± 1 + length) % length) always lands back on index 0 when
+  // length === 1, so every arrow key keeps the single plan selected rather
+  // than moving to a different one. This still exercises all four key
+  // branches; it just can no longer prove a MOVE between two distinct plans.
+  it.each(['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'] as const)(
+    'keeps the single plan (business) selected on %s',
+    (key) => {
+      render(<SetupPlanPage />)
+      // Scoped to the plan radiogroup — the billing-interval Switcher is also a
+      // radiogroup of radios and would otherwise be picked up by the query.
+      const radios = within(screen.getByRole('radiogroup', { name: 'Choose a paid plan' })).getAllByRole('radio')
+      expect(radios.length).toBe(1)
+      fireEvent.keyDown(radios[0], { key })
+      // Selecting a plan transitions to the checkout view for that plan.
+      expect(screen.getByTestId('payment-form').textContent).toBe('payment:business')
+    },
+  )
 })
 
 describe('SetupPlanPage prices-fetch retry state', () => {
