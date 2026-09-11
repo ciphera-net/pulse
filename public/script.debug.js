@@ -4,6 +4,16 @@
  * Visits and visitors are identified server-side: a daily-rotating session hash and a
  * monthly-rotating visitor hash of IP + UA + domain, salted on the site's own calendar.
  *
+ * THIS script reads no page content. It records which page was seen, for how long, and how
+ * far down it was scrolled — plus, where a link leaves the site or downloads a file, that
+ * link's URL. Nothing about the text on the page enters a payload from here.
+ *
+ * ⚠️ script.interactions.js, the OPTIONAL companion, does read some: the visible label of a
+ * clicked control, capped and redacted in the browser. It is a separate tag a site owner
+ * has to add deliberately, it is absent unless they do, and its own header states exactly
+ * what it records and what it never records. If you are auditing what Pulse collects, read
+ * both files — this one is not the whole story once that tag is present.
+ *
  * v1.2.0 (04-09-2026): time on page is ENGAGED time — seconds the page was visible and the
  * visitor active — accumulated in bounded ticks, so a sleeping laptop, a frozen background
  * tab or a tab left open overnight can add at most one tick, never an hour. A pageview is a

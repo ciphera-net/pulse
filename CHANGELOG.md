@@ -11,6 +11,27 @@ public read API's — see that entry for what it does and does not cover.
 
 ### Added
 
+- **Optional interaction capture: see what visitors did, not only which pages they
+  saw.** A second, optional script records the **label of a button or link that was
+  clicked**, **how much text was copied** and **which forms were submitted** — and the
+  visit trail describes them in place.
+
+  **It is not part of your tracking tag and does nothing until you add it.** Settings
+  → Site → General has a switch that writes the extra `<script>` line for you, with a
+  separate switch for each of the three kinds.
+
+  **What it never records**, by design and pinned by tests: anything you type, the text
+  that was copied, any form field's value, any form field's **name**, and anything about
+  where an element sat on the screen — no CSS selectors, no coordinates.
+
+  **What it strips before anything is sent**, in the visitor's own browser: email
+  addresses become `[email]`, long digit runs become `[number]`, and labels are cut to
+  60 characters. Add `data-pulse-ignore` to any element and nothing inside it is ever
+  recorded, at any depth.
+
+  The main script is **unchanged and still 2.6 KB gzipped** — the new code is a separate
+  file, so a site that does not want interaction capture pays nothing for it.
+
 - **A visitor's visits now read oldest to newest, and their steps group by page.**
   The Visits list was the only thing on the visitor page running newest-first, while
   the month ribbon above it reads day 1 to 31 and the steps inside each visit read
