@@ -165,37 +165,24 @@ describe('NewSitePage plan-limit gate', () => {
     expect(screen.getByTestId('script-setup-block').textContent).toBe('three')
   })
 
-  it('a submit before the plan check has settled never reaches the API', async () => {
+  it('is usable before the plan check has settled — the server enforces the cap; a slow check must not dead-end the form', async () => {
     listSites.mockResolvedValue([mk('one'), mk('two'), mk('three')]) // at the limit, not yet known to the client
+    // EVERY plan check is slow (the check re-runs as `sites`/`loading` change,
+    // and a slow billing endpoint is slow for all of them).
     let releasePlan!: (v: unknown) => void
-    getSubscription.mockReturnValueOnce(new Promise((r) => { releasePlan = r }))
+    getSubscription.mockReturnValue(new Promise((r) => { releasePlan = r }))
+    createSite.mockRejectedValue(new Error('pioneer plan is limited to 3 site(s). Please upgrade.')) // what the server says
     renderPage()
     const submit = await screen.findByRole('button', { name: /create|add/i })
-    expect(submit).toBeDisabled() // held until the check has run once
+    expect(submit).not.toBeDisabled() // no hold: a check that never answered would otherwise dead-end the form
     fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'four' } })
     fireEvent.change(screen.getByLabelText(/domain/i), { target: { value: 'four.example' } })
-    fireEvent.submit(submit.closest('form')!) // Enter-key path, bypassing the disabled button
-    await new Promise((r) => setTimeout(r, 30))
-    expect(createSite).not.toHaveBeenCalled()
+    fireEvent.click(submit)
+    await waitFor(() => expect(createSite).toHaveBeenCalledTimes(1)) // the request goes out …
+    await waitFor(() => expect(toastError).toHaveBeenCalledTimes(1)) // … and the server's refusal is what the person sees
+    expect(replace).not.toHaveBeenCalled()
     releasePlan({ plan_id: 'pioneer' })
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('/')) // and then the arrival rule applies
-    expect(createSite).not.toHaveBeenCalled()
-  })
-
-  it('a plan check that never settles fails OPEN after the wait — the server is the backstop, a dead form is not', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    try {
-      listSites.mockResolvedValue([mk('one')])
-      getSubscription.mockReturnValueOnce(new Promise(() => {})) // hangs forever
-      renderPage()
-      const submit = await screen.findByRole('button', { name: /create|add/i })
-      expect(submit).toBeDisabled()
-      await act(async () => { vi.advanceTimersByTime(8_100) })
-      expect(submit).not.toBeDisabled()
-      expect(replace).not.toHaveBeenCalled()
-    } finally {
-      vi.useRealTimers()
-    }
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/')) // once known, the arrival rule applies
   })
 
   it('never bounces a person whose own creation is in flight, even if the list fills up from elsewhere meanwhile', async () => {

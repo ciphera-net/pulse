@@ -16,11 +16,6 @@ import { CheckCircleIcon } from '@ciphera-net/facet'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 
 const LAST_CREATED_SITE_KEY = 'pulse_last_created_site'
-/** How long the form waits for the plan check before failing OPEN. The server
- *  enforces the cap regardless (pulse-backend CreateSiteHandler), so a check
- *  that never settles — the API client's post-401 retry carries no timeout —
- *  must not hold the form hostage; it only spares a request known to fail. */
-const LIMIT_CHECK_FAIL_OPEN_MS = 8_000
 
 /** Whether this tab is coming back to the success screen of a site it created
  *  (step 2 is restored from sessionStorage after a refresh). Read synchronously
@@ -135,22 +130,15 @@ export default function NewSitePage() {
     checkLimits()
   }, [sitesLoading, restoring, sites, router, createdSite, loading])
 
-  // The submit is held until the plan check has run once (below). Fail OPEN if
-  // it never settles: the server is the backstop, a dead form is not.
-  useEffect(() => {
-    if (limitsChecked) return
-    const t = setTimeout(() => setLimitsChecked(true), LIMIT_CHECK_FAIL_OPEN_MS)
-    return () => clearTimeout(t)
-  }, [limitsChecked])
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // The button is off until the plan check has run once and while at the
-    // limit; this is the same rule for a submit that arrives another way
-    // (Enter in a field), so neither ever reaches the API. The server enforces
-    // the cap too (pulse-backend CreateSiteHandler) — this only spares the
-    // person a request that is known to fail.
-    if (atLimit || !limitsChecked) return
+    // The button is off at the limit; this is the same rule for a submit that
+    // arrives another way (Enter in a field), so it never reaches the API. The
+    // form is NOT held while the plan check is still in flight: the server
+    // enforces the cap (pulse-backend CreateSiteHandler) and answers a submit
+    // it refuses with its own reason, so a hold would only trade a request
+    // known to fail for a button that is dead while a slow check answers.
+    if (atLimit) return
     setLoading(true)
 
     try {
@@ -287,7 +275,7 @@ export default function NewSitePage() {
         <div className="flex gap-4">
           <Button
             type="submit"
-            disabled={loading || atLimit || !limitsChecked}
+            disabled={loading || atLimit}
             isLoading={loading}
           >
             Create Site
