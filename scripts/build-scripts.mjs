@@ -50,10 +50,13 @@ const DIST_ROOT = join(ROOT, 'dist', 'scripts')
 
 // * Bump this to publish a new immutable version. Bytes for an existing version
 // * must never change — CI enforces immutability on publish.
-const SCRIPT_VERSION = '1.2.0'
+const SCRIPT_VERSION = '1.3.0'
 const BASE_URL = 'https://js.ciphera.net'
 
-const SCRIPTS = ['script.js']
+// * script.interactions.js is the OPTIONAL companion: clicks, copies and form
+// * submits. It is a separate artifact on purpose — see its header. Its budget is
+// * its own, so growth there can never push the core over the published 3 KB.
+const SCRIPTS = ['script.js', 'script.interactions.js']
 
 // * Gzip size budget per file (bytes). The core script is the one customers pay
 // * for on every page load; keep it lean. Fail the build if it regresses.
@@ -65,6 +68,11 @@ const SCRIPTS = ['script.js']
 // * for the published claim before you touch it.
 const GZIP_BUDGET = {
   'script.js': 3072, // ~3 KB gzipped
+  // * The companion's own ceiling. Deliberately small: it exists so that adding
+  // * a capture type is a decision with a visible cost, exactly as the core's
+  // * budget makes growth in the core a decision. Not a published claim — but a
+  // * site that opts in still pays for it on every page load.
+  'script.interactions.js': 1536, // ~1.5 KB gzipped (986B at three capture types)
 }
 
 function sri(algo, bytes) {
