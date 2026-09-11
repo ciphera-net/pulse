@@ -57,46 +57,31 @@ export function useSitesCache() {
   const { mutate } = useSWRConfig()
 
   /**
-   * Put a site the server just created into the list, immediately, then
-   * replace the list with a fresh read that is guaranteed to contain it.
+   * Put a site the server just created into the list. Synchronous: every
+   * `useSites()` reader — the fleet, the sidebar switcher, the install banner
+   * on the site's own dashboard, the wizard's resume view and stepper — sees
+   * it on the next render, and a `useSites()` mounted later inside the 30 s
+   * dedupe window reads it from the cache.
    *
-   * - `optimisticData` makes the site visible to every `useSites()` reader on
-   *   the next render: the fleet, the sidebar switcher, the install banner on
-   *   the site's own dashboard, the wizard's resume view and stepper.
-   * - The refetch is the honest list (server order, every field). A fresh
-   *   answer that already carries the site is taken as is; a stale one — the
-   *   API client's 2 s response cache, a lagging read — cannot make a site
-   *   that exists vanish again, because the row the POST returned is appended
-   *   to it. A refetch that FAILS falls back to the list we had plus the site:
-   *   the POST succeeded, so showing it is the truth.
-   * - `revalidate: false`: the refetch above IS the revalidation. SWR also
-   *   discards any hook revalidation that resolves while this mutation is in
-   *   flight, so nothing older can land on top of it.
+   * The row written is the POST's own response, which IS the server's row,
+   * so no refetch follows (`revalidate: false`). A refetch here was tried and
+   * reviewed out: it bought nothing the row does not already carry, and it
+   * opened two races — a stale answer (the API client's 2 s response cache, a
+   * GET still in flight from a hook's mount) could replace the list with a
+   * snapshot that predates the site, and two quick additions could have the
+   * later one's snapshot drop the earlier one's site, because SWR commits only
+   * the newest in-flight mutation on a key. A plain write has neither problem
+   * and composes: two additions in a row leave both sites in the list. SWR's
+   * normal revalidation keeps the list honest from here, exactly as before.
    *
    * The fleet overview key is invalidated too, so the deck does not spend the
    * overview's dedupe window with the new site's card missing.
    */
   const addSite = useCallback(
     (site: Site): Promise<Site[] | undefined> => {
-      const written = mutate<Site[]>(
-        SITES_KEY,
-        async (committed) => {
-          let fresh: Site[]
-          try {
-            fresh = await listSites()
-          } catch {
-            fresh = committed ?? []
-          }
-          // A fresh answer that carries the site keeps the server's row; a
-          // stale one that lacks it gets the row the POST returned appended.
-          return fresh.some((s) => s.id === site.id) ? fresh : [...fresh, site]
-        },
-        {
-          optimisticData: (current) => upsertSite(current, site),
-          populateCache: true,
-          revalidate: false,
-        },
-      )
+      const written = mutate<Site[]>(SITES_KEY, (current) => upsertSite(current, site), {
+        revalidate: false,
+      })
       void mutate(SITES_OVERVIEW_KEY)
       return written
     },

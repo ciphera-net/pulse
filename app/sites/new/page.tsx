@@ -51,9 +51,18 @@ export default function NewSitePage() {
     }
   }, [createdSite])
 
-  // * Check for plan limits when sites are loaded
+  // * Check for plan limits when sites are loaded.
+  // 🔴 A GATE ON THE FORM, NOT ON THE SUCCESS SCREEN (11-09-2026). Once a site
+  // has been created here (`createdSite`), the list legitimately holds one more
+  // row — and since the created site is written straight into the shared sites
+  // cache, `sites` changes in the same render. Without this guard, creating
+  // the site that fills the plan's limit re-ran the check, hit
+  // `sites.length >= siteLimit`, and bounced the person off the install
+  // snippet for the site they were just allowed to create (reproduced in
+  // __tests__/page.test.tsx). The same bounce hit a refresh of the success
+  // screen before the cache write existed; the guard covers both.
   useEffect(() => {
-    if (sitesLoading) return
+    if (sitesLoading || createdSite) return
     const checkLimits = async () => {
       try {
         const subscription = await getSubscription()
@@ -71,7 +80,7 @@ export default function NewSitePage() {
     }
 
     checkLimits()
-  }, [sitesLoading, sites, router])
+  }, [sitesLoading, sites, router, createdSite])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

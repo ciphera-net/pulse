@@ -62,49 +62,38 @@ describe('upsertSite', () => {
 describe('useSitesCache().addSite — with no useSites() hook mounted', () => {
   beforeEach(() => listSites.mockReset())
 
-  it('makes the site visible immediately, before the refetch resolves', async () => {
-    let resolve!: (v: Site[]) => void
-    listSites.mockReturnValueOnce(new Promise<Site[]>((r) => { resolve = r }))
-    const { cache, addSite } = harness([])
+  it('writes the site into the provider cache synchronously, without a network round trip', async () => {
+    const existing = mk('old')
+    const { cache, addSite } = harness([existing])
     const created = mk('new')
     let written!: Promise<unknown>
     act(() => { written = addSite(created) })
-    expect(sitesIn(cache)).toEqual([created]) // optimistic and synchronous
-    await act(async () => { resolve([created]); await written })
-    expect(sitesIn(cache)).toEqual([created])
-    expect(listSites).toHaveBeenCalledTimes(1)
-  })
-
-  it('a stale refetch that predates the site cannot make it disappear', async () => {
-    const existing = mk('old')
-    listSites.mockResolvedValueOnce([existing]) // e.g. the API client's 2 s response cache
-    const { cache, addSite } = harness([existing])
-    const created = mk('new')
-    await act(async () => { await addSite(created) })
+    expect(sitesIn(cache)).toEqual([existing, created]) // visible before anything resolves
+    await act(async () => { await written })
     expect(sitesIn(cache)).toEqual([existing, created])
+    expect(listSites).not.toHaveBeenCalled()
   })
 
-  it('takes the server row and the server order when the refetch already carries the site', async () => {
-    const created = mk('new')
-    const fromServer = mk('new', { install_status: 'never_installed', is_verified: false })
-    const other = mk('old')
-    listSites.mockResolvedValueOnce([fromServer, other])
-    const { cache, addSite } = harness([other])
-    await act(async () => { await addSite(created) })
-    expect(sitesIn(cache)).toEqual([fromServer, other])
+  // Reviewed out of the first version (pulse#671): a refetch inside the write
+  // let SWR's one-mutation-at-a-time rule drop the earlier site when two
+  // additions overlapped. A plain write composes.
+  it('two additions in a row keep both sites', async () => {
+    const { cache, addSite } = harness([])
+    const first = mk('first')
+    const second = mk('second')
+    await act(async () => { await Promise.all([addSite(first), addSite(second)]) })
+    expect(sitesIn(cache)).toEqual([first, second])
   })
 
-  it('keeps the site when the refetch fails — the POST succeeded, so it exists', async () => {
-    listSites.mockRejectedValueOnce(new Error('network'))
-    const existing = mk('old')
-    const { cache, addSite } = harness([existing])
-    const created = mk('new')
-    await act(async () => { await expect(addSite(created)).resolves.toEqual([existing, created]) })
-    expect(sitesIn(cache)).toEqual([existing, created])
+  it('replaces a row that is already there instead of duplicating it', async () => {
+    const stale = mk('new', { name: 'before' })
+    const fresh = mk('new', { name: 'after' })
+    const { cache, addSite } = harness([mk('old'), stale])
+    await act(async () => { await addSite(fresh) })
+    expect(sitesIn(cache)).toEqual([mk('old'), fresh])
   })
 
   it('works on a cold cache with no list at all', async () => {
-    listSites.mockResolvedValueOnce([])
     const { cache, addSite } = harness(undefined)
     const created = mk('new')
     await act(async () => { await addSite(created) })
