@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { logger } from '@/lib/utils/logger'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createSite, getSite, type Site } from '@/lib/api/sites'
-import { useSites, mutateSites } from '@/lib/swr/sites'
+import { useSites, useSitesCache } from '@/lib/swr/sites'
 import { getSubscription } from '@/lib/api/billing'
 import { getSitesLimitForPlan, formatPlanName } from '@/lib/plans'
 import { trackSiteCreatedFromDashboard, trackSiteCreatedScriptCopied } from '@/lib/welcomeAnalytics'
@@ -17,6 +17,18 @@ import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 
 const LAST_CREATED_SITE_KEY = 'pulse_last_created_site'
 
+/** Whether this tab is coming back to the success screen of a site it created
+ *  (step 2 is restored from sessionStorage after a refresh). Read synchronously
+ *  so the plan-limit gate below cannot mistake the restore for an arrival. */
+function hasStoredCreatedSite(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return sessionStorage.getItem(LAST_CREATED_SITE_KEY) !== null
+  } catch {
+    return false
+  }
+}
+
 export default function NewSitePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -26,8 +38,21 @@ export default function NewSitePage() {
   })
   const [createdSite, setCreatedSite] = useState<Site | null>(null)
   const { sites, isLoading: sitesLoading } = useSites()
-  const [atLimit, setAtLimit] = useState(false)
+  const { addSite } = useSitesCache()
+  // The plan's site limit, from the subscription, once known. `atLimit` is
+  // DERIVED from it and the live list — never a stored flag — so it can never
+  // lag a render behind `sites` (see the gate below).
+  const [siteLimit, setSiteLimit] = useState<number | null>(null)
   const [limitsChecked, setLimitsChecked] = useState(false)
+  const atLimit = siteLimit != null && sites.length >= siteLimit
+  // True once THIS tab created a site here — set on a successful submit, or
+  // when the success screen of a site this tab created is restored from
+  // sessionStorage. Never reset: the person is not an arrival any more.
+  const createdHereRef = useRef(false)
+  // True while a stored created site is being fetched back. The gate waits
+  // for it: a reload at the limit must not be treated as an arrival before
+  // the restore has been ATTEMPTED — and a restore that fails IS an arrival.
+  const [restoring, setRestoring] = useState<boolean>(hasStoredCreatedSite)
 
   // * Restore step 2 from sessionStorage after refresh (e.g. pulse_last_created_site = { id } )
   useEffect(() => {
@@ -36,30 +61,63 @@ export default function NewSitePage() {
       const raw = sessionStorage.getItem(LAST_CREATED_SITE_KEY)
       if (!raw) return
       const { id } = JSON.parse(raw) as { id?: string }
-      if (!id) return
+      if (!id) {
+        sessionStorage.removeItem(LAST_CREATED_SITE_KEY)
+        setRestoring(false)
+        return
+      }
       getSite(id)
         .then((site) => {
+          // Only a site that still exists makes this tab "not an arrival".
+          createdHereRef.current = true
           setCreatedSite(site)
           setFormData({ name: site.name, domain: site.domain })
         })
         .catch(() => {
+          // Gone (deleted elsewhere, or never ours): forget it, and let the
+          // gate below treat this visit as the arrival it is.
           sessionStorage.removeItem(LAST_CREATED_SITE_KEY)
         })
+        .finally(() => setRestoring(false))
     } catch {
       sessionStorage.removeItem(LAST_CREATED_SITE_KEY)
+      setRestoring(false)
     }
   }, [createdSite])
 
-  // * Check for plan limits when sites are loaded
+  // * Plan-limit gate.
+  // 🔴 THE REDIRECT IS FOR ARRIVALS ONLY (11-09-2026). Someone who lands here
+  // already at the limit is sent home with the toast, as before. Someone who
+  // CREATED a site in this tab is never redirected, whatever the count: the
+  // created site is written straight into the shared sites cache, so `sites`
+  // legitimately grows by one in the same render, and filling the plan's
+  // limit used to re-run this check on the new count and bounce the person
+  // off the install snippet for the site they had just been allowed to
+  // create. For them the consequence of being at the limit is the at-limit
+  // notice and a disabled submit — true, and not a dead end.
+  //
+  // Three things the first two versions got wrong, all reproduced in
+  // __tests__/page.test.tsx: keying on `createdSite` re-armed the gate when
+  // "Edit site details" cleared it; a reload of the success screen let the
+  // gate fire on the settled sites list before `getSite` had restored the
+  // site (hence `restoring`, decided synchronously and awaited here); and a
+  // flag for "at the limit" lagged one render behind `sites`, leaving the
+  // Create button live for a network round trip after "Edit site details"
+  // (hence `atLimit` is derived from `siteLimit` and the live list). A
+  // restore that FAILS — the stored site is gone — is an arrival.
   useEffect(() => {
-    if (sitesLoading) return
+    // `loading`: never bounce a person whose own creation is in flight — the
+    // shared list can reach the limit from another session's creation while
+    // this request is pending, and the answer to THIS request (its success
+    // screen, or its own error) must be what they see.
+    if (sitesLoading || restoring || createdSite || loading) return
     const checkLimits = async () => {
       try {
         const subscription = await getSubscription()
-        const siteLimit = subscription?.plan_id ? getSitesLimitForPlan(subscription.plan_id) : null
-        if (siteLimit != null && sites.length >= siteLimit) {
-          setAtLimit(true)
-          toast.error(`${formatPlanName(subscription.plan_id)} plan limit reached (${siteLimit} site${siteLimit === 1 ? '' : 's'}). Please upgrade to add more sites.`)
+        const limit = subscription?.plan_id ? getSitesLimitForPlan(subscription.plan_id) : null
+        setSiteLimit(limit)
+        if (limit != null && sites.length >= limit && !createdHereRef.current) {
+          toast.error(`${formatPlanName(subscription.plan_id)} plan limit reached (${limit} site${limit === 1 ? '' : 's'}). Please upgrade to add more sites.`)
           router.replace('/')
         }
       } catch (error) {
@@ -70,17 +128,28 @@ export default function NewSitePage() {
     }
 
     checkLimits()
-  }, [sitesLoading, sites, router])
+  }, [sitesLoading, restoring, sites, router, createdSite, loading])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    // The button is off at the limit; this is the same rule for a submit that
+    // arrives another way (Enter in a field), so it never reaches the API. The
+    // form is NOT held while the plan check is still in flight: the server
+    // enforces the cap (pulse-backend CreateSiteHandler) and answers a submit
+    // it refuses with its own reason, so a hold would only trade a request
+    // known to fail for a button that is dead while a slow check answers.
+    if (atLimit) return
     setLoading(true)
 
     try {
       const site = await createSite(formData)
       toast.success('Site created successfully')
+      createdHereRef.current = true
       setCreatedSite(site)
-      mutateSites()
+      // Into the shared sites cache now, not "revalidate later": the sidebar
+      // switcher and the fleet read it, and the old mutateSites() was a
+      // global-cache mutate the provider never saw (lib/swr/sites.tsx).
+      void addSite(site)
       trackSiteCreatedFromDashboard()
       if (typeof window !== 'undefined') {
         sessionStorage.setItem(LAST_CREATED_SITE_KEY, JSON.stringify({ id: site.id }))
