@@ -73,6 +73,42 @@
   }
 
   /**
+   * The label of an activatable control.
+   *
+   * 🔴 NOT `textContent`. It concatenates every descendant text node with NO
+   * separator, so a card-shaped link — one that wraps a tag, a read time and a
+   * title — records as a single welded word. Measured on ciphera.net/blog,
+   * 11-09-2026, and it is what every card link on every site does:
+   *
+   *     text: "Privacy7 min readPulse Is Free for Open-Source Projects and \u2026"
+   *
+   * That is not a label. It is three labels with the spaces removed, and then cut
+   * at 60 characters. It was invisible while events rendered as property chips
+   * and became unmissable the moment the trail started reading them as sentences.
+   *
+   * 🔴 NOT `innerText` either, which WOULD insert the breaks — jsdom does not
+   * implement it, so the guard could not be tested. That is exactly the
+   * `isContentEditable` trap (see the note in `suppressed` below): a rule about
+   * data leaving a browser must be testable, and cosmetics is not a good enough
+   * reason to repeat it.
+   *
+   * So: walk the descendants and join their text with a space. `redact` collapses
+   * the whitespace runs afterwards, so the join never leaves a double space.
+   */
+  function controlLabel(el) {
+    var aria = el.getAttribute('aria-label');
+    if (aria) return aria;
+    var parts = [];
+    (function walk(node) {
+      for (var c = node.firstChild; c; c = c.nextSibling) {
+        if (c.nodeType === 3) parts.push(c.data);
+        else if (c.nodeType === 1) walk(c);
+      }
+    })(el);
+    return parts.join(' ');
+  }
+
+  /**
    * True when this element, or anything above it, must never be recorded.
    * Also the place the "nothing typed" rule is enforced — walking up means a
    * click on a label inside a form control is caught too.
@@ -123,7 +159,7 @@
             if ((u.protocol === 'http:' || u.protocol === 'https:') && u.hostname !== location.hostname) return;
           } catch (err) { /* unparseable: treat as an ordinary control */ }
         }
-        var label = cap(redact(hit.getAttribute('aria-label') || hit.textContent || ''));
+        var label = cap(redact(controlLabel(hit)));
         if (!label) return; // * an unlabelled control describes nothing
         var props = { text: label, tag: hit.tagName.toLowerCase(), page_path: pagePath() };
         if (hit.id) props.id = hit.id;

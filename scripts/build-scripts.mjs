@@ -50,7 +50,13 @@ const DIST_ROOT = join(ROOT, 'dist', 'scripts')
 
 // * Bump this to publish a new immutable version. Bytes for an existing version
 // * must never change — CI enforces immutability on publish.
-const SCRIPT_VERSION = '1.3.0'
+// 🔴 1.3.1 (11-09-2026): script.interactions.js changed bytes — a card link's
+// label was every descendant's text welded together with no separator. New bytes
+// ⇒ a new version, per the contract above, and the version is what an SRI pin
+// means. (Measured before bumping: /v1.3.0/* has never actually been published —
+// js.ciphera.net 404s it — so nothing was pinned against the old bytes. Recorded
+// in the round-7 log; the publish gap is its own change.)
+const SCRIPT_VERSION = '1.3.1'
 const BASE_URL = 'https://js.ciphera.net'
 
 // * script.interactions.js is the OPTIONAL companion: clicks, copies and form
