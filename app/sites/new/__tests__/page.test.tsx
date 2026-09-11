@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { useEffect } from 'react'
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { SWRConfig, useSWRConfig } from 'swr'
 import type { Site } from '@/lib/api/sites'
@@ -58,17 +59,19 @@ const mk = (id: string): Site =>
 // A sibling inside the same provider, standing in for the other useSites()
 // consumers mounted alongside /sites/new (the shell, the sidebar switcher):
 // its bound mutate lets a test change the shared list from "elsewhere".
-let mutateShared: ReturnType<typeof useSWRConfig>['mutate']
-function Elsewhere() {
-  mutateShared = useSWRConfig().mutate
+type SharedMutate = ReturnType<typeof useSWRConfig>['mutate']
+function Elsewhere({ onReady }: { onReady: (m: SharedMutate) => void }) {
+  const { mutate } = useSWRConfig()
+  useEffect(() => { onReady(mutate) }, [mutate, onReady])
   return null
 }
 
+let mutateShared: SharedMutate
 function renderPage() {
   const cache = new Map<string, unknown>()
   render(
     <SWRConfig value={{ provider: () => cache as never }}>
-      <Elsewhere />
+      <Elsewhere onReady={(m) => { mutateShared = m }} />
       <NewSitePage />
     </SWRConfig>,
   )
