@@ -2,7 +2,8 @@
 
 import type { Site } from '@/lib/api/sites'
 import { listSites } from '@/lib/api/sites'
-import { getOrganization } from '@/lib/api/organization'
+import { completeOnboarding, getOrganization } from '@/lib/api/organization'
+import { ApiError } from '@/lib/api/client'
 import { isSubjectToOnboardingWall } from '@/lib/auth/permissions'
 import { AUTHED_HOME } from '@/lib/routes'
 import { logger } from '@/lib/utils/logger'
@@ -35,7 +36,29 @@ export function onboardingDoneCacheKey(orgId: string): string {
 }
 
 /**
- * The step an unfinished workspace resumes at, from its sites alone.
+ * The step an unfinished workspace must resume at, or `null` when there is
+ * nothing left to resume.
+ *
+ * 🔴 THE MEANING CHANGED ON 11-09-2026, AND SO DID THE FLAG'S. It used to map a
+ * site whose `install_status` was `never_installed` to `/setup/install`, and a
+ * site that had reported an event to `/setup/plan`. Both were wrong in the same
+ * way: they gate the product on work that happens somewhere else.
+ *
+ * Installing means LEAVING — your CMS, your repo, your deploy pipeline, often a
+ * different machine and frequently a different person. A wall that resumes at
+ * `/setup/install` therefore resumes at a step that structurally cannot complete
+ * in the session, and "Skip for now" wrote nothing, so every attempt to leave
+ * recomputed the same answer. Measured on Pulse's first external signup
+ * (pomofocus.io, 10-09-2026): two seconds on `/sites`, pushed back to
+ * `/setup/install`, skipped again, gone. Reproduced live 11-09.
+ *
+ * 🔑 The wizard's job ends when the workspace can RECEIVE data. A site is that
+ * moment. Install and plan are tasks IN the product, carried on the dashboard —
+ * not gates in front of it. Design:
+ * `Pulse/docs/plans/11-09-2026-onboarding-wall-fix-design.md`.
+ *
+ * ⚠️ The site-less case is UNCHANGED and is the one the wall was built for: an
+ * org with no site genuinely has nothing to show and is sent to `/setup/site`.
  *
  * 🔴 ONE DEFINITION, TWO CALLERS: the onboarding wall in `lib/auth/context.tsx`
  * and the auth callback. A fixed `/setup/site` target invited a duplicate site
@@ -43,11 +66,43 @@ export function onboardingDoneCacheKey(orgId: string): string {
  * rather than assuming a beginning — and why the two callers must not each
  * carry their own copy of the mapping.
  */
-export function resumeTargetForSites(sites: Site[]): string {
-  if (sites.length === 0) return '/setup/site'
-  return sites.some((s) => s.install_status && s.install_status !== 'never_installed')
-    ? '/setup/plan'
-    : '/setup/install'
+export function resumeTargetForSites(sites: Site[]): string | null {
+  return sites.length === 0 ? '/setup/site' : null
+}
+
+/**
+ * Write `onboarding_completed_at`, and cache the answer where the wall reads it.
+ *
+ * 🔴 IT IS THE SAME ONE-WAY DOOR IT ALWAYS WAS — only its trigger moved. The
+ * write itself is idempotent and one-way in SQL: ciphera-id's CompleteOnboarding
+ * is `UPDATE ... WHERE id = $1 AND onboarding_completed_at IS NULL`, so a second
+ * caller cannot move a timestamp that is already set. That is what makes it safe
+ * for more than one place to fire it.
+ *
+ * ⚠️ NEVER BLOCK ON IT, AND NEVER CACHE A FAILURE. The callers use it to heal
+ * state forward while letting the person through; a transient 5xx must leave the
+ * cache empty so the next evaluation retries, and a permanent 403 (ciphera-id
+ * refuses a non-owner) must not be retried in a loop or mistaken for success.
+ * A non-owner is not walled in the first place, so the 403 costs them nothing.
+ */
+export async function markOnboardingComplete(orgId: string): Promise<void> {
+  try {
+    await completeOnboarding(orgId)
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 403) {
+      // Not ours to write (ciphera-id: owner only). Nothing to retry, and
+      // nothing to report — a member is exempt from the wall anyway.
+      return
+    }
+    // Transient. Leave the cache clear so the next evaluation asks again.
+    logger.error('Could not record onboarding completion', e)
+    return
+  }
+  try {
+    localStorage.setItem(onboardingDoneCacheKey(orgId), '1')
+  } catch {
+    // Cache write failed — the server answer is still correct, just not cached.
+  }
 }
 
 /** What the caller already knows about the account it just signed in. */
@@ -113,7 +168,15 @@ export async function resolveLandingTarget({
       return AUTHED_HOME
     }
     const sites = await listSites()
-    return resumeTargetForSites(sites)
+    const target = resumeTargetForSites(sites)
+    if (target) return target
+    // 🔑 A SITE EXISTS, SO ONBOARDING IS SATISFIED — the flag just predates the
+    // rule. Heal it forward (idempotent, one-way, never blocking) and land on
+    // the product. This is what carries every org created BEFORE 11-09-2026
+    // over: their flag is NULL and always would have been, because the only
+    // writer was a funnel that ends in a pricing decision.
+    void markOnboardingComplete(orgId)
+    return AUTHED_HOME
   } catch (e) {
     // The wizard target is a guess we are not entitled to make from here: an
     // org whose state we could not read might be finished. Hand back null and

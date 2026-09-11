@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSetup } from '@/lib/setup/context'
+import { useAuth } from '@/lib/auth/context'
+import { markOnboardingComplete } from '@/lib/auth/landing-target'
 import { preservePlanParams } from '@/lib/setup/utils'
 import { createSite, detectFramework, type Site } from '@/lib/api/sites'
 import { useSites, mutateSites } from '@/lib/swr/sites'
@@ -47,6 +49,7 @@ export default function SetupSitePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { setSite, completeStep } = useSetup()
+  const { user } = useAuth()
   const { sites, isLoading: sitesLoading } = useSites()
 
   const [siteDomain, setSiteDomain] = useState('')
@@ -67,6 +70,19 @@ export default function SetupSitePage() {
       setSite(site)
       completeStep('site')
       trackWelcomeSiteAdded()
+      // 🔴 ONBOARDING IS COMPLETE HERE, NOT AT /setup/done (11-09-2026). The
+      // workspace can now receive data, which is the whole thing the wall
+      // exists to wait for. Writing it at /setup/done meant the flag was set
+      // only by a funnel that ends in a PRICING decision, so a stranger who
+      // would not choose a plan and could not paste a script tag was held
+      // outside the product — measured on Pulse's first external signup.
+      //
+      // ⚠️ NOT AWAITED, AND NOT ALLOWED TO FAIL THE FORM. The site is created
+      // either way; the flag is a fast path the wall can also derive from the
+      // site list, so a failed write costs a round trip and nothing else. The
+      // one-way guard lives in ciphera-id's SQL, so a later /setup/done write
+      // cannot move the timestamp.
+      if (user?.org_id) void markOnboardingComplete(user.org_id)
       // Keep the shared sites cache honest — the resume view, the guard and
       // the context rehydration all read it.
       void mutateSites()
