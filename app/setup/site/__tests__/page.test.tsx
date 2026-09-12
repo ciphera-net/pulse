@@ -29,9 +29,10 @@ vi.mock('@/lib/setup/context', () => ({
 }))
 
 let sitesState: { sites: unknown[]; isLoading: boolean } = { sites: [], isLoading: false }
+const addSite = vi.fn().mockResolvedValue(undefined)
 vi.mock('@/lib/swr/sites', () => ({
   useSites: () => sitesState,
-  mutateSites: vi.fn().mockResolvedValue(undefined),
+  useSitesCache: () => ({ addSite }),
 }))
 
 const createSite = vi.fn()
@@ -70,6 +71,7 @@ beforeEach(() => {
   trackSkipped.mockClear()
   markOnboardingComplete.mockClear()
   createSite.mockReset()
+  addSite.mockClear()
   sitesState = { sites: [], isLoading: false }
 })
 
@@ -99,6 +101,24 @@ describe('SetupSitePage', () => {
     render(<SetupSitePage />)
     fireEvent.click(screen.getByText('Add another site'))
     expect(screen.queryByText('Pick up where you left off')).toBeNull()
+  })
+
+  // 🔴 11-09-2026: the created site goes INTO the shared sites cache, through
+  // the bound-mutate hook. The old `mutateSites()` was a global-cache mutate
+  // the app's provider never saw, so /sites showed "No sites yet" until a
+  // refresh. The hook is mocked here; its cache behaviour is pinned against a
+  // real SWR provider in lib/swr/__tests__/sites-cache.test.tsx.
+  it('writes the created site into the shared cache and moves on to install', async () => {
+    const created = site('example.com', '2026-09-11T20:00:00Z')
+    createSite.mockResolvedValueOnce(created)
+    render(<SetupSitePage />)
+    fireEvent.change(screen.getByLabelText('Domain'), { target: { value: 'https://www.example.com/pricing' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add site' }))
+    await waitFor(() => expect(addSite).toHaveBeenCalledWith(created))
+    expect(createSite).toHaveBeenCalledWith(expect.objectContaining({ domain: 'example.com', name: 'example.com' }))
+    expect(setSite).toHaveBeenCalledWith(created)
+    expect(completeStep).toHaveBeenCalledWith('site')
+    expect(mockPush).toHaveBeenCalledWith('/setup/install')
   })
 
   it('shows the create form for a fresh org', () => {

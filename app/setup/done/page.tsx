@@ -368,7 +368,13 @@ export default function SetupDonePage() {
           visitor count, and with a watch window that admits when it lapses. */}
       {site && <InstallStateBlock siteId={site.id} domain={site.domain} />}
 
-      <Button onClick={() => router.push('/')} className="w-full h-11 md:h-9">
+      {/* Land on the site that was just added (owner's ruling, 11-09-2026): a
+          fleet of one silent card sells nothing, while the site's own dashboard
+          shows the install state and the way to the snippet. The fleet stays
+          the fallback for a wizard with no site to name — a deep link with the
+          sites fetch still resolving — and its cache is written at site
+          creation, so it is correct whenever someone does go there. */}
+      <Button onClick={() => router.push(site ? `/sites/${site.id}` : '/')} className="w-full h-11 md:h-9">
         {SETUP_COPY.doneButton}
       </Button>
     </motion.div>

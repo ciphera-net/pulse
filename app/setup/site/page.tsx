@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth/context'
 import { markOnboardingComplete } from '@/lib/auth/landing-target'
 import { preservePlanParams } from '@/lib/setup/utils'
 import { createSite, detectFramework, type Site } from '@/lib/api/sites'
-import { useSites, mutateSites } from '@/lib/swr/sites'
+import { useSites, useSitesCache } from '@/lib/swr/sites'
 import { trackWelcomeSiteAdded } from '@/lib/welcomeAnalytics'
 import { siteCreateError } from '@/lib/api/siteErrors'
 import { Button, Input, Spinner } from '@ciphera-net/facet'
@@ -52,6 +52,7 @@ export default function SetupSitePage() {
   const { setSite, completeStep } = useSetup()
   const { user } = useAuth()
   const { sites, isLoading: sitesLoading } = useSites()
+  const { addSite } = useSitesCache()
 
   const [siteDomain, setSiteDomain] = useState('')
   const [loading, setLoading] = useState(false)
@@ -84,9 +85,14 @@ export default function SetupSitePage() {
       // one-way guard lives in ciphera-id's SQL, so a later /setup/done write
       // cannot move the timestamp.
       if (user?.org_id) void markOnboardingComplete(user.org_id)
-      // Keep the shared sites cache honest — the resume view, the guard and
-      // the context rehydration all read it.
-      void mutateSites()
+      // Put the new site into the shared sites cache NOW. The resume view,
+      // the guard, the context rehydration, the sidebar switcher and the
+      // fleet all read it, and the fleet mounts inside useSites' 30 s dedupe
+      // window when the wizard ends. This used to be `mutateSites()` — a
+      // global-cache mutate the app's provider never saw (lib/swr/sites.tsx),
+      // which is why a fresh account's /sites said "No sites yet" until a
+      // refresh (owner's walk, 11-09-2026).
+      void addSite(site)
       // Fire framework detection in the background — does not block navigation.
       detectFramework(domain).then(result => {
         if (result.framework) {
