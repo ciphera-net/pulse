@@ -64,8 +64,17 @@ export interface FrameworkSnippet {
    * arbitrary code would emit valid-looking nonsense in nuxt's config, so each
    * snippet declares its own style and places `PULSE_FLAGS` where its
    * attributes belong.
+   *
+   * Two placements. `attr` / `object` put the token ALONE on a line and write
+   * one flag per line at that indent (the block form the snippets used until
+   * 12-09-2026). `inline` / `inline-object` put ` PULSE_FLAGS` INSIDE the tag
+   * line, between two real attributes, and write the flags there separated by
+   * spaces — the one-line-tag shape the owner picked from the vendor survey
+   * (`docs/audits/12-09-2026-install-snippet-vendor-survey.md`). Both remove
+   * cleanly: the block form drops the line, the inline form drops the token
+   * and the one space before it.
    */
-  flagStyle?: 'attr' | 'object'
+  flagStyle?: 'attr' | 'object' | 'inline' | 'inline-object'
   /**
    * The OPTIONAL interaction-capture companion, written in THIS snippet's own
    * idiom, with its own `PULSE_FLAGS` placeholder for the per-kind opt-outs.
@@ -1307,6 +1316,34 @@ function writeFlag(f: string, indent: string, style: FrameworkSnippet['flagStyle
   return style === 'object' ? `${indent}'${f}': '',` : `${indent}${f}`
 }
 
+function isInline(style: FrameworkSnippet['flagStyle']): boolean {
+  return style === 'inline' || style === 'inline-object'
+}
+
+/**
+ * Replace the FIRST inline ` token` (with the one space before it) on the line
+ * that carries it: with ` flag flag …` in attribute syntax, ` 'flag': '', …` in
+ * object syntax, or with nothing — so a flagless tag is byte-identical to the
+ * template minus the token. Lines without the token are untouched.
+ */
+function fillInline(
+  lines: string[],
+  token: string,
+  flags: readonly string[],
+  style: FrameworkSnippet['flagStyle'],
+): string[] {
+  const at = lines.findIndex((l) => l.includes(token))
+  if (at === -1) return lines
+  const written = flags.length === 0
+    ? ''
+    : style === 'inline-object'
+      ? ' ' + flags.map((f) => `'${f}': '',`).join(' ')
+      : ' ' + flags.join(' ')
+  const out = [...lines]
+  out[at] = out[at].replace(` ${token}`, written)
+  return out
+}
+
 /**
  * Replace the single line holding `token` with `written`, or remove the line
  * when there is nothing to write. Returns the lines unchanged if the token is
@@ -1350,6 +1387,16 @@ export function renderSnippet(
   // Both flag slots — the core's and, if present, the companion's — in document
   // order, each taking the flags belonging to its own script.
   const coreAt = lines.findIndex((l) => l.includes(SNIPPET_FLAG_TOKEN))
+  if (isInline(snippet.flagStyle)) {
+    lines = fillInline(lines, SNIPPET_FLAG_TOKEN, flags, snippet.flagStyle)
+    lines = fillInline(
+      lines,
+      SNIPPET_FLAG_TOKEN,
+      coreAt !== -1 && interactionFlags ? interactionFlags : [],
+      snippet.flagStyle,
+    )
+    return lines.join('\n')
+  }
   lines = fillSlot(lines, SNIPPET_FLAG_TOKEN, (indent) =>
     flags.map((f) => writeFlag(f, indent, snippet.flagStyle)),
   )
@@ -1369,28 +1416,25 @@ export function renderSnippet(
 // `DOMAIN` is replaced with the real site domain when rendered.
 
 const SNIPPETS: Record<string, FrameworkSnippet> = {
+  // ── The six with framework wiring ────────────────────────────────────────
+  // Shape decided 12-09-2026 from the vendor survey (option C): the framework's
+  // own file, reduced to what places the tag, with the tag on ONE line — what
+  // Next.js's own `next/script` guide does. Attributes are not stacked, there is
+  // no TypeScript signature to copy, and the interaction companion is a second
+  // one-line tag. ` PULSE_FLAGS` sits between two real attributes; the companion
+  // block carries its own.
   nextjs: {
-    interactions: `        <Script
-          defer
-          PULSE_FLAGS
-          src="https://js.ciphera.net/script.interactions.js"
-          strategy="afterInteractive"
-        />`,
     label: 'app/layout.tsx',
+    flagStyle: 'inline',
+    interactions: `        <Script defer PULSE_FLAGS src="https://js.ciphera.net/script.interactions.js" strategy="afterInteractive" />`,
     code: `import Script from 'next/script'
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
         {children}
-        <Script
-          defer
-          data-domain="DOMAIN"
-          PULSE_FLAGS
-          src="https://js.ciphera.net/script.js"
-          strategy="afterInteractive"
-        />
+        <Script defer data-domain="DOMAIN" PULSE_FLAGS src="https://js.ciphera.net/script.js" strategy="afterInteractive" />
         PULSE_INTERACTIONS
       </body>
     </html>
@@ -1398,24 +1442,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }`,
   },
   nuxt: {
-    interactions: `        {
-          defer: true,
-          PULSE_FLAGS
-          src: 'https://js.ciphera.net/script.interactions.js',
-        },`,
     label: 'nuxt.config.ts',
     // The only snippet whose script is an object literal, not a tag.
-    flagStyle: 'object',
+    flagStyle: 'inline-object',
+    interactions: `        { defer: true, PULSE_FLAGS src: 'https://js.ciphera.net/script.interactions.js' },`,
     code: `export default defineNuxtConfig({
   app: {
     head: {
       script: [
-        {
-          defer: true,
-          'data-domain': 'DOMAIN',
-          PULSE_FLAGS
-          src: 'https://js.ciphera.net/script.js',
-        },
+        { defer: true, 'data-domain': 'DOMAIN', PULSE_FLAGS src: 'https://js.ciphera.net/script.js' },
         PULSE_INTERACTIONS
       ],
     },
@@ -1423,73 +1458,45 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 })`,
   },
   astro: {
-    interactions: `    <script
-      defer
-      PULSE_FLAGS
-      src="https://js.ciphera.net/script.interactions.js"
-    ></script>`,
     label: 'src/layouts/Layout.astro',
+    flagStyle: 'inline',
+    interactions: `    <script defer PULSE_FLAGS src="https://js.ciphera.net/script.interactions.js"></script>`,
     code: `---
-// Your frontmatter
+// Your layout's frontmatter
 ---
 <html>
   <head>
-    <script
-      defer
-      data-domain="DOMAIN"
-      PULSE_FLAGS
-      src="https://js.ciphera.net/script.js"
-    ></script>
+    <script defer data-domain="DOMAIN" PULSE_FLAGS src="https://js.ciphera.net/script.js"></script>
     PULSE_INTERACTIONS
   </head>
-  <body>
-    <slot />
-  </body>
+  <body><slot /></body>
 </html>`,
   },
   svelte: {
-    interactions: `    <script
-      defer
-      PULSE_FLAGS
-      src="https://js.ciphera.net/script.interactions.js"
-    ></script>`,
     label: 'src/app.html',
+    flagStyle: 'inline',
+    interactions: `    <script defer PULSE_FLAGS src="https://js.ciphera.net/script.interactions.js"></script>`,
     code: `<!doctype html>
 <html>
   <head>
-    <script
-      defer
-      data-domain="DOMAIN"
-      PULSE_FLAGS
-      src="https://js.ciphera.net/script.js"
-    ></script>
+    <script defer data-domain="DOMAIN" PULSE_FLAGS src="https://js.ciphera.net/script.js"></script>
     PULSE_INTERACTIONS
     %sveltekit.head%
   </head>
-  <body>
-    %sveltekit.body%
-  </body>
+  <body>%sveltekit.body%</body>
 </html>`,
   },
   remix: {
-    interactions: `        <script
-          defer
-          PULSE_FLAGS
-          src="https://js.ciphera.net/script.interactions.js"
-        />`,
     label: 'app/root.tsx',
+    flagStyle: 'inline',
+    interactions: `        <script defer PULSE_FLAGS src="https://js.ciphera.net/script.interactions.js" />`,
     code: `export default function App() {
   return (
     <html>
       <head>
         <Meta />
         <Links />
-        <script
-          defer
-          data-domain="DOMAIN"
-          PULSE_FLAGS
-          src="https://js.ciphera.net/script.js"
-        />
+        <script defer data-domain="DOMAIN" PULSE_FLAGS src="https://js.ciphera.net/script.js" />
         PULSE_INTERACTIONS
       </head>
       <body>
@@ -1501,22 +1508,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }`,
   },
   gatsby: {
-    interactions: `    <script
-      key="pulse-interactions"
-      defer
-      PULSE_FLAGS
-      src="https://js.ciphera.net/script.interactions.js"
-    />,`,
     label: 'gatsby-ssr.js',
+    flagStyle: 'inline',
+    // Its OWN React key — both scripts are elements of one array.
+    interactions: `    <script key="pulse-interactions" defer PULSE_FLAGS src="https://js.ciphera.net/script.interactions.js" />,`,
     code: `export const onRenderBody = ({ setHeadComponents }) => {
   setHeadComponents([
-    <script
-      key="pulse"
-      defer
-      data-domain="DOMAIN"
-      PULSE_FLAGS
-      src="https://js.ciphera.net/script.js"
-    />,
+    <script key="pulse" defer data-domain="DOMAIN" PULSE_FLAGS src="https://js.ciphera.net/script.js" />,
     PULSE_INTERACTIONS
   ])
 }`,
