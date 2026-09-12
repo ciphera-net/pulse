@@ -44,16 +44,32 @@ describe('the flag placeholder is structural, not a convention', () => {
   })
 
   /**
-   * 🔴 ALONE ON ITS LINE. `renderSnippet` removes the whole line so a flagless
-   * snippet stays byte-identical — so a token sharing a line with real code
-   * would silently delete that code. Found by a test that put it inline.
+   * 🔴 THE PLACEMENT MATCHES THE STYLE. Block styles (`attr`/`object`) remove
+   * the whole line, so their token must be ALONE on it or real code goes with
+   * it. Inline styles remove ` PULSE_FLAGS` (token plus the one space before
+   * it), so their token must sit between two attributes with a single space on
+   * each side — a flagless tag then reads exactly as if the token were never
+   * there. Since 12-09-2026 all six shipped snippets are inline (one-line tags).
    */
-  it('puts the placeholder alone on its line, in every snippet', () => {
+  it('places the placeholder the way its style removes it, in every snippet', () => {
     for (const i of integrations.filter((x) => x.snippet?.code)) {
+      const inline = i.snippet!.flagStyle === 'inline' || i.snippet!.flagStyle === 'inline-object'
       const bad = i.snippet!.code!
         .split('\n')
-        .filter((l) => l.includes(SNIPPET_FLAG_TOKEN) && l.trim() !== SNIPPET_FLAG_TOKEN)
-      expect(bad, `${i.id}: the placeholder shares a line with code: ${bad.join(' | ')}`).toEqual([])
+        .filter((l) => l.includes(SNIPPET_FLAG_TOKEN))
+        .filter((l) => (inline ? !l.includes(` ${SNIPPET_FLAG_TOKEN} `) : l.trim() !== SNIPPET_FLAG_TOKEN))
+      expect(bad, `${i.id}: misplaced placeholder: ${bad.join(' | ')}`).toEqual([])
+    }
+  })
+
+  it('ships every framework snippet with a one-line tag (inline style)', () => {
+    for (const id of FRAMEWORKS_WITH_CODE) {
+      const s = getIntegration(id)!.snippet!
+      expect(s.flagStyle, `${id}`).toMatch(/^inline/)
+      // The line that carries the core tag holds the domain, the token and the src.
+      const tagLine = s.code!.split('\n').find((l) => l.includes('data-domain'))!
+      expect(tagLine).toContain(SNIPPET_FLAG_TOKEN)
+      expect(tagLine).toContain('script.js')
     }
   })
 
@@ -100,12 +116,20 @@ describe('renderSnippet', () => {
     expect(out).not.toMatch(/^\s*data-no-outbound\s*$/m)
   })
 
-  it('indents the flags to the placeholder’s own column', () => {
-    // nextjs sits 10 deep inside the JSX; astro 6 inside the HTML.
-    const next = renderSnippet(getIntegration('nextjs')!.snippet!, 'example.com', ['data-no-scroll'])
-    expect(next).toContain('\n          data-no-scroll\n')
+  it('writes the flags inline, between the attributes, on the tag line', () => {
+    const next = renderSnippet(getIntegration('nextjs')!.snippet!, 'example.com', ['data-no-scroll', 'data-no-outbound'])
+    expect(next).toContain('data-domain="example.com" data-no-scroll data-no-outbound src="https://js.ciphera.net/script.js"')
     const astro = renderSnippet(getIntegration('astro')!.snippet!, 'example.com', ['data-no-scroll'])
-    expect(astro).toContain('\n      data-no-scroll\n')
+    expect(astro).toContain('<script defer data-domain="example.com" data-no-scroll src="https://js.ciphera.net/script.js"></script>')
+    const nuxt = renderSnippet(getIntegration('nuxt')!.snippet!, 'example.com', ['data-no-scroll'])
+    expect(nuxt).toContain("'data-domain': 'example.com', 'data-no-scroll': '', src: 'https://js.ciphera.net/script.js' }")
+  })
+
+  it('leaves no double space where a flagless token was', () => {
+    for (const id of FRAMEWORKS_WITH_CODE) {
+      const out = renderSnippet(getIntegration(id)!.snippet!, 'example.com', [])
+      expect(out, `${id}`).not.toMatch(/\S  \S/)
+    }
   })
 
   it('keeps the snippet otherwise byte-identical', () => {
@@ -116,7 +140,9 @@ describe('renderSnippet', () => {
       // Both placeholder lines vanish: no flags, and no companion.
       const expected = code
         .split('\n')
-        .filter((l) => !l.includes(SNIPPET_FLAG_TOKEN) && !l.includes(SNIPPET_INTERACTIONS_TOKEN))
+        .filter((l) => !l.includes(SNIPPET_INTERACTIONS_TOKEN))
+        .filter((l) => !(l.trim() === SNIPPET_FLAG_TOKEN)) // a block-style token line
+        .map((l) => l.replace(` ${SNIPPET_FLAG_TOKEN}`, '')) // an inline token
         .join('\n')
         .replace(/DOMAIN/g, 'example.com')
       expect(renderSnippet(getIntegration(id)!.snippet!, 'example.com', [])).toBe(expected)

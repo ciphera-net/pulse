@@ -104,8 +104,7 @@ describe('the companion slot', () => {
 
   it('writes nuxt’s companion as an OBJECT in the script array', () => {
     const out = render('nuxt', ['data-no-copy'])
-    expect(out).toContain("src: 'https://js.ciphera.net/script.interactions.js',")
-    expect(out).toContain("'data-no-copy': '',")
+    expect(out).toContain("{ defer: true, 'data-no-copy': '', src: 'https://js.ciphera.net/script.interactions.js' },")
     // two objects in the array, each with its own defer
     expect(out.split('defer: true,').length - 1).toBe(2)
   })
