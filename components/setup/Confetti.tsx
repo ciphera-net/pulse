@@ -45,6 +45,23 @@ const PALETTE = ['#FD5E0F', '#FD5E0F', '#E54E00', '#CC4C0C', '#f4f4f4', '#8a8a8a
 const PIECES = 140
 const DURATION_S = 2.2
 const FADE_FROM_S = 1.5
+/**
+ * Wall-clock → burst-time ratio. The burst was tuned at 1.0 and the owner asked
+ * for "a bit faster" (12-09-2026, option A): 1.3× ends it in ~1.7 s instead of
+ * 2.2 s, fade included. Applied in the frame loop, so `stepPieces` and its
+ * tests keep speaking in burst seconds.
+ */
+const SPEED = 1.3
+/**
+ * Launch points as fractions of the viewport (owner's pick A, 12-09-2026):
+ * either side of the icon frame at heading height, so the burst visibly
+ * ERUPTS at the thing being celebrated and climbs over the rail before it
+ * falls. The first version launched from 18 % / 82 % a third of the way down,
+ * which reads as pieces appearing from the wings — the start went unseen.
+ */
+const ORIGIN_X_LEFT = 0.36
+const ORIGIN_X_RIGHT = 0.64
+const ORIGIN_Y = 0.47
 
 // The motion constants were tuned by eye at 60 Hz, so a "frame" below is one
 // sixtieth of a second of ELAPSED TIME — never a frame the browser delivered.
@@ -70,19 +87,19 @@ export function prefersReducedMotion(): boolean {
 
 /**
  * Deterministic given `random` so tests can seed it; production passes
- * Math.random. Origins are at 18% and 82% of the width, a third of the way down,
- * i.e. either side of a centred heading.
+ * Math.random. Origins are either side of the icon frame at heading height
+ * (see ORIGIN_*), and the launch is strong enough to clear the rail above.
  */
 export function makePieces(width: number, height: number, random: () => number = Math.random): Piece[] {
   const out: Piece[] = []
   for (let i = 0; i < PIECES; i++) {
     const fromLeft = i % 2 === 0
-    const x = fromLeft ? width * 0.18 : width * 0.82
-    const y = height * 0.32
+    const x = fromLeft ? width * ORIGIN_X_LEFT : width * ORIGIN_X_RIGHT
+    const y = height * ORIGIN_Y
     // The order of the `random()` calls is part of the contract with the
     // seeded tests — keep it.
     const vx = (fromLeft ? 1 : -1) * (3 + random() * 7) + (random() - 0.5) * 4
-    const vy = -(6 + random() * 9)
+    const vy = -(9 + random() * 10)
     const w = 4 + random() * 5
     const h = 7 + random() * 7
     const r = random() * Math.PI
@@ -171,11 +188,11 @@ export default function Confetti({ onDone }: { onDone?: () => void } = {}) {
     let start: number | null = null
     let finished = false
 
-    // Each frame places the pieces at the wall-clock elapsed time and draws
-    // them; the frame count plays no part (see stepPieces).
+    // Each frame places the pieces at the elapsed BURST time (wall-clock ×
+    // SPEED) and draws them; the frame count plays no part (see stepPieces).
     const frame = (t: number) => {
       if (start === null) start = t
-      const elapsed = (t - start) / 1000
+      const elapsed = ((t - start) / 1000) * SPEED
       ctx.clearRect(0, 0, W, H)
       stepPieces(pieces, elapsed)
       for (const p of pieces) {

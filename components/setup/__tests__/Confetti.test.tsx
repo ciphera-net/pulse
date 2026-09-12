@@ -26,10 +26,11 @@ describe('makePieces', () => {
       expect(p.h).toBeGreaterThanOrEqual(7)
       expect(p.h).toBeLessThanOrEqual(14)
     }
-    // Two origins, either side of the heading, a third of the way down.
+    // Two origins, either side of the icon frame at heading height (owner's
+    // pick A, 12-09-2026 — the burst has to be SEEN starting).
     const xs = new Set(pieces.map((p) => Math.round(p.x)))
-    expect(xs).toEqual(new Set([Math.round(1440 * 0.18), Math.round(1440 * 0.82)]))
-    expect(new Set(pieces.map((p) => p.y))).toEqual(new Set([320]))
+    expect(xs).toEqual(new Set([Math.round(1440 * 0.36), Math.round(1440 * 0.64)]))
+    expect(new Set(pieces.map((p) => p.y))).toEqual(new Set([470]))
   })
 
   it('uses the brand scale with two neutrals — orange with depth, not one flat hue', () => {
@@ -40,10 +41,10 @@ describe('makePieces', () => {
     expect(orange.length / 140).toBeCloseTo(4 / 6, 1)
   })
 
-  it('launches pieces upward and outward from their own side', () => {
+  it('launches pieces upward and outward from their own side, hard enough to clear the rail', () => {
     const pieces = makePieces(1000, 1000, seeded())
     for (const p of pieces) {
-      expect(p.vy).toBeLessThan(0) // up
+      expect(p.vy).toBeLessThan(-9) // up, and at least 9 px/frame: from heading height it must rise over the rail
       // Left-origin pieces mostly head right, right-origin pieces mostly left.
       if (p.x < 500) expect(p.vx).toBeGreaterThan(-3)
       else expect(p.vx).toBeLessThan(3)
@@ -189,6 +190,19 @@ describe('<Confetti />', () => {
     expect(canvas.parentElement).toBe(document.body)
     expect(container.querySelector('[data-testid="setup-confetti"]')).toBeNull()
     expect(rafSpy).toHaveBeenCalledTimes(1) // and it still fires, from the portalled canvas
+  })
+
+  it('runs 1.3× faster than burst time: the burst is over ~1.7 s after the first frame', () => {
+    window.matchMedia = vi.fn().mockReturnValue({ matches: false }) as unknown as typeof window.matchMedia
+    let frame: FrameRequestCallback | null = null
+    rafSpy.mockImplementation((cb: FrameRequestCallback) => { frame = cb; return 1 })
+    const onDone = vi.fn()
+    render(<Confetti onDone={onDone} />)
+    frame!(0)          // anchors the clock
+    frame!(1600)       // 1.6 s wall = 2.08 s burst time: still running
+    expect(onDone).not.toHaveBeenCalled()
+    frame!(1700)       // 1.7 s wall = 2.21 s burst time ≥ 2.2 s: finished
+    expect(onDone).toHaveBeenCalledTimes(1)
   })
 
   it('fires once per mount, not once per render', () => {
