@@ -7,6 +7,7 @@ import { type Site } from '@/lib/api/sites'
 import { useCan } from '@/lib/auth/permissions'
 import { useSites, FaviconPreloader } from '@/lib/swr/sites'
 import { cdnUrl } from '@/lib/cdn'
+import { DOCS_ORIGIN } from '@/lib/docs'
 import { useSidebar } from '@/lib/sidebar-context'
 import { SiteFavicon } from '@/components/sites/SiteFavicon'
 import { Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, MagnifyingGlass, UsersThree as UsersThreeIcon } from '@phosphor-icons/react'
@@ -458,7 +459,7 @@ function SidebarContent({
               </div>
             )}
             <div className="space-y-0.5">
-              <HomeNavLink href="https://help.ciphera.net/docs/pulse" icon={BookOpenIcon} label="Documentation" collapsed={c} onClick={isMobile ? onMobileClose : undefined} external />
+              <HomeNavLink href={DOCS_ORIGIN} icon={BookOpenIcon} label="Documentation" collapsed={c} onClick={isMobile ? onMobileClose : undefined} external />
             </div>
           </div>
         </SidebarNav>

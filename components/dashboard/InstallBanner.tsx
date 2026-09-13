@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useCan } from '@/lib/auth/permissions'
 import { useSites } from '@/lib/swr/sites'
+import { docsUrl } from '@/lib/docs'
 
 // ---------------------------------------------------------------------------
 // The dashboard's install-health banner (design round 24-08-2026, B1).
@@ -28,8 +29,8 @@ import { useSites } from '@/lib/swr/sites'
 // thing the same way.
 // ---------------------------------------------------------------------------
 
-const DOCS_HREF = 'https://help.ciphera.net/docs/pulse/script-installation'
-const TROUBLESHOOTING_HREF = 'https://help.ciphera.net/docs/pulse/troubleshooting'
+const DOCS_HREF = docsUrl('script-installation')
+const TROUBLESHOOTING_HREF = docsUrl('troubleshooting')
 
 export default function InstallBanner({ siteId }: { siteId: string }) {
   const { sites } = useSites()

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { GithubIcon, ArrowUpRightIcon } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
+import { DOCS_ORIGIN } from '@/lib/docs'
 import { Watermark } from '@/components/marketing/system/Watermark'
 
 interface FooterProps {
@@ -50,7 +51,7 @@ const footerColumns: { heading: string; links: FooterLink[] }[] = [
       { name: 'FAQ', href: '/faq' },
       { name: 'UTM builder', href: '/tools/utm-builder' },
       { name: 'Cookie-banner calculator', href: '/tools/cookie-banner-loss-calculator' },
-      { name: 'Documentation', href: 'https://help.ciphera.net/docs/pulse', external: true },
+      { name: 'Documentation', href: DOCS_ORIGIN, external: true },
       { name: 'About', href: '/about' },
     ],
   },
