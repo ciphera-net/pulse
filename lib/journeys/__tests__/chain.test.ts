@@ -6,7 +6,6 @@ import {
   chainThrough,
   chainThroughLink,
   chainThroughNode,
-  exitCount,
   nodeId,
   linkKey,
   pathOfNode,
@@ -214,21 +213,3 @@ describe('spineThrough', () => {
   })
 })
 
-describe('exitCount', () => {
-  it('is the sessions on the row minus its onward hops', () => {
-    const transitions = [
-      t(0, '/', '/login', 10),
-      t(1, '/login', '/app', 6),
-    ]
-    const columns = aggregateJourney(transitions, { depth: 4, maxPagesPerStep: 20 })
-    // 10 landed on /login at step 1, 6 moved on → 4 exited
-    expect(exitCount(transitions, 1, '/login', columns)).toBe(4)
-  })
-
-  it('floors at zero and returns 0 for unknown rows', () => {
-    const transitions = [t(0, '/', '/login', 3), t(1, '/login', '/app', 5)]
-    const columns = aggregateJourney(transitions, { depth: 4, maxPagesPerStep: 20 })
-    expect(exitCount(transitions, 1, '/login', columns)).toBe(0)
-    expect(exitCount(transitions, 1, '/ghost', columns)).toBe(0)
-  })
-})

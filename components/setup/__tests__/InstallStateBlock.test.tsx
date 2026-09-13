@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act, fireEvent } from '@testing-library/react'
+import { docsUrl } from '@/lib/docs'
 
 // ---------------------------------------------------------------------------
 // The state the old code could not reach.
@@ -65,7 +66,7 @@ describe('InstallStateBlock', () => {
     expect(screen.getByText(/Nothing from example\.com in the 90 seconds we watched/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Check again' })).toBeTruthy()
     const guide = screen.getByRole('link', { name: 'Troubleshooting guide' })
-    expect(guide.getAttribute('href')).toBe('https://help.ciphera.net/docs/pulse/troubleshooting')
+    expect(guide.getAttribute('href')).toBe(docsUrl('troubleshooting'))
   })
 
   it('re-opens the watch window when the reader checks again', async () => {

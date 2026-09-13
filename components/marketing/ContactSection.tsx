@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { Button, ArrowRightIcon, Captcha } from '@ciphera-net/facet'
 import { env } from '@/lib/env'
+import { DOCS_ORIGIN } from '@/lib/docs'
 import Select from '@/components/ui/select'
 import { Eyebrow } from '@/components/marketing/system/Eyebrow'
 import { HairlineGrid } from '@/components/marketing/system/HairlineGrid'
@@ -29,8 +30,8 @@ const CHANNELS: { label: string; value: string; href: string; note: string; exte
   },
   {
     label: 'Support & docs',
-    value: 'help.ciphera.net',
-    href: 'https://help.ciphera.net/docs/pulse',
+    value: new URL(DOCS_ORIGIN).host,
+    href: DOCS_ORIGIN,
     note: 'Guides and answers for every Pulse feature.',
     external: true,
   },

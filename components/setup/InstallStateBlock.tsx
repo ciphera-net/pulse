@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useInstallStatus } from '@/lib/swr/dashboard'
+import { docsUrl } from '@/lib/docs'
 
 // ---------------------------------------------------------------------------
 // The first-event state, for the setup wizard (design round 24-08-2026,
@@ -29,8 +30,6 @@ import { useInstallStatus } from '@/lib/swr/dashboard'
 
 /** How long we claim to be watching before the copy admits we stopped. */
 const WATCH_WINDOW_MS = 90_000
-
-const TROUBLESHOOTING_HREF = 'https://help.ciphera.net/docs/pulse/troubleshooting'
 
 interface InstallStateBlockProps {
   siteId: string
@@ -132,7 +131,7 @@ export default function InstallStateBlock({
               Check again
             </button>
             <Link
-              href={TROUBLESHOOTING_HREF}
+              href={docsUrl('troubleshooting')}
               target="_blank"
               rel="noreferrer"
               className="text-neutral-300 transition-colors duration-fast ease-apple hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"

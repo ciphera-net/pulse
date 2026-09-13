@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { DIMENSION_TERM, METRIC_TERMS, TERMS, UPTIME_TERM, docsHref, visitorsTerm, visitorIdentityTerm } from '@/lib/dashboard/terms'
 import { METRIC_TYPES } from '@/lib/dashboard/metrics'
+import { DOCS_ORIGIN } from '@/lib/docs'
 
 // ---------------------------------------------------------------------------
 // The registry gate, enforced (metric info layer, 22-08-2026).
@@ -119,9 +120,7 @@ describe('terms registry', () => {
    * visitorIdentityTerm() names this site's window.
    */
   it('the static visitor-identity sentences assert no window; visitorIdentityTerm() specialises', () => {
-    for (const key of ['visitor_identity', 'visitor_month_reset'] as const) {
-      expect(TERMS[key].definition, key).not.toMatch(/monthly key|each calendar month|next month/)
-    }
+    expect(TERMS.visitor_identity.definition).not.toMatch(/monthly key|each calendar month|next month/)
     const base = TERMS.visitor_identity
     expect(visitorIdentityTerm(undefined)).toBe(base)
     for (const days of [-1, 0, 1, 7, 30] as const) {
@@ -160,11 +159,65 @@ describe('terms registry', () => {
       if (term.docs) {
         // page#anchor into the Pulse docs — the pages that already existed.
         expect(term.docs).toMatch(/^[a-z-]+#[a-z0-9-]+$/)
-        expect(href).toBe(`https://help.ciphera.net/docs/pulse/${term.docs}`)
+        // The host moved to docs.ciphera.net on 11-09-2026; the registry builds
+        // from the one constant, so this cannot pin a host the app no longer uses.
+        expect(href).toBe(`${DOCS_ORIGIN}/${term.docs}`)
       } else {
         expect(href).toBeUndefined()
       }
     }
+  })
+
+  // 🔴 A TERM NOBODY RENDERS IS DEBRIS, AND DEBRIS CARRIES A DOCS LINK.
+  //
+  // `journey_exit` stayed in this registry for six days after commit 41ebe5ae
+  // ("Simpler Journeys", 07-09-2026) deleted ColumnJourney.tsx — its only
+  // consumer — together with a `docs:` anchor the docs repo then had to carve
+  // out as its one known exception. `visitor_month_reset` sat here longer,
+  // with a comment admitting no surface referenced it. Nothing in this file
+  // looked in that direction: every test asked "does the glyph have a
+  // sentence?", none asked "does the sentence have a glyph?".
+  //
+  // Reachability has four shapes, and only the first is greppable by intent:
+  // a literal at the call site (`<TermInfoTip term="peak_hours" />`,
+  // `TERMS['search_new_queries_chip']`); dot access (`TERMS.journey_other_bucket`
+  // in SankeyJourney, `TERMS.journey_entry_point` on the journeys page); a
+  // card's TAB ID that equals the key and reaches the registry through
+  // DimensionInfoTip's identity fallback (`'browsers'` in TechSpecs' Tab
+  // union); and a VALUE in DIMENSION_TERM / UPTIME_TERM. The first three are
+  // "the key appears as a quoted string or a `TERMS.` property somewhere outside
+  // the registry", so that is the rule — coarse on purpose: a key no source file
+  // names cannot be rendered by anything, and a key some file quotes for another
+  // reason costs nothing but a false pass. Proved by mutation: a planted
+  // `zz_orphan_probe` is the one thing it lists.
+  it('every registry term is rendered by something', () => {
+    const literal = /["'`]([a-z][a-z0-9_]*)["'`]|\bTERMS\.([a-z][a-z0-9_]*)\b/g
+    const referenced = new Set<string>()
+    const skip = new Set([
+      path.join(ROOT, 'lib/dashboard/terms.ts'),
+      path.join(ROOT, 'lib/dashboard/__tests__/terms.test.ts'),
+    ])
+    const walk = (dir: string) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name)
+        if (entry.isDirectory()) {
+          if (!['node_modules', '.next', '.git', 'tests'].includes(entry.name)) walk(full)
+        } else if (/\.(tsx?|mdx?)$/.test(entry.name) && !skip.has(full)) {
+          const src = fs.readFileSync(full, 'utf8')
+          for (const m of src.matchAll(literal)) referenced.add(m[1] ?? m[2])
+        }
+      }
+    }
+    for (const dir of ['app', 'components', 'lib']) walk(path.join(ROOT, dir))
+    for (const v of [...Object.values(DIMENSION_TERM), ...Object.values(UPTIME_TERM)]) referenced.add(v)
+    // The metric rail resolves METRIC_TERMS by MetricType; its keys are asserted above.
+    expect(referenced.size, 'the literal scan found nothing — the regex is broken, not the registry').toBeGreaterThan(40)
+
+    const orphans = Object.keys(TERMS).filter((k) => !referenced.has(k))
+    expect(
+      orphans,
+      'registry terms no component renders — delete them (and their docs anchor) rather than keep a sentence nobody can open',
+    ).toEqual([])
   })
 
   it('a card glyph explains the CARD, never the rail metric', () => {
