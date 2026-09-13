@@ -7,6 +7,7 @@ import type { Site, SiteOverview } from '@/lib/api/sites'
 import { SiteFavicon } from '@/components/sites/SiteFavicon'
 import { FleetSparkline } from '@/components/sites/FleetSparkline'
 import { usePagePreview } from '@/lib/swr/dashboard'
+import { DOCS_ORIGIN } from '@/lib/docs'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 import { formatNumber } from '@/lib/utils/format'
 import { useCan } from '@/lib/auth/permissions'
@@ -239,7 +240,7 @@ export function FleetCard({ site, overview, overviewError }: FleetCardProps) {
               </Link>
             )}
             <Link
-              href="https://help.ciphera.net/docs/pulse"
+              href={DOCS_ORIGIN}
               target="_blank"
               onClick={(e) => e.stopPropagation()}
               className="text-neutral-300 hover:text-white hover:underline"

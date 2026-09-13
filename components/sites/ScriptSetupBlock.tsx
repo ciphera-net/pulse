@@ -34,6 +34,7 @@ import { TierBadge } from '@/components/integrations/TierBadge'
 import { PanelRow, PanelRows } from '@/components/settings/panels'
 import { useInstallStatus } from '@/lib/swr/dashboard'
 import { setSiteFramework } from '@/lib/api/sites'
+import { docsUrl } from '@/lib/docs'
 import scriptVersions from '@/public/script-versions.json'
 
 // * Immutable versioned manifest — SRI is pinned ONLY against these URLs, never
@@ -354,7 +355,7 @@ export default function ScriptSetupBlock({
   const isPlugin = selected?.installMethod === 'plugin'
   const needsCaveat =
     selected && (selected.supportTier === 'plan-gated' || selected.supportTier === 'special-handling')
-  const docsUrl = selected ? integrationDocsUrl(selected) : null
+  const integrationGuideUrl = selected ? integrationDocsUrl(selected) : null
 
   return (
     <div className={className}>
@@ -600,7 +601,7 @@ export default function ScriptSetupBlock({
         </div>
         <code className="block text-[11px] font-mono text-muted-foreground break-words">{CSP_DIRECTIVES}</code>
         <a
-          href="https://help.ciphera.net/docs/pulse/csp"
+          href={docsUrl('csp')}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 mt-2 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors ease-apple"
@@ -671,9 +672,9 @@ export default function ScriptSetupBlock({
       </div>
 
       {/* Per-platform guide link (honest docs routing from docsSlug) */}
-      {selected && docsUrl && (
+      {selected && integrationGuideUrl && (
         <a
-          href={docsUrl}
+          href={integrationGuideUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 mt-4 text-sm font-medium text-primary hover:text-primary/80 transition-colors ease-apple"
@@ -732,7 +733,7 @@ function InstallVerify({ siteId, domain, compact }: { siteId: string; domain: st
         <>
           <span aria-hidden="true" className="mx-1.5 text-neutral-600">·</span>
           <a
-            href="https://help.ciphera.net/docs/pulse/troubleshooting"
+            href={docsUrl('troubleshooting')}
             target="_blank"
             rel="noopener noreferrer"
             className="text-neutral-300 underline-offset-2 transition-colors duration-fast ease-apple hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"

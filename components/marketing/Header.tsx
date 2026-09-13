@@ -3,6 +3,7 @@ import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { cdnUrl } from '@/lib/cdn'
+import { DOCS_ORIGIN } from '@/lib/docs'
 import { Button } from '@ciphera-net/facet'
 import { cn } from '@/lib/utils'
 import { initiateOAuthFlow, initiateSignupFlow } from '@/lib/api/oauth'
@@ -48,8 +49,6 @@ type LinkItem = {
   external?: boolean
 }
 
-const DOCS_URL = 'https://help.ciphera.net/docs/pulse'
-
 // Product dropdown — the same icon + description ListItem pattern as the
 // ciphera.net header, with Pulse's own nav content.
 const productLinks: LinkItem[] = [
@@ -91,7 +90,7 @@ const guidesLinks: LinkItem[] = [
 ]
 
 const resourcesLinks: LinkItem[] = [
-  { title: 'Documentation', href: DOCS_URL, icon: BookOpen, description: 'Setup, script & API guides', external: true },
+  { title: 'Documentation', href: DOCS_ORIGIN, icon: BookOpen, description: 'Setup, script & API guides', external: true },
   { title: 'Installation', href: '/installation', icon: Wrench, description: 'One script tag, any stack' },
   { title: 'FAQ', href: '/faq', icon: Question, description: 'Common questions answered' },
   { title: 'UTM builder', href: '/tools/utm-builder', icon: LinkSimple, description: 'Build campaign URLs' },

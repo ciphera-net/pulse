@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { docsUrl } from '@/lib/docs'
 
 // ---------------------------------------------------------------------------
 // The dashboard said one sentence for three different situations: never
@@ -75,8 +76,8 @@ describe('InstallBanner', () => {
     expect(screen.getByText('Waiting for the first event')).toBeTruthy()
     expect(screen.getByText(/Install the tracking script on example\.com/)).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Set up →' })).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Read the docs' }).getAttribute('href')).toContain(
-      '/docs/pulse/script-installation',
+    expect(screen.getByRole('link', { name: 'Read the docs' }).getAttribute('href')).toBe(
+      docsUrl('script-installation'),
     )
   })
 
@@ -86,8 +87,8 @@ describe('InstallBanner', () => {
     expect(screen.getByText('No recent events')).toBeTruthy()
     // The never-installed sentence must not be reused: this site DID report.
     expect(screen.queryByText(/Install the tracking script/)).toBeNull()
-    expect(screen.getByRole('link', { name: 'Troubleshooting guide' }).getAttribute('href')).toContain(
-      '/docs/pulse/troubleshooting',
+    expect(screen.getByRole('link', { name: 'Troubleshooting guide' }).getAttribute('href')).toBe(
+      docsUrl('troubleshooting'),
     )
   })
 

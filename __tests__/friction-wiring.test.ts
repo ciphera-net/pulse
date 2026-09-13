@@ -143,7 +143,9 @@ describe('install CTAs point at the real snippet', () => {
     // Its label is "Read the docs" over copy about pulse.track('event').
     // /settings/site/general shows the snippet and says nothing about events.
     const src = stripComments(read('components/dashboard/GoalStats.tsx'))
-    expect(src).toMatch(/help\.ciphera\.net\/docs\/pulse\/custom-events/)
+    // The host is lib/docs.ts's business; what this pins is that the panel
+    // still links to the custom-events doc rather than the install page.
+    expect(src).toMatch(/docsUrl\('custom-events'\)/)
     expect(src).not.toMatch(/href: '\/installation'/)
   })
 })

@@ -9,6 +9,7 @@
  */
 
 import { type ReactNode } from 'react'
+import { docsUrl } from '@/lib/docs'
 
 // * ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -117,8 +118,8 @@ export interface FrameworkSnippet {
 export interface InstallMeta {
   supportTier: SupportTier
   installMethod: InstallMethod
-  /** Help-centre doc slug (help.ciphera.net/docs/pulse/<docsSlug>), or `null`
-   *  to SURFACE the gap — never `''`. */
+  /** Docs slug (docs.ciphera.net/pulse/<docsSlug>, since 11-09-2026 — was
+   *  help.ciphera.net/docs/pulse), or `null` to SURFACE the gap — never `''`. */
   docsSlug: string | null
   /** ISO timestamp of the last CI verification, or `null` if never CI-proven.
    *  A tier of `verified` with `verifiedAt: null` means "first-class support,
@@ -1767,9 +1768,7 @@ export function getPickerIntegrations(): Integration[] {
     })
 }
 
-/** Build the help-centre URL for an integration, or null if no doc exists. */
+/** Build the docs URL for an integration, or null if no doc exists. */
 export function integrationDocsUrl(integration: Integration): string | null {
-  return integration.docsSlug
-    ? `https://help.ciphera.net/docs/pulse/${integration.docsSlug}`
-    : null
+  return integration.docsSlug ? docsUrl(integration.docsSlug) : null
 }

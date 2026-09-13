@@ -8,6 +8,7 @@ import { formatNumber } from '@/lib/utils/format'
 import { EmptyState } from '@/components/ui/EmptyState'
 import type { GoalCountStat } from '@/lib/api/stats'
 import { getEventPropertyKeys, getEventPropertyValues, type EventPropertyKey, type EventPropertyValue } from '@/lib/api/stats'
+import { docsUrl } from '@/lib/docs'
 
 interface GoalStatsProps {
   goalCounts: GoalCountStat[]
@@ -203,7 +204,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
             // * marketing page about the script and says nothing about custom
             // * events. Verified 200 before linking it.
             label: 'Read the docs',
-            href: 'https://help.ciphera.net/docs/pulse/custom-events',
+            href: docsUrl('custom-events'),
             external: true,
           }}
         />
