@@ -1,5 +1,6 @@
 import type { MetricType } from '@/lib/dashboard/metrics'
 import { describeIdentityWindow, type IdentityWindowDays } from '@/lib/visitors/identityWindow'
+import { DOCS_ORIGIN } from '@/lib/docs'
 
 // ---------------------------------------------------------------------------
 // The copy registry behind every InfoTip (metric info layer).
@@ -18,7 +19,6 @@ import { describeIdentityWindow, type IdentityWindowDays } from '@/lib/visitors/
 //     and returns what the reader could already see.
 // ---------------------------------------------------------------------------
 
-const DOCS = 'https://help.ciphera.net/docs/pulse'
 
 export interface GlossaryTerm {
   /** Title shown at the top of the panel. */
@@ -118,15 +118,6 @@ export const TERMS: Record<string, GlossaryTerm> = {
   visitor_identity: {
     title: 'Visitor identity',
     definition: describeIdentityWindow(undefined).identityDefinition,
-  },
-  // Kept as a registry entry for the docs link contract, but no surface has
-  // referenced it since the window shipped — a "monthly reset" is only one of
-  // five windows now, and the roster's heading InfoTip carries the reset
-  // mechanics per window instead.
-  visitor_month_reset: {
-    title: 'Identity reset',
-    definition:
-      'Identities reset at the end of the site’s identity window — the calendar month unless its owner chose a shorter one. A range that spans a boundary therefore shows a returning reader once per window, under two different names — that is the identity genuinely resetting, not a duplicate.',
   },
   availability: {
     title: 'Availability',
@@ -593,12 +584,6 @@ export const TERMS: Record<string, GlossaryTerm> = {
       'Journeys start on any page. To follow the ones that began on one page, add an Entry page filter.',
     docs: 'user-journeys#journey-entry-point',
   },
-  journey_exit: {
-    title: 'Exit (journeys)',
-    definition:
-      'Sessions on the lens page at that step that made no further tracked hop. Shown as a red (exit) row on the column after the lens.',
-    docs: 'user-journeys#journey-exit',
-  },
   journey_lens: {
     title: 'Lens (journeys)',
     definition:
@@ -651,7 +636,7 @@ export const TERMS: Record<string, GlossaryTerm> = {
 
 /** The documentation URL for a term, or undefined while it is unpublished. */
 export function docsHref(term: GlossaryTerm): string | undefined {
-  return term.docs ? `${DOCS}/${term.docs}` : undefined
+  return term.docs ? `${DOCS_ORIGIN}/${term.docs}` : undefined
 }
 
 /**

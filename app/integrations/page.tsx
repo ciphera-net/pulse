@@ -28,6 +28,7 @@ import {
   type IntegrationCategory,
   type SupportTier,
 } from '@/lib/integrations'
+import { docsUrl } from '@/lib/docs'
 
 const CATEGORY_TABS: { key: IntegrationCategory | 'all'; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -132,7 +133,7 @@ export default function IntegrationsPage() {
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Button asChild size="lg" variant="outline">
-              <a href="https://help.ciphera.net/docs/pulse/script-installation" target="_blank" rel="noopener noreferrer">
+              <a href={docsUrl('script-installation')} target="_blank" rel="noopener noreferrer">
                 Installation docs
                 <ArrowRightIcon className="ml-2 h-4 w-4" aria-hidden="true" />
               </a>

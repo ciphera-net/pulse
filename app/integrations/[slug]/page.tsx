@@ -18,6 +18,7 @@ import {
   supportTierDescriptions,
   integrationDocsUrl,
 } from '@/lib/integrations'
+import { docsUrl } from '@/lib/docs'
 import { getIntegrationDeepDive } from '@/lib/integration-deep-dive'
 import { DEFAULT_OG_IMAGES } from '@/lib/og'
 
@@ -86,7 +87,7 @@ export default async function IntegrationGuidePage({ params }: { params: Promise
   const integration = getIntegration(slug)
   if (!integration) notFound()
 
-  const docsUrl = integrationDocsUrl(integration)
+  const integrationGuideUrl = integrationDocsUrl(integration)
   const deepDive = getIntegrationDeepDive(slug)
   const related = integration.relatedIds
     .map((id) => getIntegration(id))
@@ -203,9 +204,9 @@ export default async function IntegrationGuidePage({ params }: { params: Promise
 
         {/* Guides + CSP. */}
         <div className="mt-8 flex max-w-3xl flex-wrap items-center gap-4">
-          {docsUrl && (
+          {integrationGuideUrl && (
             <a
-              href={docsUrl}
+              href={integrationGuideUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-sm font-medium text-brand-orange transition-colors hover:text-brand-orange/80"
@@ -214,7 +215,7 @@ export default async function IntegrationGuidePage({ params }: { params: Promise
             </a>
           )}
           <a
-            href="https://help.ciphera.net/docs/pulse/csp"
+            href={docsUrl('csp')}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"

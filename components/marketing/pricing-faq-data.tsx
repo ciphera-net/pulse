@@ -2,6 +2,8 @@
 // page can render the same category-rail FAQ pattern. Kept in one place so the
 // billing/plans/privacy Q&A stays editable without touching the component.
 
+import { docsUrl } from '@/lib/docs'
+
 export interface FAQItem {
   question: string
   // ReactNode so an answer can carry an inline link; the accordion renders
@@ -88,7 +90,7 @@ export const pricingFaqData: Record<string, FAQItem[]> = {
           ceiling, collection pauses until you upgrade or the period resets. The full mechanics are in
           the{' '}
           <a
-            href="https://help.ciphera.net/docs/pulse/billing#pageview-limits"
+            href={docsUrl('billing#pageview-limits')}
             target="_blank"
             rel="noreferrer"
             className="underline underline-offset-2 transition-colors duration-fast hover:text-foreground"

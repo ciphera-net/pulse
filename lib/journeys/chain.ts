@@ -252,21 +252,3 @@ export function spineThrough(links: ChainLink[], path: string, maxSteps = 6): st
   return spine
 }
 
-/**
- * Sessions that were on `path` at `colIdx` and made no onward hop — the
- * exit count shown on the column after the lens column.
- */
-export function exitCount(
-  transitions: PathTransition[],
-  colIdx: number,
-  path: string,
-  columns: AggregatedStep[],
-): number {
-  const col = columns[colIdx]
-  const page = col?.pages.find((p) => p.path === path)
-  if (!page) return 0
-  const outbound = transitions
-    .filter((t) => t.step_index === colIdx && t.from_path === path)
-    .reduce((sum, t) => sum + t.session_count, 0)
-  return Math.max(0, page.sessionCount - outbound)
-}

@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { FleetCard } from '@/components/sites/FleetCard'
 import FleetDeck from '@/components/sites/FleetDeck'
 import type { Site, SiteOverview } from '@/lib/api/sites'
+import { DOCS_ORIGIN } from '@/lib/docs'
 
 // The capture request layer is not under test; individual tests set
 // previewData to exercise the capture branch (default: no capture, so cards
@@ -125,7 +126,7 @@ describe('FleetCard', () => {
       />
     )
     expect(screen.getByText('Waiting for the first event')).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Read the docs' }).getAttribute('href')).toContain('help.ciphera.net')
+    expect(screen.getByRole('link', { name: 'Read the docs' }).getAttribute('href')).toBe(DOCS_ORIGIN)
     expect(screen.queryByText('visitors today')).toBeNull()
     expect(screen.queryByText('stalled')).toBeNull()
     expect(container.querySelector('svg[preserveAspectRatio="none"]')).toBeNull()
