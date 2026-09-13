@@ -70,8 +70,68 @@ describe('the provider actually opens the vault', () => {
     expect(SRC).toMatch(/mergeVaultPii\s*\(/)
   })
 
+  /**
+   * ⚠️ The guard that stops a request per page load for a session that already
+   * carries its address. It used to be one line — `if (!id || user?.email)
+   * return` — and became two branches when each had to ANSWER the vault-state
+   * question rather than just bail: nobody signed in is 'unknown', an already
+   * named session is 'open'.
+   */
   it('does not ask when the session can already be named', () => {
-    // The guard that stops a request per page load for legacy accounts.
-    expect(SRC).toMatch(/if\s*\(!id\s*\|\|\s*user\?\.email\)\s*return/)
+    expect(SRC).toMatch(/if\s*\(user\?\.email\)\s*\{[\s\S]{0,120}setVaultState\('open'\)[\s\S]{0,40}return/)
+  })
+})
+
+/**
+ * ── VaultState: one source of truth for "can we name this person" ────────────
+ *
+ * 🔴 EVERY SURFACE USED TO DERIVE ITS OWN ANSWER FROM `!user.email`, and each
+ * got it wrong differently: the settings screen showed a locked banner for
+ * 103ms, the account menu drew a label over two empty rows. `!user.email` is
+ * trivially true before an async read finishes — a sentinel standing in for a
+ * state that has three values, not two.
+ *
+ * ⚠️ 'locked' is the ONLY value a surface may assert anything about. Treating
+ * 'unknown' as 'locked' IS the bug this replaces, which is why the menu passes
+ * its fallback on `=== 'locked'` and never on `!== 'open'`.
+ */
+describe('the provider resolves VaultState on every path', () => {
+  const SRC = readFileSync(join(__dirname, '../context.tsx'), 'utf8')
+    .split('\n')
+    .map((l) => l.replace(/^\s*\/\/.*$/, '').replace(/\s\/\/.*$/, ''))
+    .join('\n')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+
+  it('exposes it on the context', () => {
+    expect(SRC).toMatch(/vaultState:\s*VaultState/)
+    expect(SRC).toMatch(/value=\{\{\s*user,\s*vaultState,/)
+  })
+
+  // 🔴 An early return that leaves it 'unknown' is a surface waiting forever
+  // for an answer that already arrived — worse than a wrong answer, because it
+  // never resolves.
+  it('answers "locked" for no key, for a vault that will not open, and on a throw', () => {
+    const effect = SRC.slice(SRC.indexOf('const id = user?.id'), SRC.indexOf('const refresh = useCallback'))
+    expect(effect).toMatch(/if\s*\(!key\)\s*\{\s*setVaultState\('locked'\)/)
+    expect(effect).toMatch(/if\s*\(!pii\?\.email\)\s*\{\s*setVaultState\('locked'\)/)
+    expect(effect).toMatch(/catch[\s\S]*setVaultState\('locked'\)/)
+    expect(effect).toMatch(/setVaultState\('open'\)/)
+  })
+
+  it('resets to "unknown" when there is nobody signed in', () => {
+    expect(SRC).toMatch(/if\s*\(!id\)\s*\{[\s\S]{0,200}setVaultState\('unknown'\)/)
+  })
+})
+
+/**
+ * ⚠️ The menu's fallback is gated on 'locked' EXACTLY — never on "not open",
+ * which would include 'unknown' and flash the line before the name arrives.
+ */
+describe('the account menu only speaks when the answer is known', () => {
+  const files = ['../../../components/dashboard/DashboardShell.tsx', '../../../components/dashboard/ContentHeader.tsx']
+  it.each(files)('%s gates unidentifiedLabel on === locked', (f) => {
+    const src = readFileSync(join(__dirname, f), 'utf8')
+    expect(src).toMatch(/unidentifiedLabel=\{auth\.vaultState === 'locked' \?/)
+    expect(src).not.toMatch(/unidentifiedLabel=\{auth\.vaultState !== 'open'/)
   })
 })
