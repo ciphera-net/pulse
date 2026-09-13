@@ -53,6 +53,25 @@ interface User {
  * Exported for its tests; the provider is not renderable without standing up
  * half the app, and mocking that would measure the mocks.
  */
+/**
+ * Can this browser name the person signed in?
+ *
+ * 🔴 THREE STATES, AND THE THIRD IS WHY THIS EXISTS. Every surface that shows a
+ * name needs to distinguish "we have not looked yet" from "we looked and
+ * cannot" — and every one of them was inventing its own answer from
+ * `!user.email`, which is trivially true before an async read finishes. That
+ * sentinel produced a locked banner for 103ms on the settings screen, and a
+ * label over two empty rows in the account menu.
+ *
+ *   'unknown' — the stored key has not been read, or the vault not yet opened
+ *   'open'    — the session can be named
+ *   'locked'  — looked, and cannot: no key, or one that will not open this vault
+ *
+ * ⚠️ 'locked' is the ONLY state a surface may assert anything about. A UI that
+ * treats 'unknown' as 'locked' is the bug this replaces.
+ */
+export type VaultState = 'unknown' | 'open' | 'locked'
+
 export function mergeVaultPii(
   prev: User | null,
   forUserId: string,
@@ -66,6 +85,13 @@ export function mergeVaultPii(
 
 interface AuthContextType {
   user: User | null
+  /**
+   * Whether this browser can name the person — see `VaultState`.
+   *
+   * 🔑 ONE SOURCE OF TRUTH, DELIBERATELY. Before this, each surface derived its
+   * own answer from `!user.email` and each got it wrong in a different way.
+   */
+  vaultState: VaultState
   loading: boolean
   hadPriorSession: boolean
   /** True while init's transient-failure retry loop is actively trying to
@@ -79,6 +105,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  vaultState: 'unknown',
   loading: true,
   hadPriorSession: false,
   recovering: false,
@@ -107,6 +134,7 @@ async function loadSession(): Promise<SessionUser | null> {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [vaultState, setVaultState] = useState<VaultState>('unknown')
   const [loading, setLoading] = useState(true)
   const [hadPriorSession, setHadPriorSession] = useState(false)
   const [recovering, setRecovering] = useState(false)
@@ -321,20 +349,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    */
   useEffect(() => {
     const id = user?.id
-    // Already named (a ceremony just ran, or a legacy session carries it), or
-    // nobody to name.
-    if (!id || user?.email) return
+    if (!id) {
+      // Signed out: nothing is known about a vault that has no owner.
+      setVaultState('unknown')
+      return
+    }
+    // Already named — a ceremony just ran, or a legacy session carries it.
+    if (user?.email) {
+      setVaultState('open')
+      return
+    }
 
     let cancelled = false
     void (async () => {
+      /**
+       * 🔴 EVERY PATH OUT OF HERE SETS A STATE. An early return that leaves
+       * `vaultState` at 'unknown' is a surface waiting forever for an answer
+       * that already arrived — which, for anything rendering a loading
+       * treatment, is worse than the wrong answer because it never resolves.
+       */
       try {
         const key = await loadVaultKey(id)
-        if (cancelled || !key) return
+        if (cancelled) return
+        if (!key) { setVaultState('locked'); return }
+
         const pii = await openVaultWithKey(key)
-        if (cancelled || !pii?.email) return
+        if (cancelled) return
+        if (!pii?.email) { setVaultState('locked'); return }
+
         setUser((prev) => mergeVaultPii(prev, id, pii))
+        setVaultState('open')
       } catch (e) {
+        // A key that will not open this vault — re-sealed elsewhere, or for
+        // another account. Locked is the honest answer, and the password prompt
+        // is the way out of it.
         logger.warn('vault: could not open this account’s vault for the session', e)
+        if (!cancelled) setVaultState('locked')
       }
     })()
     return () => { cancelled = true }
@@ -796,7 +846,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [loading, isAuthenticated, userOrgId, userRole, pathname, router])
 
   return (
-    <AuthContext.Provider value={{ user, loading, hadPriorSession, recovering, login, logout, refresh, refreshSession }}>
+    <AuthContext.Provider value={{ user, vaultState, loading, hadPriorSession, recovering, login, logout, refresh, refreshSession }}>
       {isLoggingOut && <LoadingOverlay logoSrc={cdnUrl('/pulse_icon_no_margins.png')} title="Pulse" />}
       {/* On app routes the takeover IS the expired surface — the modal would be
           a second voice over it. It stays for marketing routes. */}

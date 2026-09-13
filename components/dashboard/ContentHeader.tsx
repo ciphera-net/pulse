@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { MenuIcon, UserMenu } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
+import { UnnamedSession } from '@/components/account/UnnamedSession'
 import { useOrgSwitcher } from '@/lib/hooks/useOrgSwitcher'
 import { useSites } from '@/lib/swr/sites'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
@@ -58,6 +59,10 @@ export default function ContentHeader({
             or reach another workspace (F-C8). */}
         <UserMenu
           auth={auth}
+          // 🔴 ONLY WHEN WE KNOW. Passing this while the vault read is still in
+          // flight would flash it before the real name arrives — 'unknown' is
+          // not 'locked', which is the whole reason VaultState has three values.
+          unidentifiedLabel={auth.vaultState === 'locked' ? <UnnamedSession /> : undefined}
           LinkComponent={Link}
           orgs={orgs}
           activeOrgId={activeOrgId}

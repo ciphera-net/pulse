@@ -10,6 +10,7 @@ import { PlusIcon, LayoutDashboardIcon, PathIcon, FunnelIcon, CursorClickIcon, S
 import { formatUpdatedAgo } from '@/lib/utils/format'
 import { useFunnelDetail } from '@/lib/swr/dashboard'
 import { useAuth } from '@/lib/auth/context'
+import { UnnamedSession } from '@/components/account/UnnamedSession'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
 import OnboardingChip from '@/components/onboarding/OnboardingChip'
 import { useOrgSwitcher } from '@/lib/hooks/useOrgSwitcher'
@@ -400,6 +401,10 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
         <NotificationCenter anchor="bottom" variant="default" />
         <UserMenu
           auth={auth}
+          // 🔴 ONLY WHEN WE KNOW. Passing this while the vault read is still in
+          // flight would flash it before the real name arrives — 'unknown' is
+          // not 'locked', which is the whole reason VaultState has three values.
+          unidentifiedLabel={auth.vaultState === 'locked' ? <UnnamedSession /> : undefined}
           LinkComponent={Link}
           orgs={orgs}
           activeOrgId={activeOrgId}
