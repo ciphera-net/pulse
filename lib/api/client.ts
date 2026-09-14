@@ -411,5 +411,76 @@ async function apiRequest<T>(
   return requestPromise
 }
 
+/**
+ * A binary download that carries the session, for endpoints that answer with a
+ * file rather than JSON.
+ *
+ * 🔴 THIS EXISTS BECAUSE `fetch(url, { credentials: 'include' })` IS NOT
+ * AUTHENTICATED ANY MORE. Since per-app sessions (S3) the credential is the
+ * in-memory access token sent as a Bearer, and Pulse's cookies are host-only on
+ * the app's own origin — so a hand-rolled fetch to pulse-api carries nothing the
+ * API will accept. `downloadInvoicePDF` was written in April, when a cookie did
+ * authenticate it, and returned 401 from the migration (05-09-2026) until this
+ * was added on 14-09.
+ *
+ * It deliberately shares `apiRequest`'s rules — same base-URL resolution, same
+ * Bearer, same ONE refresh-and-retry on a 401 — because a second, subtly
+ * different auth path is how the first one rots. What it does NOT share is the
+ * GET dedupe/cache (a download must always execute) and the JSON parse.
+ *
+ * The filename comes from the server's `Content-Disposition`, which it can only
+ * read because the API sets `Access-Control-Expose-Headers` for it — the API is
+ * a different origin, so without that the header is invisible here.
+ */
+export async function apiRequestBlob(
+  endpoint: string,
+  options: ApiRequestOptions = {},
+): Promise<{ blob: Blob; filename: string | null }> {
+  const baseUrl = endpoint.startsWith('/auth') ? ID_API_URL : API_URL
+  const url = endpoint.startsWith('/api/') ? `${baseUrl}${endpoint}` : `${baseUrl}/api/v1${endpoint}`
+
+  const send = (token: string | null) => {
+    const headers: Record<string, string> = { [getRequestIdHeader()]: generateRequestId() }
+    if (options.headers) {
+      Object.entries(options.headers as Record<string, string>).forEach(([k, v]) => { headers[k] = v })
+    }
+    // No Content-Type: this is a GET for bytes, and declaring JSON on it is a lie.
+    if (token && !headers['Authorization'] && !headers['authorization']) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    return fetch(url, { ...options, headers, credentials: 'include' })
+  }
+
+  let response: Response
+  try {
+    response = await send(getAccessToken())
+  } catch {
+    throw new ApiError(AUTH_ERROR_MESSAGES.NETWORK, 0)
+  }
+
+  if (response.status === 401 && typeof window !== 'undefined' && !options.skipAuthRetry && refreshHandler) {
+    const outcome = await refreshHandler()
+    if (outcome.ok) {
+      try {
+        response = await send(getAccessToken())
+      } catch {
+        throw new ApiError(AUTH_ERROR_MESSAGES.NETWORK, 0)
+      }
+    }
+  }
+
+  if (!response.ok) {
+    // The body is a file on success and JSON on failure — read the error, but
+    // never let a non-JSON body turn a clean 4xx into a parse exception.
+    const data = await response.json().catch(() => ({}))
+    const message = typeof data?.error === 'string' ? data.error : `Request failed (${response.status})`
+    throw new ApiError(message, response.status, data)
+  }
+
+  const disposition = response.headers.get('Content-Disposition')
+  const match = disposition?.match(/filename="?([^";]+)"?/i)
+  return { blob: await response.blob(), filename: match?.[1] ?? null }
+}
+
 export const authFetch = apiRequest
 export default apiRequest
