@@ -18,11 +18,34 @@ import { downloadInvoicePDF } from '@/lib/api/billing'
 
 const ID = 'd51d20c3-aac6-4c70-b770-0ac958f16532'
 
+/**
+ * A fake response, NOT `new Response(blob)`.
+ *
+ * 🔴 `new Response(someBlob)` is not portable across Node versions under jsdom:
+ * on node:22 — which is what CI runs, while this machine had 24 — undici asks
+ * the body for `.stream()`, jsdom's Blob has none, and the constructor throws
+ * `TypeError: object.stream is not a function`. Every test here then failed in
+ * CI for a reason that could not reproduce locally.
+ *
+ * The code under test only ever touches `ok`, `status`, `headers.get()`,
+ * `blob()` and `json()`, so supplying exactly those keeps the test honest and
+ * takes the runtime's Response/Blob interop out of the picture entirely.
+ */
+function fakeResponse(
+  { status = 200, headers = {}, body = null as unknown }: { status?: number; headers?: Record<string, string>; body?: unknown } = {},
+) {
+  const lower = Object.fromEntries(Object.entries(headers).map(([k, v]) => [k.toLowerCase(), v]))
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    headers: { get: (name: string) => lower[name.toLowerCase()] ?? null },
+    blob: async () => new Blob(['%PDF-1.4'], { type: 'application/pdf' }),
+    json: async () => body ?? {},
+  } as unknown as Response
+}
+
 function pdfResponse(headers: Record<string, string> = {}) {
-  return new Response(new Blob(['%PDF-1.4'], { type: 'application/pdf' }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/pdf', ...headers },
-  })
+  return fakeResponse({ status: 200, headers: { 'Content-Type': 'application/pdf', ...headers } })
 }
 
 let clicked: { href: string; download: string } | null = null
@@ -67,7 +90,7 @@ describe('downloadInvoicePDF', () => {
 
   it('refreshes once and retries when the token has expired', async () => {
     const fetchMock = vi.fn()
-      .mockResolvedValueOnce(new Response('{"error":"unauthorized"}', { status: 401 }))
+      .mockResolvedValueOnce(fakeResponse({ status: 401, body: { error: 'unauthorized' } }))
       .mockResolvedValueOnce(pdfResponse())
     vi.stubGlobal('fetch', fetchMock)
     setRefreshHandler(async () => { setAccessToken('tok-new'); return { ok: true } as never })
@@ -97,7 +120,7 @@ describe('downloadInvoicePDF', () => {
 
   it('throws with the status, so the caller can tell 404 from a real failure', async () => {
     vi.stubGlobal('fetch', vi.fn(async () =>
-      new Response('{"error":"invoice PDF not available yet"}', { status: 404 })))
+      fakeResponse({ status: 404, body: { error: 'invoice PDF not available yet' } })))
 
     // The billing tab reports "not available yet" ONLY for a 404; every other
     // failure used to wear that same calm message, including the 401.
