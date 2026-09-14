@@ -16,6 +16,7 @@ export type NotificationType =
   // of news as "the site is down" and shares its opt-out class.
   | 'site_install_silent'
   | 'site_install_recovered'
+  | 'site_events_rejected'
   | 'security_new_device_login'
   | 'security_password_changed'
   | 'security_2fa_enabled'
@@ -58,6 +59,13 @@ export interface UptimeMonitorRecoveredPayload { monitor_id: string; site_id: st
  *  resolves a name from site_id; the email renderer has no resolver and uses it. */
 export interface SiteInstallSilentPayload { site_id: string; last_event_at: string; domain?: string }
 export interface SiteInstallRecoveredPayload { site_id: string; silent_seconds: number; domain?: string }
+/** iris migration 028. causes carries ONLY the three customer-facing strings —
+ *  plan_ceiling | rate_limited | outdated_script — and never an internal drop
+ *  reason slug; the payload schema declares that as an enum, so a producer that
+ *  tried to pass one is refused at produce time. There is deliberately no count:
+ *  a number invites "why three?" and the answer to that is the taxonomy. */
+export type SiteEventsRejectedCause = 'plan_ceiling' | 'rate_limited' | 'outdated_script'
+export interface SiteEventsRejectedPayload { site_id: string; causes: SiteEventsRejectedCause[]; domain?: string }
 export interface UptimeSSLExpiringPayload { monitor_id: string; site_id: string; expires_at: string }
 export interface SecurityNewDeviceLoginPayload { device_hint: string; country_code: string; at: string }
 export interface SecurityPasswordChangedPayload { at: string }
@@ -108,6 +116,7 @@ export type PayloadForType<T extends NotificationType> =
   T extends 'uptime_ssl_expiring' ? UptimeSSLExpiringPayload :
   T extends 'site_install_silent' ? SiteInstallSilentPayload :
   T extends 'site_install_recovered' ? SiteInstallRecoveredPayload :
+  T extends 'site_events_rejected' ? SiteEventsRejectedPayload :
   T extends 'security_new_device_login' ? SecurityNewDeviceLoginPayload :
   T extends 'security_password_changed' ? SecurityPasswordChangedPayload :
   T extends 'security_2fa_enabled' ? Security2FAEnabledPayload :
