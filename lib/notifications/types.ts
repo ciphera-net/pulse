@@ -11,6 +11,11 @@ export type NotificationType =
   | 'uptime_monitor_down'
   | 'uptime_monitor_recovered'
   | 'uptime_ssl_expiring'
+  // iris migration 027 — the install watchers, filed in the uptime category
+  // (renamed "Monitoring") because "the script went quiet" is the same kind
+  // of news as "the site is down" and shares its opt-out class.
+  | 'site_install_silent'
+  | 'site_install_recovered'
   | 'security_new_device_login'
   | 'security_password_changed'
   | 'security_2fa_enabled'
@@ -65,6 +70,11 @@ export interface BillingPlanRenewedPayload { plan_id: string; next_billing_at: s
 export interface BillingUsageLimitPayload { limit_type: string; percent_used: number }
 export interface UptimeMonitorDownPayload { monitor_id: string; site_id: string; status_code: number }
 export interface UptimeMonitorRecoveredPayload { monitor_id: string; site_id: string; downtime_seconds: number }
+/** last_event_at is the INSTANT of the last event, never a computed "N days" — a
+ *  card read late still tells the truth. domain is optional: the in-app renderer
+ *  resolves a name from site_id; the email renderer has no resolver and uses it. */
+export interface SiteInstallSilentPayload { site_id: string; last_event_at: string; domain?: string }
+export interface SiteInstallRecoveredPayload { site_id: string; silent_seconds: number; domain?: string }
 export interface UptimeSSLExpiringPayload { monitor_id: string; site_id: string; expires_at: string }
 export interface SecurityNewDeviceLoginPayload { device_hint: string; country_code: string; at: string }
 export interface SecurityPasswordChangedPayload { at: string }
@@ -113,6 +123,8 @@ export type PayloadForType<T extends NotificationType> =
   T extends 'uptime_monitor_down' ? UptimeMonitorDownPayload :
   T extends 'uptime_monitor_recovered' ? UptimeMonitorRecoveredPayload :
   T extends 'uptime_ssl_expiring' ? UptimeSSLExpiringPayload :
+  T extends 'site_install_silent' ? SiteInstallSilentPayload :
+  T extends 'site_install_recovered' ? SiteInstallRecoveredPayload :
   T extends 'security_new_device_login' ? SecurityNewDeviceLoginPayload :
   T extends 'security_password_changed' ? SecurityPasswordChangedPayload :
   T extends 'security_2fa_enabled' ? Security2FAEnabledPayload :

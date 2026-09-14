@@ -25,7 +25,10 @@ export interface NotificationCategory {
 export const NOTIFICATION_CATEGORIES: NotificationCategory[] = [
   { id: 'billing', label: 'Billing', critical: true },
   { id: 'security', label: 'Security', critical: true },
-  { id: 'uptime', label: 'Uptime', critical: false },
+  // Renamed "Monitoring" by iris migration 027 (14-09-2026): the category
+  // now also carries the install watchers. The id stays `uptime` forever —
+  // category_id is immutable in the registry; only the label moved.
+  { id: 'uptime', label: 'Monitoring', critical: false },
   { id: 'site', label: 'Site activity', critical: false },
   { id: 'team', label: 'Team', critical: false },
   { id: 'system', label: 'System', critical: false },

@@ -21,6 +21,30 @@ describe('uptime renderers', () => {
     expect(body).toContain('500')
   })
 
+  it('site_install_silent — names the site and states the last-event instant, never a computed age', () => {
+    const r = makeReceipt('site_install_silent', { site_id: 's-1', last_event_at: '2026-09-01T09:30:00Z', domain: 'example.com' })
+    const { title, body, linkLabel } = renderNotification(r)
+    expect(title).toContain('Tracking script went quiet')
+    expect(title).toContain('example.com')
+    expect(body).toMatch(/No events since .*2026/)
+    expect(body).not.toMatch(/ago/)
+    expect(linkLabel).toBe('View site')
+  })
+
+  it('site_install_silent — an unparseable instant degrades to a true sentence, never an Invalid Date', () => {
+    const r = makeReceipt('site_install_silent', { site_id: 's-1', last_event_at: 'not-a-date' })
+    const { body } = renderNotification(r)
+    expect(body).toBe('Events have stopped arriving.')
+    expect(body).not.toContain('Invalid')
+  })
+
+  it('site_install_recovered — body carries the formatted silence from the payload', () => {
+    const r = makeReceipt('site_install_recovered', { site_id: 's-1', silent_seconds: 3 * 24 * 3600 })
+    const { title, body } = renderNotification(r)
+    expect(title).toContain('Tracking script is back')
+    expect(body).toContain('arriving again after')
+  })
+
   it('uptime_monitor_recovered — title contains site id and body contains downtime', () => {
     const r = makeReceipt('uptime_monitor_recovered', { monitor_id: 'm1', site_id: 's-1', downtime_seconds: 90 })
     const { title, body } = renderNotification(r)

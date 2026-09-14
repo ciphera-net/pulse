@@ -17,6 +17,7 @@ const SiteVisibilityTab   = dynamic(() => import('@/components/settings/unified/
 const SitePrivacyTab      = dynamic(() => import('@/components/settings/unified/tabs/SitePrivacyTab'))
 const SiteBotSpamTab      = dynamic(() => import('@/components/settings/unified/tabs/SiteBotSpamTab'))
 const SiteIntegrationsTab = dynamic(() => import('@/components/settings/unified/tabs/SiteIntegrationsTab'))
+const SiteMonitoringTab   = dynamic(() => import('@/components/settings/unified/tabs/SiteMonitoringTab'))
 
 const SITE_TAB_PERMISSIONS: Record<string, Permission> = {
   general: 'sites.edit',
@@ -32,6 +33,9 @@ const TAB_COMPONENTS: Record<string, React.ComponentType<{ siteId: string }>> = 
   visibility:     SiteVisibilityTab,
   privacy:        SitePrivacyTab,
   'bot-spam':     SiteBotSpamTab,
+  // Like bot-spam: no SITE_TAB_PERMISSIONS entry, so every member can read it;
+  // the enable/disable action gates on uptime.manage inside the tab.
+  monitoring:     SiteMonitoringTab,
   integrations:   SiteIntegrationsTab,
 }
 
