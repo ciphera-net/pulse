@@ -68,6 +68,9 @@ describe('Settings landing (permission-aware index)', () => {
     // Bot & Spam and Members are membership-implied since the never-checked
     // view permissions were deleted (batch 4) — every member sees them, which
     // is what the server enforced all along.
+    // Monitoring joined them 14-09-2026 (design §11a): read surfaces for every
+    // member; its one mutation gates on uptime.manage inside the tab.
+    expect(screen.getByText('Monitoring')).toBeInTheDocument()
     expect(screen.getByText('Bot & Spam')).toBeInTheDocument()
     expect(screen.getByText('Members')).toBeInTheDocument()
   })

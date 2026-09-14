@@ -18,6 +18,7 @@ import {
   BellRinging,
   EnvelopeSimple,
   Terminal,
+  Heartbeat,
 } from '@phosphor-icons/react'
 
 /**
@@ -63,6 +64,11 @@ export const NAV_GROUPS: NavGroup[] = [
       // Bot & Spam is viewable by every member (the server authorises reads on
       // membership); the tab gates mutations on quarantine.manage internally.
       { label: 'Bot & Spam', href: '/settings/site/bot-spam', icon: Robot },
+      // Heartbeat — the uptime instrument's own glyph (app/sites/[id]/uptime),
+      // promoted to the tab that gathers what Pulse watches on a site. Visible
+      // to every member like Bot & Spam: the panels are read surfaces, and the
+      // one mutation (enable/disable uptime) gates on uptime.manage inside.
+      { label: 'Monitoring', href: '/settings/site/monitoring', icon: Heartbeat },
       { label: 'Integrations', href: '/settings/site/integrations', icon: Plugs, requires: 'integrations.manage' },
     ],
   },
