@@ -197,23 +197,35 @@ export async function getInvoices(): Promise<Invoice[]> {
   return res.invoices ?? []
 }
 
+/**
+ * Download one invoice as a PDF.
+ *
+ * 🔴 THIS RETURNED 401 FOR NINE DAYS (05-09 → 14-09-2026). It was written in
+ * April as a hand-rolled `fetch(url, { credentials: 'include' })`, which was
+ * authenticated then. Per-app sessions (S3) moved the credential to an in-memory
+ * access token sent as a Bearer and made Pulse's cookies host-only on the app's
+ * own origin, so the cookie this relied on stopped reaching the API — and
+ * because the call bypassed `apiRequest`, it never picked up the Bearer that
+ * every other billing call gets. `getInvoices()` above kept working, which is
+ * why the list rendered fine above a button that always failed.
+ *
+ * ⚠️ It also had a redirect fallback — `window.open(url)` on an opaque redirect
+ * — that could not have worked either: a top-level navigation carries no Bearer,
+ * so it 401'd too. The endpoint no longer redirects (it streams the bytes,
+ * because the invoices bucket has no CORS policy and a cross-origin fetch could
+ * not read a presigned URL anyway), so there is nothing left to fall back to.
+ *
+ * The filename comes from the server, which is the only side that knows the
+ * invoice number.
+ */
 export async function downloadInvoicePDF(invoiceId: string): Promise<void> {
-  const { API_URL } = await import('./client')
-  const url = API_URL + '/api/billing/invoices/' + invoiceId + '/pdf'
-  const res = await fetch(url, {
-    credentials: 'include',
-    redirect: 'manual',
-  })
-  if (res.type === 'opaqueredirect' || res.status === 302) {
-    window.open(url, '_blank')
-    return
-  }
-  if (!res.ok) throw new Error('Failed to download invoice PDF')
-  const blob = await res.blob()
+  const { apiRequestBlob } = await import('./client')
+  const { blob, filename } = await apiRequestBlob(`/api/billing/invoices/${invoiceId}/pdf`)
+
   const blobUrl = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = blobUrl
-  a.download = 'invoice.pdf'
+  a.download = filename ?? 'invoice.pdf'
   a.click()
   URL.revokeObjectURL(blobUrl)
 }

@@ -836,7 +836,20 @@ export default function WorkspaceBillingTab() {
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button
-                              onClick={() => downloadInvoicePDF(invoice.id).catch(() => toast.error('PDF not available yet'))}
+                              onClick={() =>
+                                downloadInvoicePDF(invoice.id).catch((e: unknown) => {
+                                  // "Not available yet" is TRUE for a 404 — Odoo has not
+                                  // minted the document. It was reported for every failure,
+                                  // including the 401 that made this button dead for nine
+                                  // days, which is a misleading answer dressed as a calm one.
+                                  const status = (e as { status?: number })?.status
+                                  toast.error(
+                                    status === 404
+                                      ? 'PDF not available yet'
+                                      : 'Could not download the invoice. Please try again.',
+                                  )
+                                })
+                              }
                               className="rounded-none p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                               aria-label="Download PDF"
                             >
