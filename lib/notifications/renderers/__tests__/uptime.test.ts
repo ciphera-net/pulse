@@ -61,3 +61,47 @@ describe('uptime renderers', () => {
     expect(body).toContain('s-1')
   })
 })
+
+describe('site_events_rejected (iris migration 028)', () => {
+  it('names the site and spells out every recognised cause, inventing none', () => {
+    const r = makeReceipt('site_events_rejected', {
+      site_id: 's1', causes: ['plan_ceiling', 'outdated_script'], domain: 'example.com',
+    })
+    const { title, body } = renderNotification(r)
+    expect(title).toBe("Some events weren't counted — example.com")
+    expect(body).toContain("plan's event limit was reached")
+    expect(body).toContain('tracking script needs updating')
+    expect(body).not.toContain('faster than your plan allows')
+  })
+
+  it('SKIPS an unrecognised cause rather than echoing it', () => {
+    // The payload schema's enum stops a drop-reason slug at produce time. This is
+    // the second line of that defence: a renderer that printed whatever it was
+    // given would publish the internal taxonomy the day a producer bug got one
+    // past the schema.
+    const r = makeReceipt('site_events_rejected', {
+      site_id: 's1', causes: ['rate_limited', 'quarantined', 'over_hard_ceiling'],
+    })
+    const { body } = renderNotification(r)
+    expect(body).not.toContain('quarantined')
+    expect(body).not.toContain('over_hard_ceiling')
+    expect(body).toContain('faster than your plan allows')
+  })
+
+  it('degrades to a true sentence when every cause is unknown or absent', () => {
+    for (const payload of [
+      { site_id: 's1', causes: ['nonsense'] },
+      { site_id: 's1', causes: [] },
+      { site_id: 's1' },
+    ]) {
+      const { title, body } = renderNotification(makeReceipt('site_events_rejected', payload))
+      expect(body).toBe('Some events from the last 7 days were refused.')
+      expect(title).toContain("Some events weren't counted")
+    }
+  })
+
+  it('falls back to the site id when there is no domain', () => {
+    const { title } = renderNotification(makeReceipt('site_events_rejected', { site_id: 'abc', causes: ['plan_ceiling'] }))
+    expect(title).toContain('site abc')
+  })
+})
