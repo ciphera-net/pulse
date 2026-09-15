@@ -95,6 +95,22 @@ export interface InstallStatusResponse {
   last_event_at: string | null
 }
 
+/** The three causes the server may publish. Never an internal drop-reason slug:
+ *  the eight-reason taxonomy is operator-only, and the endpoint collapses it to
+ *  these three words (pulse-backend internal/ingestdrops/causes.go). Typed as a
+ *  union so a typo is a compile error rather than a chip that never renders. */
+export type IngestRejectionCause = 'plan_ceiling' | 'rate_limited' | 'outdated_script'
+
+export interface IngestHealthResponse {
+  /** True iff at least one of the three ALARMING causes applied in the site's
+   *  last 7 local days. Deliberately not "any drop": five of the eight reasons
+   *  are Pulse working correctly, and a row that is always on is one people
+   *  learn to skip. */
+  rejected_last_7d: boolean
+  /** Always an array, never null — in the published order. */
+  causes: IngestRejectionCause[]
+}
+
 export interface CreateSiteRequest {
   domain: string
   name: string
@@ -175,6 +191,10 @@ export async function getSite(id: string): Promise<Site> {
 
 export async function getInstallStatus(id: string): Promise<InstallStatusResponse> {
   return apiRequest<InstallStatusResponse>(`/sites/${id}/install-status`)
+}
+
+export async function getIngestHealth(id: string): Promise<IngestHealthResponse> {
+  return apiRequest<IngestHealthResponse>(`/sites/${id}/ingest-health`)
 }
 
 export async function createSite(data: CreateSiteRequest): Promise<Site> {
