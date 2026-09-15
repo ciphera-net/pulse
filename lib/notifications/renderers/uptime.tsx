@@ -2,6 +2,7 @@ import type { Receipt } from '@/lib/notifications/types'
 import type { Rendered, Resolvers } from './index'
 import { formatDowntime, daysUntil } from '../display-utils'
 import { formatDateTime } from '@/lib/utils/formatDate'
+import { INGEST_CAUSE_CLAUSE, knownCauses } from '@/lib/ingest-causes'
 
 /** Upper-cases the first letter only — the cause phrases are written lower-case
  *  so they read correctly when joined into a list. */
@@ -62,12 +63,10 @@ export const uptimeRenderers = {
   site_events_rejected: (r: Receipt, resolvers?: Resolvers): Rendered => {
     const p = r.event.payload as { site_id: string; causes?: string[]; domain?: string }
     const siteName = resolvers ? resolvers.resolveSiteName(p.site_id) : (p.domain ?? `site ${p.site_id}`)
-    const WORDS: Record<string, string> = {
-      plan_ceiling: "your plan's event limit was reached",
-      rate_limited: 'events arrived faster than your plan allows',
-      outdated_script: 'the tracking script needs updating',
-    }
-    const reasons = (p.causes ?? []).map((c) => WORDS[c]).filter(Boolean)
+    // The words live in lib/ingest-causes.ts, beside the noun-phrase register the
+    // Monitoring tab's "Rejected events" row uses — one key set, two registers,
+    // so a fourth cause cannot be renderable here and invisible there.
+    const reasons = knownCauses(p.causes).map((c) => INGEST_CAUSE_CLAUSE[c])
     return {
       title: `Some events weren't counted — ${siteName}`,
       // Every cause unrecognised or absent: say the true, smaller thing rather
