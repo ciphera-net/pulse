@@ -5,7 +5,7 @@
  * The flag exists because every signal that CORRELATES with impossibility also
  * covers platforms that install fine:
  *   - missing `snippet.code`      → ~60 platforms use the universal tag
- *   - `special-handling` tier     → Shopify, Framer, GTM, every headless CMS
+ *   - `special-handling` tier     → Shopify, GTM, every headless CMS
  *   - `custom-code-plan-gated`    → Webflow, Squarespace, Wix, Carrd, Bubble…
  * Inferring from any of them would strip the install tag from working
  * platforms, so these tests pin the flag as the ONLY signal, and pin the two
