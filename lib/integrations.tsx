@@ -780,7 +780,7 @@ const rawIntegrations: RawIntegration[] = [
   {
     id: 'framer',
     name: 'Framer',
-    description: 'Add Pulse analytics to your Framer site via custom code.',
+    description: 'Add Pulse analytics to your Framer site with the official Marketplace plugin.',
     category: 'platform',
     brandColor: '#0055FF',
     icon: (
@@ -1547,7 +1547,11 @@ export default function RootLayout({ children }) {
   wix: { label: 'Custom Code', note: 'Add via Settings → Custom Code → Head. Requires a paid Wix plan with a connected domain.' },
   squarespace: { label: 'Code Injection', note: 'Add via Settings → Advanced → Code Injection → Header. Requires a Business plan or higher.' },
   webflow: { label: 'Custom Code', note: 'Add via Project Settings → Custom Code → Head Code. Requires a paid Site plan (the free Starter plan can’t inject custom code).' },
-  framer: { label: 'Custom Code', note: 'Add via Site Settings → Custom Code → head. Available on all plans; Framer’s canvas routing is an SPA and is covered by the universal tag.' },
+  framer: {
+    label: 'Framer plugin',
+    note: 'Install the Pulse Analytics plugin from the Framer Marketplace — it writes the tag into Site Settings → Custom Code for you. Works on every plan, including free.',
+    cta: { text: 'Get the plugin', url: 'https://www.framer.com/marketplace/plugins/pulse-analytics/' },
+  },
   gtm: {
     label: 'Custom HTML tag',
     note: 'Add a Custom HTML tag firing on All Pages, using window.pulseConfig (GTM may strip data-* attributes). Note: routing analytics through Google Tag Manager puts a US provider in your critical path.',
@@ -1638,7 +1642,7 @@ const TIER_TABLE: Record<string, TierRow> = {
   webflow: ['plan-gated', 'custom-code-plan-gated', 'framework-guides', true, null],
   squarespace: ['plan-gated', 'custom-code-plan-gated', 'framework-guides', true, null],
   wix: ['plan-gated', 'custom-code-plan-gated', 'framework-guides', true, null],
-  framer: ['special-handling', 'script-tag', 'framework-guides', true, null],
+  framer: ['verified', 'plugin', 'framework-guides', true, null],
   carrd: ['plan-gated', 'custom-code-plan-gated', 'script-installation', false, null],
   blogger: ['standard-snippet', 'script-tag', 'script-installation', false, null],
   gtm: ['special-handling', 'gtm-tag', 'framework-guides', true, null],
