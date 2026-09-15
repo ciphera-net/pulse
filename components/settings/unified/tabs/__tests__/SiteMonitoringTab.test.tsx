@@ -12,11 +12,13 @@ const useSite = vi.fn()
 const useUptimeStatus = vi.fn()
 const useUptimeIncidents = vi.fn()
 const useInstallStatus = vi.fn()
+const useIngestHealth = vi.fn()
 vi.mock('@/lib/swr/dashboard', () => ({
   useSite: (...a: unknown[]) => useSite(...a),
   useUptimeStatus: (...a: unknown[]) => useUptimeStatus(...a),
   useUptimeIncidents: (...a: unknown[]) => useUptimeIncidents(...a),
   useInstallStatus: (...a: unknown[]) => useInstallStatus(...a),
+  useIngestHealth: (...a: unknown[]) => useIngestHealth(...a),
 }))
 
 const updateSite = vi.fn().mockResolvedValue(undefined)
@@ -35,7 +37,7 @@ vi.mock('@ciphera-net/facet', () => ({
   getAuthErrorMessage: () => '',
 }))
 
-import SiteMonitoringTab from '../SiteMonitoringTab'
+import SiteMonitoringTab, { monthSummary } from '../SiteMonitoringTab'
 import { toast } from '@ciphera-net/facet'
 
 const mutate = vi.fn().mockResolvedValue(undefined)
@@ -57,7 +59,8 @@ function monitor(over: Record<string, unknown> = {}) {
 }
 function arm({
   siteOver = {}, mon = monitor(), uptimePct = 99.98, incidents = 0, install = { install_status: 'active', first_event_at: '2026-01-01T00:00:00Z', last_event_at: new Date(Date.now() - 4 * 60_000).toISOString() },
-}: { siteOver?: Record<string, unknown>; mon?: ReturnType<typeof monitor> | null; uptimePct?: number; incidents?: number; install?: unknown } = {}) {
+  ingest = { rejected_last_7d: false, causes: [] },
+}: { siteOver?: Record<string, unknown>; mon?: ReturnType<typeof monitor> | null; uptimePct?: number; incidents?: number; install?: unknown; ingest?: unknown } = {}) {
   useSite.mockReturnValue({ data: site(siteOver), error: undefined, mutate })
   useUptimeStatus.mockReturnValue({
     data: { monitors: mon ? [{ monitor: mon, daily_stats: [], overall_uptime: uptimePct }] : [], overall_uptime: uptimePct, status: 'operational', total_monitors: mon ? 1 : 0, utc_days_before: null, start_date: '', end_date: '' },
@@ -65,6 +68,7 @@ function arm({
   })
   useUptimeIncidents.mockReturnValue({ data: { incidents: Array.from({ length: incidents }, (_, i) => ({ id: String(i) })), start_date: '', end_date: '' }, error: undefined })
   useInstallStatus.mockReturnValue({ data: install, error: undefined })
+  useIngestHealth.mockReturnValue({ data: ingest, error: undefined })
 }
 
 beforeEach(() => {
@@ -79,8 +83,9 @@ describe('SiteMonitoringTab — Availability', () => {
     expect(screen.getByText('https://example.com')).toBeInTheDocument()
     expect(screen.getByText('HTTPS · every 5 min')).toBeInTheDocument()
     expect(screen.getByText('Up')).toBeInTheDocument()
-    expect(screen.getByText(/99\.98% this month/)).toBeInTheDocument()
-    expect(screen.getByText(/2 incidents this month/)).toBeInTheDocument()
+    // W1: one clause on its own line, and "this month" said once — not two
+    // sibling spans each opening with a separator.
+    expect(screen.getByText('99.98% this month, 2 incidents')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /View uptime/ })).toHaveAttribute('href', '/sites/s1/uptime')
   })
 
@@ -154,11 +159,12 @@ describe('SiteMonitoringTab — Tracking', () => {
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
   })
 
-  it('renders NO switch anywhere — Phase 1 draws no control that controls nothing', () => {
+  it('renders NO switch anywhere — the tab draws no control that controls nothing', () => {
     arm()
     render(<SiteMonitoringTab siteId="s1" />)
     expect(screen.queryAllByRole('switch')).toHaveLength(0)
-    expect(screen.queryByText(/Rejected events/)).not.toBeInTheDocument()
+    // The TRAFFIC panel stays out until Phases 4-5 register new type keys: the
+    // old three were retired 18-08-2026 and are unemittable at the database.
     expect(screen.queryByText(/Traffic/)).not.toBeInTheDocument()
   })
 
@@ -170,12 +176,187 @@ describe('SiteMonitoringTab — Tracking', () => {
   })
 })
 
+describe('SiteMonitoringTab — Rejected events (Phase 2b, direction A)', () => {
+  it('quiet: ONE neutral chip, and it is not the success tone — the row reports an absence of trouble', () => {
+    arm({ ingest: { rejected_last_7d: false, causes: [] } })
+    render(<SiteMonitoringTab siteId="s1" />)
+    const chip = screen.getByText('All events counted')
+    expect(chip).toBeInTheDocument()
+    // Neutral, not green. A green chip here would read as an achievement.
+    expect(chip.className).toContain('text-neutral-300')
+    expect(chip.className).not.toContain('text-pos')
+  })
+
+  it('rejected: the chip plus the causes as plain muted text, in the published order', () => {
+    arm({ ingest: { rejected_last_7d: true, causes: ['plan_ceiling', 'outdated_script'] } })
+    render(<SiteMonitoringTab siteId="s1" />)
+    expect(screen.getByText('Some events rejected')).toBeInTheDocument()
+    expect(screen.getByText('plan ceiling, outdated script')).toBeInTheDocument()
+    expect(screen.queryByText('All events counted')).not.toBeInTheDocument()
+  })
+
+  it('all three causes read in customer words, never a drop-reason slug', () => {
+    arm({ ingest: { rejected_last_7d: true, causes: ['plan_ceiling', 'rate_limited', 'outdated_script'] } })
+    render(<SiteMonitoringTab siteId="s1" />)
+    expect(screen.getByText('plan ceiling, rate limited, outdated script')).toBeInTheDocument()
+  })
+
+  it('🔴 an internal drop-reason slug is DROPPED, never printed', () => {
+    // The Iris payload schema's enum refuses one at produce time; this is the
+    // second gate. `quarantined` names a Cerberus outcome and is the exact
+    // disclosure the 28-08-2026 quarantine-stats leak was about.
+    arm({ ingest: { rejected_last_7d: true, causes: ['quarantined', 'session_dedup', 'plan_ceiling'] } })
+    render(<SiteMonitoringTab siteId="s1" />)
+    expect(screen.getByText('plan ceiling')).toBeInTheDocument()
+    expect(screen.queryByText(/quarantined/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/session_dedup/)).not.toBeInTheDocument()
+  })
+
+  it('rejected with every cause unrecognised: the chip alone, not an empty list', () => {
+    arm({ ingest: { rejected_last_7d: true, causes: ['something_new'] } })
+    render(<SiteMonitoringTab siteId="s1" />)
+    expect(screen.getByText('Some events rejected')).toBeInTheDocument()
+    expect(screen.queryByText(', ')).not.toBeInTheDocument()
+  })
+
+  it('🔴 an unresolved read is an em dash — never "All events counted"', () => {
+    arm()
+    useIngestHealth.mockReturnValue({ data: undefined, error: undefined })
+    render(<SiteMonitoringTab siteId="s1" />)
+    expect(screen.queryByText('All events counted')).not.toBeInTheDocument()
+    expect(screen.queryByText('Some events rejected')).not.toBeInTheDocument()
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
+
+  it('a failed read says so, and does not report health it has not measured', () => {
+    arm()
+    useIngestHealth.mockReturnValue({ data: undefined, error: new Error('boom') })
+    render(<SiteMonitoringTab siteId="s1" />)
+    expect(screen.getByText("Couldn't load rejected events.")).toBeInTheDocument()
+    expect(screen.queryByText('All events counted')).not.toBeInTheDocument()
+  })
+
+  it('the row is in the TRACKING panel, under Install health', () => {
+    arm()
+    render(<SiteMonitoringTab siteId="s1" />)
+    const install = screen.getByText('Install health')
+    const rejected = screen.getByText('Rejected events')
+    expect(install.compareDocumentPosition(rejected) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByText('Events Pulse refused in the last 7 days.')).toBeInTheDocument()
+  })
+})
+
+describe('SiteMonitoringTab — Availability wrap (W1)', () => {
+  it('🔴 NO line opens with an orphaned separator — the defect W1 was picked to fix', () => {
+    arm({ incidents: 2 })
+    const { container } = render(<SiteMonitoringTab siteId="s1" />)
+    const lines = (container.textContent || '').split('\n').map((l) => l.trim()).filter(Boolean)
+    // Also check every element that renders its own text run: the orphan was a
+    // "·" that opened a *span*, which a whole-container textContent would hide.
+    const runs = [...container.querySelectorAll('span, p, div')]
+      .map((n) => (n.textContent || '').trim())
+      .filter(Boolean)
+    for (const t of [...lines, ...runs]) expect(t.startsWith('·')).toBe(false)
+  })
+
+  it('the month summary is one clause on its own line, beneath the chip and last check', () => {
+    arm({ incidents: 0 })
+    render(<SiteMonitoringTab siteId="s1" />)
+    const month = screen.getByText('99.98% this month, no incidents')
+    const lastCheck = screen.getByText(/last check/)
+    // Different lines: the month clause is not a sibling inside the chip row.
+    expect(month.parentElement).not.toBe(lastCheck.parentElement)
+  })
+
+  it.each([
+    [99.98, 0, '99.98% this month, no incidents'],
+    [99.98, 1, '99.98% this month, 1 incident'],
+    [99.98, 3, '99.98% this month, 3 incidents'],
+  ])('uptime %s with %s incidents reads "%s"', (pct, n, expected) => {
+    arm({ uptimePct: pct as number, incidents: n as number })
+    render(<SiteMonitoringTab siteId="s1" />)
+    expect(screen.getByText(expected as string)).toBeInTheDocument()
+  })
+
+  it('"this month" survives when only one half was measured', () => {
+    expect(monthSummary(99.98, null)).toBe('99.98% this month')
+    expect(monthSummary(null, 0)).toBe('no incidents this month')
+    expect(monthSummary(null, 2)).toBe('2 incidents this month')
+    expect(monthSummary(null, null)).toBeNull()
+  })
+
+  it('a monitor waiting for its first check shows no month line at all', () => {
+    arm({ mon: monitor({ last_status: 'unknown', last_checked_at: null, last_response_time_ms: null }) })
+    render(<SiteMonitoringTab siteId="s1" />)
+    expect(screen.queryByText(/this month/)).not.toBeInTheDocument()
+  })
+})
+
+describe('SiteMonitoringTab — the shipped rows match the APPROVED MOCKS', () => {
+  // The two strings below are copied verbatim out of the options round's own
+  // assertion sidecars, which are what the owner approved on 15-09-2026:
+  //   Pulse/docs/data/14-09-2026-monitoring-tab-mocks/row-A-mirror.json  .assert.text
+  //   Pulse/docs/data/14-09-2026-monitoring-tab-mocks/wrap-W1-two-lines.json .assert.text
+  // A mock that is approved and then built differently is a mock that decided
+  // nothing, so the sidecar is pinned here rather than eyeballed later.
+  // ⚠️ NOT `textContent`, and not a flat text-node walk either. jsdom has no
+  // layout, so textContent concatenates sibling ELEMENTS with no separator
+  // ("Uplast check 82 ms"), while joining every text node with a space splits
+  // adjacent text nodes INSIDE one element ("82 ms , 1m ago"). What the harness
+  // sidecars recorded is innerText: text runs joined inside an element, a
+  // boundary between elements. Both wrong flattenings were tried here first,
+  // and either one would have tempted a "fix" to the expected string instead.
+  const flat = (el: HTMLElement) => {
+    const walk = (n: Node): string =>
+      n.nodeType === 3 ? (n.textContent || '') : ` ${Array.from(n.childNodes).map(walk).join('')} `
+    return walk(el).replace(/\s+/g, ' ').trim()
+  }
+
+  it('row A: the Rejected events row reads exactly as row-A-mirror.json', () => {
+    arm({ ingest: { rejected_last_7d: true, causes: ['plan_ceiling', 'outdated_script'] } })
+    render(<SiteMonitoringTab siteId="s1" />)
+    const row = screen.getByText('Rejected events').closest('div.grid') as HTMLElement
+    expect(row).toBeTruthy()
+    expect(flat(row)).toBe(
+      'Rejected events Events Pulse refused in the last 7 days. Some events rejected plan ceiling, outdated script',
+    )
+  })
+
+  it('row D: the quiet state reads exactly as row-D-clean-state.json', () => {
+    arm({ ingest: { rejected_last_7d: false, causes: [] } })
+    render(<SiteMonitoringTab siteId="s1" />)
+    const row = screen.getByText('Rejected events').closest('div.grid') as HTMLElement
+    expect(flat(row)).toBe('Rejected events Events Pulse refused in the last 7 days. All events counted')
+  })
+
+  it('wrap W1: the Availability cell reads exactly as wrap-W1-two-lines.json', () => {
+    // The sidecar was shot against a live monitor at 82 ms, 1m ago, 100%, no
+    // incidents. The fixture reproduces those four values so the comparison is
+    // against the approved STRING and not a re-derivation of it.
+    arm({
+      mon: monitor({ last_response_time_ms: 82, last_checked_at: new Date(Date.now() - 60_000).toISOString() }),
+      uptimePct: 100,
+      incidents: 0,
+    })
+    render(<SiteMonitoringTab siteId="s1" />)
+    const cell = screen.getByText('Up').closest('div.flex.flex-col') as HTMLElement
+    expect(cell).toBeTruthy()
+    expect(flat(cell)).toBe('Up last check 82 ms, 1m ago 100% this month, no incidents')
+    // And the line structure the direction is actually about: two lines, the
+    // second one whole, neither opening with a separator.
+    const lines = (cell.innerText ?? cell.textContent ?? '')
+    expect(cell.children).toHaveLength(2)
+    expect(lines.includes('· ')).toBe(false)
+  })
+})
+
 describe('SiteMonitoringTab — fetch states', () => {
   it('a failed site read is a visible failure with a retry', () => {
     useSite.mockReturnValue({ data: undefined, error: new Error('boom'), mutate })
     useUptimeStatus.mockReturnValue({ data: undefined, error: undefined, mutate })
     useUptimeIncidents.mockReturnValue({ data: undefined, error: undefined })
     useInstallStatus.mockReturnValue({ data: undefined, error: undefined })
+    useIngestHealth.mockReturnValue({ data: undefined, error: undefined })
     render(<SiteMonitoringTab siteId="s1" />)
     expect(screen.getByText("Couldn't load this site")).toBeInTheDocument()
   })

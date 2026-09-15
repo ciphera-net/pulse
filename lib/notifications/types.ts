@@ -1,3 +1,5 @@
+import type { IngestRejectionCause } from '@/lib/ingest-causes'
+
 export type NotificationType =
   | 'billing_payment_failed'
   | 'billing_plan_renewed'
@@ -64,7 +66,9 @@ export interface SiteInstallRecoveredPayload { site_id: string; silent_seconds: 
  *  reason slug; the payload schema declares that as an enum, so a producer that
  *  tried to pass one is refused at produce time. There is deliberately no count:
  *  a number invites "why three?" and the answer to that is the taxonomy. */
-export type SiteEventsRejectedCause = 'plan_ceiling' | 'rate_limited' | 'outdated_script'
+/** 🔴 An ALIAS, not a second union. The same three strings are rendered by the
+ *  Monitoring tab in a different register; `lib/ingest-causes.ts` owns both. */
+export type SiteEventsRejectedCause = IngestRejectionCause
 export interface SiteEventsRejectedPayload { site_id: string; causes: SiteEventsRejectedCause[]; domain?: string }
 export interface UptimeSSLExpiringPayload { monitor_id: string; site_id: string; expires_at: string }
 export interface SecurityNewDeviceLoginPayload { device_hint: string; country_code: string; at: string }

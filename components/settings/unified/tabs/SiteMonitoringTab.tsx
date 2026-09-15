@@ -4,10 +4,11 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Button, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { Heartbeat } from '@phosphor-icons/react'
-import { useSite, useUptimeStatus, useUptimeIncidents, useInstallStatus } from '@/lib/swr/dashboard'
+import { useSite, useUptimeStatus, useUptimeIncidents, useInstallStatus, useIngestHealth } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import type { UptimeMonitor } from '@/lib/api/uptime'
-import type { InstallStatusResponse } from '@/lib/api/sites'
+import type { InstallStatusResponse, IngestHealthResponse } from '@/lib/api/sites'
+import { INGEST_CAUSE_LABEL, knownCauses } from '@/lib/ingest-causes'
 import { useCan } from '@/lib/auth/permissions'
 import { zoneDayKey } from '@/lib/utils/siteTime'
 import { formatRelativeTime } from '@/lib/utils/formatDate'
@@ -34,10 +35,14 @@ import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/setti
  *                 producer (Phase 1b) is gated estate-wide, so a toggle here
  *                 would look like a control and do nothing.
  *
- * Not here yet, by measurement rather than omission: "Rejected events" (the
- * drop ledger is operator-only by ruling until Phase 2's redacted endpoint) and
- * the whole TRAFFIC panel (its types were retired 18-08-2026 and are
- * unemittable; they return under new keys in Phases 3–5).
+ *                 Since Phase 2b (15-09-2026) the TRACKING panel also carries
+ *                 "Rejected events", read from GET /sites/:id/ingest-health —
+ *                 the redacted sibling of an operator-only ledger, publishing
+ *                 three causes in customer words and nothing else.
+ *
+ * Not here yet, by measurement rather than omission: the whole TRAFFIC panel
+ * (its types were retired 18-08-2026 and are unemittable at the database; they
+ * return under NEW keys in Phases 4–5).
  *
  * Permissions: the tab is visible to every member (no SITE_TAB_PERMISSIONS
  * entry, like Bot & Spam). The one mutation is PUT /sites/:id {uptime_enabled},
@@ -64,6 +69,10 @@ export default function SiteMonitoringTab({ siteId }: { siteId: string }) {
   } = useUptimeStatus(siteId, uptimeOn ? monthStart : undefined, uptimeOn ? today : undefined)
   const { data: incidents } = useUptimeIncidents(siteId, uptimeOn ? monthStart : '', uptimeOn ? today : '')
   const { data: install, error: installError } = useInstallStatus(siteId)
+  // No polling, deliberately: the window is seven days wide, so nothing moves
+  // while somebody reads a settings tab, and useInstallStatus already polls on
+  // this same panel.
+  const { data: ingest, error: ingestError } = useIngestHealth(siteId)
 
   const toggleUptime = async (enabled: boolean) => {
     if (!site) return
@@ -187,6 +196,9 @@ export default function SiteMonitoringTab({ siteId }: { siteId: string }) {
           <PanelRow label="Install health" caption="Whether the tracking script is still sending events.">
             <InstallValue install={install} failed={Boolean(installError)} />
           </PanelRow>
+          <PanelRow label="Rejected events" caption="Events Pulse refused in the last 7 days.">
+            <RejectedValue ingest={ingest} failed={Boolean(ingestError)} />
+          </PanelRow>
         </PanelRows>
         {/* The tab SHOWS the delivery route and links to it; it never edits
             it. Delivery is a person's choice, per category, and lives in
@@ -226,24 +238,47 @@ function MonitorValue({
 }) {
   const s = MONITOR_STATE[monitor.last_status] ?? MONITOR_STATE.unknown
   const waiting = monitor.last_status === 'unknown'
+  const month = waiting ? null : monthSummary(monthUptime, incidentCount)
+  // W1 (owner's pick, 15-09-2026): TWO DELIBERATE LINES, not four inline spans
+  // that happen to wrap. Before this, the cell was a `flex-wrap` row of four
+  // children and at 1440px the fourth fell to a second line OPENING WITH AN
+  // ORPHANED "·" — a separator with nothing on its left. The height is the same
+  // 44px either way; what changes is that the break is now chosen, the second
+  // line is a whole clause, and "this month" is said once instead of twice.
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-      <StatusChip tone={s.tone} dot>{s.label}</StatusChip>
-      {!waiting && monitor.last_response_time_ms != null && monitor.last_checked_at && (
-        <span className="text-sm text-muted-foreground tabular-nums">
-          last check {fmtMs(monitor.last_response_time_ms)}, {formatRelativeTime(monitor.last_checked_at)}
-        </span>
-      )}
-      {!waiting && monthUptime != null && (
-        <span className="text-sm text-muted-foreground tabular-nums">· {fmtUptimePct(monthUptime)} this month</span>
-      )}
-      {!waiting && incidentCount != null && (
-        <span className="text-sm text-muted-foreground">
-          · {incidentCount === 0 ? 'no incidents' : `${incidentCount} incident${incidentCount === 1 ? '' : 's'}`} this month
-        </span>
-      )}
+    <div className="flex flex-col gap-y-1">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <StatusChip tone={s.tone} dot>{s.label}</StatusChip>
+        {!waiting && monitor.last_response_time_ms != null && monitor.last_checked_at && (
+          <span className="text-sm text-muted-foreground tabular-nums">
+            last check {fmtMs(monitor.last_response_time_ms)}, {formatRelativeTime(monitor.last_checked_at)}
+          </span>
+        )}
+      </div>
+      {month && <span className="text-sm text-muted-foreground tabular-nums">{month}</span>}
     </div>
   )
+}
+
+/**
+ * The second line of the Availability cell: this month's uptime and incidents
+ * as ONE clause, or null when neither has been measured.
+ *
+ * ⚠️ "this month" is attached to whichever half survives. A cell that says only
+ * "no incidents" has stopped saying over what period, which is the objection
+ * that lost direction W2 ("100%" no longer says what it is 100% of).
+ */
+export function monthSummary(monthUptime: number | null, incidentCount: number | null): string | null {
+  const incidents =
+    incidentCount == null
+      ? null
+      : incidentCount === 0
+        ? 'no incidents'
+        : `${incidentCount} incident${incidentCount === 1 ? '' : 's'}`
+  if (monthUptime != null && incidents) return `${fmtUptimePct(monthUptime)} this month, ${incidents}`
+  if (monthUptime != null) return `${fmtUptimePct(monthUptime)} this month`
+  if (incidents) return `${incidents} this month`
+  return null
 }
 
 const INSTALL_STATE: Record<InstallStatusResponse['install_status'], { label: string; tone: ChipTone }> = {
@@ -266,6 +301,51 @@ function InstallValue({ install, failed }: { install: InstallStatusResponse | un
         <span className="text-sm text-muted-foreground">last event {formatRelativeTime(install.last_event_at)}</span>
       ) : (
         <span className="text-sm text-muted-foreground">The script has not sent an event yet.</span>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Rejected events — direction A ("mirror"), the owner's pick of 15-09-2026.
+ *
+ * A chip plus the causes as PLAIN MUTED TEXT: exactly the grammar of the
+ * Install health row one line above, so the tab's vocabulary does not grow a
+ * new device for a row that is quiet almost all the time. (Direction C gave
+ * each cause its own chip and turned an incidental row into the loudest thing
+ * on the panel; B spelled the first cause into a sentence and then had to
+ * truncate to "and 1 more reason".)
+ *
+ * 🔴 THREE STATES, AND ONLY THE LAST IS A MEASUREMENT — the same contract
+ * InstallValue follows. An unresolved read is an em dash and a failed one says
+ * so, because rendering either as "All events counted" would report health that
+ * has not been measured.
+ *
+ * ⚠️ The quiet chip is NEUTRAL, not green. The row reports an absence of
+ * trouble, not an achievement, and the tab's own rule is that colour lives in a
+ * small dot or a single word.
+ */
+function RejectedValue({ ingest, failed }: { ingest: IngestHealthResponse | undefined; failed: boolean }) {
+  if (failed) return <span className="text-sm text-muted-foreground">Couldn&apos;t load rejected events.</span>
+  if (!ingest) return <span className="text-sm text-muted-foreground">—</span>
+  // Unrecognised strings are dropped, never printed: the drop-reason taxonomy is
+  // operator-only, and this is the client-side half of the two gates that keep
+  // it that way (the Iris payload schema's enum is the other).
+  const causes = knownCauses(ingest.causes)
+  if (!ingest.rejected_last_7d) {
+    return (
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <StatusChip tone="neutral" dot>All events counted</StatusChip>
+      </div>
+    )
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <StatusChip tone="warning" dot>Some events rejected</StatusChip>
+      {causes.length > 0 && (
+        <span className="text-sm text-muted-foreground">
+          {causes.map((c) => INGEST_CAUSE_LABEL[c]).join(', ')}
+        </span>
       )}
     </div>
   )
