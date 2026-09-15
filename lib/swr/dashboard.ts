@@ -51,7 +51,7 @@ import {
   type TransitionsResponse,
   type EntryPoint,
 } from '@/lib/api/journeys'
-import { getSite, getInstallStatus } from '@/lib/api/sites'
+import { getSite, getInstallStatus, getIngestHealth, type IngestHealthResponse } from '@/lib/api/sites'
 import type { Site, InstallStatusResponse } from '@/lib/api/sites'
 import { listFunnels, getFunnel, getFunnelStats, getAllFunnelStats, getFunnelTrends, getFunnelBreakdown, type Funnel, type FunnelStats, type FunnelTrends, type FunnelBreakdown } from '@/lib/api/funnels'
 import {
@@ -89,6 +89,7 @@ import type {
 const fetchers = {
   site: (siteId: string) => getSite(siteId),
   installStatus: (siteId: string) => getInstallStatus(siteId),
+  ingestHealth: (siteId: string) => getIngestHealth(siteId),
   dashboard: (siteId: string, start: string, end: string, interval?: string, filters?: string, period?: string) => getDashboard(siteId, start, end, 10, interval, filters, period),
   dashboardOverview: (siteId: string, start: string, end: string, interval?: string, filters?: string) => getDashboardOverview(siteId, start, end, interval, filters),
   dashboardPages: (siteId: string, start: string, end: string, filters?: string) => getDashboardPages(siteId, start, end, undefined, filters),
@@ -197,6 +198,24 @@ export function useInstallStatus(siteId: string | undefined, options?: { poll?: 
     }
   )
   return swr
+}
+
+/**
+ * Ingest health for a site: were any events refused in the site's last seven
+ * LOCAL days, and for which of three causes.
+ *
+ * ⚠️ No polling. The window is seven days wide, so there is nothing to watch
+ * change while somebody looks at the settings tab — and the install-status hook
+ * above already polls, so a second poller on the same panel would double the
+ * traffic for a number that moves once a day at most. Returns undefined while
+ * loading; the consumer must render that as unresolved, never as "none".
+ */
+export function useIngestHealth(siteId: string | undefined) {
+  return useSWR<IngestHealthResponse>(
+    siteId ? ['ingest-health', siteId] : null,
+    () => fetchers.ingestHealth(siteId as string),
+    { ...dashboardSWRConfig, refreshInterval: 0, dedupingInterval: 60 * 1000 }
+  )
 }
 
 // * Hook for full dashboard data (single request replaces 7 focused hooks)

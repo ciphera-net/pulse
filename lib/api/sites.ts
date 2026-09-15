@@ -1,4 +1,5 @@
 import apiRequest from './client'
+import type { IngestRejectionCause } from '@/lib/ingest-causes'
 
 export type GeoDataLevel = 'full' | 'country' | 'none'
 
@@ -95,6 +96,25 @@ export interface InstallStatusResponse {
   last_event_at: string | null
 }
 
+/** The three causes the server may publish. Never an internal drop-reason slug:
+ *  the eight-reason taxonomy is operator-only, and the endpoint collapses it to
+ *  these three words (pulse-backend internal/ingestdrops/causes.go).
+ *
+ *  🔴 DECLARED ONCE, IN `lib/ingest-causes.ts`, and re-exported here for the API
+ *  surface's own readers. The notification card renders the same three causes in
+ *  a different register; a second union here is how the two would drift. */
+export type { IngestRejectionCause }
+
+export interface IngestHealthResponse {
+  /** True iff at least one of the three ALARMING causes applied in the site's
+   *  last 7 local days. Deliberately not "any drop": five of the eight reasons
+   *  are Pulse working correctly, and a row that is always on is one people
+   *  learn to skip. */
+  rejected_last_7d: boolean
+  /** Always an array, never null — in the published order. */
+  causes: IngestRejectionCause[]
+}
+
 export interface CreateSiteRequest {
   domain: string
   name: string
@@ -175,6 +195,10 @@ export async function getSite(id: string): Promise<Site> {
 
 export async function getInstallStatus(id: string): Promise<InstallStatusResponse> {
   return apiRequest<InstallStatusResponse>(`/sites/${id}/install-status`)
+}
+
+export async function getIngestHealth(id: string): Promise<IngestHealthResponse> {
+  return apiRequest<IngestHealthResponse>(`/sites/${id}/ingest-health`)
 }
 
 export async function createSite(data: CreateSiteRequest): Promise<Site> {
