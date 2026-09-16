@@ -411,6 +411,24 @@ function TrafficValue({ traffic, failed }: { traffic: TrafficStatusResponse | un
       ? `${fmtVisitors(traffic.observed)} on ${prettyDay(traffic.day)}, about ${fmtVisitors(traffic.expected)} expected`
       : null
 
+  // 🔴 BELOW THE FLOOR IS "CANNOT TELL", NOT "NORMAL". A site whose expectation
+  // is under the detector's minimum can never produce a direction, so calling it
+  // Normal claims a judgement that was never made. On production every one of
+  // the four Europe/* sites is in exactly that position — best case 17 visitors
+  // a day, worst case 1 — so without this they would have read "Normal" forever
+  // the moment the session boundary cleared.
+  //
+  // It is checked BEFORE the direction, because a below-floor verdict is always
+  // `steady` and the two would otherwise be indistinguishable.
+  if (traffic.below_floor) {
+    return (
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <StatusChip tone="neutral" dot>Not enough traffic to judge</StatusChip>
+        {figures && <span className="text-sm text-muted-foreground tabular-nums">{figures}</span>}
+      </div>
+    )
+  }
+
   const s = TRAFFIC_STATE[traffic.direction ?? 'steady'] ?? TRAFFIC_STATE.steady
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">

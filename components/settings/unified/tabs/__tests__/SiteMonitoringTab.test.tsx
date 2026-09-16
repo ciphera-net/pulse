@@ -66,7 +66,7 @@ function arm({
   // fires precisely FOR `undefined`, so `arm({ traffic: undefined })` would
   // silently substitute the fixture below — a test reading "unresolved" while
   // asserting the opposite. Caught by the em-dash test failing on 16-09-2026.
-  traffic = { state: 'unwatched', reason: 'session_boundary', watching_from: '2026-09-30', observed: null, expected: null } as unknown,
+  traffic = { state: 'unwatched', reason: 'session_boundary', watching_from: '2026-09-30', observed: null, expected: null, below_floor: false } as unknown,
   trafficError = undefined,
 }: { siteOver?: Record<string, unknown>; mon?: ReturnType<typeof monitor> | null; uptimePct?: number; incidents?: number; install?: unknown; ingest?: unknown; traffic?: unknown; trafficError?: unknown } = {}) {
   useSite.mockReturnValue({ data: site(siteOver), error: undefined, mutate })
@@ -393,7 +393,7 @@ describe('SiteMonitoringTab — Traffic (Phase 4, direction T1)', () => {
   })
 
   it('🔴 unwatched reads as an ANSWER with a date, never as a loading state', () => {
-    arm({ traffic: { state: 'unwatched', reason: 'session_boundary', watching_from: '2026-09-30', observed: null, expected: null } })
+    arm({ traffic: { state: 'unwatched', reason: 'session_boundary', watching_from: '2026-09-30', observed: null, expected: null, below_floor: false } })
     render(<SiteMonitoringTab siteId="s1" />)
     expect(screen.getByText('Not watched yet')).toBeInTheDocument()
     expect(screen.getByText('Watching from 30 September')).toBeInTheDocument()
@@ -403,21 +403,21 @@ describe('SiteMonitoringTab — Traffic (Phase 4, direction T1)', () => {
   })
 
   it('unwatched with no knowable end date still names a reason rather than shrugging', () => {
-    arm({ traffic: { state: 'unwatched', reason: 'gap', observed: null, expected: null } })
+    arm({ traffic: { state: 'unwatched', reason: 'gap', observed: null, expected: null, below_floor: false } })
     render(<SiteMonitoringTab siteId="s1" />)
     expect(screen.getByText('Not watched yet')).toBeInTheDocument()
     expect(screen.getByText('No data for the last full day')).toBeInTheDocument()
   })
 
   it('steady reads as Normal with the day\'s figures', () => {
-    arm({ traffic: { state: 'watched', day: '2026-09-15', direction: 'steady', observed: 82, expected: 109 } })
+    arm({ traffic: { state: 'watched', day: '2026-09-15', direction: 'steady', observed: 82, expected: 109, below_floor: false } })
     render(<SiteMonitoringTab siteId="s1" />)
     expect(screen.getByText('Normal')).toBeInTheDocument()
     expect(screen.getByText('82 visitors on 15 September, about 109 visitors expected')).toBeInTheDocument()
   })
 
   it('a fall is the WARNING tone and names the day it fell on', () => {
-    arm({ traffic: { state: 'watched', day: '2026-09-07', direction: 'fell', observed: 8, expected: 139 } })
+    arm({ traffic: { state: 'watched', day: '2026-09-07', direction: 'fell', observed: 8, expected: 139, below_floor: false } })
     render(<SiteMonitoringTab siteId="s1" />)
     const chip = screen.getByText('Traffic fell')
     expect(chip).toBeInTheDocument()
@@ -426,7 +426,7 @@ describe('SiteMonitoringTab — Traffic (Phase 4, direction T1)', () => {
   })
 
   it('🔴 a RISE is neutral, not the success tone — a spike is as often a bot wave', () => {
-    arm({ traffic: { state: 'watched', day: '2026-09-15', direction: 'rose', observed: 287, expected: 117 } })
+    arm({ traffic: { state: 'watched', day: '2026-09-15', direction: 'rose', observed: 287, expected: 117, below_floor: false } })
     render(<SiteMonitoringTab siteId="s1" />)
     const chip = screen.getByText('Traffic rose')
     expect(chip).toBeInTheDocument()
@@ -448,9 +448,39 @@ describe('SiteMonitoringTab — Traffic (Phase 4, direction T1)', () => {
   })
 
   it('🔴 a judged day with null figures renders the chip alone, never a zero', () => {
-    arm({ traffic: { state: 'watched', day: '2026-09-15', direction: 'steady', observed: null, expected: null } })
+    arm({ traffic: { state: 'watched', day: '2026-09-15', direction: 'steady', observed: null, expected: null, below_floor: false } })
     render(<SiteMonitoringTab siteId="s1" />)
     expect(screen.getByText('Normal')).toBeInTheDocument()
     expect(screen.queryByText(/0 visitors/)).not.toBeInTheDocument()
+  })
+})
+
+describe('SiteMonitoringTab — Traffic below the floor', () => {
+  it('🔴 a site under the detector\'s floor reads "not enough traffic", NOT "Normal"', () => {
+    // The four Europe/* production sites are all here: their expectation never
+    // clears 20 visitors/day on any weekday. "Normal" would claim a judgement
+    // that was never made and can never be made.
+    arm({ traffic: { state: 'watched', day: '2026-09-15', direction: 'steady', observed: 8, expected: 9, below_floor: true } })
+    render(<SiteMonitoringTab siteId="s1" />)
+    expect(screen.getByText('Not enough traffic to judge')).toBeInTheDocument()
+    expect(screen.queryByText('Normal')).not.toBeInTheDocument()
+    // The figures still show — the reader can see WHY it is too little.
+    expect(screen.getByText('8 visitors on 15 September, about 9 visitors expected')).toBeInTheDocument()
+  })
+
+  it('a site ABOVE the floor still reads Normal — the flag must not swallow real judgements', () => {
+    arm({ traffic: { state: 'watched', day: '2026-09-15', direction: 'steady', observed: 82, expected: 109, below_floor: false } })
+    render(<SiteMonitoringTab siteId="s1" />)
+    expect(screen.getByText('Normal')).toBeInTheDocument()
+    expect(screen.queryByText('Not enough traffic to judge')).not.toBeInTheDocument()
+  })
+
+  it('the floor is checked BEFORE the direction — a below-floor verdict is always steady', () => {
+    // If the direction were read first, this would render "Traffic fell" for a
+    // site the detector has explicitly refused to judge.
+    arm({ traffic: { state: 'watched', day: '2026-09-15', direction: 'fell', observed: 1, expected: 9, below_floor: true } })
+    render(<SiteMonitoringTab siteId="s1" />)
+    expect(screen.getByText('Not enough traffic to judge')).toBeInTheDocument()
+    expect(screen.queryByText('Traffic fell')).not.toBeInTheDocument()
   })
 })
