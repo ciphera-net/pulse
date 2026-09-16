@@ -218,8 +218,15 @@ export default function SiteMonitoringTab({ siteId }: { siteId: string }) {
           <p className="text-xs text-muted-foreground">
             Uptime alerts arrive in-app and by email, through the Monitoring category in your notification settings.
           </p>
-          <Link href="/settings/account/notifications" className="shrink-0 text-sm font-medium text-primary">
-            Notification settings →
+          {/* The house link: foreground with an underline (Organization →
+              Notifications draws the same link the same way). Orange is for
+              data and the active state, not for a link, and the arrow glyph
+              was the only one on the surface. */}
+          <Link
+            href="/settings/account/notifications"
+            className="shrink-0 text-sm font-medium text-foreground underline underline-offset-4 decoration-border transition-colors duration-fast ease-apple hover:decoration-foreground motion-reduce:transition-none"
+          >
+            Notification settings
           </Link>
         </div>
       </SettingsPanel>
