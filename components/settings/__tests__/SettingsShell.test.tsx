@@ -25,7 +25,14 @@ vi.mock('@phosphor-icons/react', () => new Proxy({}, {
   has: () => true,
 }))
 vi.mock('@/lib/auth/permissions', () => ({ useCan: () => true }))
-vi.mock('@/components/settings/SiteContextBand', () => ({ default: () => null }))
+// The header's site identity reads the active site from this hook (round 3).
+type SiteLike = { id: string; name: string; domain: string }
+const setActiveSiteId = vi.fn()
+let activeSiteValue: { sites: SiteLike[]; activeSite: SiteLike | null; setActiveSiteId: typeof setActiveSiteId } = {
+  sites: [], activeSite: null, setActiveSiteId,
+}
+vi.mock('@/components/settings/active-site', () => ({ useActiveSite: () => activeSiteValue }))
+vi.mock('@/components/sites/SiteFavicon', () => ({ SiteFavicon: ({ name }: any) => <span data-testid="favicon">{name?.[0]}</span> }))
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...a: any[]) => a.flat(Infinity).filter(Boolean).join(' '),
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
@@ -49,7 +56,9 @@ const ORG = NAV_GROUPS.find((g) => g.section === 'organization')!
 
 beforeEach(() => {
   push.mockReset()
+  setActiveSiteId.mockReset()
   pathname = '/settings/organization/billing'
+  activeSiteValue = { sites: [], activeSite: null, setActiveSiteId }
 })
 
 describe('SettingsShell (A6)', () => {
@@ -118,3 +127,79 @@ describe('SettingsShell (A6)', () => {
     expect(within(rail).getAllByRole('link').filter((l) => l.getAttribute('aria-current') === 'page')).toHaveLength(0)
   })
 })
+
+// ─── Round 3 (owner pick 16-09-2026): on a Site tab the header names the site ───
+const ACME: SiteLike = { id: 'site-a', name: 'Acme', domain: 'acme.example' }
+const BOLT: SiteLike = { id: 'site-b', name: 'Bolt', domain: 'bolt.example' }
+
+describe('SettingsShell — the site named in the header', () => {
+  it('names the site in place of the scope word, with a caret that opens the site switcher', () => {
+    pathname = '/settings/site/goals'
+    activeSiteValue = { sites: [ACME, BOLT], activeSite: ACME, setActiveSiteId }
+    render(<SettingsShell><div>tab</div></SettingsShell>)
+    const h1 = screen.getByRole('heading', { level: 1 })
+    expect(h1).toHaveTextContent(/Acme.*Goals/)
+    expect(h1).not.toHaveTextContent(/^Site/)
+    // The caret is a real control: it opens a listbox of the sites, and picking
+    // one switches the active site.
+    const trigger = within(h1).getByRole('button', { name: /Switch site/ })
+    expect(trigger).toHaveAttribute('aria-haspopup', 'listbox')
+    fireEvent.click(trigger)
+    const list = screen.getByRole('listbox', { name: 'Sites' })
+    expect(within(list).getAllByRole('option')).toHaveLength(2)
+    fireEvent.click(within(list).getByRole('option', { name: /Bolt/ }))
+    expect(setActiveSiteId).toHaveBeenCalledWith('site-b')
+  })
+
+  it('keeps the scope Switcher reading Site: it switches scope, not site', () => {
+    pathname = '/settings/site/goals'
+    activeSiteValue = { sites: [ACME, BOLT], activeSite: ACME, setActiveSiteId }
+    render(<SettingsShell><div>tab</div></SettingsShell>)
+    const rail = screen.getByRole('navigation', { name: 'Settings sections' })
+    expect(within(rail).getByRole('radio', { name: 'Site' })).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('nothing above the panels names the site any more: the identity card is gone', () => {
+    pathname = '/settings/site/goals'
+    activeSiteValue = { sites: [ACME, BOLT], activeSite: ACME, setActiveSiteId }
+    render(<SettingsShell><div data-testid="tab">tab</div></SettingsShell>)
+    // The band showed the domain and a "Switch site" button between the header and the tab.
+    expect(screen.queryByText('acme.example')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Switch site' })).toBeNull()
+    const tab = screen.getByTestId('tab')
+    const h1 = screen.getByRole('heading', { level: 1 })
+    // Between the header and the tab's own content sits only the layout: no element carrying the site name.
+    const between = Array.from(document.querySelectorAll('main *, body *')).filter(
+      (el) => el !== h1 && !h1.contains(el) && !tab.contains(el) && el.children.length === 0 && (el.textContent || '').trim() === 'Acme',
+    )
+    expect(between).toHaveLength(0)
+  })
+
+  it('shows the scope word until the active site resolves', () => {
+    pathname = '/settings/site/goals'
+    activeSiteValue = { sites: [], activeSite: null, setActiveSiteId }
+    render(<SettingsShell><div>tab</div></SettingsShell>)
+    const h1 = screen.getByRole('heading', { level: 1 })
+    expect(h1).toHaveTextContent(/Site.*Goals/)
+    expect(within(h1).queryByRole('button')).toBeNull()
+  })
+
+  it('with a single site the name is plain text: nothing to switch to', () => {
+    pathname = '/settings/site/general'
+    activeSiteValue = { sites: [ACME], activeSite: ACME, setActiveSiteId }
+    render(<SettingsShell><div>tab</div></SettingsShell>)
+    const h1 = screen.getByRole('heading', { level: 1 })
+    expect(h1).toHaveTextContent(/Acme.*General/)
+    expect(within(h1).queryByRole('button')).toBeNull()
+  })
+
+  it('leaves the other scopes alone: Organization · Billing, no site control', () => {
+    activeSiteValue = { sites: [ACME, BOLT], activeSite: ACME, setActiveSiteId }
+    render(<SettingsShell><div>tab</div></SettingsShell>)
+    const h1 = screen.getByRole('heading', { level: 1 })
+    expect(h1).toHaveTextContent(/Organization.*Billing/)
+    expect(h1).not.toHaveTextContent(/Acme/)
+    expect(within(h1).queryByRole('button')).toBeNull()
+  })
+})
+

@@ -47,7 +47,7 @@ function Probe() {
   return (
     <div>
       <div data-testid="active">{activeSite?.id ?? 'none'}</div>
-      {/* Stands in for SiteContextBand's switcher — the only caller there is. */}
+      {/* Stands in for SiteHeaderIdentity's switcher, the only caller there is. */}
       {sites.map((s) => (
         <button key={s.id} type="button" onClick={() => setActiveSiteId(s.id)}>
           switch to {s.name}

@@ -18,7 +18,7 @@ function getFocusable(container: HTMLElement): HTMLElement[] {
 }
 import { useCan } from '@/lib/auth/permissions'
 import { cn } from '@/lib/utils'
-import SiteContextBand from '@/components/settings/SiteContextBand'
+import { SiteHeaderIdentity } from '@/components/settings/SiteHeaderIdentity'
 import { NAV_GROUPS, sectionOf, type NavGroup, type NavTab, type Section } from '@/components/settings/nav'
 import {
   MastheadSlotProvider,
@@ -225,7 +225,15 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
               <h1 className="flex min-w-0 items-center gap-2.5 text-xl tracking-tight">
                 {activeGroup ? (
                   <>
-                    <span className="font-medium text-muted-foreground">{activeGroup.label}</span>
+                    {/* On a Site tab the scope word IS the site: tile, name and
+                        the switcher's caret (round 3, owner pick 16-09-2026).
+                        The identity card that used to sit above the panels is
+                        gone; this is where the site is named and switched. */}
+                    {section === 'site' ? (
+                      <SiteHeaderIdentity fallback={activeGroup.label} />
+                    ) : (
+                      <span className="font-medium text-muted-foreground">{activeGroup.label}</span>
+                    )}
                     {activeTab && (
                       <>
                         <span aria-hidden="true" className="text-muted-foreground">·</span>
@@ -277,7 +285,6 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                   `pb-4` gives the settled footer strip a little breathing room
                   at scroll end so it doesn't kiss the content-panel edge. */}
               <div className="relative min-w-0 max-w-3xl flex-1 pb-4">
-                {section === 'site' && <SiteContextBand />}
                 <div className="space-y-8 pb-8">{children}</div>
                 {/* Panel-footer save slot — the buffered-save strip portals in
                     here as the LAST flow child of the column. `display:contents`
