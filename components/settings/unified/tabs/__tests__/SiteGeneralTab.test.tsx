@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 // --- Mocks ---------------------------------------------------------------
 
@@ -73,8 +75,6 @@ vi.mock('@ciphera-net/facet', () => ({
       ))}
     </select>
   ),
-  Spinner: () => <div>loading</div>,
-  CheckIcon: () => <svg />,
   ZapIcon: () => <svg />,
   toast: { success: vi.fn(), error: vi.fn() },
   getAuthErrorMessage: () => 'error',
@@ -102,31 +102,41 @@ beforeEach(() => {
 })
 
 describe('SiteGeneralTab (Facet structured panels)', () => {
-  it('renders the Site + Tracking script panels and the danger zone (no identity card)', async () => {
+  it('renders the Site + Tracking script panels (sentence-case level-2 headings) and the danger zone (no identity card)', async () => {
     render(<SiteGeneralTab siteId="s1" />)
-    await waitFor(() => expect(screen.getByText('Site')).toBeInTheDocument())
-    expect(screen.getByText('Tracking script')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('heading', { level: 2, name: 'Site' })).toBeInTheDocument())
+    expect(screen.getByRole('heading', { level: 2, name: 'Tracking script' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Danger zone' })).toBeInTheDocument()
     expect(screen.getByText('Name')).toBeInTheDocument()
     expect(screen.getByText('Domain')).toBeInTheDocument()
     expect(screen.getByText('Timezone')).toBeInTheDocument()
     expect(screen.getByTestId('script-setup')).toBeInTheDocument()
-    expect(screen.getByText('Danger zone')).toBeInTheDocument()
+    // No hand-built page-top heading duplicating the shell's own "Scope · Tab" — the
+    // site's name/domain never appear as a heading of the tab's own.
+    expect(screen.queryByRole('heading', { name: 'Acme' })).toBeNull()
   })
 
-  it('renders the domain field disabled and visibly distinct', async () => {
+  it('renders the domain field disabled and visibly distinct, with no double-opacity stack', async () => {
     render(<SiteGeneralTab siteId="s1" />)
     const domain = await screen.findByDisplayValue('acme.com')
     expect(domain).toBeDisabled()
+    // Facet's Input already carries disabled:opacity-50 — a local opacity-60
+    // on top of it stacks to ~0.3 and reads as barely-there, not "disabled".
+    expect(domain.className).not.toMatch(/opacity-60/)
   })
 
-  it('reports install state from the SERVER status, not the manual verified flag', async () => {
+  it('reports install state from the SERVER status, not the manual verified flag, on the Site panel action', async () => {
     mockInstallStatus = 'active'
     render(<SiteGeneralTab siteId="s1" />)
     // siteState() is deliberately is_verified: false — the flag a manual modal
     // used to flip. A site that is demonstrably receiving events must not be
     // labelled "Not verified" because nobody clicked a button.
-    await waitFor(() => expect(screen.getByText('Receiving data')).toBeInTheDocument())
+    const siteHeading = await screen.findByRole('heading', { level: 2, name: 'Site' })
+    const sitePanel = siteHeading.closest('section')!
+    await waitFor(() => expect(within(sitePanel).getByText('Receiving data')).toBeInTheDocument())
     expect(screen.queryByText('Not verified')).not.toBeInTheDocument()
+    // ONE chip carries this meaning — no duplicate on the Tracking script panel.
+    expect(screen.getAllByText('Receiving data')).toHaveLength(1)
   })
 
   it('distinguishes never-installed from stalled', async () => {
@@ -198,9 +208,38 @@ describe('SiteGeneralTab (Facet structured panels)', () => {
     expect(screen.queryByTestId('savebar')).toBeNull()
   })
 
-  it('surfaces a distinct error state (not an infinite spinner) when the fetch fails', () => {
+  it('titles the danger zone actions in sentence case with no trailing dots', async () => {
+    render(<SiteGeneralTab siteId="s1" />)
+    // Exact names: sentence case, and the old "Delete Site..." trailing dots
+    // are gone (rule 15 — "..." is never used, and the button reads as a
+    // direct action, not a truncated one).
+    expect(await screen.findByRole('button', { name: 'Reset data' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete site' })).toBeInTheDocument()
+    expect(screen.queryByText(/Delete Site\.\.\./)).toBeNull()
+  })
+
+  it('surfaces a distinct, named error state (not an infinite spinner) when the fetch fails', () => {
     useSite.mockReturnValue({ data: undefined, error: new Error('boom'), isValidating: false, mutate })
     render(<SiteGeneralTab siteId="s1" />)
+    expect(screen.getByRole('alert')).toBeInTheDocument()
     expect(screen.getByText(/Couldn't load this site/i)).toBeInTheDocument()
+  })
+
+  it('shows the house loading skeleton (role="status"), never a bare spinner, while the site loads', () => {
+    useSite.mockReturnValue({ data: undefined, error: undefined, isValidating: false, mutate })
+    render(<SiteGeneralTab siteId="s1" />)
+    expect(screen.getByRole('status')).toBeInTheDocument()
+  })
+
+  it('has no em dash, en dash, or three-dot ellipsis anywhere in its copy', () => {
+    const source = readFileSync(join(process.cwd(), 'components/settings/unified/tabs/SiteGeneralTab.tsx'), 'utf8')
+    const stripped = source
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '')
+      // JS/TS spread and rest syntax ("...prev", "...features") is three literal
+      // dots by grammar, not a copy ellipsis — exclude it before scanning prose.
+      .replace(/\.\.\.(?=[A-Za-z_$])/g, '')
+    expect(stripped).not.toMatch(/[—–]/)
+    expect(stripped).not.toMatch(/\.\.\./)
   })
 })

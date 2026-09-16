@@ -1,17 +1,9 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { Button, Input, Checkbox, Banner, toast, getAuthErrorMessage, Spinner, cn } from '@ciphera-net/facet'
+import { Modal, Button, Input, Checkbox, toast, getAuthErrorMessage, Spinner } from '@ciphera-net/facet'
 import { resetSiteData, type ResetModule } from '@/lib/api/sites'
-import { ChartBar, Path, Funnel, Heartbeat, Gauge, Cloud, MagnifyingGlass } from '@phosphor-icons/react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog'
+import { ChartBar, Path, Funnel, Heartbeat, Gauge, Cloud, MagnifyingGlass, WarningCircle } from '@phosphor-icons/react'
 
 interface ResetModuleOption {
   id: ResetModule
@@ -121,6 +113,7 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
   }
 
   const isConfirmed = validateConfirmation(confirmInput, siteDomain, selected.size)
+  const allSelected = selected.size === RESET_MODULES.length
 
   const handleReset = async () => {
     if (!isConfirmed || selected.size === 0) return
@@ -132,31 +125,23 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
       handleClose()
       onReset()
     } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to reset data')
+      toast.error(getAuthErrorMessage(error) || "Couldn't reset your data. Try again.")
       setIsResetting(false)
     }
   }
 
-  const allSelected = selected.size === RESET_MODULES.length
-
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(isOpen) => {
-        if (!isOpen && !isResetting) handleClose()
-      }}
-    >
-      <DialogContent className="sm:max-w-lg border-destructive/30">
-        <DialogHeader>
-          <DialogTitle className="text-destructive">Reset Data</DialogTitle>
-          <DialogDescription>
-            Select which data modules to permanently delete for{' '}
-            <span className="font-medium text-foreground">{siteDomain}</span>.
-            Configuration and integrations are preserved.
-          </DialogDescription>
-        </DialogHeader>
+    <Modal isOpen={open} onClose={handleClose} title="Reset data">
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Select which data modules to permanently delete for{' '}
+          <span className="font-mono text-foreground">{siteDomain}</span>. Configuration and
+          integrations stay as they are.
+        </p>
 
-        {/* Module picker — one ruled frame, select-all in the header */}
+        {/* Module picker — one ruled frame, select-all in the header. Every row
+            is the same Facet Checkbox idiom (the header row and each module
+            row used to be two different pseudo-checkbox implementations). */}
         <div className="rounded-none border border-border">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <Checkbox
@@ -164,9 +149,9 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
               indeterminate={selected.size > 0 && !allSelected}
               onChange={toggleAll}
               disabled={isResetting}
-              label={<span className="font-semibold text-micro-label uppercase text-muted-foreground">All modules</span>}
+              label="All modules"
             />
-            <span className="tabular-nums text-micro-label uppercase text-muted-foreground">
+            <span className="text-xs tabular-nums text-muted-foreground">
               {selected.size}/{RESET_MODULES.length}
             </span>
           </div>
@@ -174,41 +159,23 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
           <div className="divide-y divide-border">
             {RESET_MODULES.map((mod) => {
               const Icon = mod.icon
-              const checked = selected.has(mod.id)
               return (
-                <button
-                  key={mod.id}
-                  type="button"
-                  onClick={() => toggleModule(mod.id)}
-                  disabled={isResetting}
-                  aria-pressed={checked}
-                  className={cn(
-                    'flex w-full items-start gap-3 px-4 py-3 text-left transition-colors cursor-pointer disabled:cursor-not-allowed',
-                    checked ? 'bg-destructive/5 hover:bg-destructive/10' : 'hover:bg-muted',
-                  )}
-                >
-                  {/* Presentational mark — the row itself is the control, so no
-                      nested interactive checkbox. Checked uses the control-state
-                      accent (bg-primary), matching Toggle/Checkbox-on. */}
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-none border transition-colors ease-apple',
-                      checked ? 'border-primary bg-primary' : 'border-input',
-                    )}
-                  >
-                    {checked && (
-                      <svg viewBox="0 0 12 12" className="h-3 w-3 text-primary-foreground" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M2 6l3 3 5-5" />
-                      </svg>
-                    )}
-                  </span>
-                  <Icon weight="bold" className={cn('mt-0.5 h-4 w-4 shrink-0', checked ? 'text-destructive' : 'text-muted-foreground')} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground">{mod.label}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{mod.description}</p>
-                  </div>
-                </button>
+                <div key={mod.id} className="px-4 py-3">
+                  <Checkbox
+                    checked={selected.has(mod.id)}
+                    onChange={() => toggleModule(mod.id)}
+                    disabled={isResetting}
+                    label={
+                      <span className="flex items-start gap-2">
+                        <Icon weight="bold" aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium text-foreground">{mod.label}</span>
+                          <span className="block text-xs text-muted-foreground">{mod.description}</span>
+                        </span>
+                      </span>
+                    }
+                  />
+                </div>
               )
             })}
           </div>
@@ -217,18 +184,18 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
         {/* Confirmation */}
         {selected.size > 0 && (
           <div className="space-y-4">
-            <Banner
-              tone="danger"
-              title={
-                selected.size === RESET_MODULES.length
-                  ? 'All data modules will be permanently deleted.'
-                  : `${selected.size} module${selected.size > 1 ? 's' : ''} will be permanently deleted.`
-              }
-            />
+            <div role="alert" className="flex items-start gap-3 border border-destructive/30 px-4 py-3">
+              <WarningCircle size={16} weight="fill" aria-hidden="true" className="mt-0.5 shrink-0 text-destructive" />
+              <p className="text-sm text-foreground">
+                {allSelected
+                  ? 'This deletes all data modules permanently.'
+                  : `This deletes ${selected.size} module${selected.size > 1 ? 's' : ''} permanently.`}
+              </p>
+            </div>
 
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">
-                Type <span className="font-mono font-bold text-destructive">{allSelected ? siteDomain : 'RESET'}</span> to confirm
+              <label className="mb-1 block text-xs text-muted-foreground">
+                Type <span className="font-mono font-semibold text-destructive">{allSelected ? siteDomain : 'RESET'}</span> to confirm
               </label>
               <Input
                 type="text"
@@ -240,34 +207,24 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
               />
             </div>
 
-            <DialogFooter>
-              <Button
-                variant="secondary"
-                onClick={handleClose}
-                disabled={isResetting}
-                className="flex-1 sm:flex-none"
-              >
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" size="sm" onClick={handleClose} disabled={isResetting}>
                 Cancel
               </Button>
-              <Button
-                variant="destructive"
-                onClick={handleReset}
-                disabled={!isConfirmed || isResetting}
-                className="flex-1 sm:flex-none gap-2"
-              >
+              <Button variant="destructive" size="sm" onClick={handleReset} disabled={!isConfirmed || isResetting}>
                 {isResetting ? (
                   <>
                     <Spinner className="w-4 h-4" />
-                    Resetting...
+                    Resetting…
                   </>
                 ) : (
-                  `Reset ${selected.size} Module${selected.size > 1 ? 's' : ''}`
+                  `Reset ${selected.size} module${selected.size > 1 ? 's' : ''}`
                 )}
               </Button>
-            </DialogFooter>
+            </div>
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+      </div>
+    </Modal>
   )
 }

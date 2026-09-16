@@ -16,9 +16,9 @@ interface DeleteSiteModalProps {
 
 function WarningRow({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3 rounded-none border border-red-900/20 bg-red-900/10 p-3">
-      <AlertTriangleIcon className="h-4 w-4 shrink-0 text-red-500" />
-      <span className="text-sm font-medium text-red-300">{children}</span>
+    <div className="flex items-center gap-3 rounded-none border border-border p-3">
+      <AlertTriangleIcon className="h-4 w-4 shrink-0 text-destructive" />
+      <span className="text-sm font-medium text-foreground">{children}</span>
     </div>
   )
 }
@@ -68,7 +68,7 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
       handleClose()
       onDeleted()
     } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to delete site')
+      toast.error(getAuthErrorMessage(error) || "Couldn't delete this site. Try again.")
       setIsDeleting(false)
     }
   }
@@ -82,20 +82,20 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
       handleClose()
       onDeleted()
     } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || 'Failed to permanently delete site')
+      toast.error(getAuthErrorMessage(error) || "Couldn't permanently delete this site. Try again.")
       setIsPermanentDeleting(false)
     }
   }
 
   const confirmInputClass =
-    'w-full rounded-none border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-400'
+    'w-full rounded-none border border-input bg-transparent px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
 
   return (
     <Modal isOpen={open} onClose={handleClose} title={`Delete ${siteName || 'Site'}?`} className="max-w-sm">
       {!showPermanent ? (
         <div className="space-y-4">
-          <p className="text-sm text-neutral-400">
-            This site will be scheduled for deletion with a <span className="font-bold">7-day grace period</span>. You
+          <p className="text-sm text-muted-foreground">
+            This site will be scheduled for deletion with a <span className="font-semibold">7-day grace period</span>. You
             can restore it at any time during this period.
           </p>
 
@@ -105,8 +105,8 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-300">
-              Type <span className="font-mono font-bold text-red-400">DELETE</span> to confirm
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              Type <span className="font-mono font-semibold text-destructive">DELETE</span> to confirm
             </label>
             <input
               type="text"
@@ -119,7 +119,7 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
           </div>
 
           <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={handleClose} disabled={isDeleting}>
+            <Button variant="outline" onClick={handleClose} disabled={isDeleting}>
               Cancel
             </Button>
             <Button
@@ -128,22 +128,24 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
               disabled={deleteConfirm !== 'DELETE' || isDeleting}
               isLoading={isDeleting}
             >
-              Schedule Deletion
+              Schedule deletion
             </Button>
           </div>
 
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => setShowPermanent(true)}
-            className="w-full text-center text-xs text-neutral-400 transition-colors ease-apple hover:text-red-400"
+            className="w-full text-muted-foreground hover:text-destructive"
           >
             Permanently delete now (cannot be undone)
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="space-y-4">
-          <p className="text-sm text-neutral-400">
-            This action is <span className="font-bold">irreversible</span>. The site and all its data will be
+          <p className="text-sm text-muted-foreground">
+            This action is <span className="font-semibold">irreversible</span>. The site and all its data will be
             permanently deleted immediately.
           </p>
 
@@ -153,8 +155,8 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-300">
-              Type <span className="font-mono font-bold text-red-400">{siteDomain}</span> to confirm
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              Type <span className="font-mono font-semibold text-destructive">{siteDomain}</span> to confirm
             </label>
             <input
               type="text"
@@ -168,7 +170,7 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
 
           <div className="flex justify-end gap-3">
             <Button
-              variant="secondary"
+              variant="outline"
               onClick={() => {
                 if (permanentOnly) {
                   handleClose()
@@ -187,7 +189,7 @@ export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, si
               disabled={permanentConfirm !== siteDomain || isPermanentDeleting}
               isLoading={isPermanentDeleting}
             >
-              Delete Forever
+              Delete forever
             </Button>
           </div>
         </div>
