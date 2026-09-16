@@ -136,7 +136,7 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
     <div className="space-y-8">
       {/* ONE panel — public toggle, share link, and password all live as ruled
           rows in the same frame (spec §6: no lone toggle in a void). */}
-      <SettingsPanel kicker="Visibility" description="Control who can see your analytics dashboard.">
+      <SettingsPanel title="Visibility" description="Control who can see your analytics dashboard.">
         <PanelRows>
           <PanelRow
             label="Public dashboard"
@@ -159,7 +159,7 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
                 /* Reflects the SAVED server state, not the pending toggle: the
                    link only resolves once the change is saved. */
                 site.is_public
-                  ? <StatusChip tone="success" dot pulse>Live</StatusChip>
+                  ? <StatusChip tone="success" dot>Live</StatusChip>
                   : <StatusChip tone="warning">Not saved yet</StatusChip>
               }
             >

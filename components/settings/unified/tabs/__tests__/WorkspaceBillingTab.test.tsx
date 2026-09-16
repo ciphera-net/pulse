@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { SWRConfig } from 'swr'
 import type { SubscriptionDetails, Invoice } from '@/lib/api/billing'
 import * as billingApi from '@/lib/api/billing'
@@ -13,11 +15,12 @@ vi.mock('next/navigation', () => ({
 
 let mockSubscription: SubscriptionDetails | undefined
 let mockSubscriptionError: Error | undefined
+let mockSubscriptionLoading = false
 vi.mock('@/lib/swr/dashboard', () => ({
   useSubscription: () => ({
     data: mockSubscription,
     error: mockSubscriptionError,
-    isLoading: false,
+    isLoading: mockSubscriptionLoading,
     mutate: vi.fn(),
   }),
 }))
@@ -63,6 +66,24 @@ vi.mock('@ciphera-net/facet', () => ({
   TD: ({ children, numeric: _n, ...props }: any) => <td {...props}>{children}</td>,
   RailGrid: ({ children, minTileWidth: _m, columns: _col, ...props }: any) => <div {...props}>{children}</div>,
   RailGridTile: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+  // Switcher: a real radiogroup of role="radio" segments, mirroring the real
+  // component's ARIA contract (radiogroup/radio + aria-checked) without its
+  // thumb-measurement layout logic, which jsdom cannot lay out anyway.
+  Switcher: ({ options, value, onChange, ...props }: any) => (
+    <div role="radiogroup" {...props}>
+      {options.map((opt: any) => (
+        <button
+          key={opt.value}
+          type="button"
+          role="radio"
+          aria-checked={opt.value === value}
+          onClick={() => onChange(opt.value)}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  ),
   toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() },
   getAuthErrorMessage: () => 'error',
   // `@/lib/utils` re-exports `cn` from facet; the local panels/StatusChip the
@@ -70,26 +91,22 @@ vi.mock('@ciphera-net/facet', () => ({
   cn: (...args: any[]) => args.filter((a) => typeof a === 'string').join(' '),
 }))
 
-vi.mock('@/components/ui/tooltip', () => ({
-  Tooltip: ({ children }: any) => <>{children}</>,
-  TooltipContent: ({ children }: any) => <>{children}</>,
-  TooltipProvider: ({ children }: any) => <>{children}</>,
-  TooltipTrigger: ({ children }: any) => <>{children}</>,
-}))
-
-import { MastheadSlotProvider } from '@/components/settings/shell-slots'
+import { MastheadSlotProvider, SaveSlotProvider } from '@/components/settings/shell-slots'
 import WorkspaceBillingTab from '../WorkspaceBillingTab'
 
 // Fresh SWR cache per render — the component fetches invoices/prices via SWR
 // now, and a shared cache would leak one test's invoice list into the next.
-// The tab portals its primary CTA into the shell masthead slot; provide a real
-// slot node (the document body) so the portaled button is queryable, exactly
-// as it would be when the tab renders inside SettingsShell.
+// The tab portals its primary CTA into the shell masthead slot, and
+// SettingsSaveBar portals the buffered-save strip into the save slot; provide
+// real slot nodes (the document body) so the portaled elements are queryable,
+// exactly as they would be when the tab renders inside SettingsShell.
 function renderTab() {
   return render(
     <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
       <MastheadSlotProvider value={document.body}>
-        <WorkspaceBillingTab />
+        <SaveSlotProvider value={document.body}>
+          <WorkspaceBillingTab />
+        </SaveSlotProvider>
       </MastheadSlotProvider>
     </SWRConfig>,
   )
@@ -109,13 +126,14 @@ beforeEach(() => {
   mockCanManage = true
   mockSubscription = { ...base }
   mockSubscriptionError = undefined
+  mockSubscriptionLoading = false
   mockPush.mockClear()
 })
 
 describe('WorkspaceBillingTab structured-panels composition (smoke)', () => {
   it('renders the plan status band: plan label, StatusChip, and usage stat tiles', async () => {
     renderTab()
-    await waitFor(() => expect(screen.getByText('Team Plan')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Team plan')).toBeTruthy())
     // StatusChip (migrated from the inline pill) reads the active subscription.
     expect(screen.getByText('Active')).toBeTruthy()
     // Usage RailGrid stat tiles carry micro-label captions.
@@ -125,7 +143,7 @@ describe('WorkspaceBillingTab structured-panels composition (smoke)', () => {
 
   it('portals the plan CTA into the masthead slot as the single primary action', async () => {
     renderTab()
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Change Plan' })).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Change plan' })).toBeTruthy())
   })
 })
 
@@ -134,7 +152,7 @@ describe('WorkspaceBillingTab banners & states', () => {
     mockSubscription = { ...base, subscription_status: 'past_due' }
     renderTab()
     await waitFor(() =>
-      expect(screen.getByText(/Payment past due — update your payment method to keep your plan/i)).toBeTruthy(),
+      expect(screen.getByText(/Payment past due\. Update your payment method to keep your plan/i)).toBeTruthy(),
     )
     // Past-due badge is shown; the generic payment-failed banner is suppressed.
     expect(screen.getByText('Past due')).toBeTruthy()
@@ -156,7 +174,7 @@ describe('WorkspaceBillingTab banners & states', () => {
     await waitFor(() =>
       expect(screen.getByText(/You're over your plan's pageview limit \(15,000 of 10,000\)/i)).toBeTruthy(),
     )
-    expect(screen.getByText(/still collecting your data — up to 20,000 pageviews/i)).toBeTruthy()
+    expect(screen.getByText(/still collecting your data, up to 20,000 pageviews/i)).toBeTruthy()
     expect(screen.getByRole('button', { name: /Upgrade your plan/i })).toBeTruthy()
     // The stop-collecting banner must NOT be showing at the same time.
     expect(screen.queryByText(/Collection has stopped/i)).toBeNull()
@@ -207,7 +225,7 @@ describe('WorkspaceBillingTab banners & states', () => {
     await waitFor(() =>
       expect(screen.getByText(/You're over your plan's pageview limit \(6,200 of 5,000\)/i)).toBeTruthy(),
     )
-    expect(screen.getByText(/still collecting your data — up to 10,000 pageviews/i)).toBeTruthy()
+    expect(screen.getByText(/still collecting your data, up to 10,000 pageviews/i)).toBeTruthy()
   })
 
   it('cancel modal uses fallback copy when there is no scheduled charge', async () => {
@@ -243,7 +261,7 @@ describe('WorkspaceBillingTab banners & states', () => {
   it('shows Change Plan for an active subscription', async () => {
     mockSubscription = { ...base, subscription_status: 'active' }
     renderTab()
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Change Plan' })).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Change plan' })).toBeTruthy())
   })
 
   it('hides Change Plan in past_due (the Update-payment-method CTA is the correct action)', async () => {
@@ -252,9 +270,9 @@ describe('WorkspaceBillingTab banners & states', () => {
     mockSubscription = { ...base, subscription_status: 'past_due' }
     renderTab()
     await waitFor(() =>
-      expect(screen.getByText(/Payment past due — update your payment method to keep your plan/i)).toBeTruthy(),
+      expect(screen.getByText(/Payment past due\. Update your payment method to keep your plan/i)).toBeTruthy(),
     )
-    expect(screen.queryByRole('button', { name: 'Change Plan' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Change plan' })).toBeNull()
     // The Update-payment-method CTA remains available (banner + actions row).
     expect(screen.getAllByRole('button', { name: /Update payment method/i }).length).toBeGreaterThan(0)
   })
@@ -334,7 +352,8 @@ describe('WorkspaceBillingTab invoice amount formatting', () => {
 
     // Amount is rendered as the absolute value with a leading minus glyph.
     await waitFor(() => expect(screen.getByText(`−${fmt('EUR', 60.5)}`)).toBeTruthy())
-    expect(screen.getByText('Credit Note')).toBeTruthy()
+    // Sentence case, like every other chip on this table (Paid, Refunded, Failed).
+    expect(screen.getByText('Credit note')).toBeTruthy()
   })
 })
 
@@ -391,7 +410,7 @@ describe('WorkspaceBillingTab grant expiry', () => {
     mockSubscription = { ...base, plan_id: 'pioneer', next_charge_on: null, grant_expires_on: null }
     renderTab()
 
-    await waitFor(() => expect(screen.getByText('Pioneer Plan')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Pioneer plan')).toBeTruthy())
     // A perpetual grant has no end date. An absent tile is honest; a fabricated
     // "never" or an epoch would not be.
     expect(screen.queryByText('Grant ends')).toBeNull()
@@ -410,7 +429,7 @@ describe('WorkspaceBillingTab grant presentation (ruled D2, 25-08-2026)', () => 
 
     await waitFor(() =>
       expect(
-        screen.getByText(/runs on a granted Pioneer plan until 27\/04\/2027 — nothing is billed/i),
+        screen.getByText(/runs on a granted Pioneer plan until 27\/04\/2027\. Nothing is billed/i),
       ).toBeTruthy(),
     )
     // No Mollie objects exist behind a grant — both actions could only error.
@@ -504,6 +523,208 @@ describe('WorkspaceBillingTab invoice status vocabulary (ruled F2)', () => {
     renderTab()
     await waitFor(() => expect(screen.getByText('Refunded')).toBeTruthy())
     expect(screen.getByText('Failed')).toBeTruthy()
+  })
+})
+
+// ── Settings overhaul structure (16-09-2026, §6.1): the shared devices are
+// used, no raw button/link-as-button survives where the brief retired one,
+// and the copy carries no dashes. ─────────────────────────────────────────
+
+describe('WorkspaceBillingTab shared-device structure', () => {
+  it('panel titles are sentence-case level-2 headings, not a hand-built header', async () => {
+    renderTab()
+    // The plan panel used to draw its own header with a bare <h3>; it is now
+    // a SettingsPanel, which renders a level-2 heading in sentence case.
+    await waitFor(() => expect(screen.getByRole('heading', { level: 2, name: 'Team plan' })).toBeTruthy())
+    expect(screen.getByRole('heading', { level: 2, name: 'Invoices' })).toBeTruthy()
+    // The old title-cased "Team Plan" heading must be gone entirely.
+    expect(screen.queryByRole('heading', { name: 'Team Plan' })).toBeNull()
+  })
+
+  it('a failed subscription fetch renders role="alert" naming the thing that failed', async () => {
+    mockSubscription = undefined
+    mockSubscriptionError = new Error('network')
+    renderTab()
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy())
+    expect(within(screen.getByRole('alert')).getByText(/Couldn.t load your subscription/i)).toBeTruthy()
+  })
+
+  it('the top-level loading state renders role="status", not a bare spinner', async () => {
+    mockSubscriptionLoading = true
+    renderTab()
+    // waitFor (not a bare assertion): the invoices/prices SWR fetches above
+    // the early return still resolve in the background, and this lets that
+    // settle inside act() instead of leaking a warning into a later test.
+    await waitFor(() => expect(screen.getByRole('status')).toBeTruthy())
+    // Nothing from the loaded tab (a panel heading) has rendered yet.
+    expect(screen.queryByRole('heading', { name: 'Team plan' })).toBeNull()
+  })
+
+  it('invoices show a status-role skeleton while loading, then EmptyRow when there are none', async () => {
+    let resolveInvoices!: (v: Invoice[]) => void
+    vi.spyOn(billingApi, 'getInvoices').mockReturnValue(
+      new Promise<Invoice[]>((resolve) => { resolveInvoices = resolve }),
+    )
+    renderTab()
+
+    await waitFor(() => expect(screen.getByRole('heading', { level: 2, name: 'Invoices' })).toBeTruthy())
+    const invoicesPanel = screen.getByRole('heading', { level: 2, name: 'Invoices' }).closest('section')!
+    expect(within(invoicesPanel).getByRole('status')).toBeTruthy()
+
+    resolveInvoices([])
+
+    await waitFor(() => expect(within(invoicesPanel).queryByRole('status')).toBeNull())
+    expect(within(invoicesPanel).getByText('No invoices yet.')).toBeTruthy()
+  })
+
+  it('a failed invoices fetch renders SettingsErrorState, not the loading skeleton or an empty table', async () => {
+    // The shared facet mock's getAuthErrorMessage always returns a truthy
+    // 'error' stub, so the component's own "Couldn't load your invoices" copy
+    // fallback never fires under this harness — that exact string is instead
+    // pinned by the source-text dash test below, against the real file. This
+    // test is about the STRUCTURE: an error renders role="alert" naming the
+    // failure, never the loading skeleton and never a silent empty table.
+    vi.spyOn(billingApi, 'getInvoices').mockRejectedValue(new Error('boom'))
+    renderTab()
+    await waitFor(() => expect(screen.getByRole('heading', { level: 2, name: 'Invoices' })).toBeTruthy())
+    const invoicesPanel = screen.getByRole('heading', { level: 2, name: 'Invoices' }).closest('section')!
+    await waitFor(() => expect(within(invoicesPanel).getByRole('alert')).toBeTruthy())
+    expect(within(invoicesPanel).queryByRole('status')).toBeNull()
+    expect(within(invoicesPanel).queryByText('No invoices yet.')).toBeNull()
+  })
+
+  it('the payment method picker is a radiogroup (Switcher), not a hand-rolled button grid', async () => {
+    renderTab()
+    const updateBtn = await screen.findByRole('button', { name: /Update payment method/i })
+    fireEvent.click(updateBtn)
+
+    const continueBtn = await screen.findByRole('button', { name: 'Continue' })
+    expect((continueBtn as HTMLButtonElement).disabled).toBe(true)
+
+    const cardsRadio = screen.getByRole('radio', { name: /Cards/i })
+    expect(cardsRadio.getAttribute('aria-checked')).toBe('false')
+    fireEvent.click(cardsRadio)
+    expect(cardsRadio.getAttribute('aria-checked')).toBe('true')
+    expect((continueBtn as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('the invoice download control is icon-only with an aria-label, not a bare icon button', async () => {
+    vi.spyOn(billingApi, 'getInvoices').mockResolvedValue([
+      {
+        id: 'inv_dl',
+        invoice_number: 'INV-2026-0099',
+        amount_cents: 1000,
+        vat_cents: 210,
+        total_cents: 1210,
+        currency: 'EUR',
+        description: 'Team plan',
+        status: 'paid',
+        created_at: '2026-07-01T00:00:00Z',
+      },
+    ])
+    renderTab()
+    expect(await screen.findByRole('button', { name: 'Download invoice' })).toBeTruthy()
+  })
+
+  it('billing details is an always-editable form: dirty state surfaces SettingsSaveBar, and saving clears it', async () => {
+    mockSubscription = { ...base, billing_email: 'owner@example.com', business_name: 'Acme' }
+    const updateSpy = vi.spyOn(billingApi, 'updateBillingSettings').mockResolvedValue({ ok: true })
+    renderTab()
+
+    const businessNameInput = (await screen.findByLabelText('Business name')) as HTMLInputElement
+    expect(businessNameInput.value).toBe('Acme')
+
+    // Clean form: no save bar, no leftover pencil-toggle affordance.
+    expect(screen.queryByRole('button', { name: 'Save billing details' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Edit billing/i })).toBeNull()
+
+    fireEvent.change(businessNameInput, { target: { value: 'Acme Corp' } })
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save billing details' })).toBeTruthy())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save billing details' }))
+
+    await waitFor(() =>
+      expect(updateSpy).toHaveBeenCalledWith(expect.objectContaining({ business_name: 'Acme Corp' })),
+    )
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Save billing details' })).toBeNull())
+  })
+
+  it('an unnumbered invoice renders no dash placeholder, just an empty cell', async () => {
+    vi.spyOn(billingApi, 'getInvoices').mockResolvedValue([
+      {
+        id: 'inv_unnumbered',
+        invoice_number: null,
+        amount_cents: 1000,
+        vat_cents: 210,
+        total_cents: 1210,
+        currency: 'EUR',
+        description: 'Team plan',
+        status: 'paid',
+        created_at: '2026-07-01T00:00:00Z',
+      },
+    ])
+    renderTab()
+
+    const downloadBtn = await screen.findByRole('button', { name: 'Download invoice' })
+    const row = downloadBtn.closest('tr')!
+    // Rule 15 bans the em dash outright, with no carve-out for a placeholder
+    // glyph: an absent invoice number is an empty cell, not a fabricated one.
+    expect(within(row).queryByText('—')).toBeNull()
+    expect(row.querySelector('.font-mono')).toBeNull()
+  })
+
+  it('a manager on the free plan with no billing email yet sees no billing-details panel', async () => {
+    // showBillingDetails now gates the panel AND its SettingsSaveBar with the
+    // SAME boolean (previously the save bar used canManageBilling alone, so
+    // it mounted here with no form behind it to make dirty). That half of the
+    // fix has no assertion below: SettingsSaveBar returns null whenever
+    // `!isDirty && !saving && !saved`, and with the panel absent there is no
+    // input to ever make the form dirty, so a stray mount and no mount render
+    // byte-identical nothing. There's no rendered evidence to pin, only the
+    // code-level guard that keeps the two declarations from drifting apart.
+    mockSubscription = {
+      plan_id: 'free',
+      subscription_status: '',
+      next_charge_on: null,
+      billing_interval: '',
+      pageview_limit: 5000,
+      has_payment_method: false,
+      pageview_usage: 100,
+    }
+    renderTab()
+
+    await waitFor(() => expect(screen.getByRole('heading', { level: 2, name: 'Personal plan' })).toBeTruthy())
+    expect(screen.queryByRole('heading', { name: 'Billing details' })).toBeNull()
+  })
+})
+
+describe('WorkspaceBillingTab copy (rule 15: no em/en dashes, no literal ellipsis)', () => {
+  it('the tab source carries no em dash, en dash, or "..." outside comments and the no-value glyph', () => {
+    const source = readFileSync(join(__dirname, '../WorkspaceBillingTab.tsx'), 'utf-8')
+    // Strip block and line comments — rule 15 governs user-facing copy, not
+    // the WHY-comments the repo's own convention (rule 16) asks for, and this
+    // file carries many of the latter. No `//` sequence in the file lives
+    // inside a string literal (verified: no "://" and no other such case), so
+    // a plain regex strip is safe here.
+    const stripped = source
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '')
+    // No carve-out: rule 15 bans the em/en dash with no exception for a
+    // placeholder glyph, and the invoice-number cell now omits the value
+    // entirely rather than falling back to one (see the TD around
+    // `invoice.invoice_number &&`).
+    expect(stripped).not.toMatch(/[—–]/)
+    // `...` in CODE is the spread operator (`...f`, `...subscription`) and is
+    // always followed directly by an identifier character, no space — a prose
+    // ellipsis never is. Strip spread syntax before checking for a literal
+    // three-period ellipsis in copy (rule 15 wants the "…" character instead).
+    const withoutSpread = stripped.replace(/\.\.\.(?=[A-Za-z_$])/g, '')
+    expect(withoutSpread).not.toMatch(/\.\.\./)
+  })
+
+  it('uses straight apostrophes, never a curly quote, in rendered copy', () => {
+    const source = readFileSync(join(__dirname, '../WorkspaceBillingTab.tsx'), 'utf-8')
+    expect(source).not.toMatch(/[‘’“”]/)
   })
 })
 

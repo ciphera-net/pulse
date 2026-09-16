@@ -25,6 +25,7 @@ import { usePathname } from 'next/navigation'
 import { cdnUrl } from '@/lib/cdn'
 import { reportClientEvent } from '@/lib/utils/clientEvents'
 import { useAuth } from '@/lib/auth/context'
+import { rememberReturnTarget } from '@/lib/auth/return-target'
 
 export type TakeoverState = 'signed-out' | 'restoring'
 
@@ -65,7 +66,7 @@ export default function SessionTakeover({ state }: { state: TakeoverState }) {
       // * stored path — the room's promise is delivered by existing machinery.
       // * (logout()'s forgetAllPendingAuth clears only oauth_* attempt slots;
       // * this key survives it.)
-      localStorage.setItem('pulse_auth_return_to', pathname || '/sites')
+      rememberReturnTarget(pathname || '/sites')
     } catch {
       // * Storage unavailable — sign-in still works, landing on /.
     }

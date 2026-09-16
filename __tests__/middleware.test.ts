@@ -113,3 +113,41 @@ describe('middleware', () => {
     })
   })
 })
+
+// ---------------------------------------------------------------------------
+// #11 — the cold sign-in gate carries the deep link.
+//
+// It used to redirect to a bare `/login`, so an emailed dashboard URL or a
+// bookmarked settings page signed you in and then dropped you at the front
+// door with no explanation — and the link you followed appeared not to work.
+// The mechanism to carry it already existed and was already honoured by the
+// auth callback (`pulse_auth_return_to`); only this hop never filled it in.
+// ---------------------------------------------------------------------------
+describe('middleware — a cold visit keeps where it was going', () => {
+  it('names the requested path in returnTo', () => {
+    const res = middleware(createRequest('/sites/abc/performance'))
+    const loc = new URL(res.headers.get('location') as string)
+    expect(loc.pathname).toBe('/login')
+    expect(loc.searchParams.get('returnTo')).toBe('/sites/abc/performance')
+  })
+
+  it('keeps the query string with it', () => {
+    const res = middleware(createRequest('/sites/abc?period=7d&tab=pages'))
+    const loc = new URL(res.headers.get('location') as string)
+    expect(loc.searchParams.get('returnTo')).toBe('/sites/abc?period=7d&tab=pages')
+  })
+
+  it('does not bother for the root, which is where they would land anyway', () => {
+    // `/` is public, so it never reaches this branch — but if the route table
+    // ever changes, a returnTo of '/' is noise, not a deep link.
+    const res = middleware(createRequest('/settings'))
+    const loc = new URL(res.headers.get('location') as string)
+    expect(loc.searchParams.get('returnTo')).toBe('/settings')
+  })
+
+  it('an authenticated visitor is untouched by any of this', () => {
+    const res = middleware(createRequest('/settings', { pulse_access: 'tok' }))
+    expect(res.headers.get('location')).toBeNull()
+  })
+})
+

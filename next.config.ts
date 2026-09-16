@@ -69,7 +69,14 @@ const cspDirectives = [
   `font-src 'self' ${ASSET_CDN}`,
   `connect-src 'self' https://*.ciphera.net wss://*.ciphera.net https://ciphera.net https://cdn.jsdelivr.net https://*.cartocdn.com ${ASSET_CDN}${process.env.NODE_ENV === 'development' ? ' http://localhost:* ws://localhost:*' : ''}`,
   "worker-src 'self' blob:",
-  "frame-src https://api.help.ciphera.net",
+  // 🔴 FRAMING NEEDS PERMISSION ON BOTH SIDES, AND MISSING EITHER IS SILENT.
+  // `frame-ancestors` on id.ciphera.net says who may frame IT; `frame-src` here
+  // says what THIS page may frame. Measured 10-09-2026: with the identity
+  // provider correctly relaxed and the allowlist correctly served, the
+  // vault-key hand-off still timed out — because this line did not name it, and
+  // a blocked frame simply never loads. The key-bridge design named only the
+  // first half; this is the second.
+  "frame-src https://api.help.ciphera.net https://id.ciphera.net",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self' https://*.ciphera.net",

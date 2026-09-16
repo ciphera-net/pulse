@@ -119,7 +119,7 @@ function IntegrationRow({
               status === 'error' ? (
                 <StatusChip tone="danger" dot>Error</StatusChip>
               ) : status === 'syncing' ? (
-                <StatusChip tone="info" dot pulse>Syncing</StatusChip>
+                <StatusChip tone="info" dot>Syncing</StatusChip>
               ) : (
                 <StatusChip tone="success" dot>Connected</StatusChip>
               )
@@ -580,7 +580,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
   return (
     <div className="space-y-8">
       {/* GSC + Bunny as ruled rows in ONE panel (spec §6). */}
-      <SettingsPanel kicker="Integrations" description="Connect third-party services to enrich your analytics.">
+      <SettingsPanel title="Integrations" description="Connect third-party services to enrich your analytics.">
         <PanelRows>
           <IntegrationRow
             icon={<GoogleIcon />}

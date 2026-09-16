@@ -8,6 +8,7 @@ import { formatNumber } from '@/lib/utils/format'
 import { EmptyState } from '@/components/ui/EmptyState'
 import type { GoalCountStat } from '@/lib/api/stats'
 import { getEventPropertyKeys, getEventPropertyValues, type EventPropertyKey, type EventPropertyValue } from '@/lib/api/stats'
+import { docsUrl } from '@/lib/docs'
 
 interface GoalStatsProps {
   goalCounts: GoalCountStat[]
@@ -197,7 +198,15 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
           icon={<Target />}
           title="No events tracked yet"
           description="Add pulse.track('event') where actions happen on your site, then see conversion counts here."
-          action={{ label: 'Read the docs', href: '/installation' }}
+          action={{
+            // * This one is genuinely documentation, not the snippet: the copy
+            // * above it is about pulse.track('event'). /installation is a
+            // * marketing page about the script and says nothing about custom
+            // * events. Verified 200 before linking it.
+            label: 'Read the docs',
+            href: docsUrl('custom-events'),
+            external: true,
+          }}
         />
       )}
     </>

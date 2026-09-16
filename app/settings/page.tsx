@@ -2,81 +2,52 @@
 
 import Link from 'next/link'
 import { CaretRight, Globe } from '@phosphor-icons/react'
+import { Button } from '@ciphera-net/facet'
 import { useCan } from '@/lib/auth/permissions'
 import { useActiveSite } from '@/components/settings/active-site'
-import { SETTINGS_TAB_ICONS } from '@/components/settings/nav'
+import { NAV_GROUPS, type NavGroup, type NavTab } from '@/components/settings/nav'
 import { SettingsPanel } from '@/components/settings/panels/SettingsPanel'
 import { PanelRows } from '@/components/settings/panels/PanelRow'
 import { EmptyRow } from '@/components/settings/panels/EmptyRow'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { displayDomain } from '@/lib/utils/displayDomain'
 
-interface SectionRow {
-  label: string
-  href: string
-  description: string
-  /** Permission gate; undefined = always visible. */
-  requires?: string
-}
-
-function SectionLink({ label, href, description }: SectionRow) {
-  // Icon metaphors are shared with the nav rail / mobile sheet (nav.ts) —
-  // keyed by the same hrefs, never a second table.
-  const Icon = SETTINGS_TAB_ICONS[href]
+function SectionLink({ tab }: { tab: NavTab }) {
+  const Icon = tab.icon
   return (
     <Link
-      href={href}
+      href={tab.href}
       className="group flex items-center gap-4 px-5 py-3.5 transition-colors duration-fast ease-apple hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
     >
-      {/* House row-tile idiom (same as the SiteContextBand monogram tile). */}
-      {Icon && (
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-none border border-border bg-accent">
-          <Icon weight="regular" aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
-        </span>
-      )}
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-none border border-border bg-accent">
+        <Icon weight="regular" aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
+      </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-foreground">{label}</p>
-        <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
+        <p className="text-sm font-medium text-foreground">{tab.label}</p>
+        <p className="mt-0.5 text-sm text-muted-foreground">{tab.description}</p>
       </div>
       <CaretRight className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
     </Link>
   )
 }
 
-const SITE_ROWS: SectionRow[] = [
-  { label: 'General', href: '/settings/site/general', description: 'Name, domain, timezone, and tracking script.', requires: 'sites.edit' },
-  { label: 'Goals', href: '/settings/site/goals', description: 'Track conversions and key actions.', requires: 'goals.manage' },
-  { label: 'Visibility', href: '/settings/site/visibility', description: 'Public dashboard and share links.', requires: 'sites.edit' },
-  { label: 'Privacy', href: '/settings/site/privacy', description: 'Data collection and retention controls.', requires: 'sites.edit' },
-  { label: 'Bot & Spam', href: '/settings/site/bot-spam', description: 'Filtering and excluded traffic.' },
-  { label: 'Monitoring', href: '/settings/site/monitoring', description: 'Uptime and install health for this site.' },
-  { label: 'Integrations', href: '/settings/site/integrations', description: 'Search Console and Bunny CDN.', requires: 'integrations.manage' },
-]
-
-const ORG_ROWS: SectionRow[] = [
-  { label: 'General', href: '/settings/organization/general', description: 'Workspace name and slug.' },
-  { label: 'Members', href: '/settings/organization/members', description: 'Invite and manage your team.' },
-  { label: 'Roles & Permissions', href: '/settings/organization/roles', description: 'What each role can access.', requires: 'roles.manage' },
-  { label: 'Billing', href: '/settings/organization/billing', description: 'Plan, usage, and invoices.', requires: 'billing.view' },
-  { label: 'Notifications', href: '/settings/organization/notifications', description: 'Workspace notification categories.', requires: 'notification_settings.manage' },
-  { label: 'Audit Log', href: '/settings/organization/audit', description: 'Review workspace activity.', requires: 'audit.view' },
-]
-
-const ACCOUNT_ROWS: SectionRow[] = [
-  { label: 'Profile', href: '/settings/account/profile', description: 'Display name and email.' },
-  { label: 'Security', href: '/settings/account/security', description: 'Password and two-factor authentication.' },
-  { label: 'Devices', href: '/settings/account/devices', description: 'Trusted devices and security activity.' },
-  { label: 'Notifications', href: '/settings/account/notifications', description: 'Your delivery preferences and quiet hours.' },
-  { label: 'Security alerts', href: '/settings/account/security-alerts', description: 'Emails Ciphera ID sends about your account.' },
-]
+const PANEL_COPY: Record<NavGroup['section'], string> = {
+  site: 'Analytics, privacy and sharing for one site.',
+  organization: 'Your workspace, team and billing.',
+  account: 'Your profile and security.',
+}
 
 /**
- * Settings landing (spec §5.1 / §6) — a permission-aware section index.
+ * Settings landing — a permission-aware section index.
  *
  * Replaces the old `/settings → /settings/site/general` redirect. Each section
  * is a panel of ruled links; a section with no visible rows is hidden entirely
  * (an account-only user simply sees the Account panel). The Site panel carries
  * the active-site context, or a zero-site state linking to site creation.
+ *
+ * Rows come from `nav.ts`, the same registry the rail reads, so the landing
+ * page can neither lose a tab nor word one differently (it had lost API Keys
+ * while it kept its own table).
  */
 export default function SettingsLandingPage() {
   const { activeSite, sites, isLoading } = useActiveSite()
@@ -91,83 +62,53 @@ export default function SettingsLandingPage() {
     'audit.view': useCan('audit.view'),
   }
 
-  const filterRows = (rows: SectionRow[]) =>
-    rows.filter((r) => (r.requires ? (perm[r.requires] ?? true) : true))
-
-  const siteRows = filterRows(SITE_ROWS)
-  const orgRows = filterRows(ORG_ROWS)
-  const accountRows = filterRows(ACCOUNT_ROWS)
+  const visibleGroups = NAV_GROUPS.map((group) => ({
+    ...group,
+    tabs: group.tabs.filter((t) => (t.requires ? (perm[t.requires] ?? true) : true)),
+  })).filter((group) => group.tabs.length > 0)
 
   const hasSites = sites.length > 0
 
   return (
     <div className="space-y-8">
-      {siteRows.length > 0 && (
-        <SettingsPanel kicker="Site" description="Per-site analytics, privacy, and sharing.">
-          {!hasSites && !isLoading ? (
+      {visibleGroups.map((group) => (
+        <SettingsPanel key={group.section} title={group.label} description={PANEL_COPY[group.section]}>
+          {group.section === 'site' && !hasSites && !isLoading ? (
             <EmptyRow
               icon={<Globe weight="regular" />}
               title="No sites yet"
-              caption="Create your first site to configure its analytics, privacy, and sharing settings."
+              caption="Create your first site to configure its analytics, privacy and sharing."
               action={
-                <Link
-                  href="/sites/new"
-                  className="inline-flex h-9 items-center rounded-none bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-brand-orange-hover"
-                >
-                  Create a site
-                </Link>
+                <Button asChild size="sm">
+                  <Link href="/sites/new">Create a site</Link>
+                </Button>
               }
             />
           ) : (
             <>
-              {/* Name and domain share a single row on desktop. On a phone that
-                  row is ~230px wide once the status chip is placed, so BOTH
-                  truncated into uselessness ("[QA] Settings…" over
-                  "qa-settings-drive.exa…"). Stack them below sm; sm+ is the
-                  original single row. */}
-              {activeSite && (
-                <div className="flex min-w-0 items-center gap-2 border-b border-border bg-muted/40 px-5 py-3">
+              {group.section === 'site' && activeSite && (
+                // Name and domain share a single row on desktop. On a phone
+                // that row is ~230px wide once the status chip is placed, so
+                // both truncated into uselessness. Stack them below sm.
+                <div className="flex min-w-0 items-center gap-2 border-b border-border px-5 py-3">
                   <div className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-center sm:gap-2">
                     <span className="min-w-0 truncate text-sm font-medium text-foreground">{activeSite.name}</span>
                     <span className="min-w-0 truncate text-xs text-muted-foreground">{displayDomain(activeSite)}</span>
                   </div>
-                  <StatusChip
-                    tone={activeSite.is_verified ? 'success' : 'warning'}
-                    className="ml-auto shrink-0"
-                  >
+                  <StatusChip tone={activeSite.is_verified ? 'success' : 'warning'} dot className="ml-auto shrink-0">
                     {activeSite.is_verified ? 'Verified' : 'Unverified'}
                   </StatusChip>
                 </div>
               )}
               <PanelRows>
-                {siteRows.map((row) => (
-                  <SectionLink key={row.href} {...row} />
+                {group.tabs.map((tab) => (
+                  <SectionLink key={tab.href} tab={tab} />
                 ))}
               </PanelRows>
             </>
           )}
         </SettingsPanel>
-      )}
-
-      {orgRows.length > 0 && (
-        <SettingsPanel kicker="Organization" description="Your workspace, team, and billing.">
-          <PanelRows>
-            {orgRows.map((row) => (
-              <SectionLink key={row.href} {...row} />
-            ))}
-          </PanelRows>
-        </SettingsPanel>
-      )}
-
-      {accountRows.length > 0 && (
-        <SettingsPanel kicker="Account" description="Your personal profile and security.">
-          <PanelRows>
-            {accountRows.map((row) => (
-              <SectionLink key={row.href} {...row} />
-            ))}
-          </PanelRows>
-        </SettingsPanel>
-      )}
+      ))}
     </div>
   )
 }

@@ -1,9 +1,10 @@
 /**
  * The overlay chrome shared by every settings dialog.
  *
- * One definition, three consumers (ReauthModal, PasskeyEnrolModal,
- * RecoveryEnrolModal), because the three drifted once already and the way they
- * drifted was invisible until a user hit it.
+ * One definition, every settings dialog (PasskeyEnrolModal,
+ * RecoveryEnrolModal — and ReauthModal until it was deleted on 10-09-2026),
+ * because they drifted once already and the way they drifted was invisible
+ * until a user hit it.
  *
  * 🔴 SCROLLING AND CENTERING MUST LIVE ON DIFFERENT ELEMENTS. `flex
  * items-center` on a scroll container overflows a too-tall child EQUALLY IN

@@ -5,15 +5,18 @@ import { reportClientEvent } from '@/lib/utils/clientEvents'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import apiRequest from '@/lib/api/client'
-import { exchangeAuthCode, getSessionAction } from '@/app/actions/auth'
+import { exchangeAuthCode, getSessionAction, setSessionAction } from '@/app/actions/auth'
 import { setAccessToken, APP_URL } from '@/lib/api/client'
 import { AuthErrorState, LoadingOverlay, type AuthErrorType } from '@ciphera-net/facet'
 import { safeRedirectUrl } from '@/lib/utils/safe-redirect'
 import { claimPendingAuth, forgetAllPendingAuth } from '@/lib/api/oauth-store'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import { cdnUrl } from '@/lib/cdn'
-import { ensureDefaultOrganization, shouldProvisionWorkspace } from '@/lib/api/organization'
+import { ensureDefaultOrganization, shouldProvisionWorkspace, switchContext } from '@/lib/api/organization'
+import { resolveLandingTarget } from '@/lib/auth/landing-target'
 import { logger } from '@/lib/utils/logger'
+import { claimReturnTarget, peekReturnTarget } from '@/lib/auth/return-target'
+import { collectVaultKeyFromBridge } from '@/lib/auth/vault-bridge'
 
 function AuthCallbackContent() {
   const searchParams = useSearchParams()
@@ -32,35 +35,78 @@ function AuthCallbackContent() {
 
   // * Where a completed sign-in lands. Extracted so the rescue path below cannot
   // * drift from the success path — both honour a stored return, then ?returnTo.
-  const landInApp = useCallback(() => {
-    const storedReturn = localStorage.getItem('pulse_auth_return_to')
+  // *
+  // * 🔴 `fallback` IS THE DESTINATION THIS PAGE RESOLVED, not a default it hopes
+  // * is right. Until 08-09-2026 there was none: a fresh signup fell through to
+  // * `'/'`, the edge redirected that to `/sites`, and the empty-fleet
+  // * placeholder RENDERED before the onboarding wall — a client effect, one
+  // * render later — pushed the person into the wizard. They were shown "you
+  // * have no sites" by a page already on its way somewhere else.
+  // *
+  // * A stored return still wins, and still wins over the resolved target: it is
+  // * an explicit request (an invite, a deep link) and this page does not know
+  // * better. The resolved value only replaces the guess.
+  const landInApp = useCallback((fallback?: string | null) => {
+    const target = fallback || '/'
+    // 🔴 A STORED TARGET EXPIRES (audit §4n). It still outranks the resolved
+    // destination — an invite or a deep link is an explicit request — but the
+    // slot used to have no lifetime, so a target written days ago by an
+    // unrelated visit hijacked the next sign-in, once, and then vanished on
+    // read. claimReturnTarget() drops anything older than ten minutes.
+    const storedReturn = claimReturnTarget()
     if (storedReturn) {
-      localStorage.removeItem('pulse_auth_return_to')
-      window.location.assign(safeRedirectUrl(storedReturn))
+      window.location.assign(safeRedirectUrl(storedReturn, target))
       return
     }
-    window.location.assign(safeRedirectUrl(searchParams.get('returnTo')))
+    window.location.assign(safeRedirectUrl(searchParams.get('returnTo'), target))
   }, [searchParams])
 
   // * Provision the default workspace, unless this sign-in is on its way to an
   // * invite. Reads the same stored return target landInApp() will consume, and
   // * deliberately does not consume it.
-  const provisionWorkspaceUnlessJoining = useCallback(async () => {
-    let storedReturn: string | null = null
-    try {
-      storedReturn = localStorage.getItem('pulse_auth_return_to')
-    } catch {
-      // * Storage unreadable — treat it as "no invite pending" rather than
-      // * skipping provisioning for everybody whose browser blocks storage.
-    }
+  // *
+  // * Answers with the destination the caller should land on, or null when there
+  // * is nothing better to say than the old default — a /join arrival, or a
+  // * failure the org wall will pick up on the next route.
+  const provisionWorkspaceUnlessJoining = useCallback(async (
+    sessionRole: string | null | undefined,
+  ): Promise<string | null> => {
+    // * PEEK, never claim: landInApp() still needs this value, and a read that
+    // * spent it here would send every invited person to the default landing
+    // * instead of their invite. Storage unreadable is treated as "no invite
+    // * pending" rather than skipping provisioning for everybody whose browser
+    // * blocks storage — peekReturnTarget() answers null for both.
+    const storedReturn = peekReturnTarget()
     const target = storedReturn ?? searchParams.get('returnTo')
-    if (!shouldProvisionWorkspace(target)) return
+    if (!shouldProvisionWorkspace(target)) return null
     try {
-      await ensureDefaultOrganization()
+      const ensured = await ensureDefaultOrganization()
+      // 🔴 AND SWITCH INTO IT BEFORE LANDING. The access token was minted at the
+      // exchange, a moment BEFORE this workspace existed, so it carries no
+      // org_id. Landing on it makes the destination page discover the mismatch
+      // and repair it — switchContext, a new session, router.refresh() — which
+      // is a second render the person sees as a flicker on their very first
+      // screen (reported by the owner, 08-09-2026: "it flicker a lot").
+      // Repairing it here costs the same two calls and happens behind the
+      // redirect that is already running.
+      const { access_token } = await switchContext(ensured.organization.id)
+      const result = await setSessionAction(access_token)
+      if (result.success) setAccessToken(access_token)
+      // * 🔑 The role AFTER the switch, not before it. The exchange's token was
+      // * minted against whatever context the account had a moment ago; the one
+      // * that decides whether this person is walled is the one they are landing
+      // * with. Falls back to the pre-switch role rather than to nothing —
+      // * an absent role is treated as walled, which is the safe side.
+      return await resolveLandingTarget({
+        orgId: ensured.organization.id,
+        role: result.user?.role ?? sessionRole,
+        createdWorkspace: ensured.created,
+      })
     } catch (e) {
       // * Not fatal, and not silent. The org wall calls this again on the
       // * destination route, and the manual form is still the last resort.
       logger.error('Could not provision a default workspace', e)
+      return null
     }
   }, [searchParams])
 
@@ -86,7 +132,13 @@ function AuthCallbackContent() {
     }
     if (!session) return false
     forgetAllPendingAuth()
-    landInApp()
+    // * The rescue path lands somebody who is ALREADY signed in, so it resolves
+    // * from the session it just proved rather than provisioning anything. It
+    // * gets the same destination for the same reason: the flash it would
+    // * otherwise cause is identical, and a rescued fresh signup is exactly the
+    // * case this path exists for.
+    const target = await resolveLandingTarget({ orgId: session.org_id, role: session.role })
+    landInApp(target)
     return true
   }, [landInApp])
 
@@ -117,6 +169,35 @@ function AuthCallbackContent() {
         }
         // * Signed in — every other attempt still on this device is abandoned.
         forgetAllPendingAuth()
+
+        // 🔑 COLLECT THE VAULT KEY WHILE THE HAND-OFF IS STILL GOOD.
+        //
+        // The nonce the exchange returned is single-use and lives for seconds,
+        // so this is the only moment it can be spent. Doing it here — rather
+        // than lazily, the first time Settings wants a name — is the whole
+        // point: the person should never meet a password prompt on a browser
+        // where they have just signed in.
+        //
+        // ⚠️ AWAITED, WITH A SHORT BUDGET, AND FAILURE IS NOT AN ERROR. Not
+        // awaiting would start an iframe round trip and then navigate away
+        // mid-flight, which is the reliable way to make this never work. The
+        // budget (3s, inside lib/auth/vault-bridge.ts) is what keeps a bridge
+        // that will never answer from turning a login into a spinner — and
+        // every failure lands on the password prompt this replaced, which is
+        // exactly today's behaviour.
+        //
+        // 🔴 ABSENT IS THE NORMAL CASE until an origin is allowlisted on
+        // id-backend. No nonce, no frame, no delay.
+        if (result.vault_handoff) {
+          const userId = result.user.id
+          try {
+            await collectVaultKeyFromBridge(result.vault_handoff, userId)
+          } catch (e) {
+            // Belt and braces: the binding already swallows its own failures.
+            // A sign-in must never fail because a convenience did.
+            logger.warn('Could not collect the vault key at sign-in', e)
+          }
+        }
         // * Give a brand-new account its workspace before it lands, so nobody
         // * meets a "name your organisation" form before seeing the product.
         // * Awaited on purpose: the org wall runs on the destination route and
@@ -127,12 +208,14 @@ function AuthCallbackContent() {
         // * one of their own; the server cannot know an invite is pending.
         // * Failure is not fatal — the org wall retries on the next route, and
         // * the manual form is still there behind it.
-        await provisionWorkspaceUnlessJoining()
+        const landing = await provisionWorkspaceUnlessJoining(
+          result.user.role ?? undefined,
+        )
         // * Use full-page navigation (not router.push) so the access_token cookie set
         // * by exchangeAuthCode is guaranteed committed before AuthProvider re-initializes
         // * on the destination route. Eliminates the post-login SWR race where useSites()
         // * fires before cookies are observable and caches an empty/401 result for 30s.
-        landInApp()
+        landInApp(landing)
       } else {
         // * Every failed exchange gets a screen and a trace. Until 05-09-2026 the
         // * 'server' branch instead sent the browser to `/` — the marketing homepage —
@@ -154,7 +237,7 @@ function AuthCallbackContent() {
         setError(result.error as AuthErrorType)
       }
     },
-    [searchParams, login, landInApp]
+    [searchParams, login, landInApp, provisionWorkspaceUnlessJoining]
   )
 
   useEffect(() => {

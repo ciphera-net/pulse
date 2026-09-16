@@ -16,9 +16,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/lib/api/client', () => ({ authFetch: vi.fn() }))
 vi.mock('../init', () => ({ ensureTessera: vi.fn().mockResolvedValue(undefined) }))
-vi.mock('@ciphera-net/auth/blind-index', () => ({
-  computeBlindIndex: vi.fn().mockResolvedValue('bi-abc'),
-}))
 vi.mock('@/lib/crypto/vault-ops', () => ({
   // Only decrypts when handed a real handle carrying a vault; asserts the
   // ciphertext that was fetched is the one decrypted.
@@ -32,6 +29,7 @@ vi.mock('@/lib/crypto/vault-ops', () => ({
 
 let seenWrap: string | null = null
 let seenPurpose: unknown = null
+let seenBlindIndex: unknown = null
 
 vi.mock('@ciphera-net/tessera', () => {
   class Tessera {
@@ -49,7 +47,8 @@ vi.mock('@ciphera-net/tessera', () => {
       const wrap = await this.transport.getWrap({ credentialId: 'cid', method: 'opaque' })
       seenWrap = wrap?.blobB64 ?? null
       if (!wrap) throw new Error('tessera: no opaque VMK wrap')
-      return { vault: { seal: vi.fn(), open: vi.fn() } }
+      // Mirrors the real sessionFor since 0.3.0: the Session carries the key.
+      return { vault: { seal: vi.fn(), open: vi.fn() }, vaultKey: { __vaultKey: true } }
     }
   }
   return { Tessera }
@@ -65,7 +64,12 @@ function wireFetch(vaultBody: unknown) {
   authFetchSpy.mockImplementation(async (...args: any[]) => {
     const path = args[0]
     if (path === '/auth/user/vault') return vaultBody
-    if (path === '/auth/reauth/start') return { login_id: 'lid', response_b64: 'resp' }
+    if (path === '/auth/reauth/start') {
+      // 🔴 What the transport actually put on the wire. An EMPTY blind index is
+      // how the server is told to resolve the session's own account.
+      seenBlindIndex = args[1] ? JSON.parse(args[1].body ?? '{}').blind_index : undefined
+      return { login_id: 'lid', response_b64: 'resp' }
+    }
     if (path === '/auth/reauth/finish') {
       // Capture the purpose the transport put on the finish body.
       seenPurpose = args[1] ? JSON.parse(args[1].body ?? '{}').purpose : undefined
@@ -80,14 +84,20 @@ describe('unlockVaultPII', () => {
     authFetchSpy.mockReset()
     seenWrap = null
     seenPurpose = null
+    seenBlindIndex = null
   })
 
   it('fetches the vault, seeds the fetched wrap into the ceremony, and returns decrypted PII', async () => {
     wireFetch({ encrypted_vault: 'ENC', opaque_wrapped_key: 'WRAP-B64' })
 
-    const pii = await unlockVaultPII({ email: '  Me@Ciphera.Test  ', password: 'pw' })
+    const { pii, vaultKey } = await unlockVaultPII({ password: 'pw' })
 
     expect(pii.email).toBe('me@ciphera.test')
+    // 🔴 THE KEY COMES BACK NOW, and that is a decision (owner, 10-09-2026 —
+    // the custody design's Option 1), not a leak. It used to be deliberately
+    // withheld: "only the decrypted PII leaves this function". The caller
+    // persists it under the rules in lib/auth/vault-store.
+    expect(vaultKey).toBeDefined()
     // The wrap the SDK opened the VMK with is exactly the one /user/vault returned.
     expect(seenWrap).toBe('WRAP-B64')
     // The ciphertext decrypted is exactly the one fetched (see the mock echo).
@@ -101,15 +111,30 @@ describe('unlockVaultPII', () => {
     expect(paths).not.toContain('/auth/opaque/login/start')
   })
 
+  /**
+   * 🔴 THE ASK THAT MADE NO SENSE. This ceremony used to take the sign-in email
+   * and compute a blind index from it — i.e. it asked you to type the address
+   * in order to be shown the address. The email was never a cryptographic
+   * input: `/auth/reauth/start` is session-authenticated and resolves the
+   * account itself when no blind index is sent (ciphera-id#95). Same removal as
+   * password change (pulse#615) and account deletion (pulse#616); this was the
+   * last ceremony still asking.
+   */
+  it('sends an EMPTY blind index, so the account resolves from the session', async () => {
+    wireFetch({ encrypted_vault: 'ENC', opaque_wrapped_key: 'WRAP-B64' })
+    await unlockVaultPII({ password: 'pw' })
+    expect(seenBlindIndex).toBe('')
+  })
+
   it('rides purpose "ulk" on the ceremony — a token spendable nowhere', async () => {
     wireFetch({ encrypted_vault: 'ENC', opaque_wrapped_key: 'WRAP-B64' })
-    await unlockVaultPII({ email: 'me@ciphera.test', password: 'pw' })
+    await unlockVaultPII({ password: 'pw' })
     expect(seenPurpose).toBe('ulk')
   })
 
   it('loud-fails on an account with no OPAQUE wrap — never a blank name', async () => {
     wireFetch({ encrypted_vault: 'ENC' }) // wrap absent
-    await expect(unlockVaultPII({ email: 'me@ciphera.test', password: 'pw' })).rejects.toThrow(
+    await expect(unlockVaultPII({ password: 'pw' })).rejects.toThrow(
       /no OPAQUE vault/,
     )
     // It must not have attempted the ceremony after the missing-wrap check.

@@ -13,6 +13,15 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
+vi.mock('@/lib/auth/context', () => ({
+  useAuth: () => ({ user: { org_id: 'org-1' } }),
+}))
+
+const markOnboardingComplete = vi.fn().mockResolvedValue(undefined)
+vi.mock('@/lib/auth/landing-target', () => ({
+  markOnboardingComplete: (...a: unknown[]) => markOnboardingComplete(...a),
+}))
+
 const setSite = vi.fn()
 const completeStep = vi.fn()
 vi.mock('@/lib/setup/context', () => ({
@@ -26,8 +35,9 @@ vi.mock('@/lib/swr/sites', () => ({
   useSitesCache: () => ({ addSite }),
 }))
 
+const createSite = vi.fn()
 vi.mock('@/lib/api/sites', () => ({
-  createSite: vi.fn(),
+  createSite: (...a: unknown[]) => createSite(...a),
   detectFramework: vi.fn().mockResolvedValue({}),
 }))
 
@@ -46,7 +56,6 @@ vi.mock('@ciphera-net/facet', () => ({
 }))
 
 import SetupSitePage from '../page'
-import { createSite } from '@/lib/api/sites'
 
 const site = (domain: string, createdAt: string) => ({
   id: 'site-' + domain,
@@ -60,6 +69,8 @@ beforeEach(() => {
   setSite.mockClear()
   completeStep.mockClear()
   trackSkipped.mockClear()
+  markOnboardingComplete.mockClear()
+  createSite.mockReset()
   addSite.mockClear()
   sitesState = { sites: [], isLoading: false }
 })
@@ -99,12 +110,12 @@ describe('SetupSitePage', () => {
   // real SWR provider in lib/swr/__tests__/sites-cache.test.tsx.
   it('writes the created site into the shared cache and moves on to install', async () => {
     const created = site('example.com', '2026-09-11T20:00:00Z')
-    vi.mocked(createSite).mockResolvedValueOnce(created as never)
+    createSite.mockResolvedValueOnce(created)
     render(<SetupSitePage />)
     fireEvent.change(screen.getByLabelText('Domain'), { target: { value: 'https://www.example.com/pricing' } })
     fireEvent.click(screen.getByRole('button', { name: 'Add site' }))
     await waitFor(() => expect(addSite).toHaveBeenCalledWith(created))
-    expect(vi.mocked(createSite)).toHaveBeenCalledWith(expect.objectContaining({ domain: 'example.com', name: 'example.com' }))
+    expect(createSite).toHaveBeenCalledWith(expect.objectContaining({ domain: 'example.com', name: 'example.com' }))
     expect(setSite).toHaveBeenCalledWith(created)
     expect(completeStep).toHaveBeenCalledWith('site')
     expect(mockPush).toHaveBeenCalledWith('/setup/install')
@@ -132,5 +143,29 @@ describe('SetupSitePage', () => {
     // and nothing here routes to /setup/plan (the old skip's destination)
     expect(mockPush).not.toHaveBeenCalledWith('/setup/plan')
     expect(trackSkipped).not.toHaveBeenCalled()
+  })
+
+  // 🔴 11-09-2026: THE SITE IS THE FINISH LINE. onboarding_completed_at used to
+  // be written in exactly one place — /setup/done, after payment state settles
+  // — so the onboarding wall was cleared only by completing a funnel that ends
+  // in a PRICING decision. A stranger who would not pick a plan yet AND could
+  // not paste a script tag was locked out of the product entirely, whatever
+  // "Skip for now" did. Measured live on Pulse's first external signup.
+  it('records onboarding completion the moment the site is created', async () => {
+    createSite.mockResolvedValue({ id: 's1', name: 'example.com', domain: 'example.com' })
+    render(<SetupSitePage />)
+    fireEvent.change(screen.getByLabelText('Domain'), { target: { value: 'example.com' } })
+    fireEvent.submit(screen.getByText('Add site').closest('form')!)
+    await waitFor(() => expect(markOnboardingComplete).toHaveBeenCalledWith('org-1'))
+    expect(mockPush).toHaveBeenCalledWith('/setup/install')
+  })
+
+  it('does NOT record completion when the site was refused', async () => {
+    createSite.mockRejectedValue(new Error('domain already in use'))
+    render(<SetupSitePage />)
+    fireEvent.change(screen.getByLabelText('Domain'), { target: { value: 'taken.com' } })
+    fireEvent.submit(screen.getByText('Add site').closest('form')!)
+    await waitFor(() => expect(screen.queryByText('Adding...')).toBeNull())
+    expect(markOnboardingComplete).not.toHaveBeenCalled()
   })
 })

@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import path from 'node:path'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import * as orgApi from '@/lib/api/organization'
@@ -25,8 +28,10 @@ vi.mock('@/lib/api/organization', () => ({
 }))
 
 // Minimal Facet surface used by the tab + the shared components it renders
-// (DangerZone/SaveBar/ErrorState). SaveBar/ErrorState short-circuit to null in
-// the happy path, so their icon deps never render.
+// (DangerZone/SaveBar). SettingsLoadingState and SettingsErrorState are the
+// tab's own house devices and are exercised for real below, not stubbed, so
+// the tests pin their actual DOM shape (role="status" / role="alert") rather
+// than a mock's approximation of it.
 vi.mock('@ciphera-net/facet', () => ({
   // `@/lib/utils` re-exports cn from facet; the real panels call it.
   cn: (...args: any[]) => args.flat().filter(Boolean).join(' '),
@@ -43,12 +48,20 @@ vi.mock('@ciphera-net/facet', () => ({
       ))}
     </select>
   ),
-  Spinner: () => <div>loading</div>,
   toast: { success: vi.fn(), error: vi.fn() },
   getAuthErrorMessage: () => 'error',
 }))
 
 import WorkspaceGeneralTab from '../WorkspaceGeneralTab'
+
+// Strips `//` and `/* */` comments so the source-text check below pins the
+// actual user-facing copy, not the WHY-comments beside it. The component has
+// no `//` inside a string literal (no URLs), so a plain regex is safe.
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+}
+
+const SOURCE_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'WorkspaceGeneralTab.tsx')
 
 beforeEach(() => {
   mockIsOwner = true
@@ -63,10 +76,16 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
   it('loads the workspace panel with name + slug once the org resolves', async () => {
     render(<WorkspaceGeneralTab />)
     await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
-    // Panel kicker + slug addon are present.
+    // Panel title + slug addon are present.
     expect(screen.getByText('Workspace')).toBeTruthy()
     expect(screen.getByText('pulse.ciphera.net/')).toBeTruthy()
     expect(screen.getByDisplayValue('acme-corp')).toBeTruthy()
+  })
+
+  it('renders the panel title as a sentence-case level-2 heading, the SectionHeader idiom', async () => {
+    render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+    expect(screen.getByRole('heading', { level: 2, name: 'Workspace' })).toBeTruthy()
   })
 
   it('renders the danger zone with distinct Transfer + Delete entry actions', async () => {
@@ -83,12 +102,72 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
-    const confirm = await screen.findByRole('button', { name: 'Delete Organization' })
+    const confirm = await screen.findByRole('button', { name: 'Delete organization' })
     expect((confirm as HTMLButtonElement).disabled).toBe(true)
 
     const field = screen.getByPlaceholderText('DELETE')
     fireEvent.change(field, { target: { value: 'DELETE' } })
     await waitFor(() => expect((confirm as HTMLButtonElement).disabled).toBe(false))
+  })
+
+  it('renders reveal confirm buttons in sentence case and their dismiss buttons as ghost, never a grey secondary fill', async () => {
+    ;(orgApi.getOrganizationMembers as any).mockResolvedValueOnce([
+      { user_id: 'u_next', user_email: 'next@acme.com', role: 'member' } as never,
+    ])
+    render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Transfer' }))
+    expect(screen.getByRole('button', { name: 'Transfer ownership' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Cancel' }).getAttribute('variant')).toBe('ghost')
+
+    // Opening Delete closes Transfer (mutually exclusive reveals).
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    expect(screen.getByRole('button', { name: 'Delete organization' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Cancel' }).getAttribute('variant')).toBe('ghost')
+  })
+
+  it('shows the house loading skeleton while the organization loads, never a bare centred spinner', async () => {
+    let resolveOrg: (v: unknown) => void = () => {}
+    ;(orgApi.getOrganization as any).mockReturnValueOnce(new Promise((resolve) => { resolveOrg = resolve }))
+
+    render(<WorkspaceGeneralTab />)
+    const status = screen.getByRole('status')
+    expect(status.getAttribute('aria-busy')).toBe('true')
+    expect(screen.queryByDisplayValue('Acme Corp')).toBeNull()
+
+    resolveOrg({ name: 'Acme Corp', slug: 'acme-corp' })
+    await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+  })
+
+  it('shows a named error state when the organization fails to load, never a stale or empty panel', async () => {
+    ;(orgApi.getOrganization as any).mockRejectedValueOnce(new Error('boom'))
+
+    render(<WorkspaceGeneralTab />)
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).toContain("Couldn't load your organization")
+    expect(screen.queryByText('Workspace')).toBeNull()
+  })
+
+  it('shows an empty row when there are no other members to transfer to, not a bare paragraph', async () => {
+    render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Transfer' }))
+    expect(await screen.findByText('No other members')).toBeTruthy()
+    expect(screen.getByText('Invite and verify a member first.')).toBeTruthy()
+  })
+
+  it('shows a named error banner when members fail to load, never the empty-members copy', async () => {
+    ;(orgApi.getOrganizationMembers as any).mockRejectedValueOnce(new Error('boom'))
+
+    render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Transfer' }))
+    const banner = await screen.findByRole('alert')
+    expect(banner.textContent).toContain('organization members')
+    expect(screen.queryByText('No other members')).toBeNull()
   })
 
   it('hides the danger zone + save bar for plain members', async () => {
@@ -100,7 +179,7 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
     expect(screen.queryByRole('button', { name: 'Transfer' })).toBeNull()
   })
 
-  it('admins can rename but never see the danger zone — two server rules, two gates', async () => {
+  it('admins can rename but never see the danger zone: two server rules, two gates', async () => {
     mockIsOwner = false
     mockIsAdminOrOwner = true
     render(<WorkspaceGeneralTab />)
@@ -112,7 +191,7 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
     expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull()
   })
 
-  it('transfer rotates the token before the reload — the old cookie still says owner', async () => {
+  it('transfer rotates the token before the reload, because the old cookie still says owner', async () => {
     const { getOrganizationMembers } = await import('@/lib/api/organization')
     vi.mocked(getOrganizationMembers).mockResolvedValueOnce([
       { user_id: 'u_next', user_email: 'next@acme.com', role: 'member' } as never,
@@ -129,7 +208,7 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
       await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
       fireEvent.click(screen.getByRole('button', { name: 'Transfer' }))
       fireEvent.change(screen.getByLabelText('New owner'), { target: { value: 'u_next' } })
-      fireEvent.click(screen.getByRole('button', { name: 'Transfer Ownership' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Transfer ownership' }))
       await waitFor(() => expect(hrefSpy).toHaveBeenCalledWith('/settings/organization/general'))
       expect(refreshSession).toHaveBeenCalledTimes(1)
       // Rotation strictly BEFORE navigation: a bare reload re-hydrates the old
@@ -138,5 +217,11 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
     } finally {
       Object.defineProperty(window, 'location', { configurable: true, value: originalLocation })
     }
+  })
+
+  it('never uses an em dash, en dash or a literal ellipsis in its source, comments included', () => {
+    const stripped = stripComments(readFileSync(SOURCE_PATH, 'utf8'))
+    expect(stripped).not.toMatch(/[—–]/)
+    expect(stripped).not.toMatch(/\.\.\./)
   })
 })

@@ -21,6 +21,7 @@ import {
   Lightning,
   Heartbeat,
   ArrowFatLineDown,
+  PlusCircle,
 } from '@phosphor-icons/react'
 import type { ReactElement } from 'react'
 import { formatRelativeTime } from './formatDate'
@@ -67,6 +68,7 @@ export function getTypeIcon(type: string) {
     team_role_changed:             <UserGear         className="w-5 h-5 shrink-0 text-neutral-400"  aria-hidden="true" />,
     system_announcement:           <Megaphone        className="w-5 h-5 shrink-0 text-brand-orange" aria-hidden="true" />,
     system_maintenance:            <Wrench           className="w-5 h-5 shrink-0 text-amber-400"    aria-hidden="true" />,
+    lifecycle_no_site:             <PlusCircle       className="w-5 h-5 shrink-0 text-brand-orange" aria-hidden="true" />,
   }
 
   return iconMap[type] ?? <Lightning className="w-5 h-5 shrink-0 text-neutral-400" aria-hidden="true" />

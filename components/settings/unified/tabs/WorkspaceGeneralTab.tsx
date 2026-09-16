@@ -8,7 +8,6 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Select,
-  Spinner,
   toast,
   getAuthErrorMessage,
 } from '@ciphera-net/facet'
@@ -18,8 +17,9 @@ import { getOrganization, updateOrganization, deleteOrganization, getOrganizatio
 import { setSessionAction } from '@/app/actions/auth'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
+import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
-import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
+import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/settings/panels'
 
 export default function WorkspaceGeneralTab() {
   const { user, refreshSession } = useAuth()
@@ -36,13 +36,18 @@ export default function WorkspaceGeneralTab() {
   const [deleteText, setDeleteText] = useState('')
   const [deleting, setDeleting] = useState(false)
   // Baseline snapshot is STATE, not a ref: committing it (after save/load)
-  // must re-render so isDirty clears and the beforeunload guard disarms —
-  // the old ref version kept the save bar dirty after a successful save.
+  // must re-render so isDirty clears and the beforeunload guard disarms. The
+  // old ref version kept the save bar dirty after a successful save.
   const [baseline, setBaseline] = useState('')
   const hasInitialized = useRef(false)
 
   // Transfer ownership state
   const [members, setMembers] = useState<OrganizationMember[]>([])
+  // Members only power the transfer picker below. Their fetch is allowed to
+  // fail without blocking the panel, but a failure still needs its own named
+  // state, never a silent fallback to the empty-list copy (rule: no fetch
+  // failure may render as an empty state).
+  const [membersError, setMembersError] = useState(false)
   const [showTransferConfirm, setShowTransferConfirm] = useState(false)
   const [transferTargetId, setTransferTargetId] = useState('')
   const [transferring, setTransferring] = useState(false)
@@ -51,9 +56,13 @@ export default function WorkspaceGeneralTab() {
     if (!user?.org_id) return
     setLoading(true)
     setError(null)
+    setMembersError(false)
     Promise.all([
       getOrganization(user.org_id),
-      getOrganizationMembers(user.org_id).catch(() => [] as OrganizationMember[]),
+      getOrganizationMembers(user.org_id).catch(() => {
+        setMembersError(true)
+        return [] as OrganizationMember[]
+      }),
     ])
       .then(([org, membersData]) => {
         setName(org.name || '')
@@ -66,7 +75,7 @@ export default function WorkspaceGeneralTab() {
         setMembers(membersData.filter(m => m.user_id !== user.id && m.role !== 'owner'))
       })
       .catch((err) => {
-        setError(getAuthErrorMessage(err as Error) || 'Failed to load organization')
+        setError(getAuthErrorMessage(err as Error) || 'This is usually temporary. Try again in a moment.')
         setLoading(false)
       })
       .finally(() => setLoading(false))
@@ -91,7 +100,7 @@ export default function WorkspaceGeneralTab() {
       setBaseline(JSON.stringify({ name, slug }))
       toast.success('Organization updated')
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to update organization')
+      toast.error(getAuthErrorMessage(err as Error) || "Couldn't save your changes. Try again in a moment.")
     }
   }, [user?.org_id, name, slug])
 
@@ -101,7 +110,7 @@ export default function WorkspaceGeneralTab() {
     try {
       await deleteOrganization(user.org_id)
       // 🔴 NO localStorage.clear() HERE. It used to run on this line and wiped
-      // the WHOLE origin — including the product tour's "seen it" stamp, every
+      // the WHOLE origin, including the product tour's "seen it" stamp, every
       // OTHER workspace's checklist dismissal, the remembered date range and
       // the sidebar state. Deleting one workspace has nothing to say about any
       // of them, and the tour reappearing afterwards is exactly what the owner
@@ -122,11 +131,11 @@ export default function WorkspaceGeneralTab() {
           return
         }
       } catch {
-        // switching failed — the wizard below is still a safe landing
+        // switching failed; the wizard below is still a safe landing
       }
       window.location.href = '/setup/org'
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to delete organization')
+      toast.error(getAuthErrorMessage(err as Error) || "Couldn't delete your organization. Try again.")
       setDeleting(false)
     }
   }
@@ -144,7 +153,7 @@ export default function WorkspaceGeneralTab() {
       await refreshSession()
       window.location.href = '/settings/organization/general'
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to transfer ownership')
+      toast.error(getAuthErrorMessage(err as Error) || "Couldn't transfer ownership. Try again.")
       setTransferring(false)
     }
   }
@@ -156,20 +165,22 @@ export default function WorkspaceGeneralTab() {
   }
 
   if (error) {
-    return <SettingsErrorState message={error} onRetry={handleRetry} />
+    return (
+      <SettingsErrorState
+        title="Couldn't load your organization"
+        message={error}
+        onRetry={handleRetry}
+      />
+    )
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Spinner className="w-6 h-6 text-muted-foreground" />
-      </div>
-    )
+    return <SettingsLoadingState rows={2} />
   }
 
   return (
     <div className="space-y-8">
-      <SettingsPanel kicker="Workspace" description="Basic details about your organization.">
+      <SettingsPanel title="Workspace" description="Basic details about your organization.">
         <PanelRows>
           <PanelRow
             label="Name"
@@ -190,7 +201,7 @@ export default function WorkspaceGeneralTab() {
             htmlFor="org-slug"
           >
             <InputGroup>
-              <InputGroupAddon align="inline-start" className="text-muted-foreground">
+              <InputGroupAddon align="inline-start" className="font-mono text-muted-foreground">
                 pulse.ciphera.net/
               </InputGroupAddon>
               <InputGroupInput
@@ -205,105 +216,127 @@ export default function WorkspaceGeneralTab() {
         </PanelRows>
       </SettingsPanel>
 
-      {/* Danger Zone */}
-      {canDeleteOrg && <DangerZone
-        items={[
-          {
-            title: 'Transfer Ownership',
-            description: 'Assign ownership to another member. You will become a regular member.',
-            buttonLabel: 'Transfer',
-            variant: 'outline',
-            onClick: () => { setShowTransferConfirm(prev => !prev); setShowDeleteConfirm(false) },
-          },
-          {
-            title: 'Delete Organization',
-            description: 'Permanently delete this organization and all its data.',
-            buttonLabel: 'Delete',
-            variant: 'solid',
-            onClick: () => { setShowDeleteConfirm(prev => !prev); setShowTransferConfirm(false) },
-          },
-        ]}
-      >
-        {showTransferConfirm && (
-          <div className="space-y-3 bg-destructive/5 px-5 py-4">
-            <p className="text-sm text-muted-foreground">Select a member to become the new owner. You will be demoted to a regular member immediately.</p>
-            {members.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No other members are available. Invite and verify a member first.</p>
-            ) : (
-              <>
-                <div className="space-y-1.5">
-                  <label className="block font-semibold text-micro-label uppercase text-muted-foreground">New owner</label>
-                  <Select
-                    value={transferTargetId}
-                    onChange={setTransferTargetId}
-                    placeholder="Select a member…"
-                    options={members.map(m => ({
-                      value: m.user_id,
-                      label: m.user_email || `Member ${m.user_id.slice(0, 8)}`,
-                      description: m.role,
-                    }))}
-                    className="w-full"
-                    aria-label="New owner"
+      {canDeleteOrg && (
+        <DangerZone
+          items={[
+            {
+              title: 'Transfer ownership',
+              description: 'Assign ownership to another member. You will become a regular member.',
+              buttonLabel: 'Transfer',
+              variant: 'outline',
+              expanded: showTransferConfirm,
+              onClick: () => { setShowTransferConfirm(prev => !prev); setShowDeleteConfirm(false) },
+            },
+            {
+              title: 'Delete organization',
+              description: 'Permanently delete this organization and all its data.',
+              buttonLabel: 'Delete',
+              variant: 'solid',
+              expanded: showDeleteConfirm,
+              onClick: () => { setShowDeleteConfirm(prev => !prev); setShowTransferConfirm(false) },
+            },
+          ]}
+        >
+          {showTransferConfirm && (
+            <div>
+              <p className="px-5 py-4 text-sm text-muted-foreground">
+                Select a member to become the new owner. You will be demoted to a regular member immediately.
+              </p>
+              {membersError ? (
+                <div className="px-5 pb-4">
+                  <SettingsErrorState
+                    variant="banner"
+                    message="Couldn't load organization members. Try again."
+                    onRetry={handleRetry}
                   />
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={handleTransfer}
-                    disabled={!transferTargetId || transferring}
-                  >
-                    {transferring ? 'Transferring…' : 'Transfer Ownership'}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => { setShowTransferConfirm(false); setTransferTargetId('') }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-        {showDeleteConfirm && (
-          <div className="space-y-3 bg-destructive/5 px-5 py-4">
-            <p className="text-sm text-destructive">This will permanently delete:</p>
-            <ul className="list-inside list-disc space-y-1 text-xs text-muted-foreground">
-              <li>All sites and their analytics data</li>
-              <li>All team members and pending invitations</li>
-              <li>Active subscription will be cancelled</li>
-              <li>All notifications and settings</li>
-            </ul>
-            <div className="space-y-1.5">
-              <label className="block font-semibold text-micro-label uppercase text-muted-foreground">Type DELETE to confirm</label>
-              <Input
-                value={deleteText}
-                onChange={e => setDeleteText(e.target.value)}
-                placeholder="DELETE"
-              />
+              ) : members.length === 0 ? (
+                <EmptyRow
+                  title="No other members"
+                  caption="Invite and verify a member first."
+                />
+              ) : (
+                <>
+                  <PanelRows className="border-t border-border">
+                    <PanelRow label="New owner" htmlFor="org-transfer-target">
+                      <Select
+                        id="org-transfer-target"
+                        value={transferTargetId}
+                        onChange={setTransferTargetId}
+                        placeholder="Select a member…"
+                        options={members.map(m => ({
+                          value: m.user_id,
+                          label: m.user_email || `Member ${m.user_id.slice(0, 8)}`,
+                          description: m.role,
+                        }))}
+                        className="w-full"
+                        aria-label="New owner"
+                      />
+                    </PanelRow>
+                  </PanelRows>
+                  <div className="flex gap-2 border-t border-border px-5 py-4">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleTransfer}
+                      disabled={!transferTargetId || transferring}
+                    >
+                      {transferring ? 'Transferring…' : 'Transfer ownership'}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { setShowTransferConfirm(false); setTransferTargetId('') }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleDelete}
-                disabled={deleteText !== 'DELETE' || deleting}
-              >
-                {deleting ? 'Deleting...' : 'Delete Organization'}
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => { setShowDeleteConfirm(false); setDeleteText('') }}
-              >
-                Cancel
-              </Button>
+          )}
+          {showDeleteConfirm && (
+            <div>
+              <div className="px-5 py-4">
+                <p className="text-sm text-destructive">This will permanently delete:</p>
+                <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-muted-foreground">
+                  <li>All sites and their analytics data</li>
+                  <li>All team members and pending invitations</li>
+                  <li>All notifications and settings</li>
+                </ul>
+                <p className="mt-2 text-xs text-muted-foreground">It also cancels any active subscription.</p>
+              </div>
+              <PanelRows className="border-t border-border">
+                <PanelRow label="Type DELETE to confirm" htmlFor="org-delete-confirm">
+                  <Input
+                    id="org-delete-confirm"
+                    value={deleteText}
+                    onChange={e => setDeleteText(e.target.value)}
+                    placeholder="DELETE"
+                  />
+                </PanelRow>
+              </PanelRows>
+              <div className="flex gap-2 border-t border-border px-5 py-4">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleDelete}
+                  disabled={deleteText !== 'DELETE' || deleting}
+                >
+                  {deleting ? 'Deleting…' : 'Delete organization'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setShowDeleteConfirm(false); setDeleteText('') }}
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
-      </DangerZone>}
+          )}
+        </DangerZone>
+      )}
 
       {canEditOrg && (
         <SettingsSaveBar

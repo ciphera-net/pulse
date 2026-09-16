@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
-import { initiateOAuthFlow } from '@/lib/api/oauth'
+import { initiateSignupFlow } from '@/lib/api/oauth'
 import { toast, Button, ArrowRightIcon, CheckIcon, Switcher } from '@ciphera-net/facet'
 import { useSubscription } from '@/lib/swr/dashboard'
 import { getUserOrganizations } from '@/lib/api/organization'
@@ -27,6 +27,7 @@ import { PlanComparisonTable } from '@/components/marketing/PlanComparisonTable'
 import { HomeClosingCta } from '@/components/marketing/HomeClosingCta'
 import { getPrices } from '@/lib/api/billing'
 import { cn } from '@/lib/utils'
+import { rememberReturnTarget } from '@/lib/auth/return-target'
 
 // One matrix for every surface: the marketing cards render the same catalog
 // the in-app pickers (/setup/plan, /switch) consume — copy edits happen in
@@ -104,8 +105,11 @@ export default function PricingSection() {
     const planParams = `plan=${planId}&interval=${selectedInterval}&limit=${selectedLimit}`
 
     if (!user) {
-      localStorage.setItem('pulse_auth_return_to', `/setup/org?${planParams}`)
-      initiateOAuthFlow()
+      // Signup, not sign-in — see HeroCtas. The stored return target is
+      // unchanged: whichever door they come through, they land on the plan
+      // they picked.
+      rememberReturnTarget(`/setup/org?${planParams}`)
+      initiateSignupFlow()
       return
     }
 
@@ -336,7 +340,8 @@ export default function PricingSection() {
                       if (isCurrent) return
                       if (isFree) {
                         if (!user) {
-                          initiateOAuthFlow()
+                          // "Get started free" — signup, not sign-in.
+                          initiateSignupFlow()
                           return
                         }
                         window.location.href = '/'

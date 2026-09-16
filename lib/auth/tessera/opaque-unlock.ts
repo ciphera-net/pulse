@@ -4,8 +4,8 @@ import { makeOpaqueTransport } from './transport'
 import { decryptVaultH } from '@/lib/crypto/vault-ops'
 import type { VaultData } from '@/lib/crypto/vault'
 import type { VaultKeyHandle } from '@/lib/auth/vault-key'
+import type { VaultKey } from '@ciphera-net/tessera'
 import { authFetch } from '@/lib/api/client'
-import { computeBlindIndex } from '@ciphera-net/auth/blind-index'
 
 interface VaultResponse {
   encrypted_vault?: string
@@ -37,15 +37,41 @@ interface VaultResponse {
  *      spendable NOWHERE (id #61) — we never read it.
  *   3. decrypt encrypted_vault with the live handle, then drop the handle.
  *
- * The returned handle is deliberately NOT exposed — only the decrypted PII
- * leaves this function, and the caller caches that (never the key) for the tab.
+ * 🔑 It takes a PASSWORD AND NOTHING ELSE. It used to ask for the sign-in email
+ * as well, which on this screen meant typing the address in order to be shown
+ * the address. The email was never a cryptographic input — see the transport's
+ * blindIndex below.
+ *
+ * 🔴 IT NOW RETURNS THE KEY, AND THAT IS A DECISION, NOT A DRIFT. This function
+ * used to say "the returned handle is deliberately NOT exposed — only the
+ * decrypted PII leaves this function", and that was right for as long as
+ * nothing in the estate persisted a vault key. On 10-09-2026 the owner ruled
+ * otherwise (Option 1 of
+ * `Infra/Auth/docs/plans/10-09-2026-vault-key-custody-design.md`), so the caller
+ * may keep it — see `lib/auth/vault-store.ts`, which holds the five rules that
+ * came with the decision. The old sentence is quoted here rather than deleted,
+ * because a contract that changed by ruling should not look like one that was
+ * forgotten.
  *
  * Throws on a wrong password (the ceremony 401s) or a vault with no wrap
  * (an account that predates OPAQUE — the caller shows the encrypted state).
  */
-export async function unlockVaultPII(opts: { email: string; password: string }): Promise<VaultData> {
+/**
+ * What the SDK is handed as an identity. The AKE never sees it: the transport
+ * posts `blind_index` instead (empty here — "resolve the session's own
+ * account"), and the SDK's own credential id is discarded on the wire. Same
+ * seed the password-change, session-reauth and email-change ceremonies use.
+ */
+const SDK_CREDENTIAL_SEED = 'session'
+
+export interface UnlockedVault {
+  pii: VaultData
+  /** The VMK the vault opened with — non-extractable, and storable (0.3.0). */
+  vaultKey: VaultKey
+}
+
+export async function unlockVaultPII(opts: { password: string }): Promise<UnlockedVault> {
   await ensureTessera()
-  const email = opts.email.trim()
 
   const vault = await authFetch<VaultResponse>('/auth/user/vault', { skipAuthRetry: true })
   if (!vault?.encrypted_vault || !vault.opaque_wrapped_key) {
@@ -56,7 +82,15 @@ export async function unlockVaultPII(opts: { email: string; password: string }):
   }
 
   const transport = makeOpaqueTransport({
-    blindIndex: await computeBlindIndex(email),
+    // 🔴 EMPTY, AND NOBODY TYPES AN EMAIL ANY MORE. `/auth/reauth/start` is
+    // session-authenticated and resolves the account itself when no blind index
+    // is sent (ciphera-id#95); the SDK's credential id is discarded by the
+    // transport; and the AKE never sees either. So asking for the address was a
+    // UI choice — and on THIS screen it was an absurd one, because the address
+    // is the very thing the unlock exists to reveal. Same removal as password
+    // change (pulse#615) and account deletion (pulse#616); this was the last
+    // ceremony still asking.
+    blindIndex: '',
     mode: 'login',
     basePath: '/auth/reauth',
     // The reauth finish body has no wrap; feed it the one we fetched so the
@@ -66,16 +100,10 @@ export async function unlockVaultPII(opts: { email: string; password: string }):
   })
 
   const session = await new Tessera(transport).login({
-    email,
+    email: SDK_CREDENTIAL_SEED,
     password: new TextEncoder().encode(opts.password),
   })
 
   const handle: VaultKeyHandle = { kind: 'opaque', vault: session.vault }
-  try {
-    return await decryptVaultH(handle, vault.encrypted_vault)
-  } finally {
-    // Non-extractable; dropping the reference lets the GC reclaim the key.
-    // The decrypted PII the caller keeps is data, not a key.
-    void handle
-  }
+  return { pii: await decryptVaultH(handle, vault.encrypted_vault), vaultKey: session.vaultKey }
 }

@@ -114,7 +114,7 @@ export default function AccountSecurityAlertsTab() {
       await refresh()
     } catch (err) {
       setSettings(previous)
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to update security alerts')
+      toast.error(getAuthErrorMessage(err as Error) || "Couldn't update your security alerts. Try again.")
     } finally {
       setSaving(false)
     }
@@ -127,7 +127,7 @@ export default function AccountSecurityAlertsTab() {
   return (
     <div className="space-y-8">
       <SettingsPanel
-        kicker="Security alerts"
+        title="Security alerts"
         description="Emails Ciphera ID sends you when something changes on your account."
       >
         <PanelRows>
@@ -151,7 +151,7 @@ export default function AccountSecurityAlertsTab() {
               a disabled switch would advertise a setting that does not exist. */}
           <PanelRow
             label="Blocked sign-in attempts"
-            caption="Sent whenever a sign-in is blocked as suspicious. This one has no preference at all — it is the warning a takeover victim gets while there is still time to act."
+            caption="Sent whenever a sign-in is blocked as suspicious. This one has no preference at all: it is the warning a takeover victim gets while there is still time to act."
             control={<StatusChip tone="neutral">Always sent</StatusChip>}
           />
         </PanelRows>

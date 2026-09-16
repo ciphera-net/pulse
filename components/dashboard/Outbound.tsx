@@ -256,7 +256,11 @@ export default function Outbound({ siteId, dateRange, period, goalCounts, filter
             icon={<ArrowSquareOut />}
             title="No outbound clicks yet"
             description="Clicks on links to other sites are recorded automatically and appear here. If outbound tracking is off in the script settings, nothing arrives."
-            action={{ label: 'Install tracking script', href: '/installation' }}
+            action={{
+              label: 'Install tracking script',
+              href: '/settings/site/general',
+              onClick: () => sessionStorage.setItem('pulse_active_site', siteId),
+            }}
           />
         )}
       </div>

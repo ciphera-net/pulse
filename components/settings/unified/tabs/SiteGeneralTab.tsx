@@ -146,7 +146,7 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
   return (
     <div className="space-y-8">
       {/* ── Site details ─────────────────────────────────────────────────── */}
-      <SettingsPanel kicker="Site" description="Core details for this site.">
+      <SettingsPanel title="Site" description="Core details for this site.">
         <PanelRows>
           <PanelRow label="Name" caption="Shown across Pulse and in reports." htmlFor="site-name">
             <Input
@@ -184,10 +184,10 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
           it. The backend already auto-verifies on the first event, so that
           manual round-trip was re-doing work that happens by itself. */}
       <SettingsPanel
-        kicker="Tracking script"
+        title="Tracking script"
         description="Add this to your site to start collecting privacy-first analytics."
         action={
-          <StatusChip tone={installTone} dot pulse={installStatus === 'active'}>
+          <StatusChip tone={installTone} dot>
             {installLabel}
           </StatusChip>
         }
