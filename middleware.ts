@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { AUTHED_HOME } from '@/lib/routes'
 
 const PUBLIC_ROUTES = new Set([
   '/',
@@ -77,7 +78,13 @@ const AUTH_ONLY_ROUTES = new Set(['/login', '/signup'])
 // * The authenticated home. The public marketing homepage lives at `/` and must
 // * server-render for crawlers, so signed-in visitors are redirected here (the
 // * site list / last-site entry point) instead of `/`.
-const AUTHED_HOME = '/sites'
+// *
+// * 🔑 It now lives in lib/routes.ts because the auth callback needs the same
+// * answer. A fresh signup used to land on `/` with no target, get redirected
+// * here, RENDER the empty site list, and only then be pushed into the setup
+// * wizard by a client effect — reported 08-09-2026 as a flash of "you have no
+// * sites" on a brand-new account. The callback resolves its own destination
+// * now, and this is the string it names when there is nothing else to resume.
 
 const STAGING_HOST = 'pulse-staging.ciphera.net'
 const STAGING_ROBOTS = 'User-agent: *\nDisallow: /\n'
@@ -128,9 +135,21 @@ export function middleware(request: NextRequest) {
     return withStagingHeader(NextResponse.next(), isStaging)
   }
 
-  // * Protected route without a session → redirect to login
+  // * Protected route without a session → redirect to login, CARRYING THE PATH.
+  // 🔴 It used to redirect to a bare `/login`, so a cold visit to a deep link —
+  // an emailed dashboard URL, a bookmarked settings page — signed you in and
+  // then dropped you at the app's front door with no explanation, and the link
+  // you followed appeared not to work. The mechanism to carry it already
+  // existed and was already honoured by the auth callback
+  // (`pulse_auth_return_to`); only this hop never filled it in.
+  //
+  // ⚠️ The value is NOT trusted here. The edge only echoes back a path it was
+  // asked for; `/login` validates it with safeRedirectUrl before storing it,
+  // and the callback validates it again on the way out.
   if (!hasSession) {
     const loginUrl = new URL('/login', request.url)
+    const wanted = pathname + (request.nextUrl.search || '')
+    if (wanted && wanted !== '/') loginUrl.searchParams.set('returnTo', wanted)
     return withStagingHeader(NextResponse.redirect(loginUrl), isStaging)
   }
 

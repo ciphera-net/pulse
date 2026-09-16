@@ -68,6 +68,13 @@ export interface SubscriptionDetails {
   billing_address?: string
   billing_city?: string
   billing_postal_code?: string
+  /** Billing country, ISO-3166 alpha-2.
+   *
+   *  🔑 Sent unconditionally since 08-09-2026. It used to be reachable only
+   *  inside `tax_id`, which is null for an org with no VAT number — so for most
+   *  customers the country was invisible to the client, and it is the field at
+   *  the top of the checkout form. */
+  billing_country?: string
   pending_plan_id?: string
   pending_limit?: number
   pending_interval?: string

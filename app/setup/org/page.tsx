@@ -11,6 +11,7 @@ import { setSessionAction } from '@/app/actions/auth'
 import { trackWelcomeWorkspaceCreated } from '@/lib/welcomeAnalytics'
 import apiRequest from '@/lib/api/client'
 import { getAuthErrorMessage } from '@ciphera-net/facet'
+import { orgCreateError } from '@/lib/api/orgErrors'
 import { Button, Input, toast } from '@ciphera-net/facet'
 import { PlusIcon } from '@ciphera-net/facet'
 
@@ -68,7 +69,11 @@ export default function SetupOrgPage() {
       await clearOrgScopedCaches()
       router.push(`/setup/site${preservePlanParams(searchParams)}`)
     } catch (err) {
-      setError(getAuthErrorMessage(err as Error) || 'Failed to create organization')
+      // 🔴 The server's own words, not the HTTP status'. ciphera-id rejects a
+      // name under three characters and a slug already taken, and both used to
+      // render as "Something went wrong, please try again." on a form whose
+      // only field is that name. Same fix the site step got on 05-09-2026.
+      setError(orgCreateError(err).message)
       setLoading(false)
     }
   }

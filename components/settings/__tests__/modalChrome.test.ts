@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import {
   MODAL_SCROLL_CLASS,
@@ -77,16 +77,26 @@ describe('modal chrome', () => {
   })
 
   /**
-   * All three dialogs must USE the constants. Two of them previously had the
-   * broken classes inline and were saved only by having short content — the
+   * Every settings dialog must USE the constants. Two of them previously had
+   * the broken classes inline and were saved only by having short content — the
    * next long dialog would have reintroduced the bug in a file nobody thought
    * to check.
+   *
+   * 🔑 DISCOVERED, NOT LISTED. This was a frozen array of three filenames, and
+   * deleting one of them (ReauthModal, 10-09-2026) reddened the suite for a
+   * change that removed a dialog rather than broke one. Reading the directory
+   * means a NEW dialog is covered the day it lands — which is the failure the
+   * list was actually there to catch — and a deleted one simply leaves.
    */
   describe('every settings dialog uses them', () => {
-    const MODALS = ['ReauthModal.tsx', 'PasskeyEnrolModal.tsx', 'RecoveryEnrolModal.tsx']
+    const MODALS = readdirSync(join(__dirname, '..')).filter((f) => /Modal\.tsx$/.test(f))
     const read = (f: string) => readFileSync(join(__dirname, '..', f), 'utf8')
 
     it('has dialogs to check', () => {
+      // 🔴 The list is discovered, so an EMPTY one would make every loop below
+      // pass vacuously — a rename or a moved directory would silently retire
+      // the guard rather than fail it.
+      expect(MODALS.length).toBeGreaterThanOrEqual(2)
       for (const f of MODALS) expect(read(f).length).toBeGreaterThan(100)
     })
 

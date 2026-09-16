@@ -8,6 +8,7 @@ import {
   Globe,
   UsersThree,
   Megaphone,
+  Compass,
 } from '@phosphor-icons/react'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
@@ -55,6 +56,7 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   site: <Globe className="w-4 h-4 text-neutral-400 shrink-0" aria-hidden="true" />,
   team: <UsersThree className="w-4 h-4 text-neutral-400 shrink-0" aria-hidden="true" />,
   system: <Megaphone className="w-4 h-4 text-neutral-400 shrink-0" aria-hidden="true" />,
+  lifecycle: <Compass className="w-4 h-4 text-neutral-400 shrink-0" aria-hidden="true" />,
 }
 
 const ORDER = NOTIFICATION_CATEGORIES.map((c) => c.id as string)

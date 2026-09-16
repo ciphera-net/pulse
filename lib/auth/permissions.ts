@@ -106,8 +106,10 @@ export function useCan(perm: Permission): boolean {
 // failed to find out what they are. Getting that backwards would let a real
 // owner past the wall whenever their role had not loaded yet.
 //
-// Pure and exported so it is testable without standing up AuthProvider; the
-// wall in lib/auth/context.tsx is its only caller.
+// Pure and exported so it is testable without standing up AuthProvider. Two
+// callers now: the wall in lib/auth/context.tsx, and resolveLandingTarget in
+// lib/auth/landing-target.ts, which asks the same question BEFORE landing so a
+// non-owner is never sent into a wizard whose last step they are refused.
 export function isSubjectToOnboardingWall(role: string | undefined | null): boolean {
   if (!role) return true // unknown → behave exactly as before
   return role === 'owner'

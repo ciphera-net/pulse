@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSetup } from '@/lib/setup/context'
 import { useAuth } from '@/lib/auth/context'
-import { completeOnboarding } from '@/lib/api/organization'
+import { markOnboardingComplete } from '@/lib/auth/landing-target'
 import { preservePlanParams } from '@/lib/setup/utils'
 import { createSite, detectFramework, type Site } from '@/lib/api/sites'
 import { useSites, useSitesCache } from '@/lib/swr/sites'
@@ -73,29 +73,18 @@ export default function SetupSitePage() {
       completeStep('site')
       trackWelcomeSiteAdded()
       // 🔴 ONBOARDING IS COMPLETE HERE, NOT AT /setup/done (11-09-2026). The
-      // workspace can now receive data, which is the whole thing the onboarding
-      // wall exists to wait for. Writing it at /setup/done meant the flag was
-      // set only by a funnel that ends in a PRICING decision, so a stranger who
+      // workspace can now receive data, which is the whole thing the wall
+      // exists to wait for. Writing it at /setup/done meant the flag was set
+      // only by a funnel that ends in a PRICING decision, so a stranger who
       // would not choose a plan and could not paste a script tag was held
-      // outside the product. Measured on Pulse's first external signup.
+      // outside the product — measured on Pulse's first external signup.
       //
-      // ⚠️ NOT AWAITED, AND NOT ALLOWED TO FAIL THE FORM. The site exists
-      // either way, and the wall also passes a site-owning org on site
-      // presence, so a failed write costs a round trip and nothing else. The
-      // one-way guard lives in ciphera-id's SQL.
-      if (user?.org_id) {
-        completeOnboarding(user.org_id)
-          .then(() => {
-            try {
-              localStorage.setItem(`pulse_onboarding_done_${user.org_id}`, '1')
-            } catch {
-              // Cache write failed; the server answer still stands.
-            }
-          })
-          .catch(() => {
-            // Never cache a failure, and never block the wizard on it.
-          })
-      }
+      // ⚠️ NOT AWAITED, AND NOT ALLOWED TO FAIL THE FORM. The site is created
+      // either way; the flag is a fast path the wall can also derive from the
+      // site list, so a failed write costs a round trip and nothing else. The
+      // one-way guard lives in ciphera-id's SQL, so a later /setup/done write
+      // cannot move the timestamp.
+      if (user?.org_id) void markOnboardingComplete(user.org_id)
       // Put the new site into the shared sites cache NOW. The resume view,
       // the guard, the context rehydration, the sidebar switcher and the
       // fleet all read it, and the fleet mounts inside useSites' 30 s dedupe

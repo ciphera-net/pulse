@@ -8,14 +8,17 @@ import apiRequest, { setAccessToken, setRefreshHandler } from '@/lib/api/client'
 import { LoadingOverlay, useSessionSync, SessionExpiryWarning, useSessionRefresh } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
 import { logoutAction, getSessionAction, setSessionAction } from '@/app/actions/auth'
-import { getUserOrganizations, switchContext, getOrganization, ensureDefaultOrganization, completeOnboarding } from '@/lib/api/organization'
+import { getUserOrganizations, switchContext, getOrganization, ensureDefaultOrganization } from '@/lib/api/organization'
 import { listSites, type Site } from '@/lib/api/sites'
 import { logger } from '@/lib/utils/logger'
+import { forgetVaultKeys, loadVaultKey } from '@/lib/auth/vault-store'
+import { openVaultWithKey } from '@/lib/auth/vault-restore'
 import { cleanupStaleStorage } from '@/lib/utils/storage-cleanup'
 import { forgetAllPendingAuth } from '@/lib/api/oauth-store'
 import { isTransientRefreshFailure } from '@/lib/auth/refresh-outcome'
 import { reportClientEvent } from '@/lib/utils/clientEvents'
 import { isAuthedAppRoute } from '@/lib/auth/appRoutes'
+import { markOnboardingComplete, onboardingDoneCacheKey, resumeTargetForSites } from '@/lib/auth/landing-target'
 
 interface User {
   id: string
@@ -35,8 +38,60 @@ interface User {
   }
 }
 
+/**
+ * Land vault-opened PII on the session — the two rules worth testing.
+ *
+ * 🔴 IT MUST NOT LAND ON A DIFFERENT ACCOUNT. The read is async; a person can
+ * switch accounts while it is in flight, and inheriting the previous person's
+ * name is the exact failure a shared vault store exists to prevent.
+ *
+ * 🔴 AND IT MUST NOT OVERWRITE AN ADDRESS WE ALREADY HAVE. A ceremony that
+ * completed while this was reading is FRESHER than the envelope it opened — the
+ * same "never install a stale value over a live one" rule the vault-key holder
+ * follows.
+ *
+ * Exported for its tests; the provider is not renderable without standing up
+ * half the app, and mocking that would measure the mocks.
+ */
+/**
+ * Can this browser name the person signed in?
+ *
+ * 🔴 THREE STATES, AND THE THIRD IS WHY THIS EXISTS. Every surface that shows a
+ * name needs to distinguish "we have not looked yet" from "we looked and
+ * cannot" — and every one of them was inventing its own answer from
+ * `!user.email`, which is trivially true before an async read finishes. That
+ * sentinel produced a locked banner for 103ms on the settings screen, and a
+ * label over two empty rows in the account menu.
+ *
+ *   'unknown' — the stored key has not been read, or the vault not yet opened
+ *   'open'    — the session can be named
+ *   'locked'  — looked, and cannot: no key, or one that will not open this vault
+ *
+ * ⚠️ 'locked' is the ONLY state a surface may assert anything about. A UI that
+ * treats 'unknown' as 'locked' is the bug this replaces.
+ */
+export type VaultState = 'unknown' | 'open' | 'locked'
+
+export function mergeVaultPii(
+  prev: User | null,
+  forUserId: string,
+  pii: { email?: string; display_name?: string },
+): User | null {
+  if (!prev || prev.id !== forUserId) return prev
+  if (prev.email) return prev
+  if (!pii.email) return prev
+  return { ...prev, email: pii.email, display_name: pii.display_name ?? prev.display_name }
+}
+
 interface AuthContextType {
   user: User | null
+  /**
+   * Whether this browser can name the person — see `VaultState`.
+   *
+   * 🔑 ONE SOURCE OF TRUTH, DELIBERATELY. Before this, each surface derived its
+   * own answer from `!user.email` and each got it wrong in a different way.
+   */
+  vaultState: VaultState
   loading: boolean
   hadPriorSession: boolean
   /** True while init's transient-failure retry loop is actively trying to
@@ -50,6 +105,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  vaultState: 'unknown',
   loading: true,
   hadPriorSession: false,
   recovering: false,
@@ -78,6 +134,7 @@ async function loadSession(): Promise<SessionUser | null> {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [vaultState, setVaultState] = useState<VaultState>('unknown')
   const [loading, setLoading] = useState(true)
   const [hadPriorSession, setHadPriorSession] = useState(false)
   const [recovering, setRecovering] = useState(false)
@@ -229,6 +286,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('user')
     localStorage.removeItem('ciphera_token_refreshed_at')
     localStorage.removeItem('ciphera_last_activity')
+    // 🔴 RULE 1 of the vault-key custody decision (owner, 10-09-2026): the
+    // stored vault key is cleared HERE, in the same call that ends the session
+    // — not "on next load". Sign-out is the moment this device stops being
+    // trusted, and a key that survives it is a key nobody chose to keep.
+    // Awaited: the navigation below would otherwise race the delete.
+    await forgetVaultKeys()
     // * Logout ends with a full navigation to /login, which starts a fresh
     // * attempt. Anything still pending belongs to the session being ended.
     forgetAllPendingAuth()
@@ -259,6 +322,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setRefreshHandler(refreshDetailed)
     return () => setRefreshHandler(null)
   }, [refreshDetailed])
+
+  /**
+   * Open the vault ONCE, here, so the whole app can name the person.
+   *
+   * 🔴 THE KEY BRIDGE DELIVERED A KEY THAT ONE COMPONENT USED. Until this,
+   * `AccountProfileTab` opened the vault into its OWN state — so a
+   * zero-knowledge account could be named on exactly one screen, and the
+   * account menu rendered "Signed in as" over two empty rows while a perfectly
+   * good key sat in IndexedDB. Reported by the owner, 11-09-2026; the write-up
+   * is the friction audit §4v.
+   *
+   * 🔑 NOTHING DOWNSTREAM NEEDS CHANGING. Facet's `UserMenu` already reads
+   * `auth.user.display_name` and `auth.user.email`; it was being handed empty
+   * ones. Everything reading this context gets the values for free.
+   *
+   * ⚠️ FAILS SOFT AND SILENTLY TO THE USER, by design: no key, an expired one,
+   * or a vault re-sealed in another browser all end with an unnamed session —
+   * the state that existed before this, and the one the Settings password
+   * prompt exists to resolve. It is logged, never surfaced: a lock that is
+   * simply still locked is not an error.
+   *
+   * ⚠️ It never overwrites an address we already have, and never lands a value
+   * on a DIFFERENT account than the one it started for — an account switch
+   * mid-flight must not inherit the previous person's name.
+   */
+  useEffect(() => {
+    const id = user?.id
+    if (!id) {
+      // Signed out: nothing is known about a vault that has no owner.
+      setVaultState('unknown')
+      return
+    }
+    // Already named — a ceremony just ran, or a legacy session carries it.
+    if (user?.email) {
+      setVaultState('open')
+      return
+    }
+
+    let cancelled = false
+    void (async () => {
+      /**
+       * 🔴 EVERY PATH OUT OF HERE SETS A STATE. An early return that leaves
+       * `vaultState` at 'unknown' is a surface waiting forever for an answer
+       * that already arrived — which, for anything rendering a loading
+       * treatment, is worse than the wrong answer because it never resolves.
+       */
+      try {
+        const key = await loadVaultKey(id)
+        if (cancelled) return
+        if (!key) { setVaultState('locked'); return }
+
+        const pii = await openVaultWithKey(key)
+        if (cancelled) return
+        if (!pii?.email) { setVaultState('locked'); return }
+
+        setUser((prev) => mergeVaultPii(prev, id, pii))
+        setVaultState('open')
+      } catch (e) {
+        // A key that will not open this vault — re-sealed elsewhere, or for
+        // another account. Locked is the honest answer, and the password prompt
+        // is the way out of it.
+        logger.warn('vault: could not open this account’s vault for the session', e)
+        if (!cancelled) setVaultState('locked')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [user?.id, user?.email])
 
   const refresh = useCallback(async () => {
     try {
@@ -396,6 +526,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (!cachedUser || definitiveReject) {
               localStorage.removeItem('user')
             }
+            // The session is GONE, not merely interrupted — so the vault key
+            // goes with it. Deliberately NOT done on the expiry/takeover path
+            // below, where the recovery effect can bring the session back and
+            // re-locking would cost a password for a blip.
+            if (definitiveReject) void forgetVaultKeys()
             if (definitiveReject && cachedUser) {
               reportClientEvent('session_lost_on_live_tab', 'init_definitive_reject')
             }
@@ -500,6 +635,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('user')
       localStorage.removeItem('ciphera_token_refreshed_at')
       localStorage.removeItem('ciphera_last_activity')
+      // A sibling tab signed out, which is a sign-out. Same rule 1.
+      void forgetVaultKeys()
       setUser(null)
       // * hadPriorSession deliberately NOT cleared: this browser demonstrably
       // * had a session (a sibling tab just ended it). Clearing it here was one
@@ -593,37 +730,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // ⚠️ Deliberately relaxed only on POSITIVE evidence. An absent role is
           // still walled, exactly as before: we skip the wall when we KNOW the
           // viewer is not the owner, never merely because we failed to find out.
+          // 🔴 `/join` IS EXEMPT HERE TOO. The zero-orgs branch above has
+          // always exempted it; this one did not — so somebody who already has
+          // a workspace of their own, abandoned mid-wizard, and then clicks a
+          // colleague's invite link was bounced OUT of the invite and into
+          // their own unfinished setup. They accepted nothing, and the link
+          // they were sent appeared to be broken.
           if (
             userOrgId &&
             isSubjectToOnboardingWall(userRole) &&
             !pathname?.startsWith('/setup') &&
-            !pathname?.startsWith('/settings')
+            !pathname?.startsWith('/settings') &&
+            !pathname?.startsWith('/join')
           ) {
-            const cacheKey = `pulse_onboarding_done_${userOrgId}`
+            const cacheKey = onboardingDoneCacheKey(userOrgId)
             const cached = typeof window !== 'undefined' && localStorage.getItem(cacheKey)
             if (!cached) {
               try {
                 const org = await getOrganization(userOrgId)
                 if (!org.onboarding_completed_at) {
+                  // * Resume at the step the org's sites imply, computed from
+                  // * server state — the fixed '/setup/site' target invited a
+                  // * duplicate site from every org that already had one.
+                  // *
+                  // * 🔑 ONE DEFINITION. The auth callback resolves the same
+                  // * destination before it lands, so this mapping lives in
+                  // * lib/auth/landing-target.ts and neither caller owns a copy.
+                  //
                   // 🔴 THE WALL'S REAL QUESTION IS "CAN THIS WORKSPACE RECEIVE
                   // DATA YET" (11-09-2026), not "did somebody finish the
-                  // wizard". This block used to resume a site-owning org at
-                  // '/setup/install' whenever its site had never reported an
-                  // event — and installing means LEAVING: a CMS, a repo, a
-                  // deploy pipeline, usually another machine and often another
-                  // person. "Skip for now" wrote nothing server-side, so every
-                  // attempt to leave recomputed the same answer and pushed the
-                  // person back. Measured on Pulse's first external signup
-                  // (pomofocus.io): two seconds on /sites, then /setup/install,
-                  // skipped again, gone.
+                  // wizard". Until today the only writer of the flag was
+                  // /setup/done, AFTER payment state settles — so the wall was
+                  // cleared only by completing a funnel that ends in a PRICING
+                  // decision, and a stranger who would not pick a plan and
+                  // could not install was locked out of the product entirely.
+                  // Measured: pomofocus.io, Pulse's first external signup,
+                  // reached /sites, was pushed back to /setup/install two
+                  // seconds later, and never returned.
                   //
-                  // Worse, the flag was written in exactly ONE place —
-                  // /setup/done, after payment state settles — so the wall was
-                  // cleared only by finishing a funnel that ends in a PRICING
-                  // decision. A site now records completion itself, and a
-                  // site-owning org whose flag predates the rule is healed
-                  // forward here. Design:
-                  // Pulse/docs/plans/11-09-2026-onboarding-wall-fix-design.md
+                  // A site IS that moment, so a site-owning org passes and its
+                  // flag is healed forward in the background. The flag stays a
+                  // one-way door (ciphera-id's UPDATE ... WHERE ... IS NULL);
+                  // only its trigger moved.
                   let sites: Site[] | null = null
                   try {
                     sites = await listSites()
@@ -632,31 +780,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     // failed says nothing about whether this org has a site,
                     // and pushing on no evidence is how the wall produced a
                     // redirect that read as the app glitching. The wall
-                    // re-asks on the next route.
+                    // re-asks on the next route; letting the page render is
+                    // the safe wrong answer, and usually the right one.
                   }
                   if (sites) {
-                    if (sites.length === 0) {
-                      // The case the wall was built for, and it is unchanged.
-                      router.push('/setup/site')
+                    const target = resumeTargetForSites(sites)
+                    if (target) {
+                      router.push(target)
                       return
                     }
-                    // A site exists, so onboarding is satisfied. Record it and
-                    // let them through — never awaited: nothing about this
-                    // person's navigation should wait on a write they did not
-                    // ask for. ciphera-id's UPDATE ... WHERE ... IS NULL keeps
-                    // it one-way, and a 403 (non-owner) is terminal and silent.
-                    completeOnboarding(userOrgId)
-                      .then(() => {
-                        try {
-                          localStorage.setItem(cacheKey, '1')
-                        } catch {
-                          // Cache write failed; the server answer still stands.
-                        }
-                      })
-                      .catch(() => {
-                        // Never cache a failure: the next evaluation retries,
-                        // and a site-owning org passes on site presence anyway.
-                      })
+                    // A site exists. Record it and let them through — never
+                    // await, because nothing about this person's navigation
+                    // should wait on a write they did not ask for.
+                    void markOnboardingComplete(userOrgId)
                   }
                 } else {
                   localStorage.setItem(cacheKey, '1')
@@ -710,7 +846,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [loading, isAuthenticated, userOrgId, userRole, pathname, router])
 
   return (
-    <AuthContext.Provider value={{ user, loading, hadPriorSession, recovering, login, logout, refresh, refreshSession }}>
+    <AuthContext.Provider value={{ user, vaultState, loading, hadPriorSession, recovering, login, logout, refresh, refreshSession }}>
       {isLoggingOut && <LoadingOverlay logoSrc={cdnUrl('/pulse_icon_no_margins.png')} title="Pulse" />}
       {/* On app routes the takeover IS the expired surface — the modal would be
           a second voice over it. It stays for marketing routes. */}

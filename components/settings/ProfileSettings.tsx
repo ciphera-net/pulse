@@ -4,10 +4,14 @@ import { useCallback, useRef } from 'react'
 import { useAuth } from '@/lib/auth/context'
 import { ProfileSettings as SharedProfileSettings } from '@ciphera-net/facet'
 import { deriveAuthKey } from '@/lib/crypto/password'
-import { deleteAccount, getUserSessions, revokeSession, updateUserPreferences, updateDisplayName } from '@/lib/api/user'
+import { authFetch } from '@/lib/api/client'
+import { performOpaqueChangePassword } from '@/lib/auth/tessera/opaque-change-password'
+import { performSessionOpaqueReauth } from '@/lib/auth/tessera/opaque-reauth'
+import { performEmailChangeRequest } from '@/lib/auth/tessera/email-change'
+import { deleteAccount, getDeletionPreview, getUserSessions, revokeSession, updateUserPreferences } from '@/lib/api/user'
+import { saveDisplayName } from '@/lib/auth/vault-restore'
 import { setup2FA, verify2FA, disable2FA, regenerateRecoveryCodes } from '@/lib/api/2fa'
 import { listPasskeys, deletePasskey, renamePasskey } from '@/lib/api/webauthn'
-import { useReauthModal, isReauthCancelled } from '@/components/settings/ReauthModal'
 import { usePasskeyEnrolModal, isEnrolCancelled } from '@/components/settings/PasskeyEnrolModal'
 import { useRecoveryEnrolModal, isRecoveryEnrolCancelled } from '@/components/settings/RecoveryEnrolModal'
 import RecoveryCard, { RecoveryNudge, useRecoveryNudge } from '@/components/settings/RecoveryCard'
@@ -20,7 +24,6 @@ interface Props {
 
 export default function ProfileSettings({ activeTab, borderless, hideDangerZone }: Props = {}) {
   const { user, refresh, logout } = useAuth()
-  const { requestReauth, modal } = useReauthModal()
   const { requestPasskeyEnrol, modal: passkeyModal } = usePasskeyEnrolModal()
   const { requestRecoveryEnrol, modal: recoveryModal } = useRecoveryEnrolModal()
   const { shouldNudge, dismissNudge, markPasskeyEnrolled } = useRecoveryNudge()
@@ -47,34 +50,75 @@ export default function ProfileSettings({ activeTab, borderless, hideDangerZone 
   if (!user) return null
 
   // ---------------------------------------------------------------------------
-  // Email change — re-auth (fresh OPAQUE login) → re-seal vault → PUT the 3 fields.
-  // Not reachable from Pulse's live Security tab (email is read-only there and
-  // managed on Ciphera ID), but wired correctly for any surface that renders it.
+  // Display name — re-seals the encrypted vault, because that is where the name
+  // lives (migration 045 dropped the column). This used to pass `lib/api/user`'s
+  // `updateDisplayName` straight through, which sent `{display_name}` and got a
+  // 400 every time; that function is deleted rather than fixed, so the two
+  // surfaces cannot drift apart again.
+  // ---------------------------------------------------------------------------
+  const handleUpdateDisplayName = async (displayName: string) => {
+    await saveDisplayName(user.id, displayName)
+  }
+
+  // ---------------------------------------------------------------------------
+  // Email change — STAGE 1 of the two-stage ceremony: prove the password,
+  // re-seal the vault under the new address, and have relay mail a confirmation
+  // link to it. Nothing about the account changes until that link is opened.
+  //
+  // 🔴 THIS USED TO OPEN ReauthModal WITH `op: 'email'`, and that branch was
+  // wrong three ways: it PUT to `/auth/user/email` (measured 404 on production
+  // 10-09-2026 — the route was deleted with the two-stage rewrite), it ran the
+  // ceremony on the PRIMARY login endpoint (401 `require_2fa` on every TOTP
+  // account, the defect fixed for recovery enrolment on 03-09 and password
+  // change on 09-09), and it minted no `eml` token, which stage 1 requires. The
+  // modal went with it: after 09-09 removed its password op and 10-09 its
+  // delete op, this was the only branch left, and it was the broken one.
+  //
+  // Pulse's live email-change surface is AccountProfileTab (design §10,
+  // direction A — in the row it changes). This path stays wired because Facet's
+  // `onUpdateProfile` is a required prop, and it now runs the SAME single
+  // implementation rather than a second, wrong one.
   // ---------------------------------------------------------------------------
   const handleUpdateProfile = async (newEmail: string) => {
-    const password = capturedPasswordsRef.current.current
-    try {
-      await requestReauth({ op: 'email', password, newEmail })
-    } catch (err) {
-      if (isReauthCancelled(err)) throw new Error('Email change cancelled.')
-      throw err
-    }
-    // Facet's own handler calls refreshUser() next; the write already happened.
+    await performEmailChangeRequest({
+      newEmail,
+      password: capturedPasswordsRef.current.current,
+    })
+    // Facet's own handler calls refreshUser() next. Nothing has changed yet —
+    // the address moves at stage 2, in whichever browser opens the link.
   }
 
   // ---------------------------------------------------------------------------
   // Password change — OPAQUE re-registration under the new password. On success
   // ALL sessions are revoked server-side, so route to sign-in (never auto-retry).
+  //
+  // 🔑 NO SECOND DIALOG. This used to open ReauthModal on top of the form that
+  // had just collected both passwords, and the only thing that dialog asked for
+  // was the sign-in email — an identifier the session already knows and the
+  // ceremony never needed. performOpaqueChangePassword now runs on
+  // /auth/reauth/* (session-authed, no 2FA gate, no cookies), which both
+  // removes the ask and fixes the change failing outright on 2FA accounts.
+  //
+  // The session-swap guard went with it, and its absence is deliberate rather
+  // than an oversight: it existed because the PRIMARY login endpoint issues
+  // fresh cookies mid-ceremony, so a different account's credentials could move
+  // the session under the page. /auth/reauth issues no cookies and binds the
+  // ceremony to the session server-side at BOTH ends — start refuses a blind
+  // index that is not the session's account, finish refuses unless the
+  // login_id's binding is the session's own user. The identity is enforced
+  // where it cannot be skipped, instead of re-checked in the client.
   // ---------------------------------------------------------------------------
   const handleUpdatePassword = async () => {
-    const oldPassword = capturedPasswordsRef.current.current
-    const newPassword = capturedPasswordsRef.current.new_
-    try {
-      await requestReauth({ op: 'password', oldPassword, newPassword })
-    } catch (err) {
-      if (isReauthCancelled(err)) throw new Error('Password change cancelled.')
-      throw err
-    }
+    const { payload } = await performOpaqueChangePassword({
+      oldPassword: capturedPasswordsRef.current.current,
+      newPassword: capturedPasswordsRef.current.new_,
+    })
+    // skipAuthRetry: a retry would re-post single-use registration state.
+    await authFetch('/auth/user/password/opaque', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+      skipAuthRetry: true,
+    })
     // Sessions are revoked on success — send the user to sign in again with the
     // new password. Do not await; logout() navigates to /login.
     logout()
@@ -89,15 +133,16 @@ export default function ProfileSettings({ activeTab, borderless, hideDangerZone 
     // display email was available); else the arg is already the raw password (Facet
     // passes it through when user.email is empty — the common ZKE case).
     const password = passwordCaptureCountRef.current > 0 ? capturedPasswordsRef.current.current : passwordArg
-    let reauthToken: string | undefined
-    try {
-      ;({ reauthToken } = await requestReauth({ op: 'delete', password }))
-    } catch (err) {
-      if (isReauthCancelled(err)) throw new Error('Account deletion cancelled.')
-      throw err
-    }
-    // Slice 4: the delete op resolves with the server-minted single-use re-auth token.
-    await deleteAccount(reauthToken!)
+    // 🔴 THE SAME CEREMONY AS THE LIVE PANEL, deliberately. This copy is not
+    // reachable from Pulse today (Facet's danger-zone tab is never rendered
+    // here), and a second, differently-built delete is exactly how password
+    // change kept a fixed bug for six days while its sibling was correct. If it
+    // is unreachable it should behave identically, or it should not exist.
+    const reauthToken = await performSessionOpaqueReauth({ password, purpose: 'del' })
+    // The workspaces to take along come from the same read the server refuses
+    // on; a failed read sends none, and the server's 409 then says why.
+    const blockers = await getDeletionPreview().catch(() => [])
+    await deleteAccount(reauthToken, blockers.map((b) => b.id))
     // Facet's own handler calls logout() next.
   }
 
@@ -165,7 +210,7 @@ export default function ProfileSettings({ activeTab, borderless, hideDangerZone 
       <SharedProfileSettings
         user={user}
         onUpdateProfile={handleUpdateProfile}
-        onUpdateDisplayName={updateDisplayName}
+        onUpdateDisplayName={handleUpdateDisplayName}
         onUpdatePassword={handleUpdatePassword}
         onDeleteAccount={handleDeleteAccount}
         onSetup2FA={setup2FA}
@@ -205,7 +250,6 @@ export default function ProfileSettings({ activeTab, borderless, hideDangerZone 
           <RecoveryCard onEnrol={handleEnrolRecovery} />
         </>
       ) : null}
-      {modal}
       {passkeyModal}
       {recoveryModal}
     </>
