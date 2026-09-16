@@ -8,11 +8,12 @@ import { useAuth } from '@/lib/auth/context'
 import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import DashboardShell from '@/components/dashboard/DashboardShell'
+import DashboardChrome from '@/components/dashboard/DashboardChrome'
 import { ErrorBoundary } from '@/components/error-boundary'
 import VersionToast from '@/components/VersionToast'
 import SessionTakeover from '@/components/auth/SessionTakeover'
 import { isAuthedAppRoute } from '@/lib/auth/appRoutes'
+import { ActiveSiteProvider } from '@/components/settings/active-site'
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const auth = useAuth()
@@ -86,12 +87,22 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     )
   }
 
-  // Authenticated dashboard pages (home, integrations, pricing): wrap in DashboardShell
+  // Authenticated dashboard pages (home, integrations, pricing, settings): wrap
+  // in DashboardShell.
+  //
+  // ActiveSiteProvider sits ABOVE the shell, not inside SettingsShell where it
+  // used to live: "which site are we configuring" is what decides whether the
+  // outer sidebar renders in site mode on /settings/site/*, and a provider
+  // mounted below the shell cannot be read by it. One provider only — a second
+  // one nested underneath would shadow this, and the band's site switcher would
+  // update a copy the sidebar never sees.
   if (isAuthenticated && isDashboardPage) {
     return (
       <>
         {showOfflineBar && <OfflineBanner isOnline={isOnline} />}
-        <DashboardShell siteId={null}>{children}</DashboardShell>
+        <ActiveSiteProvider>
+          <DashboardChrome>{children}</DashboardChrome>
+        </ActiveSiteProvider>
       </>
     )
   }

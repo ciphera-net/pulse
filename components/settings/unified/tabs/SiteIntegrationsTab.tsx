@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Button, Input, Select, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/facet'
-import { Plugs, LinkBreak, ShieldCheck } from '@phosphor-icons/react'
+import { Button, Input, Select, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { useGSCStatus, useBunnyStatus, useBingStatus } from '@/lib/swr/dashboard'
 import { disconnectGSC, getGSCAuthURL, type GSCStatus } from '@/lib/api/gsc'
 import { disconnectBunny, getBunnyPullZones, connectBunny, type BunnyPullZone, type BunnyStatus } from '@/lib/api/bunny'
@@ -10,9 +9,11 @@ import { disconnectBing, listBingSites, connectBing, type BingVerifiedSite, type
 import { formatDateTime } from '@/lib/utils/formatDate'
 import { useCan } from '@/lib/auth/permissions'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { StatusChip } from '@/components/settings/StatusChip'
+import { StatusChip, type ChipTone } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
+import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
+import { DESTRUCTIVE_OUTLINE } from '@/components/settings/unified/DangerZone'
 import { cn } from '@/lib/utils'
 
 function GoogleIcon() {
@@ -26,7 +27,7 @@ function GoogleIcon() {
   )
 }
 
-// BunnyIcon keeps its brand gradient — brand-fidelity exception to the
+// BunnyIcon keeps its brand gradient: a brand-fidelity exception to the
 // monochrome-logo rule (spec §6 / assignment). The grayscale wash lives on the
 // tile wrapper (LogoTile), so a disconnected Bunny still desaturates cleanly.
 function BunnyIcon() {
@@ -55,7 +56,19 @@ function BunnyIcon() {
 }
 
 /**
- * LogoTile — the grayscale brand tile that colorizes once the integration is
+ * BingIcon: the official Microsoft Bing mark (simple-icons), single-colour so
+ * it desaturates through LogoTile like every other integration.
+ */
+function BingIcon() {
+  return (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M20.176 15.406a6.48 6.48 0 01-1.736 4.414c1.338-1.47.803-3.869-1.003-4.635-.862-.305-2.488-.85-3.367-1.158a1.834 1.834 0 01-.932-.818c-.381-.975-1.163-2.968-1.548-3.948-.095-.285-.31-.625-.265-.938.046-.598.724-1.003 1.276-.754l3.682 1.888c.621.292 1.305.692 1.796 1.172a6.486 6.486 0 012.097 4.777zm-1.44 1.888c-.264-1.194-1.135-1.744-2.216-2.028-1.527.902-4.853 2.878-6.952 4.13-1.103.68-2.13 1.35-2.919 1.242a2.866 2.866 0 01-2.77-2.325c-.012-.048-.008-.03-.001.01a6.4 6.4 0 00.947 2.653 6.498 6.498 0 005.486 3.022c1.908.062 3.536-1.153 5.099-2.096.292-.188.804-.496 1.332-.831l1.423-1.51c.553-.577.764-1.426.571-2.267zm-12.04 2.97c.422 0 .822-.1 1.173-.29.355-.215.964-.579 1.7-1.018L9.57 4.502c0-.99-.497-1.864-1.257-2.382-.08-.059-2.91-1.901-2.99-1.956-.605-.432-1.523.045-1.5.797v14.887l.417 2.36a2.488 2.488 0 002.455 2.056z" />
+    </svg>
+  )
+}
+
+/**
+ * LogoTile: the grayscale brand tile that colorizes once the integration is
  * connected (spec §6). Grayscale lives here so both the multi-color Google mark
  * and the Bunny gradient desaturate through one wrapper.
  */
@@ -72,93 +85,105 @@ function LogoTile({ colorize, children }: { colorize: boolean; children: React.R
   )
 }
 
+/** Connected, syncing, error, or not connected: ONE chip shape for every integration, every state. */
+function integrationChip(connected: boolean, status?: 'active' | 'syncing' | 'error'): { tone: ChipTone; label: string } {
+  if (!connected) return { tone: 'neutral', label: 'Not connected' }
+  if (status === 'error') return { tone: 'danger', label: 'Error' }
+  if (status === 'syncing') return { tone: 'info', label: 'Syncing' }
+  return { tone: 'success', label: 'Connected' }
+}
+
 /**
- * IntegrationRow — one ruled integration inside the shared Integrations panel:
- * logo tile + name + StatusChip on the left, the Connect/Disconnect action on
- * the right, connected details / setup form as ruled sub-sections below.
+ * IntegrationHeaderRow: the one row every integration opens with. Logo and
+ * name as the label, what it syncs as the caption, the status chip and the
+ * Connect/Disconnect action as the control. A fetch failure suppresses the
+ * chip and action entirely (rendered instead by the error banner beneath), so
+ * a real failure never reads as a quiet disconnect.
  */
-function IntegrationRow({
+function IntegrationHeaderRow({
   icon,
   name,
   description,
   connected,
   status,
-  error,
+  hasError,
   onConnect,
   onDisconnect,
   connectLabel = 'Connect',
   connecting = false,
-  canManage = true,
-  children,
+  expanded,
+  canManage,
 }: {
   icon: React.ReactNode
   name: string
   description: string
   connected: boolean
   status?: 'active' | 'syncing' | 'error'
-  /** When present (status fetch failed), the row shows this instead of the
-   *  action + details so a real failure is distinct from a genuine disconnect. */
-  error?: React.ReactNode
+  hasError: boolean
   onConnect: () => void
   onDisconnect: () => void
   connectLabel?: string
   connecting?: boolean
-  canManage?: boolean
-  children?: React.ReactNode
+  /** Whether Connect discloses an inline setup form beneath this row. */
+  expanded?: boolean
+  canManage: boolean
 }) {
-  const colorize = connected && !error
+  const chip = integrationChip(connected, status)
 
   return (
-    <div>
-      <div className="flex items-center gap-4 px-5 py-4">
-        <LogoTile colorize={colorize}>{icon}</LogoTile>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-medium text-foreground">{name}</p>
-            {!error && connected && (
-              status === 'error' ? (
-                <StatusChip tone="danger" dot>Error</StatusChip>
-              ) : status === 'syncing' ? (
-                <StatusChip tone="info" dot pulse>Syncing</StatusChip>
+    <PanelRow
+      label={
+        <span className="flex items-center gap-3">
+          <LogoTile colorize={connected && !hasError}>{icon}</LogoTile>
+          <span>{name}</span>
+        </span>
+      }
+      caption={description}
+      control={
+        hasError ? undefined : (
+          <div className="flex items-center gap-2">
+            <StatusChip tone={chip.tone} dot>{chip.label}</StatusChip>
+            {canManage && (
+              connected ? (
+                <Button variant="outline" size="sm" className={DESTRUCTIVE_OUTLINE} onClick={onDisconnect}>
+                  Disconnect
+                </Button>
               ) : (
-                <StatusChip tone="success" dot>Connected</StatusChip>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onConnect}
+                  disabled={connecting}
+                  aria-expanded={expanded}
+                >
+                  {connecting ? 'Connecting…' : connectLabel}
+                </Button>
               )
             )}
           </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-        </div>
-        {!error && canManage && (connected ? (
-          // Destructive = coral text + outline (spec §2.3), never a red fill.
-          <Button
-            onClick={onDisconnect}
-            variant="outline"
-            size="sm"
-            className="shrink-0 gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
-          >
-            <LinkBreak weight="bold" className="w-3.5 h-3.5" /> Disconnect
-          </Button>
-        ) : (
-          // Two integrations, two Connect actions — outline keeps them off the
-          // orange budget (§2.3: at most one solid-orange element per view; zero
-          // here is fine). The solid accent stays on the inline Bunny setup submit.
-          <Button onClick={onConnect} variant="outline" size="sm" className="shrink-0 gap-1.5" disabled={connecting}>
-            {connecting ? <Spinner className="w-4 h-4" /> : <Plugs weight="bold" className="w-3.5 h-3.5" />}
-            {connectLabel}
-          </Button>
-        ))}
-      </div>
-      {error ? <div className="px-5 pb-4">{error}</div> : children}
-    </div>
+        )
+      }
+    />
   )
 }
 
-function DetailRows({ rows }: { rows: { label: string; value: React.ReactNode; mono?: boolean }[] }) {
+type DetailRowKind = 'text' | 'date' | 'code'
+
+/** A code/domain value gets `font-mono`; a date gets `tabular-nums` and never mono. */
+function DetailRows({ rows }: { rows: { label: string; value: React.ReactNode; kind?: DetailRowKind }[] }) {
   return (
     <div className="border-t border-border">
       <PanelRows>
         {rows.map(row => (
           <PanelRow key={row.label} label={row.label}>
-            <span className={cn('text-sm text-foreground', row.mono && 'tabular-nums text-muted-foreground')}>
+            <span
+              className={cn(
+                'text-sm',
+                row.kind === 'code' && 'font-mono text-muted-foreground',
+                row.kind === 'date' && 'tabular-nums text-muted-foreground',
+                !row.kind && 'text-foreground',
+              )}
+            >
               {row.value}
             </span>
           </PanelRow>
@@ -168,19 +193,20 @@ function DetailRows({ rows }: { rows: { label: string; value: React.ReactNode; m
   )
 }
 
-function IntegrationErrorMessage({ message }: { message: string }) {
+/** An integration's own reported problem (an expired token, a revoked grant): the same
+ *  device as a fetch failure, named so it reads as this integration's issue, not the tab's. */
+function IntegrationIssue({ name, message }: { name: string; message: string }) {
   return (
-    <div className="border-t border-border bg-destructive/10 px-5 py-3">
-      <p className="text-xs text-destructive">{message}</p>
+    <div className="border-t border-border px-5 py-4">
+      <SettingsErrorState variant="banner" message={`${name}: ${message}`} />
     </div>
   )
 }
 
-function SecurityNote({ text }: { text: string }) {
+function IntegrationNote({ text }: { text: string }) {
   return (
-    <div className="flex items-start gap-2 border-t border-border bg-muted/40 px-5 py-3">
-      <ShieldCheck weight="bold" className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-      <p className="text-xs leading-relaxed text-muted-foreground">{text}</p>
+    <div className="border-t border-border px-5 py-3">
+      <p className="text-xs text-muted-foreground">{text}</p>
     </div>
   )
 }
@@ -189,284 +215,235 @@ function GSCDetails({ gscStatus }: { gscStatus: GSCStatus }) {
   if (!gscStatus.connected) return null
 
   return (
-    <>
-      <DetailRows
-        rows={[
-          { label: 'Google account', value: gscStatus.google_email || 'Unknown' },
-          { label: 'GSC property', value: gscStatus.gsc_property || 'Unknown' },
-          { label: 'Last synced', value: gscStatus.last_synced_at ? formatDateTime(new Date(gscStatus.last_synced_at)) : 'Never', mono: true },
-        ]}
-      />
-      {gscStatus.error_message && <IntegrationErrorMessage message={gscStatus.error_message} />}
-    </>
+    <DetailRows
+      rows={[
+        { label: 'Google account', value: gscStatus.google_email || 'Unknown' },
+        { label: 'GSC property', value: gscStatus.gsc_property || 'Unknown', kind: 'code' },
+        { label: 'Last synced', value: gscStatus.last_synced_at ? formatDateTime(new Date(gscStatus.last_synced_at)) : 'Never', kind: 'date' },
+      ]}
+    />
   )
 }
 
 function BunnyDetails({ bunnyStatus }: { bunnyStatus: BunnyStatus }) {
   return (
-    <>
-      <DetailRows
-        rows={[
-          { label: 'Pull zone', value: bunnyStatus.pull_zone_name || 'Unknown' },
-          { label: 'Last synced', value: bunnyStatus.last_synced_at ? formatDateTime(new Date(bunnyStatus.last_synced_at)) : 'Never', mono: true },
-          { label: 'Connected since', value: bunnyStatus.created_at ? formatDateTime(new Date(bunnyStatus.created_at)) : 'Unknown', mono: true },
-        ]}
-      />
-      {bunnyStatus.error_message && <IntegrationErrorMessage message={bunnyStatus.error_message} />}
-    </>
-  )
-}
-
-function BunnySetupForm({ siteId, onConnected }: { siteId: string; onConnected: () => void }) {
-  const [apiKey, setApiKey] = useState('')
-  const [pullZones, setPullZones] = useState<BunnyPullZone[]>([])
-  const [selectedZone, setSelectedZone] = useState<BunnyPullZone | null>(null)
-  const [loadingZones, setLoadingZones] = useState(false)
-  const [connecting, setConnecting] = useState(false)
-  const [zonesLoaded, setZonesLoaded] = useState(false)
-
-  const handleLoadZones = async () => {
-    if (!apiKey.trim()) {
-      toast.error('Please enter your BunnyCDN API key')
-      return
-    }
-    setLoadingZones(true)
-    try {
-      const data = await getBunnyPullZones(siteId, apiKey.trim())
-      setPullZones(data.pull_zones || [])
-      setSelectedZone(null)
-      setZonesLoaded(true)
-      if (!data.pull_zones?.length) {
-        toast.error('No pull zones found for this API key')
-      }
-    } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to load pull zones')
-    } finally {
-      setLoadingZones(false)
-    }
-  }
-
-  const handleConnect = async () => {
-    if (!selectedZone) {
-      toast.error('Please select a pull zone')
-      return
-    }
-    setConnecting(true)
-    try {
-      await connectBunny(siteId, apiKey.trim(), selectedZone.id, selectedZone.name)
-      toast.success('BunnyCDN connected successfully')
-      onConnected()
-    } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to connect BunnyCDN')
-    } finally {
-      setConnecting(false)
-    }
-  }
-
-  const zonesReady = zonesLoaded && pullZones.length > 0
-
-  return (
-    <div className="space-y-4 border-t border-border px-5 py-4">
-      <div className="space-y-1.5">
-        <label htmlFor="bunny-api-key" className="block font-semibold text-micro-label uppercase text-muted-foreground">
-          API key
-        </label>
-        <div className="flex gap-2">
-          <Input
-            id="bunny-api-key"
-            type="password"
-            value={apiKey}
-            onChange={e => setApiKey(e.target.value)}
-            placeholder="Enter your BunnyCDN API key"
-            className="flex-1"
-          />
-          <Button
-            onClick={handleLoadZones}
-            variant="secondary"
-            className="shrink-0"
-            disabled={loadingZones || !apiKey.trim()}
-          >
-            {loadingZones ? <Spinner className="w-4 h-4" /> : 'Load zones'}
-          </Button>
-        </div>
-      </div>
-
-      {zonesReady && (
-        <div className="space-y-1.5">
-          <label className="block font-semibold text-micro-label uppercase text-muted-foreground">Pull zone</label>
-          <Select
-            value={String(selectedZone?.id ?? '')}
-            onChange={(v) => {
-              const zone = pullZones.find(z => z.id === Number(v))
-              setSelectedZone(zone || null)
-            }}
-            placeholder="Select a pull zone"
-            options={pullZones.map(zone => ({ value: String(zone.id), label: zone.name }))}
-            className="w-full"
-            aria-label="Pull zone"
-          />
-        </div>
-      )}
-
-      {zonesReady && (
-        <Button
-          onClick={handleConnect}
-          variant="default"
-          className="w-full"
-          disabled={connecting || !selectedZone}
-        >
-          {connecting ? <Spinner className="w-4 h-4" /> : 'Connect BunnyCDN'}
-        </Button>
-      )}
-    </div>
-  )
-}
-
-/**
- * BingIcon — official Microsoft Bing mark (simple-icons), single-colour so it
- * desaturates through LogoTile like every other integration.
- */
-function BingIcon() {
-  return (
-    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M20.176 15.406a6.48 6.48 0 01-1.736 4.414c1.338-1.47.803-3.869-1.003-4.635-.862-.305-2.488-.85-3.367-1.158a1.834 1.834 0 01-.932-.818c-.381-.975-1.163-2.968-1.548-3.948-.095-.285-.31-.625-.265-.938.046-.598.724-1.003 1.276-.754l3.682 1.888c.621.292 1.305.692 1.796 1.172a6.486 6.486 0 012.097 4.777zm-1.44 1.888c-.264-1.194-1.135-1.744-2.216-2.028-1.527.902-4.853 2.878-6.952 4.13-1.103.68-2.13 1.35-2.919 1.242a2.866 2.866 0 01-2.77-2.325c-.012-.048-.008-.03-.001.01a6.4 6.4 0 00.947 2.653 6.498 6.498 0 005.486 3.022c1.908.062 3.536-1.153 5.099-2.096.292-.188.804-.496 1.332-.831l1.423-1.51c.553-.577.764-1.426.571-2.267zm-12.04 2.97c.422 0 .822-.1 1.173-.29.355-.215.964-.579 1.7-1.018L9.57 4.502c0-.99-.497-1.864-1.257-2.382-.08-.059-2.91-1.901-2.99-1.956-.605-.432-1.523.045-1.5.797v14.887l.417 2.36a2.488 2.488 0 002.455 2.056z" />
-    </svg>
+    <DetailRows
+      rows={[
+        { label: 'Pull zone', value: bunnyStatus.pull_zone_name || 'Unknown', kind: 'code' },
+        { label: 'Last synced', value: bunnyStatus.last_synced_at ? formatDateTime(new Date(bunnyStatus.last_synced_at)) : 'Never', kind: 'date' },
+        { label: 'Connected since', value: bunnyStatus.created_at ? formatDateTime(new Date(bunnyStatus.created_at)) : 'Unknown', kind: 'date' },
+      ]}
+    />
   )
 }
 
 function BingDetails({ bingStatus }: { bingStatus: BingStatus }) {
   return (
-    <>
-      <DetailRows
-        rows={[
-          // The full URL including scheme, because that IS the identity of the property to Bing:
-          // http/https/www are three different properties and showing a bare domain would hide
-          // which one is actually connected.
-          { label: 'Bing property', value: bingStatus.site_url || 'Unknown', mono: true },
-          { label: 'Last synced', value: bingStatus.last_synced_at ? formatDateTime(new Date(bingStatus.last_synced_at)) : 'Never', mono: true },
-          { label: 'Connected since', value: bingStatus.created_at ? formatDateTime(new Date(bingStatus.created_at)) : 'Unknown', mono: true },
-        ]}
-      />
-      {bingStatus.error_message && <IntegrationErrorMessage message={bingStatus.error_message} />}
-    </>
+    <DetailRows
+      rows={[
+        // The full URL including scheme, because that IS the identity of the property to Bing:
+        // http/https/www are three different properties and showing a bare domain would hide
+        // which one is actually connected.
+        { label: 'Bing property', value: bingStatus.site_url || 'Unknown', kind: 'code' },
+        { label: 'Last synced', value: bingStatus.last_synced_at ? formatDateTime(new Date(bingStatus.last_synced_at)) : 'Never', kind: 'date' },
+        { label: 'Connected since', value: bingStatus.created_at ? formatDateTime(new Date(bingStatus.created_at)) : 'Unknown', kind: 'date' },
+      ]}
+    />
   )
 }
 
 /**
- * BingSetupForm — paste key, load properties, pick one, connect.
+ * SetupForm: the one paste-key-then-pick-one flow behind BOTH Bunny CDN and
+ * Bing Webmaster Tools. Each service's shape (what "load" returns, which of
+ * those are selectable, what an empty or partially-verified result means, how
+ * "connect" is called) lives entirely in its `SetupFormConfig`; the component
+ * itself just runs the two steps.
  *
- * Two steps rather than one because the property cannot be derived: Bing treats
- * http://example.com, https://example.com and https://www.example.com as different
- * properties, and querying an unverified one returns an empty result set that looks
- * exactly like a verified property with no traffic. Guessing would produce a connection
- * that reports zero forever with nothing visibly wrong.
+ * Two steps rather than a single "connect with this key" call: neither
+ * service exposes the property the tracker needs to talk to from the key
+ * alone (a Bunny account can hold several pull zones; Bing treats
+ * http://example.com, https://example.com and https://www.example.com as
+ * three distinct properties), and guessing would produce a connection that
+ * reports zero forever with nothing visibly wrong.
  */
-function BingSetupForm({ siteId, onConnected }: { siteId: string; onConnected: () => void }) {
-  const [apiKey, setApiKey] = useState('')
-  const [sites, setSites] = useState<BingVerifiedSite[]>([])
-  const [selectedUrl, setSelectedUrl] = useState('')
-  const [loadingSites, setLoadingSites] = useState(false)
-  const [connecting, setConnecting] = useState(false)
-  const [sitesLoaded, setSitesLoaded] = useState(false)
+interface SetupFormConfig<T> {
+  fieldId: string
+  apiKeyPlaceholder: string
+  apiKeyMissingMessage: string
+  loadLabel: string
+  loadFailedMessage: string
+  loadItems: (siteId: string, apiKey: string) => Promise<T[]>
+  /** Which of the loaded items are actually selectable (Bing: verified only). */
+  selectable: (items: T[]) => T[]
+  /** A toast to raise after a load with nothing (or nothing selectable) to show. */
+  emptyMessage: (items: T[], selectable: T[]) => string | null
+  itemLabel: string
+  itemPlaceholder: string
+  itemAriaLabel: string
+  getValue: (item: T) => string
+  getLabel: (item: T) => string
+  connectLabel: string
+  connectFailedMessage: string
+  connectSuccessMessage: string
+  connect: (siteId: string, apiKey: string, item: T) => Promise<void>
+  /** Optional helper copy under the API key field (Bing: where to generate one). */
+  helper?: React.ReactNode
+}
 
-  const handleLoadSites = async () => {
+function SetupForm<T,>({
+  siteId,
+  onConnected,
+  config,
+}: {
+  siteId: string
+  onConnected: () => void
+  config: SetupFormConfig<T>
+}) {
+  const [apiKey, setApiKey] = useState('')
+  const [items, setItems] = useState<T[]>([])
+  const [selectedValue, setSelectedValue] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [connecting, setConnecting] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+
+  const handleLoad = async () => {
     if (!apiKey.trim()) {
-      toast.error('Please enter your Bing Webmaster API key')
+      toast.error(config.apiKeyMissingMessage)
       return
     }
-    setLoadingSites(true)
+    setLoading(true)
     try {
-      const data = await listBingSites(siteId, apiKey.trim())
-      setSites(data.sites || [])
-      setSitesLoaded(true)
-      if (!data.sites?.length) {
-        toast.error('That Bing account has no properties.')
-      } else if (!data.sites.some(x => x.is_verified)) {
-        // Distinct from "no properties": the user has some, none are usable yet, and the
-        // fix is in Bing rather than here. Saying so beats an empty dropdown.
-        toast.error('None of the properties on that account are verified in Bing yet.')
-      }
+      const data = await config.loadItems(siteId, apiKey.trim())
+      setItems(data)
+      setSelectedValue('')
+      setLoaded(true)
+      const message = config.emptyMessage(data, config.selectable(data))
+      if (message) toast.error(message)
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to load Bing properties')
+      toast.error(getAuthErrorMessage(err as Error) || config.loadFailedMessage)
     } finally {
-      setLoadingSites(false)
+      setLoading(false)
     }
   }
 
+  const selectable = config.selectable(items)
+  const ready = loaded && selectable.length > 0
+  const selectedItem = selectable.find(item => config.getValue(item) === selectedValue) ?? null
+
   const handleConnect = async () => {
-    if (!selectedUrl) return
+    if (!selectedItem) return
     setConnecting(true)
     try {
-      await connectBing(siteId, apiKey.trim(), selectedUrl)
-      toast.success('Bing Webmaster Tools connected')
+      await config.connect(siteId, apiKey.trim(), selectedItem)
+      toast.success(config.connectSuccessMessage)
       onConnected()
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to connect Bing Webmaster Tools')
+      toast.error(getAuthErrorMessage(err as Error) || config.connectFailedMessage)
     } finally {
       setConnecting(false)
     }
   }
 
-  // Unverified properties are listed but not selectable: hiding them entirely would make a
-  // user who expects to see their site think Pulse lost it.
-  const verified = sites.filter(x => x.is_verified)
-  const sitesReady = sitesLoaded && verified.length > 0
-
   return (
-    <div className="space-y-4 border-t border-border px-5 py-4">
-      <div className="space-y-1.5">
-        <label htmlFor="bing-api-key" className="block font-semibold text-micro-label uppercase text-muted-foreground">
-          API key
-        </label>
-        <div className="flex gap-2">
+    <div className="border-t border-border">
+      <PanelRows>
+        <PanelRow
+          label="API key"
+          htmlFor={config.fieldId}
+          caption={config.helper}
+          control={
+            <Button variant="outline" size="sm" onClick={handleLoad} disabled={loading || !apiKey.trim()}>
+              {loading ? 'Loading…' : config.loadLabel}
+            </Button>
+          }
+        >
           <Input
-            id="bing-api-key"
+            id={config.fieldId}
             type="password"
             value={apiKey}
             onChange={e => setApiKey(e.target.value)}
-            placeholder="Enter your Bing Webmaster API key"
-            className="flex-1"
+            placeholder={config.apiKeyPlaceholder}
           />
-          <Button
-            onClick={handleLoadSites}
-            variant="secondary"
-            className="shrink-0"
-            disabled={loadingSites || !apiKey.trim()}
-          >
-            {loadingSites ? <Spinner className="w-4 h-4" /> : 'Load properties'}
+        </PanelRow>
+
+        {ready && (
+          <PanelRow label={config.itemLabel}>
+            <Select
+              value={selectedValue}
+              onChange={v => setSelectedValue(String(v))}
+              placeholder={config.itemPlaceholder}
+              options={selectable.map(item => ({ value: config.getValue(item), label: config.getLabel(item) }))}
+              className="w-full"
+              aria-label={config.itemAriaLabel}
+            />
+          </PanelRow>
+        )}
+      </PanelRows>
+
+      {ready && (
+        <div className="flex items-center justify-end border-t border-border px-5 py-3">
+          <Button variant="default" size="sm" onClick={handleConnect} disabled={connecting || !selectedItem}>
+            {connecting ? 'Connecting…' : config.connectLabel}
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Bing Webmaster Tools &rarr; Settings &rarr; API Access &rarr; Generate API key.
-        </p>
-      </div>
-
-      {sitesReady && (
-        <div className="space-y-1.5">
-          <label className="block font-semibold text-micro-label uppercase text-muted-foreground">Property</label>
-          <Select
-            value={selectedUrl}
-            onChange={(v) => setSelectedUrl(String(v))}
-            placeholder="Select a verified property"
-            options={verified.map(x => ({ value: x.url, label: x.url }))}
-            className="w-full"
-            aria-label="Bing property"
-          />
-        </div>
-      )}
-
-      {sitesReady && (
-        <Button
-          onClick={handleConnect}
-          variant="default"
-          className="w-full"
-          disabled={connecting || !selectedUrl}
-        >
-          {connecting ? <Spinner className="w-4 h-4" /> : 'Connect Bing'}
-        </Button>
       )}
     </div>
   )
+}
+
+const bunnySetupConfig: SetupFormConfig<BunnyPullZone> = {
+  fieldId: 'bunny-api-key',
+  apiKeyPlaceholder: 'Enter your Bunny CDN API key',
+  apiKeyMissingMessage: 'Enter your Bunny CDN API key.',
+  loadLabel: 'Load zones',
+  loadFailedMessage: "Couldn't load your Bunny CDN pull zones. Try again.",
+  loadItems: async (siteId, apiKey) => {
+    const data = await getBunnyPullZones(siteId, apiKey)
+    return data.pull_zones || []
+  },
+  selectable: zones => zones,
+  emptyMessage: all => (all.length === 0 ? 'No pull zones found for this API key.' : null),
+  itemLabel: 'Pull zone',
+  itemPlaceholder: 'Select a pull zone',
+  itemAriaLabel: 'Pull zone',
+  getValue: zone => String(zone.id),
+  getLabel: zone => zone.name,
+  connectLabel: 'Connect Bunny CDN',
+  connectFailedMessage: "Couldn't connect Bunny CDN. Try again.",
+  connectSuccessMessage: 'Bunny CDN connected',
+  connect: (siteId, apiKey, zone) => connectBunny(siteId, apiKey, zone.id, zone.name),
+}
+
+const bingSetupConfig: SetupFormConfig<BingVerifiedSite> = {
+  fieldId: 'bing-api-key',
+  apiKeyPlaceholder: 'Enter your Bing Webmaster API key',
+  apiKeyMissingMessage: 'Enter your Bing Webmaster API key.',
+  loadLabel: 'Load properties',
+  loadFailedMessage: "Couldn't load your Bing Webmaster properties. Try again.",
+  loadItems: async (siteId, apiKey) => {
+    const data = await listBingSites(siteId, apiKey)
+    return data.sites || []
+  },
+  // Unverified properties are loaded but not selectable: hiding them entirely would make a
+  // user who expects to see their site think Pulse lost it.
+  selectable: sites => sites.filter(site => site.is_verified),
+  emptyMessage: (all, verified) => {
+    if (all.length === 0) return 'That Bing account has no properties.'
+    // Distinct from "no properties": the user has some, none are usable yet, and the fix is
+    // in Bing rather than here. Saying so beats an empty dropdown.
+    if (verified.length === 0) return 'None of the properties on that account are verified in Bing yet.'
+    return null
+  },
+  itemLabel: 'Property',
+  itemPlaceholder: 'Select a verified property',
+  itemAriaLabel: 'Bing property',
+  getValue: site => site.url,
+  getLabel: site => site.url,
+  connectLabel: 'Connect Bing',
+  connectFailedMessage: "Couldn't connect Bing Webmaster Tools. Try again.",
+  connectSuccessMessage: 'Bing Webmaster Tools connected',
+  connect: (siteId, apiKey, site) => connectBing(siteId, apiKey, site.url),
+  helper: 'Bing Webmaster Tools → Settings → API Access → Generate API key.',
 }
 
 export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
@@ -474,8 +451,11 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
   const { data: gscStatus, error: gscError, isLoading: gscLoading, mutate: mutateGSC } = useGSCStatus(siteId)
   const { data: bunnyStatus, error: bunnyError, isLoading: bunnyLoading, mutate: mutateBunny } = useBunnyStatus(siteId)
   const { data: bingStatus, error: bingError, isLoading: bingLoading, mutate: mutateBing } = useBingStatus(siteId)
-  const [showBunnySetup, setShowBunnySetup] = useState(false)
-  const [showBingSetup, setShowBingSetup] = useState(false)
+  // At most one inline setup form is open at a time: opening one's Connect button
+  // closes the other's. Two independent booleans let both forms reach their
+  // "ready" (a zone or property picked) step at once, which puts two orange
+  // Connect buttons on the page at the same time, and the vocabulary allows only one.
+  const [openSetup, setOpenSetup] = useState<'bunny' | 'bing' | null>(null)
   const [confirmDisconnect, setConfirmDisconnect] = useState<'gsc' | 'bunny' | 'bing' | null>(null)
   const [connectingGSC, setConnectingGSC] = useState(false)
   const [retryingGSC, setRetryingGSC] = useState(false)
@@ -483,11 +463,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
   const [retryingBing, setRetryingBing] = useState(false)
 
   if (gscLoading || bunnyLoading || bingLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Spinner className="w-6 h-6 text-muted-foreground" />
-      </div>
-    )
+    return <SettingsLoadingState rows={6} />
   }
 
   const handleConnectGSC = async () => {
@@ -495,13 +471,13 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
     setConnectingGSC(true)
     try {
       const data = await getGSCAuthURL(siteId)
-      // A blocked popup returns null — surface that instead of a silent no-op.
+      // A blocked popup returns null. Surface that instead of a silent no-op.
       // (We open without the `noopener` feature so the ref survives for block
       // detection, then sever `opener` to get the same reverse-tabnabbing
       // protection `noopener` would give.)
       const popup = window.open(data.auth_url, '_blank')
       if (!popup) {
-        toast.error('Your browser blocked the sign-in popup. Please allow popups for this site and try again.')
+        toast.error('Your browser blocked the sign-in popup. Allow popups for this site and try again.')
         return
       }
       popup.opener = null
@@ -513,7 +489,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
       }
       document.addEventListener('visibilitychange', handleVisibility)
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to start Google authorization')
+      toast.error(getAuthErrorMessage(err as Error) || "Couldn't start Google sign-in. Try again.")
     } finally {
       setConnectingGSC(false)
     }
@@ -529,9 +505,12 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
     Promise.resolve(mutateBunny()).finally(() => setRetryingBunny(false))
   }
 
-  const handleDisconnectGSC = () => {
-    setConfirmDisconnect('gsc')
+  const retryBing = () => {
+    setRetryingBing(true)
+    Promise.resolve(mutateBing()).finally(() => setRetryingBing(false))
   }
+
+  const handleDisconnectGSC = () => setConfirmDisconnect('gsc')
 
   const doDisconnectGSC = async () => {
     await disconnectGSC(siteId)
@@ -539,137 +518,158 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
     toast.success('Google Search Console disconnected')
   }
 
-  const handleConnectBunny = () => {
-    setShowBunnySetup(true)
-  }
-
-  const handleDisconnectBunny = () => {
-    setConfirmDisconnect('bunny')
-  }
+  const handleConnectBunny = () => setOpenSetup('bunny')
+  const handleDisconnectBunny = () => setConfirmDisconnect('bunny')
 
   const doDisconnectBunny = async () => {
     await disconnectBunny(siteId)
     await mutateBunny()
-    setShowBunnySetup(false)
-    toast.success('BunnyCDN disconnected')
+    setOpenSetup(prev => (prev === 'bunny' ? null : prev))
+    toast.success('Bunny CDN disconnected')
   }
 
-  const retryBing = () => {
-    setRetryingBing(true)
-    Promise.resolve(mutateBing()).finally(() => setRetryingBing(false))
-  }
-
-  const handleConnectBing = () => {
-    setShowBingSetup(true)
-  }
-
-  const handleDisconnectBing = () => {
-    setConfirmDisconnect('bing')
-  }
+  const handleConnectBing = () => setOpenSetup('bing')
+  const handleDisconnectBing = () => setConfirmDisconnect('bing')
 
   const doDisconnectBing = async () => {
     await disconnectBing(siteId)
     await mutateBing()
-    setShowBingSetup(false)
+    setOpenSetup(prev => (prev === 'bing' ? null : prev))
     toast.success('Bing Webmaster Tools disconnected')
   }
 
+  const gscConnected = gscStatus?.connected ?? false
   const bunnyConnected = bunnyStatus?.connected ?? false
   const bingConnected = bingStatus?.connected ?? false
 
   return (
     <div className="space-y-8">
-      {/* GSC + Bunny as ruled rows in ONE panel (spec §6). */}
-      <SettingsPanel kicker="Integrations" description="Connect third-party services to enrich your analytics.">
+      {/* GSC, Bing and Bunny as three ruled rows in ONE panel (spec §6). */}
+      <SettingsPanel title="Integrations" description="Connect third-party services to bring more data into your analytics.">
         <PanelRows>
-          <IntegrationRow
-            icon={<GoogleIcon />}
-            name="Google Search Console"
-            description="View search queries, clicks, impressions, and ranking data."
-            connected={gscStatus?.connected ?? false}
-            status={gscStatus?.status}
-            error={gscError ? (
-              <SettingsErrorState
-                variant="banner"
-                message="Couldn't load your Google Search Console connection status. This is usually temporary — your connection isn't affected."
-                onRetry={retryGSC}
-                retrying={retryingGSC}
-              />
-            ) : undefined}
-            onConnect={handleConnectGSC}
-            onDisconnect={handleDisconnectGSC}
-            connectLabel="Connect with Google"
-            connecting={connectingGSC}
-            canManage={canManage}
-          >
-            {gscStatus?.connected && <GSCDetails gscStatus={gscStatus} />}
-            <SecurityNote text="Pulse only requests read-only access. Your tokens are encrypted at rest." />
-          </IntegrationRow>
-
-          <IntegrationRow
-            icon={<BingIcon />}
-            name="Bing Webmaster Tools"
-            description="Daily clicks and impressions from Bing, Yahoo and DuckDuckGo."
-            connected={bingConnected}
-            status={bingStatus?.status}
-            error={bingError ? (
-              <SettingsErrorState
-                variant="banner"
-                message="Couldn't load your Bing Webmaster connection status. This is usually temporary — your connection isn't affected."
-                onRetry={retryBing}
-                retrying={retryingBing}
-              />
-            ) : undefined}
-            onConnect={handleConnectBing}
-            onDisconnect={handleDisconnectBing}
-            canManage={canManage}
-          >
-            {bingConnected && bingStatus && <BingDetails bingStatus={bingStatus} />}
-            {!bingConnected && showBingSetup && canManage && (
-              <BingSetupForm
-                siteId={siteId}
-                onConnected={() => {
-                  mutateBing()
-                  setShowBingSetup(false)
-                }}
-              />
+          <div>
+            <IntegrationHeaderRow
+              icon={<GoogleIcon />}
+              name="Google Search Console"
+              description="View search queries, clicks, impressions, and ranking data."
+              connected={gscConnected}
+              status={gscStatus?.status}
+              hasError={!!gscError}
+              onConnect={handleConnectGSC}
+              onDisconnect={handleDisconnectGSC}
+              connectLabel="Connect with Google"
+              connecting={connectingGSC}
+              canManage={canManage}
+            />
+            {gscError ? (
+              <div className="border-t border-border px-5 py-4">
+                <SettingsErrorState
+                  variant="banner"
+                  message="Couldn't load your Google Search Console connection status. This is usually temporary. Your connection isn't affected."
+                  onRetry={retryGSC}
+                  retrying={retryingGSC}
+                />
+              </div>
+            ) : (
+              <>
+                {gscConnected && gscStatus && <GSCDetails gscStatus={gscStatus} />}
+                {gscConnected && gscStatus?.error_message && (
+                  <IntegrationIssue name="Google Search Console" message={gscStatus.error_message} />
+                )}
+                <IntegrationNote text="Pulse only requests read-only access. Your tokens are encrypted at rest." />
+              </>
             )}
-            {/* Says what it does NOT do, deliberately. Bing's query endpoint has no date range,
-                so it cannot honour this app's date picker — better to state the limit than to
-                let someone hunt for a query table that was never going to be there. */}
-            <SecurityNote text="Site-level daily totals only — Bing's API does not expose per-query data by date. Your API key is encrypted at rest and grants access to every property on your Bing account, so it is used solely to read search statistics." />
-          </IntegrationRow>
+          </div>
 
-          <IntegrationRow
-            icon={<BunnyIcon />}
-            name="BunnyCDN"
-            description="Monitor bandwidth, cache hit rates, and CDN performance."
-            connected={bunnyConnected}
-            status={bunnyStatus?.status}
-            error={bunnyError ? (
-              <SettingsErrorState
-                variant="banner"
-                message="Couldn't load your BunnyCDN connection status. This is usually temporary — your connection isn't affected."
-                onRetry={retryBunny}
-                retrying={retryingBunny}
-              />
-            ) : undefined}
-            onConnect={handleConnectBunny}
-            onDisconnect={handleDisconnectBunny}
-            canManage={canManage}
-          >
-            {bunnyConnected && bunnyStatus && <BunnyDetails bunnyStatus={bunnyStatus} />}
-            {!bunnyConnected && showBunnySetup && canManage && (
-              <BunnySetupForm
-                siteId={siteId}
-                onConnected={() => {
-                  mutateBunny()
-                  setShowBunnySetup(false)
-                }}
-              />
+          <div>
+            <IntegrationHeaderRow
+              icon={<BingIcon />}
+              name="Bing Webmaster Tools"
+              description="Daily clicks and impressions from Bing, Yahoo and DuckDuckGo."
+              connected={bingConnected}
+              status={bingStatus?.status}
+              hasError={!!bingError}
+              onConnect={handleConnectBing}
+              onDisconnect={handleDisconnectBing}
+              expanded={openSetup === 'bing'}
+              canManage={canManage}
+            />
+            {bingError ? (
+              <div className="border-t border-border px-5 py-4">
+                <SettingsErrorState
+                  variant="banner"
+                  message="Couldn't load your Bing Webmaster connection status. This is usually temporary. Your connection isn't affected."
+                  onRetry={retryBing}
+                  retrying={retryingBing}
+                />
+              </div>
+            ) : (
+              <>
+                {bingConnected && bingStatus && <BingDetails bingStatus={bingStatus} />}
+                {bingConnected && bingStatus?.error_message && (
+                  <IntegrationIssue name="Bing Webmaster Tools" message={bingStatus.error_message} />
+                )}
+                {!bingConnected && openSetup === 'bing' && canManage && (
+                  <SetupForm
+                    siteId={siteId}
+                    config={bingSetupConfig}
+                    onConnected={() => {
+                      mutateBing()
+                      setOpenSetup(null)
+                    }}
+                  />
+                )}
+                {/* Says what it does NOT do, deliberately. Bing's query endpoint has no date
+                    range, so it cannot honour this app's date picker. Better to state the
+                    limit than to let someone hunt for a query table that was never going to
+                    be there. */}
+                <IntegrationNote text="Daily totals only. Bing's API does not expose per-query data by date. Your API key is encrypted at rest and can reach every property on your Bing account. Pulse only uses it to read search statistics." />
+              </>
             )}
-            <SecurityNote text="Your API key is encrypted at rest and only used to fetch read-only statistics." />
-          </IntegrationRow>
+          </div>
+
+          <div>
+            <IntegrationHeaderRow
+              icon={<BunnyIcon />}
+              name="Bunny CDN"
+              description="Monitor bandwidth, cache hit rates, and CDN performance."
+              connected={bunnyConnected}
+              status={bunnyStatus?.status}
+              hasError={!!bunnyError}
+              onConnect={handleConnectBunny}
+              onDisconnect={handleDisconnectBunny}
+              expanded={openSetup === 'bunny'}
+              canManage={canManage}
+            />
+            {bunnyError ? (
+              <div className="border-t border-border px-5 py-4">
+                <SettingsErrorState
+                  variant="banner"
+                  message="Couldn't load your Bunny CDN connection status. This is usually temporary. Your connection isn't affected."
+                  onRetry={retryBunny}
+                  retrying={retryingBunny}
+                />
+              </div>
+            ) : (
+              <>
+                {bunnyConnected && bunnyStatus && <BunnyDetails bunnyStatus={bunnyStatus} />}
+                {bunnyConnected && bunnyStatus?.error_message && (
+                  <IntegrationIssue name="Bunny CDN" message={bunnyStatus.error_message} />
+                )}
+                {!bunnyConnected && openSetup === 'bunny' && canManage && (
+                  <SetupForm
+                    siteId={siteId}
+                    config={bunnySetupConfig}
+                    onConnected={() => {
+                      mutateBunny()
+                      setOpenSetup(null)
+                    }}
+                  />
+                )}
+                <IntegrationNote text="Your API key is encrypted at rest. Pulse only uses it to read CDN statistics." />
+              </>
+            )}
+          </div>
         </PanelRows>
       </SettingsPanel>
 
@@ -696,7 +696,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
       <ConfirmDialog
         open={confirmDisconnect === 'bunny'}
         onOpenChange={(open) => { if (!open) setConfirmDisconnect(null) }}
-        title="Disconnect BunnyCDN"
+        title="Disconnect Bunny CDN"
         description="This will remove all synced CDN data."
         confirmLabel="Disconnect"
         variant="danger"

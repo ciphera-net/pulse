@@ -1,6 +1,15 @@
 'use client'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Select, toast, getAuthErrorMessage } from '@ciphera-net/facet'
+import {
+  Button,
+  Input,
+  RailGrid,
+  RailGridTile,
+  Select,
+  Toggle,
+  toast,
+  getAuthErrorMessage,
+} from '@ciphera-net/facet'
 import {
   CreditCard,
   ShieldCheck,
@@ -9,10 +18,14 @@ import {
   UsersThree,
   Megaphone,
   Compass,
+  CaretDown,
 } from '@phosphor-icons/react'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
-import { Checkbox } from '@/components/ui/checkbox'
+import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/settings/panels'
+import { StatusChip } from '@/components/settings/StatusChip'
+import { DangerZone } from '@/components/settings/unified/DangerZone'
+import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/auth/context'
 import {
   getPrefsDocument,
@@ -26,23 +39,24 @@ import { NOTIFICATION_CATEGORIES } from '@/lib/notifications/categories'
 import PurgeConfirmDialog from '@/app/notifications/PurgeConfirmDialog'
 
 /**
- * /settings/account/notifications — the personal half of the round-3 family
- * (rulings R3-1/R3-2; copy per the 31-08 copy round, variant A everywhere).
+ * Account, Notifications: the personal half of the round-3 family (rulings
+ * R3-1/R3-2, copy per the 31-08 copy round, variant A, since revised to drop
+ * every dash per the 16-09 settings overhaul copy rule).
  *
- * BR2 — a "Delivery" band of six icon-led summary rows that EXPAND IN PLACE
- * into the full control set (data strip, channel checkbox rows, mute row,
- * retention select). BR3 — the schedule band (digest time, quiet hours with
- * the ruled deferral copy). BR4 — retention with data-anchored subs. BR6 —
- * the danger band with the destructive purge at the server's true count.
+ * Delivery lists the six categories as rows that expand in place into the
+ * full control set: a data strip, channel toggles, a mute control, and a
+ * retention select. Delivery schedule holds the digest time and quiet hours.
+ * Retention anchors each category to its true read-held count. The danger
+ * zone holds the destructive purge at the server's true count.
  *
  * Truths this page renders, never enforces:
- * - Critical categories (registry `criticality`) show "On · always" cells and
- *   no mute/digest affordance — Iris's trigger is the enforcement; these
- *   cells are its RENDERING.
+ * - Critical categories (registry `criticality`) show an "Always on" chip and
+ *   no mute or digest affordance. Iris's trigger is the enforcement; these
+ *   cells are its rendering.
  * - The registry is the vocabulary and the retention authority: display
  *   names, floors and defaults come from the wire document, never a local
- *   table (retention-policy.ts is deleted — FE-2).
- * - Every save is a boolean write carrying the CURRENT schedule fields — the
+ *   table (retention-policy.ts is deleted, FE-2).
+ * - Every save is a boolean write carrying the CURRENT schedule fields. The
  *   proxy writes the recipient_preferences block on every PUT, so omitting
  *   them would silently reset the schedule.
  * - The PUT answers with the stored truth re-read; the document in state is
@@ -50,19 +64,16 @@ import PurgeConfirmDialog from '@/app/notifications/PurgeConfirmDialog'
  */
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  billing: <CreditCard className="w-4 h-4 text-neutral-400 shrink-0" aria-hidden="true" />,
-  security: <ShieldCheck className="w-4 h-4 text-neutral-400 shrink-0" aria-hidden="true" />,
-  uptime: <Heartbeat className="w-4 h-4 text-neutral-400 shrink-0" aria-hidden="true" />,
-  site: <Globe className="w-4 h-4 text-neutral-400 shrink-0" aria-hidden="true" />,
-  team: <UsersThree className="w-4 h-4 text-neutral-400 shrink-0" aria-hidden="true" />,
-  system: <Megaphone className="w-4 h-4 text-neutral-400 shrink-0" aria-hidden="true" />,
-  lifecycle: <Compass className="w-4 h-4 text-neutral-400 shrink-0" aria-hidden="true" />,
+  billing: <CreditCard className="w-4 h-4" aria-hidden="true" />,
+  security: <ShieldCheck className="w-4 h-4" aria-hidden="true" />,
+  uptime: <Heartbeat className="w-4 h-4" aria-hidden="true" />,
+  site: <Globe className="w-4 h-4" aria-hidden="true" />,
+  team: <UsersThree className="w-4 h-4" aria-hidden="true" />,
+  system: <Megaphone className="w-4 h-4" aria-hidden="true" />,
+  lifecycle: <Compass className="w-4 h-4" aria-hidden="true" />,
 }
 
 const ORDER = NOTIFICATION_CATEGORIES.map((c) => c.id as string)
-
-const timeInputClass =
-  'h-9 rounded-none border border-input bg-transparent px-3 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [color-scheme:dark]'
 
 function channelsSummary(cat: CategoryPreferenceDoc): string {
   const parts: string[] = []
@@ -94,8 +105,9 @@ export default function MyPreferencesTab() {
   const load = () =>
     Promise.all([
       getPrefsDocument().then((d) => setDoc(d)),
-      // The counts feed the data strips and the retention anchors; their
-      // failure degrades those details, never the controls.
+      // The counts feed the data strips and the retention anchors. Their
+      // failure degrades those details to an honest "not counted", never the
+      // controls, so it is a deliberately soft failure rather than a swallow.
       listNotifications({ limit: 1 })
         .then((r) => {
           setCounts(r.category_counts)
@@ -104,7 +116,12 @@ export default function MyPreferencesTab() {
         .catch(() => {}),
     ])
       .then(() => setError(null))
-      .catch((e) => setError((e as Error).message ?? 'Failed to load'))
+      .catch((e) =>
+        setError(
+          (e as Error).message ||
+            "Couldn't load your notification preferences. Try again in a moment.",
+        ),
+      )
 
   useEffect(() => {
     void load()
@@ -120,14 +137,14 @@ export default function MyPreferencesTab() {
   /**
    * One category's write. Always carries the current schedule fields (see the
    * file doc); adopts the server's re-read document as the new state. A 422
-   * is the trigger speaking (silencing a critical) — surfaced verbatim.
+   * is the trigger speaking (silencing a critical) and is surfaced verbatim.
    */
   const writeCategory = useCallback(
     async (categoryId: string, patch: CategoryWrite) => {
       if (!doc || saving) return
-      // 🔴 Iris refuses a partial category write — "a stored row is the full
-      // expression" (measured live, 31-08): all four booleans are required.
-      // Compose the full row from the current document plus the change.
+      // Iris refuses a partial category write: "a stored row is the full
+      // expression" (measured live, 31-08). All four booleans are required,
+      // so compose the full row from the current document plus the change.
       const current = doc.categories.find((c) => c.category_id === categoryId)
       if (!current) return
       const full: CategoryWrite = {
@@ -149,7 +166,11 @@ export default function MyPreferencesTab() {
         })
         setDoc(Array.isArray(next?.categories) ? next : await getPrefsDocument())
       } catch (err) {
-        toast.error(getAuthErrorMessage(err as Error) || (err as Error).message || 'Failed to save')
+        toast.error(
+          getAuthErrorMessage(err as Error) ||
+            (err as Error).message ||
+            "Couldn't save your changes. Try again in a moment.",
+        )
       } finally {
         setSaving(false)
       }
@@ -179,12 +200,17 @@ export default function MyPreferencesTab() {
               : doc.recipient_preferences.quiet_hours_end,
           digest_time: (fields.digest_time ?? doc.recipient_preferences.digest_time).slice(0, 5),
         })
-        // 🔴 A schedule-only body takes the proxy's legacy path and answers
-        // {"ok":true} with NO document — adopting that as the document blanked
-        // the page (review catch). Adopt only a real document; else re-read.
+        // A schedule-only body takes the proxy's legacy path and answers
+        // {"ok":true} with no document, adopting that as the document would
+        // blank the page (review catch), so adopt only a real document, else
+        // re-read.
         setDoc(Array.isArray(next?.categories) ? next : await getPrefsDocument())
       } catch (err) {
-        toast.error(getAuthErrorMessage(err as Error) || (err as Error).message || 'Failed to save')
+        toast.error(
+          getAuthErrorMessage(err as Error) ||
+            (err as Error).message ||
+            "Couldn't save your changes. Try again in a moment.",
+        )
       } finally {
         setSaving(false)
       }
@@ -208,7 +234,16 @@ export default function MyPreferencesTab() {
     return Array.from(new Set(['UTC', current, ...zones]))
   }, [doc])
 
-  if (error && !doc) return <SettingsErrorState message={error} onRetry={retry} retrying={retrying} />
+  if (error && !doc) {
+    return (
+      <SettingsErrorState
+        title="Couldn't load your notification preferences"
+        message={error}
+        onRetry={retry}
+        retrying={retrying}
+      />
+    )
+  }
   if (!doc) return <SettingsLoadingState />
 
   const rp = doc.recipient_preferences
@@ -217,188 +252,204 @@ export default function MyPreferencesTab() {
 
   return (
     <div className="space-y-8">
-      {/* ── BR2 · Delivery ─────────────────────────────────────────────── */}
-      <section>
-        <div className="flex items-baseline justify-between gap-3 mb-2">
-          <h2 className="text-sm font-semibold tracking-tight text-white">Delivery</h2>
-          <span className="truncate text-[11px] text-neutral-500">
-            one vocabulary — from the registry
-          </span>
-        </div>
-        <div className="border border-border bg-card rounded-none overflow-hidden">
-          <ul className="divide-y divide-border">
+      <SettingsPanel title="Delivery" description="Which channels each kind of notification uses.">
+        {categories.length === 0 ? (
+          <EmptyRow
+            title="No notification categories"
+            caption="Categories appear here once the registry has data for your account."
+          />
+        ) : (
+          <PanelRows>
             {categories.map((cat) => {
               const isOpen = expanded === cat.category_id
-              // ⚠️ Iris's trigger gates on `suppressible`, not `criticality`
-              // (its 422 says "unsuppressible") — the rendering of its
-              // refusals must read the SAME column or the two can disagree
+              // Iris's trigger gates on `suppressible`, not `criticality`
+              // (its 422 says "unsuppressible"), so the rendering of its
+              // refusals reads the SAME column or the two can disagree
               // (review catch). `criticality` stays a display word only.
               const critical = !cat.suppressible
               const count = counts?.[cat.category_id]
+              const floorDays = Math.max(1, Math.round(cat.min_retention_seconds / DAY))
+              const keptDays = Math.round(
+                (cat.retention_override_seconds ?? cat.read_ttl_seconds) / DAY,
+              )
               return (
-                <li key={cat.category_id}>
+                <div key={cat.category_id}>
                   <button
                     type="button"
                     aria-expanded={isOpen}
+                    aria-controls={`prefs-${cat.category_id}`}
                     onClick={() => setExpanded(isOpen ? null : cat.category_id)}
-                    className="group relative w-full text-left px-4 py-3 hover:bg-white/[0.02] transition-colors cursor-pointer"
+                    className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors duration-fast ease-apple hover:bg-muted motion-reduce:transition-none"
                   >
-                    <div className="flex items-start gap-3">
-                      <span className="mt-0.5">{CATEGORY_ICONS[cat.category_id]}</span>
-                      <div className="min-w-0 flex-1 flex items-baseline justify-between gap-3">
-                        <span
-                          className={`text-sm font-medium truncate ${
-                            cat.muted ? 'text-neutral-600' : 'text-white'
-                          }`}
-                        >
-                          {cat.display_name}
-                        </span>
-                        <span className="text-[11px] text-neutral-500 whitespace-nowrap shrink-0">
-                          {summaryLine(cat)}
-                        </span>
-                      </div>
-                    </div>
+                    <span aria-hidden="true" className="shrink-0 text-muted-foreground">
+                      {CATEGORY_ICONS[cat.category_id]}
+                    </span>
+                    <span
+                      className={cn(
+                        'min-w-0 flex-1 truncate text-sm font-medium',
+                        cat.muted ? 'text-muted-foreground' : 'text-foreground',
+                      )}
+                    >
+                      {cat.display_name}
+                    </span>
+                    <span className="shrink-0 truncate text-xs text-muted-foreground">
+                      {summaryLine(cat)}
+                    </span>
+                    <CaretDown
+                      weight="bold"
+                      aria-hidden="true"
+                      className={cn(
+                        'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-base ease-apple motion-reduce:transition-none',
+                        isOpen && 'rotate-180',
+                      )}
+                    />
                   </button>
-                  {isOpen && (
-                    <div className="px-4 pb-4">
-                      <div className="mt-1 border-l-2 border-neutral-800 pl-4">
-                        {/* Data strip — honest numbers from category_counts */}
-                        <div className="grid grid-cols-2 border-b border-neutral-800">
-                          <div className="relative w-full text-left px-4 py-3">
-                            <span className="truncate text-[13px] text-neutral-400">Unread</span>
-                            <span className="mt-0.5 block text-xl font-semibold tabular-nums text-white">
-                              {count ? count.unread : '—'}
-                            </span>
-                            <span className="mt-0.5 block truncate text-[11px] text-neutral-500">
-                              {count ? `of ${count.total} total` : 'count unavailable'}
-                            </span>
-                          </div>
-                          <div className="relative w-full text-left px-4 py-3">
-                            <span className="truncate text-[13px] text-neutral-400">Kept</span>
-                            <span className="mt-0.5 block text-xl font-semibold tabular-nums text-white">
-                              {Math.round((cat.retention_override_seconds ?? cat.read_ttl_seconds) / DAY)}
-                            </span>
-                            <span className="mt-0.5 block truncate text-[11px] text-neutral-500">
-                              days after read
-                            </span>
-                          </div>
-                        </div>
+                  <div id={`prefs-${cat.category_id}`}>
+                    {isOpen && (
+                      <div className="border-t border-border">
+                        {/* Data strip: honest numbers from category_counts, in the
+                            same RailGrid every other stat-tile band in this
+                            overhaul uses (WorkspaceBillingTab, SiteBotSpamTab,
+                            WorkspaceRolesTab). */}
+                        <RailGrid columns={2} className="border-0">
+                          <RailGridTile>
+                            <p className="text-xl font-semibold tabular-nums text-foreground">
+                              {count
+                                ? `${count.unread.toLocaleString()} of ${count.total.toLocaleString()}`
+                                : 'Not counted'}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {count ? 'Unread notifications.' : "Couldn't load this count."}
+                            </p>
+                          </RailGridTile>
+                          <RailGridTile>
+                            <p className="text-xl font-semibold tabular-nums text-foreground">
+                              {keptDays}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Days kept after being read.
+                            </p>
+                          </RailGridTile>
+                        </RailGrid>
 
-                        {/* Channel rows */}
-                        <div className="divide-y divide-border">
-                          <ChannelRow
+                        <PanelRows className="border-t border-border">
+                          <PanelRow
                             label="In-app"
-                            sub="the bell and the notifications page"
-                            critical={critical}
-                            checked={cat.in_app}
-                            disabled={saving}
-                            onChange={(v) => writeCategory(cat.category_id, { in_app: v })}
-                          />
-                          <ChannelRow
-                            label="Email"
-                            sub={
-                              user?.email
-                                ? `to ${user.email}; 'Emailed' means handed off`
-                                : "'Emailed' means handed off"
+                            caption="Shows in the bell and on the notifications page."
+                            control={
+                              critical ? (
+                                <StatusChip tone="neutral">Always on</StatusChip>
+                              ) : (
+                                <Toggle
+                                  checked={cat.in_app}
+                                  disabled={saving}
+                                  onChange={() =>
+                                    writeCategory(cat.category_id, { in_app: !cat.in_app })
+                                  }
+                                />
+                              )
                             }
-                            critical={critical}
-                            checked={cat.email}
-                            disabled={saving}
-                            onChange={(v) => writeCategory(cat.category_id, { email: v })}
                           />
-                          <div className="flex items-center justify-between px-4 py-3">
-                            <div className="min-w-0">
-                              <div className="text-sm text-neutral-300">Daily digest</div>
-                              <div className="text-[11px] text-neutral-500">
-                                {critical
-                                  ? `Not available — ${cat.display_name} is never digested`
-                                  : `bundled into one email at ${digestHHMM}`}
-                              </div>
-                            </div>
-                            {critical ? (
-                              <span className="text-sm text-neutral-600 select-none" aria-disabled="true">
-                                —
-                              </span>
-                            ) : (
-                              <Checkbox
-                                aria-label={`Daily digest for ${cat.display_name}`}
-                                checked={cat.digest}
-                                disabled={saving}
-                                onCheckedChange={(v) => writeCategory(cat.category_id, { digest: v })}
-                              />
-                            )}
-                          </div>
-
-                          {/* Mute row — suppressible categories only */}
+                          <PanelRow
+                            label="Email"
+                            caption={
+                              user?.email
+                                ? `Sent to ${user.email}. Emailed means we handed the message to your mail provider.`
+                                : 'Emailed means we handed the message to your mail provider.'
+                            }
+                            control={
+                              critical ? (
+                                <StatusChip tone="neutral">Always on</StatusChip>
+                              ) : (
+                                <Toggle
+                                  checked={cat.email}
+                                  disabled={saving}
+                                  onChange={() =>
+                                    writeCategory(cat.category_id, { email: !cat.email })
+                                  }
+                                />
+                              )
+                            }
+                          />
+                          <PanelRow
+                            label="Daily digest"
+                            caption={
+                              critical
+                                ? `Not available. ${cat.display_name} is never digested.`
+                                : `Bundled into one email at ${digestHHMM}.`
+                            }
+                            control={
+                              critical ? (
+                                <StatusChip tone="neutral">Not digested</StatusChip>
+                              ) : (
+                                <Toggle
+                                  checked={cat.digest}
+                                  disabled={saving}
+                                  onChange={() =>
+                                    writeCategory(cat.category_id, { digest: !cat.digest })
+                                  }
+                                />
+                              )
+                            }
+                          />
                           {!critical && (
-                            <div className="flex items-center justify-between px-4 py-3 gap-3">
-                              <div className="min-w-0">
-                                <div className="text-sm text-neutral-300">
-                                  {cat.muted ? 'Muted' : 'Mute'}
-                                </div>
-                                <div className="text-[11px] text-neutral-500">
-                                  Muted — still recorded on the notifications page, arrives read,
-                                  never alerts.
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                disabled={saving}
-                                onClick={() => writeCategory(cat.category_id, { muted: !cat.muted })}
-                                className="inline-flex items-center gap-2 border border-border rounded-none px-4 py-2 text-xs font-medium text-neutral-300 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer whitespace-nowrap"
-                              >
-                                {cat.muted
-                                  ? `Unmute — resumes to ${channelsSummary(cat)}`
-                                  : `Mute ${cat.display_name}`}
-                              </button>
-                            </div>
+                            <PanelRow
+                              label={cat.muted ? 'Muted' : 'Mute'}
+                              caption="A muted category still lists on the notifications page. It arrives already read and never alerts."
+                              control={
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={saving}
+                                  onClick={() =>
+                                    writeCategory(cat.category_id, { muted: !cat.muted })
+                                  }
+                                >
+                                  {cat.muted
+                                    ? `Unmute: resumes to ${channelsSummary(cat)}`
+                                    : `Mute ${cat.display_name}`}
+                                </Button>
+                              }
+                            />
                           )}
-
-                          <RetentionRow cat={cat} onWrite={writeCategory} />
-                        </div>
+                          <PanelRow
+                            label="Keep read notifications"
+                            caption={`Floor: ${floorDays} days. An override can't go lower.`}
+                            control={<RetentionSelect cat={cat} onWrite={writeCategory} />}
+                          />
+                        </PanelRows>
                       </div>
-                    </div>
-                  )}
-                </li>
+                    )}
+                  </div>
+                </div>
               )
             })}
-          </ul>
-        </div>
-      </section>
+          </PanelRows>
+        )}
+      </SettingsPanel>
 
-      {/* ── BR3 · Delivery schedule ────────────────────────────────────── */}
-      <section>
-        <div className="flex items-baseline justify-between gap-3 mb-2">
-          <h2 className="text-sm font-semibold tracking-tight text-white">Delivery schedule</h2>
-          <span className="truncate text-[11px] text-neutral-500">applies to every category</span>
-        </div>
-        <div className="border border-border bg-card rounded-none overflow-hidden">
-          <div className="grid grid-cols-2 border-b border-neutral-800">
-            <div className="relative w-full text-left px-4 py-3">
-              <span className="truncate text-[13px] text-neutral-400">Next digest</span>
-              <span className="mt-0.5 block text-xl font-semibold tabular-nums text-white">
-                {digestHHMM}
-              </span>
-              <span className="mt-0.5 block truncate text-[11px] text-neutral-500">{tz}</span>
-            </div>
-            <div className="relative w-full text-left px-4 py-3">
-              <span className="truncate text-[13px] text-neutral-400">Quiet hours</span>
-              <span className="mt-0.5 block text-xl font-semibold tabular-nums text-white">
-                {rp.quiet_hours_start && rp.quiet_hours_end
-                  ? `${rp.quiet_hours_start.slice(0, 5)}–${rp.quiet_hours_end.slice(0, 5)}`
-                  : 'Off'}
-              </span>
-              <span className="mt-0.5 block truncate text-[11px] text-neutral-500">
-                {rp.quiet_hours_start ? tz : 'no email is held'}
-              </span>
-            </div>
-          </div>
-          <div className="divide-y divide-border">
-            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-              <div className="min-w-0">
-                <div className="text-sm text-neutral-300">Daily digest time</div>
-                <div className="text-[11px] text-neutral-500">{tz}</div>
-              </div>
+      <SettingsPanel title="Delivery schedule" description="Applies to every category.">
+        <RailGrid columns={2} className="border-0">
+          <RailGridTile>
+            <p className="text-xl font-semibold tabular-nums text-foreground">{digestHHMM}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Next digest, {tz}</p>
+          </RailGridTile>
+          <RailGridTile>
+            <p className="text-xl font-semibold tabular-nums text-foreground">
+              {rp.quiet_hours_start && rp.quiet_hours_end
+                ? `${rp.quiet_hours_start.slice(0, 5)} to ${rp.quiet_hours_end.slice(0, 5)}`
+                : 'Off'}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {rp.quiet_hours_start ? `Quiet hours, ${tz}` : 'No email is held.'}
+            </p>
+          </RailGridTile>
+        </RailGrid>
+        <PanelRows className="border-t border-border">
+          <PanelRow
+            label="Daily digest time"
+            caption={tz}
+            control={
               <div className="flex flex-wrap items-center gap-3">
                 <TimeField
                   value={digestHHMM}
@@ -406,7 +457,7 @@ export default function MyPreferencesTab() {
                   onCommit={(v) => void writeSchedule({ digest_time: v })}
                   aria-label="Digest send time"
                 />
-                <div className="w-64">
+                <div className="w-56">
                   <Select
                     aria-label="Timezone"
                     size="sm"
@@ -417,18 +468,20 @@ export default function MyPreferencesTab() {
                   />
                 </div>
               </div>
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-              <div className="min-w-0 max-w-md">
-                <div className="text-sm text-neutral-300">Quiet hours</div>
-                <div className="text-[11px] text-neutral-500">
-                  During quiet hours, email is held and delivered when they end — never dropped.
-                  Billing and Security send immediately, always.{' '}
-                  <span className="px-1 bg-amber-500/15 text-amber-400 whitespace-nowrap">
-                    Held — quiet hours
-                  </span>
-                </div>
-              </div>
+            }
+          />
+          <PanelRow
+            label="Quiet hours"
+            caption={
+              <>
+                During quiet hours, email is held and delivered when they end. It&apos;s never
+                dropped. Billing and Security send immediately, always.{' '}
+                <StatusChip tone="warning" dot>
+                  Held during quiet hours
+                </StatusChip>
+              </>
+            }
+            control={
               <div className="flex items-center gap-2">
                 <TimeField
                   value={rp.quiet_hours_start?.slice(0, 5) ?? ''}
@@ -441,7 +494,7 @@ export default function MyPreferencesTab() {
                   }
                   aria-label="Quiet hours start"
                 />
-                <span className="text-[11px] text-neutral-500">to</span>
+                <span className="text-xs text-muted-foreground">to</span>
                 <TimeField
                   value={rp.quiet_hours_end?.slice(0, 5) ?? ''}
                   disabled={saving}
@@ -454,74 +507,62 @@ export default function MyPreferencesTab() {
                   aria-label="Quiet hours end"
                 />
                 {(rp.quiet_hours_start || rp.quiet_hours_end) && (
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     disabled={saving}
                     onClick={() =>
                       void writeSchedule({ quiet_hours_start: null, quiet_hours_end: null })
                     }
-                    className="inline-flex items-center gap-2 border border-border rounded-none px-4 py-2 text-xs font-medium text-neutral-300 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer disabled:opacity-40"
                   >
                     Clear
-                  </button>
+                  </Button>
                 )}
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
+            }
+          />
+        </PanelRows>
+      </SettingsPanel>
 
-      {/* ── BR4 · Retention ────────────────────────────────────────────── */}
-      <section>
-        <div className="flex items-baseline justify-between gap-3 mb-2">
-          <h2 className="text-sm font-semibold tracking-tight text-white">Retention</h2>
-          <span className="truncate text-[11px] text-neutral-500">
-            Cleanup is automatic — read notifications delete on their category&apos;s retention
-            window. Pulse keeps nothing longer.
-          </span>
-        </div>
-        <div className="border border-border bg-card rounded-none overflow-hidden">
-          <div className="divide-y divide-border">
-            {categories.map((cat) => {
-              const count = counts?.[cat.category_id]
-              const readHeld = count ? count.total - count.unread : null
-              return (
-                <div key={cat.category_id} className="flex items-center justify-between px-4 py-3 gap-3">
-                  <div className="min-w-0">
-                    <div className="text-sm text-neutral-300">{cat.display_name}</div>
-                    <div className="text-[11px] text-neutral-500">
-                      {readHeld != null ? `${readHeld} read item${readHeld === 1 ? '' : 's'} held` : 'count unavailable'}
-                    </div>
-                  </div>
-                  <RetentionSelect cat={cat} onWrite={writeCategory} />
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
+      <SettingsPanel
+        title="Retention"
+        description="Cleanup is automatic. Read notifications delete when their retention window ends. Pulse keeps nothing longer."
+      >
+        <PanelRows>
+          {categories.map((cat) => {
+            const count = counts?.[cat.category_id]
+            const readHeld = count ? count.total - count.unread : null
+            return (
+              <PanelRow
+                key={cat.category_id}
+                label={cat.display_name}
+                caption={
+                  readHeld != null
+                    ? `${readHeld.toLocaleString()} read item${readHeld === 1 ? '' : 's'} held`
+                    : "Couldn't load this count."
+                }
+                control={<RetentionSelect cat={cat} onWrite={writeCategory} />}
+              />
+            )
+          })}
+        </PanelRows>
+      </SettingsPanel>
 
-      {/* ── BR6 · Danger ───────────────────────────────────────────────── */}
-      <section>
-        <div className="flex items-baseline justify-between gap-3 mb-2">
-          <h2 className="text-sm font-semibold tracking-tight text-destructive">Danger</h2>
-        </div>
-        <div className="border border-border bg-card rounded-none px-4 py-3 flex items-center justify-between gap-3">
-          <span className="text-[11px] text-neutral-500">
-            Permanently delete every notification stored against your account. The delivery ledger
-            is unaffected.
-          </span>
-          <button
-            type="button"
-            onClick={() => setPurging(true)}
-            className="border border-destructive/40 bg-destructive/10 rounded-none px-4 py-2 text-xs font-medium text-destructive hover:text-white transition-colors whitespace-nowrap"
-          >
-            {totalCount != null
-              ? `Purge all ${totalCount} notification${totalCount === 1 ? '' : 's'}`
-              : 'Purge all notifications'}
-          </button>
-        </div>
-      </section>
+      <DangerZone
+        items={[
+          {
+            title: 'Notification history',
+            description:
+              'Permanently delete every notification stored against your account. The delivery ledger is unaffected.',
+            buttonLabel:
+              totalCount != null
+                ? `Purge all ${totalCount.toLocaleString()} notification${totalCount === 1 ? '' : 's'}`
+                : 'Purge all notifications',
+            variant: 'solid',
+            onClick: () => setPurging(true),
+          },
+        ]}
+      />
 
       {purging && (
         <PurgeConfirmDialog
@@ -533,42 +574,13 @@ export default function MyPreferencesTab() {
               setPurging(false)
               void load()
             } catch (err) {
-              toast.error(getAuthErrorMessage(err as Error) || 'Failed to purge notifications')
+              toast.error(
+                getAuthErrorMessage(err as Error) ||
+                  "Couldn't purge your notifications. Try again in a moment.",
+              )
             }
           }}
         />
-      )}
-    </div>
-  )
-}
-
-function ChannelRow({
-  label,
-  sub,
-  critical,
-  checked,
-  disabled,
-  onChange,
-}: {
-  label: string
-  sub: string
-  critical: boolean
-  checked: boolean
-  disabled?: boolean
-  onChange: (v: boolean) => void
-}) {
-  return (
-    <div className="flex items-center justify-between px-4 py-3 gap-3">
-      <div className="min-w-0">
-        <div className="text-sm text-neutral-300">{label}</div>
-        <div className="text-[11px] text-neutral-500">{sub}</div>
-      </div>
-      {critical ? (
-        <span className="text-sm text-neutral-600 select-none" aria-disabled="true">
-          On · always
-        </span>
-      ) : (
-        <Checkbox aria-label={label} checked={checked} disabled={disabled} onCheckedChange={onChange} />
       )}
     </div>
   )
@@ -585,7 +597,7 @@ function RetentionSelect({
   const defaultDays = Math.round(cat.read_ttl_seconds / DAY)
   const floorDays = Math.max(1, Math.round(cat.min_retention_seconds / DAY))
   const currentDays = Math.round((cat.retention_override_seconds ?? cat.read_ttl_seconds) / DAY)
-  // The stored value is ALWAYS in the list — a select whose value matches no
+  // The stored value is ALWAYS in the list. A select whose value matches no
   // option renders the wrong story about what is stored (review catch).
   const candidates = Array.from(new Set([3, 7, 14, 30, 90, defaultDays, currentDays]))
     .filter((d) => (d >= floorDays && d <= defaultDays) || d === currentDays)
@@ -604,35 +616,12 @@ function RetentionSelect({
         }}
         options={candidates.map((d) => ({
           value: String(d),
-          label: d === defaultDays ? `${d} days · registry default` : `${d} days`,
+          label: d === defaultDays ? `${d} days, registry default` : `${d} days`,
         }))}
       />
     </div>
   )
 }
-
-/** BR2's in-row retention control (the same field as BR4's band). */
-function RetentionRow({
-  cat,
-  onWrite,
-}: {
-  cat: CategoryPreferenceDoc
-  onWrite: (id: string, w: CategoryWrite) => void
-}) {
-  const floorDays = Math.max(1, Math.round(cat.min_retention_seconds / DAY))
-  return (
-    <div className="flex items-center justify-between px-4 py-3 gap-3">
-      <div className="min-w-0">
-        <div className="text-sm text-neutral-300">Keep read notifications</div>
-        <div className="text-[11px] text-neutral-500">
-          Floor: {floorDays} days — overrides can&apos;t go below. Cleanup is automatic.
-        </div>
-      </div>
-      <RetentionSelect cat={cat} onWrite={onWrite} />
-    </div>
-  )
-}
-
 
 /**
  * A time input that commits ON BLUR, never per keystroke. `<input type="time">`
@@ -640,14 +629,14 @@ function RetentionRow({
  * for every edited segment and an empty intermediate would clear stored state
  * mid-edit (review catch: the quiet-hours pair got nulled by half an edit).
  *
- * 🔴 THE PROP→DRAFT RESYNC IS DERIVED DURING RENDER, NEVER AN EFFECT.
+ * THE PROP-TO-DRAFT RESYNC IS DERIVED DURING RENDER, NEVER AN EFFECT.
  * It used to be `useEffect(() => setDraft(value), [value])`, and an effect is
  * the wrong instrument for it: React commits the mount and then schedules the
  * passive effect as a SEPARATE task, so a keystroke landing in that window is
- * silently thrown away — the effect's `setDraft(value)` is queued AFTER the
+ * silently thrown away. The effect's `setDraft(value)` is queued AFTER the
  * keystroke's `setDraft(typed)` and wins, the field snaps back to the stored
  * value, and the following blur sees nothing to commit. Reproduced
- * deterministically (see the "a keystroke is never clobbered…" case): the
+ * deterministically (see the "a keystroke is never clobbered" case): the
  * typed 22:00 vanished and the save never fired. On CI's starved pod that
  * window is wide enough to hit in the wild; the same interleaving reaches a
  * real user whenever the browser defers the effect past their typing.
@@ -671,14 +660,14 @@ function TimeField({
   const [syncedTo, setSyncedTo] = useState(value)
   if (value !== syncedTo) {
     // A genuinely new stored value arrived (a save landed, or the document was
-    // re-read) — adopt it and drop any stale draft, in this same render.
+    // re-read); adopt it and drop any stale draft, in this same render.
     setSyncedTo(value)
     setDraft(value)
   }
   return (
-    <input
+    <Input
       type="time"
-      className={timeInputClass}
+      className="w-28 [color-scheme:dark]"
       value={draft}
       disabled={disabled}
       aria-label={ariaLabel}

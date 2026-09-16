@@ -53,27 +53,23 @@ export function ConfirmDialog({
         </DialogHeader>
         <DialogFooter>
           <Button
-            variant="secondary"
+            variant="outline"
             className="text-sm"
             onClick={() => onOpenChange(false)}
             disabled={loading}
           >
             {cancelLabel}
           </Button>
-          {/* Danger uses the sanctioned solid destructive fill; the (currently
-              unused) warning path keeps an amber treatment until Facet ships a
-              warning Button variant. */}
+          {/* Danger uses the sanctioned solid destructive fill, the one place the
+              settings vocabulary allows it (the final confirm inside a dialog).
+              The (currently unused) warning path is the page's primary rung. */}
           <Button
-            variant={variant === 'danger' ? 'destructive' : 'secondary'}
-            className={
-              variant === 'danger'
-                ? 'text-sm'
-                : 'text-sm bg-amber-600 hover:bg-amber-700 text-white border-amber-600'
-            }
+            variant={variant === 'danger' ? 'destructive' : 'default'}
+            className="text-sm"
             onClick={handleConfirm}
             disabled={loading}
           >
-            {loading ? 'Please wait...' : confirmLabel}
+            {loading ? 'Please wait…' : confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

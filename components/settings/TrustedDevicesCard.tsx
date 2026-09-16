@@ -15,15 +15,14 @@ import {
   TD,
 } from '@ciphera-net/facet'
 import { Laptop, DeviceMobile } from '@phosphor-icons/react'
-import { EmptyRow } from '@/components/settings/panels'
-import { SettingsPanel } from '@/components/settings/panels'
+import { EmptyRow, SettingsPanel } from '@/components/settings/panels'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
-import { formatRelativeTime, formatDateTimeFull } from '@/lib/utils/formatDate'
+import { formatRelativeTime, formatDateTimeFull, formatDate } from '@/lib/utils/formatDate'
 
-/** Muted line glyph for a device row — phone vs. laptop, never a tinted tile. */
+/** Muted line glyph for a device row: phone or laptop, never a tinted tile. */
 function DeviceGlyph({ hint }: { hint: string }) {
   const h = hint.toLowerCase()
   const isMobile =
@@ -50,7 +49,7 @@ export default function TrustedDevicesCard() {
       const data = await getUserDevices()
       setDevices(data.devices ?? [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load devices')
+      setError(err instanceof Error ? err.message : "Couldn't load your trusted devices.")
     }
   }, [])
 
@@ -77,96 +76,103 @@ export default function TrustedDevicesCard() {
       setDevices(prev => prev.filter(d => d.id !== device.id))
       toast.success('Device removed. A new sign-in from it will trigger an alert.')
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to remove device')
+      toast.error(getAuthErrorMessage(err as Error) || "Couldn't remove the device. Try again in a moment.")
     } finally {
       setRemovingId(null)
     }
   }
 
   return (
-    <section className="space-y-4">
-      <div className="min-w-0">
-        <p className="font-semibold text-micro-label uppercase text-muted-foreground">Trusted devices</p>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          Devices that have signed in to your account. Removing a device means the next sign-in from
-          it will trigger a new-device alert.
-        </p>
-      </div>
-
+    <>
       {loading ? (
         <SettingsLoadingState rows={3} />
       ) : error ? (
-        <SettingsErrorState message={error} onRetry={handleRetry} />
-      ) : devices.length === 0 ? (
-        <SettingsPanel>
-          <EmptyRow
-            icon={<Laptop weight="regular" />}
-            title="No trusted devices yet"
-            caption="Devices are added automatically the first time you sign in and verify your session."
-          />
-        </SettingsPanel>
+        <SettingsErrorState
+          title="Couldn't load your trusted devices"
+          message={error}
+          onRetry={handleRetry}
+        />
       ) : (
-        <Table aria-label="Trusted devices">
-          <THead>
-            <TR>
-              <TH>Device</TH>
-              {/* First seen drops out below sm — Last seen carries the signal
-                  and the table then fits a ~358px viewport. */}
-              <TH className="hidden sm:table-cell">First seen</TH>
-              <TH>Last seen</TH>
-              <TH className="w-px" aria-label="Actions" />
-            </TR>
-          </THead>
-          <TBody>
-            {devices.map(device => (
-              <TR key={device.id}>
-                <TD>
-                  <div className="flex min-w-0 items-center gap-3">
-                    <DeviceGlyph hint={device.display_hint} />
-                    <span
-                      className="min-w-0 flex-1 truncate font-medium text-foreground"
-                      title={device.display_hint || 'Unknown device'}
+        <SettingsPanel
+          title="Trusted devices"
+          description="Devices that have signed in to your account. Removing a device means the next sign-in from it triggers a new-device alert."
+        >
+          {devices.length === 0 ? (
+            <EmptyRow
+              icon={<Laptop weight="regular" />}
+              title="No trusted devices yet"
+              caption="Devices are added automatically the first time you sign in and verify your session."
+            />
+          ) : (
+            <Table aria-label="Trusted devices" containerClassName="border-0">
+              <THead>
+                <TR>
+                  <TH>Device</TH>
+                  {/* First seen drops out below sm: Last seen carries the
+                      signal and the table then fits a ~358px viewport. */}
+                  <TH className="hidden sm:table-cell">First seen</TH>
+                  <TH numeric>Last seen</TH>
+                  <TH className="w-px">
+                    <span className="sr-only">Actions</span>
+                  </TH>
+                </TR>
+              </THead>
+              <TBody>
+                {devices.map(device => (
+                  <TR key={device.id}>
+                    <TD>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <DeviceGlyph hint={device.display_hint} />
+                        <span
+                          className="min-w-0 flex-1 truncate font-medium text-foreground"
+                          title={device.display_hint || 'Unknown device'}
+                        >
+                          {device.display_hint || 'Unknown device'}
+                        </span>
+                        {device.is_current && (
+                          <StatusChip tone="neutral" className="shrink-0">
+                            This device
+                          </StatusChip>
+                        )}
+                      </div>
+                    </TD>
+                    <TD
+                      className="hidden whitespace-nowrap text-xs text-muted-foreground sm:table-cell"
+                      title={formatDateTimeFull(new Date(device.first_seen_at))}
                     >
-                      {device.display_hint || 'Unknown device'}
-                    </span>
-                    {device.is_current && (
-                      <StatusChip tone="neutral" className="shrink-0">
-                        This device
-                      </StatusChip>
-                    )}
-                  </div>
-                </TD>
-                <TD
-                  numeric
-                  className="hidden whitespace-nowrap text-xs text-muted-foreground sm:table-cell"
-                  title={formatDateTimeFull(new Date(device.first_seen_at))}
-                >
-                  {formatRelativeTime(device.first_seen_at)}
-                </TD>
-                <TD
-                  numeric
-                  className="whitespace-nowrap text-xs text-muted-foreground"
-                  title={formatDateTimeFull(new Date(device.last_seen_at))}
-                >
-                  {formatRelativeTime(device.last_seen_at)}
-                </TD>
-                <TD className="text-right">
-                  {!device.is_current && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => setConfirmDevice(device)}
-                      disabled={removingId === device.id}
+                      {/* One format per column: first seen is a fixed fact, so
+                          the calendar date; last seen is a moving one, so
+                          relative. Relative in both columns read as
+                          "5h ago / 25/08 / 1d ago" down one column (staging,
+                          16-09-2026), which is the fault §4.7 named. */}
+                      {formatDate(new Date(device.first_seen_at))}
+                    </TD>
+                    <TD
+                      numeric
+                      className="whitespace-nowrap text-xs text-muted-foreground"
+                      title={formatDateTimeFull(new Date(device.last_seen_at))}
                     >
-                      {removingId === device.id ? 'Removing…' : 'Remove'}
-                    </Button>
-                  )}
-                </TD>
-              </TR>
-            ))}
-          </TBody>
-        </Table>
+                      {formatRelativeTime(device.last_seen_at)}
+                    </TD>
+                    <TD className="text-right">
+                      {!device.is_current && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setConfirmDevice(device)}
+                          disabled={removingId === device.id}
+                        >
+                          {removingId === device.id ? 'Removing…' : 'Remove'}
+                        </Button>
+                      )}
+                    </TD>
+                  </TR>
+                ))}
+              </TBody>
+            </Table>
+          )}
+        </SettingsPanel>
       )}
 
       <ConfirmDialog
@@ -180,6 +186,6 @@ export default function TrustedDevicesCard() {
           if (confirmDevice) await handleRemove(confirmDevice)
         }}
       />
-    </section>
+    </>
   )
 }

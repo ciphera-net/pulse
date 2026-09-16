@@ -22,17 +22,22 @@ import {
 } from '@phosphor-icons/react'
 
 /**
- * Settings navigation config — the ONE place the tab list and its icon
- * metaphors live. Shared by the desktop nav rail + mobile bottom-sheet
- * (`SettingsShell`) and the `/settings` landing page's section rows, so the
- * three surfaces can never drift apart.
+ * Settings navigation config — the ONE place the tab list, its icon
+ * metaphors and its one-line descriptions live. Shared by the desktop nav
+ * rail + mobile bottom-sheet (`SettingsShell`) and the `/settings` landing
+ * page's section rows, so the three surfaces can never drift apart. (The
+ * landing page used to carry its own copy of the descriptions and had already
+ * lost a tab — API Keys — by the time the rail started showing them too.)
  *
  * Kept dependency-free (icons + types only): the landing page imports this
  * without pulling the shell's framer-motion / context graph along.
  *
- * Icon treatment is the consumer's job (spec §2.1 + owner direction 18-07):
- * `weight="regular"`, w-4 h-4, muted — the active row's icon simply inherits
- * the row's orange with the text. Group band headers stay text-only.
+ * Icon treatment is the consumer's job: `weight="regular"`, w-4 h-4, muted —
+ * the active row's icon simply inherits the row's orange with the text.
+ *
+ * Descriptions are the rail's second line (owner pick A6, 16-09-2026). They
+ * have to fit two lines at the rail's 224px, so they are short and end with a
+ * full stop; `nav.test.ts` pins both.
  */
 
 export type Section = 'site' | 'organization' | 'account'
@@ -40,6 +45,8 @@ export type Section = 'site' | 'organization' | 'account'
 export interface NavTab {
   label: string
   href: string
+  /** One line, under the label, in the rail and on the landing page. */
+  description: string
   /** Phosphor icon for the row (rail, sheet, landing tile). */
   icon: Icon
   /** Only visible when this permission is held. */
@@ -57,48 +64,48 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Site',
     section: 'site',
     tabs: [
-      { label: 'General', href: '/settings/site/general', icon: GearSix, requires: 'sites.edit' },
-      { label: 'Goals', href: '/settings/site/goals', icon: Target, requires: 'goals.manage' },
-      { label: 'Visibility', href: '/settings/site/visibility', icon: Eye, requires: 'sites.edit' },
-      { label: 'Privacy', href: '/settings/site/privacy', icon: ShieldCheck, requires: 'sites.edit' },
+      { label: 'General', href: '/settings/site/general', description: 'Name, domain, timezone, tracking script.', icon: GearSix, requires: 'sites.edit' },
+      { label: 'Goals', href: '/settings/site/goals', description: 'Conversions and key actions.', icon: Target, requires: 'goals.manage' },
+      { label: 'Visibility', href: '/settings/site/visibility', description: 'Public dashboard and share links.', icon: Eye, requires: 'sites.edit' },
+      { label: 'Privacy', href: '/settings/site/privacy', description: 'Collection and retention.', icon: ShieldCheck, requires: 'sites.edit' },
       // Bot & Spam is viewable by every member (the server authorises reads on
       // membership); the tab gates mutations on quarantine.manage internally.
-      { label: 'Bot & Spam', href: '/settings/site/bot-spam', icon: Robot },
+      { label: 'Bot & Spam', href: '/settings/site/bot-spam', description: 'Filtering and excluded traffic.', icon: Robot },
       // Heartbeat — the uptime instrument's own glyph (app/sites/[id]/uptime),
       // promoted to the tab that gathers what Pulse watches on a site. Visible
       // to every member like Bot & Spam: the panels are read surfaces, and the
       // one mutation (enable/disable uptime) gates on uptime.manage inside.
-      { label: 'Monitoring', href: '/settings/site/monitoring', icon: Heartbeat },
-      { label: 'Integrations', href: '/settings/site/integrations', icon: Plugs, requires: 'integrations.manage' },
+      { label: 'Monitoring', href: '/settings/site/monitoring', description: 'Uptime and install health.', icon: Heartbeat },
+      { label: 'Integrations', href: '/settings/site/integrations', description: 'Search Console and Bunny CDN.', icon: Plugs, requires: 'integrations.manage' },
     ],
   },
   {
     label: 'Organization',
     section: 'organization',
     tabs: [
-      { label: 'General', href: '/settings/organization/general', icon: Buildings },
-      { label: 'Members', href: '/settings/organization/members', icon: UsersThree },
-      { label: 'Roles & Permissions', href: '/settings/organization/roles', icon: Key, requires: 'roles.manage' },
-      { label: 'Billing', href: '/settings/organization/billing', icon: CreditCard, requires: 'billing.view' },
-      { label: 'Notifications', href: '/settings/organization/notifications', icon: Bell, requires: 'notification_settings.manage' },
+      { label: 'General', href: '/settings/organization/general', description: 'Workspace name and slug.', icon: Buildings },
+      { label: 'Members', href: '/settings/organization/members', description: 'Invite and manage your team.', icon: UsersThree },
+      { label: 'Roles & Permissions', href: '/settings/organization/roles', description: 'What each role can access.', icon: Key, requires: 'roles.manage' },
+      { label: 'Billing', href: '/settings/organization/billing', description: 'Plan, usage and invoices.', icon: CreditCard, requires: 'billing.view' },
+      { label: 'Notifications', href: '/settings/organization/notifications', description: 'Workspace categories.', icon: Bell, requires: 'notification_settings.manage' },
       // * Terminal, not Key — Key is already the Roles metaphor, and an API key is
       // * a developer-surface credential rather than a permissions concept.
-      { label: 'API Keys', href: '/settings/organization/api-keys', icon: Terminal, requires: 'integrations.manage' },
-      { label: 'Audit Log', href: '/settings/organization/audit', icon: ClockCounterClockwise, requires: 'audit.view' },
+      { label: 'API Keys', href: '/settings/organization/api-keys', description: 'Read your analytics programmatically.', icon: Terminal, requires: 'integrations.manage' },
+      { label: 'Audit Log', href: '/settings/organization/audit', description: 'Workspace activity.', icon: ClockCounterClockwise, requires: 'audit.view' },
     ],
   },
   {
     label: 'Account',
     section: 'account',
     tabs: [
-      { label: 'Profile', href: '/settings/account/profile', icon: User },
-      { label: 'Security', href: '/settings/account/security', icon: Lock },
-      { label: 'Devices', href: '/settings/account/devices', icon: DeviceMobile },
+      { label: 'Profile', href: '/settings/account/profile', description: 'Display name and email.', icon: User },
+      { label: 'Security', href: '/settings/account/security', description: 'Password, two-factor and passkeys.', icon: Lock },
+      { label: 'Devices', href: '/settings/account/devices', description: 'Trusted devices and security activity.', icon: DeviceMobile },
       // BellRinging, deliberately distinct from the org tab's Bell.
-      { label: 'Notifications', href: '/settings/account/notifications', icon: BellRinging },
+      { label: 'Notifications', href: '/settings/account/notifications', description: 'Delivery preferences and quiet hours.', icon: BellRinging },
       // EnvelopeSimple, not a third bell: these are the emails Ciphera ID sends
       // about the ACCOUNT, a different system from Pulse's own notifications.
-      { label: 'Security alerts', href: '/settings/account/security-alerts', icon: EnvelopeSimple },
+      { label: 'Security alerts', href: '/settings/account/security-alerts', description: 'Emails Ciphera ID sends about your account.', icon: EnvelopeSimple },
     ],
   },
 ]
@@ -110,3 +117,11 @@ export const NAV_GROUPS: NavGroup[] = [
 export const SETTINGS_TAB_ICONS: Record<string, Icon> = Object.fromEntries(
   NAV_GROUPS.flatMap((group) => group.tabs.map((tab) => [tab.href, tab.icon])),
 )
+
+/** The section a settings pathname belongs to, or null on the landing page. */
+export function sectionOf(pathname: string): Section | null {
+  if (pathname.startsWith('/settings/site')) return 'site'
+  if (pathname.startsWith('/settings/organization')) return 'organization'
+  if (pathname.startsWith('/settings/account')) return 'account'
+  return null
+}

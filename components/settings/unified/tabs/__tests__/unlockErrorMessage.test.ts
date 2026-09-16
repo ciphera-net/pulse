@@ -14,18 +14,18 @@ describe('unlockErrorMessage', () => {
     const msg = unlockErrorMessage(new ApiError('rate limited', 429))
     expect(msg).toMatch(/too many attempts/i)
     expect(msg).toMatch(/password was not the problem/i)
-    expect(msg).not.toMatch(/didn’t match/i)
+    expect(msg).not.toMatch(/didn't match/i)
   })
 
   it('still reports genuine credential failures as such', () => {
-    expect(unlockErrorMessage(new ApiError('unauthorized', 401))).toMatch(/didn’t match/i)
-    expect(unlockErrorMessage(new ApiError('forbidden', 403))).toMatch(/didn’t match/i)
+    expect(unlockErrorMessage(new ApiError('unauthorized', 401))).toMatch(/didn't match/i)
+    expect(unlockErrorMessage(new ApiError('forbidden', 403))).toMatch(/didn't match/i)
   })
 
   it('distinguishes a server-side failure from a user mistake', () => {
     const msg = unlockErrorMessage(new ApiError('boom', 503))
     expect(msg).toMatch(/could not be reached/i)
-    expect(msg).not.toMatch(/didn’t match/i)
+    expect(msg).not.toMatch(/didn't match/i)
   })
 
   it('reads the status off a WRAPPED ApiError (the SDK re-throws)', () => {
@@ -45,6 +45,6 @@ describe('unlockErrorMessage', () => {
   })
 
   it('falls back to the credential message only when nothing is known', () => {
-    expect(unlockErrorMessage(new Error('something odd'))).toMatch(/didn’t match/i)
+    expect(unlockErrorMessage(new Error('something odd'))).toMatch(/didn't match/i)
   })
 })

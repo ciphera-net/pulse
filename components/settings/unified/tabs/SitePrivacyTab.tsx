@@ -42,6 +42,7 @@ import {
 } from '@phosphor-icons/react'
 import Link from 'next/link'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
+import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/settings/panels'
@@ -54,29 +55,33 @@ const GEO_OPTIONS = [
   { value: 'none', label: 'Disabled' },
 ]
 
-// The anchored sections — ids are load-bearing deep-link targets and must not
-// change (spec §6 [keep]: section anchors deep-link).
+// The anchored sections: ids are load-bearing deep-link targets and must not
+// change (spec §6 [keep]: section anchors deep-link). Labels are the rail's
+// own copy and are sentence case (rule 15); they need not match a panel's
+// title word for word.
 const SECTIONS = [
-  { id: 'section-data-privacy', label: 'Data & Privacy' },
+  { id: 'section-data-privacy', label: 'Data and privacy' },
   { id: 'section-visitor-views', label: 'Visitor views' },
   { id: 'section-visitor-identity', label: 'Visitor identity' },
   { id: 'section-geographic', label: 'Geographic' },
-  { id: 'section-data-retention', label: 'Data Retention' },
-  { id: 'section-path-grouping', label: 'Path Grouping' },
-  { id: 'section-query-params', label: 'Query Parameters' },
-  { id: 'section-exclude-self', label: 'Exclude Self' },
+  { id: 'section-data-retention', label: 'Data retention' },
+  { id: 'section-path-grouping', label: 'Path grouping' },
+  { id: 'section-query-params', label: 'Query parameters' },
+  { id: 'section-exclude-self', label: 'Exclude self' },
   { id: 'section-pagespeed', label: 'Performance' },
-  { id: 'section-privacy-policy', label: 'Privacy Policy' },
+  { id: 'section-privacy-policy', label: 'Privacy policy' },
 ] as const
 
 // A neutral inline text-link treatment. Orange is reserved for the page's one
 // CTA (spec §2.3), so navigations here read as underlined links, not accents.
 const LINK_CLS =
-  'font-medium text-foreground underline decoration-muted-foreground/50 underline-offset-2 transition-colors ease-apple hover:decoration-foreground'
+  'font-medium text-foreground underline decoration-muted-foreground/50 underline-offset-2 transition-colors duration-fast ease-apple hover:decoration-foreground'
 
 // ─── In-content section mini-nav (spec §6) ────────────────────────────────
-// Replaces the wrapping pill row. Sticky column, active row = orange left bar +
-// text-primary on accent — the exact treatment of the shell's tab rail.
+// A vertical rail of Facet ghost Buttons, not links: each row scrolls the
+// content column to its section rather than navigating, so a real anchor
+// would carry a misleading href. Active row = orange left bar + text-primary
+// on accent, the exact treatment of the shell's tab rail.
 function PrivacySectionNav({
   activeId,
   onSelect,
@@ -90,15 +95,16 @@ function PrivacySectionNav({
         {SECTIONS.map((s) => {
           const active = s.id === activeId
           return (
-            <button
+            <Button
               key={s.id}
               type="button"
+              variant="ghost"
               onClick={() => onSelect(s.id)}
               aria-current={active ? 'true' : undefined}
               className={cn(
-                'relative block px-4 py-2 text-left text-sm font-medium transition-colors duration-fast ease-apple',
+                'relative h-auto w-full justify-start whitespace-normal rounded-none px-4 py-2 text-left text-sm font-medium transition-colors duration-fast ease-apple',
                 active
-                  ? 'bg-accent text-primary'
+                  ? 'bg-accent text-primary hover:bg-accent hover:text-primary'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground',
               )}
             >
@@ -106,7 +112,7 @@ function PrivacySectionNav({
                 <span aria-hidden="true" className="absolute inset-y-0 left-0 w-0.5 bg-primary" />
               )}
               {s.label}
-            </button>
+            </Button>
           )
         })}
       </div>
@@ -130,7 +136,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
   const [visitorViewsEnabled, setVisitorViewsEnabled] = useState(false)
   // How long a returning reader keeps one identity. Stored as the raw column
   // value (-1 / 0 / 1 / 7 / 30); 0 is the calendar-month default and is NOT one
-  // of the four menu options — see the panel below.
+  // of the four menu options. See the panel below.
   const [identityWindow, setIdentityWindow] = useState(0)
   const [dataRetention, setDataRetention] = useState(6)
   const [autoGroupDynamic, setAutoGroupDynamic] = useState(true)
@@ -141,11 +147,11 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
   const [saving, setSaving] = useState(false)
   const [activeSection, setActiveSection] = useState<string>(SECTIONS[0].id)
   // Baseline snapshot is STATE, not a ref: committing it (after save/load)
-  // must re-render so isDirty clears and the beforeunload guard disarms —
-  // the old ref version kept the save bar dirty after a successful save.
+  // must re-render so isDirty clears and the beforeunload guard disarms.
+  // The old ref version kept the save bar dirty after a successful save.
   const [baseline, setBaseline] = useState('')
 
-  // Sync form state — only on first load, skip dirty tracking until ready
+  // Sync form state: only on first load, skip dirty tracking until ready
   const hasInitialized = useRef(false)
   useEffect(() => {
     if (!site || hasInitialized.current) return
@@ -158,7 +164,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
     setHideUnknownLocations(site.hide_unknown_locations ?? false)
     // 🔴 THIS LINE WAS MISSING, and its absence caused two visible bugs at once.
     // The BASELINE below reads visitor_views_enabled from the site, but the state
-    // stayed at its useState(false) default — so on a site with the toggle ON the
+    // stayed at its useState(false) default, so on a site with the toggle ON the
     // switch rendered OFF, and state(false) vs baseline(true) made the tab report
     // 'Unsaved changes' the instant it opened, before anyone touched anything.
     //
@@ -167,7 +173,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
     // feature off. Seeding state and baseline from the same source is the whole
     // contract of this effect; every other field here already honoured it.
     setVisitorViewsEnabled(site.visitor_views_enabled ?? false)
-    // Seeded here AND in the baseline below, from the same source — the
+    // Seeded here AND in the baseline below, from the same source: the
     // visitor_views_enabled lesson above. The column is NOT NULL DEFAULT 0 on
     // the server, so `?? 0` only ever covers a payload that predates it.
     setIdentityWindow(site.identity_window_days ?? 0)
@@ -194,7 +200,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
     hasInitialized.current = true
   }, [site])
 
-  // Sync PSI frequency separately — update both state AND snapshot when it first loads
+  // Sync PSI frequency separately: update both state AND snapshot when it first loads
   const psiInitialized = useRef(false)
   useEffect(() => {
     if (!psiConfig || psiInitialized.current) return
@@ -244,7 +250,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
 
   // Decision E2 (owner, 11-09-2026): the identity panel's footer stays quiet
   // until the Select differs from the SAVED value, then states the consequence.
-  // "Saved" is the baseline — what Save wrote and what Discard restores — so
+  // "Saved" is the baseline (what Save wrote and what Discard restores), so
   // the warning clears the instant either happens, without waiting for the
   // site row to refetch.
   const savedIdentityWindow = useMemo<number | null>(
@@ -303,7 +309,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
       await mutate()
       toast.success('Privacy settings updated')
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')
+      toast.error(getAuthErrorMessage(err as Error) || "Couldn't save your changes. Try again in a moment.")
     } finally {
       setSaving(false)
     }
@@ -328,7 +334,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
   }
 
   // Query params render as removable chips over the comma-separated Input, which
-  // stays the source of truth — every keystroke still writes the string that the
+  // stays the source of truth. Every keystroke still writes the string that the
   // save payload splits, so the chip layer adds no behavioral seam.
   const queryParamList = useMemo(
     () => allowedQueryParams.split(',').map(p => p.trim()).filter(Boolean),
@@ -341,24 +347,25 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
   if (siteError && !site) {
     return (
       <SettingsErrorState
-        message="We couldn't load this site's privacy settings. It may be a temporary problem."
+        title="Couldn't load this site's privacy settings"
+        message="This is usually temporary. Try again in a moment."
         onRetry={() => mutate()}
       />
     )
   }
 
-  if (!site) return <div className="flex items-center justify-center py-12"><Spinner className="w-6 h-6 text-muted-foreground" /></div>
+  if (!site) return <SettingsLoadingState rows={6} />
 
   const isFreePlan = !subscription || subscription.plan_id?.includes('free')
 
-  // What the site does TODAY — the saved window — drives every sentence that
+  // What the site does TODAY (the saved window) drives every sentence that
   // describes the site as it is: the Visitor views caption and the identity
   // panel's quiet footer. A pending, unsaved choice changes neither; it is
   // described by the warning until it is saved.
   //
   // `?? 0`, agreeing with the Select: this is the AUTHED site record, whose
   // column is NOT NULL DEFAULT 0, so a missing field can only be a cached
-  // pre-deploy payload — and the control already reads that as the calendar
+  // pre-deploy payload, and the control already reads that as the calendar
   // month, so the copy beside it must say the same thing.
   const savedIdentityCopy = describeIdentityWindow(identityWindowOf(site) ?? 0)
 
@@ -367,9 +374,9 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
       <PrivacySectionNav activeId={activeSection} onSelect={scrollToSection} />
 
       <div className="min-w-0 flex-1 space-y-8">
-        {/* Data & Privacy — one panel of divide-y toggle rows (spec §6). */}
+        {/* Data and privacy: one panel of divide-y toggle rows (spec §6). */}
         <section id="section-data-privacy" className="scroll-mt-24">
-          <SettingsPanel kicker="Data & Privacy" description="Control what data is collected from your visitors.">
+          <SettingsPanel title="Data and privacy" description="Control what data is collected from your visitors.">
             <PanelRows>
               <PanelRow label="Page paths" caption="Track which pages visitors view." control={<Toggle checked={collectPagePaths} onChange={() => setCollectPagePaths(v => !v)} disabled={!canEdit} />} />
               <PanelRow label="Referrers" caption="Track where visitors come from." control={<Toggle checked={collectReferrers} onChange={() => setCollectReferrers(v => !v)} disabled={!canEdit} />} />
@@ -382,28 +389,29 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
         </section>
 
         {/*
-          Visitor views — its OWN panel, deliberately not a row in "Data & Privacy".
-          That panel's description is "Control what data is collected from your
-          visitors", and this switch does not control collection: Pulse writes the
-          same columns either way. Putting it there would teach exactly the
-          misreading migration 169 exists to warn about — an owner believing the
-          switch stops the data existing. It is a DISPLAY gate, a new class on
-          this tab, and the copy has to say so on its face (design doc §7).
+          Visitor views: its OWN panel, deliberately not a row in "Data and
+          privacy". That panel's description is "Control what data is collected
+          from your visitors", and this switch does not control collection:
+          Pulse writes the same columns either way. Putting it there would
+          teach exactly the misreading migration 169 exists to warn about, an
+          owner believing the switch stops the data existing. It is a DISPLAY
+          gate, a new class on this tab, and the copy has to say so on its
+          face (design doc §7).
         */}
         <section id="section-visitor-views" className="scroll-mt-24">
           <SettingsPanel
-            kicker="Visitor views"
+            title="Visitor views"
             description="Who can read your analytics at visitor grain. This does not change what is collected."
           >
             <PanelRows>
               <PanelRow
                 label="Visitor-level views"
                 // 🔴 The identity sentence FOLLOWS THE SAVED WINDOW. This caption
-                // used to assert "reset every calendar month" as a fact — which
+                // used to assert "reset every calendar month" as a fact, which
                 // is false on this very screen the moment the panel below sets a
                 // window. The options round for that panel found it (design doc
                 // §9.5); it changed in the same release the panel shipped.
-                caption={`Turns on the Visitors page: individual readers, their visits and their journeys. Pulse collects the same data either way — this controls whether anyone can look at it one reader at a time. ${savedIdentityCopy.scope} Turning it on or off is recorded in your audit trail, and it is never exposed on a public share link or the public API.`}
+                caption={`Turns on the Visitors page: individual readers, their visits and their journeys. Pulse collects the same data either way. This controls whether anyone can look at it one reader at a time. ${savedIdentityCopy.scope} Turning it on or off is recorded in your audit trail, and it is never exposed on a public share link or the public API.`}
                 control={<Toggle checked={visitorViewsEnabled} onChange={() => setVisitorViewsEnabled(v => !v)} disabled={!canEdit} />}
               />
             </PanelRows>
@@ -411,27 +419,27 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
         </section>
 
         {/*
-          Visitor identity — its OWN panel, directly below Visitor views
+          Visitor identity: its OWN panel, directly below Visitor views
           (decision B, owner 11-09-2026; artifact c42c362f). One row, cloned
-          from the Data Retention device: a `w-56` Select and a footer under a
+          from the Data retention device: a `w-56` Select and a footer under a
           hairline. Design: docs/plans/11-09-2026-configurable-identity-window-design.md.
 
           🔴 THE UNSET DEFAULT READS "Calendar month (current)" (decision D1).
           The stored default is 0, which is not one of the four menu options,
           and it is NOT the same key as 30 days even though the two measure
-          alike — saving 30 on an unset site re-mints every identity on it. So
+          alike. Saving 30 on an unset site re-mints every identity on it. So
           the stored value is pushed into the list as "… (current)" when it is
-          not an option, exactly as Data Retention does, and disappears the
+          not an option, exactly as Data retention does, and disappears the
           moment a real window is chosen.
 
-          The footer (decision E2) is quiet — what the site does today — until
+          The footer (decision E2) is quiet (what the site does today) until
           the Select differs from the saved value; then it states the
           consequence with the house device for one: a 2px brand-orange left
           rule and no fill.
         */}
         <section id="section-visitor-identity" className="scroll-mt-24">
           <SettingsPanel
-            kicker="Visitor identity"
+            title="Visitor identity"
             description="How long a returning reader is recognised as the same visitor. This does not change what is collected."
           >
             <PanelRows>
@@ -461,7 +469,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
               data-identity-window-footer={identityWindowPending ? 'warning' : 'quiet'}
               className={cn(
                 'border-t border-border px-5 py-3',
-                identityWindowPending && 'border-l-2 border-l-brand-orange',
+                identityWindowPending && 'border-l-2 border-l-primary',
               )}
             >
               <p className="text-xs text-muted-foreground">
@@ -471,9 +479,9 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
           </SettingsPanel>
         </section>
 
-        {/* Geographic — Select (spec §6). */}
+        {/* Geographic: Select (spec §6). */}
         <section id="section-geographic" className="scroll-mt-24">
-          <SettingsPanel kicker="Geographic">
+          <SettingsPanel title="Geographic">
             <PanelRows>
               <PanelRow
                 label="Geographic data"
@@ -493,16 +501,16 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
           </SettingsPanel>
         </section>
 
-        {/* Data Retention — Select + plan ceiling note (spec §6). */}
+        {/* Data retention: Select + plan ceiling note (spec §6). */}
         <section id="section-data-retention" className="scroll-mt-24 space-y-4">
           {subscriptionError && (
             <SettingsErrorState
               variant="banner"
-              message="Plan limits could not be loaded."
+              message="Couldn't load your plan limits. Try again."
               onRetry={() => mutateSubscription()}
             />
           )}
-          <SettingsPanel kicker="Data Retention">
+          <SettingsPanel title="Data retention">
             <PanelRows>
               <PanelRow
                 label="Keep raw event data for"
@@ -540,9 +548,9 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
           </SettingsPanel>
         </section>
 
-        {/* Path Grouping — auto-group toggle + manual rules RuledTable (spec §6). */}
+        {/* Path grouping: auto-group toggle + manual rules table (spec §6). */}
         <section id="section-path-grouping" className="scroll-mt-24 space-y-4">
-          <SettingsPanel kicker="Path grouping" description="Control how page paths are tracked, grouped, or excluded from analytics.">
+          <SettingsPanel title="Path grouping" description="Control how page paths are tracked, grouped, or excluded from analytics.">
             <PanelRows>
               <PanelRow
                 label="Auto-group dynamic paths"
@@ -552,37 +560,37 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
             </PanelRows>
           </SettingsPanel>
 
-          <div className="space-y-3">
-            <div className="flex items-end justify-between gap-4">
-              <div className="min-w-0">
-                <p className="font-semibold text-micro-label uppercase text-muted-foreground">Manual rules</p>
-                <p className="mt-1 text-sm text-muted-foreground">Rules are evaluated top-to-bottom. First matching rule wins.</p>
-              </div>
+          {/* Manual rules: its own panel. A hand-built uppercase header used to
+              sit above the table/empty state instead of a SettingsPanel frame.
+              The Add rule action lives in the panel header, and the empty state
+              renders directly in the panel body (no nested card). */}
+          <SettingsPanel
+            title="Manual rules"
+            description="Rules are evaluated top-to-bottom. First matching rule wins."
+            action={
               <Button
-                variant="secondary"
+                variant="outline"
                 size="sm"
                 onClick={() => setPageRules([...pageRules, { type: 'exclude', pattern: '' }])}
-                className="shrink-0 gap-1.5"
+                className="gap-1.5"
               >
                 <Plus weight="bold" className="h-4 w-4" />
                 Add rule
               </Button>
-            </div>
-
+            }
+          >
             {pageRules.length === 0 ? (
-              <SettingsPanel>
-                <EmptyRow
-                  icon={<ListChecks weight="regular" />}
-                  title="No manual rules"
-                  caption="Add a rule to exclude a path from analytics or group matching paths under one label."
-                  ghost={
-                    <div className="flex items-center gap-3 px-5 py-3">
-                      <span className="font-mono text-xs text-muted-foreground">exclude</span>
-                      <span className="font-mono text-xs text-muted-foreground">/admin/*</span>
-                    </div>
-                  }
-                />
-              </SettingsPanel>
+              <EmptyRow
+                icon={<ListChecks weight="regular" />}
+                title="No manual rules"
+                caption="Add a rule to exclude a path from analytics or group matching paths under one label."
+                ghost={
+                  <div className="flex items-center gap-3 px-5 py-3">
+                    <span className="font-mono text-xs text-muted-foreground">exclude</span>
+                    <span className="font-mono text-xs text-muted-foreground">/admin/*</span>
+                  </div>
+                }
+              />
             ) : (
               <Table aria-label="Page rules">
                 <THead>
@@ -628,16 +636,14 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
                             className="font-mono"
                             aria-label={`Rule ${index + 1} label`}
                           />
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
+                        ) : null}
                       </TD>
                       <TD numeric>
                         <div className="flex items-center justify-end gap-1">
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7"
+                            className="h-8 w-8"
                             onClick={() => moveRule(index, -1)}
                             disabled={index === 0}
                             aria-label={`Move rule ${index + 1} up`}
@@ -647,7 +653,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7"
+                            className="h-8 w-8"
                             onClick={() => moveRule(index, 1)}
                             disabled={index === pageRules.length - 1}
                             aria-label={`Move rule ${index + 1} down`}
@@ -657,7 +663,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
                             onClick={() => removeRule(index)}
                             aria-label={`Remove rule ${index + 1}`}
                           >
@@ -670,12 +676,12 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
                 </TBody>
               </Table>
             )}
-          </div>
+          </SettingsPanel>
         </section>
 
-        {/* Query Parameters — chip rows over the source-of-truth Input (spec §6). */}
+        {/* Query parameters: chip rows over the source-of-truth Input (spec §6). */}
         <section id="section-query-params" className="scroll-mt-24">
-          <SettingsPanel kicker="Query Parameters" description="Parameters to keep in page stats. All other query parameters are automatically stripped from page paths.">
+          <SettingsPanel title="Query parameters" description="Parameters to keep in page stats. All other query parameters are automatically stripped from page paths.">
             <div className="space-y-3 px-5 py-4">
               {queryParamList.length > 0 && (
                 <div className="flex flex-wrap gap-2">
@@ -685,14 +691,16 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
                       className="inline-flex items-center gap-1.5 rounded-none bg-muted px-2 py-1 font-mono text-xs text-foreground"
                     >
                       {param}
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => removeQueryParam(index)}
                         aria-label={`Remove ${param}`}
-                        className="text-muted-foreground transition-colors hover:text-foreground"
+                        className="h-4 w-4 p-0 text-muted-foreground transition-colors duration-fast ease-apple hover:bg-transparent hover:text-foreground"
                       >
                         <X weight="bold" className="h-3 w-3" />
-                      </button>
+                      </Button>
                     </span>
                   ))}
                 </div>
@@ -710,42 +718,46 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
           </SettingsPanel>
         </section>
 
-        {/* Exclude Self — neutral action, no orange icon tile (spec §2.3). */}
+        {/* Exclude self: neutral action, no orange icon tile (spec §2.3). */}
         <section id="section-exclude-self" className="scroll-mt-24">
-          <SettingsPanel kicker="Exclude my visits" description="Stop tracking your own visits from this browser.">
+          <SettingsPanel title="Exclude my visits" description="Stop tracking your own visits from this browser.">
             <div className="space-y-3 px-5 py-4">
               <p className="text-sm text-muted-foreground">
                 Open your site with a special parameter to set a flag in this browser&apos;s localStorage that tells the Pulse script to skip tracking. Visit the link again to re-enable tracking.
               </p>
-              <a
-                href={`https://${site.domain}?pulse-ignore`}
-                target="_blank"
-                rel="noopener noreferrer"
-                /* min-h-9 + py-2, not a fixed h-9: the label embeds the site
-                   domain, so on a phone it wraps to two lines and a fixed-height
-                   box let the text escape its own border. A single line still
-                   computes to exactly 36px (20px text + 16px padding), so this
-                   is pixel-identical wherever the label fits on one line. */
-                className="inline-flex min-h-9 items-center gap-1.5 rounded-none border border-input bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors ease-apple hover:bg-muted"
+              {/* h-auto + py-2, not the outline rung's fixed height: the label
+                  embeds the site domain, so on a phone it wraps to two lines
+                  and a fixed height let the text escape its own border. */}
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                className="h-auto min-h-9 items-center gap-1.5 whitespace-normal px-3 py-2 text-left text-sm"
               >
-                <EyeSlash weight="bold" className="h-4 w-4" />
-                Toggle exclusion on {site.domain}
-              </a>
+                <a
+                  href={`https://${site.domain}?pulse-ignore`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <EyeSlash weight="bold" className="h-4 w-4" />
+                  Toggle exclusion on {site.domain}
+                </a>
+              </Button>
               <p className="text-xs text-muted-foreground">You need to do this once per browser. The flag persists until you clear localStorage or visit the link again to toggle it off.</p>
             </div>
           </SettingsPanel>
         </section>
 
-        {/* Performance Monitoring (spec §6). */}
+        {/* Performance monitoring (spec §6). */}
         <section id="section-pagespeed" className="scroll-mt-24 space-y-4">
           {psiConfigError && (
             <SettingsErrorState
               variant="banner"
-              message="Performance configuration could not be loaded."
+              message="Couldn't load your performance settings. Try again."
               onRetry={() => mutatePSIConfig()}
             />
           )}
-          <SettingsPanel kicker="Performance monitoring">
+          <SettingsPanel title="Performance monitoring">
             <PanelRows>
               <PanelRow
                 label="Check frequency"
@@ -782,14 +794,14 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
           </SettingsPanel>
         </section>
 
-        {/* Privacy Policy — mono code block panel (spec §6). */}
+        {/* Privacy policy: mono code block panel (spec §6). */}
         <section id="section-privacy-policy" className="scroll-mt-24">
           <SettingsPanel
-            kicker="For your privacy policy"
-            description="Copy the text below into your Privacy Policy. It updates automatically based on your saved settings."
+            title="For your privacy policy"
+            description="Copy the text below into your privacy policy. It updates automatically based on your saved settings."
           >
             <div className="space-y-3 px-5 py-4">
-              <p className="text-xs text-amber-400">This is provided for convenience and is not legal advice. Consult a lawyer for compliance requirements.</p>
+              <p className="text-xs text-muted-foreground">This is provided for convenience and is not legal advice. Consult a lawyer for compliance requirements.</p>
               <div className="relative">
                 <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-none border border-border bg-muted px-4 py-3 pr-12 font-sans text-xs text-muted-foreground">
                   {generatePrivacySnippet(site)}
@@ -806,7 +818,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
                       toast.success('Privacy snippet copied')
                       setTimeout(() => setSnippetCopied(false), 2000)
                     } catch {
-                      toast.error('Could not copy to clipboard')
+                      toast.error("Couldn't copy the snippet. Try again.")
                     }
                   }}
                 >

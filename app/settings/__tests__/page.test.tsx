@@ -4,6 +4,9 @@ import { render, screen } from '@testing-library/react'
 // cn is the only facet surface the panel primitives touch.
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...a: unknown[]) => a.filter(Boolean).join(' '),
+  // Facet Button; `asChild` hands the classes to its child (a Link), so the
+  // rendered element stays an anchor.
+  Button: ({ children, asChild, ...props }: any) => (asChild ? children : <button {...props}>{children}</button>),
 }))
 
 vi.mock('next/link', () => ({

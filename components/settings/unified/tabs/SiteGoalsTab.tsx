@@ -9,7 +9,7 @@ import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/settings/panels'
 import { MastheadAction } from '@/components/settings/shell-slots'
 import { useGoals } from '@/lib/swr/dashboard'
-import { createGoal, updateGoal, deleteGoal } from '@/lib/api/goals'
+import { createGoal, updateGoal, deleteGoal, type Goal } from '@/lib/api/goals'
 import { useCan } from '@/lib/auth/permissions'
 
 export default function SiteGoalsTab({ siteId }: { siteId: string }) {
@@ -32,7 +32,7 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
     setFieldErrors({})
   }
 
-  const startEdit = (goal: { id: string; name: string; event_name: string }) => {
+  const startEdit = (goal: Goal) => {
     setEditing(goal.id)
     setCreating(false)
     setName(goal.name)
@@ -72,7 +72,10 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
       await mutate()
       cancel()
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to save goal')
+      toast.error(
+        getAuthErrorMessage(err as Error) ||
+          (editing ? "Couldn't save the goal. Try again." : "Couldn't create the goal. Try again."),
+      )
     } finally {
       setSaving(false)
     }
@@ -86,23 +89,24 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
       toast.success('Goal deleted')
       await mutate()
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to delete goal')
+      toast.error(getAuthErrorMessage(err as Error) || "Couldn't delete the goal. Try again.")
     } finally {
       setDeletingId(null)
     }
   }
 
-  // A loading fetch reads as the panel filling in — never a bare spinner.
+  // A loading fetch reads as the panel filling in, never a bare spinner.
   if (isLoading) {
     return <SettingsLoadingState rows={3} />
   }
 
-  // error ≠ empty (B6): a failed fetch must surface a retry, never fall through
-  // to the "No goals yet" empty state as if the site genuinely had none.
+  // Error is not empty: a failed fetch surfaces a named retry, never a
+  // "No goals yet" state that reads as if the site genuinely had none.
   if (error) {
     return (
       <SettingsErrorState
-        message={getAuthErrorMessage(error as Error) || 'Failed to load goals.'}
+        title="Couldn't load your goals"
+        message={getAuthErrorMessage(error as Error) || undefined}
         onRetry={() => mutate()}
         retrying={isValidating}
       />
@@ -110,129 +114,133 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
   }
 
   const formOpen = creating || !!editing
+  const confirmGoal = goals.find(goal => goal.id === confirmDeleteId) ?? null
 
   return (
     <div className="space-y-8">
-      {/* The tab's one orange: the primary CTA, portaled into the masthead. Hidden
-          while the inline form is open so the form's Save button is the only
-          solid-orange element in view (spec §2.3). */}
+      {/* The tab's one orange: the primary CTA, portaled into the masthead.
+          Hidden while the form panel is open so its own Save button stays the
+          only solid-orange element in view. */}
       {canManageGoals && !formOpen && (
         <MastheadAction>
-          <Button onClick={startCreate} variant="default" className="gap-1.5">
-            <Plus weight="bold" className="h-4 w-4" /> Add goal
+          <Button size="sm" onClick={startCreate}>
+            <Plus weight="bold" className="mr-1.5 h-4 w-4" />
+            Add goal
           </Button>
         </MastheadAction>
       )}
 
-      <SettingsPanel kicker="Goals" description="Track custom events as conversion goals.">
-        {/* Inline create / edit form — per-field validation preserved. */}
-        {formOpen && (
-          <div className="border-b border-border">
-            <div className="px-5 py-3">
-              <p className="font-semibold text-micro-label uppercase text-muted-foreground">
-                {editing ? 'Edit goal' : 'New goal'}
-              </p>
-            </div>
-            <PanelRows>
-              <PanelRow label="Display name" htmlFor="goal-name" caption="Shown across reports and funnels.">
-                <Input
-                  id="goal-name"
-                  value={name}
-                  onChange={e => {
-                    setName(e.target.value)
-                    if (fieldErrors.name) setFieldErrors(prev => ({ ...prev, name: undefined }))
-                  }}
-                  placeholder="e.g. Sign up"
-                  disabled={saving}
-                  aria-invalid={!!fieldErrors.name || undefined}
-                  className={fieldErrors.name ? 'border-destructive focus:border-destructive' : undefined}
-                />
-                {fieldErrors.name && <p className="mt-1 text-xs text-destructive">{fieldErrors.name}</p>}
-              </PanelRow>
-              <PanelRow
-                label="Event name"
-                htmlFor="goal-event"
-                caption="The event key sent from your site. Can't be changed after creation."
-              >
-                <Input
-                  id="goal-event"
-                  value={eventName}
-                  onChange={e => {
-                    setEventName(e.target.value)
-                    if (fieldErrors.eventName) setFieldErrors(prev => ({ ...prev, eventName: undefined }))
-                  }}
-                  placeholder="e.g. signup_click"
-                  disabled={!!editing || saving}
-                  aria-invalid={!!fieldErrors.eventName || undefined}
-                  className={`font-mono ${fieldErrors.eventName ? 'border-destructive focus:border-destructive' : ''}`}
-                />
-                {fieldErrors.eventName && <p className="mt-1 text-xs text-destructive">{fieldErrors.eventName}</p>}
-              </PanelRow>
-            </PanelRows>
-            <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
-              <Button onClick={cancel} variant="secondary" size="sm" disabled={saving}>Cancel</Button>
-              <Button onClick={handleSave} variant="default" size="sm" disabled={saving}>
-                {saving ? 'Saving…' : editing ? 'Update' : 'Create'}
-              </Button>
-            </div>
+      {/* A standing panel, not a kicker inside the list: the same device
+          TokenReveal uses for a form-shaped in-flow state (API keys tab). */}
+      {formOpen && (
+        <SettingsPanel title={editing ? 'Edit goal' : 'New goal'}>
+          <PanelRows>
+            <PanelRow label="Display name" htmlFor="goal-name" caption="Shown across reports and funnels.">
+              <Input
+                id="goal-name"
+                value={name}
+                onChange={e => {
+                  setName(e.target.value)
+                  if (fieldErrors.name) setFieldErrors(prev => ({ ...prev, name: undefined }))
+                }}
+                placeholder="e.g. Sign up"
+                disabled={saving}
+                aria-invalid={!!fieldErrors.name || undefined}
+                className={fieldErrors.name ? 'border-destructive focus:border-destructive' : undefined}
+              />
+              {fieldErrors.name && <p className="mt-1 text-xs text-destructive">{fieldErrors.name}</p>}
+            </PanelRow>
+            <PanelRow
+              label="Event name"
+              htmlFor="goal-event"
+              caption="The event key sent from your site. It can't be changed after creation."
+            >
+              <Input
+                id="goal-event"
+                value={eventName}
+                onChange={e => {
+                  setEventName(e.target.value)
+                  if (fieldErrors.eventName) setFieldErrors(prev => ({ ...prev, eventName: undefined }))
+                }}
+                placeholder="e.g. signup_click"
+                disabled={!!editing || saving}
+                aria-invalid={!!fieldErrors.eventName || undefined}
+                className={`font-mono ${fieldErrors.eventName ? 'border-destructive focus:border-destructive' : ''}`}
+              />
+              {fieldErrors.eventName && <p className="mt-1 text-xs text-destructive">{fieldErrors.eventName}</p>}
+            </PanelRow>
+          </PanelRows>
+          <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
+            <Button variant="ghost" size="sm" onClick={cancel} disabled={saving}>
+              Cancel
+            </Button>
+            <Button variant="default" size="sm" onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving…' : editing ? 'Update' : 'Create'}
+            </Button>
           </div>
-        )}
+        </SettingsPanel>
+      )}
 
-        {/* Goals list — ruled rows with ALWAYS-visible actions (no hover reveal). */}
-        {goals.length === 0 && !creating ? (
+      <SettingsPanel title="Goals" description="Track custom events as conversion goals.">
+        {goals.length === 0 ? (
           <EmptyRow
             icon={<Target weight="regular" />}
             title="No goals yet"
-            caption="Track custom events like signups, purchases, or button clicks as conversion goals."
+            caption="Track custom events like sign-ups, purchases, and button clicks as conversion goals."
             action={
-              canManageGoals ? (
-                <Button variant="secondary" size="sm" onClick={startCreate}>Add your first goal</Button>
+              canManageGoals && !formOpen ? (
+                <Button variant="outline" size="sm" onClick={startCreate}>
+                  Add your first goal
+                </Button>
               ) : undefined
             }
             ghost={
-              <div className="flex items-center justify-between px-5 py-3.5">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Sign up</p>
-                  <p className="font-mono text-xs text-muted-foreground">signup_click</p>
-                </div>
+              <div className="flex items-center gap-3 px-5 py-3">
+                <span className="text-sm text-muted-foreground">Sign up</span>
+                <span className="font-mono text-xs text-muted-foreground">signup_click</span>
               </div>
             }
           />
         ) : (
           <PanelRows>
             {goals.map(goal => (
-              <div key={goal.id} className="flex items-center justify-between gap-4 px-5 py-3.5">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-foreground">{goal.name}</p>
-                  <p className="truncate font-mono text-xs text-muted-foreground">{goal.event_name}</p>
-                </div>
-                {canManageGoals && (
-                  <div className="flex shrink-0 items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-11 w-11 md:h-8 md:w-8"
-                      aria-label={`Edit ${goal.name}`}
-                      onClick={() => startEdit(goal)}
-                      disabled={deletingId === goal.id}
-                    >
-                      <Pencil weight="bold" className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-11 w-11 md:h-8 md:w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      aria-label={`Delete ${goal.name}`}
-                      onClick={() => setConfirmDeleteId(goal.id)}
-                      disabled={deletingId === goal.id}
-                    >
-                      {deletingId === goal.id
-                        ? <Spinner className="h-3.5 w-3.5" />
-                        : <Trash weight="bold" className="h-3.5 w-3.5" />}
-                    </Button>
-                  </div>
-                )}
-              </div>
+              <PanelRow
+                key={goal.id}
+                label={<span className="truncate">{goal.name}</span>}
+                caption={
+                  <>
+                    Fires on the <code className="font-mono">{goal.event_name}</code> event.
+                  </>
+                }
+                control={
+                  canManageGoals && (
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        aria-label={`Edit ${goal.name}`}
+                        onClick={() => startEdit(goal)}
+                        disabled={deletingId === goal.id}
+                      >
+                        <Pencil weight="bold" className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        aria-label={`Delete ${goal.name}`}
+                        onClick={() => setConfirmDeleteId(goal.id)}
+                        disabled={deletingId === goal.id}
+                      >
+                        {deletingId === goal.id
+                          ? <Spinner className="h-3.5 w-3.5" />
+                          : <Trash weight="bold" className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
+                  )
+                }
+              />
             ))}
           </PanelRows>
         )}
@@ -241,9 +249,13 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
       <ConfirmDialog
         open={confirmDeleteId !== null}
         onOpenChange={(open) => { if (!open) setConfirmDeleteId(null) }}
-        title="Delete goal"
-        description="This goal and all its associated data will be permanently deleted."
-        confirmLabel="Delete"
+        title="Delete this goal?"
+        description={
+          confirmGoal
+            ? `"${confirmGoal.name}" and everything recorded against it are deleted immediately. This cannot be undone.`
+            : ''
+        }
+        confirmLabel="Delete goal"
         variant="danger"
         onConfirm={async () => {
           if (confirmDeleteId) await handleDelete(confirmDeleteId)

@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import type { OrganizationMember } from '@/lib/api/organization'
 import { MastheadSlotProvider } from '@/components/settings/shell-slots'
 
@@ -32,14 +34,35 @@ vi.mock('@/lib/api/roles', () => ({
 vi.mock('../CreateInviteLinkModal', () => ({ default: () => null }))
 vi.mock('../InviteLinksSection', () => ({ default: () => <div data-testid="invite-links" /> }))
 
+// Renders only its confirm affordance — the dialog primitive itself belongs
+// to ConfirmDialog's own suite, not this tab's.
+vi.mock('@/components/ui/ConfirmDialog', () => ({
+  ConfirmDialog: ({ open, onConfirm }: any) =>
+    open ? <button onClick={onConfirm}>Confirm remove</button> : null,
+}))
+
 vi.mock('@ciphera-net/facet', () => ({
-  Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+  // `size` carries through as `data-size` (WorkspaceAuditTab precedent):
+  // React drops an unrecognised `size` attribute on a plain <button> silently,
+  // so a real DOM attribute is needed to pin which rung of the ladder a
+  // control renders at.
+  Button: ({ children, size, ...props }: any) => (
+    <button data-size={size} {...props}>{children}</button>
+  ),
   toast: { success: vi.fn(), error: vi.fn() },
   // `@/lib/utils` re-exports `cn` from facet — the panel primitives call it.
   cn: (...args: any[]) => args.flat(Infinity).filter(Boolean).join(' '),
 }))
 
 import WorkspaceMembersTab from '../WorkspaceMembersTab'
+import { toast } from '@ciphera-net/facet'
+
+function sourceWithoutComments(path: string): string {
+  const raw = readFileSync(path, 'utf8')
+  return raw
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1')
+}
 
 const members: OrganizationMember[] = [
   { organization_id: 'org1', user_id: 'u-you', role: 'owner', joined_at: '2026-01-02T00:00:00Z' },
@@ -63,6 +86,7 @@ beforeEach(() => {
   getOrganizationMembers.mockReset().mockResolvedValue(members)
   getInviteLinks.mockReset().mockResolvedValue([])
   removeOrganizationMember.mockClear()
+  vi.mocked(toast.success).mockClear()
   document.body.innerHTML = ''
 })
 
@@ -82,6 +106,9 @@ describe('WorkspaceMembersTab roster', () => {
     const cta = await screen.findByRole('button', { name: /Invite member/i })
     // The CTA lives in the masthead slot, not inline in the panel.
     expect(screen.getByTestId('masthead-slot').contains(cta)).toBe(true)
+    // Rule 1's masthead pattern is `<Button size="sm">`, matching every other
+    // tab's primary action (WorkspaceApiKeysTab's "New key").
+    expect(cta.getAttribute('data-size')).toBe('sm')
   })
 
   it('shows an always-visible remove action for removable members only', async () => {
@@ -109,12 +136,24 @@ describe('WorkspaceMembersTab non-happy states', () => {
   it('surfaces a distinct error state (not an empty roster) when the members fetch fails', async () => {
     getOrganizationMembers.mockRejectedValueOnce(new Error('boom'))
     renderTab()
-    await waitFor(() =>
-      expect(screen.getByText(/couldn't load your organization members/i)).toBeInTheDocument(),
-    )
+    // Names the failed thing, and lands in the alert landmark rather than a
+    // silently-empty roster.
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(/couldn't load your organization members/i)
     // Error is not silently rendered as an empty roster, and the CTA is absent.
     expect(screen.queryByText(/in your organization$/)).toBeNull()
     expect(screen.queryByRole('button', { name: /Invite member/i })).toBeNull()
+  })
+
+  it('surfaces the shared error state when invite links fail to load, not a silently empty links panel', async () => {
+    // A genuine getInviteLinks failure used to be swallowed into `[]`, which
+    // renders identically to an org that has zero links. It must fail the
+    // whole load, the same as a members fetch failure.
+    getInviteLinks.mockRejectedValueOnce(new Error('boom'))
+    renderTab()
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(/couldn't load your organization members/i)
+    expect(screen.queryByTestId('invite-links')).toBeNull()
   })
 
   it('renders an in-frame empty state when there are no members', async () => {
@@ -122,5 +161,57 @@ describe('WorkspaceMembersTab non-happy states', () => {
     renderTab()
     await waitFor(() => expect(screen.getByText('No members yet')).toBeInTheDocument())
     expect(screen.getByText('0 members in your organization')).toBeInTheDocument()
+  })
+
+  it('shows the shared loading skeleton, not a spinner, while the roster is in flight', async () => {
+    // getOrganizationMembers has not resolved yet at first paint.
+    renderTab()
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    // Let the pending fetch settle so this test does not leak an unflushed
+    // state update into the next one.
+    await waitFor(() => expect(screen.getByText('You')).toBeInTheDocument())
+  })
+})
+
+describe('WorkspaceMembersTab structure and copy (settings overhaul, 16-09-2026)', () => {
+  it('titles the roster like a dashboard section, sentence case, not an uppercase kicker', async () => {
+    renderTab()
+    const heading = await screen.findByRole('heading', { level: 2, name: 'Members' })
+    expect(heading.className).not.toMatch(/uppercase/)
+  })
+
+  it('renders the joined date with tabular-nums, never mono, for column alignment', async () => {
+    renderTab()
+    // All three fixture members carry a joined_at, so match on all of them.
+    const captions = await waitFor(() => {
+      const found = screen.getAllByText(/Joined/)
+      expect(found.length).toBeGreaterThan(0)
+      return found
+    })
+    for (const caption of captions) {
+      expect(caption.className).toMatch(/tabular-nums/)
+      expect(caption.className).not.toMatch(/font-mono/)
+    }
+  })
+
+  it('renders the Owner role as a plain word chip: no icon, no dot', async () => {
+    renderTab()
+    const ownerChip = await screen.findByText('Owner')
+    // A role is a label, not a live state — the chip carries no dot and no
+    // Crown icon any more. Zero element children proves both are gone.
+    expect(ownerChip.children).toHaveLength(0)
+  })
+
+  it('has no em or en dashes anywhere in its source', () => {
+    const src = sourceWithoutComments(join(process.cwd(), 'components/settings/unified/tabs/WorkspaceMembersTab.tsx'))
+    expect(src).not.toMatch(/[—–]/)
+  })
+
+  it('confirms a remove with subject-first, active-voice toast copy, not a passive "has been"', async () => {
+    renderTab()
+    await waitFor(() => expect(screen.getByText('You')).toBeInTheDocument())
+    fireEvent.click(screen.getByLabelText('Remove pending@x.com'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm remove' }))
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('pending@x.com removed'))
   })
 })

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Input, Select, toast, Spinner, CheckIcon, getAuthErrorMessage } from '@ciphera-net/facet'
+import { Input, Select, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { useSite, useInstallStatus } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { useCan } from '@/lib/auth/permissions'
@@ -13,6 +13,7 @@ import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
+import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
 import { displayDomain } from '@/lib/utils/displayDomain'
 
@@ -58,8 +59,16 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
 
   const canEdit = useCan('sites.edit')
 
-  // The panel's single status object. Shares the SWR key with the block's own
-  // read, so the header chip and the block can never report different things.
+  // The tab's one status object, read straight off the server's install_status
+  // enum (no client-side recency math) and shared with ScriptSetupBlock's own
+  // read of the same SWR key, so the header chip and the block can never
+  // report different things.
+  //
+  // Deliberately NOT the band's SiteStatusChip (deleted with the band): it gated
+  // on `site.is_verified` first, which is exactly the signal this tab used to
+  // show as a second, disagreeing row ("Active" in the block, "Not verified"
+  // beside it) before the backend started auto-verifying on the first event.
+  // install_status is the source of truth post-fix; see sharedRequests.
   const { data: installData } = useInstallStatus(siteId, { poll: true })
   const installStatus = installData?.install_status
   const installTone = installStatus === 'active' ? 'success' : installStatus === 'stalled' ? 'warning' : 'neutral'
@@ -117,7 +126,7 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
       await mutate()
       toast.success('Site updated')
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')
+      toast.error(getAuthErrorMessage(err as Error) || "Couldn't save your changes. Try again in a moment.")
     } finally {
       setSaving(false)
     }
@@ -128,7 +137,8 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
   if (error && !site) {
     return (
       <SettingsErrorState
-        message="We couldn't load this site's settings. It may be a temporary problem."
+        title="Couldn't load this site"
+        message="This is usually temporary. Try again in a moment."
         onRetry={() => mutate()}
         retrying={isValidating}
       />
@@ -136,17 +146,21 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
   }
 
   if (!site || !hasInitialized.current) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Spinner className="w-6 h-6 text-muted-foreground" />
-      </div>
-    )
+    return <SettingsLoadingState rows={3} />
   }
 
   return (
     <div className="space-y-8">
       {/* ── Site details ─────────────────────────────────────────────────── */}
-      <SettingsPanel kicker="Site" description="Core details for this site.">
+      <SettingsPanel
+        title="Site"
+        description="Core details for this site."
+        action={
+          <StatusChip tone={installTone} dot>
+            {installLabel}
+          </StatusChip>
+        }
+      >
         <PanelRows>
           <PanelRow label="Name" caption="Shown across Pulse and in reports." htmlFor="site-name">
             <Input
@@ -158,7 +172,7 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
             />
           </PanelRow>
           <PanelRow label="Domain" caption="Set at creation and can't be changed." htmlFor="site-domain">
-            <Input id="site-domain" value={displayDomain(site)} disabled className="opacity-60" />
+            <Input id="site-domain" value={displayDomain(site)} disabled />
           </PanelRow>
           <PanelRow label="Timezone" caption="Used to bucket stats into local days." htmlFor="site-timezone">
             <Select
@@ -176,21 +190,12 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
       </SettingsPanel>
 
       {/* ── Tracking script ──────────────────────────────────────────────── */}
-      {/* ONE status object for this panel, and it is the server's: install
-          status is derived from events actually received. The old row here
-          reported `is_verified` — a flag only ever flipped by a manual
-          "Verify installation" modal — so a site that was demonstrably live
-          could read "Active" in the block and "Not verified" directly beneath
-          it. The backend already auto-verifies on the first event, so that
-          manual round-trip was re-doing work that happens by itself. */}
+      {/* No action chip here: the Site panel above is the one place this tab
+          reports the data state, so there is exactly one answer to "is this
+          site receiving data" on the page, not a second one repeating it. */}
       <SettingsPanel
-        kicker="Tracking script"
+        title="Tracking script"
         description="Add this to your site to start collecting privacy-first analytics."
-        action={
-          <StatusChip tone={installTone} dot pulse={installStatus === 'active'}>
-            {installLabel}
-          </StatusChip>
-        }
       >
         <div className="p-5">
           <ScriptSetupBlock
@@ -215,16 +220,16 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
         <DangerZone
           items={[
             {
-              title: 'Reset Data',
+              title: 'Reset data',
               description: 'Delete all stats and events. This cannot be undone.',
-              buttonLabel: 'Reset Data',
+              buttonLabel: 'Reset data',
               variant: 'outline',
               onClick: () => setShowResetModal(true),
             },
             {
-              title: 'Delete Site',
+              title: 'Delete site',
               description: 'Schedule this site for deletion with a 7-day grace period.',
-              buttonLabel: 'Delete Site...',
+              buttonLabel: 'Delete site',
               variant: 'solid',
               onClick: () => setShowDeleteModal(true),
             },

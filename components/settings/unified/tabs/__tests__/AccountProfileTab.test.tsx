@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, act } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import path from 'node:path'
 
 // --- Mocks ---------------------------------------------------------------
 
@@ -92,6 +95,15 @@ vi.mock('@ciphera-net/facet', () => ({
   ),
   toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
   getAuthErrorMessage: () => 'error',
+}))
+
+// The repair pass routes the "couldn't check" notice through the shared
+// SettingsErrorState primitive, which pulls in a Phosphor glyph. Mocked the
+// same way SessionsPanel/PasskeysPanel already do it: any icon name resolves
+// to a no-op component, so the glyph itself is never under test here.
+vi.mock('@phosphor-icons/react', () => new Proxy({}, {
+  get: (_t, prop) => (prop === 'then' ? undefined : () => null),
+  has: () => true,
 }))
 
 import AccountProfileTab from '../AccountProfileTab'
@@ -244,7 +256,7 @@ describe('AccountProfileTab (Facet structured panels)', () => {
 
     // The error is surfaced and the form stays open for a retry — never a silent
     // close, and no PII was substituted (the profile email field stays empty).
-    expect(await screen.findByText(/didn’t match/i)).toBeInTheDocument()
+    expect(await screen.findByText(/didn't match/i)).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Password')).toBeInTheDocument()
     const profileEmail = container.querySelector('#account-display-name')
     expect(profileEmail).not.toBeNull()
@@ -557,7 +569,7 @@ describe('AccountProfileTab — the workspace that goes with the account', () =>
     // three sites.
     api.getDeletionPreview.mockRejectedValue(new Error('502'))
     const { container } = await openDangerPanel()
-    await screen.findByText(/could not check/i)
+    await screen.findByText(/couldn.t check/i)
     expect(container.textContent).not.toMatch(/no sites/i)
   })
 
@@ -565,7 +577,7 @@ describe('AccountProfileTab — the workspace that goes with the account', () =>
     api.getDeletionPreview.mockResolvedValue([])
     const { container } = await openDangerPanel()
     expect(container.textContent).not.toMatch(/Your workspace/i)
-    expect(container.textContent).not.toMatch(/could not check/i)
+    expect(container.textContent).not.toMatch(/couldn.t check/i)
   })
 
   it('echoes the ids it showed, and nothing else', async () => {
@@ -588,7 +600,7 @@ describe('AccountProfileTab — the workspace that goes with the account', () =>
     // shown. The server refuses instead, and its 409 says why.
     api.getDeletionPreview.mockRejectedValue(new Error('502'))
     const { container } = await openDangerPanel()
-    await screen.findByText(/could not check/i)
+    await screen.findByText(/couldn.t check/i)
 
     fireEvent.change(container.querySelector('#account-delete-password') as HTMLInputElement, { target: { value: 'hunter2' } })
     fireEvent.change(container.querySelector('#account-delete-confirm') as HTMLInputElement, { target: { value: 'DELETE' } })
@@ -693,7 +705,7 @@ describe('AccountProfileTab — changing your email address', () => {
   it('says it could not check — and still lets the change proceed', async () => {
     api.getPendingEmailChange.mockRejectedValue(new Error('503'))
     const { container } = await renderProfile()
-    expect(container.textContent).toMatch(/couldn’t check whether a confirmation is already waiting/i)
+    expect(container.textContent).toMatch(/couldn't check whether a confirmation is already waiting/i)
     // Never the ledger's claim, which would assert a link exists.
     expect(container.textContent).not.toMatch(/Confirmation sent to/i)
     expect(container.querySelector('#account-email-password')).not.toBeNull()
@@ -865,5 +877,173 @@ describe('AccountProfileTab — changing your email address', () => {
       fireEvent.click(screen.getByRole('button', { name: /Cancel request/i }))
     })
     expect(container.textContent).not.toMatch(/no longer pending/i)
+  })
+})
+
+// ── Chrome and copy contract (settings overhaul, 16-09-2026, §6.1) ─────────
+//
+// This round changed copy and chrome only, never the ceremonies above. These
+// pins hold the structural side of that promise: the shared devices render
+// the way the vocabulary specifies, the two Cancel buttons this round moved
+// off the retired grey `variant="secondary"` rung landed on `ghost` (the
+// established rung its siblings already used, e.g. the unlock form's own
+// Cancel), and the source carries no em dash, en dash or literal ellipsis in
+// a user-facing string.
+
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+}
+
+const SOURCE_PATH = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'AccountProfileTab.tsx',
+)
+
+describe('AccountProfileTab — chrome and copy contract', () => {
+  it('titles the Profile panel the way the dashboard titles a section: sentence case, no kicker', () => {
+    render(<AccountProfileTab />)
+    const h2 = screen.getByRole('heading', { level: 2, name: 'Profile' })
+    expect(h2.className).toMatch(/\btext-sm\b/)
+    expect(h2.className).toMatch(/\bfont-semibold\b/)
+    expect(h2.className).not.toMatch(/uppercase|micro-label/)
+  })
+
+  it('renders the loading skeleton with the house status role while the session hydrates', () => {
+    h.user = null
+    render(<AccountProfileTab />)
+    expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument()
+  })
+
+  /**
+   * The email-change form's Cancel used to be `variant="secondary"`, the grey
+   * fill the vocabulary retired. It landed on `ghost`, the rung its sibling
+   * (the unlock form's own Cancel, a few rows up) already used.
+   */
+  it("uses the ghost rung for the email-change form's Cancel, never the retired grey secondary fill", async () => {
+    const { container } = await renderProfile()
+    const form = (container.querySelector('#account-new-email') as HTMLElement).closest('form') as HTMLElement
+    const cancel = Array.from(form.querySelectorAll('button')).find(b => b.textContent === 'Cancel') as HTMLButtonElement
+    expect(cancel).toBeTruthy()
+    expect(cancel.getAttribute('variant')).toBe('ghost')
+    expect(cancel.getAttribute('variant')).not.toBe('secondary')
+  })
+
+  /** Same fix, same reasoning, in the delete-confirmation panel. */
+  it('uses the ghost rung for the delete-confirmation Cancel, never the retired grey secondary fill', async () => {
+    const { container } = await openDangerPanel()
+    const section = (container.querySelector('#account-delete-password') as HTMLElement).closest('section') as HTMLElement
+    const cancel = Array.from(section.querySelectorAll('button')).find(b => b.textContent === 'Cancel') as HTMLButtonElement
+    expect(cancel).toBeTruthy()
+    expect(cancel.getAttribute('variant')).toBe('ghost')
+    expect(cancel.getAttribute('variant')).not.toBe('secondary')
+  })
+
+  it('never uses an em dash, en dash or a literal ellipsis in a user-facing string', () => {
+    // Scoped to string and template literals, not the whole stripped source:
+    // this file legitimately spreads objects (`...prev`, `...DEFAULTS`-shaped
+    // state) and a bare `...` scan would flag that JS syntax as prose. Comments
+    // are stripped first: a small number of them quote exact historical UI text
+    // (what a real screen showed on a dated production measurement) or a title
+    // lifted verbatim from Facet's own changelog, and rewriting those would
+    // misquote the record rather than honour it. See the audit's finding for
+    // this tab and the three block comments it names.
+    const stripped = stripComments(readFileSync(SOURCE_PATH, 'utf8'))
+    const literals =
+      stripped.match(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`/g) ?? []
+    const offenders = literals.filter(s => /[—–]/.test(s) || /\.\.\./.test(s))
+    expect(offenders).toEqual([])
+  })
+
+  // ── Repair pass, 16-09-2026: findings from the two-verifier review ────────
+
+  /**
+   * 🔴 THE DEFECT THIS PINS. Both local form submits used to carry no
+   * `variant`, which defaults to the orange fill Facet's `buttonVariants`
+   * calls `default` — the same rung `SettingsSaveBar`'s own "Save changes"
+   * button stands on. A locked, never-unlocked account shows the email-change
+   * form's submit on a normal first visit, and revealing the unlock form adds
+   * a second orange button above it: three oranges, one page.
+   */
+  it("keeps the unlock and email-change submits off the save bar's orange rung", async () => {
+    h.user = { id: 'u1', email: '', display_name: '' }
+    await renderProfile()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Unlock' }))
+    const unlockForm = screen.getByPlaceholderText('Password').closest('form') as HTMLFormElement
+    const unlockSubmit = unlockForm.querySelector('button[type="submit"]') as HTMLButtonElement
+    expect(unlockSubmit.getAttribute('variant')).toBe('outline')
+    expect(unlockSubmit.getAttribute('variant')).not.toBe('default')
+
+    const emailSubmit = screen.getByRole('button', { name: /Send confirmation link/i })
+    expect(emailSubmit.getAttribute('variant')).toBe('outline')
+    expect(emailSubmit.getAttribute('variant')).not.toBe('default')
+  })
+
+  /**
+   * Rule 2: a sub-group inside a panel is a `border-t` divider or a PanelRow,
+   * never a card inside a card. The pending-change ledger used to be a full
+   * `border border-border p-4` box nested inside the Profile panel, which is
+   * itself a bordered card.
+   */
+  it('renders the pending-change ledger as a divider, never a nested bordered card', async () => {
+    api.getPendingEmailChange.mockResolvedValue(PENDING)
+    const { container } = await renderProfile()
+
+    const dot = container.querySelector('.bg-amber-500') as HTMLElement
+    expect(dot).toBeTruthy()
+    const ledger = dot.closest('div.border-t') as HTMLElement
+    expect(ledger).toBeTruthy()
+    // Tailwind's `border` utility is a distinct class token from `border-t` —
+    // a nested card carries the former, a divider only the latter.
+    expect(ledger.classList.contains('border-t')).toBe(true)
+    expect(ledger.classList.contains('border')).toBe(false)
+  })
+
+  /**
+   * Rule 10: the "couldn't check" notice used to hand-roll its own bordered
+   * box, dot, title and retry button instead of composing the shared
+   * `SettingsErrorState`. It is now that primitive's `variant="banner"`,
+   * which renders `role="alert"` and a Retry that calls the same status read
+   * every other path in this file uses.
+   */
+  it("surfaces a failed pending-change check through the shared error banner, and Retry re-checks", async () => {
+    api.getPendingEmailChange.mockRejectedValueOnce(new Error('503'))
+    await renderProfile()
+
+    const alert = screen.getByRole('alert')
+    expect(alert.textContent).toMatch(/couldn't check whether a confirmation is already waiting/i)
+
+    api.getPendingEmailChange.mockResolvedValueOnce(null)
+    const retryButton = alert.querySelector('button') as HTMLButtonElement
+    await act(async () => { fireEvent.click(retryButton) })
+
+    expect(api.getPendingEmailChange).toHaveBeenCalledTimes(2)
+  })
+
+  /**
+   * Rule 8: colour lives in a dot or a word, never a panel background. The
+   * "readable, nothing stored" state used to render a tinted `Banner` even
+   * though it needs no action from the user, the exact condition its
+   * neighbouring branch (the `keyStored` line) already drops one for.
+   */
+  it('states the "nothing stored" fact with a dot and a sentence, never a tinted panel', async () => {
+    // Default `h.user` carries an email (a legacy/already-known session), and
+    // the default `vault.load` mock resolves to `null` (no stored key) — the
+    // exact combination that lands on the third banner branch.
+    await renderProfile()
+
+    expect(await screen.findByText(/end-to-end encrypted/i)).toBeInTheDocument()
+    // No tinted Banner for this branch: the mock renders one as
+    // `role="status"`, and none should be on screen for this state.
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('never uses a curly quote in a user-facing string', () => {
+    const stripped = stripComments(readFileSync(SOURCE_PATH, 'utf8'))
+    const literals =
+      stripped.match(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`/g) ?? []
+    const offenders = literals.filter(s => /[‘’“”]/.test(s))
+    expect(offenders).toEqual([])
   })
 })

@@ -9,7 +9,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 // are stubbed.
 
 vi.mock('next/link', () => ({ default: ({ children, href }: any) => <a href={href}>{children}</a> }))
-vi.mock('next/navigation', () => ({ usePathname: () => '/settings/account/notifications' }))
+vi.mock('next/navigation', () => ({ usePathname: () => '/settings/account/notifications', useRouter: () => ({ push: vi.fn() }) }))
 vi.mock('framer-motion', () => ({
   motion: new Proxy({}, { get: () => ({ children }: any) => <div>{children}</div> }),
   AnimatePresence: ({ children }: any) => <>{children}</>,
@@ -23,13 +23,25 @@ vi.mock('@phosphor-icons/react', () => new Proxy({}, {
   has: () => true,
 }))
 vi.mock('@/lib/auth/permissions', () => ({ useCan: () => true }))
-vi.mock('@/components/settings/active-site', () => ({
-  ActiveSiteProvider: ({ children }: any) => <>{children}</>,
-}))
-vi.mock('@/components/settings/SiteContextBand', () => ({ default: () => null }))
+// No active-site stub needed: ActiveSiteProvider moved out of this shell and up
+// to app/layout-content.tsx (above DashboardShell, so the outer sidebar can read
+// it). SiteHeaderIdentity is the shell's only remaining consumer, and it is stubbed
+// below — if that ever stops being true this file will fail loudly on the
+// "must be used within an ActiveSiteProvider" throw rather than silently
+// rendering against a fake provider.
+vi.mock('@/components/settings/SiteHeaderIdentity', () => ({ SiteHeaderIdentity: ({ fallback }: any) => <span>{fallback}</span> }))
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...a: any[]) => a.flat(Infinity).filter(Boolean).join(' '),
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+  // The shell's scope switcher; this file is about the save slot, so a plain
+  // radiogroup of buttons is all it needs to render.
+  Switcher: ({ options, value, onChange, 'aria-label': label }: any) => (
+    <div role="radiogroup" aria-label={label}>
+      {options.map((o: any) => (
+        <button key={o.value} role="radio" aria-checked={o.value === value} onClick={() => onChange(o.value)}>{o.label}</button>
+      ))}
+    </div>
+  ),
 }))
 
 import SettingsShell from '@/components/settings/SettingsShell'

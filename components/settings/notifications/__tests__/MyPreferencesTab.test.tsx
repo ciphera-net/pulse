@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import path from 'node:path'
 import type {
   PreferencesDocument,
   CategoryPreferenceDoc,
@@ -26,6 +29,10 @@ vi.mock('@/lib/auth/context', () => ({
 }))
 
 const toastError = vi.fn()
+// Toggle keeps its real switch semantics (role + aria-checked), the same
+// stand-in AccountSecurityAlertsTab uses: it carries no name prop of its own
+// (Facet's Toggle takes only checked/onChange/disabled/className), so a
+// switch is found by its row, not by an accessible name — see `switchFor`.
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...a: any[]) => a.flat(Infinity).filter(Boolean).join(' '),
   Modal: ({ isOpen, title, children }: any) =>
@@ -45,6 +52,15 @@ vi.mock('@ciphera-net/facet', () => ({
       ))}
     </select>
   ),
+  Toggle: ({ checked, onChange, disabled }: any) => (
+    <button role="switch" aria-checked={checked} disabled={disabled} onClick={onChange} />
+  ),
+  // Same passthrough shape WorkspaceBillingTab's test uses for the RailGrid
+  // stat-tile primitive: layout only, so a plain div stands in for both.
+  RailGrid: ({ children, minTileWidth: _m, columns: _col, ...props }: any) => (
+    <div {...props}>{children}</div>
+  ),
+  RailGridTile: ({ children, ...props }: any) => <div {...props}>{children}</div>,
   CheckIcon: () => <span />,
   Button: ({ children, onClick, ...rest }: any) => (
     <button type="button" onClick={onClick} {...rest}>
@@ -123,10 +139,10 @@ function doc(overrides: Partial<PreferencesDocument> = {}): PreferencesDocument 
 beforeEach(() => {
   vi.clearAllMocks()
   getPrefsDocument.mockResolvedValue(doc())
-  // 🔴 The mock BRANCHES ON THE BODY the way the deployed proxy does: a
+  // The mock BRANCHES ON THE BODY the way the deployed proxy does: a
   // schedule-only write (no categories key) takes the legacy path and answers
   // {"ok":true} WITHOUT a document. The first version of this mock returned a
-  // full document for every body — the stub encoded a wrong guess and 36
+  // full document for every body, the stub encoded a wrong guess and 36
   // green tests hid a page-destroying crash (the adversarial review's proof).
   updatePrefsBooleans.mockImplementation(async (w: any) =>
     w && w.categories ? { ...doc(), ok: true } : ({ ok: true } as any),
@@ -150,6 +166,35 @@ async function renderTab() {
   render(<MyPreferencesTab />)
   await waitFor(() => expect(screen.getByText('Delivery')).toBeInTheDocument())
 }
+
+/**
+ * A category's channel switch has no accessible name of its own (Facet's
+ * Toggle takes no label prop at all), so it is found the way
+ * AccountSecurityAlertsTab's own test finds one: by walking up from its
+ * PanelRow's visible label to the row, then down to the switch inside it.
+ * Only one category is expanded at a time in these tests (the detail block
+ * unmounts on collapse), so a label is unambiguous across the whole document.
+ */
+function switchFor(label: string): HTMLElement {
+  const labelNode = Array.from(document.querySelectorAll('span,label')).find(
+    (n) => n.textContent === label,
+  )
+  if (!labelNode) throw new Error(`no row labelled "${label}"`)
+  const row = labelNode.closest('div.grid') as HTMLElement | null
+  const control = row?.querySelector('[role="switch"]') as HTMLElement | null
+  if (!control) throw new Error(`row "${label}" has no switch`)
+  return control
+}
+
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+}
+
+const SOURCE_PATH = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'MyPreferencesTab.tsx',
+)
 
 // --- Tests ---------------------------------------------------------------
 
@@ -176,31 +221,65 @@ describe('MyPreferencesTab (round-3 family)', () => {
     expect(screen.getByText('Muted · resumes to In-app + Email')).toBeInTheDocument()
   })
 
-  it('a critical category expands to On·always cells, an em-dash digest and NO mute affordance', async () => {
+  it('a critical category expands to Always-on chips, a Not-digested chip and NO mute affordance', async () => {
     await renderTab()
     fireEvent.click(screen.getByRole('button', { name: /^Billing/ }))
-    expect(screen.getAllByText('On · always').length).toBe(2)
-    expect(screen.getByText('—')).toBeInTheDocument()
-    expect(screen.getByText(/Not available — Billing is never digested/)).toBeInTheDocument()
+    // In-app + Email both read as the one status chip, not a hand-rolled dash.
+    expect(screen.getAllByText('Always on').length).toBe(2)
+    expect(screen.getByText('Not digested')).toBeInTheDocument()
+    expect(screen.getByText('Not available. Billing is never digested.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Mute Billing/ })).toBeNull()
-    // No checkbox inputs at all inside a critical expansion.
-    expect(screen.queryByRole('checkbox')).toBeNull()
+    // No switches at all inside a critical expansion.
+    expect(screen.queryByRole('switch')).toBeNull()
   })
 
-  it('a suppressible category expands to checkbox rows and a mute button', async () => {
+  it('a suppressible category expands to switch rows and a mute button', async () => {
     await renderTab()
     fireEvent.click(screen.getByRole('button', { name: /^Uptime/ }))
-    expect(screen.getAllByRole('checkbox').length).toBe(3)
+    expect(screen.getAllByRole('switch').length).toBe(3)
     expect(screen.getByRole('button', { name: 'Mute Uptime' })).toBeInTheDocument()
+  })
+
+  it('the delivery data strip renders its two stat tiles (unread/total, days kept)', async () => {
+    // uptime: 2 unread of 41 total (fixture); 30 days kept (default read_ttl,
+    // no override). Renders through the RailGridTile stand-in, proving the
+    // repair pass's RailGrid swap did not change what the strip shows.
+    await renderTab()
+    fireEvent.click(screen.getByRole('button', { name: /^Uptime/ }))
+    expect(screen.getByText('2 of 41')).toBeInTheDocument()
+    expect(screen.getByText('Unread notifications.')).toBeInTheDocument()
+    expect(screen.getByText('Days kept after being read.')).toBeInTheDocument()
+  })
+
+  it('both data-strip stat bands go through the shared RailGrid device, never a hand-rolled grid', () => {
+    // Rule 7 / reuse-established-device: WorkspaceBillingTab, SiteBotSpamTab
+    // and WorkspaceRolesTab all nest their stat-tile bands in
+    // RailGrid/RailGridTile; this file used to hand-roll its own
+    // `grid grid-cols-2` band instead (the repair pass's finding). The mock
+    // collapses both to plain divs, so this pins WHICH primitive is called by
+    // reading the source, the same technique the dash/ellipsis checks below
+    // already use.
+    const src = readFileSync(SOURCE_PATH, 'utf8')
+    expect(src).not.toMatch(/grid grid-cols-2/)
+    expect((src.match(/<RailGrid\b/g) ?? []).length).toBe(2)
+    expect((src.match(/<RailGridTile>/g) ?? []).length).toBe(4)
+  })
+
+  it('a stat-tile caption that failed to load reads in the ruled active voice', () => {
+    // Rule 15: "Couldn't <verb> <the thing>", never a passive "X could not be
+    // loaded." (the repair pass's copy finding, both occurrences).
+    const src = readFileSync(SOURCE_PATH, 'utf8')
+    expect(src).not.toMatch(/could not be loaded/)
+    expect((src.match(/Couldn't load this count\./g) ?? []).length).toBe(2)
   })
 
   it('🔴 every category write carries the CURRENT schedule fields (the clobber guard)', async () => {
     await renderTab()
     fireEvent.click(screen.getByRole('button', { name: /^Uptime/ }))
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Daily digest for Uptime' }))
+    fireEvent.click(switchFor('Daily digest'))
     await waitFor(() => expect(updatePrefsBooleans).toHaveBeenCalledTimes(1))
     const body = updatePrefsBooleans.mock.calls[0][0]
-    // The categories half: the FULL row — iris refuses partial writes ("a
+    // The categories half: the FULL row, iris refuses partial writes ("a
     // stored row is the full expression"), so every write carries all four
     // booleans composed from the current document plus the change.
     expect(body.categories).toEqual({
@@ -235,7 +314,7 @@ describe('MyPreferencesTab (round-3 family)', () => {
     // floor is 7 days: 3 must be absent, 7 present, default 30 labelled.
     expect(options).not.toContain('3')
     expect(options).toContain('7')
-    expect(within(selects[0]).getByText('30 days · registry default')).toBeInTheDocument()
+    expect(within(selects[0]).getByText('30 days, registry default')).toBeInTheDocument()
   })
 
   it('selecting the registry default clears the override (null, not a copied value)', async () => {
@@ -249,13 +328,16 @@ describe('MyPreferencesTab (round-3 family)', () => {
     ).toBeNull()
   })
 
-  it('the quiet-hours copy is the ruled variant A, criticals exempt', async () => {
+  it('the quiet-hours copy explains the deferral without a dash, criticals exempt', async () => {
     await renderTab()
     expect(
       screen.getByText(
-        /During quiet hours, email is held and delivered when they end — never dropped\. Billing and Security send immediately, always\./,
+        /During quiet hours, email is held and delivered when they end\. It's never dropped\. Billing and Security send immediately, always\./,
       ),
     ).toBeInTheDocument()
+    // The example tag is the one status chip, with a dot: a real state, not
+    // a hand-tinted span.
+    expect(screen.getByText('Held during quiet hours')).toBeInTheDocument()
   })
 
   it('adopts the SERVER response after a write (stored truth, not the optimistic guess)', async () => {
@@ -266,7 +348,7 @@ describe('MyPreferencesTab (round-3 family)', () => {
     updatePrefsBooleans.mockResolvedValue({ ...answered, ok: true })
     await renderTab()
     fireEvent.click(screen.getByRole('button', { name: /^Uptime/ }))
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Daily digest for Uptime' }))
+    fireEvent.click(switchFor('Daily digest'))
     await waitFor(() => expect(screen.getByText('In-app + Digest')).toBeInTheDocument())
   })
 
@@ -274,7 +356,7 @@ describe('MyPreferencesTab (round-3 family)', () => {
     updatePrefsBooleans.mockRejectedValue(new Error('cannot disable a critical category'))
     await renderTab()
     fireEvent.click(screen.getByRole('button', { name: /^Uptime/ }))
-    fireEvent.click(screen.getByRole('checkbox', { name: 'In-app' }))
+    fireEvent.click(switchFor('In-app'))
     await waitFor(() => expect(toastError).toHaveBeenCalled())
     expect(String(toastError.mock.calls[0][0])).toContain('cannot disable a critical category')
   })
@@ -290,6 +372,42 @@ describe('MyPreferencesTab (round-3 family)', () => {
     const btn = screen.getByRole('button', { name: 'Purge all 87 notifications' })
     fireEvent.click(btn)
     expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('the destructive purge entry is a coral OUTLINE, never a filled button (DangerZone rule)', async () => {
+    await renderTab()
+    const btn = screen.getByRole('button', { name: 'Purge all 87 notifications' })
+    const classes = btn.className.split(/\s+/)
+    expect(classes).toContain('text-destructive')
+    // A hover-only wash (`hover:bg-destructive/10`) is the outline rung's own
+    // affordance; the RESTING class list must carry no bare fill.
+    expect(classes.some((c) => c === 'bg-destructive' || c.startsWith('bg-destructive/'))).toBe(
+      false,
+    )
+  })
+
+  it('titles each panel the way the dashboard titles a section: sentence case, no kicker', async () => {
+    await renderTab()
+    for (const title of ['Delivery', 'Delivery schedule', 'Retention', 'Danger zone']) {
+      const h2 = screen.getByRole('heading', { level: 2, name: title })
+      expect(h2.className).toMatch(/\btext-sm\b/)
+      expect(h2.className).toMatch(/\bfont-semibold\b/)
+      expect(h2.className).not.toMatch(/uppercase|micro-label/)
+    }
+  })
+
+  it('renders an empty row when the registry returns no categories', async () => {
+    getPrefsDocument.mockResolvedValue(doc({ categories: [] }))
+    render(<MyPreferencesTab />)
+    await waitFor(() => expect(screen.getByText('Delivery')).toBeInTheDocument())
+    expect(screen.getByText('No notification categories')).toBeInTheDocument()
+  })
+
+  it('renders the loading skeleton, not a blank page, before the document resolves', () => {
+    getPrefsDocument.mockReturnValue(new Promise(() => {}))
+    listNotifications.mockReturnValue(new Promise(() => {}))
+    render(<MyPreferencesTab />)
+    expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument()
   })
 
   it('🔴 a schedule save survives the {"ok":true} legacy-path answer (re-reads the document)', async () => {
@@ -310,7 +428,7 @@ describe('MyPreferencesTab (round-3 family)', () => {
     // 🔴 THE FIXTURE HAS TO STORE, or the abandonment half proves nothing.
     // With the static document (quiet hours permanently null) an emptied field
     // is byte-identical to an untouched one, so "no second write" was
-    // satisfied by `draft === value` and NOT by the abandon branch — measured:
+    // satisfied by `draft === value` and NOT by the abandon branch, measured:
     // deleting that branch outright left this test green. Store the schedule
     // and re-read it, the way the proxy does, and the empty edit becomes a
     // real clear attempt that has to be refused.
@@ -350,7 +468,7 @@ describe('MyPreferencesTab (round-3 family)', () => {
     expect(body.quiet_hours_start).toBe('22:00')
     expect(body.quiet_hours_end).toBe('08:00') // pairing at commit, not per keystroke
 
-    // Let that write land before testing abandonment — otherwise `saving` is
+    // Let that write land before testing abandonment, otherwise `saving` is
     // still true and the "no second write" assertion below would pass for the
     // wrong reason, proving nothing about abandonment at all.
     await waitFor(() => expect(start.value).toBe('22:00'))
@@ -364,7 +482,7 @@ describe('MyPreferencesTab (round-3 family)', () => {
     expect(updatePrefsBooleans).toHaveBeenCalledTimes(1)
     expect(start.value).toBe('22:00')
 
-    // …and the field is genuinely writable here — so the line above measured
+    // …and the field is genuinely writable here, so the line above measured
     // abandonment, not a save still stuck in flight.
     fireEvent.change(start, { target: { value: '23:15' } })
     fireEvent.blur(start)
@@ -377,7 +495,7 @@ describe('MyPreferencesTab (round-3 family)', () => {
     // Resolve in a MICROTASK on the commit that mounts the schedule fields:
     // React has rendered them but its scheduled passive-effect task has not
     // run yet. TimeField used to resync its draft from the prop in a
-    // `useEffect`, which flushed in exactly that window — the keystroke's
+    // `useEffect`, which flushed in exactly that window, the keystroke's
     // setDraft was overwritten by the effect's, the typed time vanished, and
     // the blur that followed had nothing to commit. That is the CI-only
     // "expected 1 times, got 0" (pipelines 1089, 1180): not a slow budget, a
@@ -411,10 +529,35 @@ describe('MyPreferencesTab (round-3 family)', () => {
     await waitFor(() => expect(getPrefsDocument).toHaveBeenCalledTimes(2))
   })
 
-  it('a failed load renders the error state, never an empty panel', async () => {
+  it('a failed load renders the error state, naming the thing that failed, never an empty panel', async () => {
     getPrefsDocument.mockRejectedValue(new Error('boom'))
     render(<MyPreferencesTab />)
-    await waitFor(() => expect(screen.getByText(/boom|Failed to load/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    expect(screen.getByText("Couldn't load your notification preferences")).toBeInTheDocument()
+    expect(screen.getByText('boom')).toBeInTheDocument()
     expect(screen.queryByText('Delivery')).toBeNull()
+  })
+
+  it('never uses an em dash or en dash anywhere in the file', () => {
+    // Unlike a literal "...", an em/en dash character has no legitimate role
+    // in TSX syntax outside a comment, a string, or bare JSX text, so this
+    // scans the WHOLE comment-stripped source, not just quoted literals.
+    // That is the gap a literals-only scan has: this file's copy is not all
+    // inside quotes (e.g. "Days kept after being read." is bare JSX text
+    // between a <p> tag's children), and a dash landing there would slip
+    // past a scan that only looked inside "..." and '...'.
+    const stripped = stripComments(readFileSync(SOURCE_PATH, 'utf8'))
+    expect(stripped).not.toMatch(/[—–]/)
+  })
+
+  it('never uses a literal three-dot ellipsis in its user-facing copy', () => {
+    // Scoped to string/template literals: this file legitimately spreads
+    // objects (`...patch`, `...zones`), and a bare `...` scan over the whole
+    // file would flag that JS syntax as if it were prose.
+    const stripped = stripComments(readFileSync(SOURCE_PATH, 'utf8'))
+    const literals =
+      stripped.match(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`/g) ?? []
+    const offenders = literals.filter((s) => /\.\.\./.test(s))
+    expect(offenders).toEqual([])
   })
 })
