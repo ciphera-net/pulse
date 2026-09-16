@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import type { InviteLink } from '@/lib/api/organization'
 import type { Role } from '@/lib/api/roles'
 
@@ -26,6 +28,14 @@ vi.mock('@/components/ui/ConfirmDialog', () => ({ ConfirmDialog: () => null }))
 vi.mock('@/lib/api/organization', () => ({ revokeInviteLink: vi.fn() }))
 
 import InviteLinksSection from '../InviteLinksSection'
+import { toast } from '@ciphera-net/facet'
+
+function sourceWithoutComments(path: string): string {
+  const raw = readFileSync(path, 'utf8')
+  return raw
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1')
+}
 
 const future = new Date(Date.now() + 86_400_000).toISOString()
 const past = new Date(Date.now() - 86_400_000).toISOString()
@@ -43,9 +53,9 @@ beforeEach(() => {
 })
 
 describe('InviteLinksSection', () => {
-  it('renders one Invite Links panel with a row per link', () => {
+  it('renders one Invite links panel with a row per link', () => {
     render(<InviteLinksSection orgId="o" links={links} roles={[]} onRevoked={noop} />)
-    expect(screen.getByText('Invite Links')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Invite links' })).toBeInTheDocument()
     expect(screen.getByText('Engineering invite')).toBeInTheDocument()
     expect(screen.getByText('Old invite')).toBeInTheDocument()
     expect(screen.getByText('Capped invite')).toBeInTheDocument()
@@ -66,7 +76,7 @@ describe('InviteLinksSection', () => {
 
   it('renders an in-frame empty state (not null) when there are no links', () => {
     render(<InviteLinksSection orgId="o" links={[]} roles={[]} onRevoked={noop} />)
-    expect(screen.getByText('Invite Links')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'Invite links' })).toBeInTheDocument()
     expect(screen.getByText('No invite links yet')).toBeInTheDocument()
   })
 
@@ -88,5 +98,51 @@ describe('InviteLinksSection', () => {
     expect(screen.getByText('Admin')).toBeInTheDocument()
     expect(screen.getByText('Member')).toBeInTheDocument()
     expect(screen.queryByText('Analyst')).not.toBeInTheDocument()
+  })
+})
+
+describe('InviteLinksSection structure and copy (settings overhaul, 16-09-2026)', () => {
+  it('gives Active, Expired and Used the same chip shape: every status dot carries a dot', () => {
+    render(<InviteLinksSection orgId="o" links={links} roles={[]} onRevoked={noop} />)
+    // Rule 5: "if Active has a dot, [its siblings] have a dot." StatusChip
+    // renders its dot as the chip's one child element, so a dot-bearing chip
+    // has exactly one element child and a dot-less chip has zero (mirrored by
+    // the Owner-role-chip assertion in WorkspaceMembersTab's own suite).
+    expect(screen.getByText('Active').children).toHaveLength(1)
+    expect(screen.getByText('Expired').children).toHaveLength(1)
+    expect(screen.getByText('Used').children).toHaveLength(1)
+  })
+
+
+  it('composes one shared PanelRow idiom: name, chips and actions share a row, not hand-rolled divs', () => {
+    render(<InviteLinksSection orgId="o" links={links} roles={[]} onRevoked={noop} />)
+    // PanelRow's root renders the house grid layout ("grid ..."). Finding it
+    // from the link name and asserting the sibling chip is inside it proves
+    // label/control share one PanelRow, not two independent flex divs.
+    const row = screen.getByText('Engineering invite').closest('.grid')
+    expect(row).not.toBeNull()
+    expect(row).toHaveTextContent('Active')
+    // roles=[] here, so the role chip falls back to the raw slug.
+    expect(row).toHaveTextContent('member')
+  })
+
+  it('renders the use-count and expiry caption with tabular-nums, never mono, for column alignment', () => {
+    render(<InviteLinksSection orgId="o" links={links} roles={[]} onRevoked={noop} />)
+    const caption = screen.getByText(/expires/)
+    expect(caption.className).toMatch(/tabular-nums/)
+    expect(caption.className).not.toMatch(/font-mono/)
+  })
+
+  it('shows the copy-failure toast in the house error voice', async () => {
+    const writeText = vi.fn().mockRejectedValueOnce(new Error('denied'))
+    Object.assign(navigator, { clipboard: { writeText } })
+    render(<InviteLinksSection orgId="o" links={links} roles={[]} onRevoked={noop} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Copy invite link' }))
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Couldn't copy the link. Try again."))
+  })
+
+  it('has no em or en dashes anywhere in its source', () => {
+    const src = sourceWithoutComments(join(process.cwd(), 'components/settings/unified/tabs/InviteLinksSection.tsx'))
+    expect(src).not.toMatch(/[—–]/)
   })
 })
