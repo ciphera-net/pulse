@@ -13,13 +13,13 @@ import {
   THead,
   TBody,
   TR,
-  TH,
   TD,
   RailGrid,
   RailGridTile,
   Switcher,
   getAuthErrorMessage,
 } from '@ciphera-net/facet'
+import { SettingsTH } from '@/components/settings/panels/SettingsTH'
 import { CreditCard, DownloadSimple } from '@phosphor-icons/react'
 import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/settings/panels'
 import { StatusChip } from '@/components/settings/StatusChip'
@@ -776,16 +776,16 @@ export default function WorkspaceBillingTab() {
           <Table aria-label="Invoices" containerClassName="border-0">
             <THead>
               <TR>
-                <TH>Invoice</TH>
+                <SettingsTH>Invoice</SettingsTH>
                 {/* Date + VAT drop out below sm so Invoice/Amount/Status/Download
                     fit a narrow viewport — no data change, both stay in the PDF. */}
-                <TH className="hidden sm:table-cell">Date</TH>
-                <TH numeric>Amount</TH>
-                <TH numeric className="hidden sm:table-cell">VAT</TH>
-                <TH>Status</TH>
-                <TH>
+                <SettingsTH className="hidden sm:table-cell">Date</SettingsTH>
+                <SettingsTH numeric>Amount</SettingsTH>
+                <SettingsTH numeric className="hidden sm:table-cell">VAT</SettingsTH>
+                <SettingsTH>Status</SettingsTH>
+                <SettingsTH>
                   <span className="sr-only">Download</span>
-                </TH>
+                </SettingsTH>
               </TR>
             </THead>
             <TBody>

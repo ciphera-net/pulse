@@ -17,6 +17,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push }),
 }))
 vi.mock('framer-motion', () => ({
+  useReducedMotion: () => false,
   motion: new Proxy({}, { get: () => ({ children }: any) => <div>{children}</div> }),
   AnimatePresence: ({ children }: any) => <>{children}</>,
 }))
@@ -203,3 +204,37 @@ describe('SettingsShell — the site named in the header', () => {
   })
 })
 
+
+// ─── Round two (17-09-2026): the frame, the header line, the rail's rhythm and glide ───
+describe('SettingsShell — round two, the frame and the rail', () => {
+  it('uses the dashboard\'s container: max-w-7xl, the header near the top, no cap on the content column', () => {
+    const { container } = render(<SettingsShell><div>tab</div></SettingsShell>)
+    const wrap = container.querySelector('.max-w-7xl') as HTMLElement
+    expect(wrap).not.toBeNull()
+    expect(wrap.className).toMatch(/\bpt-4\b/)
+    expect(wrap.className).not.toMatch(/\bpy-8\b/)
+    expect(container.querySelector('.max-w-6xl')).toBeNull()
+    // The content column used to stop at max-w-3xl (768px), 208px short of the frame.
+    expect(container.querySelector('.max-w-3xl')).toBeNull()
+  })
+
+  it('puts the primary action at the far right of the header line', () => {
+    const { container } = render(<SettingsShell><div>tab</div></SettingsShell>)
+    const h1 = container.querySelector('h1')!
+    expect(h1.parentElement!.className).toMatch(/\bjustify-between\b/)
+  })
+
+  it('gives every rail row the same height and a hover tint; the rows draw no bar of their own', () => {
+    render(<SettingsShell><div>tab</div></SettingsShell>)
+    const rail = screen.getByRole('navigation', { name: 'Settings sections' })
+    const rows = within(rail).getAllByRole('link').filter((l) => (l.getAttribute('href') ?? '').startsWith('/settings'))
+    for (const row of rows) {
+      expect(row.className).toMatch(/\bmin-h-\[76px\]/)
+      expect(row.className).toMatch(/hover:bg-/)
+      expect(row.querySelector('.w-0\\.5')).toBeNull()
+    }
+    // One measured bar, owned by the rail, is what moves between rows.
+    expect(rail.querySelectorAll('[data-rail-highlight]')).toHaveLength(1)
+    expect(within(rail).getAllByRole('link').filter((l) => l.hasAttribute('data-rail-active'))).toHaveLength(1)
+  })
+})

@@ -10,10 +10,10 @@ import {
   THead,
   TBody,
   TR,
-  TH,
   TD,
   getAuthErrorMessage,
 } from '@ciphera-net/facet'
+import { SettingsTH } from '@/components/settings/panels/SettingsTH'
 import { ListChecks, CaretRight, CaretDown } from '@phosphor-icons/react'
 import { SettingsPanel, EmptyRow } from '@/components/settings/panels'
 import { StatusChip, type ChipTone } from '@/components/settings/StatusChip'
@@ -297,10 +297,10 @@ export default function WorkspaceAuditTab() {
               <Table aria-label="Audit log" containerClassName="border-0">
                 <THead>
                   <TR>
-                    <TH className="w-8" aria-label="Expand" />
-                    <TH>Time</TH>
-                    <TH>Actor</TH>
-                    <TH>Action</TH>
+                    <SettingsTH className="w-8" aria-label="Expand" />
+                    <SettingsTH>Time</SettingsTH>
+                    <SettingsTH>Actor</SettingsTH>
+                    <SettingsTH>Action</SettingsTH>
                   </TR>
                 </THead>
                 <TBody>
