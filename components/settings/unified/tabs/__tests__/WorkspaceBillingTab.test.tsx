@@ -373,8 +373,10 @@ describe('WorkspaceBillingTab grant expiry', () => {
     renderTab()
 
     await waitFor(() => expect(screen.getByText('Grant ends')).toBeTruthy())
-    // The weekday is computed from the calendar date itself; 27-04-2027 is a Tuesday.
-    expect(screen.getByText('Tue, 27/04/2027')).toBeTruthy()
+    // The tile shows the calendar date alone (the weekday version wrapped to two
+    // lines at text-xl on staging, 16-09-2026); the weekday, computed from the
+    // calendar date itself (27-04-2027 is a Tuesday), survives as the tooltip.
+    expect(screen.getByText('27/04/2027')).toHaveAttribute('title', 'Tue, 27/04/2027')
     // The paired negative: without it, a tile labelled BOTH would still pass above.
     expect(screen.queryByText('Renews')).toBeNull()
   })
@@ -402,8 +404,8 @@ describe('WorkspaceBillingTab grant expiry', () => {
 
     await waitFor(() => expect(screen.getByText('Grant ends')).toBeTruthy())
     expect(screen.getByText('Renews')).toBeTruthy()
-    expect(screen.getByText('Tue, 15/09/2026')).toBeTruthy()
-    expect(screen.getByText('Tue, 27/04/2027')).toBeTruthy()
+    expect(screen.getByText('15/09/2026')).toHaveAttribute('title', 'Tue, 15/09/2026')
+    expect(screen.getByText('27/04/2027')).toHaveAttribute('title', 'Tue, 27/04/2027')
   })
 
   it('renders no grant tile when the grant is perpetual', async () => {

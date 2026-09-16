@@ -177,12 +177,14 @@ export default function WorkspaceAuditTab() {
   // as current for the whole round trip.
   const refetching = hasLoadedOnce && loading
 
-  // Filters: Facet Select + dark-schemed native date inputs (spec §6), hoisted
-  // into the panel's header action slot so they stay put across a populated or
-  // an empty result, and drop away only alongside the panel itself while the
-  // first load or a failed load takes its place.
+  // Filters: Facet Select + dark-schemed native date inputs (spec §6), the
+  // panel's FIRST ROW rather than its header action: in the action slot they
+  // pushed the description into a five-line column (staging, 16-09-2026). They
+  // stay put across a populated or an empty result, and drop away only
+  // alongside the panel itself while the first load or a failed load takes
+  // its place.
   const filterToolbar = (
-    <div className="flex flex-wrap items-end gap-3">
+    <div className="flex flex-wrap items-end gap-3 border-b border-border px-5 py-4">
       <div className="space-y-1.5">
         <label htmlFor="audit-action" className="block text-xs font-medium text-muted-foreground">
           Action
@@ -260,7 +262,8 @@ export default function WorkspaceAuditTab() {
       ) : !hasLoadedOnce && loading ? (
         <SettingsLoadingState rows={6} />
       ) : (
-        <SettingsPanel title="Audit log" description={AUDIT_LOG_DESCRIPTION} action={filterToolbar}>
+        <SettingsPanel title="Audit log" description={AUDIT_LOG_DESCRIPTION}>
+          {filterToolbar}
           {error ? (
             <div className="px-5 py-4">
               {/* No title slot on the banner variant, so the message itself

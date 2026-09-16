@@ -137,7 +137,7 @@ describe('AccountDevicesTab (Facet ruled lists)', () => {
     expect(remove.disabled).toBe(false)
   })
 
-  it('shows First seen as a relative date with the absolute date as a tooltip', async () => {
+  it('shows First seen as the calendar date, with the full instant as a tooltip', async () => {
     mockGetDevices.mockResolvedValue({
       devices: [device({ id: 'd1', display_hint: 'Chrome on macOS', first_seen_at: '2026-05-05T10:00:00Z' })],
     })
@@ -145,11 +145,12 @@ describe('AccountDevicesTab (Facet ruled lists)', () => {
     render(<AccountDevicesTab />)
 
     await screen.findByText('Chrome on macOS')
-    // Relative, not the full "Fri, 05/05/2026 06:00" string (the tab's data
-    // flow, not chrome, so this pass keeps the pre-existing format).
-    const firstSeen = screen.getByText('05/05')
+    // One format per column: first seen is a fixed fact and renders as the
+    // calendar date, never relative. Relative in both columns read as
+    // "5h ago / 25/08 / 1d ago" down one column on staging (16-09-2026).
+    const firstSeen = screen.getByText('05/05/2026')
     expect(firstSeen).toBeInTheDocument()
-    // The absolute instant still reaches the reader, via the tooltip.
+    // The full instant still reaches the reader, via the tooltip.
     expect(firstSeen).toHaveAttribute('title', expect.stringContaining('05/05/2026'))
   })
 
