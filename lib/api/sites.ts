@@ -140,6 +140,15 @@ export interface TrafficStatusResponse {
   direction?: 'steady' | 'fell' | 'rose'
   observed: number | null
   expected: number | null
+  /** 🔴 The site's expectation is under the detector's floor, so it can NEVER
+   *  produce a direction — whatever its traffic does.
+   *
+   *  "Steady" and "cannot tell" are different answers, and the panel was showing
+   *  both as "Normal". Measured on production 16-09-2026: all four `Europe/*`
+   *  sites are under the floor on every weekday (best 17.0 visitors, worst 1.0),
+   *  so once the 26-08 session boundary clears on 30-09 they would have read
+   *  "Normal" forever — claiming a judgement that was never made. */
+  below_floor: boolean
 }
 
 export interface CreateSiteRequest {
