@@ -108,7 +108,7 @@ describe('SiteGoalsTab (Facet structured panels)', () => {
     // (components/settings/panels/PanelRow.tsx). A row built from that
     // primitive carries this class on an ancestor; the old hand-rolled
     // `flex items-center justify-between` row did not.
-    const row = name.closest('.md\\:grid-cols-\\[220px_1fr_auto\\]')
+    const row = name.closest('[class*="md:grid-cols-[minmax("]')
     expect(row).toBeTruthy()
     expect(row).toHaveTextContent('signup_click')
   })

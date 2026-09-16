@@ -11,9 +11,9 @@ import {
   THead,
   TBody,
   TR,
-  TH,
   TD,
 } from '@ciphera-net/facet'
+import { SettingsTH } from '@/components/settings/panels/SettingsTH'
 import { Laptop, DeviceMobile } from '@phosphor-icons/react'
 import { EmptyRow, SettingsPanel } from '@/components/settings/panels'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -107,14 +107,14 @@ export default function TrustedDevicesCard() {
             <Table aria-label="Trusted devices" containerClassName="border-0">
               <THead>
                 <TR>
-                  <TH>Device</TH>
+                  <SettingsTH>Device</SettingsTH>
                   {/* First seen drops out below sm: Last seen carries the
                       signal and the table then fits a ~358px viewport. */}
-                  <TH className="hidden sm:table-cell">First seen</TH>
-                  <TH numeric>Last seen</TH>
-                  <TH className="w-px">
+                  <SettingsTH className="hidden sm:table-cell">First seen</SettingsTH>
+                  <SettingsTH numeric>Last seen</SettingsTH>
+                  <SettingsTH className="w-px">
                     <span className="sr-only">Actions</span>
-                  </TH>
+                  </SettingsTH>
                 </TR>
               </THead>
               <TBody>

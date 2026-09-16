@@ -18,6 +18,9 @@ import {
   CaretDown, CaretRight, SidebarSimple, Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, Globe as GlobeIcon,
   GearSix, Target, Eye, ShieldCheck, Robot,
   Buildings, UsersThree, Key, CreditCard, Bell, ClockCounterClockwise, User, Lock, DeviceMobile,
+  Heartbeat,
+  Terminal,
+  EnvelopeSimple,
 } from '@phosphor-icons/react'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -96,6 +99,11 @@ function useHomePageMeta(): PageMeta {
       profile: { label: 'Profile', icon: User },
       security: { label: 'Security', icon: Lock },
       devices: { label: 'Devices', icon: DeviceMobile },
+      // Three tabs the map never had (round two, P14): each read as a bare
+      // "Settings" in the top bar while its siblings named themselves.
+      monitoring: { label: 'Monitoring', icon: Heartbeat },
+      'api-keys': { label: 'API Keys', icon: Terminal },
+      'security-alerts': { label: 'Security alerts', icon: EnvelopeSimple },
     }
     const tabSlug = parts[2] ?? ''
     const meta = TAB_META[tabSlug]
@@ -113,6 +121,18 @@ function useHomePageMeta(): PageMeta {
 
   const segment = pathname.split('/').filter(Boolean)[0] ?? ''
   return HOME_PAGE_META[segment] ?? { title: segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : 'Your Sites', icon: GlobeIcon }
+}
+
+/**
+ * The key of the page-enter wrapper. It re-mounts (and replays the 500ms
+ * fade-and-rise) on every pathname change, which is right between products
+ * and wrong inside settings: there the rail and header persist across tabs,
+ * so re-running it dimmed the whole area, rail included, on every tab click
+ * while nothing happened to the part that changed (round two, M2, measured
+ * 17-09-2026). Settings share one key; the shell animates its own column.
+ */
+export function pageWrapperKey(pathname: string): string {
+  return pathname === '/settings' || pathname.startsWith('/settings/') ? '/settings' : pathname
 }
 
 // Load sidebar only on the client — prevents SSR flash
@@ -495,7 +515,7 @@ export default function DashboardShell({
                * padding while content scrolls visibly through it (the settings
                * header floated 16px down with rows showing above it). */}
               <div
-                key={pathname}
+                key={pageWrapperKey(pathname)}
                 className="animate-in fade-in slide-in-from-bottom-4 pt-4"
                 style={{ animationDuration: '500ms', animationTimingFunction: 'var(--ease-apple)' }}
               >

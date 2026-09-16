@@ -11,7 +11,10 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 vi.mock('next/link', () => ({ default: ({ children, href }: any) => <a href={href}>{children}</a> }))
 vi.mock('next/navigation', () => ({ usePathname: () => '/settings/account/notifications', useRouter: () => ({ push: vi.fn() }) }))
 vi.mock('framer-motion', () => ({
-  motion: new Proxy({}, { get: () => ({ children }: any) => <div>{children}</div> }),
+  useReducedMotion: () => false,
+  // Props pass through (className above all: the strip is found by its classes);
+  // framer's own props are dropped so they never land on a DOM node.
+  motion: new Proxy({}, { get: () => ({ children, initial, animate, exit, transition, layout, ...props }: any) => <div {...props}>{children}</div> }),
   AnimatePresence: ({ children }: any) => <>{children}</>,
 }))
 // NOTE: a bare `new Proxy({}, { get: () => () => null })` as the MODULE would
@@ -83,11 +86,12 @@ describe('Panel-footer save (option C)', () => {
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Discard' })).toBeInTheDocument()
 
-    // The strip is pinned (sticky bottom-0) and lives inside the content column
-    // (max-w-3xl), NOT the masthead.
+    // The strip is pinned (sticky bottom-0) and lives inside the content column,
+    // NOT the masthead. (Round two dropped the column's max-w-3xl cap, so the
+    // column is found by its own marker.)
     const strip = container.querySelector('.sticky.bottom-0')
     expect(strip).not.toBeNull()
-    expect(strip!.closest('.max-w-3xl')).not.toBeNull()
+    expect(strip!.closest('[data-settings-column]')).not.toBeNull()
 
     // CTA is NOT suppressed while dirty — the two coexist now.
     expect(screen.getByRole('button', { name: 'cta-invite' })).toBeInTheDocument()

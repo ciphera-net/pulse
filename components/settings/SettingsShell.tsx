@@ -1,13 +1,15 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { CaretUpDown, X } from '@phosphor-icons/react'
 import { Switcher } from '@ciphera-net/facet'
-import { SPRING } from '@/lib/motion'
+import { SPRING, TIMING } from '@/lib/motion'
+import { CascadeGroup } from '@/components/dashboard/Cascade'
+import { PanelSequenceProvider } from '@/components/settings/panels/PanelSequence'
 
 // Tabbable descendants of a container, in DOM order — the basis for the mobile
 // sheet's focus trap (move-in on open, cycle within, no escape to the page).
@@ -40,18 +42,25 @@ export { MastheadAction }
 // stays muted. Groups, tabs, icons and descriptions all come from `nav.ts`.
 
 function RailRow({
-  group, tab, active, onClick, className,
+  group, tab, active, onClick, className, bar = false,
 }: {
   group: NavGroup; tab: NavTab; active: boolean; onClick?: () => void; className?: string
+  /** Draw a static active bar on the row itself (the mobile sheet); the
+   *  desktop rail owns ONE measured bar that glides between rows (M2). */
+  bar?: boolean
 }) {
   return (
     <Link
       href={tab.href}
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
+      {...(active ? { 'data-rail-active': '' } : {})}
       aria-label={`${group.label}: ${tab.label}`}
       className={cn(
-        'relative flex items-start gap-2.5 px-3.5 py-2.5 transition-colors duration-fast ease-apple',
+        // Round two (S5): every row the height of a two-line row, so a
+        // one-line caption no longer makes the list step up and down. The hover
+        // tint is the landing page's (M2: rows answer the pointer).
+        'relative flex min-h-[76px] items-start gap-2.5 px-3.5 py-2.5 transition-colors duration-fast ease-apple hover:bg-muted/40 motion-reduce:transition-none',
         // ring-inset: the rows sit inside a bordered card, so a non-inset ring
         // would be clipped by the frame.
         'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring',
@@ -59,7 +68,7 @@ function RailRow({
         className,
       )}
     >
-      {active && <span aria-hidden="true" className="absolute inset-y-0 left-0 w-0.5 bg-primary" />}
+      {bar && active && <span aria-hidden="true" className="absolute inset-y-0 left-0 w-0.5 bg-primary" />}
       {/* Fixed icon column, top-aligned with the label's first line. Colour
           inherits the row: muted at rest, orange when active. */}
       <tab.icon weight="regular" aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
@@ -70,6 +79,67 @@ function RailRow({
         <span className="mt-0.5 block text-xs text-muted-foreground">{tab.description}</span>
       </span>
     </Link>
+  )
+}
+
+// ─── The rail's gliding active bar (round two, M2) ───────────────────────
+//
+// The 2px orange bar TRAVELS to the row you pick instead of vanishing here and
+// appearing there. Same device as the sidebar's highlight and Facet's Switcher
+// thumb, deliberately: one measured, absolutely-positioned element moved with a
+// CSS transition on transform (Sidebar.tsx, "The gliding selection highlight").
+// Each row marks itself `data-rail-active` and draws no bar of its own; the
+// list owns the single bar. The first placement does not animate (a bar that
+// slides in from the top on every full load reads as a glitch, not polish).
+function RailList({ activeKey, children }: { activeKey: string; children: React.ReactNode }) {
+  const listRef = useRef<HTMLDivElement | null>(null)
+  const [box, setBox] = useState<{ top: number; height: number } | null>(null)
+  const [settled, setSettled] = useState(false)
+
+  const measure = useCallback(() => {
+    const list = listRef.current
+    const el = list?.querySelector<HTMLElement>('[data-rail-active]')
+    if (!list || !el) {
+      setBox(null)
+      return
+    }
+    const next = { top: el.offsetTop, height: el.offsetHeight }
+    setBox((prev) => (prev && prev.top === next.top && prev.height === next.height ? prev : next))
+  }, [])
+
+  // Before paint, so the first frame already has the bar in place.
+  useLayoutEffect(() => { measure() }, [measure, activeKey, children])
+
+  // Only then allow the glide.
+  useEffect(() => {
+    if (settled || box === null) return
+    const id = requestAnimationFrame(() => setSettled(true))
+    return () => cancelAnimationFrame(id)
+  }, [settled, box])
+
+  // Captions reflow, fonts load late — follow them.
+  useEffect(() => {
+    const list = listRef.current
+    if (!list || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measure)
+    observer.observe(list)
+    for (const child of Array.from(list.children)) observer.observe(child)
+    return () => observer.disconnect()
+  }, [measure, children])
+
+  return (
+    <div ref={listRef} className="relative mt-3 rounded-none border border-border bg-card">
+      <span
+        aria-hidden="true"
+        data-rail-highlight=""
+        className={cn(
+          'pointer-events-none absolute left-0 top-0 z-[1] w-0.5 bg-primary',
+          settled && 'transition-[transform,height,opacity] duration-base ease-apple motion-reduce:transition-none',
+        )}
+        style={box ? { transform: `translateY(${box.top}px)`, height: box.height, opacity: 1 } : { opacity: 0 }}
+      />
+      <div className="divide-y divide-border">{children}</div>
+    </div>
   )
 }
 
@@ -105,7 +175,7 @@ function LegalLinks({ className }: { className?: string }) {
         href="https://ciphera.net/privacy"
         target="_blank"
         rel="noreferrer"
-        className="transition-colors duration-fast hover:text-foreground"
+        className="transition-colors duration-fast ease-apple hover:text-foreground"
       >
         Privacy Policy
       </a>
@@ -114,7 +184,7 @@ function LegalLinks({ className }: { className?: string }) {
         href="https://ciphera.net/terms"
         target="_blank"
         rel="noreferrer"
-        className="transition-colors duration-fast hover:text-foreground"
+        className="transition-colors duration-fast ease-apple hover:text-foreground"
       >
         Terms of Service
       </a>
@@ -215,13 +285,18 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
   return (
     <MastheadSlotProvider value={mastheadSlot}>
       <SaveSlotProvider value={saveSlot}>
-        <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
+        {/* Round two (S1): the dashboard's own container (max-w-7xl, the same
+            24px padding, no top padding beyond the shell's), so the block starts
+            where the dashboard starts and runs to the same right edge. */}
+        <div className="mx-auto w-full max-w-7xl px-4 pt-4 pb-8 sm:px-6">
           {/* ── Header — one line, `Scope · Tab`, the primary action beside it ──
               No eyebrow, no h1 that repeats it, no dek that lists the tabs
               (settings overhaul §6.1). A tab's primary CTA portals into the
               slot right after the title, where the approved A6 mock put it. */}
           <header className="mb-8">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+            {/* S2: the primary action at the far right of the line, where
+                "Add Site" sits on the sites page. */}
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
               <h1 className="flex min-w-0 items-center gap-2.5 text-xl tracking-tight">
                 {activeGroup ? (
                   <>
@@ -246,7 +321,7 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                 )}
               </h1>
               {/* Masthead action slot — a tab's primary CTA portals in here. */}
-              <div ref={setMastheadSlot} className="flex shrink-0 items-center gap-2" />
+              <div ref={setMastheadSlot} className="ml-auto flex shrink-0 items-center gap-2" />
             </div>
 
             {/* Mobile nav trigger — opens the bottom-sheet. Section pages only. */}
@@ -257,7 +332,7 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                 onClick={() => setSheetOpen(true)}
                 aria-haspopup="dialog"
                 aria-expanded={sheetOpen}
-                className="mt-4 flex h-11 w-full items-center justify-between rounded-none border border-input bg-card px-4 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:hidden"
+                className="mt-4 flex h-11 w-full items-center justify-between rounded-none border border-input bg-card px-4 text-sm text-foreground transition-colors duration-fast ease-apple focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:hidden"
               >
                 <span>
                   <span className="text-muted-foreground">{activeGroup.label} · </span>
@@ -273,19 +348,24 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
               {/* ── Nav rail ── */}
               <nav className="hidden w-56 shrink-0 md:block" aria-label="Settings sections">
                 <ScopeSwitcher groups={visibleGroups} value={activeGroup.section} onChange={goToScope} />
-                <div className="mt-3 divide-y divide-border rounded-none border border-border bg-card">
+                <RailList activeKey={pathname}>
                   {activeGroup.tabs.map((tab) => (
                     <RailRow key={tab.href} group={activeGroup} tab={tab} active={pathname === tab.href} />
                   ))}
-                </div>
+                </RailList>
                 <LegalLinks className="mt-8 border-t border-border pt-4" />
               </nav>
 
               {/* ── Content column ──
                   `pb-4` gives the settled footer strip a little breathing room
                   at scroll end so it doesn't kiss the content-panel edge. */}
-              <div className="relative min-w-0 max-w-3xl flex-1 pb-4">
-                <div className="space-y-8 pb-8">{children}</div>
+              <div data-settings-column="" className="relative min-w-0 flex-1 pb-4">
+                {/* M2: the column flips like the dashboard's blocks (the old
+                    panels exit as one, the new ones enter) and M1: each panel
+                    rises in sequence, counted from zero per page. */}
+                <CascadeGroup flipKey={pathname} className="space-y-8 pb-8">
+                  <PanelSequenceProvider>{children}</PanelSequenceProvider>
+                </CascadeGroup>
                 {/* Panel-footer save slot — the buffered-save strip portals in
                     here as the LAST flow child of the column. `display:contents`
                     (no box of its own) so the strip's containing block is this
@@ -295,8 +375,8 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
               </div>
             </div>
           ) : (
-            // ── Landing — section index, no rail ──
-            <div className="max-w-3xl">{children}</div>
+            // ── Landing — section index, no rail; the page lays its groups out ──
+            <PanelSequenceProvider>{children}</PanelSequenceProvider>
           )}
         </div>
 
@@ -318,6 +398,7 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
+                    transition={TIMING}
                     onClick={() => setSheetOpen(false)}
                   />
                   <motion.div
@@ -338,7 +419,7 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                         type="button"
                         onClick={() => setSheetOpen(false)}
                         aria-label="Close"
-                        className="rounded-none p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        className="rounded-none p-1 text-muted-foreground transition-colors duration-fast ease-apple hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -355,6 +436,7 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                           active={pathname === tab.href}
                           onClick={() => setSheetOpen(false)}
                           className="min-h-[44px] px-5 py-3"
+                          bar
                         />
                       ))}
                     </div>
