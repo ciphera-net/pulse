@@ -9,7 +9,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 // are stubbed.
 
 vi.mock('next/link', () => ({ default: ({ children, href }: any) => <a href={href}>{children}</a> }))
-vi.mock('next/navigation', () => ({ usePathname: () => '/settings/account/notifications' }))
+vi.mock('next/navigation', () => ({ usePathname: () => '/settings/account/notifications', useRouter: () => ({ push: vi.fn() }) }))
 vi.mock('framer-motion', () => ({
   motion: new Proxy({}, { get: () => ({ children }: any) => <div>{children}</div> }),
   AnimatePresence: ({ children }: any) => <>{children}</>,
@@ -33,6 +33,15 @@ vi.mock('@/components/settings/SiteContextBand', () => ({ default: () => null })
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...a: any[]) => a.flat(Infinity).filter(Boolean).join(' '),
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+  // The shell's scope switcher; this file is about the save slot, so a plain
+  // radiogroup of buttons is all it needs to render.
+  Switcher: ({ options, value, onChange, 'aria-label': label }: any) => (
+    <div role="radiogroup" aria-label={label}>
+      {options.map((o: any) => (
+        <button key={o.value} role="radio" aria-checked={o.value === value} onClick={() => onChange(o.value)}>{o.label}</button>
+      ))}
+    </div>
+  ),
 }))
 
 import SettingsShell from '@/components/settings/SettingsShell'

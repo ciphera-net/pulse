@@ -223,7 +223,7 @@ export default function WorkspaceBillingTab() {
 
   if (!subscription) {
     return (
-      <SettingsPanel kicker="Subscription">
+      <SettingsPanel title="Subscription">
         <EmptyRow
           icon={<CreditCard />}
           title="No subscription"
@@ -642,7 +642,7 @@ export default function WorkspaceBillingTab() {
           details the API fully supports. ── */}
       {(subscription.billing_email || (canManageBilling && !isFree)) && (
         <SettingsPanel
-          kicker="Billing details"
+          title="Billing details"
           action={
             !editingBilling && canManageBilling && subscription.billing_email ? (
               <TooltipProvider>
@@ -762,7 +762,7 @@ export default function WorkspaceBillingTab() {
       )}
 
       {/* ── Recent invoices — RuledTable (spec §2.2) ── */}
-      <SettingsPanel kicker="Invoices">
+      <SettingsPanel title="Invoices">
         {invoicesError ? (
           <div className="px-5 py-4">
             <SettingsErrorState variant="banner" message={invoicesError} onRetry={() => retryInvoices()} />

@@ -15,13 +15,16 @@ import { Button } from '@ciphera-net/facet'
  * distinct from a genuine empty result, with a Retry that calls `mutate()`.
  *
  * `variant="card"` (default) is an in-frame, left-aligned block sharing the
- * panel grammar (coral hairline, muted line icon, inline Retry) — a
+ * panel grammar (coral hairline, coral glyph, an outline Try again) — a
  * whole-section failure. `variant="banner"` is a compact inline strip for a
- * sub-section that failed while the rest of the tab rendered.
+ * sub-section that failed while the rest of the tab rendered. Neither tints
+ * its surface: colour lives in the glyph and the word.
+ *
+ * Name the thing that failed in `title` ("Couldn't load your API keys") so the
+ * reader knows the blast radius without guessing; `message` then says what to
+ * do about it.
  */
 interface SettingsErrorStateProps {
-  /** Card-variant headline; name the thing that failed ("Couldn't load your
-   *  subscription") so the reader knows the blast radius without guessing. */
   title?: string
   message?: string
   onRetry?: () => void
@@ -32,7 +35,7 @@ interface SettingsErrorStateProps {
 
 export function SettingsErrorState({
   title = "Couldn't load this",
-  message = 'Something went wrong loading this. It may be a temporary problem.',
+  message = 'This is usually temporary. Try again in a moment.',
   onRetry,
   retrying,
   variant = 'card',
@@ -41,19 +44,15 @@ export function SettingsErrorState({
   if (variant === 'banner') {
     return (
       <div
-        className={`flex items-start gap-3 rounded-none border border-destructive/30 bg-destructive/10 p-3 text-sm ${className ?? ''}`}
+        role="alert"
+        className={`flex items-center gap-3 rounded-none border border-destructive/30 bg-card px-4 py-3 text-sm ${className ?? ''}`}
       >
-        <WarningCircle size={16} weight="fill" className="mt-0.5 shrink-0 text-destructive" />
-        <p className="flex-1 text-foreground">{message}</p>
+        <WarningCircle size={16} weight="fill" className="shrink-0 text-destructive" />
+        <p className="min-w-0 flex-1 text-foreground">{message}</p>
         {onRetry && (
-          <button
-            type="button"
-            onClick={onRetry}
-            disabled={retrying}
-            className="font-medium text-destructive underline transition-colors duration-fast ease-apple hover:text-foreground disabled:opacity-50"
-          >
+          <Button variant="ghost" size="sm" onClick={onRetry} disabled={retrying}>
             {retrying ? 'Retrying…' : 'Retry'}
-          </button>
+          </Button>
         )}
       </div>
     )
@@ -71,7 +70,7 @@ export function SettingsErrorState({
           <p className="mt-0.5 text-sm text-muted-foreground">{message}</p>
           {onRetry && (
             <div className="mt-3">
-              <Button variant="secondary" size="sm" onClick={onRetry} disabled={retrying}>
+              <Button variant="outline" size="sm" onClick={onRetry} disabled={retrying}>
                 {retrying ? 'Retrying…' : 'Try again'}
               </Button>
             </div>

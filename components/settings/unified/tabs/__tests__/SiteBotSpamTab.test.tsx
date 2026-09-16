@@ -30,6 +30,9 @@ vi.mock('@/lib/api/sites', () => ({ updateSite: vi.fn() }))
 
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...a: unknown[]) => a.filter(Boolean).join(' '),
+  // Facet Button; `asChild` hands the classes to its child (a Link), so the
+  // rendered element stays an anchor.
+  Button: ({ children, asChild, ...props }: any) => (asChild ? children : <button {...props}>{children}</button>),
   Toggle: ({ checked, onChange, disabled }: any) => (
     <input type="checkbox" role="switch" checked={checked} disabled={disabled} onChange={() => onChange?.()} />
   ),

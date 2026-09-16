@@ -91,7 +91,7 @@ export default function SiteBotSpamTab({ siteId }: { siteId: string }) {
     <div className="space-y-8">
       {/* ── Filtering ─────────────────────────────────────────────────── */}
       <SettingsPanel
-        kicker="Filtering"
+        title="Filtering"
         description="Automatically filter bot traffic and referrer spam from your analytics."
       >
         <PanelRows>

@@ -169,7 +169,7 @@ export default function WorkspaceGeneralTab() {
 
   return (
     <div className="space-y-8">
-      <SettingsPanel kicker="Workspace" description="Basic details about your organization.">
+      <SettingsPanel title="Workspace" description="Basic details about your organization.">
         <PanelRows>
           <PanelRow
             label="Name"

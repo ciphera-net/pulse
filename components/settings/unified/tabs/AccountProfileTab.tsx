@@ -272,7 +272,7 @@ export default function AccountProfileTab() {
       )}
 
       {/* Profile */}
-      <SettingsPanel kicker="Profile" description="Your personal account details.">
+      <SettingsPanel title="Profile" description="Your personal account details.">
         <PanelRows>
           <PanelRow
             label="Display name"
@@ -318,7 +318,7 @@ export default function AccountProfileTab() {
         ]}
       >
         {showDeleteConfirm && (
-          <SettingsPanel tone="danger" kicker="Confirm account deletion">
+          <SettingsPanel tone="danger" title="Confirm account deletion">
             <div className="border-b border-border px-5 py-4">
               <p className="text-sm text-destructive">This permanently deletes:</p>
               <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-muted-foreground">

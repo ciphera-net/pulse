@@ -115,7 +115,7 @@ export default function WorkspaceMembersTab() {
 
       {/* Roster — one ruled panel (spec §6). */}
       <SettingsPanel
-        kicker="Members"
+        title="Members"
         description={`${members.length} member${members.length !== 1 ? 's' : ''} in your organization`}
       >
         {members.length === 0 ? (
