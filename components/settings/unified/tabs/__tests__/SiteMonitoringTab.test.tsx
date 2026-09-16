@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import path from 'node:path'
 
 // --- Mocks ---------------------------------------------------------------
 
@@ -34,13 +37,40 @@ vi.mock('next/link', () => ({
 
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...args: any[]) => args.flat().filter(Boolean).join(' '),
+  // Kept, though this file no longer renders a Button itself: the real,
+  // unmocked SettingsErrorState (imported for real, not stubbed) renders one
+  // for its own Retry action.
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+  // Mirrors the real primitive: a native <button role="switch">, aria-checked
+  // carrying the value, and onChange fired with no argument (the parent owns
+  // the next value) — see node_modules/@ciphera-net/facet/dist/index.js.
+  Toggle: ({ checked, onChange, disabled }: any) => (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => {
+        if (!disabled) onChange()
+      }}
+    />
+  ),
   toast: { success: vi.fn(), error: vi.fn() },
   getAuthErrorMessage: () => '',
 }))
 
 import SiteMonitoringTab, { monthSummary } from '../SiteMonitoringTab'
 import { toast } from '@ciphera-net/facet'
+
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+}
+
+const SOURCE_PATH = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'SiteMonitoringTab.tsx',
+)
 
 const mutate = vi.fn().mockResolvedValue(undefined)
 
@@ -119,28 +149,35 @@ describe('SiteMonitoringTab — Availability', () => {
     expect(screen.queryByText(/this month/)).not.toBeInTheDocument()
   })
 
-  it('off + uptime.manage: the empty row offers Enable, and enabling sends the whole-site PUT with uptime_enabled true', async () => {
+  it('off + uptime.manage: one Toggle, off, and turning it on sends the whole-site PUT with uptime_enabled true', async () => {
     arm({ siteOver: { uptime_enabled: false } })
     render(<SiteMonitoringTab siteId="s1" />)
-    expect(screen.getByText('Uptime monitoring is off')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Enable uptime monitoring' }))
+    // Vocabulary rebuild, 16-09-2026: the enable/disable Button pair (two DOM
+    // positions depending on state) is retired in favour of ONE Toggle in ONE
+    // place — this is the test that pins "one control in one place".
+    const toggle = screen.getByRole('switch')
+    expect(toggle).toHaveAttribute('aria-checked', 'false')
+    fireEvent.click(toggle)
     await waitFor(() => expect(updateSite).toHaveBeenCalledWith('s1', expect.objectContaining({ name: 'Example', uptime_enabled: true })))
     expect(toast.success).toHaveBeenCalledWith('Uptime monitoring enabled')
   })
 
-  it('off without uptime.manage: no button, and the line says who can', () => {
+  it('off without uptime.manage: the Toggle is disabled, and the caption says who can change it', () => {
     mockCanManage = false
     arm({ siteOver: { uptime_enabled: false } })
     render(<SiteMonitoringTab siteId="s1" />)
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
-    expect(screen.getByText('An owner or admin can enable it.')).toBeInTheDocument()
+    const toggle = screen.getByRole('switch')
+    expect(toggle).toBeDisabled()
+    expect(screen.getByText(/Only an owner or admin can turn this on or off\./)).toBeInTheDocument()
   })
 
-  it('on + uptime.manage: Disable monitoring sends uptime_enabled false; a refusal is shown, not swallowed', async () => {
+  it('on + uptime.manage: turning the Toggle off sends uptime_enabled false; a refusal is shown, not swallowed', async () => {
     arm()
     updateSite.mockRejectedValueOnce(new Error('forbidden'))
     render(<SiteMonitoringTab siteId="s1" />)
-    fireEvent.click(screen.getByRole('button', { name: 'Disable monitoring' }))
+    const toggle = screen.getByRole('switch')
+    expect(toggle).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(toggle)
     await waitFor(() => expect(updateSite).toHaveBeenCalledWith('s1', expect.objectContaining({ uptime_enabled: false })))
     await waitFor(() => expect(toast.error).toHaveBeenCalled())
   })
@@ -157,29 +194,37 @@ describe('SiteMonitoringTab — Tracking', () => {
     expect(screen.getByText(label)).toBeInTheDocument()
   })
 
-  it('an unresolved install read is an em dash, never "No data yet"', () => {
+  it('an unresolved install read is "Loading…", never "No data yet"', () => {
     arm()
     // Explicitly unresolved — passing `undefined` to arm() would take its
     // default (an active install), which is exactly the false-green this
     // test exists to rule out.
+    //
+    // Retired 16-09-2026 (vocabulary rebuild): the placeholder used to be a
+    // literal em dash character, which the copy rule now forbids everywhere
+    // in the file (`grep -n "—\|–\|\.\.\." must return nothing`). "Loading…"
+    // says the same thing — this is unresolved, not a measurement — without
+    // the banned glyph.
     useInstallStatus.mockReturnValue({ data: undefined, error: undefined })
     render(<SiteMonitoringTab siteId="s1" />)
     expect(screen.queryByText('No data yet')).not.toBeInTheDocument()
-    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Loading…').length).toBeGreaterThan(0)
   })
 
-  it('renders NO switch anywhere — the tab draws no control that controls nothing', () => {
+  it('draws exactly ONE switch in the whole tab (Uptime monitoring), and none in Tracking or Traffic', () => {
+    // Retired 16-09-2026 (vocabulary rebuild): "renders NO switch anywhere"
+    // was true only because the boolean was still a Button pair. The brief
+    // retires that pair for a real Toggle, so the tab now legitimately draws
+    // one switch — the property this test protects is narrower and still
+    // real: Tracking and Traffic have no per-site setting behind them, so
+    // neither may grow a switch that controls nothing.
     arm()
     render(<SiteMonitoringTab siteId="s1" />)
-    expect(screen.queryAllByRole('switch')).toHaveLength(0)
-    // ⏱ This used to also assert the TRAFFIC panel was ABSENT, which was true
-    // while its type keys were retired and unemittable at the database. Phases
-    // 4-5 registered new keys and the panel shipped on 16-09-2026 (direction
-    // T1), so the absence assertion is gone — but the property it was bundled
-    // with is NOT: the traffic panel is read-only too, and adding a switch to it
-    // would pass a test that only counted the other panels' switches. The
-    // queryAllByRole above covers the whole tab, which is why it is the
-    // assertion that matters here.
+    expect(screen.getAllByRole('switch')).toHaveLength(1)
+    const tracking = screen.getByText('Tracking').closest('section') as HTMLElement
+    const traffic = screen.getByText('Traffic').closest('section') as HTMLElement
+    expect(within(tracking).queryAllByRole('switch')).toHaveLength(0)
+    expect(within(traffic).queryAllByRole('switch')).toHaveLength(0)
   })
 
   it('names the delivery route and links to Notifications without editing it', () => {
@@ -233,13 +278,16 @@ describe('SiteMonitoringTab — Rejected events (Phase 2b, direction A)', () => 
     expect(screen.queryByText(', ')).not.toBeInTheDocument()
   })
 
-  it('🔴 an unresolved read is an em dash — never "All events counted"', () => {
+  it('🔴 an unresolved read is "Loading…", never "All events counted"', () => {
+    // Retired 16-09-2026 (vocabulary rebuild): see the install-health test
+    // above for why the placeholder changed from a literal em dash to
+    // "Loading…" — the copy rule bans the glyph everywhere in the file.
     arm()
     useIngestHealth.mockReturnValue({ data: undefined, error: undefined })
     render(<SiteMonitoringTab siteId="s1" />)
     expect(screen.queryByText('All events counted')).not.toBeInTheDocument()
     expect(screen.queryByText('Some events rejected')).not.toBeInTheDocument()
-    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Loading…').length).toBeGreaterThan(0)
   })
 
   it('a failed read says so, and does not report health it has not measured', () => {
@@ -373,6 +421,15 @@ describe('SiteMonitoringTab — fetch states', () => {
     useIngestHealth.mockReturnValue({ data: undefined, error: undefined })
     render(<SiteMonitoringTab siteId="s1" />)
     expect(screen.getByText("Couldn't load this site")).toBeInTheDocument()
+    // SettingsErrorState is the ONE error device (spec §10); role="alert" is
+    // how it is heard, not just seen.
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+  })
+
+  it('the top-level loading skeleton (before the site resolves) is role="status", never a bespoke spinner', () => {
+    useSite.mockReturnValue({ data: undefined, error: undefined, mutate })
+    render(<SiteMonitoringTab siteId="s1" />)
+    expect(screen.getByRole('status')).toBeInTheDocument()
   })
 })
 
@@ -388,8 +445,11 @@ describe('SiteMonitoringTab — Traffic (Phase 4, direction T1)', () => {
     expect(screen.getByText('Is traffic behaving normally?')).toBeInTheDocument()
     expect(screen.getByText('Traffic level')).toBeInTheDocument()
     // Still read-only. A switch here would control nothing: the rollout is
-    // estate-wide and there is no per-site setting.
-    expect(screen.queryAllByRole('switch')).toHaveLength(0)
+    // estate-wide and there is no per-site setting. Scoped to the Traffic
+    // panel (16-09-2026): the tab as a whole now legitimately has one real
+    // switch, Availability's Uptime monitoring Toggle.
+    const traffic = screen.getByText('Traffic').closest('section') as HTMLElement
+    expect(within(traffic).queryAllByRole('switch')).toHaveLength(0)
   })
 
   it('🔴 unwatched reads as an ANSWER with a date, never as a loading state', () => {
@@ -433,7 +493,7 @@ describe('SiteMonitoringTab — Traffic (Phase 4, direction T1)', () => {
     expect(chip.className).not.toMatch(/pos|green|success/)
   })
 
-  it('🔴 an unresolved read is an em dash — never "Normal"', () => {
+  it('🔴 an unresolved read says Loading…, never "Normal"', () => {
     arm({ traffic: null })
     render(<SiteMonitoringTab siteId="s1" />)
     expect(screen.queryByText('Normal')).not.toBeInTheDocument()
@@ -482,5 +542,39 @@ describe('SiteMonitoringTab — Traffic below the floor', () => {
     render(<SiteMonitoringTab siteId="s1" />)
     expect(screen.getByText('Not enough traffic to judge')).toBeInTheDocument()
     expect(screen.queryByText('Traffic fell')).not.toBeInTheDocument()
+  })
+})
+
+describe('SiteMonitoringTab — vocabulary rebuild structure (16-09-2026)', () => {
+  it('every panel title is the shared SettingsPanel heading, sentence case, level 2', () => {
+    arm()
+    render(<SiteMonitoringTab siteId="s1" />)
+    for (const name of ['Availability', 'Tracking', 'Traffic']) {
+      expect(screen.getByRole('heading', { level: 2, name })).toBeInTheDocument()
+    }
+  })
+
+  it('an uptime incidents read that fails degrades the month clause instead of silently dropping the count', () => {
+    // Before 16-09-2026 `incidents` had no `error` destructured at all: a
+    // failed read fell back to `null` exactly like "not measured yet", the
+    // silent-failure shape the engineering principles forbid. It must now say
+    // so rather than just quietly reading one uptime-percentage clause.
+    arm()
+    useUptimeIncidents.mockReturnValue({ data: undefined, error: new Error('boom') })
+    render(<SiteMonitoringTab siteId="s1" />)
+    expect(screen.getByText("99.98% this month. Couldn't load incident count.")).toBeInTheDocument()
+    expect(screen.queryByText('99.98% this month, no incidents')).not.toBeInTheDocument()
+  })
+
+  it('never uses an em dash, en dash or a literal ellipsis in its rendered copy', () => {
+    // Scoped over the WHOLE stripped source, not just quoted string literals:
+    // unlike a component whose copy lives entirely in string props, a chunk of
+    // this tab's copy (the Uptime monitoring caption, the permission note) is
+    // written as raw JSX text between tags, which a string-literal-only scan
+    // would miss entirely. The file has no `...spread` syntax to false-positive
+    // on, so a full-source scan is safe here.
+    const stripped = stripComments(readFileSync(SOURCE_PATH, 'utf8'))
+    expect(/[—–]/.test(stripped)).toBe(false)
+    expect(/\.\.\./.test(stripped)).toBe(false)
   })
 })

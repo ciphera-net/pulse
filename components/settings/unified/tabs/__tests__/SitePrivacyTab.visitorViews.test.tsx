@@ -23,7 +23,7 @@ vi.mock('@/lib/auth/permissions', () => ({ useCan: () => true }))
 // 🔴 The save bar portals into a slot the settings SHELL owns, and returns null
 // when there is no slot. Without this mock the bar can never render in a test,
 // so "queryByText('Unsaved changes') is null" passes whether the tab is dirty or
-// not — a false green that survived the mutation check and had to be caught by
+// not. A false green that survived the mutation check and had to be caught by
 // re-running the mutation, not by reading the test.
 vi.mock('@/components/settings/shell-slots', () => ({
   useSaveSlot: () => document.body,
@@ -46,7 +46,7 @@ const SITE = {
   auto_group_dynamic_paths: true,
   page_rules: [],
   allowed_query_params: [],
-  // The site under test has visitor views ON — the case that broke.
+  // The site under test has visitor views ON: the case that broke.
   visitor_views_enabled: true,
 }
 
@@ -64,8 +64,8 @@ beforeEach(() => updateSite.mockClear())
 
 // 🔴 STATIC import, on purpose (06-09-2026). This used to be a dynamic
 // `import('../SitePrivacyTab')` INSIDE each test, so the tab's whole module
-// graph was transformed inside the test's own 20s budget. On the CI runner —
-// where the suite's import phase alone measured 1508s across workers — the
+// graph was transformed inside the test's own 20s budget. On the CI runner,
+// where the suite's import phase alone measured 1508s across workers, the
 // first test timed out mid-render, its DOM leaked into the next one ("Found
 // multiple elements with the text: Visitor-level views"), and the file gated
 // deploys of changes that never touched settings (pipelines 1478, 1479).
@@ -76,7 +76,7 @@ async function renderTab() {
   return render(<SitePrivacyTab siteId="s1" />)
 }
 
-describe('SitePrivacyTab — the visitor-views toggle', () => {
+describe('SitePrivacyTab: the visitor-views toggle', () => {
   it('renders the toggle ON for a site whose views are enabled', async () => {
     await renderTab()
     await waitFor(() => expect(screen.getByText('Visitor-level views')).toBeInTheDocument())
@@ -86,7 +86,7 @@ describe('SitePrivacyTab — the visitor-views toggle', () => {
     expect(toggle?.getAttribute('aria-checked')).not.toBe('false')
   })
 
-  it('🔴 is NOT dirty on open — state and baseline come from the same source', async () => {
+  it('🔴 is NOT dirty on open: state and baseline come from the same source', async () => {
     await renderTab()
     await waitFor(() => expect(screen.getByText('Visitor-level views')).toBeInTheDocument())
     // The save bar only appears when the tab believes something changed. Nothing

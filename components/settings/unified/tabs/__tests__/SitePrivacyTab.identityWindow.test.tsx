@@ -2,13 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
 /**
- * The visitor-identity window — phase 3 of
+ * The visitor-identity window: phase 3 of
  * docs/plans/11-09-2026-configurable-identity-window-design.md, decisions
  * B / D1 / E2 (owner, 11-09-2026; artifact c42c362f).
  *
  * Three things a test can pin and a screenshot cannot:
  *   D1 · an UNSET site (stored 0) reads "Calendar month (current)" and never
- *        preselects 30 days — 0 and 30 are different keys, and saving 30 on an
+ *        preselects 30 days. 0 and 30 are different keys, and saving 30 on an
  *        unset site re-mints every identity on it;
  *   E2 · the footer is quiet until the Select differs from the SAVED value;
  *   the payload carries the raw column value, and the Visitor views caption
@@ -32,7 +32,7 @@ vi.mock('@/lib/api/sites', () => ({
 vi.mock('@/lib/api/performance', () => ({ updatePerformanceConfig: vi.fn() }))
 
 // The save bar portals into a slot the settings SHELL owns and renders nothing
-// without one — so without this mock "Unsaved changes" can never appear and a
+// without one, so without this mock "Unsaved changes" can never appear and a
 // dirty-state assertion passes vacuously (the visitor-views test's lesson).
 vi.mock('@/components/settings/shell-slots', () => ({
   useSaveSlot: () => document.body,
@@ -48,7 +48,11 @@ vi.mock('next/link', () => ({
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...a: unknown[]) => a.filter(Boolean).join(' '),
   Spinner: (props: any) => <div data-testid="spinner" {...props} />,
-  Button: ({ children, variant, size, ...props }: any) => <button {...props}>{children}</button>,
+  // `asChild` hands the classes/props to its single child (an <a>) instead of
+  // wrapping it in a second interactive element, matching the real Radix Slot
+  // behaviour closely enough for the Exclude Self link to render as one <a>.
+  Button: ({ children, variant, size, asChild, ...props }: any) =>
+    asChild ? children : <button {...props}>{children}</button>,
   Input: (props: any) => <input {...props} />,
   Toggle: ({ checked, onChange, disabled }: any) => (
     <button role="switch" aria-checked={!!checked} disabled={disabled} onClick={() => onChange()} />
@@ -108,7 +112,7 @@ beforeEach(() => {
   updateSite.mockResolvedValue({})
 })
 
-describe('SitePrivacyTab — the visitor-identity panel (decision B)', () => {
+describe('SitePrivacyTab: the visitor-identity panel (decision B)', () => {
   it('is its own panel, directly below Visitor views, with an entry in the section rail', () => {
     mountWith(makeSite())
     const sections = [...document.querySelectorAll('section[id^="section-"]')].map((s) => s.id)
@@ -126,7 +130,7 @@ describe('SitePrivacyTab — the visitor-identity panel (decision B)', () => {
   })
 })
 
-describe('SitePrivacyTab — the unset default (decision D1)', () => {
+describe('SitePrivacyTab: the unset default (decision D1)', () => {
   it('🔴 reads "Calendar month (current)" and never preselects 30 days', () => {
     const { select, options } = mountWith(makeSite({ identity_window_days: 0 }))
     expect(select().value).toBe('0')
@@ -136,14 +140,14 @@ describe('SitePrivacyTab — the unset default (decision D1)', () => {
     expect(options()).toEqual(['Session only', '24 hours', '7 days', '30 days', 'Calendar month (current)'])
   })
 
-  it('treats a payload that predates the column as unset, not as 30 days — and the copy agrees with the control', () => {
+  it('treats a payload that predates the column as unset, not as 30 days, and the copy agrees with the control', () => {
     const site = makeSite()
     delete (site as Record<string, unknown>).identity_window_days
     const { select, footer } = mountWith(site)
     expect(select().value).toBe('0')
     expect(select().selectedOptions[0].textContent).toBe('Calendar month (current)')
     // The Select says the calendar month, so the footer and the caption beside
-    // it must say the same — the authed record's column is NOT NULL DEFAULT 0,
+    // it must say the same. The authed record's column is NOT NULL DEFAULT 0,
     // and one screen may not call the same site "unset" and "unknown" at once.
     expect(footer().textContent).toContain('rest of the calendar month')
     expect(screen.getByText(/reset every calendar month/)).toBeInTheDocument()
@@ -157,24 +161,24 @@ describe('SitePrivacyTab — the unset default (decision D1)', () => {
   })
 })
 
-describe('SitePrivacyTab — the footer (decision E2)', () => {
-  it('is NOT dirty on open — state and baseline come from the same source', async () => {
+describe('SitePrivacyTab: the footer (decision E2)', () => {
+  it('is NOT dirty on open: state and baseline come from the same source', async () => {
     mountWith(makeSite({ identity_window_days: 7 }))
     await waitFor(() => expect(screen.getByText('Recognise a returning reader for')).toBeInTheDocument())
     expect(screen.queryByText(/Unsaved changes/i)).toBeNull()
   })
 
-  it('stays quiet — what the site does today — until the Select differs from the saved value', () => {
+  it('stays quiet, what the site does today, until the Select differs from the saved value', () => {
     const { select, footer } = mountWith(makeSite({ identity_window_days: 0 }))
     expect(footer().getAttribute('data-identity-window-footer')).toBe('quiet')
-    expect(footer().className).not.toContain('border-l-brand-orange')
+    expect(footer().className).not.toContain('border-l-primary')
     expect(footer().textContent).toContain('recognised for the rest of the calendar month')
     expect(footer().textContent).not.toContain('re-mints')
 
     fireEvent.change(select(), { target: { value: '1' } })
     expect(footer().getAttribute('data-identity-window-footer')).toBe('warning')
     expect(footer().className).toContain('border-l-2')
-    expect(footer().className).toContain('border-l-brand-orange')
+    expect(footer().className).toContain('border-l-primary')
     expect(footer().textContent).toContain('Saving this re-mints every identity from now on.')
     expect(footer().textContent).toContain('cannot be applied backwards')
 
@@ -200,7 +204,7 @@ describe('SitePrivacyTab — the footer (decision E2)', () => {
   })
 })
 
-describe('SitePrivacyTab — the wire', () => {
+describe('SitePrivacyTab: the wire', () => {
   it('saves identity_window_days as the raw column value, a number', async () => {
     const { select } = mountWith(makeSite({ identity_window_days: 0 }))
     fireEvent.change(select(), { target: { value: '1' } })
@@ -211,7 +215,7 @@ describe('SitePrivacyTab — the wire', () => {
     expect(id).toBe('s1')
     expect(payload.identity_window_days).toBe(1)
     expect(typeof payload.identity_window_days).toBe('number')
-    // and the site's name travels with it — PUT requires it, and sending the
+    // and the site's name travels with it. PUT requires it, and sending the
     // domain instead once renamed a site to its domain (VisitorsOffRoom's scar)
     expect(payload.name).toBe('Demo')
   })
@@ -229,7 +233,7 @@ describe('SitePrivacyTab — the wire', () => {
   })
 })
 
-describe('SitePrivacyTab — the Visitor views caption follows the saved window (phase 4)', () => {
+describe('SitePrivacyTab: the Visitor views caption follows the saved window (phase 4)', () => {
   it('asserts the calendar month only on a site that is on the calendar month', () => {
     mountWith(makeSite({ identity_window_days: 0 }))
     expect(screen.getByText(/reset every calendar month/)).toBeInTheDocument()
