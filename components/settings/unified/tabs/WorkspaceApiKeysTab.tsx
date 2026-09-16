@@ -45,7 +45,7 @@ function TokenReveal({ token, onDone }: { token: string; onDone: () => void }) {
 
   return (
     <SettingsPanel
-      kicker="Your new API key"
+      title="Your new API key"
       description="This is the only time it will be shown. Copy it now — it cannot be recovered."
     >
       <div className="flex flex-col gap-3 p-4">
@@ -192,7 +192,7 @@ export default function WorkspaceApiKeysTab() {
       {newToken && <TokenReveal token={newToken} onDone={() => setNewToken(null)} />}
 
       <SettingsPanel
-        kicker="API keys"
+        title="API keys"
         description="Read your analytics programmatically. Keys are server-side only and carry the permissions of the role you assign."
         action={
           !creating && (

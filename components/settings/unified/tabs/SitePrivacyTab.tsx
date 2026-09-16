@@ -369,7 +369,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
       <div className="min-w-0 flex-1 space-y-8">
         {/* Data & Privacy — one panel of divide-y toggle rows (spec §6). */}
         <section id="section-data-privacy" className="scroll-mt-24">
-          <SettingsPanel kicker="Data & Privacy" description="Control what data is collected from your visitors.">
+          <SettingsPanel title="Data & Privacy" description="Control what data is collected from your visitors.">
             <PanelRows>
               <PanelRow label="Page paths" caption="Track which pages visitors view." control={<Toggle checked={collectPagePaths} onChange={() => setCollectPagePaths(v => !v)} disabled={!canEdit} />} />
               <PanelRow label="Referrers" caption="Track where visitors come from." control={<Toggle checked={collectReferrers} onChange={() => setCollectReferrers(v => !v)} disabled={!canEdit} />} />
@@ -392,7 +392,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
         */}
         <section id="section-visitor-views" className="scroll-mt-24">
           <SettingsPanel
-            kicker="Visitor views"
+            title="Visitor views"
             description="Who can read your analytics at visitor grain. This does not change what is collected."
           >
             <PanelRows>
@@ -431,7 +431,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
         */}
         <section id="section-visitor-identity" className="scroll-mt-24">
           <SettingsPanel
-            kicker="Visitor identity"
+            title="Visitor identity"
             description="How long a returning reader is recognised as the same visitor. This does not change what is collected."
           >
             <PanelRows>
@@ -473,7 +473,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
 
         {/* Geographic — Select (spec §6). */}
         <section id="section-geographic" className="scroll-mt-24">
-          <SettingsPanel kicker="Geographic">
+          <SettingsPanel title="Geographic">
             <PanelRows>
               <PanelRow
                 label="Geographic data"
@@ -502,7 +502,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
               onRetry={() => mutateSubscription()}
             />
           )}
-          <SettingsPanel kicker="Data Retention">
+          <SettingsPanel title="Data Retention">
             <PanelRows>
               <PanelRow
                 label="Keep raw event data for"
@@ -542,7 +542,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
 
         {/* Path Grouping — auto-group toggle + manual rules RuledTable (spec §6). */}
         <section id="section-path-grouping" className="scroll-mt-24 space-y-4">
-          <SettingsPanel kicker="Path grouping" description="Control how page paths are tracked, grouped, or excluded from analytics.">
+          <SettingsPanel title="Path grouping" description="Control how page paths are tracked, grouped, or excluded from analytics.">
             <PanelRows>
               <PanelRow
                 label="Auto-group dynamic paths"
@@ -675,7 +675,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
 
         {/* Query Parameters — chip rows over the source-of-truth Input (spec §6). */}
         <section id="section-query-params" className="scroll-mt-24">
-          <SettingsPanel kicker="Query Parameters" description="Parameters to keep in page stats. All other query parameters are automatically stripped from page paths.">
+          <SettingsPanel title="Query Parameters" description="Parameters to keep in page stats. All other query parameters are automatically stripped from page paths.">
             <div className="space-y-3 px-5 py-4">
               {queryParamList.length > 0 && (
                 <div className="flex flex-wrap gap-2">
@@ -712,7 +712,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
 
         {/* Exclude Self — neutral action, no orange icon tile (spec §2.3). */}
         <section id="section-exclude-self" className="scroll-mt-24">
-          <SettingsPanel kicker="Exclude my visits" description="Stop tracking your own visits from this browser.">
+          <SettingsPanel title="Exclude my visits" description="Stop tracking your own visits from this browser.">
             <div className="space-y-3 px-5 py-4">
               <p className="text-sm text-muted-foreground">
                 Open your site with a special parameter to set a flag in this browser&apos;s localStorage that tells the Pulse script to skip tracking. Visit the link again to re-enable tracking.
@@ -745,7 +745,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
               onRetry={() => mutatePSIConfig()}
             />
           )}
-          <SettingsPanel kicker="Performance monitoring">
+          <SettingsPanel title="Performance monitoring">
             <PanelRows>
               <PanelRow
                 label="Check frequency"
@@ -785,7 +785,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
         {/* Privacy Policy — mono code block panel (spec §6). */}
         <section id="section-privacy-policy" className="scroll-mt-24">
           <SettingsPanel
-            kicker="For your privacy policy"
+            title="For your privacy policy"
             description="Copy the text below into your Privacy Policy. It updates automatically based on your saved settings."
           >
             <div className="space-y-3 px-5 py-4">

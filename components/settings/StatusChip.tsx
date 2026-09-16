@@ -4,18 +4,18 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 
 /**
- * StatusChip — the single house status-pill for settings surfaces.
+ * StatusChip — the one status chip for settings surfaces.
  *
- * Consolidates the four-plus hand-rolled chip recipes that had drifted across
- * the settings tabs (`bg-{c}-900/30`+`text-micro-label`, `bg-{c}-500/20`+
- * `text-[10px]`, dot+border+`text-xs`, plain `text-{c}-400` icon-only) into one
- * shape that matches the freshest on-system surface, WorkspaceBillingTab's
- * status pills (`px-2 py-0.5 text-xs font-medium rounded-none
- * bg-{c}-900/30 text-{c}-400 border border-{c}-900/50`).
+ * Sharp like everything else in the product (Facet `Badge` geometry,
+ * `rounded-none`): a small dot plus a word, with the tone carrying the
+ * meaning. Colour lives in the dot and the word, never in a solid fill — the
+ * solid green `Paid`, the solid red `Revoked` and the uppercase outline
+ * `VERIFIED` that used to sit beside this chip were all the same job answered
+ * three more ways (settings overhaul, 16-09-2026, §4.5).
  *
- * Off-system greens (`bg-green-950/40`, `bg-green-500/5`, raw `text-green-400`
- * inline) collapse into `tone="success"` here so "active / connected / this
- * device / paid" all read identically to billing's "Active" chip.
+ * The chip is deliberately still: a pulsing dot on an `Active` invite link
+ * made one chip on a page move while its twin on the next panel did not. Live
+ * states say so in the word (`Receiving data`, `Live`) and in the tooltip.
  */
 export type ChipTone =
   | 'neutral'
@@ -55,9 +55,8 @@ const DOT_COLOR: Record<ChipTone, string> = {
 
 interface StatusChipProps {
   tone?: ChipTone
-  /** Leading status dot; `pulse` animates it (use sparingly, e.g. a live link). */
+  /** Leading status dot. */
   dot?: boolean
-  pulse?: boolean
   /** Optional leading icon (Phosphor node); mutually complementary with `dot`. */
   icon?: React.ReactNode
   /** Native tooltip — e.g. a "live state" chip surfacing its last-event time. */
@@ -66,7 +65,7 @@ interface StatusChipProps {
   children: React.ReactNode
 }
 
-export function StatusChip({ tone = 'neutral', dot, pulse, icon, title, className, children }: StatusChipProps) {
+export function StatusChip({ tone = 'neutral', dot, icon, title, className, children }: StatusChipProps) {
   return (
     <span
       title={title}
@@ -76,9 +75,7 @@ export function StatusChip({ tone = 'neutral', dot, pulse, icon, title, classNam
         className,
       )}
     >
-      {dot && (
-        <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', DOT_COLOR[tone], pulse && 'animate-pulse')} />
-      )}
+      {dot && <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', DOT_COLOR[tone])} />}
       {icon}
       {children}
     </span>

@@ -124,7 +124,7 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
         </MastheadAction>
       )}
 
-      <SettingsPanel kicker="Goals" description="Track custom events as conversion goals.">
+      <SettingsPanel title="Goals" description="Track custom events as conversion goals.">
         {/* Inline create / edit form — per-field validation preserved. */}
         {formOpen && (
           <div className="border-b border-border">

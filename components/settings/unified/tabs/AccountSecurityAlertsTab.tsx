@@ -127,7 +127,7 @@ export default function AccountSecurityAlertsTab() {
   return (
     <div className="space-y-8">
       <SettingsPanel
-        kicker="Security alerts"
+        title="Security alerts"
         description="Emails Ciphera ID sends you when something changes on your account."
       >
         <PanelRows>

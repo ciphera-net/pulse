@@ -128,7 +128,7 @@ export default function SiteMonitoringTab({ siteId }: { siteId: string }) {
     <div className="space-y-8">
       {/* ── Availability — is the site reachable? ─────────────────────── */}
       <SettingsPanel
-        kicker="Availability"
+        title="Availability"
         description="Is the site reachable?"
         action={
           uptimeOn && canManageUptime ? (
@@ -194,7 +194,7 @@ export default function SiteMonitoringTab({ siteId }: { siteId: string }) {
       </SettingsPanel>
 
       {/* ── Tracking — is data arriving? ──────────────────────────────── */}
-      <SettingsPanel kicker="Tracking" description="Is data arriving?">
+      <SettingsPanel title="Tracking" description="Is data arriving?">
         <PanelRows>
           <PanelRow label="Install health" caption="Whether the tracking script is still sending events.">
             <InstallValue install={install} failed={Boolean(installError)} />
@@ -228,7 +228,7 @@ export default function SiteMonitoringTab({ siteId }: { siteId: string }) {
           breaks that: "is traffic normal" is not "is data arriving", and a site
           can be receiving data perfectly while having lost half its visitors.
           The empty chrome around one row is the price of the grouping. */}
-      <SettingsPanel kicker="Traffic" description="Is traffic behaving normally?">
+      <SettingsPanel title="Traffic" description="Is traffic behaving normally?">
         <PanelRows>
           <PanelRow label="Traffic level" caption="Whether visits are close to this site&rsquo;s recent normal.">
             <TrafficValue traffic={traffic} failed={Boolean(trafficError)} />

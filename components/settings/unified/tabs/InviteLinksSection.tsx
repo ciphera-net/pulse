@@ -90,7 +90,7 @@ export default function InviteLinksSection({ orgId, links, roles, onRevoked }: P
 
   return (
     <SettingsPanel
-      kicker="Invite Links"
+      title="Invite Links"
       description="Shareable links that let people join with a preset role."
     >
       {links.length === 0 ? (
@@ -127,7 +127,7 @@ export default function InviteLinksSection({ orgId, links, roles, onRevoked }: P
                     ) : isExpired ? (
                       <StatusChip tone="neutral">Expired</StatusChip>
                     ) : (
-                      <StatusChip tone="success" dot pulse>Active</StatusChip>
+                      <StatusChip tone="success" dot>Active</StatusChip>
                     )}
                     <LinkRoleBadge role={linkRole} roles={roles} />
                   </div>

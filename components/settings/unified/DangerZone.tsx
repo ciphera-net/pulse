@@ -9,13 +9,12 @@ interface DangerZoneItem {
   buttonLabel: string
   /**
    * Which weight the row's entry button carries:
-   * - `'outline'` = neutral outline (the less-final action — Transfer, Reset Data)
-   * - `'solid'`   = destructive outline in coral (the final/irreversible action — Delete)
+   * - `'outline'` = the plain outline rung (the less-final action — Transfer, Reset data)
+   * - `'solid'`   = the destructive OUTLINE in coral (the final/irreversible action — Delete)
    *
-   * Note: `'solid'` no longer paints a filled red button. Per the color
-   * discipline (spec §2.3) solid destructive fill is reserved for the final
-   * confirm button inside a reveal/dialog; the danger-row entry buttons are
-   * always outlines. The prop name is kept for API compatibility with the three
+   * `'solid'` does not paint a filled red button. The destructive fill is
+   * reserved for the final confirm inside a dialog; danger-row entry buttons
+   * are always outlines. The prop name is kept for API compatibility with the
    * tabs that consume this component.
    */
   variant: 'outline' | 'solid'
@@ -28,9 +27,12 @@ interface DangerZoneProps {
   children?: React.ReactNode
 }
 
+/** The destructive-outline rung of the button ladder, shared with any danger row. */
+export const DESTRUCTIVE_OUTLINE = 'border-destructive/40 text-destructive hover:border-destructive/60 hover:bg-destructive/10 hover:text-destructive'
+
 export function DangerZone({ items, children }: DangerZoneProps) {
   return (
-    <SettingsPanel tone="danger" kicker="Danger zone" description="Irreversible actions.">
+    <SettingsPanel tone="danger" title="Danger zone" description="These cannot be undone.">
       <PanelRows>
         {items.map((item) => (
           <PanelRow
@@ -39,15 +41,11 @@ export function DangerZone({ items, children }: DangerZoneProps) {
             caption={item.description}
             control={
               <Button
-                variant="secondary"
+                variant="outline"
                 size="sm"
                 onClick={item.onClick}
                 disabled={item.disabled}
-                className={
-                  item.variant === 'solid'
-                    ? 'border-destructive/40 text-destructive hover:border-destructive/60 hover:bg-destructive/10'
-                    : undefined
-                }
+                className={item.variant === 'solid' ? DESTRUCTIVE_OUTLINE : undefined}
               >
                 {item.buttonLabel}
               </Button>
@@ -57,9 +55,7 @@ export function DangerZone({ items, children }: DangerZoneProps) {
       </PanelRows>
 
       {/* Reveal blocks (typed-DELETE / transfer pickers) dock inside the danger
-          frame, ruled off from the rows above. Only Workspace·General passes
-          children today; Site·General and Account·Profile drive their confirms
-          through modals / sibling blocks and pass none. */}
+          frame, ruled off from the rows above. */}
       {children && <div className="border-t border-destructive/30">{children}</div>}
     </SettingsPanel>
   )

@@ -279,7 +279,7 @@ export default function WorkspaceRolesTab() {
         />
       ) : (
         <SettingsPanel
-          kicker="Roles"
+          title="Roles"
           description="What each role can do. New members get Admin or Member through their invite link; roles marked not assignable are held only by members who had them before."
         >
           <div className="divide-y divide-border">
