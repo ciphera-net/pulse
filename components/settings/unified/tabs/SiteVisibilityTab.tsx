@@ -33,15 +33,15 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
   const [passwordEnabled, setPasswordEnabled] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   // Set on a save attempt that would persist an empty password (protection on,
-  // no stored password, blank field) — drives the inline validation message.
+  // no stored password, blank field). Drives the inline validation message.
   const [pwError, setPwError] = useState(false)
   // In-flight guard for the updateSite mutation: disables the toggles/field and
   // prevents a second submit while a save is running.
   const [saving, setSaving] = useState(false)
   const [retrying, setRetrying] = useState(false)
   // Baseline snapshot is STATE, not a ref: committing it (after save/load)
-  // must re-render so isDirty clears and the beforeunload guard disarms —
-  // the old ref version kept the save bar dirty after a successful save.
+  // must re-render so isDirty clears and the beforeunload guard disarms.
+  // The old ref version kept the save bar dirty after a successful save.
   const [baseline, setBaseline] = useState('')
   const hasInitialized = useRef(false)
 
@@ -73,7 +73,7 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
     // reject so the save bar keeps "Unsaved changes" instead of flashing saved.
     if (passwordEnabled && !site!.has_password && password.trim().length === 0) {
       setPwError(true)
-      toast.error('Enter a password to enable protection')
+      toast.error('Enter a password to enable protection.')
       throw new Error('password-required')
     }
     setSaving(true)
@@ -90,7 +90,7 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
       await mutate()
       toast.success('Visibility updated')
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to save settings')
+      toast.error(getAuthErrorMessage(err as Error) || "Couldn't save your visibility settings. Try again.")
     } finally {
       setSaving(false)
     }
@@ -103,7 +103,7 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
       toast.success('Link copied')
       setTimeout(() => setLinkCopied(false), 2000)
     } catch {
-      toast.error("Couldn't copy link")
+      toast.error("Couldn't copy the link. Try again.")
     }
   }
 
@@ -123,6 +123,7 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
       return (
         <SettingsErrorState
           variant="card"
+          title="Couldn't load this site"
           message={getAuthErrorMessage(error as Error) || undefined}
           onRetry={handleRetry}
           retrying={retrying}
@@ -134,10 +135,14 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
 
   return (
     <div className="space-y-8">
-      {/* ONE panel — public toggle, share link, and password all live as ruled
+      {/* ONE panel: public toggle, share link, and password all live as ruled
           rows in the same frame (spec §6: no lone toggle in a void). */}
       <SettingsPanel title="Visibility" description="Control who can see your analytics dashboard.">
         <PanelRows>
+          {/* Toggle forwards no id/aria-label today (shipped @ciphera-net/facet
+              destructures only checked/onChange/className/disabled), so the
+              PanelRow's own visible label is the only accessible-name signal
+              that reaches the DOM. Flagged as a Facet follow-up. */}
           <PanelRow
             label="Public dashboard"
             caption="Allow anyone with the link to view this dashboard."
@@ -146,7 +151,6 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
                 checked={isPublic}
                 onChange={() => setIsPublic(p => !p)}
                 disabled={!canEdit || saving}
-                aria-label="Public dashboard"
               />
             }
           />
@@ -160,7 +164,7 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
                    link only resolves once the change is saved. */
                 site.is_public
                   ? <StatusChip tone="success" dot>Live</StatusChip>
-                  : <StatusChip tone="warning">Not saved yet</StatusChip>
+                  : <StatusChip tone="warning" dot>Not saved yet</StatusChip>
               }
             >
               <InputGroup>
@@ -200,11 +204,10 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
                   checked={passwordEnabled}
                   onChange={() => { setPasswordEnabled(p => !p); setPwError(false) }}
                   disabled={!canEdit || saving}
-                  aria-label="Password protection"
                 />
               }
             >
-              {site.has_password && <StatusChip tone="success">Password set</StatusChip>}
+              {site.has_password && <StatusChip tone="success" dot>Password set</StatusChip>}
             </PanelRow>
           )}
 
@@ -219,7 +222,7 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
                 type="password"
                 value={password}
                 onChange={e => { setPassword(e.target.value); if (pwError) setPwError(false) }}
-                placeholder={site.has_password ? 'Leave empty to keep current password' : 'Set a password'}
+                placeholder={site.has_password ? 'Leave empty to keep the current password' : 'Set a password'}
                 disabled={saving}
                 aria-invalid={pwError || undefined}
                 className={pwError ? 'border-destructive focus:border-destructive' : undefined}
@@ -231,7 +234,7 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="mt-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  className="mt-2 text-destructive hover:text-destructive"
                   onClick={() => { setPasswordEnabled(false); setPassword(''); setPwError(false) }}
                   disabled={saving}
                 >

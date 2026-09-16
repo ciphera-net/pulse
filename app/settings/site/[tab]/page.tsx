@@ -53,8 +53,8 @@ export default function SiteSettingsTabPage() {
   const router = useRouter()
   const tab = params.tab as string
 
-  // The active site (and its picker) is now owned by the settings shell's
-  // ActiveSiteProvider and surfaced in the SiteContextBand. This page just
+  // The active site (and its picker) is owned by the settings shell's
+  // ActiveSiteProvider and surfaced in the header (SiteHeaderIdentity). This page just
   // consumes the resolved site and keeps its honest fetch-state branches.
   const { sites, activeSite, isLoading, error, mutate } = useActiveSite()
 

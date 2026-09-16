@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import path from 'node:path'
+import { DESTRUCTIVE_OUTLINE } from '@/components/settings/unified/DangerZone'
 
 // --- Mocks ---------------------------------------------------------------
 
@@ -47,8 +51,8 @@ vi.mock('@/lib/api/bing', () => ({
   disconnectBing: (...a: unknown[]) => disconnectBing(...a),
 }))
 
-// ConfirmDialog + SettingsErrorState are exercised by their own suites — stub
-// them to markers so this smoke render stays focused on the panel composition.
+// ConfirmDialog + SettingsErrorState are exercised by their own suites, so
+// stub them to markers so this smoke render stays focused on the panel composition.
 vi.mock('@/components/ui/ConfirmDialog', () => ({
   ConfirmDialog: ({ open, title }: { open: boolean; title: string }) =>
     open ? <div data-testid="confirm-dialog">{title}</div> : null,
@@ -115,7 +119,7 @@ beforeEach(() => {
 //
 // The generic "Connect" label is shared by every row that is not GSC (which says "Connect with
 // Google"), so a global getByRole was only unambiguous while exactly one such row existed. It
-// broke the moment a third integration was added — the same class of brittleness as an
+// broke the moment a third integration was added, the same class of brittleness as an
 // exact-list assertion. Walking up from the row's heading keeps these assertions addressing the
 // integration they name, and keeps them working when a fourth arrives.
 function row(name: string): HTMLElement {
@@ -125,17 +129,27 @@ function row(name: string): HTMLElement {
   return container as HTMLElement
 }
 
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+}
+
+const SOURCE_PATH = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'SiteIntegrationsTab.tsx',
+)
+
 describe('SiteIntegrationsTab (Facet structured panels)', () => {
   it('renders every integration as a row in ONE Integrations panel with Connect actions', () => {
     render(<SiteIntegrationsTab siteId="s1" />)
     expect(screen.getByText('Integrations')).toBeInTheDocument()
     expect(screen.getByText('Google Search Console')).toBeInTheDocument()
     expect(screen.getByText('Bing Webmaster Tools')).toBeInTheDocument()
-    expect(screen.getByText('BunnyCDN')).toBeInTheDocument()
+    expect(screen.getByText('Bunny CDN')).toBeInTheDocument()
     // Connect is the CTA on each disconnected row, asserted per row rather than globally.
     expect(screen.getByRole('button', { name: /Connect with Google/i })).toBeInTheDocument()
     expect(within(row('Bing Webmaster Tools')).getByRole('button', { name: /^Connect$/i })).toBeInTheDocument()
-    expect(within(row('BunnyCDN')).getByRole('button', { name: /^Connect$/i })).toBeInTheDocument()
+    expect(within(row('Bunny CDN')).getByRole('button', { name: /^Connect$/i })).toBeInTheDocument()
   })
 
   it('reveals the Bing inline setup form and lists only verified properties', async () => {
@@ -167,7 +181,7 @@ describe('SiteIntegrationsTab (Facet structured panels)', () => {
     }))
     render(<SiteIntegrationsTab siteId="s1" />)
     expect(screen.getByText('Bing property')).toBeInTheDocument()
-    // The full URL including scheme IS the property identity to Bing — http/https/www are
+    // The full URL including scheme IS the property identity to Bing: http/https/www are
     // different properties, so a bare domain would hide which one is connected.
     expect(screen.getByText('https://acme.com/')).toBeInTheDocument()
   })
@@ -215,9 +229,37 @@ describe('SiteIntegrationsTab (Facet structured panels)', () => {
     render(<SiteIntegrationsTab siteId="s1" />)
     // The API key field is hidden until the Bunny Connect is pressed.
     expect(screen.queryByLabelText('API key')).toBeNull()
-    fireEvent.click(within(row('BunnyCDN')).getByRole('button', { name: /^Connect$/i }))
+    fireEvent.click(within(row('Bunny CDN')).getByRole('button', { name: /^Connect$/i }))
     expect(screen.getByLabelText('API key')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Load zones/i })).toBeInTheDocument()
+  })
+
+  it('closes Bing\'s open setup form when Bunny\'s Connect is clicked, so at most one orange Connect button ever shows', async () => {
+    render(<SiteIntegrationsTab siteId="s1" />)
+
+    // Open Bing's setup and drive it all the way to "ready": a verified
+    // property picked, which is what reveals its own orange Connect Bing button.
+    fireEvent.click(within(row('Bing Webmaster Tools')).getByRole('button', { name: /^Connect$/i }))
+    fireEvent.change(screen.getByLabelText('API key'), { target: { value: 'bing-key' } })
+    fireEvent.click(screen.getByRole('button', { name: /Load properties/i }))
+    const bingSelect = await screen.findByLabelText('Bing property')
+    fireEvent.change(bingSelect, { target: { value: 'https://example.com/' } })
+    const connectBingButton = screen.getByRole('button', { name: /Connect Bing/i })
+    expect(connectBingButton.getAttribute('variant')).toBe('default')
+
+    // Opening Bunny's setup must close Bing's, not merely add a second one.
+    fireEvent.click(within(row('Bunny CDN')).getByRole('button', { name: /^Connect$/i }))
+    expect(screen.queryByLabelText('Bing property')).toBeNull()
+    expect(screen.queryByRole('button', { name: /Connect Bing/i })).toBeNull()
+
+    // Drive Bunny to its own "ready" step and confirm exactly one orange
+    // (variant="default") Connect button exists on the page at that point.
+    fireEvent.change(screen.getByLabelText('API key'), { target: { value: 'bunny-key' } })
+    fireEvent.click(screen.getByRole('button', { name: /Load zones/i }))
+    await screen.findByLabelText('Pull zone')
+    const orangeButtons = screen.getAllByRole('button').filter(b => b.getAttribute('variant') === 'default')
+    expect(orangeButtons).toHaveLength(1)
+    expect(orangeButtons[0]).toHaveTextContent('Connect Bunny CDN')
   })
 
   it('surfaces a distinct error banner (not a fake disconnect) when a status fetch fails', () => {
@@ -235,5 +277,61 @@ describe('SiteIntegrationsTab (Facet structured panels)', () => {
     render(<SiteIntegrationsTab siteId="s1" />)
     expect(screen.queryByRole('button', { name: /Connect/i })).toBeNull()
     expect(screen.queryByRole('button', { name: /Disconnect/i })).toBeNull()
+  })
+
+  it('titles the panel the way the dashboard titles a section, sentence case, no kicker', () => {
+    render(<SiteIntegrationsTab siteId="s1" />)
+    const h2 = screen.getByRole('heading', { level: 2, name: 'Integrations' })
+    expect(h2.className).toMatch(/\btext-sm\b/)
+    expect(h2.className).toMatch(/\bfont-semibold\b/)
+    expect(h2.className).not.toMatch(/uppercase|micro-label/)
+    expect(
+      screen.getByText('Connect third-party services to bring more data into your analytics.'),
+    ).toBeInTheDocument()
+  })
+
+  it('renders the shared loading skeleton, not a spinner, while any status is still loading', () => {
+    useBunnyStatus.mockReturnValue(bunnyState({ data: undefined, isLoading: true }))
+    render(<SiteIntegrationsTab siteId="s1" />)
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    // The retired centred-Spinner loading device must not appear alongside it.
+    expect(screen.queryByTestId('spinner')).toBeNull()
+    expect(screen.queryByText('Integrations')).toBeNull()
+  })
+
+  it('gives every disconnected integration the same "Not connected" chip, not silence', () => {
+    render(<SiteIntegrationsTab siteId="s1" />)
+    // All three rows start disconnected in the default mock state: one chip
+    // shape said three times, matching the Connected chip shown once linked.
+    expect(screen.getAllByText('Not connected')).toHaveLength(3)
+  })
+
+  it('styles Disconnect as the shared destructive outline, never a filled button', () => {
+    useGSCStatus.mockReturnValue(gscState({ data: { connected: true, status: 'active' } }))
+    render(<SiteIntegrationsTab siteId="s1" />)
+    const disconnect = screen.getByRole('button', { name: /Disconnect/i })
+    expect(disconnect.getAttribute('variant')).toBe('outline')
+    // Reuses DangerZone's own recipe rather than a hand-rolled coral fill.
+    for (const cls of DESTRUCTIVE_OUTLINE.split(' ')) {
+      expect(disconnect.className).toContain(cls)
+    }
+    expect(disconnect.className).not.toMatch(/bg-destructive(?!\/)|bg-red-/)
+  })
+
+  it('never uses an em dash, en dash or a literal ellipsis in its user-facing copy', () => {
+    // Scoped to string literals, not the whole stripped source: this file legitimately
+    // spans multi-line JSX and template strings around those characters in ways a bare
+    // scan would misread. Comments are stripped first so a decision note doesn't trip the
+    // same copy rule its own quoted strings must obey.
+    const stripped = stripComments(readFileSync(SOURCE_PATH, 'utf8'))
+    const stringLiterals = stripped.match(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`/g) ?? []
+    const offenders = stringLiterals.filter(s => /[—–]/.test(s) || /\.\.\./.test(s))
+    expect(offenders).toEqual([])
+  })
+
+  it('spells the CDN integration "Bunny CDN", the way its owner writes it', () => {
+    render(<SiteIntegrationsTab siteId="s1" />)
+    expect(screen.getByText('Bunny CDN')).toBeInTheDocument()
+    expect(screen.queryByText('BunnyCDN')).toBeNull()
   })
 })
