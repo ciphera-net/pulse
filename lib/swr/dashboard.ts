@@ -51,7 +51,7 @@ import {
   type TransitionsResponse,
   type EntryPoint,
 } from '@/lib/api/journeys'
-import { getSite, getInstallStatus, getIngestHealth, type IngestHealthResponse } from '@/lib/api/sites'
+import { getSite, getInstallStatus, getIngestHealth, getTrafficStatus, type IngestHealthResponse, type TrafficStatusResponse } from '@/lib/api/sites'
 import type { Site, InstallStatusResponse } from '@/lib/api/sites'
 import { listFunnels, getFunnel, getFunnelStats, getAllFunnelStats, getFunnelTrends, getFunnelBreakdown, type Funnel, type FunnelStats, type FunnelTrends, type FunnelBreakdown } from '@/lib/api/funnels'
 import {
@@ -90,6 +90,7 @@ const fetchers = {
   site: (siteId: string) => getSite(siteId),
   installStatus: (siteId: string) => getInstallStatus(siteId),
   ingestHealth: (siteId: string) => getIngestHealth(siteId),
+  trafficStatus: (siteId: string) => getTrafficStatus(siteId),
   dashboard: (siteId: string, start: string, end: string, interval?: string, filters?: string, period?: string) => getDashboard(siteId, start, end, 10, interval, filters, period),
   dashboardOverview: (siteId: string, start: string, end: string, interval?: string, filters?: string) => getDashboardOverview(siteId, start, end, interval, filters),
   dashboardPages: (siteId: string, start: string, end: string, filters?: string) => getDashboardPages(siteId, start, end, undefined, filters),
@@ -214,6 +215,26 @@ export function useIngestHealth(siteId: string | undefined) {
   return useSWR<IngestHealthResponse>(
     siteId ? ['ingest-health', siteId] : null,
     () => fetchers.ingestHealth(siteId as string),
+    { ...dashboardSWRConfig, refreshInterval: 0, dedupingInterval: 60 * 1000 }
+  )
+}
+
+/**
+ * The traffic watcher's current judgement for one site — the TRAFFIC panel's
+ * one row.
+ *
+ * ⚠️ No polling, for the same reason as useIngestHealth above and a stronger
+ * one: the answer is about YESTERDAY, on the site's own clock, so it cannot
+ * change while somebody reads a settings tab. It moves once a day at most, after
+ * the site's local 06:00.
+ *
+ * Returns undefined while loading; the consumer MUST render that as unresolved
+ * and never as "normal" — three states, and only the last is a measurement.
+ */
+export function useTrafficStatus(siteId: string | undefined) {
+  return useSWR<TrafficStatusResponse>(
+    siteId ? ['traffic-status', siteId] : null,
+    () => fetchers.trafficStatus(siteId as string),
     { ...dashboardSWRConfig, refreshInterval: 0, dedupingInterval: 60 * 1000 }
   )
 }
