@@ -31,6 +31,8 @@ import {
   cn,
 } from '@ciphera-net/facet'
 import { TierBadge } from '@/components/integrations/TierBadge'
+import { StatusChip } from '@/components/settings/StatusChip'
+import { supportTierLabels } from '@/lib/integrations'
 import { PanelRow, PanelRows } from '@/components/settings/panels'
 import { useInstallStatus } from '@/lib/swr/dashboard'
 import { setSiteFramework } from '@/lib/api/sites'
@@ -115,6 +117,14 @@ interface ScriptSetupBlockProps {
   className?: string
   /** When true, all feature toggles and selects are read-only. */
   disabled?: boolean
+  /**
+   * Rendered inside a SettingsPanel (Site · General). The block then draws no
+   * card of its own for "Customize tracking": a sub-heading row ruled off by
+   * a hairline, spanning the panel like every other row (round two, P1: the
+   * card-in-a-card was the one nested surface left on the settings). The
+   * setup flow, which is not inside a panel, keeps its bordered block.
+   */
+  embedded?: boolean
 }
 
 const CSP_DIRECTIVES = 'script-src https://js.ciphera.net; connect-src https://pulse-api.ciphera.net'
@@ -128,6 +138,7 @@ export default function ScriptSetupBlock({
   showFrameworkPicker = true,
   className = '',
   disabled = false,
+  embedded = false,
 }: ScriptSetupBlockProps) {
   const sf = site.script_features || {}
   const [features, setFeatures] = useState<Record<FeatureKey, boolean>>({
@@ -376,7 +387,13 @@ export default function ScriptSetupBlock({
               <span className="text-sm font-semibold text-foreground">
                 {selected?.name ?? 'Platform not set'}
               </span>
-              {selected && <TierBadge tier={selected.supportTier} />}
+              {/* The one chip recipe (round two, P1): a dot and a word, not an
+                  uppercase outline that nothing else on the surface wears. */}
+              {selected && (
+                <StatusChip tone={selected.supportTier === 'verified' ? 'success' : selected.supportTier === 'standard-snippet' ? 'neutral' : 'warning'} dot>
+                  {supportTierLabels[selected.supportTier]}
+                </StatusChip>
+              )}
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {selected?.snippet?.label ? (
@@ -613,12 +630,12 @@ export default function ScriptSetupBlock({
 
       {/* ── 6. Customize — the reason an installed site opens this panel, so it
              is not hidden behind a disclosure once the script is live. ───────── */}
-      <div className="mt-4 rounded-none border border-border">
+      <div className={embedded ? '-mx-5 -mb-5 mt-4 border-t border-border' : 'mt-4 rounded-none border border-border'}>
         {!isInstalled || changingPlatform ? (
           <button
             type="button"
             onClick={() => setCustomizeOpen((v) => !v)}
-            className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-foreground cursor-pointer"
+            className={cn('w-full flex items-center justify-between py-3 text-sm font-semibold text-foreground cursor-pointer', embedded ? 'px-5' : 'px-4')}
           >
             Customize tracking
             <CaretDown
@@ -626,7 +643,7 @@ export default function ScriptSetupBlock({
             />
           </button>
         ) : (
-          <div className="px-4 py-3 text-sm font-semibold text-foreground">Customize tracking</div>
+          <div className={cn('py-3 text-sm font-semibold tracking-tight text-foreground', embedded ? 'px-5' : 'px-4')}>Customize tracking</div>
         )}
         {(customizeOpen || (isInstalled && !changingPlatform)) && (
           <PanelRows className="border-t border-border">
