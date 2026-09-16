@@ -56,10 +56,10 @@ const PAYMENT_METHODS = [
  *  (tabular numerals, text-xl), the muted label sits below it — a stat tile
  *  reads as a metric only when the number is the first thing the eye lands
  *  on; label-above read as a form field instead (settings overhaul §2.2). */
-function StatTile({ label, value, sub }: { label: string; value: React.ReactNode; sub?: React.ReactNode }) {
+function StatTile({ label, value, sub, title }: { label: string; value: React.ReactNode; sub?: React.ReactNode; title?: string }) {
   return (
     <RailGridTile>
-      <p className="text-xl font-semibold tabular-nums text-foreground">{value}</p>
+      <p className="text-xl font-semibold tabular-nums text-foreground" title={title}>{value}</p>
       <p className="mt-1 text-xs text-muted-foreground">{label}</p>
       {sub}
     </RailGridTile>
@@ -313,7 +313,10 @@ export default function WorkspaceBillingTab() {
   // null means "no scheduled charge", which is a real state for a grant, the free
   // tier or a cancelled subscription, and renders as an absent tile rather than a
   // fabricated date.
-  const nextChargeLabel = formatCalendarDateFull(subscription.next_charge_on)
+  // The tile shows the date alone; "Sat, 19/09/2026" wrapped to two lines at
+  // text-xl (staging, 16-09-2026). The weekday survives as the tooltip.
+  const nextChargeLabel = formatCalendarDate(subscription.next_charge_on)
+  const nextChargeTitle = formatCalendarDateFull(subscription.next_charge_on) ?? undefined
 
   // A GRANT's end date, which is a different fact from a charge date and now lives
   // in a different column (backend migration 142). Before the split, the admin grant
@@ -321,7 +324,8 @@ export default function WorkspaceBillingTab() {
   // said "RENEWS" about a date on which nothing would be charged. Rendered with the
   // same calendar-date formatter for the same reason: no Date is constructed, so
   // there is no instant to shift.
-  const grantEndsLabel = formatCalendarDateFull(subscription.grant_expires_on)
+  const grantEndsLabel = formatCalendarDate(subscription.grant_expires_on)
+  const grantEndsTitle = formatCalendarDateFull(subscription.grant_expires_on) ?? undefined
 
   const usageRatio =
     subscription.pageview_limit > 0 && typeof subscription.pageview_usage === 'number'
@@ -439,10 +443,11 @@ export default function WorkspaceBillingTab() {
               <StatTile
                 label={subscription.cancel_at_period_end ? 'Ends' : isTrialing ? 'Trial ends' : 'Renews'}
                 value={nextChargeLabel}
+                title={nextChargeTitle}
               />
             )}
             {grantEndsLabel && (
-              <StatTile label="Grant ends" value={grantEndsLabel} />
+              <StatTile label="Grant ends" value={grantEndsLabel} title={grantEndsTitle} />
             )}
             {planPricing && !isFree && (
               // No fallback tile for plan ids without a prices entry (grants,

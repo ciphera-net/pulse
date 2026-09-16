@@ -153,10 +153,17 @@ export default function WorkspaceMembersTab() {
                   label={
                     <span className="flex min-w-0 items-center gap-3">
                       <MemberAvatar monogram={monogram} />
-                      <span className="min-w-0 truncate">{displayName}</span>
+                      {/* The joined line stacks under the NAME. As the row's
+                          caption it sat under the avatar, flush with the
+                          panel edge (staging, 16-09-2026). */}
+                      <span className="min-w-0">
+                        <span className="block truncate">{displayName}</span>
+                        {joined && (
+                          <span className="block text-xs font-normal tabular-nums text-muted-foreground">Joined {joined}</span>
+                        )}
+                      </span>
                     </span>
                   }
-                  caption={joined ? <span className="tabular-nums">Joined {joined}</span> : undefined}
                   control={
                     <div className="flex items-center gap-3">
                       <RoleBadge role={member.role} roles={roles} />
