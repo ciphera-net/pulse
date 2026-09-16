@@ -23,9 +23,12 @@ vi.mock('@phosphor-icons/react', () => new Proxy({}, {
   has: () => true,
 }))
 vi.mock('@/lib/auth/permissions', () => ({ useCan: () => true }))
-vi.mock('@/components/settings/active-site', () => ({
-  ActiveSiteProvider: ({ children }: any) => <>{children}</>,
-}))
+// No active-site stub needed: ActiveSiteProvider moved out of this shell and up
+// to app/layout-content.tsx (above DashboardShell, so the outer sidebar can read
+// it). SiteContextBand is the shell's only remaining consumer, and it is stubbed
+// below — if that ever stops being true this file will fail loudly on the
+// "must be used within an ActiveSiteProvider" throw rather than silently
+// rendering against a fake provider.
 vi.mock('@/components/settings/SiteContextBand', () => ({ default: () => null }))
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...a: any[]) => a.flat(Infinity).filter(Boolean).join(' '),

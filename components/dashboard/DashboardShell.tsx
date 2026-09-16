@@ -435,6 +435,21 @@ export default function DashboardShell({
   const closeMobile = useCallback(() => setMobileOpen(false), [])
   const openMobile = useCallback(() => setMobileOpen(true), [])
 
+  // `siteId` is now also set on /settings/site/*, where it keeps the SIDEBAR in
+  // site mode. Nothing ELSE may follow it there: those routes are still a
+  // settings screen, with the Settings › <Tab> breadcrumb from useHomePageMeta,
+  // no site picker, no site name, no Live dot — and no getSite() fetch for a
+  // site whose page you are not on.
+  //
+  // ⚠️ The command palette belongs on that list too, and is the easy one to
+  // miss: a truthy currentSiteId is the ENTIRE gate on its "Pages" group and its
+  // product-tour action, so handing it the rail's site would open ⌘K on a
+  // settings tab offering the site pages and a tour that were never reachable
+  // from there. Hence one value for everything speaking for the CURRENT PAGE,
+  // while `siteId` stays the rail's.
+  const onSitePage = pathname.startsWith('/sites/')
+  const pageSiteId = onSitePage ? siteId : null
+
   return (
     <SidebarProvider>
       <LiveIndicatorProvider>
@@ -443,7 +458,7 @@ export default function DashboardShell({
         onOpenPalette={() => setPaletteOpen(true)}
       />
       <ShortcutsOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
-      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} currentSiteId={siteId ?? undefined} />
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} currentSiteId={pageSiteId ?? undefined} />
       {/* h-[100dvh], not h-screen: on mobile Safari/Chrome `100vh` is the
           LARGEST viewport (toolbars retracted), so a h-screen app shell puts its
           bottom edge permanently underneath the browser chrome — the last row of
@@ -459,7 +474,7 @@ export default function DashboardShell({
         />
         <div className="flex-1 flex flex-col min-w-0">
           {/* Glass top bar — above content only, collapse icon reaches back into sidebar column */}
-          <GlassTopBar siteId={siteId} />
+          <GlassTopBar siteId={pageSiteId} />
           {/* Content panel — elevated: inset top highlight + outer shadow for perceived depth.
               The mr-3/mb-3 gutter is a DESKTOP inset: it balances the sidebar
               column on the left. Below md there is no sidebar, so the same
@@ -469,7 +484,7 @@ export default function DashboardShell({
           <div
             className="flex-1 flex flex-col min-w-0 md:mr-3 md:mb-3 rounded-none bg-neutral-950 border border-neutral-800 overflow-hidden relative"
           >
-            <ContentHeader onMobileMenuOpen={openMobile} siteId={siteId} />
+            <ContentHeader onMobileMenuOpen={openMobile} siteId={pageSiteId} />
             <main
               id="main-content"
               tabIndex={-1}
