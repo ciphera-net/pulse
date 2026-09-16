@@ -1459,7 +1459,13 @@ export default function RootLayout({ children }) {
 })`,
   },
   astro: {
-    label: 'src/layouts/Layout.astro',
+    label: 'Astro integration',
+    note: 'Install the official integration with npx astro add @ciphera-net/pulse-astro, or add it to astro.config with your domain. Zero runtime dependencies; measured against Astro 5, 6 and 7.',
+    cta: { text: 'View on npm', url: 'https://www.npmjs.com/package/@ciphera-net/pulse-astro' },
+    // ⚠️ `code` below is the manual fallback. It is NOT rendered while
+    // installMethod is 'plugin' — both the marketing page and ScriptSetupBlock
+    // show only note + cta for plugins. Kept because it is still correct and
+    // the framework guide documents it.
     flagStyle: 'inline',
     interactions: `    <script defer PULSE_FLAGS src="https://js.ciphera.net/script.interactions.js"></script>`,
     code: `---
@@ -1538,7 +1544,16 @@ export default function RootLayout({ children }) {
     cta: { text: 'Install Plugin', url: 'https://wordpress.org/plugins/pulse-analytics/' },
   },
   ghost: { label: 'Code Injection', note: 'Add via Settings → Code Injection → Site Header. Works on self-hosted Ghost and every Ghost(Pro) tier.' },
-  drupal: { label: 'html.html.twig', note: 'Add to your theme’s html.html.twig template, or use a small custom module.' },
+  docusaurus: {
+    label: 'Docusaurus plugin',
+    note: 'Install the official plugin with npm i @ciphera-net/pulse-docusaurus, then add it to plugins in docusaurus.config.js with your domain. Zero runtime dependencies; measured against Docusaurus 3.0.1 through 3.10.2.',
+    cta: { text: 'View on npm', url: 'https://www.npmjs.com/package/@ciphera-net/pulse-docusaurus' },
+  },
+  drupal: {
+    label: 'Drupal module',
+    note: 'Install the official module with composer require drupal/pulse_analytics, enable it, then set your domain at Configuration → Web services → Pulse Analytics. Drupal 10 and 11, no database tables and no dependencies. Leave the domain empty and it auto-detects.',
+    cta: { text: 'Get the module', url: 'https://www.drupal.org/project/pulse_analytics' },
+  },
   joomla: { label: 'index.php', note: 'Add via Extensions → Templates → your template → index.php, before </head>.' },
   shopify: {
     label: 'Custom Pixel (checkout) + theme.liquid (storefront)',
@@ -1585,7 +1600,7 @@ const TIER_TABLE: Record<string, TierRow> = {
   vue: ['verified', 'script-tag', 'framework-guides', true, 3],
   nuxt: ['verified', 'script-tag', 'framework-guides', true, 4],
   svelte: ['verified', 'script-tag', 'framework-guides', true, 5],
-  astro: ['verified', 'script-tag', 'framework-guides', true, 6],
+  astro: ['verified', 'plugin', 'framework-guides', true, 6],
   angular: ['standard-snippet', 'script-tag', 'framework-guides', true, 7],
   remix: ['standard-snippet', 'script-tag', 'framework-guides', true, 8],
   solidjs: ['standard-snippet', 'script-tag', 'script-installation', true, null],
@@ -1605,7 +1620,7 @@ const TIER_TABLE: Record<string, TierRow> = {
   hugo: ['verified', 'script-tag', 'framework-guides', true, null],
   eleventy: ['standard-snippet', 'script-tag', 'script-installation', true, null],
   jekyll: ['standard-snippet', 'script-tag', 'framework-guides', true, null],
-  docusaurus: ['standard-snippet', 'script-tag', 'script-installation', true, null],
+  docusaurus: ['verified', 'plugin', 'framework-guides', true, null],
   vitepress: ['standard-snippet', 'script-tag', 'script-installation', true, null],
   hexo: ['standard-snippet', 'script-tag', 'script-installation', false, null],
   mkdocs: ['standard-snippet', 'script-tag', 'script-installation', false, null],
@@ -1617,7 +1632,7 @@ const TIER_TABLE: Record<string, TierRow> = {
   // CMS & blogging
   wordpress: ['verified', 'plugin', 'wordpress-plugin', true, 11],
   ghost: ['verified', 'script-tag', 'framework-guides', true, null],
-  drupal: ['standard-snippet', 'script-tag', 'framework-guides', true, null],
+  drupal: ['verified', 'plugin', 'framework-guides', true, null],
   joomla: ['standard-snippet', 'script-tag', 'framework-guides', true, null],
   strapi: ['special-handling', 'script-tag', null, false, null],
   sanity: ['special-handling', 'script-tag', null, false, null],
