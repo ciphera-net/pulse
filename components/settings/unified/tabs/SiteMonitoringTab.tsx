@@ -4,10 +4,10 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Button, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { Heartbeat } from '@phosphor-icons/react'
-import { useSite, useUptimeStatus, useUptimeIncidents, useInstallStatus, useIngestHealth } from '@/lib/swr/dashboard'
+import { useSite, useUptimeStatus, useUptimeIncidents, useInstallStatus, useIngestHealth, useTrafficStatus } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import type { UptimeMonitor } from '@/lib/api/uptime'
-import type { InstallStatusResponse, IngestHealthResponse } from '@/lib/api/sites'
+import type { InstallStatusResponse, IngestHealthResponse, TrafficStatusResponse } from '@/lib/api/sites'
 import { INGEST_CAUSE_LABEL, knownCauses } from '@/lib/ingest-causes'
 import { useCan } from '@/lib/auth/permissions'
 import { zoneDayKey } from '@/lib/utils/siteTime'
@@ -73,6 +73,9 @@ export default function SiteMonitoringTab({ siteId }: { siteId: string }) {
   // while somebody reads a settings tab, and useInstallStatus already polls on
   // this same panel.
   const { data: ingest, error: ingestError } = useIngestHealth(siteId)
+  // No polling either: the answer is about YESTERDAY on the site's own clock,
+  // so it cannot move while somebody reads a settings tab.
+  const { data: traffic, error: trafficError } = useTrafficStatus(siteId)
 
   const toggleUptime = async (enabled: boolean) => {
     if (!site) return
@@ -213,6 +216,25 @@ export default function SiteMonitoringTab({ siteId }: { siteId: string }) {
           </Link>
         </div>
       </SettingsPanel>
+
+      {/* ── Traffic — is traffic behaving normally? ───────────────────── */}
+      {/* Direction T1, the owner's pick of 16-09-2026: its OWN panel asking its
+          own question, with ONE row whose value cell is a chip plus muted text —
+          exactly Install health's grammar one panel up.
+
+          The recommendation put to the owner was T3, a third row inside Tracking,
+          which is tighter. They chose T1 because direction B was chosen in the
+          first place BECAUSE it groups by question, and T3 is the one shape that
+          breaks that: "is traffic normal" is not "is data arriving", and a site
+          can be receiving data perfectly while having lost half its visitors.
+          The empty chrome around one row is the price of the grouping. */}
+      <SettingsPanel kicker="Traffic" description="Is traffic behaving normally?">
+        <PanelRows>
+          <PanelRow label="Traffic level" caption="Whether visits are close to this site&rsquo;s recent normal.">
+            <TrafficValue traffic={traffic} failed={Boolean(trafficError)} />
+          </PanelRow>
+        </PanelRows>
+      </SettingsPanel>
     </div>
   )
 }
@@ -349,4 +371,102 @@ function RejectedValue({ ingest, failed }: { ingest: IngestHealthResponse | unde
       )}
     </div>
   )
+}
+
+/**
+ * Traffic level — direction T1, the owner's pick of 16-09-2026.
+ *
+ * 🔴 FOUR STATES, AND ONLY THE LAST TWO ARE MEASUREMENTS — the same contract
+ * InstallValue and RejectedValue follow one panel up: an unresolved read is an
+ * em dash, a failed one says so, and the rest is the answer.
+ *
+ * 🔴 `Not watched yet` IS AN ANSWER, NOT A SPINNER, and it is what MOST sites
+ * show MOST of the time — production measured eight of ten on the day this
+ * shipped, and every new site does for its first five weeks. §5 of the design
+ * says in as many words that it must not look like a loading state, which is why
+ * it is a neutral chip with a date beside it rather than a skeleton.
+ *
+ * ⚠️ The chip for a RISE is neutral, not green. A spike is not an achievement —
+ * it is often a bot wave, which is why the copy sends the reader to look rather
+ * than congratulating them.
+ */
+function TrafficValue({ traffic, failed }: { traffic: TrafficStatusResponse | undefined; failed: boolean }) {
+  if (failed) return <span className="text-sm text-muted-foreground">Couldn&apos;t load traffic.</span>
+  if (!traffic) return <span className="text-sm text-muted-foreground">&mdash;</span>
+
+  if (traffic.state === 'unwatched') {
+    return (
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <StatusChip tone="neutral" dot>Not watched yet</StatusChip>
+        <span className="text-sm text-muted-foreground">{unwatchedCaption(traffic)}</span>
+      </div>
+    )
+  }
+
+  // 🔴 A judged day with null figures cannot be rendered as numbers. The API
+  // sends null precisely so a zero is never mistaken for a measurement, and
+  // this is the half of that contract that lives on the client.
+  const figures =
+    traffic.observed != null && traffic.expected != null && traffic.day
+      ? `${fmtVisitors(traffic.observed)} on ${prettyDay(traffic.day)}, about ${fmtVisitors(traffic.expected)} expected`
+      : null
+
+  const s = TRAFFIC_STATE[traffic.direction ?? 'steady'] ?? TRAFFIC_STATE.steady
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <StatusChip tone={s.tone} dot>{s.label}</StatusChip>
+      {figures && <span className="text-sm text-muted-foreground tabular-nums">{figures}</span>}
+    </div>
+  )
+}
+
+const TRAFFIC_STATE: Record<'steady' | 'fell' | 'rose', { label: string; tone: ChipTone }> = {
+  steady: { label: 'Normal', tone: 'neutral' },
+  fell: { label: 'Traffic fell', tone: 'warning' },
+  // Neutral, not success: a rise is as often a bot wave as good news.
+  rose: { label: 'Traffic rose', tone: 'neutral' },
+}
+
+/**
+ * Why a site is not being watched, in words rather than a slug.
+ *
+ * ⚠️ Every branch names a REASON, and the two that have a knowable end date name
+ * it. "Watching from 30 September" is an answer; "not enough data" is a shrug,
+ * and a shrug is what makes a state read as a spinner.
+ */
+export function unwatchedCaption(t: TrafficStatusResponse): string {
+  const from = t.watching_from ? `Watching from ${prettyDay(t.watching_from)}` : ''
+  switch (t.reason) {
+    case 'new_site':
+      return from || 'Not enough history yet'
+    case 'session_boundary':
+      // The 26-08-2026 visitor-identity rebuild moved when a session's day is
+      // cut, for every site not on UTC. Days either side are not comparable, so
+      // the site waits it out — and saying so is better than implying its data
+      // is missing.
+      return from || 'Waiting for comparable history'
+    case 'timezone_changed':
+      return from || 'Waiting after a timezone change'
+    case 'gap':
+      return 'No data for the last full day'
+    default:
+      return from || 'Not enough history yet'
+  }
+}
+
+/** A date a person reads, in the site's own terms. */
+function prettyDay(day: string): string {
+  const [y, m, d] = day.split('-').map(Number)
+  if (!y || !m || !d) return day
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-GB', {
+    day: 'numeric', month: 'long', timeZone: 'UTC',
+  })
+}
+
+/** Visitors, rounded — the figures are medians and counts, never fractions on
+ *  screen. `tabular-nums` does the alignment; font-mono would be wrong, because
+ *  a visitor count is not something you would type into a terminal. */
+function fmtVisitors(n: number): string {
+  const r = Math.round(n)
+  return `${r.toLocaleString('en-GB')} visitor${r === 1 ? '' : 's'}`
 }
