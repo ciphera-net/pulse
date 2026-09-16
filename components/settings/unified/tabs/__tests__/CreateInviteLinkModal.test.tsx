@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import type { Role } from '@/lib/api/roles'
 
 // --- Mocks ---------------------------------------------------------------
@@ -28,10 +30,18 @@ vi.mock('@ciphera-net/facet', () => ({
     <label><input type="checkbox" checked={checked} onChange={onChange} />{label}</label>
   ),
   toast: { success: vi.fn(), error: vi.fn() },
-  getAuthErrorMessage: () => 'error',
+  getAuthErrorMessage: vi.fn(() => 'error'),
 }))
 
 import CreateInviteLinkModal from '../CreateInviteLinkModal'
+import { toast, getAuthErrorMessage } from '@ciphera-net/facet'
+
+function sourceWithoutComments(path: string): string {
+  const raw = readFileSync(path, 'utf8')
+  return raw
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1')
+}
 
 const roles: Role[] = [
   { id: 'r1', slug: 'member', name: 'Member', is_builtin: true } as Role,
@@ -46,6 +56,7 @@ const noop = () => {}
 
 beforeEach(() => {
   createInviteLink.mockReset().mockResolvedValue({ id: 'l1', url: 'https://x/join/new', code: 'new' })
+  vi.mocked(getAuthErrorMessage).mockReset().mockReturnValue('error')
 })
 
 function renderModal() {
@@ -60,7 +71,7 @@ describe('CreateInviteLinkModal', () => {
     fireEvent.change(screen.getByPlaceholderText(/Engineering team invite/i), {
       target: { value: 'Growth team' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Create Link' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Create link' }))
 
     await waitFor(() => expect(createInviteLink).toHaveBeenCalledTimes(1))
     expect(createInviteLink).toHaveBeenCalledWith(
@@ -96,12 +107,70 @@ describe('CreateInviteLinkModal', () => {
     // Selects render in order: role, expires-in, max-uses.
     const selects = screen.getAllByRole('combobox')
     fireEvent.change(selects[2], { target: { value: '10' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Create Link' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Create link' }))
 
     await waitFor(() => expect(createInviteLink).toHaveBeenCalledTimes(1))
     expect(createInviteLink).toHaveBeenCalledWith(
       'org1',
       expect.objectContaining({ max_uses: 10 }),
     )
+  })
+})
+
+describe('CreateInviteLinkModal structure and copy (settings overhaul, 16-09-2026)', () => {
+  it('titles the modal and its confirm with the same name, in sentence case', () => {
+    renderModal()
+    expect(screen.getByRole('dialog', { name: 'Create invite link' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Create link' })).toBeInTheDocument()
+  })
+
+  it('puts Cancel and Done on the outline rung, never the retired secondary fill', async () => {
+    renderModal()
+    expect(screen.getByRole('button', { name: 'Cancel' }).getAttribute('variant')).toBe('outline')
+
+    fireEvent.change(screen.getByPlaceholderText(/Engineering team invite/i), { target: { value: 'Growth team' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create link' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Done' })).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Done' }).getAttribute('variant')).toBe('outline')
+  })
+
+  it('shows the ellipsis character while submitting, never three literal periods', async () => {
+    let resolveCreate!: (value: { id: string; url: string; code: string }) => void
+    createInviteLink.mockReset().mockImplementationOnce(
+      () => new Promise(resolve => { resolveCreate = resolve }),
+    )
+    renderModal()
+    fireEvent.change(screen.getByPlaceholderText(/Engineering team invite/i), { target: { value: 'Growth team' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create link' }))
+
+    expect(await screen.findByRole('button', { name: 'Creating…' })).toBeInTheDocument()
+    resolveCreate({ id: 'l2', url: 'https://x/join/new2', code: 'new2' })
+    await waitFor(() => expect(screen.getByText('Invite link created')).toBeInTheDocument())
+  })
+
+  it('offers a Facet ghost copy button in the result screen, not a raw button', async () => {
+    renderModal()
+    fireEvent.change(screen.getByPlaceholderText(/Engineering team invite/i), { target: { value: 'Growth team' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create link' }))
+    await waitFor(() => expect(screen.getByText('Invite link created')).toBeInTheDocument())
+
+    const copyButton = screen.getByRole('button', { name: 'Copy invite link' })
+    expect(copyButton.getAttribute('variant')).toBe('ghost')
+  })
+
+  it('falls back to the house error voice when the server gives no detail', async () => {
+    vi.mocked(getAuthErrorMessage).mockReturnValueOnce('')
+    createInviteLink.mockReset().mockRejectedValueOnce(new Error('boom'))
+    renderModal()
+    fireEvent.change(screen.getByPlaceholderText(/Engineering team invite/i), { target: { value: 'Growth team' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create link' }))
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("Couldn't create the invite link. Try again."),
+    )
+  })
+
+  it('has no em or en dashes anywhere in its source', () => {
+    const src = sourceWithoutComments(join(process.cwd(), 'components/settings/unified/tabs/CreateInviteLinkModal.tsx'))
+    expect(src).not.toMatch(/[—–]/)
   })
 })

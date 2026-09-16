@@ -20,6 +20,12 @@ interface DangerZoneItem {
   variant: 'outline' | 'solid'
   onClick: () => void
   disabled?: boolean
+  /**
+   * When the row's button opens a reveal block below the rows (a typed-DELETE
+   * form, a transfer picker), pass whether it is open so the button reads as
+   * the disclosure it is.
+   */
+  expanded?: boolean
 }
 
 interface DangerZoneProps {
@@ -45,6 +51,7 @@ export function DangerZone({ items, children }: DangerZoneProps) {
                 size="sm"
                 onClick={item.onClick}
                 disabled={item.disabled}
+                aria-expanded={item.expanded}
                 className={item.variant === 'solid' ? DESTRUCTIVE_OUTLINE : undefined}
               >
                 {item.buttonLabel}

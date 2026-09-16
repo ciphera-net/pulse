@@ -1,21 +1,22 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { EASE_APPLE, SPRING } from '@/lib/motion'
+import { useState, useEffect, useCallback, useId } from 'react'
 import { cn } from '@/lib/utils'
-import { Checkbox, RailGrid, RailGridTile, Spinner } from '@ciphera-net/facet'
+import { RailGrid, RailGridTile } from '@ciphera-net/facet'
 import {
   CaretDown,
+  Check,
+  Minus,
   Crown,
   ShieldCheck,
   UserCircle,
   Lock,
   Users,
 } from '@phosphor-icons/react'
-import { SettingsPanel } from '@/components/settings/panels'
+import { SettingsPanel, PanelRows, EmptyRow } from '@/components/settings/panels'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
+import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { useAuth } from '@/lib/auth/context'
 import {
   listRoles,
@@ -58,53 +59,57 @@ function RoleIcon({ slug }: { slug: string }) {
   return <Users weight="regular" className={className} />
 }
 
-// ─── Permission matrix (read-only Checkbox grid grouped in RailGrid bands) ─────
+// ─── Permission mark (granted / not granted glyph, display only) ──────────────
+
+function PermissionMark({ granted }: { granted: boolean }) {
+  return (
+    <span
+      role="img"
+      aria-label={granted ? 'Granted' : 'Not granted'}
+      className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground"
+    >
+      {granted ? (
+        <Check weight="bold" className="h-3.5 w-3.5" />
+      ) : (
+        <Minus weight="bold" className="h-3.5 w-3.5" />
+      )}
+    </span>
+  )
+}
+
+// ─── Permission matrix (read-only, grouped in RailGrid bands) ─────────────────
 
 interface PermissionMatrixProps {
   groups: PermissionGroup[]
-  idPrefix: string
   isChecked: (perm: string) => boolean
   /** Whether to surface the "Owner only" chip on the owner-locked permissions. */
   showOwnerBadge: (perm: string) => boolean
 }
 
-function PermissionMatrix({
-  groups,
-  idPrefix,
-  isChecked,
-  showOwnerBadge,
-}: PermissionMatrixProps) {
+function PermissionMatrix({ groups, isChecked, showOwnerBadge }: PermissionMatrixProps) {
   return (
     <RailGrid minTileWidth={260}>
       {groups.map((group) => (
         <RailGridTile key={group.key} className="space-y-3">
-          <p className="font-semibold text-micro-label uppercase text-muted-foreground">
-            {group.label}
-          </p>
+          <p className="text-sm font-semibold text-foreground">{group.label}</p>
           <div className="space-y-3">
             {group.permissions.map((pi) => {
               const checked = isChecked(pi.permission)
               return (
-                <Checkbox
-                  key={pi.permission}
-                  id={`${idPrefix}-${pi.permission}`}
-                  checked={checked}
-                  disabled
-                  onChange={() => {}}
-                  label={
-                    <span className="flex flex-col gap-0.5">
-                      <span className="inline-flex items-center gap-2">
-                        <span className={cn('text-sm', checked ? 'text-foreground' : 'text-muted-foreground')}>
-                          {pi.label}
-                        </span>
-                        {showOwnerBadge(pi.permission) && (
-                          <StatusChip tone="neutral">Owner only</StatusChip>
-                        )}
+                <div key={pi.permission} className="flex items-start gap-3">
+                  <PermissionMark granted={checked} />
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="inline-flex flex-wrap items-center gap-2">
+                      <span className={cn('text-sm', checked ? 'text-foreground' : 'text-muted-foreground')}>
+                        {pi.label}
                       </span>
-                      <span className="text-xs text-muted-foreground">{pi.description}</span>
+                      {showOwnerBadge(pi.permission) && (
+                        <StatusChip tone="neutral">Owner only</StatusChip>
+                      )}
                     </span>
-                  }
-                />
+                    <span className="text-xs text-muted-foreground">{pi.description}</span>
+                  </span>
+                </div>
               )
             })}
           </div>
@@ -123,6 +128,7 @@ interface RoleRowProps {
 
 function RoleRow({ role, permissionGroups }: RoleRowProps) {
   const [expanded, setExpanded] = useState(false)
+  const contentId = useId()
 
   const isOwner = role.slug === 'owner'
   const siteScoped = role.site_scoped ?? false
@@ -136,88 +142,86 @@ function RoleRow({ role, permissionGroups }: RoleRowProps) {
 
   return (
     <div>
-      {/* Row header */}
-      <div
-        className="flex items-center gap-3 px-5 py-3.5 cursor-pointer select-none transition-colors duration-fast ease-apple hover:bg-muted"
+      {/* Row header — the ONE control that expands this row. */}
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-controls={contentId}
         onClick={() => setExpanded((v) => !v)}
+        className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors duration-fast ease-apple hover:bg-muted motion-reduce:transition-none"
       >
         <RoleIcon slug={role.slug} />
         <ColorDot color={role.color} />
 
         {/* Name + meta */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium text-foreground truncate">{role.name}</span>
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="truncate text-sm font-medium text-foreground">{role.name}</span>
             {role.is_builtin && <StatusChip tone="neutral">Built-in</StatusChip>}
             {/* Roles outside the invitable set are held only by members from
                 before the trim — nothing can assign them any more. */}
             {role.slug !== 'owner' && !INVITABLE_SLUGS.includes(role.slug) && (
-              <StatusChip tone="neutral">Not assignable</StatusChip>
+              <StatusChip tone="warning" dot>Not assignable</StatusChip>
             )}
             <StatusChip tone="neutral">{scopeLabel}</StatusChip>
-          </div>
+          </span>
           {role.is_builtin && (
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <span className="mt-0.5 block text-xs text-muted-foreground">
               {role.slug === 'owner' && 'Full access to everything.'}
               {role.slug === 'admin' && 'Manage sites, team, and settings. Cannot access billing or delete the workspace.'}
               {role.slug === 'analyst' && 'Create and manage goals, funnels, and alert channels. Cannot manage sites, team, or billing.'}
               {role.slug === 'member' && 'Day-to-day access to dashboards and analytics.'}
               {role.slug === 'viewer' && 'View dashboards and analytics only.'}
-            </p>
+            </span>
           )}
-        </div>
+        </span>
 
         {/* Permission count — tabular metric */}
-        <span className="hidden tabular-nums text-xs text-muted-foreground sm:inline shrink-0">
+        <span className="hidden shrink-0 tabular-nums text-xs text-muted-foreground sm:inline">
           {permCount}
         </span>
 
-        <motion.div
-          animate={{ rotate: expanded ? 180 : 0 }}
-          transition={SPRING}
-          className="shrink-0 text-muted-foreground"
-        >
-          <CaretDown weight="bold" className="w-4 h-4" />
-        </motion.div>
+        <CaretDown
+          weight="bold"
+          className={cn(
+            'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-base ease-apple motion-reduce:transition-none',
+            expanded && 'rotate-180',
+          )}
+        />
+      </button>
+
+      {/* Expanded permission panel — CSS grid-rows, no framer-motion. */}
+      <div
+        id={contentId}
+        className="grid transition-[grid-template-rows] duration-base ease-apple motion-reduce:transition-none"
+        style={{ gridTemplateRows: expanded ? '1fr' : '0fr' }}
+      >
+        <div className="overflow-hidden">
+          <div className="space-y-5 border-t border-border px-5 py-5">
+            {/* Owner note */}
+            {isOwner && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Lock weight="bold" className="w-3.5 h-3.5 shrink-0" />
+                Owner always has all permissions.
+              </div>
+            )}
+
+            {/* Site scope, for pre-trim site-scoped roles that still exist */}
+            {siteScoped && (
+              <p className="border-b border-border pb-4 text-xs text-muted-foreground">
+                This role is limited to {scopeLabel.toLowerCase()}.
+              </p>
+            )}
+
+            {/* Permission matrix */}
+            <PermissionMatrix
+              groups={permissionGroups}
+              isChecked={(perm) => (isOwner ? true : role.permissions.includes(perm))}
+              showOwnerBadge={(perm) => OWNER_ONLY_PERMS.has(perm) && !isOwner}
+            />
+          </div>
+        </div>
       </div>
-
-      {/* Expanded permission panel */}
-      <AnimatePresence initial={false}>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: EASE_APPLE }}
-            className="overflow-hidden"
-          >
-            <div className="border-t border-border bg-muted/30 px-5 py-5 space-y-5">
-              {/* Owner note */}
-              {isOwner && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Lock weight="bold" className="w-3.5 h-3.5 shrink-0" />
-                  Owner always has all permissions.
-                </div>
-              )}
-
-              {/* Site scope, for pre-trim site-scoped roles that still exist */}
-              {siteScoped && (
-                <p className="text-xs text-muted-foreground border-b border-border pb-4">
-                  This role is limited to {scopeLabel.toLowerCase()}.
-                </p>
-              )}
-
-              {/* Permission matrix */}
-              <PermissionMatrix
-                groups={permissionGroups}
-                idPrefix={role.id}
-                isChecked={(perm) => (isOwner ? true : role.permissions.includes(perm))}
-                showOwnerBadge={(perm) => OWNER_ONLY_PERMS.has(perm) && !isOwner}
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   )
 }
@@ -261,34 +265,39 @@ export default function WorkspaceRolesTab() {
     if (user?.org_id) load()
   }, [user?.org_id, load])
 
-  if (loading) {
+  if (loading) return <SettingsLoadingState rows={4} />
+
+  if (error) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Spinner className="w-6 h-6 text-muted-foreground" />
-      </div>
+      <SettingsErrorState
+        title="Couldn't load roles and permissions"
+        message="Try again in a moment."
+        onRetry={handleRetry}
+        retrying={retrying}
+      />
     )
   }
 
   return (
     <div className="space-y-8">
-      {error ? (
-        <SettingsErrorState
-          message="We couldn't load roles and permissions. It may be a temporary problem."
-          onRetry={handleRetry}
-          retrying={retrying}
-        />
-      ) : (
-        <SettingsPanel
-          title="Roles"
-          description="What each role can do. New members get Admin or Member through their invite link; roles marked not assignable are held only by members who had them before."
-        >
-          <div className="divide-y divide-border">
+      <SettingsPanel
+        title="Roles and permissions"
+        description="What each role can do. New members get Admin or Member through their invite link. Roles marked not assignable are held only by members who had them before."
+      >
+        {roles.length === 0 ? (
+          <EmptyRow
+            icon={<Users weight="regular" />}
+            title="No roles configured"
+            caption="Built-in roles should always exist. If this persists, contact support."
+          />
+        ) : (
+          <PanelRows>
             {roles.map((role) => (
               <RoleRow key={role.id} role={role} permissionGroups={permissionGroups} />
             ))}
-          </div>
-        </SettingsPanel>
-      )}
+          </PanelRows>
+        )}
+      </SettingsPanel>
     </div>
   )
 }

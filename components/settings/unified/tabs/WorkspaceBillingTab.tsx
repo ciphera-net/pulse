@@ -17,17 +17,27 @@ import {
   TD,
   RailGrid,
   RailGridTile,
+  Switcher,
   getAuthErrorMessage,
 } from '@ciphera-net/facet'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { CreditCard, DownloadSimple, PencilSimple } from '@phosphor-icons/react'
+import { CreditCard, DownloadSimple } from '@phosphor-icons/react'
 import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/settings/panels'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { MastheadAction } from '@/components/settings/shell-slots'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
+import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import { useSubscription } from '@/lib/swr/dashboard'
-import { updatePaymentMethod, cancelSubscription, resumeSubscription, getInvoices, getPrices, downloadInvoicePDF, updateBillingSettings } from '@/lib/api/billing'
+import {
+  updatePaymentMethod,
+  cancelSubscription,
+  resumeSubscription,
+  getInvoices,
+  getPrices,
+  downloadInvoicePDF,
+  updateBillingSettings,
+  type SubscriptionDetails,
+} from '@/lib/api/billing'
 import { formatCalendarDate, formatCalendarDateFull, formatDateUTC } from '@/lib/utils/formatDate'
 import { formatEuro, formatEuroCents, formatMoneyCents } from '@/lib/utils/money'
 import { cdnUrl } from '@/lib/cdn'
@@ -42,16 +52,44 @@ const PAYMENT_METHODS = [
   { id: 'applepay', label: 'Apple Pay', icons: ['/icons/payment/applepay.svg'] },
 ]
 
-/** A single usage stat tile inside the plan-band RailGrid — tabular numerals + a
- *  Geist micro-label cap, per spec §2.2. */
+/** A single usage stat tile inside the plan-band RailGrid. The number leads
+ *  (tabular numerals, text-xl), the muted label sits below it — a stat tile
+ *  reads as a metric only when the number is the first thing the eye lands
+ *  on; label-above read as a form field instead (settings overhaul §2.2). */
 function StatTile({ label, value, sub }: { label: string; value: React.ReactNode; sub?: React.ReactNode }) {
   return (
     <RailGridTile>
-      <p className="font-semibold text-micro-label uppercase text-muted-foreground">{label}</p>
-      <p className="mt-1.5 text-lg font-semibold tabular-nums text-foreground">{value}</p>
+      <p className="text-xl font-semibold tabular-nums text-foreground">{value}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{label}</p>
       {sub}
     </RailGridTile>
   )
+}
+
+interface BillingFormFields {
+  business_name: string
+  billing_email: string
+  address: string
+  city: string
+  postal_code: string
+}
+
+const EMPTY_BILLING_FORM: BillingFormFields = {
+  business_name: '',
+  billing_email: '',
+  address: '',
+  city: '',
+  postal_code: '',
+}
+
+function billingFieldsFromSubscription(sub: SubscriptionDetails): BillingFormFields {
+  return {
+    business_name: sub.business_name ?? '',
+    billing_email: sub.billing_email ?? '',
+    address: sub.billing_address ?? '',
+    city: sub.billing_city ?? '',
+    postal_code: sub.billing_postal_code ?? '',
+  }
 }
 
 export default function WorkspaceBillingTab() {
@@ -62,10 +100,17 @@ export default function WorkspaceBillingTab() {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('')
-  const methodRefs = useRef<(HTMLButtonElement | null)[]>([])
-  const [editingBilling, setEditingBilling] = useState(false)
-  const [savingBilling, setSavingBilling] = useState(false)
-  const [billingForm, setBillingForm] = useState({ business_name: '', billing_email: '', address: '', city: '', postal_code: '' })
+
+  // Billing details is an always-editable form now — SettingsSaveBar owns the
+  // dirty/save/discard cycle, replacing the old pencil-toggled display/edit
+  // mode. `baseline` seeds once from the first subscription payload
+  // (hasInitializedBilling guards a later revalidation, e.g. the cancel/resume
+  // flows below calling mutate(), from clobbering an in-progress edit) and is
+  // re-set to the saved values after a successful save — the same shape
+  // AccountProfileTab's own display-name field uses.
+  const [billingForm, setBillingForm] = useState<BillingFormFields>(EMPTY_BILLING_FORM)
+  const [billingBaseline, setBillingBaseline] = useState<BillingFormFields>(EMPTY_BILLING_FORM)
+  const hasInitializedBilling = useRef(false)
 
   // SWR (matching useSubscription) so loading, empty, and error are three
   // distinguishable states — the old effect+state version rendered nothing
@@ -77,7 +122,7 @@ export default function WorkspaceBillingTab() {
     mutate: retryInvoices,
   } = useSWR('billing-invoices', getInvoices)
   const invoicesError = invoicesFetchError
-    ? getAuthErrorMessage(invoicesFetchError as Error) || 'Failed to load invoices'
+    ? getAuthErrorMessage(invoicesFetchError as Error) || "Couldn't load your invoices. Try again."
     : null
 
   const { data: prices } = useSWR('plan-prices', getPrices)
@@ -97,12 +142,20 @@ export default function WorkspaceBillingTab() {
     window.history.replaceState({}, '', window.location.pathname)
   }, [mutate])
 
+  useEffect(() => {
+    if (!subscription || hasInitializedBilling.current) return
+    const fields = billingFieldsFromSubscription(subscription)
+    setBillingForm(fields)
+    setBillingBaseline(fields)
+    hasInitializedBilling.current = true
+  }, [subscription])
+
   const handleUpdatePayment = async (method: string) => {
     try {
       const { url } = await updatePaymentMethod(method)
       window.location.href = url
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to open payment portal')
+      toast.error(getAuthErrorMessage(err as Error) || "Couldn't open the payment portal. Try again.")
     }
   }
 
@@ -111,7 +164,7 @@ export default function WorkspaceBillingTab() {
     try {
       const result = await cancelSubscription()
       if (!result.ok) {
-        toast.error('The subscription could not be cancelled. Please try again.')
+        toast.error("Couldn't cancel your subscription. Try again.")
         return
       }
       // Optimistic paint, then revalidate against the server — the old
@@ -123,7 +176,7 @@ export default function WorkspaceBillingTab() {
       )
       toast.success('Subscription cancelled')
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to cancel subscription')
+      toast.error(getAuthErrorMessage(err as Error) || "Couldn't cancel your subscription. Try again.")
     } finally {
       setCancelling(false)
       setShowCancelConfirm(false)
@@ -139,7 +192,7 @@ export default function WorkspaceBillingTab() {
         return
       }
       if (!result.ok) {
-        toast.error('The subscription could not be resumed. Please try again.')
+        toast.error("Couldn't resume your subscription. Try again.")
         return
       }
       await mutate(
@@ -148,23 +201,19 @@ export default function WorkspaceBillingTab() {
       )
       toast.success('Subscription resumed')
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to resume subscription')
+      toast.error(getAuthErrorMessage(err as Error) || "Couldn't resume your subscription. Try again.")
     }
   }
 
-  const handleEditBilling = () => {
-    setBillingForm({
-      business_name: subscription?.business_name ?? '',
-      billing_email: subscription?.billing_email ?? '',
-      address: subscription?.billing_address ?? '',
-      city: subscription?.billing_city ?? '',
-      postal_code: subscription?.billing_postal_code ?? '',
-    })
-    setEditingBilling(true)
-  }
+  const billingDirty = hasInitializedBilling.current
+    ? (Object.keys(billingBaseline) as (keyof BillingFormFields)[]).some(
+        (key) => billingForm[key] !== billingBaseline[key],
+      )
+    : false
+
+  const handleDiscardBilling = () => setBillingForm(billingBaseline)
 
   const handleSaveBilling = async () => {
-    setSavingBilling(true)
     try {
       const result = await updateBillingSettings({
         billing_email: billingForm.billing_email,
@@ -174,29 +223,17 @@ export default function WorkspaceBillingTab() {
         postal_code: billingForm.postal_code,
       })
       if (result.ok) {
+        setBillingBaseline(billingForm)
         await mutate()
-        setEditingBilling(false)
         toast.success('Billing details updated')
       } else {
         // ok:false is a failure and must say so — the old silence left the
         // form open with the user believing the save landed.
-        toast.error('Your billing details could not be saved. Please try again.')
+        toast.error("Couldn't save your billing details. Try again.")
       }
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to update billing details')
-    } finally {
-      setSavingBilling(false)
+      toast.error(getAuthErrorMessage(err as Error) || "Couldn't save your billing details. Try again.")
     }
-  }
-
-  const onMethodKeyDown = (e: React.KeyboardEvent, index: number) => {
-    let target: number | null = null
-    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') target = (index + 1) % PAYMENT_METHODS.length
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') target = (index - 1 + PAYMENT_METHODS.length) % PAYMENT_METHODS.length
-    if (target === null) return
-    e.preventDefault()
-    setSelectedPaymentMethod(PAYMENT_METHODS[target].id)
-    methodRefs.current[target]?.focus()
   }
 
   const openPaymentModal = () => {
@@ -214,7 +251,7 @@ export default function WorkspaceBillingTab() {
   if (subscriptionError && !subscription) {
     return (
       <SettingsErrorState
-        title="Couldn’t load your subscription"
+        title="Couldn't load your subscription"
         message="Your plan and usage are temporarily unavailable. Your subscription itself is unaffected."
         onRetry={() => mutate()}
       />
@@ -229,7 +266,7 @@ export default function WorkspaceBillingTab() {
           title="No subscription"
           caption="You're on the free Personal plan."
           action={
-            <Button variant="secondary" size="sm" onClick={() => router.push('/setup/plan')}>
+            <Button variant="outline" size="sm" onClick={() => router.push('/setup/plan')}>
               View plans
             </Button>
           }
@@ -305,6 +342,35 @@ export default function WorkspaceBillingTab() {
   // subscription behind any of them, so both calls would only error.
   const showActions = !isCanceled && !isFree && !isGrant && canManageBilling
 
+  // Governs BOTH the billing-details panel and its SettingsSaveBar — a
+  // manager on the free plan with no billing_email yet sees neither: the
+  // panel has nothing to show, so a save bar with no inputs behind it would
+  // be a mounted device that can never go dirty.
+  const showBillingDetails = Boolean(subscription.billing_email || (canManageBilling && !isFree))
+
+  // The panel-header status chip. subscription_status and cancel_at_period_end
+  // are mutually exclusive across these branches, so at most one chip ever
+  // renders — one chip shape for the tab (rule §4.5), dot on every one of
+  // them, "Paid" in the invoices table included below.
+  let planChip: React.ReactNode = null
+  if (isActive && !isTrialing && !subscription.cancel_at_period_end) {
+    // A running plan is a genuinely good, live state — success (green).
+    planChip = <StatusChip tone="success" dot>Active</StatusChip>
+  } else if (isTrialing && !subscription.cancel_at_period_end) {
+    // A trial is running too, so it reads success with its own label.
+    planChip = <StatusChip tone="success" dot>Trial</StatusChip>
+  } else if (isCanceled) {
+    // Cancelled is a settled, user-chosen end state (now on the free tier) —
+    // not trouble, so neutral, never coral.
+    planChip = <StatusChip tone="neutral" dot>Cancelled</StatusChip>
+  } else if (subscription.cancel_at_period_end) {
+    planChip = <StatusChip tone="warning" dot>Cancelling</StatusChip>
+  } else if (isPastDue) {
+    // Past due IS genuine trouble — the plan is at risk — so it earns the
+    // coral danger tone (coral is reserved for real problems).
+    planChip = <StatusChip tone="danger" dot>Past due</StatusChip>
+  }
+
   return (
     <div className="space-y-8">
       {/* The tab's ONE primary CTA — the page's single solid-orange element.
@@ -317,41 +383,17 @@ export default function WorkspaceBillingTab() {
               through the first-run onboarding completion screen and re-fired
               welcome_completed (F-C10). */}
           <Button variant="default" onClick={() => router.push('/switch')}>
-            {isCanceled ? 'Resubscribe' : isFree ? 'Upgrade' : 'Change Plan'}
+            {isCanceled ? 'Resubscribe' : isFree ? 'Upgrade' : 'Change plan'}
           </Button>
         </MastheadAction>
       )}
 
       {/* ── Plan status band ── */}
-      <SettingsPanel>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-base font-semibold text-foreground">{planLabel} Plan</h3>
-            {/* A running plan is a genuinely good, live state — success (green).
-                A trial is running too, so it reads success with its own label. */}
-            {isActive && !isTrialing && !subscription.cancel_at_period_end && (
-              <StatusChip tone="success" dot>Active</StatusChip>
-            )}
-            {isTrialing && !subscription.cancel_at_period_end && (
-              <StatusChip tone="success" dot>Trial</StatusChip>
-            )}
-            {/* Cancelled is a settled, user-chosen end state (now on the free
-                tier) — not trouble, so neutral, never coral. */}
-            {subscription.subscription_status === 'canceled' && (
-              <StatusChip tone="neutral">Cancelled</StatusChip>
-            )}
-            {subscription.cancel_at_period_end && subscription.subscription_status !== 'canceled' && (
-              <StatusChip tone="warning">Cancelling</StatusChip>
-            )}
-            {/* Past due IS genuine trouble — the plan is at risk — so it earns the
-                coral danger tone (coral is reserved for real problems). */}
-            {isPastDue && <StatusChip tone="danger" dot>Past due</StatusChip>}
-          </div>
-          {!canManageBilling && (
-            <p className="text-xs text-muted-foreground">Only the workspace owner can modify billing.</p>
-          )}
-        </div>
-
+      <SettingsPanel
+        title={`${planLabel} plan`}
+        description={!canManageBilling ? 'Only the workspace owner can modify billing.' : undefined}
+        action={planChip}
+      >
         {isCanceled ? (
           <p className="px-5 py-4 text-sm text-muted-foreground">
             Your {planLabel} plan has expired. You&apos;re now limited to{' '}
@@ -384,7 +426,7 @@ export default function WorkspaceBillingTab() {
                   </>
                 }
                 sub={
-                  <div className="mt-2 h-1 w-full max-w-[160px] overflow-hidden rounded-none bg-muted">
+                  <div className="mt-2 h-1 w-full max-w-40 overflow-hidden rounded-none bg-muted">
                     <div
                       className={`h-full ${usageRatio >= 0.9 ? 'bg-destructive' : 'bg-foreground/30'}`}
                       style={{ width: `${Math.min(100, usageRatio * 100)}%` }}
@@ -425,30 +467,28 @@ export default function WorkspaceBillingTab() {
         {isGrant && !isCanceled && (
           <p className="border-t border-border px-5 py-3 text-sm text-muted-foreground">
             This workspace runs on a granted {planLabel} plan
-            {formatCalendarDate(subscription.grant_expires_on) ? ` until ${formatCalendarDate(subscription.grant_expires_on)}` : ''} — nothing is billed.
+            {formatCalendarDate(subscription.grant_expires_on)
+              ? ` until ${formatCalendarDate(subscription.grant_expires_on)}.`
+              : '.'}{' '}
+            Nothing is billed.
           </p>
         )}
 
         {showActions && (
           <div className="flex flex-wrap gap-2 border-t border-border px-5 py-4">
-            <Button onClick={openPaymentModal} variant="secondary" size="sm" className="gap-1.5">
+            <Button onClick={openPaymentModal} variant="outline" size="sm" className="gap-1.5">
               <CreditCard weight="bold" className="h-3.5 w-3.5" />
               Update payment method
             </Button>
 
             {isActive && !subscription.cancel_at_period_end && (
-              <Button
-                onClick={() => setShowCancelConfirm(true)}
-                variant="secondary"
-                size="sm"
-                className="text-muted-foreground hover:text-destructive"
-              >
+              <Button onClick={() => setShowCancelConfirm(true)} variant="outline" size="sm">
                 Cancel subscription
               </Button>
             )}
 
             {subscription.cancel_at_period_end && (
-              <Button onClick={handleResume} variant="secondary" size="sm">
+              <Button onClick={handleResume} variant="outline" size="sm">
                 Resume subscription
               </Button>
             )}
@@ -465,12 +505,12 @@ export default function WorkspaceBillingTab() {
             tone="warning"
             title={
               isPastDue
-                ? 'Payment past due — update your payment method to keep your plan.'
-                : 'Your last payment could not be processed.'
+                ? 'Payment past due. Update your payment method to keep your plan.'
+                : "We couldn't process your last payment."
             }
             action={
               canManageBilling ? (
-                <Button variant="secondary" size="sm" onClick={openPaymentModal}>
+                <Button variant="outline" size="sm" onClick={openPaymentModal}>
                   Update payment method
                 </Button>
               ) : undefined
@@ -480,7 +520,7 @@ export default function WorkspaceBillingTab() {
               ? isPastDue
                 ? undefined
                 : 'Update your payment method to avoid service interruption.'
-              : 'Please contact your workspace owner to update the payment method.'}
+              : 'Contact your workspace owner to update the payment method.'}
           </Banner>
         )}
 
@@ -497,14 +537,14 @@ export default function WorkspaceBillingTab() {
             title={`You're over your plan's pageview limit (${subscription.pageview_usage!.toLocaleString()} of ${subscription.pageview_limit.toLocaleString()}).`}
             action={
               canManageBilling ? (
-                <Button variant="secondary" size="sm" onClick={() => router.push('/switch')}>
+                <Button variant="outline" size="sm" onClick={() => router.push('/switch')}>
                   Upgrade your plan
                 </Button>
               ) : undefined
             }
           >
             {hardCeiling !== null
-              ? `We're still collecting your data — up to ${hardCeiling.toLocaleString()} pageviews. ${
+              ? `We're still collecting your data, up to ${hardCeiling.toLocaleString()} pageviews. ${
                   canManageBilling
                     ? 'Upgrade to raise the limit.'
                     : 'Contact your workspace owner to upgrade the plan.'
@@ -522,7 +562,7 @@ export default function WorkspaceBillingTab() {
             title={`Collection has stopped: you've reached the ${hardCeiling!.toLocaleString()} pageview ceiling.`}
             action={
               canManageBilling ? (
-                <Button variant="secondary" size="sm" onClick={() => router.push('/switch')}>
+                <Button variant="outline" size="sm" onClick={() => router.push('/switch')}>
                   Upgrade your plan
                 </Button>
               ) : undefined
@@ -545,10 +585,8 @@ export default function WorkspaceBillingTab() {
                 {subscription.pending_limit
                   ? ` (${subscription.pending_limit.toLocaleString()} pageviews/${subscription.pending_interval === 'month' ? 'mo' : 'yr'})`
                   : ''}{' '}
-                pending
-                {nextChargeLabel
-                  ? ` — applies ${nextChargeLabel}`
-                  : ''}
+                pending.
+                {nextChargeLabel ? ` Applies ${nextChargeLabel}.` : ''}
               </>
             }
           />
@@ -572,37 +610,26 @@ export default function WorkspaceBillingTab() {
 
       {/* Payment method selection */}
       <Modal isOpen={showPaymentMethodModal} onClose={() => setShowPaymentMethodModal(false)} title="Choose payment method" className="max-w-sm">
-        <div role="radiogroup" aria-label="Payment method" className="mb-4 grid grid-cols-3 gap-2">
-          {PAYMENT_METHODS.map((method, i) => {
-            const selected = selectedPaymentMethod === method.id
-            const isTabStop = selected || (!selectedPaymentMethod && i === 0)
-            return (
-              <button
-                key={method.id}
-                ref={(el) => { methodRefs.current[i] = el }}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                aria-label={method.label}
-                tabIndex={isTabStop ? 0 : -1}
-                onClick={() => setSelectedPaymentMethod(method.id)}
-                onKeyDown={(e) => onMethodKeyDown(e, i)}
-                className={`flex h-[60px] flex-col items-center justify-center gap-1.5 rounded-none border text-xs transition-all duration-base ease-apple focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange ${
-                  selected
-                    ? 'border-brand-orange bg-brand-orange/5 text-foreground'
-                    : 'border-input bg-muted text-muted-foreground hover:border-border hover:bg-accent'
-                }`}
-              >
-                <div className="flex items-center gap-1 rounded-none bg-white px-1.5 py-1">
+        <Switcher
+          aria-label="Payment method"
+          tone="solid"
+          className="mb-4 w-full flex-wrap"
+          value={selectedPaymentMethod}
+          onChange={setSelectedPaymentMethod}
+          options={PAYMENT_METHODS.map((method) => ({
+            value: method.id,
+            label: (
+              <span className="flex items-center gap-1.5 py-1">
+                <span className="flex items-center gap-1 bg-white px-1 py-0.5">
                   {method.icons.map((icon) => (
-                    <img key={icon} src={cdnUrl(icon)} alt="" className="h-5 w-auto" />
+                    <img key={icon} src={cdnUrl(icon)} alt="" className="h-4 w-auto" />
                   ))}
-                </div>
+                </span>
                 {method.label}
-              </button>
-            )
-          })}
-        </div>
+              </span>
+            ),
+          }))}
+        />
         <Button
           variant="default"
           className="w-full"
@@ -620,112 +647,88 @@ export default function WorkspaceBillingTab() {
         </p>
         <p className="mb-1 text-sm text-muted-foreground">
           {nextChargeLabel
-            ? <>Your {planLabel} plan stays fully active until <span className="text-foreground">{nextChargeLabel}</span> — you won&apos;t be charged again.</>
+            ? <>Your {planLabel} plan stays fully active until <span className="text-foreground">{nextChargeLabel}</span>. You won&apos;t be charged again.</>
             : <>You&apos;ll keep access until the end of your current billing period and won&apos;t be charged again.</>}
         </p>
         <p className="mb-5 text-sm text-muted-foreground">
           After that, your workspace moves to the free Personal plan ({FREE_PAGEVIEW_LIMIT.toLocaleString()} pageviews/month, 1 site). Your data stays in place.
         </p>
         <div className="flex justify-end gap-3">
-          <Button variant="secondary" onClick={() => setShowCancelConfirm(false)} disabled={cancelling}>
+          <Button variant="outline" onClick={() => setShowCancelConfirm(false)} disabled={cancelling}>
             Keep plan
           </Button>
           <Button variant="destructive" onClick={handleCancel} disabled={cancelling}>
-            {cancelling ? 'Cancelling...' : 'Yes, cancel'}
+            {cancelling ? 'Cancelling…' : 'Yes, cancel'}
           </Button>
         </div>
       </Modal>
 
-      {/* ── Billing details — PropertyRows with inline edit (spec §6). Also
-          rendered (as an add-details empty state) when the billing email
-          hasn't synced yet, so managers are never locked out of entering
-          details the API fully supports. ── */}
-      {(subscription.billing_email || (canManageBilling && !isFree)) && (
+      {/* ── Billing details — always an editable form now (SettingsSaveBar owns
+          the dirty/save/discard cycle), not a pencil-toggled display/edit mode.
+          A non-manager still gets a read-only view. Also rendered for a manager
+          with no billing email yet, so managers are never locked out of
+          entering details the API fully supports. ── */}
+      {showBillingDetails && (
         <SettingsPanel
           title="Billing details"
-          action={
-            !editingBilling && canManageBilling && subscription.billing_email ? (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={handleEditBilling}
-                      className="rounded-none p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                    >
-                      <PencilSimple size={14} />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>Edit billing</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ) : undefined
+          description={
+            !canManageBilling
+              ? undefined
+              : !subscription.billing_email
+                ? 'Add your business name, address, and VAT details so they appear on invoices.'
+                : subscription.tax_id
+                  ? 'To change your country or VAT ID, contact support.'
+                  : undefined
           }
         >
-          {editingBilling ? (
-            <>
-              <PanelRows>
-                <PanelRow label="Business name" htmlFor="bd-business-name">
-                  <Input
-                    id="bd-business-name"
-                    type="text"
-                    value={billingForm.business_name}
-                    onChange={e => setBillingForm(f => ({ ...f, business_name: e.target.value }))}
-                    placeholder="Business name"
-                  />
-                </PanelRow>
-                <PanelRow label="Billing email" htmlFor="bd-billing-email">
-                  <Input
-                    id="bd-billing-email"
-                    type="email"
-                    value={billingForm.billing_email}
-                    onChange={e => setBillingForm(f => ({ ...f, billing_email: e.target.value }))}
-                    placeholder="billing@example.com"
-                  />
-                </PanelRow>
-                <PanelRow label="Address" htmlFor="bd-address">
-                  <Input
-                    id="bd-address"
-                    type="text"
-                    value={billingForm.address}
-                    onChange={e => setBillingForm(f => ({ ...f, address: e.target.value }))}
-                    placeholder="Street address"
-                  />
-                </PanelRow>
-                <PanelRow label="City" htmlFor="bd-city">
-                  <Input
-                    id="bd-city"
-                    type="text"
-                    value={billingForm.city}
-                    onChange={e => setBillingForm(f => ({ ...f, city: e.target.value }))}
-                    placeholder="City"
-                  />
-                </PanelRow>
-                <PanelRow label="Postal code" htmlFor="bd-postal-code">
-                  <Input
-                    id="bd-postal-code"
-                    type="text"
-                    value={billingForm.postal_code}
-                    onChange={e => setBillingForm(f => ({ ...f, postal_code: e.target.value }))}
-                    placeholder="Postal code"
-                  />
-                </PanelRow>
-              </PanelRows>
-              <div className="space-y-3 border-t border-border px-5 py-4">
-                {subscription.tax_id && (
-                  <p className="text-xs text-muted-foreground">
-                    To change your country or VAT ID, please contact support.
-                  </p>
-                )}
-                <div className="flex gap-2">
-                  <Button variant="default" size="sm" onClick={handleSaveBilling} disabled={savingBilling}>
-                    {savingBilling ? 'Saving...' : 'Save'}
-                  </Button>
-                  <Button variant="secondary" size="sm" onClick={() => setEditingBilling(false)} disabled={savingBilling}>
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            </>
+          {canManageBilling ? (
+            <PanelRows>
+              <PanelRow label="Business name" htmlFor="bd-business-name">
+                <Input
+                  id="bd-business-name"
+                  type="text"
+                  value={billingForm.business_name}
+                  onChange={e => setBillingForm(f => ({ ...f, business_name: e.target.value }))}
+                  placeholder="Business name"
+                />
+              </PanelRow>
+              <PanelRow label="Billing email" htmlFor="bd-billing-email">
+                <Input
+                  id="bd-billing-email"
+                  type="email"
+                  value={billingForm.billing_email}
+                  onChange={e => setBillingForm(f => ({ ...f, billing_email: e.target.value }))}
+                  placeholder="billing@example.com"
+                />
+              </PanelRow>
+              <PanelRow label="Address" htmlFor="bd-address">
+                <Input
+                  id="bd-address"
+                  type="text"
+                  value={billingForm.address}
+                  onChange={e => setBillingForm(f => ({ ...f, address: e.target.value }))}
+                  placeholder="Street address"
+                />
+              </PanelRow>
+              <PanelRow label="City" htmlFor="bd-city">
+                <Input
+                  id="bd-city"
+                  type="text"
+                  value={billingForm.city}
+                  onChange={e => setBillingForm(f => ({ ...f, city: e.target.value }))}
+                  placeholder="City"
+                />
+              </PanelRow>
+              <PanelRow label="Postal code" htmlFor="bd-postal-code">
+                <Input
+                  id="bd-postal-code"
+                  type="text"
+                  value={billingForm.postal_code}
+                  onChange={e => setBillingForm(f => ({ ...f, postal_code: e.target.value }))}
+                  placeholder="Postal code"
+                />
+              </PanelRow>
+            </PanelRows>
           ) : subscription.billing_email ? (
             <PanelRows>
               {subscription.business_name && (
@@ -746,29 +749,18 @@ export default function WorkspaceBillingTab() {
                 </PanelRow>
               )}
             </PanelRows>
-          ) : (
-            <EmptyRow
-              icon={<CreditCard />}
-              title="No billing details on file yet."
-              caption="Add your business name, address, and VAT details so they appear on invoices."
-              action={
-                <Button variant="secondary" size="sm" onClick={handleEditBilling}>
-                  Add billing details
-                </Button>
-              }
-            />
-          )}
+          ) : null}
         </SettingsPanel>
       )}
 
-      {/* ── Recent invoices — RuledTable (spec §2.2) ── */}
+      {/* ── Recent invoices ── */}
       <SettingsPanel title="Invoices">
         {invoicesError ? (
           <div className="px-5 py-4">
             <SettingsErrorState variant="banner" message={invoicesError} onRetry={() => retryInvoices()} />
           </div>
         ) : invoicesLoading ? (
-          <p className="px-5 py-6 text-sm text-muted-foreground">Loading invoices…</p>
+          <SettingsLoadingState rows={3} />
         ) : !invoices || invoices.length === 0 ? (
           <EmptyRow
             icon={<DownloadSimple />}
@@ -797,13 +789,19 @@ export default function WorkspaceBillingTab() {
                 return (
                   <TR key={invoice.id}>
                     <TD>
-                      <span className="font-mono text-xs text-muted-foreground">{invoice.invoice_number ?? '—'}</span>
+                      {/* No fallback glyph: an unnumbered invoice (not yet minted by
+                          Odoo) is an absent value, not a value to paper over — the
+                          same "omit the unit, never fabricate a placeholder" rule
+                          the plan-band stat tiles above follow for missing dates. */}
+                      {invoice.invoice_number && (
+                        <span className="font-mono text-xs text-muted-foreground">{invoice.invoice_number}</span>
+                      )}
                     </TD>
                     {/* An invoice date is a pinned document date — the instant the
                         server issued it — so it renders as its UTC day. formatDate
                         read the LOCAL day and dated the one real invoice on the
                         estate 16/07 for a document the database dates 15-07. */}
-                    <TD className="hidden sm:table-cell">{formatDateUTC(new Date(invoice.created_at))}</TD>
+                    <TD className="hidden sm:table-cell tabular-nums">{formatDateUTC(new Date(invoice.created_at))}</TD>
                     <TD numeric>
                       <span className="text-foreground">
                         {isCreditNote ? '−' : ''}{formatMoneyCents(Math.abs(invoice.total_cents), invoice.currency)}
@@ -816,49 +814,43 @@ export default function WorkspaceBillingTab() {
                     </TD>
                     <TD>
                       {isCreditNote ? (
-                        <StatusChip tone="info">Credit Note</StatusChip>
+                        <StatusChip tone="info" dot>Credit note</StatusChip>
                       ) : invoice.status === 'sent' || invoice.status === 'paid' ? (
                         // The backend mints `paid` (webhook mirror); `sent` is the
                         // legacy synonym. Both are the same settled fact: Paid.
-                        <StatusChip tone="success">Paid</StatusChip>
+                        <StatusChip tone="success" dot>Paid</StatusChip>
                       ) : invoice.status === 'refunded' ? (
-                        <StatusChip tone="info">Refunded</StatusChip>
+                        <StatusChip tone="info" dot>Refunded</StatusChip>
                       ) : invoice.status === 'failed' ? (
                         // A failed charge is real trouble — coral, not a quiet grey.
-                        <StatusChip tone="danger">Failed</StatusChip>
+                        <StatusChip tone="danger" dot>Failed</StatusChip>
                       ) : (
-                        <StatusChip tone="neutral">{invoice.status}</StatusChip>
+                        <StatusChip tone="neutral" dot>{invoice.status}</StatusChip>
                       )}
                     </TD>
                     <TD>
                       {/* Row action ALWAYS visible — never a hover-only reveal. */}
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              onClick={() =>
-                                downloadInvoicePDF(invoice.id).catch((e: unknown) => {
-                                  // "Not available yet" is TRUE for a 404 — Odoo has not
-                                  // minted the document. It was reported for every failure,
-                                  // including the 401 that made this button dead for nine
-                                  // days, which is a misleading answer dressed as a calm one.
-                                  const status = (e as { status?: number })?.status
-                                  toast.error(
-                                    status === 404
-                                      ? 'PDF not available yet'
-                                      : 'Could not download the invoice. Please try again.',
-                                  )
-                                })
-                              }
-                              className="rounded-none p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                              aria-label="Download PDF"
-                            >
-                              <DownloadSimple size={16} />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent>Download PDF</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label="Download invoice"
+                        onClick={() =>
+                          downloadInvoicePDF(invoice.id).catch((e: unknown) => {
+                            // "Not available yet" is TRUE for a 404 — Odoo has not
+                            // minted the document. It was reported for every failure,
+                            // including the 401 that made this button dead for nine
+                            // days, which is a misleading answer dressed as a calm one.
+                            const status = (e as { status?: number })?.status
+                            toast.error(
+                              status === 404
+                                ? "The invoice isn't available yet."
+                                : "Couldn't download the invoice. Try again.",
+                            )
+                          })
+                        }
+                      >
+                        <DownloadSimple size={16} />
+                      </Button>
                     </TD>
                   </TR>
                 )
@@ -867,6 +859,15 @@ export default function WorkspaceBillingTab() {
           </Table>
         )}
       </SettingsPanel>
+
+      {canManageBilling && showBillingDetails && (
+        <SettingsSaveBar
+          isDirty={billingDirty}
+          onSave={handleSaveBilling}
+          onDiscard={handleDiscardBilling}
+          saveLabel="Save billing details"
+        />
+      )}
     </div>
   )
 }

@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import path from 'node:path'
 import * as userApi from '@/lib/api/user'
 
 // --- Mocks ---------------------------------------------------------------
@@ -46,6 +49,16 @@ import AccountSecurityAlertsTab from '../AccountSecurityAlertsTab'
 import { toast } from '@ciphera-net/facet'
 
 const mockUpdate = userApi.updateUserPreferences as unknown as ReturnType<typeof vi.fn>
+
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+}
+
+const SOURCE_PATH = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'AccountSecurityAlertsTab.tsx',
+)
 
 /** The switch sitting in the same PanelRow as `label`. */
 function switchFor(container: HTMLElement, label: string): HTMLButtonElement {
@@ -170,5 +183,36 @@ describe('AccountSecurityAlertsTab', () => {
     h.user = null
     render(<AccountSecurityAlertsTab />)
     expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument()
+  })
+
+  it('titles the panel the way the dashboard titles a section, sentence case, no kicker', () => {
+    render(<AccountSecurityAlertsTab />)
+    const h2 = screen.getByRole('heading', { level: 2, name: 'Security alerts' })
+    expect(h2.className).toMatch(/\btext-sm\b/)
+    expect(h2.className).toMatch(/\bfont-semibold\b/)
+    expect(h2.className).not.toMatch(/uppercase|micro-label/)
+    expect(
+      screen.getByText('Emails Ciphera ID sends you when something changes on your account.'),
+    ).toBeInTheDocument()
+  })
+
+  it('has no raw button in the tree, only the four named switches and the panel', () => {
+    render(<AccountSecurityAlertsTab />)
+    // The Facet mock renders Toggle as role="switch", never role="button", so a
+    // survivor here would be a hand-rolled control the vocabulary retired.
+    expect(screen.queryAllByRole('button')).toHaveLength(0)
+    expect(screen.getAllByRole('switch')).toHaveLength(3)
+  })
+
+  it('never uses an em dash, en dash or a literal ellipsis in its user-facing copy', () => {
+    // Scoped to string literals, not the whole stripped source: this file's
+    // handleToggle legitimately spreads objects (`...settings`, `...DEFAULTS`),
+    // and a bare `...` scan would flag that JS syntax as if it were prose.
+    // Comments are stripped first so a decision note ("Sent — it is the…")
+    // doesn't trip the same copy rule its own quoted strings must obey.
+    const stripped = stripComments(readFileSync(SOURCE_PATH, 'utf8'))
+    const stringLiterals = stripped.match(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g) ?? []
+    const offenders = stringLiterals.filter(s => /[—–]/.test(s) || /\.\.\./.test(s))
+    expect(offenders).toEqual([])
   })
 })

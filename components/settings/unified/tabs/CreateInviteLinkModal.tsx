@@ -15,7 +15,8 @@ const EXPIRY_OPTIONS = [
 
 // `unlimited` is the explicit "no cap" sentinel (facet Select treats an empty
 // value as "show placeholder", so an empty option can't render its label). It
-// maps back to an absent `max_uses` in the request body — behavior unchanged.
+// maps back to an absent `max_uses` in the request body, so behavior is
+// unchanged.
 const NO_LIMIT = 'unlimited'
 const MAX_USES_OPTIONS = [
   { value: NO_LIMIT, label: 'No limit' },
@@ -33,8 +34,8 @@ interface Props {
   onCreated: () => void
 }
 
-// INVITABLE_SLUGS (lib/api/roles) is what an invite can actually grant —
-// offering a finer role here would silently mint members, since the backend
+// INVITABLE_SLUGS (lib/api/roles) is what an invite can actually grant.
+// Offering a finer role here would silently mint members, since the backend
 // ignores the metadata.role_id path those roles used to ride on.
 
 export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange, onCreated }: Props) {
@@ -75,7 +76,7 @@ export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange
       setCreated(link)
       onCreated()
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to create invite link')
+      toast.error(getAuthErrorMessage(err as Error) || "Couldn't create the invite link. Try again.")
     } finally {
       setSubmitting(false)
     }
@@ -89,12 +90,12 @@ export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange
       toast.success('Link copied to clipboard')
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      toast.error('Failed to copy link')
+      toast.error("Couldn't copy the link. Try again.")
     }
   }
 
   const handleClose = () => {
-    // Reset form on close
+    // Reset form on close.
     setName('')
     setRoleId(defaultRoleId)
     setExpiresIn('7d')
@@ -110,9 +111,7 @@ export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange
         /* Result state */
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-none bg-pos/15 text-pos">
-              <Check weight="bold" className="h-5 w-5" />
-            </span>
+            <Check weight="bold" className="h-5 w-5 shrink-0 text-pos" />
             <div className="min-w-0">
               <p className="text-sm font-medium text-foreground">Invite link created</p>
               <p className="text-xs text-muted-foreground">Share this link with people you want to invite.</p>
@@ -120,21 +119,24 @@ export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange
           </div>
           <div className="flex items-center gap-2 rounded-none border border-input bg-muted px-3 py-2.5">
             <p className="flex-1 truncate font-mono text-xs text-foreground">{created.url}</p>
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 shrink-0 p-0"
               onClick={handleCopy}
-              className="flex-shrink-0 rounded-none p-1.5 text-muted-foreground transition-colors duration-fast ease-apple hover:bg-accent hover:text-foreground"
+              aria-label="Copy invite link"
             >
               {copied
                 ? <Check weight="bold" className="w-4 h-4 text-pos" />
                 : <Copy weight="bold" className="w-4 h-4" />
               }
-            </button>
+            </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            You can re-copy this link from the Invite Links section below.
+            You can copy this link again from the invite links panel below.
           </p>
           <div className="flex justify-end">
-            <Button onClick={handleClose} variant="secondary">
+            <Button onClick={handleClose} variant="outline">
               Done
             </Button>
           </div>
@@ -143,8 +145,9 @@ export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange
         /* Form state */
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Link name</label>
+            <label htmlFor="invite-link-name" className="text-xs font-medium text-muted-foreground">Link name</label>
             <Input
+              id="invite-link-name"
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="e.g. Engineering team invite"
@@ -152,8 +155,9 @@ export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Role</label>
+            <label htmlFor="invite-link-role" className="text-xs font-medium text-muted-foreground">Role</label>
             <Select
+              id="invite-link-role"
               value={roleId}
               onChange={handleRoleChange}
               options={inviteRoleOptions}
@@ -163,16 +167,18 @@ export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Expires in</label>
+              <label htmlFor="invite-link-expiry" className="text-xs font-medium text-muted-foreground">Expires in</label>
               <Select
+                id="invite-link-expiry"
                 value={expiresIn}
                 onChange={setExpiresIn}
                 options={EXPIRY_OPTIONS}
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Max uses</label>
+              <label htmlFor="invite-link-max-uses" className="text-xs font-medium text-muted-foreground">Max uses</label>
               <Select
+                id="invite-link-max-uses"
                 value={maxUses}
                 onChange={setMaxUses}
                 options={MAX_USES_OPTIONS}
@@ -181,7 +187,7 @@ export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange
           </div>
 
           <div className="flex justify-end gap-2 pt-1">
-            <Button onClick={handleClose} variant="secondary">
+            <Button onClick={handleClose} variant="outline">
               Cancel
             </Button>
             <Button
@@ -189,7 +195,7 @@ export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange
               variant="default"
               disabled={submitting || !name.trim() || !roleId}
             >
-              {submitting ? 'Creating...' : 'Create Link'}
+              {submitting ? 'Creating…' : 'Create link'}
             </Button>
           </div>
         </div>

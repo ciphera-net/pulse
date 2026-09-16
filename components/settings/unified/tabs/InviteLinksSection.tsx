@@ -9,7 +9,7 @@ import { type Role } from '@/lib/api/roles'
 import { useIsAdminOrOwner } from '@/lib/auth/permissions'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { StatusChip } from '@/components/settings/StatusChip'
-import { SettingsPanel, PanelRows, EmptyRow } from '@/components/settings/panels'
+import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/settings/panels'
 import { formatDate } from '@/lib/utils/formatDate'
 
 interface Props {
@@ -20,14 +20,14 @@ interface Props {
 }
 
 function LinkRoleBadge({ role, roles }: { role: string; roles: Role[] }) {
-  // Resolved from link.role — the slug is what the link actually GRANTS now.
-  // metadata.role_id is deliberately not consulted, even as a fallback: the
+  // Resolved from link.role: the slug is what the link actually grants now.
+  // metadata.role_id is deliberately not consulted, even as a fallback. The
   // backend ignores that field since the trim, so a metadata-derived label
   // would assert a role the link does not grant. Unknown slugs still render
   // as text rather than vanishing.
   const matched = roles.find(r => r.slug === role)
-  // Admin gets an info tint; everything else (incl. owner, which invite links
-  // never carry) stays neutral so the panel never spends orange (spec §2.3).
+  // Admin gets an info tint; everything else (including owner, which invite
+  // links never carry) stays neutral so the panel never spends orange.
   const tone = role === 'admin' ? 'info' : 'neutral'
   return <StatusChip tone={tone}>{matched?.name ?? role}</StatusChip>
 }
@@ -43,7 +43,7 @@ function CopyLinkButton({ url }: { url?: string }) {
       toast.success('Link copied to clipboard')
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      toast.error('Failed to copy link')
+      toast.error("Couldn't copy the link. Try again.")
     }
   }
 
@@ -90,7 +90,7 @@ export default function InviteLinksSection({ orgId, links, roles, onRevoked }: P
 
   return (
     <SettingsPanel
-      title="Invite Links"
+      title="Invite links"
       description="Shareable links that let people join with a preset role."
     >
       {links.length === 0 ? (
@@ -115,35 +115,28 @@ export default function InviteLinksSection({ orgId, links, roles, onRevoked }: P
                 : `${link.use_count} uses`
 
             return (
-              <div
+              <PanelRow
                 key={link.id}
-                className={`flex items-center gap-3 px-5 py-3.5 ${isDimmed ? 'opacity-50' : ''}`}
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="truncate text-sm font-medium text-foreground">{link.name}</span>
+                className={isDimmed ? 'opacity-50' : undefined}
+                label={<span className="truncate">{link.name}</span>}
+                caption={
+                  <span className="tabular-nums">
+                    {isDimmed ? usageLabel : `${usageLabel} · expires ${formatDate(expiresAt)}`}
+                  </span>
+                }
+                control={
+                  <div className="flex flex-wrap items-center justify-end gap-2">
                     {isExhausted ? (
-                      <StatusChip tone="neutral">Used</StatusChip>
+                      <StatusChip tone="neutral" dot>Used</StatusChip>
                     ) : isExpired ? (
-                      <StatusChip tone="neutral">Expired</StatusChip>
+                      <StatusChip tone="neutral" dot>Expired</StatusChip>
                     ) : (
                       <StatusChip tone="success" dot>Active</StatusChip>
                     )}
                     <LinkRoleBadge role={linkRole} roles={roles} />
-                  </div>
-                  <div className="mt-1 flex items-center gap-2 tabular-nums text-xs text-muted-foreground">
-                    <span>{usageLabel}</span>
-                    {!isExhausted && !isExpired && (
-                      <span>· expires {formatDate(expiresAt)}</span>
-                    )}
-                  </div>
-                </div>
-
-                {!isDimmed && (
-                  <div className="flex flex-shrink-0 items-center gap-1">
-                    <CopyLinkButton url={link.url} />
-                    {canManage && (
-                      // Always visible — no hover-only reveal (B12).
+                    {!isDimmed && <CopyLinkButton url={link.url} />}
+                    {!isDimmed && canManage && (
+                      // Always visible: no hover-only reveal (touch has no hover).
                       <Button
                         variant="ghost"
                         size="sm"
@@ -154,8 +147,8 @@ export default function InviteLinksSection({ orgId, links, roles, onRevoked }: P
                       </Button>
                     )}
                   </div>
-                )}
-              </div>
+                }
+              />
             )
           })}
         </PanelRows>
