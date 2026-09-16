@@ -37,6 +37,12 @@ interface NavItem {
   href: (siteId: string) => string
   icon: React.ComponentType<{ className?: string; weight?: IconWeight }>
   matchPrefix?: boolean
+  /**
+   * The path the active rule matches on, when it differs from where the link
+   * GOES. Settings needs both: the href carries ?siteId= so the destination
+   * knows which site, while the match has to be the bare route prefix.
+   */
+  matchHref?: (siteId: string) => string
 }
 
 interface NavGroup { label: string; items: NavItem[] }
@@ -66,7 +72,19 @@ const SETTINGS_ITEM: NavItem = {
   // Carry the CURRENT site into settings — ActiveSiteProvider adopts the
   // ?siteId= deep link; without it, settings opened on whatever site was
   // stored (or the org's first site) instead of the one being viewed.
-  label: 'Site Settings', href: (id) => `/settings/site/general?siteId=${id}`, icon: SettingsIcon, matchPrefix: true,
+  //
+  // 🔴 The href can never be the match target: usePathname() returns the path
+  // WITHOUT the query, so `pathname.startsWith('/settings/site/general?siteId=…')`
+  // was false on every settings tab and this entry could not light up anywhere.
+  // Match the bare section instead, so every tab under /settings/site is "here".
+  // (Written without a trailing glob on purpose: sidebar-highlight.test.tsx
+  // strips block comments before line comments, so a `/` + `*` anywhere in a
+  // line comment opens a comment that swallows the rest of this file.)
+  label: 'Site Settings',
+  href: (id) => `/settings/site/general?siteId=${id}`,
+  matchHref: () => '/settings/site',
+  icon: SettingsIcon,
+  matchPrefix: true,
 }
 
 const NAV_SHORTCUTS: Record<string, string> = {
@@ -193,6 +211,9 @@ function SidebarNav({
 
 // ─── Nav Item ───────────────────────────────────────────────
 
+/** A pathname never carries a query, so neither may anything compared to one. */
+const stripQuery = (s: string) => s.split('?')[0]
+
 function NavLink({
   item, siteId, collapsed, onClick, pendingHref, onNavigate,
 }: {
@@ -201,8 +222,10 @@ function NavLink({
 }) {
   const pathname = usePathname()
   const href = item.href(siteId)
-  const matchesPathname = item.matchPrefix ? pathname.startsWith(href) : pathname === href
-  const matchesPending = pendingHref !== null && (item.matchPrefix ? pendingHref.startsWith(href) : pendingHref === href)
+  const target = stripQuery((item.matchHref ?? item.href)(siteId))
+  const matchesPathname = item.matchPrefix ? pathname.startsWith(target) : pathname === target
+  const pending = pendingHref === null ? null : stripQuery(pendingHref)
+  const matchesPending = pending !== null && (item.matchPrefix ? pending.startsWith(target) : pending === target)
   const active = matchesPathname || matchesPending
 
   const link = (
@@ -243,13 +266,15 @@ function NavLink({
 // ─── Home Nav Link (static href, no siteId) ───────────────
 
 function HomeNavLink({
-  href, icon: Icon, label, collapsed, onClick, external,
+  href, icon: Icon, label, collapsed, onClick, external, matchPrefix,
 }: {
   href: string; icon: React.ComponentType<{ className?: string; weight?: IconWeight }>
   label: string; collapsed: boolean; onClick?: () => void; external?: boolean
+  /** Light up for the whole section below `href`, not just that exact page. */
+  matchPrefix?: boolean
 }) {
   const pathname = usePathname()
-  const active = !external && pathname === href
+  const active = !external && (matchPrefix ? pathname.startsWith(href) : pathname === href)
 
   const link = (
     <Link
@@ -443,7 +468,12 @@ function SidebarContent({
             <div className="space-y-0.5">
               <HomeNavLink href="/integrations" icon={PlugsIcon} label="Integrations" collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
               <HomeNavLink href="/pricing" icon={TagIcon} label="Pricing" collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
-              <HomeNavLink href="/settings/organization/general" icon={SettingsIcon} label="Organization Settings" collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
+              {/* Settings, not "Organization Settings": home mode is what every
+                  settings page that is not site-scoped renders under, and an
+                  exact-match link to the org's General tab lit up on exactly one
+                  of them. `/settings` is the landing index, and the prefix match
+                  keeps the entry lit for account and organization tabs alike. */}
+              <HomeNavLink href="/settings" icon={SettingsIcon} label="Settings" matchPrefix collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
             </div>
           </div>
 

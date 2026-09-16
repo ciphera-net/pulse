@@ -1,0 +1,31 @@
+'use client'
+
+import { usePathname } from 'next/navigation'
+import DashboardShell from '@/components/dashboard/DashboardShell'
+import { useActiveSite } from '@/components/settings/active-site'
+
+/**
+ * The dashboard chrome's site hinge — one component whose whole job is deciding
+ * which siteId the shell is rendering for.
+ *
+ * `/settings/site/*` configures ONE site, so the outer sidebar must stay in site
+ * mode there: arriving at Site Settings from a site page used to swap the whole
+ * rail for the home list (Your Sites / Add New Site / …), which read as being
+ * thrown out of the site you were configuring. The URLs are unchanged; only the
+ * chrome learned that those routes are still about a site.
+ *
+ * Organization and Account settings are genuinely not site-scoped and keep the
+ * home rail — that is why this reads the path rather than "are we in settings".
+ *
+ * ⚠️ DashboardShell must stay at ONE tree position across every dashboard route,
+ * or a /sites ↔ /settings navigation remounts the shell and the sidebar's
+ * gliding highlight restarts instead of travelling. Hence a hinge on the prop,
+ * never two branches each rendering their own shell.
+ */
+export default function DashboardChrome({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+  const { activeSiteId } = useActiveSite()
+  const siteId = pathname.startsWith('/settings/site') ? activeSiteId : null
+
+  return <DashboardShell siteId={siteId}>{children}</DashboardShell>
+}

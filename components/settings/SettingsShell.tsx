@@ -17,7 +17,6 @@ function getFocusable(container: HTMLElement): HTMLElement[] {
 }
 import { useCan } from '@/lib/auth/permissions'
 import { cn } from '@/lib/utils'
-import { ActiveSiteProvider } from '@/components/settings/active-site'
 import SiteContextBand from '@/components/settings/SiteContextBand'
 import { NAV_GROUPS, type Section } from '@/components/settings/nav'
 import {
@@ -146,259 +145,262 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
 
   const masthead = section ? MASTHEAD[section] : null
 
+  // No ActiveSiteProvider here — it moved UP to `app/layout-content.tsx`, above
+  // DashboardShell, so the outer sidebar can read the selected site and stay in
+  // site mode on /settings/site/*. Re-adding one here would shadow it: the Site
+  // context band's switcher would update the inner copy and the sidebar would
+  // keep pointing at the old site.
   return (
-    <ActiveSiteProvider>
-      <MastheadSlotProvider value={mastheadSlot}>
-        <SaveSlotProvider value={saveSlot}>
-          <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
-            {/* ── Masthead — one header per screen (spec §2.1) ── */}
-            <header className="mb-8">
-              {/* Title + action row. The buffered-save control no longer lives
-                  here (it's a panel footer in the content column), so this row
-                  stays a plain, non-sticky header — the tab's primary CTA is the
-                  only thing that portals into the action area. */}
-              {/* Stacks below md: the action slot is shrink-0, so on a phone it
-                  squeezed the lede to under half the viewport. md+ unchanged. */}
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div className="min-w-0">
-                  {masthead && (
-                    <p className="mb-2 font-semibold text-micro-label uppercase text-muted-foreground">
-                      {masthead.eyebrow}
-                    </p>
-                  )}
-                  <h1 className="text-title-1 font-semibold tracking-tight text-foreground">
-                    {masthead ? masthead.title : 'Settings'}
-                  </h1>
-                  <p className="mt-1.5 text-sm text-muted-foreground">
-                    {masthead ? masthead.lede : 'Manage your sites, workspace, and account.'}
+    <MastheadSlotProvider value={mastheadSlot}>
+      <SaveSlotProvider value={saveSlot}>
+        <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
+          {/* ── Masthead — one header per screen (spec §2.1) ── */}
+          <header className="mb-8">
+            {/* Title + action row. The buffered-save control no longer lives
+                here (it's a panel footer in the content column), so this row
+                stays a plain, non-sticky header — the tab's primary CTA is the
+                only thing that portals into the action area. */}
+            {/* Stacks below md: the action slot is shrink-0, so on a phone it
+                squeezed the lede to under half the viewport. md+ unchanged. */}
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div className="min-w-0">
+                {masthead && (
+                  <p className="mb-2 font-semibold text-micro-label uppercase text-muted-foreground">
+                    {masthead.eyebrow}
                   </p>
-                </div>
-                {/* Masthead action slot — a tab's primary CTA portals in here. */}
-                <div ref={setMastheadSlot} className="flex shrink-0 items-center gap-2" />
-              </div>
-
-              {/* Mobile nav trigger — opens the bottom-sheet. Section pages only. */}
-              {section && activeTab && (
-                <button
-                  ref={sheetTriggerRef}
-                  type="button"
-                  onClick={() => setSheetOpen(true)}
-                  aria-haspopup="dialog"
-                  aria-expanded={sheetOpen}
-                  className="mt-4 flex h-11 w-full items-center justify-between rounded-none border border-input bg-card px-4 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:hidden"
-                >
-                  <span>
-                    <span className="text-muted-foreground">{activeGroup?.label} · </span>
-                    {activeTab.label}
-                  </span>
-                  <CaretUpDown className="h-4 w-4 text-muted-foreground" />
-                </button>
-              )}
-            </header>
-
-            {section ? (
-              <div className="flex gap-8">
-                {/* ── Nav rail — grid-rail device (spec §2.1) ── */}
-                <nav className="hidden w-56 shrink-0 md:block" aria-label="Settings sections">
-                  <div className="grid grid-cols-1 gap-px rounded-none border border-border bg-border">
-                    {visibleGroups.map((group) => (
-                      <Fragment key={group.section}>
-                        <div className="bg-muted px-4 py-2 font-semibold text-micro-label uppercase text-muted-foreground">
-                          {group.label}
-                        </div>
-                        {group.tabs.map((tab) => {
-                          const active = pathname === tab.href
-                          return (
-                            <Link
-                              key={tab.href}
-                              href={tab.href}
-                              aria-current={active ? 'page' : undefined}
-                              aria-label={`${group.label}: ${tab.label}`}
-                              className={cn(
-                                'relative flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium transition-colors duration-fast ease-apple',
-                                // ring-inset: the rail is a gap-px tile grid, so a
-                                // non-inset ring would be clipped by the neighbours.
-                                'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring',
-                                active
-                                  ? 'bg-accent text-primary'
-                                  : 'bg-card text-muted-foreground hover:bg-muted hover:text-foreground',
-                              )}
-                            >
-                              {active && (
-                                <span
-                                  aria-hidden="true"
-                                  className="absolute inset-y-0 left-0 w-0.5 bg-primary"
-                                />
-                              )}
-                              {/* Fixed icon column; color inherits the row (muted →
-                                  foreground on hover, orange when active) so icon +
-                                  text stay one signal. */}
-                              <tab.icon weight="regular" aria-hidden="true" className="h-4 w-4 shrink-0" />
-                              {tab.label}
-                            </Link>
-                          )
-                        })}
-                      </Fragment>
-                    ))}
-                  </div>
-                  {/* Legal — the authenticated app's one path to the policies
-                      (owner pick F1, Tranche A). Quiet by design: nav
-                      utility, not content. */}
-                  <div className="mt-8 border-t border-border pt-4 text-xs text-muted-foreground">
-                    <a
-                      href="https://ciphera.net/privacy"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="transition-colors duration-fast hover:text-foreground"
-                    >
-                      Privacy Policy
-                    </a>
-                    <span aria-hidden="true" className="mx-2 opacity-50">·</span>
-                    <a
-                      href="https://ciphera.net/terms"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="transition-colors duration-fast hover:text-foreground"
-                    >
-                      Terms of Service
-                    </a>
-                  </div>
-                </nav>
-
-                {/* ── Content column ──
-                    `pb-4` gives the settled footer strip a little breathing room
-                    at scroll end so it doesn't kiss the content-panel edge. */}
-                <div className="relative min-w-0 max-w-3xl flex-1 pb-4">
-                  {section === 'site' && <SiteContextBand />}
-                  <div className="space-y-8 pb-8">{children}</div>
-                  {/* Panel-footer save slot — the buffered-save strip portals in
-                      here as the LAST flow child of the column. `display:contents`
-                      (no box of its own) so the strip's containing block is this
-                      tall column, which is what lets `sticky bottom-0` hold across
-                      a long scroll instead of pinning against a zero-travel wrapper. */}
-                  <span ref={setSaveSlot} className="contents" />
-                </div>
-              </div>
-            ) : (
-              // ── Landing (spec §5) — section index, no rail ──
-              <div className="max-w-3xl">{children}</div>
-            )}
-          </div>
-
-          {/* ── Mobile bottom-sheet nav (spec §2.1) ──
-              Portaled to <body> so it escapes the DashboardShell stacking
-              context and can out-rank the fixed support pill (z 2147483647).
-              The pill sits at INT_MAX, so the sheet matches that ceiling and
-              wins on paint order — the portal makes it the last <body> child,
-              after the pill, so equal z resolves in the sheet's favour. */}
-          {typeof document !== 'undefined' &&
-            createPortal(
-              <AnimatePresence>
-                {sheetOpen && section && (
-                  <div className="md:hidden">
-                    <motion.div
-                      className="fixed inset-0 z-[2147483647] bg-black/30"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      onClick={() => setSheetOpen(false)}
-                    />
-                    <motion.div
-                      ref={sheetPanelRef}
-                      role="dialog"
-                      aria-modal="true"
-                      aria-label="Settings sections"
-                      onKeyDown={onSheetKeyDown}
-                      className="fixed inset-x-0 bottom-0 z-[2147483647] max-h-[80vh] overflow-auto rounded-none border-t border-border bg-card"
-                      initial={{ y: '100%' }}
-                      animate={{ y: 0 }}
-                      exit={{ y: '100%' }}
-                      transition={SPRING}
-                    >
-                      <div className="sticky top-0 flex items-center justify-between border-b border-border bg-card px-5 py-3">
-                        <span className="font-semibold text-micro-label uppercase text-muted-foreground">
-                          Settings
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setSheetOpen(false)}
-                          aria-label="Close"
-                          className="rounded-none p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                      <div className="divide-y divide-border">
-                        {visibleGroups.map((group) => (
-                          <div key={group.section}>
-                            <p className="bg-muted px-5 py-2 font-semibold text-micro-label uppercase text-muted-foreground">
-                              {group.label}
-                            </p>
-                            {group.tabs.map((tab) => {
-                              const active = pathname === tab.href
-                              return (
-                                <Link
-                                  key={tab.href}
-                                  href={tab.href}
-                                  onClick={() => setSheetOpen(false)}
-                                  aria-current={active ? 'page' : undefined}
-                                  aria-label={`${group.label}: ${tab.label}`}
-                                  className={cn(
-                                    'relative flex min-h-[44px] items-center gap-2.5 px-5 py-3 text-sm',
-                                    'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring',
-                                    active ? 'text-primary' : 'text-foreground',
-                                  )}
-                                >
-                                  {active && (
-                                    <span
-                                      aria-hidden="true"
-                                      className="absolute inset-y-0 left-0 w-0.5 bg-primary"
-                                    />
-                                  )}
-                                  {/* Muted at rest; the active row's icon inherits the
-                                      orange with the text (one signal, no extra treatment). */}
-                                  <tab.icon
-                                    weight="regular"
-                                    aria-hidden="true"
-                                    className={cn('h-4 w-4 shrink-0', !active && 'text-muted-foreground')}
-                                  />
-                                  {tab.label}
-                                </Link>
-                              )
-                            })}
-                          </div>
-                        ))}
-                      </div>
-                      {/* Legal — same quiet row as the desktop rail; the sheet
-                          IS the settings nav on mobile, so the links reach
-                          every viewport. */}
-                      <div className="border-t border-border px-5 py-4 text-xs text-muted-foreground">
-                        <a
-                          href="https://ciphera.net/privacy"
-                          target="_blank"
-                          rel="noreferrer"
-                          className="transition-colors duration-fast hover:text-foreground"
-                        >
-                          Privacy Policy
-                        </a>
-                        <span aria-hidden="true" className="mx-2 opacity-50">·</span>
-                        <a
-                          href="https://ciphera.net/terms"
-                          target="_blank"
-                          rel="noreferrer"
-                          className="transition-colors duration-fast hover:text-foreground"
-                        >
-                          Terms of Service
-                        </a>
-                      </div>
-                    </motion.div>
-                  </div>
                 )}
-              </AnimatePresence>,
-              document.body,
+                <h1 className="text-title-1 font-semibold tracking-tight text-foreground">
+                  {masthead ? masthead.title : 'Settings'}
+                </h1>
+                <p className="mt-1.5 text-sm text-muted-foreground">
+                  {masthead ? masthead.lede : 'Manage your sites, workspace, and account.'}
+                </p>
+              </div>
+              {/* Masthead action slot — a tab's primary CTA portals in here. */}
+              <div ref={setMastheadSlot} className="flex shrink-0 items-center gap-2" />
+            </div>
+
+            {/* Mobile nav trigger — opens the bottom-sheet. Section pages only. */}
+            {section && activeTab && (
+              <button
+                ref={sheetTriggerRef}
+                type="button"
+                onClick={() => setSheetOpen(true)}
+                aria-haspopup="dialog"
+                aria-expanded={sheetOpen}
+                className="mt-4 flex h-11 w-full items-center justify-between rounded-none border border-input bg-card px-4 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:hidden"
+              >
+                <span>
+                  <span className="text-muted-foreground">{activeGroup?.label} · </span>
+                  {activeTab.label}
+                </span>
+                <CaretUpDown className="h-4 w-4 text-muted-foreground" />
+              </button>
             )}
-        </SaveSlotProvider>
-      </MastheadSlotProvider>
-    </ActiveSiteProvider>
+          </header>
+
+          {section ? (
+            <div className="flex gap-8">
+              {/* ── Nav rail — grid-rail device (spec §2.1) ── */}
+              <nav className="hidden w-56 shrink-0 md:block" aria-label="Settings sections">
+                <div className="grid grid-cols-1 gap-px rounded-none border border-border bg-border">
+                  {visibleGroups.map((group) => (
+                    <Fragment key={group.section}>
+                      <div className="bg-muted px-4 py-2 font-semibold text-micro-label uppercase text-muted-foreground">
+                        {group.label}
+                      </div>
+                      {group.tabs.map((tab) => {
+                        const active = pathname === tab.href
+                        return (
+                          <Link
+                            key={tab.href}
+                            href={tab.href}
+                            aria-current={active ? 'page' : undefined}
+                            aria-label={`${group.label}: ${tab.label}`}
+                            className={cn(
+                              'relative flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium transition-colors duration-fast ease-apple',
+                              // ring-inset: the rail is a gap-px tile grid, so a
+                              // non-inset ring would be clipped by the neighbours.
+                              'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring',
+                              active
+                                ? 'bg-accent text-primary'
+                                : 'bg-card text-muted-foreground hover:bg-muted hover:text-foreground',
+                            )}
+                          >
+                            {active && (
+                              <span
+                                aria-hidden="true"
+                                className="absolute inset-y-0 left-0 w-0.5 bg-primary"
+                              />
+                            )}
+                            {/* Fixed icon column; color inherits the row (muted →
+                                foreground on hover, orange when active) so icon +
+                                text stay one signal. */}
+                            <tab.icon weight="regular" aria-hidden="true" className="h-4 w-4 shrink-0" />
+                            {tab.label}
+                          </Link>
+                        )
+                      })}
+                    </Fragment>
+                  ))}
+                </div>
+                {/* Legal — the authenticated app's one path to the policies
+                    (owner pick F1, Tranche A). Quiet by design: nav
+                    utility, not content. */}
+                <div className="mt-8 border-t border-border pt-4 text-xs text-muted-foreground">
+                  <a
+                    href="https://ciphera.net/privacy"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="transition-colors duration-fast hover:text-foreground"
+                  >
+                    Privacy Policy
+                  </a>
+                  <span aria-hidden="true" className="mx-2 opacity-50">·</span>
+                  <a
+                    href="https://ciphera.net/terms"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="transition-colors duration-fast hover:text-foreground"
+                  >
+                    Terms of Service
+                  </a>
+                </div>
+              </nav>
+
+              {/* ── Content column ──
+                  `pb-4` gives the settled footer strip a little breathing room
+                  at scroll end so it doesn't kiss the content-panel edge. */}
+              <div className="relative min-w-0 max-w-3xl flex-1 pb-4">
+                {section === 'site' && <SiteContextBand />}
+                <div className="space-y-8 pb-8">{children}</div>
+                {/* Panel-footer save slot — the buffered-save strip portals in
+                    here as the LAST flow child of the column. `display:contents`
+                    (no box of its own) so the strip's containing block is this
+                    tall column, which is what lets `sticky bottom-0` hold across
+                    a long scroll instead of pinning against a zero-travel wrapper. */}
+                <span ref={setSaveSlot} className="contents" />
+              </div>
+            </div>
+          ) : (
+            // ── Landing (spec §5) — section index, no rail ──
+            <div className="max-w-3xl">{children}</div>
+          )}
+        </div>
+
+        {/* ── Mobile bottom-sheet nav (spec §2.1) ──
+            Portaled to <body> so it escapes the DashboardShell stacking
+            context and can out-rank the fixed support pill (z 2147483647).
+            The pill sits at INT_MAX, so the sheet matches that ceiling and
+            wins on paint order — the portal makes it the last <body> child,
+            after the pill, so equal z resolves in the sheet's favour. */}
+        {typeof document !== 'undefined' &&
+          createPortal(
+            <AnimatePresence>
+              {sheetOpen && section && (
+                <div className="md:hidden">
+                  <motion.div
+                    className="fixed inset-0 z-[2147483647] bg-black/30"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setSheetOpen(false)}
+                  />
+                  <motion.div
+                    ref={sheetPanelRef}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Settings sections"
+                    onKeyDown={onSheetKeyDown}
+                    className="fixed inset-x-0 bottom-0 z-[2147483647] max-h-[80vh] overflow-auto rounded-none border-t border-border bg-card"
+                    initial={{ y: '100%' }}
+                    animate={{ y: 0 }}
+                    exit={{ y: '100%' }}
+                    transition={SPRING}
+                  >
+                    <div className="sticky top-0 flex items-center justify-between border-b border-border bg-card px-5 py-3">
+                      <span className="font-semibold text-micro-label uppercase text-muted-foreground">
+                        Settings
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setSheetOpen(false)}
+                        aria-label="Close"
+                        className="rounded-none p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <div className="divide-y divide-border">
+                      {visibleGroups.map((group) => (
+                        <div key={group.section}>
+                          <p className="bg-muted px-5 py-2 font-semibold text-micro-label uppercase text-muted-foreground">
+                            {group.label}
+                          </p>
+                          {group.tabs.map((tab) => {
+                            const active = pathname === tab.href
+                            return (
+                              <Link
+                                key={tab.href}
+                                href={tab.href}
+                                onClick={() => setSheetOpen(false)}
+                                aria-current={active ? 'page' : undefined}
+                                aria-label={`${group.label}: ${tab.label}`}
+                                className={cn(
+                                  'relative flex min-h-[44px] items-center gap-2.5 px-5 py-3 text-sm',
+                                  'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring',
+                                  active ? 'text-primary' : 'text-foreground',
+                                )}
+                              >
+                                {active && (
+                                  <span
+                                    aria-hidden="true"
+                                    className="absolute inset-y-0 left-0 w-0.5 bg-primary"
+                                  />
+                                )}
+                                {/* Muted at rest; the active row's icon inherits the
+                                    orange with the text (one signal, no extra treatment). */}
+                                <tab.icon
+                                  weight="regular"
+                                  aria-hidden="true"
+                                  className={cn('h-4 w-4 shrink-0', !active && 'text-muted-foreground')}
+                                />
+                                {tab.label}
+                              </Link>
+                            )
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                    {/* Legal — same quiet row as the desktop rail; the sheet
+                        IS the settings nav on mobile, so the links reach
+                        every viewport. */}
+                    <div className="border-t border-border px-5 py-4 text-xs text-muted-foreground">
+                      <a
+                        href="https://ciphera.net/privacy"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="transition-colors duration-fast hover:text-foreground"
+                      >
+                        Privacy Policy
+                      </a>
+                      <span aria-hidden="true" className="mx-2 opacity-50">·</span>
+                      <a
+                        href="https://ciphera.net/terms"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="transition-colors duration-fast hover:text-foreground"
+                      >
+                        Terms of Service
+                      </a>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>,
+            document.body,
+          )}
+      </SaveSlotProvider>
+    </MastheadSlotProvider>
   )
 }
