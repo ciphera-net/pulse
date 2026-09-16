@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Button, Input, Banner, toast, getAuthErrorMessage } from '@ciphera-net/facet'
+import { Button, Input, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
 import {
   deleteAccount,
@@ -810,19 +810,33 @@ export default function AccountProfileTab() {
           option, and it is also the still one: the panel below keeps its place
           either way, so nothing jumps when the answer lands. */}
       {bannerUnknown ? null : piiUnavailable ? (
-        <Banner
-          tone="info"
-          title="Your name and email stay encrypted"
-          action={
-            !showUnlock ? (
-              <Button variant="outline" size="sm" onClick={() => { setShowUnlock(true); setUnlockError(null) }}>
+        /* 🔴 A HAIRLINE CARD, NOT A TINTED BANNER (settings overhaul §6.1,
+           16-09-2026: "the maroon unlock callout" is named as retired). The
+           11-09 round had kept the tinted panel as the one exception for a
+           state that needs an action from you; the 16-09 vocabulary the owner
+           approved has no such exception: colour lives in a dot or a word,
+           never in a panel background. Same content, same Unlock button, same
+           inline form and handlers; only the container changed. The amber dot
+           is the pending-change row's own, in the colour that means "this
+           wants something from you". */
+        <div className="border border-border bg-card px-5 py-4">
+          <div className="flex items-start gap-4">
+            <div className="flex min-w-0 flex-1 items-start gap-2.5">
+              <span aria-hidden="true" className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amber-500" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground">Your name and email stay encrypted</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  They are end-to-end encrypted and are not unlocked in this browser. Unlock with your
+                  password to view them here. Nothing is stored, and a reload asks again.
+                </p>
+              </div>
+            </div>
+            {!showUnlock && (
+              <Button variant="outline" size="sm" className="shrink-0" onClick={() => { setShowUnlock(true); setUnlockError(null) }}>
                 Unlock
               </Button>
-            ) : undefined
-          }
-        >
-          They are end-to-end encrypted and are not unlocked in this browser. Unlock with your
-          password to view them here. Nothing is stored, and a reload asks again.
+            )}
+          </div>
           {/* 🔴 ONE FIELD. This used to ask for the sign-in email as well,
               i.e. it asked you to type the address in order to be shown the
               address. The email was never a cryptographic input: since
@@ -863,7 +877,7 @@ export default function AccountProfileTab() {
               </div>
             </form>
           )}
-        </Banner>
+        </div>
       ) : keyStored ? (
         /* 🔴 RULE 6, DIRECTION B (owner, 11-09-2026): this replaced a filled
            `Banner` that said the same thing in three lines.

@@ -20,7 +20,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
-import { formatRelativeTime, formatDateTimeFull } from '@/lib/utils/formatDate'
+import { formatRelativeTime, formatDateTimeFull, formatDate } from '@/lib/utils/formatDate'
 
 /** Muted line glyph for a device row: phone or laptop, never a tinted tile. */
 function DeviceGlyph({ hint }: { hint: string }) {
@@ -140,7 +140,12 @@ export default function TrustedDevicesCard() {
                       className="hidden whitespace-nowrap text-xs text-muted-foreground sm:table-cell"
                       title={formatDateTimeFull(new Date(device.first_seen_at))}
                     >
-                      {formatRelativeTime(device.first_seen_at)}
+                      {/* One format per column: first seen is a fixed fact, so
+                          the calendar date; last seen is a moving one, so
+                          relative. Relative in both columns read as
+                          "5h ago / 25/08 / 1d ago" down one column (staging,
+                          16-09-2026), which is the fault §4.7 named. */}
+                      {formatDate(new Date(device.first_seen_at))}
                     </TD>
                     <TD
                       numeric

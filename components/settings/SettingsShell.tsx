@@ -82,6 +82,10 @@ function ScopeSwitcher({
     <Switcher
       aria-label="Settings scope"
       tone="solid"
+      // `sm` (h-7, text-xs): at the default size the three labels measure
+      // 236px and overhang the 224px rail card by 12px (staging, 16-09-2026).
+      // The approved A6 mock drew the labels at 11.5px, which is this size.
+      size="sm"
       options={groups.map((g) => ({ value: g.section, label: g.label }))}
       value={value}
       onChange={(v) => onChange(v as Section)}
