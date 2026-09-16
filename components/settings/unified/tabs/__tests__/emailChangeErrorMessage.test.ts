@@ -11,8 +11,8 @@ import { emailChangeErrorMessage, expiryPhrase } from '../AccountProfileTab'
  */
 describe('emailChangeErrorMessage', () => {
   const cases: Array<[string, unknown, RegExp]> = [
-    ['a wrong password (401)', { status: 401 }, /didn’t match/i],
-    ['a forbidden ceremony (403)', { status: 403 }, /didn’t match/i],
+    ['a wrong password (401)', { status: 401 }, /didn't match/i],
+    ['a forbidden ceremony (403)', { status: 403 }, /didn't match/i],
     ['the rate limiter (429)', { status: 429 }, /Too many attempts/i],
     ['relay refusing to send (502)', { status: 502 }, /could not send the confirmation email/i],
     ['the ceremony being unavailable (503)', { status: 503 }, /temporarily unavailable/i],
@@ -26,7 +26,7 @@ describe('emailChangeErrorMessage', () => {
     // all — OPAQUE's client detects the mismatch in its own AKE and throws, so
     // the commonest failure on this path carries NO HTTP status. A mapper that
     // reads status first will always misfile it.
-    ['a status-less SDK throw — an OPAQUE AKE rejecting the password', new Error('opaque: finish failed'), /didn’t match/i],
+    ['a status-less SDK throw — an OPAQUE AKE rejecting the password', new Error('opaque: finish failed'), /didn't match/i],
   ]
 
   for (const [name, err, expected] of cases) {
