@@ -334,4 +334,31 @@ describe('SiteIntegrationsTab (Facet structured panels)', () => {
     expect(screen.getByText('Bunny CDN')).toBeInTheDocument()
     expect(screen.queryByText('BunnyCDN')).toBeNull()
   })
+
+  it('folds the integration note into the header row as a second caption line under the description (P4)', () => {
+    render(<SiteIntegrationsTab siteId="s1" />)
+    const note = screen.getByText('Pulse only requests read-only access. Your tokens are encrypted at rest.')
+    // Same caption paragraph as the description directly above it, not a
+    // separate standalone note row underneath the panel: the old
+    // IntegrationNote device rendered its own bordered row below everything
+    // else, so the note text and the description never shared a caption node.
+    const caption = note.closest('p')
+    expect(caption).not.toBeNull()
+    expect(caption).toHaveTextContent('View search queries, clicks, impressions, and ranking data.')
+    expect(note.className).toMatch(/\bmt-1\b/)
+    expect(note.className).toMatch(/\btext-xs\b/)
+    expect(note.className).toMatch(/\btext-muted-foreground\b/)
+    // The retired standalone note row (its own border-t block) must be gone.
+    expect(note.closest('div.border-t')).toBeNull()
+  })
+
+  it('gives every LogoTile the house ease-apple, duration-fast transition (M6)', () => {
+    const { container } = render(<SiteIntegrationsTab siteId="s1" />)
+    const tiles = container.querySelectorAll('.bg-accent')
+    expect(tiles.length).toBe(3)
+    tiles.forEach(tile => {
+      expect(tile.className).toMatch(/\bduration-fast\b/)
+      expect(tile.className).toMatch(/\bease-apple\b/)
+    })
+  })
 })
