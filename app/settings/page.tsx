@@ -90,14 +90,16 @@ export default function SettingsLandingPage() {
           ) : (
             <>
               {group.section === 'site' && activeSite && (
-                // Name and domain share a single row on desktop. On a phone
-                // that row is ~230px wide once the status chip is placed, so
-                // both truncated into uselessness. Stack them below sm.
+                // The site's identity row: the name over the domain, the
+                // live-state chip at the right.
                 <div className="flex min-w-0 items-center gap-4 border-b border-border px-5 py-3">
                   {/* The rows below lead with a 36px icon tile; the identity
                       row reserves the same slot so the left edge runs straight. */}
                   <span aria-hidden="true" className="size-9 shrink-0" />
-                  <div className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-center sm:gap-2">
+                  {/* Name over domain, always: in the three-column landing the
+                      row is ~395px, and a name and a domain side by side both
+                      truncated to a few characters (staging, 17-09-2026). */}
+                  <div className="flex min-w-0 flex-1 flex-col">
                     <span className="min-w-0 truncate text-sm font-medium text-foreground">{activeSite.name}</span>
                     <span className="min-w-0 truncate text-xs text-muted-foreground">{displayDomain(activeSite)}</span>
                   </div>
