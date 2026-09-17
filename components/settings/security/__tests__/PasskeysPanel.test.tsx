@@ -8,17 +8,12 @@ const api = vi.hoisted(() => ({
 }))
 vi.mock('@/lib/api/webauthn', () => api)
 
-// Stubs framer-motion for jsdom. MotionDiv is declared ONCE, outside the
-// Proxy trap, so `motion.div` is the same component reference on every
-// access — a `get` that returns a fresh inline function per call gives React
-// a new element type on every render, which remounts the row (and, once,
-// silently ate a click mid-remount): a real trap, not a style preference.
-const MotionDiv = ({ children, initial, animate, exit, transition, layout, ...props }: any) => <div {...props}>{children}</div>
-vi.mock('framer-motion', () => ({
-  useReducedMotion: () => false,
-  motion: new Proxy({}, { get: () => MotionDiv }),
-  AnimatePresence: ({ children }: any) => <>{children}</>,
-}))
+// Stubs framer-motion for jsdom — see framer-mock.tsx for why the component
+// must be cached per tag rather than fresh on every Proxy access (a `get`
+// that returns a fresh inline function per call gives React a new element
+// type on every render, which remounts the row and, once, silently ate a
+// click mid-remount: a real trap, not a style preference).
+vi.mock('framer-motion', () => import('@/components/settings/__tests__/framer-mock'))
 
 const toastMock = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }))
 vi.mock('@ciphera-net/facet', () => ({
@@ -138,10 +133,6 @@ describe('PasskeysPanel', () => {
     expect(screen.queryByText('MacBook')).toBeNull()
 
     // Restore the stand-in for every test declared after this one in the file.
-    vi.doMock('framer-motion', () => ({
-      useReducedMotion: () => false,
-      motion: new Proxy({}, { get: () => MotionDiv }),
-      AnimatePresence: ({ children }: any) => <>{children}</>,
-    }))
+    vi.doMock('framer-motion', () => import('@/components/settings/__tests__/framer-mock'))
   })
 })
