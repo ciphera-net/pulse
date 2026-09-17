@@ -16,11 +16,7 @@ vi.mock('next/navigation', () => ({
   usePathname: () => pathname,
   useRouter: () => ({ push }),
 }))
-vi.mock('framer-motion', () => ({
-  useReducedMotion: () => false,
-  motion: new Proxy({}, { get: () => ({ children }: any) => <div>{children}</div> }),
-  AnimatePresence: ({ children }: any) => <>{children}</>,
-}))
+vi.mock('framer-motion', () => import('@/components/settings/__tests__/framer-mock'))
 vi.mock('@phosphor-icons/react', () => new Proxy({}, {
   get: (_target, prop) => (prop === 'then' ? undefined : () => null),
   has: () => true,
@@ -71,6 +67,18 @@ describe('SettingsShell (A6)', () => {
     // and a lede listing the tabs. None of it survives.
     expect(screen.queryByText('Manage your workspace, team, and billing.')).toBeNull()
     expect(document.querySelector('header .uppercase')).toBeNull()
+  })
+
+  it('reads the mobile sheet trigger as "All settings", not a repeat of the header line', () => {
+    render(<SettingsShell><div>tab</div></SettingsShell>)
+    // jsdom does not apply md:hidden, so the trigger is still in the DOM.
+    const trigger = screen.getByRole('button', { name: 'All settings' })
+    expect(trigger).toHaveAttribute('aria-haspopup', 'dialog')
+    // The h1 above it still carries the Scope · Tab line — only the trigger changes.
+    const h1 = screen.getByRole('heading', { level: 1 })
+    expect(h1).toHaveTextContent(/Organization.*Billing/)
+    expect(trigger).not.toHaveTextContent(' · ')
+    expect(trigger).not.toHaveTextContent('Billing')
   })
 
   it('shows only the active scope in the rail, each row with its description', () => {

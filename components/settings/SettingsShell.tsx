@@ -334,10 +334,7 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                 aria-expanded={sheetOpen}
                 className="mt-4 flex h-11 w-full items-center justify-between rounded-none border border-input bg-card px-4 text-sm text-foreground transition-colors duration-fast ease-apple focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:hidden"
               >
-                <span>
-                  <span className="text-muted-foreground">{activeGroup.label} · </span>
-                  {activeTab?.label}
-                </span>
+                <span className="text-foreground">All settings</span>
                 <CaretUpDown className="h-4 w-4 text-muted-foreground" />
               </button>
             )}
