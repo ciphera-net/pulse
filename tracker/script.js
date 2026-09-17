@@ -94,9 +94,20 @@
 
   const apiUrl = attr('api') || 'https://pulse-api.ciphera.net';
 
-  // * Identity is fully server-side: a daily-rotating session hash and a monthly-rotating
-  // * visitor hash of IP + UA + domain, salted on the site's own calendar. No client-side
-  // * visitor ID storage — zero localStorage, zero identifying sessionStorage, zero cookies.
+  // * Identity is server-side: a daily-rotating session hash and a monthly-rotating
+  // * visitor hash of IP + UA + domain, salted on the site's own calendar. Zero
+  // * localStorage, zero cookies, no client-generated identifier.
+  // *
+  // * One thing the tab DOES hold (v1.4.0, identity-anchor design 17-09-2026): the
+  // * server-issued id of its most recent pageview, in sessionStorage, sent as
+  // * `anchor_id` with every later request. The IP is not stable inside one browsing
+  // * session — dual-stack clients alternate addresses per connection, IPv6 privacy
+  // * extensions rotate them on a timer, and a person moves between networks — and each
+  // * change re-minted a "new visitor". With the anchor the server copies the pageview's
+  // * identity instead of hashing a new address. It is not an identifier: the id already
+  // * exists server-side and already travels with every engagement beacon; it dies with
+  // * the tab, never crosses tabs, and is never a cookie or a header. See
+  // * Pulse/docs/plans/17-09-2026-identity-anchor-design.md
 
   // * Engagement beacon path — deliberately NOT '/api/v1/metrics'.
   // * EasyPrivacy carries a bare, domain-agnostic substring rule for that path (written
@@ -290,6 +301,20 @@
   var REFRESH_DEDUP_WINDOW = 5000;
   var DEDUP_STORAGE_KEY = 'ciphera_last_pv';
 
+  // * The tab's identity anchor: the most recent pageview id the server returned.
+  // * Most recent, not first, on purpose — a later pageview's identity was itself
+  // * inherited, so continuity is transitive, and when the server refuses a stale
+  // * anchor (a new month) the first pageview after that becomes the new anchor.
+  var ANCHOR_STORAGE_KEY = 'ciphera_anchor';
+  var anchorId = null;
+  try { anchorId = sessionStorage.getItem(ANCHOR_STORAGE_KEY) || null; } catch (e) {}
+
+  function rememberAnchor(id) {
+    if (!id) return;
+    anchorId = id;
+    try { sessionStorage.setItem(ANCHOR_STORAGE_KEY, id); } catch (e) {}
+  }
+
   function readLastPageview() {
     try {
       var raw = sessionStorage.getItem(DEDUP_STORAGE_KEY);
@@ -310,6 +335,7 @@
 
   function adoptPageview(last) {
     currentEventId = last.id;
+    rememberAnchor(last.id);
     pageStartTime = last.t;
     engagedMs = (last.e || 0) * 1000;
     visibleMs = (last.v || 0) * 1000;
@@ -407,6 +433,7 @@
       hs: humanSignals,
       client_os_hint: clientOSHint,
     };
+    if (anchorId) payload.anchor_id = anchorId;
 
     var startedAt = Date.now();
 
@@ -424,6 +451,7 @@
       if (cleanPath() !== path || currentEventId) return;
       if (data && data.id) {
         currentEventId = data.id;
+        rememberAnchor(data.id);
         pageStartTime = startedAt;
         rememberPageview();
         startPageClocks();
@@ -479,6 +507,7 @@
       screen: { width: window.innerWidth || window.screen.width, height: window.innerHeight || window.screen.height },
       name: eventName.trim().toLowerCase(),
     };
+    if (anchorId) payload.anchor_id = anchorId;
     if (props && typeof props === 'object' && !Array.isArray(props)) {
       payload.props = props;
     }
