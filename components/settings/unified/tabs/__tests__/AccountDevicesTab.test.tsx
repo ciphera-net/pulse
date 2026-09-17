@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createElement } from 'react'
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { readFileSync } from 'fs'
 import { join } from 'path'
@@ -32,28 +31,15 @@ vi.mock('@/lib/api/activity', () => ({
   getUserActivity: vi.fn(),
 }))
 
-// House pattern for a framer-motion consumer under jsdom (precedent:
-// WorkspaceAuditTab.test.tsx / PasskeysPanel.test.tsx): real useReducedMotion()
-// reads window.matchMedia, which jsdom does not implement, so it is stubbed to
-// `false` and motion.* strips framer-only props while passing the rest
-// (className, data-testid included) straight through. Unlike the other
-// precedents, this page's motion element is `motion.tr` inside a real
-// `<table>`, so the stand-in renders the SAME tag the Proxy key names
-// (`createElement(tag, ...)`) rather than always a `<div>`: a `<div>` nested
-// in `<tbody>` is invalid markup that only masks the real row structure.
-vi.mock('framer-motion', () => ({
-  useReducedMotion: () => false,
-  motion: new Proxy(
-    {},
-    {
-      get:
-        (_target: unknown, tag: string) =>
-        ({ children, initial, animate, exit, transition, layout, ...props }: any) =>
-          createElement(tag, props, children),
-    },
-  ),
-  AnimatePresence: ({ children }: any) => <>{children}</>,
-}))
+// Shared framer-motion stand-in (framer-mock.tsx): real useReducedMotion()
+// reads window.matchMedia, which jsdom does not implement, so it is stubbed
+// to `false`, and motion.* strips framer-only props while passing the rest
+// (className, data-testid included) straight through. This page's motion
+// element is `motion.tr` inside a real `<table>`, and the shared mock renders
+// the SAME tag the Proxy key names rather than always a `<div>`: a `<div>`
+// nested in `<tbody>` is invalid markup that only masks the real row
+// structure.
+vi.mock('framer-motion', () => import('@/components/settings/__tests__/framer-mock'))
 
 vi.mock('@/components/ui/ConfirmDialog', () => ({
   ConfirmDialog: ({ open, title, confirmLabel, onConfirm }: any) =>

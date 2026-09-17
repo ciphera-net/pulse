@@ -107,50 +107,23 @@ vi.mock('@phosphor-icons/react', () => new Proxy({}, {
 }))
 
 // P9: the email-change ceremony's reveal is the M6 height+fade device. Stub
-// framer-motion the way SiteGoalsTab's suite does (real motion timing can
-// never make a jsdom run flaky) — AnimatePresence renders its children with
-// no exit delay, and `useReducedMotion` reports false so the animated branch
-// is what's under test.
+// framer-motion (real motion timing can never make a jsdom run flaky) —
+// AnimatePresence renders its children with no exit delay, and
+// `useReducedMotion` reports false so the animated branch is what's under
+// test.
 //
-// ⚠️ TAG-PRESERVING AND MEMOIZED, NOT A BARE PROXY. This tab's tree also
-// renders `SettingsPanel` (Profile, and DangerZone's two panels), which is a
-// real `<motion.section>` — collapsing every `motion.*` to an anonymous `div`
-// broke every `.closest('section')` query in this file's own delete-panel
-// tests. Worse, a Proxy `get` that returns a FRESH function on every property
-// access hands React a new component TYPE on every render, so every
-// `SettingsPanel` on the page unmounted and remounted on each keystroke —
-// which is how a `disabled` assertion on a button captured before typing
-// started silently reading a detached, stale node. Caching by tag name keeps
-// one stable component per `motion.<tag>`, and rendering the real tag keeps
-// section/div semantics intact.
-vi.mock('framer-motion', () => {
-  const cache = new Map<string, any>()
-  function motionComponent(tag: string) {
-    if (!cache.has(tag)) {
-      const Tag = tag as any
-      cache.set(
-        tag,
-        ({ children, initial, animate, exit, transition, layout, ...props }: any) => (
-          <Tag
-            data-motion-initial={JSON.stringify(initial)}
-            data-motion-animate={JSON.stringify(animate)}
-            data-motion-exit={JSON.stringify(exit)}
-            data-motion-transition={JSON.stringify(transition)}
-            {...props}
-          >
-            {children}
-          </Tag>
-        ),
-      )
-    }
-    return cache.get(tag)
-  }
-  return {
-    useReducedMotion: () => false,
-    motion: new Proxy({}, { get: (_target, tag: string) => motionComponent(tag) }),
-    AnimatePresence: ({ children }: any) => <>{children}</>,
-  }
-})
+// ⚠️ TAG-PRESERVING AND MEMOIZED, NOT A BARE PROXY (see framer-mock.tsx). This
+// tab's tree also renders `SettingsPanel` (Profile, and DangerZone's two
+// panels), which is a real `<motion.section>` — collapsing every `motion.*`
+// to an anonymous `div` broke every `.closest('section')` query in this
+// file's own delete-panel tests. Worse, a Proxy `get` that returns a FRESH
+// function on every property access hands React a new component TYPE on
+// every render, so every `SettingsPanel` on the page unmounted and remounted
+// on each keystroke — which is how a `disabled` assertion on a button
+// captured before typing started silently reading a detached, stale node.
+// The shared mock caches by tag name and renders the real tag, so
+// section/div semantics stay intact.
+vi.mock('framer-motion', () => import('@/components/settings/__tests__/framer-mock'))
 
 import AccountProfileTab from '../AccountProfileTab'
 
