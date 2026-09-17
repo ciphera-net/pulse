@@ -40,8 +40,11 @@ vi.mock('@ciphera-net/facet', () => ({
   Button: ({ children, variant, size, asChild, ...props }: any) =>
     asChild ? children : <button {...props}>{children}</button>,
   Input: (props: any) => <input {...props} />,
-  Toggle: ({ checked, onChange, disabled }: any) => (
-    <button role="switch" aria-checked={!!checked} disabled={disabled} onClick={() => onChange()} />
+  // The stub forwards the naming props Facet 0.19.0's Toggle forwards
+  // (id, aria-label, aria-labelledby, aria-describedby), so a row's label
+  // association reaches the switch here as it does in the real component.
+  Toggle: ({ checked, onChange, disabled, id, 'aria-label': ariaLabel, 'aria-labelledby': ariaLabelledBy, 'aria-describedby': ariaDescribedBy }: any) => (
+    <button role="switch" aria-checked={!!checked} disabled={disabled} onClick={() => onChange()} id={id} aria-label={ariaLabel} aria-labelledby={ariaLabelledBy} aria-describedby={ariaDescribedBy} />
   ),
   Select: ({ value, onChange, options, ...props }: any) => (
     <select value={value} onChange={(e) => onChange?.(e.target.value)} {...props}>
@@ -98,6 +101,18 @@ beforeEach(() => {
 })
 
 describe('SitePrivacyTab', () => {
+  // Settings tail, item 9 (17-09-2026): every switch on the tab is named by
+  // its row label (PanelRow clones the Toggle with aria-labelledby; Facet
+  // 0.19.0's Toggle forwards it). Before that every switch here had an empty
+  // accessible name — measured on staging with the focus-ring probe too.
+  it('names every switch after its row label', () => {
+    render(<SitePrivacyTab siteId="s1" />)
+    const switches = screen.getAllByRole('switch')
+    expect(switches.length).toBeGreaterThanOrEqual(7)
+    for (const sw of switches) expect(sw).toHaveAccessibleName(/\S/)
+    expect(screen.getByRole('switch', { name: 'Page paths' })).toBeInTheDocument()
+  })
+
   it('renders the in-content section nav and the data-collection toggle panel', () => {
     render(<SitePrivacyTab siteId="s1" />)
 
