@@ -175,7 +175,7 @@ function LegalLinks({ className }: { className?: string }) {
         href="https://ciphera.net/privacy"
         target="_blank"
         rel="noreferrer"
-        className="transition-colors duration-fast ease-apple hover:text-foreground"
+        className="rounded-none transition-colors duration-fast ease-apple hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
         Privacy Policy
       </a>
@@ -184,7 +184,7 @@ function LegalLinks({ className }: { className?: string }) {
         href="https://ciphera.net/terms"
         target="_blank"
         rel="noreferrer"
-        className="transition-colors duration-fast ease-apple hover:text-foreground"
+        className="rounded-none transition-colors duration-fast ease-apple hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
         Terms of Service
       </a>
