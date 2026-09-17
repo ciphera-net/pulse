@@ -10,13 +10,10 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
 vi.mock('next/link', () => ({ default: ({ children, href }: any) => <a href={href}>{children}</a> }))
 vi.mock('next/navigation', () => ({ usePathname: () => '/settings/account/notifications', useRouter: () => ({ push: vi.fn() }) }))
-vi.mock('framer-motion', () => ({
-  useReducedMotion: () => false,
-  // Props pass through (className above all: the strip is found by its classes);
-  // framer's own props are dropped so they never land on a DOM node.
-  motion: new Proxy({}, { get: () => ({ children, initial, animate, exit, transition, layout, ...props }: any) => <div {...props}>{children}</div> }),
-  AnimatePresence: ({ children }: any) => <>{children}</>,
-}))
+// Props pass through (className above all: the strip is found by its classes);
+// framer's own props are dropped so they never land on a DOM node — see
+// framer-mock.tsx.
+vi.mock('framer-motion', () => import('@/components/settings/__tests__/framer-mock'))
 // NOTE: a bare `new Proxy({}, { get: () => () => null })` as the MODULE would
 // hang vitest — the namespace object's `then` becomes a function, so the
 // dynamic import treats it as a never-resolving thenable. Guard `then`, and

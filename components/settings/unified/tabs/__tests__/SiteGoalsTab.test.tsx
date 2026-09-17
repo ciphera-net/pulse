@@ -50,34 +50,17 @@ vi.mock('@ciphera-net/facet', () => ({
   getAuthErrorMessage: () => 'error',
 }))
 
-// M5/M6: stub framer-motion the way SettingsShell and the panel-footer-save
-// suite do (real motion timing can never make a jsdom run flaky), but keep
-// the initial/animate/exit/transition props visible on the rendered node as
-// JSON data attributes so a test can assert the house rise/exit and
-// height+fade values actually reached the DOM, not merely that "some div"
-// wraps the row.
-vi.mock('framer-motion', () => ({
-  useReducedMotion: () => false,
-  motion: new Proxy(
-    {},
-    {
-      get: () => ({ children, initial, animate, exit, transition, layout, ...props }: any) => (
-        <div
-          data-motion-initial={JSON.stringify(initial)}
-          data-motion-animate={JSON.stringify(animate)}
-          data-motion-exit={JSON.stringify(exit)}
-          data-motion-transition={JSON.stringify(transition)}
-          {...props}
-        >
-          {children}
-        </div>
-      ),
-    },
-  ),
-  AnimatePresence: ({ children }: any) => <>{children}</>,
-}))
+// M5/M6: stub framer-motion (real motion timing can never make a jsdom run
+// flaky) with the shared mock (framer-mock.tsx), which drops initial/animate/
+// exit/transition before they reach the DOM. The two M5/M6 tests below read
+// the house rise/exit and height+fade values straight from this file's own
+// source (the `SOURCE` constant) instead of off a rendered node.
+vi.mock('framer-motion', () => import('@/components/settings/__tests__/framer-mock'))
 
 import SiteGoalsTab from '../SiteGoalsTab'
+
+const SOURCE_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'SiteGoalsTab.tsx')
+const SOURCE = readFileSync(SOURCE_PATH, 'utf8')
 
 const goals = [
   { id: 'g1', site_id: 's1', name: 'Sign up', event_name: 'signup_click', created_at: '', updated_at: '' },
@@ -192,34 +175,31 @@ describe('SiteGoalsTab (Facet structured panels)', () => {
     expect(chip.closest('.opacity-40')).toBeNull()
   })
 
+  // The shared framer-motion mock (framer-mock.tsx) deliberately drops
+  // initial/animate/exit/transition before they reach the DOM, so the house
+  // curve values below can no longer be read off a rendered node the way the
+  // file's old per-file mock exposed them via data-motion-* attributes. They
+  // are asserted against the component's own source instead, which still
+  // fails the moment the literal values on the row's motion.div drift from
+  // the house rise/exit device.
   it('rises each goal row in on mount and would fade+drop it out on removal (M5, on the house curve)', () => {
     renderTab()
-    const row = screen.getByText('Sign up').closest('[data-motion-initial]')
-    expect(row).toBeTruthy()
-    expect(JSON.parse(row!.getAttribute('data-motion-initial')!)).toEqual({ opacity: 0, y: 8 })
-    const animate = JSON.parse(row!.getAttribute('data-motion-animate')!)
-    expect(animate.opacity).toBe(1)
-    expect(animate.y).toBe(0)
-    expect(animate.transition).toEqual({ duration: 0.25, ease: [0.32, 0.72, 0, 1] })
-    const exit = JSON.parse(row!.getAttribute('data-motion-exit')!)
-    expect(exit.opacity).toBe(0)
-    expect(exit.y).toBe(4)
-    expect(exit.transition).toEqual({ duration: 0.15, ease: [0.32, 0.72, 0, 1] })
+    expect(screen.getByText('Sign up')).toBeInTheDocument()
+    expect(SOURCE).toContain('initial={reducedMotion ? false : { opacity: 0, y: 8 }}')
+    expect(SOURCE).toContain(': { opacity: 1, y: 0, transition: { duration: DURATION_BASE, ease: EASE_APPLE } }')
+    expect(SOURCE).toContain(': { opacity: 0, y: 4, transition: { duration: DURATION_FAST, ease: EASE_APPLE } }')
   })
 
   it('opens the New goal panel as a height+fade reveal, not a pop (M6)', () => {
     renderTab()
     fireEvent.click(screen.getByRole('button', { name: /Add goal/i }))
-    // Named directly rather than via .closest() from the heading: SettingsPanel
-    // wraps its own <motion.section> one level in, so the nearest
-    // [data-motion-initial] ancestor of the heading is SettingsPanel's, not
-    // this reveal wrapper's.
     const reveal = screen.getByTestId('goal-form-reveal')
     expect(reveal).toContainElement(screen.getByRole('heading', { name: 'New goal', level: 2 }))
-    expect(JSON.parse(reveal.getAttribute('data-motion-initial')!)).toEqual({ height: 0, opacity: 0 })
-    expect(JSON.parse(reveal.getAttribute('data-motion-animate')!)).toEqual({ height: 'auto', opacity: 1 })
-    expect(JSON.parse(reveal.getAttribute('data-motion-exit')!)).toEqual({ height: 0, opacity: 0 })
-    expect(JSON.parse(reveal.getAttribute('data-motion-transition')!)).toEqual({ duration: 0.25, ease: [0.32, 0.72, 0, 1] })
+    // House rise/exit values pinned against source, for the reason above.
+    expect(SOURCE).toContain('initial={reducedMotion ? false : { height: 0, opacity: 0 }}')
+    expect(SOURCE).toContain("animate={reducedMotion ? undefined : { height: 'auto', opacity: 1 }}")
+    expect(SOURCE).toContain('exit={reducedMotion ? undefined : { height: 0, opacity: 0 }}')
+    expect(SOURCE).toContain('transition={{ duration: DURATION_BASE, ease: EASE_APPLE }}')
   })
 
   it("surfaces a distinct error state naming what failed (error is not empty) when the fetch fails", () => {
@@ -280,10 +260,7 @@ describe('SiteGoalsTab (Facet structured panels)', () => {
   // copy; strip WHY-comments first so this checks the copy, not prose inside
   // an explanation next to it.
   it('never uses an em dash or en dash in its source, comments included', () => {
-    const sourcePath = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'SiteGoalsTab.tsx')
-    const stripped = readFileSync(sourcePath, 'utf8')
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/\/\/.*$/gm, '')
+    const stripped = SOURCE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
     expect(stripped).not.toMatch(/[—–]/)
   })
 })

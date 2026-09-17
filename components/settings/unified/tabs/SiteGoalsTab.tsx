@@ -7,7 +7,6 @@ import { Plus, Pencil, Trash, Target } from '@phosphor-icons/react'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
-import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/settings/panels'
 import { MastheadAction } from '@/components/settings/shell-slots'
 import { DURATION_FAST, DURATION_BASE, EASE_APPLE } from '@/lib/motion'
@@ -201,25 +200,18 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
 
       <SettingsPanel title="Goals" description="Track custom events as conversion goals.">
         {goals.length === 0 ? (
-          <>
-            <EmptyRow
-              icon={<Target weight="regular" />}
-              title="No goals yet"
-              caption="Track custom events like sign-ups, purchases, and button clicks as conversion goals."
-            />
-            {/* Built here rather than passed through EmptyRow's `ghost` slot:
-                that slot wraps its whole content in `opacity-40 aria-hidden`,
-                which would dim and hide the "Example" label along with the
-                decorative preview it labels. Only the preview pair stays
-                inert; the chip is real, legible content. */}
-            <div className="flex items-center justify-between gap-3 border-t border-border px-5 py-3">
-              <div aria-hidden="true" className="pointer-events-none flex select-none items-center gap-3 opacity-40">
+          <EmptyRow
+            icon={<Target weight="regular" />}
+            title="No goals yet"
+            caption="Track custom events like sign-ups, purchases, and button clicks as conversion goals."
+            ghost={
+              <>
                 <span className="text-sm text-muted-foreground">Sign up</span>
                 <span className="font-mono text-xs text-muted-foreground">signup_click</span>
-              </div>
-              <StatusChip tone="neutral">Example</StatusChip>
-            </div>
-          </>
+              </>
+            }
+            ghostLabel="Example"
+          />
         ) : (
           <PanelRows>
             <AnimatePresence initial={false}>
