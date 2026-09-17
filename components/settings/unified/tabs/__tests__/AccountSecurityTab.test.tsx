@@ -113,7 +113,11 @@ describe('the security surface, as source', () => {
       const src = readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[^\n]*?\/\/[^\n]*$/gm, '')
       expect(src, f).not.toMatch(/[—–]/)
       expect(src, f).not.toMatch(/variant="secondary"/)
-      expect(src, f).not.toMatch(/ProfileSettings|framer-motion/)
+      // The Facet ProfileSettings seam stays retired. framer-motion is no
+      // longer forbidden here: since round two (17-09-2026) the house motion
+      // itself is framer (CascadeGroup, the rail bar, the save strip), and a
+      // removed passkey row exits through AnimatePresence on the house curve.
+      expect(src, f).not.toMatch(/ProfileSettings/)
     }
   })
 })
