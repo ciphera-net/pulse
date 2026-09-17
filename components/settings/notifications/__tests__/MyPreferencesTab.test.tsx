@@ -52,8 +52,10 @@ vi.mock('@ciphera-net/facet', () => ({
       ))}
     </select>
   ),
-  Toggle: ({ checked, onChange, disabled }: any) => (
-    <button role="switch" aria-checked={checked} disabled={disabled} onClick={onChange} />
+  // Forwards the naming props Facet 0.19.0's Toggle forwards, so the row's
+  // aria-labelledby reaches the switch here as it does in the real component.
+  Toggle: ({ checked, onChange, disabled, id, 'aria-label': ariaLabel, 'aria-labelledby': ariaLabelledBy, 'aria-describedby': ariaDescribedBy }: any) => (
+    <button role="switch" aria-checked={checked} disabled={disabled} onClick={onChange} id={id} aria-label={ariaLabel} aria-labelledby={ariaLabelledBy} aria-describedby={ariaDescribedBy} />
   ),
   // Same passthrough shape WorkspaceBillingTab's test uses for the RailGrid
   // stat-tile primitive: layout only, so a plain div stands in for both.
@@ -238,6 +240,18 @@ describe('MyPreferencesTab (round-3 family)', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Uptime/ }))
     expect(screen.getAllByRole('switch').length).toBe(3)
     expect(screen.getByRole('button', { name: 'Mute Uptime' })).toBeInTheDocument()
+  })
+
+  // Settings tail, item 9 (17-09-2026): the three switches in an expanded
+  // category are named by their row labels (PanelRow clones the Toggle with
+  // aria-labelledby; Facet 0.19.0's Toggle forwards it). Before that they had
+  // no accessible name at all.
+  it('names each of the three switches after its row label', async () => {
+    await renderTab()
+    fireEvent.click(screen.getByRole('button', { name: /^Uptime/ }))
+    for (const name of ['In-app', 'Email', 'Daily digest']) {
+      expect(screen.getByRole('switch', { name })).toBeInTheDocument()
+    }
   })
 
   it('🔴 M6: a category row opens on the house height+fade curve, never a bare mount/unmount', async () => {

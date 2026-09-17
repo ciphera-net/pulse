@@ -43,15 +43,40 @@ export interface PanelRowProps {
 }
 
 export function PanelRow({ label, caption, control, htmlFor, className, children }: PanelRowProps) {
+  // The label text carries an id so a NON-native control in the `control` slot
+  // (Facet's Toggle is a role="switch" button, which a <label htmlFor> cannot
+  // name) can be labelled by it: the control element is cloned with
+  // aria-labelledby unless it already names itself. Without this every switch
+  // on the settings surface had no accessible name (settings tail, item 9).
+  const generatedId = React.useId()
+  const labelId = label ? generatedId : undefined
   const labelNode = label ? (
     htmlFor ? (
-      <label htmlFor={htmlFor} className="block text-sm font-medium text-foreground">
+      <label id={labelId} htmlFor={htmlFor} className="block text-sm font-medium text-foreground">
         {label}
       </label>
     ) : (
-      <span className="block text-sm font-medium text-foreground">{label}</span>
+      <span id={labelId} className="block text-sm font-medium text-foreground">
+        {label}
+      </span>
     )
   ) : null
+
+  // Only a control with no content and no name of its own is renamed: a
+  // Button in the slot has its text (and aria-labelledby would override it
+  // with the row label), an icon button carries its own aria-label; Facet's
+  // Toggle has neither, which is exactly the switch that had no name. Decided
+  // by props, not by component identity, so a test that mocks Facet without
+  // exporting Toggle is not broken by an import here.
+  const nameless =
+    React.isValidElement<Record<string, unknown>>(control) &&
+    control.props.children == null &&
+    !control.props['aria-label'] &&
+    !control.props['aria-labelledby']
+  const controlNode =
+    labelId && nameless
+      ? React.cloneElement(control as React.ReactElement<Record<string, unknown>>, { 'aria-labelledby': labelId })
+      : control
 
   // Only reserve the value cell when there's actually a value to render — a
   // control-only row (a lone Toggle) must not stack an empty box on mobile.
@@ -82,8 +107,8 @@ export function PanelRow({ label, caption, control, htmlFor, className, children
       {/* S7: a field is a field. The value cell caps at max-w-md so an input
           reads as a field and not as a column stretched to the frame. */}
       {hasValue && <div className="min-w-0 md:col-start-2 md:row-start-1 md:max-w-md">{children}</div>}
-      {control && (
-        <div className="md:col-start-3 md:row-start-1 md:justify-self-end">{control}</div>
+      {controlNode && (
+        <div className="md:col-start-3 md:row-start-1 md:justify-self-end">{controlNode}</div>
       )}
     </div>
   )
