@@ -269,6 +269,111 @@ describe('WorkspaceApiKeysTab (Facet structured panels)', () => {
     expect(row).toHaveTextContent('pk_live')
   })
 
+  it('dims a revoked key\'s name and meta to opacity-60 but keeps its chip at full strength', async () => {
+    listApiKeys.mockResolvedValue({
+      api_keys: [
+        makeKey({ id: 'live', name: 'Live key', revoked_at: null }),
+        makeKey({ id: 'rev', name: 'Revoked key', revoked_at: '2026-02-01T00:00:00Z' }),
+      ],
+    })
+    renderTab()
+
+    const liveName = await screen.findByText('Live key')
+    expect(liveName.className).not.toContain('opacity-60')
+
+    // The row's name recedes...
+    const revokedName = screen.getByText('Revoked key')
+    expect(revokedName.className).toContain('opacity-60')
+
+    // ...and so does its meta line (the mono key + scope clause).
+    const revokedRow = revokedName.closest('[class*="md:grid-cols-[minmax("]')!
+    const meta = within(revokedRow as HTMLElement).getByText('pk_live_…ab12').closest('.flex-wrap')
+    expect(meta?.className).toContain('opacity-60')
+
+    // ...but the "Revoked" chip itself never dims: colour is the one thing
+    // that must stay legible on a receded row.
+    const chip = within(revokedRow as HTMLElement).getByText('Revoked')
+    expect(chip.closest('.opacity-60')).toBeNull()
+  })
+
+  it('groups the meta line into two clause spans (key+scope, then last-used+expiry) so wrapping never strands a lone separator', async () => {
+    listApiKeys.mockResolvedValue({
+      api_keys: [makeKey({ scope_all_sites: false, site_ids: ['s1'] })],
+    })
+    renderTab()
+
+    const code = await screen.findByText('pk_live_…ab12')
+    const clauseOne = code.closest('span.inline-flex')
+    expect(clauseOne).not.toBeNull()
+    // The scope lives in the SAME clause as the key, so the two can never be
+    // split onto different lines by a wrap.
+    expect(clauseOne).toHaveTextContent('1 site')
+    // The old flat structure put every item as a sibling of the separator
+    // dots in one container; the fix scopes "last used"/"expires" out of
+    // clause one entirely.
+    expect(clauseOne?.textContent).not.toMatch(/Never used|Expires/)
+
+    const neverUsed = screen.getByText('Never used')
+    const clauseTwo = neverUsed.closest('span.inline-flex')
+    expect(clauseTwo).not.toBeNull()
+    expect(clauseTwo).not.toBe(clauseOne)
+    expect(clauseTwo).toHaveTextContent('Expires')
+
+    // Both clauses are flex items of one wrap-capable row.
+    const outer = clauseOne?.parentElement
+    expect(outer?.className).toContain('flex-wrap')
+    expect(outer?.children).toHaveLength(2)
+  })
+
+  it('wraps each key row in a motion element so a fresh key rises into the list instead of popping in unanimated', async () => {
+    listApiKeys.mockResolvedValue({ api_keys: [] })
+    createApiKey.mockResolvedValue({
+      api_key: makeKey({ id: 'new-key', name: 'Fresh key' }),
+      token: 'pk_live_secrettoken',
+      warning: 'shown once',
+    })
+    renderTab()
+    await screen.findByText('No API keys yet')
+
+    fireEvent.click(screen.getByRole('button', { name: 'New key' }))
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Fresh key' } })
+    fireEvent.change(screen.getByLabelText('Role'), { target: { value: ROLE.id } })
+    fireEvent.click(screen.getByRole('switch'))
+
+    listApiKeys.mockResolvedValue({ api_keys: [makeKey({ id: 'new-key', name: 'Fresh key' })] })
+    fireEvent.click(screen.getByRole('button', { name: 'Create key' }))
+
+    const row = await screen.findByTestId('api-key-row-new-key')
+    // A plain <div> the old markup produced carries no inline style at all;
+    // a motion element commits its animated opacity/transform as one, which
+    // is how a reviewer can tell the row is really under AnimatePresence
+    // rather than merely decorated to look like it.
+    expect(row.getAttribute('style')).toMatch(/opacity/)
+    expect(within(row).getByText('Fresh key')).toBeInTheDocument()
+  })
+
+  it('lets a key row exit through AnimatePresence when it leaves the list, rather than vanishing on the spot', async () => {
+    listApiKeys.mockResolvedValue({
+      api_keys: [makeKey({ id: 'k1', name: 'Grafana' }), makeKey({ id: 'k2', name: 'Departing' })],
+    })
+    revokeApiKey.mockResolvedValue({ revoked: true })
+    renderTab()
+
+    await screen.findByTestId('api-key-row-k2')
+
+    // Simulate the row leaving the list the same way any reload can: the
+    // next fetch the revoke flow triggers returns one fewer row. (Today's
+    // confirmRevoke keeps a revoked key visible, dimmed, rather than
+    // dropping it, so this exercises the removal path generically rather
+    // than asserting that revoke itself deletes rows.)
+    listApiKeys.mockResolvedValue({ api_keys: [makeKey({ id: 'k1', name: 'Grafana' })] })
+    fireEvent.click(screen.getByLabelText('Revoke Departing'))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm revoke' }))
+
+    await waitFor(() => expect(screen.queryByTestId('api-key-row-k2')).toBeNull(), { timeout: 2000 })
+    expect(screen.getByTestId('api-key-row-k1')).toBeInTheDocument()
+  })
+
   // The humanizer (spec §6.1 rule 15) is a hard constraint on user-facing
   // copy; strip WHY-comments first so this checks the copy, not prose inside
   // an explanation next to it.

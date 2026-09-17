@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
 import { Button, Input, Select, toast, getAuthErrorMessage } from '@ciphera-net/facet'
+import { TIMING } from '@/lib/motion'
 import { useGSCStatus, useBunnyStatus, useBingStatus } from '@/lib/swr/dashboard'
 import { disconnectGSC, getGSCAuthURL, type GSCStatus } from '@/lib/api/gsc'
 import { disconnectBunny, getBunnyPullZones, connectBunny, type BunnyPullZone, type BunnyStatus } from '@/lib/api/bunny'
@@ -76,7 +78,7 @@ function LogoTile({ colorize, children }: { colorize: boolean; children: React.R
   return (
     <span
       className={cn(
-        'flex h-10 w-10 shrink-0 items-center justify-center rounded-none bg-accent transition-[filter,opacity]',
+        'flex h-10 w-10 shrink-0 items-center justify-center rounded-none bg-accent transition-[filter,opacity] duration-fast ease-apple motion-reduce:transition-none',
         !colorize && 'grayscale opacity-60',
       )}
     >
@@ -104,6 +106,7 @@ function IntegrationHeaderRow({
   icon,
   name,
   description,
+  note,
   connected,
   status,
   hasError,
@@ -117,6 +120,11 @@ function IntegrationHeaderRow({
   icon: React.ReactNode
   name: string
   description: string
+  /** P4: the standalone note row folded into a second caption line under the
+   *  description. Hidden alongside the chip and action while the status fetch
+   *  has failed, same as before the fold-in: a real failure never gets padded
+   *  out with unrelated reassurance copy. */
+  note?: string
   connected: boolean
   status?: 'active' | 'syncing' | 'error'
   hasError: boolean
@@ -138,7 +146,12 @@ function IntegrationHeaderRow({
           <span>{name}</span>
         </span>
       }
-      caption={description}
+      caption={
+        <>
+          <span className="block">{description}</span>
+          {!hasError && note && <span className="mt-1 block text-xs text-muted-foreground">{note}</span>}
+        </>
+      }
       control={
         hasError ? undefined : (
           <div className="flex items-center gap-2">
@@ -203,11 +216,31 @@ function IntegrationIssue({ name, message }: { name: string; message: string }) 
   )
 }
 
-function IntegrationNote({ text }: { text: string }) {
+/**
+ * SetupReveal (M6): the Bing and Bunny inline setup forms open with a height+fade
+ * rather than snapping in, house ease-apple timing (TIMING = duration-base,
+ * ease-apple). Closing is a plain unmount, same as before this round: only
+ * the open needed the reveal, and an exit animation would hold the form in
+ * the DOM after Bunny's Connect is clicked to close it, which is exactly the
+ * moment the vocabulary requires at most one open setup form. Skipped under
+ * prefers-reduced-motion: the form still appears, just without the height or
+ * opacity animation.
+ */
+function SetupReveal({ show, children }: { show: boolean; children: React.ReactNode }) {
+  const reducedMotion = useReducedMotion()
+
+  if (!show) return null
+  if (reducedMotion) return <>{children}</>
+
   return (
-    <div className="border-t border-border px-5 py-3">
-      <p className="text-xs text-muted-foreground">{text}</p>
-    </div>
+    <motion.div
+      initial={{ height: 0, opacity: 0 }}
+      animate={{ height: 'auto', opacity: 1 }}
+      transition={TIMING}
+      className="overflow-hidden"
+    >
+      {children}
+    </motion.div>
   )
 }
 
@@ -552,6 +585,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
               icon={<GoogleIcon />}
               name="Google Search Console"
               description="View search queries, clicks, impressions, and ranking data."
+              note="Pulse only requests read-only access. Your tokens are encrypted at rest."
               connected={gscConnected}
               status={gscStatus?.status}
               hasError={!!gscError}
@@ -576,7 +610,6 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
                 {gscConnected && gscStatus?.error_message && (
                   <IntegrationIssue name="Google Search Console" message={gscStatus.error_message} />
                 )}
-                <IntegrationNote text="Pulse only requests read-only access. Your tokens are encrypted at rest." />
               </>
             )}
           </div>
@@ -586,6 +619,11 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
               icon={<BingIcon />}
               name="Bing Webmaster Tools"
               description="Daily clicks and impressions from Bing, Yahoo and DuckDuckGo."
+              // Says what it does NOT do, deliberately. Bing's query endpoint has no date
+              // range, so it cannot honour this app's date picker. Better to state the
+              // limit than to let someone hunt for a query table that was never going to
+              // be there.
+              note="Daily totals only. Bing's API does not expose per-query data by date. Your API key is encrypted at rest and can reach every property on your Bing account. Pulse only uses it to read search statistics."
               connected={bingConnected}
               status={bingStatus?.status}
               hasError={!!bingError}
@@ -609,7 +647,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
                 {bingConnected && bingStatus?.error_message && (
                   <IntegrationIssue name="Bing Webmaster Tools" message={bingStatus.error_message} />
                 )}
-                {!bingConnected && openSetup === 'bing' && canManage && (
+                <SetupReveal show={!bingConnected && openSetup === 'bing' && canManage}>
                   <SetupForm
                     siteId={siteId}
                     config={bingSetupConfig}
@@ -618,12 +656,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
                       setOpenSetup(null)
                     }}
                   />
-                )}
-                {/* Says what it does NOT do, deliberately. Bing's query endpoint has no date
-                    range, so it cannot honour this app's date picker. Better to state the
-                    limit than to let someone hunt for a query table that was never going to
-                    be there. */}
-                <IntegrationNote text="Daily totals only. Bing's API does not expose per-query data by date. Your API key is encrypted at rest and can reach every property on your Bing account. Pulse only uses it to read search statistics." />
+                </SetupReveal>
               </>
             )}
           </div>
@@ -633,6 +666,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
               icon={<BunnyIcon />}
               name="Bunny CDN"
               description="Monitor bandwidth, cache hit rates, and CDN performance."
+              note="Your API key is encrypted at rest. Pulse only uses it to read CDN statistics."
               connected={bunnyConnected}
               status={bunnyStatus?.status}
               hasError={!!bunnyError}
@@ -656,7 +690,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
                 {bunnyConnected && bunnyStatus?.error_message && (
                   <IntegrationIssue name="Bunny CDN" message={bunnyStatus.error_message} />
                 )}
-                {!bunnyConnected && openSetup === 'bunny' && canManage && (
+                <SetupReveal show={!bunnyConnected && openSetup === 'bunny' && canManage}>
                   <SetupForm
                     siteId={siteId}
                     config={bunnySetupConfig}
@@ -665,8 +699,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
                       setOpenSetup(null)
                     }}
                   />
-                )}
-                <IntegrationNote text="Your API key is encrypted at rest. Pulse only uses it to read CDN statistics." />
+                </SetupReveal>
               </>
             )}
           </div>

@@ -215,3 +215,44 @@ describe('WorkspaceMembersTab structure and copy (settings overhaul, 16-09-2026)
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith('pending@x.com removed'))
   })
 })
+
+describe('WorkspaceMembersTab row motion (round two, M5)', () => {
+  it('wraps each member row in a motion element so a member appearing on reload rises into the roster instead of popping in unanimated', async () => {
+    renderTab()
+    await waitFor(() => expect(screen.getByText('You')).toBeInTheDocument())
+
+    // The only reload path this tab exposes outside the error state is the
+    // one doRemove triggers; reuse it so the very next fetch returns a roster
+    // that has grown by one, the same way any real reload can.
+    const newMember: OrganizationMember = {
+      organization_id: 'org1',
+      user_id: 'u-new',
+      role: 'member',
+      joined_at: '2026-05-06T00:00:00Z',
+      user_email: 'newbie@x.com',
+    }
+    getOrganizationMembers.mockResolvedValueOnce([...members, newMember])
+    fireEvent.click(screen.getByLabelText('Remove pending@x.com'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm remove' }))
+
+    const row = await screen.findByTestId('member-row-u-new')
+    // A plain wrapper carries no inline style at all; a motion element commits
+    // its animated opacity/transform as one, which is how a reviewer can tell
+    // the row is really under AnimatePresence rather than merely decorated to
+    // look like it.
+    expect(row.getAttribute('style')).toMatch(/opacity/)
+  })
+
+  it('lets a member row exit through AnimatePresence when removed, rather than vanishing on the spot', async () => {
+    renderTab()
+    await waitFor(() => expect(screen.getByText('You')).toBeInTheDocument())
+    expect(screen.getByTestId('member-row-u-adm')).toBeInTheDocument()
+
+    getOrganizationMembers.mockResolvedValueOnce(members.filter(m => m.user_id !== 'u-adm'))
+    fireEvent.click(screen.getByLabelText('Remove pending@x.com'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm remove' }))
+
+    await waitFor(() => expect(screen.queryByTestId('member-row-u-adm')).toBeNull(), { timeout: 2000 })
+    expect(screen.getByTestId('member-row-u-you')).toBeInTheDocument()
+  })
+})

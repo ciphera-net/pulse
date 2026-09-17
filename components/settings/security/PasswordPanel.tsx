@@ -79,7 +79,7 @@ export default function PasswordPanel() {
   return (
     <SettingsPanel title="Password" description="Changing it signs you out of every device.">
       <PanelRows>
-        <PanelRow label="Password" caption={`At least ${MIN_PASSWORD_LENGTH} characters.`} control={
+        <PanelRow label="Your password" caption={`At least ${MIN_PASSWORD_LENGTH} characters.`} control={
           <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
             Change password…
           </Button>

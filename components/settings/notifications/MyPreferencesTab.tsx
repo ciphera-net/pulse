@@ -1,5 +1,6 @@
 'use client'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   Button,
   Input,
@@ -19,6 +20,7 @@ import {
   Megaphone,
   Compass,
   CaretDown,
+  Clock,
 } from '@phosphor-icons/react'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
@@ -27,6 +29,7 @@ import { StatusChip } from '@/components/settings/StatusChip'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/auth/context'
+import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import {
   getPrefsDocument,
   updatePrefsBooleans,
@@ -101,6 +104,7 @@ export default function MyPreferencesTab() {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [purging, setPurging] = useState(false)
   const [saving, setSaving] = useState(false)
+  const reducedMotion = useReducedMotion()
 
   const load = () =>
     Promise.all([
@@ -305,120 +309,52 @@ export default function MyPreferencesTab() {
                     />
                   </button>
                   <div id={`prefs-${cat.category_id}`}>
-                    {isOpen && (
-                      <div className="border-t border-border">
-                        {/* Data strip: honest numbers from category_counts, in the
-                            same RailGrid every other stat-tile band in this
-                            overhaul uses (WorkspaceBillingTab, SiteBotSpamTab,
-                            WorkspaceRolesTab). */}
-                        <RailGrid columns={2} className="border-0">
-                          <RailGridTile>
-                            <p className="text-xl font-semibold tabular-nums text-foreground">
-                              {count
-                                ? `${count.unread.toLocaleString()} of ${count.total.toLocaleString()}`
-                                : 'Not counted'}
-                            </p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              {count ? 'Unread notifications.' : "Couldn't load this count."}
-                            </p>
-                          </RailGridTile>
-                          <RailGridTile>
-                            <p className="text-xl font-semibold tabular-nums text-foreground">
-                              {keptDays}
-                            </p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              Days kept after being read.
-                            </p>
-                          </RailGridTile>
-                        </RailGrid>
-
-                        <PanelRows className="border-t border-border">
-                          <PanelRow
-                            label="In-app"
-                            caption="Shows in the bell and on the notifications page."
-                            control={
-                              critical ? (
-                                <StatusChip tone="neutral">Always on</StatusChip>
-                              ) : (
-                                <Toggle
-                                  checked={cat.in_app}
-                                  disabled={saving}
-                                  onChange={() =>
-                                    writeCategory(cat.category_id, { in_app: !cat.in_app })
-                                  }
-                                />
-                              )
-                            }
-                          />
-                          <PanelRow
-                            label="Email"
-                            caption={
-                              user?.email
-                                ? `Sent to ${user.email}. Emailed means we handed the message to your mail provider.`
-                                : 'Emailed means we handed the message to your mail provider.'
-                            }
-                            control={
-                              critical ? (
-                                <StatusChip tone="neutral">Always on</StatusChip>
-                              ) : (
-                                <Toggle
-                                  checked={cat.email}
-                                  disabled={saving}
-                                  onChange={() =>
-                                    writeCategory(cat.category_id, { email: !cat.email })
-                                  }
-                                />
-                              )
-                            }
-                          />
-                          <PanelRow
-                            label="Daily digest"
-                            caption={
-                              critical
-                                ? `Not available. ${cat.display_name} is never digested.`
-                                : `Bundled into one email at ${digestHHMM}.`
-                            }
-                            control={
-                              critical ? (
-                                <StatusChip tone="neutral">Not digested</StatusChip>
-                              ) : (
-                                <Toggle
-                                  checked={cat.digest}
-                                  disabled={saving}
-                                  onChange={() =>
-                                    writeCategory(cat.category_id, { digest: !cat.digest })
-                                  }
-                                />
-                              )
-                            }
-                          />
-                          {!critical && (
-                            <PanelRow
-                              label={cat.muted ? 'Muted' : 'Mute'}
-                              caption="A muted category still lists on the notifications page. It arrives already read and never alerts."
-                              control={
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  disabled={saving}
-                                  onClick={() =>
-                                    writeCategory(cat.category_id, { muted: !cat.muted })
-                                  }
-                                >
-                                  {cat.muted
-                                    ? `Unmute: resumes to ${channelsSummary(cat)}`
-                                    : `Mute ${cat.display_name}`}
-                                </Button>
-                              }
+                    {/* M6: the disclosure animates open/closed on the house
+                        curve (height+fade, DURATION_BASE/EASE_APPLE) — the
+                        same device WorkspaceAuditTab's payload row uses — and
+                        collapses to an instant mount/unmount under reduced
+                        motion rather than skipping the transition object
+                        (framer still runs a zero-duration animation, which
+                        is not the same as never animating). */}
+                    {reducedMotion ? (
+                      isOpen && (
+                        <CategoryDetail
+                          cat={cat}
+                          critical={critical}
+                          count={count}
+                          keptDays={keptDays}
+                          floorDays={floorDays}
+                          digestHHMM={digestHHMM}
+                          userEmail={user?.email}
+                          saving={saving}
+                          onWrite={writeCategory}
+                        />
+                      )
+                    ) : (
+                      <AnimatePresence initial={false}>
+                        {isOpen && (
+                          <motion.div
+                            key="details"
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: DURATION_BASE, ease: EASE_APPLE }}
+                            className="overflow-hidden"
+                          >
+                            <CategoryDetail
+                              cat={cat}
+                              critical={critical}
+                              count={count}
+                              keptDays={keptDays}
+                              floorDays={floorDays}
+                              digestHHMM={digestHHMM}
+                              userEmail={user?.email}
+                              saving={saving}
+                              onWrite={writeCategory}
                             />
-                          )}
-                          <PanelRow
-                            label="Keep read notifications"
-                            caption={`Floor: ${floorDays} days. An override can't go lower.`}
-                            control={<RetentionSelect cat={cat} onWrite={writeCategory} />}
-                          />
-                        </PanelRows>
-                      </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     )}
                   </div>
                 </div>
@@ -586,6 +522,138 @@ export default function MyPreferencesTab() {
   )
 }
 
+/**
+ * A category's expanded control set: the data strip plus the four rows
+ * (in-app, email, digest, mute, retention). Shared between the animated and
+ * reduced-motion branches above, the same way WorkspaceAuditTab's
+ * `PayloadDetails` is, so the two never drift into two different renderings
+ * of the same category.
+ */
+function CategoryDetail({
+  cat,
+  critical,
+  count,
+  keptDays,
+  floorDays,
+  digestHHMM,
+  userEmail,
+  saving,
+  onWrite,
+}: {
+  cat: CategoryPreferenceDoc
+  critical: boolean
+  count: CategoryCount | undefined
+  keptDays: number
+  floorDays: number
+  digestHHMM: string
+  userEmail: string | undefined
+  saving: boolean
+  onWrite: (id: string, w: CategoryWrite) => void
+}) {
+  return (
+    <div className="border-t border-border">
+      {/* Data strip: honest numbers from category_counts, in the same
+          RailGrid every other stat-tile band in this overhaul uses
+          (WorkspaceBillingTab, SiteBotSpamTab, WorkspaceRolesTab). */}
+      <RailGrid columns={2} className="border-0">
+        <RailGridTile>
+          <p className="text-xl font-semibold tabular-nums text-foreground">
+            {count
+              ? `${count.unread.toLocaleString()} of ${count.total.toLocaleString()}`
+              : 'Not counted'}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {count ? 'Unread notifications.' : "Couldn't load this count."}
+          </p>
+        </RailGridTile>
+        <RailGridTile>
+          <p className="text-xl font-semibold tabular-nums text-foreground">{keptDays}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Days kept after being read.</p>
+        </RailGridTile>
+      </RailGrid>
+
+      <PanelRows className="border-t border-border">
+        <PanelRow
+          label="In-app"
+          caption="Shows in the bell and on the notifications page."
+          control={
+            critical ? (
+              <StatusChip tone="neutral">Always on</StatusChip>
+            ) : (
+              <Toggle
+                checked={cat.in_app}
+                disabled={saving}
+                onChange={() => onWrite(cat.category_id, { in_app: !cat.in_app })}
+              />
+            )
+          }
+        />
+        <PanelRow
+          label="Email"
+          caption={
+            userEmail
+              ? `Sent to ${userEmail}. Emailed means we handed the message to your mail provider.`
+              : 'Emailed means we handed the message to your mail provider.'
+          }
+          control={
+            critical ? (
+              <StatusChip tone="neutral">Always on</StatusChip>
+            ) : (
+              <Toggle
+                checked={cat.email}
+                disabled={saving}
+                onChange={() => onWrite(cat.category_id, { email: !cat.email })}
+              />
+            )
+          }
+        />
+        <PanelRow
+          label="Daily digest"
+          caption={
+            critical
+              ? `Not available. ${cat.display_name} is never digested.`
+              : `Bundled into one email at ${digestHHMM}.`
+          }
+          control={
+            critical ? (
+              <StatusChip tone="neutral">Not digested</StatusChip>
+            ) : (
+              <Toggle
+                checked={cat.digest}
+                disabled={saving}
+                onChange={() => onWrite(cat.category_id, { digest: !cat.digest })}
+              />
+            )
+          }
+        />
+        {!critical && (
+          <PanelRow
+            label={cat.muted ? 'Muted' : 'Mute'}
+            caption="A muted category still lists on the notifications page. It arrives already read and never alerts."
+            control={
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={saving}
+                onClick={() => onWrite(cat.category_id, { muted: !cat.muted })}
+              >
+                {cat.muted
+                  ? `Unmute: resumes to ${channelsSummary(cat)}`
+                  : `Mute ${cat.display_name}`}
+              </Button>
+            }
+          />
+        )}
+        <PanelRow
+          label="Keep read notifications"
+          caption={`Floor: ${floorDays} days. An override can't go lower.`}
+          control={<RetentionSelect cat={cat} onWrite={onWrite} />}
+        />
+      </PanelRows>
+    </div>
+  )
+}
+
 /** The retention select: registry floor and default from the wire (FE-2). */
 function RetentionSelect({
   cat,
@@ -645,6 +713,22 @@ function RetentionSelect({
  * is ORDERED with respect to the keystroke rather than racing it, so it can
  * only ever run before a later event, never after one.
  */
+// Same treatment as WorkspaceAuditTab's date fields: the browser's own
+// picker glyph is hidden (opacity-0, but kept absolute/inset-0/cursor-pointer
+// so the FULL field is still what opens the native time picker) and replaced
+// with a Phosphor glyph so the field reads like the rest of the house's
+// iconed inputs rather than the raw OS control. `h-9` matches the adjacent
+// timezone Select (`size="sm"`) — the two sit in the same row and read as
+// one control group, not two mismatched heights.
+const TIME_INPUT_CLASSNAME = cn(
+  'h-9 w-28 pr-9 [color-scheme:dark] placeholder-shown:text-muted-foreground',
+  '[&::-webkit-calendar-picker-indicator]:opacity-0',
+  '[&::-webkit-calendar-picker-indicator]:absolute',
+  '[&::-webkit-calendar-picker-indicator]:inset-0',
+  '[&::-webkit-calendar-picker-indicator]:w-full',
+  '[&::-webkit-calendar-picker-indicator]:cursor-pointer',
+)
+
 function TimeField({
   value,
   onCommit,
@@ -665,17 +749,23 @@ function TimeField({
     setDraft(value)
   }
   return (
-    <Input
-      type="time"
-      className="w-28 [color-scheme:dark]"
-      value={draft}
-      disabled={disabled}
-      aria-label={ariaLabel}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={() => {
-        if (draft !== value && /^\d{2}:\d{2}$/.test(draft)) onCommit(draft)
-        else if (draft === '') setDraft(value) // abandon an incomplete edit
-      }}
-    />
+    <div className="relative w-28 shrink-0">
+      <Input
+        type="time"
+        className={TIME_INPUT_CLASSNAME}
+        value={draft}
+        disabled={disabled}
+        aria-label={ariaLabel}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          if (draft !== value && /^\d{2}:\d{2}$/.test(draft)) onCommit(draft)
+          else if (draft === '') setDraft(value) // abandon an incomplete edit
+        }}
+      />
+      <Clock
+        aria-hidden="true"
+        className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+      />
+    </div>
   )
 }
