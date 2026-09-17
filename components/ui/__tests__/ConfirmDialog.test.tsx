@@ -160,4 +160,12 @@ describe('ConfirmDialog', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     await waitFor(() => expect(document.activeElement).toBe(opener))
   })
+  it('describes the dialog by its description text (aria-describedby)', () => {
+    render(<ConfirmDialog open onOpenChange={vi.fn()} title="Remove this item?" description="This action cannot be undone." onConfirm={vi.fn()} />)
+    const dialog = screen.getByRole('dialog')
+    const id = dialog.getAttribute('aria-describedby')
+    expect(id).toBeTruthy()
+    expect(document.getElementById(id!)).toHaveTextContent('This action cannot be undone.')
+  })
+
 })
