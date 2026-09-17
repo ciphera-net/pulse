@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Button, Modal } from '@ciphera-net/facet'
 
 interface ConfirmDialogProps {
@@ -25,6 +25,9 @@ export function ConfirmDialog({
   onConfirm,
 }: ConfirmDialogProps) {
   const [loading, setLoading] = useState(false)
+  // The description names the dialog's purpose to assistive tech, as the Radix
+  // DialogDescription used to; Modal forwards aria-describedby since Facet 0.19.0.
+  const descriptionId = useId()
 
   // Facet's Modal traps focus and focuses the first focusable element on
   // open, but — unlike the Radix dialog this replaces — never restores focus
@@ -55,8 +58,19 @@ export function ConfirmDialog({
   }
 
   return (
-    <Modal isOpen={open} onClose={() => onOpenChange(false)} title={title} showCloseButton={false} className="max-w-[400px]">
-      {description && <p className="text-sm text-muted-foreground mb-4">{description}</p>}
+    <Modal
+      isOpen={open}
+      onClose={() => onOpenChange(false)}
+      title={title}
+      showCloseButton={false}
+      className="max-w-[400px]"
+      aria-describedby={description ? descriptionId : undefined}
+    >
+      {description && (
+        <p id={descriptionId} className="text-sm text-muted-foreground mb-4">
+          {description}
+        </p>
+      )}
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
         <Button
           variant="outline"
