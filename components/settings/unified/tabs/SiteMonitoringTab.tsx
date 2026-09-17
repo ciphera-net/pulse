@@ -184,8 +184,11 @@ export default function SiteMonitoringTab({ siteId }: { siteId: string }) {
                 label={<span className="font-mono">{monitor.url}</span>}
                 caption={`${monitor.url.startsWith('https://') ? 'HTTPS' : 'HTTP'} · every ${Math.round(monitor.check_interval_seconds / 60)} min`}
                 control={
-                  <Link href={`/sites/${siteId}/uptime`} className="text-sm font-medium text-primary">
-                    View uptime →
+                  <Link
+                    href={`/sites/${siteId}/uptime`}
+                    className="text-sm font-medium text-foreground underline underline-offset-4 decoration-border transition-colors duration-fast ease-apple hover:decoration-foreground motion-reduce:transition-none"
+                  >
+                    View uptime
                   </Link>
                 }
               >

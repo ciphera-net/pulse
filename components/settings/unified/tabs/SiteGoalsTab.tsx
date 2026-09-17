@@ -1,19 +1,23 @@
 'use client'
 
 import { useState } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Input, Button, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/facet'
 import { Plus, Pencil, Trash, Target } from '@phosphor-icons/react'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
+import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/settings/panels'
 import { MastheadAction } from '@/components/settings/shell-slots'
+import { DURATION_FAST, DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { useGoals } from '@/lib/swr/dashboard'
 import { createGoal, updateGoal, deleteGoal, type Goal } from '@/lib/api/goals'
 import { useCan } from '@/lib/auth/permissions'
 
 export default function SiteGoalsTab({ siteId }: { siteId: string }) {
   const canManageGoals = useCan('goals.manage')
+  const reducedMotion = useReducedMotion()
   const { data: goals = [], mutate, isLoading, isValidating, error } = useGoals(siteId)
   const [editing, setEditing] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
@@ -131,117 +135,149 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
       )}
 
       {/* A standing panel, not a kicker inside the list: the same device
-          TokenReveal uses for a form-shaped in-flow state (API keys tab). */}
-      {formOpen && (
-        <SettingsPanel title={editing ? 'Edit goal' : 'New goal'}>
-          <PanelRows>
-            <PanelRow label="Display name" htmlFor="goal-name" caption="Shown across reports and funnels.">
-              <Input
-                id="goal-name"
-                value={name}
-                onChange={e => {
-                  setName(e.target.value)
-                  if (fieldErrors.name) setFieldErrors(prev => ({ ...prev, name: undefined }))
-                }}
-                placeholder="e.g. Sign up"
-                disabled={saving}
-                aria-invalid={!!fieldErrors.name || undefined}
-                className={fieldErrors.name ? 'border-destructive focus:border-destructive' : undefined}
-              />
-              {fieldErrors.name && <p className="mt-1 text-xs text-destructive">{fieldErrors.name}</p>}
-            </PanelRow>
-            <PanelRow
-              label="Event name"
-              htmlFor="goal-event"
-              caption="The event key sent from your site. It can't be changed after creation."
-            >
-              <Input
-                id="goal-event"
-                value={eventName}
-                onChange={e => {
-                  setEventName(e.target.value)
-                  if (fieldErrors.eventName) setFieldErrors(prev => ({ ...prev, eventName: undefined }))
-                }}
-                placeholder="e.g. signup_click"
-                disabled={!!editing || saving}
-                aria-invalid={!!fieldErrors.eventName || undefined}
-                className={`font-mono ${fieldErrors.eventName ? 'border-destructive focus:border-destructive' : ''}`}
-              />
-              {fieldErrors.eventName && <p className="mt-1 text-xs text-destructive">{fieldErrors.eventName}</p>}
-            </PanelRow>
-          </PanelRows>
-          <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
-            <Button variant="ghost" size="sm" onClick={cancel} disabled={saving}>
-              Cancel
-            </Button>
-            <Button variant="default" size="sm" onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving…' : editing ? 'Update' : 'Create'}
-            </Button>
-          </div>
-        </SettingsPanel>
-      )}
+          TokenReveal uses for a form-shaped in-flow state (API keys tab).
+          M6: the reveal grows height and fades in/out rather than popping,
+          the same device GoalStats uses for its expanded property row. */}
+      <AnimatePresence initial={false}>
+        {formOpen && (
+          <motion.div
+            key="goal-form"
+            data-testid="goal-form-reveal"
+            initial={reducedMotion ? false : { height: 0, opacity: 0 }}
+            animate={reducedMotion ? undefined : { height: 'auto', opacity: 1 }}
+            exit={reducedMotion ? undefined : { height: 0, opacity: 0 }}
+            transition={{ duration: DURATION_BASE, ease: EASE_APPLE }}
+            className="overflow-hidden"
+          >
+            <SettingsPanel title={editing ? 'Edit goal' : 'New goal'}>
+              <PanelRows>
+                <PanelRow label="Display name" htmlFor="goal-name" caption="Shown across reports and funnels.">
+                  <Input
+                    id="goal-name"
+                    value={name}
+                    onChange={e => {
+                      setName(e.target.value)
+                      if (fieldErrors.name) setFieldErrors(prev => ({ ...prev, name: undefined }))
+                    }}
+                    placeholder="e.g. Sign up"
+                    disabled={saving}
+                    aria-invalid={!!fieldErrors.name || undefined}
+                    className={fieldErrors.name ? 'border-destructive focus:border-destructive' : undefined}
+                  />
+                  {fieldErrors.name && <p className="mt-1 text-xs text-destructive">{fieldErrors.name}</p>}
+                </PanelRow>
+                <PanelRow
+                  label="Event name"
+                  htmlFor="goal-event"
+                  caption="The event key sent from your site. It can't be changed after creation."
+                >
+                  <Input
+                    id="goal-event"
+                    value={eventName}
+                    onChange={e => {
+                      setEventName(e.target.value)
+                      if (fieldErrors.eventName) setFieldErrors(prev => ({ ...prev, eventName: undefined }))
+                    }}
+                    placeholder="e.g. signup_click"
+                    disabled={!!editing || saving}
+                    aria-invalid={!!fieldErrors.eventName || undefined}
+                    className={`font-mono ${fieldErrors.eventName ? 'border-destructive focus:border-destructive' : ''}`}
+                  />
+                  {fieldErrors.eventName && <p className="mt-1 text-xs text-destructive">{fieldErrors.eventName}</p>}
+                </PanelRow>
+              </PanelRows>
+              <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
+                <Button variant="ghost" size="sm" onClick={cancel} disabled={saving}>
+                  Cancel
+                </Button>
+                <Button variant="default" size="sm" onClick={handleSave} disabled={saving}>
+                  {saving ? 'Saving…' : editing ? 'Update' : 'Create'}
+                </Button>
+              </div>
+            </SettingsPanel>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <SettingsPanel title="Goals" description="Track custom events as conversion goals.">
         {goals.length === 0 ? (
-          <EmptyRow
-            icon={<Target weight="regular" />}
-            title="No goals yet"
-            caption="Track custom events like sign-ups, purchases, and button clicks as conversion goals."
-            action={
-              canManageGoals && !formOpen ? (
-                <Button variant="outline" size="sm" onClick={startCreate}>
-                  Add your first goal
-                </Button>
-              ) : undefined
-            }
-            ghost={
-              <div className="flex items-center gap-3 px-5 py-3">
+          <>
+            <EmptyRow
+              icon={<Target weight="regular" />}
+              title="No goals yet"
+              caption="Track custom events like sign-ups, purchases, and button clicks as conversion goals."
+            />
+            {/* Built here rather than passed through EmptyRow's `ghost` slot:
+                that slot wraps its whole content in `opacity-40 aria-hidden`,
+                which would dim and hide the "Example" label along with the
+                decorative preview it labels. Only the preview pair stays
+                inert; the chip is real, legible content. */}
+            <div className="flex items-center justify-between gap-3 border-t border-border px-5 py-3">
+              <div aria-hidden="true" className="pointer-events-none flex select-none items-center gap-3 opacity-40">
                 <span className="text-sm text-muted-foreground">Sign up</span>
                 <span className="font-mono text-xs text-muted-foreground">signup_click</span>
               </div>
-            }
-          />
+              <StatusChip tone="neutral">Example</StatusChip>
+            </div>
+          </>
         ) : (
           <PanelRows>
-            {goals.map(goal => (
-              <PanelRow
-                key={goal.id}
-                label={<span className="truncate">{goal.name}</span>}
-                caption={
-                  <>
-                    Fires on the <code className="font-mono">{goal.event_name}</code> event.
-                  </>
-                }
-                control={
-                  canManageGoals && (
-                    <div className="flex shrink-0 items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        aria-label={`Edit ${goal.name}`}
-                        onClick={() => startEdit(goal)}
-                        disabled={deletingId === goal.id}
-                      >
-                        <Pencil weight="bold" className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        aria-label={`Delete ${goal.name}`}
-                        onClick={() => setConfirmDeleteId(goal.id)}
-                        disabled={deletingId === goal.id}
-                      >
-                        {deletingId === goal.id
-                          ? <Spinner className="h-3.5 w-3.5" />
-                          : <Trash weight="bold" className="h-3.5 w-3.5" />}
-                      </Button>
-                    </div>
-                  )
-                }
-              />
-            ))}
+            <AnimatePresence initial={false}>
+              {goals.map(goal => (
+                <motion.div
+                  key={goal.id}
+                  layout={!reducedMotion}
+                  initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+                  animate={
+                    reducedMotion
+                      ? undefined
+                      : { opacity: 1, y: 0, transition: { duration: DURATION_BASE, ease: EASE_APPLE } }
+                  }
+                  exit={
+                    reducedMotion
+                      ? undefined
+                      : { opacity: 0, y: 4, transition: { duration: DURATION_FAST, ease: EASE_APPLE } }
+                  }
+                >
+                  <PanelRow
+                    label={<span className="truncate">{goal.name}</span>}
+                    caption={
+                      <>
+                        Fires on the <code className="font-mono">{goal.event_name}</code> event.
+                      </>
+                    }
+                    control={
+                      canManageGoals && (
+                        <div className="flex shrink-0 items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            aria-label={`Edit ${goal.name}`}
+                            onClick={() => startEdit(goal)}
+                            disabled={deletingId === goal.id}
+                          >
+                            <Pencil weight="bold" className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            aria-label={`Delete ${goal.name}`}
+                            onClick={() => setConfirmDeleteId(goal.id)}
+                            disabled={deletingId === goal.id}
+                          >
+                            {deletingId === goal.id
+                              ? <Spinner className="h-3.5 w-3.5" />
+                              : <Trash weight="bold" className="h-3.5 w-3.5" />}
+                          </Button>
+                        </div>
+                      )
+                    }
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </PanelRows>
         )}
       </SettingsPanel>

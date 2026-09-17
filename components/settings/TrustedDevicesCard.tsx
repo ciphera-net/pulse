@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useAuth } from '@/lib/auth/context'
 import { getUserDevices, removeDevice, type TrustedDevice } from '@/lib/api/devices'
 import {
@@ -11,9 +12,9 @@ import {
   THead,
   TBody,
   TR,
-  TH,
   TD,
 } from '@ciphera-net/facet'
+import { SettingsTH } from '@/components/settings/panels/SettingsTH'
 import { Laptop, DeviceMobile } from '@phosphor-icons/react'
 import { EmptyRow, SettingsPanel } from '@/components/settings/panels'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -21,6 +22,7 @@ import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { formatRelativeTime, formatDateTimeFull, formatDate } from '@/lib/utils/formatDate'
+import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 
 /** Muted line glyph for a device row: phone or laptop, never a tinted tile. */
 function DeviceGlyph({ hint }: { hint: string }) {
@@ -42,6 +44,7 @@ export default function TrustedDevicesCard() {
   const [error, setError] = useState('')
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [confirmDevice, setConfirmDevice] = useState<TrustedDevice | null>(null)
+  const reducedMotion = useReducedMotion()
 
   const fetchDevices = useCallback(async () => {
     setError('')
@@ -107,68 +110,82 @@ export default function TrustedDevicesCard() {
             <Table aria-label="Trusted devices" containerClassName="border-0">
               <THead>
                 <TR>
-                  <TH>Device</TH>
+                  <SettingsTH>Device</SettingsTH>
                   {/* First seen drops out below sm: Last seen carries the
                       signal and the table then fits a ~358px viewport. */}
-                  <TH className="hidden sm:table-cell">First seen</TH>
-                  <TH numeric>Last seen</TH>
-                  <TH className="w-px">
+                  <SettingsTH className="hidden sm:table-cell">First seen</SettingsTH>
+                  <SettingsTH numeric>Last seen</SettingsTH>
+                  <SettingsTH className="w-px">
                     <span className="sr-only">Actions</span>
-                  </TH>
+                  </SettingsTH>
                 </TR>
               </THead>
               <TBody>
-                {devices.map(device => (
-                  <TR key={device.id}>
-                    <TD>
-                      <div className="flex min-w-0 items-center gap-3">
-                        <DeviceGlyph hint={device.display_hint} />
-                        <span
-                          className="min-w-0 flex-1 truncate font-medium text-foreground"
-                          title={device.display_hint || 'Unknown device'}
-                        >
-                          {device.display_hint || 'Unknown device'}
-                        </span>
-                        {device.is_current && (
-                          <StatusChip tone="neutral" className="shrink-0">
-                            This device
-                          </StatusChip>
+                {/* M5: a removed device row exits rather than popping out of
+                    the list. `initial={false}` on both the AnimatePresence and
+                    each row means a row already on the page never plays an
+                    entrance (mirrors the api-keys/passkeys device); only a
+                    later removal animates, and only when motion is allowed. */}
+                <AnimatePresence initial={false}>
+                  {devices.map(device => (
+                    <motion.tr
+                      key={device.id}
+                      data-testid={`device-row-${device.id}`}
+                      initial={false}
+                      exit={reducedMotion ? undefined : { opacity: 0 }}
+                      transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
+                      className="border-b border-border transition-colors duration-fast ease-apple last:border-0 hover:bg-muted motion-reduce:transition-none"
+                    >
+                      <TD>
+                        <div className="flex min-w-0 items-center gap-3">
+                          <DeviceGlyph hint={device.display_hint} />
+                          <span
+                            className="min-w-0 flex-1 truncate font-medium text-foreground"
+                            title={device.display_hint || 'Unknown device'}
+                          >
+                            {device.display_hint || 'Unknown device'}
+                          </span>
+                          {device.is_current && (
+                            <StatusChip tone="neutral" className="shrink-0">
+                              This device
+                            </StatusChip>
+                          )}
+                        </div>
+                      </TD>
+                      <TD
+                        className="hidden whitespace-nowrap text-xs text-muted-foreground sm:table-cell"
+                        title={formatDateTimeFull(new Date(device.first_seen_at))}
+                      >
+                        {/* One format per column: first seen is a fixed fact, so
+                            the calendar date; last seen is a moving one, so
+                            relative. Relative in both columns read as
+                            "5h ago / 25/08 / 1d ago" down one column (staging,
+                            16-09-2026), which is the fault §4.7 named. */}
+                        {formatDate(new Date(device.first_seen_at))}
+                      </TD>
+                      <TD
+                        numeric
+                        className="whitespace-nowrap text-xs text-muted-foreground"
+                        title={formatDateTimeFull(new Date(device.last_seen_at))}
+                      >
+                        {formatRelativeTime(device.last_seen_at)}
+                      </TD>
+                      <TD className="text-right">
+                        {!device.is_current && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-muted-foreground transition-colors duration-fast ease-apple hover:text-destructive motion-reduce:transition-none"
+                            onClick={() => setConfirmDevice(device)}
+                            disabled={removingId === device.id}
+                          >
+                            {removingId === device.id ? 'Removing…' : 'Remove'}
+                          </Button>
                         )}
-                      </div>
-                    </TD>
-                    <TD
-                      className="hidden whitespace-nowrap text-xs text-muted-foreground sm:table-cell"
-                      title={formatDateTimeFull(new Date(device.first_seen_at))}
-                    >
-                      {/* One format per column: first seen is a fixed fact, so
-                          the calendar date; last seen is a moving one, so
-                          relative. Relative in both columns read as
-                          "5h ago / 25/08 / 1d ago" down one column (staging,
-                          16-09-2026), which is the fault §4.7 named. */}
-                      {formatDate(new Date(device.first_seen_at))}
-                    </TD>
-                    <TD
-                      numeric
-                      className="whitespace-nowrap text-xs text-muted-foreground"
-                      title={formatDateTimeFull(new Date(device.last_seen_at))}
-                    >
-                      {formatRelativeTime(device.last_seen_at)}
-                    </TD>
-                    <TD className="text-right">
-                      {!device.is_current && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => setConfirmDevice(device)}
-                          disabled={removingId === device.id}
-                        >
-                          {removingId === device.id ? 'Removing…' : 'Remove'}
-                        </Button>
-                      )}
-                    </TD>
-                  </TR>
-                ))}
+                      </TD>
+                    </motion.tr>
+                  ))}
+                </AnimatePresence>
               </TBody>
             </Table>
           )}

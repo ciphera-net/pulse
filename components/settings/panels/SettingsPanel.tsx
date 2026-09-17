@@ -1,7 +1,10 @@
 'use client'
 
 import * as React from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
+import { usePanelIndex } from './PanelSequence'
 
 /**
  * SettingsPanel — the bordered frame every settings group lives in.
@@ -18,9 +21,15 @@ import { cn } from '@/lib/utils'
  * and it was the single biggest reason settings did not read as Pulse
  * (settings overhaul, 16-09-2026, §4.8).
  *
- * `tone="danger"` re-skins the frame for destructive zones: the border and the
- * title turn coral (`destructive`); the rest of the grammar is unchanged.
- * Colour lives in the word, never in a tinted surface.
+ * `tone="danger"` marks a destructive zone: the title turns coral
+ * (`destructive`); the frame stays the house hairline like every other panel
+ * (round two, S6: the tinted border was the one coloured edge on the surface).
+ * Colour lives in the word, never in a tinted surface or frame.
+ *
+ * Motion (round two, M1): inside the settings shell each panel rises 8px into
+ * place on the house curve, 60ms after the panel before it; the shell's
+ * PanelSequence hands out the index. Outside it, or under reduced motion, the
+ * panel is simply there.
  *
  * Accessibility: renders a landmark `<section>`; when `title` is present the
  * header is the panel's visual + reading label.
@@ -50,15 +59,17 @@ export function SettingsPanel({
   // Stable id so the landmark <section> can be labelled by its own heading
   // (only wired when a title is actually rendered).
   const titleId = React.useId()
+  const index = usePanelIndex()
+  const reduced = useReducedMotion()
+  const rises = index !== null && !reduced
 
   return (
-    <section
+    <motion.section
       aria-labelledby={title ? titleId : undefined}
-      className={cn(
-        'rounded-none border bg-card',
-        danger ? 'border-destructive/30' : 'border-border',
-        className,
-      )}
+      className={cn('rounded-none border border-border bg-card', className)}
+      initial={rises ? { opacity: 0, y: 8 } : false}
+      animate={rises ? { opacity: 1, y: 0 } : undefined}
+      transition={rises ? { duration: DURATION_BASE, ease: EASE_APPLE, delay: (index ?? 0) * 0.06 } : undefined}
     >
       {hasHeader && (
         <header
@@ -95,7 +106,7 @@ export function SettingsPanel({
         </header>
       )}
       {children}
-    </section>
+    </motion.section>
   )
 }
 

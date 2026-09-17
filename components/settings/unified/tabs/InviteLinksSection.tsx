@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Button, toast } from '@ciphera-net/facet'
 import { Copy, Check, LinkSimple } from '@phosphor-icons/react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -10,6 +11,7 @@ import { useIsAdminOrOwner } from '@/lib/auth/permissions'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/settings/panels'
+import { DURATION_BASE, DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { formatDate } from '@/lib/utils/formatDate'
 
 interface Props {
@@ -74,6 +76,7 @@ function CopyLinkButton({ url }: { url?: string }) {
 }
 
 export default function InviteLinksSection({ orgId, links, roles, onRevoked }: Props) {
+  const reducedMotion = useReducedMotion()
   const canManage = useIsAdminOrOwner()
   const [confirmRevoke, setConfirmRevoke] = useState<InviteLink | null>(null)
 
@@ -101,56 +104,79 @@ export default function InviteLinksSection({ orgId, links, roles, onRevoked }: P
         />
       ) : (
         <PanelRows>
-          {links.map(link => {
-            const isExhausted = link.max_uses !== null && link.use_count >= link.max_uses
-            const linkRole = link.role
-            const expiresAt = new Date(link.expires_at)
-            const isExpired = expiresAt < new Date()
-            const isDimmed = isExhausted || isExpired
+          {/* M5: an invite link row added (created) or removed (revoked) rises
+              in / exits rather than popping, the same house AnimatePresence
+              device as the members roster and the API keys/goals lists.
+              `initial={false}` on AnimatePresence keeps rows already on the
+              page from playing an entrance on first load. */}
+          <AnimatePresence initial={false}>
+            {links.map(link => {
+              const isExhausted = link.max_uses !== null && link.use_count >= link.max_uses
+              const linkRole = link.role
+              const expiresAt = new Date(link.expires_at)
+              const isExpired = expiresAt < new Date()
+              const isDimmed = isExhausted || isExpired
 
-            const usageLabel = link.max_uses !== null
-              ? `${link.use_count} / ${link.max_uses} uses`
-              : link.use_count === 1
-                ? '1 use'
-                : `${link.use_count} uses`
+              const usageLabel = link.max_uses !== null
+                ? `${link.use_count} / ${link.max_uses} uses`
+                : link.use_count === 1
+                  ? '1 use'
+                  : `${link.use_count} uses`
 
-            return (
-              <PanelRow
-                key={link.id}
-                className={isDimmed ? 'opacity-50' : undefined}
-                label={<span className="truncate">{link.name}</span>}
-                caption={
-                  <span className="tabular-nums">
-                    {isDimmed ? usageLabel : `${usageLabel} · expires ${formatDate(expiresAt)}`}
-                  </span>
-                }
-                control={
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    {isExhausted ? (
-                      <StatusChip tone="neutral" dot>Used</StatusChip>
-                    ) : isExpired ? (
-                      <StatusChip tone="neutral" dot>Expired</StatusChip>
-                    ) : (
-                      <StatusChip tone="success" dot>Active</StatusChip>
-                    )}
-                    <LinkRoleBadge role={linkRole} roles={roles} />
-                    {!isDimmed && <CopyLinkButton url={link.url} />}
-                    {!isDimmed && canManage && (
-                      // Always visible: no hover-only reveal (touch has no hover).
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        onClick={() => handleRevoke(link)}
-                      >
-                        Revoke
-                      </Button>
-                    )}
-                  </div>
-                }
-              />
-            )
-          })}
+              return (
+                <motion.div
+                  key={link.id}
+                  data-testid={`invite-link-row-${link.id}`}
+                  layout={!reducedMotion}
+                  initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+                  animate={
+                    reducedMotion
+                      ? undefined
+                      : { opacity: 1, y: 0, transition: { duration: DURATION_BASE, ease: EASE_APPLE } }
+                  }
+                  exit={
+                    reducedMotion
+                      ? undefined
+                      : { opacity: 0, y: 4, transition: { duration: DURATION_FAST, ease: EASE_APPLE } }
+                  }
+                >
+                  <PanelRow
+                    className={isDimmed ? 'opacity-50' : undefined}
+                    label={<span className="truncate">{link.name}</span>}
+                    caption={
+                      <span className="tabular-nums">
+                        {isDimmed ? usageLabel : `${usageLabel} · expires ${formatDate(expiresAt)}`}
+                      </span>
+                    }
+                    control={
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        {isExhausted ? (
+                          <StatusChip tone="neutral" dot>Used</StatusChip>
+                        ) : isExpired ? (
+                          <StatusChip tone="neutral" dot>Expired</StatusChip>
+                        ) : (
+                          <StatusChip tone="success" dot>Active</StatusChip>
+                        )}
+                        <LinkRoleBadge role={linkRole} roles={roles} />
+                        {!isDimmed && <CopyLinkButton url={link.url} />}
+                        {!isDimmed && canManage && (
+                          // Always visible: no hover-only reveal (touch has no hover).
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            onClick={() => handleRevoke(link)}
+                          >
+                            Revoke
+                          </Button>
+                        )}
+                      </div>
+                    }
+                  />
+                </motion.div>
+              )
+            })}
+          </AnimatePresence>
         </PanelRows>
       )}
 

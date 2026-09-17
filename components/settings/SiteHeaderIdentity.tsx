@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { CaretDown, Check } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
+import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { useActiveSite } from '@/components/settings/active-site'
 import { SiteFavicon } from '@/components/sites/SiteFavicon'
 import { displayDomain } from '@/lib/utils/displayDomain'
@@ -91,8 +93,17 @@ export function SiteHeaderIdentity({ fallback }: { fallback: string }) {
         <CaretDown className="h-4 w-4 shrink-0" weight="bold" aria-hidden="true" />
       </button>
 
+      {/* M4: the menu drops in (4px, 150ms) like the dashboard's site picker,
+          instead of appearing fully formed. */}
+      <AnimatePresence>
       {open && (
-        <div className="absolute left-0 top-full z-30 mt-2 w-72 rounded-none border border-border bg-popover text-sm font-normal shadow-lg">
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
+          className="absolute left-0 top-full z-30 mt-2 w-72 rounded-none border border-border bg-popover text-sm font-normal shadow-lg"
+        >
           <div className="p-2">
             <input
               type="text"
@@ -141,8 +152,9 @@ export function SiteHeaderIdentity({ fallback }: { fallback: string }) {
               <p className="px-3 py-4 text-sm text-muted-foreground">No sites found</p>
             )}
           </div>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </span>
   )
 }

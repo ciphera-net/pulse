@@ -240,6 +240,32 @@ describe('MyPreferencesTab (round-3 family)', () => {
     expect(screen.getByRole('button', { name: 'Mute Uptime' })).toBeInTheDocument()
   })
 
+  it('🔴 M6: a category row opens on the house height+fade curve, never a bare mount/unmount', async () => {
+    // The old markup was `{isOpen && <div>…</div>}` with no framer-motion
+    // anywhere in this file: no AnimatePresence, no DURATION_BASE/EASE_APPLE
+    // import, no height/opacity keyframes. Every assertion below is false
+    // against that markup, and true only once the disclosure goes through
+    // AnimatePresence + motion.div on the shared motion tokens (the same
+    // device WorkspaceAuditTab's payload row uses), with an explicit
+    // reduced-motion branch that renders the identical content instantly
+    // rather than skipping the transition object.
+    const src = readFileSync(SOURCE_PATH, 'utf8')
+    expect(src).toMatch(/from ['"]framer-motion['"]/)
+    expect(src).toMatch(/import \{ DURATION_BASE, EASE_APPLE \} from ['"]@\/lib\/motion['"]/)
+    expect(src).toMatch(/<AnimatePresence initial=\{false\}>/)
+    expect(src).toMatch(/initial=\{\{ height: 0, opacity: 0 \}\}/)
+    expect(src).toMatch(/animate=\{\{ height: 'auto', opacity: 1 \}\}/)
+    expect(src).toMatch(/exit=\{\{ height: 0, opacity: 0 \}\}/)
+    expect(src).toMatch(/transition=\{\{ duration: DURATION_BASE, ease: EASE_APPLE \}\}/)
+    expect(src).toMatch(/reducedMotion \? \(/)
+
+    // And the interaction still works: the row opens and shows its controls
+    // (the animated wrapper never hides the content it wraps).
+    await renderTab()
+    fireEvent.click(screen.getByRole('button', { name: /^Uptime/ }))
+    expect(screen.getByRole('button', { name: 'Mute Uptime' })).toBeInTheDocument()
+  })
+
   it('the delivery data strip renders its two stat tiles (unread/total, days kept)', async () => {
     // uptime: 2 unread of 41 total (fixture); 30 days kept (default read_ttl,
     // no override). Renders through the RailGridTile stand-in, proving the
@@ -326,6 +352,38 @@ describe('MyPreferencesTab (round-3 family)', () => {
     expect(
       updatePrefsBooleans.mock.calls[0][0].categories.uptime.retention_override_seconds,
     ).toBeNull()
+  })
+
+  it('the three time fields hide the native picker glyph behind a Phosphor clock and match the Select height (h-9)', async () => {
+    // Same device as WorkspaceAuditTab's date fields: the OS glyph is
+    // opacity-0'd but stretched over the whole control (inset-0) so the
+    // FULL field still opens the native picker, and a visible Phosphor icon
+    // sits in front of it. The old markup was a bare `<Input className="w-28
+    // [color-scheme:dark]">` with no wrapper and no icon at all, so every
+    // assertion here is false against it.
+    await renderTab()
+    for (const label of ['Digest send time', 'Quiet hours start', 'Quiet hours end']) {
+      const input = screen.getByLabelText(label) as HTMLInputElement
+      const classes = input.className
+      // Height now matches the timezone Select's `size="sm"` (h-9), not the
+      // Input default.
+      expect(classes).toMatch(/\bh-9\b/)
+      // The native indicator is hidden but still covers (and opens) the
+      // whole field.
+      expect(classes).toContain('[&::-webkit-calendar-picker-indicator]:opacity-0')
+      expect(classes).toContain('[&::-webkit-calendar-picker-indicator]:inset-0')
+      expect(classes).toContain('[&::-webkit-calendar-picker-indicator]:cursor-pointer')
+      // Muted text while the field reads the browser's empty placeholder.
+      expect(classes).toContain('placeholder-shown:text-muted-foreground')
+      // A relative wrapper carrying a real glyph in front of the field, the
+      // same shape the date fields use (an absolutely positioned icon, not
+      // Input's own left-aligned `icon` prop).
+      const wrapper = input.parentElement as HTMLElement
+      expect(wrapper.className).toMatch(/\brelative\b/)
+      const icon = wrapper.querySelector('svg')
+      expect(icon).not.toBeNull()
+      expect(icon?.getAttribute('aria-hidden')).toBe('true')
+    }
   })
 
   it('the quiet-hours copy explains the deferral without a dash, criticals exempt', async () => {

@@ -128,6 +128,27 @@ describe('SiteMonitoringTab — Availability', () => {
     expect(screen.getByRole('link', { name: /View uptime/ })).toHaveAttribute('href', '/sites/s1/uptime')
   })
 
+  it('P3: "View uptime" takes the SAME link idiom as Notification settings — no arrow, no orange text', () => {
+    arm({ incidents: 2 })
+    render(<SiteMonitoringTab siteId="s1" />)
+    const viewUptime = screen.getByRole('link', { name: 'View uptime' })
+    // The arrow glyph is retired: the link reads "View uptime" alone.
+    expect(viewUptime).toHaveTextContent('View uptime')
+    expect(viewUptime.textContent).not.toMatch(/→/)
+    // Same idiom as the Notification settings link one panel down: a plain
+    // foreground underline, not orange text — orange is for the page's one
+    // primary action / active state, never a link.
+    const notificationSettings = screen.getByRole('link', { name: 'Notification settings' })
+    for (const cls of ['text-foreground', 'underline', 'underline-offset-4', 'decoration-border', 'hover:decoration-foreground', 'duration-fast', 'ease-apple']) {
+      expect(viewUptime.className).toContain(cls)
+    }
+    expect(viewUptime.className).not.toContain('text-primary')
+    // Both links share every class outside the layout-only `shrink-0` the
+    // Notification settings link carries for its flex row.
+    const linkClasses = (el: HTMLElement) => el.className.split(/\s+/).filter((c) => c !== 'shrink-0').sort()
+    expect(linkClasses(viewUptime)).toEqual(linkClasses(notificationSettings))
+  })
+
   it('asks for the SITE\'s calendar month, not the viewer\'s, and null-keys the reads while monitoring is off', () => {
     arm()
     render(<SiteMonitoringTab siteId="s1" />)

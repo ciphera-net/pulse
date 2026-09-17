@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { createElement } from 'react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import type { TrustedDevice } from '@/lib/api/devices'
@@ -9,8 +10,17 @@ import * as activityApi from '@/lib/api/activity'
 
 // --- Mocks ---------------------------------------------------------------
 
+// A stable `user` reference, not a fresh object literal per call: the real
+// AuthProvider holds `user` in useState, so it keeps its identity across
+// re-renders that don't touch auth. A mock that hands back a new object every
+// call diverges from that and re-triggers TrustedDevicesCard's `[user,
+// fetchDevices]` effect on every unrelated re-render (e.g. opening the
+// confirm dialog), which reloads the full device list mid-interaction and
+// starves any test that removes a device.
+const authUser = vi.hoisted(() => ({ id: 'u1', email: 'ada@ciphera.net' }))
+
 vi.mock('@/lib/auth/context', () => ({
-  useAuth: () => ({ user: { id: 'u1', email: 'ada@ciphera.net' } }),
+  useAuth: () => ({ user: authUser }),
 }))
 
 vi.mock('@/lib/api/devices', () => ({
@@ -20,6 +30,34 @@ vi.mock('@/lib/api/devices', () => ({
 
 vi.mock('@/lib/api/activity', () => ({
   getUserActivity: vi.fn(),
+}))
+
+// House pattern for a framer-motion consumer under jsdom (precedent:
+// WorkspaceAuditTab.test.tsx / PasskeysPanel.test.tsx): real useReducedMotion()
+// reads window.matchMedia, which jsdom does not implement, so it is stubbed to
+// `false` and motion.* strips framer-only props while passing the rest
+// (className, data-testid included) straight through. Unlike the other
+// precedents, this page's motion element is `motion.tr` inside a real
+// `<table>`, so the stand-in renders the SAME tag the Proxy key names
+// (`createElement(tag, ...)`) rather than always a `<div>`: a `<div>` nested
+// in `<tbody>` is invalid markup that only masks the real row structure.
+vi.mock('framer-motion', () => ({
+  useReducedMotion: () => false,
+  motion: new Proxy(
+    {},
+    {
+      get:
+        (_target: unknown, tag: string) =>
+        ({ children, initial, animate, exit, transition, layout, ...props }: any) =>
+          createElement(tag, props, children),
+    },
+  ),
+  AnimatePresence: ({ children }: any) => <>{children}</>,
+}))
+
+vi.mock('@/components/ui/ConfirmDialog', () => ({
+  ConfirmDialog: ({ open, title, confirmLabel, onConfirm }: any) =>
+    open ? <div role="dialog" aria-label={title}><button onClick={onConfirm}>{confirmLabel}</button></div> : null,
 }))
 
 // Lightweight facet stand-ins (audit/billing test precedent): the RuledTable
@@ -42,6 +80,7 @@ vi.mock('@ciphera-net/facet', () => ({
 import AccountDevicesTab from '../AccountDevicesTab'
 
 const mockGetDevices = devicesApi.getUserDevices as unknown as ReturnType<typeof vi.fn>
+const mockRemoveDevice = devicesApi.removeDevice as unknown as ReturnType<typeof vi.fn>
 const mockGetActivity = activityApi.getUserActivity as unknown as ReturnType<typeof vi.fn>
 
 const device = (over: Partial<TrustedDevice> = {}): TrustedDevice => ({
@@ -74,6 +113,7 @@ const activityResp = (entries: AuditLogEntry[]) => ({
 
 beforeEach(() => {
   mockGetDevices.mockReset()
+  mockRemoveDevice.mockReset()
   mockGetActivity.mockReset()
 })
 
@@ -135,6 +175,50 @@ describe('AccountDevicesTab (Facet ruled lists)', () => {
     const remove = screen.getByRole('button', { name: 'Remove' }) as HTMLButtonElement
     expect(remove).toBeInTheDocument()
     expect(remove.disabled).toBe(false)
+  })
+
+  it('keeps the device Remove action quiet at rest, red only on hover (P10)', async () => {
+    mockGetDevices.mockResolvedValue({
+      devices: [device({ id: 'd1', display_hint: 'Old iPhone', is_current: false })],
+    })
+    mockGetActivity.mockResolvedValue(activityResp([]))
+    render(<AccountDevicesTab />)
+
+    const remove = await screen.findByRole('button', { name: 'Remove' })
+    // Quiet ghost rung: muted at rest, destructive only on hover, on the
+    // house 150ms ease-apple curve, not a standing destructive colour that
+    // paints every row red before the pointer ever reaches it.
+    expect(remove.className).toContain('text-muted-foreground')
+    expect(remove.className).toContain('hover:text-destructive')
+    expect(remove.className).not.toMatch(/(?<!hover:)text-destructive/)
+    expect(remove.className).toContain('duration-fast')
+    expect(remove.className).toContain('ease-apple')
+  })
+
+  it('exits a removed device row through its own animatable element (M5)', async () => {
+    mockGetDevices.mockResolvedValue({
+      devices: [
+        device({ id: 'd0', display_hint: 'This laptop', is_current: true }),
+        device({ id: 'd1', display_hint: 'Old iPhone', is_current: false }),
+      ],
+    })
+    mockGetActivity.mockResolvedValue(activityResp([]))
+    mockRemoveDevice.mockResolvedValue(undefined)
+    render(<AccountDevicesTab />)
+
+    await screen.findByText('Old iPhone')
+    // Each row is its own keyed, animatable unit (AnimatePresence + motion.tr)
+    // so a single removal can exit on its own rather than the whole table
+    // re-rendering with no transition.
+    expect(screen.getByTestId('device-row-d1')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Remove device' })).getByRole('button', { name: 'Remove' }))
+
+    await waitFor(() => expect(mockRemoveDevice).toHaveBeenCalledWith('d1'))
+    await waitFor(() => expect(screen.queryByTestId('device-row-d1')).not.toBeInTheDocument())
+    // The current device's row survives the removal.
+    expect(screen.getByTestId('device-row-d0')).toBeInTheDocument()
   })
 
   it('shows First seen as the calendar date, with the full instant as a tooltip', async () => {

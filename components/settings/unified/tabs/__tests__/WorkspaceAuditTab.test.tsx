@@ -16,6 +16,16 @@ vi.mock('@/lib/api/audit', () => ({
   getAuditLog: vi.fn(),
 }))
 
+// framer-motion is NOT mocked here (unlike panel-footer-save.test.tsx). This
+// file already renders the REAL SettingsPanel, which is itself a
+// `motion.section` (see components/settings/panels/SettingsPanel.tsx). A
+// blanket `motion.*` stub collapses that to a `<div>` and silently breaks the
+// "wraps in a <section>" assertion below. Real framer-motion's
+// useReducedMotion() already runs fine in this suite without a matchMedia
+// stub (proven by every test above this comment, which exercise SettingsPanel
+// for real), so the payload's own AnimatePresence/motion.div run for real too
+// and are asserted on by the DOM they actually produce, not a stand-in.
+
 // Lightweight facet stand-ins (billing-test precedent): render real DOM so the
 // table structure, the Select, and the label associations are queryable,
 // while StatusChip / SettingsPanel / SettingsLoadingState / SettingsErrorState /
@@ -301,6 +311,107 @@ describe('WorkspaceAuditTab', () => {
     fireEvent.change(screen.getByLabelText('To'), { target: { value: '2026-07-01' } })
 
     await screen.findByText('Start date is after end date.')
+  })
+
+  it('keeps Action, From and To at their fixed mock widths in one row, not stretched to fill the panel', async () => {
+    mockGetAuditLog.mockResolvedValue({ entries: [entry()], total: 1 })
+    render(<WorkspaceAuditTab />)
+
+    await screen.findByRole('table')
+    const actionField = screen.getByLabelText('Filter by action')
+    const fromField = screen.getByLabelText('From')
+    // The approved mock (org-audit--after.png) pixel-measures Action at
+    // 208px and From/To at 159px each, left-anchored with empty space to the
+    // panel's right edge, identical to the before mock apart from the
+    // calendar glyph. That is the fixed-width flex row (w-52 / w-40), not an
+    // equal-width three-column grid stretched to the panel's full width.
+    const row = actionField.closest('div')?.parentElement
+    expect(row?.className).toMatch(/\bflex\b/)
+    expect(row?.className).not.toMatch(/grid-cols-3/)
+    // Token-exact, not a substring match: the From field legitimately carries
+    // a `[&::-webkit-calendar-picker-indicator]:w-full` utility (the hidden
+    // native glyph itself fills the field), which is a distinct single class
+    // token from a bare `w-full` on the field itself and must not satisfy
+    // this check by accident.
+    const actionTokens = actionField.className.split(/\s+/)
+    const fromTokens = fromField.className.split(/\s+/)
+    expect(actionTokens).toContain('w-52')
+    expect(actionTokens).not.toContain('w-full')
+    expect(fromTokens).toContain('w-40')
+    expect(fromTokens).not.toContain('w-full')
+  })
+
+  it('hides the native date-picker glyph behind a Phosphor calendar icon, muted while empty', async () => {
+    mockGetAuditLog.mockResolvedValue({ entries: [entry()], total: 1 })
+    render(<WorkspaceAuditTab />)
+
+    await screen.findByRole('table')
+    const fromField = screen.getByLabelText('From') as HTMLInputElement
+    // The browser glyph is hidden, not removed: it stays absolute/inset-0/
+    // full-width/cursor-pointer so the WHOLE field still opens the picker.
+    expect(fromField.className).toMatch(/\[&::-webkit-calendar-picker-indicator\]:opacity-0/)
+    expect(fromField.className).toMatch(/\[&::-webkit-calendar-picker-indicator\]:absolute/)
+    expect(fromField.className).toMatch(/\[&::-webkit-calendar-picker-indicator\]:inset-0/)
+    expect(fromField.className).toMatch(/\[&::-webkit-calendar-picker-indicator\]:cursor-pointer/)
+    // Muted while no value is chosen (placeholder-shown), and the field wraps
+    // in a relative container holding the pointer-events-none CalendarBlank
+    // glyph on the right.
+    expect(fromField.className).toMatch(/placeholder-shown:text-muted-foreground/)
+    const wrapper = fromField.parentElement
+    expect(wrapper?.className).toMatch(/relative/)
+    const icon = wrapper?.querySelector('svg')
+    expect(icon).not.toBeNull()
+    expect(icon?.getAttribute('class')).toMatch(/pointer-events-none/)
+    expect(icon?.getAttribute('class')).toMatch(/absolute/)
+    expect(icon?.getAttribute('class')).toMatch(/right-3/)
+  })
+
+  it('opens a row’s details with the house height+fade device, not a bare instant swap', async () => {
+    mockGetAuditLog.mockResolvedValue({ entries: [entry()], total: 1 })
+    render(<WorkspaceAuditTab />)
+
+    await screen.findByRole('table')
+    fireEvent.click(screen.getByRole('button', { name: 'Show details' }))
+
+    const dt = await screen.findByText('Site id')
+    const dl = dt.closest('dl')
+    expect(dl).not.toBeNull()
+    // The old markup put the <dl> directly in the TD (className "bg-muted
+    // p-0", no overflow-hidden anywhere above it). The new markup wraps it in
+    // the motion.div that clips the height tween.
+    const wrapper = dl?.parentElement
+    expect(wrapper?.className).toMatch(/overflow-hidden/)
+  })
+
+  it('does not draw the table divider beneath a collapsed payload row, only once it opens', async () => {
+    mockGetAuditLog.mockResolvedValue({ entries: [entry()], total: 1 })
+    render(<WorkspaceAuditTab />)
+
+    await screen.findByRole('table')
+    // The payload TR now stays mounted at zero height even while collapsed
+    // (so there is something for the height+fade device to open), but the
+    // table's border-collapsed row divider (TR's own default border-b) must
+    // not draw beneath it until it actually holds content, or every
+    // payload-bearing row grows a stray hairline above the next entry.
+    const payloadRow = document.getElementById('audit-payload-1')?.closest('tr')
+    expect(payloadRow).not.toBeNull()
+    expect(payloadRow?.className).toMatch(/\bborder-0\b/)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show details' }))
+    await screen.findByText('Site id')
+
+    // Open, it rejoins the table's normal row-divider rhythm.
+    expect(payloadRow?.className).not.toMatch(/\bborder-0\b/)
+
+    // The mocked `cn` above is a naive join, so it cannot itself prove the
+    // fix survives contact with Facet's real class-merge. Check the actual
+    // tailwind-merge behind @ciphera-net/facet's cn against TR's own base
+    // classlist, so a future reorder of that base string which breaks the
+    // merge is caught here rather than only by manual review.
+    const { cn: realCn } = await vi.importActual<typeof import('@ciphera-net/facet')>('@ciphera-net/facet')
+    const trBase = 'border-b border-border transition-colors last:border-0 hover:bg-muted'
+    expect(realCn(trBase, 'border-0')).not.toMatch(/\bborder-b\b/)
+    expect(realCn(trBase, undefined)).toMatch(/\bborder-b\b/)
   })
 
   it('never uses an em dash, en dash, or a literal ellipsis in its copy, comments included', () => {

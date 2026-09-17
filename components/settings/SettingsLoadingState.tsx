@@ -1,6 +1,7 @@
 /**
  * SettingsLoadingState — the house loading idiom for settings: a skeleton
- * shaped like a panel of PanelRows (divide-y, animate-pulse), NOT a spinner.
+ * shaped like a panel of PanelRows (divide-y, the dashboard's one-time
+ * animate-skeleton-fade rather than a pulse), NOT a spinner.
  * A loading state that mirrors the populated layout reads as "this is filling
  * in" rather than "something is spinning".
  */
@@ -12,7 +13,7 @@ export default function SettingsLoadingState({ rows = 4 }: { rows?: number }) {
       aria-busy="true"
       aria-label="Loading"
     >
-      <div className="animate-pulse divide-y divide-border">
+      <div className="animate-skeleton-fade divide-y divide-border">
         {Array.from({ length: rows }).map((_, i) => (
           <div
             key={i}

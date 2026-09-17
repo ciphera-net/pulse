@@ -65,15 +65,23 @@ export function PanelRow({ label, caption, control, htmlFor, className, children
         // fixed `220px` label column crushed inputs to ~70px at 390px otherwise.
         // From md up: the property grid — label | value | right-aligned control.
         'grid grid-cols-1 gap-x-4 gap-y-2 px-5 py-3.5',
-        'md:grid-cols-[220px_1fr_auto] md:items-center',
+        // Round two (S3): a row whose only control is a toggle, chip or button
+        // gives the label the room, so a caption no longer wraps at 220px beside
+        // 500px of nothing; a row with a value keeps a label column that grows
+        // with the row (minmax(220px,30%)) instead of a fixed 220px.
+        hasValue ? 'md:grid-cols-[minmax(220px,30%)_1fr_auto]' : 'md:grid-cols-[minmax(0,1fr)_auto]',
+        'md:items-center',
         className,
       )}
     >
       <div className="min-w-0 md:col-start-1 md:row-start-1">
         {labelNode}
-        {caption && <p className="mt-0.5 text-xs text-muted-foreground">{caption}</p>}
+        {/* A readable measure: the caption may take the row, never the whole width. */}
+        {caption && <p className="mt-0.5 max-w-[56ch] text-xs text-muted-foreground">{caption}</p>}
       </div>
-      {hasValue && <div className="min-w-0 md:col-start-2 md:row-start-1">{children}</div>}
+      {/* S7: a field is a field. The value cell caps at max-w-md so an input
+          reads as a field and not as a column stretched to the frame. */}
+      {hasValue && <div className="min-w-0 md:col-start-2 md:row-start-1 md:max-w-md">{children}</div>}
       {control && (
         <div className="md:col-start-3 md:row-start-1 md:justify-self-end">{control}</div>
       )}

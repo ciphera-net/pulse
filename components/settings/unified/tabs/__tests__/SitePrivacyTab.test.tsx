@@ -122,6 +122,30 @@ describe('SitePrivacyTab', () => {
     expect(screen.getAllByRole('switch').length).toBeGreaterThanOrEqual(7)
   })
 
+  it('gives the sub-nav rail the settings-shell frame (rounded-none border border-border bg-card), with ease-apple duration-fast on its row transitions', () => {
+    render(<SitePrivacyTab siteId="s1" />)
+
+    // The rail's own container div, not the <nav> landmark: the frame lives on
+    // the element that wraps the rows, matching SettingsShell's list frame
+    // (components/settings/SettingsShell.tsx) and SettingsPanel's panel frame.
+    // A rail with no frame class here (or a frame missing one of the four)
+    // fails this.
+    const rail = screen.getByRole('navigation', { name: 'Privacy sections' })
+    const frame = rail.firstElementChild as HTMLElement
+    expect(frame).not.toBeNull()
+    expect(frame.className).toMatch(/\brounded-none\b/)
+    expect(frame.className).toMatch(/\bborder\b/)
+    expect(frame.className).toMatch(/\bborder-border\b/)
+    expect(frame.className).toMatch(/\bbg-card\b/)
+
+    // A bare `transition-colors` (no ease-apple/duration-fast) falls back to
+    // Tailwind's default timing, off the house motion tokens (lib/motion.ts).
+    const activeRow = within(rail).getByRole('button', { name: 'Data and privacy' })
+    expect(activeRow.className).toMatch(/\btransition-colors\b/)
+    expect(activeRow.className).toMatch(/\bduration-fast\b/)
+    expect(activeRow.className).toMatch(/\bease-apple\b/)
+  })
+
   it('renders query parameters as removable chips over the source-of-truth input', () => {
     useSiteMock.mockReturnValue({ data: makeSite({ allowed_query_params: ['q', 'category'] }), error: undefined, mutate: vi.fn() })
     render(<SitePrivacyTab siteId="s1" />)
