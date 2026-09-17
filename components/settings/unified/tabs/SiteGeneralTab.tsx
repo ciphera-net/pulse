@@ -202,6 +202,7 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
             site={{ domain: site.domain, name: site.name, script_features: scriptFeatures, detected_framework: site.detected_framework }}
             siteId={siteId}
             showFrameworkPicker
+            embedded
             onFeaturesChange={(features) =>
               // Merge, never replace: the block emits only the keys it still
               // owns (scroll/outbound/downloads/sri), and a plain replace would

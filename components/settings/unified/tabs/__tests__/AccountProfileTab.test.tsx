@@ -106,6 +106,52 @@ vi.mock('@phosphor-icons/react', () => new Proxy({}, {
   has: () => true,
 }))
 
+// P9: the email-change ceremony's reveal is the M6 height+fade device. Stub
+// framer-motion the way SiteGoalsTab's suite does (real motion timing can
+// never make a jsdom run flaky) — AnimatePresence renders its children with
+// no exit delay, and `useReducedMotion` reports false so the animated branch
+// is what's under test.
+//
+// ⚠️ TAG-PRESERVING AND MEMOIZED, NOT A BARE PROXY. This tab's tree also
+// renders `SettingsPanel` (Profile, and DangerZone's two panels), which is a
+// real `<motion.section>` — collapsing every `motion.*` to an anonymous `div`
+// broke every `.closest('section')` query in this file's own delete-panel
+// tests. Worse, a Proxy `get` that returns a FRESH function on every property
+// access hands React a new component TYPE on every render, so every
+// `SettingsPanel` on the page unmounted and remounted on each keystroke —
+// which is how a `disabled` assertion on a button captured before typing
+// started silently reading a detached, stale node. Caching by tag name keeps
+// one stable component per `motion.<tag>`, and rendering the real tag keeps
+// section/div semantics intact.
+vi.mock('framer-motion', () => {
+  const cache = new Map<string, any>()
+  function motionComponent(tag: string) {
+    if (!cache.has(tag)) {
+      const Tag = tag as any
+      cache.set(
+        tag,
+        ({ children, initial, animate, exit, transition, layout, ...props }: any) => (
+          <Tag
+            data-motion-initial={JSON.stringify(initial)}
+            data-motion-animate={JSON.stringify(animate)}
+            data-motion-exit={JSON.stringify(exit)}
+            data-motion-transition={JSON.stringify(transition)}
+            {...props}
+          >
+            {children}
+          </Tag>
+        ),
+      )
+    }
+    return cache.get(tag)
+  }
+  return {
+    useReducedMotion: () => false,
+    motion: new Proxy({}, { get: (_target, tag: string) => motionComponent(tag) }),
+    AnimatePresence: ({ children }: any) => <>{children}</>,
+  }
+})
+
 import AccountProfileTab from '../AccountProfileTab'
 
 beforeEach(() => {
@@ -142,11 +188,13 @@ describe('AccountProfileTab (Facet structured panels)', () => {
     // claim about this device and none of them is known yet.
     expect(await screen.findByText(/end-to-end encrypted/i)).toBeInTheDocument()
 
-    // 🔑 The email row USED to be permanently disabled ("Read-only in Pulse").
-    // Direction A makes it the thing you edit, so once the status read says
-    // nothing is pending it carries the current address and accepts a new one.
-    const email = await screen.findByDisplayValue('ada@ciphera.net') as HTMLInputElement
-    await vi.waitFor(() => expect(email.disabled).toBe(false))
+    // 🔑 P9 (17-09-2026): the row is COLLAPSED at rest — the address is
+    // stated as text, not carried by a live input, and "Change…" is the way
+    // to reach the ceremony that edits it.
+    expect(await screen.findByText('ada@ciphera.net')).toBeInTheDocument()
+    const change = screen.getByRole('button', { name: /Change/i }) as HTMLButtonElement
+    expect(change.disabled).toBeFalsy()
+    expect(screen.queryByPlaceholderText('Enter your password')).toBeNull()
   })
 
   it('flips SaveBar to dirty when the display name changes', () => {
@@ -222,8 +270,8 @@ describe('AccountProfileTab (Facet structured panels)', () => {
     })
     const { container } = render(<AccountProfileTab />)
 
-    // The email field starts empty (encrypted, not unlocked).
-    expect(screen.queryByDisplayValue('ada@ciphera.net')).toBeNull()
+    // The address is not on screen yet (encrypted, not unlocked).
+    expect(screen.queryByText('ada@ciphera.net')).toBeNull()
 
     // Reveal the inline form, fill it, submit the form directly.
     fireEvent.click(await screen.findByRole('button', { name: 'Unlock' }))
@@ -238,6 +286,8 @@ describe('AccountProfileTab (Facet structured panels)', () => {
     await vi.waitFor(() => expect(screen.queryByPlaceholderText('Password')).toBeNull())
     // The vault display name surfaced into the (editable) display-name field.
     expect(screen.getByDisplayValue('Ada Lovelace')).toBeInTheDocument()
+    // And the decrypted address now states itself as text, at rest.
+    expect(screen.getByText('ada@ciphera.net')).toBeInTheDocument()
     // 🔴 And the key is kept — the owner's custody decision, 10-09-2026. Before
     // it, every reload asked again.
     expect(vault.save).toHaveBeenCalledWith('u1', expect.objectContaining({ extractable: false }))
@@ -277,7 +327,8 @@ describe('AccountProfileTab — a key this browser already holds', () => {
 
     render(<AccountProfileTab />)
 
-    await vi.waitFor(() => expect(screen.queryByDisplayValue('ada@ciphera.net')).not.toBeNull())
+    // P9: at rest the address is text, not an input's value.
+    await vi.waitFor(() => expect(screen.queryByText('ada@ciphera.net')).not.toBeNull())
     expect(screen.getByDisplayValue('Ada Lovelace')).toBeInTheDocument()
     // The lock is gone, and it was never shown.
     expect(screen.queryByText(/Your name and email stay encrypted/i)).toBeNull()
@@ -432,7 +483,8 @@ describe('AccountProfileTab — before the vault has answered', () => {
     vault.open.mockResolvedValue({ email: 'ada@ciphera.net', display_name: 'Ada Lovelace' })
     const { container } = render(<AccountProfileTab />)
 
-    expect(await screen.findByDisplayValue('ada@ciphera.net')).toBeInTheDocument()
+    // P9: at rest the address is text, not an input's value.
+    expect(await screen.findByText('ada@ciphera.net')).toBeInTheDocument()
     expect(container.textContent).toMatch(/Unlocked on this device/i)
     expect(container.querySelectorAll('[aria-busy="true"]').length).toBe(0)
   })
@@ -448,7 +500,8 @@ describe('AccountProfileTab — before the vault has answered', () => {
     const { container } = render(<AccountProfileTab />)
 
     expect(container.querySelectorAll('[aria-busy="true"]').length).toBe(0)
-    expect(screen.getByDisplayValue('ada@ciphera.net')).toBeInTheDocument()
+    // P9: at rest the address is text, not an input's value.
+    expect(screen.getByText('ada@ciphera.net')).toBeInTheDocument()
   })
 })
 
@@ -492,7 +545,8 @@ describe('AccountProfileTab — "Unlocked on this device" (rule 6, direction B)'
     fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: 'pw' } })
     fireEvent.submit(container.querySelector('form') as HTMLFormElement)
 
-    await vi.waitFor(() => expect(screen.queryByDisplayValue('ada@ciphera.net')).not.toBeNull())
+    // P9: at rest the address is text, not an input's value.
+    await vi.waitFor(() => expect(screen.queryByText('ada@ciphera.net')).not.toBeNull())
     expect(container.textContent).not.toMatch(/Unlocked on this device/i)
     expect(container.textContent).toMatch(/end-to-end encrypted/i)
   })
@@ -512,9 +566,10 @@ describe('AccountProfileTab — "Unlocked on this device" (rule 6, direction B)'
     expect(vault.forget).toHaveBeenCalledTimes(1)
     expect(await screen.findByText(/Your name and email stay encrypted/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Unlock' })).toBeInTheDocument()
-    // And the plaintext went with the key.
-    expect(container.querySelector('#account-new-email')).not.toBeNull()
-    expect((container.querySelector('#account-new-email') as HTMLInputElement).value).toBe('')
+    // And the plaintext went with the key: the row states the locked fact,
+    // not the address it was just showing.
+    expect(screen.getByText('Encrypted. Unlock above to see it.')).toBeInTheDocument()
+    expect(screen.queryByText('ada@ciphera.net')).toBeNull()
   })
 })
 
@@ -651,6 +706,58 @@ const PENDING = { expiresAt: new Date(Date.now() + 20 * 60_000).toISOString() }
 
 describe('AccountProfileTab — changing your email address', () => {
   /**
+   * 🔴 THE DEFECT THIS PINS (P9, settings overhaul round two, 17-09-2026).
+   * `emailFormOpen` used to be true whenever the ledger was idle — which is
+   * most of the time — so an ordinary, untouched visit to this page showed
+   * the new-address input, "Your password", and Send/Cancel with nothing
+   * asked for. At rest the row now states its value as text and offers a
+   * "Change…" button instead; against the OLD markup this fails, because
+   * `#account-email-password` was rendered unconditionally whenever the
+   * ledger was idle/unavailable.
+   */
+  it('renders no password field at rest, and offers "Change…" instead', async () => {
+    const { container } = await renderProfile()
+    expect(container.querySelector('#account-email-password')).toBeNull()
+    expect(container.querySelector('#account-new-email')).toBeNull()
+    expect(screen.getByRole('button', { name: /Change/i })).toBeInTheDocument()
+    // The value itself is still on screen, just as text.
+    expect(screen.getByText('ada@ciphera.net')).toBeInTheDocument()
+  })
+
+  /** The other half: a click is what turns the text row into the ceremony. */
+  it('opens the ceremony, with the password field, after clicking "Change…"', async () => {
+    const { container } = await renderProfile()
+    fireEvent.click(screen.getByRole('button', { name: /Change/i }))
+    expect(container.querySelector('#account-email-password')).not.toBeNull()
+    expect(container.querySelector('#account-new-email')).not.toBeNull()
+    // The address carries over into the now-editable field.
+    expect((container.querySelector('#account-new-email') as HTMLInputElement).value).toBe('ada@ciphera.net')
+    // And the trigger is gone while the ceremony is open.
+    expect(screen.queryByRole('button', { name: /^Change/i })).toBeNull()
+  })
+
+  /**
+   * The ceremony's own Cancel is now its close control, not merely a
+   * field-clearer — it has to work even with nothing typed, since that is
+   * the only way back to the collapsed row once "Change…" was clicked.
+   */
+  it('closes the ceremony on Cancel, with nothing typed, back to the collapsed row', async () => {
+    const { container } = await renderProfile()
+    fireEvent.click(screen.getByRole('button', { name: /Change/i }))
+    expect(container.querySelector('#account-new-email')).not.toBeNull()
+
+    const form = (container.querySelector('#account-new-email') as HTMLElement).closest('form') as HTMLElement
+    const cancel = Array.from(form.querySelectorAll('button')).find(b => b.textContent === 'Cancel') as HTMLButtonElement
+    expect(cancel.disabled).toBe(false)
+    fireEvent.click(cancel)
+
+    expect(container.querySelector('#account-new-email')).toBeNull()
+    expect(container.querySelector('#account-email-password')).toBeNull()
+    expect(screen.getByRole('button', { name: /Change/i })).toBeInTheDocument()
+    expect(screen.getByText('ada@ciphera.net')).toBeInTheDocument()
+  })
+
+  /**
    * 🔴 THE REGRESSION THIS PINS, shipped 10-09-2026 and reported within the
    * hour. Making the email row editable silently dropped its honest label:
    * a LOCKED account showed the placeholder "you@example.com", which reads as
@@ -662,6 +769,9 @@ describe('AccountProfileTab — changing your email address', () => {
   it('says the address is ENCRYPTED, not that there isn’t one, while the vault is locked', async () => {
     h.user = { id: 'u1', email: '', display_name: '' }
     const { container } = await renderProfile()
+    // P9: the row is collapsed at rest; "Change…" opens the ceremony this
+    // placeholder lives in.
+    fireEvent.click(screen.getByRole('button', { name: /Change/i }))
     const row = container.querySelector('#account-new-email') as HTMLInputElement
     expect(row.value).toBe('')
     expect(row.placeholder).toMatch(/Encrypted/i)
@@ -670,6 +780,7 @@ describe('AccountProfileTab — changing your email address', () => {
 
   it('offers a plain example only once the address is known', async () => {
     const { container } = await renderProfile()
+    fireEvent.click(screen.getByRole('button', { name: /Change/i }))
     const row = container.querySelector('#account-new-email') as HTMLInputElement
     expect(row.value).toBe('ada@ciphera.net')
     expect(row.placeholder).toBe('you@example.com')
@@ -692,6 +803,10 @@ describe('AccountProfileTab — changing your email address', () => {
     expect(container.textContent).toMatch(/Checking whether a change is already waiting/i)
     expect(container.querySelector('#account-email-password')).toBeNull()
     expect(container.querySelector('#account-new-email')).toBeNull()
+    // Nor a way to start one: "Change…" needs an answer too, for the same
+    // reason the input does — offering it here could start a second ceremony
+    // on top of a link this tab has not yet been told is already waiting.
+    expect(screen.queryByRole('button', { name: /Change/i })).toBeNull()
     settle(null)
   })
 
@@ -708,11 +823,15 @@ describe('AccountProfileTab — changing your email address', () => {
     expect(container.textContent).toMatch(/couldn't check whether a confirmation is already waiting/i)
     // Never the ledger's claim, which would assert a link exists.
     expect(container.textContent).not.toMatch(/Confirmation sent to/i)
+    // A failed status read must not take the feature away: "Change…" is
+    // still offered, and clicking it still opens the ceremony.
+    fireEvent.click(screen.getByRole('button', { name: /Change/i }))
     expect(container.querySelector('#account-email-password')).not.toBeNull()
   })
 
   it('runs the ceremony with the typed address and password, and asks for no email twice', async () => {
     const { container } = await renderProfile()
+    fireEvent.click(screen.getByRole('button', { name: /Change/i }))
     fireEvent.change(container.querySelector('#account-new-email') as HTMLInputElement, {
       target: { value: 'new@example.test' },
     })
@@ -736,6 +855,7 @@ describe('AccountProfileTab — changing your email address', () => {
   it('names the failure and leaves the form standing', async () => {
     emailCeremony.fn.mockRejectedValue(Object.assign(new Error('boom'), { status: 502 }))
     const { container } = await renderProfile()
+    fireEvent.click(screen.getByRole('button', { name: /Change/i }))
     fireEvent.change(container.querySelector('#account-new-email') as HTMLInputElement, {
       target: { value: 'new@example.test' },
     })
@@ -751,10 +871,15 @@ describe('AccountProfileTab — changing your email address', () => {
     expect(container.textContent).not.toMatch(/Confirmation sent to/i)
     // And the password is never left in the field to be replayed.
     expect((container.querySelector('#account-email-password') as HTMLInputElement).value).toBe('')
+    // 🔴 THE FORM STAYS STANDING (P9, 17-09-2026): a failed send must not
+    // collapse the ceremony back to "Change…" — that would make retrying cost
+    // a second click for no reason, on top of retyping the password.
+    expect(screen.queryByRole('button', { name: /^Change/i })).toBeNull()
   })
 
   it('shows the ledger, naming the address this tab typed', async () => {
     const { container } = await renderProfile()
+    fireEvent.click(screen.getByRole('button', { name: /Change/i }))
     fireEvent.change(container.querySelector('#account-new-email') as HTMLInputElement, {
       target: { value: 'New@Example.TEST' },
     })
@@ -768,8 +893,10 @@ describe('AccountProfileTab — changing your email address', () => {
     expect(container.textContent).toMatch(/new@example\.test/)
     expect(container.textContent).toMatch(/everything stays on your current address/i)
     expect(container.textContent).toMatch(/heads-up with a way to object/i)
-    // The form is gone while a link is live.
+    // The form is gone while a link is live, and so is the way to start a
+    // second one on top of it.
     expect(container.querySelector('#account-email-password')).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Change/i })).toBeNull()
   })
 
   /**
@@ -787,14 +914,18 @@ describe('AccountProfileTab — changing your email address', () => {
     expect(container.textContent).toMatch(/expires in about \d+ minutes/i)
   })
 
-  it('cancels the live link and returns to the form', async () => {
+  it('cancels the live link and returns to the collapsed row, not a reopened ceremony', async () => {
     api.getPendingEmailChange.mockResolvedValue(PENDING)
     const { container } = await renderProfile()
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Cancel request/i }))
     })
     expect(api.cancelEmailChange).toHaveBeenCalledTimes(1)
-    expect(container.querySelector('#account-email-password')).not.toBeNull()
+    // 🔴 P9 (17-09-2026): a resolved ledger returns to REST, not straight back
+    // into an open form. This tab never clicked "Change…" here, so nothing
+    // should appear to have opened it.
+    expect(container.querySelector('#account-email-password')).toBeNull()
+    expect(screen.getByRole('button', { name: /Change/i })).toBeInTheDocument()
   })
 
   /**
@@ -830,7 +961,11 @@ describe('AccountProfileTab — changing your email address', () => {
     })
     expect(api.getPendingEmailChange).toHaveBeenCalledTimes(2)
     expect(container.textContent).not.toMatch(/waiting in your new inbox/i)
-    expect(container.querySelector('#account-email-password')).not.toBeNull()
+    // 🔴 P9 (17-09-2026): discovering the change resolved elsewhere returns
+    // the row to REST — this tab never clicked "Change…", so the ceremony
+    // must not appear to have reopened itself.
+    expect(container.querySelector('#account-email-password')).toBeNull()
+    expect(screen.getByRole('button', { name: /Change/i })).toBeInTheDocument()
   })
 
   /**
@@ -849,7 +984,7 @@ describe('AccountProfileTab — changing your email address', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Unlock' }))
     fireEvent.change(screen.getByPlaceholderText('Password'), { target: { value: 'pw' } })
     fireEvent.submit(container.querySelector('form') as HTMLFormElement)
-    await vi.waitFor(() => expect(screen.queryByDisplayValue('ada@ciphera.net')).not.toBeNull())
+    await vi.waitFor(() => expect(screen.queryByText('ada@ciphera.net')).not.toBeNull())
 
     // The link is opened somewhere else. The next status read says nothing is
     // pending — reached here through resend's 404, which routes to the SAME
@@ -862,7 +997,7 @@ describe('AccountProfileTab — changing your email address', () => {
 
     await vi.waitFor(() => expect(container.textContent).toMatch(/no longer pending/i))
     expect(container.textContent).toMatch(/confirmed, or it expired/i)
-    expect(screen.queryByDisplayValue('ada@ciphera.net')).toBeNull()
+    expect(screen.queryByText('ada@ciphera.net')).toBeNull()
   })
 
   /**
@@ -922,6 +1057,7 @@ describe('AccountProfileTab — chrome and copy contract', () => {
    */
   it("uses the ghost rung for the email-change form's Cancel, never the retired grey secondary fill", async () => {
     const { container } = await renderProfile()
+    fireEvent.click(screen.getByRole('button', { name: /Change/i }))
     const form = (container.querySelector('#account-new-email') as HTMLElement).closest('form') as HTMLElement
     const cancel = Array.from(form.querySelectorAll('button')).find(b => b.textContent === 'Cancel') as HTMLButtonElement
     expect(cancel).toBeTruthy()
@@ -975,6 +1111,7 @@ describe('AccountProfileTab — chrome and copy contract', () => {
     expect(unlockSubmit.getAttribute('variant')).toBe('outline')
     expect(unlockSubmit.getAttribute('variant')).not.toBe('default')
 
+    fireEvent.click(screen.getByRole('button', { name: /Change/i }))
     const emailSubmit = screen.getByRole('button', { name: /Send confirmation link/i })
     expect(emailSubmit.getAttribute('variant')).toBe('outline')
     expect(emailSubmit.getAttribute('variant')).not.toBe('default')

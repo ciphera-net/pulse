@@ -46,10 +46,11 @@ describe('SettingsPanel', () => {
     expect(container.querySelector('header')).toBeNull()
   })
 
-  it('puts danger in the word and the hairline, never in a tinted surface', () => {
+  it('puts danger in the word, never in the frame or a tinted surface (round two: the border is the house hairline)', () => {
     const { container } = render(<SettingsPanel tone="danger" title="Danger zone">rows</SettingsPanel>)
     const section = container.querySelector('section')!
-    expect(section.className).toMatch(/border-destructive\/30/)
+    expect(section.className).toMatch(/\bborder-border\b/)
+    expect(section.className).not.toMatch(/border-destructive/)
     expect(section.className).not.toMatch(/bg-destructive/)
     expect(screen.getByRole('heading', { level: 2 }).className).toMatch(/text-destructive/)
   })

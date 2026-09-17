@@ -26,21 +26,21 @@ export type ChipTone =
   | 'brand'
   | 'purple'
 
-// Alpha-wash recipe: a /15 fill + vivid full-strength toned text, no border.
-// The /10 washes were nearly invisible on the #0f0f0f card, so the semantic
-// tones step up to /15 (a real, legible tint) AND route their text through the
-// brightest token — success = the Facet green `pos` (#3ECF8E), danger = the
-// coral `destructive`/`neg` (#F8836B) — so success/danger/warning read
-// unmistakably at a glance. Neutral stays deliberately quiet (a 6% white wash +
-// soft grey text) so it never competes with a genuine good/bad/live state.
+// Hairline recipe (round two, owner pick 17-09-2026): no fill, a hairline
+// frame, the dot and the word carry the tone through the brightest token —
+// success = the Facet green `pos` (#3ECF8E), danger = the coral
+// `destructive`/`neg` (#F8836B). The /15 washes this replaced were the one
+// place colour still lived in a surface rather than in a dot or a word; the
+// hairline is the dashboard's "Live" indicator with a frame. Neutral stays
+// quiet (soft grey text) so it never competes with a genuine good/bad state.
 const TONES: Record<ChipTone, string> = {
-  neutral: 'bg-white/[0.06] text-neutral-300',
-  success: 'bg-pos/15 text-pos',
-  info: 'bg-blue-500/15 text-blue-400',
-  warning: 'bg-amber-500/15 text-amber-400',
-  danger: 'bg-destructive/15 text-destructive',
-  brand: 'bg-primary/15 text-primary',
-  purple: 'bg-purple-500/15 text-purple-400',
+  neutral: 'text-neutral-300',
+  success: 'text-pos',
+  info: 'text-blue-400',
+  warning: 'text-amber-400',
+  danger: 'text-destructive',
+  brand: 'text-primary',
+  purple: 'text-purple-400',
 }
 
 const DOT_COLOR: Record<ChipTone, string> = {
@@ -70,7 +70,10 @@ export function StatusChip({ tone = 'neutral', dot, icon, title, className, chil
     <span
       title={title}
       className={cn(
-        'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-none text-xs font-medium whitespace-nowrap',
+        // The frame is one hairline; the transition is the house one, so a tone
+        // flip (Up → Down, Active → Revoked) eases instead of cutting (M7).
+        'inline-flex items-center gap-1.5 px-2 py-px rounded-none border border-neutral-800 text-xs font-medium whitespace-nowrap',
+        'transition-colors duration-fast ease-apple motion-reduce:transition-none',
         TONES[tone],
         className,
       )}

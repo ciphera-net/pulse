@@ -43,6 +43,14 @@ describe('PasswordPanel', () => {
     expect(screen.getByRole('dialog', { name: 'Change password' })).toBeInTheDocument()
   })
 
+  it("labels the row \"Your password\", not a second \"Password\" under the panel title", () => {
+    render(<PasswordPanel />)
+    expect(screen.getByText('Your password')).toBeInTheDocument()
+    expect(screen.getByText('At least 12 characters.')).toBeInTheDocument()
+    // Exactly one "Password" on the page: the panel title. The row used to repeat it.
+    expect(screen.getAllByText('Password', { exact: true })).toHaveLength(1)
+  })
+
   it('refuses a mismatch and a short password before any ceremony runs', () => {
     render(<PasswordPanel />)
     fireEvent.click(screen.getByRole('button', { name: 'Change password…' }))

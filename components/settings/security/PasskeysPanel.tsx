@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Button, Input, Modal, toast } from '@ciphera-net/facet'
 import { Fingerprint } from '@phosphor-icons/react'
 import { listPasskeys, deletePasskey, renamePasskey, type PasskeyCredential } from '@/lib/api/webauthn'
@@ -9,6 +10,7 @@ import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { formatDateTimeFull } from '@/lib/utils/formatDate'
+import { DURATION_BASE, DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 
 interface Props {
   /**
@@ -35,6 +37,7 @@ export default function PasskeysPanel({ onAdd }: Props) {
   const [name, setName] = useState('')
   const [removing, setRemoving] = useState<PasskeyCredential | null>(null)
   const [busy, setBusy] = useState(false)
+  const reducedMotion = useReducedMotion()
 
   const load = useCallback(async () => {
     setFailed(false)
@@ -117,34 +120,78 @@ export default function PasskeysPanel({ onAdd }: Props) {
         />
       ) : passkeys === null ? (
         <SettingsLoadingState rows={1} />
-      ) : passkeys.length === 0 ? (
-        <EmptyRow
-          icon={<Fingerprint weight="regular" />}
-          title="No passkey yet"
-          caption="One passkey per account. Adding it asks for your password once."
-        />
       ) : (
         <PanelRows>
-          {passkeys.map((pk) => (
-            <PanelRow
-              key={pk.id}
-              label={pk.display_name?.trim() || 'Passkey'}
-              caption={
-                `Added ${formatDateTimeFull(new Date(pk.createdAt))}` +
-                (pk.prf_enabled === false ? '. This passkey cannot open your vault; remove it and add a new one.' : '')
-              }
-              control={
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => { setRenaming(pk); setName(pk.display_name ?? '') }}>
-                    Rename
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setRemoving(pk)}>
-                    Remove
-                  </Button>
-                </div>
-              }
-            />
-          ))}
+          {/* One AnimatePresence spans BOTH the row list and the empty state,
+              keyed by which is showing ("empty" vs a passkey id) — it used to
+              branch on `passkeys.length === 0` a level up, outside this
+              AnimatePresence, so a removal swapped straight to <EmptyRow/> in
+              the very same commit that dropped the row's key, hard-unmounting
+              the exiting motion.div before its own exit (DURATION_FAST) ever
+              played. `mode="wait"` (the same device as Cascade.tsx's
+              CascadeGroup) holds the outgoing view on screen for its exit
+              before the incoming one mounts. 0<->1 is the only transition
+              this panel can ever run — see the one-passkey cap in the class
+              doc comment above. */}
+          <AnimatePresence mode="wait" initial={false}>
+            {passkeys.length === 0 ? (
+              <motion.div
+                key="empty"
+                initial={reducedMotion ? false : { opacity: 0 }}
+                animate={
+                  reducedMotion ? undefined : { opacity: 1, transition: { duration: DURATION_BASE, ease: EASE_APPLE } }
+                }
+                exit={reducedMotion ? undefined : { opacity: 0, transition: { duration: DURATION_FAST, ease: EASE_APPLE } }}
+              >
+                <EmptyRow
+                  icon={<Fingerprint weight="regular" />}
+                  title="No passkey yet"
+                  caption="One passkey per account. Adding it asks for your password once."
+                />
+              </motion.div>
+            ) : (
+              passkeys.map((pk) => (
+                <motion.div
+                  key={pk.id}
+                  layout={!reducedMotion}
+                  initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+                  animate={
+                    reducedMotion
+                      ? undefined
+                      : { opacity: 1, y: 0, transition: { duration: DURATION_BASE, ease: EASE_APPLE } }
+                  }
+                  exit={
+                    reducedMotion
+                      ? undefined
+                      : { opacity: 0, y: 4, transition: { duration: DURATION_FAST, ease: EASE_APPLE } }
+                  }
+                >
+                  <PanelRow
+                    label={pk.display_name?.trim() || 'Passkey'}
+                    caption={
+                      `Added ${formatDateTimeFull(new Date(pk.createdAt))}` +
+                      (pk.prf_enabled === false ? '. This passkey cannot open your vault; remove it and add a new one.' : '')
+                    }
+                    control={
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => { setRenaming(pk); setName(pk.display_name ?? '') }}>
+                          Rename
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground transition-colors duration-fast ease-apple hover:text-destructive motion-reduce:transition-none"
+                          onClick={() => setRemoving(pk)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    }
+                  />
+                </motion.div>
+              ))
+            )}
+          </AnimatePresence>
         </PanelRows>
       )}
 

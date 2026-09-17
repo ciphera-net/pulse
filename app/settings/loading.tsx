@@ -5,7 +5,7 @@
  * the masthead and nav rail come from the shell (verified live — rendering our
  * own here would double them). We fill only the content column with two
  * PanelRow-shaped ghost panels, reusing the SettingsLoadingState idioms
- * (animate-pulse, bg-input bars, semantic tokens only).
+ * (the dashboard's animate-skeleton-fade, bg-input bars, semantic tokens only).
  *
  * 02-09-2026: this comment exists to shift the chunk's content hash — the
  * previous chunk filename's object is wedged in Bunny Edge Storage ("Database
@@ -16,7 +16,7 @@ export default function SettingsLoading() {
   return (
     <div role="status" aria-busy="true" aria-label="Loading settings" className="space-y-8">
       {[0, 1].map((p) => (
-        <div key={p} className="animate-pulse rounded-none border border-border bg-card">
+        <div key={p} className="animate-skeleton-fade rounded-none border border-border bg-card">
           {/* Panel header ghost — kicker + one-line description. */}
           <div className="border-b border-border px-5 py-4">
             <div className="h-3 w-24 rounded-none bg-input" />

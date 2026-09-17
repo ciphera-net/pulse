@@ -106,3 +106,16 @@ describe('Settings landing (permission-aware index)', () => {
     expect(screen.queryByText('Goals')).not.toBeInTheDocument()
   })
 })
+
+describe('Settings landing — round two (owner pick L2, 17-09-2026)', () => {
+  it('sets the groups side by side on large screens, one column below', () => {
+    grantedPerms = new Set(ALL_PERMS)
+    mockActiveSite = { activeSite: { name: 'Acme', domain: 'acme.example', is_verified: true }, sites: [{}], isLoading: false }
+    const { container } = render(<SettingsLandingPage />)
+    const grid = container.firstElementChild as HTMLElement
+    expect(grid.className).toMatch(/\bgrid\b/)
+    expect(grid.className).toMatch(/lg:grid-cols-\[repeat\(auto-fit,minmax\(320px,1fr\)\)\]/)
+    expect(grid.className).not.toMatch(/space-y-8/)
+    expect(grid.querySelectorAll('section')).toHaveLength(3)
+  })
+})

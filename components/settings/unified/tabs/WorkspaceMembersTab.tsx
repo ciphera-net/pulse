@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Button, toast } from '@ciphera-net/facet'
 import { Plus, Trash, User, Users } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
@@ -15,6 +16,7 @@ import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/settings/panels'
 import { MastheadAction } from '@/components/settings/shell-slots'
+import { DURATION_BASE, DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { formatDate } from '@/lib/utils/formatDate'
 
 /**
@@ -45,6 +47,7 @@ function MemberAvatar({ monogram }: { monogram?: string }) {
 }
 
 export default function WorkspaceMembersTab() {
+  const reducedMotion = useReducedMotion()
   const { user } = useAuth()
   const [members, setMembers] = useState<OrganizationMember[]>([])
   const [roles, setRoles] = useState<Role[]>([])
@@ -134,61 +137,84 @@ export default function WorkspaceMembersTab() {
           />
         ) : (
           <PanelRows>
-            {members.map(member => {
-              const isYou = member.user_id === user?.id
-              /* Zero-PII backend: most members have no stored email or name.
-               * Show "You" for the signed-in member, the invite email when the
-               * backend has one (pending invites), and a short member id
-               * otherwise. Never a raw 36-char UUID as a display name. */
-              const displayName = isYou
-                ? 'You'
-                : (member.user_email || `Member ${member.user_id.slice(0, 8)}`)
-              const monogram = (isYou ? user?.email : member.user_email)?.trim().charAt(0).toUpperCase() || undefined
-              const canRemove = canManage && member.role !== 'owner' && !isYou
-              const joined = member.joined_at ? formatDate(new Date(member.joined_at)) : null
+            {/* M5: a member row added or removed rises in / exits rather than
+                popping, the same house AnimatePresence device as the API keys
+                and goals rosters. `initial={false}` on AnimatePresence keeps
+                the rows already on the page from playing an entrance on first
+                load; only a later add/remove animates. */}
+            <AnimatePresence initial={false}>
+              {members.map(member => {
+                const isYou = member.user_id === user?.id
+                /* Zero-PII backend: most members have no stored email or name.
+                 * Show "You" for the signed-in member, the invite email when the
+                 * backend has one (pending invites), and a short member id
+                 * otherwise. Never a raw 36-char UUID as a display name. */
+                const displayName = isYou
+                  ? 'You'
+                  : (member.user_email || `Member ${member.user_id.slice(0, 8)}`)
+                const monogram = (isYou ? user?.email : member.user_email)?.trim().charAt(0).toUpperCase() || undefined
+                const canRemove = canManage && member.role !== 'owner' && !isYou
+                const joined = member.joined_at ? formatDate(new Date(member.joined_at)) : null
 
-              return (
-                <PanelRow
-                  key={member.user_id}
-                  label={
-                    <span className="flex min-w-0 items-center gap-3">
-                      <MemberAvatar monogram={monogram} />
-                      {/* The joined line stacks under the NAME. As the row's
-                          caption it sat under the avatar, flush with the
-                          panel edge (staging, 16-09-2026). */}
-                      <span className="min-w-0">
-                        <span className="block truncate">{displayName}</span>
-                        {joined && (
-                          <span className="block text-xs font-normal tabular-nums text-muted-foreground">Joined {joined}</span>
-                        )}
-                      </span>
-                    </span>
-                  }
-                  control={
-                    <div className="flex items-center gap-3">
-                      <RoleBadge role={member.role} roles={roles} />
-                      {/* Reserve the action column so rows align whether or
-                          not a member is removable. Actions stay visible at
-                          all times: a hover-only reveal has no touch
-                          equivalent. */}
-                      <div className="flex w-8 shrink-0 justify-end">
-                        {canRemove && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`Remove ${displayName}`}
-                            className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                            onClick={() => handleRemove(member.user_id, member.user_email || member.user_id)}
-                          >
-                            <Trash weight="bold" className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  }
-                />
-              )
-            })}
+                return (
+                  <motion.div
+                    key={member.user_id}
+                    data-testid={`member-row-${member.user_id}`}
+                    layout={!reducedMotion}
+                    initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+                    animate={
+                      reducedMotion
+                        ? undefined
+                        : { opacity: 1, y: 0, transition: { duration: DURATION_BASE, ease: EASE_APPLE } }
+                    }
+                    exit={
+                      reducedMotion
+                        ? undefined
+                        : { opacity: 0, y: 4, transition: { duration: DURATION_FAST, ease: EASE_APPLE } }
+                    }
+                  >
+                    <PanelRow
+                      label={
+                        <span className="flex min-w-0 items-center gap-3">
+                          <MemberAvatar monogram={monogram} />
+                          {/* The joined line stacks under the NAME. As the row's
+                              caption it sat under the avatar, flush with the
+                              panel edge (staging, 16-09-2026). */}
+                          <span className="min-w-0">
+                            <span className="block truncate">{displayName}</span>
+                            {joined && (
+                              <span className="block text-xs font-normal tabular-nums text-muted-foreground">Joined {joined}</span>
+                            )}
+                          </span>
+                        </span>
+                      }
+                      control={
+                        <div className="flex items-center gap-3">
+                          <RoleBadge role={member.role} roles={roles} />
+                          {/* Reserve the action column so rows align whether or
+                              not a member is removable. Actions stay visible at
+                              all times: a hover-only reveal has no touch
+                              equivalent. */}
+                          <div className="flex w-8 shrink-0 justify-end">
+                            {canRemove && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label={`Remove ${displayName}`}
+                                className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() => handleRemove(member.user_id, member.user_email || member.user_id)}
+                              >
+                                <Trash weight="bold" className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      }
+                    />
+                  </motion.div>
+                )
+              })}
+            </AnimatePresence>
           </PanelRows>
         )}
       </SettingsPanel>

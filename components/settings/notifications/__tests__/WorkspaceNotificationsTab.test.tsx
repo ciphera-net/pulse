@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -113,5 +113,39 @@ describe('WorkspaceNotificationsTab (round-3 org page)', () => {
       .replace(/\/\/.*$/gm, '')
     expect(stripped).not.toMatch(/[—–]/)
     expect(stripped).not.toMatch(/\.\.\./)
+  })
+
+  // ── Round two (P6, 17-09-2026): the floating pointer sentence becomes the
+  // first panel's footer row, not a paragraph sitting above both panels. ──
+  it('folds the personal-preferences pointer into the workspace panel as its footer row', () => {
+    render(<WorkspaceNotificationsTab />)
+    const pointer = screen.getByText(/Looking for your personal notification preferences\?/)
+    // Old markup rendered this as a bare <p> above both SettingsPanels, so it
+    // had no enclosing <section> landmark at all.
+    const section = pointer.closest('section')
+    expect(section).not.toBeNull()
+    expect(
+      within(section as HTMLElement).getByRole('heading', { name: 'Workspace notifications' }),
+    ).toBeInTheDocument()
+    // It reads as a footer row: ruled off above, small and muted like every
+    // other panel-footer aside in this codebase (WorkspaceBillingTab, SitePrivacyTab).
+    const footer = pointer.closest('div')
+    expect(footer?.className).toMatch(/\bborder-t\b/)
+    expect(footer?.className).toMatch(/\btext-xs\b/)
+    expect(footer?.className).toMatch(/\btext-muted-foreground\b/)
+  })
+
+  // ── Round two: "Always on" moves to the standard StatusChip dot, not a
+  // bare label chip (mutation group E). ──
+  it('gives the Always-on chip a leading status dot, the standard StatusChip device', async () => {
+    render(<WorkspaceNotificationsTab />)
+    const chips = await waitFor(() => {
+      const found = screen.getAllByText('Always on')
+      expect(found.length).toBe(2)
+      return found
+    })
+    for (const chip of chips) {
+      expect(chip.querySelector('.rounded-full')).not.toBeNull()
+    }
   })
 })

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   Button,
   Input,
@@ -20,9 +21,11 @@ import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/settings/panels'
+import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 
 export default function WorkspaceGeneralTab() {
   const { user, refreshSession } = useAuth()
+  const reducedMotion = useReducedMotion()
   // Two different server rules, two gates: ciphera-id lets owner OR admin
   // rename the workspace, but only the owner delete or transfer it.
   const canDeleteOrg = useIsOwner()
@@ -237,40 +240,104 @@ export default function WorkspaceGeneralTab() {
             },
           ]}
         >
-          {showTransferConfirm && (
-            <div>
-              <p className="px-5 py-4 text-sm text-muted-foreground">
-                Select a member to become the new owner. You will be demoted to a regular member immediately.
-              </p>
-              {membersError ? (
-                <div className="px-5 pb-4">
-                  <SettingsErrorState
-                    variant="banner"
-                    message="Couldn't load organization members. Try again."
-                    onRetry={handleRetry}
-                  />
+          <AnimatePresence initial={false}>
+            {showTransferConfirm && (
+              <motion.div
+                key="transfer-reveal"
+                data-testid="transfer-reveal"
+                initial={reducedMotion ? false : { height: 0, opacity: 0 }}
+                animate={reducedMotion ? undefined : { height: 'auto', opacity: 1 }}
+                exit={reducedMotion ? undefined : { height: 0, opacity: 0 }}
+                transition={{ duration: DURATION_BASE, ease: EASE_APPLE }}
+                className="overflow-hidden"
+              >
+                <div>
+                  <p className="px-5 py-4 text-sm text-muted-foreground">
+                    Select a member to become the new owner. You will be demoted to a regular member immediately.
+                  </p>
+                  {membersError ? (
+                    <div className="px-5 pb-4">
+                      <SettingsErrorState
+                        variant="banner"
+                        message="Couldn't load organization members. Try again."
+                        onRetry={handleRetry}
+                      />
+                    </div>
+                  ) : members.length === 0 ? (
+                    <EmptyRow
+                      title="No other members"
+                      caption="Invite and verify a member first."
+                    />
+                  ) : (
+                    <>
+                      <PanelRows className="border-t border-border">
+                        <PanelRow label="New owner" htmlFor="org-transfer-target">
+                          <Select
+                            id="org-transfer-target"
+                            value={transferTargetId}
+                            onChange={setTransferTargetId}
+                            placeholder="Select a member…"
+                            options={members.map(m => ({
+                              value: m.user_id,
+                              label: m.user_email || `Member ${m.user_id.slice(0, 8)}`,
+                              description: m.role,
+                            }))}
+                            className="w-full"
+                            aria-label="New owner"
+                          />
+                        </PanelRow>
+                      </PanelRows>
+                      <div className="flex gap-2 border-t border-border px-5 py-4">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={handleTransfer}
+                          disabled={!transferTargetId || transferring}
+                        >
+                          {transferring ? 'Transferring…' : 'Transfer ownership'}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => { setShowTransferConfirm(false); setTransferTargetId('') }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </div>
-              ) : members.length === 0 ? (
-                <EmptyRow
-                  title="No other members"
-                  caption="Invite and verify a member first."
-                />
-              ) : (
-                <>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <AnimatePresence initial={false}>
+            {showDeleteConfirm && (
+              <motion.div
+                key="delete-reveal"
+                data-testid="delete-reveal"
+                initial={reducedMotion ? false : { height: 0, opacity: 0 }}
+                animate={reducedMotion ? undefined : { height: 'auto', opacity: 1 }}
+                exit={reducedMotion ? undefined : { height: 0, opacity: 0 }}
+                transition={{ duration: DURATION_BASE, ease: EASE_APPLE }}
+                className="overflow-hidden"
+              >
+                <div>
+                  <div className="px-5 py-4">
+                    <p className="text-sm text-destructive">This will permanently delete:</p>
+                    <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-muted-foreground">
+                      <li>All sites and their analytics data</li>
+                      <li>All team members and pending invitations</li>
+                      <li>All notifications and settings</li>
+                    </ul>
+                    <p className="mt-2 text-xs text-muted-foreground">It also cancels any active subscription.</p>
+                  </div>
                   <PanelRows className="border-t border-border">
-                    <PanelRow label="New owner" htmlFor="org-transfer-target">
-                      <Select
-                        id="org-transfer-target"
-                        value={transferTargetId}
-                        onChange={setTransferTargetId}
-                        placeholder="Select a member…"
-                        options={members.map(m => ({
-                          value: m.user_id,
-                          label: m.user_email || `Member ${m.user_id.slice(0, 8)}`,
-                          description: m.role,
-                        }))}
-                        className="w-full"
-                        aria-label="New owner"
+                    <PanelRow label="Type DELETE to confirm" htmlFor="org-delete-confirm">
+                      <Input
+                        id="org-delete-confirm"
+                        value={deleteText}
+                        onChange={e => setDeleteText(e.target.value)}
+                        placeholder="DELETE"
                       />
                     </PanelRow>
                   </PanelRows>
@@ -278,63 +345,23 @@ export default function WorkspaceGeneralTab() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={handleTransfer}
-                      disabled={!transferTargetId || transferring}
+                      onClick={handleDelete}
+                      disabled={deleteText !== 'DELETE' || deleting}
                     >
-                      {transferring ? 'Transferring…' : 'Transfer ownership'}
+                      {deleting ? 'Deleting…' : 'Delete organization'}
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => { setShowTransferConfirm(false); setTransferTargetId('') }}
+                      onClick={() => { setShowDeleteConfirm(false); setDeleteText('') }}
                     >
                       Cancel
                     </Button>
                   </div>
-                </>
-              )}
-            </div>
-          )}
-          {showDeleteConfirm && (
-            <div>
-              <div className="px-5 py-4">
-                <p className="text-sm text-destructive">This will permanently delete:</p>
-                <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-muted-foreground">
-                  <li>All sites and their analytics data</li>
-                  <li>All team members and pending invitations</li>
-                  <li>All notifications and settings</li>
-                </ul>
-                <p className="mt-2 text-xs text-muted-foreground">It also cancels any active subscription.</p>
-              </div>
-              <PanelRows className="border-t border-border">
-                <PanelRow label="Type DELETE to confirm" htmlFor="org-delete-confirm">
-                  <Input
-                    id="org-delete-confirm"
-                    value={deleteText}
-                    onChange={e => setDeleteText(e.target.value)}
-                    placeholder="DELETE"
-                  />
-                </PanelRow>
-              </PanelRows>
-              <div className="flex gap-2 border-t border-border px-5 py-4">
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleDelete}
-                  disabled={deleteText !== 'DELETE' || deleting}
-                >
-                  {deleting ? 'Deleting…' : 'Delete organization'}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => { setShowDeleteConfirm(false); setDeleteText('') }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </DangerZone>
       )}
 

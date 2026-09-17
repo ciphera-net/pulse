@@ -157,7 +157,6 @@ function RoleRow({ role, permissionGroups }: RoleRowProps) {
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-2">
             <span className="truncate text-sm font-medium text-foreground">{role.name}</span>
-            {role.is_builtin && <StatusChip tone="neutral">Built-in</StatusChip>}
             {/* Roles outside the invitable set are held only by members from
                 before the trim — nothing can assign them any more. */}
             {role.slug !== 'owner' && !INVITABLE_SLUGS.includes(role.slug) && (
@@ -190,14 +189,20 @@ function RoleRow({ role, permissionGroups }: RoleRowProps) {
         />
       </button>
 
-      {/* Expanded permission panel — CSS grid-rows, no framer-motion. */}
+      {/* Expanded permission panel — CSS grid-rows for height, opacity for
+          fade, both on the house curve (duration-base / ease-apple). */}
       <div
         id={contentId}
         className="grid transition-[grid-template-rows] duration-base ease-apple motion-reduce:transition-none"
         style={{ gridTemplateRows: expanded ? '1fr' : '0fr' }}
       >
         <div className="overflow-hidden">
-          <div className="space-y-5 border-t border-border px-5 py-5">
+          <div
+            className={cn(
+              'space-y-5 border-t border-border px-5 py-5 transition-opacity duration-base ease-apple motion-reduce:transition-none',
+              expanded ? 'opacity-100' : 'opacity-0',
+            )}
+          >
             {/* Owner note */}
             {isOwner && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">

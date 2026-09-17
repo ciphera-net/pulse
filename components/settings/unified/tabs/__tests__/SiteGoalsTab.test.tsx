@@ -50,6 +50,33 @@ vi.mock('@ciphera-net/facet', () => ({
   getAuthErrorMessage: () => 'error',
 }))
 
+// M5/M6: stub framer-motion the way SettingsShell and the panel-footer-save
+// suite do (real motion timing can never make a jsdom run flaky), but keep
+// the initial/animate/exit/transition props visible on the rendered node as
+// JSON data attributes so a test can assert the house rise/exit and
+// height+fade values actually reached the DOM, not merely that "some div"
+// wraps the row.
+vi.mock('framer-motion', () => ({
+  useReducedMotion: () => false,
+  motion: new Proxy(
+    {},
+    {
+      get: () => ({ children, initial, animate, exit, transition, layout, ...props }: any) => (
+        <div
+          data-motion-initial={JSON.stringify(initial)}
+          data-motion-animate={JSON.stringify(animate)}
+          data-motion-exit={JSON.stringify(exit)}
+          data-motion-transition={JSON.stringify(transition)}
+          {...props}
+        >
+          {children}
+        </div>
+      ),
+    },
+  ),
+  AnimatePresence: ({ children }: any) => <>{children}</>,
+}))
+
 import SiteGoalsTab from '../SiteGoalsTab'
 
 const goals = [
@@ -108,7 +135,7 @@ describe('SiteGoalsTab (Facet structured panels)', () => {
     // (components/settings/panels/PanelRow.tsx). A row built from that
     // primitive carries this class on an ancestor; the old hand-rolled
     // `flex items-center justify-between` row did not.
-    const row = name.closest('.md\\:grid-cols-\\[220px_1fr_auto\\]')
+    const row = name.closest('[class*="md:grid-cols-[minmax("]')
     expect(row).toBeTruthy()
     expect(row).toHaveTextContent('signup_click')
   })
@@ -124,11 +151,75 @@ describe('SiteGoalsTab (Facet structured panels)', () => {
     expect(screen.getByLabelText('Delete Sign up')).toBeInTheDocument()
   })
 
-  it('renders an in-frame empty state (not an error) when there are no goals', () => {
+  it('renders an in-frame empty state (not an error) when there are no goals, with the masthead button as the page\'s only CTA', () => {
     useGoals.mockReturnValue(goalsState({ data: [] }))
     renderTab()
     expect(screen.getByText('No goals yet')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Add your first goal/i })).toBeInTheDocument()
+    expect(
+      screen.getByText('Track custom events like sign-ups, purchases, and button clicks as conversion goals.'),
+    ).toBeInTheDocument()
+    // P2 Goals: the panel's own "Add your first goal" button is retired so
+    // the masthead's orange Add goal button is the page's ONE call to
+    // action, even on the empty state.
+    expect(screen.queryByRole('button', { name: /Add your first goal/i })).toBeNull()
+    expect(screen.getAllByRole('button', { name: /^Add goal$/i })).toHaveLength(1)
+  })
+
+  it('labels the empty-state ghost row as an example rather than a real goal', () => {
+    useGoals.mockReturnValue(goalsState({ data: [] }))
+    renderTab()
+    // The ghost preview row stays (it hints at the shape of a real goal) but
+    // now carries a neutral "Example" chip so it never reads as an actual,
+    // unremovable goal named "Sign up".
+    expect(screen.getByText('Sign up')).toBeInTheDocument()
+    expect(screen.getByText('signup_click')).toBeInTheDocument()
+    expect(screen.getByText('Example')).toBeInTheDocument()
+  })
+
+  it('keeps the ghost preview text inert but renders the Example label as real, legible content', () => {
+    useGoals.mockReturnValue(goalsState({ data: [] }))
+    renderTab()
+    // The decorative preview pair stays dimmed and hidden from assistive
+    // tech, the way EmptyRow's own ghost slot always dims a preview.
+    const previewText = screen.getByText('Sign up').closest('[aria-hidden="true"]')
+    expect(previewText).toBeTruthy()
+    expect(previewText?.className).toMatch(/opacity-40/)
+    // The chip is the actual label, not decoration riding along inside that
+    // dimmed, aria-hidden wrapper - it must sit outside it entirely so it
+    // reads at full opacity and is not hidden from assistive tech.
+    const chip = screen.getByText('Example')
+    expect(chip.closest('[aria-hidden="true"]')).toBeNull()
+    expect(chip.closest('.opacity-40')).toBeNull()
+  })
+
+  it('rises each goal row in on mount and would fade+drop it out on removal (M5, on the house curve)', () => {
+    renderTab()
+    const row = screen.getByText('Sign up').closest('[data-motion-initial]')
+    expect(row).toBeTruthy()
+    expect(JSON.parse(row!.getAttribute('data-motion-initial')!)).toEqual({ opacity: 0, y: 8 })
+    const animate = JSON.parse(row!.getAttribute('data-motion-animate')!)
+    expect(animate.opacity).toBe(1)
+    expect(animate.y).toBe(0)
+    expect(animate.transition).toEqual({ duration: 0.25, ease: [0.32, 0.72, 0, 1] })
+    const exit = JSON.parse(row!.getAttribute('data-motion-exit')!)
+    expect(exit.opacity).toBe(0)
+    expect(exit.y).toBe(4)
+    expect(exit.transition).toEqual({ duration: 0.15, ease: [0.32, 0.72, 0, 1] })
+  })
+
+  it('opens the New goal panel as a height+fade reveal, not a pop (M6)', () => {
+    renderTab()
+    fireEvent.click(screen.getByRole('button', { name: /Add goal/i }))
+    // Named directly rather than via .closest() from the heading: SettingsPanel
+    // wraps its own <motion.section> one level in, so the nearest
+    // [data-motion-initial] ancestor of the heading is SettingsPanel's, not
+    // this reveal wrapper's.
+    const reveal = screen.getByTestId('goal-form-reveal')
+    expect(reveal).toContainElement(screen.getByRole('heading', { name: 'New goal', level: 2 }))
+    expect(JSON.parse(reveal.getAttribute('data-motion-initial')!)).toEqual({ height: 0, opacity: 0 })
+    expect(JSON.parse(reveal.getAttribute('data-motion-animate')!)).toEqual({ height: 'auto', opacity: 1 })
+    expect(JSON.parse(reveal.getAttribute('data-motion-exit')!)).toEqual({ height: 0, opacity: 0 })
+    expect(JSON.parse(reveal.getAttribute('data-motion-transition')!)).toEqual({ duration: 0.25, ease: [0.32, 0.72, 0, 1] })
   })
 
   it("surfaces a distinct error state naming what failed (error is not empty) when the fetch fails", () => {

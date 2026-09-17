@@ -3,7 +3,8 @@
 import { Fragment, useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/lib/auth/context'
 import { getUserActivity, type AuditLogEntry } from '@/lib/api/activity'
-import { Button, Table, THead, TBody, TR, TH, TD } from '@ciphera-net/facet'
+import { Button, Table, THead, TBody, TR, TD } from '@ciphera-net/facet'
+import { SettingsTH } from '@/components/settings/panels/SettingsTH'
 import {
   Shield,
   SignIn,
@@ -190,9 +191,9 @@ export default function SecurityActivityCard() {
               <Table aria-label="Security activity" containerClassName="border-0">
                 <THead>
                   <TR>
-                    <TH>Event</TH>
-                    <TH>Details</TH>
-                    <TH numeric>When</TH>
+                    <SettingsTH>Event</SettingsTH>
+                    <SettingsTH>Details</SettingsTH>
+                    <SettingsTH numeric>When</SettingsTH>
                   </TR>
                 </THead>
                 <TBody>

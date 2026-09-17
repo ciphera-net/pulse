@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Button } from '@ciphera-net/facet'
 import { Check } from '@phosphor-icons/react'
 import { useSaveSlot } from '@/components/settings/shell-slots'
+import { DURATION_BASE, DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 
 interface SettingsSaveBarProps {
   isDirty: boolean
@@ -75,7 +77,6 @@ export default function SettingsSaveBar({ isDirty, onSave, onDiscard, saveLabel 
     return () => window.removeEventListener('keydown', handler)
   }, [isDirty])
 
-  if (!occupied) return null
   // The shell owns the mount node; until it exists (first paint / used outside
   // the settings shell) there is nothing to portal into. The guards above stay
   // active regardless, so unsaved edits are never silently unguarded.
@@ -85,8 +86,18 @@ export default function SettingsSaveBar({ isDirty, onSave, onDiscard, saveLabel 
   // border, no backdrop-blur, no resting shadow). `sticky bottom-0` pins it to
   // the viewport bottom while dirty; its containing block is the tall content
   // column (the slot is `display:contents`), so the pin holds the whole scroll.
+  // Round two (M3): the strip arrives from below (250ms) and leaves faster
+  // (150ms) on the house curve; "Saved" crossfades in place of the status.
   const strip = (
-    <div className="sticky bottom-0 z-20 border border-border bg-card">
+    <AnimatePresence>
+      {occupied && (
+    <motion.div
+      key="save-strip"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0, transition: { duration: DURATION_BASE, ease: EASE_APPLE } }}
+      exit={{ opacity: 0, y: 8, transition: { duration: DURATION_FAST, ease: EASE_APPLE } }}
+      className="sticky bottom-0 z-20 border border-border bg-card"
+    >
       {/* pr-28 below sm keeps Discard/Save clear of the fixed support pill
           (100×40 at right:20 bottom:20 → occupies the rightmost 120px) when the
           strip pins to the viewport bottom on a narrow screen; sm+ has room, so
@@ -94,17 +105,33 @@ export default function SettingsSaveBar({ isDirty, onSave, onDiscard, saveLabel 
           shrink-0 so the buttons hold their position while the pill is cleared —
           the narrow strip can't fit full status + actions + a 120px pill gap. */}
       <div className="flex items-center justify-between gap-4 py-3 pl-5 pr-28 sm:pr-5">
-        {saved ? (
-          <span className="flex min-w-0 items-center gap-1.5 text-sm text-pos">
-            <Check className="h-4 w-4 shrink-0" weight="bold" />
-            <span className="truncate">Saved</span>
-          </span>
-        ) : (
-          <span className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
-            <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-primary" />
-            <span className="truncate">{saving ? 'Saving…' : 'Unsaved changes'}</span>
-          </span>
-        )}
+        <AnimatePresence mode="wait" initial={false}>
+          {saved ? (
+            <motion.span
+              key="saved"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
+              className="flex min-w-0 items-center gap-1.5 text-sm text-pos"
+            >
+              <Check className="h-4 w-4 shrink-0" weight="bold" />
+              <span className="truncate">Saved</span>
+            </motion.span>
+          ) : (
+            <motion.span
+              key="unsaved"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
+              className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground"
+            >
+              <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-primary" />
+              <span className="truncate">{saving ? 'Saving…' : 'Unsaved changes'}</span>
+            </motion.span>
+          )}
+        </AnimatePresence>
         {!saved && (
           <div className="flex shrink-0 items-center gap-2">
             <Button variant="ghost" size="sm" onClick={onDiscard} disabled={saving}>
@@ -119,7 +146,9 @@ export default function SettingsSaveBar({ isDirty, onSave, onDiscard, saveLabel 
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   )
 
   return createPortal(strip, slot)

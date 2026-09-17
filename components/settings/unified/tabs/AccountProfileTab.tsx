@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Button, Input, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
 import {
@@ -24,6 +25,7 @@ import { loadVaultKey, saveVaultKey, forgetVaultKeys } from '@/lib/auth/vault-st
 import { openVaultWithKey, saveDisplayName } from '@/lib/auth/vault-restore'
 import { performSessionOpaqueReauth } from '@/lib/auth/tessera/opaque-reauth'
 import { performEmailChangeRequest } from '@/lib/auth/tessera/email-change'
+import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 
 /**
  * Name the actual failure of an unlock attempt.
@@ -236,6 +238,19 @@ export default function AccountProfileTab() {
   const [sendingLink, setSendingLink] = useState(false)
   const [pendingBusy, setPendingBusy] = useState(false)
   const [emailError, setEmailError] = useState<string | null>(null)
+  /**
+   * Is the ceremony open? (P9, settings overhaul round two, 17-09-2026.)
+   *
+   * 🔴 COLLAPSED AT REST, ON PURPOSE. Before this the ceremony's three rows
+   * (the new-address input, "Your password", and Send/Cancel) were all on
+   * screen the instant the ledger was idle — which is most of the time, so an
+   * ordinary visit to a page nobody had touched showed a live form. This flag
+   * is the difference between "eligible to start a change" (`canEditEmail`,
+   * below) and "the ceremony is actually on screen": only a click on
+   * "Change…" sets it, and it starts and returns to `false` so a later idle
+   * tick can never reopen a form nobody asked for.
+   */
+  const [emailEditing, setEmailEditing] = useState(false)
   // Set when a pending change stopped being pending WITHOUT this tab cancelling
   // it, i.e. somebody opened the link, or it expired. The two are
   // indistinguishable from here and the note says so rather than guessing.
@@ -247,6 +262,10 @@ export default function AccountProfileTab() {
   // elsewhere. Without it, cancelling would clear the unlocked address and tell
   // the user their change had resolved, when they are the one who killed it.
   const cancelledHere = useRef(false)
+  // M6: the ceremony's reveal grows height and fades rather than popping;
+  // skipped wholesale under reduced motion, the same guard every other
+  // framer-motion consumer in this codebase uses.
+  const reducedMotion = useReducedMotion()
 
   useEffect(() => {
     if (!user || hasInitialized.current) return
@@ -381,6 +400,13 @@ export default function AccountProfileTab() {
           setUnlockedPII(null)
           setEmailResolvedNote(true)
           void refresh()
+          // Whatever this tab had open before the change resolved elsewhere,
+          // it must not appear to still be mid-ceremony now: back to the
+          // collapsed row, never a form reopened by an event it did not ask
+          // for. Scoped to THIS branch only — a plain 'unknown'→'idle' or
+          // 'unavailable'→'idle' resolution (mount, or a status-banner Retry)
+          // must not close a ceremony the person is actively typing into.
+          setEmailEditing(false)
         }
         cancelledHere.current = false
         return { kind: 'idle' }
@@ -439,6 +465,11 @@ export default function AccountProfileTab() {
       const sentTo = emailFieldValue.trim().toLowerCase()
       setNewEmail(null)
       setEmailResolvedNote(false)
+      // 🔑 Close the ceremony. The pending ledger takes over the row's
+      // control slot regardless, but clearing this now (rather than leaving
+      // it stale-true) means a later cancel-or-resolve back to `idle` returns
+      // to the collapsed row, never a form reopening on its own.
+      setEmailEditing(false)
       // 🔑 The FACT is measured (the request returned 200, so a link is live),
       // and the HORIZON is deliberately left null until the ticking re-read
       // supplies the server's own. The ledger reads "it expires 30 minutes
@@ -464,6 +495,9 @@ export default function AccountProfileTab() {
       cancelledHere.current = true
       await cancelEmailChange()
       setEmailChange({ kind: 'idle' })
+      // Back to the collapsed row, not straight into a reopened form — the
+      // same "at rest is closed" rule the row itself follows.
+      setEmailEditing(false)
       toast.success('Email change cancelled. That link no longer works.')
     } catch {
       // 🔴 Do NOT fall back to `idle`. Claiming the link is dead when the
@@ -723,11 +757,20 @@ export default function AccountProfileTab() {
    */
   const bannerUnknown = !!user.id && (keyStored === null || valuesResolving)
 
-  // The form is offered whenever we know there is no live link, and also when
-  // we could not find out, because a failed status read must not take the
-  // feature away. It is NOT offered while the answer is still unknown: a form
-  // that appears and then vanishes is worse than one that arrives a moment late.
-  const emailFormOpen = emailChange.kind === 'idle' || emailChange.kind === 'unavailable'
+  // A change is ELIGIBLE to start whenever we know there is no live link, and
+  // also when we could not find out, because a failed status read must not
+  // take the feature away. NOT while the answer is still unknown: offering
+  // "Change…" before the ledger has answered could start a second ceremony on
+  // top of one already in flight.
+  const canEditEmail = emailChange.kind === 'idle' || emailChange.kind === 'unavailable'
+  // 🔴 COLLAPSED AT REST (P9, 17-09-2026): eligibility alone no longer shows
+  // the ceremony. This used to BE the "is it open" flag, and since it was
+  // true for nearly the whole time a page sat idle, so was the ceremony —
+  // three rows on screen for a change nobody had asked to make. It is now the
+  // AND of "eligible" and "the person clicked Change…", and every render
+  // below that used to gate on eligibility alone now gates on this composite,
+  // unchanged in every other respect.
+  const emailFormOpen = canEditEmail && emailEditing
 
   /**
    * 🔴 THE PLACEHOLDER IS ONLY EVER SEEN WHEN THE VAULT IS LOCKED. An unlocked
@@ -960,26 +1003,36 @@ export default function AccountProfileTab() {
           </PanelRow>
         </PanelRows>
 
-        {/* 🔑 ITS OWN <form>, and a second PanelRows to hold it.
-            The display-name row above is saved by the SaveBar; these two are
-            submitted by the bar below. One form around all three would make
-            Enter in the name field start an email-change ceremony, so the
-            grouping follows what submits what, and `border-t` puts back the
-            hairline the split would otherwise drop. */}
+        {/* 🔑 ITS OWN <form>, wrapping the always-visible address row and the
+            ceremony's reveal below it. The display-name row above is saved by
+            the SaveBar; this one is submitted by its own buttons. One form
+            around all three would make Enter in the name field start an
+            email-change ceremony, so the grouping follows what submits what. */}
         <form onSubmit={handleSendLink}>
-        <PanelRows className={emailFormOpen ? 'border-t border-border' : undefined}>
+        <PanelRows className="border-t border-border">
           {/* 🔴 DIRECTION A (owner, 10-09-2026): the address is changed IN THE
-              ROW THAT SHOWS IT. The row already says "Email address"; making it
-              the thing you edit adds no new place to look, and the pending
-              ledger sits on the thing it is about. The cost, accepted with it:
-              this panel now holds two different jobs: a display name you just
-              save, and an address that takes a ceremony, separated only by
-              their captions. Round + mocks:
-              Pulse/docs/data/10-09-2026-email-change-round/. */}
+              ROW THAT SHOWS IT — still true. What changed (P9, settings
+              overhaul round two, 17-09-2026) is that the row COLLAPSES at
+              rest: it states its value as text and offers an outline
+              "Change…" button in the control slot, rather than holding the
+              ceremony's input open the whole time the ledger happens to be
+              idle. Round + mocks: Pulse/docs/data/10-09-2026-email-change-round/
+              and Pulse/docs/data/17-09-2026-settings-visual-round/. */}
           <PanelRow
             label="Email address"
             htmlFor={emailFormOpen ? 'account-new-email' : undefined}
             caption={emailRowCaption}
+            control={
+              // Not `emailFormOpen`: the button IS the way to reach that
+              // state, so it must render from eligibility alone, and it
+              // disappears once editing starts (the ceremony's own Cancel
+              // takes over as the way back).
+              !valuesResolving && canEditEmail && !emailEditing ? (
+                <Button type="button" variant="outline" size="sm" onClick={() => setEmailEditing(true)}>
+                  Change…
+                </Button>
+              ) : undefined
+            }
           >
             {/* ⚠️ THE GUARD IS OUTSIDE `emailFormOpen`, NOT INSIDE ONE BRANCH.
                 While the vault is resolving the ledger has not answered either,
@@ -998,69 +1051,99 @@ export default function AccountProfileTab() {
                 disabled={sendingLink}
               />
             ) : (
-              <Input
-                value={displayedEmail}
-                disabled
-                placeholder="Encrypted. Unlock above to see it."
-                className="bg-muted text-muted-foreground"
-              />
+              /* 🔴 TEXT, NOT A DISABLED Input (P9, 17-09-2026). A disabled
+                 field read as something you could not yet use; this states
+                 its value the way every other read-only fact on this screen
+                 does, and the ceremony is reached through "Change…" instead. */
+              <span
+                className={
+                  displayedEmail
+                    ? 'block truncate text-sm text-foreground'
+                    : 'block truncate text-sm text-muted-foreground'
+                }
+              >
+                {displayedEmail || 'Encrypted. Unlock above to see it.'}
+              </span>
             )}
           </PanelRow>
-
-          {/* The second half of direction A: one more row, immediately under
-              the one it authorises. The ceremony needs no email: since
-              ciphera-id#95 the re-auth endpoint resolves the account from the
-              session, so a password is the whole of what is asked for. */}
-          {emailFormOpen && (
-            <PanelRow
-              label="Your password"
-              htmlFor="account-email-password"
-              caption="Required to confirm it's you."
-            >
-              <Input
-                id="account-email-password"
-                type="password"
-                autoComplete="current-password"
-                value={emailPassword}
-                onChange={e => setEmailPassword(e.target.value)}
-                placeholder="Enter your password"
-                disabled={sendingLink}
-              />
-            </PanelRow>
-          )}
         </PanelRows>
 
-        {/* Nothing has changed when this fails: stage 1 mutates no account
-            state by construction, so the message says so, every branch. */}
-        {emailFormOpen && emailError && (
-          <p className="border-t border-border px-5 pt-4 text-sm text-destructive" role="alert">
-            {emailError}
-          </p>
-        )}
+        {/* M6: the ceremony grows height and fades in/out rather than
+            popping — the same device SiteGoalsTab's inline create form and
+            GoalStats' expanded property row use. Skipped wholesale under
+            reduced motion. */}
+        <AnimatePresence initial={false}>
+          {emailFormOpen && (
+            <motion.div
+              key="email-change-ceremony"
+              data-testid="email-change-ceremony"
+              initial={reducedMotion ? false : { height: 0, opacity: 0 }}
+              animate={reducedMotion ? undefined : { height: 'auto', opacity: 1 }}
+              exit={reducedMotion ? undefined : { height: 0, opacity: 0 }}
+              transition={{ duration: DURATION_BASE, ease: EASE_APPLE }}
+              className="overflow-hidden"
+            >
+              <PanelRows className="border-t border-border">
+                {/* The second half of direction A: one more row, immediately
+                    under the one it authorises. The ceremony needs no email:
+                    since ciphera-id#95 the re-auth endpoint resolves the
+                    account from the session, so a password is the whole of
+                    what is asked for. */}
+                <PanelRow
+                  label="Your password"
+                  htmlFor="account-email-password"
+                  caption="Required to confirm it's you."
+                >
+                  <Input
+                    id="account-email-password"
+                    type="password"
+                    autoComplete="current-password"
+                    value={emailPassword}
+                    onChange={e => setEmailPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    disabled={sendingLink}
+                  />
+                </PanelRow>
+              </PanelRows>
 
-        {emailFormOpen && (
-          <div className="flex gap-2 border-t border-border px-5 py-4">
-            {/* 🔴 `variant="outline"`, for the same reason as the unlock form's
-                submit above: this row renders beside SettingsSaveBar, and only
-                one orange (variant="default") Button belongs on the page at
-                once. */}
-            <Button
-              type="submit"
-              variant="outline"
-              disabled={sendingLink || !emailIsDirty || !emailPassword}
-            >
-              {sendingLink ? 'Sending…' : 'Send confirmation link'}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => { setNewEmail(null); setEmailPassword(''); setEmailError(null) }}
-              disabled={sendingLink || (!emailIsDirty && !emailPassword)}
-            >
-              Cancel
-            </Button>
-          </div>
-        )}
+              {/* Nothing has changed when this fails: stage 1 mutates no
+                  account state by construction, so the message says so, every
+                  branch. */}
+              {emailError && (
+                <p className="border-t border-border px-5 pt-4 text-sm text-destructive" role="alert">
+                  {emailError}
+                </p>
+              )}
+
+              <div className="flex gap-2 border-t border-border px-5 py-4">
+                {/* 🔴 `variant="outline"`, for the same reason as the unlock
+                    form's submit above: this row renders beside
+                    SettingsSaveBar, and only one orange (variant="default")
+                    Button belongs on the page at once. */}
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={sendingLink || !emailIsDirty || !emailPassword}
+                >
+                  {sendingLink ? 'Sending…' : 'Send confirmation link'}
+                </Button>
+                {/* 🔴 NEVER GATED ON `emailIsDirty`/`emailPassword` (P9,
+                    17-09-2026). This is now the ceremony's own close control,
+                    not merely a field-clearer — it has to work with nothing
+                    typed yet, or there would be no way back to the collapsed
+                    row once "Change…" was clicked. */}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => { setNewEmail(null); setEmailPassword(''); setEmailError(null); setEmailEditing(false) }}
+                  disabled={sendingLink}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         </form>
 
         {/* 🔑 The pending ledger is FACET'S OWN, shipped in ProfileSettings

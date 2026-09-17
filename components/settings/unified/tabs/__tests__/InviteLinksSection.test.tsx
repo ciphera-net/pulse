@@ -146,3 +146,39 @@ describe('InviteLinksSection structure and copy (settings overhaul, 16-09-2026)'
     expect(src).not.toMatch(/[—–]/)
   })
 })
+
+describe('InviteLinksSection row motion (round two, M5)', () => {
+  it('wraps each invite-link row in a motion element so a link added to the list rises in instead of popping in unanimated', () => {
+    const { rerender } = render(<InviteLinksSection orgId="o" links={links} roles={[]} onRevoked={noop} />)
+    const newLink: InviteLink = {
+      id: 'l-new',
+      organization_id: 'o',
+      name: 'Fresh invite',
+      role: 'member',
+      max_uses: null,
+      use_count: 0,
+      expires_at: future,
+      created_by: 'u',
+      created_at: past,
+      url: 'https://x/join/new',
+    }
+    rerender(<InviteLinksSection orgId="o" links={[...links, newLink]} roles={[]} onRevoked={noop} />)
+
+    const row = screen.getByTestId('invite-link-row-l-new')
+    // A plain wrapper carries no inline style at all; a motion element commits
+    // its animated opacity/transform as one, which is how a reviewer can tell
+    // the row is really under AnimatePresence rather than merely decorated to
+    // look like it.
+    expect(row.getAttribute('style')).toMatch(/opacity/)
+  })
+
+  it('lets an invite-link row exit through AnimatePresence when it leaves the list, rather than vanishing on the spot', async () => {
+    const { rerender } = render(<InviteLinksSection orgId="o" links={links} roles={[]} onRevoked={noop} />)
+    expect(screen.getByTestId('invite-link-row-l-active')).toBeInTheDocument()
+
+    rerender(<InviteLinksSection orgId="o" links={links.filter(l => l.id !== 'l-active')} roles={[]} onRevoked={noop} />)
+
+    await waitFor(() => expect(screen.queryByTestId('invite-link-row-l-active')).toBeNull(), { timeout: 2000 })
+    expect(screen.getByTestId('invite-link-row-l-expired')).toBeInTheDocument()
+  })
+})

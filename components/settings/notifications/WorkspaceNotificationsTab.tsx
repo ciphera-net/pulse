@@ -90,16 +90,6 @@ export default function WorkspaceNotificationsTab() {
 
   return (
     <div className="space-y-8">
-      <p className="text-sm text-muted-foreground">
-        Looking for your personal notification preferences?{' '}
-        <Link
-          href="/settings/account/notifications"
-          className="font-medium text-foreground underline underline-offset-4 decoration-border hover:decoration-foreground"
-        >
-          Account · Notifications
-        </Link>
-      </p>
-
       {loadError && (
         <SettingsErrorState
           variant="banner"
@@ -125,7 +115,7 @@ export default function WorkspaceNotificationsTab() {
               }
               control={
                 alwaysOn(c.id) ? (
-                  <StatusChip tone="neutral">Always on</StatusChip>
+                  <StatusChip tone="neutral" dot>Always on</StatusChip>
                 ) : (
                   <span className="text-sm text-muted-foreground whitespace-nowrap">
                     Delivered per member settings
@@ -135,6 +125,15 @@ export default function WorkspaceNotificationsTab() {
             />
           ))}
         </PanelRows>
+        <div className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
+          Looking for your personal notification preferences?{' '}
+          <Link
+            href="/settings/account/notifications"
+            className="font-medium text-foreground underline underline-offset-4 decoration-border hover:decoration-foreground"
+          >
+            Account · Notifications
+          </Link>
+        </div>
       </SettingsPanel>
 
       <SettingsPanel

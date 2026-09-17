@@ -17,7 +17,7 @@ function SectionLink({ tab }: { tab: NavTab }) {
   return (
     <Link
       href={tab.href}
-      className="group flex items-center gap-4 px-5 py-3.5 transition-colors duration-fast ease-apple hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
+      className="group flex items-center gap-4 px-5 py-3.5 transition-colors duration-fast ease-apple hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
     >
       <span className="flex size-9 shrink-0 items-center justify-center rounded-none border border-border bg-accent">
         <Icon weight="regular" aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
@@ -26,7 +26,7 @@ function SectionLink({ tab }: { tab: NavTab }) {
         <p className="text-sm font-medium text-foreground">{tab.label}</p>
         <p className="mt-0.5 text-sm text-muted-foreground">{tab.description}</p>
       </div>
-      <CaretRight className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
+      <CaretRight className="h-4 w-4 shrink-0 text-muted-foreground transition-colors duration-fast ease-apple group-hover:text-foreground" />
     </Link>
   )
 }
@@ -70,7 +70,10 @@ export default function SettingsLandingPage() {
   const hasSites = sites.length > 0
 
   return (
-    <div className="space-y-8">
+    // Round two (owner pick L2, 17-09-2026): the groups side by side at the
+    // dashboard's width, so the whole index is on one screen; one column below
+    // lg, and a group that is hidden by permission simply frees its track.
+    <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[repeat(auto-fit,minmax(320px,1fr))]">
       {visibleGroups.map((group) => (
         <SettingsPanel key={group.section} title={group.label} description={PANEL_COPY[group.section]}>
           {group.section === 'site' && !hasSites && !isLoading ? (
@@ -90,7 +93,10 @@ export default function SettingsLandingPage() {
                 // Name and domain share a single row on desktop. On a phone
                 // that row is ~230px wide once the status chip is placed, so
                 // both truncated into uselessness. Stack them below sm.
-                <div className="flex min-w-0 items-center gap-2 border-b border-border px-5 py-3">
+                <div className="flex min-w-0 items-center gap-4 border-b border-border px-5 py-3">
+                  {/* The rows below lead with a 36px icon tile; the identity
+                      row reserves the same slot so the left edge runs straight. */}
+                  <span aria-hidden="true" className="size-9 shrink-0" />
                   <div className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-center sm:gap-2">
                     <span className="min-w-0 truncate text-sm font-medium text-foreground">{activeSite.name}</span>
                     <span className="min-w-0 truncate text-xs text-muted-foreground">{displayDomain(activeSite)}</span>

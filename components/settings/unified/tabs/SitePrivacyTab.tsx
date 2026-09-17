@@ -10,12 +10,12 @@ import {
   THead,
   TBody,
   TR,
-  TH,
   TD,
   toast,
   Spinner,
   getAuthErrorMessage,
 } from '@ciphera-net/facet'
+import { SettingsTH } from '@/components/settings/panels/SettingsTH'
 import { useSite, useSubscription, usePerformanceConfig } from '@/lib/swr/dashboard'
 import { updateSite, DEFAULT_GEO_DATA_LEVEL, type PageRule } from '@/lib/api/sites'
 import { updatePerformanceConfig } from '@/lib/api/performance'
@@ -595,10 +595,10 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
               <Table aria-label="Page rules">
                 <THead>
                   <TR>
-                    <TH className="w-24 sm:w-32">Type</TH>
-                    <TH>Pattern</TH>
-                    <TH>Label</TH>
-                    <TH className="w-px" aria-label="Actions" />
+                    <SettingsTH className="w-24 sm:w-32">Type</SettingsTH>
+                    <SettingsTH>Pattern</SettingsTH>
+                    <SettingsTH>Label</SettingsTH>
+                    <SettingsTH className="w-px" aria-label="Actions" />
                   </TR>
                 </THead>
                 <TBody>

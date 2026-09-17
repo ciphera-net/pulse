@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Button, Input, Select, Switcher, Checkbox, Toggle, toast } from '@ciphera-net/facet'
 import { Plus, Trash, Copy, Check, Key, Warning } from '@phosphor-icons/react'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -9,6 +10,8 @@ import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/settings/panels'
 import { StatusChip, type ChipTone } from '@/components/settings/StatusChip'
 import { MastheadAction } from '@/components/settings/shell-slots'
+import { cn } from '@/lib/utils'
+import { DURATION_BASE, DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { formatDate, formatRelativeTime, formatDateTimeFull } from '@/lib/utils/formatDate'
 import {
   listApiKeys,
@@ -95,6 +98,7 @@ function TokenReveal({ token, onDone }: { token: string; onDone: () => void }) {
 }
 
 export default function WorkspaceApiKeysTab() {
+  const reducedMotion = useReducedMotion()
   const [keys, setKeys] = useState<ApiKey[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [sites, setSites] = useState<Site[]>([])
@@ -326,59 +330,107 @@ export default function WorkspaceApiKeysTab() {
           />
         ) : (
           <PanelRows>
-            {keys.map((key) => {
-              const status = apiKeyStatus(key)
-              const chip = STATUS_CHIP[status]
-              return (
-                <PanelRow
-                  key={key.id}
-                  label={<span className="min-w-0 truncate">{key.name}</span>}
-                  caption={
-                    <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                      <code className="font-mono">
-                        {key.key_prefix}_…{key.key_last4}
-                      </code>
-                      <span aria-hidden="true">·</span>
-                      <span>
-                        {key.scope_all_sites ? 'All sites' : `${key.site_ids.length} site${key.site_ids.length === 1 ? '' : 's'}`}
-                      </span>
-                      <span aria-hidden="true">·</span>
-                      {/* null means never used. Say so, rather than showing a
-                          placeholder date that reads as real activity. */}
-                      <span title={key.last_used_at ? formatDateTimeFull(new Date(key.last_used_at)) : undefined}>
-                        {key.last_used_at ? `Last used ${formatRelativeTime(key.last_used_at)}` : 'Never used'}
-                      </span>
-                      <span aria-hidden="true">·</span>
-                      <span>
-                        {status === 'revoked' && key.revoked_at
-                          ? `Revoked ${formatDate(new Date(key.revoked_at))}`
-                          : `Expires ${formatDate(new Date(key.expires_at))}`}
-                      </span>
-                    </span>
-                  }
-                  control={
-                    <div className="flex items-center gap-3">
-                      <StatusChip tone={chip.tone} dot>{chip.label}</StatusChip>
-                      {/* Reserve the action column so rows align whether or
-                          not a key can still be revoked. */}
-                      <div className="flex w-8 shrink-0 justify-end">
-                        {status !== 'revoked' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                            onClick={() => setRevoking(key)}
-                            aria-label={`Revoke ${key.name}`}
-                          >
-                            <Trash weight="bold" className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  }
-                />
-              )
-            })}
+            {/* M5: a row entering (a fresh key) or leaving the list rises in /
+                fades out rather than popping, matching the house AnimatePresence
+                device. `initial={false}` keeps the keys already on the page from
+                playing an entrance on first load; only a later change animates. */}
+            <AnimatePresence initial={false}>
+              {keys.map((key) => {
+                const status = apiKeyStatus(key)
+                const chip = STATUS_CHIP[status]
+                // P7: a revoked key recedes. Its name and meta dim to opacity-60;
+                // the chip stays at full strength so "Revoked" itself never fades.
+                const receded = status === 'revoked'
+                return (
+                  <motion.div
+                    key={key.id}
+                    data-testid={`api-key-row-${key.id}`}
+                    layout={!reducedMotion}
+                    initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+                    animate={
+                      reducedMotion
+                        ? undefined
+                        : { opacity: 1, y: 0, transition: { duration: DURATION_BASE, ease: EASE_APPLE } }
+                    }
+                    exit={
+                      reducedMotion
+                        ? undefined
+                        : { opacity: 0, y: 4, transition: { duration: DURATION_FAST, ease: EASE_APPLE } }
+                    }
+                  >
+                    <PanelRow
+                      label={
+                        <span
+                          className={cn(
+                            'min-w-0 truncate',
+                            receded && 'opacity-60 transition-opacity duration-fast ease-apple motion-reduce:transition-none',
+                          )}
+                        >
+                          {key.name}
+                        </span>
+                      }
+                      caption={
+                        // Grouped into two clauses, each its own inline-flex span
+                        // with its separators inside it, so a narrow row wraps
+                        // between clauses and never strands a lone "·" at a line
+                        // break (the pre-existing bug: "...1 site ·" cut off, then
+                        // "Never used ..." starting a fresh line).
+                        <span
+                          className={cn(
+                            'flex flex-wrap gap-x-2 gap-y-0.5',
+                            receded && 'opacity-60 transition-opacity duration-fast ease-apple motion-reduce:transition-none',
+                          )}
+                        >
+                          <span className="inline-flex items-center gap-x-2">
+                            <code className="font-mono">
+                              {key.key_prefix}_…{key.key_last4}
+                            </code>
+                            <span aria-hidden="true">·</span>
+                            <span>
+                              {key.scope_all_sites ? 'All sites' : `${key.site_ids.length} site${key.site_ids.length === 1 ? '' : 's'}`}
+                            </span>
+                          </span>
+                          <span className="inline-flex items-center gap-x-2">
+                            <span aria-hidden="true">·</span>
+                            {/* null means never used. Say so, rather than showing a
+                                placeholder date that reads as real activity. */}
+                            <span title={key.last_used_at ? formatDateTimeFull(new Date(key.last_used_at)) : undefined}>
+                              {key.last_used_at ? `Last used ${formatRelativeTime(key.last_used_at)}` : 'Never used'}
+                            </span>
+                            <span aria-hidden="true">·</span>
+                            <span>
+                              {status === 'revoked' && key.revoked_at
+                                ? `Revoked ${formatDate(new Date(key.revoked_at))}`
+                                : `Expires ${formatDate(new Date(key.expires_at))}`}
+                            </span>
+                          </span>
+                        </span>
+                      }
+                      control={
+                        <div className="flex items-center gap-3">
+                          <StatusChip tone={chip.tone} dot>{chip.label}</StatusChip>
+                          {/* Reserve the action column so rows align whether or
+                              not a key can still be revoked. */}
+                          <div className="flex w-8 shrink-0 justify-end">
+                            {status !== 'revoked' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() => setRevoking(key)}
+                                aria-label={`Revoke ${key.name}`}
+                              >
+                                <Trash weight="bold" className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      }
+                    />
+                  </motion.div>
+                )
+              })}
+            </AnimatePresence>
           </PanelRows>
         )}
       </SettingsPanel>

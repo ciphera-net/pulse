@@ -90,7 +90,7 @@ describe('WorkspaceRolesTab', () => {
     render(<WorkspaceRolesTab />)
     await waitFor(() => expect(screen.getByText('Analyst')).toBeTruthy())
     expect(screen.getByText('Owner')).toBeTruthy()
-    // Built-in scope chip present.
+    // Scope chip present.
     expect(screen.getAllByText('All sites').length).toBeGreaterThan(0)
   })
 
@@ -128,13 +128,10 @@ describe('WorkspaceRolesTab', () => {
     expect(screen.getAllByText('Not assignable')).toHaveLength(1)
   })
 
-  it('gives Not assignable a stateful tone with a dot, unlike the plain Built-in label', async () => {
+  it('never renders a Built-in label — every role is built-in, so the chip said nothing', async () => {
     render(<WorkspaceRolesTab />)
     await waitFor(() => expect(screen.getByText('Analyst')).toBeTruthy())
-    const stateChip = screen.getByText('Not assignable')
-    expect(stateChip.querySelector('.rounded-full')).toBeTruthy()
-    const labelChip = screen.getAllByText('Built-in')[0]
-    expect(labelChip.querySelector('.rounded-full')).toBeNull()
+    expect(screen.queryByText('Built-in')).toBeNull()
   })
 
   it('expands a role through a real button with aria-expanded, not a clickable div', async () => {
@@ -144,6 +141,21 @@ describe('WorkspaceRolesTab', () => {
     expect(trigger).toHaveAttribute('aria-expanded', 'false')
     fireEvent.click(trigger)
     expect(trigger).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('fades the permission panel in on the house curve as it opens, not height alone', async () => {
+    render(<WorkspaceRolesTab />)
+    const trigger = await screen.findByRole('button', { name: /Analyst/i })
+    const panelId = trigger.getAttribute('aria-controls')
+    const panel = document.getElementById(panelId!)!
+    const fadeLayer = panel.querySelector('.transition-opacity')
+    expect(fadeLayer).toBeTruthy()
+    expect(fadeLayer!.className).toMatch(/\bduration-base\b/)
+    expect(fadeLayer!.className).toMatch(/\bease-apple\b/)
+    expect(fadeLayer!.className).toMatch(/\bopacity-0\b/)
+    fireEvent.click(trigger)
+    expect(fadeLayer!.className).toMatch(/\bopacity-100\b/)
+    expect(fadeLayer!.className).not.toMatch(/\bopacity-0\b/)
   })
 
   it('is read-only for everyone — no create CTA, no row mutators, permissions are display-only glyphs', async () => {
