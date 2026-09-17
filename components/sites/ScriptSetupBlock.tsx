@@ -419,12 +419,9 @@ export default function ScriptSetupBlock({
                 type="button"
                 onClick={() => setChangingPlatform(true)}
                 disabled={disabled}
-                className={cn(
-                  'border px-3 py-1.5 text-xs font-medium transition-colors ease-apple disabled:opacity-50',
-                  selected
-                    ? 'border-border text-muted-foreground hover:text-foreground'
-                    : 'border-primary text-primary hover:bg-primary/10',
-                )}
+                // Always the outline rung — orange here would add a second
+                // primary next to the flow's own, and this button never is one.
+                className="border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors duration-fast ease-apple disabled:opacity-50"
               >
                 {selected ? 'Change platform' : 'Set platform'}
               </button>
