@@ -245,4 +245,16 @@ describe('SettingsShell — round two, the frame and the rail', () => {
     expect(rail.querySelectorAll('[data-rail-highlight]')).toHaveLength(1)
     expect(within(rail).getAllByRole('link').filter((l) => l.hasAttribute('data-rail-active'))).toHaveLength(1)
   })
+  // Settings tail, item 11 (17-09-2026): tabbing through a settings page on
+  // staging showed every stop on the house ring except the rail's two legal
+  // links, which fell back to the browser's default outline.
+  it('gives the rail\'s legal links the house focus ring, not the browser default', () => {
+    render(<SettingsShell><div>tab</div></SettingsShell>)
+    for (const name of ['Privacy Policy', 'Terms of Service']) {
+      const link = screen.getByRole('link', { name })
+      expect(link.className).toMatch(/\bfocus-visible:ring-ring\b/)
+      expect(link.className).toMatch(/\bfocus-visible:outline-none\b/)
+    }
+  })
+
 })
