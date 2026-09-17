@@ -9,6 +9,7 @@
 // The provider has to sit ABOVE the shell for that to be possible, which is the
 // other half of what this file pins: it is mounted once for the whole dashboard
 // branch, so a site chosen in one place survives the navigation to another.
+import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 
@@ -42,14 +43,21 @@ vi.mock('@/lib/swr/sites', () => ({
   useSites: () => ({ sites, isLoading: false, error: undefined, mutate: vi.fn() }),
 }))
 
-// The spy: every siteId the shell is handed, in order.
+// The spy: every siteId the shell is handed, in order — and how many times the
+// shell MOUNTED, which is what the sidebar's gliding highlight depends on (a
+// remount is a new nav element; the block cannot travel across it).
 const seen: Array<string | null> = []
-vi.mock('@/components/dashboard/DashboardShell', () => ({
-  default: ({ siteId, children }: any) => {
+let shellMounts = 0
+vi.mock('@/components/dashboard/DashboardShell', () => {
+  function ShellSpy({ siteId, children }: { siteId: string | null; children: React.ReactNode }) {
     seen.push(siteId ?? null)
+    React.useEffect(() => {
+      shellMounts += 1
+    }, [])
     return <div data-testid="shell">{children}</div>
-  },
-}))
+  }
+  return { default: ShellSpy }
+})
 
 import LayoutContent from '../layout-content'
 import { useActiveSite } from '@/components/settings/active-site'
@@ -77,7 +85,56 @@ async function renderAt(path: string, search = '') {
 
 beforeEach(() => {
   seen.length = 0
+  shellMounts = 0
   sessionStorage.clear()
+})
+
+// One shell across the site and settings route groups (settings tail, item 10,
+// 17-09-2026). Until then a site page took its shell from the sites layout
+// (SiteLayoutShell) and a settings page from here, so the two lived at two tree
+// positions and a site page → settings navigation remounted the shell: the
+// sidebar highlight appeared at its destination instead of gliding there.
+// Measured on staging before the change: same element = false, 0 intermediate
+// frames (docs/data/17-09-2026-settings-tail/glide-before.json).
+describe('one shell across the site and settings route groups', () => {
+  it('mounts the dashboard shell for a site page, with the site from the path', async () => {
+    // Red against the old layout: the site branch rendered bare children and
+    // `seen` stayed empty, so the shell was never handed 's1' here.
+    expect(await renderAt('/sites/s1/visitors')).toBe('s1')
+    expect(screen.getByTestId('shell')).toBeInTheDocument()
+  })
+
+  it('treats /sites/new as the home shell, not a site', async () => {
+    sessionStorage.setItem('pulse_active_site', 's1')
+    expect(await renderAt('/sites/new')).toBe(null)
+  })
+
+  it('keeps ONE shell instance across a site page → site settings navigation', async () => {
+    pathname = '/sites/s1'
+    window.history.replaceState({}, '', '/sites/s1')
+    const view = render(
+      <LayoutContent>
+        <Probe />
+      </LayoutContent>,
+    )
+    await waitFor(() => expect(screen.getByTestId('shell')).toBeInTheDocument())
+    expect(seen[seen.length - 1], 'the site page shell is in site mode').toBe('s1')
+    expect(shellMounts, 'the shell mounted once on the site page').toBe(1)
+
+    // The site rail's Settings entry: same site, carried as a deep link.
+    pathname = '/settings/site/general'
+    window.history.replaceState({}, '', '/settings/site/general?siteId=s1')
+    view.rerender(
+      <LayoutContent>
+        <Probe />
+      </LayoutContent>,
+    )
+    await waitFor(() => expect(screen.getByTestId('probe')).toHaveTextContent('s1'))
+    expect(seen[seen.length - 1], 'site settings keep the rail in site mode').toBe('s1')
+    // The shell instance survived the route-group change: no second mount, so
+    // the sidebar nav is the same element and its highlight can glide.
+    expect(shellMounts).toBe(1)
+  })
 })
 
 describe('the dashboard chrome siteId', () => {
