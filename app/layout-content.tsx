@@ -77,18 +77,14 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     return null
   }
 
-  // Authenticated site pages: DashboardShell provided by sites layout
-  if (isAuthenticated && isSitePage) {
-    return (
-      <>
-        {showOfflineBar && <OfflineBanner isOnline={isOnline} />}
-        {children}
-      </>
-    )
-  }
-
-  // Authenticated dashboard pages (home, integrations, pricing, settings): wrap
-  // in DashboardShell.
+  // Authenticated dashboard pages (site pages, home, integrations, pricing,
+  // settings): ONE DashboardShell, mounted here for all of them.
+  //
+  // Site pages used to take their shell from the sites layout instead
+  // (SiteLayoutShell), which put it at a different tree position from the
+  // settings shell: a site page → Site Settings navigation remounted the shell
+  // and the sidebar's highlight reappeared instead of gliding (settings tail,
+  // item 10, 17-09-2026). DashboardChrome reads the site from the path.
   //
   // ActiveSiteProvider sits ABOVE the shell, not inside SettingsShell where it
   // used to live: "which site are we configuring" is what decides whether the
@@ -96,7 +92,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   // mounted below the shell cannot be read by it. One provider only — a second
   // one nested underneath would shadow this, and the band's site switcher would
   // update a copy the sidebar never sees.
-  if (isAuthenticated && isDashboardPage) {
+  if (isAuthenticated && (isSitePage || isDashboardPage)) {
     return (
       <>
         {showOfflineBar && <OfflineBanner isOnline={isOnline} />}
