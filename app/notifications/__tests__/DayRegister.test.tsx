@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import type { Receipt } from '@/lib/notifications/types'
 
@@ -123,9 +123,21 @@ const COUNTS = {
   system: { display_name: 'System', unread: 0, total: 3 },
 }
 
-const now = new Date()
-const todayISO = new Date(now.getTime() - 3600 * 1000).toISOString()
-const yesterdayISO = new Date(now.getTime() - 26 * 3600 * 1000).toISOString()
+// Calendar arithmetic (noon of the day), not a fixed-hour offset from "now" —
+// matches sections.tsx's own grouping (startOfDay/yesterdayStart). A `now -
+// 26h` fixture lands two calendar days back whenever it is evaluated between
+// 00:00 and 02:00 local, mislabelling "Yesterday" as an explicit date (see
+// the pinned-clock case below).
+function dayFixtureTimes(base: Date) {
+  const y = base.getFullYear()
+  const m = base.getMonth()
+  const d = base.getDate()
+  return {
+    todayISO: new Date(y, m, d, 12).toISOString(),
+    yesterdayISO: new Date(y, m, d - 1, 12).toISOString(),
+  }
+}
+const { todayISO, yesterdayISO } = dayFixtureTimes(new Date())
 
 function baseHook(over: Record<string, unknown> = {}) {
   return {
@@ -154,6 +166,10 @@ beforeEach(() => {
     categories: [{ category_id: 'system', muted: true }],
   }
   useNotifications.mockReturnValue(baseHook())
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 // --- Tests ---------------------------------------------------------------
@@ -212,6 +228,30 @@ describe('the Day Register (/notifications, round-3 Direction B)', () => {
     expect(screen.getByText('Today')).toBeInTheDocument()
     expect(screen.getByText('Yesterday')).toBeInTheDocument()
     expect(screen.getAllByText('1 notification').length).toBe(2)
+  })
+
+  it('still labels "Yesterday" when the clock reads 01:30 local (not a fixed 24h/26h offset)', () => {
+    // Under the old `now - 26h` fixture, evaluating at 01:30 local lands the
+    // "yesterday" event two calendar days back, so this exact assertion —
+    // getByText('Yesterday') — is what went red nightly between 00:00-02:00.
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const pinned = new Date()
+    vi.setSystemTime(new Date(pinned.getFullYear(), pinned.getMonth(), pinned.getDate(), 1, 30))
+    const { todayISO: t, yesterdayISO: y } = dayFixtureTimes(new Date())
+    useNotifications.mockReturnValue(
+      baseHook({
+        receipts: [
+          receipt('r1', 'uptime_monitor_down', t),
+          receipt('r2', 'billing_invoice_sent', y, {
+            delivered_at: y,
+            email_status: 'handed_off',
+          }),
+        ],
+      }),
+    )
+    render(<NotificationsPage />)
+    expect(screen.getByText('Today')).toBeInTheDocument()
+    expect(screen.getByText('Yesterday')).toBeInTheDocument()
   })
 
   it('unread rows carry the orange wash stub; read rows do not', () => {
