@@ -60,7 +60,9 @@ const updateSite = vi.fn().mockResolvedValue(SITE)
 vi.mock('@/lib/api/sites', () => ({ updateSite: (...a: unknown[]) => updateSite(...a) }))
 vi.mock('@/lib/api/performance', () => ({ updatePerformanceConfig: vi.fn() }))
 
-beforeEach(() => updateSite.mockClear())
+beforeEach(() => {
+  updateSite.mockClear()
+})
 
 // 🔴 STATIC import, on purpose (06-09-2026). This used to be a dynamic
 // `import('../SitePrivacyTab')` INSIDE each test, so the tab's whole module

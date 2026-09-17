@@ -52,34 +52,18 @@ vi.mock('@ciphera-net/facet', () => ({
   getAuthErrorMessage: () => 'error',
 }))
 
-// M6: stub framer-motion the way SiteGoalsTab's suite does, so the height+
-// fade device is pinned via data attributes rather than real animation
-// timing. Unlike that stub, the returned component is defined ONCE, outside
-// the Proxy trap, not recreated on every property access: the DangerZone
-// reveals toggle each other off in the SAME click handler (Transfer's onClick
-// also clears showDeleteConfirm and vice versa) and the typed-DELETE field
-// re-renders the tab on every keystroke, so a trap that returns a fresh
-// function per access would change the component's identity on every
-// render, forcing React to unmount and remount the whole reveal (and the
-// confirm button a test is polling) instead of just updating it in place.
-vi.mock('framer-motion', () => {
-  const MotionStub = ({ children, initial, animate, exit, transition, layout, ...props }: any) => (
-    <div
-      data-motion-initial={JSON.stringify(initial)}
-      data-motion-animate={JSON.stringify(animate)}
-      data-motion-exit={JSON.stringify(exit)}
-      data-motion-transition={JSON.stringify(transition)}
-      {...props}
-    >
-      {children}
-    </div>
-  )
-  return {
-    useReducedMotion: () => false,
-    motion: new Proxy({}, { get: () => MotionStub }),
-    AnimatePresence: ({ children }: any) => <>{children}</>,
-  }
-})
+// M6: stub framer-motion with the shared mock (framer-mock.tsx), which
+// pins motion.<tag> to a single cached component per tag rather than a fresh
+// one per property access: the DangerZone reveals toggle each other off in
+// the SAME click handler (Transfer's onClick also clears showDeleteConfirm
+// and vice versa) and the typed-DELETE field re-renders the tab on every
+// keystroke, so a trap that returns a fresh function per access would change
+// the component's identity on every render, forcing React to unmount and
+// remount the whole reveal (and the confirm button a test is polling)
+// instead of just updating it in place. It also drops initial/animate/exit/
+// transition before they reach the DOM, so the height+fade device is pinned
+// against source instead (see the two tests below).
+vi.mock('framer-motion', () => import('@/components/settings/__tests__/framer-mock'))
 
 import WorkspaceGeneralTab from '../WorkspaceGeneralTab'
 
@@ -91,6 +75,7 @@ function stripComments(src: string): string {
 }
 
 const SOURCE_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'WorkspaceGeneralTab.tsx')
+const SOURCE = readFileSync(SOURCE_PATH, 'utf8')
 
 beforeEach(() => {
   mockIsOwner = true
@@ -156,6 +141,20 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
     expect(screen.getByRole('button', { name: 'Cancel' }).getAttribute('variant')).toBe('ghost')
   })
 
+  // The shared framer-motion mock (framer-mock.tsx) deliberately drops
+  // initial/animate/exit/transition before they reach the DOM, so the two
+  // tests below can no longer read the house height+fade values off the
+  // rendered node the way the file's old per-file mock exposed them via
+  // data-motion-* attributes. `motionBlock` pins them against the reveal's
+  // own source instead, scoped to its `key=` so the check still fails the
+  // moment either reveal's literal values drift from the house device.
+  function motionBlock(key: string): string {
+    const start = SOURCE.indexOf(`key="${key}"`)
+    expect(start).toBeGreaterThan(-1)
+    const end = SOURCE.indexOf('</motion.div>', start)
+    return SOURCE.slice(start, end)
+  }
+
   it('opens the Transfer reveal as a height+fade motion.div on the house easing, not a bare unanimated block', async () => {
     render(<WorkspaceGeneralTab />)
     await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
@@ -163,15 +162,15 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
     expect(screen.queryByTestId('transfer-reveal')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Transfer' }))
 
-    const reveal = await screen.findByTestId('transfer-reveal')
     // Fails against the old markup: the pre-M6 reveal was a bare `<div>` with
-    // none of these `data-motion-*` attributes at all (findByTestId itself
-    // would already fail because the old div carried no test id), and it had
-    // no exit state to fade the transfer picker back out on dismiss.
-    expect(JSON.parse(reveal.dataset.motionInitial!)).toEqual({ height: 0, opacity: 0 })
-    expect(JSON.parse(reveal.dataset.motionAnimate!)).toEqual({ height: 'auto', opacity: 1 })
-    expect(JSON.parse(reveal.dataset.motionExit!)).toEqual({ height: 0, opacity: 0 })
-    expect(JSON.parse(reveal.dataset.motionTransition!)).toEqual({ duration: 0.25, ease: [0.32, 0.72, 0, 1] })
+    // no test id at all, and it had no exit state to fade the transfer
+    // picker back out on dismiss.
+    const reveal = await screen.findByTestId('transfer-reveal')
+    const block = motionBlock('transfer-reveal')
+    expect(block).toContain('initial={reducedMotion ? false : { height: 0, opacity: 0 }}')
+    expect(block).toContain("animate={reducedMotion ? undefined : { height: 'auto', opacity: 1 }}")
+    expect(block).toContain('exit={reducedMotion ? undefined : { height: 0, opacity: 0 }}')
+    expect(block).toContain('transition={{ duration: DURATION_BASE, ease: EASE_APPLE }}')
     expect(reveal.className).toContain('overflow-hidden')
   })
 
@@ -183,10 +182,11 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
     const reveal = await screen.findByTestId('delete-reveal')
-    expect(JSON.parse(reveal.dataset.motionInitial!)).toEqual({ height: 0, opacity: 0 })
-    expect(JSON.parse(reveal.dataset.motionAnimate!)).toEqual({ height: 'auto', opacity: 1 })
-    expect(JSON.parse(reveal.dataset.motionExit!)).toEqual({ height: 0, opacity: 0 })
-    expect(JSON.parse(reveal.dataset.motionTransition!)).toEqual({ duration: 0.25, ease: [0.32, 0.72, 0, 1] })
+    const block = motionBlock('delete-reveal')
+    expect(block).toContain('initial={reducedMotion ? false : { height: 0, opacity: 0 }}')
+    expect(block).toContain("animate={reducedMotion ? undefined : { height: 'auto', opacity: 1 }}")
+    expect(block).toContain('exit={reducedMotion ? undefined : { height: 0, opacity: 0 }}')
+    expect(block).toContain('transition={{ duration: DURATION_BASE, ease: EASE_APPLE }}')
     expect(reveal.className).toContain('overflow-hidden')
   })
 
@@ -283,7 +283,7 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
   })
 
   it('never uses an em dash, en dash or a literal ellipsis in its source, comments included', () => {
-    const stripped = stripComments(readFileSync(SOURCE_PATH, 'utf8'))
+    const stripped = stripComments(SOURCE)
     expect(stripped).not.toMatch(/[—–]/)
     expect(stripped).not.toMatch(/\.\.\./)
   })

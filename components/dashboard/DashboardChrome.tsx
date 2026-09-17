@@ -18,14 +18,27 @@ import { useActiveSite } from '@/components/settings/active-site'
  * home rail — that is why this reads the path rather than "are we in settings".
  *
  * ⚠️ DashboardShell must stay at ONE tree position across every dashboard route,
- * or a /sites ↔ /settings navigation remounts the shell and the sidebar's
+ * or a navigation between two of them remounts the shell and the sidebar's
  * gliding highlight restarts instead of travelling. Hence a hinge on the prop,
  * never two branches each rendering their own shell.
+ *
+ * Since 17-09-2026 that includes the site pages: `/sites/<id>/*` used to take
+ * its shell from the sites layout (SiteLayoutShell) and every other dashboard
+ * route from here, so a site page → Site Settings navigation crossed a
+ * route-group boundary and the shell remounted (measured on staging: the
+ * highlight was a new element on arrival, zero intermediate frames). One shell
+ * here, the site read from the path, and the block glides from the site's
+ * Dashboard item to Site Settings.
  */
+const SITE_PAGE = /^\/sites\/([^/]+)(?:\/|$)/
+
 export default function DashboardChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { activeSiteId } = useActiveSite()
-  const siteId = pathname.startsWith('/settings/site') ? activeSiteId : null
+  const sitePage = pathname.match(SITE_PAGE)
+  // `/sites/new` is the add-site form, a home page, not a site.
+  const pathSiteId = sitePage && sitePage[1] !== 'new' ? sitePage[1] : null
+  const siteId = pathSiteId ?? (pathname.startsWith('/settings/site') ? activeSiteId : null)
 
   return <DashboardShell siteId={siteId}>{children}</DashboardShell>
 }

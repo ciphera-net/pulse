@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { PanelRow } from '../PanelRow'
 
 describe('PanelRow (structured-panels PropertyRow)', () => {
@@ -44,4 +44,38 @@ describe('PanelRow (structured-panels PropertyRow)', () => {
     expect(row.children.length).toBe(2)
     expect(getByRole('button', { name: 'toggle' })).toBeTruthy()
   })
+  // Settings tail, item 9 (17-09-2026): a non-native control in the `control`
+  // slot (Facet's Toggle is a role="switch" button, which a <label htmlFor>
+  // cannot name) is labelled by the row's label text via aria-labelledby.
+  describe('names a non-native control after the row label', () => {
+    it('clones the control with aria-labelledby pointing at the label text', () => {
+      render(
+        <PanelRow label="Public dashboard" caption="Anyone with the link can view." control={<button type="button" role="switch" aria-checked="false" />} />,
+      )
+      const sw = screen.getByRole('switch', { name: 'Public dashboard' })
+      const labelId = sw.getAttribute('aria-labelledby')
+      expect(labelId).toBeTruthy()
+      expect(document.getElementById(labelId!)).toHaveTextContent('Public dashboard')
+      // The caption is not part of the name.
+      expect(sw).not.toHaveAccessibleName(/Anyone with the link/)
+    })
+
+    it('leaves a control that names itself alone', () => {
+      render(<PanelRow label="Row label" control={<button type="button" role="switch" aria-checked="true" aria-label="Own name" />} />)
+      const sw = screen.getByRole('switch', { name: 'Own name' })
+      expect(sw).not.toHaveAttribute('aria-labelledby')
+    })
+
+    it('keeps the semantic <label htmlFor> for native controls and still exposes the id', () => {
+      render(
+        <PanelRow label="Site name" htmlFor="site-name">
+          <input id="site-name" />
+        </PanelRow>,
+      )
+      const input = screen.getByLabelText('Site name')
+      expect(input).toHaveAttribute('id', 'site-name')
+      expect(document.querySelector('label[for="site-name"]')).toHaveAttribute('id')
+    })
+  })
+
 })
