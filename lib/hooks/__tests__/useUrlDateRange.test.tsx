@@ -28,6 +28,12 @@ vi.mock('@/lib/utils/dateRanges', () => ({
   getLastMonthRange: () => ({ start: 'lmonth-start', end: 'lmonth-end' }),
   getLastQuarterRange: () => ({ start: 'lq-start', end: 'lq-end' }),
   getLastYearRange: () => ({ start: 'lyear-start', end: 'lyear-end' }),
+  // Rolling-window placeholders — only reached by the timezone-gating tests,
+  // which exercise a '1h'/'30m'/'6h'/'24h' active period.
+  getLast30MinutesRange: () => ({ start: '30m-start', end: '30m-end' }),
+  getLast1HourRange: () => ({ start: '1h-start', end: '1h-end' }),
+  getLast6HoursRange: () => ({ start: '6h-start', end: '6h-end' }),
+  getLast24HoursRange: () => ({ start: '24h-start', end: '24h-end' }),
   formatDate: (d: Date) => {
     const p = (n: number) => String(n).padStart(2, '0')
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
@@ -36,7 +42,11 @@ vi.mock('@/lib/utils/dateRanges', () => ({
 
 // Every page passes its declaration since 22-08-2026 (per-page range memory).
 // PAGE stands in for a plain analytics page: full global grammar, 366-day cap.
-const PAGE: PageRangeOptions = { pageKey: 'page-a' }
+// `timezone` is a plain string here (never `undefined`) because these tests
+// are about range MEMORY and URL grammar, not the zone-readiness gate below
+// — that gate has its own describe block, where `timezone` is deliberately
+// omitted or varied.
+const PAGE: PageRangeOptions = { pageKey: 'page-a', timezone: 'UTC' }
 const PAGE_KEY = 'pulse_last_period:page-a'
 const LEGACY_SHARED_KEY = 'pulse_last_period'
 
@@ -214,6 +224,108 @@ describe('useUrlDateRange periodReady', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// timezone gating (18-09-2026 preset-site-zone alignment) — a SECOND way to
+// be not-ready, alongside the range-memory gate above. `timezone: undefined`
+// (the option omitted, or a page passing `site?.timezone` before its site
+// has loaded) must hold `periodReady` false for every ordinary date span —
+// resolving one against an unknown zone is exactly the placeholder-range
+// problem periodReady already exists to prevent, just with the zone as the
+// missing piece instead of the remembered preset.
+// ---------------------------------------------------------------------------
+describe('useUrlDateRange timezone gating', () => {
+  it('is NOT ready with an explicit ?period= when the timezone is unknown', () => {
+    // Contrast with 'is ready on the FIRST render when the URL carries an
+    // explicit period' above: THAT page declares timezone: 'UTC'. An
+    // explicit period is no longer a free pass once dateRange itself depends
+    // on a zone nothing has supplied yet.
+    mockSearchParams = new URLSearchParams('period=today')
+    const { result } = renderHook(() => useUrlDateRange({ pageKey: 'no-tz' }))
+    expect(result.current.period).toBe('today')
+    expect(result.current.periodReady).toBe(false)
+  })
+
+  it('is NOT ready once memory resolves either, while the timezone stays unknown', () => {
+    const seen: boolean[] = []
+    renderHook(() => {
+      const r = useUrlDateRange({ pageKey: 'no-tz' })
+      seen.push(r.periodReady)
+      return r
+    })
+    expect(seen.every((ready) => ready === false)).toBe(true)
+  })
+
+  it('becomes ready once a real timezone value is supplied', () => {
+    const { result, rerender } = renderHook(
+      ({ timezone }: { timezone?: string }) => useUrlDateRange({ pageKey: 'no-tz', timezone }),
+      { initialProps: { timezone: undefined as string | undefined } },
+    )
+    expect(result.current.periodReady).toBe(false)
+    rerender({ timezone: 'Asia/Karachi' })
+    expect(result.current.periodReady).toBe(true)
+  })
+
+  it('`timezone: null` (deliberately no site) is ready immediately, unlike `undefined`', () => {
+    const { result } = renderHook(() => useUrlDateRange({ pageKey: 'no-site', timezone: null }))
+    expect(result.current.periodReady).toBe(true)
+  })
+
+  it('a ROLLING-minutes period is ready even while the timezone is unknown', () => {
+    // 'minutes=' never touches dateRange, so a page whose active period is
+    // one of these has nothing to wait for.
+    mockSearchParams = new URLSearchParams('period=1h')
+    const { result } = renderHook(() =>
+      useUrlDateRange({ pageKey: 'live', rollingMinutes: { '1h': 60 } }),
+    )
+    expect(result.current.period).toBe('1h')
+    expect(result.current.rollingMinutes).toBe(60)
+    expect(result.current.periodReady).toBe(true)
+  })
+
+  it('a NON-rolling period on the SAME page still waits for the timezone', () => {
+    // The paired negative: declaring rollingMinutes for one period must not
+    // blanket-exempt every other period the page also serves.
+    mockSearchParams = new URLSearchParams('period=30')
+    const { result } = renderHook(() =>
+      useUrlDateRange({ pageKey: 'live', rollingMinutes: { '1h': 60 } }),
+    )
+    expect(result.current.period).toBe('30')
+    expect(result.current.rollingMinutes).toBeNull()
+    expect(result.current.periodReady).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// siteNow (18-09-2026) — exposed so a page can hand DateRangePicker the SAME
+// wall clock the hook resolved `dateRange` against, without recomputing it.
+// ---------------------------------------------------------------------------
+describe('useUrlDateRange siteNow', () => {
+  it('is a Date whose local getters equal the given site zone wall clock', () => {
+    // 19:30Z is 2026-09-19 00:30 in Asia/Karachi (UTC+5, no DST).
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-18T19:30:00Z'))
+    const { result } = renderHook(() => useUrlDateRange({ pageKey: 'page-c', timezone: 'Asia/Karachi' }))
+    expect(result.current.siteNow.getFullYear()).toBe(2026)
+    expect(result.current.siteNow.getMonth()).toBe(8)
+    expect(result.current.siteNow.getDate()).toBe(19)
+    expect(result.current.siteNow.getHours()).toBe(0)
+    expect(result.current.siteNow.getMinutes()).toBe(30)
+    vi.useRealTimers()
+  })
+
+  it('degrades to UTC when the caller passes `timezone: null`', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-18T19:30:00Z'))
+    const { result } = renderHook(() => useUrlDateRange({ pageKey: 'page-c', timezone: null }))
+    expect(result.current.siteNow.getFullYear()).toBe(2026)
+    expect(result.current.siteNow.getMonth()).toBe(8)
+    expect(result.current.siteNow.getDate()).toBe(18)
+    expect(result.current.siteNow.getHours()).toBe(19)
+    expect(result.current.siteNow.getMinutes()).toBe(30)
+    vi.useRealTimers()
+  })
+})
+
 describe('useUrlDateRange range memory', () => {
   it('remembers a chosen preset and applies it on a bare-URL mount', () => {
     const { result } = renderHook(() => useUrlDateRange(PAGE))
@@ -280,7 +392,7 @@ describe('per-page range memory (22-08-2026)', () => {
       result.current.setPeriod('7')
     })
 
-    const { result: other } = renderHook(() => useUrlDateRange({ pageKey: 'page-b' }))
+    const { result: other } = renderHook(() => useUrlDateRange({ pageKey: 'page-b', timezone: 'UTC' }))
     expect(other.current.period).toBe('30')
     expect(other.current.periodReady).toBe(true)
     expect(window.localStorage.getItem(PAGE_KEY)).toBe('7')
@@ -320,6 +432,7 @@ describe('page preset vocabulary — applied, not just offered', () => {
   const SEARCH_LIKE: PageRangeOptions = {
     pageKey: 'search-like',
     maxDays: SEARCH_CONSOLE_MAX_DAYS,
+    timezone: 'UTC',
     extraPresets: {
       group: 'Search ranges',
       exclusive: true,

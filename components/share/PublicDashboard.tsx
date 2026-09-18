@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getPublicDashboard, getPublicRealtime, authenticatePublicDashboard, type DashboardData, type Stats } from '@/lib/api/stats'
 import { toast } from '@ciphera-net/facet'
 import { getAuthErrorMessage } from '@ciphera-net/facet'
@@ -17,6 +17,8 @@ import { type MetricType } from '@/lib/dashboard/metrics'
 import { Captcha, ZapIcon } from '@ciphera-net/facet'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { PERIOD_TO_API } from '@/lib/constants/periods'
+import { periodToDateRange, type Period } from '@/lib/hooks/periodUrl'
+import { siteWallClockNow } from '@/lib/utils/siteTime'
 import { DEFAULT_GEO_DATA_LEVEL } from '@/lib/api/sites'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import ExportModal from '@/components/dashboard/ExportModal'
@@ -41,17 +43,6 @@ const SHARE_EXCLUDED_PRESETS = [
   'last-week', 'last-month', 'last-quarter', 'last-year',
   'week', 'month', 'qtd', 'year',
 ]
-
-// Helper to get date ranges
-const getDateRange = (days: number) => {
-  const end = new Date()
-  const start = new Date()
-  start.setDate(end.getDate() - (days - 1)) // -1 because today counts as 1 day
-  return {
-    start: start.toISOString().split('T')[0],
-    end: end.toISOString().split('T')[0]
-  }
-}
 
 // The whole public dashboard view, extracted from app/share/[id]/page.tsx
 // (02-09-2026) so /demo can mount the SAME surface pinned to ciphera.net —
@@ -78,7 +69,6 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
   const [captchaToken, setCaptchaToken] = useState('')
   
   const [period, setPeriod] = useState('30')
-  const [dateRange, setDateRange] = useState(getDateRange(30))
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
   // The deck's active rail metric. Local, not URL-persisted like the authed
@@ -91,6 +81,24 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
   const [prevStats] = useState<Stats | undefined>(undefined)
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
   const [, setTick] = useState(0)
+
+  // 🔑 This state's ACTUAL API request never sends start_date/end_date — see
+  // loadDashboard below, which always sends an allowlisted `period=` token
+  // (every SHARE_ALLOWED_PERIODS key is server-resolved; PERIOD_TO_API names
+  // 'today'/'yesterday'/'7'/'30' all). So this `dateRange` is display-only
+  // (the picker's calendar/label; the child cards' member-only-endpoint gate
+  // below keeps them from ever fetching against it). Still resolved against
+  // the SITE's wall clock, not the browser's, for the same reason every
+  // other date-ranged page is: `data.site.timezone` is the wire field
+  // (`PublicSiteResponse.Timezone`, always present once `data` has loaded).
+  // Before `data` arrives there is no site to read — UTC, never the browser
+  // clock, and harmless since nothing renders this before `data` is set
+  // (`if (!data) return null` below).
+  const siteNow = useMemo(() => siteWallClockNow(data?.site.timezone ?? null), [data?.site.timezone])
+  const dateRange = useMemo(
+    () => periodToDateRange((SHARE_ALLOWED_PERIODS.includes(period) ? period : '30') as Period, siteNow),
+    [period, siteNow],
+  )
 
   // * Tick every 1s so "Live · Xs ago" counts in real time
   useEffect(() => {
@@ -317,9 +325,17 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
                 period={period}
                 dateRange={dateRange}
                 onPeriodChange={(p) => setPeriod(SHARE_ALLOWED_PERIODS.includes(p) ? p : '30')}
-                onDateRangeChange={setDateRange}
+                // Unreachable in practice: every SHARE_ALLOWED_PERIODS key is
+                // a URL-grammar period (isUrlPeriod), so the picker's preset
+                // clicks fire only onPeriodChange, and `presetsOnly` below
+                // hides the calendar that is this callback's only other
+                // caller. Kept as a real no-op (not `setDateRange`, which no
+                // longer exists — `dateRange` is derived, not state) so the
+                // prop stays satisfied if that ever changes.
+                onDateRangeChange={() => {}}
                 excludePresets={SHARE_EXCLUDED_PRESETS}
                 presetsOnly
+                now={siteNow}
               />
             </div>
           </div>

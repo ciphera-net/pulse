@@ -1,8 +1,16 @@
 import { getDateRange, formatDate } from '@/lib/utils/format'
 
+// Every resolver below takes an optional trailing `now`, defaulting to the
+// browser's `new Date()`. A caller that knows the SITE must pass
+// `siteWallClockNow(site.timezone)` instead — see lib/utils/siteTime.ts —
+// or "this week"/"last month"/etc. resolve in the viewer's calendar instead
+// of the site's. `now` is never mutated (every setDate/setMonth below runs
+// on a clone), so one shared Date can be reused across many calls in a
+// render.
+
 /** Monday–today range for "This week" option */
-export function getThisWeekRange(): { start: string; end: string } {
-  const today = new Date()
+export function getThisWeekRange(now: Date = new Date()): { start: string; end: string } {
+  const today = now
   const dayOfWeek = today.getDay()
   const monday = new Date(today)
   monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
@@ -10,15 +18,15 @@ export function getThisWeekRange(): { start: string; end: string } {
 }
 
 /** 1st of month–today range for "This month" option */
-export function getThisMonthRange(): { start: string; end: string } {
-  const today = new Date()
+export function getThisMonthRange(now: Date = new Date()): { start: string; end: string } {
+  const today = now
   const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
   return { start: formatDate(firstOfMonth), end: formatDate(today) }
 }
 
 /** Yesterday only (single day) */
-export function getYesterdayRange(): { start: string; end: string } {
-  const yesterday = new Date()
+export function getYesterdayRange(now: Date = new Date()): { start: string; end: string } {
+  const yesterday = new Date(now)
   yesterday.setDate(yesterday.getDate() - 1)
   const d = formatDate(yesterday)
   return { start: d, end: d }
@@ -28,8 +36,8 @@ export function getYesterdayRange(): { start: string; end: string } {
  * period=24h as a genuine rolling now−24h window (D3, 18-08-2026); this
  * client-side range exists only as the pre-resolution placeholder and for
  * previous-window arithmetic. It is NOT itself a rolling window. */
-export function getLast24HoursRange(): { start: string; end: string } {
-  const today = new Date()
+export function getLast24HoursRange(now: Date = new Date()): { start: string; end: string } {
+  const today = now
   const yesterday = new Date(today)
   yesterday.setDate(today.getDate() - 1)
   return { start: formatDate(yesterday), end: formatDate(today) }
@@ -45,31 +53,28 @@ export function getLast24HoursRange(): { start: string; end: string } {
  * only answer "which calendar days does it touch", so a 30-minute window that
  * straddles midnight still covers both.
  */
-export function getLast30MinutesRange(): { start: string; end: string } {
-  const now = new Date()
+export function getLast30MinutesRange(now: Date = new Date()): { start: string; end: string } {
   return { start: formatDate(new Date(now.getTime() - 30 * 60_000)), end: formatDate(now) }
 }
 
-export function getLast6HoursRange(): { start: string; end: string } {
-  const now = new Date()
+export function getLast6HoursRange(now: Date = new Date()): { start: string; end: string } {
   return { start: formatDate(new Date(now.getTime() - 6 * 60 * 60_000)), end: formatDate(now) }
 }
 
 /** Last 1 hour — same-day range, caller should narrow to minute interval */
-export function getLast1HourRange(): { start: string; end: string } {
-  const today = formatDate(new Date())
+export function getLast1HourRange(now: Date = new Date()): { start: string; end: string } {
+  const today = formatDate(now)
   return { start: today, end: today }
 }
 
 /** Jan 1 of current year–today range for "This year" option */
-export function getThisYearRange(): { start: string; end: string } {
-  const today = new Date()
+export function getThisYearRange(now: Date = new Date()): { start: string; end: string } {
+  const today = now
   const jan1 = new Date(today.getFullYear(), 0, 1)
   return { start: formatDate(jan1), end: formatDate(today) }
 }
 
-export function getLastWeekRange(): { start: string; end: string } {
-  const now = new Date()
+export function getLastWeekRange(now: Date = new Date()): { start: string; end: string } {
   const day = now.getDay()
   const diffToMonday = day === 0 ? 6 : day - 1
   const thisMonday = new Date(now)
@@ -81,15 +86,13 @@ export function getLastWeekRange(): { start: string; end: string } {
   return { start: formatDate(lastMonday), end: formatDate(lastSunday) }
 }
 
-export function getLastMonthRange(): { start: string; end: string } {
-  const now = new Date()
+export function getLastMonthRange(now: Date = new Date()): { start: string; end: string } {
   const firstOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
   const lastOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0)
   return { start: formatDate(firstOfPrevMonth), end: formatDate(lastOfPrevMonth) }
 }
 
-export function getLastQuarterRange(): { start: string; end: string } {
-  const now = new Date()
+export function getLastQuarterRange(now: Date = new Date()): { start: string; end: string } {
   const currentQuarter = Math.floor(now.getMonth() / 3)
   const prevQuarterStart = currentQuarter === 0
     ? new Date(now.getFullYear() - 1, 9, 1)
@@ -100,13 +103,12 @@ export function getLastQuarterRange(): { start: string; end: string } {
   return { start: formatDate(prevQuarterStart), end: formatDate(prevQuarterEnd) }
 }
 
-export function getLastYearRange(): { start: string; end: string } {
-  const prevYear = new Date().getFullYear() - 1
+export function getLastYearRange(now: Date = new Date()): { start: string; end: string } {
+  const prevYear = now.getFullYear() - 1
   return { start: `${prevYear}-01-01`, end: `${prevYear}-12-31` }
 }
 
-export function getQuarterToDateRange(): { start: string; end: string } {
-  const now = new Date()
+export function getQuarterToDateRange(now: Date = new Date()): { start: string; end: string } {
   const quarterStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1)
   return { start: formatDate(quarterStart), end: formatDate(now) }
 }

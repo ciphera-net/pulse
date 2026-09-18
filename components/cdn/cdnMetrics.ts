@@ -154,6 +154,11 @@ function utcRangeDaysBack(days: number): { start: string; end: string } {
 // * presets are promises a daily-granular source cannot keep. Ranges beyond
 // * ~13 months just run out of data (backfill depth) — the chart ends where
 // * history ends, no plan-gating UI.
+// *
+// * These `resolve` functions deliberately ignore DateRangePicker's `now`
+// * argument (the site's wall clock) — utcRangeDaysBack is UTC-anchored on
+// * purpose (bunny_data rows are UTC days, not site-local ones), and a real
+// * UTC instant is timezone-invariant regardless of which clock reads it.
 export const CDN_PICKER_PRESETS: { group: string; presets: PeriodPreset[]; exclusive: boolean } = {
   group: 'CDN ranges',
   exclusive: true,

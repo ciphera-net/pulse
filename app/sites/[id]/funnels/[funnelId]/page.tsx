@@ -1,5 +1,6 @@
 'use client'
 
+import { siteDaysCaption } from '@/lib/utils/timezones'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -10,7 +11,6 @@ import { useFunnelDetail, useFunnelStats, useSite } from '@/lib/swr/dashboard'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
 import { FUNNEL_EXCLUDED_PRESETS } from '@/lib/constants/periods'
 import { fetchableRange } from '@/lib/dashboard/resolveRange'
-import { presetZoneRange } from '@/components/uptime/uptimeMetrics'
 import { previousDateRange } from '@/lib/hooks/periodUrl'
 import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
 import { type DimensionFilter, serializeFilters, parseFiltersFromURL } from '@/lib/filters'
@@ -63,19 +63,20 @@ export default function FunnelDetailPage() {
   const funnelId = params.funnelId as string
   const canManage = useCan('funnels.manage')
 
-  const { period, dateRange, periodReady, setPeriod, shiftPeriod, pickerProps } = useUrlDateRange({
+  const { data: site } = useSite(siteId)
+  const { period, dateRange, periodReady, setPeriod, shiftPeriod, siteNow, pickerProps } = useUrlDateRange({
     // Shared with the funnels list page — one instrument, one range memory.
     pageKey: 'funnels',
     excludePresets: FUNNEL_EXCLUDED_PRESETS,
+    timezone: site?.timezone,
   })
-  const { data: site } = useSite(siteId)
   // * Preset windows re-anchor to the SITE's current day (uptime's device):
   // * the server cuts day boundaries in the site zone, so which dates get
   // * requested must come from the site's calendar too, or "Today" means the
   // * viewer's today (closeout F2). A custom pick passes through.
   const fetchRange = useMemo(
-    () => fetchableRange(periodReady, period === 'custom' ? dateRange : presetZoneRange(dateRange, site?.timezone ?? null)),
-    [periodReady, period, dateRange, site?.timezone],
+    () => fetchableRange(periodReady, dateRange),
+    [periodReady, dateRange],
   )
 
   // ── Dashboard filter system, URL-synced with the dashboard's exact codec ──
@@ -266,6 +267,8 @@ export default function FunnelDetailPage() {
               onPeriodChange={(p) => setPeriod(p as Period)}
               onDateRangeChange={(range) => setPeriod('custom', range)}
               onShift={shiftPeriod}
+              now={siteNow}
+              daysCaption={siteDaysCaption(site?.timezone)}
               // * Menu and validation both come from the page declaration on
               // * the hook (FUNNEL_EXCLUDED_PRESETS) — one source, no drift.
               {...pickerProps}
