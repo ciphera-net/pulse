@@ -31,7 +31,6 @@ import {
   UPTIME_DEGRADED,
   fmtMs,
   fmtCheckTime,
-  presetZoneRange,
 } from '@/components/uptime/uptimeMetrics'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 
@@ -174,12 +173,13 @@ export default function UptimePage() {
   // * so the newest checks never fall off for a viewer west of the site; a
   // * custom pick passes through — an explicitly chosen calendar day IS the
   // * site's day, as labeled.
-  // Gated BEFORE the re-anchor — presetZoneRange of a placeholder is still
-  // a placeholder. Uptime's two hooks keyed on siteId ALONE, so an empty range
-  // used to fetch anyway; they now require dates (see lib/swr/dashboard.ts).
+  // Gated: a placeholder range must not fetch. Uptime's two hooks keyed on
+  // siteId ALONE, so an empty range used to fetch anyway; they now require
+  // dates (see lib/swr/dashboard.ts). The range arrives site-anchored from
+  // useUrlDateRange (19-09-2026); the old presetZoneRange re-anchor is gone.
   const apiRange = useMemo(
-    () => fetchableRange(periodReady, period === 'custom' ? dateRange : presetZoneRange(dateRange, site?.timezone ?? null)),
-    [periodReady, period, dateRange, site?.timezone],
+    () => fetchableRange(periodReady, dateRange),
+    [periodReady, dateRange],
   )
   const {
     data: uptimeData,

@@ -21,7 +21,6 @@ import DateRangePicker from '@/components/ui/DateRangePicker'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
 import { FUNNEL_EXCLUDED_PRESETS } from '@/lib/constants/periods'
 import { fetchableRange } from '@/lib/dashboard/resolveRange'
-import { presetZoneRange } from '@/components/uptime/uptimeMetrics'
 import { useCan } from '@/lib/auth/permissions'
 
 // * ?prefill=<encodeURIComponent(JSON)> seeds the create modal (journeys lens
@@ -73,8 +72,8 @@ export default function FunnelsPage() {
   // * viewer's today (closeout F2). A custom pick passes through — an
   // * explicitly chosen calendar day IS the site's day, as labeled.
   const fetchRange = useMemo(
-    () => fetchableRange(periodReady, period === 'custom' ? dateRange : presetZoneRange(dateRange, site?.timezone ?? null)),
-    [periodReady, period, dateRange, site?.timezone],
+    () => fetchableRange(periodReady, dateRange),
+    [periodReady, dateRange],
   )
 
   // * ONE batched stats request per range for the whole list (plus one for the
