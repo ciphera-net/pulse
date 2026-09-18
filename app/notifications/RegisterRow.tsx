@@ -7,6 +7,7 @@ import { useResolveSiteName, useResolveUserName } from '@/lib/notifications/reso
 import { getTypeIcon } from '@/lib/utils/notifications'
 import { markRead } from '@/lib/api/notifications-v2'
 import { toast, getAuthErrorMessage } from '@ciphera-net/facet'
+import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 
 /**
  * One D4 register row (round-3 Direction B; anatomy A4/B4 of the design
@@ -32,9 +33,16 @@ interface RegisterRowProps {
   onChange: () => void
 }
 
-function hhmm(iso: string): string {
+/** HH:MM, in the viewer's display-timezone preference (18-09-2026 design
+ * §4.3). `timeZone` optional and additive — omit it and this renders exactly
+ * as before, in the runtime's local zone. */
+function hhmm(iso: string, timeZone?: string): string {
   const d = new Date(iso)
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  if (!timeZone) {
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  }
+  // hourCycle 'h23', not hour12:false — the latter can render midnight as "24".
+  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone })
 }
 
 export default function RegisterRow({
@@ -46,6 +54,7 @@ export default function RegisterRow({
 }: RegisterRowProps) {
   const [expanded, setExpanded] = useState(false)
   const [busy, setBusy] = useState(false)
+  const { zone } = useDisplayZone()
 
   const resolveSiteName = useResolveSiteName()
   const resolveUserName = useResolveUserName()
@@ -53,7 +62,7 @@ export default function RegisterRow({
   const { title, body, linkLabel } = renderNotification(receipt, {
     resolveSiteName,
     resolveUserName,
-  })
+  }, zone)
   const linkUrl = receipt.event.link_url
   const recovered = receipt.event.type === 'uptime_monitor_recovered'
 
@@ -95,11 +104,11 @@ export default function RegisterRow({
     // Phase 3's confirmed truth — the per-recipient DSN, ingested from
     // Stalwart's trace. Green is RESERVED for exactly this (round-3 standing
     // default: "Emailed" means handed off; green waits for Delivered).
-    emailMeta = <span className="text-pos">Delivered {hhmm(receipt.delivered_at)}</span>
+    emailMeta = <span className="text-pos">Delivered {hhmm(receipt.delivered_at, zone)}</span>
   } else if (receipt.email_status === 'bounced') {
     emailMeta = <span>Email bounced</span>
   } else if (receipt.delivered_at) {
-    emailMeta = <span>Emailed {hhmm(receipt.delivered_at)}</span>
+    emailMeta = <span>Emailed {hhmm(receipt.delivered_at, zone)}</span>
   } else if (receipt.email_status === 'suppressed') {
     emailMeta = <span>Email suppressed</span>
   } else if (muted) {
@@ -137,7 +146,7 @@ export default function RegisterRow({
                 {title}
               </span>
               <span className="text-[11px] text-neutral-500 tabular-nums whitespace-nowrap shrink-0">
-                {hhmm(receipt.event.created_at)}
+                {hhmm(receipt.event.created_at, zone)}
               </span>
             </div>
             {body && !expanded && (

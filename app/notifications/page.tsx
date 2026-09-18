@@ -9,6 +9,7 @@ import { markAllRead, purgeMine } from '@/lib/api/notifications-v2'
 import { getPrefsDocument, type PreferencesDocument } from '@/lib/api/notifications-preferences'
 import { NOTIFICATION_CATEGORIES, shortLabel } from '@/lib/notifications/categories'
 import { groupByDay } from './sections'
+import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import RegisterRow from './RegisterRow'
 import PurgeConfirmDialog from './PurgeConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -51,6 +52,7 @@ const TAB_ORDER = ['all', ...NOTIFICATION_CATEGORIES.map((c) => c.id)] as const
 
 function NotificationsContent() {
   const invalidateNotifications = useInvalidateNotifications()
+  const { zone } = useDisplayZone()
   const router = useRouter()
   const params = useSearchParams()
   const active = params.get('category') ?? 'all'
@@ -113,7 +115,7 @@ function NotificationsContent() {
     }
   }
 
-  const sections = groupByDay(receipts)
+  const sections = groupByDay(receipts, zone)
   const trulyEmpty =
     !loading && !error && receipts.length === 0 && active === 'all' && !unreadOnly
 

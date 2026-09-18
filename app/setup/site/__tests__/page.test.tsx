@@ -52,6 +52,12 @@ vi.mock('@ciphera-net/facet', () => ({
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
   Input: (props: any) => <input {...props} />,
   Spinner: (props: any) => <div data-testid="spinner" {...props} />,
+  Select: ({ value, onChange, options, placeholder, className, ...props }: any) => (
+    <select value={value ?? ''} onChange={(e) => onChange(e.target.value)} {...props}>
+      <option value="">{placeholder}</option>
+      {options.map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}
+    </select>
+  ),
   GlobeIcon: () => <span />,
 }))
 
@@ -116,6 +122,13 @@ describe('SetupSitePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add site' }))
     await waitFor(() => expect(addSite).toHaveBeenCalledWith(created))
     expect(createSite).toHaveBeenCalledWith(expect.objectContaining({ domain: 'example.com', name: 'example.com' }))
+    // The zone is ALWAYS sent (the backend's fallback for an omitted field is
+    // UTC), prefilled from the device and shown in a field the person can change.
+    const sent = createSite.mock.calls[0][0] as { timezone?: string }
+    expect(typeof sent.timezone).toBe('string')
+    expect(sent.timezone).not.toBe('')
+    expect(() => new Intl.DateTimeFormat('en', { timeZone: sent.timezone })).not.toThrow()
+    expect(screen.getByLabelText('Timezone')).toHaveValue(sent.timezone)
     expect(setSite).toHaveBeenCalledWith(created)
     expect(completeStep).toHaveBeenCalledWith('site')
     expect(mockPush).toHaveBeenCalledWith('/setup/install')

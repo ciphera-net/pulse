@@ -13,7 +13,7 @@ import type { Rendered, Resolvers } from './index'
 //
 // Formatting is defensive because the window is optional (see below) and an
 // unparseable date must never reach the reader as the string "Invalid Date".
-function formatWindow(startsAt?: string, endsAt?: string): string | null {
+function formatWindow(startsAt?: string, endsAt?: string, timeZone?: string): string | null {
   if (!startsAt || !endsAt) return null
   const start = new Date(startsAt)
   const end = new Date(endsAt)
@@ -24,6 +24,7 @@ function formatWindow(startsAt?: string, endsAt?: string): string | null {
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      ...(timeZone ? { timeZone } : {}),
     })
   return `${fmt(start)} – ${fmt(end)}`
 }
@@ -44,14 +45,14 @@ export const systemRenderers = {
   // The composer collects no dates today, so starts_at/ends_at are optional and
   // this must stay readable without them. Formatting an absent window put the
   // literal "Invalid Date" in the title before 29-08-2026.
-  system_maintenance: (r: Receipt, _resolvers?: Resolvers): Rendered => {
+  system_maintenance: (r: Receipt, _resolvers?: Resolvers, timeZone?: string): Rendered => {
     const p = r.event.payload as {
       title?: string
       body?: string
       starts_at?: string
       ends_at?: string
     }
-    const window = formatWindow(p.starts_at, p.ends_at)
+    const window = formatWindow(p.starts_at, p.ends_at, timeZone)
     const title = p.title?.trim() || 'Scheduled maintenance'
     const body = [p.body?.trim(), window ? `${window}.` : null].filter(Boolean).join(' ')
     return {
