@@ -3,9 +3,9 @@ import type { Rendered, Resolvers } from './index'
 import { countryName } from '../display-utils'
 
 export const securityRenderers = {
-  security_new_device_login: (r: Receipt, _resolvers?: Resolvers): Rendered => {
+  security_new_device_login: (r: Receipt, _resolvers?: Resolvers, timeZone?: string): Rendered => {
     const p = r.event.payload as { device_hint: string; country_code: string; at: string }
-    const time = new Date(p.at).toLocaleString('en')
+    const time = new Date(p.at).toLocaleString('en', { ...(timeZone ? { timeZone } : {}) })
     return {
       title: `New login — ${p.device_hint}`,
       // country_code is ISO alpha-2; resolve to country name via Intl.DisplayNames
@@ -13,19 +13,19 @@ export const securityRenderers = {
       linkLabel: 'Review devices',
     }
   },
-  security_password_changed: (r: Receipt, _resolvers?: Resolvers): Rendered => {
+  security_password_changed: (r: Receipt, _resolvers?: Resolvers, timeZone?: string): Rendered => {
     const p = r.event.payload as { at: string }
     return {
       title: 'Password changed',
-      body: `Your password was updated at ${new Date(p.at).toLocaleString('en')}.`,
+      body: `Your password was updated at ${new Date(p.at).toLocaleString('en', { ...(timeZone ? { timeZone } : {}) })}.`,
       linkLabel: null,
     }
   },
-  security_2fa_enabled: (r: Receipt, _resolvers?: Resolvers): Rendered => {
+  security_2fa_enabled: (r: Receipt, _resolvers?: Resolvers, timeZone?: string): Rendered => {
     const p = r.event.payload as { at: string }
     return {
       title: 'Two-factor authentication enabled',
-      body: `2FA enabled at ${new Date(p.at).toLocaleString('en')}.`,
+      body: `2FA enabled at ${new Date(p.at).toLocaleString('en', { ...(timeZone ? { timeZone } : {}) })}.`,
       linkLabel: null,
     }
   },

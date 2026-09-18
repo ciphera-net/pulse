@@ -13,6 +13,7 @@ import { MastheadAction } from '@/components/settings/shell-slots'
 import { cn } from '@/lib/utils'
 import { DURATION_BASE, DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { formatDate, formatRelativeTime, formatDateTimeFull } from '@/lib/utils/formatDate'
+import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import {
   listApiKeys,
   createApiKey,
@@ -99,6 +100,7 @@ function TokenReveal({ token, onDone }: { token: string; onDone: () => void }) {
 
 export default function WorkspaceApiKeysTab() {
   const reducedMotion = useReducedMotion()
+  const { zone } = useDisplayZone()
   const [keys, setKeys] = useState<ApiKey[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [sites, setSites] = useState<Site[]>([])
@@ -394,14 +396,14 @@ export default function WorkspaceApiKeysTab() {
                             <span aria-hidden="true">·</span>
                             {/* null means never used. Say so, rather than showing a
                                 placeholder date that reads as real activity. */}
-                            <span title={key.last_used_at ? formatDateTimeFull(new Date(key.last_used_at)) : undefined}>
+                            <span title={key.last_used_at ? formatDateTimeFull(new Date(key.last_used_at), zone) : undefined}>
                               {key.last_used_at ? `Last used ${formatRelativeTime(key.last_used_at)}` : 'Never used'}
                             </span>
                             <span aria-hidden="true">·</span>
                             <span>
                               {status === 'revoked' && key.revoked_at
-                                ? `Revoked ${formatDate(new Date(key.revoked_at))}`
-                                : `Expires ${formatDate(new Date(key.expires_at))}`}
+                                ? `Revoked ${formatDate(new Date(key.revoked_at), zone)}`
+                                : `Expires ${formatDate(new Date(key.expires_at), zone)}`}
                             </span>
                           </span>
                         </span>

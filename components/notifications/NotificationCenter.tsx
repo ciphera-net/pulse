@@ -21,6 +21,7 @@ import { SkeletonLine, SkeletonCircle } from '@/components/skeletons'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { BellSimple } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
+import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 
 // * Bell icon (simple SVG, no extra deps)
 function BellIcon({ className }: { className?: string }) {
@@ -59,6 +60,7 @@ interface NotificationCenterProps {
 export default function NotificationCenter({ anchor = 'bottom', variant = 'default', children }: NotificationCenterProps) {
   const router = useRouter()
   const { user } = useAuth()
+  const { zone } = useDisplayZone()
   const [open, setOpen] = useState(false)
   // Data lives in a store BOTH mounts share — see useNotificationInbox for why
   // (two unconditional mounts, two polls, two counts that disagreed).
@@ -400,7 +402,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
                     <Fragment key={label}>
                       {showHeaders && <StratumHeader>{label}</StratumHeader>}
                       {rows.map((r) => {
-                        const { title, body } = renderNotification(r, { resolveSiteName, resolveUserName })
+                        const { title, body } = renderNotification(r, { resolveSiteName, resolveUserName }, zone)
                         return (
                           <NotificationRow
                             key={r.event_id}

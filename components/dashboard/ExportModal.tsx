@@ -17,6 +17,7 @@ import type { DailyStat } from '@/lib/api/stats'
 type ExportRow = Omit<DailyStat, 'visits'>
 import { formatNumber, formatDuration } from '@/lib/utils/format'
 import { formatDateISO, formatDate, formatDateUTC, formatTimeUTC, formatCalendarDate, parseSiteWallClock } from '@/lib/utils/formatDate'
+import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import { getReferrerDisplayName, mergeReferrersByDisplayName } from '@/lib/utils/icons'
 import type { TopPage, TopReferrer, CampaignStat } from '@/lib/api/stats'
 
@@ -58,6 +59,10 @@ const loadImage = (src: string): Promise<string> => {
 }
 
 export default function ExportModal({ isOpen, onClose, data, stats, topPages, topReferrers, campaigns }: ExportModalProps) {
+  // No site in scope here (the modal takes plain data props, not a Site
+  // object) — same "no site" row as an account page in the display-timezone
+  // resolution table (18-09-2026 design §4.3): falls to the browser's zone.
+  const { zone } = useDisplayZone()
   const [format, setFormat] = useState<ExportFormat>('csv')
   const [filename, setFilename] = useState(`pulse_export_${formatDateISO(new Date())}`)
   const [includeHeader, setIncludeHeader] = useState(true)
@@ -194,7 +199,7 @@ export default function ExportModal({ isOpen, onClose, data, stats, topPages, to
             // Metadata (Top Right)
             doc.setFontSize(9)
             doc.setTextColor(150, 150, 150)
-            const generatedDate = formatDate(new Date())
+            const generatedDate = formatDate(new Date(), zone)
             // The bucket's calendar day is the literal date prefix of the wire
             // value — no Date construction, so no timezone can shift it.
             const dateRange = data.length > 0

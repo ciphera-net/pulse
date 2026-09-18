@@ -24,6 +24,7 @@ import { useAuth } from '@/lib/auth/context'
 import { getAuditLog, type AuditLogEntry } from '@/lib/api/audit'
 import { formatPlanName } from '@/lib/plans'
 import { formatDateTimeFull } from '@/lib/utils/formatDate'
+import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import { cn } from '@/lib/utils'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 
@@ -135,6 +136,7 @@ const AUDIT_LOG_DESCRIPTION =
 
 export default function WorkspaceAuditTab() {
   const { user } = useAuth()
+  const { zone } = useDisplayZone()
   const [entries, setEntries] = useState<AuditLogEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -383,7 +385,7 @@ export default function WorkspaceAuditTab() {
                             )}
                           </TD>
                           <TD className="whitespace-nowrap tabular-nums text-xs text-muted-foreground">
-                            {formatDateTimeFull(new Date(entry.occurred_at))}
+                            {formatDateTimeFull(new Date(entry.occurred_at), zone)}
                           </TD>
                           <TD className="min-w-0 font-medium text-foreground">
                             <span className="block truncate" title={entry.actor_email || 'System'}>
