@@ -77,62 +77,20 @@ export function seriesUptimePct(series: UptimePoint[]): number | null {
 
 // ─── Range anchoring ─────────────────────────────────────────────
 
-// * presetZoneRange: the API reads start_date/end_date as SITE-timezone
-// * calendar days (22-08-2026 alignment, superseding decision D5), while
-// * useUrlDateRange builds VIEWER-local date strings. For a TRAILING preset
-// * the window's LENGTH is what the preset means — so keep the span and
-// * re-anchor its end to the site's CURRENT day, or a viewer west of the site
-// * keeps asking for a site-day that already ended and the newest data falls
-// * off. Custom ranges pass through: an explicitly picked calendar day IS the
-// * site's day, as labeled.
+// * 19-09-2026: presetZoneRange (the 22-08 re-anchor of a trailing preset to
+// * the site's current day) is GONE. useUrlDateRange now resolves every preset
+// * against the site's wall clock, so the re-anchor had nothing left to do —
+// * and it was no longer harmless: it decided "trailing" by comparing the
+// * range's end to the BROWSER's today, and a site-anchored "yesterday" whose
+// * date equals the viewer's today (a viewer west of the site) was rewritten
+// * into the site's today. Measured on staging 19-09-2026 (verify-presets.mjs).
+// * presetUtcRange re-anchors a trailing preset to the current UTC day. Only
+// * the CDN page uses it (Bunny's stored days are
+// * UTC days until the Phase C hourly rebuild). The review finding it fixed
+// * is 13-08-2026's vanishing newest day, west of the anchor zone. Its input
+// * is site-anchored since 18-09-2026; the span is what it keeps.
 // *
-// * 🔴 A CLOSED PAST RANGE MUST PASS THROUGH UNCHANGED (fixed 26-08-2026).
-// * This device moves `end` to today, so applying it to Yesterday / Last week
-// * / Last month / Last quarter / Last year silently rewrote them into
-// * trailing windows ending TODAY while the picker kept the original label —
-// * "Yesterday" rendered today's data. Those presets are offered on every
-// * page that uses this helper (an `extraPresets` group ADDS to the global
-// * list unless it declares `exclusive`), so the guard belongs here, in the
-// * one place, rather than in each caller's preset allowlist.
-// *
-// * The test for "trailing" is the range's own end: a preset that ends on the
-// * VIEWER's today is a trailing window and re-anchors; anything ending
-// * earlier is a closed period and is returned untouched.
-// *
-// * 🔑 18-09-2026: `dateRange` now arrives SITE-anchored already —
-// * useUrlDateRange resolves every preset against siteWallClockNow(tz), not
-// * the browser clock — so `dateRange.end` equals the site's today, not the
-// * viewer's. Comparing it here against `now`'s (real, browser-instant)
-// * calendar day makes this a no-op for a viewer whose calendar day already
-// * disagrees with the site's — which is the point: there is nothing left to
-// * re-anchor. This function is kept rather than deleted because it is still
-// * a harmless idempotent pass-through and it is what a genuinely custom
-// * range relies on staying untouched.
-export function presetZoneRange(
-  dateRange: { start: string; end: string },
-  tz: string | null | undefined,
-  now = new Date(),
-): { start: string; end: string } {
-  const spanDays = Math.round(
-    (Date.parse(dateRange.end + 'T00:00:00Z') - Date.parse(dateRange.start + 'T00:00:00Z')) / 86_400_000,
-  )
-  if (!Number.isFinite(spanDays)) return dateRange
-  // Viewer-local today, spelled the way useUrlDateRange spells its ranges.
-  const p2 = (n: number) => String(n).padStart(2, '0')
-  const viewerToday = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}`
-  if (dateRange.end !== viewerToday) return dateRange
-  const end = zoneDayKey(now, tz)
-  return { start: shiftDayKey(end, -spanDays), end }
-}
-
-// * presetUtcRange is presetZoneRange's UTC-fixed ancestor. Since the
-// * 22-08-2026 alignment ONLY the CDN page uses it (Bunny's stored days are
-// * UTC days until the Phase C hourly rebuild) — uptime moved to
-// * presetZoneRange above. The mechanism note survives in that function's
-// * comment; the review finding it fixed is 13-08-2026's vanishing newest
-// * day, west of the anchor zone.
-// *
-// * 🔑 18-09-2026: still matters, unlike its sibling above — Bunny's UTC-day
+// * 🔑 18-09-2026: still matters — Bunny's UTC-day
 // * data has no relationship to the SITE's timezone at all, so re-deriving a
 // * genuine UTC "now" here (via getUTCFullYear/etc, which are timezone-
 // * invariant) is correct regardless of what `dateRange` arrives anchored to.

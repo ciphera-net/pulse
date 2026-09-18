@@ -11,7 +11,6 @@ import { useFunnelDetail, useFunnelStats, useSite } from '@/lib/swr/dashboard'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
 import { FUNNEL_EXCLUDED_PRESETS } from '@/lib/constants/periods'
 import { fetchableRange } from '@/lib/dashboard/resolveRange'
-import { presetZoneRange } from '@/components/uptime/uptimeMetrics'
 import { previousDateRange } from '@/lib/hooks/periodUrl'
 import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
 import { type DimensionFilter, serializeFilters, parseFiltersFromURL } from '@/lib/filters'
@@ -76,8 +75,8 @@ export default function FunnelDetailPage() {
   // * requested must come from the site's calendar too, or "Today" means the
   // * viewer's today (closeout F2). A custom pick passes through.
   const fetchRange = useMemo(
-    () => fetchableRange(periodReady, period === 'custom' ? dateRange : presetZoneRange(dateRange, site?.timezone ?? null)),
-    [periodReady, period, dateRange, site?.timezone],
+    () => fetchableRange(periodReady, dateRange),
+    [periodReady, dateRange],
   )
 
   // ── Dashboard filter system, URL-synced with the dashboard's exact codec ──
