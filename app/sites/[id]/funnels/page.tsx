@@ -1,5 +1,6 @@
 'use client'
 
+import { siteDaysCaption } from '@/lib/utils/timezones'
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -20,7 +21,6 @@ import DateRangePicker from '@/components/ui/DateRangePicker'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
 import { FUNNEL_EXCLUDED_PRESETS } from '@/lib/constants/periods'
 import { fetchableRange } from '@/lib/dashboard/resolveRange'
-import { presetZoneRange } from '@/components/uptime/uptimeMetrics'
 import { useCan } from '@/lib/auth/permissions'
 
 // * ?prefill=<encodeURIComponent(JSON)> seeds the create modal (journeys lens
@@ -57,10 +57,11 @@ export default function FunnelsPage() {
 
   const { data: site } = useSite(siteId)
   const { data: funnels, error: funnelsError, isLoading, mutate } = useFunnels(siteId)
-  const { period, dateRange, periodReady, setPeriod, shiftPeriod, pickerProps } = useUrlDateRange({
+  const { period, dateRange, periodReady, setPeriod, shiftPeriod, siteNow, pickerProps } = useUrlDateRange({
     // Shared with the funnel detail page — one instrument, one range memory.
     pageKey: 'funnels',
     excludePresets: FUNNEL_EXCLUDED_PRESETS,
+    timezone: site?.timezone,
   })
   // Fetch with nothing until the remembered preset is read — otherwise every
   // bare-URL mount spends a 30-day request on the placeholder period and can
@@ -71,8 +72,8 @@ export default function FunnelsPage() {
   // * viewer's today (closeout F2). A custom pick passes through — an
   // * explicitly chosen calendar day IS the site's day, as labeled.
   const fetchRange = useMemo(
-    () => fetchableRange(periodReady, period === 'custom' ? dateRange : presetZoneRange(dateRange, site?.timezone ?? null)),
-    [periodReady, period, dateRange, site?.timezone],
+    () => fetchableRange(periodReady, dateRange),
+    [periodReady, dateRange],
   )
 
   // * ONE batched stats request per range for the whole list (plus one for the
@@ -138,6 +139,8 @@ export default function FunnelsPage() {
             onPeriodChange={(p) => setPeriod(p as Period)}
             onDateRangeChange={(range) => setPeriod('custom', range)}
             onShift={shiftPeriod}
+            now={siteNow}
+            daysCaption={siteDaysCaption(site?.timezone)}
             // * Menu and validation both come from the page declaration on
             // * the hook (FUNNEL_EXCLUDED_PRESETS) — one source, no drift.
             {...pickerProps}

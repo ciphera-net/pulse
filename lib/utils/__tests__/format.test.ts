@@ -27,6 +27,19 @@ describe('format (machine/number)', () => {
     expect(diffDays).toBe(6) // 7 days inclusive => 6-day span
   })
 
+  it('getDateRange(days, now) resolves against the given `now`, not the real clock', () => {
+    expect(getDateRange(7, new Date(2026, 8, 19))).toEqual({ start: '2026-09-13', end: '2026-09-19' })
+  })
+
+  it('getDateRange does not mutate the `now` it is given — callers reuse one instance', () => {
+    const now = new Date(2026, 8, 19)
+    getDateRange(7, now)
+    getDateRange(30, now)
+    expect(now.getFullYear()).toBe(2026)
+    expect(now.getMonth()).toBe(8)
+    expect(now.getDate()).toBe(19)
+  })
+
   it('formatUpdatedAgo buckets', () => {
     const now = Date.now()
     expect(formatUpdatedAgo(now)).toBe('Just now')
