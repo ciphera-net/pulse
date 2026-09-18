@@ -26,7 +26,10 @@ export interface Resolvers {
   resolveUserName: (id: string) => string
 }
 
-type Renderer = (r: Receipt, resolvers?: Resolvers) => Rendered
+// `timeZone` is the viewer's display-timezone preference (18-09-2026 design
+// §4.3), optional and additive — only security.tsx and system.tsx render an
+// instant today and read it; every other renderer ignores the extra arg.
+type Renderer = (r: Receipt, resolvers?: Resolvers, timeZone?: string) => Rendered
 
 const registry = {
   ...billingRenderers,
@@ -38,13 +41,13 @@ const registry = {
   ...lifecycleRenderers,
 } satisfies Record<NotificationType, Renderer>
 
-export function renderNotification(r: Receipt, resolvers?: Resolvers): Rendered {
+export function renderNotification(r: Receipt, resolvers?: Resolvers, timeZone?: string): Rendered {
   const renderer = registry[r.event.type as NotificationType]
   if (!renderer) {
     return { title: r.event.type, body: '', linkLabel: null }
   }
   try {
-    return renderer(r, resolvers)
+    return renderer(r, resolvers, timeZone)
   } catch {
     // A renderer throwing on one malformed payload (a backend has shipped
     // billing_payment_failed without a currency) must degrade to ONE plain

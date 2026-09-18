@@ -22,6 +22,7 @@ import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { formatRelativeTime, formatDateTimeFull, formatDate } from '@/lib/utils/formatDate'
+import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 
 /** Muted line glyph for a device row: phone or laptop, never a tinted tile. */
@@ -39,6 +40,7 @@ function DeviceGlyph({ hint }: { hint: string }) {
 
 export default function TrustedDevicesCard() {
   const { user } = useAuth()
+  const { zone } = useDisplayZone()
   const [devices, setDevices] = useState<TrustedDevice[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -154,19 +156,19 @@ export default function TrustedDevicesCard() {
                       </TD>
                       <TD
                         className="hidden whitespace-nowrap text-xs text-muted-foreground sm:table-cell"
-                        title={formatDateTimeFull(new Date(device.first_seen_at))}
+                        title={formatDateTimeFull(new Date(device.first_seen_at), zone)}
                       >
                         {/* One format per column: first seen is a fixed fact, so
                             the calendar date; last seen is a moving one, so
                             relative. Relative in both columns read as
                             "5h ago / 25/08 / 1d ago" down one column (staging,
                             16-09-2026), which is the fault §4.7 named. */}
-                        {formatDate(new Date(device.first_seen_at))}
+                        {formatDate(new Date(device.first_seen_at), zone)}
                       </TD>
                       <TD
                         numeric
                         className="whitespace-nowrap text-xs text-muted-foreground"
-                        title={formatDateTimeFull(new Date(device.last_seen_at))}
+                        title={formatDateTimeFull(new Date(device.last_seen_at), zone)}
                       >
                         {formatRelativeTime(device.last_seen_at)}
                       </TD>

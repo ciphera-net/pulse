@@ -20,6 +20,8 @@ import { StatusChip, type ChipTone } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { formatRelativeTime, formatDateTimeFull } from '@/lib/utils/formatDate'
+import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
+import { zoneDayKey, zoneParts, shiftDayKey } from '@/lib/utils/siteTime'
 
 const PAGE_SIZE = 20
 
@@ -108,24 +110,32 @@ function parseOS(ua: string): string {
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-/** Calendar-day bucket key (local) so adjacent same-day events share a group. */
-function dayKey(d: Date): string {
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+/**
+ * Calendar-day bucket key so adjacent same-day events share a group, in the
+ * viewer's display-timezone preference (18-09-2026 design §4.3) rather than
+ * always the browser's zone. Delegates to siteTime.ts's zone arithmetic —
+ * `shiftDayKey` does calendar (not 24h-fixed) subtraction, so a DST
+ * fall-back day's 25 hours cannot mislabel "Yesterday".
+ */
+function dayKey(d: Date, tz?: string): string {
+  return zoneDayKey(d, tz)
 }
 
 /** Sentence-case date-group header label: "Today" / "Yesterday" / "05 May" (spec §6). */
-function dayGroupLabel(d: Date): string {
+function dayGroupLabel(d: Date, tz?: string): string {
   const now = new Date()
-  if (dayKey(d) === dayKey(now)) return 'Today'
-  const yesterday = new Date(now)
-  yesterday.setDate(now.getDate() - 1)
-  if (dayKey(d) === dayKey(yesterday)) return 'Yesterday'
-  const label = `${String(d.getDate()).padStart(2, '0')} ${MONTHS[d.getMonth()]}`
-  return d.getFullYear() !== now.getFullYear() ? `${label} ${d.getFullYear()}` : label
+  const todayKey = zoneDayKey(now, tz)
+  const dKey = zoneDayKey(d, tz)
+  if (dKey === todayKey) return 'Today'
+  if (dKey === shiftDayKey(todayKey, -1)) return 'Yesterday'
+  const p = zoneParts(d, tz)
+  const label = `${String(p.day).padStart(2, '0')} ${MONTHS[p.month - 1]}`
+  return p.year !== zoneParts(now, tz).year ? `${label} ${p.year}` : label
 }
 
 export default function SecurityActivityCard() {
   const { user } = useAuth()
+  const { zone } = useDisplayZone()
   const [entries, setEntries] = useState<AuditLogEntry[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [hasMore, setHasMore] = useState(false)
@@ -208,8 +218,8 @@ export default function SecurityActivityCard() {
                     const deviceStr = [browser, os].filter(Boolean).join(' on ')
                     const created = new Date(entry.created_at)
 
-                    const prevKey = i > 0 ? dayKey(new Date(entries[i - 1].created_at)) : null
-                    const showGroup = dayKey(created) !== prevKey
+                    const prevKey = i > 0 ? dayKey(new Date(entries[i - 1].created_at), zone) : null
+                    const showGroup = dayKey(created, zone) !== prevKey
 
                     return (
                       <Fragment key={entry.id}>
@@ -219,7 +229,7 @@ export default function SecurityActivityCard() {
                               colSpan={3}
                               className="bg-muted px-5 py-2 text-xs font-semibold text-muted-foreground"
                             >
-                              {dayGroupLabel(created)}
+                              {dayGroupLabel(created, zone)}
                             </TD>
                           </TR>
                         )}
@@ -256,7 +266,7 @@ export default function SecurityActivityCard() {
                           <TD
                             numeric
                             className="whitespace-nowrap text-xs text-muted-foreground"
-                            title={formatDateTimeFull(created)}
+                            title={formatDateTimeFull(created, zone)}
                           >
                             {formatRelativeTime(entry.created_at)}
                           </TD>

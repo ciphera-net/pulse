@@ -9,29 +9,62 @@ const LOCALE = 'en-GB'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
+/**
+ * Wall-clock parts of `d`, either in the JS runtime's local zone (no
+ * `timeZone`, the historical behaviour every caller below keeps when it
+ * passes nothing) or in an explicit IANA zone (the display-timezone
+ * preference, 18-09-2026 design §4.3). Never throws on a bad zone — callers
+ * pass `useDisplayZone().zone`, already sanitised by `safeTimeZone`.
+ */
+function partsOf(d: Date, timeZone?: string): { day: number; month: number; year: number; hour: number; minute: number } {
+  if (!timeZone) {
+    return { day: d.getDate(), month: d.getMonth() + 1, year: d.getFullYear(), hour: d.getHours(), minute: d.getMinutes() }
+  }
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    // h23, not hour12:false — the latter can render midnight as "24".
+    hourCycle: 'h23',
+  }).formatToParts(d)
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0)
+  return { day: get('day'), month: get('month'), year: get('year'), hour: get('hour'), minute: get('minute') }
+}
+
 /** DD/MM/YYYY */
-function dmy(d: Date): string {
-  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`
+function dmy(d: Date, timeZone?: string): string {
+  const p = partsOf(d, timeZone)
+  return `${pad(p.day)}/${pad(p.month)}/${p.year}`
 }
 
 /** DD/MM */
-function dm(d: Date): string {
-  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`
+function dm(d: Date, timeZone?: string): string {
+  const p = partsOf(d, timeZone)
+  return `${pad(p.day)}/${pad(p.month)}`
 }
 
 /** HH:MM (24-hour) */
-function hm(d: Date): string {
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`
+function hm(d: Date, timeZone?: string): string {
+  const p = partsOf(d, timeZone)
+  return `${pad(p.hour)}:${pad(p.minute)}`
 }
 
 /** 14/03/2025 — tables, lists, general display.
  *
- * ⚠️ LOCAL-DAY, and that is correct for what it is used for: a date the USER
- * chose or is choosing (date-range pickers, "today"). It is the wrong function
- * for an instant the SERVER decided — see formatDateUTC.
+ * ⚠️ LOCAL-DAY (or the given zone), and that is correct for what it is used
+ * for: a date the USER chose or is choosing (date-range pickers, "today"), or
+ * an instant rendered in their display-timezone preference. It is the wrong
+ * function for a calendar date the SERVER decided — see formatDateUTC.
+ *
+ * `timeZone` is optional and additive (18-09-2026 design §4.3): omit it and
+ * every existing caller renders exactly as before, in the runtime's local
+ * zone. Pass `useDisplayZone().zone` to follow the viewer's preference.
  */
-export function formatDate(d: Date): string {
-  return dmy(d)
+export function formatDate(d: Date, timeZone?: string): string {
+  return dmy(d, timeZone)
 }
 
 /** 14/03/2025, in UTC — for a calendar date the SERVER decided.
@@ -50,19 +83,19 @@ export function formatDateUTC(d: Date): string {
 }
 
 /** 14/03 — charts, compact spaces. Adds year if different from current. */
-export function formatDateShort(d: Date): string {
+export function formatDateShort(d: Date, timeZone?: string): string {
   const now = new Date()
-  return d.getFullYear() !== now.getFullYear() ? dmy(d) : dm(d)
+  return partsOf(d, timeZone).year !== partsOf(now, timeZone).year ? dmy(d, timeZone) : dm(d, timeZone)
 }
 
 /** 14/03/2025 14:30 — logs, events, audit trails */
-export function formatDateTime(d: Date): string {
-  return `${dmy(d)} ${hm(d)}`
+export function formatDateTime(d: Date, timeZone?: string): string {
+  return `${dmy(d, timeZone)} ${hm(d, timeZone)}`
 }
 
 /** 14:30 — intraday charts, time-only contexts */
-export function formatTime(d: Date): string {
-  return hm(d)
+export function formatTime(d: Date, timeZone?: string): string {
+  return hm(d, timeZone)
 }
 
 /** March 2025 — monthly aggregations (period label; no day component) */
@@ -83,10 +116,13 @@ export function formatDateISO(d: Date): string {
  * "RENEWS Sun, 16/08/2026" for a stored 2026-08-15T23:24:01Z — a charge Mollie had
  * already taken that morning. Use formatDateFullUTC for a server-decided instant,
  * or formatCalendarDateFull for a value that is a calendar date to begin with.
+ *
+ * `timeZone` is optional, like formatDate — pass it to render in the
+ * viewer's display-timezone preference instead of the runtime's local zone.
  */
-export function formatDateFull(d: Date): string {
-  const weekday = d.toLocaleDateString(LOCALE, { weekday: 'short' })
-  return `${weekday}, ${dmy(d)}`
+export function formatDateFull(d: Date, timeZone?: string): string {
+  const weekday = d.toLocaleDateString(LOCALE, { weekday: 'short', ...(timeZone ? { timeZone } : {}) })
+  return `${weekday}, ${dmy(d, timeZone)}`
 }
 
 /** Fri, 14/03/2025, in UTC — weekday + date for an instant the SERVER decided.
@@ -177,15 +213,19 @@ export function formatTimeUTC(d: Date): string {
   return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`
 }
 
-/** Fri, 14/03/2025 14:30 — full date+time with weekday */
-export function formatDateTimeFull(d: Date): string {
-  const weekday = d.toLocaleDateString(LOCALE, { weekday: 'short' })
-  return `${weekday}, ${dmy(d)} ${hm(d)}`
+/** Fri, 14/03/2025 14:30 — full date+time with weekday.
+ *
+ * `timeZone` optional, like formatDate — pass `useDisplayZone().zone` to
+ * follow the viewer's display-timezone preference for an instant.
+ */
+export function formatDateTimeFull(d: Date, timeZone?: string): string {
+  const weekday = d.toLocaleDateString(LOCALE, { weekday: 'short', ...(timeZone ? { timeZone } : {}) })
+  return `${weekday}, ${dmy(d, timeZone)} ${hm(d, timeZone)}`
 }
 
 /** 14/03/2025 — long-form display (invoices, billing) */
-export function formatDateLong(d: Date): string {
-  return dmy(d)
+export function formatDateLong(d: Date, timeZone?: string): string {
+  return dmy(d, timeZone)
 }
 
 /** "Just now", "5m ago", "2h ago", "3d ago", then falls back to formatDateShort */
@@ -206,6 +246,6 @@ export function formatRelativeTime(dateStr: string): string {
 }
 
 /** 14/03 14:30 — compact date + time (uptime checks, recent activity) */
-export function formatDateTimeShort(d: Date): string {
-  return `${dm(d)} ${hm(d)}`
+export function formatDateTimeShort(d: Date, timeZone?: string): string {
+  return `${dm(d, timeZone)} ${hm(d, timeZone)}`
 }

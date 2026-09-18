@@ -18,6 +18,7 @@ import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/setti
 import { MastheadAction } from '@/components/settings/shell-slots'
 import { DURATION_BASE, DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { formatDate } from '@/lib/utils/formatDate'
+import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 
 /**
  * A role is a label, not a live state: every role chip is a plain StatusChip
@@ -49,6 +50,7 @@ function MemberAvatar({ monogram }: { monogram?: string }) {
 export default function WorkspaceMembersTab() {
   const reducedMotion = useReducedMotion()
   const { user } = useAuth()
+  const { zone } = useDisplayZone()
   const [members, setMembers] = useState<OrganizationMember[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(true)
@@ -154,7 +156,7 @@ export default function WorkspaceMembersTab() {
                   : (member.user_email || `Member ${member.user_id.slice(0, 8)}`)
                 const monogram = (isYou ? user?.email : member.user_email)?.trim().charAt(0).toUpperCase() || undefined
                 const canRemove = canManage && member.role !== 'owner' && !isYou
-                const joined = member.joined_at ? formatDate(new Date(member.joined_at)) : null
+                const joined = member.joined_at ? formatDate(new Date(member.joined_at), zone) : null
 
                 return (
                   <motion.div
