@@ -209,7 +209,20 @@ export default function SetupSitePage() {
           <label htmlFor="site-timezone" className="block text-sm font-medium text-neutral-300 mb-1.5">
             Timezone
           </label>
+          {/* 🔴 MOUNT THE SELECT ONLY ONCE THE ZONE IS KNOWN (key flips once).
+                Radix Select renders a hidden native <select> whenever its trigger
+                sits inside a <form>, and when the controlled value changes while
+                the list is CLOSED it writes that value into the native element
+                and fires a `change` event. Closed, the native element holds only
+                the placeholder option, so the write yields "" and the change
+                bounces back through onValueChange("") — the detected zone was
+                reset 3 ms after the mount effect set it (measured on staging,
+                18-09-2026, @radix-ui/react-select 2.2.6). A value present at
+                MOUNT never triggers that path, so the control is remounted the
+                one time the zone arrives. Site › General is unaffected: no
+                <form> around it, and its value is loaded before it renders. */}
           <Select
+            key={timezone ? 'zone-known' : 'zone-pending'}
             id="site-timezone"
             value={timezone}
             onChange={setTimezone}
