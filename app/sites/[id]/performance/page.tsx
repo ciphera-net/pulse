@@ -20,6 +20,7 @@ import Select from '@/components/ui/select'
 import ScoreGauge from '@/components/performance/ScoreGauge'
 import { PerformanceStatusLine } from '@/components/performance/PerformanceStatusLine'
 import { formatSiteStampShort } from '@/lib/utils/siteTime'
+import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import { PerformanceTrend } from '@/components/performance/PerformanceTrend'
 import { auditDescription } from '@/lib/performance/descriptions'
 import { remapLearnUrl } from '@/lib/learn-links'
@@ -129,6 +130,9 @@ export default function PerformancePage() {
   const strategy: Strategy = searchParams.get('strategy') === 'desktop' ? 'desktop' : 'mobile'
 
   const { data: site, error: siteError, mutate: mutateSite } = useSite(siteId)
+  // Check STAMPS are instants and follow the person's display preference; the
+  // trend's axis days stay the site's calendar (PerformanceTrend keeps site.timezone).
+  const displayZone = useDisplayZone(site?.timezone)
   const { data: config, error: configError, isLoading: configLoading, mutate: mutateConfig } = usePerformanceConfig(siteId)
   const { data: latest, error: latestError, isLoading: latestLoading, mutate: mutateLatest } = usePerformanceLatest(siteId)
 
@@ -526,7 +530,7 @@ export default function PerformancePage() {
             nextCheckAt={config?.next_check_at ?? null}
             onRunCheck={canEdit ? handleRunCheck : undefined}
             runInFlight={running}
-            timezone={site.timezone ?? null}
+            timezone={displayZone.zone}
           />
         </div>
 
@@ -661,7 +665,7 @@ export default function PerformancePage() {
                   </button>
                 )}
                 {currentCheck?.checked_at ? (
-                  <span className="tabular-nums text-neutral-200">{formatSiteStampShort(currentCheck.checked_at, site.timezone)}</span>
+                  <span className="tabular-nums text-neutral-200">{formatSiteStampShort(currentCheck.checked_at, displayZone.zone)}</span>
                 ) : (
                   <span className="text-neutral-500">—</span>
                 )}

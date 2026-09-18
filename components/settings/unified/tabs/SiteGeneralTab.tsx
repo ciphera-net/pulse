@@ -16,36 +16,10 @@ import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
 import { displayDomain } from '@/lib/utils/displayDomain'
+import { timezoneOptionsFor } from '@/lib/utils/timezones'
 
-// Full IANA zone list with each zone's live short-offset, resolved once. Feeds
-// the timezone Select; the hand-rolled combobox it replaces is retired (spec §3
-// — Facet Select supersedes the bespoke comboboxes across settings).
-const TIMEZONE_OPTIONS: { value: string; label: string }[] = (() => {
-  const build = (tz: string, offset: string) => ({
-    value: tz,
-    label: offset ? `${tz.replace(/_/g, ' ')} (${offset})` : tz.replace(/_/g, ' '),
-  })
-  try {
-    const now = new Date()
-    return Intl.supportedValuesOf('timeZone').map(tz => {
-      const offset = new Intl.DateTimeFormat('en-US', {
-        timeZone: tz,
-        timeZoneName: 'shortOffset',
-      }).formatToParts(now).find(p => p.type === 'timeZoneName')?.value ?? ''
-      return build(tz, offset)
-    })
-  } catch {
-    // Fallback for older environments
-    return [
-      build('UTC', 'GMT'),
-      build('Europe/London', 'GMT'),
-      build('Europe/Brussels', 'GMT+1'),
-      build('America/New_York', 'GMT-5'),
-      build('America/Los_Angeles', 'GMT-8'),
-      build('Asia/Tokyo', 'GMT+9'),
-    ]
-  }
-})()
+// The zone list and the current-zone guard are shared with the site-creation
+// forms and the display-zone resolver: lib/utils/timezones.ts.
 
 export default function SiteGeneralTab({ siteId }: { siteId: string }) {
   const router = useRouter()
@@ -86,12 +60,7 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
   // A zone whose value isn't in the resolved list (rare — a backend zone the
   // browser's ICU doesn't know) still needs a legible option so the Select can
   // render its current value rather than falling back to the placeholder.
-  const timezoneOptions = useMemo(() => {
-    if (timezone && !TIMEZONE_OPTIONS.some(o => o.value === timezone)) {
-      return [{ value: timezone, label: timezone.replace(/_/g, ' ') }, ...TIMEZONE_OPTIONS]
-    }
-    return TIMEZONE_OPTIONS
-  }, [timezone])
+  const timezoneOptions = useMemo(() => timezoneOptionsFor(timezone), [timezone])
 
   useEffect(() => {
     if (!site || hasInitialized.current) return

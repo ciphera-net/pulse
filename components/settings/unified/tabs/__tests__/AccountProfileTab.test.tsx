@@ -12,6 +12,8 @@ const h = vi.hoisted(() => ({
     | null,
   refresh: vi.fn(),
   logout: vi.fn(),
+  timeDisplay: 'site' as 'site' | 'local' | 'utc',
+  setTimeDisplay: vi.fn(async () => true),
 }))
 
 vi.mock('@/lib/auth/context', () => ({
@@ -95,6 +97,27 @@ vi.mock('@ciphera-net/facet', () => ({
   ),
   toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
   getAuthErrorMessage: () => 'error',
+  SegmentedControl: ({ options, value, onChange, disabled, ...props }: any) => (
+    <div role="radiogroup" aria-label={props['aria-label']}>
+      {options.map((o: any) => (
+        <button
+          key={o.value}
+          type="button"
+          role="radio"
+          aria-checked={o.value === value}
+          disabled={disabled}
+          onClick={() => onChange(o.value)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  ),
+}))
+
+// The Display panel's preference hook: a resolved value and a spy for the write.
+vi.mock('@/lib/hooks/usePreferences', () => ({
+  usePreferences: () => ({ timeDisplay: h.timeDisplay, setTimeDisplay: h.setTimeDisplay, loaded: true }),
 }))
 
 // The repair pass routes the "couldn't check" notice through the shared
@@ -1155,5 +1178,21 @@ describe('AccountProfileTab — chrome and copy contract', () => {
       stripped.match(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`/g) ?? []
     const offenders = literals.filter(s => /[‘’“”]/.test(s))
     expect(offenders).toEqual([])
+  })
+})
+
+describe('AccountProfileTab — Display panel (Show times in)', () => {
+  it('renders the three modes with the stored one checked, and writes the mode on a click', async () => {
+    h.timeDisplay = 'local'
+    h.setTimeDisplay.mockClear()
+    render(<AccountProfileTab />)
+    const group = await screen.findByRole('radiogroup', { name: 'Show times in' })
+    const radios = group.querySelectorAll('[role="radio"]')
+    expect([...radios].map(r => r.textContent)).toEqual(["Site's timezone", 'My timezone', 'UTC'])
+    expect([...radios].map(r => r.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false'])
+    fireEvent.click(radios[2])
+    expect(h.setTimeDisplay).toHaveBeenCalledWith('utc')
+    // The caption is the explanation a person gets with no menu sub-captions to help.
+    expect(screen.getByText(/Daily totals always use it; this changes only how times are shown to you\./)).toBeInTheDocument()
   })
 })
