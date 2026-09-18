@@ -1,5 +1,6 @@
 'use client'
 
+import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -163,6 +164,9 @@ export default function UptimePage() {
   })
 
   const { data: site, error: siteError, mutate: mutateSite } = useSite(siteId)
+  // Incident starts and check stamps are instants: they follow the person's
+  // display preference. UptimePanel's days and buckets stay the site's calendar.
+  const displayZone = useDisplayZone(site?.timezone)
 
   // * The API reads SITE-timezone calendar days; useUrlDateRange builds
   // * VIEWER-local ones. Preset windows re-anchor to the site's current day
@@ -321,12 +325,12 @@ export default function UptimePage() {
               incidents={incidentsError ? undefined : incidentsData?.incidents}
               error={!!incidentsError}
               timeoutSeconds={monitor.timeout_seconds}
-              timezone={site?.timezone ?? null}
+              timezone={displayZone.zone}
             />
           </motion.div>
 
           <motion.div {...cascade(0.14)} className="mt-6">
-            <RecentChecks siteId={siteId} monitorId={monitor.id} timezone={site?.timezone ?? null} />
+            <RecentChecks siteId={siteId} monitorId={monitor.id} timezone={displayZone.zone} />
           </motion.div>
         </>
       ) : uptimeError && !uptimeData ? (

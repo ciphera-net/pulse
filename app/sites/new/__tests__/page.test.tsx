@@ -46,6 +46,12 @@ vi.mock('@ciphera-net/facet', () => ({
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
   Input: (props: any) => <input {...props} />,
   CheckCircleIcon: () => <span />,
+  Select: ({ value, onChange, options, placeholder, className, ...props }: any) => (
+    <select value={value ?? ''} onChange={(e) => onChange(e.target.value)} {...props}>
+      <option value="">{placeholder}</option>
+      {options.map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}
+    </select>
+  ),
 }))
 vi.mock('@/components/sites/ScriptSetupBlock', () => ({
   default: ({ siteId }: { siteId: string }) => <div data-testid="script-setup-block">{siteId}</div>,
@@ -215,5 +221,21 @@ describe('NewSitePage plan-limit gate', () => {
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/'))
     expect(toastError).toHaveBeenCalledWith(expect.stringMatching(/limit reached \(3 sites\)/))
     expect(createSite).not.toHaveBeenCalled()
+  })
+
+  it('sends the device timezone with the create call, prefilled in a visible field (the form used to send none and every site landed on UTC)', async () => {
+    listSites.mockResolvedValue([mk('one')])
+    createSite.mockResolvedValue(mk('two'))
+    renderPage()
+    const submit = await screen.findByRole('button', { name: /create|add/i })
+    await waitFor(() => expect(submit).not.toBeDisabled())
+    const tzField = screen.getByLabelText('Timezone') as HTMLSelectElement
+    await waitFor(() => expect(tzField.value).not.toBe(''))
+    fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'two' } })
+    fireEvent.change(screen.getByLabelText(/domain/i), { target: { value: 'two.example' } })
+    fireEvent.change(tzField, { target: { value: 'Europe/Brussels' } })
+    fireEvent.click(submit)
+    await screen.findByTestId('script-setup-block')
+    expect(createSite).toHaveBeenCalledWith(expect.objectContaining({ domain: 'two.example', timezone: 'Europe/Brussels' }))
   })
 })

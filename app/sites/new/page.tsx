@@ -11,7 +11,8 @@ import { getSitesLimitForPlan, formatPlanName } from '@/lib/plans'
 import { trackSiteCreatedFromDashboard, trackSiteCreatedScriptCopied } from '@/lib/welcomeAnalytics'
 import { toast } from '@ciphera-net/facet'
 import { siteCreateError } from '@/lib/api/siteErrors'
-import { Button, Input } from '@ciphera-net/facet'
+import { Button, Input, Select } from '@ciphera-net/facet'
+import { browserTimeZone, timezoneOptionsFor } from '@/lib/utils/timezones'
 import { CheckCircleIcon } from '@ciphera-net/facet'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 
@@ -35,7 +36,15 @@ export default function NewSitePage() {
   const [formData, setFormData] = useState({
     name: '',
     domain: '',
+    // Filled from the device after mount (Intl on the server would prerender a
+    // different value and trip hydration). This form used to send NO timezone,
+    // so every site created here silently got the backend's UTC fallback
+    // (design 18-09-2026 §1.2). Visible and prefilled now, like onboarding.
+    timezone: '',
   })
+  useEffect(() => {
+    setFormData(f => (f.timezone ? f : { ...f, timezone: browserTimeZone() }))
+  }, [])
   const [createdSite, setCreatedSite] = useState<Site | null>(null)
   const { sites, isLoading: sitesLoading } = useSites()
   const { addSite } = useSitesCache()
@@ -71,7 +80,7 @@ export default function NewSitePage() {
           // Only a site that still exists makes this tab "not an arrival".
           createdHereRef.current = true
           setCreatedSite(site)
-          setFormData({ name: site.name, domain: site.domain })
+          setFormData(f => ({ name: site.name, domain: site.domain, timezone: site.timezone || f.timezone }))
         })
         .catch(() => {
           // Gone (deleted elsewhere, or never ours): forget it, and let the
@@ -142,7 +151,8 @@ export default function NewSitePage() {
     setLoading(true)
 
     try {
-      const site = await createSite(formData)
+      // Always send one: the backend's fallback for an omitted field is UTC.
+      const site = await createSite({ ...formData, timezone: formData.timezone || browserTimeZone() })
       toast.success('Site created successfully')
       createdHereRef.current = true
       setCreatedSite(site)
@@ -255,7 +265,7 @@ export default function NewSitePage() {
           />
         </div>
 
-        <div className="mb-6">
+        <div className="mb-4">
           <label htmlFor="domain" className="block text-sm font-medium mb-2 text-white">
             Domain
           </label>
@@ -270,6 +280,22 @@ export default function NewSitePage() {
           <p className="mt-2 text-sm text-neutral-400">
             Enter your domain without http:// or https://
           </p>
+        </div>
+
+        <div className="mb-6">
+          <label htmlFor="timezone" className="block text-sm font-medium mb-2 text-white">
+            Timezone
+          </label>
+          <Select
+            id="timezone"
+            value={formData.timezone}
+            onChange={(v) => setFormData({ ...formData, timezone: v })}
+            options={timezoneOptionsFor(formData.timezone)}
+            placeholder="Select a timezone…"
+            aria-label="Timezone"
+            className="w-full"
+          />
+          <p className="mt-2 text-xs text-neutral-500">Used to bucket stats into local days. Detected from this device.</p>
         </div>
 
         <div className="flex gap-4">
