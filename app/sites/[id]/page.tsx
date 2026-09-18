@@ -1,6 +1,7 @@
 'use client'
 
 
+import { siteDaysCaption } from '@/lib/utils/timezones'
 import { useCallback, useEffect, useState, useMemo } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import {
@@ -14,6 +15,7 @@ import { PERIOD_TO_API } from '@/lib/constants/periods'
 import { DEFAULT_GEO_DATA_LEVEL } from '@/lib/api/sites'
 import { identityWindowOf } from '@/lib/visitors/identityWindow'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
+import { previousDateRange } from '@/lib/hooks/periodUrl'
 import { resolveDashboardRange } from '@/lib/dashboard/resolveRange'
 import dynamic from 'next/dynamic'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
@@ -59,12 +61,22 @@ export default function SiteDashboardPage() {
   const params = useParams()
   const siteId = params.id as string
 
+  // Independent of the dashboard's own combined fetch ON PURPOSE: the
+  // dashboard request itself needs a resolved date range before it can fire,
+  // and the range needs the site's timezone before IT can resolve — reading
+  // the zone off `dashboard.site` would be circular. This is the same
+  // siteId-only fetch the sidebar already dedupes against.
+  const { data: siteRecord } = useSite(siteId)
+
   // Range state lives in the URL (?period=&start=&end=), the estate grammar
   // every other date-ranged page already uses (F12): a shared link carries the
   // range, back/forward works, and nothing is silently rewritten to a frozen
   // custom range on reload. The chart intervals are view state, not identity —
   // plain React state, no persistence.
-  const { period, dateRange, periodReady, setPeriod, shiftPeriod, pickerProps } = useUrlDateRange({ pageKey: 'dashboard' })
+  const { period, dateRange, periodReady, setPeriod, shiftPeriod, siteNow, pickerProps } = useUrlDateRange({
+    pageKey: 'dashboard',
+    timezone: siteRecord?.timezone,
+  })
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
 
@@ -203,32 +215,20 @@ export default function SiteDashboardPage() {
   // edit anchored to the clicked pill).
   const filterBuilder = useFilterBuilder(handleFetchSuggestions)
 
-  // Previous period date range for comparison.
-  // Returns null when the previous range would be invalid for the backend:
-  //   - current duration exceeds the backend's 366-day query cap
-  //   - previous start would fall before Pulse's data-collection floor (2020-01-01)
+  // Previous period date range for comparison — the shared, tested helper
+  // (periodUrl.ts), not ad-hoc arithmetic. It applies the exact same two
+  // rules this used to hand-roll (span > 366 days → null; previous start
+  // before Pulse's 2020-01-01 data floor → null) via LOCAL date parts, never
+  // toISOString() — a UTC round-trip shifts a day near midnight outside UTC,
+  // and resolvedDateRange is already a SITE-local "YYYY-MM-DD" pair (either
+  // the server's own echoed range, or the client range resolved against the
+  // site's wall clock), so it must be read as local parts, not re-UTC'd.
   // Hooks below gate on prevRange via empty-string fallthrough so SWR skips the fetch.
-  const prevRange = useMemo((): { start: string; end: string } | null => {
-    if (!resolvedDateRange) return null
-    const startDate = new Date(resolvedDateRange.start)
-    const endDate = new Date(resolvedDateRange.end)
-    const duration = endDate.getTime() - startDate.getTime()
-    const DAY_MS = 24 * 60 * 60 * 1000
-    const MAX_DURATION_MS = 366 * DAY_MS
-    const DATA_FLOOR = new Date('2020-01-01').getTime()
-
-    if (duration === 0) {
-      const prevEnd = new Date(startDate.getTime() - DAY_MS)
-      if (prevEnd.getTime() < DATA_FLOOR) return null
-      const d = prevEnd.toISOString().split('T')[0]
-      return { start: d, end: d }
-    }
-    if (duration > MAX_DURATION_MS) return null
-    const prevEnd = new Date(startDate.getTime() - DAY_MS)
-    const prevStart = new Date(prevEnd.getTime() - duration)
-    if (prevStart.getTime() < DATA_FLOOR) return null
-    return { start: prevStart.toISOString().split('T')[0], end: prevEnd.toISOString().split('T')[0] }
-  }, [resolvedDateRange])
+  const prevRange = useMemo(
+    (): { start: string; end: string } | null =>
+      resolvedDateRange ? previousDateRange(resolvedDateRange) : null,
+    [resolvedDateRange],
+  )
   const { data: realtimeData } = useRealtime(siteId, 15_000)
   // The previous-period comparison carries the SAME filters as the current
   // period. Omitting them compared a filtered current window against an
@@ -246,9 +246,8 @@ export default function SiteDashboardPage() {
   // it does not carry identity_window_days, and the deck rendered the
   // window-NEUTRAL visitors sentence on a site set to 7 days (measured on
   // staging, 11-09-2026). The authed site record does carry it; SWR dedupes
-  // the read with the sidebar's, and the deck says what "Unique visitors"
-  // means on THIS site.
-  const { data: siteRecord } = useSite(siteId)
+  // the read with the sidebar's (and now with the range hook's own fetch
+  // above), and the deck says what "Unique visitors" means on THIS site.
   // The four averages default to null ("not measured"), never 0 — a fabricated
   // zero is indistinguishable from a measured one (F11).
   const stats: Stats = dashboard?.stats ?? { pageviews: 0, visitors: 0, bounce_rate: null, avg_duration: null, avg_scroll_depth: null, avg_visible_duration: null }
@@ -365,6 +364,8 @@ export default function SiteDashboardPage() {
         onPeriodChange={(p) => setPeriod(p as Period)}
         onDateRangeChange={(range) => setPeriod('custom', range)}
         onShift={shiftPeriod}
+        now={siteNow}
+        daysCaption={siteDaysCaption(siteRecord?.timezone)}
         {...pickerProps}
       />
     </>

@@ -65,3 +65,18 @@ describe('DateRangePicker preset clicks', () => {
     expect(screen.getByRole('button', { name: /^last 7 days$/i })).toBeTruthy()
   })
 })
+
+describe('DateRangePicker days caption (owner pick A, 19-09-2026)', () => {
+  it('renders the caption under the calendar only while open, and nothing without one', () => {
+    const { rerender } = render(
+      <DateRangePicker period="7" dateRange={{ start: '2026-09-12', end: '2026-09-18' }} onPeriodChange={() => {}} onDateRangeChange={() => {}} daysCaption="Days follow the site's timezone · Asia/Karachi" />
+    )
+    expect(screen.queryByText(/Days follow the site's timezone/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /last 7 days/i }))
+    expect(screen.getByText("Days follow the site's timezone · Asia/Karachi")).toBeInTheDocument()
+    rerender(
+      <DateRangePicker period="7" dateRange={{ start: '2026-09-12', end: '2026-09-18' }} onPeriodChange={() => {}} onDateRangeChange={() => {}} />
+    )
+    expect(screen.queryByText(/Days follow the site's timezone/)).toBeNull()
+  })
+})

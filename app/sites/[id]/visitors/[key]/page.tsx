@@ -1,5 +1,6 @@
 'use client'
 
+import { siteDaysCaption } from '@/lib/utils/timezones'
 import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -51,7 +52,7 @@ export default function VisitorDetailPage() {
   const visitorKey = params.key as string
 
   const { data: site } = useSite(siteId)
-  const { dateRange, period, periodReady, rollingMinutes, setPeriod, shiftPeriod, pickerProps } =
+  const { dateRange, period, periodReady, rollingMinutes, setPeriod, shiftPeriod, siteNow, pickerProps } =
     useUrlDateRange({
       // The SAME pageKey as the roster: the list and the detail are one
       // instrument, so a range picked on one carries to the other (the funnels
@@ -61,6 +62,7 @@ export default function VisitorDetailPage() {
       minDate: VISITORS_MIN_DATE,
       rollingMinutes: VISITORS_ROLLING_MINUTES,
       extraPresets: VISITORS_PRESETS,
+      timezone: site?.timezone,
     })
 
   const [page, setPage] = useState(1)
@@ -253,6 +255,8 @@ export default function VisitorDetailPage() {
           onPeriodChange={(p) => setPeriod(p as never)}
           onDateRangeChange={(r) => setPeriod('custom', r)}
           onShift={shiftPeriod}
+          now={siteNow}
+          daysCaption={siteDaysCaption(siteTimezone)}
           align="right"
           {...pickerProps}
         />

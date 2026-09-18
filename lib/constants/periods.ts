@@ -17,11 +17,18 @@ export interface PeriodPreset {
   key: string
   label: string
   group: string
-  resolve: () => { start: string; end: string }
+  /**
+   * `now` defaults to the browser's `new Date()`, but DateRangePicker always
+   * passes the page's `siteNow` (from useUrlDateRange / useJourneyFilters) —
+   * see lib/utils/siteTime.ts `siteWallClockNow`. A preset that ignores the
+   * argument (e.g. CDN's UTC-anchored ranges) is declaring, on purpose, that
+   * its arithmetic does not depend on any wall clock's calendar.
+   */
+  resolve: (now?: Date) => { start: string; end: string }
 }
 
-function todayRange() {
-  const d = new Date()
+function todayRange(now: Date = new Date()) {
+  const d = now
   const s = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
   return { start: s, end: s }
 }
@@ -31,8 +38,8 @@ export const PERIOD_PRESETS: PeriodPreset[] = [
   { key: '24h', label: 'Last 24 hours', group: 'Real-time', resolve: getLast24HoursRange },
   { key: 'today', label: 'Today', group: 'Relative', resolve: todayRange },
   { key: 'yesterday', label: 'Yesterday', group: 'Relative', resolve: getYesterdayRange },
-  { key: '7', label: 'Last 7 days', group: 'Relative', resolve: () => getDateRange(7) },
-  { key: '30', label: 'Last 30 days', group: 'Relative', resolve: () => getDateRange(30) },
+  { key: '7', label: 'Last 7 days', group: 'Relative', resolve: (now) => getDateRange(7, now) },
+  { key: '30', label: 'Last 30 days', group: 'Relative', resolve: (now) => getDateRange(30, now) },
   { key: 'last-week', label: 'Last week', group: 'Previous', resolve: getLastWeekRange },
   { key: 'last-month', label: 'Last month', group: 'Previous', resolve: getLastMonthRange },
   { key: 'last-quarter', label: 'Last quarter', group: 'Previous', resolve: getLastQuarterRange },

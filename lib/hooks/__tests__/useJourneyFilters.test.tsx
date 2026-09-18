@@ -20,7 +20,14 @@ vi.mock('@/lib/utils/dateRanges', () => ({
   }),
   getThisWeekRange: () => ({ start: 'week-start', end: 'week-end' }),
   getThisMonthRange: () => ({ start: 'month-start', end: 'month-end' }),
-  formatDate: (_d: Date) => 'today',
+  // Real local-parts formatting (not a stub returning the literal "today")
+  // — shiftPeriod's shared periodUrl.shiftDateRange calls this for real
+  // date-arithmetic assertions, unlike every other resolver here, which is
+  // stubbed and never exercises the formatter.
+  formatDate: (d: Date) => {
+    const p = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+  },
 }))
 
 beforeEach(() => {
@@ -254,7 +261,10 @@ describe('useJourneyFilters', () => {
     it('remembers depth and paths across visits when the URL carries none', () => {
       window.localStorage.setItem('pulse_last_journeys:depth', '6')
       window.localStorage.setItem('pulse_last_journeys:density', '50')
-      const { result } = renderHook(() => useJourneyFilters())
+      // `ready` also requires a known timezone since 18-09-2026 — see the
+      // dedicated describe block below; a real site's zone would arrive
+      // async, but this test is about memory, not the zone gate.
+      const { result } = renderHook(() => useJourneyFilters('UTC'))
       expect(result.current.ready).toBe(true)
       expect(result.current.depth).toBe(6)
       expect(result.current.density).toBe(50)
@@ -298,5 +308,69 @@ describe('useJourneyFilters', () => {
       const { result } = renderHook(() => useJourneyFilters())
       expect(result.current.period).toBe('7')
     })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// timezone gating and siteNow (18-09-2026) — the same defect class and fix
+// as useUrlDateRange's, applied here because Journeys builds its own range
+// state instead of using that hook.
+// ---------------------------------------------------------------------------
+describe('useJourneyFilters timezone', () => {
+  it('is NOT ready while the timezone is unknown, even once memory resolves', () => {
+    const seen: boolean[] = []
+    renderHook(() => {
+      const r = useJourneyFilters()
+      seen.push(r.ready)
+      return r
+    })
+    expect(seen.every((ready) => ready === false)).toBe(true)
+  })
+
+  it('becomes ready once a real timezone is supplied', () => {
+    const { result, rerender } = renderHook(
+      ({ timezone }: { timezone?: string }) => useJourneyFilters(timezone),
+      { initialProps: { timezone: undefined as string | undefined } },
+    )
+    expect(result.current.ready).toBe(false)
+    rerender({ timezone: 'Asia/Karachi' })
+    expect(result.current.ready).toBe(true)
+  })
+
+  it('`timezone: null` (no site) is ready immediately, unlike `undefined`', () => {
+    const { result } = renderHook(() => useJourneyFilters(null))
+    expect(result.current.ready).toBe(true)
+  })
+
+  it('siteNow projects the given zone, not the runtime clock', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-18T19:30:00Z')) // 2026-09-19 00:30 in Asia/Karachi
+    const { result } = renderHook(() => useJourneyFilters('Asia/Karachi'))
+    expect(result.current.siteNow.getFullYear()).toBe(2026)
+    expect(result.current.siteNow.getMonth()).toBe(8)
+    expect(result.current.siteNow.getDate()).toBe(19)
+    expect(result.current.siteNow.getHours()).toBe(0)
+    expect(result.current.siteNow.getMinutes()).toBe(30)
+    vi.useRealTimers()
+  })
+
+  it('shiftPeriod refuses to move a range past the site\'s today', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-18T19:30:00Z')) // site is already 2026-09-19
+    mockSearchParams = new URLSearchParams('period=custom&start=2026-09-13&end=2026-09-19')
+    const { result } = renderHook(() => useJourneyFilters('Asia/Karachi'))
+    act(() => { result.current.shiftPeriod(1) })
+    // Refused — no URL write for the forward shift past the site's today.
+    expect(mockReplace).not.toHaveBeenCalled()
+    vi.useRealTimers()
+  })
+
+  it('shiftPeriod moves a range back by its own span, using the shared periodUrl helper', () => {
+    mockSearchParams = new URLSearchParams('period=custom&start=2026-01-08&end=2026-01-14')
+    const { result } = renderHook(() => useJourneyFilters('UTC'))
+    act(() => { result.current.shiftPeriod(-1) })
+    const calledWith = mockReplace.mock.calls[0][0] as string
+    expect(calledWith).toContain('start=2026-01-01')
+    expect(calledWith).toContain('end=2026-01-07')
   })
 })

@@ -1,5 +1,6 @@
 'use client'
 
+import { siteDaysCaption } from '@/lib/utils/timezones'
 import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -66,12 +67,18 @@ export default function VisitorsPage() {
   const siteId = params.id as string
 
   const { data: site, mutate: refreshSite } = useSite(siteId)
-  const { period, dateRange, periodReady, rollingMinutes, setPeriod, shiftPeriod, pickerProps } =
+  const { period, dateRange, periodReady, rollingMinutes, setPeriod, shiftPeriod, siteNow, pickerProps } =
     useUrlDateRange({
       pageKey: 'visitors',
       minDate: VISITORS_MIN_DATE,
       rollingMinutes: VISITORS_ROLLING_MINUTES,
       extraPresets: VISITORS_PRESETS,
+      // NOT the `SITE_TIMEZONE_FALLBACK` used below for display — that
+      // fallback exists so a rendered page never shows a blank zone; here,
+      // `undefined` while `site` is loading is exactly what must gate
+      // periodReady, or a bare-URL mount would resolve "today" etc. in UTC
+      // for the one render before the real zone arrives.
+      timezone: site?.timezone,
     })
 
   const [page, setPage] = useState(1)
@@ -220,6 +227,8 @@ export default function VisitorsPage() {
         onPeriodChange={(p) => setPeriod(p as never)}
         onDateRangeChange={(r) => setPeriod('custom', r)}
         onShift={shiftPeriod}
+        now={siteNow}
+        daysCaption={siteDaysCaption(siteTimezone)}
         pickerProps={pickerProps}
         identityWindow={identityWindow}
       />
@@ -368,6 +377,8 @@ function PageHeader({
   onPeriodChange,
   onDateRangeChange,
   onShift,
+  now,
+  daysCaption,
   pickerProps,
   identityWindow,
 }: {
@@ -378,6 +389,10 @@ function PageHeader({
   onPeriodChange?: (p: string) => void
   onDateRangeChange?: (r: { start: string; end: string }) => void
   onShift?: (d: -1 | 1) => void
+  /** The site's wall clock (useUrlDateRange's `siteNow`) — the picker's
+   *  future-day cutoff and initial month. */
+  now?: Date
+  daysCaption?: string
   pickerProps?: Record<string, unknown>
   /** The site's identity window; undefined while unknown. */
   identityWindow?: IdentityWindowDays
@@ -405,6 +420,8 @@ function PageHeader({
             onPeriodChange={onPeriodChange as (p: string) => void}
             onDateRangeChange={onDateRangeChange as (r: { start: string; end: string }) => void}
             onShift={onShift}
+            now={now}
+            daysCaption={daysCaption}
             align="right"
             {...pickerProps}
           />

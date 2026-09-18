@@ -1,5 +1,6 @@
 'use client'
 
+import { siteDaysCaption } from '@/lib/utils/timezones'
 import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
@@ -62,9 +63,9 @@ const cascade = (delay: number) => ({
 const UPTIME_PICKER_PRESETS: { group: string; presets: PeriodPreset[] } = {
   group: 'Uptime ranges',
   presets: [
-    { key: '3m', label: 'Last 3 months', group: 'Uptime ranges', resolve: () => getDateRange(90) },
-    { key: '6m', label: 'Last 6 months', group: 'Uptime ranges', resolve: () => getDateRange(180) },
-    { key: '12m', label: 'Last 12 months', group: 'Uptime ranges', resolve: () => getDateRange(365) },
+    { key: '3m', label: 'Last 3 months', group: 'Uptime ranges', resolve: (now) => getDateRange(90, now) },
+    { key: '6m', label: 'Last 6 months', group: 'Uptime ranges', resolve: (now) => getDateRange(180, now) },
+    { key: '12m', label: 'Last 12 months', group: 'Uptime ranges', resolve: (now) => getDateRange(365, now) },
   ],
 }
 
@@ -158,12 +159,12 @@ export default function UptimePage() {
   const params = useParams()
   const siteId = params.id as string
 
-  const { period, dateRange, periodReady, setPeriod, shiftPeriod, pickerProps } = useUrlDateRange({
+  const { data: site, error: siteError, mutate: mutateSite } = useSite(siteId)
+  const { period, dateRange, periodReady, setPeriod, shiftPeriod, siteNow, pickerProps } = useUrlDateRange({
     pageKey: 'uptime',
     extraPresets: UPTIME_PICKER_PRESETS,
+    timezone: site?.timezone,
   })
-
-  const { data: site, error: siteError, mutate: mutateSite } = useSite(siteId)
   // Incident starts and check stamps are instants: they follow the person's
   // display preference. UptimePanel's days and buckets stay the site's calendar.
   const displayZone = useDisplayZone(site?.timezone)
@@ -296,6 +297,8 @@ export default function UptimePage() {
             onPeriodChange={(p) => setPeriod(p as Period)}
             onDateRangeChange={(range) => setPeriod('custom', range)}
             onShift={shiftPeriod}
+            now={siteNow}
+            daysCaption={siteDaysCaption(site?.timezone)}
             {...pickerProps}
           />
           {canEdit && (

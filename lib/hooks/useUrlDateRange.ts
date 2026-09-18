@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import type { PeriodPreset } from '@/lib/constants/periods'
+import { siteWallClockNow } from '@/lib/utils/siteTime'
 import {
   DEFAULT_PERIOD,
   isUrlPeriod,
@@ -112,6 +113,20 @@ export interface PageRangeOptions {
    * page-local range hook, which is the useJourneyFilters anti-pattern.
    */
   rollingMinutes?: Partial<Record<Period, number>>
+  /**
+   * The site's IANA timezone — every relative preset ("today", "last 7
+   * days", "this month"…) resolves against ITS wall clock
+   * (`siteWallClockNow`), never the browser's, or a viewer whose calendar
+   * day differs from the site's asks the API for the wrong day (the API
+   * reads `start_date`/`end_date` as SITE-local calendar days).
+   *
+   * `undefined` means "not known yet" (the page's site hasn't loaded) —
+   * `periodReady` stays false and nothing resolves against the browser
+   * clock in the gap. Pass `null` only for a page that genuinely has no
+   * site concept; that resolves calendar presets in UTC, which is the one
+   * timezone that is nobody's browser by construction.
+   */
+  timezone?: string | null
 }
 
 function allowedPeriodsFor(options: PageRangeOptions): ReadonlySet<Period> {
@@ -205,6 +220,15 @@ export interface UrlDateRange {
   setPeriod: (p: Period, customRange?: { start: string; end: string }) => void
   shiftPeriod: (direction: -1 | 1) => void
   /**
+   * The site's wall clock, as a Date — the SAME value every resolver in this
+   * hook used to build `dateRange`. Exposed so a page can hand it straight to
+   * DateRangePicker's `now` prop (the future-day cutoff, the calendar's
+   * initial month) without recomputing `siteWallClockNow` a second time. Read
+   * only through LOCAL getters (getFullYear, getDate, getDay…) — see
+   * lib/utils/siteTime.ts.
+   */
+  siteNow: Date
+  /**
    * The picker's share of the page declaration — spread into DateRangePicker
    * so the rendered menu is exactly the vocabulary this hook validates
    * against. Passing the picker anything else recreates the drift this
@@ -218,10 +242,25 @@ export interface UrlDateRange {
 }
 
 export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
-  const { pageKey, extraPresets, excludePresets, minDate, rollingMinutes } = options
+  const { pageKey, extraPresets, excludePresets, minDate, rollingMinutes, timezone } = options
   const maxDays = options.maxDays ?? ANALYTICS_MAX_DAYS
   const searchParams = useSearchParams()
   const write = useQueryParamsWriter()
+
+  // The site's wall clock, rebuilt once per MINUTE rather than on every
+  // render — cheap enough to be a plain call per render, but bucketing to
+  // the minute means a long-lived mount still rolls "today" over at midnight
+  // without needing a ticking timer. `timezone` undefined means "not known
+  // yet"; siteWallClockNow degrades that to UTC exactly like every other
+  // unknown zone in this codebase (safeTimeZone) — periodReady below is what
+  // actually stops that UTC value reaching a fetch before the real zone
+  // arrives.
+  const minuteBucket = Math.floor(Date.now() / 60_000)
+  const siteNow = useMemo(
+    () => siteWallClockNow(timezone),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [timezone, minuteBucket],
+  )
 
   const allowed = useMemo(
     () => allowedPeriodsFor({ pageKey, extraPresets, excludePresets }),
@@ -263,11 +302,6 @@ export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageKey, maxDays, allowedKey])
 
-  // An explicit ?period= is authoritative immediately — there is nothing to
-  // wait for, so shared links and in-app navigations that carry the param
-  // never pay for this gate.
-  const periodReady = urlHasPeriod || memoryRead
-
   // * period=custom without a valid start/end pair normalizes to the default
   const parsedUrlPeriod: Period =
     rawPeriod === 'custom' && (!isValidDateString(rawStart) || !isValidDateString(rawEnd))
@@ -282,11 +316,26 @@ export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
     : DEFAULT_PERIOD
   const period: Period = urlHasPeriod ? urlPeriod : (remembered ?? urlPeriod)
 
+  const activeRollingMinutes = rollingMinutes?.[period] ?? null
+
+  // An explicit ?period= is authoritative immediately — there is nothing to
+  // wait for, so shared links and in-app navigations that carry the param
+  // never pay for this gate.
+  //
+  // 🔴 A ROLLING window is exempt from the second half: `minutes=` never
+  // touches `dateRange`, so a page whose ACTIVE period is one of these never
+  // needs the site's zone to be ready. Every ordinary date span does — the
+  // 20-08-2026 incident's whole point was that a placeholder RANGE must not
+  // reach the network, and a range resolved against an unknown zone is just
+  // as much a placeholder as one resolved before memory was read.
+  const timezoneKnown = timezone !== undefined
+  const periodReady = (urlHasPeriod || memoryRead) && (activeRollingMinutes != null || timezoneKnown)
+
   const dateRange = useMemo(() => {
     const resolved =
       period === 'custom' && rawStart && rawEnd
         ? { start: rawStart, end: rawEnd }
-        : periodToDateRange(period)
+        : periodToDateRange(period, siteNow)
     if (!minDate) return resolved
     // Clamp, never reject — string compare is correct for YYYY-MM-DD. A range
     // that ends before the floor collapses to the floor itself, so the page
@@ -295,9 +344,7 @@ export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
     const start = resolved.start < minDate ? minDate : resolved.start
     const end = resolved.end < minDate ? minDate : resolved.end
     return start === resolved.start && end === resolved.end ? resolved : { start, end }
-  }, [period, rawStart, rawEnd, minDate])
-
-  const activeRollingMinutes = rollingMinutes?.[period] ?? null
+  }, [period, rawStart, rawEnd, minDate, siteNow])
 
   const updateUrl = useCallback(
     (updates: Record<string, string | null>) => {
@@ -335,10 +382,10 @@ export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
 
   const shiftPeriod = useCallback(
     (direction: -1 | 1) => {
-      const next = shiftDateRange(dateRange, direction)
+      const next = shiftDateRange(dateRange, direction, siteNow)
       if (next) setPeriod('custom', next)
     },
-    [dateRange, setPeriod],
+    [dateRange, setPeriod, siteNow],
   )
 
   const pickerProps = useMemo(
@@ -353,6 +400,7 @@ export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
     rollingMinutes: activeRollingMinutes,
     setPeriod,
     shiftPeriod,
+    siteNow,
     pickerProps,
   }
 }
