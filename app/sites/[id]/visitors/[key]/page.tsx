@@ -1,5 +1,6 @@
 'use client'
 
+import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
@@ -449,6 +450,10 @@ function VisitRowItem({
   open: boolean
   onToggle: () => void
 }) {
+  // This stamp is an instant: it follows the person's display preference
+  // (Account › Profile › Show times in). The day-shaped data around it keeps
+  // siteTimezone.
+  const displayZone = useDisplayZone(siteTimezone)
   return (
     <div className="border-b border-border/60 last:border-b-0">
       <button
@@ -469,7 +474,7 @@ function VisitRowItem({
         {visit.events > 0 && <span className="sr-only">an event fired on this visit. </span>}
         <span className="min-w-0 flex-1 truncate text-sm text-neutral-300">
           <span className="text-neutral-500">
-            {formatVisitStart(visit.started_at, siteTimezone)}
+            {formatVisitStart(visit.started_at, displayZone.zone)}
           </span>{' '}
           <span className="text-neutral-700">·</span> {visit.entry_path ?? EM_DASH}
           {visit.exit_path && visit.exit_path !== visit.entry_path && (

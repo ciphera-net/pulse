@@ -13,6 +13,7 @@ import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/settings/panels'
 import { DURATION_BASE, DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { formatDate } from '@/lib/utils/formatDate'
+import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 
 interface Props {
   orgId: string
@@ -78,6 +79,7 @@ function CopyLinkButton({ url }: { url?: string }) {
 export default function InviteLinksSection({ orgId, links, roles, onRevoked }: Props) {
   const reducedMotion = useReducedMotion()
   const canManage = useIsAdminOrOwner()
+  const { zone } = useDisplayZone()
   const [confirmRevoke, setConfirmRevoke] = useState<InviteLink | null>(null)
 
   const handleRevoke = (link: InviteLink) => {
@@ -145,7 +147,7 @@ export default function InviteLinksSection({ orgId, links, roles, onRevoked }: P
                     label={<span className="truncate">{link.name}</span>}
                     caption={
                       <span className="tabular-nums">
-                        {isDimmed ? usageLabel : `${usageLabel} · expires ${formatDate(expiresAt)}`}
+                        {isDimmed ? usageLabel : `${usageLabel} · expires ${formatDate(expiresAt, zone)}`}
                       </span>
                     }
                     control={

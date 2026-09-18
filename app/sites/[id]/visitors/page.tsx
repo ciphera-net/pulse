@@ -1,5 +1,6 @@
 'use client'
 
+import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
@@ -468,6 +469,10 @@ function VisitorRowLink({
   siteTimezone: string
   onHighlight: (key: string | null) => void
 }) {
+  // This stamp is an instant: it follows the person's display preference
+  // (Account › Profile › Show times in). The day-shaped data around it keeps
+  // siteTimezone.
+  const displayZone = useDisplayZone(siteTimezone)
   const name = visitorPseudonym(visitor.visitor_key)
   return (
     <Link
@@ -561,8 +566,8 @@ function VisitorRowLink({
         </span>
       </span>
       <span className="w-24 shrink-0 text-right text-sm tabular-nums text-neutral-500">
-        <span aria-hidden="true">{formatLastSeen(visitor.last_seen, siteTimezone)}</span>
-        <span className="sr-only">last seen {formatLastSeen(visitor.last_seen, siteTimezone)}</span>
+        <span aria-hidden="true">{formatLastSeen(visitor.last_seen, displayZone.zone)}</span>
+        <span className="sr-only">last seen {formatLastSeen(visitor.last_seen, displayZone.zone)}</span>
       </span>
     </Link>
   )

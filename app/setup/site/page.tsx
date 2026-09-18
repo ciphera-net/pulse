@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSetup } from '@/lib/setup/context'
 import { useAuth } from '@/lib/auth/context'
@@ -10,7 +10,8 @@ import { createSite, detectFramework, type Site } from '@/lib/api/sites'
 import { useSites, useSitesCache } from '@/lib/swr/sites'
 import { trackWelcomeSiteAdded } from '@/lib/welcomeAnalytics'
 import { siteCreateError } from '@/lib/api/siteErrors'
-import { Button, Input, Spinner } from '@ciphera-net/facet'
+import { Button, Input, Select, Spinner } from '@ciphera-net/facet'
+import { browserTimeZone, timezoneOptionsFor } from '@/lib/utils/timezones'
 import { displayDomain } from '@/lib/utils/displayDomain'
 import { SETUP_COPY } from '@/lib/setup/copy'
 
@@ -55,6 +56,12 @@ export default function SetupSitePage() {
   const { addSite } = useSitesCache()
 
   const [siteDomain, setSiteDomain] = useState('')
+  // Prefilled from the device AFTER mount (Intl on the server would prerender
+  // a different value and trip hydration). Visible, so a person creating their
+  // first site from a VPN exit node can correct it before a single day is
+  // bucketed — changing it later is an identity event (design 18-09-2026 §3).
+  const [timezone, setTimezone] = useState('')
+  useEffect(() => { setTimezone(tz => tz || browserTimeZone()) }, [])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [addingAnother, setAddingAnother] = useState(false)
@@ -67,8 +74,8 @@ export default function SetupSitePage() {
     setError('')
 
     try {
-      const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone
-      const site = await createSite({ name: domain, domain, timezone: browserTz })
+      // Always send one: the backend's fallback for an omitted field is UTC.
+      const site = await createSite({ name: domain, domain, timezone: timezone || browserTimeZone() })
       setSite(site)
       completeStep('site')
       trackWelcomeSiteAdded()
@@ -196,6 +203,35 @@ export default function SetupSitePage() {
             autoFocus
             required
           />
+        </div>
+
+        <div>
+          <label htmlFor="site-timezone" className="block text-sm font-medium text-neutral-300 mb-1.5">
+            Timezone
+          </label>
+          {/* 🔴 MOUNT THE SELECT ONLY ONCE THE ZONE IS KNOWN (key flips once).
+                Radix Select renders a hidden native <select> whenever its trigger
+                sits inside a <form>, and when the controlled value changes while
+                the list is CLOSED it writes that value into the native element
+                and fires a `change` event. Closed, the native element holds only
+                the placeholder option, so the write yields "" and the change
+                bounces back through onValueChange("") — the detected zone was
+                reset 3 ms after the mount effect set it (measured on staging,
+                18-09-2026, @radix-ui/react-select 2.2.6). A value present at
+                MOUNT never triggers that path, so the control is remounted the
+                one time the zone arrives. Site › General is unaffected: no
+                <form> around it, and its value is loaded before it renders. */}
+          <Select
+            key={timezone ? 'zone-known' : 'zone-pending'}
+            id="site-timezone"
+            value={timezone}
+            onChange={setTimezone}
+            options={timezoneOptionsFor(timezone)}
+            placeholder="Select a timezone…"
+            aria-label="Timezone"
+            className="w-full"
+          />
+          <p className="mt-1.5 text-xs text-neutral-500">Used to bucket stats into local days. Detected from this device.</p>
         </div>
 
         {error && (

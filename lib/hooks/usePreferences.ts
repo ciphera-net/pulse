@@ -19,9 +19,24 @@ import { logger } from '@/lib/utils/logger'
  * once per session through this hook's shared SWR key.
  */
 
+/**
+ * How this person wants INSTANTS rendered (migration 188, design 18-09-2026):
+ * each site's own timezone (the default, in step with its daily bars), the
+ * browser's zone at render time, or UTC. A mode, never a stored IANA zone.
+ */
+export type TimeDisplay = 'site' | 'local' | 'utc'
+export const TIME_DISPLAY_MODES: readonly TimeDisplay[] = ['site', 'local', 'utc'] as const
+export const DEFAULT_TIME_DISPLAY: TimeDisplay = 'site'
+
+function isTimeDisplay(v: unknown): v is TimeDisplay {
+  return typeof v === 'string' && (TIME_DISPLAY_MODES as readonly string[]).includes(v)
+}
+
 export interface UserPreferences {
   tour_completed_at: string | null
   recovery_prompt_dismissed_at: string | null
+  /** Optional on the wire: a backend that predates migration 188 omits it. */
+  time_display?: TimeDisplay
   updated_at?: string | null
 }
 
@@ -64,6 +79,12 @@ export function usePreferences() {
   const tourCompleted: StampState = stateOf(data?.tour_completed_at, loaded)
   const recoveryPromptDismissed: StampState = stateOf(data?.recovery_prompt_dismissed_at, loaded)
 
+  // Unlike the stamps this has NO 'unknown' state: while the fetch is in
+  // flight, rendering in site time is the default and therefore never wrong,
+  // only not yet personalised. An unrecognised value (a newer backend, a
+  // corrupted row) also reads as the default rather than breaking every stamp.
+  const timeDisplay: TimeDisplay = isTimeDisplay(data?.time_display) ? data.time_display : DEFAULT_TIME_DISPLAY
+
   /**
    * Stamp one or more preferences. Optimistic: the caller's UI must not wait on
    * a network round trip to close a dialog or end an overlay.
@@ -79,6 +100,7 @@ export function usePreferences() {
       const optimistic: UserPreferences = {
         tour_completed_at: data?.tour_completed_at ?? null,
         recovery_prompt_dismissed_at: data?.recovery_prompt_dismissed_at ?? null,
+        time_display: data?.time_display,
         ...patch,
       }
       void mutate(optimistic, false)
@@ -97,5 +119,31 @@ export function usePreferences() {
     [userId, data, mutate]
   )
 
-  return { preferences: data, tourCompleted, recoveryPromptDismissed, stamp, mutate }
+  /**
+   * Change the display mode. Optimistic like `stamp`, and the server MERGES, so
+   * this never touches a stamp. Returns false on failure so the control can
+   * say so; the optimistic value is rolled back to the server's truth.
+   */
+  const setTimeDisplay = useCallback(
+    async (mode: TimeDisplay): Promise<boolean> => {
+      if (!userId) return false
+      const previous = data
+      void mutate({ ...(data ?? { tour_completed_at: null, recovery_prompt_dismissed_at: null }), time_display: mode }, false)
+      try {
+        const saved = await apiRequest<UserPreferences>('/me/preferences', {
+          method: 'PUT',
+          body: JSON.stringify({ time_display: mode }),
+        })
+        void mutate(saved, false)
+        return true
+      } catch (err) {
+        logger.error('Could not save the time display preference', err)
+        void mutate(previous, false)
+        return false
+      }
+    },
+    [userId, data, mutate]
+  )
+
+  return { preferences: data, loaded, tourCompleted, recoveryPromptDismissed, timeDisplay, stamp, setTimeDisplay, mutate }
 }

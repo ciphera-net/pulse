@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { Button, Input, toast, getAuthErrorMessage } from '@ciphera-net/facet'
+import { Button, Input, SegmentedControl, toast, getAuthErrorMessage } from '@ciphera-net/facet'
+import { usePreferences, type TimeDisplay } from '@/lib/hooks/usePreferences'
 import { useAuth } from '@/lib/auth/context'
 import {
   deleteAccount,
@@ -26,6 +27,14 @@ import { openVaultWithKey, saveDisplayName } from '@/lib/auth/vault-restore'
 import { performSessionOpaqueReauth } from '@/lib/auth/tessera/opaque-reauth'
 import { performEmailChangeRequest } from '@/lib/auth/tessera/email-change'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
+
+// Segment labels decided by the owner 18-09-2026 ("Site time" was rejected as
+// not understandable). Values are the wire modes (migration 188).
+const TIME_DISPLAY_OPTIONS: { value: TimeDisplay; label: string }[] = [
+  { value: 'site', label: "Site's timezone" },
+  { value: 'local', label: 'My timezone' },
+  { value: 'utc', label: 'UTC' },
+]
 
 /**
  * Name the actual failure of an unlock attempt.
@@ -182,6 +191,7 @@ function readStatus(err: unknown): number | null {
 }
 
 export default function AccountProfileTab() {
+  const { timeDisplay, setTimeDisplay, loaded: preferencesLoaded } = usePreferences()
   const { user, refresh, logout } = useAuth()
   const [displayName, setDisplayName] = useState('')
   // Read-unlock: the name/email live only in the encrypted vault, opened by an
@@ -1216,6 +1226,30 @@ export default function AccountProfileTab() {
             />
           </div>
         )}
+      </SettingsPanel>
+
+      {/* Display — how INSTANTS render for this person. Control B + wording
+          from the 18-09-2026 options rounds (design doc §7, §7a). Daily
+          totals never follow this; the caption says so in the person's words. */}
+      <SettingsPanel title="Display" description="How Pulse renders times for you.">
+        <PanelRows>
+          <PanelRow
+            label="Show times in"
+            caption="Each site sets its own timezone under Site › General. Daily totals always use it; this changes only how times are shown to you."
+          >
+            <SegmentedControl
+              aria-label="Show times in"
+              value={timeDisplay}
+              disabled={!preferencesLoaded}
+              onChange={(v) => {
+                void setTimeDisplay(v as TimeDisplay).then((ok) => {
+                  if (!ok) toast.error("Couldn't save how times are shown. Nothing changed.")
+                })
+              }}
+              options={TIME_DISPLAY_OPTIONS}
+            />
+          </PanelRow>
+        </PanelRows>
       </SettingsPanel>
 
       {/* Danger zone. Trigger row via the shared DangerZone API. */}
