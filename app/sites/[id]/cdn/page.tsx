@@ -26,9 +26,17 @@ export default function CDNPage() {
   const siteId = params.id as string
   const canManageIntegrations = useCan('integrations.manage')
 
-  const { period, dateRange, periodReady, setPeriod, shiftPeriod, pickerProps } = useUrlDateRange({
+  const { data: site } = useSite(siteId)
+  // `timezone` only gates readiness here — CDN's own fetch re-anchors to REAL
+  // UTC via presetUtcRange below regardless of what dateRange resolves to,
+  // since bunny_data days are UTC days, not site-local ones. But the hook's
+  // readiness contract is per-page, not per-preset: withholding it until the
+  // site is known keeps this page consistent with every other date-ranged
+  // one, and costs nothing since useSite is already an independent fetch.
+  const { period, dateRange, periodReady, setPeriod, shiftPeriod, siteNow, pickerProps } = useUrlDateRange({
     pageKey: 'cdn',
     extraPresets: CDN_PICKER_PRESETS,
+    timezone: site?.timezone,
   })
   // * bunny_data days are UTC days (Bunny's chart convention, verified live).
   // * Preset windows anchor to the current UTC day — west of UTC, a local
@@ -40,7 +48,6 @@ export default function CDNPage() {
 
   const { data: bunnyStatus, error: bunnyStatusError, mutate: retryBunnyStatus } = useBunnyStatus(siteId)
   const connected = !!bunnyStatus?.connected
-  const { data: site } = useSite(siteId)
   const {
     data: overview,
     isLoading: overviewLoading,
@@ -158,6 +165,7 @@ export default function CDNPage() {
             onDateRangeChange={(range) => setPeriod('custom', range)}
             onShift={shiftPeriod}
             align="right"
+            now={siteNow}
             {...pickerProps}
           />
         </div>

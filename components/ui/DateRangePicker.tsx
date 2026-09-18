@@ -44,6 +44,19 @@ interface DateRangePickerProps {
   // * pick a range the page can only answer emptily or, worse, answer with
   // * per-day keys wearing per-month labels.
   minDate?: string
+  /**
+   * The SITE's wall clock (`useUrlDateRange`'s `siteNow`, or the browser
+   * clock for a caller with no site concept — e.g. the share/public
+   * dashboard before its payload has arrived). Drives the future-day
+   * cutoff and the calendar's initial month — a viewer whose calendar day
+   * differs from the site's must not be shown the WRONG days as "the
+   * future" or default to the wrong month on open. Every preset click also
+   * resolves against this instant, so a preset picked here matches what
+   * useUrlDateRange itself would resolve. Defaults to `new Date()` (the
+   * browser clock) only so a caller that has not been wired yet degrades
+   * to the pre-fix behaviour rather than failing outright.
+   */
+  now?: Date
 }
 
 function formatRangeDisplay(start: string, end: string): string {
@@ -66,7 +79,7 @@ function formatYMD(y: number, m: number, d: number): string {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 }
 
-function getDaysForMonth(year: number, month: number) {
+function getDaysForMonth(year: number, month: number, todayStr: string) {
   const firstDay = new Date(year, month, 1)
   let startDay = firstDay.getDay() - 1
   if (startDay < 0) startDay = 6
@@ -81,8 +94,6 @@ function getDaysForMonth(year: number, month: number) {
     days.push({ date: formatYMD(y, m, d), day: d, isCurrentMonth: false, isFuture: false })
   }
 
-  const today = new Date()
-  const todayStr = formatYMD(today.getFullYear(), today.getMonth(), today.getDate())
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr = formatYMD(year, month, d)
     days.push({ date: dateStr, day: d, isCurrentMonth: true, isFuture: dateStr > todayStr })
@@ -113,6 +124,7 @@ export default function DateRangePicker({
   excludePresets,
   presetsOnly = false,
   minDate,
+  now: nowProp,
 }: DateRangePickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -126,8 +138,11 @@ export default function DateRangePicker({
   const [rangeStart, setRangeStart] = useState<string | null>(null)
   const [hoverDate, setHoverDate] = useState<string | null>(null)
 
-  const today = new Date()
-  const todayStr = formatYMD(today.getFullYear(), today.getMonth(), today.getDate())
+  // The caller's wall clock (the SITE's, from useUrlDateRange's `siteNow`) —
+  // never recomputed here, or the future-day cutoff would silently fall back
+  // to the browser's clock for exactly the pages this fix exists to correct.
+  const now = nowProp ?? new Date()
+  const todayStr = formatYMD(now.getFullYear(), now.getMonth(), now.getDate())
 
   const updatePosition = useCallback(() => {
     if (!triggerRef.current) return
@@ -199,7 +214,7 @@ export default function DateRangePicker({
   function handlePresetClick(key: string) {
     const preset = resolvePreset(key)
     if (!preset) return
-    const range = preset.resolve()
+    const range = preset.resolve(now)
     setRangeStart(null)
     const d = new Date(range.start + 'T00:00:00')
     setViewMonth({ year: d.getFullYear(), month: d.getMonth() })
@@ -264,14 +279,14 @@ export default function DateRangePicker({
     return 'text-foreground hover:bg-accent'
   }
 
-  const days = getDaysForMonth(viewMonth.year, viewMonth.month)
+  const days = getDaysForMonth(viewMonth.year, viewMonth.month, todayStr)
 
   const displayLabel = period !== 'custom'
     ? (resolvePreset(period)?.label ?? 'Custom')
     : formatRangeDisplay(dateRange.start, dateRange.end)
 
   const endDate = new Date(dateRange.end + 'T00:00:00')
-  const isForwardDisabled = endDate >= today
+  const isForwardDisabled = endDate >= now
 
   const dropdown = (
     <AnimatePresence>

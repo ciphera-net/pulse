@@ -149,3 +149,26 @@ export function shiftDayKey(dateStr: string, days: number): string {
   const d = new Date(Date.parse(dateStr + 'T00:00:00Z') + days * 86_400_000)
   return d.toISOString().slice(0, 10)
 }
+
+// ─── Calendar-preset resolution (18-09-2026) ───────────────────────────────
+// Every client-side date-RANGE preset ("today", "last 7 days", "this month"…)
+// is built from `new Date()` via LOCAL getters/setters (formatDate, setDate,
+// getDay…) — the same device the estate already uses for machine date
+// strings. Run against the BROWSER's `new Date()`, that arithmetic answers
+// the viewer's calendar day, not the site's, and the mismatch is exactly the
+// bug this function exists to close.
+
+/**
+ * A Date whose LOCAL y/m/d/h/m equal the site's wall clock right now, so the
+ * existing local-getter arithmetic (formatDate, setDate, getDay…) yields the
+ * site's calendar days. It is a wall-clock STAND-IN, never a real instant —
+ * its UTC getters and its raw `.getTime()` are meaningless; only code that
+ * reads it back through LOCAL getters/setters gets the right answer.
+ *
+ * `at` is the real instant to project (defaults to `new Date()`, i.e. now) —
+ * exposed so tests can pin it without faking the system clock.
+ */
+export function siteWallClockNow(tz: string | null | undefined, at: Date = new Date()): Date {
+  const p = zoneParts(at, tz)
+  return new Date(p.year, p.month - 1, p.day, p.hour, p.minute)
+}

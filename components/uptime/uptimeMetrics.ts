@@ -98,6 +98,16 @@ export function seriesUptimePct(series: UptimePoint[]): number | null {
 // * The test for "trailing" is the range's own end: a preset that ends on the
 // * VIEWER's today is a trailing window and re-anchors; anything ending
 // * earlier is a closed period and is returned untouched.
+// *
+// * 🔑 18-09-2026: `dateRange` now arrives SITE-anchored already —
+// * useUrlDateRange resolves every preset against siteWallClockNow(tz), not
+// * the browser clock — so `dateRange.end` equals the site's today, not the
+// * viewer's. Comparing it here against `now`'s (real, browser-instant)
+// * calendar day makes this a no-op for a viewer whose calendar day already
+// * disagrees with the site's — which is the point: there is nothing left to
+// * re-anchor. This function is kept rather than deleted because it is still
+// * a harmless idempotent pass-through and it is what a genuinely custom
+// * range relies on staying untouched.
 export function presetZoneRange(
   dateRange: { start: string; end: string },
   tz: string | null | undefined,
@@ -121,6 +131,13 @@ export function presetZoneRange(
 // * presetZoneRange above. The mechanism note survives in that function's
 // * comment; the review finding it fixed is 13-08-2026's vanishing newest
 // * day, west of the anchor zone.
+// *
+// * 🔑 18-09-2026: still matters, unlike its sibling above — Bunny's UTC-day
+// * data has no relationship to the SITE's timezone at all, so re-deriving a
+// * genuine UTC "now" here (via getUTCFullYear/etc, which are timezone-
+// * invariant) is correct regardless of what `dateRange` arrives anchored to.
+// * `now` here is a real instant, never a site wall-clock stand-in — do not
+// * feed it a `siteWallClockNow(...)` value.
 export function presetUtcRange(dateRange: { start: string; end: string }, now = new Date()): { start: string; end: string } {
   const spanDays = Math.max(
     0,

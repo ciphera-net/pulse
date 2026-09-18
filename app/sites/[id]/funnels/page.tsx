@@ -57,10 +57,11 @@ export default function FunnelsPage() {
 
   const { data: site } = useSite(siteId)
   const { data: funnels, error: funnelsError, isLoading, mutate } = useFunnels(siteId)
-  const { period, dateRange, periodReady, setPeriod, shiftPeriod, pickerProps } = useUrlDateRange({
+  const { period, dateRange, periodReady, setPeriod, shiftPeriod, siteNow, pickerProps } = useUrlDateRange({
     // Shared with the funnel detail page — one instrument, one range memory.
     pageKey: 'funnels',
     excludePresets: FUNNEL_EXCLUDED_PRESETS,
+    timezone: site?.timezone,
   })
   // Fetch with nothing until the remembered preset is read — otherwise every
   // bare-URL mount spends a 30-day request on the placeholder period and can
@@ -138,6 +139,7 @@ export default function FunnelsPage() {
             onPeriodChange={(p) => setPeriod(p as Period)}
             onDateRangeChange={(range) => setPeriod('custom', range)}
             onShift={shiftPeriod}
+            now={siteNow}
             // * Menu and validation both come from the page declaration on
             // * the hook (FUNNEL_EXCLUDED_PRESETS) — one source, no drift.
             {...pickerProps}

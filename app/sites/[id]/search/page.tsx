@@ -54,13 +54,13 @@ const GSC_PICKER_PRESETS: { group: string; presets: PeriodPreset[]; exclusive: b
   group: 'Search ranges',
   exclusive: true,
   presets: [
-    { key: '7', label: 'Last 7 days', group: 'Search ranges', resolve: () => getDateRange(7) },
-    { key: '28', label: 'Last 28 days', group: 'Search ranges', resolve: () => getDateRange(28) },
-    { key: '30', label: 'Last 30 days', group: 'Search ranges', resolve: () => getDateRange(30) },
-    { key: '3m', label: 'Last 3 months', group: 'Search ranges', resolve: () => getDateRange(90) },
-    { key: '6m', label: 'Last 6 months', group: 'Search ranges', resolve: () => getDateRange(180) },
-    { key: '12m', label: 'Last 12 months', group: 'Search ranges', resolve: () => getDateRange(365) },
-    { key: '16m', label: 'Last 16 months', group: 'Search ranges', resolve: () => getDateRange(480) },
+    { key: '7', label: 'Last 7 days', group: 'Search ranges', resolve: (now) => getDateRange(7, now) },
+    { key: '28', label: 'Last 28 days', group: 'Search ranges', resolve: (now) => getDateRange(28, now) },
+    { key: '30', label: 'Last 30 days', group: 'Search ranges', resolve: (now) => getDateRange(30, now) },
+    { key: '3m', label: 'Last 3 months', group: 'Search ranges', resolve: (now) => getDateRange(90, now) },
+    { key: '6m', label: 'Last 6 months', group: 'Search ranges', resolve: (now) => getDateRange(180, now) },
+    { key: '12m', label: 'Last 12 months', group: 'Search ranges', resolve: (now) => getDateRange(365, now) },
+    { key: '16m', label: 'Last 16 months', group: 'Search ranges', resolve: (now) => getDateRange(480, now) },
   ],
 }
 
@@ -90,12 +90,14 @@ export default function SearchConsolePage() {
   const write = useQueryParamsWriter()
   const canManageIntegrations = useCan('integrations.manage')
 
+  const { data: site } = useSite(siteId)
   // Search Console retains ~480 days and its API accepts them, so this page
   // opts into the wider ceiling; every analytics page keeps the 366-day one.
-  const { period, dateRange, periodReady, setPeriod, shiftPeriod, pickerProps } = useUrlDateRange({
+  const { period, dateRange, periodReady, setPeriod, shiftPeriod, siteNow, pickerProps } = useUrlDateRange({
     pageKey: 'search',
     maxDays: SEARCH_CONSOLE_MAX_DAYS,
     extraPresets: GSC_PICKER_PRESETS,
+    timezone: site?.timezone,
   })
   // Passed to the child panels too — their SWR keys null out on an empty date,
   // so they hold instead of fetching a range the user did not choose.
@@ -126,7 +128,6 @@ export default function SearchConsolePage() {
     { value: 'google', label: engineLabel('google.com', 'Google') },
     { value: 'bing', label: engineLabel('bing.com', 'Bing') },
   ]
-  const { data: site } = useSite(siteId)
   const {
     data: overview,
     isLoading: overviewLoading,
@@ -266,6 +267,7 @@ export default function SearchConsolePage() {
             onPeriodChange={(p) => setPeriod(p as Period)}
             onDateRangeChange={(range) => setPeriod('custom', range)}
             onShift={shiftPeriod}
+            now={siteNow}
             {...pickerProps}
           />
         </div>

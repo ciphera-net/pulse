@@ -21,10 +21,19 @@ export function formatDate(date: Date): string {
   return `${y}-${m}-${d}`
 }
 
-/** Get date range for last N days (inclusive of today) — machine/API format */
-export function getDateRange(days: number): { start: string; end: string } {
-  const end = new Date()
-  const start = new Date()
+/**
+ * Get date range for last N days (inclusive of today) — machine/API format.
+ *
+ * `now` defaults to the browser's `new Date()` but every caller that knows a
+ * SITE (which is every caller reachable from a date-ranged page) must pass
+ * `siteWallClockNow(site.timezone)` instead, or "today" means the viewer's
+ * calendar day, not the site's. `now` is cloned before any mutation, so the
+ * same Date instance can be reused across many resolver calls in one render
+ * without corrupting it.
+ */
+export function getDateRange(days: number, now: Date = new Date()): { start: string; end: string } {
+  const end = now
+  const start = new Date(now)
   start.setDate(start.getDate() - (days - 1))
   return {
     start: formatDate(start),

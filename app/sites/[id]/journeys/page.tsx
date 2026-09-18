@@ -6,7 +6,6 @@ import { FunnelSimple, TreeStructure, X } from '@phosphor-icons/react'
 import { Switcher } from '@ciphera-net/facet'
 import { aggregateJourney } from '@/lib/journeys/aggregate'
 import { buildLinks, spineThrough } from '@/lib/journeys/chain'
-import { formatDate } from '@/lib/utils/dateRanges'
 import { formatDate as formatDisplayDate } from '@/lib/utils/formatDate'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import SankeyJourney from '@/components/journeys/SankeyJourney'
@@ -30,7 +29,7 @@ import {
   DENSITY_OPTIONS,
   type Period,
 } from '@/lib/hooks/useJourneyFilters'
-import { useDashboard, useJourneyTransitions } from '@/lib/swr/dashboard'
+import { useJourneyTransitions, useSite } from '@/lib/swr/dashboard'
 
 // ---------------------------------------------------------------------------
 // Journeys (07-09-2026 simplification, owner pick "A solid"):
@@ -51,26 +50,12 @@ export default function JourneysPage() {
   const router = useRouter()
   const siteId = params.id as string
 
-  const filters = useJourneyFilters()
-
-  const shiftPeriod = useCallback((direction: -1 | 1) => {
-    const shift = (date: string, days: number) => {
-      const d = new Date(date + 'T00:00:00')
-      d.setDate(d.getDate() + days)
-      return formatDate(d)
-    }
-    const startDate = new Date(filters.dateRange.start + 'T00:00:00')
-    const endDate = new Date(filters.dateRange.end + 'T00:00:00')
-    const spanDays = Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1
-    const offsetDays = spanDays * direction
-    const newRange = {
-      start: shift(filters.dateRange.start, offsetDays),
-      end: shift(filters.dateRange.end, offsetDays),
-    }
-    const today = formatDate(new Date())
-    if (newRange.end > today) return
-    filters.setPeriod('custom', newRange)
-  }, [filters.dateRange, filters.setPeriod])
+  // Independent of the page's own `useDashboard` call below, and read BEFORE
+  // useJourneyFilters — the filters hook needs the zone to resolve a
+  // relative period against the SITE's wall clock rather than the browser's
+  // (the same defect class useUrlDateRange's `timezone` option closes).
+  const { data: site } = useSite(siteId)
+  const filters = useJourneyFilters(site?.timezone)
 
   // * The fetch waits for memory (one render): an empty siteId is a null SWR key.
   const fetchSiteId = filters.ready ? siteId : ''
@@ -117,12 +102,13 @@ export default function JourneysPage() {
     [filters],
   )
 
-  const { data: dashboard } = useDashboard(siteId, filters.dateRange.start, filters.dateRange.end)
-
+  // `site` (above) already carries the domain — no need for the full
+  // dashboard payload (stats, daily_stats, …) just for a page title, and
+  // fetching it before `filters.ready` used to send the placeholder range.
   useEffect(() => {
-    const domain = dashboard?.site?.domain
+    const domain = site?.domain
     document.title = domain ? `Journeys · ${domain} | Pulse` : 'Journeys | Pulse'
-  }, [dashboard?.site?.domain])
+  }, [site?.domain])
 
   // * First-ever load only — keepPreviousData keeps the canvas mounted with
   // * stale data on every later refetch, so this is true once per mount.
@@ -183,7 +169,8 @@ export default function JourneysPage() {
             dateRange={filters.dateRange}
             onPeriodChange={(p) => filters.setPeriod(p as Period)}
             onDateRangeChange={(range) => filters.setPeriod('custom', range)}
-            onShift={shiftPeriod}
+            onShift={filters.shiftPeriod}
+            now={filters.siteNow}
           />
         </div>
       </div>

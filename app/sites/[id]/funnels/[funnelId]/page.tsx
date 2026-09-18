@@ -63,12 +63,13 @@ export default function FunnelDetailPage() {
   const funnelId = params.funnelId as string
   const canManage = useCan('funnels.manage')
 
-  const { period, dateRange, periodReady, setPeriod, shiftPeriod, pickerProps } = useUrlDateRange({
+  const { data: site } = useSite(siteId)
+  const { period, dateRange, periodReady, setPeriod, shiftPeriod, siteNow, pickerProps } = useUrlDateRange({
     // Shared with the funnels list page — one instrument, one range memory.
     pageKey: 'funnels',
     excludePresets: FUNNEL_EXCLUDED_PRESETS,
+    timezone: site?.timezone,
   })
-  const { data: site } = useSite(siteId)
   // * Preset windows re-anchor to the SITE's current day (uptime's device):
   // * the server cuts day boundaries in the site zone, so which dates get
   // * requested must come from the site's calendar too, or "Today" means the
@@ -266,6 +267,7 @@ export default function FunnelDetailPage() {
               onPeriodChange={(p) => setPeriod(p as Period)}
               onDateRangeChange={(range) => setPeriod('custom', range)}
               onShift={shiftPeriod}
+              now={siteNow}
               // * Menu and validation both come from the page declaration on
               // * the hook (FUNNEL_EXCLUDED_PRESETS) — one source, no drift.
               {...pickerProps}

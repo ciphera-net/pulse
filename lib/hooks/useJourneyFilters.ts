@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { siteWallClockNow } from '@/lib/utils/siteTime'
 import {
   DEFAULT_PERIOD,
   isValidDateString,
   parsePeriod,
   periodToDateRange,
+  shiftDateRange,
   type Period,
 } from './periodUrl'
 import { serializeFilters, parseFiltersFromURL, type DimensionFilter } from '@/lib/filters'
@@ -124,17 +126,32 @@ export interface JourneyFilters {
   filtersParam: string
   period: Period
   dateRange: { start: string; end: string }
-  /** False for the one render before memory is read; callers hold their fetch until true. */
+  /**
+   * False for the one render before memory is read, AND while the caller's
+   * site timezone is unknown — see useUrlDateRange's `periodReady`, which
+   * this mirrors. `dateRange` must not be trusted before this is true, or a
+   * calendar preset resolves against the browser clock for one render.
+   */
   ready: boolean
+  /** The site's wall clock — hand to DateRangePicker's `now` prop. */
+  siteNow: Date
 
   setDepth: (n: number) => void
   setDensity: (n: number) => void
   setLens: (path: string | null) => void
   setDimensionFilters: (filters: DimensionFilter[]) => void
   setPeriod: (p: Period, customRange?: { start: string; end: string }) => void
+  shiftPeriod: (direction: -1 | 1) => void
 }
 
-export function useJourneyFilters(): JourneyFilters {
+/**
+ * `timezone` is the site's IANA zone — `undefined` while the page's site
+ * hasn't loaded yet (gates `ready`), `null` only for a caller with no site
+ * concept at all (resolves in UTC). See useUrlDateRange's `timezone` option,
+ * which this mirrors — Journeys builds its own range state rather than using
+ * that hook, but the underlying defect (and its fix) are the same.
+ */
+export function useJourneyFilters(timezone?: string | null): JourneyFilters {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -149,7 +166,21 @@ export function useJourneyFilters(): JourneyFilters {
       period: readStoredPeriod(),
     })
   }, [])
-  const ready = remembered !== null
+  // Mirrors useUrlDateRange's periodReady: memory read AND the site's zone
+  // known, or dateRange below resolves a relative period against the
+  // browser's clock for the render(s) before the real zone arrives.
+  const ready = remembered !== null && timezone !== undefined
+
+  // Rebuilt once per MINUTE, not every render — see useUrlDateRange's
+  // siteNow for the reasoning (a plain per-render call is cheap enough
+  // either way; the bucketing just lets a long-lived mount roll "today"
+  // over at midnight without a ticking timer).
+  const minuteBucket = Math.floor(Date.now() / 60_000)
+  const siteNow = useMemo(
+    () => siteWallClockNow(timezone),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [timezone, minuteBucket],
+  )
 
   const urlHasDepth = searchParams.has('depth')
   const urlHasDensity = searchParams.has('density')
@@ -199,8 +230,8 @@ export function useJourneyFilters(): JourneyFilters {
     () =>
       period === 'custom' && rawStart && rawEnd
         ? { start: rawStart, end: rawEnd }
-        : periodToDateRange(period),
-    [period, rawStart, rawEnd],
+        : periodToDateRange(period, siteNow),
+    [period, rawStart, rawEnd, siteNow],
   )
 
   // Debounce what the canvas is asked to draw: a click on the ladder should
@@ -269,6 +300,17 @@ export function useJourneyFilters(): JourneyFilters {
     [updateUrl],
   )
 
+  // The shared, tested shift (periodUrl.ts) against the SITE's wall clock —
+  // not the page's own hand-rolled copy, which used to clamp against
+  // formatDate(new Date()), the viewer's calendar day.
+  const shiftPeriod = useCallback(
+    (direction: -1 | 1) => {
+      const next = shiftDateRange(dateRange, direction, siteNow)
+      if (next) setPeriod('custom', next)
+    },
+    [dateRange, setPeriod, siteNow],
+  )
+
   return {
     depth,
     committedDepth,
@@ -281,10 +323,12 @@ export function useJourneyFilters(): JourneyFilters {
     period,
     dateRange,
     ready,
+    siteNow,
     setDepth,
     setDensity,
     setLens,
     setDimensionFilters,
     setPeriod,
+    shiftPeriod,
   }
 }

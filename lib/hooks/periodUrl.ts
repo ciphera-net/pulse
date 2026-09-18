@@ -105,56 +105,63 @@ export function isValidDateString(s: string | null): s is string {
   return /^\d{4}-\d{2}-\d{2}$/.test(s)
 }
 
-export function periodToDateRange(period: Period): { start: string; end: string } {
+/**
+ * `now` defaults to the browser's `new Date()`, but every caller reachable
+ * from a date-ranged page must pass a SITE wall clock instead —
+ * `siteWallClockNow(site.timezone)` — or a relative preset resolves in the
+ * viewer's calendar rather than the site's (the bug useUrlDateRange's
+ * `timezone` option exists to close).
+ */
+export function periodToDateRange(period: Period, now: Date = new Date()): { start: string; end: string } {
   switch (period) {
     case '30m':
-      return getLast30MinutesRange()
+      return getLast30MinutesRange(now)
     case '1h':
-      return getLast1HourRange()
+      return getLast1HourRange(now)
     case '6h':
-      return getLast6HoursRange()
+      return getLast6HoursRange(now)
     case '24h':
-      return getLast24HoursRange()
+      return getLast24HoursRange(now)
     case 'today': {
-      const today = formatDate(new Date())
+      const today = formatDate(now)
       return { start: today, end: today }
     }
     case 'yesterday':
-      return getYesterdayRange()
+      return getYesterdayRange(now)
     case '7':
-      return getDateRange(7)
+      return getDateRange(7, now)
     case '28':
-      return getDateRange(28)
+      return getDateRange(28, now)
     case '30':
-      return getDateRange(30)
+      return getDateRange(30, now)
     // * GSC pill ranges (Search page). 16m = Google's ~480-day retention cap.
     case '3m':
-      return getDateRange(90)
+      return getDateRange(90, now)
     case '6m':
-      return getDateRange(180)
+      return getDateRange(180, now)
     case '12m':
-      return getDateRange(365)
+      return getDateRange(365, now)
     case '16m':
-      return getDateRange(480)
+      return getDateRange(480, now)
     case 'week':
-      return getThisWeekRange()
+      return getThisWeekRange(now)
     case 'month':
-      return getThisMonthRange()
+      return getThisMonthRange(now)
     case 'qtd':
-      return getQuarterToDateRange()
+      return getQuarterToDateRange(now)
     case 'year':
-      return getThisYearRange()
+      return getThisYearRange(now)
     case 'last-week':
-      return getLastWeekRange()
+      return getLastWeekRange(now)
     case 'last-month':
-      return getLastMonthRange()
+      return getLastMonthRange(now)
     case 'last-quarter':
-      return getLastQuarterRange()
+      return getLastQuarterRange(now)
     case 'last-year':
-      return getLastYearRange()
+      return getLastYearRange(now)
     case 'custom':
       // * Fallback only — actual custom range comes from the URL read path
-      return getDateRange(30)
+      return getDateRange(30, now)
   }
 }
 
@@ -235,6 +242,7 @@ export function periodMaxDays(p: Period): number {
 export function shiftDateRange(
   range: { start: string; end: string },
   direction: -1 | 1,
+  now: Date = new Date(),
 ): { start: string; end: string } | null {
   const shift = (date: string, days: number) => {
     const d = new Date(date + 'T00:00:00')
@@ -246,6 +254,9 @@ export function shiftDateRange(
   const spanDays = Math.round((endDate.getTime() - startDate.getTime()) / DAY_MS) + 1
   const offsetDays = spanDays * direction
   const next = { start: shift(range.start, offsetDays), end: shift(range.end, offsetDays) }
-  if (next.end > formatDate(new Date())) return null
+  // `now` must be the SITE's wall clock (siteWallClockNow) — "not into the
+  // future" means the site's future, or a viewer east of the site is
+  // refused a day the site has already reached.
+  if (next.end > formatDate(now)) return null
   return next
 }
