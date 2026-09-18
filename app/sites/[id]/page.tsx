@@ -1,6 +1,7 @@
 'use client'
 
 
+import { siteDaysCaption } from '@/lib/utils/timezones'
 import { useCallback, useEffect, useState, useMemo } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import {
@@ -364,6 +365,7 @@ export default function SiteDashboardPage() {
         onDateRangeChange={(range) => setPeriod('custom', range)}
         onShift={shiftPeriod}
         now={siteNow}
+        daysCaption={siteDaysCaption(siteRecord?.timezone)}
         {...pickerProps}
       />
     </>

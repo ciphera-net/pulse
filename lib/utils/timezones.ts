@@ -76,3 +76,12 @@ export function browserTimeZone(): string {
     return 'UTC'
   }
 }
+
+/**
+ * The date picker's caption line (owner pick "A", options round 19-09-2026):
+ * the one place the dashboard says that DAYS are the site's calendar, shown
+ * only while a range is being chosen. One string, so every page agrees.
+ */
+export function siteDaysCaption(tz: string | null | undefined): string {
+  return `Days follow the site's timezone · ${safeTimeZone(tz)}`
+}

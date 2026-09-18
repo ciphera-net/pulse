@@ -1,5 +1,6 @@
 'use client'
 
+import { siteDaysCaption } from '@/lib/utils/timezones'
 import { useCallback, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { FunnelSimple, TreeStructure, X } from '@phosphor-icons/react'
@@ -171,6 +172,7 @@ export default function JourneysPage() {
             onDateRangeChange={(range) => filters.setPeriod('custom', range)}
             onShift={filters.shiftPeriod}
             now={filters.siteNow}
+            daysCaption={siteDaysCaption(site?.timezone)}
           />
         </div>
       </div>

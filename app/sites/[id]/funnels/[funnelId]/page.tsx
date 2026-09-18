@@ -1,5 +1,6 @@
 'use client'
 
+import { siteDaysCaption } from '@/lib/utils/timezones'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -268,6 +269,7 @@ export default function FunnelDetailPage() {
               onDateRangeChange={(range) => setPeriod('custom', range)}
               onShift={shiftPeriod}
               now={siteNow}
+              daysCaption={siteDaysCaption(site?.timezone)}
               // * Menu and validation both come from the page declaration on
               // * the hook (FUNNEL_EXCLUDED_PRESETS) — one source, no drift.
               {...pickerProps}

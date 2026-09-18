@@ -1,5 +1,6 @@
 'use client'
 
+import { siteDaysCaption } from '@/lib/utils/timezones'
 import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -227,6 +228,7 @@ export default function VisitorsPage() {
         onDateRangeChange={(r) => setPeriod('custom', r)}
         onShift={shiftPeriod}
         now={siteNow}
+        daysCaption={siteDaysCaption(siteTimezone)}
         pickerProps={pickerProps}
         identityWindow={identityWindow}
       />
@@ -376,6 +378,7 @@ function PageHeader({
   onDateRangeChange,
   onShift,
   now,
+  daysCaption,
   pickerProps,
   identityWindow,
 }: {
@@ -389,6 +392,7 @@ function PageHeader({
   /** The site's wall clock (useUrlDateRange's `siteNow`) — the picker's
    *  future-day cutoff and initial month. */
   now?: Date
+  daysCaption?: string
   pickerProps?: Record<string, unknown>
   /** The site's identity window; undefined while unknown. */
   identityWindow?: IdentityWindowDays
@@ -417,6 +421,7 @@ function PageHeader({
             onDateRangeChange={onDateRangeChange as (r: { start: string; end: string }) => void}
             onShift={onShift}
             now={now}
+            daysCaption={daysCaption}
             align="right"
             {...pickerProps}
           />

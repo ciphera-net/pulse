@@ -1,5 +1,6 @@
 'use client'
 
+import { siteDaysCaption } from '@/lib/utils/timezones'
 import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -255,6 +256,7 @@ export default function VisitorDetailPage() {
           onDateRangeChange={(r) => setPeriod('custom', r)}
           onShift={shiftPeriod}
           now={siteNow}
+          daysCaption={siteDaysCaption(siteTimezone)}
           align="right"
           {...pickerProps}
         />

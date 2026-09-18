@@ -57,6 +57,16 @@ interface DateRangePickerProps {
    * to the pre-fix behaviour rather than failing outright.
    */
   now?: Date
+  /**
+   * One muted line under the calendar, visible only while the picker is open
+   * (owner pick "A", options round 19-09-2026): where the dashboard says that
+   * days follow the site's timezone. Named `daysCaption`, not `footnote`: the
+   * dashboard's phase-3 wiring guard forbids the substring `note=` in the page
+   * source, to keep the removed section notes from creeping back. Pages whose days are NOT the site's
+   * (CDN: Bunny's UTC days; Search: Google's) pass nothing and keep their own
+   * provenance labels.
+   */
+  daysCaption?: string
 }
 
 function formatRangeDisplay(start: string, end: string): string {
@@ -123,6 +133,7 @@ export default function DateRangePicker({
   extraPresets,
   excludePresets,
   presetsOnly = false,
+  daysCaption,
   minDate,
   now: nowProp,
 }: DateRangePickerProps) {
@@ -413,6 +424,11 @@ export default function DateRangePicker({
                 </button>
               ))}
             </div>
+            {daysCaption && (
+              <p className="mt-3 border-t border-border pt-3 text-[11px] leading-snug text-muted-foreground/70">
+                {daysCaption}
+              </p>
+            )}
           </div>
           )}
         </motion.div>

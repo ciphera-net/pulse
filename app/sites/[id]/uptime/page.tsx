@@ -1,5 +1,6 @@
 'use client'
 
+import { siteDaysCaption } from '@/lib/utils/timezones'
 import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
@@ -297,6 +298,7 @@ export default function UptimePage() {
             onDateRangeChange={(range) => setPeriod('custom', range)}
             onShift={shiftPeriod}
             now={siteNow}
+            daysCaption={siteDaysCaption(site?.timezone)}
             {...pickerProps}
           />
           {canEdit && (
