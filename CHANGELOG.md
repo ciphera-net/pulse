@@ -54,7 +54,7 @@ public read API's — see that entry for what it does and does not cover.
   60 characters. Add `data-pulse-ignore` to any element and nothing inside it is ever
   recorded, at any depth.
 
-  The main script is **unchanged and still 2.6 KB gzipped** — the new code is a separate
+  The main script is **unchanged and still under 3 KB gzipped** — the new code is a separate
   file, so a site that does not want interaction capture pays nothing for it.
 
 - **A visitor's visits now read oldest to newest, and their steps group by page.**
