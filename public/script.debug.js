@@ -402,25 +402,36 @@
     sendPageview(path);
   }
 
+  // * iPadOS 13+ reports a Macintosh user-agent that is byte-identical to
+  // * macOS desktop Safari — there is no way to tell them apart server-side.
+  // * The only reliable client-side discriminator is navigator.maxTouchPoints:
+  // * Macs always report 0 or 1 (there is no touchscreen Mac hardware), iPads
+  // * report 5 or 10. Send an explicit hint so the backend parser can classify
+  // * correctly as iOS+tablet instead of macOS+tablet (which would hit the
+  // * impossible_device Cerberus rule and false-positive legitimate iPad users).
+  // *
+  // * 🔴 COMPUTED ONCE, FOR EVERY EVENT KIND (19-09-2026). It used to live inside
+  // * sendPageview, so an iPad's PAGEVIEWS were stored as iOS while its clicks and
+  // * every other custom event — which send no hint — were parsed from the same
+  // * Macintosh user-agent and stored as macOS. One device, one session, two
+  // * operating systems in the data. It is a device fact, not a pageview fact.
+  // * The identity anchor is what surfaced it: its profile guard compares the
+  // * stored browser/OS of the anchoring pageview against this request's, so an
+  // * iPad refused its own anchor and split into two visitors.
+  var clientOSHint = (function () {
+    try {
+      if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) {
+        return 'iPadOS';
+      }
+    } catch (e) {}
+    return '';
+  })();
+
   function sendPageview(path) {
     const screenSize = {
       width: window.innerWidth || window.screen.width,
       height: window.innerHeight || window.screen.height,
     };
-
-    // * iPadOS 13+ reports a Macintosh user-agent that is byte-identical to
-    // * macOS desktop Safari — there is no way to tell them apart server-side.
-    // * The only reliable client-side discriminator is navigator.maxTouchPoints:
-    // * Macs always report 0 or 1 (there is no touchscreen Mac hardware), iPads
-    // * report 5 or 10. Send an explicit hint so the backend parser can classify
-    // * correctly as iOS+tablet instead of macOS+tablet (which would hit the
-    // * impossible_device Cerberus rule and false-positive legitimate iPad users).
-    var clientOSHint = '';
-    try {
-      if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) {
-        clientOSHint = 'iPadOS';
-      }
-    } catch (e) {}
 
     const payload = {
       domain: domain,
@@ -506,6 +517,7 @@
       referrer: document.referrer || '',
       screen: { width: window.innerWidth || window.screen.width, height: window.innerHeight || window.screen.height },
       name: eventName.trim().toLowerCase(),
+      client_os_hint: clientOSHint,
     };
     if (anchorId) payload.anchor_id = anchorId;
     if (props && typeof props === 'object' && !Array.isArray(props)) {

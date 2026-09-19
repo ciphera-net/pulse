@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { JSDOM } from 'jsdom'
 
 /**
- * Behavioural contract of the identity anchor (script v1.4.0,
+ * Behavioural contract of the identity anchor (script v1.5.0,
  * Pulse/docs/plans/17-09-2026-identity-anchor-design.md).
  *
  * The server derives a visitor from the client IP, and the IP is not stable inside one
@@ -176,5 +176,46 @@ describe('identity anchor', () => {
     expect(customEvents()).toHaveLength(1)
     // * Without storage the in-memory anchor still works within the document.
     expect(customEvents()[0].anchor_id).toBe('evt-1')
+  })
+})
+
+// 🔴 An iPad reports a Macintosh user-agent byte-identical to macOS Safari, so the
+// tracker sends navigator.maxTouchPoints as an explicit hint. That hint used to be
+// computed inside sendPageview only — so an iPad's PAGEVIEWS were stored as iOS while
+// its clicks were parsed from the same UA and stored as macOS. One device, one
+// session, two operating systems in the data (measured: two production sessions
+// carrying both). The identity anchor surfaced it — its profile guard compares the
+// anchor pageview's stored OS against this request's, so an iPad refused its own
+// anchor and split into two visitors.
+//
+// MUTATION CHECK: drop client_os_hint from the custom-event payload, or move the
+// computation back inside sendPageview, and this goes red.
+describe('iPadOS hint', () => {
+  function pretendIPad() {
+    Object.defineProperty(win.navigator, 'platform', { configurable: true, value: 'MacIntel' })
+    Object.defineProperty(win.navigator, 'maxTouchPoints', { configurable: true, value: 5 })
+  }
+
+  it('rides on the custom event as well as the pageview, so one device is one OS', async () => {
+    pretendIPad()
+    installScript()
+    await flush()
+    win.pulse.track('outbound_link')
+    await flush()
+
+    expect(pageviews()[0].client_os_hint).toBe('iPadOS')
+    expect(customEvents()[0].client_os_hint).toBe('iPadOS')
+  })
+
+  it('is empty on a real Mac, so a desktop is never mistaken for a tablet', async () => {
+    Object.defineProperty(win.navigator, 'platform', { configurable: true, value: 'MacIntel' })
+    Object.defineProperty(win.navigator, 'maxTouchPoints', { configurable: true, value: 0 })
+    installScript()
+    await flush()
+    win.pulse.track('outbound_link')
+    await flush()
+
+    expect(pageviews()[0].client_os_hint).toBe('')
+    expect(customEvents()[0].client_os_hint).toBe('')
   })
 })
