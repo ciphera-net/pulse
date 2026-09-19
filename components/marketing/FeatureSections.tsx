@@ -7,7 +7,6 @@ import { cn } from '@/lib/utils'
 import { cdnUrl } from '@/lib/cdn'
 import { MacWindow } from './system/MacWindow'
 import { VisitorsSlideshow } from './mockups/visitors-slideshow'
-import { CaptureSlideshow } from './mockups/capture-slideshow'
 
 // Real retina captures of the LIVE ciphera.net dashboard (the public /demo
 // share) — the same surface the hero shows. Fake hand-drawn dashboards are
@@ -15,19 +14,26 @@ import { CaptureSlideshow } from './mockups/capture-slideshow'
 // told negative data stories (see the 05-08-2026 homepage audit). Recapture
 // recipe: crop the share view at deviceScaleFactor 2 and upload via
 // scripts/cdn-upload.sh; keep filenames dated so the edge cache never staling.
-// Journeys — the same real card in its two real views (Columns and the Flow
-// sankey), switching in the same slideshow device as the Visitors row.
+// Journeys — ONE view, because the product has one.
+//
+// 🔴 THIS WAS A SLIDESHOW ADVERTISING A FEATURE THAT NO LONGER EXISTS. It
+// offered a "Columns" tab beside "Flow" until 19-09-2026; Pulse deleted the
+// columns view, its switcher and the `view=` param on 07-09-2026 (#595 — see
+// app/sites/[id]/journeys/page.tsx, which says so in its own header comment).
+// A visitor could click a tab here for a screen they could never reach. A
+// slideshow of one slide is not a slideshow, so this is a plain window now.
 function JourneysSlideshow() {
   return (
-    <CaptureSlideshow
-      width={2112}
-      height={1184}
-      alt="Pulse journeys for ciphera.net, live data"
-      slides={[
-        { key: 'columns', label: 'Columns', file: '/marketing/journeys-columns-sep-2x.png' },
-        { key: 'flow', label: 'Flow', file: '/marketing/journeys-flow-sep-2x.png' },
-      ]}
-    />
+    <MacWindow>
+      <Image
+        src={cdnUrl('/marketing/journeys-flow-19-09-2026-2x.png')}
+        alt="Pulse journeys for ciphera.net, live data — the sankey flow of paths through the site"
+        width={2460}
+        height={1260}
+        unoptimized
+        className="block w-full"
+      />
+    </MacWindow>
   )
 }
 
@@ -35,10 +41,10 @@ function PerformanceCapture() {
   return (
     <MacWindow>
       <Image
-        src={cdnUrl('/marketing/performance-desktop-sep-2x.png')}
+        src={cdnUrl('/marketing/performance-desktop-19-09-2026-2x.png')}
         alt="Pulse Performance for ciphera.net — desktop Lighthouse scores, page-load filmstrip and Core Web Vitals"
-        width={2468}
-        height={1586}
+        width={2560}
+        height={1238}
         unoptimized
         className="block w-full"
       />
@@ -52,10 +58,10 @@ function DashboardCapture() {
   return (
     <MacWindow>
       <Image
-        src={cdnUrl('/marketing/feature-dashboard-7d-06-09-2026-deck-2x.png')}
-        alt="The live Pulse dashboard for ciphera.net — a 7-day view of the visitor trend, top pages and referrers"
-        width={2520}
-        height={2146}
+        src={cdnUrl('/marketing/feature-dashboard-7d-19-09-2026-2x.png')}
+        alt="The live Pulse dashboard for ciphera.net — a 7-day view of the visitor trend, its referrers and its visitor countries"
+        width={2560}
+        height={2120}
         unoptimized
         className="block w-full"
       />

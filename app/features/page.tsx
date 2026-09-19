@@ -30,7 +30,6 @@ import { MarketingSection } from '@/components/marketing/system/MarketingSection
 import { HairlineGrid } from '@/components/marketing/system/HairlineGrid'
 import { ReceiptsLedger, ProofLink, type Receipt } from '@/components/marketing/ReceiptsLedger'
 import { VisitorsSlideshow } from '@/components/marketing/mockups/visitors-slideshow'
-import { CaptureSlideshow } from '@/components/marketing/mockups/capture-slideshow'
 import { MacWindow } from '@/components/marketing/system/MacWindow'
 import Image from 'next/image'
 import { cdnUrl } from '@/lib/cdn'
@@ -194,18 +193,21 @@ function FeatureCell({ icon: Icon, title, description, proof }: Feature) {
   )
 }
 
-// Journeys slides — same assets as the homepage row (uniform 2112×1184).
+// Journeys — one view, same asset as the homepage row. The "Columns" slide this
+// used to carry described a screen Pulse deleted on 07-09-2026 (#595); see the
+// note on JourneysSlideshow in components/marketing/FeatureSections.tsx.
 function JourneysSlides() {
   return (
-    <CaptureSlideshow
-      width={2112}
-      height={1184}
-      alt="Pulse journeys for ciphera.net, live data"
-      slides={[
-        { key: 'columns', label: 'Columns', file: '/marketing/journeys-columns-sep-2x.png' },
-        { key: 'flow', label: 'Flow', file: '/marketing/journeys-flow-sep-2x.png' },
-      ]}
-    />
+    <MacWindow>
+      <Image
+        src={cdnUrl('/marketing/journeys-flow-19-09-2026-2x.png')}
+        alt="Pulse journeys for ciphera.net, live data — the sankey flow of paths through the site"
+        width={2460}
+        height={1260}
+        unoptimized
+        className="block w-full"
+      />
+    </MacWindow>
   )
 }
 
@@ -262,10 +264,10 @@ export default function FeaturesPage() {
             </p>
             <MacWindow>
               <Image
-                src={cdnUrl('/marketing/cdn-analytics-sep-2x.png')}
+                src={cdnUrl('/marketing/cdn-analytics-19-09-2026-2x.png')}
                 alt="Pulse CDN analytics for ciphera.net — Bunny bandwidth, cache hit rate and origin latency"
-                width={2465}
-                height={1539}
+                width={2560}
+                height={1880}
                 unoptimized
                 className="block w-full"
               />
@@ -283,10 +285,10 @@ export default function FeaturesPage() {
             </p>
             <MacWindow>
               <Image
-                src={cdnUrl('/marketing/performance-desktop-sep-2x.png')}
+                src={cdnUrl('/marketing/performance-desktop-19-09-2026-2x.png')}
                 alt="Pulse Performance for ciphera.net — desktop Lighthouse scores and page-load filmstrip"
-                width={2468}
-                height={1586}
+                width={2560}
+                height={1238}
                 unoptimized
                 className="block w-full"
               />
