@@ -9,7 +9,7 @@
  *
  * 🔴 WHY A SECOND FILE AND NOT PART OF script.js. The core has an ENFORCED 3 KB
  * gzip budget (scripts/build-scripts.mjs), which is also a published claim —
- * ciphera.net states "2.6 KB gzipped · GA 145 KB" and "under 3 KB gzipped" on
+ * ciphera.net states "2.7 KB gzipped · GA 146 KB" and "under 3 KB gzipped" on
  * six surfaces, and the build failing is what makes that claim un-staleable.
  * Click capture alone measured +294 gzipped bytes against 382 bytes of
  * headroom; copies and form submits would not fit at all. Splitting keeps the
