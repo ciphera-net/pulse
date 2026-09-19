@@ -11,7 +11,7 @@
  * receipts ledger where every claim carries the link that proves it; and every
  * number on the page is measured or sourced (script size measured 06-08; plan
  * limits from lib/plans.ts — the old hero claimed "less than 1 KB" while the
- * script ships 2.6 KB gzipped, under the 3 KB build budget).
+ * script ships 2.7 KB gzipped, under the 3 KB build budget).
  */
 
 import Link from 'next/link'
@@ -64,7 +64,7 @@ const pillars: Feature[] = [
     icon: ZapIcon,
     title: 'Lightweight script',
     description:
-      '2.6 KB gzipped — about 55× lighter than Google Analytics. Loads async with defer, so it never blocks rendering.',
+      '2.7 KB gzipped — about 54× lighter than Google Analytics. Loads async with defer, so it never blocks rendering.',
     proof: { label: 'Install guide', href: '/installation' },
   },
 ]
