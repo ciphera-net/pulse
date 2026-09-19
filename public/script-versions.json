@@ -1,14 +1,14 @@
 {
-  "version": "1.4.0",
+  "version": "1.5.0",
   "baseUrl": "https://js.ciphera.net",
   "files": {
     "script.js": {
-      "path": "/v1.4.0/script.js",
-      "sha384": "sha384-4sjISO2w4InbBN03k5aXyUZByxZRT0OnNdF6hKGUNG2lJC9mmBea+QBQBGX3r9wt",
-      "sha512": "sha512-1PB/Zg6VrVKlaO6xbYmzI0yDjMfWdQ5JJqYGdCpRuBUUH3Nd89Ws9+fBUBkd0i/s4W/n0/Xuvk1VpoRg7im7nQ=="
+      "path": "/v1.5.0/script.js",
+      "sha384": "sha384-T7q2AshaY4yLoRfPZYsRww81vL4EmzHuKBoGF/adHgrxLp8L+cCQ9OiM5TsGbalc",
+      "sha512": "sha512-CrBJefY4iBFGA3Xg8YDX8tEXiN5k+jNiULYmBJYtHHI28QBZz1HVk91WEqe3KKkcNdE2GvEsM17kDvt+Ii7Egw=="
     },
     "script.interactions.js": {
-      "path": "/v1.4.0/script.interactions.js",
+      "path": "/v1.5.0/script.interactions.js",
       "sha384": "sha384-IDmXNZPmC8Q40myM79qj31w84Unob/IgE8kFGnydxTc2hOJSW5E1Reeb0NSKR1P9",
       "sha512": "sha512-yN6Rg51bVyUEXjdhIdCRv/Nk9ofPdxbO22DLpm92Ps8WA+3hgiMXL9OuxSz8nc2uSebCNEYJcq0w7n4k7MJK5g=="
     }
