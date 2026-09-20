@@ -1,4 +1,4 @@
-import type { LifecycleNoSitePayload, Receipt } from '@/lib/notifications/types'
+import type { LifecycleFirstDataPayload, LifecycleNoSitePayload, Receipt } from '@/lib/notifications/types'
 import type { Rendered, Resolvers } from './index'
 
 /**
@@ -32,6 +32,32 @@ export const lifecycleRenderers = {
       title: 'Your workspace has no site',
       body: `Pulse is collecting nothing until you add one.${age}`,
       linkLabel: 'Add your first site',
+    }
+  },
+
+  // iris migration 031. The counterpart to the nudge above: that one fires when
+  // nothing is happening, this one when something finally did.
+  //
+  // 🔴 NO COUNT AND NO ELAPSED TIME. The payload carries the instant
+  // sites.first_event_at was stamped, and that column is never backdated by
+  // quarantine promotion — a first session held by Cerberus and released minutes
+  // later leaves it matching the SECOND session (measured 19-09-2026). So "this
+  // site has data" is true and "it arrived at X" is a lower bound. A card that
+  // said "2 visits in the last hour" would be a number nobody can reproduce.
+  //
+  // The site name comes from the resolver when the card can resolve it, and from
+  // the payload's optional `domain` otherwise. Neither is the workspace name,
+  // which this event cannot carry at all.
+  lifecycle_first_data: (r: Receipt, resolvers?: Resolvers): Rendered => {
+    const p = r.event.payload as Partial<LifecycleFirstDataPayload>
+    const name = p.site_id ? resolvers?.resolveSiteName(p.site_id) : undefined
+    const site = name ?? p.domain
+    return {
+      title: 'Your first data has arrived',
+      body: site
+        ? `Pulse recorded its first visit for ${site}. Your dashboard updates as new visitors arrive.`
+        : 'Pulse recorded its first visit. Your dashboard updates as new visitors arrive.',
+      linkLabel: 'Open your dashboard',
     }
   },
 }
