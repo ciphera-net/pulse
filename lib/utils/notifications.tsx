@@ -19,6 +19,7 @@ import {
   Megaphone,
   Wrench,
   Lightning,
+  Broadcast,
   Heartbeat,
   ArrowFatLineDown,
   PlusCircle,
@@ -69,6 +70,17 @@ export function getTypeIcon(type: string) {
     system_announcement:           <Megaphone        className="w-5 h-5 shrink-0 text-brand-orange" aria-hidden="true" />,
     system_maintenance:            <Wrench           className="w-5 h-5 shrink-0 text-amber-400"    aria-hidden="true" />,
     lifecycle_no_site:             <PlusCircle       className="w-5 h-5 shrink-0 text-brand-orange" aria-hidden="true" />,
+    // 🔴 THIS MAP IS NOT COVERED BY AN EXHAUSTIVENESS CHECK, and it is the only
+    // place in this repo where forgetting a new notification type is SILENT.
+    // It is `Record<string, ReactElement>`, so an absent key compiles clean and
+    // renders the Lightning fallback below, forever.
+    //
+    // Everywhere else the compiler catches it: lib/notifications/types.ts owns
+    // the NotificationType union, and lib/notifications/renderers/index.ts is
+    // `satisfies Record<NotificationType, Renderer>`, so adding a type to the
+    // union without a renderer FAILS TO BUILD. That is the loud half; this is
+    // the quiet half, and the reason to add the icon in the same commit.
+    lifecycle_first_data:          <Broadcast        className="w-5 h-5 shrink-0 text-green-400"    aria-hidden="true" />,
   }
 
   return iconMap[type] ?? <Lightning className="w-5 h-5 shrink-0 text-neutral-400" aria-hidden="true" />

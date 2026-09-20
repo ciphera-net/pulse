@@ -37,6 +37,9 @@ export type NotificationType =
   | 'system_announcement'
   | 'system_maintenance'
   | 'lifecycle_no_site'
+  // iris migration 031 — the one moment in onboarding with unambiguously good
+  // news. Same `lifecycle` category and opt-out class as the nudge above.
+  | 'lifecycle_first_data'
 
 export type Category = 'billing' | 'uptime' | 'security' | 'site' | 'team' | 'system' | 'lifecycle'
 
@@ -61,6 +64,17 @@ export type Category = 'billing' | 'uptime' | 'security' | 'site' | 'team' | 'sy
 export interface LifecycleNoSitePayload {
   days_since_created: number
   step: number
+}
+/** iris migration 031. `domain` is optional exactly as in SiteInstallSilentPayload:
+ *  the card resolves a site name from site_id, the email renderer has no resolver.
+ *  🔴 There is no workspace name and there cannot be one — pulse-backend dropped its
+ *  own `organizations` table in pulse migration 019. And no count or elapsed time may
+ *  be derived from first_event_at: it is never backdated by quarantine promotion, so
+ *  it is a lower bound rather than the true first-event instant. */
+export interface LifecycleFirstDataPayload {
+  site_id: string
+  first_event_at: string
+  domain?: string
 }
 export interface BillingPaymentFailedPayload {
   invoice_id: string
