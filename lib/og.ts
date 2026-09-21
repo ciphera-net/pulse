@@ -14,6 +14,6 @@ export const DEFAULT_OG_IMAGES = [
     url: DEFAULT_OG_IMAGE,
     width: 1200,
     height: 630,
-    alt: 'Pulse — privacy-first web analytics',
+    alt: 'Pulse Analytics — privacy-first web analytics',
   },
 ]
