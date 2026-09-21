@@ -16,9 +16,9 @@ import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
  * - Unread rows carry the WASH STUB (orange left edge); read rows drop it and
  *   the title recedes to text-neutral-300.
  * - The meta line speaks honest verbs: "Emailed HH:MM" means HANDED OFF
- *   (delivered_at's formal meaning — null while held); "Delivered" is
- *   reserved for Phase 3's confirmed truth. A held email draws the amber
- *   HELD CHIP; a muted category's row reads "Muted — recorded, not alerted".
+ *   (delivered_at's formal meaning — null until then); "Delivered" is
+ *   reserved for Phase 3's confirmed truth. (The held chip and the muted
+ *   line left with quiet hours and mute on 21-09-2026.)
  * - Click expands in place AND marks read (ruled): the expansion IS the
  *   content, so reading never consumes unread invisibly. Per-row dismiss and
  *   mark-unread deliberately do not exist here — the register's removal
@@ -27,9 +27,6 @@ import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 interface RegisterRowProps {
   receipt: Receipt
   categoryName: string
-  /** The recipient's quiet_hours_end (HH:MM), for the held chip's send time. */
-  quietHoursEnd: string | null
-  muted: boolean
   onChange: () => void
 }
 
@@ -48,8 +45,6 @@ function hhmm(iso: string, timeZone?: string): string {
 export default function RegisterRow({
   receipt,
   categoryName,
-  quietHoursEnd,
-  muted,
   onChange,
 }: RegisterRowProps) {
   const [expanded, setExpanded] = useState(false)
@@ -88,19 +83,11 @@ export default function RegisterRow({
     }
   }
 
-  // The email leg's honest meta. delivered_at = handed off; held draws the
-  // chip; suppression is stated, never hidden. ⚠️ ORDER IS LOAD-BEARING
-  // (review catch): `muted` is the CURRENT preference — a row whose email WAS
-  // handed off keeps saying so forever; the muted line is only the
-  // explanation for rows that carry no email fact at all.
+  // The email leg's honest meta. delivered_at = handed off; suppression is
+  // stated, never hidden. A row with no email fact at all (email off for the
+  // category) says nothing about email.
   let emailMeta: React.ReactNode = null
-  if (receipt.email_status === 'held') {
-    emailMeta = (
-      <span className="px-1 text-[11px] bg-amber-500/15 text-amber-400 whitespace-nowrap">
-        {quietHoursEnd ? `Held — quiet hours · sends ${quietHoursEnd}` : 'Held — quiet hours'}
-      </span>
-    )
-  } else if (receipt.email_status === 'delivered' && receipt.delivered_at) {
+  if (receipt.email_status === 'delivered' && receipt.delivered_at) {
     // Phase 3's confirmed truth — the per-recipient DSN, ingested from
     // Stalwart's trace. Green is RESERVED for exactly this (round-3 standing
     // default: "Emailed" means handed off; green waits for Delivered).
@@ -111,8 +98,6 @@ export default function RegisterRow({
     emailMeta = <span>Emailed {hhmm(receipt.delivered_at, zone)}</span>
   } else if (receipt.email_status === 'suppressed') {
     emailMeta = <span>Email suppressed</span>
-  } else if (muted) {
-    emailMeta = <span>Muted — recorded, not alerted</span>
   }
 
   return (

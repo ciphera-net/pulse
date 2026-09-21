@@ -1,103 +1,62 @@
 import apiRequest from '@/lib/api/client'
 
-export type DeliveryMode = 'in_app_only' | 'email_immediate' | 'email_digest' | 'off'
-
-export interface Preferences {
-  user_id: string
-  delivery_modes: Record<string, DeliveryMode>
-  quiet_hours_start: string | null
-  quiet_hours_end: string | null
-  timezone: string
-  digest_time: string
-  retention_overrides: Record<string, { read_ttl_days: number }>
-  updated_at: string
-}
-
-export const getPrefs = () => apiRequest<Preferences>('/notifications/preferences')
-
-export const updatePrefs = (p: Partial<Preferences>) =>
-  apiRequest<{ ok: boolean }>('/notifications/preferences', {
-    method: 'PUT',
-    body: JSON.stringify(p),
-    headers: { 'Content-Type': 'application/json' },
-  })
-
-// ── The §7.2 document (S10) ─────────────────────────────────────────────────
+// ── The preferences document (21-09-2026: one switch per category) ─────────
 //
-// The family UI's data source: iris's preferences document rides the same GET
-// verbatim beside the legacy enum keys above. Category metadata (display
-// names, criticality, suppressible) and the registry retention block come
-// from the wire — never from a client-side table (the retention-policy.ts
-// copy this replaced was the third drift-prone copy of the TTL table).
+// Iris's preferences document rides the proxy GET verbatim. Category metadata
+// (display names, criticality, suppressible) comes from the wire, never from
+// a client-side table. A person's whole expression for a category is `email`:
+// in-app is always on (the receipt IS the in-app delivery), and digest, quiet
+// hours, mute, the in-app toggle and the retention override were retired by
+// owner ruling on 21-09-2026 (plan
+// docs/plans/21-09-2026-notification-simplification-plan.md, workspace root).
+//
+// Only the fields this app reads are typed. Iris release A still carries the
+// retired fields at neutral values and release B removes them; typing them
+// here would let a component read a field that is about to vanish.
 
 export interface CategoryPreferenceDoc {
   category_id: string
   display_name: string
   criticality: 'critical' | 'standard' | 'low'
+  /**
+   * The trigger's own column: a category that cannot be suppressed cannot
+   * have email switched off. The page renders its locked state from THIS,
+   * not from `criticality`, so the rendering and the refusal read the same
+   * fact (review catch, 31-08).
+   */
   suppressible: boolean
-  digest_group: string | null
-  unread_ttl_seconds: number
-  read_ttl_seconds: number
-  min_retention_seconds: number
-  default_in_app: boolean
+  /** The registry default, reported beside the effective value. */
   default_email: boolean
-  default_digest: boolean
-  /** Effective values: the stored row when one exists, else the defaults. */
-  in_app: boolean
+  /** Effective value: the stored row when one exists, else the default. */
   email: boolean
-  digest: boolean
-  muted: boolean
   /** True when the user chose this; false when it is the registry default. */
   stored: boolean
-  retention_override_seconds: number | null
 }
 
-export interface RecipientPreferencesDoc {
-  timezone: string | null
-  quiet_hours_start: string | null
-  quiet_hours_end: string | null
-  quiet_hours_mode: 'defer' | 'drop'
-  digest_time: string
-}
-
-/** The GET response: legacy enum keys (Preferences) + the §7.2 document. */
-export interface PreferencesDocument extends Preferences {
+export interface PreferencesDocument {
   product: string
-  recipient_preferences: RecipientPreferencesDoc
   categories: CategoryPreferenceDoc[]
 }
 
 /**
- * One category's write, the §13b boolean shape. ⚠️ Iris refuses a partial
- * write — a stored row is the full expression, so ALL FOUR booleans must be
- * present (measured live, 31-08); callers compose from the current document.
+ * One category's write. `email` is the whole expression; the proxy forwards
+ * exactly `{"categories":{"<id>":{"email":bool}}}` to Iris, and Iris's
+ * trigger refuses email off for an unsuppressible category with a 422 that
+ * the proxy surfaces verbatim.
  */
 export interface CategoryWrite {
-  in_app?: boolean
-  email?: boolean
-  digest?: boolean
-  muted?: boolean
-  retention_override_seconds?: number | null
+  email: boolean
+}
+
+export interface PrefsWrite {
+  categories: Record<string, CategoryWrite>
 }
 
 export const getPrefsDocument = () =>
   apiRequest<PreferencesDocument>('/notifications/preferences')
 
-/**
- * The §13b boolean PUT. ⚠️ The proxy sends the recipient_preferences block on
- * EVERY write, so quiet hours / digest time / timezone must ALWAYS be included
- * — a categories-only body would silently reset the schedule to defaults.
- * Callers hold the full document and pass its schedule fields through.
- */
-export interface BooleanPrefsWrite {
-  timezone?: string
-  quiet_hours_start?: string | null
-  quiet_hours_end?: string | null
-  digest_time?: string
-  categories?: Record<string, CategoryWrite>
-}
-
-export const updatePrefsBooleans = (w: BooleanPrefsWrite) =>
+/** The PUT answers with the stored truth re-read, plus `ok`. */
+export const updatePrefs = (w: PrefsWrite) =>
   apiRequest<PreferencesDocument & { ok: boolean }>('/notifications/preferences', {
     method: 'PUT',
     body: JSON.stringify(w),

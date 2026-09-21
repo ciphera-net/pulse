@@ -61,9 +61,9 @@ describe('lifecycle renderers', () => {
     expect(getTypeIcon('lifecycle_no_site')).not.toEqual(getTypeIcon('a_type_that_does_not_exist'))
   })
 
-  // WorkspaceNotificationsTab maps over this list directly, so a category
-  // missing from it is invisible in settings and cannot be toggled there,
-  // however correctly the wire reports it.
+  // MyPreferencesTab renders the wire's categories in this list's order, so a
+  // category missing from it is invisible in settings and cannot be switched
+  // there, however correctly the wire reports it.
   it('the lifecycle category is in the settings list, and is not critical', () => {
     const cat = NOTIFICATION_CATEGORIES.find((c) => c.id === 'lifecycle')
     expect(cat).toBeDefined()

@@ -56,8 +56,8 @@ function normalizeReceipt(r: any): Receipt {
     event_id: r.event_id,
     delivered_at: r.delivered_at ?? null,
     read_at: r.read_at ?? null,
-    // The email leg's status vocabulary, untranslated (S10): 'held' draws the
-    // amber chip; delivered_at stays "handed off, null while held".
+    // The email leg's status vocabulary, untranslated (S10); delivered_at
+    // stays "handed off, null until then".
     email_status: r.email_status ?? null,
     email_state_reason: r.email_state_reason ?? null,
     category_id: r.category_id ?? null,
@@ -121,8 +121,8 @@ export const purgeMine = () =>
 
 export interface Delivery {
   id: string
-  channel: string   // 'in_app' | 'email' | 'email_digest' | 'webhook'
-  status: string    // 'queued' | 'sent' | 'failed' | 'skipped_quiet_hours' | 'skipped_off'
+  channel: string   // 'in_app' | 'email' (historical rows may say 'email_digest')
+  status: string    // 'queued' | 'handed_off' | 'delivered' | 'bounced' | 'suppressed' | 'skipped_off' | …
   sent_at: string
 }
 
