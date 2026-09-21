@@ -11,7 +11,7 @@ import { useSites, useSitesCache } from '@/lib/swr/sites'
 import { trackWelcomeSiteAdded } from '@/lib/welcomeAnalytics'
 import { siteCreateError } from '@/lib/api/siteErrors'
 import { Button, Input, Select, Spinner } from '@ciphera-net/facet'
-import { browserTimeZone, timezoneOptionsFor } from '@/lib/utils/timezones'
+import { browserTimeZone, timezoneGroupsFor } from '@/lib/utils/timezones'
 import { displayDomain } from '@/lib/utils/displayDomain'
 import { SETUP_COPY } from '@/lib/setup/copy'
 
@@ -226,7 +226,7 @@ export default function SetupSitePage() {
             id="site-timezone"
             value={timezone}
             onChange={setTimezone}
-            options={timezoneOptionsFor(timezone)}
+            groups={timezoneGroupsFor(timezone)}
             placeholder="Select a timezone…"
             aria-label="Timezone"
             className="w-full"
