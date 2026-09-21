@@ -46,10 +46,16 @@ vi.mock('@ciphera-net/facet', () => ({
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
   Input: (props: any) => <input {...props} />,
   CheckCircleIcon: () => <span />,
-  Select: ({ value, onChange, options, placeholder, className, ...props }: any) => (
+  Select: ({ value, onChange, options, groups, placeholder, className, ...props }: any) => (
     <select value={value ?? ''} onChange={(e) => onChange(e.target.value)} {...props}>
       <option value="">{placeholder}</option>
-      {options.map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      {groups
+        ? groups.map((g: any) => (
+            <optgroup key={g.label} label={g.label}>
+              {g.options.map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </optgroup>
+          ))
+        : options?.map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   ),
 }))
