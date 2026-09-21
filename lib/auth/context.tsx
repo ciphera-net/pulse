@@ -411,7 +411,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       logger.error('Failed to refresh user data', e)
     }
-    // * Clear SWR cache so stale data isn't served after token refresh
+    // * Clear SWR cache so stale data isn't served after token refresh.
+    // * The data is set to undefined synchronously and every mounted key
+    // * refetches under the token loadSession() just primed. The workspace
+    // * switch (lib/hooks/useOrgSwitcher.ts) relies on THIS as its cache purge —
+    // * a second cache-wide mutate stacked after it with `revalidate: false`
+    // * makes SWR discard these refetches and start none (pulse#730).
     swrMutate(() => true, undefined, { revalidate: true })
     router.refresh()
   }, [router, swrMutate])
