@@ -21,10 +21,10 @@ export const metadata: Metadata = {
     'How cookieless web analytics works: no cookies, no client-side identifiers, no fingerprinting. Pulse counts visits and unique visitors server-side, with nothing identifying stored in the browser — here is the mechanism.',
   alternates: { canonical: '/cookieless-analytics' },
   openGraph: {
-    title: 'Cookieless analytics — how it works | Pulse by Ciphera',
+    title: 'Cookieless analytics — how it works | Pulse Analytics',
     description:
       'No cookies, no persistent identifiers, no fingerprinting. The mechanism behind accurate, privacy-first cookieless web analytics.',
-    siteName: 'Pulse by Ciphera',
+    siteName: 'Pulse Analytics',
     images: DEFAULT_OG_IMAGES,
   },
 }

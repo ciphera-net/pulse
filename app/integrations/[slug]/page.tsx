@@ -53,7 +53,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params
   const integration = getIntegration(slug)
   if (!integration) return { title: 'Integration' }
-  // Bare page name — the root title template appends "| Pulse by Ciphera".
+  // Bare page name — the root title template appends "| Pulse Analytics".
   const title = `${integration.name} analytics — install Pulse`
   return {
     title,
@@ -62,7 +62,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     openGraph: {
       title,
       description: integration.description,
-      siteName: 'Pulse by Ciphera',
+      siteName: 'Pulse Analytics',
       images: DEFAULT_OG_IMAGES,
     },
   }

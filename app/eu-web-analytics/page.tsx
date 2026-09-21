@@ -21,10 +21,10 @@ export const metadata: Metadata = {
     'EU web analytics with data on Swiss/EU infrastructure, operated by an EU company (Ciphera BV, Belgium). No transfer to the US, no US-jurisdiction cloud in the path. Sovereign by design.',
   alternates: { canonical: '/eu-web-analytics' },
   openGraph: {
-    title: 'EU web analytics | Pulse by Ciphera',
+    title: 'EU web analytics | Pulse Analytics',
     description:
       'Data on Swiss/EU infrastructure, an EU company, no US transfer. Web analytics built for European data sovereignty.',
-    siteName: 'Pulse by Ciphera',
+    siteName: 'Pulse Analytics',
     images: DEFAULT_OG_IMAGES,
   },
 }

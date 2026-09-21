@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   // directory page is the layout's own segment, so the ROOT template wraps it.
   title: {
     default: 'Integrations',
-    template: '%s | Pulse by Ciphera',
+    template: '%s | Pulse Analytics',
   },
   description: 'Pulse works with 75+ frameworks, CMS platforms, and hosting providers. One script tag — any stack.',
   alternates: {
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Integrations',
     description: 'Pulse works with 75+ frameworks, CMS platforms, and hosting providers. One script tag — any stack.',
-    siteName: 'Pulse by Ciphera',
+    siteName: 'Pulse Analytics',
     images: DEFAULT_OG_IMAGES,
   },
 }

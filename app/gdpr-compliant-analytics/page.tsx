@@ -21,10 +21,10 @@ export const metadata: Metadata = {
     'GDPR-compliant web analytics that collects no personal data. No cookies, no consent, no cross-site tracking — compliant by architecture, from an EU company with Swiss/EU data residency.',
   alternates: { canonical: '/gdpr-compliant-analytics' },
   openGraph: {
-    title: 'GDPR-compliant analytics | Pulse by Ciphera',
+    title: 'GDPR-compliant analytics | Pulse Analytics',
     description:
       'Web analytics that collects no personal data as defined by GDPR — compliant by architecture, not by configuration.',
-    siteName: 'Pulse by Ciphera',
+    siteName: 'Pulse Analytics',
     images: DEFAULT_OG_IMAGES,
   },
 }
