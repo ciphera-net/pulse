@@ -1,12 +1,11 @@
 'use client'
 
-import { Suspense, useMemo, useState } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useNotifications } from '@/lib/hooks/useNotifications'
-import { NOTIFICATIONS_KEY, useInvalidateNotifications } from '@/lib/hooks/useNotificationInbox'
+import { useInvalidateNotifications } from '@/lib/hooks/useNotificationInbox'
 import { markAllRead, purgeMine } from '@/lib/api/notifications-v2'
-import { getPrefsDocument, type PreferencesDocument } from '@/lib/api/notifications-preferences'
 import { NOTIFICATION_CATEGORIES, shortLabel } from '@/lib/notifications/categories'
 import { groupByDay } from './sections'
 import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
@@ -15,7 +14,6 @@ import PurgeConfirmDialog from './PurgeConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { BellSimple } from '@phosphor-icons/react'
 import { toast, getAuthErrorMessage, Switcher } from '@ciphera-net/facet'
-import useSWR from 'swr'
 
 /**
  * /notifications — the Day Register (round-3 ruling R3-1, Direction B; copy
@@ -65,24 +63,6 @@ function NotificationsContent() {
       category: active !== 'all' ? [active] : undefined,
       limit: 100,
     })
-
-  // The preferences document feeds two honest details: the held chip's send
-  // time (quiet_hours_end) and the muted state per category. Its absence
-  // degrades those details, never the page.
-  // The key sits INSIDE the invalidation family (array, NOTIFICATIONS_KEY
-  // first) so a settings save reaches this copy too — a bare string key is
-  // invisible to invalidateNotifications' prefix predicate (review catch).
-  const { data: prefsDoc } = useSWR<PreferencesDocument>(
-    [NOTIFICATIONS_KEY, 'prefs-doc'],
-    () => getPrefsDocument(),
-  )
-  const mutedByCategory = useMemo(() => {
-    const m: Record<string, boolean> = {}
-    for (const cat of prefsDoc?.categories ?? []) m[cat.category_id] = cat.muted
-    return m
-  }, [prefsDoc])
-  // HH:MM for the chip — the wire carries HH:MM:SS.
-  const quietHoursEnd = prefsDoc?.recipient_preferences?.quiet_hours_end?.slice(0, 5) ?? null
 
   // Registry vocabulary from the wire; local list only as the pre-wire
   // fallback (R3-3: one vocabulary, short forms derive from the registry).
@@ -259,8 +239,6 @@ function NotificationsContent() {
                       key={r.event_id}
                       receipt={r}
                       categoryName={displayName(r.category_id ?? categoryOf(r.event.type))}
-                      quietHoursEnd={quietHoursEnd}
-                      muted={mutedByCategory[r.category_id ?? categoryOf(r.event.type)] ?? false}
                       onChange={() => {
                         refresh()
                         void invalidateNotifications()

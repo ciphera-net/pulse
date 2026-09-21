@@ -11,9 +11,11 @@ import { NAV_GROUPS, SETTINGS_TAB_ICONS, sectionOf } from '@/components/settings
 const tabs = NAV_GROUPS.flatMap((g) => g.tabs)
 
 describe('settings nav registry', () => {
-  it('has three scopes, seven / seven / five tabs', () => {
+  it('has three scopes, seven / six / five tabs', () => {
+    // Workspace lost its Notifications tab on 21-09-2026 (ruling D7): there
+    // was no workspace-level setting behind it.
     expect(NAV_GROUPS.map((g) => [g.section, g.tabs.length])).toEqual([
-      ['site', 7], ['organization', 7], ['account', 5],
+      ['site', 7], ['organization', 6], ['account', 5],
     ])
   })
 
