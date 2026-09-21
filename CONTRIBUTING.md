@@ -1,4 +1,4 @@
-# Contributing to Pulse
+# Contributing to Pulse Analytics
 
 Thank you for your interest in contributing to Pulse! We welcome contributions from the community to help make privacy-first analytics better for everyone.
 

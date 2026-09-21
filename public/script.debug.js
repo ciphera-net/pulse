@@ -1,5 +1,5 @@
 /**
- * Pulse - Privacy-First Tracking Script
+ * Pulse Analytics - Privacy-First Tracking Script
  * Lightweight, no cookies, no localStorage, no client-side identifiers. GDPR compliant.
  * Visits and visitors are identified server-side: a daily-rotating session hash and a
  * monthly-rotating visitor hash of IP + UA + domain, salted on the site's own calendar.
