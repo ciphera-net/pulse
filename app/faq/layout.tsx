@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'FAQ',
     description: 'Frequently asked questions about Pulse, privacy, GDPR compliance, and how it works.',
-    siteName: 'Pulse by Ciphera',
+    siteName: 'Pulse Analytics',
     images: DEFAULT_OG_IMAGES,
   },
 }

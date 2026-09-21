@@ -20,8 +20,8 @@ const homepageSchema = [
   {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
-    name: 'Pulse',
-    alternateName: 'Ciphera Pulse',
+    name: 'Pulse Analytics',
+    alternateName: 'Pulse',
     description:
       'Privacy-first, cookie-free web analytics. GDPR compliant by architecture, open-source client, hosted in the EU/Switzerland.',
     applicationCategory: 'BusinessApplication',
@@ -42,7 +42,7 @@ const homepageSchema = [
     '@type': 'WebSite',
     '@id': 'https://pulse.ciphera.net/#website',
     url: 'https://pulse.ciphera.net',
-    name: 'Pulse by Ciphera',
+    name: 'Pulse Analytics',
     publisher: { '@id': 'https://ciphera.net/#organization' },
   },
 ]

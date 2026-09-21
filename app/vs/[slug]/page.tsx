@@ -41,9 +41,9 @@ export async function generateMetadata({
     description: comparison.metaDescription,
     alternates: { canonical: `/vs/${slug}` },
     openGraph: {
-      title: `${title} | Pulse by Ciphera`,
+      title: `${title} | Pulse Analytics`,
       description: comparison.metaDescription,
-      siteName: 'Pulse by Ciphera',
+      siteName: 'Pulse Analytics',
       images: DEFAULT_OG_IMAGES,
     },
   }

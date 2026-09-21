@@ -43,7 +43,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Analytics before the revenue',
     description,
-    siteName: 'Pulse by Ciphera',
+    siteName: 'Pulse Analytics',
     images: [
       {
         url: OG_IMAGE,

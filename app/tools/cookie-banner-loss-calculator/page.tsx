@@ -19,10 +19,10 @@ export const metadata: Metadata = {
     'Estimate how many visitors your consent-gated analytics never counts. Enter your monthly visitors and consent-accept rate — the calculator does the arithmetic in your browser.',
   alternates: { canonical: '/tools/cookie-banner-loss-calculator' },
   openGraph: {
-    title: 'Cookie-banner loss calculator | Pulse by Ciphera',
+    title: 'Cookie-banner loss calculator | Pulse Analytics',
     description:
       'How many visitors does your cookie banner hide from analytics? Put in your own numbers and find out.',
-    siteName: 'Pulse by Ciphera',
+    siteName: 'Pulse Analytics',
     images: DEFAULT_OG_IMAGES,
   },
 }
