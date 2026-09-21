@@ -9,7 +9,7 @@ import { createOrganization, switchContext } from '@/lib/api/organization'
 import { useClearOrgScopedCaches } from '@/lib/swr/org-switch'
 import { setSessionAction } from '@/app/actions/auth'
 import { trackWelcomeWorkspaceCreated } from '@/lib/welcomeAnalytics'
-import apiRequest from '@/lib/api/client'
+import apiRequest, { setAccessToken } from '@/lib/api/client'
 import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { orgCreateError } from '@/lib/api/orgErrors'
 import { Button, Input, toast } from '@ciphera-net/facet'
@@ -43,6 +43,11 @@ export default function SetupOrgPage() {
       const result = await setSessionAction(access_token)
 
       if (result.success && result.user) {
+        // The Bearer is the credential pulse-api sees (per-app sessions S3);
+        // the cookie alone changes nothing about what the profile fetch below
+        // or the site step's listSites() sends. Prime it BEFORE either runs,
+        // or both go out scoped to the org the session was on (pulse#730).
+        setAccessToken(access_token)
         try {
           const fullProfile = await apiRequest<{
             id: string; email: string; display_name?: string;
@@ -65,7 +70,8 @@ export default function SetupOrgPage() {
       trackWelcomeWorkspaceCreated(Boolean(searchParams.get('plan')))
       // The session now points at the NEW org — every cached fact about the
       // old one is a lie here. Without this, the site step rendered the
-      // previous org's site as "Pick up where you left off".
+      // previous org's site as "Pick up where you left off". The Bearer is
+      // already the new org's (above), so the refetch this starts is too.
       await clearOrgScopedCaches()
       router.push(`/setup/site${preservePlanParams(searchParams)}`)
     } catch (err) {
