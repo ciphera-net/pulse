@@ -18,10 +18,10 @@ export const metadata: Metadata = {
     'A free UTM link builder. Add campaign source, medium and name to any URL and copy the tagged link — assembled in your browser, tracked automatically in Pulse.',
   alternates: { canonical: '/tools/utm-builder' },
   openGraph: {
-    title: 'Free UTM builder | Pulse by Ciphera',
+    title: 'Free UTM builder | Pulse Analytics',
     description:
       'Build tagged campaign URLs in seconds. Free, browser-only, and read automatically by Pulse’s cookieless analytics.',
-    siteName: 'Pulse by Ciphera',
+    siteName: 'Pulse Analytics',
     images: DEFAULT_OG_IMAGES,
   },
 }
