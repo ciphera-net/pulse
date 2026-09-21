@@ -16,7 +16,7 @@ import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
 import { displayDomain } from '@/lib/utils/displayDomain'
-import { timezoneOptionsFor } from '@/lib/utils/timezones'
+import { timezoneGroupsFor } from '@/lib/utils/timezones'
 
 // The zone list and the current-zone guard are shared with the site-creation
 // forms and the display-zone resolver: lib/utils/timezones.ts.
@@ -60,7 +60,7 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
   // A zone whose value isn't in the resolved list (rare — a backend zone the
   // browser's ICU doesn't know) still needs a legible option so the Select can
   // render its current value rather than falling back to the placeholder.
-  const timezoneOptions = useMemo(() => timezoneOptionsFor(timezone), [timezone])
+  const timezoneGroups = useMemo(() => timezoneGroupsFor(timezone), [timezone])
 
   useEffect(() => {
     if (!site || hasInitialized.current) return
@@ -148,7 +148,7 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
               id="site-timezone"
               value={timezone}
               onChange={setTimezone}
-              options={timezoneOptions}
+              groups={timezoneGroups}
               placeholder="Select a timezone…"
               disabled={!canEdit || saving}
               className="w-full"

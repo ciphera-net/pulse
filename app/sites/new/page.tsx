@@ -12,7 +12,7 @@ import { trackSiteCreatedFromDashboard, trackSiteCreatedScriptCopied } from '@/l
 import { toast } from '@ciphera-net/facet'
 import { siteCreateError } from '@/lib/api/siteErrors'
 import { Button, Input, Select } from '@ciphera-net/facet'
-import { browserTimeZone, timezoneOptionsFor } from '@/lib/utils/timezones'
+import { browserTimeZone, timezoneGroupsFor } from '@/lib/utils/timezones'
 import { CheckCircleIcon } from '@ciphera-net/facet'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
 
@@ -303,7 +303,7 @@ export default function NewSitePage() {
             id="timezone"
             value={formData.timezone}
             onChange={(v) => setFormData({ ...formData, timezone: v })}
-            options={timezoneOptionsFor(formData.timezone)}
+            groups={timezoneGroupsFor(formData.timezone)}
             placeholder="Select a timezone…"
             aria-label="Timezone"
             className="w-full"
