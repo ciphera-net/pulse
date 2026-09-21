@@ -7,9 +7,9 @@ import dynamic from 'next/dynamic'
 const AccountProfileTab  = dynamic(() => import('@/components/settings/unified/tabs/AccountProfileTab'))
 const AccountSecurityTab = dynamic(() => import('@/components/settings/unified/tabs/AccountSecurityTab'))
 const AccountDevicesTab  = dynamic(() => import('@/components/settings/unified/tabs/AccountDevicesTab'))
-// * Personal notification preferences now live under Account (IA move, spec §5.2).
-// * The delivery matrix, digest, quiet hours, and retention overrides that used
-// * to be the org section's "My preferences" sub-tab render here directly.
+// * Personal notification preferences live under Account (IA move, spec §5.2).
+// * Since 21-09-2026 the page is one email switch per category; the digest,
+// * quiet hours, mute and retention controls it used to carry are retired.
 const MyPreferencesTab   = dynamic(() => import('@/components/settings/notifications/MyPreferencesTab'))
 // * Ciphera ID's own account alert emails — a different system from Pulse's
 // * notification categories above, so a different tab rather than a section

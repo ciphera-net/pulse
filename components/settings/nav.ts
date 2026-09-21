@@ -87,7 +87,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Members', href: '/settings/organization/members', description: 'Invite and manage your team.', icon: UsersThree },
       { label: 'Roles & Permissions', href: '/settings/organization/roles', description: 'What each role can access.', icon: Key, requires: 'roles.manage' },
       { label: 'Billing', href: '/settings/organization/billing', description: 'Plan, usage and invoices.', icon: CreditCard, requires: 'billing.view' },
-      { label: 'Notifications', href: '/settings/organization/notifications', description: 'Workspace categories.', icon: Bell, requires: 'notification_settings.manage' },
       // * Terminal, not Key — Key is already the Roles metaphor, and an API key is
       // * a developer-surface credential rather than a permissions concept.
       { label: 'API Keys', href: '/settings/organization/api-keys', description: 'Read your analytics programmatically.', icon: Terminal, requires: 'integrations.manage' },
@@ -102,7 +101,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Security', href: '/settings/account/security', description: 'Password, two-factor and passkeys.', icon: Lock },
       { label: 'Devices', href: '/settings/account/devices', description: 'Trusted devices and security activity.', icon: DeviceMobile },
       // BellRinging, deliberately distinct from the org tab's Bell.
-      { label: 'Notifications', href: '/settings/account/notifications', description: 'Delivery preferences and quiet hours.', icon: BellRinging },
+      { label: 'Notifications', href: '/settings/account/notifications', description: 'Which categories email you.', icon: BellRinging },
       // EnvelopeSimple, not a third bell: these are the emails Ciphera ID sends
       // about the ACCOUNT, a different system from Pulse's own notifications.
       { label: 'Security alerts', href: '/settings/account/security-alerts', description: 'Emails Ciphera ID sends about your account.', icon: EnvelopeSimple },

@@ -33,9 +33,9 @@ export const NOTIFICATION_CATEGORIES: NotificationCategory[] = [
   { id: 'team', label: 'Team', critical: false },
   { id: 'system', label: 'System', critical: false },
   // lifecycle joined with iris migration 026 (the D7 nudge). It goes LAST so
-  // adding it reorders nothing above it. 🔴 This list is what
-  // WorkspaceNotificationsTab actually maps over, so a category missing from
-  // it is invisible in settings and cannot be toggled there, however
+  // adding it reorders nothing above it. 🔴 This list is the ORDER
+  // MyPreferencesTab renders the wire's categories in, so a category missing
+  // from it is invisible in settings and cannot be switched there, however
   // correctly the wire reports it.
   { id: 'lifecycle', label: 'Getting started', critical: false },
 ]

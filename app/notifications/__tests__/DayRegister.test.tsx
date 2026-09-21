@@ -31,16 +31,6 @@ vi.mock('@/lib/api/notifications-v2', () => ({
   purgeMine: () => purgeMine(),
 }))
 
-// The page's own useSWR fetches the prefs document (held chip + muted meta).
-let prefsDoc: any
-vi.mock('swr', () => ({
-  __esModule: true,
-  default: () => ({ data: prefsDoc }),
-}))
-vi.mock('@/lib/api/notifications-preferences', () => ({
-  getPrefsDocument: vi.fn(),
-}))
-
 vi.mock('@/lib/notifications/renderers', () => ({
   renderNotification: (r: Receipt) => ({
     title: `title:${r.event_id}`,
@@ -161,10 +151,6 @@ function baseHook(over: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.clearAllMocks()
   search = new URLSearchParams()
-  prefsDoc = {
-    recipient_preferences: { quiet_hours_end: '08:00:00' },
-    categories: [{ category_id: 'system', muted: true }],
-  }
   useNotifications.mockReturnValue(baseHook())
 })
 
@@ -272,18 +258,6 @@ describe('the Day Register (/notifications, round-3 Direction B)', () => {
     expect(screen.getByText(/^Emailed \d{2}:\d{2}$/)).toBeInTheDocument()
   })
 
-  it('a held email draws the amber chip with the quiet-hours send time', () => {
-    useNotifications.mockReturnValue(
-      baseHook({
-        receipts: [
-          receipt('r3', 'site_pagespeed_drop', todayISO, { email_status: 'held' }),
-        ],
-      }),
-    )
-    render(<NotificationsPage />)
-    expect(screen.getByText('Held — quiet hours · sends 08:00')).toBeInTheDocument()
-  })
-
   it('a confirmed delivery renders green "Delivered HH:MM"; a bounce is stated', () => {
     useNotifications.mockReturnValue(
       baseHook({
@@ -300,14 +274,6 @@ describe('the Day Register (/notifications, round-3 Direction B)', () => {
     const delivered = screen.getByText(/^Delivered \d{2}:\d{2}$/)
     expect(delivered.className).toContain('text-pos')
     expect(screen.getByText('Email bounced')).toBeInTheDocument()
-  })
-
-  it('a muted category’s row reads "Muted — recorded, not alerted"', () => {
-    useNotifications.mockReturnValue(
-      baseHook({ receipts: [receipt('r4', 'system_announcement', todayISO)] }),
-    )
-    render(<NotificationsPage />)
-    expect(screen.getByText('Muted — recorded, not alerted')).toBeInTheDocument()
   })
 
   it('expansion marks read exactly once and shows the full body', async () => {
