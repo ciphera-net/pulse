@@ -20,7 +20,7 @@ export interface TourStepDef {
 export const TOUR_STEPS: readonly TourStepDef[] = [
   {
     anchor: null,
-    title: 'Welcome to Pulse',
+    title: 'Welcome to Pulse Analytics',
     body: 'A one-minute tour of your dashboard — where the numbers live, how to filter them, and where alerts land. You can leave at any point.',
   },
   {

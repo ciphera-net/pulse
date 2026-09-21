@@ -21,10 +21,10 @@ export const metadata: Metadata = {
     'A privacy-first Google Analytics alternative: cookieless, no consent banner, EU company, Swiss/EU data residency. Keep the reports you use, drop the compliance overhead.',
   alternates: { canonical: '/google-analytics-alternative' },
   openGraph: {
-    title: 'A privacy-first Google Analytics alternative | Pulse by Ciphera',
+    title: 'A privacy-first Google Analytics alternative | Pulse Analytics',
     description:
       'Cookieless, banner-free, EU-based analytics. What you keep when you leave Google Analytics, and how to switch in minutes.',
-    siteName: 'Pulse by Ciphera',
+    siteName: 'Pulse Analytics',
     images: DEFAULT_OG_IMAGES,
   },
 }

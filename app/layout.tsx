@@ -13,10 +13,10 @@ import '../styles/globals.css'
 // * canonical) resolves against. Kept as a constant so the OG/Twitter blocks
 // * and metadataBase never drift apart.
 const SITE_URL = 'https://pulse.ciphera.net'
-// * Brand-led title (owner decision: "Pulse by Ciphera"). Used as the default
+// * Brand-led title (owner decision, 21-09-2026: "Pulse Analytics"). Used as the default
 // * <title> and as the OG/Twitter title; child routes set a bare page name and
 // * the template appends the brand — see `title` below.
-const SITE_TITLE = 'Pulse by Ciphera — Privacy-First Web Analytics'
+const SITE_TITLE = 'Pulse Analytics — Privacy-First Web Analytics'
 const SITE_DESCRIPTION =
   'Simple, privacy-focused web analytics. No cookies, no tracking. GDPR compliant.'
 
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     default: SITE_TITLE,
-    template: '%s | Pulse by Ciphera',
+    template: '%s | Pulse Analytics',
   },
   description: SITE_DESCRIPTION,
   keywords: ['analytics', 'privacy', 'web analytics', 'ciphera', 'GDPR'],
@@ -70,7 +70,7 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: SITE_URL,
-    siteName: 'Pulse by Ciphera',
+    siteName: 'Pulse Analytics',
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     images: DEFAULT_OG_IMAGES,

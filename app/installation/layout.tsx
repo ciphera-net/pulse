@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     title: 'Install Pulse — one script tag',
     description:
       'Add privacy-first analytics to any site with a single script tag. Setup guides for 75+ frameworks — no cookies, no consent banner.',
-    siteName: 'Pulse by Ciphera',
+    siteName: 'Pulse Analytics',
     images: DEFAULT_OG_IMAGES,
   },
 }

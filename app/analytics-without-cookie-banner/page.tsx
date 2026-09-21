@@ -21,10 +21,10 @@ export const metadata: Metadata = {
     'Web analytics that needs no cookie consent banner. Because Pulse sets no cookies, it is exempt from ePrivacy consent — no banner, and it counts every visitor, not just those who opt in.',
   alternates: { canonical: '/analytics-without-cookie-banner' },
   openGraph: {
-    title: 'Analytics without a cookie banner | Pulse by Ciphera',
+    title: 'Analytics without a cookie banner | Pulse Analytics',
     description:
       'No cookies means no consent banner — and no blind spot for the visitors who would have said no. Here is what the banner actually costs.',
-    siteName: 'Pulse by Ciphera',
+    siteName: 'Pulse Analytics',
     images: DEFAULT_OG_IMAGES,
   },
 }
