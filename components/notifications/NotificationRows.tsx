@@ -1,16 +1,25 @@
 'use client'
 
 /**
- * @file The bell's row anatomy — Direction A "triage list", option A2 "Docket".
+ * @file The notification row — Direction A "triage list", option A2 "Docket".
  *
  * Owner picked A2 on 30-08-2026 from a mocked options round on production:
  * `Pulse/docs/plans/30-08-2026-bell-room-direction-a-spec.md`. Decided; the
  * alternatives (A1 "Letterpress", category as a word; A3 "Ledger", single-line
  * rows) were rejected, not shelved. Density was the variable and the lowest was
  * chosen deliberately — the bell is not being asked to show more at once.
+ *
+ * Since 22-09-2026 (PULSE-15, direction "a · One list") the /notifications page
+ * renders THIS row too, so the two surfaces cannot drift: the page passes a
+ * clock time where the bell passes a relative one, and an optional footer line
+ * (the category word). The dismiss control is the house rung for a row-level
+ * action — Facet ghost `Button` with `XIcon` — always visible, quiet, 24 px,
+ * labelled "Dismiss" (owner pick x1; the previous hover-only text glyph was
+ * 22 × 24 px and said "Delete my copy").
  */
 
 import Link from 'next/link'
+import { Button, XIcon } from '@ciphera-net/facet'
 import type { Receipt } from '@/lib/notifications/types'
 import { formatTimeAgo, getTypeIcon } from '@/lib/utils/notifications'
 
@@ -18,6 +27,17 @@ export interface RowProps {
   receipt: Receipt
   title: string
   body?: string
+  /**
+   * Overrides the read state the row RENDERS. The bell passes the state a
+   * receipt had when the panel opened, so that reading-on-open (which marks
+   * everything read the moment the panel appears) does not erase the "what is
+   * new" signal in the same frame. Omit it and the live `read_at` decides.
+   */
+  unread?: boolean
+  /** The trailing time. Defaults to the relative form ("3h ago"); the page passes a clock. */
+  timeLabel?: string
+  /** A muted footer line under the body — the page passes the category word. */
+  meta?: React.ReactNode
   /** True while a dismiss request is in flight for this row. */
   removing: boolean
   onActivate: (r: Receipt) => void
@@ -36,9 +56,20 @@ export interface RowProps {
  * medium-weight title, and the options round's harness asserts every row's
  * computed background is `rgba(0, 0, 0, 0)`.
  */
-export function NotificationRow({ receipt, title, body, removing, onActivate, onDismiss }: RowProps) {
-  const isUnread = !receipt.read_at
+export function NotificationRow({
+  receipt,
+  title,
+  body,
+  unread,
+  timeLabel,
+  meta,
+  removing,
+  onActivate,
+  onDismiss,
+}: RowProps) {
+  const isUnread = unread ?? !receipt.read_at
   const iso = new Date(receipt.event.created_at).toISOString()
+  const time = timeLabel ?? formatTimeAgo(receipt.event.created_at)
 
   const inner = (
     <div className="flex gap-3 items-start">
@@ -72,16 +103,13 @@ export function NotificationRow({ receipt, title, body, removing, onActivate, on
           ) : (
             <>
               <p className="text-xs text-neutral-500 shrink-0" title={iso}>
-                {formatTimeAgo(receipt.event.created_at)}
+                {time}
               </p>
-              {/* 🔑 A RESERVED GUTTER, not padding. The time moved onto the
-                  title line while the dismiss control kept its absolute
-                  position, so they collided — visible twice in the options
-                  round's `states.png`. This spacer reuses the same device the
-                  read rows' dot column already uses rather than inventing one,
-                  and avoids depending on a padding utility the bundle may not
-                  carry. */}
-              <span className="w-4 shrink-0" aria-hidden="true" />
+              {/* 🔑 A RESERVED GUTTER, not padding. The time sits on the title
+                  line and the dismiss control is parked over the row's corner,
+                  so without this they collide — visible twice in the 30-08
+                  round's `states.png`. 24 px wide because the control is. */}
+              <span className="w-6 shrink-0" aria-hidden="true" />
             </>
           )}
         </div>
@@ -89,6 +117,9 @@ export function NotificationRow({ receipt, title, body, removing, onActivate, on
           <p className={`text-xs mt-0.5 line-clamp-2 ${removing ? 'text-neutral-600' : 'text-neutral-400'}`}>
             {body}
           </p>
+        )}
+        {meta && (
+          <div className="mt-1.5 text-[11px] text-neutral-500">{meta}</div>
         )}
       </div>
     </div>
@@ -118,20 +149,26 @@ export function NotificationRow({ receipt, title, body, removing, onActivate, on
         </button>
       )}
       {!removing && (
-        <button
+        /* A SIBLING of the row's link, never a child: a button inside an anchor
+           is invalid HTML, which is why it is parked absolutely over the corner
+           the gutter above reserves. Facet's `Button` has no 24 px icon rung
+           (`icon` is 36 px), so the geometry is overridden through `cn`'s
+           tailwind-merge; the ghost hover and the focus ring are Facet's own.
+           The visible tooltip is the one word; the accessible name carries the
+           title AND the time, so ten "Dismiss" buttons are not ten identical
+           names even when two rows share a title (two "API key created" in one
+           afternoon is the normal case, not the edge). */
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDismiss(receipt.event_id) }}
-          aria-label={`Delete my copy of "${title}"`}
-          title="Delete my copy"
-          /* 🔴 `focus:opacity-100` and the coarse-pointer rule are the fix, not
-             polish. `opacity-0 group-hover:opacity-100` alone left this control
-             focusable-but-INVISIBLE: a keyboard user could Tab onto a destructive
-             action with nothing on screen to say so, and a touch user could never
-             reveal it at all. */
-          className="opacity-0 group-hover:opacity-100 focus:opacity-100 [@media(pointer:coarse)]:opacity-100 transition-opacity absolute right-2 top-3 text-neutral-500 hover:text-red-400 px-2 py-1 text-xs"
+          aria-label={`Dismiss "${title}", ${time}`}
+          title="Dismiss"
+          className="absolute right-2 top-3 size-6 p-0 text-neutral-500"
         >
-          ×
-        </button>
+          <XIcon className="h-4 w-4" aria-hidden="true" />
+        </Button>
       )}
     </li>
   )
