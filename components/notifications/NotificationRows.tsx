@@ -86,14 +86,21 @@ export function NotificationRow({
         )}
       </span>
       <div className="min-w-0 flex-1">
+        {/* 🔴 THE TITLE TAKES THE FREE SPACE (`flex-1`). This line holds THREE
+            children — title, time, gutter — so `justify-between` alone parks
+            the time in the MIDDLE of a wide row, following the title's width
+            instead of the edge (measured on production the day the page
+            became one list: 15:59 mid-row, 19:54 elsewhere). With the title
+            greedy, the time and the gutter hug the right and every time in a
+            list sits in one column, left of the ×. */}
         <div className="flex items-center justify-between gap-2">
           <p
             className={
               removing
-                ? 'text-sm text-neutral-600 min-w-0'
+                ? 'text-sm text-neutral-600 min-w-0 flex-1'
                 : isUnread
-                  ? 'text-sm font-medium text-white min-w-0'
-                  : 'text-sm text-neutral-300 min-w-0'
+                  ? 'text-sm font-medium text-white min-w-0 flex-1'
+                  : 'text-sm text-neutral-300 min-w-0 flex-1'
             }
           >
             {title}
