@@ -19,6 +19,7 @@ import {
   getDashboard,
   getDashboardOverview,
   getDashboardPages,
+  getPagesTable,
   getDashboardLocations,
   getDashboardDevices,
   getDashboardReferrers,
@@ -83,6 +84,7 @@ import type {
   DashboardDevicesData,
   DashboardReferrersData,
   DashboardGoalsData,
+  PagesTableData,
 } from '@/lib/api/stats'
 
 // * SWR fetcher functions
@@ -302,6 +304,31 @@ export function useStats(siteId: string, start: string, end: string, filters?: s
     {
       ...dashboardSWRConfig,
       // * Refresh every 60 seconds for stats
+      refreshInterval: 60_000,
+      dedupingInterval: 10_000,
+    }
+  )
+}
+
+// * Hook for the Pages surface.
+// *
+// * limit defaults to 500 rather than the API's 10: this surface exists BECAUSE
+// * the tail matters — production's busiest site has 520 distinct paths with only
+// * 49.3% of its pageviews in the top 10. Sorting and searching happen client
+// * side over the fetched set, so the fetch has to carry more than a screenful.
+export function usePagesTable(
+  siteId: string,
+  start: string,
+  end: string,
+  limit = 500,
+  filters?: string,
+  period?: string
+) {
+  return useSWR<PagesTableData>(
+    siteId && (period || (start && end)) ? ['pagesTable', siteId, period ?? '', start, end, limit, filters] : null,
+    () => getPagesTable(siteId, start, end, limit, filters, period),
+    {
+      ...dashboardSWRConfig,
       refreshInterval: 60_000,
       dedupingInterval: 10_000,
     }

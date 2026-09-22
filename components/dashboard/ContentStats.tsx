@@ -1,9 +1,10 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
 import { TopPage } from '@/lib/api/stats'
 import { FileText } from '@phosphor-icons/react'
-import { ArrowUpRightIcon, Switcher } from '@ciphera-net/facet'
+import { ArrowRightIcon, ArrowUpRightIcon, Switcher } from '@ciphera-net/facet'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useFullDimensionList, type FullListKind } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
@@ -122,8 +123,21 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
           <DimensionInfoTip tab={activeTab} className="ms-2 me-auto" />
           {/* No denominator note in the header (owner call 19-08) — the modal
               keeps its explanation, where search could otherwise mislead. */}
-          <div className="flex min-w-0 shrink items-center gap-1.5">
+          <div className="flex min-w-0 shrink items-center gap-3">
             <MetricUnitLabel views={twinColumns} />
+            {/* The card is the glance; the Pages surface is the whole set
+                (PULSE-18, owner decision D3 22-09-2026 — coexist, and the card
+                links to it). Hidden on the anonymous share surface, which has
+                no such destination. */}
+            {memberFeatures && collectPagePaths && (
+              <Link
+                href={`/sites/${siteId}/pages`}
+                className="hidden shrink-0 items-center gap-1 text-xs text-neutral-500 transition-colors duration-fast ease-apple hover:text-neutral-300 sm:inline-flex"
+              >
+                All pages
+                <ArrowRightIcon className="h-3 w-3" aria-hidden="true" />
+              </Link>
+            )}
           </div>
         </div>
 

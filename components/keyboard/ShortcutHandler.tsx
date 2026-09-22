@@ -4,17 +4,27 @@ import { useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { isTourActive } from '@/lib/tour/constants'
 
-type SitePage = 'dashboard' | 'journeys' | 'visitors' | 'funnels' | 'search' | 'cdn' | 'uptime' | 'pagespeed'
+type SitePage = 'dashboard' | 'pages' | 'journeys' | 'visitors' | 'funnels' | 'search' | 'cdn' | 'uptime' | 'pagespeed'
 
+// ⚠️ `g p` MOVED from Performance to Pages on 22-09-2026 (PULSE-18), and
+// Performance took `g r`. Pages is a daily analytics destination and Performance
+// is an occasional infrastructure one, so Pages holds the mnemonic. This is the
+// kind of change that is invisible until somebody's muscle memory lands on the
+// wrong screen — it is called out in the PR for exactly that reason.
+//
+// 🔴 THIS TABLE HAS THREE SIBLINGS AND NOTHING CROSS-CHECKS THEM: Sidebar's
+// NAV_GROUPS and NAV_SHORTCUTS, and CommandPalette's SITE_PAGES. A key added
+// here and nowhere else silently disagrees with the label the user was shown.
 const SITE_KEY_MAP: Record<string, SitePage> = {
   d: 'dashboard',
+  p: 'pages',
   j: 'journeys',
   v: 'visitors',
   f: 'funnels',
   s: 'search',
   c: 'cdn',
   u: 'uptime',
-  p: 'pagespeed',
+  r: 'pagespeed',
 }
 
 /**
@@ -26,7 +36,7 @@ const SITE_KEY_MAP: Record<string, SitePage> = {
  * - `g X` (g-prefix within 1.5s): navigate. Requires siteId for site-scoped keys.
  *   - g h = /sites (home)
  *   - g i = /integrations
- *   - g d/j/v/f/s/c/u/p = site pages (no-op when no siteId in scope)
+ *   - g d/p/j/v/f/s/c/u/r = site pages (no-op when no siteId in scope)
  * - `?` = open shortcuts overlay
  * - `,` = open unified settings
  *
