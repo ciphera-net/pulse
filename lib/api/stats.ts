@@ -442,6 +442,46 @@ export function getDashboardOverview(siteId: string, startDate?: string, endDate
 }
 
 
+// ---------------------------------------------------------------------------
+// The Pages surface (PULSE-18).
+//
+// 🔴 These rates are NOT the ones on TopPage. `TopPage.bounce_rate` and
+// `avg_duration` are computed per VISIT for every dimension (the backend's
+// dimension_rates.go says so outright), so on a page row they describe whole
+// visits that TOUCHED the page rather than the page itself. This row's
+// `avg_time_on_page` is AVG(PageTimeExpr) per path and its `entry_bounce_rate`
+// is entry-scoped — the GA4/Plausible definition. Do not render one under the
+// other's label, and do not "simplify" by reusing TopPage here.
+//
+// Every rate is `number | null`. NULL means UNMEASURED and must render as an em
+// dash — never 0. A page nobody entered has no entry bounce; a page with no
+// scroll beacons has no scroll depth; a page with no prior period has no delta,
+// and 0 would claim it was flat.
+// ---------------------------------------------------------------------------
+export interface PageTableRow {
+  path: string
+  pageviews: number
+  visitors: number
+  entries: number
+  exits: number
+  exit_rate: number | null
+  avg_time_on_page: number | null
+  entry_bounce_rate: number | null
+  avg_scroll_depth: number | null
+  /** Daily pageviews across the selected range, oldest first, from page_daily. */
+  trend: number[]
+  /** Percent change against the preceding range of equal length; null = incomparable. */
+  delta: number | null
+}
+
+export interface PagesTableData {
+  pages: PageTableRow[]
+}
+
+export function getPagesTable(siteId: string, startDate?: string, endDate?: string, limit = 500, filters?: string, period?: string): Promise<PagesTableData> {
+  return apiRequest<PagesTableData>(`/sites/${siteId}/pages/table${buildQuery({ startDate, endDate, period, limit, filters })}`)
+}
+
 export function getDashboardPages(siteId: string, startDate?: string, endDate?: string, limit = 10, filters?: string): Promise<DashboardPagesData> {
   return apiRequest<DashboardPagesData>(`/sites/${siteId}/dashboard/pages${buildQuery({ startDate, endDate, limit, filters })}`)
 }
