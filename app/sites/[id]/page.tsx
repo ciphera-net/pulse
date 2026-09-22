@@ -15,12 +15,19 @@ import { PERIOD_TO_API } from '@/lib/constants/periods'
 import { DEFAULT_GEO_DATA_LEVEL } from '@/lib/api/sites'
 import { identityWindowOf } from '@/lib/visitors/identityWindow'
 import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
+import { DEFAULT_PERIOD } from '@/lib/hooks/periodUrl'
 import { previousDateRange } from '@/lib/hooks/periodUrl'
 import { resolveDashboardRange } from '@/lib/dashboard/resolveRange'
 import dynamic from 'next/dynamic'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import FilterButton from '@/components/dashboard/FilterButton'
-import RealtimeVisitorsPopover from '@/components/dashboard/RealtimeVisitorsPopover'
+import RealtimeOrb from '@/components/dashboard/RealtimeOrb'
+import {
+  DASHBOARD_REALTIME_PRESETS,
+  DASHBOARD_ROLLING_MINUTES,
+  isRealtimePeriod,
+} from '@/lib/dashboard/realtimeRange'
+import { useRealtimeSync } from '@/lib/hooks/useRealtimeSync'
 import FilterPills from '@/components/dashboard/FilterPills'
 import FilterBuilder from '@/components/dashboard/filter/FilterBuilder'
 import { useFilterBuilder } from '@/components/dashboard/filter/useFilterBuilder'
@@ -73,10 +80,19 @@ export default function SiteDashboardPage() {
   // range, back/forward works, and nothing is silently rewritten to a frozen
   // custom range on reload. The chart intervals are view state, not identity —
   // plain React state, no persistence.
-  const { period, dateRange, periodReady, setPeriod, shiftPeriod, siteNow, pickerProps } = useUrlDateRange({
-    pageKey: 'dashboard',
-    timezone: siteRecord?.timezone,
-  })
+  // `extraPresets` adds "Realtime" to THIS page's picker only. The Period
+  // grammar is shared with funnels, search, CDN and uptime, none of which can
+  // serve a live window — a global entry would show in their menus and resolve
+  // to something they cannot honour. `rollingMinutes` is what turns the chosen
+  // period into a `minutes=` fetch instead of a date span.
+  const { period, dateRange, periodReady, rollingMinutes, setPeriod, shiftPeriod, siteNow, pickerProps } =
+    useUrlDateRange({
+      pageKey: 'dashboard',
+      timezone: siteRecord?.timezone,
+      extraPresets: DASHBOARD_REALTIME_PRESETS,
+      rollingMinutes: DASHBOARD_ROLLING_MINUTES,
+    })
+  const isLive = isRealtimePeriod(period)
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
 
@@ -137,7 +153,9 @@ export default function SiteDashboardPage() {
   // The signal is the series' own span: first→last bucket under EITHER
   // interval is < 3h exactly while the day is that young, so the rule cannot
   // oscillate. It rides one render behind the fetch by design.
-  const interval = period === '1h' ? 'minute' : period === '24h' ? 'hour' : (dateRange.start === dateRange.end ? (firstHourOfDay ? 'minute' : 'hour') : multiDayInterval)
+  // Realtime is always minute buckets: a live window drawn at day granularity is
+  // one bar, which is not a chart.
+  const interval = isLive ? 'minute' : period === '1h' ? 'minute' : period === '24h' ? 'hour' : (dateRange.start === dateRange.end ? (firstHourOfDay ? 'minute' : 'hour') : multiDayInterval)
 
   // Single dashboard request replaces focused hooks (overview, pages, locations,
   // devices, referrers, goals). The backend runs all queries in parallel
@@ -154,6 +172,10 @@ export default function SiteDashboardPage() {
     interval,
     filtersParam || undefined,
     apiPeriod,
+    // In realtime mode the window is sent as rolling minutes, not as dates or a
+    // period token: "the last 30 minutes" is not expressible as two YYYY-MM-DD
+    // strings without losing the thing that makes it live.
+    rollingMinutes ?? undefined,
   )
 
   // Server-resolved date range is the single source of truth for period-based queries.
@@ -230,6 +252,26 @@ export default function SiteDashboardPage() {
     [resolvedDateRange],
   )
   const { data: realtimeData } = useRealtime(siteId, 15_000)
+
+  // THE transport seam. Everything else on this page is transport-agnostic: the
+  // socket says "something changed" and the page refetches over HTTP, reading
+  // the same endpoints every other period reads. Only wired while live, so a
+  // historical view holds no connection.
+  useRealtimeSync({
+    enabled: isLive,
+    siteId,
+    onChanged: useCallback(() => {
+      void refetchDashboard()
+    }, [refetchDashboard]),
+  })
+
+  // The orb and the picker's "Realtime" entry are the same switch. Leaving live
+  // mode returns to the default period rather than to whatever was selected
+  // before — the previous choice is not carried, because the URL is the state
+  // and restoring a remembered one would disagree with a shared link.
+  const toggleRealtime = useCallback(() => {
+    setPeriod(isLive ? DEFAULT_PERIOD : 'realtime')
+  }, [isLive, setPeriod])
   // The previous-period comparison carries the SAME filters as the current
   // period. Omitting them compared a filtered current window against an
   // unfiltered previous one — every KPI delta was garbage under any active
@@ -338,11 +380,7 @@ export default function SiteDashboardPage() {
 
   const toolbarControls = () => (
     <>
-      <RealtimeVisitorsPopover
-        siteId={siteId}
-        count={realtime}
-        onFilterPage={(path) => handleAddFilter({ dimension: 'page', operator: 'is', values: [path] })}
-      />
+      <RealtimeOrb count={realtime} live={isLive} onToggle={toggleRealtime} />
       {/* The spacer pushes the filter/date cluster to the right edge on desktop.
           In a wrapped mobile row a flex-1 spacer would claim a whole line and
           strand the controls, so it only exists at sm+. */}
@@ -528,10 +566,14 @@ export default function SiteDashboardPage() {
         />
       </div>
 
+      {/* Peak hours is a weekly hour-of-day heatmap: a single live instant has no
+          day-of-week distribution to draw, so it is HIDDEN in realtime rather
+          than rendered as an almost-empty grid that looks like missing data. */}
+      {!isLive && (<>
       <SectionHeader title="Behaviour" />
       <div className="grid gap-3 mb-3 [&>*]:min-w-0">
         <PeakHours siteId={siteId} dateRange={resolvedDateRange} filters={filtersParam || undefined} />
-      </div></>
+      </div></>)}</>
       })()}
 
       <ExportModal

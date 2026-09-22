@@ -91,7 +91,7 @@ const fetchers = {
   installStatus: (siteId: string) => getInstallStatus(siteId),
   ingestHealth: (siteId: string) => getIngestHealth(siteId),
   trafficStatus: (siteId: string) => getTrafficStatus(siteId),
-  dashboard: (siteId: string, start: string, end: string, interval?: string, filters?: string, period?: string) => getDashboard(siteId, start, end, 10, interval, filters, period),
+  dashboard: (siteId: string, start: string, end: string, interval?: string, filters?: string, period?: string, minutes?: number) => getDashboard(siteId, start, end, 10, interval, filters, period, minutes),
   dashboardOverview: (siteId: string, start: string, end: string, interval?: string, filters?: string) => getDashboardOverview(siteId, start, end, interval, filters),
   dashboardPages: (siteId: string, start: string, end: string, filters?: string) => getDashboardPages(siteId, start, end, undefined, filters),
   dashboardLocations: (siteId: string, start: string, end: string, filters?: string) => getDashboardLocations(siteId, start, end, undefined, undefined, filters),
@@ -254,16 +254,42 @@ export function useTrafficStatus(siteId: string | undefined) {
 // resolution and echoes meta.range); the dates only distinguish one day's
 // answer from the next.
 
-export function useDashboard(siteId: string, start: string, end: string, interval?: string, filters?: string, period?: string) {
+export function useDashboard(
+  siteId: string,
+  start: string,
+  end: string,
+  interval?: string,
+  filters?: string,
+  period?: string,
+  /**
+   * A rolling live window in minutes — REALTIME MODE. When set, the window ends
+   * "now" rather than at a calendar boundary, and the server buckets it per
+   * minute.
+   *
+   * 🔴 It is part of the SWR key, and must be: without it a live view and a
+   * historical view of the same site share one cache entry, so switching into
+   * realtime would render the 30-day payload until something else invalidated it.
+   *
+   * ⚠️ The refresh cadence changes with it. A live view is driven by the
+   * WebSocket (useRealtimeSync calls mutate), so the 60s timer is dropped to
+   * 15s — a backstop for a dropped signal, not the mechanism. Leaving it at 60s
+   * would make a missed message look like a frozen dashboard for a minute.
+   */
+  minutes?: number,
+) {
+  const live = minutes != null
   return useSWR<DashboardData>(
-    siteId && (period || (start && end)) ? ['dashboard', siteId, period ?? '', start, end, interval, filters] : null,
-    () => fetchers.dashboard(siteId, start, end, interval, filters, period),
+    siteId && (live || period || (start && end))
+      ? ['dashboard', siteId, period ?? '', start, end, interval, filters, minutes ?? '']
+      : null,
+    () => fetchers.dashboard(siteId, start, end, interval, filters, live ? undefined : period, minutes),
     {
       ...dashboardSWRConfig,
-      // * Refresh every 60 seconds for dashboard data
-      refreshInterval: 60_000,
-      // * Deduping interval to prevent duplicate requests
-      dedupingInterval: 10_000,
+      refreshInterval: live ? 15_000 : 60_000,
+      // * Deduping interval to prevent duplicate requests. Much shorter when live:
+      // * the push signal and the backstop timer can land close together, and a
+      // * 10s window would swallow the very refetch the signal asked for.
+      dedupingInterval: live ? 2_000 : 10_000,
     }
   )
 }
