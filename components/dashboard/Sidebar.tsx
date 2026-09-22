@@ -10,7 +10,7 @@ import { cdnUrl } from '@/lib/cdn'
 import { DOCS_ORIGIN } from '@/lib/docs'
 import { useSidebar } from '@/lib/sidebar-context'
 import { SiteFavicon } from '@/components/sites/SiteFavicon'
-import { Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, MagnifyingGlass, UsersThree as UsersThreeIcon } from '@phosphor-icons/react'
+import { FileText as FileTextIcon, Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, MagnifyingGlass, UsersThree as UsersThreeIcon } from '@phosphor-icons/react'
 import {
   LayoutDashboardIcon,
   PathIcon,
@@ -52,6 +52,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Analytics',
     items: [
       { label: 'Dashboard', href: (id) => `/sites/${id}`, icon: LayoutDashboardIcon },
+      { label: 'Pages', href: (id) => `/sites/${id}/pages`, icon: FileTextIcon, matchPrefix: true },
       { label: 'Journeys', href: (id) => `/sites/${id}/journeys`, icon: PathIcon, matchPrefix: true },
       { label: 'Visitors', href: (id) => `/sites/${id}/visitors`, icon: UsersThreeIcon, matchPrefix: true },
       { label: 'Funnels', href: (id) => `/sites/${id}/funnels`, icon: FunnelIcon, matchPrefix: true },
@@ -88,8 +89,8 @@ const SETTINGS_ITEM: NavItem = {
 }
 
 const NAV_SHORTCUTS: Record<string, string> = {
-  Dashboard: 'G D', Journeys: 'G J', Visitors: 'G V', Funnels: 'G F', Search: 'G S',
-  CDN: 'G C', Uptime: 'G U', Performance: 'G P', 'Site Settings': ',',
+  Dashboard: 'G D', Pages: 'G P', Journeys: 'G J', Visitors: 'G V', Funnels: 'G F', Search: 'G S',
+  CDN: 'G C', Uptime: 'G U', Performance: 'G R', 'Site Settings': ',',
 }
 
 // Label that fades with the sidebar — always in the DOM, never removed
