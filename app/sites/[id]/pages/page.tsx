@@ -83,7 +83,7 @@ export default function PagesPage() {
       ) : isLoading && rows.length === 0 ? (
         <div className="rounded-none border border-border bg-card h-96 animate-pulse" aria-hidden="true" />
       ) : (
-        <PagesTable rows={rows} total={rows.length} />
+        <PagesTable rows={rows} total={rows.length} showTitle={false} />
       )}
     </div>
   )
