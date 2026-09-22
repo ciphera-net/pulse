@@ -46,3 +46,18 @@ export function groupByDay(receipts: Receipt[], timeZone?: string): DaySection[]
   }
   return sections
 }
+
+/**
+ * HH:MM in the viewer's display-timezone preference (18-09-2026 design §4.3).
+ * `timeZone` optional and additive — omit it and this renders in the runtime's
+ * local zone. hourCycle 'h23', not hour12:false — the latter can render
+ * midnight as "24". Lived in RegisterRow until 22-09-2026; the page's rows are
+ * the bell's rows now and pass this as their time label.
+ */
+export function hhmm(iso: string, timeZone?: string): string {
+  const d = new Date(iso)
+  if (!timeZone) {
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  }
+  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone })
+}

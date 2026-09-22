@@ -4,7 +4,7 @@
  * @file Notification center: bell icon with dropdown of recent notifications.
  */
 
-import { useEffect, useState, useRef, useCallback, useMemo, Fragment } from 'react'
+import { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo, Fragment } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
@@ -251,7 +251,13 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
    * cursor mid-scan. The next open re-stratifies.
    */
   const [snapshot, setSnapshot] = useState<Receipt[]>([])
-  useEffect(() => {
+  // 🔑 LAYOUT effects, not passive ones (22-09-2026): both snapshots are read
+  // during the render that shows the panel, and a passive effect runs after
+  // that render has painted — so the first frame of every open rendered the
+  // PREVIOUS open's read set (an empty one on a fresh mount, i.e. every row
+  // white with a dot). A layout effect runs before paint and its setState
+  // re-renders synchronously, so no such frame exists. React 19: no SSR warning.
+  useLayoutEffect(() => {
     if (open) setSnapshot(receipts)
     // Deliberately keyed on `open` alone: re-running on every `receipts` change
     // is exactly the mid-scan re-sort this exists to prevent.
@@ -266,17 +272,39 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
   // on the first render — TypeScript does not flag it (it cannot prove when a
   // closure runs) and it throws at runtime.
   const snapshotRead = useRef<Set<string>>(new Set())
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (open) {
       snapshotRead.current = new Set(receipts.filter((r) => r.read_at).map((r) => r.event_id))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
+  /**
+   * 🔑 OPENING READS (owner ruling R-B, 22-09-2026, PULSE-15).
+   *
+   * On the open transition, when there is anything unread, the panel fires the
+   * unscoped read-all through the shared store — one write for both mounts, the
+   * badge clears, the other mount agrees. Keyed on `open` alone, like the two
+   * snapshot effects above (which are layout effects, so both have already
+   * captured the pre-read state by the time this runs) and for the same reason:
+   * `unreadCount` is read AT
+   * THE INSTANT of opening, so a poll that raises it while the panel is open
+   * does not re-fire — what arrives while open is read on the next open, the
+   * same moment the strata re-form. The rows keep the dot and weight they had
+   * when the panel opened (see `unread=` on NotificationRow below) so the
+   * "what is new" signal survives its own reading for as long as the panel does.
+   * A failure surfaces as a toast and the optimistic update rolls back.
+   */
+  useEffect(() => {
+    if (open && unreadCount > 0) void handleMarkAllRead()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
+
   const strata = useMemo(() => {
-    // While the panel is open the order comes from the snapshot, but the ROW
-    // STATE comes from the live store — so an optimistic mark-read still shows
-    // instantly in the row it is already in.
+    // While the panel is open the order comes from the snapshot, and so does
+    // the READ STATE each row renders (the dot, the weight): reading-on-open
+    // sets every live `read_at` in the same frame the panel appears, which
+    // would otherwise erase the New signal the moment it was shown.
     const live = new Map(receipts.map((r) => [r.event_id, r]))
     const ordered = (snapshot.length ? snapshot : receipts)
       .map((r) => live.get(r.event_id) ?? r)
@@ -358,18 +386,10 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
             }`}
             style={fixedPos ? { left: fixedPos.left, top: fixedPos.top, bottom: fixedPos.bottom } : undefined}
           >
+            {/* No "Mark all read" here since 22-09-2026 (PULSE-15, R-B): opening
+                the panel IS the read, so the control had nothing left to do. */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800/60">
               <h3 className="font-semibold text-white">Notifications</h3>
-              {unreadCount > 0 && (
-                <button
-                  type="button"
-                  onClick={handleMarkAllRead}
-                  aria-label="Mark all notifications as read"
-                  className="text-sm text-brand-orange hover:underline"
-                >
-                  Mark all read
-                </button>
-              )}
             </div>
 
             <div className="max-h-80 overflow-y-auto">
@@ -409,6 +429,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
                             receipt={r}
                             title={title}
                             body={body}
+                            unread={!snapshotRead.current.has(r.event_id)}
                             removing={removing.has(r.event_id)}
                             onActivate={handleNotificationClick}
                             onDismiss={handleDismiss}

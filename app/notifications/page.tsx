@@ -1,113 +1,104 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+/**
+ * @file /notifications — "the bell, longer" (direction a · One list).
+ *
+ * Owner pick, 22-09-2026 (PULSE-15, options round on production:
+ * `Pulse/docs/data/22-09-2026-notification-inbox-mocks/`, plan
+ * `Pulse/docs/plans/22-09-2026-notification-inbox-simplification-plan.md`).
+ * This replaced the 30-08 round-3 "Day Register": the category tabs, the
+ * "N unread · M total" summary, the controls row (Unread only · Mark all read),
+ * the per-day counts, the expand-on-click rows with the email delivery leg, and
+ * the purge footer are all gone. What remains is one day-grouped list of the
+ * SAME rows the bell renders (`NotificationRow`), so the two surfaces cannot
+ * drift, with a clock time instead of a relative one and the category word as
+ * the footer line. A row navigates on click and marks itself read on the way,
+ * like the bell's; the × on each row is the soft dismiss.
+ *
+ * Why the unread controls left: the bell marks everything read the moment it
+ * opens (R-B), so unread is no longer a state this page has to manage. Why the
+ * purge left: cleanup is Iris's automatic sweeper on per-category TTLs, already
+ * running; the user-facing purge was a second, unconditional delete (R-A).
+ * Grouping stays calendar-day in the display zone (sections.tsx) — never a
+ * fixed-hour offset.
+ */
+
+import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { BellSimple } from '@phosphor-icons/react'
+import { toast, getAuthErrorMessage } from '@ciphera-net/facet'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { NotificationRow } from '@/components/notifications/NotificationRows'
 import { useNotifications } from '@/lib/hooks/useNotifications'
 import { useInvalidateNotifications } from '@/lib/hooks/useNotificationInbox'
-import { markAllRead, purgeMine } from '@/lib/api/notifications-v2'
-import { NOTIFICATION_CATEGORIES, shortLabel } from '@/lib/notifications/categories'
-import { groupByDay } from './sections'
+import { markRead, dismiss } from '@/lib/api/notifications-v2'
+import { renderNotification } from '@/lib/notifications/renderers'
+import { useResolveSiteName, useResolveUserName } from '@/lib/notifications/resolvers'
+import { NOTIFICATION_CATEGORIES } from '@/lib/notifications/categories'
 import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
-import RegisterRow from './RegisterRow'
-import PurgeConfirmDialog from './PurgeConfirmDialog'
-import { EmptyState } from '@/components/ui/EmptyState'
-import { BellSimple } from '@phosphor-icons/react'
-import { toast, getAuthErrorMessage, Switcher } from '@ciphera-net/facet'
+import type { Receipt } from '@/lib/notifications/types'
+import { groupByDay, hhmm } from './sections'
 
-/**
- * /notifications — the Day Register (round-3 ruling R3-1, Direction B; copy
- * per the 31-08 copy round, variant A everywhere).
- *
- * One register panel: the dashboard tab row (shortened registry labels +
- * per-tab unread counts, active = white + 3px orange underline), a controls
- * row carrying the FULL registry name (the vocabulary is always on screen), a
- * day-grouped icon-led ledger, and a footer pairing the undismissable
- * automatic-cleanup fact with the destructive purge at the server's TRUE
- * global count. Category is a FILTER, not a place; time is the primary axis.
- *
- * Wire truths this page leans on, all pinned server-side:
- * - `category_counts` is GLOBAL and never filter-narrowed — tab numbers do
- *   not dance with the filter.
- * - `total_count` is the whole account, null when the server could not count
- *   (rendered as an em dash, never a fabricated 0).
- * - Iris-down is 503 `notifications_unavailable`, never 200 [] — the error
- *   state and the empty state are different rooms.
- */
+const PAGE_LIMIT = 100
+
 export default function NotificationsPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="max-w-4xl mx-auto py-6 px-4 text-neutral-500 text-sm">Loading…</div>
-      }
-    >
-      <NotificationsContent />
-    </Suspense>
-  )
-}
-
-const TAB_ORDER = ['all', ...NOTIFICATION_CATEGORIES.map((c) => c.id)] as const
-
-function NotificationsContent() {
+  const { receipts, categoryCounts, loading, error } = useNotifications({ limit: PAGE_LIMIT })
   const invalidateNotifications = useInvalidateNotifications()
   const { zone } = useDisplayZone()
-  const router = useRouter()
-  const params = useSearchParams()
-  const active = params.get('category') ?? 'all'
-  const unreadOnly = params.get('state') === 'unread'
-  const [purging, setPurging] = useState(false)
+  const resolveSiteName = useResolveSiteName()
+  const resolveUserName = useResolveUserName()
+  // Rows with a dismiss in flight — per-page interaction state, not data. The
+  // row shows "Removing…" until the refetch after the DELETE no longer carries
+  // it; on failure it reverts and the toast describes something visible.
+  const [removing, setRemoving] = useState<Set<string>>(new Set())
 
-  const { receipts, unreadCount, totalCount, categoryCounts, loading, error, refresh } =
-    useNotifications({
-      unread: unreadOnly || undefined,
-      category: active !== 'all' ? [active] : undefined,
-      limit: 100,
-    })
+  const sections = groupByDay(receipts, zone)
 
-  // Registry vocabulary from the wire; local list only as the pre-wire
-  // fallback (R3-3: one vocabulary, short forms derive from the registry).
+  // Registry vocabulary from the wire (`category_counts` carries every
+  // category's display name, filter or no filter); the local list only as the
+  // pre-wire fallback (R3-3: one vocabulary).
   const displayName = (id: string): string =>
     categoryCounts?.[id]?.display_name ??
     NOTIFICATION_CATEGORIES.find((c) => c.id === id)?.label ??
     id
-  const activeName = active === 'all' ? 'All' : displayName(active)
 
-  const setFilter = (next: { category?: string; unread?: boolean }) => {
-    const q = new URLSearchParams()
-    const cat = next.category ?? active
-    const unread = next.unread ?? unreadOnly
-    if (cat !== 'all') q.set('category', cat)
-    if (unread) q.set('state', 'unread')
-    router.replace(`/notifications${q.toString() ? `?${q.toString()}` : ''}`)
+  /**
+   * 🔴 EVERY MUTATION SURFACES ITS FAILURE — the bell's contract, kept here.
+   * Reads stay soft: a failed fetch is the error body below, never a toast.
+   */
+  const onActivate = (r: Receipt) => {
+    if (r.read_at) return
+    markRead(r.event_id)
+      .then(() => invalidateNotifications())
+      .catch((err) => {
+        toast.error(getAuthErrorMessage(err as Error) || 'Failed to mark notification as read')
+      })
   }
 
-  const activeUnread = active === 'all' ? unreadCount : (categoryCounts?.[active]?.unread ?? 0)
-  const activeTotal =
-    active === 'all' ? totalCount : (categoryCounts?.[active]?.total ?? null)
-
-  const onMarkRead = async () => {
+  const onDismiss = async (eventID: string) => {
+    setRemoving((prev) => new Set(prev).add(eventID))
     try {
-      await markAllRead(active === 'all' ? undefined : active)
-      refresh()
+      await dismiss(eventID)
+      // Awaited on purpose: the row stays "Removing…" until the list that no
+      // longer holds it has landed, rather than flashing back for a frame.
       await invalidateNotifications()
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || 'Failed to mark notifications as read')
+      toast.error(getAuthErrorMessage(err as Error) || 'Failed to dismiss notification')
+    } finally {
+      setRemoving((prev) => {
+        const next = new Set(prev)
+        next.delete(eventID)
+        return next
+      })
     }
   }
 
-  const sections = groupByDay(receipts, zone)
-  const trulyEmpty =
-    !loading && !error && receipts.length === 0 && active === 'all' && !unreadOnly
-
   return (
     <div className="max-w-4xl mx-auto py-6 px-4">
-      {/* B1 — page header */}
       <div className="mb-6 flex items-baseline justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-white">Notifications</h1>
-          <p className="mt-1 text-sm text-neutral-400">
-            Everything Pulse has told you — and how it reached you.
-          </p>
+          <p className="mt-1 text-sm text-neutral-400">Everything Pulse has told you.</p>
         </div>
         <Link
           href="/settings/account/notifications"
@@ -117,75 +108,7 @@ function NotificationsContent() {
         </Link>
       </div>
 
-      {/* B2 — the register panel */}
       <section className="border border-border bg-card rounded-none overflow-hidden">
-        {/* Tab row — Facet Switcher for the category filter (owner pick C0,
-            06-09-2026: one Switcher per dimension/filter row estate-wide);
-            the overflow wrapper keeps 7 segments from wrapping on narrow
-            viewports, as the dashboard cards already do. */}
-        <div className="flex items-center gap-3 border-b border-border px-4 py-2 flex-wrap">
-          <div className="min-w-0 overflow-x-auto scrollbar-hide pb-1">
-            <Switcher
-              size="sm"
-              tone="solid"
-              aria-label="Filter by category"
-              options={TAB_ORDER.map((id) => {
-                const label = id === 'all' ? 'All' : shortLabel(displayName(id))
-                const unread = id === 'all' ? unreadCount : (categoryCounts?.[id]?.unread ?? 0)
-                return {
-                  value: id,
-                  label: (
-                    <>
-                      {label}
-                      {unread > 0 && (
-                        <span className="ml-1.5 text-[11px] tabular-nums">{unread}</span>
-                      )}
-                    </>
-                  ),
-                }
-              })}
-              value={active}
-              onChange={(v) => setFilter({ category: v })}
-            />
-          </div>
-          <span className="ml-auto text-[11px] text-neutral-500 whitespace-nowrap">
-            {unreadCount} unread · {totalCount ?? '—'} total
-          </span>
-        </div>
-
-        {/* B3 — controls row: the full registry name lives here */}
-        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border">
-          <div className="flex items-baseline gap-2 min-w-0">
-            <span className="text-sm text-neutral-300 truncate">{activeName}</span>
-            <span className="text-[11px] text-neutral-500 whitespace-nowrap">
-              {activeUnread} unread{activeTotal != null ? ` of ${activeTotal}` : ''}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              aria-pressed={unreadOnly}
-              onClick={() => setFilter({ unread: !unreadOnly })}
-              className={`inline-flex items-center gap-2 border border-border rounded-none px-4 py-2 text-xs font-medium transition-colors cursor-pointer ${
-                unreadOnly
-                  ? 'text-white bg-white/[0.06]'
-                  : 'text-neutral-300 hover:text-white hover:bg-white/[0.06]'
-              }`}
-            >
-              Unread only
-            </button>
-            <button
-              type="button"
-              onClick={onMarkRead}
-              disabled={activeUnread === 0}
-              className="inline-flex items-center gap-2 border border-border rounded-none px-4 py-2 text-xs font-medium text-neutral-300 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-default"
-            >
-              {active === 'all' ? 'Mark all read' : `Mark ${activeName} read`}
-            </button>
-          </div>
-        </div>
-
-        {/* B4 — the feed */}
         {loading && (
           <div className="text-neutral-500 text-sm py-12 text-center">Loading…</div>
         )}
@@ -194,7 +117,7 @@ function NotificationsContent() {
             Failed to load notifications.
           </div>
         )}
-        {trulyEmpty && (
+        {!loading && !error && receipts.length === 0 && (
           <EmptyState
             icon={<BellSimple />}
             title="You're all caught up"
@@ -202,89 +125,38 @@ function NotificationsContent() {
             action={{ label: 'Notification settings', href: '/settings/account/notifications' }}
           />
         )}
-        {!loading && !error && receipts.length === 0 && !trulyEmpty && (
-          <div className="py-10 text-center">
-            <p className="text-sm font-medium text-neutral-300">
-              {unreadOnly && activeUnread === 0
-                ? `Nothing unread in ${activeName === 'All' ? 'your notifications' : activeName}`
-                : `Nothing in ${activeName}`}
-            </p>
-            <p className="mt-1 text-sm text-neutral-500">
-              {`No ${activeName === 'All' ? '' : `${activeName.toLowerCase()} `}notifications in this view — clear the filter to see all ${totalCount ?? ''}`.replace(/\s+/g, ' ').trimEnd() + '.'}
-            </p>
-            <button
-              type="button"
-              onClick={() => setFilter({ category: 'all', unread: false })}
-              className="mt-3 inline-flex items-center gap-2 border border-border rounded-none px-4 py-2 text-xs font-medium text-neutral-300 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
-            >
-              Show all
-            </button>
-          </div>
-        )}
         {!loading && !error && receipts.length > 0 && (
           <div>
             {sections.map((section) => (
               <section key={section.key}>
-                <div className="flex items-baseline justify-between gap-3 px-4 pt-3 pb-2">
+                <div className="px-4 pt-3 pb-2">
                   <h2 className="text-sm font-semibold tracking-tight text-white">
                     {section.label}
                   </h2>
-                  <span className="truncate text-[11px] text-neutral-500">
-                    {section.items.length} notification{section.items.length === 1 ? '' : 's'}
-                  </span>
                 </div>
                 <ul className="divide-y divide-border border-t border-border">
-                  {section.items.map((r) => (
-                    <RegisterRow
-                      key={r.event_id}
-                      receipt={r}
-                      categoryName={displayName(r.category_id ?? categoryOf(r.event.type))}
-                      onChange={() => {
-                        refresh()
-                        void invalidateNotifications()
-                      }}
-                    />
-                  ))}
+                  {section.items.map((r) => {
+                    const { title, body } = renderNotification(r, { resolveSiteName, resolveUserName }, zone)
+                    return (
+                      <NotificationRow
+                        key={r.event_id}
+                        receipt={r}
+                        title={title}
+                        body={body}
+                        timeLabel={hhmm(r.event.created_at, zone)}
+                        meta={displayName(r.category_id ?? categoryOf(r.event.type))}
+                        removing={removing.has(r.event_id)}
+                        onActivate={onActivate}
+                        onDismiss={onDismiss}
+                      />
+                    )
+                  })}
                 </ul>
               </section>
             ))}
           </div>
         )}
       </section>
-
-      {/* B6 — footer: the cleanup fact + the destructive purge, true count */}
-      <div className="mt-8 flex items-center justify-between gap-3 border border-border bg-card rounded-none px-4 py-3">
-        <span className="text-[11px] text-neutral-500">
-          Cleanup is automatic — read notifications delete on their category&apos;s retention
-          window. Pulse keeps nothing longer.
-        </span>
-        <button
-          type="button"
-          onClick={() => setPurging(true)}
-          className="border border-destructive/40 bg-destructive/10 rounded-none px-4 py-2 text-xs font-medium text-destructive hover:text-white transition-colors whitespace-nowrap"
-        >
-          {totalCount != null
-            ? `Purge all ${totalCount} notification${totalCount === 1 ? '' : 's'}`
-            : 'Purge all notifications'}
-        </button>
-      </div>
-
-      {purging && (
-        <PurgeConfirmDialog
-          count={totalCount}
-          onCancel={() => setPurging(false)}
-          onConfirm={async () => {
-            try {
-              await purgeMine()
-              setPurging(false)
-              refresh()
-              await invalidateNotifications()
-            } catch (err) {
-              toast.error(getAuthErrorMessage(err as Error) || 'Failed to purge notifications')
-            }
-          }}
-        />
-      )}
     </div>
   )
 }

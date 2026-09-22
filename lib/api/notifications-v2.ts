@@ -38,14 +38,12 @@ export interface ListResponse {
    */
   category_counts: Record<string, CategoryCount>
   /**
-   * Every receipt the user has — NOT narrowed by limit/offset/unread/category,
-   * because the purge it describes is not narrowed either: DELETE
-   * /notifications/mine takes no filter parameters and removes all of them.
+   * Every receipt the user has — NOT narrowed by limit/offset/unread/category.
+   * Iris's contract, kept on the wire even though its one consumer (the purge
+   * confirmation, retired 22-09-2026) is gone.
    *
    * 🔴 `null` means the server could not count, and must stay null rather than
-   * becoming 0. It is rendered inside a destructive confirmation, where a
-   * fabricated 0 would understate what is about to be destroyed — which is the
-   * bug this field was added to fix.
+   * becoming 0 — a fabricated 0 was the bug this field was added to fix.
    */
   total_count: number | null
 }
@@ -111,13 +109,6 @@ export const markAllRead = (category?: string) =>
 
 export const dismiss = (id: string) =>
   apiRequest(`/notifications/${id}`, { method: 'DELETE' })
-
-export const purgeMine = () =>
-  apiRequest('/notifications/mine', {
-    method: 'DELETE',
-    body: JSON.stringify({ confirm: 'DELETE_ALL_MY_NOTIFICATIONS' }),
-    headers: { 'Content-Type': 'application/json' },
-  })
 
 export interface Delivery {
   id: string

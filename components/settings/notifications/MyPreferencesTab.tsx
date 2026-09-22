@@ -5,16 +5,13 @@ import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/settings/panels'
 import { StatusChip } from '@/components/settings/StatusChip'
-import { DangerZone } from '@/components/settings/unified/DangerZone'
 import {
   getPrefsDocument,
   updatePrefs,
   type CategoryPreferenceDoc,
   type PreferencesDocument,
 } from '@/lib/api/notifications-preferences'
-import { listNotifications, purgeMine } from '@/lib/api/notifications-v2'
 import { NOTIFICATION_CATEGORIES } from '@/lib/notifications/categories'
-import PurgeConfirmDialog from '@/app/notifications/PurgeConfirmDialog'
 
 /**
  * Account, Notifications: one switch per category (owner rulings 21-09-2026,
@@ -51,23 +48,13 @@ const ORDER = NOTIFICATION_CATEGORIES.map((c) => c.id as string)
 
 export default function MyPreferencesTab() {
   const [doc, setDoc] = useState<PreferencesDocument | null>(null)
-  const [totalCount, setTotalCount] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [purging, setPurging] = useState(false)
 
   const load = () =>
-    Promise.all([
-      getPrefsDocument().then((d) => setDoc(d)),
-      // The count feeds the purge button's true number. Its failure degrades
-      // that label to a countless one, never the controls, so it is a
-      // deliberately soft failure rather than a swallow.
-      listNotifications({ limit: 1 })
-        .then((r) => setTotalCount(r.total_count))
-        .catch(() => {}),
-    ])
-      .then(() => setError(null))
+    getPrefsDocument()
+      .then((d) => { setDoc(d); setError(null) })
       .catch((e) =>
         setError(
           (e as Error).message ||
@@ -163,41 +150,6 @@ export default function MyPreferencesTab() {
           </PanelRows>
         )}
       </SettingsPanel>
-
-      <DangerZone
-        items={[
-          {
-            title: 'Notification history',
-            description:
-              'Permanently delete every notification stored against your account. The delivery ledger is unaffected.',
-            buttonLabel:
-              totalCount != null
-                ? `Purge all ${totalCount.toLocaleString()} notification${totalCount === 1 ? '' : 's'}`
-                : 'Purge all notifications',
-            variant: 'solid',
-            onClick: () => setPurging(true),
-          },
-        ]}
-      />
-
-      {purging && (
-        <PurgeConfirmDialog
-          count={totalCount}
-          onCancel={() => setPurging(false)}
-          onConfirm={async () => {
-            try {
-              await purgeMine()
-              setPurging(false)
-              void load()
-            } catch (err) {
-              toast.error(
-                getAuthErrorMessage(err as Error) ||
-                  "Couldn't purge your notifications. Try again in a moment.",
-              )
-            }
-          }}
-        />
-      )}
     </div>
   )
 }
