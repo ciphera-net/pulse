@@ -23,6 +23,17 @@ import {
 // ---------------------------------------------------------------------------
 
 export type Period =
+  // 'realtime' is the dashboard's LIVE MODE, not a window length: picking it puts
+  // the whole page on a rolling last-30-minutes window that a WebSocket refreshes
+  // as visitors arrive. It is a real URL period so a live view is shareable and
+  // survives a refresh, and it is deliberately NOT in PERIOD_PRESETS — only the
+  // site dashboard declares it, via extraPresets.
+  //
+  // ⚠️ Distinct from the 'Real-time' PRESET GROUP that already holds '1h'/'24h'.
+  // Those are genuine now-relative windows but they are polled on the ordinary
+  // 60s cadence; they are not a live mode, and the names are close enough to be
+  // worth saying so here.
+  | 'realtime'
   // '30m' and '6h' join '1h'/'24h' as first-class URL periods so the Visitors
   // page's live windows are shareable and survive a refresh like every other
   // preset. They are NOT in PERIOD_PRESETS — only a page that declares them in
@@ -60,6 +71,7 @@ export const DEFAULT_PERIOD: Period = '30'
 // Exported since 22-08-2026: useUrlDateRange derives each page's APPLIED
 // vocabulary from this grammar (minus the page's declared exclusions).
 export const PERIODS: ReadonlySet<Period> = new Set([
+  'realtime',
   '30m',
   '1h',
   '6h',
@@ -114,6 +126,11 @@ export function isValidDateString(s: string | null): s is string {
  */
 export function periodToDateRange(period: Period, now: Date = new Date()): { start: string; end: string } {
   switch (period) {
+    // 'realtime' is a live MODE, not a window length. It still resolves to the
+    // last 30 minutes so a caller that insists on dates gets something true,
+    // but the dashboard fetches it as `minutes=` — see lib/dashboard/realtimeRange.
+    case 'realtime':
+      return getLast30MinutesRange(now)
     case '30m':
       return getLast30MinutesRange(now)
     case '1h':
@@ -211,6 +228,7 @@ export function previousDateRange(range: {
 // * 'custom' is unbounded here — a custom span carries explicit start/end and
 // * is validated where it is chosen, not by preset identity.
 const PERIOD_MAX_DAYS: Record<Period, number> = {
+  realtime: 1,
   '30m': 1,
   '1h': 1,
   '6h': 1,

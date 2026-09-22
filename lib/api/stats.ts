@@ -230,10 +230,19 @@ function buildQuery(
     countryLimit?: number
     sort?: string
     filters?: string
+    /**
+     * A rolling live window in MINUTES. Mutually exclusive with period and with
+     * start/end — the SERVER refuses the combination rather than silently
+     * preferring one, so this mirrors that here instead of sending a request
+     * that is already known to be a 400.
+     */
+    minutes?: number
   },
 ): string {
   const params = new URLSearchParams()
-  if (opts.period) {
+  if (opts.minutes != null) {
+    params.append('minutes', String(opts.minutes))
+  } else if (opts.period) {
     params.append('period', opts.period)
   } else {
     if (opts.startDate) params.append('start_date', opts.startDate)
@@ -371,8 +380,8 @@ export interface ScrollDepthDistribution {
   total_sessions: number
 }
 
-export function getDashboard(siteId: string, startDate?: string, endDate?: string, limit = 10, interval?: string, filters?: string, period?: string): Promise<DashboardData> {
-  return apiRequest<DashboardData>(`/sites/${siteId}/dashboard${buildQuery({ startDate, endDate, limit, interval, filters, period })}`)
+export function getDashboard(siteId: string, startDate?: string, endDate?: string, limit = 10, interval?: string, filters?: string, period?: string, minutes?: number): Promise<DashboardData> {
+  return apiRequest<DashboardData>(`/sites/${siteId}/dashboard${buildQuery({ startDate, endDate, limit, interval, filters, period, minutes })}`)
 }
 
 export function getPublicDashboard(
