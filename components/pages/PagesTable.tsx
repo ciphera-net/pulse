@@ -205,9 +205,16 @@ export interface PagesTableProps {
   /** Shown in the header: how many pages exist before the search filter. */
   total?: number
   rangeLabel?: string
+  /**
+   * The card's own "Pages" title. Off on the dedicated route, where the page
+   * already carries an h1 and the card repeating it reads as a duplicate —
+   * visible only once the surface was looked at on staging. Left ON by default
+   * so the component still stands alone anywhere else.
+   */
+  showTitle?: boolean
 }
 
-export default function PagesTable({ rows, total, rangeLabel }: PagesTableProps) {
+export default function PagesTable({ rows, total, rangeLabel, showTitle = true }: PagesTableProps) {
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'pageviews', dir: -1 })
   const [query, setQuery] = useState('')
 
@@ -228,7 +235,9 @@ export default function PagesTable({ rows, total, rangeLabel }: PagesTableProps)
   return (
     <div className="rounded-none border border-border bg-card">
       <div className="flex h-10 items-center justify-between gap-3 border-b border-border px-4">
-        <span className="text-sm font-medium text-white shrink-0">Pages</span>
+        {showTitle
+          ? <span className="text-sm font-medium text-white shrink-0">Pages</span>
+          : <span aria-hidden="true" />}
         <div className="flex items-center gap-3 min-w-0">
           <input
             type="search"
