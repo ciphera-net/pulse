@@ -80,6 +80,10 @@ vi.mock('@ciphera-net/facet', () => ({
   toast: { error: (m: string) => toastError(m) },
   getAuthErrorMessage: () => authMessage,
   SettingsIcon: (p: any) => <svg {...p} />,
+  XIcon: (p: any) => <svg data-icon="x" {...p} />,
+  Button: ({ children, variant, size, isLoading, asChild, ...rest }: any) => (
+    <button data-variant={variant} data-size={size} {...rest}>{children}</button>
+  ),
   cn: (...a: any[]) => a.flat(Infinity).filter(Boolean).join(' '),
 }))
 
@@ -261,18 +265,19 @@ describe('NotificationCenter — the two strata', () => {
   })
 
   /**
-   * The `[open]`-only effect dependency, stated as behaviour: marking a row read
-   * changes its dot and its weight IN PLACE — it does not jump strata out from
-   * under a cursor mid-scan. The next open re-stratifies.
+   * The `[open]`-only effect dependency, stated as behaviour. Opening READS
+   * (R-B, 22-09-2026): the read-all lands in the same frame the panel appears,
+   * so if the strata or the rows followed the LIVE flag, the New header and the
+   * dot would vanish the instant they were shown. Both come from the open-time
+   * snapshot instead and hold for as long as the panel is open; the next open
+   * re-stratifies, and by then there is nothing new.
    *
-   * MUST FAIL ON: NotificationCenter.tsx — read the LIVE flag instead of the
-   * open-time snapshot in the strata filters, i.e. swap both
-   * `snapshotRead.current.has(r.event_id)` for `!!r.read_at`. (Adding `receipts`
-   * to the two snapshot effects' deps is the same regression, but `receipts` is
-   * a fresh array on every render, so that variant spins rather than going red —
-   * use the filter swap.)
+   * MUST FAIL ON: NotificationCenter.tsx — pass the live flag to the row,
+   * `unread={!r.read_at}` in place of `unread={!snapshotRead.current.has(r.event_id)}`.
+   * (For the strata half: swap both `snapshotRead.current.has(r.event_id)` in
+   * the filters for `!!r.read_at`.)
    */
-  it('holds the strata still while the panel is open, and still re-weights the row', async () => {
+  it('holds the strata AND the rows\' open-time state still while the panel is open', async () => {
     render(<NotificationCenter />)
     await openPanel()
     await screen.findByText('Alpha alert')
@@ -285,22 +290,32 @@ describe('NotificationCenter — the two strata', () => {
     expect(before[0]).toBe('New')
     expect(before[1]).toBe('ALPHA')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Mark all notifications as read' }))
-
-    // The mutation really landed — without this the "did not move" assertion
-    // below would pass against a button that does nothing at all.
-    await waitFor(() =>
-      expect(screen.getByText('Alpha alert').className).toContain('text-neutral-300'),
-    )
-    expect(screen.getByText('Alpha alert').className).not.toContain('font-medium')
+    // The read really landed — the server has it, and the badge is gone.
     await waitFor(() => expect(markAllReadApi).toHaveBeenCalledTimes(1))
+    await waitFor(() =>
+      expect(screen.getAllByRole('button', { name: 'Notifications' })).toHaveLength(1),
+    )
 
-    // ...and the row is still the same node, in the same slot, under New.
+    // ...and the row still reads as new: same node, same slot, same weight, its dot.
     const after = Array.from(list.children).map((el) =>
       el === alpha ? 'ALPHA' : el.textContent?.slice(0, 20),
     )
     expect(after).toEqual(before)
     expect(within(list).getAllByText(HEADER).map((h) => h.textContent)).toEqual(['New', 'Earlier'])
+    expect(classesOf(screen.getByText('Alpha alert'))).toEqual(
+      expect.arrayContaining(['font-medium', 'text-white']),
+    )
+    expect(tree(alpha).some((el) => classesOf(el).includes('bg-brand-orange'))).toBe(true)
+
+    // The next open re-stratifies: everything is Earlier now, and nothing new
+    // means nothing to read — the effect does not fire a second time.
+    fireEvent.keyDown(document, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    await openPanel()
+    await screen.findByText('Alpha alert')
+    expect(within(screen.getByRole('list')).queryAllByText(HEADER)).toEqual([])
+    expect(classesOf(screen.getByText('Alpha alert'))).toContain('text-neutral-300')
+    expect(markAllReadApi).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -310,14 +325,19 @@ describe('NotificationCenter — every mutation surfaces its failure', () => {
    * (`catch { /* ignore *\/ }`), which is the shape this replaced.
    */
   it('toasts when mark-read fails', async () => {
+    // Opening reads everything first; only when THAT fails (and rolls back) is
+    // a row still unread for a click to mark — so the per-row path is the
+    // fallback behind read-on-open, and this is how it is reached.
+    markAllReadApi.mockRejectedValue(new Error('500'))
     markReadApi.mockRejectedValue(new Error('500'))
     render(<NotificationCenter />)
     await openPanel()
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith('Failed to mark all as read'))
     fireEvent.click(await screen.findByText('Alpha alert'))
 
-    await waitFor(() => expect(toastError).toHaveBeenCalledTimes(1))
-    expect(toastError).toHaveBeenCalledWith('Failed to mark notification as read')
-    expect(toastError.mock.calls[0][0]).not.toBe('')
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith('Failed to mark notification as read'))
+    expect(toastError).toHaveBeenCalledTimes(2)
+    expect(toastError.mock.calls[1][0]).not.toBe('')
   })
 
   /**
@@ -329,12 +349,12 @@ describe('NotificationCenter — every mutation surfaces its failure', () => {
    */
   it('prefers a resolved auth message over the fallback copy', async () => {
     authMessage = 'Your session expired'
-    markReadApi.mockRejectedValue(new Error('401'))
+    markAllReadApi.mockRejectedValue(new Error('401'))
     render(<NotificationCenter />)
     await openPanel()
-    fireEvent.click(await screen.findByText('Alpha alert'))
 
     await waitFor(() => expect(toastError).toHaveBeenCalledWith('Your session expired'))
+    expect(toastError).not.toHaveBeenCalledWith('Failed to mark all as read')
   })
 
   /**
@@ -347,7 +367,7 @@ describe('NotificationCenter — every mutation surfaces its failure', () => {
     await openPanel()
     await screen.findByText('Alpha alert')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete my copy of "Alpha alert"' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Dismiss "Alpha alert", / }))
 
     await waitFor(() => expect(toastError).toHaveBeenCalledWith('Failed to dismiss notification'))
     // rollbackOnError is what makes the toast describe something visible: the
@@ -359,13 +379,11 @@ describe('NotificationCenter — every mutation surfaces its failure', () => {
   /**
    * MUST FAIL ON: NotificationCenter.tsx — empty the catch in `handleMarkAllRead`.
    */
-  it('toasts when mark-all-read fails, and the unread count survives', async () => {
+  it('toasts when the read-on-open fails, and the unread count survives', async () => {
     markAllReadApi.mockRejectedValue(new Error('500'))
     render(<NotificationCenter />)
     await openPanel()
     await screen.findByText('Alpha alert')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Mark all notifications as read' }))
 
     await waitFor(() => expect(toastError).toHaveBeenCalledWith('Failed to mark all as read'))
     await waitFor(() =>
@@ -381,8 +399,7 @@ describe('NotificationCenter — every mutation surfaces its failure', () => {
    * MUST FAIL ON: NotificationCenter.tsx — move the `toast.error(…)` line in
    * `handleMarkRead` out of its catch and into the try, after `await markRead(…)`.
    */
-  it('says nothing at all when all three mutations succeed', async () => {
-    // Two unread, so mark-read and mark-all-read each have a target to act on.
+  it('says nothing at all when the mutations succeed', async () => {
     server = [
       receipt('a', 'Alpha alert', false),
       receipt('b', 'Beta alert', false),
@@ -390,15 +407,11 @@ describe('NotificationCenter — every mutation surfaces its failure', () => {
     ]
     render(<NotificationCenter />)
 
-    await openPanel()
-    fireEvent.click(await screen.findByText('Alpha alert')) // mark read — closes the panel
-    await waitFor(() => expect(markReadApi).toHaveBeenCalledTimes(1))
-
-    await openPanel()
-    fireEvent.click(screen.getByRole('button', { name: 'Mark all notifications as read' }))
+    await openPanel() // reads on open
     await waitFor(() => expect(markAllReadApi).toHaveBeenCalledTimes(1))
+    await screen.findByText('Gamma alert')
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete my copy of "Gamma alert"' }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Dismiss "Gamma alert", / }))
     await waitFor(() => expect(dismissApi).toHaveBeenCalledTimes(1))
     await waitFor(() => expect(screen.queryByText('Gamma alert')).toBeNull())
 
@@ -434,33 +447,84 @@ describe('NotificationCenter — reads stay soft', () => {
   })
 })
 
-describe('NotificationCenter — the destructive control is reachable AND visible', () => {
+describe('NotificationCenter — the dismiss control is a visible button (22-09-2026)', () => {
   /**
-   * `opacity-0 group-hover:opacity-100` alone left this focusable-but-INVISIBLE:
-   * a keyboard user could Tab onto a destructive action with nothing on screen
-   * to say so. jsdom carries no Tailwind, so the class list is the observable
-   * proxy for the rule — but the FOCUSABILITY half below is real, and it is what
-   * makes the missing rule a defect rather than a nit.
+   * The hover-only glyph (22 × 24 px on production, `opacity-0` at rest) was
+   * rebuilt as the house rung for a row-level action: Facet ghost `Button` with
+   * `XIcon`, visible at rest, labelled "Dismiss" (owner pick x1). jsdom carries
+   * no Tailwind, so the class list is the proxy — the focusability is real.
    *
-   * MUST FAIL ON: NotificationRows.tsx — drop `focus:opacity-100` from the
-   * dismiss button's className.
+   * MUST FAIL ON: NotificationRows.tsx — add `opacity-0 group-hover:opacity-100`
+   * back to the button's className.
    */
-  it('keeps the dismiss control opacity-0 by default, and reveals it on focus', async () => {
+  it('renders every row\'s dismiss as a visible icon button that takes focus', async () => {
     render(<NotificationCenter />)
     await openPanel()
     await screen.findByText('Alpha alert')
 
-    const x = screen.getByRole('button', { name: 'Delete my copy of "Alpha alert"' })
-    const c = classesOf(x)
-
-    // It really is reachable by keyboard — the premise of the defect.
+    const x = screen.getByRole('button', { name: /^Dismiss "Alpha alert", / })
+    expect(x.querySelector('svg[data-icon="x"]')).toBeTruthy()
+    expect(classesOf(x).some((k) => /opacity-0/.test(k))).toBe(false)
+    expect(x).toHaveAttribute('title', 'Dismiss')
     x.focus()
     expect(document.activeElement).toBe(x)
+    // One per row, none shared.
+    expect(screen.getByRole('button', { name: /^Dismiss "Beta alert", / })).toBeInTheDocument()
+  })
+})
 
-    expect(c).toContain('opacity-0')          // still hidden at rest…
-    expect(c).toContain('group-hover:opacity-100')
-    expect(c).toContain('focus:opacity-100')  // …but never while it holds focus
-    expect(c).toContain('[@media(pointer:coarse)]:opacity-100') // nor on touch, where hover never comes
+describe('NotificationCenter — opening reads (R-B, 22-09-2026)', () => {
+  /**
+   * The badge clears because the panel opened, not because anything was
+   * clicked, and the write goes out exactly once per open.
+   *
+   * MUST FAIL ON: NotificationCenter.tsx — delete the `[open]`-keyed effect
+   * that calls `handleMarkAllRead()`.
+   */
+  it('fires one read-all on open and clears the badge', async () => {
+    render(<NotificationCenter />)
+    await waitFor(() =>
+      expect(screen.getAllByRole('button', { name: 'Notifications, 1 unread' })).toHaveLength(1),
+    )
+    await openPanel()
+    await waitFor(() => expect(markAllReadApi).toHaveBeenCalledTimes(1))
+    await waitFor(() =>
+      expect(screen.getAllByRole('button', { name: 'Notifications' })).toHaveLength(1),
+    )
+    // Re-rendering while open (a poll, a row hover) does not write again.
+    await screen.findByText('Alpha alert')
+    expect(markAllReadApi).toHaveBeenCalledTimes(1)
+  })
+
+  /**
+   * n−1 leg: nothing unread, nothing written.
+   *
+   * MUST FAIL ON: NotificationCenter.tsx — drop the `unreadCount > 0` guard.
+   */
+  it('writes nothing when there is nothing unread to read', async () => {
+    server = [receipt('a', 'Alpha alert', true), receipt('b', 'Beta alert', true)]
+    render(<NotificationCenter />)
+    await openPanel()
+    await screen.findByText('Alpha alert')
+    expect(markAllReadApi).not.toHaveBeenCalled()
+  })
+
+  /**
+   * MUST FAIL ON: NotificationCenter.tsx — put the header's
+   * `<button aria-label="Mark all notifications as read">` back.
+   */
+  it('has no Mark all read control — opening is the read', async () => {
+    render(<NotificationCenter />)
+    const panel = await openPanel()
+    await screen.findByText('Alpha alert')
+    expect(screen.queryByRole('button', { name: /mark all/i })).toBeNull()
+    expect(screen.queryByText('Mark all read')).toBeNull()
+    // Structural, not by name: the header row holds the title and NOTHING
+    // else — a control under any wording would show up here.
+    const header = panel.querySelector(':scope > div:first-child') as HTMLElement
+    expect(within(header).getByRole('heading', { name: 'Notifications' })).toBeInTheDocument()
+    expect(header.querySelectorAll('button, a, [role="button"]')).toHaveLength(0)
+    expect(header.children).toHaveLength(1)
   })
 })
 
@@ -523,8 +587,7 @@ describe('NotificationCenter — one store, two mounts (P-F3 / P-F6)', () => {
     expect(listNotifications).toHaveBeenCalledTimes(1)
 
     fireEvent.click(screen.getAllByRole('button', { name: BELL })[0])
-    await screen.findByRole('dialog')
-    fireEvent.click(screen.getByRole('button', { name: 'Mark all notifications as read' }))
+    await screen.findByRole('dialog') // opening reads
 
     // The count the OTHER mount renders changes too — one store, one truth.
     await waitFor(() =>
