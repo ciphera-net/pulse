@@ -159,9 +159,10 @@ describe('NotificationRow — A2 anatomy', () => {
    * keeps them apart (the 30-08 round's `states.png` showed the collision).
    *
    * MUST FAIL ON: NotificationRows.tsx — delete the
-   * `<span className="w-6 shrink-0" aria-hidden="true" />` spacer.
+   * `<span className="w-6 shrink-0" aria-hidden="true" />` spacer, or drop
+   * `flex-1` from the title's className.
    */
-  it('puts the time on the title line and reserves a gutter after it', () => {
+  it('puts the time on the title line, against the gutter, and reserves a gutter after it', () => {
     const { container } = renderRow()
 
     const time = container.querySelector(`[title="${ISO}"]`) as HTMLElement
@@ -172,6 +173,10 @@ describe('NotificationRow — A2 anatomy', () => {
     expect(classesOf(title.parentElement!)).toEqual(
       expect.arrayContaining(['flex', 'items-center', 'justify-between']),
     )
+    // The title is the greedy child: without `flex-1`, `justify-between` over
+    // three children parks the time mid-row at page width (seen on production
+    // 22-09-2026, the day the page became one list).
+    expect(classesOf(title)).toEqual(expect.arrayContaining(['flex-1', 'min-w-0']))
     expect(classesOf(time)).toEqual(expect.arrayContaining(['shrink-0', 'text-neutral-500']))
 
     const gutter = time.nextElementSibling as HTMLElement
