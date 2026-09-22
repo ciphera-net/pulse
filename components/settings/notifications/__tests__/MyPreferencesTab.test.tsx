@@ -17,27 +17,12 @@ vi.mock('@/lib/api/notifications-preferences', () => ({
   updatePrefs: (w: unknown) => updatePrefs(w),
 }))
 
-const purgeMine = vi.fn().mockResolvedValue(undefined)
-const listNotifications = vi.fn()
-vi.mock('@/lib/api/notifications-v2', () => ({
-  purgeMine: () => purgeMine(),
-  listNotifications: (p: unknown) => listNotifications(p),
-}))
-
 const toastError = vi.fn()
 // Toggle keeps its real switch semantics (role + aria-checked) and forwards
 // the naming props Facet's Toggle forwards, the same stand-in
 // AccountSecurityAlertsTab's test uses.
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...a: any[]) => a.flat(Infinity).filter(Boolean).join(' '),
-  Modal: ({ isOpen, title, children }: any) =>
-    isOpen ? (
-      <div role="dialog" aria-modal="true" aria-label={title}>
-        <h2>{title}</h2>
-        {children}
-      </div>
-    ) : null,
-  Input: (props: any) => <input {...props} />,
   Toggle: ({ checked, onChange, disabled, id, 'aria-label': ariaLabel, 'aria-labelledby': ariaLabelledBy }: any) => (
     <button role="switch" aria-checked={checked} disabled={disabled} onClick={onChange} id={id} aria-label={ariaLabel} aria-labelledby={ariaLabelledBy} />
   ),
@@ -101,7 +86,6 @@ beforeEach(() => {
     }
     return { ...next, ok: true }
   })
-  listNotifications.mockResolvedValue({ total_count: 5, category_counts: {} })
 })
 
 const switchFor = (name: string) => screen.getByRole('switch', { name: `Email for ${name}` })
@@ -210,11 +194,21 @@ describe('MyPreferencesTab (one switch per category)', () => {
     expect(switchFor('Site activity')).toBeInTheDocument()
   })
 
-  it('the purge button carries the server true count and confirms in a dialog', async () => {
+  /**
+   * R-A (owner, 22-09-2026, PULSE-15): the user-facing purge is retired — the
+   * Danger zone that held it, its true-count fetch and its typed-DELETE dialog
+   * all left this tab. Cleanup is Iris's automatic sweeper.
+   *
+   * MUST FAIL ON: MyPreferencesTab.tsx — render any button whose name starts
+   * with "Purge", or any "Danger zone" heading.
+   */
+  it('carries no Danger zone and no purge — cleanup is automatic', async () => {
     render(<MyPreferencesTab />)
-    const btn = await screen.findByRole('button', { name: 'Purge all 5 notifications' })
-    fireEvent.click(btn)
-    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    await screen.findByText('Billing')
+    expect(screen.queryByText(/Danger zone/i)).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Purge/ })).toBeNull()
+    expect(screen.queryByText(/Notification history/)).toBeNull()
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('renders an empty row when the registry returns no categories', async () => {
@@ -225,7 +219,6 @@ describe('MyPreferencesTab (one switch per category)', () => {
 
   it('renders the loading skeleton, not a blank page, before the document resolves', () => {
     getPrefsDocument.mockReturnValue(new Promise(() => {}))
-    listNotifications.mockReturnValue(new Promise(() => {}))
     render(<MyPreferencesTab />)
     expect(screen.getByRole('status')).toBeInTheDocument()
   })

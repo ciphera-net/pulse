@@ -69,8 +69,8 @@ export function useNotifications(params: ListParams): UseNotificationsResult {
   return {
     receipts: data?.receipts ?? [],
     unreadCount: user ? (data?.unread_count ?? 0) : 0,
-    // 🔴 NOT coerced to 0. null means the server could not count, and the purge
-    // dialog's copy branches on exactly that.
+    // 🔴 NOT coerced to 0. null means the server could not count; that is Iris's
+    // contract and a consumer must branch on it, never invent a number.
     totalCount: data?.total_count ?? null,
     categoryCounts: data?.category_counts ?? null,
     loading: isLoading,
