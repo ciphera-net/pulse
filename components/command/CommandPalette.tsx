@@ -11,6 +11,7 @@ import {
   CloudArrowUp,
   Heartbeat,
   Gauge,
+  FileText,
   Bell,
   Plus,
   Plugs,
@@ -48,13 +49,14 @@ import {
 
 const SITE_PAGES = [
   { label: 'Dashboard', path: '', icon: SquaresFour, shortcut: 'g d' },
+  { label: 'Pages', path: '/pages', icon: FileText, shortcut: 'g p' },
   { label: 'Journeys', path: '/journeys', icon: Path, shortcut: 'g j' },
   { label: 'Visitors', path: '/visitors', icon: UsersThree, shortcut: 'g v' },
   { label: 'Funnels', path: '/funnels', icon: Funnel, shortcut: 'g f' },
   { label: 'Search', path: '/search', icon: MagnifyingGlass, shortcut: 'g s' },
   { label: 'CDN', path: '/cdn', icon: CloudArrowUp, shortcut: 'g c' },
   { label: 'Uptime', path: '/uptime', icon: Heartbeat, shortcut: 'g u' },
-  { label: 'Performance', path: '/performance', icon: Gauge, shortcut: 'g p' },
+  { label: 'Performance', path: '/performance', icon: Gauge, shortcut: 'g r' },
 ] as const
 
 interface CommandPaletteProps {
