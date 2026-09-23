@@ -601,3 +601,61 @@ describe('per-page range ceiling (the 22-08-2026 dashboard outage)', () => {
     }
   })
 })
+
+// ─── Ephemeral periods: a MODE is not a remembered view ──────────────────────
+//
+// 🔴 The dashboard's `realtime` reached range memory until 23-09-2026, which cost
+// two things at once: a later visit opened in a live view nobody chose, AND the
+// preference it overwrote was gone for good — memory cannot tell you what it
+// replaced. `ephemeralPeriods` is what stops a mode being stored as a view.
+//
+// MUTATION CHECK: drop `&& !isEphemeral(p)` from setPeriod and the first two go red.
+describe('ephemeralPeriods', () => {
+  const LIVE = preset('realtime')
+  const EPHEMERAL: PageRangeOptions = {
+    pageKey: 'page-a',
+    timezone: 'UTC',
+    extraPresets: { group: 'Live', presets: [LIVE] },
+    ephemeralPeriods: ['realtime'],
+  }
+
+  it('does not write an ephemeral period to memory', () => {
+    const { result } = renderHook(() => useUrlDateRange(EPHEMERAL))
+    act(() => { result.current.setPeriod('7' as never) })
+    expect(window.localStorage.getItem(PAGE_KEY)).toBe('7')
+
+    act(() => { result.current.setPeriod('realtime' as never) })
+    // The mode is active in the URL...
+    expect(mockReplace).toHaveBeenCalled()
+    // ...but memory still holds the view the reader actually chose.
+    expect(window.localStorage.getItem(PAGE_KEY)).toBe('7')
+  })
+
+  it('still remembers ordinary periods on the same page', () => {
+    const { result } = renderHook(() => useUrlDateRange(EPHEMERAL))
+    act(() => { result.current.setPeriod('28' as never) })
+    expect(window.localStorage.getItem(PAGE_KEY)).toBe('28')
+  })
+
+  // * A page leaving a mode restores this when it has no in-session history —
+  // * a tab opened straight onto the mode's URL, or reloaded while in it. It must
+  // * therefore never be the mode, or the fallback puts the reader back into the
+  // * very view they were trying to leave.
+  it('exposes the remembered view, and it is never the mode', () => {
+    const { result } = renderHook(() => useUrlDateRange(EPHEMERAL))
+    act(() => { result.current.setPeriod('7' as never) })
+    expect(result.current.remembered).toBe('7')
+
+    act(() => { result.current.setPeriod('realtime' as never) })
+    expect(result.current.remembered).toBe('7')
+  })
+
+  // * Without the option nothing changes for every other page in the estate.
+  it('is inert when a page declares none', () => {
+    const { result } = renderHook(() => useUrlDateRange(
+      { pageKey: 'page-a', timezone: 'UTC', extraPresets: { group: 'Live', presets: [LIVE] } },
+    ))
+    act(() => { result.current.setPeriod('realtime' as never) })
+    expect(window.localStorage.getItem(PAGE_KEY)).toBe('realtime')
+  })
+})
