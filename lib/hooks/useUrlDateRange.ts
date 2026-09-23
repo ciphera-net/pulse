@@ -113,6 +113,22 @@ export interface PageRangeOptions {
    * page-local range hook, which is the useJourneyFilters anti-pattern.
    */
   rollingMinutes?: Partial<Record<Period, number>>
+
+  /**
+   * Periods that are a MODE rather than a remembered view.
+   *
+   * Range memory answers "what was I looking at last time" on a fresh load. A
+   * mode is not an answer to that question: the dashboard's `realtime` is
+   * entered deliberately, for as long as somebody is watching, and nobody means
+   * it as the view they want next Tuesday morning.
+   *
+   * 🔴 Without this, choosing such a period OVERWRITES the stored preference, so
+   * a later visit opens in a live view the reader never chose AND their real
+   * preference is gone — memory cannot tell you what it replaced. Listed periods
+   * still behave exactly like any other in the URL and in the picker; they are
+   * simply never written to memory.
+   */
+  ephemeralPeriods?: readonly Period[]
   /**
    * The site's IANA timezone — every relative preset ("today", "last 7
    * days", "this month"…) resolves against ITS wall clock
@@ -217,6 +233,16 @@ export interface UrlDateRange {
    * mutually exclusive on the wire and the server 400s a request carrying both.
    */
   rollingMinutes: number | null
+  /**
+   * This page's stored preference — what a fresh load would open on — or null
+   * when nothing is remembered yet. Never an ephemeral period.
+   *
+   * Exposed so a page leaving a MODE has somewhere honest to land when it has
+   * no in-session history to restore (a tab opened straight onto the mode's
+   * URL, or reloaded while in it). The hook owns this memory, so it answers
+   * rather than making callers re-read the storage key themselves.
+   */
+  remembered: Period | null
   setPeriod: (p: Period, customRange?: { start: string; end: string }) => void
   shiftPeriod: (direction: -1 | 1) => void
   /**
@@ -242,7 +268,7 @@ export interface UrlDateRange {
 }
 
 export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
-  const { pageKey, extraPresets, excludePresets, minDate, rollingMinutes, timezone } = options
+  const { pageKey, extraPresets, excludePresets, minDate, rollingMinutes, timezone, ephemeralPeriods } = options
   const maxDays = options.maxDays ?? ANALYTICS_MAX_DAYS
   const searchParams = useSearchParams()
   const write = useQueryParamsWriter()
@@ -284,6 +310,13 @@ export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
   const rawPeriod = parsePeriod(searchParams.get('period'))
   const rawStart = searchParams.get('start')
   const rawEnd = searchParams.get('end')
+
+  const ephemeralKey = (ephemeralPeriods ?? []).join(',')
+  const isEphemeral = useCallback(
+    (p: Period) => (ephemeralPeriods ?? []).includes(p),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ephemeralKey],
+  )
 
   // Range memory: read post-mount (never during SSR/hydration, so server and
   // first client render agree on the default), then applied as the effective
@@ -365,10 +398,12 @@ export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
       // Presets are remembered as THIS page's future default; custom spans are
       // not (a frozen date range as the default is the F12 bug), and neither
       // is a period outside the page's own vocabulary — memory must only ever
-      // hold what the page declares. The state copy must track the write, or
+      // hold what the page declares — and neither is an EPHEMERAL one, which is a
+      // MODE somebody is in rather than a view they chose for next time.
+      // The state copy must track the write, or
       // picking the default period while a different preset is remembered
       // would visibly revert.
-      if (p !== 'custom' && allowed.has(p)) {
+      if (p !== 'custom' && allowed.has(p) && !isEphemeral(p)) {
         setRemembered(p)
         try {
           window.localStorage.setItem(storageKey(pageKey), p)
@@ -377,7 +412,7 @@ export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
         }
       }
     },
-    [updateUrl, allowed, pageKey],
+    [updateUrl, allowed, pageKey, isEphemeral],
   )
 
   const shiftPeriod = useCallback(
@@ -398,6 +433,7 @@ export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
     dateRange,
     periodReady,
     rollingMinutes: activeRollingMinutes,
+    remembered,
     setPeriod,
     shiftPeriod,
     siteNow,
