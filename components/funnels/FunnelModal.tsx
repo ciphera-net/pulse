@@ -604,11 +604,20 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
                     return (
                       <motion.div
                         key={stepIds[i]}
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
+                        // 🔴 Clip ONLY while the height animates. A permanent
+                        // `overflow-hidden` here clipped the SuggestInput
+                        // listbox — absolutely positioned inside this wrapper —
+                        // to the step's box: one row visible, the rest behind
+                        // the next step (pulse#758). A z-index cannot undo a
+                        // clip. Non-animatable values apply at the START of an
+                        // animation (so exit clips before the collapse begins),
+                        // `transitionEnd` at its END; a step present at open
+                        // (AnimatePresence initial={false}) resolves straight to
+                        // the animate target, transitionEnd included.
+                        initial={{ height: 0, opacity: 0, overflow: 'hidden' }}
+                        animate={{ height: 'auto', opacity: 1, transitionEnd: { overflow: 'visible' } }}
+                        exit={{ height: 0, opacity: 0, overflow: 'hidden' }}
                         transition={{ duration: DURATION_FAST, ease: EASE_APPLE }}
-                        className="overflow-hidden"
                       >
                         <div className="flex items-start gap-2.5 rounded-none border border-border bg-neutral-900/30 p-2 pl-2.5">
                           {/* Number chip — aligned to the control row */}
