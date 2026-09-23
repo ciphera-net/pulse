@@ -51,7 +51,7 @@ vi.mock('@/lib/api/funnels', () => ({ previewFunnel: vi.fn(async () => null) }))
 import FunnelModal from '@/components/funnels/FunnelModal'
 
 describe('funnel step suggestion list', () => {
-  it('is not clipped by the step wrapper, which clips only while its height animates', async () => {
+  it('is not clipped by the step wrapper, which clips only while its height animates', { timeout: 20_000 }, async () => {
     render(
       <FunnelModal
         isOpen
@@ -65,9 +65,10 @@ describe('funnel step suggestion list', () => {
       />,
     )
 
-    // Let the facet segmented control's layout effects settle before querying.
-    await new Promise((r) => setTimeout(r, 50))
-    const input = await screen.findByLabelText('Step 2 event')
+    // Wait for the step rows themselves (the facet segmented control's layout
+    // effects run first); a fixed sleep flaked under full-suite load.
+    await screen.findByRole('radiogroup', { name: 'Step 2 type' }, { timeout: 10_000 })
+    const input = await screen.findByLabelText('Step 2 event', {}, { timeout: 10_000 })
     fireEvent.focus(input)
     const list = await screen.findByRole('listbox', { name: 'Step 2 event suggestions' })
     await waitFor(() => expect(screen.getByRole('option', { name: /pulse_click/ })).toBeTruthy())
