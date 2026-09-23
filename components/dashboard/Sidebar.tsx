@@ -10,7 +10,7 @@ import { cdnUrl } from '@/lib/cdn'
 import { DOCS_ORIGIN } from '@/lib/docs'
 import { useSidebar } from '@/lib/sidebar-context'
 import { SiteFavicon } from '@/components/sites/SiteFavicon'
-import { FileText as FileTextIcon, Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, MagnifyingGlass, UsersThree as UsersThreeIcon } from '@phosphor-icons/react'
+import { CardsThree as CardsThreeIcon, Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, MagnifyingGlass, UsersThree as UsersThreeIcon } from '@phosphor-icons/react'
 import {
   LayoutDashboardIcon,
   PathIcon,
@@ -52,7 +52,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Analytics',
     items: [
       { label: 'Dashboard', href: (id) => `/sites/${id}`, icon: LayoutDashboardIcon },
-      { label: 'Pages', href: (id) => `/sites/${id}/pages`, icon: FileTextIcon, matchPrefix: true },
+      { label: 'Pages', href: (id) => `/sites/${id}/pages`, icon: CardsThreeIcon, matchPrefix: true },
       { label: 'Journeys', href: (id) => `/sites/${id}/journeys`, icon: PathIcon, matchPrefix: true },
       { label: 'Visitors', href: (id) => `/sites/${id}/visitors`, icon: UsersThreeIcon, matchPrefix: true },
       { label: 'Funnels', href: (id) => `/sites/${id}/funnels`, icon: FunnelIcon, matchPrefix: true },
