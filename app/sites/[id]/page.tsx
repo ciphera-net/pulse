@@ -2,7 +2,7 @@
 
 
 import { siteDaysCaption } from '@/lib/utils/timezones'
-import { useCallback, useEffect, useState, useMemo } from 'react'
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import {
   type Stats,
@@ -23,9 +23,12 @@ import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/compone
 import FilterButton from '@/components/dashboard/FilterButton'
 import RealtimeOrb from '@/components/dashboard/RealtimeOrb'
 import {
+  DASHBOARD_EPHEMERAL_PERIODS,
   DASHBOARD_REALTIME_PRESETS,
   DASHBOARD_ROLLING_MINUTES,
   isRealtimePeriod,
+  periodOnLeavingRealtime,
+  type PreviousView,
 } from '@/lib/dashboard/realtimeRange'
 import { useRealtimeSync } from '@/lib/hooks/useRealtimeSync'
 import FilterPills from '@/components/dashboard/FilterPills'
@@ -85,12 +88,17 @@ export default function SiteDashboardPage() {
   // serve a live window — a global entry would show in their menus and resolve
   // to something they cannot honour. `rollingMinutes` is what turns the chosen
   // period into a `minutes=` fetch instead of a date span.
-  const { period, dateRange, periodReady, rollingMinutes, setPeriod, shiftPeriod, siteNow, pickerProps } =
+  const { period, dateRange, periodReady, rollingMinutes, remembered, setPeriod, shiftPeriod, siteNow, pickerProps } =
     useUrlDateRange({
       pageKey: 'dashboard',
       timezone: siteRecord?.timezone,
       extraPresets: DASHBOARD_REALTIME_PRESETS,
       rollingMinutes: DASHBOARD_ROLLING_MINUTES,
+      // Realtime is a MODE, not a view somebody chose for next time. Without
+      // this it would be written to the page's range memory, so a later visit
+      // would open live — and the real preference it overwrote is unrecoverable,
+      // because memory cannot tell you what it replaced.
+      ephemeralPeriods: DASHBOARD_EPHEMERAL_PERIODS,
     })
   const isLive = isRealtimePeriod(period)
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
@@ -265,13 +273,39 @@ export default function SiteDashboardPage() {
     }, [refetchDashboard]),
   })
 
-  // The orb and the picker's "Realtime" entry are the same switch. Leaving live
-  // mode returns to the default period rather than to whatever was selected
-  // before — the previous choice is not carried, because the URL is the state
-  // and restoring a remembered one would disagree with a shared link.
+  // The orb and the picker's "Realtime" entry are the same switch, and leaving
+  // returns to the view you were on — not to the default.
+  //
+  // 🔴 This used to jump to DEFAULT_PERIOD, on the reasoning that the URL is the
+  // state and a remembered period could disagree with a shared link. That was
+  // the wrong trade: glancing at the live view is a detour, and a detour that
+  // silently rewrites where you were is a bug. Somebody on "Last 7 days" who
+  // checks who is on the site now expects to land back on Last 7 days.
+  //
+  // The previous view is held in a ref — deliberately NOT in the URL, which is
+  // what keeps a shared ?period=realtime link honest: it carries the live view
+  // and nothing about the sender's private history. A recipient has no ref, so
+  // they fall through to their OWN remembered period (or the default), which is
+  // the right answer for them rather than a stranger's.
+  //
+  // The custom range travels too: restoring the token alone would send somebody
+  // who was on a hand-picked span back to a preset of the same name but
+  // different dates.
+  const previousViewRef = useRef<PreviousView | null>(null)
   const toggleRealtime = useCallback(() => {
-    setPeriod(isLive ? DEFAULT_PERIOD : 'realtime')
-  }, [isLive, setPeriod])
+    if (isLive) {
+      const previous = previousViewRef.current
+      previousViewRef.current = null
+      const next = periodOnLeavingRealtime(previous, remembered, DEFAULT_PERIOD)
+      setPeriod(next.period, next.range)
+      return
+    }
+    previousViewRef.current =
+      period === 'custom'
+        ? { period, range: { start: dateRange.start, end: dateRange.end } }
+        : { period }
+    setPeriod('realtime')
+  }, [isLive, period, dateRange.start, dateRange.end, remembered, setPeriod])
   // The previous-period comparison carries the SAME filters as the current
   // period. Omitting them compared a filtered current window against an
   // unfiltered previous one — every KPI delta was garbage under any active
