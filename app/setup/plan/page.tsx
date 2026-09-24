@@ -209,7 +209,7 @@ export default function SetupPlanPage() {
               <div className="flex flex-wrap gap-x-3 gap-y-1">
                 {['1 site', '5k pageviews', 'Custom events', 'No credit card'].map((f) => (
                   <span key={f} className="flex items-center gap-1 text-xs text-neutral-400">
-                    <Check className="w-3 h-3 text-brand-orange" weight="bold" />
+                    <Check className="w-3 h-3 text-brand-ink" weight="bold" />
                     {f}
                   </span>
                 ))}

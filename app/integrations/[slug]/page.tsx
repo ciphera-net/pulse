@@ -209,7 +209,7 @@ export default async function IntegrationGuidePage({ params }: { params: Promise
               href={integrationGuideUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-sm font-medium text-brand-orange transition-colors hover:text-brand-orange/80"
+              className="inline-flex items-center gap-1 text-sm font-medium text-brand-ink transition-colors hover:text-brand-ink/80"
             >
               {integration.name} guide →
             </a>
