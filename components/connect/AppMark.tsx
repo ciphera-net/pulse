@@ -11,12 +11,14 @@ import type { ClientBrand } from '@/lib/api/connect'
  * a changed logo gets a new name, never a new body at the same path (a stable
  * asset path with a long cache ships stale bytes). Sources, measured
  * 24-09-2026: claude.ai/favicon.svg; the logo_uri in chatgpt.com's own CIMD
- * document; Cursor's favicon as Sigil resolves it.
+ * document; Cursor's favicon as Sigil resolves it; the logo_uri in VS Code's
+ * own CIMD document (vscode.dev/oauth/client-metadata.json), scaled to 256 px.
  */
 export const BRAND_MARKS: Record<ClientBrand, string> = {
   claude: '/connect/claude-v1.svg',
   chatgpt: '/connect/chatgpt-v1.png',
   cursor: '/connect/cursor-v1.png',
+  vscode: '/connect/vscode-v1.png',
 }
 
 /**
