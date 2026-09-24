@@ -17,7 +17,7 @@ import apiRequest from '@/lib/api/client'
  * checked (the CIMD host it fetched from, or a client registered in code) —
  * never from what an app says about itself, and never from the redirect host.
  */
-export type ClientBrand = 'claude' | 'chatgpt' | 'cursor'
+export type ClientBrand = 'claude' | 'chatgpt' | 'cursor' | 'vscode'
 
 /** What the consent screen may show about a pending request, and nothing about who started it. */
 export interface ConnectRequest {
