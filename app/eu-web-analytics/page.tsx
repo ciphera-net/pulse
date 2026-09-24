@@ -42,7 +42,7 @@ const faqs = [
   {
     question: 'Is my analytics data stored in the EU?',
     answer:
-      'Yes. Pulse holds visitor data on Swiss and EU infrastructure. The data is not transferred to the United States, and there is no US-jurisdiction cloud provider in the processing path — the residency question that trips up US-based analytics tools does not arise.',
+      'Yes. Pulse holds visitor data on Swiss and EU infrastructure. We do not transfer it to the United States, and there is no US-jurisdiction cloud provider in our processing path, so the residency question that trips up US-based analytics tools does not arise from anything we do. If you connect an AI assistant, where it runs is your choice.',
   },
   {
     question: 'Who operates Pulse, and under which law?',
@@ -81,8 +81,8 @@ export default function EuWebAnalyticsPage() {
           </p>
           <p>
             Pulse removes the question rather than managing it. Visitor data is held on Swiss and EU
-            infrastructure, and there is no US-jurisdiction cloud provider in the path. Nothing
-            leaves for the United States, so there is no transfer mechanism to justify and no
+            infrastructure, and there is no US-jurisdiction cloud provider in the path. We send
+            nothing to the United States, so there is no transfer mechanism for us to justify and no
             adequacy decision to depend on. And because Pulse is{' '}
             <Link href="/cookieless-analytics" className="text-primary hover:text-primary/80">
               cookieless
