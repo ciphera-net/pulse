@@ -20,6 +20,7 @@ import {
   Terminal,
   Heartbeat,
 } from '@phosphor-icons/react'
+import { McpIcon } from '@/components/icons/McpIcon'
 
 /**
  * Settings navigation config — the ONE place the tab list, its icon
@@ -51,6 +52,11 @@ export interface NavTab {
   icon: Icon
   /** Only visible when this permission is held. */
   requires?: string
+  /**
+   * A short marker beside the label, such as "New" (MCP, owner 24-09-2026). Drawn as Facet's
+   * neutral Badge: no colour, because colour lives in a dot or a single word, never on a surface.
+   */
+  badge?: string
 }
 
 export interface NavGroup {
@@ -90,6 +96,9 @@ export const NAV_GROUPS: NavGroup[] = [
       // * Terminal, not Key — Key is already the Roles metaphor, and an API key is
       // * a developer-surface credential rather than a permissions concept.
       { label: 'API Keys', href: '/settings/organization/api-keys', description: 'Read your analytics programmatically.', icon: Terminal, requires: 'integrations.manage' },
+      // * MCP (PULSE-54, owner 24-09-2026): set up an assistant, then see what is connected.
+      // * It was "Connected apps" at /connected-apps until the owner renamed it; that slug redirects.
+      { label: 'MCP', href: '/settings/organization/mcp', description: 'Connect Claude, ChatGPT and other assistants.', icon: McpIcon, requires: 'integrations.manage', badge: 'New' },
       { label: 'Audit Log', href: '/settings/organization/audit', description: 'Workspace activity.', icon: ClockCounterClockwise, requires: 'audit.view' },
     ],
   },

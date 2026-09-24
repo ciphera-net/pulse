@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { CaretUpDown, X } from '@phosphor-icons/react'
-import { Switcher } from '@ciphera-net/facet'
+import { Badge, Switcher } from '@ciphera-net/facet'
 import { SPRING, TIMING } from '@/lib/motion'
 import { CascadeGroup } from '@/components/dashboard/Cascade'
 import { PanelSequenceProvider } from '@/components/settings/panels/PanelSequence'
@@ -73,8 +73,9 @@ function RailRow({
           inherits the row: muted at rest, orange when active. */}
       <tab.icon weight="regular" aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
       <span className="min-w-0">
-        <span className={cn('block text-sm font-medium', active ? 'text-primary' : 'text-foreground')}>
+        <span className={cn('flex items-center gap-2 text-sm font-medium', active ? 'text-primary' : 'text-foreground')}>
           {tab.label}
+          {tab.badge && <Badge variant="neutral" size="sm">{tab.badge}</Badge>}
         </span>
         <span className="mt-0.5 block text-xs text-muted-foreground">{tab.description}</span>
       </span>

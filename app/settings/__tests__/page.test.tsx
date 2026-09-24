@@ -7,6 +7,7 @@ vi.mock('@ciphera-net/facet', () => ({
   // Facet Button; `asChild` hands the classes to its child (a Link), so the
   // rendered element stays an anchor.
   Button: ({ children, asChild, ...props }: any) => (asChild ? children : <button {...props}>{children}</button>),
+  Badge: ({ children }: any) => <span data-badge>{children}</span>,
 }))
 
 vi.mock('next/link', () => ({
@@ -90,6 +91,9 @@ describe('Settings landing (permission-aware index)', () => {
     expect(screen.getByText('Bot & Spam')).toBeInTheDocument()
     expect(screen.getByText('Members')).toBeInTheDocument()
     expect(screen.getByText('Audit Log')).toBeInTheDocument()
+    // The MCP row carries its "New" badge beside the label (PULSE-54).
+    const mcp = screen.getByText('MCP').closest('p')
+    expect(mcp?.querySelector('[data-badge]')?.textContent).toBe('New')
     // Active-site context surfaces in the Site panel.
     expect(screen.getByText('Acme')).toBeInTheDocument()
     expect(screen.getByText('acme.com')).toBeInTheDocument()

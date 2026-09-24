@@ -3,9 +3,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
-import { getUserOrganizations, switchContext, type OrganizationMember } from '@/lib/api/organization'
-import { setSessionAction } from '@/app/actions/auth'
-import { setAccessToken } from '@/lib/api/client'
+import { getUserOrganizations, type OrganizationMember } from '@/lib/api/organization'
+import { switchOrganizationSession } from '@/lib/auth/switchOrganization'
 import { logger } from '@/lib/utils/logger'
 
 /**
@@ -35,37 +34,19 @@ export function useOrgSwitcher() {
   }, [auth.user])
 
   /**
-   * The order below is the contract (pulse#730, 21-09-2026):
+   * The switch itself (its four ordered steps, pulse#730) lives in
+   * `switchOrganizationSession`, shared with the MCP consent page, which must
+   * switch WITHOUT leaving. The top bar then goes home.
    *
-   * 1. `switchContext` mints an access token scoped to the new org.
-   * 2. `setSessionAction` stores it in Pulse's own cookie — a failure here
-   *    means the next page load would come back on the OLD org, so it stops
-   *    the switch rather than continuing on a session the server never saw.
-   * 3. `setAccessToken` primes the in-memory Bearer, which is what pulse-api
-   *    actually sees (per-app sessions S3): the cookie alone changes nothing
-   *    about what the next request sends. `refresh()` re-primes it from the
-   *    cookie too; doing it here makes the order explicit instead of a side
-   *    effect of a server round trip.
-   * 4. `refresh()` re-hydrates the user from the new cookie, then clears EVERY
-   *    SWR key and refetches the mounted ones under the new org. That IS the
-   *    cache purge for this path.
-   *
-   * 🔴 Do not add a second cache-wide mutate after `refresh()`. SWR discards a
-   * revalidation that started before the key's latest mutation, so the
-   * `clearOrgScopedCaches()` that used to follow it threw away every refetch
-   * `refresh()` had just started, left the dedupe entries behind to swallow
-   * anything that mounted in the next 30 s, and the app landed on /sites with
-   * no sites until the PWA was closed and reopened. lib/swr/org-switch.ts
-   * carries the rule; the setup wizard's org step is the path that uses it.
+   * 🔴 Do not add a second cache-wide mutate after the switch: `refresh()`
+   * inside it is the purge, and SWR discards a revalidation that started
+   * before the key's latest mutation — a second purge threw away every refetch
+   * and the app landed on /sites with no sites (lib/swr/org-switch.ts).
    */
   const switchOrganization = useCallback(async (orgId: string | null) => {
     if (!orgId) return
     try {
-      const { access_token } = await switchContext(orgId)
-      const stored = await setSessionAction(access_token)
-      if (!stored.success) throw new Error('The switched session could not be stored')
-      setAccessToken(access_token)
-      await auth.refresh()
+      await switchOrganizationSession(orgId, auth.refresh)
       router.push('/')
     } catch (err) {
       logger.error('Failed to switch organization', err)
