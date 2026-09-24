@@ -78,4 +78,24 @@ describe('PanelRow (structured-panels PropertyRow)', () => {
     })
   })
 
+
+  it('puts a leading mark before the label AND the caption, centred across both', () => {
+    const { container } = render(
+      <PanelRow leading={<span data-testid="mark" />} label="Claude" caption="Connected by you" control={<button type="button">x</button>} />,
+    )
+    const cell = container.firstElementChild!.firstElementChild as HTMLElement
+    const wrap = cell.firstElementChild as HTMLElement
+    expect(wrap.className).toContain('items-center')
+    expect(wrap.firstElementChild?.getAttribute('data-testid')).toBe('mark')
+    const text = wrap.children[1] as HTMLElement
+    expect(text.textContent).toBe('ClaudeConnected by you')
+  })
+
+  it('renders a row without a leading mark exactly as before: label then caption, no wrapper', () => {
+    const { container } = render(<PanelRow label="Name" caption="Shown across Pulse" />)
+    const cell = container.firstElementChild!.firstElementChild as HTMLElement
+    expect(cell.children).toHaveLength(2)
+    expect(cell.children[0].textContent).toBe('Name')
+    expect(cell.children[1].tagName).toBe('P')
+  })
 })

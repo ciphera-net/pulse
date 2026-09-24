@@ -145,6 +145,16 @@ describe('middleware — a cold visit keeps where it was going', () => {
     expect(loc.searchParams.get('returnTo')).toBe('/settings')
   })
 
+  // * The MCP consent page (PULSE-41): an assistant opens it in a browser that
+  // * may not be signed in to Pulse. The pending request lives in the query,
+  // * so the query must survive the sign-in, or the assistant waits forever.
+  it('keeps a /connect request id through the sign-in, and never serves the consent page signed out', () => {
+    const res = middleware(createRequest('/connect?request=ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'))
+    const loc = new URL(res.headers.get('location') as string)
+    expect(loc.pathname).toBe('/login')
+    expect(loc.searchParams.get('returnTo')).toBe('/connect?request=ABCDEFGHIJKLMNOPQRSTUVWXYZ234567')
+  })
+
   it('an authenticated visitor is untouched by any of this', () => {
     const res = middleware(createRequest('/settings', { pulse_access: 'tok' }))
     expect(res.headers.get('location')).toBeNull()

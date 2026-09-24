@@ -77,6 +77,12 @@ const cspDirectives = [
   // a blocked frame simply never loads. The key-bridge design named only the
   // first half; this is the second.
   "frame-src https://api.help.ciphera.net https://id.ciphera.net",
+  // * Nothing may frame Pulse. X-Frame-Options: DENY (below) already says so to
+  // * every current browser; this is the CSP form the MCP consent page's
+  // * threat model names (T3, clickjacking the Allow button — PULSE-41), and the
+  // * one that wins where both are honoured. Site-wide on purpose: no route is
+  // * meant to be framed, and a per-path CSP would be a second header block.
+  "frame-ancestors 'none'",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self' https://*.ciphera.net",
