@@ -16,6 +16,7 @@ const WorkspaceBillingTab = dynamic(() => import('@/components/settings/unified/
 // * behind it.
 const WorkspaceAuditTab   = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceAuditTab'))
 const WorkspaceApiKeysTab = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceApiKeysTab'))
+const WorkspaceMcpTab     = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceMcpTab'))
 
 const TAB_COMPONENTS: Record<string, React.ComponentType> = {
   general:       WorkspaceGeneralTab,
@@ -24,6 +25,13 @@ const TAB_COMPONENTS: Record<string, React.ComponentType> = {
   billing:       WorkspaceBillingTab,
   audit:         WorkspaceAuditTab,
   'api-keys':    WorkspaceApiKeysTab,
+  mcp:           WorkspaceMcpTab,
+}
+
+// * Old slugs that moved. "connected-apps" became "mcp" on 24-09-2026 (PULSE-54): the page was
+// * renamed MCP by the owner, and a bookmark to the old address still lands on it.
+const TAB_ALIASES: Record<string, string> = {
+  'connected-apps': 'mcp',
 }
 
 const TAB_PERMISSIONS: Record<string, Permission> = {
@@ -33,6 +41,9 @@ const TAB_PERMISSIONS: Record<string, Permission> = {
   // * Issuing a credential for an external system is the same class of action as
   // * connecting one, so it reuses the integrations permission.
   'api-keys':    'integrations.manage',
+  // * Connecting an assistant is the same class of action as issuing a key
+  // * (MCP design D4), and the server gates both routes on it.
+  mcp:           'integrations.manage',
 }
 
 function AccessDenied() {
@@ -58,8 +69,10 @@ export default function OrganizationSettingsTabPage() {
   // * Unknown tabs redirect to the section default instead of dead-ending
   // * on a raw fallback string.
   useEffect(() => {
-    if (!TabComponent) router.replace('/settings/organization/general')
-  }, [TabComponent, router])
+    const alias = TAB_ALIASES[tab]
+    if (alias) router.replace(`/settings/organization/${alias}`)
+    else if (!TabComponent) router.replace('/settings/organization/general')
+  }, [TabComponent, router, tab])
 
   if (!TabComponent) {
     return null

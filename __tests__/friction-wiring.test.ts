@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { isExemptFromOnboardingWall, isExemptFromWorkspaceProvisioning } from '@/lib/auth/appRoutes'
 
 /**
  * Wiring guards for three friction findings whose claims live in code SHAPE
@@ -78,15 +79,26 @@ describe('every get-started CTA opens signup, not sign-in', () => {
 describe('the onboarding wall exempts /join in BOTH branches', () => {
   const src = stripComments(read('lib/auth/context.tsx'))
 
+  // * Since PULSE-41 the has-orgs branch asks isExemptFromOnboardingWall (one
+  // * list, tested, which also exempts /connect) instead of an inline chain —
+  // * so this checks that the wall asks it, and that its answer for /join holds.
   it('exempts it where the account already has a workspace', () => {
     const idx = src.indexOf('isSubjectToOnboardingWall(userRole)')
     expect(idx, 'the has-orgs wall must exist').toBeGreaterThan(-1)
     const condition = src.slice(idx, idx + 400)
-    expect(condition).toMatch(/!pathname\?\.startsWith\('\/join'\)/)
+    expect(condition).toMatch(/!isExemptFromOnboardingWall\(pathname\)/)
+    expect(isExemptFromOnboardingWall('/join/abc')).toBe(true)
   })
 
+  // * Since PULSE-41 the zero-orgs branch asks isExemptFromWorkspaceProvisioning
+  // * (one list, tested, which also leaves /connect to provision for itself)
+  // * instead of an inline chain — the same shape as the has-orgs check above.
   it('and still exempts it where it has none', () => {
-    expect((src.match(/startsWith\('\/join'\)/g) ?? []).length).toBeGreaterThanOrEqual(2)
+    const zero = src.indexOf('organizations.length === 0')
+    expect(zero, 'the zero-orgs branch must exist').toBeGreaterThan(-1)
+    expect(src.slice(zero, zero + 600)).toMatch(/if \(isExemptFromWorkspaceProvisioning\(pathname\)\) return/)
+    expect(isExemptFromWorkspaceProvisioning('/join/abc')).toBe(true)
+    expect(isExemptFromWorkspaceProvisioning('/setup/org')).toBe(true)
   })
 })
 

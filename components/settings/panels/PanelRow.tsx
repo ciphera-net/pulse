@@ -35,6 +35,11 @@ export interface PanelRowProps {
   caption?: React.ReactNode
   /** Right-aligned slot (toggle, button…); occupies the `auto` column on md. */
   control?: React.ReactNode
+  /**
+   * A mark before the label AND caption, centred across both (an app's logo
+   * in Connected apps). Absent, the row renders exactly as it always has.
+   */
+  leading?: React.ReactNode
   /** Binds the label to a control id and renders a semantic `<label>`. */
   htmlFor?: string
   className?: string
@@ -42,7 +47,7 @@ export interface PanelRowProps {
   children?: React.ReactNode
 }
 
-export function PanelRow({ label, caption, control, htmlFor, className, children }: PanelRowProps) {
+export function PanelRow({ label, caption, control, leading, htmlFor, className, children }: PanelRowProps) {
   // The label text carries an id so a NON-native control in the `control` slot
   // (Facet's Toggle is a role="switch" button, which a <label htmlFor> cannot
   // name) can be labelled by it: the control element is cloned with
@@ -100,9 +105,21 @@ export function PanelRow({ label, caption, control, htmlFor, className, children
       )}
     >
       <div className="min-w-0 md:col-start-1 md:row-start-1">
-        {labelNode}
-        {/* A readable measure: the caption may take the row, never the whole width. */}
-        {caption && <p className="mt-0.5 max-w-[56ch] text-xs text-muted-foreground">{caption}</p>}
+        {leading ? (
+          <div className="flex min-w-0 items-center gap-3">
+            {leading}
+            <div className="min-w-0">
+              {labelNode}
+              {caption && <p className="mt-0.5 max-w-[56ch] text-xs text-muted-foreground">{caption}</p>}
+            </div>
+          </div>
+        ) : (
+          <>
+            {labelNode}
+            {/* A readable measure: the caption may take the row, never the whole width. */}
+            {caption && <p className="mt-0.5 max-w-[56ch] text-xs text-muted-foreground">{caption}</p>}
+          </>
+        )}
       </div>
       {/* S7: a field is a field. The value cell caps at max-w-md so an input
           reads as a field and not as a column stretched to the frame. */}
