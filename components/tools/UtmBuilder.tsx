@@ -185,7 +185,7 @@ export default function UtmBuilder({ initialSiteId }: UtmBuilderProps) {
 
       {generatedUrl && (
         <div className="bg-card border border-border mt-6 p-4 rounded-none flex items-center justify-between group">
-          <code className="text-sm break-all text-brand-orange font-mono">{generatedUrl}</code>
+          <code className="text-sm break-all text-brand-ink font-mono">{generatedUrl}</code>
           <Button
             variant="secondary"
             onClick={copyToClipboard}

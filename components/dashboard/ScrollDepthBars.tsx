@@ -160,7 +160,7 @@ export default function ScrollDepthBars({ scrollDepth, preview, bare = false, si
               <span className="truncate">Reached {threshold}%</span>
             </div>
             <div className="relative flex items-center gap-2 ml-4">
-              <span className="text-xs font-medium text-brand-orange opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
+              <span className="text-xs font-medium text-brand-ink opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
                 {Math.round(share)}%
               </span>
               <span className="text-sm font-semibold text-neutral-400">

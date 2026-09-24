@@ -57,18 +57,18 @@ export function getTypeIcon(type: string) {
     security_api_key_created:      <Key              className="w-5 h-5 shrink-0 text-neutral-400"  aria-hidden="true" />,
     site_added:                    <Globe            className="w-5 h-5 shrink-0 text-green-400"    aria-hidden="true" />,
     site_tracking_issue:           <Bug              className="w-5 h-5 shrink-0 text-amber-400"    aria-hidden="true" />,
-    site_export_ready:             <Export           className="w-5 h-5 shrink-0 text-brand-orange" aria-hidden="true" />,
+    site_export_ready:             <Export           className="w-5 h-5 shrink-0 text-brand-ink" aria-hidden="true" />,
     site_pagespeed_drop:           <ChartLineDown    className="w-5 h-5 shrink-0 text-red-400"      aria-hidden="true" />,
     site_pagespeed_recovered:      <ChartLineUp      className="w-5 h-5 shrink-0 text-green-400"    aria-hidden="true" />,
     site_traffic_spike:            <TrendUp          className="w-5 h-5 shrink-0 text-green-400"    aria-hidden="true" />,
     site_traffic_drop:             <TrendDown        className="w-5 h-5 shrink-0 text-red-400"      aria-hidden="true" />,
     site_content_decay:            <ArrowFatLineDown className="w-5 h-5 shrink-0 text-red-400"      aria-hidden="true" />,
-    team_member_invited:           <UserPlus         className="w-5 h-5 shrink-0 text-brand-orange" aria-hidden="true" />,
+    team_member_invited:           <UserPlus         className="w-5 h-5 shrink-0 text-brand-ink" aria-hidden="true" />,
     team_member_joined:            <UserCheck        className="w-5 h-5 shrink-0 text-green-400"    aria-hidden="true" />,
     team_role_changed:             <UserGear         className="w-5 h-5 shrink-0 text-neutral-400"  aria-hidden="true" />,
-    system_announcement:           <Megaphone        className="w-5 h-5 shrink-0 text-brand-orange" aria-hidden="true" />,
+    system_announcement:           <Megaphone        className="w-5 h-5 shrink-0 text-brand-ink" aria-hidden="true" />,
     system_maintenance:            <Wrench           className="w-5 h-5 shrink-0 text-amber-400"    aria-hidden="true" />,
-    lifecycle_no_site:             <PlusCircle       className="w-5 h-5 shrink-0 text-brand-orange" aria-hidden="true" />,
+    lifecycle_no_site:             <PlusCircle       className="w-5 h-5 shrink-0 text-brand-ink" aria-hidden="true" />,
   }
 
   return iconMap[type] ?? <Lightning className="w-5 h-5 shrink-0 text-neutral-400" aria-hidden="true" />

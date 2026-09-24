@@ -149,13 +149,13 @@ describe('CommandDeck rail sparklines (S4 restore, 19-08-2026)', () => {
     expect(lines.length).toBe(5)
     const lit = lines.filter(p => {
       const c = p.getAttribute('class') ?? ''
-      return c.includes('stroke-brand-orange') && !c.includes('group-hover')
+      return c.includes('stroke-brand-ink') && !c.includes('group-hover')
     })
     expect(lit.length).toBe(1)
     const resting = lines.filter(p => (p.getAttribute('class') ?? '').includes('stroke-neutral-600'))
     expect(resting.length).toBe(4)
     for (const p of resting) {
-      expect(p.getAttribute('class')).toContain('group-hover:stroke-brand-orange')
+      expect(p.getAttribute('class')).toContain('group-hover:stroke-brand-ink')
     }
   })
 })

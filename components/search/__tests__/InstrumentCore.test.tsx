@@ -34,6 +34,7 @@ vi.mock('@/components/ui/UpdatingChip', () => ({ UpdatingChip: () => null }))
 
 import { InstrumentCore } from '@/components/search/InstrumentPanel'
 import type { SeriesPoint, MetricKey } from '@/components/search/searchMetrics'
+import { STRIP_INK } from '@/components/ui/chart-stack'
 
 const N = 12
 const series: SeriesPoint[] = Array.from({ length: N }, (_, i) => ({
@@ -77,11 +78,11 @@ async function renderCore(active: MetricKey[] = ['clicks', 'impressions', 'ctr',
 
 const solidLines = (c: HTMLElement) =>
   Array.from(c.querySelectorAll('path')).filter(
-    (p) => p.getAttribute('fill') === 'none' && p.getAttribute('stroke') === '#b3b1ad' && !p.getAttribute('stroke-dasharray'),
+    (p) => p.getAttribute('fill') === 'none' && p.getAttribute('stroke') === STRIP_INK && !p.getAttribute('stroke-dasharray'),
   )
 
 describe('Search InstrumentCore on the shared instrument', () => {
-  it('renders one instrument chart per active metric, linear, in the muted strip ink (#b3b1ad)', async () => {
+  it('renders one instrument chart per active metric, linear, in the muted strip ink (STRIP_INK)', async () => {
     const { container } = await renderCore()
     const lines = solidLines(container)
     expect(lines.length).toBe(4)

@@ -114,7 +114,8 @@ describe('VisitTrail round 7 — the mark (option B1)', () => {
         [...g.classList].filter((c) => c.startsWith('text-')).join(' '),
       ),
     )
-    expect([...inks]).toEqual(['text-brand-orange'])
+    // Orange as text is brand-ink since PULSE-31 (identical to brand-orange in dark).
+    expect([...inks]).toEqual(['text-brand-ink'])
   })
 
   it('hides the glyph from assistive tech — the sentence beside it already says the type', () => {

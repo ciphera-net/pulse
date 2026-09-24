@@ -39,7 +39,7 @@ export function QueryTrendSparkline({ siteId, query, start, end }: QueryTrendSpa
         <button
           type="button"
           onClick={() => { void mutate() }}
-          className="rounded-none text-brand-orange transition-colors duration-fast ease-apple hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+          className="rounded-none text-brand-ink transition-colors duration-fast ease-apple hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
         >
           Retry
         </button>

@@ -273,7 +273,7 @@ export default function VisitorsPage() {
             {live ? 'On the site now' : describeIdentityWindow(identityWindow).rosterHeading}
             <TermInfoTip term="visitor_identity" identityWindowDays={identityWindow} />
           </h2>
-          <span className="bg-brand-orange/10 px-2 py-1 text-xs tabular-nums text-brand-orange">
+          <span className="bg-brand-orange/10 px-2 py-1 text-xs tabular-nums text-brand-ink">
             {live ? `${activeNow} right now` : `${total} in range`}
           </span>
         </div>

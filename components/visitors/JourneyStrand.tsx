@@ -65,7 +65,7 @@ export function JourneyStrand({ pages, eventAt = [], width = 76, className }: Jo
             // The orange node is the strand's only colour, and it means exactly
             // one thing: a custom event fired on that page. Colouring anything
             // else here would make the signal unreadable.
-            className={isEvent ? 'fill-brand-orange' : 'fill-neutral-500'}
+            className={isEvent ? 'fill-brand-ink' : 'fill-neutral-500'}
           />
         )
       })}

@@ -175,7 +175,7 @@ export function PresenceField({
         )}
       </p>
       {activeCount > 0 && (
-        <p className="absolute right-3 top-2.5 z-10 flex items-center gap-1.5 text-xs text-brand-orange">
+        <p className="absolute right-3 top-2.5 z-10 flex items-center gap-1.5 text-xs text-brand-ink">
           <span className="size-1.5 rounded-full bg-brand-orange" aria-hidden="true" />
           {activeCount} on the site now
         </p>

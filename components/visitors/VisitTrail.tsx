@@ -106,7 +106,7 @@ function StepGlyph({ kind }: { kind: TrailKind }) {
   // 16px since round 8 (was 14): the step sentence went from text-sm to
   // text-base, and the mark keeps pace with the line it sits on.
   return (
-    <Glyph size={16} aria-hidden="true" className="shrink-0 text-brand-orange" />
+    <Glyph size={16} aria-hidden="true" className="shrink-0 text-brand-ink" />
   )
 }
 
@@ -287,7 +287,7 @@ export function VisitTrail({ siteId, visitorKey, visitKey, range }: VisitTrailPr
                       aria-hidden="true"
                       className={
                         'shrink-0 ' +
-                        (!on ? 'text-neutral-700' : k === 'pageview' ? 'text-neutral-500' : 'text-brand-orange')
+                        (!on ? 'text-neutral-700' : k === 'pageview' ? 'text-neutral-500' : 'text-brand-ink')
                       }
                     />
                   )
@@ -443,7 +443,7 @@ function EventLabel({ event, kind }: { event: VisitEvent; kind: TrailKind | null
       ) : (
         // The chips step up too (text-xs → text-sm), so a customer's own event
         // is not smaller than the sentences beside it.
-        <span className="bg-brand-orange/10 px-1.5 py-0.5 font-mono text-sm text-brand-orange">
+        <span className="bg-brand-orange/10 px-1.5 py-0.5 font-mono text-sm text-brand-ink">
           {event.event_name}
         </span>
       )}
