@@ -71,7 +71,12 @@ export const NEUTRAL_LIGHT: Record<Shade, string> = {
   '400': '82 82 82',
   '500': '105 105 105',
   '600': '163 163 163',
-  '700': '214 214 214',
+  // 700 does two jobs: hover borders and input edges, AND deliberately faint
+  // marks as text (the "no value" dash, the · separators, a locked icon).
+  // 190 keeps those marks exactly as faint as dark draws them (64 on the dark
+  // card is 1.83:1; 190 on the white card is 1.83:1). Pinned by a test on that
+  // ratio, not on the number. Staging verification, 24-09-2026.
+  '700': '190 190 190',
   '800': '226 226 226',
   '900': '250 250 250',
   '950': '244 244 244',
