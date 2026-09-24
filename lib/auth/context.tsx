@@ -17,7 +17,7 @@ import { cleanupStaleStorage } from '@/lib/utils/storage-cleanup'
 import { forgetAllPendingAuth } from '@/lib/api/oauth-store'
 import { isTransientRefreshFailure } from '@/lib/auth/refresh-outcome'
 import { reportClientEvent } from '@/lib/utils/clientEvents'
-import { isAuthedAppRoute, isExemptFromOnboardingWall } from '@/lib/auth/appRoutes'
+import { isAuthedAppRoute, isExemptFromOnboardingWall, isExemptFromWorkspaceProvisioning } from '@/lib/auth/appRoutes'
 import { markOnboardingComplete, onboardingDoneCacheKey, resumeTargetForSites } from '@/lib/auth/landing-target'
 
 interface User {
@@ -682,7 +682,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // bounced into the wizard; now it also stops them being handed a
             // stray workspace of their own seconds before they join somebody
             // else's. /setup is exempt for the same reason it always was.
-            if (pathname?.startsWith('/setup') || pathname?.startsWith('/join')) return
+            // /connect joins them (PULSE-41): it provisions for itself, in the open.
+            if (isExemptFromWorkspaceProvisioning(pathname)) return
 
             // The catch-all. The auth callback provisions on the way in, so
             // this normally finds a workspace already there; it covers the

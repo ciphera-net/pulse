@@ -8,7 +8,9 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 //   - a redirect that is not http(s) is never followed;
 //   - a workspace switch here never navigates (the request lives in the URL);
 //   - a self-registered app never gets a logo, only the monogram;
-//   - an unknown/expired request and "no workspace you may connect" states.
+//   - an unknown/expired request and "no workspace you may connect" states;
+//   - somebody with NO workspace gets one here and connects (ruling (a)),
+//     never the dead end — and nobody else is ever handed a workspace.
 
 const h = vi.hoisted(() => {
   class ApiError extends Error {
@@ -30,6 +32,7 @@ const h = vi.hoisted(() => {
     approveConnectRequest: vi.fn(),
     denyConnectRequest: vi.fn(),
     getUserOrganizations: vi.fn(),
+    ensureDefaultOrganization: vi.fn(),
     listSites: vi.fn(),
     switchOrganizationSession: vi.fn(async () => {}),
     rememberReturnTarget: vi.fn(),
@@ -53,7 +56,10 @@ vi.mock('@/lib/api/connect', () => ({
   approveConnectRequest: h.approveConnectRequest,
   denyConnectRequest: h.denyConnectRequest,
 }))
-vi.mock('@/lib/api/organization', () => ({ getUserOrganizations: h.getUserOrganizations }))
+vi.mock('@/lib/api/organization', () => ({
+  getUserOrganizations: h.getUserOrganizations,
+  ensureDefaultOrganization: h.ensureDefaultOrganization,
+}))
 vi.mock('@/lib/api/sites', () => ({ listSites: h.listSites }))
 vi.mock('@/lib/auth/switchOrganization', () => ({ switchOrganizationSession: h.switchOrganizationSession }))
 vi.mock('@/lib/auth/return-target', () => ({ rememberReturnTarget: h.rememberReturnTarget }))
@@ -99,7 +105,7 @@ const realLocation = window.location
 const assign = vi.fn()
 
 beforeEach(() => {
-  for (const f of [h.push, h.getConnectRequest, h.approveConnectRequest, h.denyConnectRequest, h.getUserOrganizations,
+  for (const f of [h.push, h.getConnectRequest, h.approveConnectRequest, h.denyConnectRequest, h.getUserOrganizations, h.ensureDefaultOrganization,
     h.listSites, h.switchOrganizationSession, h.rememberReturnTarget, h.initiateOAuthFlow, h.toastError, assign]) f.mockReset()
   h.user = { id: 'u1', email: 'me@x', org_id: 'org_a' }
   h.authLoading = false
@@ -200,8 +206,54 @@ describe('/connect', () => {
     render(<ConnectPage />)
     expect(await screen.findByText("You can't connect apps to your workspaces")).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Allow' })).toBeNull()
+    // * They HAVE a workspace (as a member): nobody hands them another one.
+    expect(h.ensureDefaultOrganization).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Deny' }))
     await waitFor(() => expect(assign).toHaveBeenCalledWith(expect.stringContaining('error=access_denied')))
+  })
+
+  it('gives somebody with NO workspace one here and lets them connect straight away with All sites (ruling (a))', async () => {
+    h.user = { id: 'u1', email: 'me@x', org_id: '' }
+    h.getUserOrganizations
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ organization_id: 'org_new', organization_name: 'My workspace', role: 'owner' }])
+    h.ensureDefaultOrganization.mockResolvedValue({ created: true, organization: { id: 'org_new', name: 'My workspace', slug: 'my-workspace' } })
+    h.listSites.mockResolvedValue([])
+    h.approveConnectRequest.mockResolvedValue({ redirect: 'https://claude.ai/api/mcp/auth_callback?code=c&state=s&iss=x' })
+    render(<ConnectPage />)
+    const select = (await screen.findByLabelText('Workspace')) as HTMLSelectElement
+    expect(h.ensureDefaultOrganization).toHaveBeenCalledTimes(1)
+    // * The session moves to the new workspace BEFORE approve, because approve
+    // * runs in the session's organisation (T5) — never by navigating away.
+    expect(h.switchOrganizationSession).toHaveBeenCalledWith('org_new', h.refresh)
+    expect(h.push).not.toHaveBeenCalled()
+    expect(select.value).toBe('org_new')
+    expect(screen.queryByText("You can't connect apps to your workspaces")).toBeNull()
+    expect(screen.getByRole('switch').getAttribute('aria-checked')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: 'Allow' }))
+    await waitFor(() => expect(h.approveConnectRequest).toHaveBeenCalledWith(REQ, { scope_all_sites: true, site_ids: [] }))
+    const order = (fn: { mock: { invocationCallOrder: number[] } }) => fn.mock.invocationCallOrder[0]
+    expect(order(h.switchOrganizationSession)).toBeLessThan(order(h.approveConnectRequest))
+  })
+
+  it('says it could not load, with Try again, when giving a first-time user a workspace fails — never the dead end', async () => {
+    h.user = { id: 'u1', email: 'me@x', org_id: '' }
+    h.getUserOrganizations.mockResolvedValue([])
+    h.ensureDefaultOrganization.mockRejectedValue(new h.ApiError('boom', 500))
+    render(<ConnectPage />)
+    expect(await screen.findByText("Couldn't load this connection request")).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()
+    expect(screen.queryByText("You can't connect apps to your workspaces")).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Allow' })).toBeNull()
+  })
+
+  it('does not hand out a workspace for a request that has already expired', async () => {
+    h.user = { id: 'u1', email: 'me@x', org_id: '' }
+    h.getUserOrganizations.mockResolvedValue([])
+    h.getConnectRequest.mockRejectedValue(new h.ApiError('nope', 404, { error: 'request_expired' }))
+    render(<ConnectPage />)
+    expect(await screen.findByText('This connection request has expired')).toBeTruthy()
+    expect(h.ensureDefaultOrganization).not.toHaveBeenCalled()
   })
 
   it('asks a signed-out visitor to sign in and remembers where to come back to', async () => {

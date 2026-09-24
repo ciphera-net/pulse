@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { isExemptFromOnboardingWall } from '@/lib/auth/appRoutes'
+import { isExemptFromOnboardingWall, isExemptFromWorkspaceProvisioning } from '@/lib/auth/appRoutes'
 
 /**
  * Wiring guards for three friction findings whose claims live in code SHAPE
@@ -90,10 +90,15 @@ describe('the onboarding wall exempts /join in BOTH branches', () => {
     expect(isExemptFromOnboardingWall('/join/abc')).toBe(true)
   })
 
+  // * Since PULSE-41 the zero-orgs branch asks isExemptFromWorkspaceProvisioning
+  // * (one list, tested, which also leaves /connect to provision for itself)
+  // * instead of an inline chain — the same shape as the has-orgs check above.
   it('and still exempts it where it has none', () => {
     const zero = src.indexOf('organizations.length === 0')
     expect(zero, 'the zero-orgs branch must exist').toBeGreaterThan(-1)
-    expect(src.slice(zero, zero + 600)).toMatch(/startsWith\('\/join'\)/)
+    expect(src.slice(zero, zero + 600)).toMatch(/if \(isExemptFromWorkspaceProvisioning\(pathname\)\) return/)
+    expect(isExemptFromWorkspaceProvisioning('/join/abc')).toBe(true)
+    expect(isExemptFromWorkspaceProvisioning('/setup/org')).toBe(true)
   })
 })
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isStandaloneRoute, isExemptFromOnboardingWall, isAuthedAppRoute } from '@/lib/auth/appRoutes'
+import { isStandaloneRoute, isExemptFromOnboardingWall, isAuthedAppRoute, isExemptFromWorkspaceProvisioning } from '@/lib/auth/appRoutes'
 
 // The MCP consent page (/connect, PULSE-41). Its natural first visitor is a
 // brand-new account with an empty workspace — exactly who the onboarding wall
@@ -21,6 +21,16 @@ describe('/connect routing', () => {
   it('renders standalone (no shell, no marketing chrome), like /setup and /join', () => {
     for (const p of ['/connect', '/setup', '/switch', '/join/abc']) expect(isStandaloneRoute(p), p).toBe(true)
     for (const p of ['/', '/pricing', '/sites', '/settings']) expect(isStandaloneRoute(p), p).toBe(false)
+  })
+
+  it('is left alone by the background workspace provisioning, like /setup and /join: it provisions for itself', () => {
+    for (const p of ['/connect', '/setup/org', '/join/abc']) expect(isExemptFromWorkspaceProvisioning(p), p).toBe(true)
+    // * Everywhere else a signed-in person with no workspace still gets one in
+    // * the background — /settings included (it is exempt from the ONBOARDING
+    // * wall, not from provisioning).
+    for (const p of ['/', '/sites', '/settings/organization/general', '/notifications', null, undefined, '']) {
+      expect(isExemptFromWorkspaceProvisioning(p as string), String(p)).toBe(false)
+    }
   })
 
   it('is not an authed app route: a dead session there signs in and returns, rather than the takeover', () => {
