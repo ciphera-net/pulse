@@ -6,6 +6,7 @@ import type { Metadata, Viewport } from 'next'
 import { Geist, JetBrains_Mono } from 'next/font/google'
 import LayoutContent from './layout-content'
 import { DEFAULT_OG_IMAGE, DEFAULT_OG_IMAGES } from '@/lib/og'
+import { themeBootScript } from '@/lib/theme'
 import '@ciphera-net/facet/styles'
 import '../styles/globals.css'
 
@@ -91,6 +92,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${geist.variable} ${jetbrainsMono.variable} dark`} suppressHydrationWarning>
+      {/* Theme before first paint (PULSE-31). The server always renders `dark`,
+          the default, so every page stays static. This blocking script swaps
+          the class from the device's cached copy of the account's theme before
+          the body paints. suppressHydrationWarning above covers the difference.
+          ThemeSync takes over once React runs. */}
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript() }} />
+      </head>
       <body className="antialiased min-h-screen flex flex-col bg-background text-foreground">
         {/* Warm up the CDN connection so the LCP hero image (served from
             cdn.ciphera.net) starts downloading a round-trip earlier. */}

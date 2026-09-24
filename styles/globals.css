@@ -56,12 +56,88 @@
     --input: 36 36 36;
     --ring: 253 94 15;
 
+
+    /* * Exact-value tokens for greys that match no ramp step (PULSE-31). Each dark
+     * * value IS the literal it replaced, so dark is unchanged; see the light blocks. */
+    --instrument-ink: 179 177 173; /* axis and strip labels shared by the instrument charts (was #b3b1ad) */
+    --funnel-grid: 26 26 26; /* funnel gridlines (#1a1a1a) */
+    --funnel-baseline: 43 43 43; /* funnel baseline (#2b2b2b) */
+    --funnel-dim: 102 102 102; /* funnel dimmed labels (#666666) */
+    --pager-active: 32 32 32; /* card pager active page (#202020) */
+    --pager-active-line: 46 46 46; /* card pager active border (#2e2e2e) */
+    --takeover-bg: 5 5 5; /* session takeover page (#050505) */
+    --takeover-panel: 13 13 14; /* session takeover brand panel (#0d0d0e) */
+    --takeover-panel-line: 28 28 31; /* session takeover panel border (#1c1c1f) */
+    --takeover-rule: 34 34 38; /* session takeover rules and progress track (#222226) */
+    --takeover-button: 22 22 24; /* session takeover secondary button (#161618) */
+    --takeover-button-hover: 29 29 32; /* its hover (#1d1d20) */
+
     /* * Motion tokens (Phase 1 — premium UI pass) */
     --ease-apple: cubic-bezier(0.32, 0.72, 0, 1);
     --duration-fast: 150ms;
     --duration-base: 250ms;
     --duration-slow: 400ms;
     --duration-gentle: 600ms;
+  }
+
+  /* * Light palette, Pulse's half (PULSE-31, owner pick "Canvas", D4). Facet's
+   * * facet.css carries the shadcn half (--background, --card, …); this adds the
+   * * app's own chart tokens (the themed ramps live in styles/themeRamp.ts). Values
+   * * are the approved options round's (the mock remapped each computed dark
+   * * colour per property). Brand fills (--chart-1, --chart-line-
+   * * primary) are unchanged.
+   * * 🔴 The two blocks MUST stay identical — styles/__tests__ enforces it. */
+  :root.light {
+    --chart-grid: #ececec;
+    --chart-axis: #696969;
+    --chart-background: #ffffff;
+    --chart-foreground: #c9c9c9;
+    --chart-foreground-muted: #525252;
+    --chart-line-secondary: #9a9a9a;
+    --chart-crosshair: #c9c9c9;
+    --chart-label: #525252;
+    --chart-marker-background: #ffffff;
+    --chart-marker-border: #c9c9c9;
+    --chart-marker-foreground: #0a0a0a;
+    --instrument-ink: 82 82 82;
+    --funnel-grid: 236 236 236;
+    --funnel-baseline: 214 214 214;
+    --funnel-dim: 150 150 150;
+    --pager-active: 234 234 234;
+    --pager-active-line: 214 214 214;
+    --takeover-bg: 244 244 244;
+    --takeover-panel: 255 255 255;
+    --takeover-panel-line: 226 226 226;
+    --takeover-rule: 226 226 226;
+    --takeover-button: 240 240 240;
+    --takeover-button-hover: 232 232 232;
+  }
+  @media (prefers-color-scheme: light) {
+    :root.theme-system {
+      --chart-grid: #ececec;
+      --chart-axis: #696969;
+      --chart-background: #ffffff;
+      --chart-foreground: #c9c9c9;
+      --chart-foreground-muted: #525252;
+      --chart-line-secondary: #9a9a9a;
+      --chart-crosshair: #c9c9c9;
+      --chart-label: #525252;
+      --chart-marker-background: #ffffff;
+      --chart-marker-border: #c9c9c9;
+      --chart-marker-foreground: #0a0a0a;
+      --instrument-ink: 82 82 82;
+      --funnel-grid: 236 236 236;
+      --funnel-baseline: 214 214 214;
+      --funnel-dim: 150 150 150;
+      --pager-active: 234 234 234;
+      --pager-active-line: 214 214 214;
+      --takeover-bg: 244 244 244;
+      --takeover-panel: 255 255 255;
+      --takeover-panel-line: 226 226 226;
+      --takeover-rule: 226 226 226;
+      --takeover-button: 240 240 240;
+      --takeover-button-hover: 232 232 232;
+    }
   }
 
   body {
@@ -128,7 +204,9 @@
   /* * Thin subtle scrollbar */
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+    /* * Facet's per-theme variables (facet.css), not raw white, which is
+     * * invisible on a light page. */
+    scrollbar-color: var(--scrollbar-thumb) transparent;
   }
   *::-webkit-scrollbar {
     width: 6px;
@@ -138,11 +216,11 @@
     background: transparent;
   }
   *::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--scrollbar-thumb);
     border-radius: 0;
   }
   *::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--scrollbar-thumb-hover);
   }
 
   /* * Scrollbar hide - for horizontal scroll navs */
@@ -279,17 +357,17 @@
   font: inherit;
   font-size: 14px;
   font-weight: 600;
-  color: #fff;
+  color: rgb(var(--white)); /* the ink colour: #fff in dark */
   margin: 0;
 }
 .pulse-tour .driver-popover-progress-text {
   font-size: 12px;
-  color: #737373; /* neutral-500, the chip counter's tone */
+  color: rgb(var(--neutral-500)); /* neutral-500, the chip counter's tone */
   font-variant-numeric: tabular-nums;
 }
 .pulse-tour .pulse-tour-bar {
   height: 4px;
-  background: #262626; /* neutral-800 track, as the chip's bar */
+  background: rgb(var(--neutral-800)); /* neutral-800 track, as the chip's bar */
 }
 .pulse-tour .pulse-tour-bar > div {
   height: 100%;
@@ -301,7 +379,7 @@
   padding: 12px 16px;
   font-size: 14px;
   line-height: 1.625;
-  color: #a3a3a3; /* neutral-400 body, as every panel */
+  color: rgb(var(--neutral-400)); /* neutral-400 body, as every panel */
 }
 .pulse-tour .driver-popover-footer {
   border-top: 1px solid rgb(var(--border));

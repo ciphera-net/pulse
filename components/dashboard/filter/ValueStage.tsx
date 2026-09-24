@@ -60,7 +60,7 @@ export default function ValueStage({
         <button
           type="button"
           onClick={onBack}
-          className="px-2 py-1 text-xs font-medium rounded-none bg-brand-orange/10 text-brand-orange border border-brand-orange/20 hover:bg-brand-orange/15 transition-colors cursor-pointer ease-apple"
+          className="px-2 py-1 text-xs font-medium rounded-none bg-brand-orange/10 text-brand-ink border border-brand-orange/20 hover:bg-brand-orange/15 transition-colors cursor-pointer ease-apple"
         >
           {dimLabel}
         </button>

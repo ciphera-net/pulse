@@ -86,7 +86,7 @@ function HighlightMatch({ text, query }: { text: string; query: string }) {
   return (
     <>
       {parts.map((p, i) =>
-        p.match ? <span key={i} className="text-brand-orange">{p.char}</span> : p.char
+        p.match ? <span key={i} className="text-brand-ink">{p.char}</span> : p.char
       )}
     </>
   )

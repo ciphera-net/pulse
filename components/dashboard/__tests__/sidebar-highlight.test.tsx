@@ -24,8 +24,9 @@ describe('the sidebar selection highlight', () => {
     expect(code).toContain('data-sidebar-highlight')
     // 🔴 The regression this exists for: a link painting its own background
     // again. The active branch keeps the INK and nothing else.
-    expect(code).toMatch(/\?\s*'text-brand-orange'/)
-    expect(code).not.toMatch(/'bg-brand-orange\/10 text-brand-orange'/)
+    // Orange TEXT is brand-ink since PULSE-31 (identical in dark, readable on light).
+    expect(code).toMatch(/\?\s*'text-brand-ink'/)
+    expect(code).not.toMatch(/'bg-brand-orange\/10 text-brand-(orange|ink)'/)
   })
 
   it('marks the active link so the nav can measure it, in all three link kinds', () => {

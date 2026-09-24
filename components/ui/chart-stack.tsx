@@ -52,7 +52,7 @@ import {
  * dashboard deck, the performance trend and the fleet sparklines are NOT
  * stacks and stay in the brand ink.
  */
-export const STRIP_INK = "#b3b1ad";
+export const STRIP_INK = "rgb(var(--instrument-ink))";
 export const STRIP_MARKER = "var(--chart-1)";
 
 export interface ChartStackContextValue {

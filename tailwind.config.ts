@@ -1,4 +1,18 @@
 import type { Config } from 'tailwindcss'
+import plugin from 'tailwindcss/plugin'
+import { rampColors, rampVariables } from './styles/themeRamp'
+
+// * Themed colour ramps (PULSE-31). The variables are emitted from the same
+// * module that defines the colour keys, so the two cannot disagree.
+const ramp = rampVariables()
+
+const themeRampPlugin = plugin(({ addBase }) => {
+  addBase({
+    ':root': ramp.dark,
+    ':root.light': ramp.light,
+    '@media (prefers-color-scheme: light)': { ':root.theme-system': ramp.light },
+  })
+})
 
 const config: Config = {
   presets: [
@@ -51,6 +65,15 @@ const config: Config = {
         mono: ['var(--font-jetbrains-mono)', '"JetBrains Mono"', 'monospace'],
       },
       colors: {
+        // * Themed ramps (PULSE-31, design §4.4 revision E1): `neutral-*`,
+        // * `white` and the status hues read CSS variables, defined in
+        // * styles/themeRamp.ts. Dark = Tailwind's own defaults (byte-identical);
+        // * light = the approved mapping. `neutral-800` is therefore "the step
+        // * above the hairline", not a fixed grey. `black` is left alone (scrims
+        // * stay dark); `paper` is literal white for the few places that mean
+        // * paper in either theme (the card-network logo chips).
+        ...rampColors(),
+        paper: '#ffffff',
         background: 'rgb(var(--background) / <alpha-value>)',
         foreground: 'rgb(var(--foreground) / <alpha-value>)',
         card: {
@@ -100,6 +123,7 @@ const config: Config = {
     },
   },
   plugins: [
+    themeRampPlugin,
     require('@tailwindcss/typography'),
     require('tailwindcss-animate'),
   ],

@@ -14,6 +14,7 @@ import VersionToast from '@/components/VersionToast'
 import SessionTakeover from '@/components/auth/SessionTakeover'
 import { isAuthedAppRoute } from '@/lib/auth/appRoutes'
 import { ActiveSiteProvider } from '@/components/settings/active-site'
+import ThemeSync from '@/components/theme/ThemeSync'
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const auth = useAuth()
@@ -159,6 +160,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     <MotionConfig reducedMotion="user">
       <ErrorBoundary>
         <VersionToast />
+        {/* Sole writer of <html>'s theme class after boot (PULSE-31). Outside
+            LayoutInner, so it runs on every route, including the auth callback. */}
+        <ThemeSync />
         <LayoutInner>{children}</LayoutInner>
       </ErrorBoundary>
     </MotionConfig>

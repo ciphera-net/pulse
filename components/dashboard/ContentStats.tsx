@@ -187,7 +187,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
                             this open-page link was permanently invisible yet
                             still tappable. Bigger and dimmed on mobile, restored
                             to the hover-reveal treatment at md+. */}
-                        <ArrowUpRightIcon className="w-4 h-4 opacity-60 md:w-3 md:h-3 md:opacity-0 text-neutral-400 md:group-hover:opacity-100 transition-opacity hover:text-brand-orange ease-apple" />
+                        <ArrowUpRightIcon className="w-4 h-4 opacity-60 md:w-3 md:h-3 md:opacity-0 text-neutral-400 md:group-hover:opacity-100 transition-opacity hover:text-brand-ink ease-apple" />
                       </a>
                     </div>
                     <MetricRowStat row={row} totals={totals} views={twinColumns} />

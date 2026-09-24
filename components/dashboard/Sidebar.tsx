@@ -239,7 +239,7 @@ function NavLink({
           // No background here — the nav draws ONE block and glides it (see
           // SidebarNav). The ink still switches on the item itself, and
           // transition-all above cross-fades it as the block arrives.
-          ? 'text-brand-orange'
+          ? 'text-brand-ink'
           : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
       } ease-apple`}
     >
@@ -288,7 +288,7 @@ function HomeNavLink({
           // No background here — the nav draws ONE block and glides it (see
           // SidebarNav). The ink still switches on the item itself, and
           // transition-all above cross-fades it as the block arrives.
-          ? 'text-brand-orange'
+          ? 'text-brand-ink'
           : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
       } ease-apple`}
     >
@@ -324,7 +324,7 @@ function HomeSiteLink({
           // No background here — the nav draws ONE block and glides it (see
           // SidebarNav). The ink still switches on the item itself, and
           // transition-all above cross-fades it as the block arrives.
-          ? 'text-brand-orange'
+          ? 'text-brand-ink'
           : 'text-neutral-400 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5'
       } ease-apple`}
     >
@@ -378,7 +378,7 @@ function SidebarContent({
         <span className="w-9 h-9 flex items-center justify-center shrink-0">
           <img src={cdnUrl('/pulse_icon_no_margins.png')} alt="Pulse" className="w-9 h-9 shrink-0 object-contain group-hover:scale-105 transition-transform duration-base ease-apple" />
         </span>
-        <span className={`text-xl font-bold text-white tracking-tight group-hover:text-brand-orange whitespace-nowrap transition-opacity duration-fast ${c ? 'opacity-0' : 'opacity-100'} ease-apple`}>
+        <span className={`text-xl font-bold text-white tracking-tight group-hover:text-brand-ink whitespace-nowrap transition-opacity duration-fast ${c ? 'opacity-0' : 'opacity-100'} ease-apple`}>
           Pulse
         </span>
       </Link>

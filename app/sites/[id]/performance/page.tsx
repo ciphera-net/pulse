@@ -1096,7 +1096,7 @@ function AuditDescription({ text }: { text: string }) {
               href={href}
               target="_blank"
               rel={isInternal ? 'noopener' : 'noopener noreferrer'}
-              className="text-brand-orange hover:underline"
+              className="text-brand-ink hover:underline"
             >
               {link[1]}
             </a>

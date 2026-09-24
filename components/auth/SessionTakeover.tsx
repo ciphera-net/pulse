@@ -46,7 +46,7 @@ function lastSiteLabel(): string | null {
 
 const GRID_TEXTURE: React.CSSProperties = {
   backgroundImage:
-    'linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px)',
+    'linear-gradient(rgb(var(--white) / .02) 1px, transparent 1px), linear-gradient(90deg, rgb(var(--white) / .02) 1px, transparent 1px)',
   backgroundSize: '72px 72px',
 }
 
@@ -86,10 +86,10 @@ export default function SessionTakeover({ state }: { state: TakeoverState }) {
         : { line1: 'This is private.', line2: 'Sign in first.', sub: 'Pulse dashboards are visible only to their workspace members.' }
 
   return (
-    <div className="min-h-screen bg-[#050505] flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-[rgb(var(--takeover-bg))] flex flex-col lg:flex-row">
       {/* brand panel — the login's left room */}
       <div
-        className="hidden lg:flex flex-col w-[39%] min-w-[480px] m-3 border border-[#1c1c1f] bg-[#0d0d0e]"
+        className="hidden lg:flex flex-col w-[39%] min-w-[480px] m-3 border border-[rgb(var(--takeover-panel-line))] bg-[rgb(var(--takeover-panel))]"
         style={GRID_TEXTURE}
       >
         <div className="flex items-center gap-3 pt-9 px-10">
@@ -101,7 +101,7 @@ export default function SessionTakeover({ state }: { state: TakeoverState }) {
           <p className="text-[40px] leading-[1.12] font-bold tracking-[-0.025em] text-neutral-100 m-0">
             {statement.line1}
             <br />
-            <span className="text-brand-orange">{statement.line2}</span>
+            <span className="text-brand-ink">{statement.line2}</span>
           </p>
           <p className="text-[15px] leading-relaxed text-neutral-400 mt-5 max-w-[40ch]">{statement.sub}</p>
         </div>
@@ -127,7 +127,7 @@ export default function SessionTakeover({ state }: { state: TakeoverState }) {
                 Retrying automatically. Nothing is lost — your dashboard resumes the moment it reconnects.
               </p>
               <div
-                className="h-0.5 bg-[#222226] relative overflow-hidden mb-8"
+                className="h-0.5 bg-[rgb(var(--takeover-rule))] relative overflow-hidden mb-8"
                 role="progressbar"
                 aria-label="Reconnecting"
               >
@@ -136,7 +136,7 @@ export default function SessionTakeover({ state }: { state: TakeoverState }) {
               <button
                 type="button"
                 onClick={signIn}
-                className="w-full py-3 bg-[#161618] hover:bg-[#1d1d20] text-neutral-200 text-sm font-semibold transition-colors cursor-pointer"
+                className="w-full py-3 bg-[rgb(var(--takeover-button))] hover:bg-[rgb(var(--takeover-button-hover))] text-neutral-200 text-sm font-semibold transition-colors cursor-pointer"
               >
                 Sign in instead
               </button>
@@ -168,13 +168,13 @@ export default function SessionTakeover({ state }: { state: TakeoverState }) {
                 {hadSession ? 'Sign in — back to your dashboard' : 'Sign in'}
               </button>
               <div className="flex items-center gap-3.5 my-5">
-                <span className="flex-1 h-px bg-[#222226]" />
+                <span className="flex-1 h-px bg-[rgb(var(--takeover-rule))]" />
                 <span className="text-xs text-neutral-500">or</span>
-                <span className="flex-1 h-px bg-[#222226]" />
+                <span className="flex-1 h-px bg-[rgb(var(--takeover-rule))]" />
               </div>
               <a
                 href="https://ciphera.net"
-                className="block w-full py-3 bg-[#161618] hover:bg-[#1d1d20] text-neutral-200 text-sm font-semibold text-center transition-colors"
+                className="block w-full py-3 bg-[rgb(var(--takeover-button))] hover:bg-[rgb(var(--takeover-button-hover))] text-neutral-200 text-sm font-semibold text-center transition-colors"
               >
                 Go to ciphera.net
               </a>
