@@ -77,6 +77,12 @@ describe('themed ramps: light is readable', () => {
     }
   }
 
+  it('faint marks (text-neutral-700) are as faint on light as on dark, within 0.1', () => {
+    const DARK_CARD = '15 15 15'
+    const want = contrast(dark['--neutral-700'], DARK_CARD)
+    expect(Math.abs(contrast(light['--neutral-700'], CARD) - want)).toBeLessThan(0.1)
+  })
+
   it('status hues keep their hue and flip lightness', () => {
     for (const hue of THEMED_HUES) {
       expect(light[`--${hue}-400`]).toBe(hexToTriplet(tw[hue][HUE_OVERRIDES[hue]?.['400'] ?? MIRROR['400']]))
