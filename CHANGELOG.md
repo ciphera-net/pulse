@@ -28,8 +28,8 @@ public read API's — see that entry for what it does and does not cover.
   of invisible characters and labelled as visitor-supplied data, never as
   instructions.
 
-  **You can take it back at any time.** Settings → Connected apps lists every
-  connected assistant, who connected it and when it was last used; Disconnect takes
+  **You can take it back at any time.** Settings → MCP lists every connected
+  assistant, who connected it and when it was last used; Disconnect takes
   effect on its next request. Connecting needs the Owner or Admin role, and each
   person can connect up to 3 apps to a workspace — they do not count against your
   API keys. An API key also works, for scripts and clients without sign-in.
