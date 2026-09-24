@@ -11,6 +11,40 @@ public read API's — see that entry for what it does and does not cover.
 
 ### Added
 
+- **Ask your AI assistant about your analytics: the Pulse Analytics MCP server.**
+  Claude, ChatGPT, Cursor, VS Code, Microsoft Copilot Studio and Mistral Le Chat can
+  now read your Pulse numbers. Add `https://pulse-api.ciphera.net/mcp` to your
+  assistant, sign in with your Ciphera account, and choose on a Pulse screen which
+  workspace — and which of its sites — it may read. There is nothing to install.
+
+  **It can read, and nothing else.** Seven tools: your sites, totals for a period, a
+  daily series, a breakdown (pages, entry and exit pages, referrers, channels,
+  countries, regions, browsers, operating systems, devices, languages, UTM source,
+  medium and campaign), realtime visitors, your install snippet, and a search of the
+  Pulse docs. No tool changes anything in Pulse.
+
+  **Text your visitors sent is marked as theirs.** Page paths, referrers, campaign
+  tags and languages come from visitors' browsers, so they reach the assistant cleaned
+  of invisible characters and labelled as visitor-supplied data, never as
+  instructions.
+
+  **You can take it back at any time.** Settings → Connected apps lists every
+  connected assistant, who connected it and when it was last used; Disconnect takes
+  effect on its next request. Connecting needs the Owner or Admin role, and each
+  person can connect up to 3 apps to a workspace — they do not count against your
+  API keys. An API key also works, for scripts and clients without sign-in.
+
+  **Where the numbers go is your choice.** An assistant receives the numbers it asks
+  for; if it runs outside the EU, so do those numbers. Pulse itself never sends your
+  data to an AI model. Read [MCP privacy and security](https://docs.ciphera.net/pulse/mcp-privacy)
+  before you connect, and [the setup guide](https://docs.ciphera.net/pulse/mcp) for
+  each assistant.
+
+- **The public read API has a breakdown route.** `GET /api/public/v1/sites/{id}/breakdown`
+  returns the top rows of one dimension — the same dimensions as above — for a period,
+  with optional filters. It is additive, like every change to the public API, and it
+  is what the assistant's breakdown tool calls.
+
 - **Choose how long a returning reader is recognised.** Settings → Privacy has a new
   **Visitor identity** panel: *Session only*, *24 hours*, *7 days* or *30 days*. Until
   you choose, a site keeps today's behaviour — a returning reader is recognised for the
