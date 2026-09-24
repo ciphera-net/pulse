@@ -92,7 +92,7 @@ export const faqData: Record<string, FAQItem[]> = {
     {
       question: 'Where is my analytics data stored?',
       answer:
-        'All data is processed and stored on Swiss infrastructure, protected by the Swiss Federal Act on Data Protection (FADP). Data never leaves Swiss jurisdiction.',
+        'All data is processed and stored on Swiss infrastructure, protected by the Swiss Federal Act on Data Protection (FADP). We never move it out of Swiss jurisdiction. It leaves only if you export it, or connect a tool you choose, such as an AI assistant.',
     },
     {
       question: 'Can Pulse identify individual users?',

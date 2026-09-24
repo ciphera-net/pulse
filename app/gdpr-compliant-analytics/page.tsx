@@ -52,7 +52,7 @@ const faqs = [
   {
     question: 'Where is the analytics data stored?',
     answer:
-      'On Swiss and EU infrastructure. Data is not transferred to the United States, and Pulse does not depend on US-jurisdiction cloud providers in the processing path — which sidesteps the EU-to-US transfer problems that led several data-protection authorities to rule Google Analytics unlawful.',
+      'On Swiss and EU infrastructure. Ciphera does not transfer data to the United States, and Pulse does not depend on US-jurisdiction cloud providers in the processing path — which sidesteps the EU-to-US transfer problems that led several data-protection authorities to rule Google Analytics unlawful. If you connect an AI assistant to your analytics, where that assistant runs is your choice.',
   },
 ]
 
