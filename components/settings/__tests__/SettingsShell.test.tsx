@@ -33,6 +33,7 @@ vi.mock('@/components/sites/SiteFavicon', () => ({ SiteFavicon: ({ name }: any) 
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...a: any[]) => a.flat(Infinity).filter(Boolean).join(' '),
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+  Badge: ({ children }: any) => <span data-badge>{children}</span>,
   // A radiogroup of buttons is all the shell needs from the Switcher here:
   // which option is selected, and what happens when another is picked.
   Switcher: ({ options, value, onChange, 'aria-label': label }: any) => (
@@ -96,6 +97,15 @@ describe('SettingsShell (A6)', () => {
     }
     // The legal links survive under the rail.
     expect(within(rail).getByRole('link', { name: 'Privacy Policy' })).toBeInTheDocument()
+  })
+
+  it('marks the MCP row New in the rail, and no other row (PULSE-54)', () => {
+    render(<SettingsShell><div>tab</div></SettingsShell>)
+    const rail = screen.getByRole('navigation', { name: 'Settings sections' })
+    const mcp = within(rail).getByRole('link', { name: 'Organization: MCP' })
+    expect(mcp).toHaveAttribute('href', '/settings/organization/mcp')
+    expect(mcp.querySelector('[data-badge]')?.textContent).toBe('New')
+    expect(rail.querySelectorAll('[data-badge]')).toHaveLength(1)
   })
 
   it('marks the current tab and no other', () => {

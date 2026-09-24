@@ -132,6 +132,12 @@ describe('/connect', () => {
     expect(h.getConnectRequest).toHaveBeenCalledWith(REQ)
   })
 
+  it('sends the person to Settings → MCP to disconnect, the page the owner renamed (PULSE-54)', async () => {
+    render(<ConnectPage />)
+    expect(await screen.findByText('Until you disconnect it in Settings → MCP.')).toBeTruthy()
+    expect(screen.queryByText(/Connected apps/)).toBeNull()
+  })
+
   it('never draws a logo for a self-registered app: the monogram, the label, and the local-program warning', async () => {
     h.getConnectRequest.mockResolvedValue(bot)
     const { container } = render(<ConnectPage />)

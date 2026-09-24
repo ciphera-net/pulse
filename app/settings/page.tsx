@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { CaretRight, Globe } from '@phosphor-icons/react'
-import { Button } from '@ciphera-net/facet'
+import { Badge, Button } from '@ciphera-net/facet'
 import { useCan } from '@/lib/auth/permissions'
 import { useActiveSite } from '@/components/settings/active-site'
 import { NAV_GROUPS, type NavGroup, type NavTab } from '@/components/settings/nav'
@@ -23,7 +23,10 @@ function SectionLink({ tab }: { tab: NavTab }) {
         <Icon weight="regular" aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-foreground">{tab.label}</p>
+        <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+          {tab.label}
+          {tab.badge && <Badge variant="neutral" size="sm">{tab.badge}</Badge>}
+        </p>
         <p className="mt-0.5 text-sm text-muted-foreground">{tab.description}</p>
       </div>
       <CaretRight className="h-4 w-4 shrink-0 text-muted-foreground transition-colors duration-fast ease-apple group-hover:text-foreground" />

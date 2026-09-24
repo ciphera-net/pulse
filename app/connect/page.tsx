@@ -440,7 +440,7 @@ function ConnectContent() {
       </div>
 
       <div className="border-t border-border px-5 py-4">
-        <p className="text-xs text-muted-foreground">Until you disconnect it in Settings → Connected apps.</p>
+        <p className="text-xs text-muted-foreground">Until you disconnect it in Settings → MCP.</p>
         <div className="mt-3 grid grid-cols-2 gap-2">
           <Button variant="outline" className="w-full" onClick={deny} disabled={busy !== null}>
             {busy === 'deny' ? 'Sending…' : 'Deny'}
