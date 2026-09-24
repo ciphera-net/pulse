@@ -35,8 +35,8 @@ interface SankeyJourneyProps {
 }
 
 const ORANGE = '#FD5E0F'
-const NEUTRAL_500 = '#737373'
-const NEUTRAL_600 = '#525252'
+const NEUTRAL_500 = 'rgb(var(--neutral-500))'
+const NEUTRAL_600 = 'rgb(var(--neutral-600))'
 const LINK_OPACITY = 0.2
 const LINK_CHAIN_OPACITY = 0.45
 const LINK_DIM_OPACITY = 0.08
@@ -346,7 +346,7 @@ export default function SankeyJourney({
                   x={isLast ? -4 : NODE_WIDTH + 4}
                   textAnchor={isLast ? 'end' : 'start'}
                   fontSize={12}
-                  fill="#e5e5e5"
+                  fill="rgb(var(--neutral-200))"
                   animate={{ y: n.height / 2 + 4, opacity: labelOpacity }}
                   transition={{ duration: DURATION_BASE, ease: EASE_APPLE }}
                 >

@@ -225,7 +225,7 @@ export default function SetupDonePage() {
         </p>
         <p className="mx-auto mt-8 text-xs text-neutral-500">
           Been a while?{' '}
-          <Link href="/settings/organization/billing" className="text-brand-orange hover:underline">
+          <Link href="/settings/organization/billing" className="text-brand-ink hover:underline">
             Check billing
           </Link>
           {' '}— you won&apos;t be charged twice.

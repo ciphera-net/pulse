@@ -80,7 +80,7 @@ export default function InstallBanner({ siteId }: { siteId: string }) {
           <Link
             href="/settings/site/general"
             onClick={() => sessionStorage.setItem('pulse_active_site', siteId)}
-            className="text-brand-orange transition-colors duration-fast ease-apple hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+            className="text-brand-ink transition-colors duration-fast ease-apple hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
           >
             {neverInstalled ? 'Set up →' : 'Check the snippet →'}
           </Link>

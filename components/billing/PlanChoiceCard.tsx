@@ -57,7 +57,7 @@ const PlanChoiceCard = forwardRef<HTMLButtonElement, PlanChoiceCardProps>(
                 </span>
               )}
               {!isCurrent && plan.popular && (
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-brand-orange bg-brand-orange/10 px-1.5 py-0.5 rounded-none">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-brand-ink bg-brand-orange/10 px-1.5 py-0.5 rounded-none">
                   Recommended
                 </span>
               )}
@@ -85,7 +85,7 @@ const PlanChoiceCard = forwardRef<HTMLButtonElement, PlanChoiceCardProps>(
         <div className="flex flex-wrap gap-x-3 gap-y-1">
           {plan.highlights.map((f) => (
             <span key={f} className="flex items-center gap-1 text-xs text-neutral-400">
-              <Check className="w-3 h-3 text-brand-orange" weight="bold" />
+              <Check className="w-3 h-3 text-brand-ink" weight="bold" />
               {f}
             </span>
           ))}

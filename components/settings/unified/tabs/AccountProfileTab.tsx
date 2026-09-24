@@ -20,6 +20,7 @@ import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
 import { SkeletonLine } from '@/components/skeletons'
+import ThemePicker from '@/components/theme/ThemePicker'
 import { logger } from '@/lib/utils/logger'
 import { unlockVaultPII } from '@/lib/auth/tessera/opaque-unlock'
 import { loadVaultKey, saveVaultKey, forgetVaultKeys } from '@/lib/auth/vault-store'
@@ -1231,7 +1232,7 @@ export default function AccountProfileTab() {
       {/* Display — how INSTANTS render for this person. Control B + wording
           from the 18-09-2026 options rounds (design doc §7, §7a). Daily
           totals never follow this; the caption says so in the person's words. */}
-      <SettingsPanel title="Display" description="How Pulse renders times for you.">
+      <SettingsPanel title="Display" description="How Pulse looks and shows times for you.">
         <PanelRows>
           <PanelRow
             label="Show times in"
@@ -1248,6 +1249,14 @@ export default function AccountProfileTab() {
               }}
               options={TIME_DISPLAY_OPTIONS}
             />
+          </PanelRow>
+          {/* Theme (PULSE-31): picture cards, owner pick A (24-09-2026). Saved
+              to the ACCOUNT, so every device the person signs in on follows. */}
+          <PanelRow
+            label="Theme"
+            caption="Saved to your account, so every device you sign in on uses it. Dark is the default."
+          >
+            <ThemePicker />
           </PanelRow>
         </PanelRows>
       </SettingsPanel>

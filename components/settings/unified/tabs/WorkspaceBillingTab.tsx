@@ -625,7 +625,7 @@ export default function WorkspaceBillingTab() {
             value: method.id,
             label: (
               <span className="flex items-center gap-1.5 py-1">
-                <span className="flex items-center gap-1 bg-white px-1 py-0.5">
+                <span className="flex items-center gap-1 bg-paper px-1 py-0.5">
                   {method.icons.map((icon) => (
                     <img key={icon} src={cdnUrl(icon)} alt="" className="h-4 w-auto" />
                   ))}

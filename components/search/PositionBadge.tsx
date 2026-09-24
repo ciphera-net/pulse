@@ -11,7 +11,7 @@ export function PositionBadge({ position }: { position: number }) {
     <span
       className={cn(
         'rounded-none px-1.5 py-0.5 text-xs tabular-nums',
-        topPage ? 'bg-brand-orange/10 text-brand-orange' : 'bg-neutral-800 text-neutral-300',
+        topPage ? 'bg-brand-orange/10 text-brand-ink' : 'bg-neutral-800 text-neutral-300',
       )}
     >
       {position.toFixed(1)}

@@ -28,14 +28,14 @@ export default function FilterPill({ filter, onEdit, onRemove }: FilterPillProps
       transition={{ duration: 0.15, ease: EASE_APPLE }}
       // * h-10 matches the Filter button and date-range control — the pill sits
       // * in the same toolbar row and must share its rhythm.
-      className="inline-flex items-center h-10 rounded-none bg-brand-orange/10 text-brand-orange text-sm font-medium border border-brand-orange/20"
+      className="inline-flex items-center h-10 rounded-none bg-brand-orange/10 text-brand-ink text-sm font-medium border border-brand-orange/20"
     >
       <button
         onClick={e => onEdit(e.currentTarget)}
         className="flex items-center gap-1.5 px-3 h-full hover:bg-brand-orange/10 transition-colors cursor-pointer"
       >
-        <span className="text-brand-orange/70">{dim}</span>
-        <span className="text-brand-orange/50">{op}</span>
+        <span className="text-brand-ink/70">{dim}</span>
+        <span className="text-brand-ink/50">{op}</span>
         <span className="max-w-[140px] truncate">{val}</span>
       </button>
       <button

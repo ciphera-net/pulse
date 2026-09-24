@@ -126,7 +126,7 @@ export default function InstallStateBlock({
             <button
               type="button"
               onClick={checkAgain}
-              className="text-brand-orange transition-colors duration-fast ease-apple hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+              className="text-brand-ink transition-colors duration-fast ease-apple hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
             >
               Check again
             </button>

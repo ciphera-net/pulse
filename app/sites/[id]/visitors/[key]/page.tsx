@@ -184,7 +184,7 @@ export default function VisitorDetailPage() {
           </h1>
 
           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-neutral-400">
-            {profile?.active_now && <span className="text-brand-orange">Active now</span>}
+            {profile?.active_now && <span className="text-brand-ink">Active now</span>}
             {localTime && (
               <>
                 {profile?.active_now && <span className="text-neutral-700">·</span>}
@@ -400,7 +400,7 @@ function BackLink({ siteId }: { siteId: string }) {
   return (
     <Link
       href={`/sites/${siteId}/visitors`}
-      className="text-sm text-brand-orange transition-opacity duration-fast ease-apple hover:opacity-80"
+      className="text-sm text-brand-ink transition-opacity duration-fast ease-apple hover:opacity-80"
     >
       ← Visitors
     </Link>

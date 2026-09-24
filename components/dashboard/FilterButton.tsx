@@ -29,7 +29,7 @@ export default function FilterButton({ hasActiveFilters, active, onClick }: Filt
         // * the engaged state overlays the brand tint on top of it.
         buttonVariants({ variant: 'chrome', size: 'toolbar' }),
         'active:scale-[0.97] transition-[color,background-color,border-color,transform] ease-apple',
-        (hasActiveFilters || active) && 'border-brand-orange/30 bg-brand-orange/10 text-brand-orange hover:border-brand-orange/30',
+        (hasActiveFilters || active) && 'border-brand-orange/30 bg-brand-orange/10 text-brand-ink hover:border-brand-orange/30',
       )}
     >
       <MagnifyingGlass className="w-3.5 h-3.5" weight="bold" />

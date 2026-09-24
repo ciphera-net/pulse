@@ -355,8 +355,8 @@ function RegionRows({ regions, total }: { regions: BunnyRegionEntry[]; total: nu
 function StatusBand({ mix }: { mix: StatusMix }) {
   if (mix.total <= 0) return null
   const segs = [
-    { k: '2xx', v: mix.c2xx, color: 'rgba(255,255,255,0.14)', text: 'text-neutral-400' },
-    { k: '3xx', v: mix.c3xx, color: 'rgba(255,255,255,0.06)', text: 'text-neutral-500' },
+    { k: '2xx', v: mix.c2xx, color: 'rgb(var(--white) / 0.14)', text: 'text-neutral-400' },
+    { k: '3xx', v: mix.c3xx, color: 'rgb(var(--white) / 0.06)', text: 'text-neutral-500' },
     { k: '4xx', v: mix.c4xx, color: NEG_MUTED, text: 'text-red-400' },
     { k: '5xx', v: mix.c5xx, color: NEG, text: 'text-red-400' },
   ]

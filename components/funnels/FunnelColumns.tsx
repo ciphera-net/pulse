@@ -18,15 +18,15 @@ import { formatNumber, formatConvertTime } from '@/lib/utils/format'
 // ---------------------------------------------------------------------------
 
 const BRAND = '#FD5E0F'
-const TRACK = 'rgba(255,255,255,0.025)'
-const TRACK_SELECTED = 'rgba(255,255,255,0.05)'
+const TRACK = 'rgb(var(--white) / 0.025)'
+const TRACK_SELECTED = 'rgb(var(--white) / 0.05)'
 const WEDGE = 'rgba(253,94,15,0.05)'
 const WEDGE_EDGE = 'rgba(253,94,15,0.25)'
-const GRID = '#1a1a1a'
-const BASELINE = '#2b2b2b'
-const MUT = '#8a8a8a'
-const DIM = '#666666'
-const INK_TEXT = '#b3b1ad'
+const GRID = 'rgb(var(--funnel-grid))'
+const BASELINE = 'rgb(var(--funnel-baseline))'
+const MUT = 'rgb(var(--muted-foreground))'
+const DIM = 'rgb(var(--funnel-dim))'
+const INK_TEXT = 'rgb(var(--instrument-ink))'
 
 /** House percentage rule: whole numbers from 10%, one decimal below — a 0.4%
  *  funnel must never print "0%". Zero itself is an honest "0%". */
@@ -176,7 +176,7 @@ export function FunnelColumns({ steps, selectedStep, onSelectStep, compact }: Fu
                             y={Math.max(y - 10, top - 26)}
                             fontSize={20}
                             fontWeight={600}
-                            fill="#ffffff"
+                            fill="rgb(var(--white))"
                             style={{ fontVariantNumeric: 'tabular-nums' }}
                           >
                             {formatNumber(s.visitors)}
@@ -247,7 +247,7 @@ export function FunnelColumns({ steps, selectedStep, onSelectStep, compact }: Fu
                     >
                       {s.step.value}
                     </span>
-                    {i === n - 1 && <span className="shrink-0 text-[11px] text-brand-orange">completed</span>}
+                    {i === n - 1 && <span className="shrink-0 text-[11px] text-brand-ink">completed</span>}
                   </div>
                 ))}
 

@@ -36,6 +36,7 @@ vi.mock('@/components/dashboard/MetricInfoTip', () => ({ TermInfoTip: () => null
 
 import { EdgeCard, OriginCard } from '@/components/cdn/CdnSplitInstrument'
 import type { CdnPoint, StatusMix } from '@/components/cdn/cdnMetrics'
+import { STRIP_INK } from '@/components/ui/chart-stack'
 
 const N = 14
 const series: CdnPoint[] = Array.from({ length: N }, (_, i) => ({
@@ -66,7 +67,7 @@ function Split() {
 
 const solidLines = (c: HTMLElement) =>
   Array.from(c.querySelectorAll('path')).filter(
-    (p) => p.getAttribute('fill') === 'none' && p.getAttribute('stroke') === '#b3b1ad' && !p.getAttribute('stroke-dasharray'),
+    (p) => p.getAttribute('fill') === 'none' && p.getAttribute('stroke') === STRIP_INK && !p.getAttribute('stroke-dasharray'),
   )
 
 describe('CDN split instrument on the shared chart', () => {

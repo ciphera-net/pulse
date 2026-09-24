@@ -92,7 +92,7 @@ export default function OperatorChip({ operator, onChange, dimension }: Operator
               aria-checked={op === operator}
               onClick={() => { onChange(op); setOpen(false) }}
               className={`w-full flex items-center justify-between gap-2 px-3 py-1.5 text-sm text-left transition-colors cursor-pointer ease-apple ${
-                op === operator ? 'text-brand-orange' : 'text-neutral-300 hover:text-white hover:bg-white/[0.06]'
+                op === operator ? 'text-brand-ink' : 'text-neutral-300 hover:text-white hover:bg-white/[0.06]'
               }`}
             >
               {OPERATOR_LABELS[op]}

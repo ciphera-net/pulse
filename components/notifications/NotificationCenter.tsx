@@ -446,7 +446,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
               <Link
                 href="/notifications"
                 onClick={() => setOpen(false)}
-                className="text-sm text-brand-orange hover:underline"
+                className="text-sm text-brand-ink hover:underline"
               >
                 View all
               </Link>
@@ -455,7 +455,7 @@ export default function NotificationCenter({ anchor = 'bottom', variant = 'defau
                   setOpen(false)
                   router.push('/settings/account/notifications')
                 }}
-                className="flex items-center gap-2 text-sm text-neutral-400 hover:text-brand-orange transition-colors cursor-pointer ease-apple"
+                className="flex items-center gap-2 text-sm text-neutral-400 hover:text-brand-ink transition-colors cursor-pointer ease-apple"
               >
                 <SettingsIcon className="w-4 h-4" aria-hidden="true" />
                 Manage settings

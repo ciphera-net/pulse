@@ -225,7 +225,7 @@ export default function CommandDeck({
               )}
               <div className="relative z-10">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className={cn('truncate text-[13px]', metric === m.key ? 'text-brand-orange' : 'text-neutral-400')}>
+                  <span className={cn('truncate text-[13px]', metric === m.key ? 'text-brand-ink' : 'text-neutral-400')}>
                     {m.label}
                   </span>
                   <RailDelta change={m.change} invert={m.isNegative} />

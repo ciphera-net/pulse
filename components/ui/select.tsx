@@ -248,7 +248,7 @@ export default function Select({
                     className={cn(
                       'w-full text-left px-3 py-2 text-sm transition-colors duration-100 flex items-center justify-between gap-2 rounded-none',
                       value === option.value
-                        ? 'text-brand-orange font-medium'
+                        ? 'text-brand-ink font-medium'
                         : 'text-popover-foreground',
                       highlightedIndex === index && 'bg-accent'
                     )}

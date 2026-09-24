@@ -33,6 +33,7 @@ import ContentHeader from './ContentHeader'
 import { ShortcutHandler } from '@/components/keyboard/ShortcutHandler'
 import { ShortcutsOverlay } from '@/components/keyboard/ShortcutsOverlay'
 import { CommandPalette } from '@/components/command/CommandPalette'
+import ThemeMenuSwitch from '@/components/theme/ThemeMenuSwitch'
 
 type PageMeta = {
   title: string
@@ -250,7 +251,7 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
                 onClick={() => switchSite(site.id)}
                 className={`w-full flex items-center gap-2.5 px-4 py-2 text-sm text-left ${
                   site.id === currentSiteId
-                    ? 'bg-brand-orange/10 text-brand-orange font-medium'
+                    ? 'bg-brand-orange/10 text-brand-ink font-medium'
                     : 'text-neutral-300 hover:bg-white/[0.06]'
                 }`}
               >
@@ -271,7 +272,7 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
             )}
           </div>
           <div className="border-t border-neutral-800/60 p-2">
-            <Link href="/sites/new" onClick={() => closePicker()} className="flex items-center gap-2 px-3 py-1.5 text-sm text-brand-orange hover:bg-white/[0.06] rounded-none">
+            <Link href="/sites/new" onClick={() => closePicker()} className="flex items-center gap-2 px-3 py-1.5 text-sm text-brand-ink hover:bg-white/[0.06] rounded-none">
               <PlusIcon className="w-4 h-4" />
               Add new site
             </Link>
@@ -433,6 +434,9 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
           allowPersonalOrganization={false}
           onOpenSettings={() => router.push('/settings/account/profile')}
           onOpenOrgSettings={() => router.push('/settings/organization/general')}
+          // Theme switch (PULSE-31, owner pick M1): endItems so a click changes
+          // the theme without the menu closing under the pointer.
+          endItems={<ThemeMenuSwitch />}
           compact
           anchor="bottom"
         />

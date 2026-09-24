@@ -81,7 +81,7 @@ export function CardPager({ page, pageCount, onPageChange, label }: CardPagerPro
               aria-current={item === page ? 'page' : undefined}
               className={`${BTN} ${
                 item === page
-                  ? 'bg-[#202020] border border-[#2e2e2e] text-white font-medium cursor-default'
+                  ? 'bg-[rgb(var(--pager-active))] border border-[rgb(var(--pager-active-line))] text-white font-medium cursor-default'
                   : GHOST
               }`}
             >
