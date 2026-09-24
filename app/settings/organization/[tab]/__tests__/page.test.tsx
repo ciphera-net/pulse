@@ -62,4 +62,26 @@ describe('Organization settings tab routing', () => {
     render(<OrganizationSettingsTabPage />)
     expect(h.replace).toHaveBeenCalledWith('/settings/organization/general')
   })
+
+  it('sends the old Connected apps address to the MCP page, not to the default (PULSE-54)', () => {
+    h.tab = 'connected-apps'
+    render(<OrganizationSettingsTabPage />)
+    expect(h.replace).toHaveBeenCalledTimes(1)
+    expect(h.replace).toHaveBeenCalledWith('/settings/organization/mcp')
+    expect(screen.queryByTestId('tab-content')).not.toBeInTheDocument()
+  })
+
+  it('renders the MCP page, gated like API keys (PULSE-54)', () => {
+    h.tab = 'mcp'
+    h.canManageRoles = true
+    const { unmount } = render(<OrganizationSettingsTabPage />)
+    expect(screen.getByTestId('tab-content')).toBeInTheDocument()
+    expect(h.replace).not.toHaveBeenCalled()
+    unmount()
+
+    h.canManageRoles = false
+    render(<OrganizationSettingsTabPage />)
+    expect(screen.getByText('Access restricted')).toBeInTheDocument()
+    expect(screen.queryByTestId('tab-content')).not.toBeInTheDocument()
+  })
 })

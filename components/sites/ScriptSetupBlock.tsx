@@ -31,6 +31,7 @@ import {
   cn,
 } from '@ciphera-net/facet'
 import { TierBadge } from '@/components/integrations/TierBadge'
+import { CopyBlock } from '@/components/ui/CopyBlock'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { supportTierLabels } from '@/lib/integrations'
 import { PanelRow, PanelRows } from '@/components/settings/panels'
@@ -157,7 +158,6 @@ export default function ScriptSetupBlock({
     forms: sf.forms != null ? Boolean(sf.forms) : DEFAULT_INTERACTIONS.forms,
   })
   const [framework, setFramework] = useState(site.detected_framework ?? '')
-  const [copied, setCopied] = useState(false)
   const [cspCopied, setCspCopied] = useState(false)
   const [customizeOpen, setCustomizeOpen] = useState(false)
   const [showAllPlatforms, setShowAllPlatforms] = useState(false)
@@ -298,14 +298,6 @@ export default function ScriptSetupBlock({
     const core = buildTag('script.js')
     return interactionFlags === null ? core : `${core}\n${buildInteractionTag()}`
   }, [selected, showSRI, safeDomain, buildTag, coreFlags, interactionFlags, buildInteractionTag])
-
-  const copyScript = useCallback(() => {
-    navigator.clipboard.writeText(scriptSnippet)
-    setCopied(true)
-    toast.success('Script copied to clipboard')
-    onScriptCopy?.()
-    setTimeout(() => setCopied(false), 2000)
-  }, [scriptSnippet, onScriptCopy])
 
   const copyCsp = useCallback(() => {
     navigator.clipboard.writeText(CSP_DIRECTIVES)
@@ -564,36 +556,15 @@ export default function ScriptSetupBlock({
           )}
         </div>
       ) : (
-        <div className="rounded-none border border-border bg-background">
-          <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-micro-label uppercase text-muted-foreground truncate">
-                {selected?.snippet?.label ?? 'Tracking script'}
-              </span>
-              {selected && <TierBadge tier={selected.supportTier} />}
-            </div>
-            <button
-              type="button"
-              onClick={copyScript}
-              className="flex items-center gap-1.5 shrink-0 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer ease-apple"
-            >
-              {copied ? (
-                <>
-                  <CheckIcon className="w-3.5 h-3.5" />
-                  Copied
-                </>
-              ) : (
-                <>
-                  <CopyIcon className="w-3.5 h-3.5" />
-                  Copy
-                </>
-              )}
-            </button>
-          </div>
-          <pre className="px-4 py-4 text-[13px] leading-relaxed font-mono text-muted-foreground whitespace-pre-wrap break-words overflow-x-auto selection:bg-primary/30">
-            {scriptSnippet}
-          </pre>
-        </div>
+        // * The shared copy device (components/ui/CopyBlock.tsx, PULSE-54): it reports "Copied"
+        // * only once the clipboard write resolves.
+        <CopyBlock
+          label={selected?.snippet?.label ?? 'Tracking script'}
+          adornment={selected ? <TierBadge tier={selected.supportTier} /> : null}
+          code={scriptSnippet}
+          copiedToast="Script copied to clipboard"
+          onCopy={onScriptCopy}
+        />
       ))}
 
       {/* ── 4. Install state — ONE signal, the server's own ──────────────────── */}

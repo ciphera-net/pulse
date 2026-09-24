@@ -14,10 +14,18 @@ describe('settings nav registry', () => {
   it('has three scopes, seven / seven / five tabs', () => {
     // Workspace lost its Notifications tab on 21-09-2026 (ruling D7): there
     // was no workspace-level setting behind it. It gained Connected apps on
-    // 24-09-2026 (PULSE-41): the assistants connected over MCP.
+    // 24-09-2026 (PULSE-41), renamed MCP the same day (PULSE-54).
     expect(NAV_GROUPS.map((g) => [g.section, g.tabs.length])).toEqual([
       ['site', 7], ['organization', 7], ['account', 5],
     ])
+  })
+
+  it('names the MCP page MCP, marks it New, and gates it like API keys', () => {
+    const mcp = tabs.find((t) => t.href === '/settings/organization/mcp')
+    expect(mcp?.label).toBe('MCP')
+    expect(mcp?.badge).toBe('New')
+    expect(mcp?.requires).toBe('integrations.manage')
+    expect(tabs.some((t) => t.href.endsWith('/connected-apps'))).toBe(false)
   })
 
   it('gives every tab a one-line description that fits the rail', () => {
