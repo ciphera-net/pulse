@@ -228,7 +228,7 @@ function JoinContent() {
           </div>
           <div>
             <div className="text-xs text-neutral-500 mb-1">Role</div>
-            <span className="inline-flex items-center rounded-none bg-brand-orange/10 text-brand-orange px-2.5 py-0.5 text-xs font-medium">
+            <span className="inline-flex items-center rounded-none bg-brand-orange/10 text-brand-ink px-2.5 py-0.5 text-xs font-medium">
               {roleLabel(info.role)}
             </span>
           </div>

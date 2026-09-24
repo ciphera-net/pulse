@@ -9,6 +9,7 @@ import { useOrgSwitcher } from '@/lib/hooks/useOrgSwitcher'
 import { useSites } from '@/lib/swr/sites'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
 import OnboardingChip from '@/components/onboarding/OnboardingChip'
+import ThemeMenuSwitch from '@/components/theme/ThemeMenuSwitch'
 
 export default function ContentHeader({
   onMobileMenuOpen,
@@ -73,6 +74,9 @@ export default function ContentHeader({
           allowPersonalOrganization={false}
           onOpenSettings={() => router.push('/settings/account/profile')}
           onOpenOrgSettings={() => router.push('/settings/organization/general')}
+          // Theme switch (PULSE-31, owner pick M1): endItems so a click changes
+          // the theme without the menu closing under the pointer.
+          endItems={<ThemeMenuSwitch />}
         />
       </div>
     </div>

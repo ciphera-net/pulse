@@ -352,7 +352,7 @@ function SwitchPlanContent() {
                 <button
                   type="button"
                   onClick={() => router.push('/settings/organization/billing')}
-                  className="text-brand-orange hover:underline"
+                  className="text-brand-ink hover:underline"
                 >
                   Check billing
                 </button>
@@ -565,7 +565,7 @@ function SwitchPlanContent() {
                   <ArrowRight weight="bold" className="w-5 h-5 text-neutral-500 shrink-0" />
 
                   <div className="flex-1 rounded-none border border-brand-orange/50 bg-brand-orange/5 p-4">
-                    <p className="text-micro-label uppercase text-brand-orange mb-1">New</p>
+                    <p className="text-micro-label uppercase text-brand-ink mb-1">New</p>
                     <p className="text-base font-semibold text-white">{formatPlanName(selectedPlan)}</p>
                     <p className="text-sm text-neutral-400">{formatLimit(selectedLimit)} pageviews</p>
                     <p className="text-xs text-neutral-500 mt-0.5">

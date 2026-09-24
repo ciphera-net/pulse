@@ -235,7 +235,7 @@ export function FleetCard({ site, overview, overviewError }: FleetCardProps) {
           </p>
           <div className="pointer-events-auto relative mt-3 flex items-center justify-center gap-4 text-xs font-medium">
             {canEditSite && (
-              <Link {...settingsProps} className="text-brand-orange hover:underline">
+              <Link {...settingsProps} className="text-brand-ink hover:underline">
                 Set up →
               </Link>
             )}

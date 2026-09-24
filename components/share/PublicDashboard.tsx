@@ -214,7 +214,7 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="bg-card border border-border max-w-md w-full rounded-none p-6 transition-shadow duration-slow ease-apple">
           <div className="text-center mb-6">
-             <div className="w-12 h-12 bg-brand-orange/10 rounded-none flex items-center justify-center mx-auto mb-4 text-brand-orange">
+             <div className="w-12 h-12 bg-brand-orange/10 rounded-none flex items-center justify-center mx-auto mb-4 text-brand-ink">
               <ZapIcon className="w-6 h-6" />
             </div>
             <h1 className="text-2xl font-bold text-white mb-2">

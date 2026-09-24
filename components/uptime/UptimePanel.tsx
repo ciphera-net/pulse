@@ -58,7 +58,7 @@ import {
 const POS = UPTIME_POS
 const NEG = UPTIME_NEG
 const DEGRADED = UPTIME_DEGRADED
-const INK = '#b3b1ad'
+const INK = 'rgb(var(--instrument-ink))'
 const STRIP_H = 92
 const STRIP_MARGIN = { top: 8, right: 16, bottom: 6, left: 56 }
 const RAIL_W = 'w-40 sm:w-48'

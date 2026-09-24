@@ -47,7 +47,7 @@ describe('FleetSparkline (shared mini core)', () => {
     const { container } = render(<FleetSparkline days={days} dim />)
     const solid = linePaths(container).find((p) => !p.getAttribute('stroke-dasharray'))!
     expect(solid.getAttribute('class')).toContain('stroke-neutral-600')
-    expect(solid.getAttribute('class')).not.toContain('group-hover:stroke-brand-orange')
+    expect(solid.getAttribute('class')).not.toMatch(/group-hover:stroke-brand-(orange|ink)/)
   })
 
   it('renders nothing below two days', () => {

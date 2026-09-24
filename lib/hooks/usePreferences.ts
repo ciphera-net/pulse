@@ -5,6 +5,7 @@ import useSWR from 'swr'
 import { useAuth } from '@/lib/auth/context'
 import apiRequest from '@/lib/api/client'
 import { logger } from '@/lib/utils/logger'
+import { DEFAULT_THEME, isTheme, type Theme } from '@/lib/theme'
 
 /**
  * Per-user UI state that belongs to the ACCOUNT, not to a browser profile.
@@ -37,6 +38,8 @@ export interface UserPreferences {
   recovery_prompt_dismissed_at: string | null
   /** Optional on the wire: a backend that predates migration 188 omits it. */
   time_display?: TimeDisplay
+  /** Optional on the wire: a backend that predates migration 190 omits it. */
+  theme?: Theme
   updated_at?: string | null
 }
 
@@ -85,6 +88,13 @@ export function usePreferences() {
   // corrupted row) also reads as the default rather than breaking every stamp.
   const timeDisplay: TimeDisplay = isTimeDisplay(data?.time_display) ? data.time_display : DEFAULT_TIME_DISPLAY
 
+  // The account's theme, or null while it is not known. Deliberately NOT
+  // defaulted like timeDisplay: ThemeSync must tell "the account says dark"
+  // apart from "not loaded yet", or it would overwrite a device's cached
+  // 'light' cookie with 'dark' on every cold load before the fetch lands. An
+  // unrecognised value from a newer backend reads as the default.
+  const theme: Theme | null = data === undefined ? null : isTheme(data.theme) ? data.theme : DEFAULT_THEME
+
   /**
    * Stamp one or more preferences. Optimistic: the caller's UI must not wait on
    * a network round trip to close a dialog or end an overlay.
@@ -101,6 +111,7 @@ export function usePreferences() {
         tour_completed_at: data?.tour_completed_at ?? null,
         recovery_prompt_dismissed_at: data?.recovery_prompt_dismissed_at ?? null,
         time_display: data?.time_display,
+        theme: data?.theme,
         ...patch,
       }
       void mutate(optimistic, false)
@@ -145,5 +156,32 @@ export function usePreferences() {
     [userId, data, mutate]
   )
 
-  return { preferences: data, loaded, tourCompleted, recoveryPromptDismissed, timeDisplay, stamp, setTimeDisplay, mutate }
+  /**
+   * Change the colour theme. Optimistic, so the page switches on click; the
+   * optimistic value is what ThemeSync applies. Returns false on failure so the
+   * control can say so, and rolls back to the server's truth, which switches the
+   * page back: a theme that looks saved but isn't would revert on the next device.
+   */
+  const setTheme = useCallback(
+    async (next: Theme): Promise<boolean> => {
+      if (!userId) return false
+      const previous = data
+      void mutate({ ...(data ?? { tour_completed_at: null, recovery_prompt_dismissed_at: null }), theme: next }, false)
+      try {
+        const saved = await apiRequest<UserPreferences>('/me/preferences', {
+          method: 'PUT',
+          body: JSON.stringify({ theme: next }),
+        })
+        void mutate(saved, false)
+        return true
+      } catch (err) {
+        logger.error('Could not save the theme preference', err)
+        void mutate(previous, false)
+        return false
+      }
+    },
+    [userId, data, mutate]
+  )
+
+  return { preferences: data, loaded, tourCompleted, recoveryPromptDismissed, timeDisplay, theme, stamp, setTimeDisplay, setTheme, mutate }
 }

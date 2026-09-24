@@ -357,7 +357,7 @@ export default function PeakHours({ siteId, dateRange, filters }: PeakHoursProps
               className="mt-4 text-xs text-neutral-400 text-center"
             >
               {BEST_TIME_LABELS[metric]}{' '}
-              <span className="text-brand-orange font-medium">
+              <span className="text-brand-ink font-medium">
                 {DAYS_FULL[bestTime.day]} at {formatHour(bestTime.bucket)}
               </span>
             </motion.p>

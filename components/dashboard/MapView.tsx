@@ -97,9 +97,9 @@ function MapView({ data, className }: MapViewProps) {
       .append('path')
       .attr('class', 'country')
       .attr('d', path as unknown as string)
-      .style('stroke', 'rgba(255,255,255,0.08)')
+      .style('stroke', 'rgb(var(--white) / 0.08)')
       .style('stroke-width', '0.5px')
-      .style('fill', 'rgba(255,255,255,0.04)')
+      .style('fill', 'rgb(var(--white) / 0.04)')
       .style('transition', 'fill 0.15s ease')
 
     highlightRef.current = svg.append('path')
@@ -124,7 +124,7 @@ function MapView({ data, className }: MapViewProps) {
       .style('fill', (d) => {
         const alpha2 = getAlpha2(d)
         const value = trafficMap[alpha2] || 0
-        return value > 0 ? colorScale(value) : 'rgba(255,255,255,0.04)'
+        return value > 0 ? colorScale(value) : 'rgb(var(--white) / 0.04)'
       })
       .style('cursor', (d) => {
         const alpha2 = getAlpha2(d)
@@ -135,7 +135,7 @@ function MapView({ data, className }: MapViewProps) {
         const value = trafficMap[alpha2] || 0
         highlightRef.current
           ?.attr('d', this.getAttribute('d'))
-          .style('stroke', value > 0 ? 'rgba(249,115,22,0.6)' : 'rgba(255,255,255,0.15)')
+          .style('stroke', value > 0 ? 'rgba(249,115,22,0.6)' : 'rgb(var(--white) / 0.15)')
         if (value > 0) {
           const [x, y] = d3.pointer(event, svgRef.current?.parentNode)
           // value > 0 means the country came from `data`, so the row exists;
@@ -171,7 +171,7 @@ function MapView({ data, className }: MapViewProps) {
             style={{ left: tooltip.x, top: tooltip.y - 36 }}
           >
             <span>{tooltip.name}</span>
-            <span className="ml-2 text-brand-orange font-bold">{tooltip.text}</span>
+            <span className="ml-2 text-brand-ink font-bold">{tooltip.text}</span>
           </div>
         )}
       </div>

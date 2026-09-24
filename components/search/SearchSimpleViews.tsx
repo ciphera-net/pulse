@@ -172,7 +172,7 @@ export function OpportunitiesView({ siteId, dateRange }: RangeProps) {
               <span className={cn(OPP.position, 'flex justify-end')}><PositionBadge position={row.position} /></span>
               <span className={cn('hidden sm:inline-block', OPP.impressions, 'text-right text-neutral-400')}>{formatNumber(row.impressions)}</span>
               <span className={cn(OPP.clicks, 'text-right text-neutral-300')}>{formatNumber(row.clicks)}</span>
-              <span className={cn(OPP.potential, 'text-right font-medium text-brand-orange')}>&rarr; {formatCompact(row.potential_clicks)}</span>
+              <span className={cn(OPP.potential, 'text-right font-medium text-brand-ink')}>&rarr; {formatCompact(row.potential_clicks)}</span>
             </div>
           </StaticRow>
         ))}

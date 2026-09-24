@@ -86,11 +86,11 @@ export function Sparkline({
   const tailPath = hasTail ? (mkLine(coords.slice(n - 2)) ?? '') : ''
   const areaPath = (mkLine(coords) ?? '') + ` L${VIEW_W},${height} L0,${height} Z`
 
-  const ink = active ? 'rgb(253, 94, 15)' : 'rgb(82, 82, 82)'
+  const ink = active ? 'rgb(253, 94, 15)' : 'rgb(var(--neutral-600))'
   const strokeClass = active
-    ? 'stroke-brand-orange'
+    ? 'stroke-brand-ink'
     : restHoverInk
-      ? 'stroke-neutral-600 group-hover:stroke-brand-orange'
+      ? 'stroke-neutral-600 group-hover:stroke-brand-ink'
       : 'stroke-neutral-600'
 
   return (
