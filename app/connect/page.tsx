@@ -6,7 +6,7 @@ import { Button, Checkbox, Select, Spinner, Toggle, toast } from '@ciphera-net/f
 import { ArrowsLeftRight, ClockCountdown, ShieldWarning, Warning } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
 import { ApiError } from '@/lib/api/client'
-import { getUserOrganizations, type OrganizationMember } from '@/lib/api/organization'
+import { ensureDefaultOrganization, getUserOrganizations, type OrganizationMember } from '@/lib/api/organization'
 import { listSites, type Site } from '@/lib/api/sites'
 import {
   approveConnectRequest,
@@ -177,11 +177,30 @@ function ConnectContent() {
     setLoad({ kind: 'loading' })
     try {
       const [req, orgs] = await Promise.all([getConnectRequest(requestId), getUserOrganizations()])
-      const eligible = (Array.isArray(orgs) ? orgs : []).filter(canConnect)
+      let memberships = Array.isArray(orgs) ? orgs : []
+      let sessionOrg = user?.org_id
+      // * First-time users → (a) (owner, 24-09-2026): somebody with a Ciphera
+      // * account but no Pulse workspace yet gets one HERE, before the consent,
+      // * and connects straight away with All sites. The sign-in callback
+      // * normally provisions on the way in; this covers every path that skips
+      // * it (a signed-in person who deleted their only workspace, the callback's
+      // * lost-attempt rescue). The app-wide wall is told to leave /connect alone
+      // * (isExemptFromWorkspaceProvisioning): racing it, this page read "no
+      // * workspace" once and stranded the person on the dead end below while
+      // * the wall's workspace appeared unseen (M3 frontend review, 24-09-2026).
+      // * Only an EXPIRED request skips this — Promise.all has already thrown.
+      if (memberships.length === 0) {
+        const ensured = await ensureDefaultOrganization()
+        await switchOrganizationSession(ensured.organization.id, auth.refresh)
+        sessionOrg = ensured.organization.id
+        const again = await getUserOrganizations()
+        memberships = Array.isArray(again) ? again : []
+      }
+      const eligible = memberships.filter(canConnect)
       setLoad({ kind: 'ready', req, eligible })
       // * The session's workspace is preselected only when the person may
       // * connect apps there; otherwise they choose, and choosing switches.
-      const current = eligible.find((m) => m.organization_id === user?.org_id)
+      const current = eligible.find((m) => m.organization_id === sessionOrg)
       setOrgId(current ? current.organization_id : null)
       if (current) void loadSites()
     } catch (err) {
@@ -194,7 +213,7 @@ function ConnectContent() {
         setLoad({ kind: 'failed' })
       }
     }
-  }, [requestId, user?.org_id, loadSites])
+  }, [requestId, user?.org_id, loadSites, auth.refresh])
 
   useEffect(() => {
     if (authLoading) return

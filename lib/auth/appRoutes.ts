@@ -57,3 +57,22 @@ export function isExemptFromOnboardingWall(pathname: string | null | undefined):
     pathname.startsWith('/connect')
   )
 }
+
+/**
+ * Routes where the app-wide wall must NOT hand a signed-in person with no
+ * workspace a default one in the background. Each of these decides the
+ * workspace question itself:
+ *   - /setup is where a workspace is created by hand;
+ *   - /join: someone about to belong to somebody else's workspace must not be
+ *     handed a stray one first (the rule `shouldProvisionWorkspace` keeps for
+ *     the sign-in callback);
+ *   - /connect (PULSE-41) provisions the workspace ITSELF, in the open, before
+ *     it shows the consent (first-time users → (a), owner 24-09-2026). Left to
+ *     the wall, the page read "no workspace" once, rendered the dead end, and
+ *     never noticed the workspace the wall created a moment later (M3 frontend
+ *     review, 24-09-2026).
+ */
+export function isExemptFromWorkspaceProvisioning(pathname: string | null | undefined): boolean {
+  if (!pathname) return false
+  return pathname.startsWith('/setup') || pathname.startsWith('/join') || pathname.startsWith('/connect')
+}
