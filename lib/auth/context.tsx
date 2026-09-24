@@ -17,7 +17,7 @@ import { cleanupStaleStorage } from '@/lib/utils/storage-cleanup'
 import { forgetAllPendingAuth } from '@/lib/api/oauth-store'
 import { isTransientRefreshFailure } from '@/lib/auth/refresh-outcome'
 import { reportClientEvent } from '@/lib/utils/clientEvents'
-import { isAuthedAppRoute } from '@/lib/auth/appRoutes'
+import { isAuthedAppRoute, isExemptFromOnboardingWall } from '@/lib/auth/appRoutes'
 import { markOnboardingComplete, onboardingDoneCacheKey, resumeTargetForSites } from '@/lib/auth/landing-target'
 
 interface User {
@@ -741,12 +741,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // colleague's invite link was bounced OUT of the invite and into
           // their own unfinished setup. They accepted nothing, and the link
           // they were sent appeared to be broken.
+          // * /connect (the MCP consent page) is exempt too: see
+          // * isExemptFromOnboardingWall for why each route is on the list.
           if (
             userOrgId &&
             isSubjectToOnboardingWall(userRole) &&
-            !pathname?.startsWith('/setup') &&
-            !pathname?.startsWith('/settings') &&
-            !pathname?.startsWith('/join')
+            !isExemptFromOnboardingWall(pathname)
           ) {
             const cacheKey = onboardingDoneCacheKey(userOrgId)
             const cached = typeof window !== 'undefined' && localStorage.getItem(cacheKey)

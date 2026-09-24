@@ -16,6 +16,7 @@ const WorkspaceBillingTab = dynamic(() => import('@/components/settings/unified/
 // * behind it.
 const WorkspaceAuditTab   = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceAuditTab'))
 const WorkspaceApiKeysTab = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceApiKeysTab'))
+const WorkspaceConnectedAppsTab = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceConnectedAppsTab'))
 
 const TAB_COMPONENTS: Record<string, React.ComponentType> = {
   general:       WorkspaceGeneralTab,
@@ -24,6 +25,7 @@ const TAB_COMPONENTS: Record<string, React.ComponentType> = {
   billing:       WorkspaceBillingTab,
   audit:         WorkspaceAuditTab,
   'api-keys':    WorkspaceApiKeysTab,
+  'connected-apps': WorkspaceConnectedAppsTab,
 }
 
 const TAB_PERMISSIONS: Record<string, Permission> = {
@@ -33,6 +35,9 @@ const TAB_PERMISSIONS: Record<string, Permission> = {
   // * Issuing a credential for an external system is the same class of action as
   // * connecting one, so it reuses the integrations permission.
   'api-keys':    'integrations.manage',
+  // * Connecting an assistant is the same class of action as issuing a key
+  // * (MCP design D4), and the server gates both routes on it.
+  'connected-apps': 'integrations.manage',
 }
 
 function AccessDenied() {

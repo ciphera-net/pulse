@@ -18,6 +18,7 @@ import {
   BellRinging,
   EnvelopeSimple,
   Terminal,
+  PlugsConnected,
   Heartbeat,
 } from '@phosphor-icons/react'
 
@@ -90,6 +91,7 @@ export const NAV_GROUPS: NavGroup[] = [
       // * Terminal, not Key — Key is already the Roles metaphor, and an API key is
       // * a developer-surface credential rather than a permissions concept.
       { label: 'API Keys', href: '/settings/organization/api-keys', description: 'Read your analytics programmatically.', icon: Terminal, requires: 'integrations.manage' },
+      { label: 'Connected apps', href: '/settings/organization/connected-apps', description: 'Assistants that read your analytics.', icon: PlugsConnected, requires: 'integrations.manage' },
       { label: 'Audit Log', href: '/settings/organization/audit', description: 'Workspace activity.', icon: ClockCounterClockwise, requires: 'audit.view' },
     ],
   },

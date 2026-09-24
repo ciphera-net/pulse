@@ -12,7 +12,7 @@ import DashboardChrome from '@/components/dashboard/DashboardChrome'
 import { ErrorBoundary } from '@/components/error-boundary'
 import VersionToast from '@/components/VersionToast'
 import SessionTakeover from '@/components/auth/SessionTakeover'
-import { isAuthedAppRoute } from '@/lib/auth/appRoutes'
+import { isAuthedAppRoute, isStandaloneRoute } from '@/lib/auth/appRoutes'
 import { ActiveSiteProvider } from '@/components/settings/active-site'
 import ThemeSync from '@/components/theme/ThemeSync'
 
@@ -109,8 +109,8 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     return <>{children}</>
   }
 
-  // Setup wizard: own layout with stepper — no app shell
-  if (isAuthenticated && (pathname.startsWith('/setup') || pathname.startsWith('/switch') || pathname.startsWith('/join'))) {
+  // Setup wizard, workspace switch, invite link, MCP consent: own layout — no app shell
+  if (isAuthenticated && isStandaloneRoute(pathname)) {
     return <>{children}</>
   }
 
@@ -126,8 +126,9 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   // * above, which covers every dead-session state on app routes — including
   // * the ones the flag never did.
 
-  // Join page: standalone, no app shell
-  if (pathname.startsWith('/join')) {
+  // Join and consent pages: standalone, no app shell, signed in or not — each
+  // renders its own "sign in to continue" state.
+  if (pathname.startsWith('/join') || pathname.startsWith('/connect')) {
     return <>{children}</>
   }
 
