@@ -33,7 +33,9 @@ export const securityRenderers = {
     const _p = r.event.payload as { key_id: string; name_hash: string }
     return {
       title: 'API key created',
-      body: 'A new API key was created for this workspace.',
+      // The email's words (PULSE-59): Pulse, not a workspace, true for a
+      // reader who works alone and for one in a team.
+      body: 'A new API key was created in Pulse.',
       linkLabel: 'View API keys',
     }
   },

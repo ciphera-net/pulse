@@ -43,9 +43,7 @@ const registry = {
 
 export function renderNotification(r: Receipt, resolvers?: Resolvers, timeZone?: string): Rendered {
   const renderer = registry[r.event.type as NotificationType]
-  if (!renderer) {
-    return { title: r.event.type, body: '', linkLabel: null }
-  }
+  if (!renderer) return fallback(r)
   try {
     return renderer(r, resolvers, timeZone)
   } catch {
@@ -53,6 +51,16 @@ export function renderNotification(r: Receipt, resolvers?: Resolvers, timeZone?:
     // billing_payment_failed without a currency) must degrade to ONE plain
     // row — not blank the entire notification center, which is what an
     // uncaught throw inside the list map did.
-    return { title: r.event.type, body: '', linkLabel: null }
+    return fallback(r)
   }
+}
+
+/**
+ * The one plain row for a type with no renderer, or one whose renderer threw.
+ * The body is the email's generic line (Iris render.go, PULSE-59): it names
+ * Pulse, never a workspace, because the card cannot tell a reader who works
+ * alone from one in a team.
+ */
+function fallback(r: Receipt): Rendered {
+  return { title: r.event.type, body: 'A new notification in Pulse.', linkLabel: null }
 }
