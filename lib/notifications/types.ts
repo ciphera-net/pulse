@@ -37,6 +37,10 @@ export type NotificationType =
   | 'system_announcement'
   | 'system_maintenance'
   | 'lifecycle_no_site'
+  // iris migration 034 — a site that was added and has never sent an event.
+  // Same `lifecycle` category and opt-out class as the nudge above, but scoped
+  // to one SITE (PULSE-66).
+  | 'lifecycle_install_stalled'
 
 export type Category = 'billing' | 'uptime' | 'security' | 'site' | 'team' | 'system' | 'lifecycle'
 
@@ -61,6 +65,16 @@ export type Category = 'billing' | 'uptime' | 'security' | 'site' | 'team' | 'sy
 export interface LifecycleNoSitePayload {
   days_since_created: number
   step: number
+}
+/** iris migration 034 (PULSE-66). Scoped to one SITE, unlike its siblings: a
+ *  team can add three sites and get exactly one of them wrong.
+ *  `site_created_at` is carried AS MEASURED and the card never computes
+ *  "waiting N days" from it. `domain` is optional as in every sibling: the card
+ *  resolves a name from site_id, the email renderer has no resolver. */
+export interface LifecycleInstallStalledPayload {
+  site_id: string
+  site_created_at: string
+  domain?: string
 }
 export interface BillingPaymentFailedPayload {
   invoice_id: string
@@ -174,6 +188,10 @@ export interface Receipt<T extends NotificationType = NotificationType> {
   /** The receipt's FROZEN category, stamped by iris at fan-out (null on a
    *  backend that predates the field — fall back to the type-key prefix). */
   category_id?: string | null
+  /** The registry's label for the type (Iris notification_types.display_name),
+   *  read at list time (PULSE-67). The ONE label the fallback card may show
+   *  for a type it cannot render; null on a backend that predates the field. */
+  type_display_name?: string | null
   event: {
     id: string
     organization_id: string

@@ -1,4 +1,4 @@
-import type { LifecycleNoSitePayload, Receipt } from '@/lib/notifications/types'
+import type { LifecycleInstallStalledPayload, LifecycleNoSitePayload, Receipt } from '@/lib/notifications/types'
 import type { Rendered, Resolvers } from './index'
 
 /**
@@ -45,6 +45,30 @@ export const lifecycleRenderers = {
         ? 'There is still no site in Pulse, so it is collecting nothing.'
         : 'There is no site in Pulse yet, so it is collecting nothing.',
       linkLabel: 'Add your first site',
+    }
+  },
+
+  // iris migration 034 (PULSE-66). A site was added and has never sent an
+  // event: the snippet is missing, or on a page nobody has loaded since. Until
+  // this card existed the type had no renderer, so its in-app row fell through
+  // to the fallback and was titled with its raw type key.
+  //
+  // The words are the email's (Iris render.go, typeLifecycleInstallStalled),
+  // so the card and the email say the same thing, with the same guards.
+  // 🔴 NO ELAPSED TIME: the payload carries site_created_at AS MEASURED, and
+  // "added 6 days ago" would be a different sentence every hour a send ran
+  // late. The site name comes from the resolver when the card can resolve it,
+  // and from the payload's optional `domain` otherwise.
+  lifecycle_install_stalled: (r: Receipt, resolvers?: Resolvers): Rendered => {
+    const p = r.event.payload as Partial<LifecycleInstallStalledPayload>
+    const name = p.site_id ? resolvers?.resolveSiteName(p.site_id) : undefined
+    const site = name ?? p.domain
+    return {
+      title: 'Pulse has not heard from your site',
+      body: site
+        ? `You added ${site} to Pulse and it has not sent any data yet.`
+        : 'You added a site to Pulse and it has not sent any data yet.',
+      linkLabel: 'Check your install',
     }
   },
 }
