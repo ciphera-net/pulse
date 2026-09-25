@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { InvalidCredentialsError } from '@ciphera-net/tessera'
 
 const auth = vi.hoisted(() => ({ logout: vi.fn() }))
 vi.mock('@/lib/auth/context', () => ({ useAuth: () => ({ logout: auth.logout }) }))
@@ -76,6 +77,22 @@ describe('PasswordPanel', () => {
       skipAuthRetry: true,
     })
     expect(toastMock.success).toHaveBeenCalled()
+  })
+
+  // PULSE-61: a wrong CURRENT password is rejected by the SDK in the browser.
+  it.each([
+    ['the SDK class', () => new InvalidCredentialsError()],
+    ['a second SDK copy (name only)', () => Object.assign(new Error('tessera: invalid credentials'), { name: 'InvalidCredentialsError' })],
+  ])('a wrong current password (%s) reads as a mismatch, not SDK text', async (_n, make) => {
+    api.change.mockRejectedValueOnce(make())
+    render(<PasswordPanel />)
+    fireEvent.click(screen.getByRole('button', { name: 'Change password…' }))
+    fill('old-password-1', 'new-password-123', 'new-password-123')
+    fireEvent.click(screen.getByRole('button', { name: 'Change password' }))
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent("That password didn't match. Nothing was changed.")
+    expect(alert).not.toHaveTextContent(/tessera/i)
+    expect(auth.logout).not.toHaveBeenCalled()
   })
 
   it('shows the ceremony\'s own message on failure and does not sign out', async () => {
