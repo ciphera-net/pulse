@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useCan, type Permission } from '@/lib/auth/permissions'
 import { ShieldWarning } from '@phosphor-icons/react'
+import { useTeamState } from '@/lib/hooks/useTeamState'
 
 const WorkspaceGeneralTab = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceGeneralTab'))
 const WorkspaceMembersTab = dynamic(() => import('@/components/settings/unified/tabs/WorkspaceMembersTab'))
@@ -47,11 +48,15 @@ const TAB_PERMISSIONS: Record<string, Permission> = {
 }
 
 function AccessDenied() {
+  // * Somebody alone owns their account, so there is nobody to ask (PULSE-59).
+  const alone = useTeamState() === 'alone'
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
       <ShieldWarning className="w-12 h-12 text-neutral-600 mb-4" />
       <h3 className="text-base font-semibold text-neutral-300 mb-1">Access restricted</h3>
-      <p className="text-sm text-neutral-500 max-w-sm">You don&apos;t have permission to view this page. Contact your workspace owner to request access.</p>
+      <p className="text-sm text-neutral-500 max-w-sm">
+        You don&apos;t have permission to view this page.{alone ? '' : ' Contact your team owner to request access.'}
+      </p>
     </div>
   )
 }

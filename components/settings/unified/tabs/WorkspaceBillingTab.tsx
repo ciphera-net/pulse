@@ -42,6 +42,7 @@ import { formatCalendarDate, formatCalendarDateFull, formatDateUTC } from '@/lib
 import { formatEuro, formatEuroCents, formatMoneyCents } from '@/lib/utils/money'
 import { cdnUrl } from '@/lib/cdn'
 import { useCan } from '@/lib/auth/permissions'
+import { useTeamState } from '@/lib/hooks/useTeamState'
 import { formatPlanName, getPlanPricing, FREE_PAGEVIEW_LIMIT } from '@/lib/plans'
 
 const PAYMENT_METHODS = [
@@ -95,6 +96,8 @@ function billingFieldsFromSubscription(sub: SubscriptionDetails): BillingFormFie
 export default function WorkspaceBillingTab() {
   const router = useRouter()
   const canManageBilling = useCan('billing.manage')
+  // Somebody alone is billed as themselves; a team is billed as a team (PULSE-59).
+  const alone = useTeamState() === 'alone'
   const { data: subscription, error: subscriptionError, isLoading, mutate } = useSubscription()
   const [cancelling, setCancelling] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
@@ -395,7 +398,7 @@ export default function WorkspaceBillingTab() {
       {/* ── Plan status band ── */}
       <SettingsPanel
         title={`${planLabel} plan`}
-        description={!canManageBilling ? 'Only the workspace owner can modify billing.' : undefined}
+        description={!canManageBilling ? 'Only the team owner can modify billing.' : undefined}
         action={planChip}
       >
         {isCanceled ? (
@@ -471,7 +474,7 @@ export default function WorkspaceBillingTab() {
             cosplay with buttons that could only error. */}
         {isGrant && !isCanceled && (
           <p className="border-t border-border px-5 py-3 text-sm text-muted-foreground">
-            This workspace runs on a granted {planLabel} plan
+            {alone ? 'Your account' : 'This team'} runs on a granted {planLabel} plan
             {formatCalendarDate(subscription.grant_expires_on)
               ? ` until ${formatCalendarDate(subscription.grant_expires_on)}.`
               : '.'}{' '}
@@ -525,7 +528,7 @@ export default function WorkspaceBillingTab() {
               ? isPastDue
                 ? undefined
                 : 'Update your payment method to avoid service interruption.'
-              : 'Contact your workspace owner to update the payment method.'}
+              : 'Contact your team owner to update the payment method.'}
           </Banner>
         )}
 
@@ -552,11 +555,11 @@ export default function WorkspaceBillingTab() {
               ? `We're still collecting your data, up to ${hardCeiling.toLocaleString()} pageviews. ${
                   canManageBilling
                     ? 'Upgrade to raise the limit.'
-                    : 'Contact your workspace owner to upgrade the plan.'
+                    : 'Contact your team owner to upgrade the plan.'
                 }`
               : canManageBilling
                 ? 'Upgrade to raise the limit.'
-                : 'Contact your workspace owner to upgrade the plan.'}
+                : 'Contact your team owner to upgrade the plan.'}
           </Banner>
         )}
 
@@ -575,7 +578,7 @@ export default function WorkspaceBillingTab() {
           >
             {canManageBilling
               ? 'New pageviews are no longer being recorded. Upgrading restores collection immediately.'
-              : 'New pageviews are no longer being recorded. Contact your workspace owner to upgrade the plan.'}
+              : 'New pageviews are no longer being recorded. Contact your team owner to upgrade the plan.'}
           </Banner>
         )}
 
@@ -656,7 +659,7 @@ export default function WorkspaceBillingTab() {
             : <>You&apos;ll keep access until the end of your current billing period and won&apos;t be charged again.</>}
         </p>
         <p className="mb-5 text-sm text-muted-foreground">
-          After that, your workspace moves to the free Personal plan ({FREE_PAGEVIEW_LIMIT.toLocaleString()} pageviews/month, 1 site). Your data stays in place.
+          After that, {alone ? 'your account' : 'your team'} moves to the free Personal plan ({FREE_PAGEVIEW_LIMIT.toLocaleString()} pageviews/month, 1 site). Your data stays in place.
         </p>
         <div className="flex justify-end gap-3">
           <Button variant="outline" onClick={() => setShowCancelConfirm(false)} disabled={cancelling}>

@@ -131,7 +131,7 @@ export const pricingFaqData: Record<string, FAQItem[]> = {
     {
       question: 'Can I export my data?',
       answer:
-        'Yes. You own 100% of your data and can export it anytime from the dashboard as CSV, JSON, or Excel — or via the API, which is included on every plan. Canceling a paid plan never locks you out: your workspace continues on the free Personal tier with your data in it.',
+        'Yes. You own 100% of your data and can export it anytime from the dashboard as CSV, JSON, or Excel — or via the API, which is included on every plan. Canceling a paid plan never locks you out: your account continues on the free Personal tier with your data in it.',
     },
   ],
 }

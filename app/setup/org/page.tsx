@@ -26,7 +26,7 @@ export default function SetupOrgPage() {
   const { setOrg, completeStep } = useSetup()
   const clearOrgScopedCaches = useClearOrgScopedCaches()
 
-  const defaultName = user?.display_name ? `${user.display_name}'s workspace` : ''
+  const defaultName = user?.display_name ? `${user.display_name}'s team` : ''
   const [orgName, setOrgName] = useState(defaultName)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -91,17 +91,17 @@ export default function SetupOrgPage() {
           <PlusIcon className="h-7 w-7" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-white">
-          Create your workspace
+          Create a team
         </h1>
         <p className="mt-2 text-sm text-neutral-400 max-w-sm mx-auto">
-          A workspace groups your sites, team, and billing under one roof.
+          A team shares its sites, members and billing.
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="org-name" className="block text-sm font-medium text-neutral-300 mb-1.5">
-            Workspace name
+            Team name
           </label>
           <Input
             id="org-name"
@@ -118,7 +118,7 @@ export default function SetupOrgPage() {
         )}
 
         <Button type="submit" className="w-full h-11 md:h-9" disabled={loading}>
-          {loading ? 'Creating...' : 'Create workspace'}
+          {loading ? 'Creating...' : 'Create team'}
         </Button>
       </form>
     </>

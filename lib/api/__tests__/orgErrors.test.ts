@@ -40,11 +40,11 @@ describe('orgCreateError', () => {
 
   it('falls back to readable copy when the body carries no message', () => {
     const err = new ApiError('', 400, {})
-    expect(orgCreateError(err).message).toBe('We could not create that workspace. Please try again.')
+    expect(orgCreateError(err).message).toBe('We could not create that team. Please try again.')
   })
 
   it('ignores a blank server message rather than showing an empty error', () => {
     const err = new ApiError('', 400, { error: '   ' })
-    expect(orgCreateError(err).message).toBe('We could not create that workspace. Please try again.')
+    expect(orgCreateError(err).message).toBe('We could not create that team. Please try again.')
   })
 })

@@ -24,6 +24,7 @@ import {
 } from '@/lib/api/api-keys'
 import { listRoles, type Role } from '@/lib/api/roles'
 import { listSites, type Site } from '@/lib/api/sites'
+import { useTeamState } from '@/lib/hooks/useTeamState'
 
 const EXPIRY_OPTIONS: { value: string; label: string }[] = [
   { value: '30', label: '30 days' },
@@ -101,6 +102,7 @@ function TokenReveal({ token, onDone }: { token: string; onDone: () => void }) {
 export default function WorkspaceApiKeysTab() {
   const reducedMotion = useReducedMotion()
   const { zone } = useDisplayZone()
+  const alone = useTeamState() === 'alone'
   const [keys, setKeys] = useState<ApiKey[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [sites, setSites] = useState<Site[]>([])
@@ -289,7 +291,7 @@ export default function WorkspaceApiKeysTab() {
 
               <PanelRow
                 label="All sites"
-                caption="Every site in this workspace, including ones you add later."
+                caption={alone ? 'Every site you have, including ones you add later.' : 'Every site in this team, including ones you add later.'}
                 control={<Toggle checked={allSites} onChange={() => setAllSites((v) => !v)} />}
               />
 

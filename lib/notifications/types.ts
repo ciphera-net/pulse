@@ -40,6 +40,9 @@ export type NotificationType =
   // iris migration 031 — the one moment in onboarding with unambiguously good
   // news. Same `lifecycle` category and opt-out class as the nudge above.
   | 'lifecycle_first_data'
+  // iris migration 035 — every site has stopped reporting. Same category and
+  // opt-out class as its two siblings above.
+  | 'lifecycle_dormant'
 
 export type Category = 'billing' | 'uptime' | 'security' | 'site' | 'team' | 'system' | 'lifecycle'
 
@@ -75,6 +78,14 @@ export interface LifecycleFirstDataPayload {
   site_id: string
   first_event_at: string
   domain?: string
+}
+/** iris migration 035. `last_event_at` is the last instant ANY site reported, AS
+ *  MEASURED: the card states it and never computes "quiet for N days" from now.
+ *  `window_days` is the silence window that qualified the verdict (also the
+ *  dedup key's). No site name and no count: it is about every site at once. */
+export interface LifecycleDormantPayload {
+  last_event_at: string
+  window_days: number
 }
 export interface BillingPaymentFailedPayload {
   invoice_id: string

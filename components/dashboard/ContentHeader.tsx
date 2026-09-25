@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { MenuIcon, UserMenu } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
 import { UnnamedSession } from '@/components/account/UnnamedSession'
-import { useOrgSwitcher } from '@/lib/hooks/useOrgSwitcher'
+import { useUserMenuTeamProps } from '@/components/dashboard/userMenuTeam'
 import { useSites } from '@/lib/swr/sites'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
 import OnboardingChip from '@/components/onboarding/OnboardingChip'
@@ -21,7 +21,7 @@ export default function ContentHeader({
 }) {
   const auth = useAuth()
   const router = useRouter()
-  const { orgs, activeOrgId, switchOrganization, createOrganization } = useOrgSwitcher()
+  const teamMenuProps = useUserMenuTeamProps()
   // SWR-cached and deduped with the Sidebar's own useSites() — no extra request.
   const { sites } = useSites()
   const activeSite = siteId ? sites.find((s) => s.id === siteId) : undefined
@@ -54,10 +54,10 @@ export default function ContentHeader({
       <div className="flex shrink-0 items-center gap-1">
         <OnboardingChip />
         <NotificationCenter anchor="bottom" variant="default" />
-        {/* Prop parity with the desktop GlassTopBar instance: without the four
-            org props the Facet menu silently drops its whole workspace section,
+        {/* Prop parity with the desktop GlassTopBar instance: without the
+            org props the Facet menu silently drops its whole team section,
             which left multi-org customers on a phone unable to switch, create,
-            or reach another workspace (F-C8). */}
+            or reach another team (F-C8). Both spread useUserMenuTeamProps. */}
         <UserMenu
           auth={auth}
           // 🔴 ONLY WHEN WE KNOW. Passing this while the vault read is still in
@@ -65,15 +65,13 @@ export default function ContentHeader({
           // not 'locked', which is the whole reason VaultState has three values.
           unidentifiedLabel={auth.vaultState === 'locked' ? <UnnamedSession /> : undefined}
           LinkComponent={Link}
-          orgs={orgs}
-          activeOrgId={activeOrgId}
-          onSwitchOrganization={switchOrganization}
-          onCreateOrganization={createOrganization}
+          // The container props (switcher or "Invite people", team labels,
+          // team settings) come from the team-state signal (PULSE-59).
+          {...teamMenuProps}
           compact
           anchor="bottom"
           allowPersonalOrganization={false}
           onOpenSettings={() => router.push('/settings/account/profile')}
-          onOpenOrgSettings={() => router.push('/settings/organization/general')}
           // Theme switch (PULSE-31, owner pick M1): endItems so a click changes
           // the theme without the menu closing under the pointer.
           endItems={<ThemeMenuSwitch />}

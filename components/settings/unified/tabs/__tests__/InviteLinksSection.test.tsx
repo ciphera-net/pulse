@@ -78,6 +78,8 @@ describe('InviteLinksSection', () => {
     render(<InviteLinksSection orgId="o" links={[]} roles={[]} onRevoked={noop} />)
     expect(screen.getByRole('heading', { level: 2, name: 'Invite links' })).toBeInTheDocument()
     expect(screen.getByText('No invite links yet')).toBeInTheDocument()
+    // "people", not "teammates": somebody alone reads this too (PULSE-59).
+    expect(screen.getByText('Create a link to let people join without an individual invite.')).toBeInTheDocument()
   })
 
   it('resolves the role chip from link.role — metadata.role_id is never consulted', () => {

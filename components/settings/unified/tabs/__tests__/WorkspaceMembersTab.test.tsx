@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import type { InputHTMLAttributes, ReactNode } from 'react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { OrganizationMember } from '@/lib/api/organization'
@@ -12,18 +13,39 @@ vi.mock('@/lib/auth/permissions', () => ({
   useIsAdminOrOwner: () => mockCanManage,
 }))
 
+let mockUser: { id: string; org_id: string; email: string; display_name?: string } = {
+  id: 'u-you', org_id: 'org1', email: 'me@x.com', display_name: 'Ada Lovelace',
+}
 vi.mock('@/lib/auth/context', () => ({
-  useAuth: () => ({ user: { id: 'u-you', org_id: 'org1', email: 'me@x.com' } }),
+  useAuth: () => ({ user: mockUser }),
 }))
 
 const getOrganizationMembers = vi.fn()
 const getInviteLinks = vi.fn().mockResolvedValue([])
 const removeOrganizationMember = vi.fn().mockResolvedValue(undefined)
+const getOrganization = vi.fn()
+const updateOrganization = vi.fn()
 vi.mock('@/lib/api/organization', () => ({
   getOrganizationMembers: (...a: unknown[]) => getOrganizationMembers(...a),
   getInviteLinks: (...a: unknown[]) => getInviteLinks(...a),
   removeOrganizationMember: (...a: unknown[]) => removeOrganizationMember(...a),
+  getOrganization: (...a: unknown[]) => getOrganization(...a),
+  updateOrganization: (...a: unknown[]) => updateOrganization(...a),
 }))
+
+// The organization list: where the name step reads the current name when the
+// person has no display name, and what it re-reads after a rename.
+const revalidateOrganizations = vi.fn()
+let mockOrganizations: Array<{ organization_id: string; organization_name?: string }> | null = [
+  { organization_id: 'org1', organization_name: 'Quiet Harbour' },
+]
+vi.mock('@/lib/swr/organizations', () => ({
+  useUserOrganizations: () => ({ organizations: mockOrganizations, mutate: revalidateOrganizations }),
+}))
+
+// The page reads the ONE team-state signal (PULSE-59); each test sets it.
+let mockTeamState: 'alone' | 'team' | null = 'team'
+vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => mockTeamState }))
 
 vi.mock('@/lib/api/roles', () => ({
   listRoles: vi.fn().mockResolvedValue({ roles: [] }),
@@ -31,7 +53,9 @@ vi.mock('@/lib/api/roles', () => ({
 
 // Sub-components are exercised by their own suites — stub them here so this
 // tab test stays focused on roster composition + the masthead CTA.
-vi.mock('../CreateInviteLinkModal', () => ({ default: () => null }))
+vi.mock('../CreateInviteLinkModal', () => ({
+  default: ({ open }: { open: boolean }) => (open ? <div data-testid="invite-modal" /> : null),
+}))
 vi.mock('../InviteLinksSection', () => ({ default: () => <div data-testid="invite-links" /> }))
 
 // Renders only its confirm affordance — the dialog primitive itself belongs
@@ -52,6 +76,12 @@ vi.mock('@ciphera-net/facet', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
   // `@/lib/utils` re-exports `cn` from facet — the panel primitives call it.
   cn: (...args: any[]) => args.flat(Infinity).filter(Boolean).join(' '),
+  // The name step's modal renders its children only when open, like
+  // CreateInviteLinkModal's own suite stands it in.
+  Modal: ({ isOpen, children, title }: { isOpen: boolean; children: ReactNode; title?: string }) =>
+    isOpen ? <div role="dialog" aria-label={title}>{children}</div> : null,
+  Input: (props: InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
+  getAuthErrorMessage: (e: Error) => e?.message ?? '',
 }))
 
 import WorkspaceMembersTab from '../WorkspaceMembersTab'
@@ -70,6 +100,12 @@ const members: OrganizationMember[] = [
   { organization_id: 'org1', user_id: 'u-adm', role: 'admin', joined_at: '2026-04-05T00:00:00Z', user_email: 'pending@x.com' },
 ]
 
+// One live invite link: once one exists, the first invite has happened.
+const existingLink = {
+  id: 'l1', organization_id: 'org1', name: 'First link', role: 'member', max_uses: null,
+  use_count: 0, expires_at: '2026-10-02T00:00:00Z', created_by: 'u-you', created_at: '2026-09-25T00:00:00Z',
+}
+
 function renderTab() {
   const slot = document.createElement('div')
   slot.setAttribute('data-testid', 'masthead-slot')
@@ -83,6 +119,12 @@ function renderTab() {
 
 beforeEach(() => {
   mockCanManage = true
+  mockTeamState = 'team'
+  mockUser = { id: 'u-you', org_id: 'org1', email: 'me@x.com', display_name: 'Ada Lovelace' }
+  mockOrganizations = [{ organization_id: 'org1', organization_name: 'Quiet Harbour' }]
+  revalidateOrganizations.mockReset()
+  getOrganization.mockReset().mockResolvedValue({ id: 'org1', name: 'Quiet Harbour', slug: 'quiet-harbour' })
+  updateOrganization.mockReset().mockResolvedValue({ id: 'org1', name: 'Renamed', slug: 'quiet-harbour' })
   getOrganizationMembers.mockReset().mockResolvedValue(members)
   getInviteLinks.mockReset().mockResolvedValue([])
   removeOrganizationMember.mockClear()
@@ -98,7 +140,7 @@ describe('WorkspaceMembersTab roster', () => {
     expect(screen.getByText('pending@x.com')).toBeInTheDocument()
     expect(screen.getByText('Member u-mem-12')).toBeInTheDocument()
     expect(screen.getByText('Owner')).toBeInTheDocument()
-    expect(screen.getByText('3 members in your organization')).toBeInTheDocument()
+    expect(screen.getByText('3 members in your team')).toBeInTheDocument()
   })
 
   it('portals the Invite member CTA into the masthead when the user can manage', async () => {
@@ -139,9 +181,9 @@ describe('WorkspaceMembersTab non-happy states', () => {
     // Names the failed thing, and lands in the alert landmark rather than a
     // silently-empty roster.
     const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent(/couldn't load your organization members/i)
+    expect(alert).toHaveTextContent(/couldn't load your team's members/i)
     // Error is not silently rendered as an empty roster, and the CTA is absent.
-    expect(screen.queryByText(/in your organization$/)).toBeNull()
+    expect(screen.queryByText(/in your team$/)).toBeNull()
     expect(screen.queryByRole('button', { name: /Invite member/i })).toBeNull()
   })
 
@@ -152,7 +194,7 @@ describe('WorkspaceMembersTab non-happy states', () => {
     getInviteLinks.mockRejectedValueOnce(new Error('boom'))
     renderTab()
     const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent(/couldn't load your organization members/i)
+    expect(alert).toHaveTextContent(/couldn't load your team's members/i)
     expect(screen.queryByTestId('invite-links')).toBeNull()
   })
 
@@ -160,7 +202,7 @@ describe('WorkspaceMembersTab non-happy states', () => {
     getOrganizationMembers.mockResolvedValueOnce([])
     renderTab()
     await waitFor(() => expect(screen.getByText('No members yet')).toBeInTheDocument())
-    expect(screen.getByText('0 members in your organization')).toBeInTheDocument()
+    expect(screen.getByText('0 members in your team')).toBeInTheDocument()
   })
 
   it('shows the shared loading skeleton, not a spinner, while the roster is in flight', async () => {
@@ -256,3 +298,222 @@ describe('WorkspaceMembersTab row motion (round two, M5)', () => {
     expect(screen.getByTestId('member-row-u-you')).toBeInTheDocument()
   })
 })
+
+// ─── PULSE-59: the page somebody alone sees (option B1-invite) ───
+describe('WorkspaceMembersTab, alone', () => {
+  beforeEach(() => {
+    mockTeamState = 'alone'
+    getOrganizationMembers.mockReset().mockResolvedValue([members[0]])
+  })
+
+  it('shows a People panel with "Just you for now" and an Invite people button, then the invite links', async () => {
+    renderTab()
+    await waitFor(() => expect(screen.getByText('Just you for now')).toBeInTheDocument())
+    expect(screen.getByRole('heading', { name: 'People' })).toBeInTheDocument()
+    expect(screen.getByText('Invite people to share your sites, billing and assistant connections.')).toBeInTheDocument()
+    expect(screen.getByTestId('invite-links')).toBeInTheDocument()
+    // No roster of one, no member count, no masthead CTA.
+    expect(screen.queryByText('You')).toBeNull()
+    expect(screen.queryByText(/members? in your/)).toBeNull()
+    expect(screen.queryByRole('button', { name: /Invite member/i })).toBeNull()
+    expect(screen.getByTestId('masthead-slot').childElementCount).toBe(0)
+  })
+
+  it('opens the existing create-invite action from the Invite people button once a link exists', async () => {
+    getInviteLinks.mockResolvedValue([existingLink])
+    renderTab()
+    const invite = await screen.findByRole('button', { name: /Invite people/ })
+    expect(screen.queryByTestId('invite-modal')).toBeNull()
+    fireEvent.click(invite)
+    expect(screen.getByTestId('invite-modal')).toBeInTheDocument()
+  })
+
+  it('never says team, workspace or organization', async () => {
+    const { container } = renderTab()
+    await waitFor(() => expect(screen.getByText('Just you for now')).toBeInTheDocument())
+    expect(container.textContent).not.toMatch(/team|workspace|organi[sz]ation/i)
+  })
+})
+
+describe('WorkspaceMembersTab, team', () => {
+  it('keeps the roster and counts the team', async () => {
+    renderTab()
+    await waitFor(() => expect(screen.getByText('3 members in your team')).toBeInTheDocument())
+    expect(screen.queryByText('Just you for now')).toBeNull()
+  })
+
+  it('keeps the roster while the state is not known', async () => {
+    mockTeamState = null
+    renderTab()
+    await waitFor(() => expect(screen.getByText('3 members in your team')).toBeInTheDocument())
+  })
+})
+
+// ─── PULSE-59: "Name your team" at the first invite (option N1) ───
+
+const nameDialog = () => screen.queryByRole('dialog', { name: 'Name your team' })
+
+async function clickInvitePeople() {
+  fireEvent.click(await screen.findByRole('button', { name: /Invite people/ }))
+}
+
+describe('WorkspaceMembersTab, "Name your team" at the first invite', () => {
+  beforeEach(() => {
+    mockTeamState = 'alone'
+    getOrganizationMembers.mockReset().mockResolvedValue([members[0]])
+    // A successful name step is remembered per organization, so one test's
+    // Continue must not skip the step in the next.
+    localStorage.clear()
+  })
+
+  it('alone with no invite link: Invite people asks for the team name first, pre-filled from the first name', async () => {
+    renderTab()
+    await clickInvitePeople()
+    const dialog = nameDialog()
+    expect(dialog).toBeInTheDocument()
+    expect(screen.getByLabelText('Team name')).toHaveValue("Ada's team")
+    expect(screen.getByText('Everyone you invite joins this team. You can rename it later.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument()
+    // The invite form waits for the name.
+    expect(screen.queryByTestId('invite-modal')).toBeNull()
+  })
+
+  it('alone with an invite link already: no name step, the invite form opens directly', async () => {
+    getInviteLinks.mockResolvedValue([existingLink])
+    renderTab()
+    await clickInvitePeople()
+    expect(nameDialog()).toBeNull()
+    expect(screen.getByTestId('invite-modal')).toBeInTheDocument()
+  })
+
+  it('in a team: no name step, even with no invite link', async () => {
+    mockTeamState = 'team'
+    getOrganizationMembers.mockReset().mockResolvedValue(members)
+    renderTab()
+    fireEvent.click(await screen.findByRole('button', { name: /Invite member/ }))
+    expect(nameDialog()).toBeNull()
+    expect(screen.getByTestId('invite-modal')).toBeInTheDocument()
+  })
+
+  it('while the state is not known: no name step (null renders the team layout)', async () => {
+    mockTeamState = null
+    getOrganizationMembers.mockReset().mockResolvedValue(members)
+    renderTab()
+    fireEvent.click(await screen.findByRole('button', { name: /Invite member/ }))
+    expect(nameDialog()).toBeNull()
+    expect(screen.getByTestId('invite-modal')).toBeInTheDocument()
+  })
+
+  it('Continue renames the team, keeping its slug, and only then opens the invite form', async () => {
+    let finishRename!: () => void
+    updateOrganization.mockReset().mockImplementationOnce(
+      () => new Promise(resolve => { finishRename = () => resolve({ id: 'org1', name: 'Acme', slug: 'quiet-harbour' }) }),
+    )
+    renderTab()
+    await clickInvitePeople()
+    fireEvent.change(screen.getByLabelText('Team name'), { target: { value: '  Acme  ' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+
+    await waitFor(() => expect(updateOrganization).toHaveBeenCalledWith('org1', 'Acme', 'quiet-harbour'))
+    expect(getOrganization).toHaveBeenCalledWith('org1')
+    // Not before the rename has answered.
+    expect(screen.queryByTestId('invite-modal')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled()
+
+    finishRename()
+    await waitFor(() => expect(screen.getByTestId('invite-modal')).toBeInTheDocument())
+    expect(nameDialog()).toBeNull()
+    expect(revalidateOrganizations).toHaveBeenCalled()
+  })
+
+  it('a failed rename shows the reason in the modal, stays open, and does not open the invite form', async () => {
+    updateOrganization.mockReset().mockRejectedValueOnce(new Error('Name must be at least 2 characters'))
+    renderTab()
+    await clickInvitePeople()
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Name must be at least 2 characters')
+    expect(nameDialog()).toContainElement(alert)
+    expect(screen.queryByTestId('invite-modal')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled()
+  })
+
+  it('a rename failure with no server detail still says so in the house voice', async () => {
+    getOrganization.mockReset().mockRejectedValueOnce(new Error(''))
+    renderTab()
+    await clickInvitePeople()
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't save the team name. Try again.")
+    expect(updateOrganization).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('invite-modal')).toBeNull()
+  })
+
+  it('an empty name disables Continue', async () => {
+    renderTab()
+    await clickInvitePeople()
+    fireEvent.change(screen.getByLabelText('Team name'), { target: { value: '   ' } })
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
+    fireEvent.submit(screen.getByLabelText('Team name').closest('form')!)
+    expect(getOrganization).not.toHaveBeenCalled()
+    expect(updateOrganization).not.toHaveBeenCalled()
+  })
+
+  it('Cancel closes without renaming or inviting', async () => {
+    renderTab()
+    await clickInvitePeople()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(nameDialog()).toBeNull()
+    expect(screen.queryByTestId('invite-modal')).toBeNull()
+    expect(getOrganization).not.toHaveBeenCalled()
+    expect(updateOrganization).not.toHaveBeenCalled()
+  })
+
+  it('pre-fills the current team name when no display name is known, never the email', async () => {
+    mockUser = { id: 'u-you', org_id: 'org1', email: 'me@x.com' }
+    renderTab()
+    await clickInvitePeople()
+    expect(screen.getByLabelText('Team name')).toHaveValue('Quiet Harbour')
+    expect(screen.getByLabelText('Team name')).not.toHaveValue('me@x.com')
+  })
+
+  it('opens fresh each time: a Cancel then a second click starts from the suggestion again', async () => {
+    renderTab()
+    await clickInvitePeople()
+    fireEvent.change(screen.getByLabelText('Team name'), { target: { value: 'Half typed' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await clickInvitePeople()
+    expect(screen.getByLabelText('Team name')).toHaveValue("Ada's team")
+  })
+})
+
+describe('WorkspaceMembersTab, "Name your team" is asked only once', () => {
+  beforeEach(() => {
+    mockTeamState = 'alone'
+    getOrganizationMembers.mockReset().mockResolvedValue([members[0]])
+    localStorage.clear()
+  })
+
+  // Without this, naming the team and then cancelling the invite form would
+  // ask again with the suggestion pre-filled, and Continue would rename the
+  // team back.
+  it('remembers a successful name step for this organization', async () => {
+    updateOrganization.mockReset().mockResolvedValueOnce({ id: 'org1', name: 'Acme', slug: 'quiet-harbour' })
+    renderTab()
+    await clickInvitePeople()
+    fireEvent.change(screen.getByLabelText('Team name'), { target: { value: 'Acme' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+    await waitFor(() => expect(screen.getByTestId('invite-modal')).toBeInTheDocument())
+    expect(localStorage.getItem('pulse_team_named_org1')).toBe('1')
+  })
+
+  it('once named, Invite people opens the invite form directly, even with no link yet', async () => {
+    localStorage.setItem('pulse_team_named_org1', '1')
+    renderTab()
+    await clickInvitePeople()
+    expect(nameDialog()).toBeNull()
+    expect(screen.getByTestId('invite-modal')).toBeInTheDocument()
+  })
+})
+

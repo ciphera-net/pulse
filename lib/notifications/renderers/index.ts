@@ -27,8 +27,9 @@ export interface Resolvers {
 }
 
 // `timeZone` is the viewer's display-timezone preference (18-09-2026 design
-// §4.3), optional and additive — only security.tsx and system.tsx render an
-// instant today and read it; every other renderer ignores the extra arg.
+// §4.3), optional and additive — only security.tsx, system.tsx and the
+// lifecycle_dormant card render an instant today and read it; every other
+// renderer ignores the extra arg.
 type Renderer = (r: Receipt, resolvers?: Resolvers, timeZone?: string) => Rendered
 
 const registry = {
@@ -43,9 +44,7 @@ const registry = {
 
 export function renderNotification(r: Receipt, resolvers?: Resolvers, timeZone?: string): Rendered {
   const renderer = registry[r.event.type as NotificationType]
-  if (!renderer) {
-    return { title: r.event.type, body: '', linkLabel: null }
-  }
+  if (!renderer) return fallback(r)
   try {
     return renderer(r, resolvers, timeZone)
   } catch {
@@ -53,6 +52,16 @@ export function renderNotification(r: Receipt, resolvers?: Resolvers, timeZone?:
     // billing_payment_failed without a currency) must degrade to ONE plain
     // row — not blank the entire notification center, which is what an
     // uncaught throw inside the list map did.
-    return { title: r.event.type, body: '', linkLabel: null }
+    return fallback(r)
   }
+}
+
+/**
+ * The one plain row for a type with no renderer, or one whose renderer threw.
+ * The body is the email's generic line (Iris render.go, PULSE-59): it names
+ * Pulse, never a workspace, because the card cannot tell a reader who works
+ * alone from one in a team.
+ */
+function fallback(r: Receipt): Rendered {
+  return { title: r.event.type, body: 'A new notification in Pulse.', linkLabel: null }
 }

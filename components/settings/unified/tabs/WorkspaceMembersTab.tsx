@@ -1,14 +1,16 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSWRConfig } from 'swr'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Button, toast } from '@ciphera-net/facet'
-import { Plus, Trash, User, Users } from '@phosphor-icons/react'
+import { Plus, Trash, User, Users, UsersThree } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
 import { useIsAdminOrOwner } from '@/lib/auth/permissions'
 import { getOrganizationMembers, removeOrganizationMember, getInviteLinks, type OrganizationMember, type InviteLink } from '@/lib/api/organization'
 import { listRoles, type Role } from '@/lib/api/roles'
 import CreateInviteLinkModal from './CreateInviteLinkModal'
+import NameTeamModal, { suggestTeamName } from './NameTeamModal'
 import InviteLinksSection from './InviteLinksSection'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { StatusChip } from '@/components/settings/StatusChip'
@@ -19,6 +21,8 @@ import { MastheadAction } from '@/components/settings/shell-slots'
 import { DURATION_BASE, DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { formatDate } from '@/lib/utils/formatDate'
 import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
+import { useTeamState } from '@/lib/hooks/useTeamState'
+import { useUserOrganizations } from '@/lib/swr/organizations'
 
 /**
  * A role is a label, not a live state: every role chip is a plain StatusChip
@@ -58,9 +62,55 @@ export default function WorkspaceMembersTab() {
   const [retrying, setRetrying] = useState(false)
   const [inviteLinks, setInviteLinks] = useState<InviteLink[]>([])
   const [showLinkModal, setShowLinkModal] = useState(false)
+  const [showNameModal, setShowNameModal] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState<{ userId: string; email: string } | null>(null)
 
   const canManage = useIsAdminOrOwner()
+  // Somebody alone sees this page as "Invite people" (option B1, PULSE-59):
+  // no roster of one, just the way to share. Decided by the ONE team-state
+  // signal, so this page and the rail that named it cannot disagree.
+  const alone = useTeamState() === 'alone'
+  const { mutate } = useSWRConfig()
+  const { organizations, mutate: revalidateOrganizations } = useUserOrganizations()
+
+  // "Name your team" (option N1, owner 25-09-2026): the first invite is where
+  // somebody alone starts a team, so it asks for the team's name first. The
+  // first invite means ALONE and no invite link yet (the list this page has
+  // already loaded). Every other click opens the invite form directly.
+  //
+  // 🔴 AND ONLY ONCE. A person who names the team and then cancels the invite
+  // form still has no link, so without this the next click would ask again,
+  // pre-filled with the suggestion, and Continue would rename the team BACK.
+  // Once the step has succeeded for this organization it is not asked again.
+  // Kept per browser, like the team-state cache: on another device the step
+  // can show once more, with a pre-fill the person can see and change.
+  const namedKey = user?.org_id ? `pulse_team_named_${user.org_id}` : null
+  const [named, setNamed] = useState(false)
+  useEffect(() => {
+    try {
+      setNamed(namedKey !== null && localStorage.getItem(namedKey) === '1')
+    } catch {
+      setNamed(false)
+    }
+  }, [namedKey])
+  const asksForTeamName = alone && inviteLinks.length === 0 && !named
+  const openInvite = () => {
+    if (asksForTeamName) setShowNameModal(true)
+    else setShowLinkModal(true)
+  }
+  const onTeamNamed = () => {
+    setNamed(true)
+    try {
+      if (namedKey) localStorage.setItem(namedKey, '1')
+    } catch {
+      // A convenience only: without it the step may ask once more.
+    }
+    setShowNameModal(false)
+    setShowLinkModal(true)
+    // The organization list carries the name the user menu shows once there
+    // is a team; re-read it rather than keep the generated one.
+    void revalidateOrganizations()
+  }
 
   const loadMembers = async () => {
     if (!user?.org_id) return
@@ -77,6 +127,9 @@ export default function WorkspaceMembersTab() {
       setMembers(membersData)
       setRoles(rolesData)
       setInviteLinks(linksData)
+      // The team-state signal counts the same roster (lib/swr/members.tsx);
+      // hand it this answer so a removal that leaves somebody alone shows at once.
+      void mutate(['members', user.org_id], membersData, { revalidate: false })
     } catch {
       // A real fetch failure must be visible, not rendered as an empty roster
       // or an empty links panel. Surface the error state below with a retry.
@@ -109,7 +162,7 @@ export default function WorkspaceMembersTab() {
 
   if (error) return (
     <SettingsErrorState
-      title="Couldn't load your organization members"
+      title={alone ? "Couldn't load this page" : "Couldn't load your team's members"}
       onRetry={handleRetry}
       retrying={retrying}
     />
@@ -117,19 +170,36 @@ export default function WorkspaceMembersTab() {
 
   return (
     <div className="space-y-8">
-      {/* The tab's one orange: the primary CTA, portaled into the masthead. */}
-      {canManage && (
+      {/* The tab's one orange: the primary CTA, portaled into the masthead.
+          Alone, the same action is the empty state's button instead. */}
+      {canManage && !alone && (
         <MastheadAction>
-          <Button size="sm" onClick={() => setShowLinkModal(true)} variant="default" className="gap-1.5">
+          <Button size="sm" onClick={openInvite} variant="default" className="gap-1.5">
             <Plus weight="bold" className="h-4 w-4" /> Invite member
           </Button>
         </MastheadAction>
       )}
 
-      {/* Roster: one ruled panel (spec section 6). */}
+      {alone ? (
+        <SettingsPanel title="People">
+          <EmptyRow
+            icon={<UsersThree weight="regular" />}
+            title="Just you for now"
+            caption="Invite people to share your sites, billing and assistant connections."
+            action={
+              canManage ? (
+                <Button size="sm" onClick={openInvite} variant="default" className="gap-1.5">
+                  <Plus weight="bold" className="h-4 w-4" /> Invite people
+                </Button>
+              ) : undefined
+            }
+          />
+        </SettingsPanel>
+      ) : (
+      /* Roster: one ruled panel (spec section 6). */
       <SettingsPanel
         title="Members"
-        description={`${members.length} member${members.length !== 1 ? 's' : ''} in your organization`}
+        description={`${members.length} member${members.length !== 1 ? 's' : ''} in your team`}
       >
         {members.length === 0 ? (
           <EmptyRow
@@ -220,10 +290,21 @@ export default function WorkspaceMembersTab() {
           </PanelRows>
         )}
       </SettingsPanel>
+      )}
 
       {user?.org_id && (
         <>
           <InviteLinksSection orgId={user.org_id} links={inviteLinks} roles={roles} onRevoked={loadMembers} />
+          <NameTeamModal
+            orgId={user.org_id}
+            suggestedName={suggestTeamName(
+              user.display_name,
+              organizations?.find(o => o.organization_id === user.org_id)?.organization_name,
+            )}
+            open={showNameModal}
+            onCancel={() => setShowNameModal(false)}
+            onNamed={onTeamNamed}
+          />
           <CreateInviteLinkModal orgId={user.org_id} roles={roles} open={showLinkModal} onOpenChange={setShowLinkModal} onCreated={loadMembers} />
         </>
       )}
@@ -232,7 +313,7 @@ export default function WorkspaceMembersTab() {
         open={confirmRemove !== null}
         onOpenChange={(open) => { if (!open) setConfirmRemove(null) }}
         title="Remove member"
-        description={confirmRemove ? `Remove ${confirmRemove.email} from the organization? They will lose access to all workspace resources.` : ''}
+        description={confirmRemove ? `Remove ${confirmRemove.email} from the team? They will lose access to all of its sites and settings.` : ''}
         confirmLabel="Remove"
         variant="danger"
         onConfirm={doRemove}
