@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { InvalidCredentialsError } from '@ciphera-net/tessera'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
 const enrolMock = vi.hoisted(() => vi.fn())
@@ -115,6 +116,18 @@ describe('RecoveryEnrolModal', () => {
     expect(await screen.findByText(/didn’t match/)).toBeInTheDocument()
     expect(screen.queryByText(/session expired/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/sign in again/i)).not.toBeInTheDocument()
+  })
+
+  // PULSE-61: the SDK rejects a wrong password in the browser, with no status.
+  it.each([
+    ['the SDK class', () => new InvalidCredentialsError()],
+    ['a second SDK copy (name only)', () => Object.assign(new Error('tessera: invalid credentials'), { name: 'InvalidCredentialsError' })],
+  ])('a wrong password rejected by the SDK (%s) reads as a mismatch, not SDK text', async (_n, make) => {
+    enrolMock.mockRejectedValue(make())
+    render(<Harness />)
+    await fillAndSubmit()
+    expect(await screen.findByText(/didn’t match/)).toBeInTheDocument()
+    expect(screen.queryByText(/tessera/i)).not.toBeInTheDocument()
   })
 
   it('keeps the dialog open on failure so the user can correct and retry', async () => {

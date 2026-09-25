@@ -42,6 +42,7 @@
 import { useCallback, useState } from 'react'
 import { Button, Input } from '@ciphera-net/facet'
 import { ApiError } from '@/lib/api/client'
+import { isInvalidCredentials } from '@/lib/auth/tessera/errors'
 import {
   beginPasskeyEnrol,
   completePasskeyEnrol,
@@ -79,6 +80,11 @@ function enrolErrorMessage(err: unknown): string {
   // cannot do this yet — use Touch ID instead", and it is checked FIRST because
   // it is the most specific thing we will ever be able to say.
   if (err instanceof PasskeyPrfUnsupportedError) return err.message
+  // A wrong password is rejected in the browser, with no HTTP status, so the
+  // 401 branch below never sees it (PULSE-61).
+  if (isInvalidCredentials(err)) {
+    return 'That email or password didn\u2019t match. Nothing was saved — please try again.'
+  }
   if (err instanceof ApiError) {
     // 0 is this client's own code for "the request never completed".
     if (err.status === 0) {
