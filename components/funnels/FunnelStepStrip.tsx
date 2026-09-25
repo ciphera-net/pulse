@@ -66,6 +66,8 @@ interface FunnelStepStripProps {
    *  otherwise only carry ids and range — a step change would go stale for a
    *  poll cycle). */
   editEpoch?: number
+  /** Sent instead of the dates when the SERVER resolves the view (All time). */
+  apiPeriod?: string
 }
 
 function pathGlyph(path: string) {
@@ -154,6 +156,7 @@ export function FunnelStepStrip({
   dateRange,
   filters,
   editEpoch,
+  apiPeriod,
 }: FunnelStepStripProps) {
   const [dimension, setDimension] = useState('device')
   const step = steps[selectedStep - 1]
@@ -173,6 +176,7 @@ export function FunnelStepStrip({
     dateRange.end,
     filters,
     editEpoch,
+    apiPeriod,
   )
 
   if (!step) return null

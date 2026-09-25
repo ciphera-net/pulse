@@ -7,6 +7,7 @@ import {
   getLast24HoursRange,
   getLast1HourRange,
   getLast30MinutesRange,
+  getLastMinutesRange,
   getLast6HoursRange,
   getQuarterToDateRange,
   getLastWeekRange,
@@ -15,6 +16,7 @@ import {
   getLastYearRange,
   formatDate,
 } from '@/lib/utils/dateRanges'
+import { DASHBOARD_REALTIME_MINUTES as REALTIME_MINUTES } from '@/lib/dashboard/realtimeRange'
 
 // ---------------------------------------------------------------------------
 // Shared URL period grammar for date-ranged pages (journeys, funnels).
@@ -23,22 +25,19 @@ import {
 // ---------------------------------------------------------------------------
 
 export type Period =
-  // 'realtime' is the dashboard's LIVE MODE, not a window length: picking it puts
-  // the whole page on a rolling last-30-minutes window that a WebSocket refreshes
-  // as visitors arrive. It is a real URL period so a live view is shareable and
-  // survives a refresh, and it is deliberately NOT in PERIOD_PRESETS — only the
-  // site dashboard declares it, via extraPresets.
-  //
-  // ⚠️ Distinct from the 'Real-time' PRESET GROUP that already holds '1h'/'24h'.
-  // Those are genuine now-relative windows but they are polled on the ordinary
-  // 60s cadence; they are not a live mode, and the names are close enough to be
-  // worth saying so here.
+  // 'realtime' is a LIVE MODE, not a window length: entering it (from the orb, on the
+  // dashboard and Visitors) puts the whole page on a rolling last-5-minutes window that
+  // a WebSocket refreshes as visitors arrive. It is a real URL period so a live view is
+  // shareable and survives a refresh, and it is deliberately NOT a menu row — the orb is
+  // the only way in (owner decision 25-09-2026).
   | 'realtime'
-  // '30m' and '6h' join '1h'/'24h' as first-class URL periods so the Visitors
-  // page's live windows are shareable and survive a refresh like every other
-  // preset. They are NOT in PERIOD_PRESETS — only a page that declares them in
-  // extraPresets shows them in its menu — but they must be in this grammar, or
-  // the picker double-writes period+range and the preset lands as ?period=custom.
+  // 'all' is "All time": the page's whole data window, resolved by the SERVER
+  // (period=all) and exempt from the 366-day cap. See PERIOD_TO_API.
+  | 'all'
+  // Everything from here to 'custom' that is not one of the twelve rows ('30m', '1h',
+  // '6h', '24h', '28', '6m', '16m', 'week', 'qtd', 'last-week', 'last-quarter') was a
+  // menu row once and is still GRAMMAR, so an old link opens — the trigger shows its
+  // dates, never the word "Custom" (D2).
   | '30m'
   | '1h'
   | '6h'
@@ -72,6 +71,7 @@ export const DEFAULT_PERIOD: Period = '30'
 // vocabulary from this grammar (minus the page's declared exclusions).
 export const PERIODS: ReadonlySet<Period> = new Set([
   'realtime',
+  'all',
   '30m',
   '1h',
   '6h',
@@ -126,11 +126,19 @@ export function isValidDateString(s: string | null): s is string {
  */
 export function periodToDateRange(period: Period, now: Date = new Date()): { start: string; end: string } {
   switch (period) {
-    // 'realtime' is a live MODE, not a window length. It still resolves to the
-    // last 30 minutes so a caller that insists on dates gets something true,
-    // but the dashboard fetches it as `minutes=` — see lib/dashboard/realtimeRange.
+    // 'realtime' is a live MODE, not a window length. It still resolves to the days
+    // its rolling window touches, so a caller that insists on dates gets something
+    // true, but every page fetches it as `minutes=` — see lib/dashboard/realtimeRange.
     case 'realtime':
-      return getLast30MinutesRange(now)
+      return getLastMinutesRange(REALTIME_MINUTES, now)
+    // "All time" with no data window is today — the same answer the server gives a
+    // surface with no data (pulse-backend allTimeBounds). Wherever a window exists the
+    // view switcher resolves All time from it instead (lib/view/view.ts), and the fetch
+    // sends period=all for the server to resolve.
+    case 'all': {
+      const today = formatDate(now)
+      return { start: today, end: today }
+    }
     case '30m':
       return getLast30MinutesRange(now)
     case '1h':
@@ -229,6 +237,9 @@ export function previousDateRange(range: {
 // * is validated where it is chosen, not by preset identity.
 const PERIOD_MAX_DAYS: Record<Period, number> = {
   realtime: 1,
+  // All time is resolved and bounded by the SERVER (its data window), so no client
+  // ceiling applies to it — that exemption is the whole reason it travels as a token.
+  all: Number.POSITIVE_INFINITY,
   '30m': 1,
   '1h': 1,
   '6h': 1,

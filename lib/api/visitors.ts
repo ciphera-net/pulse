@@ -161,12 +161,20 @@ export interface VisitorRange {
   startDate?: string
   endDate?: string
   minutes?: number | null
+  /**
+   * `all` — All time, resolved by the SERVER to the visitors data window (its floor is
+   * the identity epoch) and exempt from the 366-day cap only as a token. Sent INSTEAD of
+   * the dates (lib/api/rangeQuery), so there is no question which one was answered.
+   */
+  period?: 'all'
 }
 
 function rangeQuery(range: VisitorRange, extra?: Record<string, string | number | undefined>): string {
   const params = new URLSearchParams()
   if (range.minutes != null) {
     params.append('minutes', String(range.minutes))
+  } else if (range.period) {
+    params.append('period', range.period)
   } else {
     if (range.startDate) params.append('start_date', range.startDate)
     if (range.endDate) params.append('end_date', range.endDate)

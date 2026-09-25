@@ -3,13 +3,12 @@
 import { useEffect, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 
-import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
-import { fetchableRange } from '@/lib/dashboard/resolveRange'
-import { presetUtcRange } from '@/components/uptime/uptimeMetrics'
+import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
+import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
 import { CloudArrowUp } from '@phosphor-icons/react'
 import { useCan } from '@/lib/auth/permissions'
 import { InstrumentOffState } from '@/components/ui/InstrumentOffState'
-import { useSite, useBunnyStatus, useBunnyOverview, useBunnyDailyStats, useBunnyRegions } from '@/lib/swr/dashboard'
+import { useSite, useBunnyStatus, useBunnyOverview, useBunnyDailyStats, useBunnyRegions, useDataWindow } from '@/lib/swr/dashboard'
 
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { UpdatingChip } from '@/components/ui/UpdatingChip'
@@ -18,7 +17,7 @@ import { SyncStatusLine } from '@/components/integrations/SyncStatusLine'
 import { CDNSkeleton } from '@/components/skeletons'
 import { EdgeCard, OriginCard } from '@/components/cdn/CdnSplitInstrument'
 import { CdnLiveCard } from '@/components/cdn/CdnLiveCard'
-import { toCdnSeries, statusMix, cdnDayLabel, CDN_PICKER_PRESETS } from '@/components/cdn/cdnMetrics'
+import { toCdnSeries, statusMix, cdnDayLabel } from '@/components/cdn/cdnMetrics'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 export default function CDNPage() {
@@ -27,24 +26,21 @@ export default function CDNPage() {
   const canManageIntegrations = useCan('integrations.manage')
 
   const { data: site } = useSite(siteId)
-  // `timezone` only gates readiness here — CDN's own fetch re-anchors to REAL
-  // UTC via presetUtcRange below regardless of what dateRange resolves to,
-  // since bunny_data days are UTC days, not site-local ones. But the hook's
-  // readiness contract is per-page, not per-preset: withholding it until the
-  // site is known keeps this page consistent with every other date-ranged
-  // one, and costs nothing since useSite is already an independent fetch.
-  const { period, dateRange, periodReady, setPeriod, shiftPeriod, siteNow, pickerProps } = useUrlDateRange({
-    pageKey: 'cdn',
-    extraPresets: CDN_PICKER_PRESETS,
-    timezone: site?.timezone,
+  // * bunny_data days are UTC days (Bunny's chart convention, verified live), so this
+  // * page's view runs on the UTC WALL CLOCK: every row resolves in UTC days, the data
+  // * window is in UTC days (pulse-backend), and the calendar offers UTC days, as the
+  // * page labels them. Anchored to the site's clock instead, a site west of UTC would
+  // * silently drop the newest day — which is what the old presetUtcRange re-anchor was
+  // * compensating for, one layer later.
+  const dataWindow = useDataWindow(siteId, 'cdn')
+  const { period, dateRange, periodReady, picker } = useUrlDateRange({
+    surface: 'cdn',
+    window: dataWindow,
+    timezone: 'UTC',
+    retentionMonths: site?.data_retention_months,
   })
-  // * bunny_data days are UTC days (Bunny's chart convention, verified live).
-  // * Preset windows anchor to the current UTC day — west of UTC, a local
-  // * anchor would silently drop the newest day. An explicitly picked custom
-  // * range passes through: the chosen calendar day IS the UTC day, as labeled.
-  // Gate BEFORE the UTC re-anchor: presetUtcRange of a placeholder range is
-  // still a placeholder range, just in a different frame.
-  const effectiveRange = fetchableRange(periodReady, period === 'custom' ? dateRange : presetUtcRange(dateRange))
+  const effectiveRange = fetchableRange(periodReady, dateRange)
+  const allPeriod = serverResolvedPeriod(periodReady, period)
 
   const { data: bunnyStatus, error: bunnyStatusError, mutate: retryBunnyStatus } = useBunnyStatus(siteId)
   const connected = !!bunnyStatus?.connected
@@ -53,19 +49,19 @@ export default function CDNPage() {
     isLoading: overviewLoading,
     isValidating: overviewValidating,
     mutate: mutateOverview,
-  } = useBunnyOverview(connected ? siteId : '', effectiveRange.start, effectiveRange.end)
+  } = useBunnyOverview(connected ? siteId : '', effectiveRange.start, effectiveRange.end, allPeriod)
   const {
     data: dailyStats,
     isValidating: dailyValidating,
     error: dailyError,
     mutate: mutateDaily,
-  } = useBunnyDailyStats(connected ? siteId : '', effectiveRange.start, effectiveRange.end)
+  } = useBunnyDailyStats(connected ? siteId : '', effectiveRange.start, effectiveRange.end, allPeriod)
   const {
     data: regionsData,
     isValidating: regionsValidating,
     error: regionsError,
     mutate: mutateRegions,
-  } = useBunnyRegions(connected ? siteId : '', effectiveRange.start, effectiveRange.end)
+  } = useBunnyRegions(connected ? siteId : '', effectiveRange.start, effectiveRange.end, allPeriod)
 
   const series = useMemo(() => toCdnSeries(dailyStats?.daily_stats ?? []), [dailyStats])
   const mix = useMemo(() => statusMix(series), [series])
@@ -158,16 +154,7 @@ export default function CDNPage() {
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <UpdatingChip active={connected && anyValidating && !!overview} />
-          <DateRangePicker
-            period={period}
-            dateRange={dateRange}
-            onPeriodChange={(p) => setPeriod(p as Period)}
-            onDateRangeChange={(range) => setPeriod('custom', range)}
-            onShift={shiftPeriod}
-            align="right"
-            now={siteNow}
-            {...pickerProps}
-          />
+          <DateRangePicker {...picker} />
         </div>
       </div>
 

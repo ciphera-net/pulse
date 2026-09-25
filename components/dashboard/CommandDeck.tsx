@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip } from '@/components/ui/area-chart'
 import { curveLinear } from 'd3-shape'
 import { PERIOD_ENDS_NOW } from '@/lib/constants/periods'
+import { REALTIME_EMPTY_LINE } from '@/lib/dashboard/realtimeRange'
 import { Card } from '@ciphera-net/facet'
 import { formatNumber, formatDuration } from '@/lib/utils/format'
 import { DownloadIcon } from '@ciphera-net/facet'
@@ -50,9 +51,15 @@ interface CommandDeckProps {
   // URL can carry it.
   metric: MetricType
   onMetricChange: (metric: MetricType) => void
-  interval: 'minute' | 'hour' | 'day' | 'month'
+  /**
+   * The bucket the series is IN — the server's echo when it has one ("All time" past a
+   * year arrives in weeks or months, picked by the server), else the one requested.
+   */
+  interval: 'minute' | 'hour' | 'day' | 'week' | 'month'
   dateRange: { start: string; end: string }
   period?: string
+  /** Realtime mode: an empty window says so in one line (REALTIME_EMPTY_LINE). */
+  live?: boolean
   multiDayInterval: 'hour' | 'day'
   setMultiDayInterval: (interval: 'hour' | 'day') => void
   onExport?: () => void
@@ -127,6 +134,7 @@ export default function CommandDeck({
   onMetricChange,
   interval,
   intervalPicker = true,
+  live = false,
   dateRange,
   period,
   multiDayInterval,
@@ -294,7 +302,11 @@ export default function CommandDeck({
               same 500. Mobile keeps its smaller floor. fillParent (not
               aspectRatio) lets the plot use all of it. */}
           <div className="min-h-[288px] flex-1 px-2.5 pb-2 pt-1">
-            {!hasData ? (
+            {live && !hasAnyNonZero ? (
+              <div className="flex h-full min-h-72 flex-col items-center justify-center">
+                <EmptyState icon={<ChartLine />} title={REALTIME_EMPTY_LINE} className="py-0" />
+              </div>
+            ) : !hasData ? (
               <div className="flex h-full min-h-72 flex-col items-center justify-center">
                 <EmptyState
                   icon={<ChartLine />}
@@ -373,6 +385,12 @@ export default function CommandDeck({
                   title={(point) => {
                     const dateObj = point.dateObj instanceof Date ? point.dateObj : new Date(point.dateObj as string || Date.now())
                     if (interval === 'minute') return formatTimeUTC(dateObj)
+                    // Server-picked buckets for "All time" past a year: name the bucket,
+                    // not one day of it.
+                    if (interval === 'week') return `Week of ${formatDateFullUTC(dateObj)}`
+                    if (interval === 'month') {
+                      return dateObj.toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+                    }
                     if (interval === 'hour') {
                       // Boundary to boundary (owner ruling 02-09-2026:
                       // “19:00 – 20:00”, not the reference's literal :59).

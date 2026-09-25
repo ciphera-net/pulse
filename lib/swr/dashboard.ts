@@ -1,7 +1,10 @@
 // * SWR configuration for dashboard data fetching
 // * Implements stale-while-revalidate pattern for efficient data updates
 
+import { useEffect } from 'react'
 import useSWR from 'swr'
+import { getDataWindow, type DataWindowResponse } from '@/lib/api/dataWindow'
+import type { Surface, WindowState } from '@/lib/view/view'
 import { getBingStatus, getBingOverview, getBingDailyTotals, type BingStatus, type BingOverview, type BingDailyRow, type BingDateBasis } from '@/lib/api/bing'
 import { useAuth } from '@/lib/auth/context'
 import {
@@ -13,6 +16,7 @@ import {
   type VisitorProfileResponse,
   type VisitsResponse,
   type VisitEventsResponse,
+  type VisitorRange,
 } from '@/lib/api/visitors'
 import { toast } from '@ciphera-net/facet'
 import {
@@ -26,7 +30,6 @@ import {
   getDashboardGoals,
   getCampaigns,
   getRealtime,
-  getRealtimePages,
   getStats,
   getDailyStats,
   getTopPages,
@@ -43,7 +46,6 @@ import {
   getScreenResolutions,
   getTimezones,
   getEventPropertyValues,
-  type RealtimePageVisitors,
   type EventPropertyValue,
 } from '@/lib/api/stats'
 import {
@@ -106,15 +108,15 @@ const fetchers = {
   realtime: (siteId: string) => getRealtime(siteId),
   campaigns: (siteId: string, start: string, end: string, limit: number) =>
     getCampaigns(siteId, start, end, limit),
-  journeyTransitions: (siteId: string, start: string, end: string, depth?: number, minSessions?: number, entryPath?: string, filters?: string) =>
-    getJourneyTransitions(siteId, start, end, { depth, minSessions, entryPath, filters }),
-  journeyEntryPoints: (siteId: string, start: string, end: string, filters?: string) =>
-    getJourneyEntryPoints(siteId, start, end, filters),
+  journeyTransitions: (siteId: string, start: string, end: string, depth?: number, minSessions?: number, entryPath?: string, filters?: string, period?: string) =>
+    getJourneyTransitions(siteId, start, end, { depth, minSessions, entryPath, filters, period }),
+  journeyEntryPoints: (siteId: string, start: string, end: string, filters?: string, period?: string) =>
+    getJourneyEntryPoints(siteId, start, end, filters, period),
   funnels: (siteId: string) => listFunnels(siteId),
-  uptimeStatus: (siteId: string, start?: string, end?: string) => getUptimeStatus(siteId, start, end),
-  uptimeIncidents: (siteId: string, start: string, end: string) => getUptimeIncidents(siteId, start, end),
-  uptimeResponseTimes: (siteId: string, monitorId: string, start: string, end: string) =>
-    getUptimeResponseTimes(siteId, monitorId, start, end),
+  uptimeStatus: (siteId: string, start?: string, end?: string, period?: string) => getUptimeStatus(siteId, start, end, period),
+  uptimeIncidents: (siteId: string, start: string, end: string, period?: string) => getUptimeIncidents(siteId, start, end, 200, period),
+  uptimeResponseTimes: (siteId: string, monitorId: string, start: string, end: string, period?: string) =>
+    getUptimeResponseTimes(siteId, monitorId, start, end, period),
   uptimeChecks: (siteId: string, monitorId: string, limit: number) => getMonitorChecks(siteId, monitorId, limit),
   performanceConfig: (siteId: string) => getPerformanceConfig(siteId),
   performanceLatest: (siteId: string) => getPerformanceLatest(siteId),
@@ -131,9 +133,9 @@ const fetchers = {
   gscTopDevices: (siteId: string, start: string, end: string) => getGSCTopDevices(siteId, start, end),
   gscOpportunities: (siteId: string, start: string, end: string, limit: number) => getGSCOpportunities(siteId, start, end, limit),
   bunnyStatus: (siteId: string) => getBunnyStatus(siteId),
-  bunnyOverview: (siteId: string, start: string, end: string) => getBunnyOverview(siteId, start, end),
-  bunnyDailyStats: (siteId: string, start: string, end: string) => getBunnyDailyStats(siteId, start, end),
-  bunnyRegions: (siteId: string, start: string, end: string) => getBunnyRegions(siteId, start, end),
+  bunnyOverview: (siteId: string, start: string, end: string, period?: string) => getBunnyOverview(siteId, start, end, period),
+  bunnyDailyStats: (siteId: string, start: string, end: string, period?: string) => getBunnyDailyStats(siteId, start, end, period),
+  bunnyRegions: (siteId: string, start: string, end: string, period?: string) => getBunnyRegions(siteId, start, end, period),
   bunnyLive: (siteId: string) => getBunnyLive(siteId),
   subscription: () => getSubscription(),
 }
@@ -163,6 +165,36 @@ const dashboardSWRConfig = {
     if (retryCount >= 3) return
     setTimeout(() => revalidate({ retryCount }), 5000 * Math.pow(2, retryCount))
   },
+}
+
+/**
+ * One page's data window — what the view switcher needs BEFORE anything else is
+ * fetched. Three states, each meaningful (lib/view/view.ts WindowState):
+ *  - `undefined` while the request is in flight: periodReady waits on it, so no
+ *    date-ranged request is made against a view that may be about to change;
+ *  - `null` when the surface has no data OR the request failed: the switcher greys
+ *    nothing and the page loads — a failed secondary request must never hold the whole
+ *    page on a loading state. The failure is logged, never swallowed silently;
+ *  - the window.
+ * One request per site serves every surface (the key has no surface in it).
+ */
+export function useDataWindow(siteId: string, surface: Surface): WindowState {
+  const { data, error } = useSWR<DataWindowResponse>(
+    siteId ? ['dataWindow', siteId] : null,
+    () => getDataWindow(siteId),
+    {
+      ...dashboardSWRConfig,
+      // The window moves at most once a day per surface (a sync landing, midnight).
+      refreshInterval: 5 * 60 * 1000,
+      dedupingInterval: 60 * 1000,
+    },
+  )
+  useEffect(() => {
+    if (error) console.error('data window request failed; the view switcher greys nothing', error)
+  }, [error])
+  if (error) return null
+  if (!data) return undefined
+  return data.surfaces[surface] ?? null
 }
 
 // * Hook for site data (loads once, refreshes rarely)
@@ -375,19 +407,6 @@ export function useRealtime(siteId: string, refreshInterval: number = 60_000) {
   )
 }
 
-// * Hook for per-page real-time visitor counts (refreshes every 15s)
-export function useRealtimePages(siteId: string) {
-  return useSWR<RealtimePageVisitors[]>(
-    siteId ? ['realtimePages', siteId] : null,
-    () => getRealtimePages(siteId),
-    {
-      ...dashboardSWRConfig,
-      refreshInterval: 15_000,
-      revalidateOnFocus: true,
-    }
-  )
-}
-
 // * Hook for focused dashboard overview data (Fix 4.2: Efficient Data Transfer)
 export function useDashboardOverview(siteId: string, start: string, end: string, interval?: string, filters?: string) {
   return useSWR<DashboardOverviewData>(
@@ -522,10 +541,10 @@ export function useCampaigns(siteId: string, start: string, end: string, limit =
 }
 
 // * Hook for journey flow transitions (Sankey diagram data)
-export function useJourneyTransitions(siteId: string, start: string, end: string, depth?: number, minSessions?: number, entryPath?: string, filters?: string) {
+export function useJourneyTransitions(siteId: string, start: string, end: string, depth?: number, minSessions?: number, entryPath?: string, filters?: string, period?: string) {
   return useSWR<TransitionsResponse>(
-    siteId && start && end ? ['journeyTransitions', siteId, start, end, depth, minSessions, entryPath, filters] : null,
-    () => fetchers.journeyTransitions(siteId, start, end, depth, minSessions, entryPath, filters),
+    siteId && start && end ? ['journeyTransitions', siteId, period ?? '', start, end, depth, minSessions, entryPath, filters] : null,
+    () => fetchers.journeyTransitions(siteId, start, end, depth, minSessions, entryPath, filters, period),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
@@ -538,10 +557,10 @@ export function useJourneyTransitions(siteId: string, start: string, end: string
 }
 
 // * Hook for journey entry points (refreshes less frequently)
-export function useJourneyEntryPoints(siteId: string, start: string, end: string, filters?: string) {
+export function useJourneyEntryPoints(siteId: string, start: string, end: string, filters?: string, period?: string) {
   return useSWR<EntryPoint[]>(
-    siteId && start && end ? ['journeyEntryPoints', siteId, start, end, filters] : null,
-    () => fetchers.journeyEntryPoints(siteId, start, end, filters),
+    siteId && start && end ? ['journeyEntryPoints', siteId, period ?? '', start, end, filters] : null,
+    () => fetchers.journeyEntryPoints(siteId, start, end, filters, period),
     {
       ...dashboardSWRConfig,
       refreshInterval: 5 * 60 * 1000,
@@ -581,10 +600,10 @@ export function useFunnelDetail(siteId: string, funnelId: string) {
 // * Hook for the batched list-stats endpoint: every funnel's stats in ONE
 // * request. The list page calls this twice (current + previous range)
 // * instead of two requests per funnel per poll.
-export function useFunnelListStats(siteId: string, startDate: string, endDate: string, filters?: string) {
+export function useFunnelListStats(siteId: string, startDate: string, endDate: string, filters?: string, period?: string) {
   return useSWR<Record<string, FunnelStats>>(
-    siteId && startDate && endDate ? ['funnelListStats', siteId, `${startDate}-${endDate}`, filters] : null,
-    () => getAllFunnelStats(siteId, startDate, endDate, filters),
+    siteId && startDate && endDate ? ['funnelListStats', siteId, period ?? '', `${startDate}-${endDate}`, filters] : null,
+    () => getAllFunnelStats(siteId, startDate, endDate, filters, period),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60_000,
@@ -595,10 +614,10 @@ export function useFunnelListStats(siteId: string, startDate: string, endDate: s
 }
 
 // * Hook for funnel step-level stats
-export function useFunnelStats(siteId: string, funnelId: string, startDate: string, endDate: string, filters?: string) {
+export function useFunnelStats(siteId: string, funnelId: string, startDate: string, endDate: string, filters?: string, period?: string) {
   return useSWR<FunnelStats>(
-    siteId && funnelId && startDate && endDate ? ['funnelStats', siteId, funnelId, `${startDate}-${endDate}`, filters] : null,
-    () => getFunnelStats(siteId, funnelId, startDate, endDate, filters),
+    siteId && funnelId && startDate && endDate ? ['funnelStats', siteId, funnelId, period ?? '', `${startDate}-${endDate}`, filters] : null,
+    () => getFunnelStats(siteId, funnelId, startDate, endDate, filters, period),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60_000,
@@ -612,10 +631,10 @@ export function useFunnelStats(siteId: string, funnelId: string, startDate: stri
 // * detail page after an edit so the daily series refetches immediately — a
 // * step change would otherwise keep showing pre-edit numbers for up to a
 // * poll cycle (the key carries only ids and range).
-export function useFunnelTrends(siteId: string, funnelId: string, startDate: string, endDate: string, filters?: string, editEpoch?: number) {
+export function useFunnelTrends(siteId: string, funnelId: string, startDate: string, endDate: string, filters?: string, editEpoch?: number, period?: string) {
   return useSWR<FunnelTrends>(
-    siteId && funnelId && startDate && endDate ? ['funnelTrends', siteId, funnelId, `${startDate}-${endDate}`, filters, editEpoch ?? 0] : null,
-    () => getFunnelTrends(siteId, funnelId, startDate, endDate, 'day', filters),
+    siteId && funnelId && startDate && endDate ? ['funnelTrends', siteId, funnelId, period ?? '', `${startDate}-${endDate}`, filters, editEpoch ?? 0] : null,
+    () => getFunnelTrends(siteId, funnelId, startDate, endDate, 'day', filters, period),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60_000,
@@ -636,12 +655,13 @@ export function useFunnelBreakdown(
   endDate: string,
   filters?: string,
   editEpoch?: number,
+  period?: string,
 ) {
   return useSWR<FunnelBreakdown>(
     siteId && funnelId && step >= 0 && dimension && startDate && endDate
-      ? ['funnelBreakdown', siteId, funnelId, step, dimension, `${startDate}-${endDate}`, filters, editEpoch ?? 0]
+      ? ['funnelBreakdown', siteId, funnelId, step, dimension, period ?? '', `${startDate}-${endDate}`, filters, editEpoch ?? 0]
       : null,
-    () => getFunnelBreakdown(siteId, funnelId, step, dimension, startDate, endDate, filters),
+    () => getFunnelBreakdown(siteId, funnelId, step, dimension, startDate, endDate, filters, period),
     {
       ...dashboardSWRConfig,
       dedupingInterval: 30_000,
@@ -652,13 +672,13 @@ export function useFunnelBreakdown(
 
 // * Hook for uptime status (refreshes every 30s to match original polling).
 // * start/end are UTC calendar days; omitted = the API's 90-day default.
-export function useUptimeStatus(siteId: string, start?: string, end?: string) {
+export function useUptimeStatus(siteId: string, start?: string, end?: string, period?: string) {
   return useSWR<UptimeStatusResponse>(
     // 🔴 Requires the dates. This keyed on siteId ALONE, so a page withholding
     // its range while the period resolved still fired — the one gate the other
     // hooks give for free by null-keying on an empty date.
-    siteId && start && end ? ['uptimeStatus', siteId, start, end] : null,
-    () => fetchers.uptimeStatus(siteId, start, end),
+    siteId && start && end ? ['uptimeStatus', siteId, period ?? '', start, end] : null,
+    () => fetchers.uptimeStatus(siteId, start, end, period),
     {
       ...dashboardSWRConfig,
       refreshInterval: 30 * 1000,
@@ -669,10 +689,10 @@ export function useUptimeStatus(siteId: string, start?: string, end?: string) {
 }
 
 // * Hook for uptime incident episodes overlapping the range
-export function useUptimeIncidents(siteId: string, start: string, end: string) {
+export function useUptimeIncidents(siteId: string, start: string, end: string, period?: string) {
   return useSWR<UptimeIncidentsResponse>(
-    siteId && start && end ? ['uptimeIncidents', siteId, start, end] : null,
-    () => fetchers.uptimeIncidents(siteId, start, end),
+    siteId && start && end ? ['uptimeIncidents', siteId, period ?? '', start, end] : null,
+    () => fetchers.uptimeIncidents(siteId, start, end, period),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
@@ -684,10 +704,10 @@ export function useUptimeIncidents(siteId: string, start: string, end: string) {
 
 // * Hook for the server-bucketed latency series (the server owns hour/day
 // * granularity and echoes it — never re-bucket client-side)
-export function useUptimeResponseTimes(siteId: string, monitorId: string | undefined, start: string, end: string) {
+export function useUptimeResponseTimes(siteId: string, monitorId: string | undefined, start: string, end: string, period?: string) {
   return useSWR<UptimeResponseTimesResponse>(
-    siteId && monitorId ? ['uptimeResponseTimes', siteId, monitorId, start, end] : null,
-    () => fetchers.uptimeResponseTimes(siteId, monitorId as string, start, end),
+    siteId && monitorId ? ['uptimeResponseTimes', siteId, monitorId, period ?? '', start, end] : null,
+    () => fetchers.uptimeResponseTimes(siteId, monitorId as string, start, end, period),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
@@ -855,19 +875,19 @@ export function useBunnyStatus(siteId: string) {
 }
 
 // * Hook for BunnyCDN overview metrics (bandwidth, requests, cache hit rate)
-export function useBunnyOverview(siteId: string, startDate: string, endDate: string) {
+export function useBunnyOverview(siteId: string, startDate: string, endDate: string, period?: string) {
   return useSWR<BunnyOverview>(
-    siteId && startDate && endDate ? ['bunnyOverview', siteId, startDate, endDate] : null,
-    () => fetchers.bunnyOverview(siteId, startDate, endDate),
+    siteId && startDate && endDate ? ['bunnyOverview', siteId, period ?? '', startDate, endDate] : null,
+    () => fetchers.bunnyOverview(siteId, startDate, endDate, period),
     { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
 // * Hook for BunnyCDN daily stats (bandwidth & requests per day)
-export function useBunnyDailyStats(siteId: string, startDate: string, endDate: string) {
+export function useBunnyDailyStats(siteId: string, startDate: string, endDate: string, period?: string) {
   return useSWR<{ daily_stats: BunnyDailyRow[] }>(
-    siteId && startDate && endDate ? ['bunnyDailyStats', siteId, startDate, endDate] : null,
-    () => fetchers.bunnyDailyStats(siteId, startDate, endDate),
+    siteId && startDate && endDate ? ['bunnyDailyStats', siteId, period ?? '', startDate, endDate] : null,
+    () => fetchers.bunnyDailyStats(siteId, startDate, endDate, period),
     { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
@@ -876,10 +896,10 @@ export function useBunnyDailyStats(siteId: string, startDate: string, endDate: s
 // * statistics API at request time (there is no stored geo table any more —
 // * migration 137), so a slightly longer dedupe keeps a tab-refocus from
 // * re-spending the customer's API budget inside the backend's own 2-min cache.
-export function useBunnyRegions(siteId: string, startDate: string, endDate: string) {
+export function useBunnyRegions(siteId: string, startDate: string, endDate: string, period?: string) {
   return useSWR<BunnyRegionsResponse>(
-    siteId && startDate && endDate ? ['bunnyRegions', siteId, startDate, endDate] : null,
-    () => fetchers.bunnyRegions(siteId, startDate, endDate),
+    siteId && startDate && endDate ? ['bunnyRegions', siteId, period ?? '', startDate, endDate] : null,
+    () => fetchers.bunnyRegions(siteId, startDate, endDate, period),
     { ...dashboardSWRConfig, keepPreviousData: true, dedupingInterval: 60 * 1000 }
   )
 }
@@ -1113,15 +1133,24 @@ export function usePagePreview(siteId: string, member = true) {
 // key that could not tell them apart would serve a live view from a cached
 // historical one.
 
+/**
+ * A Visitors range is complete when it names a window one of three ways: rolling
+ * minutes (realtime), the `all` token, or both dates. The key carries all three, so the
+ * same dates under a different token can never share a cache entry.
+ */
+function visitorRangeReady(range: VisitorRange): boolean {
+  return range.minutes != null || range.period != null || Boolean(range.startDate && range.endDate)
+}
+
 export function useVisitors(
   siteId: string,
-  range: { startDate?: string; endDate?: string; minutes?: number | null },
+  range: VisitorRange,
   opts: { sort: string; order: 'asc' | 'desc'; page: number; pageSize: number; enabled?: boolean },
 ) {
-  const { startDate, endDate, minutes } = range
-  const ready = opts.enabled !== false && Boolean(siteId) && (minutes != null || Boolean(startDate && endDate))
+  const { startDate, endDate, minutes, period } = range
+  const ready = opts.enabled !== false && Boolean(siteId) && visitorRangeReady(range)
   return useSWR<VisitorsResponse>(
-    ready ? ['visitors', siteId, startDate, endDate, minutes, opts.sort, opts.order, opts.page, opts.pageSize] : null,
+    ready ? ['visitors', siteId, startDate, endDate, minutes, period, opts.sort, opts.order, opts.page, opts.pageSize] : null,
     () => getVisitors(siteId, range, opts),
     {
       ...dashboardSWRConfig,
@@ -1138,12 +1167,12 @@ export function useVisitors(
 export function useVisitorProfile(
   siteId: string,
   key: string,
-  range: { startDate?: string; endDate?: string; minutes?: number | null },
+  range: VisitorRange,
 ) {
-  const { startDate, endDate, minutes } = range
-  const ready = Boolean(siteId && key) && (minutes != null || Boolean(startDate && endDate))
+  const { startDate, endDate, minutes, period } = range
+  const ready = Boolean(siteId && key) && visitorRangeReady(range)
   return useSWR<VisitorProfileResponse>(
-    ready ? ['visitorProfile', siteId, key, startDate, endDate, minutes] : null,
+    ready ? ['visitorProfile', siteId, key, startDate, endDate, minutes, period] : null,
     () => getVisitorProfile(siteId, key, range),
     { ...dashboardSWRConfig, refreshInterval: 60 * 1000, dedupingInterval: 10 * 1000, keepPreviousData: true },
   )
@@ -1152,14 +1181,14 @@ export function useVisitorProfile(
 export function useVisitorVisits(
   siteId: string,
   key: string,
-  range: { startDate?: string; endDate?: string; minutes?: number | null },
+  range: VisitorRange,
   page: number,
   pageSize: number,
 ) {
-  const { startDate, endDate, minutes } = range
-  const ready = Boolean(siteId && key) && (minutes != null || Boolean(startDate && endDate))
+  const { startDate, endDate, minutes, period } = range
+  const ready = Boolean(siteId && key) && visitorRangeReady(range)
   return useSWR<VisitsResponse>(
-    ready ? ['visitorVisits', siteId, key, startDate, endDate, minutes, page, pageSize] : null,
+    ready ? ['visitorVisits', siteId, key, startDate, endDate, minutes, period, page, pageSize] : null,
     () => getVisitorVisits(siteId, key, range, { page, pageSize }),
     { ...dashboardSWRConfig, refreshInterval: 60 * 1000, dedupingInterval: 10 * 1000, keepPreviousData: true },
   )
@@ -1172,13 +1201,13 @@ export function useVisitEvents(
   siteId: string,
   key: string,
   visitKey: string | null,
-  range: { startDate?: string; endDate?: string; minutes?: number | null },
+  range: VisitorRange,
   page: number,
 ) {
-  const { startDate, endDate, minutes } = range
-  const ready = Boolean(siteId && key && visitKey) && (minutes != null || Boolean(startDate && endDate))
+  const { startDate, endDate, minutes, period } = range
+  const ready = Boolean(siteId && key && visitKey) && visitorRangeReady(range)
   return useSWR<VisitEventsResponse>(
-    ready ? ['visitEvents', siteId, key, visitKey, startDate, endDate, minutes, page] : null,
+    ready ? ['visitEvents', siteId, key, visitKey, startDate, endDate, minutes, period, page] : null,
     () => getVisitEvents(siteId, key, visitKey as string, range, page),
     { ...dashboardSWRConfig, refreshInterval: 0, dedupingInterval: 30 * 1000, keepPreviousData: true },
   )

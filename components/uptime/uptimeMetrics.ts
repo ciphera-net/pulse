@@ -84,29 +84,9 @@ export function seriesUptimePct(series: UptimePoint[]): number | null {
 // * range's end to the BROWSER's today, and a site-anchored "yesterday" whose
 // * date equals the viewer's today (a viewer west of the site) was rewritten
 // * into the site's today. Measured on staging 19-09-2026 (verify-presets.mjs).
-// * presetUtcRange re-anchors a trailing preset to the current UTC day. Only
-// * the CDN page uses it (Bunny's stored days are
-// * UTC days until the Phase C hourly rebuild). The review finding it fixed
-// * is 13-08-2026's vanishing newest day, west of the anchor zone. Its input
-// * is site-anchored since 18-09-2026; the span is what it keeps.
-// *
-// * 🔑 18-09-2026: still matters — Bunny's UTC-day
-// * data has no relationship to the SITE's timezone at all, so re-deriving a
-// * genuine UTC "now" here (via getUTCFullYear/etc, which are timezone-
-// * invariant) is correct regardless of what `dateRange` arrives anchored to.
-// * `now` here is a real instant, never a site wall-clock stand-in — do not
-// * feed it a `siteWallClockNow(...)` value.
-export function presetUtcRange(dateRange: { start: string; end: string }, now = new Date()): { start: string; end: string } {
-  const spanDays = Math.max(
-    0,
-    Math.round((Date.parse(dateRange.end) - Date.parse(dateRange.start)) / 86_400_000),
-  )
-  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
-  const start = new Date(end.getTime() - spanDays * 86_400_000)
-  const fmt = (d: Date) =>
-    `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
-  return { start: fmt(start), end: fmt(end) }
-}
+// * presetUtcRange (the UTC re-anchor the CDN page used) is GONE too, 25-09-2026: the
+// * CDN page's view now runs on the UTC wall clock itself (useUrlDateRange timezone
+// * 'UTC'), so its ranges are UTC days at the source and there is nothing to re-anchor.
 
 // ─── Incident math ───────────────────────────────────────────────
 

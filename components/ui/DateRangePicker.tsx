@@ -1,187 +1,170 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useId } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { CaretLeft, CaretRight, CalendarBlank, Check } from '@phosphor-icons/react'
-import { PERIOD_PRESETS, PERIOD_GROUPS, findPreset, type PeriodPreset } from '@/lib/constants/periods'
-import { isUrlPeriod } from '@/lib/hooks/periodUrl'
+import { CUSTOM_RANGE_LABEL } from '@/lib/constants/periods'
+import type { DateSpan, RowState } from '@/lib/view/view'
+import type { Period } from '@/lib/hooks/periodUrl'
 import { buttonVariants } from '@ciphera-net/facet'
 import { cn } from '@/lib/utils'
 
-interface DateRangePickerProps {
-  period: string
-  dateRange: { start: string; end: string }
-  onPeriodChange: (period: string) => void
-  onDateRangeChange: (range: { start: string; end: string }) => void
+// ─── The view switcher (PULSE-20, owner decisions 25-09-2026) ────────────────
+//
+// ONE list, the same twelve rows on every page, no group headers, never scrolls; the
+// calendar appears only behind "Custom range…", with a way back. A row with no data is
+// GREYED with its reason (title, aria-describedby and the footnote) — never hidden, so
+// the menu is one menu. The closed button says where the range runs past the data
+// ("· since 26 Aug"), because that is where the range is read. The popover opens from
+// the trigger's right edge on every page. Built to the approved mocks
+// (Pulse/docs/data/25-09-2026-view-switcher-mocks/, direction A).
+//
+// The component decides nothing about data: useUrlDateRange (or the share page) hands
+// it the rows, the label and the footnote from lib/view/view.ts, so the menu and the
+// fetch come from one object and cannot drift.
+
+export interface DateRangePickerProps {
+  /** The closed button's label — the APPLIED view ("Last 7 days", "23 Sep"). */
+  label: string
+  /** The muted tail after the label ("since 26 Aug", "latest day"), or none. */
+  suffix?: string | null
+  /** The row that is ticked (the applied view), 'custom' for a custom range, or none. */
+  tick: string | null
+  /** The eleven named rows, in order, each available or greyed with its reason. */
+  rows: RowState[]
+  /** One muted line under the list — the greyed rows' reason, or a substitution. */
+  footnote?: string | null
+  onPick: (period: Period) => void
+  /** Absent: "Custom range…" is greyed with `customReason` (the share page). */
+  onCustom?: (range: DateSpan) => void
+  customReason?: string
+  /** Absent: no arrows (the share page). */
   onShift?: (direction: -1 | 1) => void
-  align?: 'left' | 'right'
-  // * Page-scoped presets (e.g. the Search page's GSC ranges) rendered as
-  // * their own group ABOVE the global ones, and resolved for the trigger
-  // * label + checkmark — without leaking into every other page's picker.
-  // * With `exclusive`, the global preset groups are NOT rendered at all —
-  // * for pages whose data source has its own vocabulary and where global
-  // * presets are dishonest (e.g. "Today" on a daily-only, 2-day-lagged
-  // * source). Custom and the calendar always remain; an inherited URL
-  // * period outside the list still resolves for the trigger label.
-  extraPresets?: { group: string; presets: PeriodPreset[]; exclusive?: boolean }
-  // * Preset keys this page cannot honestly serve (e.g. '1h'/'24h' on a
-  // * date-granular API, where "Last hour" would silently mean "today").
-  excludePresets?: string[]
-  // * Hide the Custom entry AND the calendar entirely. Used by the public share
-  // * dashboard, which is a public-scoped read: the backend serves only fixed
-  // * allowlisted windows there, so an arbitrary custom range is not just useless
-  // * but would 400 — and even a coerced custom pick would relabel the trigger
-  // * while the data stayed on the fallback window. Presets-only removes the
-  // * divergence at the source.
-  presetsOnly?: boolean
-  // * The earliest selectable date ('YYYY-MM-DD'). Days before it are rendered
-  // * disabled, exactly like future days already are — a floor and a ceiling are
-  // * the same affordance pointing opposite ways.
-  // *
-  // * The Visitors page floors at the identity-rebuild cutover: earlier days
-  // * hold no visitor identity at all, so offering them would let a customer
-  // * pick a range the page can only answer emptily or, worse, answer with
-  // * per-day keys wearing per-month labels.
-  minDate?: string
-  /**
-   * The SITE's wall clock (`useUrlDateRange`'s `siteNow`, or the browser
-   * clock for a caller with no site concept — e.g. the share/public
-   * dashboard before its payload has arrived). Drives the future-day
-   * cutoff and the calendar's initial month — a viewer whose calendar day
-   * differs from the site's must not be shown the WRONG days as "the
-   * future" or default to the wrong month on open. Every preset click also
-   * resolves against this instant, so a preset picked here matches what
-   * useUrlDateRange itself would resolve. Defaults to `new Date()` (the
-   * browser clock) only so a caller that has not been wired yet degrades
-   * to the pre-fix behaviour rather than failing outright.
-   */
-  now?: Date
-  /**
-   * One muted line under the calendar, visible only while the picker is open
-   * (owner pick "A", options round 19-09-2026): where the dashboard says that
-   * days follow the site's timezone. Named `daysCaption`, not `footnote`: the
-   * dashboard's phase-3 wiring guard forbids the substring `note=` in the page
-   * source, to keep the removed section notes from creeping back. Pages whose days are NOT the site's
-   * (CDN: Bunny's UTC days; Search: Google's) pass nothing and keep their own
-   * provenance labels.
-   */
-  daysCaption?: string
+  shiftBackDisabled?: boolean
+  shiftForwardDisabled?: boolean
+  calendar?: {
+    min?: string
+    max: string
+    maxDays: number
+    caption?: string
+    range: DateSpan
+  }
+  /** The page's wall clock — the calendar's initial month and its "today" ring. */
+  now: Date
 }
 
-function formatRangeDisplay(start: string, end: string): string {
-  const s = new Date(start + 'T00:00:00')
-  const e = new Date(end + 'T00:00:00')
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-  if (start === end) {
-    return `${months[s.getMonth()]} ${s.getDate()}, ${s.getFullYear()}`
-  }
-  if (s.getFullYear() === e.getFullYear() && s.getMonth() === e.getMonth()) {
-    return `${months[s.getMonth()]} ${s.getDate()} – ${e.getDate()}, ${e.getFullYear()}`
-  }
-  if (s.getFullYear() === e.getFullYear()) {
-    return `${months[s.getMonth()]} ${s.getDate()} – ${months[e.getMonth()]} ${e.getDate()}, ${e.getFullYear()}`
-  }
-  return `${months[s.getMonth()]} ${s.getDate()}, ${s.getFullYear()} – ${months[e.getMonth()]} ${e.getDate()}, ${e.getFullYear()}`
-}
+const ROW = 'flex items-center gap-2 w-full text-left px-3 py-1.5 text-sm transition-colors'
+const ROW_ON = `${ROW} text-foreground`
+const ROW_OFF = `${ROW} text-muted-foreground hover:text-foreground hover:bg-accent`
+// The calendar's own unavailable-day class — the dominant "not available" device inside
+// this exact control (the mocks asserted the greyed row paints the same colour).
+const ROW_GREYED = `${ROW} text-muted-foreground/25 cursor-not-allowed`
 
 function formatYMD(y: number, m: number, d: number): string {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 }
 
-function getDaysForMonth(year: number, month: number, todayStr: string) {
+function dayNumber(ymd: string): number {
+  const [y, m, d] = ymd.split('-').map(Number)
+  return Date.UTC(y, m - 1, d) / 86_400_000
+}
+
+function getDaysForMonth(year: number, month: number) {
   const firstDay = new Date(year, month, 1)
   let startDay = firstDay.getDay() - 1
   if (startDay < 0) startDay = 6
   const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const days: { date: string; day: number; isCurrentMonth: boolean; isFuture: boolean }[] = []
+  const days: { date: string; day: number; isCurrentMonth: boolean }[] = []
 
   const prevMonthDays = new Date(year, month, 0).getDate()
   for (let i = startDay - 1; i >= 0; i--) {
     const d = prevMonthDays - i
     const m = month === 0 ? 11 : month - 1
     const y = month === 0 ? year - 1 : year
-    days.push({ date: formatYMD(y, m, d), day: d, isCurrentMonth: false, isFuture: false })
+    days.push({ date: formatYMD(y, m, d), day: d, isCurrentMonth: false })
   }
-
   for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = formatYMD(year, month, d)
-    days.push({ date: dateStr, day: d, isCurrentMonth: true, isFuture: dateStr > todayStr })
+    days.push({ date: formatYMD(year, month, d), day: d, isCurrentMonth: true })
   }
-
   const remaining = 7 - (days.length % 7)
   if (remaining < 7) {
     for (let d = 1; d <= remaining; d++) {
       const m = month === 11 ? 0 : month + 1
       const y = month === 11 ? year + 1 : year
-      days.push({ date: formatYMD(y, m, d), day: d, isCurrentMonth: false, isFuture: false })
+      days.push({ date: formatYMD(y, m, d), day: d, isCurrentMonth: false })
     }
   }
-
   return days
 }
 
-const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December']
+const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 export default function DateRangePicker({
-  period,
-  dateRange,
-  onPeriodChange,
-  onDateRangeChange,
+  label,
+  suffix,
+  tick,
+  rows,
+  footnote,
+  onPick,
+  onCustom,
+  customReason,
   onShift,
-  align = 'left',
-  extraPresets,
-  excludePresets,
-  presetsOnly = false,
-  daysCaption,
-  minDate,
-  now: nowProp,
+  shiftBackDisabled = false,
+  shiftForwardDisabled = false,
+  calendar,
+  now,
 }: DateRangePickerProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [mode, setMode] = useState<'list' | 'calendar'>('list')
   const triggerRef = useRef<HTMLButtonElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
+  const footnoteId = useId()
 
+  const initial = calendar?.range.start ?? formatYMD(now.getFullYear(), now.getMonth(), now.getDate())
   const [viewMonth, setViewMonth] = useState(() => {
-    const d = new Date(dateRange.start + 'T00:00:00')
+    const d = new Date(initial + 'T00:00:00')
     return { year: d.getFullYear(), month: d.getMonth() }
   })
   const [rangeStart, setRangeStart] = useState<string | null>(null)
   const [hoverDate, setHoverDate] = useState<string | null>(null)
 
-  // The caller's wall clock (the SITE's, from useUrlDateRange's `siteNow`) —
-  // never recomputed here, or the future-day cutoff would silently fall back
-  // to the browser's clock for exactly the pages this fix exists to correct.
-  const now = nowProp ?? new Date()
   const todayStr = formatYMD(now.getFullYear(), now.getMonth(), now.getDate())
 
+  // The popover opens from the trigger's RIGHT edge on every page (owner decision
+  // 25-09-2026 — `align` was 'right' on four pages and 'left' on seven, with no rule).
+  // Measured, not assumed: the panel is the list on sm+ and the viewport's width on a
+  // phone, so its real width is read before clamping it on-screen.
   const updatePosition = useCallback(() => {
     if (!triggerRef.current) return
     const rect = triggerRef.current.getBoundingClientRect()
-    // The panel is 460px wide side-by-side, but below sm it stacks and shrinks to
-    // the viewport (see the `w-[min(...)]` on the panel). Clamping against a
-    // hard-coded 460 on a 390px phone yielded left=8 for a 456px-wide panel —
-    // i.e. ~74px of the calendar hanging off-screen, unreachable. Measure the
-    // width the panel can ACTUALLY take before clamping.
-    const dropdownWidth = Math.min(460, window.innerWidth - 16)
-    let left = align === 'right' ? rect.right - dropdownWidth : rect.left
-    left = Math.max(8, Math.min(left, window.innerWidth - dropdownWidth - 8))
+    const width = dropdownRef.current?.offsetWidth ?? Math.min(460, window.innerWidth - 16)
+    let left = rect.right - width
+    left = Math.max(8, Math.min(left, window.innerWidth - width - 8))
     let top = rect.bottom + 6
     if (dropdownRef.current) {
       const maxTop = window.innerHeight - dropdownRef.current.offsetHeight - 8
       top = Math.min(top, Math.max(8, maxTop))
     }
     setPos({ left, top })
-  }, [align])
+  }, [])
 
   useEffect(() => {
     if (isOpen) {
-      const d = new Date(dateRange.start + 'T00:00:00')
+      setMode('list')
+      setRangeStart(null)
+      const d = new Date(initial + 'T00:00:00')
       setViewMonth({ year: d.getFullYear(), month: d.getMonth() })
       updatePosition()
       requestAnimationFrame(() => updatePosition())
     }
-  }, [isOpen, updatePosition, dateRange.start])
+  }, [isOpen, updatePosition, initial])
+
+  // The list and the calendar are different sizes; re-anchor when the mode flips.
+  useEffect(() => {
+    if (isOpen) requestAnimationFrame(() => updatePosition())
+  }, [mode, isOpen, updatePosition])
 
   useEffect(() => {
     if (!isOpen) return
@@ -206,98 +189,208 @@ export default function DateRangePicker({
   }, [isOpen])
 
   function prevMonth() {
-    setViewMonth(v => {
-      if (v.month === 0) return { year: v.year - 1, month: 11 }
-      return { year: v.year, month: v.month - 1 }
-    })
+    setViewMonth((v) => (v.month === 0 ? { year: v.year - 1, month: 11 } : { year: v.year, month: v.month - 1 }))
   }
-
   function nextMonth() {
-    setViewMonth(v => {
-      if (v.month === 11) return { year: v.year + 1, month: 0 }
-      return { year: v.year, month: v.month + 1 }
-    })
+    setViewMonth((v) => (v.month === 11 ? { year: v.year + 1, month: 0 } : { year: v.year, month: v.month + 1 }))
   }
 
-  const resolvePreset = (key: string) =>
-    extraPresets?.presets.find((p) => p.key === key) ?? findPreset(key)
-
-  function handlePresetClick(key: string) {
-    const preset = resolvePreset(key)
-    if (!preset) return
-    const range = preset.resolve(now)
-    setRangeStart(null)
-    const d = new Date(range.start + 'T00:00:00')
-    setViewMonth({ year: d.getFullYear(), month: d.getMonth() })
-    setTimeout(() => {
-      onPeriodChange(key)
-      // * A URL-round-trippable preset writes ONLY the period — firing the
-      // * range callback too made every preset click land as
-      // * ?period=custom&start=…&end=… on pages that wire it to a custom
-      // * write: the label degraded to a date span, no checkmark ever showed,
-      // * and a shared link froze instead of rolling forward. Keys that can't
-      // * live in the URL keep the double write so they still work at all.
-      if (!isUrlPeriod(key)) {
-        onDateRangeChange(range)
-      }
-      setIsOpen(false)
-    }, 150)
+  function handleRowClick(row: RowState) {
+    if (!row.available) return
+    setIsOpen(false)
+    onPick(row.key)
   }
 
-  function handleCustomClick() {
-    setRangeStart(null)
+  // A day is out of bounds when it is after the page's newest day (or the future),
+  // before its first day, or — once a start is chosen — would make a span longer than
+  // the page can load. All render identically: there is nothing there to ask for.
+  const isOutOfBounds = (date: string): boolean => {
+    if (!calendar) return true
+    if (date > calendar.max) return true
+    if (calendar.min && date < calendar.min) return true
+    if (rangeStart && Math.abs(dayNumber(date) - dayNumber(rangeStart)) + 1 > calendar.maxDays) return true
+    return false
   }
 
   function handleDayClick(date: string) {
+    if (isOutOfBounds(date) || !onCustom) return
     if (!rangeStart) {
       setRangeStart(date)
       setHoverDate(null)
-    } else {
-      let start = rangeStart
-      let end = date
-      if (end < start) [start, end] = [end, start]
-      setRangeStart(null)
-      setHoverDate(null)
-      onPeriodChange('custom')
-      onDateRangeChange({ start, end })
-      setIsOpen(false)
+      return
     }
+    let start = rangeStart
+    let end = date
+    if (end < start) [start, end] = [end, start]
+    setRangeStart(null)
+    setHoverDate(null)
+    setIsOpen(false)
+    onCustom({ start, end })
   }
 
-  const effectiveStart = rangeStart ?? dateRange.start
-  const effectiveEnd = rangeStart ? (hoverDate ?? rangeStart) : dateRange.end
+  const effectiveStart = rangeStart ?? calendar?.range.start ?? todayStr
+  const effectiveEnd = rangeStart ? (hoverDate ?? rangeStart) : (calendar?.range.end ?? todayStr)
   const [resolvedStart, resolvedEnd] = effectiveStart <= effectiveEnd
     ? [effectiveStart, effectiveEnd]
     : [effectiveEnd, effectiveStart]
 
-  // A day is out of bounds if it is in the future OR before the page's floor.
-  // Both render identically because they mean the same thing to the person
-  // clicking: there is no data there to ask for.
-  const isBeforeFloor = (date: string) => Boolean(minDate) && date < (minDate as string)
-
-  function getDayClass(date: string, day: { isCurrentMonth: boolean; isFuture: boolean }): string {
-    if (!day.isCurrentMonth) return 'text-muted-foreground/40'
-    if (day.isFuture || isBeforeFloor(date)) return 'text-muted-foreground/25 cursor-not-allowed'
-
-    const isStart = date === resolvedStart
-    const isEnd = date === resolvedEnd
-    const isInRange = resolvedStart && resolvedEnd && date > resolvedStart && date < resolvedEnd
-    const isToday = date === todayStr
-
-    if (isStart || isEnd) return 'bg-primary text-primary-foreground'
-    if (isInRange) return 'bg-primary/10 text-foreground'
-    if (isToday) return 'ring-1 ring-primary/50 text-foreground'
+  function getDayClass(date: string, isCurrentMonth: boolean): string {
+    if (!isCurrentMonth) return 'text-muted-foreground/40'
+    if (isOutOfBounds(date)) return 'text-muted-foreground/25 cursor-not-allowed'
+    if (date === resolvedStart || date === resolvedEnd) return 'bg-primary text-primary-foreground'
+    if (date > resolvedStart && date < resolvedEnd) return 'bg-primary/10 text-foreground'
+    if (date === todayStr) return 'ring-1 ring-primary/50 text-foreground'
     return 'text-foreground hover:bg-accent'
   }
 
-  const days = getDaysForMonth(viewMonth.year, viewMonth.month, todayStr)
+  const days = getDaysForMonth(viewMonth.year, viewMonth.month)
+  const sections: RowState[][] = [
+    rows.filter((r) => r.section === 'relative'),
+    rows.filter((r) => r.section === 'calendar'),
+  ]
+  const customAvailable = Boolean(onCustom && calendar)
 
-  const displayLabel = period !== 'custom'
-    ? (resolvePreset(period)?.label ?? 'Custom')
-    : formatRangeDisplay(dateRange.start, dateRange.end)
+  const renderRow = (row: RowState) => {
+    const ticked = tick === row.key
+    if (!row.available) {
+      return (
+        <button
+          key={row.key}
+          type="button"
+          disabled
+          aria-disabled="true"
+          title={row.reason}
+          aria-describedby={footnote ? footnoteId : undefined}
+          data-row={row.key}
+          className={ROW_GREYED}
+        >
+          <Check weight="bold" className="w-3.5 h-3.5 shrink-0 opacity-0" />
+          {row.label}
+        </button>
+      )
+    }
+    return (
+      <button
+        key={row.key}
+        type="button"
+        onClick={() => handleRowClick(row)}
+        aria-pressed={ticked}
+        data-row={row.key}
+        className={ticked ? ROW_ON : ROW_OFF}
+      >
+        <Check weight="bold" className={`w-3.5 h-3.5 shrink-0 ${ticked ? 'opacity-100' : 'opacity-0'}`} />
+        {row.label}
+      </button>
+    )
+  }
 
-  const endDate = new Date(dateRange.end + 'T00:00:00')
-  const isForwardDisabled = endDate >= now
+  const list = (
+    <div className="w-full py-2" data-view-list="">
+      {sections.map((section, i) => (
+        <div key={i} className={i > 0 ? 'mt-1.5 border-t border-border pt-1.5' : undefined}>
+          {section.map(renderRow)}
+        </div>
+      ))}
+      <div className="mt-1.5 border-t border-border pt-1.5">
+        {customAvailable ? (
+          <button
+            type="button"
+            onClick={() => setMode('calendar')}
+            aria-pressed={tick === 'custom'}
+            data-row="custom"
+            className={tick === 'custom' ? ROW_ON : ROW_OFF}
+          >
+            <Check weight="bold" className={`w-3.5 h-3.5 shrink-0 ${tick === 'custom' ? 'opacity-100' : 'opacity-0'}`} />
+            {CUSTOM_RANGE_LABEL}
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled
+            aria-disabled="true"
+            title={customReason}
+            aria-describedby={footnote ? footnoteId : undefined}
+            data-row="custom"
+            className={ROW_GREYED}
+          >
+            <Check weight="bold" className="w-3.5 h-3.5 shrink-0 opacity-0" />
+            {CUSTOM_RANGE_LABEL}
+          </button>
+        )}
+      </div>
+      {footnote && (
+        <div className="px-3">
+          <p id={footnoteId} className="mt-3 border-t border-border pt-3 text-[11px] leading-snug text-muted-foreground/70">
+            {footnote}
+          </p>
+        </div>
+      )}
+    </div>
+  )
+
+  const calendarView = calendar && (
+    <div className="w-full p-3" data-view-calendar="">
+      <div className="mb-3 flex items-center gap-2 border-b border-border pb-3">
+        <button
+          type="button"
+          onClick={() => {
+            setRangeStart(null)
+            setMode('list')
+          }}
+          aria-label="Back to ranges"
+          className="p-1 rounded-none text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+        >
+          <CaretLeft weight="bold" className="w-3.5 h-3.5" />
+        </button>
+        <span className="text-sm font-medium text-foreground">Custom range</span>
+      </div>
+      <div className="flex items-center justify-between mb-3">
+        <button
+          type="button"
+          onClick={prevMonth}
+          aria-label="Previous month"
+          className="p-1 rounded-none text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+        >
+          <CaretLeft weight="bold" className="w-3.5 h-3.5" />
+        </button>
+        <span className="text-sm font-medium text-foreground">
+          {monthNames[viewMonth.month]} {viewMonth.year}
+        </span>
+        <button
+          type="button"
+          onClick={nextMonth}
+          aria-label="Next month"
+          className="p-1 rounded-none text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+        >
+          <CaretRight weight="bold" className="w-3.5 h-3.5" />
+        </button>
+      </div>
+      <div className="grid grid-cols-7 mb-1">
+        {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map((d) => (
+          <div key={d} className="text-center text-[11px] font-medium text-muted-foreground/70 py-1">{d}</div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7">
+        {days.map((day, i) => (
+          <button
+            key={i}
+            type="button"
+            disabled={!day.isCurrentMonth || isOutOfBounds(day.date)}
+            onClick={() => handleDayClick(day.date)}
+            onMouseEnter={() => rangeStart && setHoverDate(day.date)}
+            className={`flex h-11 w-full items-center justify-center text-sm transition-colors sm:h-9 sm:w-9 ${getDayClass(day.date, day.isCurrentMonth)}`}
+          >
+            {day.day}
+          </button>
+        ))}
+      </div>
+      {calendar.caption && (
+        <p className="mt-3 border-t border-border pt-3 text-[11px] leading-snug text-muted-foreground/70">
+          {calendar.caption}
+        </p>
+      )}
+    </div>
+  )
 
   const dropdown = (
     <AnimatePresence>
@@ -308,144 +401,32 @@ export default function DateRangePicker({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 4, scale: 0.98 }}
           transition={{ duration: 0.15 }}
-          className="fixed z-50 flex w-[min(460px,calc(100vw-16px))] flex-col rounded-none border border-border bg-popover shadow-lg overflow-hidden sm:w-auto sm:flex-row"
+          data-view-switcher=""
+          className={cn(
+            'fixed z-50 flex w-[min(460px,calc(100vw-16px))] flex-col overflow-hidden rounded-none border border-border bg-popover shadow-lg',
+            mode === 'list' ? 'sm:w-44' : 'sm:w-[280px]',
+          )}
           style={pos ? { left: pos.left, top: pos.top } : undefined}
         >
-          <div className="w-full max-h-[240px] border-b border-border py-2 overflow-y-auto sm:max-h-[400px] sm:w-44 sm:border-b-0 sm:border-r">
-            {extraPresets && (
-              <div>
-                <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                  {extraPresets.group}
-                </div>
-                {extraPresets.presets.map((preset) => (
-                  <button
-                    key={preset.key}
-                    onClick={() => handlePresetClick(preset.key)}
-                    className={`flex items-center gap-2 w-full text-left px-3 py-1.5 text-sm transition-colors ${
-                      period === preset.key
-                        ? 'text-foreground'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                    }`}
-                  >
-                    <Check
-                      weight="bold"
-                      className={`w-3.5 h-3.5 shrink-0 ${period === preset.key ? 'opacity-100' : 'opacity-0'}`}
-                    />
-                    {preset.label}
-                  </button>
-                ))}
-              </div>
-            )}
-            {!extraPresets?.exclusive && PERIOD_GROUPS.filter((group) =>
-              PERIOD_PRESETS.some(p => p.group === group && !excludePresets?.includes(p.key))
-            ).map((group) => (
-              <div key={group}>
-                <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                  {group}
-                </div>
-                {PERIOD_PRESETS.filter(p => p.group === group && !excludePresets?.includes(p.key)).map((preset) => (
-                  <button
-                    key={preset.key}
-                    onClick={() => handlePresetClick(preset.key)}
-                    className={`flex items-center gap-2 w-full text-left px-3 py-1.5 text-sm transition-colors ${
-                      period === preset.key
-                        ? 'text-foreground'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                    }`}
-                  >
-                    <Check
-                      weight="bold"
-                      className={`w-3.5 h-3.5 shrink-0 ${period === preset.key ? 'opacity-100' : 'opacity-0'}`}
-                    />
-                    {preset.label}
-                  </button>
-                ))}
-              </div>
-            ))}
-            {!presetsOnly && (
-            <div>
-              <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                Custom
-              </div>
-              <button
-                onClick={() => handleCustomClick()}
-                className={`flex items-center gap-2 w-full text-left px-3 py-1.5 text-sm transition-colors ${
-                  period === 'custom'
-                    ? 'text-foreground'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                }`}
-              >
-                <Check
-                  weight="bold"
-                  className={`w-3.5 h-3.5 shrink-0 ${period === 'custom' ? 'opacity-100' : 'opacity-0'}`}
-                />
-                Custom
-              </button>
-            </div>
-            )}
-          </div>
-
-          {!presetsOnly && (
-          <div className="w-full p-3 sm:w-[280px]">
-            <div className="flex items-center justify-between mb-3">
-              <button
-                onClick={prevMonth}
-                className="p-1 rounded-none text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              >
-                <CaretLeft weight="bold" className="w-3.5 h-3.5" />
-              </button>
-              <span className="text-sm font-medium text-foreground">
-                {monthNames[viewMonth.month]} {viewMonth.year}
-              </span>
-              <button
-                onClick={nextMonth}
-                className="p-1 rounded-none text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              >
-                <CaretRight weight="bold" className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-7 mb-1">
-              {['Mo','Tu','We','Th','Fr','Sa','Su'].map(d => (
-                <div key={d} className="text-center text-[11px] font-medium text-muted-foreground/70 py-1">{d}</div>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-7">
-              {days.map((day, i) => (
-                <button
-                  key={i}
-                  disabled={day.isFuture || isBeforeFloor(day.date) || !day.isCurrentMonth}
-                  onClick={() => handleDayClick(day.date)}
-                  onMouseEnter={() => rangeStart && setHoverDate(day.date)}
-                  className={`flex h-11 w-full items-center justify-center text-sm transition-colors sm:h-9 sm:w-9 ${getDayClass(day.date, day)}`}
-                >
-                  {day.day}
-                </button>
-              ))}
-            </div>
-            {daysCaption && (
-              <p className="mt-3 border-t border-border pt-3 text-[11px] leading-snug text-muted-foreground/70">
-                {daysCaption}
-              </p>
-            )}
-          </div>
-          )}
+          {mode === 'list' ? list : calendarView}
         </motion.div>
       )}
     </AnimatePresence>
   )
 
+  const ariaLabel = `Date range: ${label}${suffix ? `, ${suffix}` : ''}`
+
   return (
     <div className="flex items-center gap-1.5">
-      {/* Facet's chrome/toolbar classes are the base for all three controls —
-          one source for the hairline look, and they finally get the system
-          focus ring (these buttons had NO keyboard focus state before). */}
+      {/* Facet's chrome/toolbar classes are the base for all three controls — one source
+          for the hairline look, and the system focus ring. */}
       {onShift && (
         <button
+          type="button"
           onClick={() => onShift(-1)}
+          disabled={shiftBackDisabled}
           aria-label="Shift range back"
-          className={cn(buttonVariants({ variant: 'chrome', size: 'toolbar-icon' }), 'text-muted-foreground ease-apple hover:text-foreground')}
+          className={cn(buttonVariants({ variant: 'chrome', size: 'toolbar-icon' }), 'text-muted-foreground ease-apple hover:text-foreground disabled:opacity-40 disabled:pointer-events-none')}
         >
           <CaretLeft weight="bold" />
         </button>
@@ -453,24 +434,28 @@ export default function DateRangePicker({
 
       <button
         ref={triggerRef}
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         data-tour="date-range-picker"
-        // The visible label alone names a RANGE, not the control — assistive
-        // tech (and the tour) get what the control IS.
-        aria-label={`Date range: ${displayLabel}`}
+        // The visible label alone names a RANGE, not the control — assistive tech (and
+        // the product tour) get what the control IS.
+        aria-label={ariaLabel}
+        aria-expanded={isOpen}
         className={cn(buttonVariants({ variant: 'chrome', size: 'toolbar' }), 'font-normal ease-apple')}
       >
         <CalendarBlank className="text-muted-foreground" />
-        <span>{displayLabel}</span>
+        <span>{label}</span>
+        {suffix && <span className="text-muted-foreground" data-view-suffix="">· {suffix}</span>}
         <CaretRight weight="bold" className={`text-muted-foreground/70 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
       </button>
 
       {onShift && (
         <button
+          type="button"
           onClick={() => onShift(1)}
-          disabled={isForwardDisabled}
+          disabled={shiftForwardDisabled}
           aria-label="Shift range forward"
-          className={cn(buttonVariants({ variant: 'chrome', size: 'toolbar-icon' }), 'text-muted-foreground ease-apple hover:text-foreground')}
+          className={cn(buttonVariants({ variant: 'chrome', size: 'toolbar-icon' }), 'text-muted-foreground ease-apple hover:text-foreground disabled:opacity-40 disabled:pointer-events-none')}
         >
           <CaretRight weight="bold" />
         </button>

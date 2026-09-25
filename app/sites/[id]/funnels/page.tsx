@@ -6,7 +6,7 @@ import { useParams, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { deleteFunnel, createFunnel, updateFunnel, type Funnel, type CreateFunnelRequest } from '@/lib/api/funnels'
-import { useSite, useFunnels, useFunnelListStats } from '@/lib/swr/dashboard'
+import { useSite, useFunnels, useFunnelListStats, useDataWindow } from '@/lib/swr/dashboard'
 import { previousDateRange } from '@/lib/hooks/periodUrl'
 import { toast, PlusIcon, Button } from '@ciphera-net/facet'
 import { FunnelsListSkeleton } from '@/components/skeletons'
@@ -18,9 +18,8 @@ import { FunnelSimple } from '@phosphor-icons/react'
 import { DeleteFunnelDialog } from '@/components/funnels/DeleteFunnelDialog'
 import FunnelModal, { type FunnelPrefill } from '@/components/funnels/FunnelModal'
 import DateRangePicker from '@/components/ui/DateRangePicker'
-import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
-import { FUNNEL_EXCLUDED_PRESETS } from '@/lib/constants/periods'
-import { fetchableRange } from '@/lib/dashboard/resolveRange'
+import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
+import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
 import { useCan } from '@/lib/auth/permissions'
 
 // * ?prefill=<encodeURIComponent(JSON)> seeds the create modal (journeys lens
@@ -57,20 +56,17 @@ export default function FunnelsPage() {
 
   const { data: site } = useSite(siteId)
   const { data: funnels, error: funnelsError, isLoading, mutate } = useFunnels(siteId)
-  const { period, dateRange, periodReady, setPeriod, shiftPeriod, siteNow, pickerProps } = useUrlDateRange({
-    // Shared with the funnel detail page — one instrument, one range memory.
-    pageKey: 'funnels',
-    excludePresets: FUNNEL_EXCLUDED_PRESETS,
+  const dataWindow = useDataWindow(siteId, 'funnels')
+  const { period, dateRange, periodReady, picker } = useUrlDateRange({
+    surface: 'funnels',
+    window: dataWindow,
     timezone: site?.timezone,
+    retentionMonths: site?.data_retention_months,
+    daysCaption: siteDaysCaption(site?.timezone),
   })
   // Fetch with nothing until the remembered preset is read — otherwise every
   // bare-URL mount spends a 30-day request on the placeholder period and can
   // flash its numbers. `dateRange` stays the picker's DISPLAY value.
-  // * Preset windows re-anchor to the SITE's current day (uptime's device):
-  // * the server cuts day boundaries in the site zone, so which dates get
-  // * requested must come from the site's calendar too, or "Today" means the
-  // * viewer's today (closeout F2). A custom pick passes through — an
-  // * explicitly chosen calendar day IS the site's day, as labeled.
   const fetchRange = useMemo(
     () => fetchableRange(periodReady, dateRange),
     [periodReady, dateRange],
@@ -79,8 +75,10 @@ export default function FunnelsPage() {
   // * ONE batched stats request per range for the whole list (plus one for the
   // * previous range, feeding the delta badges) — this page used to fan out
   // * two requests per funnel per 60s poll.
-  const { data: listStats, error: listStatsError } = useFunnelListStats(siteId, fetchRange.start, fetchRange.end)
-  const prevRange = useMemo(() => previousDateRange(fetchRange), [fetchRange])
+  const allPeriod = serverResolvedPeriod(periodReady, period)
+  const { data: listStats, error: listStatsError } = useFunnelListStats(siteId, fetchRange.start, fetchRange.end, undefined, allPeriod)
+  // All time has no previous period — nothing precedes the whole of history.
+  const prevRange = useMemo(() => (period === 'all' ? null : previousDateRange(fetchRange)), [fetchRange, period])
   const { data: prevListStats } = useFunnelListStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '')
   const [deletingFunnel, setDeletingFunnel] = useState<{ id: string; name: string } | null>(null)
   const [prefill, setPrefill] = useState<FunnelPrefill | null>(() => parsePrefill(searchParams.get('prefill')))
@@ -133,18 +131,7 @@ export default function FunnelsPage() {
           {list.length > 0 && <FunnelStatusLine timezone={site?.timezone} />}
         </div>
         <div className="flex items-center gap-2">
-          <DateRangePicker
-            period={period}
-            dateRange={dateRange}
-            onPeriodChange={(p) => setPeriod(p as Period)}
-            onDateRangeChange={(range) => setPeriod('custom', range)}
-            onShift={shiftPeriod}
-            now={siteNow}
-            daysCaption={siteDaysCaption(site?.timezone)}
-            // * Menu and validation both come from the page declaration on
-            // * the hook (FUNNEL_EXCLUDED_PRESETS) — one source, no drift.
-            {...pickerProps}
-          />
+          <DateRangePicker {...picker} />
           {/* * The empty state below carries its own create CTA — showing this
            * header button too meant two identical orange CTAs on one screen. */}
           {canManageFunnels && list.length > 0 && (
@@ -228,6 +215,7 @@ export default function FunnelsPage() {
           // * measure the same site-day-anchored window the cards fetch, or
           // * the modal and the page can disagree about the same funnel.
           dateRange={fetchRange}
+          apiPeriod={allPeriod}
           onClose={() => { setModalOpen(false); setEditingFunnel(null); setPrefill(null) }}
           initialData={editingFunnel ?? undefined}
           prefill={!editingFunnel ? prefill ?? undefined : undefined}

@@ -24,14 +24,20 @@ export interface EntryPoint {
 function buildQuery(opts: {
   startDate?: string
   endDate?: string
+  /** A server-resolved period (All time, PULSE-20) — sent INSTEAD of the dates. */
+  period?: string
   depth?: number
   min_sessions?: number
   entry_path?: string
   filters?: string
 }): string {
   const params = new URLSearchParams()
-  if (opts.startDate) params.append('start_date', opts.startDate)
-  if (opts.endDate) params.append('end_date', opts.endDate)
+  if (opts.period) {
+    params.append('period', opts.period)
+  } else {
+    if (opts.startDate) params.append('start_date', opts.startDate)
+    if (opts.endDate) params.append('end_date', opts.endDate)
+  }
   if (opts.depth != null) params.append('depth', opts.depth.toString())
   if (opts.min_sessions != null) params.append('min_sessions', opts.min_sessions.toString())
   if (opts.entry_path) params.append('entry_path', opts.entry_path)
@@ -46,12 +52,13 @@ export function getJourneyTransitions(
   siteId: string,
   startDate?: string,
   endDate?: string,
-  opts?: { depth?: number; minSessions?: number; entryPath?: string; filters?: string }
+  opts?: { depth?: number; minSessions?: number; entryPath?: string; filters?: string; period?: string }
 ): Promise<TransitionsResponse> {
   return apiRequest<TransitionsResponse>(
     `/sites/${siteId}/journeys/transitions${buildQuery({
       startDate,
       endDate,
+      period: opts?.period,
       depth: opts?.depth,
       min_sessions: opts?.minSessions,
       entry_path: opts?.entryPath,
@@ -64,9 +71,10 @@ export function getJourneyEntryPoints(
   siteId: string,
   startDate?: string,
   endDate?: string,
-  filters?: string
+  filters?: string,
+  period?: string
 ): Promise<EntryPoint[]> {
   return apiRequest<{ entry_points: EntryPoint[] }>(
-    `/sites/${siteId}/journeys/entry-points${buildQuery({ startDate, endDate, filters })}`
+    `/sites/${siteId}/journeys/entry-points${buildQuery({ startDate, endDate, filters, period })}`
   ).then(r => r?.entry_points ?? [])
 }

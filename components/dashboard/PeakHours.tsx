@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo, useRef, type CSSProperties } from 'react'
 import { Clock } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { addDays, spanDays } from '@/lib/view/view'
+
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DURATION_FAST, DURATION_SLOW, EASE_APPLE } from '@/lib/motion'
@@ -10,6 +12,9 @@ import { useDailyStats } from '@/lib/swr/dashboard'
 import { parseSiteWallClock } from '@/lib/utils/formatDate'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { Switcher } from '@ciphera-net/facet'
+
+/** The hourly series' ceiling, in days (pulse-backend MaxDaysPerInterval["hour"]). */
+const HOURLY_MAX_DAYS = 366
 
 interface PeakHoursProps {
   // The page's selected metric. PeakHours keeps its own 4-way control as an
@@ -95,6 +100,16 @@ export default function PeakHours({ siteId, dateRange, filters }: PeakHoursProps
   const [metric, setMetric] = useState<Metric>('pageviews')
   const gridRef = useRef<HTMLDivElement>(null)
 
+  // The heatmap is built from HOURLY buckets, and an hourly series is capped at a year
+  // (pulse-backend MaxDaysPerInterval). "All time" on a site holding more than a year
+  // (from 30-03-2027 on the sites keeping 24–36 months) would otherwise come back in
+  // the server-picked WEEK buckets — every visit piled into Monday 00:00, silently.
+  // Past a year the heatmap reads the most recent 366 days and says so.
+  const recentYearOnly = dateRange != null && spanDays(dateRange) > HOURLY_MAX_DAYS
+  const hourlyRange = dateRange && recentYearOnly
+    ? { start: addDays(dateRange.end, -(HOURLY_MAX_DAYS - 1)), end: dateRange.end }
+    : dateRange
+
   // SWR instead of the imperative fetch (F17): a failed request renders an
   // error with a retry, not an empty heatmap explained as "too early to tell".
   // Filters ride the key (F14).
@@ -103,7 +118,7 @@ export default function PeakHours({ siteId, dateRange, filters }: PeakHoursProps
     error,
     isLoading,
     mutate: refetch,
-  } = useDailyStats(siteId, dateRange?.start ?? '', dateRange?.end ?? '', 'hour', filters)
+  } = useDailyStats(siteId, hourlyRange?.start ?? '', hourlyRange?.end ?? '', 'hour', filters)
   const data = useMemo(() => swrData ?? [], [swrData])
 
   // Re-trigger the cell cascade whenever a fresh payload arrives.
@@ -217,6 +232,7 @@ export default function PeakHours({ siteId, dateRange, filters }: PeakHoursProps
               entry existed registry-complete but unwired (closeout C1). */}
           <TermInfoTip term="peak_hours" />
         </div>
+        {recentYearOnly && <span className="text-xs text-muted-foreground">Last 12 months</span>}
       </div>
 
       {isLoading ? (
