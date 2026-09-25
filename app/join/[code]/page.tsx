@@ -223,7 +223,7 @@ function JoinContent() {
 
         <div className="rounded-none border border-neutral-800 bg-neutral-800/40 p-4 space-y-3">
           <div>
-            <div className="text-xs text-neutral-500 mb-0.5">Organisation</div>
+            <div className="text-xs text-neutral-500 mb-0.5">Team</div>
             <div className="text-sm font-medium text-white">{info.organization_name}</div>
           </div>
           <div>

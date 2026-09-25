@@ -65,6 +65,10 @@ vi.mock('@ciphera-net/facet', () => ({
 // against source instead (see the two tests below).
 vi.mock('framer-motion', () => import('@/components/settings/__tests__/framer-mock'))
 
+// The page is worded from the ONE team-state signal (PULSE-59).
+let mockTeamState: 'alone' | 'team' | null = 'team'
+vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => mockTeamState }))
+
 import WorkspaceGeneralTab from '../WorkspaceGeneralTab'
 
 // Strips `//` and `/* */` comments so the source-text check below pins the
@@ -78,6 +82,7 @@ const SOURCE_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..'
 const SOURCE = readFileSync(SOURCE_PATH, 'utf8')
 
 beforeEach(() => {
+  mockTeamState = 'team'
   mockIsOwner = true
   mockIsAdminOrOwner = true
   refreshSession.mockClear()
@@ -87,11 +92,11 @@ beforeEach(() => {
 })
 
 describe('WorkspaceGeneralTab (Facet structured panels)', () => {
-  it('loads the workspace panel with name + slug once the org resolves', async () => {
+  it('loads the team panel with name + slug once the org resolves', async () => {
     render(<WorkspaceGeneralTab />)
     await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
     // Panel title + slug addon are present.
-    expect(screen.getByText('Workspace')).toBeTruthy()
+    expect(screen.getByText('Team')).toBeTruthy()
     expect(screen.getByText('pulse.ciphera.net/')).toBeTruthy()
     expect(screen.getByDisplayValue('acme-corp')).toBeTruthy()
   })
@@ -99,7 +104,7 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
   it('renders the panel title as a sentence-case level-2 heading, the SectionHeader idiom', async () => {
     render(<WorkspaceGeneralTab />)
     await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
-    expect(screen.getByRole('heading', { level: 2, name: 'Workspace' })).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 2, name: 'Team' })).toBeTruthy()
   })
 
   it('renders the danger zone with distinct Transfer + Delete entry actions', async () => {
@@ -116,7 +121,7 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
-    const confirm = await screen.findByRole('button', { name: 'Delete organization' })
+    const confirm = await screen.findByRole('button', { name: 'Delete team' })
     expect((confirm as HTMLButtonElement).disabled).toBe(true)
 
     const field = screen.getByPlaceholderText('DELETE')
@@ -137,7 +142,7 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
 
     // Opening Delete closes Transfer (mutually exclusive reveals).
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
-    expect(screen.getByRole('button', { name: 'Delete organization' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Delete team' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Cancel' }).getAttribute('variant')).toBe('ghost')
   })
 
@@ -208,7 +213,7 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
 
     render(<WorkspaceGeneralTab />)
     const alert = await screen.findByRole('alert')
-    expect(alert.textContent).toContain("Couldn't load your organization")
+    expect(alert.textContent).toContain("Couldn't load your team")
     expect(screen.queryByText('Workspace')).toBeNull()
   })
 
@@ -229,7 +234,7 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Transfer' }))
     const banner = await screen.findByRole('alert')
-    expect(banner.textContent).toContain('organization members')
+    expect(banner.textContent).toContain("Couldn't load the members")
     expect(screen.queryByText('No other members')).toBeNull()
   })
 
@@ -286,5 +291,17 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
     const stripped = stripComments(SOURCE)
     expect(stripped).not.toMatch(/[—–]/)
     expect(stripped).not.toMatch(/\.\.\./)
+  })
+})
+
+// ─── PULSE-59: unlisted for somebody alone, but the route still renders ───
+describe('WorkspaceGeneralTab, alone', () => {
+  it('renders without calling the container a team, workspace or organization', async () => {
+    mockTeamState = 'alone'
+    const { container } = render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByRole('heading', { level: 2, name: 'Details' })).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    expect(await screen.findByRole('button', { name: 'Delete all data' })).toBeTruthy()
+    expect(container.textContent).not.toMatch(/team|workspace|organi[sz]ation/i)
   })
 })

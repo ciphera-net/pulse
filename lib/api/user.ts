@@ -88,15 +88,15 @@ export async function deleteAccount(reauthToken: string, organizationIds: string
       const orgs = err.data.organizations
       const lines = orgs.map((o) => {
         const verb =
-          o.action_required === 'transfer_ownership' ? 'transfer ownership' : 'delete workspace'
+          o.action_required === 'transfer_ownership' ? 'transfer ownership' : 'delete team'
         return `• ${o.name} — ${verb}`
       })
       const summary =
         orgs.length === 1
-          ? `You own 1 workspace that must be resolved first:`
-          : `You own ${orgs.length} workspaces that must be resolved first:`
+          ? `You own 1 team that must be resolved first:`
+          : `You own ${orgs.length} teams that must be resolved first:`
       throw new ApiError(
-        `${summary}\n${lines.join('\n')}\n\nGo to Settings → Organizations.`,
+        `${summary}\n${lines.join('\n')}\n\nGo to Settings → Team.`,
         409,
         err.data,
       )

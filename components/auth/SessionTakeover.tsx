@@ -83,7 +83,7 @@ export default function SessionTakeover({ state }: { state: TakeoverState }) {
       ? { line1: 'Signed out?', line2: 'One moment.', sub: 'The network dropped mid-session. Pulse is reconnecting on its own.' }
       : hadSession
         ? { line1: 'Signed out.', line2: 'Nothing lost.', sub: 'Your dashboard is exactly where you left it — sign back in and it resumes.' }
-        : { line1: 'This is private.', line2: 'Sign in first.', sub: 'Pulse dashboards are visible only to their workspace members.' }
+        : { line1: 'This is private.', line2: 'Sign in first.', sub: 'Pulse dashboards are visible only to the people who run them.' }
 
   return (
     <div className="min-h-screen bg-[rgb(var(--takeover-bg))] flex flex-col lg:flex-row">
@@ -157,7 +157,7 @@ export default function SessionTakeover({ state }: { state: TakeoverState }) {
                     <>Your session ended while this tab was open. Signing in returns you to this page.</>
                   )
                 ) : (
-                  <>This page belongs to a Pulse workspace. If it&apos;s yours, sign in and it opens right here.</>
+                  <>This page belongs to a Pulse account. If it&apos;s yours, sign in and it opens right here.</>
                 )}
               </p>
               <button

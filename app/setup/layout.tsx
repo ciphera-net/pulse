@@ -3,7 +3,7 @@ import SetupLayoutClient from './layout-client'
 
 export const metadata: Metadata = {
   title: 'Get Started — Pulse',
-  description: 'Set up your Pulse workspace.',
+  description: 'Set up Pulse Analytics.',
   robots: 'noindex, nofollow',
 }
 

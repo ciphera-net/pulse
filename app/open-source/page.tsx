@@ -203,7 +203,7 @@ export default function OpenSourcePage() {
               </ul>
               <div className="mt-6 space-y-5 text-base leading-relaxed text-muted-foreground">
                 <p>
-                  Approval lands the plan on your workspace — sign up on the
+                  Approval lands the plan on your account — sign up on the
                   free tier whenever you like, before or after applying. We
                   answer within a few days, and prefer email that comes from
                   your project&rsquo;s domain.

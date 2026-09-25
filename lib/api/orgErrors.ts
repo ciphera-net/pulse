@@ -7,10 +7,10 @@ export interface OrgCreateError {
 }
 
 const TRANSIENT_SERVER =
-  'Pulse could not create the workspace just now. Nothing is wrong with the name; please try again in a moment.'
+  'Pulse could not create the team just now. Nothing is wrong with the name; please try again in a moment.'
 const TRANSIENT_NETWORK =
   'Pulse could not reach the server. Check your connection and try again.'
-const FALLBACK = 'We could not create that workspace. Please try again.'
+const FALLBACK = 'We could not create that team. Please try again.'
 
 /**
  * The same fix the site step got on 05-09-2026, applied to the step beside it.

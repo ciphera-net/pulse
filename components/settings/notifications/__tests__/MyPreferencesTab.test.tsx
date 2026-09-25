@@ -21,6 +21,10 @@ const toastError = vi.fn()
 // Toggle keeps its real switch semantics (role + aria-checked) and forwards
 // the naming props Facet's Toggle forwards, the same stand-in
 // AccountSecurityAlertsTab's test uses.
+// The panel line names the container from the ONE team-state signal (PULSE-59).
+let mockTeamState: 'alone' | 'team' | null = 'team'
+vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => mockTeamState }))
+
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...a: any[]) => a.flat(Infinity).filter(Boolean).join(' '),
   Toggle: ({ checked, onChange, disabled, id, 'aria-label': ariaLabel, 'aria-labelledby': ariaLabelledBy }: any) => (
@@ -158,8 +162,18 @@ describe('MyPreferencesTab (one switch per category)', () => {
     expect(screen.getByRole('heading', { name: 'Email' })).toBeInTheDocument()
     const desc = screen.getByText(/Every notification shows in the app the moment it happens/)
     expect(desc.textContent).toMatch(/Switch it off per category/)
-    expect(desc.textContent).toMatch(/yours, not the workspace's/)
+    expect(desc.textContent).toMatch(/yours, not the team's/)
     expect(desc.textContent).not.toMatch(/[—–]/)
+  })
+
+  it('says only "These settings are yours." to somebody alone (PULSE-59)', async () => {
+    mockTeamState = 'alone'
+    render(<MyPreferencesTab />)
+    await screen.findByText('Billing')
+    const desc = screen.getByText(/Every notification shows in the app the moment it happens/)
+    expect(desc.textContent).toMatch(/These settings are yours\.$/)
+    expect(desc.textContent).not.toMatch(/team|workspace/i)
+    mockTeamState = 'team'
   })
 
   it('🔴 the page carries none of the retired vocabulary in its CODE (comments stripped first)', () => {

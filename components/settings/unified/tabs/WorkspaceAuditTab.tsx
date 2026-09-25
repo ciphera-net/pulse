@@ -46,7 +46,7 @@ const ACTION_LABELS: Record<string, string> = {
   member_invited: 'Invited member',
   member_removed: 'Removed member',
   member_role_changed: 'Changed member role',
-  org_updated: 'Updated organization',
+  org_updated: 'Updated team',
   subscription_plan_changed: 'Changed plan',
   billing_checkout_started: 'Started checkout',
   admin_plan_granted: 'Plan granted (admin)',
@@ -132,7 +132,7 @@ const PAGE_SIZE = 20
 const ACTION_FILTER_ALL = 'all'
 
 const AUDIT_LOG_DESCRIPTION =
-  'A record of changes made across the workspace: sites, goals, funnels, integrations, members and billing.'
+  'A record of changes made across the team: sites, goals, funnels, integrations, members and billing.'
 
 export default function WorkspaceAuditTab() {
   const { user } = useAuth()
@@ -335,7 +335,7 @@ export default function WorkspaceAuditTab() {
             <EmptyRow
               icon={<ListChecks weight="regular" />}
               title="No activity yet"
-              caption="Workspace actions like site changes and member updates will appear here as they happen."
+              caption="Team actions like site changes and member updates will appear here as they happen."
             />
           ) : (
             <div

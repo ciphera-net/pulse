@@ -21,6 +21,10 @@ vi.mock('next/link', () => ({
 }))
 
 const useNotifications = vi.fn()
+// The empty state names the container from the ONE team-state signal (PULSE-59).
+let mockTeamState: 'alone' | 'team' | null = 'team'
+vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => mockTeamState }))
+
 vi.mock('@/lib/hooks/useNotifications', () => ({
   useNotifications: (p: unknown) => useNotifications(p),
 }))
@@ -274,13 +278,20 @@ describe('/notifications — one list (direction a)', () => {
    */
   it('empty renders the full empty state with the ruled copy', () => {
     useNotifications.mockReturnValue(baseHook({ receipts: [], unreadCount: 0, totalCount: 0 }))
-    render(<NotificationsPage />)
+    mockTeamState = 'team'
+    const { unmount } = render(<NotificationsPage />)
     expect(screen.getByText("You're all caught up")).toBeInTheDocument()
     expect(
       screen.getByText(
-        /Notifications from your sites and workspace land here\. Cleanup is automatic — read items delete after their retention window\./,
+        /Notifications from your sites and team land here\. Cleanup is automatic — read items delete after their retention window\./,
       ),
     ).toBeInTheDocument()
+    unmount()
+    // Somebody alone has no team to name (PULSE-59).
+    mockTeamState = 'alone'
+    render(<NotificationsPage />)
+    expect(screen.getByText(/Notifications from your sites and account land here\./)).toBeInTheDocument()
+    mockTeamState = 'team'
   })
 
   /**

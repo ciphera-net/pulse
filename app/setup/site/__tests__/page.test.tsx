@@ -188,3 +188,12 @@ describe('SetupSitePage', () => {
     expect(markOnboardingComplete).not.toHaveBeenCalled()
   })
 })
+
+describe('SetupSitePage resume copy (PULSE-59)', () => {
+  it('never tells a new person about a workspace', () => {
+    sitesState = { sites: [site('example.com', '2026-08-01T00:00:00Z')], isLoading: false }
+    const { container } = render(<SetupSitePage />)
+    expect(screen.getByText('Your site is already set up.')).toBeTruthy()
+    expect(container.textContent).not.toMatch(/workspace|organi[sz]ation/i)
+  })
+})

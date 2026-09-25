@@ -141,7 +141,7 @@ export default function PaymentForm({ plan, interval, limit, country, vatId, ver
         setFormError(
           apiErr.data?.code === 'checkout_in_flight'
             ? 'Your previous payment is still being confirmed. If you completed it, your plan activates automatically — you won’t be charged twice. Check Settings → Billing in a minute.'
-            : 'This workspace already has an active subscription. You can change your plan from Settings → Billing.',
+            : 'There is already an active subscription. You can change your plan from Settings → Billing.',
         )
       } else {
         setFormError((err as Error)?.message || 'Payment failed. Please try again.')

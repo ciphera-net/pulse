@@ -296,14 +296,14 @@ describe('SetupDonePage completion failure handling', () => {
     expect(completeOnboarding).toHaveBeenCalledTimes(1)
   })
 
-  it('never claims the workspace is ready when completion was forbidden', async () => {
+  it('never claims the team is ready when completion was forbidden', async () => {
     mockSite = A_SITE
     completeOnboarding.mockReset()
     completeOnboarding.mockRejectedValue(new ApiError('Only the owner can complete onboarding', 403))
 
     render(<SetupDonePage />)
     await waitFor(() => expect(screen.queryByText(SETUP_COPY.done.heading)).toBeNull())
-    expect(screen.getByText(/workspace owner still has a step left/i)).toBeTruthy()
+    expect(screen.getByText(/team owner still has a step left/i)).toBeTruthy()
   })
 
   it('still shows the completion heading on the happy path', async () => {

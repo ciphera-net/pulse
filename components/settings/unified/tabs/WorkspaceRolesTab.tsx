@@ -167,7 +167,7 @@ function RoleRow({ role, permissionGroups }: RoleRowProps) {
           {role.is_builtin && (
             <span className="mt-0.5 block text-xs text-muted-foreground">
               {role.slug === 'owner' && 'Full access to everything.'}
-              {role.slug === 'admin' && 'Manage sites, team, and settings. Cannot access billing or delete the workspace.'}
+              {role.slug === 'admin' && 'Manage sites, team, and settings. Cannot access billing or delete the team.'}
               {role.slug === 'analyst' && 'Create and manage goals, funnels, and alert channels. Cannot manage sites, team, or billing.'}
               {role.slug === 'member' && 'Day-to-day access to dashboards and analytics.'}
               {role.slug === 'viewer' && 'View dashboards and analytics only.'}
