@@ -25,13 +25,19 @@ vi.mock('@/lib/api/organization', () => ({
   removeOrganizationMember: (...a: unknown[]) => removeOrganizationMember(...a),
 }))
 
+// The page reads the ONE team-state signal (PULSE-59); each test sets it.
+let mockTeamState: 'alone' | 'team' | null = 'team'
+vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => mockTeamState }))
+
 vi.mock('@/lib/api/roles', () => ({
   listRoles: vi.fn().mockResolvedValue({ roles: [] }),
 }))
 
 // Sub-components are exercised by their own suites — stub them here so this
 // tab test stays focused on roster composition + the masthead CTA.
-vi.mock('../CreateInviteLinkModal', () => ({ default: () => null }))
+vi.mock('../CreateInviteLinkModal', () => ({
+  default: ({ open }: { open: boolean }) => (open ? <div data-testid="invite-modal" /> : null),
+}))
 vi.mock('../InviteLinksSection', () => ({ default: () => <div data-testid="invite-links" /> }))
 
 // Renders only its confirm affordance — the dialog primitive itself belongs
@@ -83,6 +89,7 @@ function renderTab() {
 
 beforeEach(() => {
   mockCanManage = true
+  mockTeamState = 'team'
   getOrganizationMembers.mockReset().mockResolvedValue(members)
   getInviteLinks.mockReset().mockResolvedValue([])
   removeOrganizationMember.mockClear()
@@ -98,7 +105,7 @@ describe('WorkspaceMembersTab roster', () => {
     expect(screen.getByText('pending@x.com')).toBeInTheDocument()
     expect(screen.getByText('Member u-mem-12')).toBeInTheDocument()
     expect(screen.getByText('Owner')).toBeInTheDocument()
-    expect(screen.getByText('3 members in your organization')).toBeInTheDocument()
+    expect(screen.getByText('3 members in your team')).toBeInTheDocument()
   })
 
   it('portals the Invite member CTA into the masthead when the user can manage', async () => {
@@ -139,9 +146,9 @@ describe('WorkspaceMembersTab non-happy states', () => {
     // Names the failed thing, and lands in the alert landmark rather than a
     // silently-empty roster.
     const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent(/couldn't load your organization members/i)
+    expect(alert).toHaveTextContent(/couldn't load your team's members/i)
     // Error is not silently rendered as an empty roster, and the CTA is absent.
-    expect(screen.queryByText(/in your organization$/)).toBeNull()
+    expect(screen.queryByText(/in your team$/)).toBeNull()
     expect(screen.queryByRole('button', { name: /Invite member/i })).toBeNull()
   })
 
@@ -152,7 +159,7 @@ describe('WorkspaceMembersTab non-happy states', () => {
     getInviteLinks.mockRejectedValueOnce(new Error('boom'))
     renderTab()
     const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent(/couldn't load your organization members/i)
+    expect(alert).toHaveTextContent(/couldn't load your team's members/i)
     expect(screen.queryByTestId('invite-links')).toBeNull()
   })
 
@@ -160,7 +167,7 @@ describe('WorkspaceMembersTab non-happy states', () => {
     getOrganizationMembers.mockResolvedValueOnce([])
     renderTab()
     await waitFor(() => expect(screen.getByText('No members yet')).toBeInTheDocument())
-    expect(screen.getByText('0 members in your organization')).toBeInTheDocument()
+    expect(screen.getByText('0 members in your team')).toBeInTheDocument()
   })
 
   it('shows the shared loading skeleton, not a spinner, while the roster is in flight', async () => {
@@ -254,5 +261,54 @@ describe('WorkspaceMembersTab row motion (round two, M5)', () => {
 
     await waitFor(() => expect(screen.queryByTestId('member-row-u-adm')).toBeNull(), { timeout: 2000 })
     expect(screen.getByTestId('member-row-u-you')).toBeInTheDocument()
+  })
+})
+
+// ─── PULSE-59: the page somebody alone sees (option B1-invite) ───
+describe('WorkspaceMembersTab, alone', () => {
+  beforeEach(() => {
+    mockTeamState = 'alone'
+    getOrganizationMembers.mockReset().mockResolvedValue([members[0]])
+  })
+
+  it('shows a People panel with "Just you for now" and an Invite people button, then the invite links', async () => {
+    renderTab()
+    await waitFor(() => expect(screen.getByText('Just you for now')).toBeInTheDocument())
+    expect(screen.getByRole('heading', { name: 'People' })).toBeInTheDocument()
+    expect(screen.getByText('Invite people to share your sites, billing and assistant connections.')).toBeInTheDocument()
+    expect(screen.getByTestId('invite-links')).toBeInTheDocument()
+    // No roster of one, no member count, no masthead CTA.
+    expect(screen.queryByText('You')).toBeNull()
+    expect(screen.queryByText(/members? in your/)).toBeNull()
+    expect(screen.queryByRole('button', { name: /Invite member/i })).toBeNull()
+    expect(screen.getByTestId('masthead-slot').childElementCount).toBe(0)
+  })
+
+  it('opens the existing create-invite action from the Invite people button', async () => {
+    renderTab()
+    const invite = await screen.findByRole('button', { name: /Invite people/ })
+    expect(screen.queryByTestId('invite-modal')).toBeNull()
+    fireEvent.click(invite)
+    expect(screen.getByTestId('invite-modal')).toBeInTheDocument()
+  })
+
+  it('never says team, workspace or organization', async () => {
+    const { container } = renderTab()
+    await waitFor(() => expect(screen.getByText('Just you for now')).toBeInTheDocument())
+    expect(container.textContent).not.toMatch(/team|workspace|organi[sz]ation/i)
+  })
+})
+
+describe('WorkspaceMembersTab, team', () => {
+  it('keeps the roster and counts the team', async () => {
+    renderTab()
+    await waitFor(() => expect(screen.getByText('3 members in your team')).toBeInTheDocument())
+    expect(screen.queryByText('Just you for now')).toBeNull()
+  })
+
+  it('keeps the roster while the state is not known', async () => {
+    mockTeamState = null
+    renderTab()
+    await waitFor(() => expect(screen.getByText('3 members in your team')).toBeInTheDocument())
   })
 })

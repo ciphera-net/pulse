@@ -5,7 +5,13 @@ vi.mock('next/dynamic', () => ({
   default: () => () => <div data-testid="tab-content">tab</div>,
 }))
 
-const h = vi.hoisted(() => ({ tab: 'general', replace: vi.fn(), canManageRoles: true }))
+const h = vi.hoisted(() => ({
+  tab: 'general',
+  replace: vi.fn(),
+  canManageRoles: true,
+  teamState: 'team' as 'alone' | 'team' | null,
+}))
+vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => h.teamState }))
 vi.mock('next/navigation', () => ({
   useParams: () => ({ tab: h.tab }),
   useRouter: () => ({ replace: h.replace }),
@@ -21,6 +27,7 @@ vi.mock('@/lib/auth/permissions', () => ({
 import OrganizationSettingsTabPage from '../page'
 
 beforeEach(() => {
+  h.teamState = 'team'
   h.tab = 'general'
   h.canManageRoles = true
   h.replace.mockClear()
@@ -83,5 +90,24 @@ describe('Organization settings tab routing', () => {
     render(<OrganizationSettingsTabPage />)
     expect(screen.getByText('Access restricted')).toBeInTheDocument()
     expect(screen.queryByTestId('tab-content')).not.toBeInTheDocument()
+  })
+})
+
+describe('Access restricted copy (PULSE-59)', () => {
+  it('points a team member at the team owner', () => {
+    h.tab = 'roles'
+    h.canManageRoles = false
+    render(<OrganizationSettingsTabPage />)
+    expect(screen.getByText(/Contact your team owner to request access\./)).toBeInTheDocument()
+    expect(screen.queryByText(/workspace/i)).toBeNull()
+  })
+
+  it('names nobody to ask when the person works alone', () => {
+    h.teamState = 'alone'
+    h.tab = 'roles'
+    h.canManageRoles = false
+    render(<OrganizationSettingsTabPage />)
+    expect(screen.getByText("You don't have permission to view this page.")).toBeInTheDocument()
+    expect(screen.queryByText(/team|workspace|owner/i)).toBeNull()
   })
 })

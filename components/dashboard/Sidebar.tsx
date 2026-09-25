@@ -9,6 +9,7 @@ import { useSites, FaviconPreloader } from '@/lib/swr/sites'
 import { cdnUrl } from '@/lib/cdn'
 import { DOCS_ORIGIN } from '@/lib/docs'
 import { useSidebar } from '@/lib/sidebar-context'
+import { useTeamState } from '@/lib/hooks/useTeamState'
 import { SiteFavicon } from '@/components/sites/SiteFavicon'
 import { CardsThree as CardsThreeIcon, Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, MagnifyingGlass, UsersThree as UsersThreeIcon } from '@phosphor-icons/react'
 import {
@@ -370,6 +371,9 @@ function SidebarContent({
   // the links already use to paint themselves active.
   const pathname = usePathname()
   const activeKey = pendingHref ?? pathname
+  // The home group's heading follows the team-state signal (PULSE-59): it
+  // never says team to somebody who works alone.
+  const teamState = useTeamState()
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -455,21 +459,21 @@ function SidebarContent({
             </div>
           </div>
 
-          {/* Organization */}
+          {/* Team, or Account for somebody alone */}
           <div>
             {c ? (
               <div className="mx-3 my-2 border-t border-neutral-800" />
             ) : (
               <div className="h-5 flex items-center overflow-hidden">
                 <p className="px-2.5 text-caption font-semibold text-neutral-500 uppercase tracking-wider whitespace-nowrap">
-                  Organization
+                  {teamState === 'alone' ? 'Account' : 'Team'}
                 </p>
               </div>
             )}
             <div className="space-y-0.5">
               <HomeNavLink href="/integrations" icon={PlugsIcon} label="Integrations" collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
               <HomeNavLink href="/pricing" icon={TagIcon} label="Pricing" collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
-              {/* Settings, not "Organization Settings": home mode is what every
+              {/* Settings, not "Team settings": home mode is what every
                   settings page that is not site-scoped renders under, and an
                   exact-match link to the org's General tab lit up on exactly one
                   of them. `/settings` is the landing index, and the prefix match

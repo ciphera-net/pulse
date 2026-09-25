@@ -28,13 +28,13 @@ import {
   User,
   Lock,
   DeviceMobile,
-  BellRinging,
   EnvelopeSimple,
   Compass,
 } from '@phosphor-icons/react'
 import { TOUR_MD_QUERY, TOUR_REQUEST_KEY, TOUR_START_EVENT } from '@/lib/tour/constants'
 import { useSites } from '@/lib/swr/sites'
 import { useCan } from '@/lib/auth/permissions'
+import { useTeamState } from '@/lib/hooks/useTeamState'
 import { SiteFavicon } from '@/components/sites/SiteFavicon'
 import {
   CommandDialog,
@@ -115,8 +115,10 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
   const canIntegrations   = useCan('integrations.manage')
   const canTeamView       = true
   const canBillingView    = useCan('billing.view')
-  const canNotificationSettings = useCan('notification_settings.manage')
   const canAuditView      = useCan('audit.view')
+  // The same grouping as the settings rail (PULSE-59): somebody alone has no
+  // team settings, roles or audit log listed, and Members is "Invite people".
+  const alone = useTeamState() === 'alone'
 
   const [search, setSearch] = useState('')
   const [placeholderIdx, setPlaceholderIdx] = useState(0)
@@ -288,14 +290,16 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
               <span><HighlightMatch text="Integrations" query={search} /></span>
             </CommandItem>
           )}
-          <CommandItem value="settings-org-general" onSelect={() => go('/settings/organization/general')}>
-            <Buildings size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span><HighlightMatch text="Organization Settings" query={search} /></span>
-          </CommandItem>
+          {!alone && (
+            <CommandItem value="settings-org-general" onSelect={() => go('/settings/organization/general')}>
+              <Buildings size={16} weight="regular" className="opacity-60" aria-hidden="true" />
+              <span><HighlightMatch text="Team Settings" query={search} /></span>
+            </CommandItem>
+          )}
           {canTeamView && (
             <CommandItem value="settings-org-members" onSelect={() => go('/settings/organization/members')}>
               <UsersThree size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-              <span><HighlightMatch text="Team Members" query={search} /></span>
+              <span><HighlightMatch text={alone ? 'Invite people' : 'Team Members'} query={search} /></span>
             </CommandItem>
           )}
           {canBillingView && (
@@ -304,13 +308,7 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
               <span><HighlightMatch text="Billing & Subscription" query={search} /></span>
             </CommandItem>
           )}
-          {canNotificationSettings && (
-            <CommandItem value="settings-org-notifications" onSelect={() => go('/settings/organization/notifications')}>
-              <BellRinging size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-              <span><HighlightMatch text="Workspace Notifications" query={search} /></span>
-            </CommandItem>
-          )}
-          {canAuditView && (
+          {canAuditView && !alone && (
             <CommandItem value="settings-org-audit" onSelect={() => go('/settings/organization/audit')}>
               <ClockCounterClockwise size={16} weight="regular" className="opacity-60" aria-hidden="true" />
               <span><HighlightMatch text="Audit Log" query={search} /></span>

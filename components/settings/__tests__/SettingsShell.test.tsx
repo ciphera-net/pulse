@@ -22,6 +22,9 @@ vi.mock('@phosphor-icons/react', () => new Proxy({}, {
   has: () => true,
 }))
 vi.mock('@/lib/auth/permissions', () => ({ useCan: () => true }))
+// The grouping follows the ONE team-state signal (PULSE-59); each test sets it.
+let teamState: 'alone' | 'team' | null = 'team'
+vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => teamState }))
 // The header's site identity reads the active site from this hook (round 3).
 type SiteLike = { id: string; name: string; domain: string }
 const setActiveSiteId = vi.fn()
@@ -48,22 +51,23 @@ vi.mock('@ciphera-net/facet', () => ({
 }))
 
 import SettingsShell from '@/components/settings/SettingsShell'
-import { NAV_GROUPS } from '@/components/settings/nav'
+import { navGroups } from '@/components/settings/nav'
 
-const ORG = NAV_GROUPS.find((g) => g.section === 'organization')!
+const ORG = navGroups('team').find((g) => g.section === 'organization')!
 
 beforeEach(() => {
   push.mockReset()
   setActiveSiteId.mockReset()
   pathname = '/settings/organization/billing'
   activeSiteValue = { sites: [], activeSite: null, setActiveSiteId }
+  teamState = 'team'
 })
 
 describe('SettingsShell (A6)', () => {
   it('titles the page as one line, Scope · Tab, with no eyebrow and no dek', () => {
     render(<SettingsShell><div>tab</div></SettingsShell>)
     const h1 = screen.getByRole('heading', { level: 1 })
-    expect(h1).toHaveTextContent(/Organization.*Billing/)
+    expect(h1).toHaveTextContent(/Team.*Billing/)
     // The old three-line masthead: an uppercase eyebrow, an h1 repeating it,
     // and a lede listing the tabs. None of it survives.
     expect(screen.queryByText('Manage your workspace, team, and billing.')).toBeNull()
@@ -77,7 +81,7 @@ describe('SettingsShell (A6)', () => {
     expect(trigger).toHaveAttribute('aria-haspopup', 'dialog')
     // The h1 above it still carries the Scope · Tab line — only the trigger changes.
     const h1 = screen.getByRole('heading', { level: 1 })
-    expect(h1).toHaveTextContent(/Organization.*Billing/)
+    expect(h1).toHaveTextContent(/Team.*Billing/)
     expect(trigger).not.toHaveTextContent(' · ')
     expect(trigger).not.toHaveTextContent('Billing')
   })
@@ -88,7 +92,7 @@ describe('SettingsShell (A6)', () => {
     // The rail also carries the two legal links; the rows are the settings hrefs.
     const links = within(rail).getAllByRole('link').filter((l) => (l.getAttribute('href') ?? '').startsWith('/settings'))
     const hrefs = links.map((l) => l.getAttribute('href'))
-    // Seven organization rows (useCan is true for everything), nothing else.
+    // Seven team rows (useCan is true for everything), nothing else.
     expect(hrefs).toEqual(ORG.tabs.map((t) => t.href))
     expect(hrefs.some((h) => h!.startsWith('/settings/site') || h!.startsWith('/settings/account'))).toBe(false)
     // Two lines per row: the label and the registry's description.
@@ -102,7 +106,7 @@ describe('SettingsShell (A6)', () => {
   it('marks the MCP row New in the rail, and no other row (PULSE-54)', () => {
     render(<SettingsShell><div>tab</div></SettingsShell>)
     const rail = screen.getByRole('navigation', { name: 'Settings sections' })
-    const mcp = within(rail).getByRole('link', { name: 'Organization: MCP' })
+    const mcp = within(rail).getByRole('link', { name: 'Team: MCP' })
     expect(mcp).toHaveAttribute('href', '/settings/organization/mcp')
     expect(mcp.querySelector('[data-badge]')?.textContent).toBe('New')
     expect(rail.querySelectorAll('[data-badge]')).toHaveLength(1)
@@ -119,14 +123,14 @@ describe('SettingsShell (A6)', () => {
   it('switches scope to that scope\'s first visible tab', () => {
     render(<SettingsShell><div>tab</div></SettingsShell>)
     const group = screen.getAllByRole('radiogroup', { name: 'Settings scope' })[0]
-    expect(within(group).getByRole('radio', { name: 'Organization' })).toHaveAttribute('aria-checked', 'true')
+    expect(within(group).getByRole('radio', { name: 'Team' })).toHaveAttribute('aria-checked', 'true')
     fireEvent.click(within(group).getByRole('radio', { name: 'Account' }))
     expect(push).toHaveBeenCalledWith('/settings/account/profile')
     fireEvent.click(within(group).getByRole('radio', { name: 'Site' }))
     expect(push).toHaveBeenCalledWith('/settings/site/general')
     // Picking the scope you are already in is not a navigation.
     push.mockReset()
-    fireEvent.click(within(group).getByRole('radio', { name: 'Organization' }))
+    fireEvent.click(within(group).getByRole('radio', { name: 'Team' }))
     expect(push).not.toHaveBeenCalled()
   })
 
@@ -212,11 +216,11 @@ describe('SettingsShell — the site named in the header', () => {
     expect(within(h1).queryByRole('button')).toBeNull()
   })
 
-  it('leaves the other scopes alone: Organization · Billing, no site control', () => {
+  it('leaves the other scopes alone: Team · Billing, no site control', () => {
     activeSiteValue = { sites: [ACME, BOLT], activeSite: ACME, setActiveSiteId }
     render(<SettingsShell><div>tab</div></SettingsShell>)
     const h1 = screen.getByRole('heading', { level: 1 })
-    expect(h1).toHaveTextContent(/Organization.*Billing/)
+    expect(h1).toHaveTextContent(/Team.*Billing/)
     expect(h1).not.toHaveTextContent(/Acme/)
     expect(within(h1).queryByRole('button')).toBeNull()
   })
@@ -267,4 +271,72 @@ describe('SettingsShell — round two, the frame and the rail', () => {
     }
   })
 
+})
+
+// ─── PULSE-59: somebody who works alone sees Site + Account (option B1) ───
+describe('SettingsShell — alone (B1)', () => {
+  beforeEach(() => { teamState = 'alone' })
+
+  it('reads the scope switcher Site | Account, with no Team scope', () => {
+    render(<SettingsShell><div>tab</div></SettingsShell>)
+    const group = screen.getAllByRole('radiogroup', { name: 'Settings scope' })[0]
+    expect(within(group).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Site', 'Account'])
+  })
+
+  it('shows billing under Account, same href, and titles it Account · Billing', () => {
+    render(<SettingsShell><div>tab</div></SettingsShell>)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/Account.*Billing/)
+    const group = screen.getAllByRole('radiogroup', { name: 'Settings scope' })[0]
+    expect(within(group).getByRole('radio', { name: 'Account' })).toHaveAttribute('aria-checked', 'true')
+    const rail = screen.getByRole('navigation', { name: 'Settings sections' })
+    const current = within(rail).getAllByRole('link').filter((l) => l.getAttribute('aria-current') === 'page')
+    expect(current).toHaveLength(1)
+    expect(current[0]).toHaveAttribute('href', '/settings/organization/billing')
+    expect(current[0]).toHaveAccessibleName('Account: Billing')
+  })
+
+  it('lists the Account rows, then Billing, API Keys, MCP and Invite people; no team name, roles or audit log', () => {
+    render(<SettingsShell><div>tab</div></SettingsShell>)
+    const rail = screen.getByRole('navigation', { name: 'Settings sections' })
+    const hrefs = within(rail).getAllByRole('link')
+      .map((l) => l.getAttribute('href') ?? '')
+      .filter((h) => h.startsWith('/settings'))
+    expect(hrefs).toEqual([
+      '/settings/account/profile',
+      '/settings/account/security',
+      '/settings/account/devices',
+      '/settings/account/notifications',
+      '/settings/account/security-alerts',
+      '/settings/organization/billing',
+      '/settings/organization/api-keys',
+      '/settings/organization/mcp',
+      '/settings/organization/members',
+    ])
+    expect(within(rail).getByRole('link', { name: 'Account: Invite people' })).toBeInTheDocument()
+    expect(within(rail).getByText('Share your sites with others.')).toBeInTheDocument()
+    expect(within(rail).queryByText(/team|workspace|organi[sz]ation/i)).toBeNull()
+  })
+
+  it('titles the Members route Account · Invite people', () => {
+    pathname = '/settings/organization/members'
+    render(<SettingsShell><div>tab</div></SettingsShell>)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/Account.*Invite people/)
+  })
+
+  it('still renders an unlisted route under Account, named, with no rail row current', () => {
+    pathname = '/settings/organization/audit'
+    render(<SettingsShell><div data-testid="tab">tab</div></SettingsShell>)
+    expect(screen.getByTestId('tab')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/Account.*Audit Log/)
+    const rail = screen.getByRole('navigation', { name: 'Settings sections' })
+    expect(within(rail).getAllByRole('link').filter((l) => l.getAttribute('aria-current') === 'page')).toHaveLength(0)
+  })
+
+  it('renders the TEAM layout while the state is not known (null)', () => {
+    teamState = null
+    render(<SettingsShell><div>tab</div></SettingsShell>)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/Team.*Billing/)
+    const group = screen.getAllByRole('radiogroup', { name: 'Settings scope' })[0]
+    expect(within(group).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Site', 'Team', 'Account'])
+  })
 })

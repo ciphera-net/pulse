@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSWRConfig } from 'swr'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Button, toast } from '@ciphera-net/facet'
-import { Plus, Trash, User, Users } from '@phosphor-icons/react'
+import { Plus, Trash, User, Users, UsersThree } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
 import { useIsAdminOrOwner } from '@/lib/auth/permissions'
 import { getOrganizationMembers, removeOrganizationMember, getInviteLinks, type OrganizationMember, type InviteLink } from '@/lib/api/organization'
@@ -19,6 +20,7 @@ import { MastheadAction } from '@/components/settings/shell-slots'
 import { DURATION_BASE, DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { formatDate } from '@/lib/utils/formatDate'
 import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
+import { useTeamState } from '@/lib/hooks/useTeamState'
 
 /**
  * A role is a label, not a live state: every role chip is a plain StatusChip
@@ -61,6 +63,11 @@ export default function WorkspaceMembersTab() {
   const [confirmRemove, setConfirmRemove] = useState<{ userId: string; email: string } | null>(null)
 
   const canManage = useIsAdminOrOwner()
+  // Somebody alone sees this page as "Invite people" (option B1, PULSE-59):
+  // no roster of one, just the way to share. Decided by the ONE team-state
+  // signal, so this page and the rail that named it cannot disagree.
+  const alone = useTeamState() === 'alone'
+  const { mutate } = useSWRConfig()
 
   const loadMembers = async () => {
     if (!user?.org_id) return
@@ -77,6 +84,9 @@ export default function WorkspaceMembersTab() {
       setMembers(membersData)
       setRoles(rolesData)
       setInviteLinks(linksData)
+      // The team-state signal counts the same roster (lib/swr/members.tsx);
+      // hand it this answer so a removal that leaves somebody alone shows at once.
+      void mutate(['members', user.org_id], membersData, { revalidate: false })
     } catch {
       // A real fetch failure must be visible, not rendered as an empty roster
       // or an empty links panel. Surface the error state below with a retry.
@@ -109,7 +119,7 @@ export default function WorkspaceMembersTab() {
 
   if (error) return (
     <SettingsErrorState
-      title="Couldn't load your organization members"
+      title={alone ? "Couldn't load this page" : "Couldn't load your team's members"}
       onRetry={handleRetry}
       retrying={retrying}
     />
@@ -117,8 +127,9 @@ export default function WorkspaceMembersTab() {
 
   return (
     <div className="space-y-8">
-      {/* The tab's one orange: the primary CTA, portaled into the masthead. */}
-      {canManage && (
+      {/* The tab's one orange: the primary CTA, portaled into the masthead.
+          Alone, the same action is the empty state's button instead. */}
+      {canManage && !alone && (
         <MastheadAction>
           <Button size="sm" onClick={() => setShowLinkModal(true)} variant="default" className="gap-1.5">
             <Plus weight="bold" className="h-4 w-4" /> Invite member
@@ -126,10 +137,26 @@ export default function WorkspaceMembersTab() {
         </MastheadAction>
       )}
 
-      {/* Roster: one ruled panel (spec section 6). */}
+      {alone ? (
+        <SettingsPanel title="People">
+          <EmptyRow
+            icon={<UsersThree weight="regular" />}
+            title="Just you for now"
+            caption="Invite people to share your sites, billing and assistant connections."
+            action={
+              canManage ? (
+                <Button size="sm" onClick={() => setShowLinkModal(true)} variant="default" className="gap-1.5">
+                  <Plus weight="bold" className="h-4 w-4" /> Invite people
+                </Button>
+              ) : undefined
+            }
+          />
+        </SettingsPanel>
+      ) : (
+      /* Roster: one ruled panel (spec section 6). */
       <SettingsPanel
         title="Members"
-        description={`${members.length} member${members.length !== 1 ? 's' : ''} in your organization`}
+        description={`${members.length} member${members.length !== 1 ? 's' : ''} in your team`}
       >
         {members.length === 0 ? (
           <EmptyRow
@@ -220,6 +247,7 @@ export default function WorkspaceMembersTab() {
           </PanelRows>
         )}
       </SettingsPanel>
+      )}
 
       {user?.org_id && (
         <>
@@ -232,7 +260,7 @@ export default function WorkspaceMembersTab() {
         open={confirmRemove !== null}
         onOpenChange={(open) => { if (!open) setConfirmRemove(null) }}
         title="Remove member"
-        description={confirmRemove ? `Remove ${confirmRemove.email} from the organization? They will lose access to all workspace resources.` : ''}
+        description={confirmRemove ? `Remove ${confirmRemove.email} from the team? They will lose access to all of its sites and settings.` : ''}
         confirmLabel="Remove"
         variant="danger"
         onConfirm={doRemove}
