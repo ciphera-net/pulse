@@ -58,10 +58,20 @@ export function renderNotification(r: Receipt, resolvers?: Resolvers, timeZone?:
 
 /**
  * The one plain row for a type with no renderer, or one whose renderer threw.
- * The body is the email's generic line (Iris render.go, PULSE-59): it names
- * Pulse, never a workspace, because the card cannot tell a reader who works
- * alone from one in a team.
+ *
+ * 🔴 NEVER THE TYPE KEY (PULSE-67). The title is the registry's label for the
+ * type, which Iris reads from notification_types at list time: the email's
+ * generic arm titles itself "Pulse — <display name>" for the same reason, and
+ * a type_key string is never shown, split or title-cased. The body is the
+ * email's generic line (Iris render.go, PULSE-59): it names Pulse, never a
+ * workspace, because the card cannot tell a reader who works alone from one
+ * in a team. From a backend that predates the label, that line is the title
+ * and there is no body.
  */
+const GENERIC_LINE = 'A new notification in Pulse.'
+
 function fallback(r: Receipt): Rendered {
-  return { title: r.event.type, body: 'A new notification in Pulse.', linkLabel: null }
+  const label = r.type_display_name?.trim()
+  if (label) return { title: label, body: GENERIC_LINE, linkLabel: null }
+  return { title: GENERIC_LINE, body: '', linkLabel: null }
 }
