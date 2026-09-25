@@ -63,6 +63,51 @@ function withPrfExtension(base: SWAExtensions | undefined, salt: Uint8Array): SW
   return { ...base, ...prfExtension(salt) } as SWAExtensions
 }
 
+type SWAAuthenticatorSelection = NonNullable<
+  PublicKeyCredentialCreationOptionsJSON['authenticatorSelection']
+>
+
+/**
+ * The authenticator selection for the enrol create(): the server's, unchanged,
+ * except on Firefox for macOS, where it gains `authenticatorAttachment: 'platform'`.
+ *
+ * 🔴 Firefox on macOS below 26.4 sends every create() that requests PRF and
+ * does NOT say "platform" to authenticator-rs, its USB/NFC-only backend
+ * (`dom/webauthn/WebAuthnService.cpp`, `PrfRequestedForSecurityKey`). macOS's
+ * security-key API gained PRF only in 26.4, so Firefox picks a path that can
+ * answer PRF over one that silently drops it. The user sees "touch your
+ * security key" instead of Touch ID, and a Mac with no key plugged in is stuck.
+ * Every enrol here requests PRF (it is what opens the vault), so without this
+ * no Firefox-on-Mac user could add a passkey with Touch ID (PULSE-60, pulse#781).
+ * `platform` is the one input Firefox reads as "don't reroute", and macOS
+ * platform passkeys answer PRF from 15.0.
+ *
+ * Why only there. In Chrome and Safari, `platform` removes phone-via-QR and
+ * security keys from the ceremony, which would be a regression for everyone to
+ * fix one browser. In Firefox on a Mac, the path it gives up is the USB-key-only
+ * one. The UA can't be narrowed to "< 26.4" because Firefox freezes the macOS
+ * version in its UA at 10.15, and the reroute happens inside the browser where
+ * no feature check can see it.
+ *
+ * Firefox's WebAuthn sign-in (get()) is unaffected: its reroute there needs a
+ * non-empty allow-list with no internal/hybrid transport, which neither our
+ * discoverable sign-in nor the enrol fallback assertion sends.
+ */
+export function enrolAuthenticatorSelection(
+  server: SWAAuthenticatorSelection | undefined,
+  userAgent: string,
+): SWAAuthenticatorSelection | undefined {
+  if (!isFirefoxOnMac(userAgent)) return server
+  return { ...server, authenticatorAttachment: 'platform' }
+}
+
+/** Gecko on macOS. The `Firefox/` token is kept by the Gecko forks (LibreWolf,
+ *  Waterfox, Zen) that share the same WebAuthn service. Firefox for iOS
+ *  (`FxiOS`) is WebKit and never carries `Firefox/`. */
+function isFirefoxOnMac(ua: string): boolean {
+  return /\bMacintosh\b/.test(ua) && /\bFirefox\/\d/.test(ua)
+}
+
 function b64std(bytes: Uint8Array): string {
   let binary = ''
   for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
@@ -225,6 +270,10 @@ export async function beginPasskeyEnrol(): Promise<PasskeyEnrolHandle> {
   const registration: RegistrationResponseJSON = await startRegistration({
     optionsJSON: {
       ...optionsJSON,
+      authenticatorSelection: enrolAuthenticatorSelection(
+        optionsJSON.authenticatorSelection,
+        typeof navigator === 'undefined' ? '' : navigator.userAgent,
+      ),
       // Merged, not replaced: the server may already be asking for extensions
       // of its own and dropping them here would silently change the ceremony.
       extensions: withPrfExtension(optionsJSON.extensions, salt),

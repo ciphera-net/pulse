@@ -65,6 +65,7 @@ import {
   enrolPasskey,
   beginPasskeyEnrol,
   abandonPasskeyEnrol,
+  enrolAuthenticatorSelection,
   PasskeyPrfUnsupportedError,
 } from '../passkey-enrol'
 
@@ -478,5 +479,83 @@ describe('@ciphera-net/auth passkey wrap contract (consumer smoke test)', () => 
     expect(JSON.parse((reauthFinish[1] as any).body).purpose).toBe(
       PASSKEY_WRAP_CONTRACT.reauthPurpose,
     )
+  })
+})
+
+// PULSE-60 (pulse#781). Firefox on macOS < 26.4 routes a PRF create() that does
+// not say "platform" to its USB-only backend, so the user gets "touch your
+// security key" instead of Touch ID. Pinned from both sides: Firefox-on-Mac gets
+// `platform`, and every other browser gets the server's selection UNCHANGED,
+// because `platform` elsewhere removes phone-via-QR and security keys.
+describe('enrol authenticator selection (Firefox on macOS)', () => {
+  const UA = {
+    firefoxMac:
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:143.0) Gecko/20100101 Firefox/143.0',
+    chromeMac:
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+    safariMac:
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15',
+    firefoxWindows: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0',
+    firefoxLinux: 'Mozilla/5.0 (X11; Linux x86_64; rv:143.0) Gecko/20100101 Firefox/143.0',
+    firefoxIOS:
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/143.0 Mobile/15E148 Safari/605.1.15',
+  }
+  const SERVER = { residentKey: 'preferred', userVerification: 'preferred' } as const
+
+  it('adds platform on Firefox for macOS and keeps the server fields', () => {
+    expect(enrolAuthenticatorSelection(SERVER, UA.firefoxMac)).toEqual({
+      residentKey: 'preferred',
+      userVerification: 'preferred',
+      authenticatorAttachment: 'platform',
+    })
+    expect(enrolAuthenticatorSelection(undefined, UA.firefoxMac)).toEqual({
+      authenticatorAttachment: 'platform',
+    })
+  })
+
+  it.each([
+    ['Chrome on macOS', UA.chromeMac],
+    ['Safari on macOS', UA.safariMac],
+    ['Firefox on Windows', UA.firefoxWindows],
+    ['Firefox on Linux', UA.firefoxLinux],
+    ['Firefox for iOS (WebKit)', UA.firefoxIOS],
+    ['an empty UA', ''],
+  ])('leaves %s with the server selection, same object', (_name, ua) => {
+    expect(enrolAuthenticatorSelection(SERVER, ua)).toBe(SERVER)
+    expect(enrolAuthenticatorSelection(undefined, ua)).toBeUndefined()
+  })
+
+  describe('reaches the ceremony', () => {
+    beforeEach(() => {
+      authFetchSpy.mockReset()
+      startRegistration.mockReset()
+      startAuthentication.mockReset()
+    })
+
+    it('Firefox on macOS: create() is asked for a platform authenticator', async () => {
+      const spy = vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(UA.firefoxMac)
+      try {
+        wire()
+        await beginPasskeyEnrol()
+        const optionsJSON = startRegistration.mock.calls[0][0].optionsJSON
+        expect(optionsJSON.authenticatorSelection?.authenticatorAttachment).toBe('platform')
+        // The PRF request survives alongside it.
+        expect(optionsJSON.extensions.prf.eval.first).toBeInstanceOf(Uint8Array)
+      } finally {
+        spy.mockRestore()
+      }
+    })
+
+    it('Chrome on macOS: no attachment is added', async () => {
+      const spy = vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(UA.chromeMac)
+      try {
+        wire()
+        await beginPasskeyEnrol()
+        const optionsJSON = startRegistration.mock.calls[0][0].optionsJSON
+        expect(optionsJSON.authenticatorSelection?.authenticatorAttachment).toBeUndefined()
+      } finally {
+        spy.mockRestore()
+      }
+    })
   })
 })
