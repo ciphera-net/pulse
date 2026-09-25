@@ -13,7 +13,8 @@ import {
   zonedDayOfMonth,
   zonedMonthKey,
 } from '../format'
-import { VISITORS_MIN_DATE, VISITORS_ROLLING_MINUTES, presenceTicks } from '../range'
+import * as visitorsRange from '../range'
+import { VISITORS_MIN_DATE, presenceTicks } from '../range'
 
 describe('visitorPseudonym', () => {
   it('is deterministic — the same key always names the same reader', () => {
@@ -216,8 +217,14 @@ describe('the range declaration', () => {
     expect(VISITORS_MIN_DATE).toBe('2026-08-26')
   })
 
-  it('declares every live preset as rolling MINUTES', () => {
-    expect(VISITORS_ROLLING_MINUTES).toEqual({ '30m': 30, '1h': 60, '6h': 360, '24h': 1440 })
+  it('retired the live-window presets (PULSE-20, 25-09-2026) — realtime is the orb MODE now', () => {
+    // While both existed, picking a rolling window here would have become the
+    // whole app's one remembered view (plan §11.13 item 4). VISITORS_PRESETS and
+    // VISITORS_ROLLING_MINUTES are gone from the module, not merely unused —
+    // `import * as` so a re-added export fails this even if nothing local
+    // references it by name.
+    expect(visitorsRange).not.toHaveProperty('VISITORS_PRESETS')
+    expect(visitorsRange).not.toHaveProperty('VISITORS_ROLLING_MINUTES')
   })
 
   it('gives a rolling window minute ticks, not day ticks', () => {

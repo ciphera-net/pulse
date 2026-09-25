@@ -2,7 +2,7 @@
 
 
 import { siteDaysCaption } from '@/lib/utils/timezones'
-import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
+import { useCallback, useEffect, useState, useMemo } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import {
   type Stats,
@@ -14,21 +14,18 @@ import DateRangePicker from '@/components/ui/DateRangePicker'
 import { PERIOD_TO_API } from '@/lib/constants/periods'
 import { DEFAULT_GEO_DATA_LEVEL } from '@/lib/api/sites'
 import { identityWindowOf } from '@/lib/visitors/identityWindow'
-import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
-import { DEFAULT_PERIOD } from '@/lib/hooks/periodUrl'
+import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
+import { useRealtimeToggle } from '@/lib/hooks/useRealtimeToggle'
 import { previousDateRange } from '@/lib/hooks/periodUrl'
-import { resolveDashboardRange } from '@/lib/dashboard/resolveRange'
+import { resolveDashboardRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
 import dynamic from 'next/dynamic'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import FilterButton from '@/components/dashboard/FilterButton'
 import RealtimeOrb from '@/components/dashboard/RealtimeOrb'
 import {
-  DASHBOARD_EPHEMERAL_PERIODS,
-  DASHBOARD_REALTIME_PRESETS,
-  DASHBOARD_ROLLING_MINUTES,
+  REALTIME_MODES,
+  REALTIME_ROLLING_MINUTES,
   isRealtimePeriod,
-  periodOnLeavingRealtime,
-  type PreviousView,
 } from '@/lib/dashboard/realtimeRange'
 import { useRealtimeSync } from '@/lib/hooks/useRealtimeSync'
 import FilterPills from '@/components/dashboard/FilterPills'
@@ -55,6 +52,7 @@ import {
   useStats,
   useCampaigns,
   useSite,
+  useDataWindow,
 } from '@/lib/swr/dashboard'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import InstallBanner from '@/components/dashboard/InstallBanner'
@@ -82,24 +80,21 @@ export default function SiteDashboardPage() {
   // every other date-ranged page already uses (F12): a shared link carries the
   // range, back/forward works, and nothing is silently rewritten to a frozen
   // custom range on reload. The chart intervals are view state, not identity —
-  // plain React state, no persistence.
-  // `extraPresets` adds "Realtime" to THIS page's picker only. The Period
-  // grammar is shared with funnels, search, CDN and uptime, none of which can
-  // serve a live window — a global entry would show in their menus and resolve
-  // to something they cannot honour. `rollingMinutes` is what turns the chosen
-  // period into a `minutes=` fetch instead of a date span.
-  const { period, dateRange, periodReady, rollingMinutes, remembered, setPeriod, shiftPeriod, siteNow, pickerProps } =
-    useUrlDateRange({
-      pageKey: 'dashboard',
-      timezone: siteRecord?.timezone,
-      extraPresets: DASHBOARD_REALTIME_PRESETS,
-      rollingMinutes: DASHBOARD_ROLLING_MINUTES,
-      // Realtime is a MODE, not a view somebody chose for next time. Without
-      // this it would be written to the page's range memory, so a later visit
-      // would open live — and the real preference it overwrote is unrecoverable,
-      // because memory cannot tell you what it replaced.
-      ephemeralPeriods: DASHBOARD_EPHEMERAL_PERIODS,
-    })
+  // plain React state, no persistence. The view itself is the ONE memory shared by
+  // every page (PULSE-20), answered against this page's data window.
+  // Realtime is a MODE entered from the orb — never a menu row, never remembered;
+  // `rollingMinutes` turns it into a `minutes=` fetch instead of a date span.
+  const dataWindow = useDataWindow(siteId, 'dashboard')
+  const urlRange = useUrlDateRange({
+    surface: 'dashboard',
+    window: dataWindow,
+    timezone: siteRecord?.timezone,
+    modes: REALTIME_MODES,
+    rollingMinutes: REALTIME_ROLLING_MINUTES,
+    retentionMonths: siteRecord?.data_retention_months,
+    daysCaption: siteDaysCaption(siteRecord?.timezone),
+  })
+  const { period, dateRange, periodReady, rollingMinutes, picker } = urlRange
   const isLive = isRealtimePeriod(period)
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
@@ -228,7 +223,14 @@ export default function SiteDashboardPage() {
   }, [handleAddFilter])
 
   // Fetch full suggestion list (up to 100) when a dimension is selected in the filter dropdown
-  const handleFetchSuggestions = useFilterSuggestions(siteId, resolvedDateRange, filtersParam || undefined)
+  // All time travels as the `all` token here too (as on Funnels and Journeys): sent as
+  // the window's dates it would 400 once the window passes the 366-day cap.
+  const handleFetchSuggestions = useFilterSuggestions(
+    siteId,
+    resolvedDateRange,
+    filtersParam || undefined,
+    serverResolvedPeriod(periodReady, period),
+  )
 
   // Sync filters to URL
   useEffect(() => {
@@ -254,10 +256,15 @@ export default function SiteDashboardPage() {
   // the server's own echoed range, or the client range resolved against the
   // site's wall clock), so it must be read as local parts, not re-UTC'd.
   // Hooks below gate on prevRange via empty-string fallthrough so SWR skips the fetch.
+  // "All time" has no previous period — there is no history before the whole of it —
+  // so it carries no comparison rather than one against days with no data. Nor does
+  // realtime: the server echoes a live window as the day it falls in, so the "previous
+  // period" was all of yesterday, and every rail delta compared five minutes with a
+  // whole day (a red −99% under a live view).
   const prevRange = useMemo(
     (): { start: string; end: string } | null =>
-      resolvedDateRange ? previousDateRange(resolvedDateRange) : null,
-    [resolvedDateRange],
+      resolvedDateRange && period !== 'all' && !isLive ? previousDateRange(resolvedDateRange) : null,
+    [resolvedDateRange, period, isLive],
   )
   const { data: realtimeData } = useRealtime(siteId, 15_000)
 
@@ -273,39 +280,9 @@ export default function SiteDashboardPage() {
     }, [refetchDashboard]),
   })
 
-  // The orb and the picker's "Realtime" entry are the same switch, and leaving
-  // returns to the view you were on — not to the default.
-  //
-  // 🔴 This used to jump to DEFAULT_PERIOD, on the reasoning that the URL is the
-  // state and a remembered period could disagree with a shared link. That was
-  // the wrong trade: glancing at the live view is a detour, and a detour that
-  // silently rewrites where you were is a bug. Somebody on "Last 7 days" who
-  // checks who is on the site now expects to land back on Last 7 days.
-  //
-  // The previous view is held in a ref — deliberately NOT in the URL, which is
-  // what keeps a shared ?period=realtime link honest: it carries the live view
-  // and nothing about the sender's private history. A recipient has no ref, so
-  // they fall through to their OWN remembered period (or the default), which is
-  // the right answer for them rather than a stranger's.
-  //
-  // The custom range travels too: restoring the token alone would send somebody
-  // who was on a hand-picked span back to a preset of the same name but
-  // different dates.
-  const previousViewRef = useRef<PreviousView | null>(null)
-  const toggleRealtime = useCallback(() => {
-    if (isLive) {
-      const previous = previousViewRef.current
-      previousViewRef.current = null
-      const next = periodOnLeavingRealtime(previous, remembered, DEFAULT_PERIOD)
-      setPeriod(next.period, next.range)
-      return
-    }
-    previousViewRef.current =
-      period === 'custom'
-        ? { period, range: { start: dateRange.start, end: dateRange.end } }
-        : { period }
-    setPeriod('realtime')
-  }, [isLive, period, dateRange.start, dateRange.end, remembered, setPeriod])
+  // The orb is the one switch into realtime; leaving returns to the view the reader
+  // was on (useRealtimeToggle — shared with Visitors, so the two cannot drift).
+  const { toggle: toggleRealtime } = useRealtimeToggle(urlRange)
   // The previous-period comparison carries the SAME filters as the current
   // period. Omitting them compared a filtered current window against an
   // unfiltered previous one — every KPI delta was garbage under any active
@@ -328,6 +305,12 @@ export default function SiteDashboardPage() {
   // zero is indistinguishable from a measured one (F11).
   const stats: Stats = dashboard?.stats ?? { pageviews: 0, visitors: 0, bounce_rate: null, avg_duration: null, avg_scroll_depth: null, avg_visible_duration: null }
   const realtime = realtimeData?.visitors ?? dashboard?.realtime_visitors ?? 0
+  // In realtime the rail's headline visitors IS the orb's count — the tracker's
+  // presence over the same five minutes. Read from events instead, a reader still on
+  // one page past five minutes without a new pageview is on the site (orb) but not in
+  // the window (rail): both correct, contradictory side by side, which is exactly what
+  // the owner saw (plan §11.10). One source, one number.
+  const deckStats: Stats = isLive ? { ...stats, visitors: realtime } : stats
   const dailyStats: DailyStat[] = dashboard?.daily_stats ?? []
 
   // Span of the returned series (offset-safe: both ends carry the same site
@@ -430,16 +413,7 @@ export default function SiteDashboardPage() {
         active={filterBuilder.open}
         onClick={anchor => filterBuilder.openCreate(anchor)}
       />
-      <DateRangePicker
-        period={period}
-        dateRange={dateRange}
-        onPeriodChange={(p) => setPeriod(p as Period)}
-        onDateRangeChange={(range) => setPeriod('custom', range)}
-        onShift={shiftPeriod}
-        now={siteNow}
-        daysCaption={siteDaysCaption(siteRecord?.timezone)}
-        {...pickerProps}
-      />
+      <DateRangePicker {...picker} />
     </>
   )
 
@@ -473,11 +447,13 @@ export default function SiteDashboardPage() {
         return <><div className="mb-3 space-y-2">
         <CommandDeck
           data={dailyStats}
-          stats={stats}
+          stats={deckStats}
           prevStats={prevStats}
           metric={metric}
           onMetricChange={handleMetricChange}
-          interval={interval}
+          // The bucket the series is IN: past a year of All time the server picks it.
+          interval={dashboard?.interval ?? interval}
+          live={isLive}
           dateRange={resolvedDateRange}
           period={period}
           multiDayInterval={multiDayInterval}
@@ -497,6 +473,7 @@ export default function SiteDashboardPage() {
           channels={dashboard?.channels ?? []}
           collectReferrers={site.collect_referrers ?? true}
           siteId={siteId}
+          live={isLive}
           dateRange={resolvedDateRange}
           period={apiPeriod || undefined}
           totals={totals}
@@ -512,6 +489,7 @@ export default function SiteDashboardPage() {
           geoDataLevel={site.collect_geo_data || DEFAULT_GEO_DATA_LEVEL}
           collectAudienceData={site.collect_audience_data ?? true}
           siteId={siteId}
+          live={isLive}
           dateRange={resolvedDateRange}
           totals={totals}
           filters={filtersParam || undefined}
@@ -553,6 +531,7 @@ export default function SiteDashboardPage() {
               collectDeviceInfo={site.collect_device_info ?? true}
               collectScreenResolution={site.collect_screen_resolution ?? true}
               siteId={siteId}
+          live={isLive}
               dateRange={resolvedDateRange}
               totals={totals}
               filters={filtersParam || undefined}
@@ -565,6 +544,7 @@ export default function SiteDashboardPage() {
           <div className="flex-1 min-h-0">
             <Outbound
               siteId={siteId}
+          live={isLive}
               dateRange={resolvedDateRange}
               period={apiPeriod || undefined}
               goalCounts={dashboard?.goal_counts ?? []}
@@ -584,6 +564,7 @@ export default function SiteDashboardPage() {
           domain={site.domain}
           collectPagePaths={site.collect_page_paths ?? true}
           siteId={siteId}
+          live={isLive}
           dateRange={resolvedDateRange}
           totals={totals}
           filters={filtersParam || undefined}

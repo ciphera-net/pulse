@@ -7,10 +7,9 @@ import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigat
 import { ArrowLeft, FunnelSimple } from '@phosphor-icons/react'
 import { toast, Button } from '@ciphera-net/facet'
 import { updateFunnel, deleteFunnel, type CreateFunnelRequest } from '@/lib/api/funnels'
-import { useFunnelDetail, useFunnelStats, useSite } from '@/lib/swr/dashboard'
-import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
-import { FUNNEL_EXCLUDED_PRESETS } from '@/lib/constants/periods'
-import { fetchableRange } from '@/lib/dashboard/resolveRange'
+import { useFunnelDetail, useFunnelStats, useSite, useDataWindow } from '@/lib/swr/dashboard'
+import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
+import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
 import { previousDateRange } from '@/lib/hooks/periodUrl'
 import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
 import { type DimensionFilter, serializeFilters, parseFiltersFromURL } from '@/lib/filters'
@@ -64,20 +63,19 @@ export default function FunnelDetailPage() {
   const canManage = useCan('funnels.manage')
 
   const { data: site } = useSite(siteId)
-  const { period, dateRange, periodReady, setPeriod, shiftPeriod, siteNow, pickerProps } = useUrlDateRange({
-    // Shared with the funnels list page — one instrument, one range memory.
-    pageKey: 'funnels',
-    excludePresets: FUNNEL_EXCLUDED_PRESETS,
+  const dataWindow = useDataWindow(siteId, 'funnels')
+  const { period, dateRange, periodReady, picker } = useUrlDateRange({
+    surface: 'funnels',
+    window: dataWindow,
     timezone: site?.timezone,
+    retentionMonths: site?.data_retention_months,
+    daysCaption: siteDaysCaption(site?.timezone),
   })
-  // * Preset windows re-anchor to the SITE's current day (uptime's device):
-  // * the server cuts day boundaries in the site zone, so which dates get
-  // * requested must come from the site's calendar too, or "Today" means the
-  // * viewer's today (closeout F2). A custom pick passes through.
   const fetchRange = useMemo(
     () => fetchableRange(periodReady, dateRange),
     [periodReady, dateRange],
   )
+  const allPeriod = serverResolvedPeriod(periodReady, period)
 
   // ── Dashboard filter system, URL-synced with the dashboard's exact codec ──
   const [filters, setFilters] = useState<DimensionFilter[]>(() => {
@@ -110,7 +108,9 @@ export default function FunnelDetailPage() {
     }
   }, [handleAddFilter])
 
-  const fetchSuggestions = useFilterSuggestions(siteId, dateRange, filtersParam || undefined)
+  // The FETCH range, never the picker's display value: suggestions must not be asked
+  // for a placeholder view before the page's own view is resolved.
+  const fetchSuggestions = useFilterSuggestions(siteId, fetchRange, filtersParam || undefined, allPeriod)
   const filterBuilder = useFilterBuilder(fetchSuggestions)
 
   const {
@@ -124,9 +124,10 @@ export default function FunnelDetailPage() {
     error: statsError,
     isValidating: statsValidating,
     mutate: retryStats,
-  } = useFunnelStats(siteId, funnelId, fetchRange.start, fetchRange.end, filtersParam || undefined)
+  } = useFunnelStats(siteId, funnelId, fetchRange.start, fetchRange.end, filtersParam || undefined, allPeriod)
 
-  const prevRange = useMemo(() => previousDateRange(fetchRange), [fetchRange])
+  // All time has no previous period — nothing precedes the whole of history.
+  const prevRange = useMemo(() => (period === 'all' ? null : previousDateRange(fetchRange)), [fetchRange, period])
   const { data: prevStats } = useFunnelStats(
     siteId,
     funnelId,
@@ -261,18 +262,7 @@ export default function FunnelDetailPage() {
               active={filterBuilder.open}
               onClick={(anchor) => filterBuilder.openCreate(anchor)}
             />
-            <DateRangePicker
-              period={period}
-              dateRange={dateRange}
-              onPeriodChange={(p) => setPeriod(p as Period)}
-              onDateRangeChange={(range) => setPeriod('custom', range)}
-              onShift={shiftPeriod}
-              now={siteNow}
-              daysCaption={siteDaysCaption(site?.timezone)}
-              // * Menu and validation both come from the page declaration on
-              // * the hook (FUNNEL_EXCLUDED_PRESETS) — one source, no drift.
-              {...pickerProps}
-            />
+            <DateRangePicker {...picker} />
             {canManage && (
               <>
                 {/* Header actions are chrome/toolbar estate-wide (uptime,
@@ -357,6 +347,7 @@ export default function FunnelDetailPage() {
                 steps={stats.steps}
                 selectedStep={selectedStep}
                 dateRange={fetchRange}
+                apiPeriod={allPeriod}
                 filters={filtersParam || undefined}
                 editEpoch={editEpoch}
               />
@@ -366,6 +357,7 @@ export default function FunnelDetailPage() {
                 siteId={siteId}
                 funnelId={funnelId}
                 dateRange={fetchRange}
+                apiPeriod={allPeriod}
                 period={period}
                 filters={filtersParam || undefined}
                 stats={stats}
@@ -403,6 +395,7 @@ export default function FunnelDetailPage() {
           isOpen={modalOpen}
           siteId={siteId}
           dateRange={fetchRange}
+                apiPeriod={allPeriod}
           onClose={() => setModalOpen(false)}
           initialData={funnel}
           onSubmit={async (data: CreateFunnelRequest) => {

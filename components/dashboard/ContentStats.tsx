@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { TopPage } from '@/lib/api/stats'
 import { FileText } from '@phosphor-icons/react'
 import { ArrowRightIcon, ArrowUpRightIcon, Switcher } from '@ciphera-net/facet'
-import { EmptyState } from '@/components/ui/EmptyState'
+import CardEmptyState from '@/components/dashboard/CardEmptyState'
 import { useFullDimensionList, type FullListKind } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
 import { MetricRowStat, MetricUnitLabel, rowBarWidth } from '@/components/dashboard/MetricRowStat'
@@ -34,6 +34,8 @@ interface ContentStatsProps {
   // capability that does not exist there.
   memberFeatures?: boolean
   onFilter?: (filter: DimensionFilter) => void
+  /** Realtime mode — an empty block reads the one realtime line (CardEmptyState). */
+  live?: boolean
 }
 
 type Tab = 'top_pages' | 'entry_pages' | 'exit_pages'
@@ -46,7 +48,7 @@ const TAB_TO_KIND: Record<Tab, FullListKind> = {
   exit_pages: 'exit-pages',
 }
 
-export default function ContentStats({ topPages, entryPages, exitPages, domain, collectPagePaths = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter }: ContentStatsProps) {
+export default function ContentStats({ topPages, entryPages, exitPages, domain, collectPagePaths = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter, live = false}: ContentStatsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('top_pages')
   const tabs: Tab[] = ['top_pages', 'entry_pages', 'exit_pages']
 
@@ -200,7 +202,8 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
               ))}
             </CascadeGroup>
           ) : (
-            <EmptyState
+            <CardEmptyState
+              live={live}
               icon={<FileText />}
               title="Waiting for page views"
               description="Your most visited pages will rank here once traffic arrives. Entry and exit pages are tracked automatically."

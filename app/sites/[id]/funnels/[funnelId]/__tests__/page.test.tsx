@@ -13,6 +13,8 @@ const mockFunnelDetail = vi.fn()
 
 vi.mock('@/lib/swr/dashboard', () => ({
   useSite: () => ({ data: undefined }),
+  // null = the data window is unknown, which greys nothing (lib/view/view.ts).
+  useDataWindow: () => null,
   useFunnelDetail: () => mockFunnelDetail(),
   useFunnelStats: () => ({ data: undefined, error: undefined, isValidating: false, mutate: vi.fn() }),
 }))
@@ -28,12 +30,27 @@ vi.mock('@/lib/auth/permissions', () => ({ useCan: () => true }))
 
 vi.mock('@/lib/hooks/useUrlDateRange', () => ({
   useUrlDateRange: () => ({
-    period: '30d',
+    period: '30',
     dateRange: { start: '2026-07-27', end: '2026-08-26' },
     periodReady: true,
     setPeriod: vi.fn(),
     shiftPeriod: vi.fn(),
-    pickerProps: {},
+    // The page spreads this into <DateRangePicker {...picker} /> — the real
+    // component, so the mock carries the whole props object it needs.
+    picker: {
+      label: 'Last 30 days',
+      suffix: null,
+      tick: '30',
+      rows: [],
+      footnote: null,
+      onPick: vi.fn(),
+      onCustom: vi.fn(),
+      onShift: vi.fn(),
+      shiftBackDisabled: false,
+      shiftForwardDisabled: true,
+      calendar: { max: '2026-08-26', maxDays: 366, range: { start: '2026-07-27', end: '2026-08-26' } },
+      now: new Date('2026-08-26T12:00:00Z'),
+    },
   }),
 }))
 

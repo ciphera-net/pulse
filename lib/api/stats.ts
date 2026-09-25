@@ -301,16 +301,6 @@ export function getPublicRealtime(siteId: string): Promise<RealtimeStats> {
   return apiRequest<RealtimeStats>(`/public/sites/${siteId}/realtime`)
 }
 
-export interface RealtimePageVisitors {
-  path: string
-  visitors: number
-}
-
-export async function getRealtimePages(siteId: string): Promise<RealtimePageVisitors[]> {
-  const res = await apiRequest<{ pages: RealtimePageVisitors[] }>(`/sites/${siteId}/realtime/pages`)
-  return res.pages ?? []
-}
-
 // ─── Daily Stats ────────────────────────────────────────────────────
 
 export function getDailyStats(siteId: string, startDate?: string, endDate?: string, interval?: string, filters?: string, period?: string): Promise<DailyStat[]> {
@@ -354,6 +344,11 @@ export interface DashboardData {
   // Campaigns card without the member-only /campaigns endpoint.
   campaigns?: CampaignStat[]
   date_range?: { start: string; end: string }
+  /**
+   * The bucket daily_stats is actually in. Equal to the requested interval except on
+   * "All time" past a year, where the server picks week or month (PULSE-20).
+   */
+  interval?: 'minute' | 'hour' | 'day' | 'week' | 'month'
   /** What the minimum-cell-size floor withheld. Present ONLY on a shared dashboard
    *  and ONLY when something was withheld, so its presence is itself the signal that
    *  this payload was served anonymously.

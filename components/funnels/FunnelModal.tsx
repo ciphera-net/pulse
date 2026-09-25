@@ -65,6 +65,8 @@ interface FunnelModalProps {
   siteId: string
   /** The page's current range — the live preview measures over it. */
   dateRange?: { start: string; end: string }
+  /** Sent instead of the dates when the SERVER resolves the view (All time). */
+  apiPeriod?: string
 }
 
 // ─── Suggestion input ───────────────────────────────────────────────
@@ -246,7 +248,7 @@ function SuggestInput({
 
 // ─── Modal ──────────────────────────────────────────────────────────
 
-export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, prefill, siteId, dateRange }: FunnelModalProps) {
+export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, prefill, siteId, dateRange, apiPeriod }: FunnelModalProps) {
   const [name, setName] = useState(initialData?.name ?? prefill?.name ?? '')
   const [description, setDescription] = useState(initialData?.description ?? prefill?.description ?? '')
   const [steps, setSteps] = useState<StepWithoutOrder[]>(
@@ -297,6 +299,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
           usable.map((st) => ({ ...st, name: isDefaultStepName(st.name) ? st.value.trim() || st.name : st.name })),
           dateRange.start,
           dateRange.end,
+          apiPeriod,
         )
         if (!cancelled) {
           setPreview(stats)
@@ -313,7 +316,7 @@ export default function FunnelModal({ isOpen, onClose, onSubmit, initialData, pr
       cancelled = true
       clearTimeout(t)
     }
-  }, [isOpen, dateRange, steps, siteId])
+  }, [isOpen, dateRange, apiPeriod, steps, siteId])
   const stepIdCounter = useRef(initialStepCount)
   const [stepIds, setStepIds] = useState<number[]>(() =>
     Array.from({ length: initialStepCount }, (_, i) => i),

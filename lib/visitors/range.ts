@@ -1,57 +1,30 @@
-import type { PeriodPreset } from '@/lib/constants/periods'
-import type { Period } from '@/lib/hooks/periodUrl'
 import { formatSiteDay, formatSiteTime, shiftDayKey, zoneDayStartMs, zoneParts } from '@/lib/utils/siteTime'
-import {
-  getLast30MinutesRange,
-  getLast1HourRange,
-  getLast6HoursRange,
-  getLast24HoursRange,
-} from '@/lib/utils/dateRanges'
 
-// ─── The Visitors page's range declaration (D4 + D5) ────────────────
+// ─── The Visitors page's range facts ────────────────────────────────
 //
-// One object per concern, all handed to useUrlDateRange, so the picker's MENU,
-// the periods the hook will APPLY and the window the page FETCHES cannot drift
-// apart. That drift is what the shared hook exists to prevent, and it is what
-// the journeys page's bespoke useJourneyFilters reintroduced.
+// Visitors runs on the one view switcher like every other page (PULSE-20): the twelve
+// shared rows, answered against its data window (GET /sites/:id/data-window, surface
+// `visitors`, whose floor is the identity epoch below). Its own Live group — 30 min /
+// 1 h / 6 h / 24 h rolling windows — was RETIRED on 25-09-2026 in the same change as the
+// one view memory: while both existed, picking a live window here would have become the
+// whole app's remembered view. The live view is now the dashboard's realtime MODE,
+// entered from the orb beside the switcher (5 minutes, never remembered). The retired
+// tokens stay in the URL grammar, so an old link opens as the day it names.
 
 /**
  * The identity-rebuild cutover, as a calendar day.
  *
  * 🔴 It MUST agree with database.VisitorIdentityEpoch on the server
- * (2026-08-26T11:17:46Z). The server clamps regardless — this is the picker's
- * half, so a customer is never offered a day the API will silently narrow.
- * Before that instant `visitor_id` is NULL forever (the IP it derives from was
+ * (2026-08-26T11:17:46Z). The header prints it ("Data begins 26 Aug 2026"). The
+ * SWITCHER no longer reads it: its floor is the server's data window for the
+ * `visitors` surface (VisitorRangeFloor — the same function the read path clamps
+ * with), so the menu, the calendar and the API cannot disagree about where
+ * history starts. Before that instant `visitor_id` is NULL forever (the IP it derives from was
  * never stored, so a backfill is impossible), reads fall back to a per-DAY key,
  * and a range reaching earlier would render per-day identities under per-month
  * labels.
  */
 export const VISITORS_MIN_DATE = '2026-08-26'
-
-/**
- * The live windows (D5), declared as rolling MINUTES rather than as date spans.
- *
- * "The last 30 minutes" is not expressible as two YYYY-MM-DD strings without
- * losing the thing that makes it live, so the page sends `minutes=` and the
- * server resolves the instant. The keys are real URL periods, so a live view is
- * shareable and survives a refresh like every other preset.
- */
-export const VISITORS_ROLLING_MINUTES: Partial<Record<Period, number>> = {
-  '30m': 30,
-  '1h': 60,
-  '6h': 360,
-  '24h': 1440,
-}
-
-export const VISITORS_PRESETS: { group: string; presets: PeriodPreset[] } = {
-  group: 'Live',
-  presets: [
-    { key: '30m', label: 'Last 30 minutes', group: 'Live', resolve: getLast30MinutesRange },
-    { key: '1h', label: 'Last 1 hour', group: 'Live', resolve: getLast1HourRange },
-    { key: '6h', label: 'Last 6 hours', group: 'Live', resolve: getLast6HoursRange },
-    { key: '24h', label: 'Last 24 hours', group: 'Live', resolve: getLast24HoursRange },
-  ],
-}
 
 /**
  * presenceTicks computes the presence field's x-domain and its gridline labels.

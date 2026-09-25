@@ -9,7 +9,6 @@ import {
   incidentDurationSeconds,
   clippedDurationSeconds,
   totalDowntimeSeconds,
-  presetUtcRange,
   rangeWindowMs,
   fmtMs,
   fmtUptimePct,
@@ -129,20 +128,6 @@ describe('incident math', () => {
   })
 })
 
-describe('presetUtcRange', () => {
-  it('re-anchors a preset window to the CURRENT UTC day, keeping its length', () => {
-    // * 21:00 New York on 12 Aug = 01:00 UTC on 13 Aug: local strings say
-    // * 14 Jul – 12 Aug; the UTC-anchored range must end on the 13th.
-    const nowUtc = new Date('2026-08-13T01:00:00Z')
-    const local30d = { start: '2026-07-14', end: '2026-08-12' }
-    expect(presetUtcRange(local30d, nowUtc)).toEqual({ start: '2026-07-15', end: '2026-08-13' })
-  })
-  it('is a no-op when local and UTC agree on today', () => {
-    const nowUtc = new Date('2026-08-13T12:00:00Z')
-    expect(presetUtcRange({ start: '2026-08-07', end: '2026-08-13' }, nowUtc))
-      .toEqual({ start: '2026-08-07', end: '2026-08-13' })
-  })
-})
 
 
 describe('humanizeCause', () => {

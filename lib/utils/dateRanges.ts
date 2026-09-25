@@ -54,7 +54,12 @@ export function getLast24HoursRange(now: Date = new Date()): { start: string; en
  * straddles midnight still covers both.
  */
 export function getLast30MinutesRange(now: Date = new Date()): { start: string; end: string } {
-  return { start: formatDate(new Date(now.getTime() - 30 * 60_000)), end: formatDate(now) }
+  return getLastMinutesRange(30, now)
+}
+
+/** The days a rolling `minutes`-wide window ending at `now` touches. */
+export function getLastMinutesRange(minutes: number, now: Date = new Date()): { start: string; end: string } {
+  return { start: formatDate(new Date(now.getTime() - minutes * 60_000)), end: formatDate(now) }
 }
 
 export function getLast6HoursRange(now: Date = new Date()): { start: string; end: string } {

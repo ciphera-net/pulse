@@ -1,4 +1,5 @@
 import apiRequest from './client'
+import { rangeQuery } from './rangeQuery'
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -118,16 +119,16 @@ export async function disconnectBunny(siteId: string): Promise<void> {
   await apiRequest(`/sites/${siteId}/integrations/bunny`, { method: 'DELETE' })
 }
 
-export async function getBunnyOverview(siteId: string, startDate: string, endDate: string): Promise<BunnyOverview> {
-  return apiRequest<BunnyOverview>(`/sites/${siteId}/bunny/overview?start_date=${startDate}&end_date=${endDate}`)
+export async function getBunnyOverview(siteId: string, startDate: string, endDate: string, period?: string): Promise<BunnyOverview> {
+  return apiRequest<BunnyOverview>(`/sites/${siteId}/bunny/overview?${rangeQuery(startDate, endDate, period)}`)
 }
 
-export async function getBunnyDailyStats(siteId: string, startDate: string, endDate: string): Promise<{ daily_stats: BunnyDailyRow[] }> {
-  return apiRequest<{ daily_stats: BunnyDailyRow[] }>(`/sites/${siteId}/bunny/daily-stats?start_date=${startDate}&end_date=${endDate}`)
+export async function getBunnyDailyStats(siteId: string, startDate: string, endDate: string, period?: string): Promise<{ daily_stats: BunnyDailyRow[] }> {
+  return apiRequest<{ daily_stats: BunnyDailyRow[] }>(`/sites/${siteId}/bunny/daily-stats?${rangeQuery(startDate, endDate, period)}`)
 }
 
-export async function getBunnyRegions(siteId: string, startDate: string, endDate: string): Promise<BunnyRegionsResponse> {
-  return apiRequest<BunnyRegionsResponse>(`/sites/${siteId}/bunny/regions?start_date=${startDate}&end_date=${endDate}`)
+export async function getBunnyRegions(siteId: string, startDate: string, endDate: string, period?: string): Promise<BunnyRegionsResponse> {
+  return apiRequest<BunnyRegionsResponse>(`/sites/${siteId}/bunny/regions?${rangeQuery(startDate, endDate, period)}`)
 }
 
 export async function getBunnyLive(siteId: string): Promise<BunnyLiveResponse> {

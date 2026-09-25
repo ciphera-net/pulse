@@ -57,6 +57,7 @@ export function FunnelDailyInstrument({
   prevStats,
   editEpoch,
   period,
+  apiPeriod,
 }: {
   siteId: string
   funnelId: string
@@ -68,6 +69,8 @@ export function FunnelDailyInstrument({
   editEpoch?: number
   /** The period token — the dashed in-progress tail follows token semantics. */
   period?: string | null
+  /** Sent instead of the dates when the SERVER resolves the view (All time). */
+  apiPeriod?: string
 }) {
   const { data: trends, error, mutate: retry } = useFunnelTrends(
     siteId,
@@ -76,6 +79,7 @@ export function FunnelDailyInstrument({
     dateRange.end,
     filters,
     editEpoch,
+    apiPeriod,
   )
 
   const series: DayPoint[] = useMemo(() => {

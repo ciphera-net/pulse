@@ -15,7 +15,9 @@ import { VisitTrail } from '@/components/visitors/VisitTrail'
 import { CountryFlag } from '@/components/ui/CountryFlag'
 import { BrowserMark, OSMark, ReferrerMark, DeviceGlyph, referrerLabel } from '@/components/visitors/VisitorIcons'
 import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
-import { useSite, useVisitorProfile, useVisitorVisits } from '@/lib/swr/dashboard'
+import { useDataWindow, useSite, useVisitorProfile, useVisitorVisits } from '@/lib/swr/dashboard'
+import { REALTIME_MODES, REALTIME_ROLLING_MINUTES } from '@/lib/dashboard/realtimeRange'
+import { serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
 import { visitorPseudonym } from '@/lib/visitors/pseudonym'
 import {
   EM_DASH,
@@ -30,14 +32,13 @@ import {
   zonedDayOfMonth,
   zonedMonthKey,
 } from '@/lib/visitors/format'
-import { VISITORS_MIN_DATE, VISITORS_ROLLING_MINUTES, VISITORS_PRESETS } from '@/lib/visitors/range'
 import {
   IDENTITY_WINDOW_CALENDAR_MONTH,
   describeIdentityWindow,
   identityWindowOf,
 } from '@/lib/visitors/identityWindow'
 import { deviceLabel } from '@/components/visitors/VisitorMeta'
-import type { VisitRow } from '@/lib/api/visitors'
+import type { VisitRow, VisitorRange } from '@/lib/api/visitors'
 
 // ─── The visitor page (approved design §9a, "The visitor page") ─────
 //
@@ -52,28 +53,30 @@ export default function VisitorDetailPage() {
   const visitorKey = params.key as string
 
   const { data: site } = useSite(siteId)
-  const { dateRange, period, periodReady, rollingMinutes, setPeriod, shiftPeriod, siteNow, pickerProps } =
-    useUrlDateRange({
-      // The SAME pageKey as the roster: the list and the detail are one
-      // instrument, so a range picked on one carries to the other (the funnels
-      // list/detail precedent). A separate key here would silently reset the
-      // range every time somebody clicked into a visitor.
-      pageKey: 'visitors',
-      minDate: VISITORS_MIN_DATE,
-      rollingMinutes: VISITORS_ROLLING_MINUTES,
-      extraPresets: VISITORS_PRESETS,
-      timezone: site?.timezone,
-    })
+  // The one view (PULSE-20), answered against the SAME window as the roster: the list
+  // and the detail are one instrument. The orb lives on the roster; a ?period=realtime
+  // link here still opens the five-minute mode, and any row leaves it.
+  const dataWindow = useDataWindow(siteId, 'visitors')
+  const { dateRange, period, periodReady, rollingMinutes, picker } = useUrlDateRange({
+    surface: 'visitors',
+    window: dataWindow,
+    timezone: site?.timezone,
+    modes: REALTIME_MODES,
+    rollingMinutes: REALTIME_ROLLING_MINUTES,
+    retentionMonths: site?.data_retention_months,
+    daysCaption: siteDaysCaption(site?.timezone),
+  })
 
   const [page, setPage] = useState(1)
   const [openVisit, setOpenVisit] = useState<string | null>(null)
 
+  const allToken = serverResolvedPeriod(periodReady, period)
   const range = useMemo(
     () =>
       rollingMinutes != null
         ? { minutes: rollingMinutes }
-        : { startDate: dateRange.start, endDate: dateRange.end },
-    [rollingMinutes, dateRange.start, dateRange.end],
+        : { startDate: dateRange.start, endDate: dateRange.end, period: allToken },
+    [rollingMinutes, dateRange.start, dateRange.end, allToken],
   )
 
   const { data, error, isLoading } = useVisitorProfile(siteId, periodReady ? visitorKey : '', range)
@@ -249,17 +252,7 @@ export default function VisitorDetailPage() {
           )}
         </div>
 
-        <DateRangePicker
-          period={period}
-          dateRange={dateRange}
-          onPeriodChange={(p) => setPeriod(p as never)}
-          onDateRangeChange={(r) => setPeriod('custom', r)}
-          onShift={shiftPeriod}
-          now={siteNow}
-          daysCaption={siteDaysCaption(siteTimezone)}
-          align="right"
-          {...pickerProps}
-        />
+        <DateRangePicker {...picker} />
       </div>
 
       {profile && (
@@ -449,7 +442,7 @@ function VisitRowItem({
   siteId: string
   visitorKey: string
   visit: VisitRow
-  range: { startDate?: string; endDate?: string; minutes?: number | null }
+  range: VisitorRange
   siteTimezone: string
   open: boolean
   onToggle: () => void

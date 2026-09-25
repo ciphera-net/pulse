@@ -23,7 +23,7 @@ import {
   type TrailGroup,
   type TrailKind,
 } from '@/lib/visitors/trail'
-import type { VisitEvent } from '@/lib/api/visitors'
+import type { VisitEvent, VisitorRange } from '@/lib/api/visitors'
 
 // ─── The rail timeline (approved §9a detail 3; reorganised in round 6) ──────
 //
@@ -148,7 +148,7 @@ interface VisitTrailProps {
   siteId: string
   visitorKey: string
   visitKey: string
-  range: { startDate?: string; endDate?: string; minutes?: number | null }
+  range: VisitorRange
 }
 
 export function VisitTrail({ siteId, visitorKey, visitKey, range }: VisitTrailProps) {
