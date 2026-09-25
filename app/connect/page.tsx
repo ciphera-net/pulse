@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Button, Checkbox, Select, Spinner, Toggle, toast } from '@ciphera-net/facet'
 import { ArrowsLeftRight, ClockCountdown, ShieldWarning, Warning } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
+import { useTeamStateStatus } from '@/lib/hooks/useTeamState'
 import { ApiError } from '@/lib/api/client'
 import { ensureDefaultOrganization, getUserOrganizations, type OrganizationMember } from '@/lib/api/organization'
 import { listSites, type Site } from '@/lib/api/sites'
@@ -145,8 +146,21 @@ function ConnectContent() {
   const requestId = params.get('request') ?? ''
   const auth = useAuth()
   const { user, loading: authLoading } = auth
+  // Somebody alone has no team to choose (option C1, PULSE-59): no Team row,
+  // and their one team is selected for them. What this page SUBMITS does not
+  // change; the server binds the session's organization.
+  const team = useTeamStateStatus()
+  const alone = team.state === 'alone'
 
   const [load, setLoad] = useState<Load>({ kind: 'loading' })
+  // * The decision waits for the server's answer on alone-or-team: this page is
+  // * often the first of a session, with nothing remembered, and rendering the
+  // * team layout first would show a person alone a Team row that then
+  // * vanishes. Latched once known, because a team switch below purges the
+  // * shared cache (auth.refresh) and the page must not fall back to loading
+  // * mid-switch; the remembered value carries `alone` across that gap.
+  const [teamKnown, setTeamKnown] = useState(false)
+  if (!teamKnown && load.kind === 'ready' && team.settled) setTeamKnown(true)
   const [orgId, setOrgId] = useState<string | null>(null)
   const [sites, setSites] = useState<Site[] | null>(null)
   const [sitesFailed, setSitesFailed] = useState(false)
@@ -243,11 +257,20 @@ function ConnectContent() {
       await loadSites()
     } catch (err) {
       logger.error('connect: workspace switch failed', err)
-      toast.error("Couldn't switch to that workspace. Try again.")
+      toast.error(alone ? "Couldn't prepare the connection. Try again." : "Couldn't switch to that team. Try again.")
     } finally {
       setBusy(null)
     }
   }
+
+  // * Alone, the one eligible team is the only answer, so it is chosen here
+  // * rather than behind a row the page does not show. It is normally the
+  // * session's already; a switch covers the rare case it is not.
+  const onlyEligible = load.kind === 'ready' && load.eligible.length === 1 ? load.eligible[0].organization_id : null
+  useEffect(() => {
+    if (alone && onlyEligible && orgId === null && busy === null) void chooseWorkspace(onlyEligible)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alone, onlyEligible, orgId])
 
   const toggleSite = (id: string) =>
     setSiteIds((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]))
@@ -255,7 +278,13 @@ function ConnectContent() {
   const allow = async () => {
     if (acting.current || busy) return
     if (!orgId) {
-      toast.error('Choose a workspace first.')
+      if (alone && onlyEligible) {
+        // * The automatic choice failed (it said so). There is no row to use
+        // * instead, so Allow tries it again rather than dead-ending.
+        void chooseWorkspace(onlyEligible)
+        return
+      }
+      toast.error('Choose a team first.')
       return
     }
     if (!allSites && siteIds.length === 0) {
@@ -296,7 +325,7 @@ function ConnectContent() {
   }
 
   // ── Loading ───────────────────────────────────────────────────────────────
-  if (load.kind === 'loading' || authLoading) {
+  if (load.kind === 'loading' || authLoading || (load.kind === 'ready' && !teamKnown)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-neutral-950">
         <div className="flex flex-col items-center gap-3">
@@ -357,8 +386,8 @@ function ConnectContent() {
         <EmptyRow
           className="border-t border-border"
           icon={<ShieldWarning />}
-          title="You can't connect apps to your workspaces"
-          caption="Connecting an app needs the Owner or Admin role. Ask a workspace owner to connect it, or to make you an admin."
+          title="You can't connect apps to your teams"
+          caption="Connecting an app needs the Owner or Admin role. Ask a team owner to connect it, or to make you an admin."
         />
         <div className="border-t border-border px-5 py-4">
           <Button variant="outline" className="w-full" onClick={deny} disabled={busy !== null}>
@@ -374,33 +403,39 @@ function ConnectContent() {
     <Frame mark={<PairMark req={req} />}>
       <Head req={req} />
 
-      <div className="border-t border-border px-5 py-4">
-        <label htmlFor="connect-workspace" className="block text-sm font-medium text-foreground">
-          Workspace
-        </label>
-        <div className="mt-1.5">
-          <Select
-            id="connect-workspace"
-            aria-label="Workspace"
-            className="w-full"
-            value={orgId ?? ''}
-            placeholder="Choose a workspace"
-            options={eligible.map((m) => ({ value: m.organization_id, label: m.organization_name || 'Untitled workspace' }))}
-            onChange={(v) => void chooseWorkspace(v)}
-          />
+      {!alone && (
+        <div className="border-t border-border px-5 py-4">
+          <label htmlFor="connect-workspace" className="block text-sm font-medium text-foreground">
+            Team
+          </label>
+          <div className="mt-1.5">
+            <Select
+              id="connect-workspace"
+              aria-label="Team"
+              className="w-full"
+              value={orgId ?? ''}
+              placeholder="Choose a team"
+              options={eligible.map((m) => ({ value: m.organization_id, label: m.organization_name || 'Untitled team' }))}
+              onChange={(v) => void chooseWorkspace(v)}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       <PanelRows className="border-t border-border">
         <PanelRow
           label="All sites"
-          caption="Every site in this workspace, including ones you add later."
+          caption={
+            alone
+              ? 'Every site you have, including ones you add later.'
+              : 'Every site in this team, including ones you add later.'
+          }
           control={<Toggle checked={allSites} onChange={() => setAllSites((v) => !v)} />}
         />
         {!allSites && (
           <PanelRow label="Sites" caption="Choose which sites this app can read.">
             {!orgId ? (
-              <p className="text-sm text-muted-foreground">Choose a workspace first.</p>
+              <p className="text-sm text-muted-foreground">{alone ? 'Loading sites…' : 'Choose a team first.'}</p>
             ) : sitesFailed ? (
               <p className="text-sm text-muted-foreground">
                 Couldn&apos;t load the sites.{' '}

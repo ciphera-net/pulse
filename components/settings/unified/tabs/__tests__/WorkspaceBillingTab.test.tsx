@@ -42,6 +42,10 @@ vi.mock('@/lib/api/billing', () => ({
 
 vi.mock('@/lib/cdn', () => ({ cdnUrl: (p: string) => p }))
 
+// The copy names the payer from the ONE team-state signal (PULSE-59).
+let mockTeamState: 'alone' | 'team' | null = 'team'
+vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => mockTeamState }))
+
 vi.mock('@ciphera-net/facet', () => ({
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
   Input: (props: any) => <input {...props} />,
@@ -124,6 +128,7 @@ const base: SubscriptionDetails = {
 
 beforeEach(() => {
   mockCanManage = true
+  mockTeamState = 'team'
   mockSubscription = { ...base }
   mockSubscriptionError = undefined
   mockSubscriptionLoading = false
@@ -733,3 +738,29 @@ describe('WorkspaceBillingTab copy (rule 15: no em/en dashes, no literal ellipsi
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
+
+// ─── PULSE-59: who the plan belongs to, in both states ───
+describe('WorkspaceBillingTab, alone and team', () => {
+  const grant = { ...base, plan_id: 'pioneer', next_charge_on: null, grant_expires_on: '2027-04-27' }
+
+  it('alone: "Your account runs on" the grant', async () => {
+    mockTeamState = 'alone'
+    mockSubscription = grant
+    const { container } = renderTab()
+    await waitFor(() => expect(screen.getByText(/^Your account runs on a granted Pioneer plan/)).toBeTruthy())
+    expect(container.textContent).not.toMatch(/workspace|organi[sz]ation/i)
+  })
+
+  it('team: "This team runs on" the grant', async () => {
+    mockSubscription = grant
+    renderTab()
+    await waitFor(() => expect(screen.getByText(/^This team runs on a granted Pioneer plan/)).toBeTruthy())
+  })
+
+  it('team: a member without billing rights is pointed at the team owner', async () => {
+    mockCanManage = false
+    const { container } = renderTab()
+    await waitFor(() => expect(screen.getByText('Only the team owner can modify billing.')).toBeTruthy())
+    expect(container.textContent).not.toMatch(/workspace/i)
+  })
+})

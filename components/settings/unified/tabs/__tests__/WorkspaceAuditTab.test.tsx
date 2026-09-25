@@ -16,6 +16,10 @@ vi.mock('@/lib/api/audit', () => ({
   getAuditLog: vi.fn(),
 }))
 
+// PULSE-59: the page is unlisted for somebody alone but still renders.
+let mockTeamState: 'alone' | 'team' | null = 'team'
+vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => mockTeamState }))
+
 // framer-motion is NOT mocked here (unlike panel-footer-save.test.tsx). This
 // file already renders the REAL SettingsPanel, which is itself a
 // `motion.section` (see components/settings/panels/SettingsPanel.tsx). A
@@ -75,6 +79,7 @@ const entry = (over: Partial<AuditLogEntry> = {}): AuditLogEntry => ({
 
 beforeEach(() => {
   mockGetAuditLog.mockReset()
+  mockTeamState = 'team'
 })
 
 // Strips `//` and `/* */` comments so the source-text check below pins the
@@ -421,5 +426,32 @@ describe('WorkspaceAuditTab', () => {
     // copy, and must not trip this.
     const offenders = extractStringLiterals(stripped).filter(s => s.includes('...'))
     expect(offenders).toEqual([])
+  })
+})
+
+describe('WorkspaceAuditTab, alone and team (PULSE-59)', () => {
+  it('team: describes changes across the team', async () => {
+    mockGetAuditLog.mockResolvedValue({ entries: [entry({ action: 'org_updated' })], total: 1 })
+    const { container } = render(<WorkspaceAuditTab />)
+    await screen.findAllByText('Updated team')
+    expect(container.textContent).toMatch(/changes made across the team/)
+  })
+
+  it('alone: never says team, workspace or organization', async () => {
+    mockTeamState = 'alone'
+    mockGetAuditLog.mockResolvedValue({ entries: [entry({ action: 'org_updated' })], total: 1 })
+    const { container } = render(<WorkspaceAuditTab />)
+    await screen.findAllByText('Updated details')
+    expect(container.textContent).toMatch(/changes made to your account/)
+    expect(container.textContent).not.toMatch(/team|workspace|organi[sz]ation/i)
+  })
+
+  it('alone: the empty state does not say team', async () => {
+    mockTeamState = 'alone'
+    mockGetAuditLog.mockResolvedValue({ entries: [], total: 0 })
+    const { container } = render(<WorkspaceAuditTab />)
+    await screen.findByText('No activity yet')
+    expect(screen.getByText('Changes like new sites and billing updates will appear here as they happen.')).toBeTruthy()
+    expect(container.textContent).not.toMatch(/team|workspace|organi[sz]ation/i)
   })
 })

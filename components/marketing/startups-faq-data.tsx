@@ -26,7 +26,7 @@ export const startupsFaqData: Record<string, FAQItem[]> = {
     {
       question: 'Do I need a Pulse account to apply?',
       answer:
-        'No. Apply first, sign up whenever. Approval sends a link that attaches the plan to whichever workspace you claim it from. The free tier works without a card in the meantime.',
+        'No. Apply first, sign up whenever. Approval sends a link that attaches the plan to whichever account you claim it from. The free tier works without a card in the meantime.',
     },
     {
       question: 'We already pay for Pulse. Can we switch?',

@@ -71,7 +71,7 @@ export function OpenSourceApplyForm({ kind = 'opensource' }: { kind?: 'opensourc
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           A human reads every one — expect an answer at the address you gave
           within a few days. Meanwhile the free tier works without a card, so
-          you can install the script today; approval upgrades the workspace in
+          you can install the script today; approval upgrades your account in
           place.
         </p>
       </div>

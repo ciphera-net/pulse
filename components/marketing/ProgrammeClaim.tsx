@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { ArrowRightIcon, Button } from '@ciphera-net/facet'
 import apiRequest, { ApiError } from '@/lib/api/client'
+import { useTeamState } from '@/lib/hooks/useTeamState'
 
 // The claim leg of the open-source plan (design doc §4c): the approval email
 // links here with a single-use token; claiming attaches the caller's
@@ -39,6 +40,7 @@ export function ClaimInner({ programme }: { programme: Programme }) {
   const copy = PROGRAMME_COPY[programme]
   const token = useSearchParams().get('token') ?? ''
   const [state, setState] = useState<'idle' | 'working' | 'done' | 'error'>('idle')
+  const alone = useTeamState() === 'alone'
   const [project, setProject] = useState<string | null>(null)
 
   const [error, setError] = useState<string | null>(null)
@@ -61,7 +63,7 @@ export function ClaimInner({ programme }: { programme: Programme }) {
       setState('error')
       if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
         setNeedsAuth(true)
-        setError('You need to be signed in to the workspace that should receive the plan.')
+        setError('You need to be signed in to the account that should receive the plan.')
       } else {
         setError(
           err instanceof Error
@@ -83,7 +85,7 @@ export function ClaimInner({ programme }: { programme: Programme }) {
         {state === 'done' ? (
           <>
             <p className="mt-6 text-base leading-relaxed text-muted-foreground">
-              {project ? `${project} now runs` : 'Your workspace now runs'} on the{' '}
+              {project ? `${project} now runs` : alone ? 'Your account now runs' : 'Your team now runs'} on the{' '}
               {copy.plan}: {copy.terms} It shows on your billing page immediately.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -102,7 +104,7 @@ export function ClaimInner({ programme }: { programme: Programme }) {
           <>
             <p className="mt-6 text-base leading-relaxed text-muted-foreground">
               This link came with your approval email. Claiming attaches the{' '}
-              {copy.plan} to the workspace you&rsquo;re signed in to: {copy.terms}
+              {copy.plan} to the account you&rsquo;re signed in to: {copy.terms}
             </p>
             {!token && (
               <p className="mt-4 text-sm text-red-500" role="alert">
@@ -127,7 +129,7 @@ export function ClaimInner({ programme }: { programme: Programme }) {
               )}
             </div>
             <p className="mt-6 text-xs text-muted-foreground">
-              No workspace yet? Sign up free first — then come back to this
+              No account yet? Sign up free first — then come back to this
               link. Stuck? Reply to the approval email; a human reads it.
             </p>
           </>

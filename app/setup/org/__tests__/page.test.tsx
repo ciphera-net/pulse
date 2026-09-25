@@ -107,3 +107,14 @@ describe('SetupOrgPage org creation', () => {
     expect(setAccessToken.mock.invocationCallOrder[0]).toBeLessThan(apiRequest.mock.invocationCallOrder[0])
   })
 })
+
+// "Create team" in the user menu leads here (PULSE-59, W1 = Team).
+describe('SetupOrgPage copy', () => {
+  it('asks to create a team, named as a team, never a workspace', () => {
+    const { container } = render(<SWRConfig value={{ provider: () => new Map() }}><SetupOrgPage /></SWRConfig>)
+    expect(screen.getByRole('heading', { name: 'Create a team' })).toBeTruthy()
+    expect(screen.getByLabelText('Team name')).toHaveValue("QA's team")
+    expect(screen.getByRole('button', { name: 'Create team' })).toBeTruthy()
+    expect(container.textContent).not.toMatch(/workspace|organi[sz]ation/i)
+  })
+})

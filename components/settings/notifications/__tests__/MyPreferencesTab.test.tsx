@@ -21,6 +21,10 @@ const toastError = vi.fn()
 // Toggle keeps its real switch semantics (role + aria-checked) and forwards
 // the naming props Facet's Toggle forwards, the same stand-in
 // AccountSecurityAlertsTab's test uses.
+// The panel line names the container from the ONE team-state signal (PULSE-59).
+let mockTeamState: 'alone' | 'team' | null = 'team'
+vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => mockTeamState }))
+
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...a: any[]) => a.flat(Infinity).filter(Boolean).join(' '),
   Toggle: ({ checked, onChange, disabled, id, 'aria-label': ariaLabel, 'aria-labelledby': ariaLabelledBy }: any) => (
@@ -75,6 +79,7 @@ function doc(overrides: Partial<PreferencesDocument> = {}): PreferencesDocument 
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockTeamState = 'team'
   getPrefsDocument.mockResolvedValue(doc())
   // The PUT answers with the stored truth re-read: the fixture applies the
   // write to a fresh document, the way Iris does.
@@ -158,8 +163,45 @@ describe('MyPreferencesTab (one switch per category)', () => {
     expect(screen.getByRole('heading', { name: 'Email' })).toBeInTheDocument()
     const desc = screen.getByText(/Every notification shows in the app the moment it happens/)
     expect(desc.textContent).toMatch(/Switch it off per category/)
-    expect(desc.textContent).toMatch(/yours, not the workspace's/)
+    expect(desc.textContent).toMatch(/yours, not the team's/)
     expect(desc.textContent).not.toMatch(/[—–]/)
+  })
+
+  it('says only "These settings are yours." to somebody alone (PULSE-59)', async () => {
+    mockTeamState = 'alone'
+    render(<MyPreferencesTab />)
+    await screen.findByText('Billing')
+    const desc = screen.getByText(/Every notification shows in the app the moment it happens/)
+    expect(desc.textContent).toMatch(/These settings are yours\.$/)
+    expect(desc.textContent).not.toMatch(/team|workspace/i)
+  })
+
+  // PULSE-59: nothing in the Team category (people joining, role changes) can
+  // reach somebody alone, so the row waits until they have a team.
+  it('shows no Team row to somebody alone, and every other category in order', async () => {
+    mockTeamState = 'alone'
+    render(<MyPreferencesTab />)
+    await screen.findByText('Billing')
+    expect(screen.queryByText('Team')).toBeNull()
+    expect(screen.queryByRole('switch', { name: 'Email for Team' })).toBeNull()
+    expect(screen.queryByText('People joining your team and role changes.')).toBeNull()
+    const labels = ['Billing', 'Security', 'Monitoring', 'Site activity', 'System', 'Getting started']
+    for (const l of labels) expect(screen.getByText(l)).toBeInTheDocument()
+    expect(screen.getAllByRole('switch')).toHaveLength(4)
+  })
+
+  it('shows the Team row, captioned as the team, in team state', async () => {
+    render(<MyPreferencesTab />)
+    expect(await screen.findByText('People joining your team and role changes.')).toBeTruthy()
+    expect(switchFor('Team')).toHaveAttribute('aria-checked', 'false')
+  })
+
+  it('shows the Team row while the state is not known (null renders the team layout)', async () => {
+    mockTeamState = null
+    render(<MyPreferencesTab />)
+    await screen.findByText('Billing')
+    expect(switchFor('Team')).toBeInTheDocument()
+    expect(screen.getByText('People joining your team and role changes.')).toBeInTheDocument()
   })
 
   it('🔴 the page carries none of the retired vocabulary in its CODE (comments stripped first)', () => {

@@ -12,6 +12,7 @@ import {
   type PreferencesDocument,
 } from '@/lib/api/notifications-preferences'
 import { NOTIFICATION_CATEGORIES } from '@/lib/notifications/categories'
+import { useTeamState } from '@/lib/hooks/useTeamState'
 
 /**
  * Account, Notifications: one switch per category (owner rulings 21-09-2026,
@@ -39,14 +40,24 @@ const CAPTIONS: Record<string, string> = {
   security: 'New device sign-ins, password changes, API keys.',
   uptime: 'A monitored site going down or recovering, and certificates about to expire.',
   site: 'Tracking issues, performance changes, exports that are ready.',
-  team: 'People joining your workspace and role changes.',
+  team: 'People joining your team and role changes.',
   system: 'Announcements and scheduled maintenance from Ciphera.',
-  lifecycle: 'Nudges while your workspace is being set up.',
+  lifecycle: 'Nudges while your account is being set up.',
 }
 
 const ORDER = NOTIFICATION_CATEGORIES.map((c) => c.id as string)
 
+// * PULSE-59: nothing in the Team category can reach somebody who works alone
+// * (people joining, role changes), so the row is not shown to them until they
+// * have a team. Hidden on this page only: the server's category and the stored
+// * preference are untouched, and the row returns in team state. null (not
+// * known yet, or the lookup failed) shows it, like every other surface.
+function visibleTo(categoryId: string, alone: boolean): boolean {
+  return !(alone && categoryId === 'team')
+}
+
 export default function MyPreferencesTab() {
+  const alone = useTeamState() === 'alone'
   const [doc, setDoc] = useState<PreferencesDocument | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
@@ -100,8 +111,10 @@ export default function MyPreferencesTab() {
 
   const categories = useMemo(() => {
     const byId = new Map((doc?.categories ?? []).map((c) => [c.category_id, c]))
-    return ORDER.map((id) => byId.get(id)).filter(Boolean) as CategoryPreferenceDoc[]
-  }, [doc])
+    return ORDER.filter((id) => visibleTo(id, alone))
+      .map((id) => byId.get(id))
+      .filter(Boolean) as CategoryPreferenceDoc[]
+  }, [doc, alone])
 
   if (error && !doc) {
     return (
@@ -119,7 +132,7 @@ export default function MyPreferencesTab() {
     <div className="space-y-8">
       <SettingsPanel
         title="Email"
-        description="Every notification shows in the app the moment it happens. Email is instant too. Switch it off per category. These settings are yours, not the workspace's."
+        description={`Every notification shows in the app the moment it happens. Email is instant too. Switch it off per category. ${alone ? 'These settings are yours.' : "These settings are yours, not the team's."}`}
       >
         {categories.length === 0 ? (
           <EmptyRow

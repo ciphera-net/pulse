@@ -13,7 +13,7 @@ import { useAuth } from '@/lib/auth/context'
 import { UnnamedSession } from '@/components/account/UnnamedSession'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
 import OnboardingChip from '@/components/onboarding/OnboardingChip'
-import { useOrgSwitcher } from '@/lib/hooks/useOrgSwitcher'
+import { useUserMenuTeamProps } from '@/components/dashboard/userMenuTeam'
 import {
   CaretDown, CaretRight, SidebarSimple, Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, Globe as GlobeIcon,
   GearSix, Target, Eye, ShieldCheck, Robot,
@@ -323,7 +323,7 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
   const [siteName, setSiteName] = useState<string | null>(null)
   const auth = useAuth()
   const router = useRouter()
-  const { orgs, activeOrgId, switchOrganization, createOrganization } = useOrgSwitcher()
+  const teamMenuProps = useUserMenuTeamProps()
 
   useEffect(() => {
     if (!siteId) { setSiteName(null); return }
@@ -427,13 +427,11 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
           // not 'locked', which is the whole reason VaultState has three values.
           unidentifiedLabel={auth.vaultState === 'locked' ? <UnnamedSession /> : undefined}
           LinkComponent={Link}
-          orgs={orgs}
-          activeOrgId={activeOrgId}
-          onSwitchOrganization={switchOrganization}
-          onCreateOrganization={createOrganization}
+          // The container props (switcher or "Invite people", team labels,
+          // team settings) come from the team-state signal (PULSE-59).
+          {...teamMenuProps}
           allowPersonalOrganization={false}
           onOpenSettings={() => router.push('/settings/account/profile')}
-          onOpenOrgSettings={() => router.push('/settings/organization/general')}
           // Theme switch (PULSE-31, owner pick M1): endItems so a click changes
           // the theme without the menu closing under the pointer.
           endItems={<ThemeMenuSwitch />}

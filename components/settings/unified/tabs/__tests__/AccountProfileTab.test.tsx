@@ -14,7 +14,11 @@ const h = vi.hoisted(() => ({
   logout: vi.fn(),
   timeDisplay: 'site' as 'site' | 'local' | 'utc',
   setTimeDisplay: vi.fn(async () => true),
+  // PULSE-59: null (not known) renders the team wording, as before.
+  teamState: null as 'alone' | 'team' | null,
 }))
+
+vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => h.teamState }))
 
 vi.mock('@/lib/auth/context', () => ({
   useAuth: () => ({ user: h.user, refresh: h.refresh, logout: h.logout }),
@@ -27,7 +31,10 @@ const api = vi.hoisted(() => ({
   cancelEmailChange: vi.fn().mockResolvedValue(undefined),
   resendEmailChangeLink: vi.fn().mockResolvedValue(undefined),
 }))
-vi.mock('@/lib/api/user', () => ({
+vi.mock('@/lib/api/user', async () => ({
+  // The pure 409 formatter is real: what the toast says is under test.
+  isOwnsOrgsBody: (await vi.importActual<typeof import('@/lib/api/user')>('@/lib/api/user')).isOwnsOrgsBody,
+  ownedOrganizationsMessage: (await vi.importActual<typeof import('@/lib/api/user')>('@/lib/api/user')).ownedOrganizationsMessage,
   updateDisplayName: vi.fn().mockResolvedValue(undefined),
   deleteAccount: api.deleteAccount,
   getDeletionPreview: api.getDeletionPreview,
@@ -149,9 +156,12 @@ vi.mock('@phosphor-icons/react', () => new Proxy({}, {
 vi.mock('framer-motion', () => import('@/components/settings/__tests__/framer-mock'))
 
 import AccountProfileTab from '../AccountProfileTab'
+import { toast } from '@ciphera-net/facet'
+import { ApiError } from '@/lib/api/client'
 
 beforeEach(() => {
   h.user = { id: 'u1', email: 'ada@ciphera.net', display_name: 'Ada' }
+  h.teamState = null
   h.refresh.mockClear()
   h.logout.mockClear()
   api.deleteAccount.mockClear().mockResolvedValue(undefined)
@@ -1194,5 +1204,45 @@ describe('AccountProfileTab — Display panel (Show times in)', () => {
     expect(h.setTimeDisplay).toHaveBeenCalledWith('utc')
     // The caption is the explanation a person gets with no menu sub-captions to help.
     expect(screen.getByText(/Daily totals always use it; this changes only how times are shown to you\./)).toBeInTheDocument()
+  })
+})
+
+// PULSE-59: a refused deletion names where to go. Somebody alone has no team
+// and no Team section in Settings, so the refusal must not send them to one.
+describe('AccountProfileTab — a refused deletion, alone and in a team', () => {
+  const refusal = (orgs: Array<Record<string, unknown>>) =>
+    new ApiError('You own 1 team that must be resolved first', 409, { error: 'owns_organizations', organizations: orgs })
+
+  async function deleteWithUnreadList() {
+    api.getDeletionPreview.mockRejectedValue(new Error('502'))
+    const { container } = await openDangerPanel()
+    await screen.findByText(/couldn.t check/i)
+    fireEvent.change(container.querySelector('#account-delete-password') as HTMLInputElement, { target: { value: 'hunter2' } })
+    fireEvent.change(container.querySelector('#account-delete-confirm') as HTMLInputElement, { target: { value: 'DELETE' } })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /^Delete account$/i }))
+    })
+  }
+
+  it('alone: says to check what goes with the account and try again, never a team', async () => {
+    h.teamState = 'alone'
+    vi.mocked(toast.error).mockClear()
+    api.deleteAccount.mockRejectedValue(refusal([WORKSPACE]))
+    await deleteWithUnreadList()
+    expect(toast.error).toHaveBeenCalledWith(
+      'Something changed since this page loaded. Check what goes with your account, then try again.',
+    )
+    const said = vi.mocked(toast.error).mock.calls.map((c) => String(c[0])).join(' ')
+    expect(said).not.toMatch(/team|workspace|organi[sz]ation/i)
+  })
+
+  it('team: names each team and the Team section', async () => {
+    h.teamState = 'team'
+    vi.mocked(toast.error).mockClear()
+    api.deleteAccount.mockRejectedValue(refusal([{ ...WORKSPACE, member_count: 3, action_required: 'transfer_ownership' }]))
+    await deleteWithUnreadList()
+    const said = vi.mocked(toast.error).mock.calls.map((c) => String(c[0])).join(' ')
+    expect(said).toMatch(/Distant Clockhouse — transfer ownership/)
+    expect(said).toMatch(/Go to Settings → Team\./)
   })
 })
