@@ -698,6 +698,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setUser(result.user)
                 localStorage.setItem('user', JSON.stringify(result.user))
               }
+              // 🔴 An org-context switch, so the cache goes with it. The
+              // shared org list (lib/swr/organizations.ts) is keyed by user,
+              // not org, and may already hold the empty answer this branch
+              // just made untrue: without the purge the new workspace never
+              // reaches the user menu and the team-state signal stays wrong
+              // until a full reload. Bearer and session are the new org's by
+              // now, which is the purge's precondition (lib/swr/org-switch.ts).
+              swrMutate(() => true, undefined, { revalidate: true })
               router.refresh()
               return
             } catch (e) {
@@ -836,6 +844,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                        setUser(result.user)
                        localStorage.setItem('user', JSON.stringify(result.user))
                      }
+                     // * Same org-context switch, same purge as the branch above.
+                     swrMutate(() => true, undefined, { revalidate: true })
                      router.refresh()
                  }
              } catch (e) {
@@ -849,7 +859,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     
     checkOrg()
-  }, [loading, isAuthenticated, userOrgId, userRole, pathname, router])
+  }, [loading, isAuthenticated, userOrgId, userRole, pathname, router, swrMutate])
 
   return (
     <AuthContext.Provider value={{ user, vaultState, loading, hadPriorSession, recovering, login, logout, refresh, refreshSession }}>

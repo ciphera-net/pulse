@@ -16,6 +16,10 @@ vi.mock('@/lib/auth/context', () => ({
   useAuth: () => ({ user: { org_id: 'org_1' } }),
 }))
 
+// PULSE-59: the page is unlisted for somebody alone but still renders.
+let mockTeamState: 'alone' | 'team' | null = 'team'
+vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => mockTeamState }))
+
 vi.mock('@/lib/swr/sites', () => ({
   useSites: () => ({ sites: [] }),
 }))
@@ -81,6 +85,7 @@ const analyst: Role = {
 
 beforeEach(() => {
   mockCanManage = true
+  mockTeamState = 'team'
   vi.mocked(rolesApi.listPermissionGroups).mockResolvedValue({ groups })
   vi.mocked(rolesApi.listRoles).mockResolvedValue({ roles: [ownerRole, analyst] })
 })
@@ -195,5 +200,26 @@ describe('WorkspaceRolesTab', () => {
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/\/\/.*$/gm, '')
     expect(stripped).not.toMatch(/[—–]/)
+  })
+})
+
+describe('WorkspaceRolesTab, alone and team (PULSE-59)', () => {
+  const admin: Role = { ...ownerRole, id: 'r_admin', name: 'Admin', slug: 'admin', permissions: ['dashboards.view'] }
+  const builtinAnalyst: Role = { ...analyst, is_builtin: true }
+
+  it('team: the built-in descriptions name the team', async () => {
+    vi.mocked(rolesApi.listRoles).mockResolvedValue({ roles: [ownerRole, admin, builtinAnalyst] })
+    render(<WorkspaceRolesTab />)
+    expect(await screen.findByText('Manage sites, team, and settings. Cannot access billing or delete the team.')).toBeTruthy()
+    expect(screen.getByText('Create and manage goals, funnels, and alert channels. Cannot manage sites, team, or billing.')).toBeTruthy()
+  })
+
+  it('alone: never says team, workspace or organization', async () => {
+    mockTeamState = 'alone'
+    vi.mocked(rolesApi.listRoles).mockResolvedValue({ roles: [ownerRole, admin, builtinAnalyst] })
+    const { container } = render(<WorkspaceRolesTab />)
+    expect(await screen.findByText('Manage sites, people, and settings. Cannot access billing or delete your data.')).toBeTruthy()
+    expect(screen.getByText('Create and manage goals, funnels, and alert channels. Cannot manage sites, people, or billing.')).toBeTruthy()
+    expect(container.textContent).not.toMatch(/team|workspace|organi[sz]ation/i)
   })
 })

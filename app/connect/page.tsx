@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Button, Checkbox, Select, Spinner, Toggle, toast } from '@ciphera-net/facet'
 import { ArrowsLeftRight, ClockCountdown, ShieldWarning, Warning } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
-import { useTeamState } from '@/lib/hooks/useTeamState'
+import { useTeamStateStatus } from '@/lib/hooks/useTeamState'
 import { ApiError } from '@/lib/api/client'
 import { ensureDefaultOrganization, getUserOrganizations, type OrganizationMember } from '@/lib/api/organization'
 import { listSites, type Site } from '@/lib/api/sites'
@@ -149,9 +149,18 @@ function ConnectContent() {
   // Somebody alone has no team to choose (option C1, PULSE-59): no Team row,
   // and their one team is selected for them. What this page SUBMITS does not
   // change; the server binds the session's organization.
-  const alone = useTeamState() === 'alone'
+  const team = useTeamStateStatus()
+  const alone = team.state === 'alone'
 
   const [load, setLoad] = useState<Load>({ kind: 'loading' })
+  // * The decision waits for the server's answer on alone-or-team: this page is
+  // * often the first of a session, with nothing remembered, and rendering the
+  // * team layout first would show a person alone a Team row that then
+  // * vanishes. Latched once known, because a team switch below purges the
+  // * shared cache (auth.refresh) and the page must not fall back to loading
+  // * mid-switch; the remembered value carries `alone` across that gap.
+  const [teamKnown, setTeamKnown] = useState(false)
+  if (!teamKnown && load.kind === 'ready' && team.settled) setTeamKnown(true)
   const [orgId, setOrgId] = useState<string | null>(null)
   const [sites, setSites] = useState<Site[] | null>(null)
   const [sitesFailed, setSitesFailed] = useState(false)
@@ -316,7 +325,7 @@ function ConnectContent() {
   }
 
   // ── Loading ───────────────────────────────────────────────────────────────
-  if (load.kind === 'loading' || authLoading) {
+  if (load.kind === 'loading' || authLoading || (load.kind === 'ready' && !teamKnown)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-neutral-950">
         <div className="flex flex-col items-center gap-3">

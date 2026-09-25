@@ -18,6 +18,7 @@ import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { useAuth } from '@/lib/auth/context'
+import { useTeamState } from '@/lib/hooks/useTeamState'
 import {
   listRoles,
   listPermissionGroups,
@@ -124,9 +125,11 @@ function PermissionMatrix({ groups, isChecked, showOwnerBadge }: PermissionMatri
 interface RoleRowProps {
   role: Role
   permissionGroups: PermissionGroup[]
+  /** PULSE-59: somebody alone has no team for a role to manage. */
+  alone: boolean
 }
 
-function RoleRow({ role, permissionGroups }: RoleRowProps) {
+function RoleRow({ role, permissionGroups, alone }: RoleRowProps) {
   const [expanded, setExpanded] = useState(false)
   const contentId = useId()
 
@@ -167,8 +170,12 @@ function RoleRow({ role, permissionGroups }: RoleRowProps) {
           {role.is_builtin && (
             <span className="mt-0.5 block text-xs text-muted-foreground">
               {role.slug === 'owner' && 'Full access to everything.'}
-              {role.slug === 'admin' && 'Manage sites, team, and settings. Cannot access billing or delete the team.'}
-              {role.slug === 'analyst' && 'Create and manage goals, funnels, and alert channels. Cannot manage sites, team, or billing.'}
+              {role.slug === 'admin' && (alone
+                ? 'Manage sites, people, and settings. Cannot access billing or delete your data.'
+                : 'Manage sites, team, and settings. Cannot access billing or delete the team.')}
+              {role.slug === 'analyst' && (alone
+                ? 'Create and manage goals, funnels, and alert channels. Cannot manage sites, people, or billing.'
+                : 'Create and manage goals, funnels, and alert channels. Cannot manage sites, team, or billing.')}
               {role.slug === 'member' && 'Day-to-day access to dashboards and analytics.'}
               {role.slug === 'viewer' && 'View dashboards and analytics only.'}
             </span>
@@ -235,6 +242,9 @@ function RoleRow({ role, permissionGroups }: RoleRowProps) {
 
 export default function WorkspaceRolesTab() {
   const { user } = useAuth()
+  // Somebody alone does not see this page listed, but the route still renders
+  // (hrefs never change, PULSE-59), so its copy follows the same rule.
+  const alone = useTeamState() === 'alone'
 
   const [roles, setRoles] = useState<Role[]>([])
   const [permissionGroups, setPermissionGroups] = useState<PermissionGroup[]>([])
@@ -298,7 +308,7 @@ export default function WorkspaceRolesTab() {
         ) : (
           <PanelRows>
             {roles.map((role) => (
-              <RoleRow key={role.id} role={role} permissionGroups={permissionGroups} />
+              <RoleRow key={role.id} role={role} permissionGroups={permissionGroups} alone={alone} />
             ))}
           </PanelRows>
         )}

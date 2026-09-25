@@ -70,7 +70,18 @@ function subscribeNever(): () => void {
   return () => {}
 }
 
-export function useTeamState(): TeamState | null {
+/**
+ * The signal plus whether the SERVER has answered. `settled` is true once the
+ * fetched state is in (or failed, or cannot be known because the session has
+ * no organization yet); a remembered guess alone is not settled.
+ *
+ * Most surfaces want useTeamState() and render the remembered guess while
+ * loading. A page with no shell to hide behind and a layout that differs by
+ * state (/connect, which is often the first page of a session and has nothing
+ * remembered) waits for `settled` instead, so a person alone is never shown a
+ * team row that then disappears.
+ */
+export function useTeamStateStatus(): { state: TeamState | null; settled: boolean } {
   const { user } = useAuth()
   const { organizations, error: orgsError } = useUserOrganizations()
   const { list: members, error: membersError } = useMembers()
@@ -94,6 +105,15 @@ export function useTeamState(): TeamState | null {
     if (key && derived) remember(key, derived)
   }, [key, derived])
 
-  if (failed) return null
-  return derived ?? remembered
+  // * No organization on the session means no member list will ever be
+  // * asked for; waiting on it would never end.
+  const unknowable = organizations !== null && !user?.org_id
+  const settled = failed || derived !== null || unknowable
+
+  if (failed) return { state: null, settled }
+  return { state: derived ?? remembered, settled }
+}
+
+export function useTeamState(): TeamState | null {
+  return useTeamStateStatus().state
 }

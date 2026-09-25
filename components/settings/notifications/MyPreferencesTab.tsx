@@ -45,6 +45,13 @@ const CAPTIONS: Record<string, string> = {
   lifecycle: 'Nudges while your account is being set up.',
 }
 
+// * PULSE-59: somebody alone has no team, so the one caption that names it
+// * describes what the category still carries for them.
+function captionFor(categoryId: string, alone: boolean): string | undefined {
+  if (alone && categoryId === 'team') return 'People joining through an invite, and role changes.'
+  return CAPTIONS[categoryId]
+}
+
 const ORDER = NOTIFICATION_CATEGORIES.map((c) => c.id as string)
 
 export default function MyPreferencesTab() {
@@ -134,7 +141,7 @@ export default function MyPreferencesTab() {
               <PanelRow
                 key={cat.category_id}
                 label={cat.display_name}
-                caption={CAPTIONS[cat.category_id]}
+                caption={captionFor(cat.category_id, alone)}
                 control={
                   cat.suppressible ? (
                     <Toggle

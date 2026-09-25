@@ -40,6 +40,8 @@ const h = vi.hoisted(() => {
     toastError: vi.fn(),
     // The ONE team-state signal (PULSE-59); each test sets it.
     teamState: 'team' as 'alone' | 'team' | null,
+    // Whether the server has answered; false = still loading.
+    teamSettled: true,
   }
 })
 
@@ -53,7 +55,9 @@ vi.mock('@/lib/auth/context', () => ({
   useAuth: () => ({ user: h.user, loading: h.authLoading, refresh: h.refresh }),
 }))
 vi.mock('@/lib/api/client', () => ({ ApiError: h.ApiError, default: vi.fn() }))
-vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => h.teamState }))
+vi.mock('@/lib/hooks/useTeamState', () => ({
+  useTeamStateStatus: () => ({ state: h.teamState, settled: h.teamSettled }),
+}))
 vi.mock('@/lib/api/connect', () => ({
   getConnectRequest: h.getConnectRequest,
   approveConnectRequest: h.approveConnectRequest,
@@ -113,6 +117,7 @@ beforeEach(() => {
   h.user = { id: 'u1', email: 'me@x', org_id: 'org_a' }
   h.authLoading = false
   h.teamState = 'team'
+  h.teamSettled = true
   h.getConnectRequest.mockResolvedValue(claude)
   h.getUserOrganizations.mockResolvedValue(orgs)
   h.listSites.mockResolvedValue([{ id: 's1', domain: 'ciphera.net' }, { id: 's2', domain: 'pulse.ciphera.net' }])
@@ -329,9 +334,37 @@ describe('/connect, alone and team', () => {
     expect(h.approveConnectRequest).not.toHaveBeenCalled()
   })
 
-  it('shows the Team row while the state is not known', async () => {
+  it('shows the Team row when the state could not be known (a failure is the team layout)', async () => {
     h.teamState = null
     render(<ConnectPage />)
     expect(await screen.findByLabelText('Team')).toBeTruthy()
+  })
+
+  // The page is often the first of a session, with nothing remembered: the
+  // decision waits for the server's answer so a person alone never sees a
+  // Team row that then vanishes.
+  it('waits for the answer before drawing the decision, and alone never shows a Team row', async () => {
+    h.teamState = null
+    h.teamSettled = false
+    h.getUserOrganizations.mockResolvedValue([orgs[0]])
+    const { rerender } = render(<ConnectPage />)
+    await waitFor(() => expect(h.getConnectRequest).toHaveBeenCalled())
+    await new Promise((r) => setTimeout(r, 20))
+    expect(screen.getByText(/Loading the connection request/)).toBeTruthy()
+    expect(screen.queryByLabelText('Team')).toBeNull()
+    h.teamState = 'alone'
+    h.teamSettled = true
+    rerender(<ConnectPage />)
+    expect(await screen.findByRole('button', { name: 'Allow' })).toBeTruthy()
+    expect(screen.queryByLabelText('Team')).toBeNull()
+  })
+
+  it('does not fall back to loading once drawn, when a team switch empties the shared cache', async () => {
+    const { rerender } = render(<ConnectPage />)
+    expect(await screen.findByLabelText('Team')).toBeTruthy()
+    h.teamSettled = false
+    rerender(<ConnectPage />)
+    expect(screen.getByLabelText('Team')).toBeTruthy()
+    expect(screen.queryByText(/Loading the connection request/)).toBeNull()
   })
 })

@@ -25,6 +25,7 @@ import { getAuditLog, type AuditLogEntry } from '@/lib/api/audit'
 import { formatPlanName } from '@/lib/plans'
 import { formatDateTimeFull } from '@/lib/utils/formatDate'
 import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
+import { useTeamState } from '@/lib/hooks/useTeamState'
 import { cn } from '@/lib/utils'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 
@@ -52,6 +53,13 @@ const ACTION_LABELS: Record<string, string> = {
   admin_plan_granted: 'Plan granted (admin)',
   subscription_cancelled: 'Cancelled subscription',
   subscription_resumed: 'Resumed subscription',
+}
+
+// * PULSE-59: somebody alone has no team, so the one label that names it reads
+// * as their details instead (the General tab's own alone wording).
+function actionLabelFor(action: string, alone: boolean): string | undefined {
+  if (alone && action === 'org_updated') return 'Updated details'
+  return ACTION_LABELS[action]
 }
 
 // * Fallback for actions the label map doesn't know yet: "quarantine_rule_created"
@@ -133,9 +141,14 @@ const ACTION_FILTER_ALL = 'all'
 
 const AUDIT_LOG_DESCRIPTION =
   'A record of changes made across the team: sites, goals, funnels, integrations, members and billing.'
+const AUDIT_LOG_DESCRIPTION_ALONE =
+  'A record of changes made to your account: sites, goals, funnels, integrations, people and billing.'
 
 export default function WorkspaceAuditTab() {
   const { user } = useAuth()
+  // Somebody alone does not see this page listed, but the route still renders
+  // (hrefs never change, PULSE-59), so its copy follows the same rule.
+  const alone = useTeamState() === 'alone'
   const { zone } = useDisplayZone()
   const [entries, setEntries] = useState<AuditLogEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -252,7 +265,7 @@ export default function WorkspaceAuditTab() {
           className="w-52"
           options={[
             { value: ACTION_FILTER_ALL, label: 'All actions' },
-            ...Object.entries(ACTION_LABELS).map(([value, label]) => ({ value, label })),
+            ...Object.keys(ACTION_LABELS).map((value) => ({ value, label: actionLabelFor(value, alone) ?? value })),
           ]}
         />
       </div>
@@ -317,7 +330,7 @@ export default function WorkspaceAuditTab() {
       ) : !hasLoadedOnce && loading ? (
         <SettingsLoadingState rows={6} />
       ) : (
-        <SettingsPanel title="Audit log" description={AUDIT_LOG_DESCRIPTION}>
+        <SettingsPanel title="Audit log" description={alone ? AUDIT_LOG_DESCRIPTION_ALONE : AUDIT_LOG_DESCRIPTION}>
           {filterToolbar}
           {error ? (
             <div className="px-5 py-4">
@@ -335,7 +348,11 @@ export default function WorkspaceAuditTab() {
             <EmptyRow
               icon={<ListChecks weight="regular" />}
               title="No activity yet"
-              caption="Team actions like site changes and member updates will appear here as they happen."
+              caption={
+                alone
+                  ? 'Changes like new sites and billing updates will appear here as they happen.'
+                  : 'Team actions like site changes and member updates will appear here as they happen.'
+              }
             />
           ) : (
             <div
@@ -362,7 +379,7 @@ export default function WorkspaceAuditTab() {
                   {entries.map(entry => {
                     const hasPayload = Boolean(entry.payload && Object.keys(entry.payload).length > 0)
                     const isOpen = expanded.has(entry.id)
-                    const label = ACTION_LABELS[entry.action] || humanizeAction(entry.action)
+                    const label = actionLabelFor(entry.action, alone) || humanizeAction(entry.action)
                     return (
                       <Fragment key={entry.id}>
                         <TR>

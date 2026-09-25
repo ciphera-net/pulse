@@ -23,7 +23,7 @@ vi.mock('@/lib/api/organization', () => ({
   getOrganizationMembers: h.getOrganizationMembers,
 }))
 
-import { deriveTeamState, useTeamState } from '@/lib/hooks/useTeamState'
+import { deriveTeamState, useTeamState, useTeamStateStatus } from '@/lib/hooks/useTeamState'
 
 const org = (id: string) => ({ organization_id: id, user_id: 'u1', role: 'owner' as const, joined_at: '' })
 const member = (id: string) => ({ organization_id: 'org_a', user_id: id, role: 'member' as const, joined_at: '' })
@@ -141,5 +141,39 @@ describe('useTeamState', () => {
     await new Promise((r) => setTimeout(r, 20))
     expect(result.current).toBeNull()
     expect(h.getUserOrganizations).not.toHaveBeenCalled()
+  })
+})
+
+// /connect waits on `settled`, so a remembered guess must never count as the
+// server's answer, and a state that cannot be known must not wait forever.
+describe('useTeamStateStatus', () => {
+  it('is not settled on a remembered guess, and settles on the fetched answer', async () => {
+    localStorage.setItem('pulse_team_state_u1_org_a', 'alone')
+    let resolveMembers: (v: unknown) => void = () => {}
+    h.getUserOrganizations.mockResolvedValue([org('org_a')])
+    h.getOrganizationMembers.mockReturnValue(new Promise((r) => { resolveMembers = r }))
+    const { result } = renderHook(() => useTeamStateStatus(), { wrapper })
+    await waitFor(() => expect(result.current.state).toBe('alone'))
+    expect(result.current.settled).toBe(false)
+    resolveMembers([member('u1')])
+    await waitFor(() => expect(result.current.settled).toBe(true))
+    expect(result.current.state).toBe('alone')
+  })
+
+  it('settles as null on a failure', async () => {
+    h.getUserOrganizations.mockRejectedValue(new Error('id down'))
+    h.getOrganizationMembers.mockResolvedValue([member('u1')])
+    const { result } = renderHook(() => useTeamStateStatus(), { wrapper })
+    await waitFor(() => expect(result.current.settled).toBe(true))
+    expect(result.current.state).toBeNull()
+  })
+
+  it('settles when the session has no organization, rather than waiting on a member list never asked for', async () => {
+    h.user = { id: 'u1', email: '', totp_enabled: false, org_id: '' }
+    h.getUserOrganizations.mockResolvedValue([org('org_a')])
+    const { result } = renderHook(() => useTeamStateStatus(), { wrapper })
+    await waitFor(() => expect(result.current.settled).toBe(true))
+    expect(result.current.state).toBeNull()
+    expect(h.getOrganizationMembers).not.toHaveBeenCalled()
   })
 })

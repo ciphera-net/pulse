@@ -176,6 +176,21 @@ describe('MyPreferencesTab (one switch per category)', () => {
     mockTeamState = 'team'
   })
 
+  // The row's NAME is the registry's (Iris, out of scope for PULSE-59); the
+  // caption under it is this page's own copy, so it follows the alone rule.
+  it('captions the team category without the word team for somebody alone (PULSE-59)', async () => {
+    mockTeamState = 'alone'
+    render(<MyPreferencesTab />)
+    expect(await screen.findByText('People joining through an invite, and role changes.')).toBeTruthy()
+    expect(screen.queryByText('People joining your team and role changes.')).toBeNull()
+    mockTeamState = 'team'
+  })
+
+  it('captions the team category as the team in team state', async () => {
+    render(<MyPreferencesTab />)
+    expect(await screen.findByText('People joining your team and role changes.')).toBeTruthy()
+  })
+
   it('🔴 the page carries none of the retired vocabulary in its CODE (comments stripped first)', () => {
     // A source guard that reads comments flags the sentence explaining what
     // was retired. Strip block and line comments, then scan what ships.

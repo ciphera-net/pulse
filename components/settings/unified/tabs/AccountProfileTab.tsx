@@ -11,6 +11,8 @@ import {
   getPendingEmailChange,
   cancelEmailChange,
   resendEmailChangeLink,
+  isOwnsOrgsBody,
+  ownedOrganizationsMessage,
   type DeletionBlocker,
 } from '@/lib/api/user'
 import { ApiError } from '@/lib/api/client'
@@ -667,7 +669,9 @@ export default function AccountProfileTab() {
       // * generic "Something went wrong" string, so surface err.message directly
       // * when the ApiError already spells out what to do.
       if (err instanceof ApiError && err.status === 409 && err.message) {
-        toast.error(err.message)
+        // * deleteAccount words the refusal for a team; somebody alone has no
+        // * team and no Team section to go to, so it is re-worded for them.
+        toast.error(isOwnsOrgsBody(err.data) ? ownedOrganizationsMessage(err.data.organizations, alone) : err.message)
         // The list this panel showed is now known to be stale. That is what a
         // 409 means once the ids are being sent. Re-read it so the next attempt
         // agrees with the server instead of resending what it just refused.

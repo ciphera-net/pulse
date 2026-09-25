@@ -22,7 +22,7 @@ vi.mock('../client', () => {
 })
 
 import apiRequest, { ApiError } from '../client'
-import { deleteAccount } from '../user'
+import { deleteAccount, ownedOrganizationsMessage } from '../user'
 
 const apiRequestSpy = vi.mocked(apiRequest)
 
@@ -85,5 +85,23 @@ describe('deleteAccount', () => {
     expect(err.status).toBe(409)
     expect(err.message).toContain('Acme')
     expect(err.message).toMatch(/transfer ownership/)
+  })
+})
+
+// PULSE-59: the caller that knows the person is alone re-words the refusal.
+describe('ownedOrganizationsMessage', () => {
+  const solo = { id: 'o1', name: 'Acme', slug: 'acme', member_count: 1, other_admins: 0, action_required: 'delete_workspace' as const }
+
+  it('alone: no team, no Settings section, just try again', () => {
+    const msg = ownedOrganizationsMessage([solo], true)
+    expect(msg).toBe('Something changed since this page loaded. Check what goes with your account, then try again.')
+    expect(msg).not.toMatch(/team|workspace|organi[sz]ation/i)
+  })
+
+  it('team wording whenever the refusal itself says there is a team', () => {
+    expect(ownedOrganizationsMessage([solo], false)).toMatch(/You own 1 team[\s\S]*Acme — delete team[\s\S]*Go to Settings → Team\./)
+    // "Alone" on this page, but the server lists two, or a transfer: that is a team.
+    expect(ownedOrganizationsMessage([solo, { ...solo, id: 'o2', name: 'Beta' }], true)).toMatch(/You own 2 teams/)
+    expect(ownedOrganizationsMessage([{ ...solo, action_required: 'transfer_ownership' }], true)).toMatch(/transfer ownership/)
   })
 })
