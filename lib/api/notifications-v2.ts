@@ -59,6 +59,7 @@ function normalizeReceipt(r: any): Receipt {
     email_status: r.email_status ?? null,
     email_state_reason: r.email_state_reason ?? null,
     category_id: r.category_id ?? null,
+    type_display_name: r.type_display_name ?? null,
     event: {
       id: r.event.id,
       organization_id: r.event.organization_id,
