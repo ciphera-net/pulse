@@ -118,7 +118,7 @@ export default function SiteSettingsTabPage() {
         <ShieldWarning className="mb-4 h-12 w-12 text-neutral-600" />
         <h3 className="mb-1 text-base font-semibold text-neutral-300">Access restricted</h3>
         <p className="max-w-sm text-sm text-neutral-500">
-          You don&apos;t have permission to view this page. Contact your workspace owner to request access.
+          You don&apos;t have permission to view this page. Contact your team owner to request access.
         </p>
       </div>
     )

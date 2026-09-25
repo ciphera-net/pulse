@@ -5,7 +5,8 @@ import { CaretRight, Globe } from '@phosphor-icons/react'
 import { Badge, Button } from '@ciphera-net/facet'
 import { useCan } from '@/lib/auth/permissions'
 import { useActiveSite } from '@/components/settings/active-site'
-import { NAV_GROUPS, type NavGroup, type NavTab } from '@/components/settings/nav'
+import { navGroups, type NavGroup, type NavTab } from '@/components/settings/nav'
+import { useTeamState, type TeamState } from '@/lib/hooks/useTeamState'
 import { SettingsPanel } from '@/components/settings/panels/SettingsPanel'
 import { PanelRows } from '@/components/settings/panels/PanelRow'
 import { EmptyRow } from '@/components/settings/panels/EmptyRow'
@@ -34,10 +35,19 @@ function SectionLink({ tab }: { tab: NavTab }) {
   )
 }
 
-const PANEL_COPY: Record<NavGroup['section'], string> = {
-  site: 'Analytics, privacy and sharing for one site.',
-  organization: 'Your workspace, team and billing.',
-  account: 'Your profile and security.',
+/**
+ * Each panel's one line. For somebody alone, Account also holds billing, API
+ * keys and MCP (option B1), so it says so; there is no team panel to describe.
+ */
+function panelCopy(section: NavGroup['section'], state: TeamState | null): string {
+  switch (section) {
+    case 'site':
+      return 'Analytics, privacy and sharing for one site.'
+    case 'organization':
+      return 'Your team, members and billing.'
+    case 'account':
+      return state === 'alone' ? 'Your profile, security and billing.' : 'Your profile and security.'
+  }
 }
 
 /**
@@ -54,6 +64,8 @@ const PANEL_COPY: Record<NavGroup['section'], string> = {
  */
 export default function SettingsLandingPage() {
   const { activeSite, sites, isLoading } = useActiveSite()
+  // The same signal and grouping the rail reads (PULSE-59).
+  const teamState = useTeamState()
 
   const perm: Record<string, boolean> = {
     'sites.edit': useCan('sites.edit'),
@@ -65,7 +77,7 @@ export default function SettingsLandingPage() {
     'audit.view': useCan('audit.view'),
   }
 
-  const visibleGroups = NAV_GROUPS.map((group) => ({
+  const visibleGroups = navGroups(teamState).map((group) => ({
     ...group,
     tabs: group.tabs.filter((t) => (t.requires ? (perm[t.requires] ?? true) : true)),
   })).filter((group) => group.tabs.length > 0)
@@ -78,7 +90,7 @@ export default function SettingsLandingPage() {
     // lg, and a group that is hidden by permission simply frees its track.
     <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[repeat(auto-fit,minmax(320px,1fr))]">
       {visibleGroups.map((group) => (
-        <SettingsPanel key={group.section} title={group.label} description={PANEL_COPY[group.section]}>
+        <SettingsPanel key={group.section} title={group.label} description={panelCopy(group.section, teamState)}>
           {group.section === 'site' && !hasSites && !isLoading ? (
             <EmptyRow
               icon={<Globe weight="regular" />}

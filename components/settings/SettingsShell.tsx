@@ -21,7 +21,8 @@ function getFocusable(container: HTMLElement): HTMLElement[] {
 import { useCan } from '@/lib/auth/permissions'
 import { cn } from '@/lib/utils'
 import { SiteHeaderIdentity } from '@/components/settings/SiteHeaderIdentity'
-import { NAV_GROUPS, sectionOf, type NavGroup, type NavTab, type Section } from '@/components/settings/nav'
+import { navGroups, sectionOf, tabFor, type NavGroup, type NavTab, type Section } from '@/components/settings/nav'
+import { useTeamState } from '@/lib/hooks/useTeamState'
 import {
   MastheadSlotProvider,
   MastheadAction,
@@ -33,7 +34,8 @@ export { MastheadAction }
 
 // ─── The rail (owner pick A6, 16-09-2026) ────────────────────────────────
 //
-// One scope at a time. A Facet Switcher (Site · Organization · Account, the
+// One scope at a time. A Facet Switcher (Site · Team · Account, or Site ·
+// Account for somebody who works alone, PULSE-59; the
 // orange thumb the dashboard's dimension cards use) sits above one bordered
 // card holding only that scope's rows, so seven rows at most are ever on
 // screen and the three `General`s never share a column. Each row is two
@@ -196,7 +198,10 @@ function LegalLinks({ className }: { className?: string }) {
 export default function SettingsShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
-  const section = sectionOf(pathname)
+  // The grouping follows the ONE team-state signal (PULSE-59): Site + Account
+  // for somebody alone, Site + Team + Account otherwise (and while unknown).
+  const teamState = useTeamState()
+  const section = sectionOf(pathname, teamState)
 
   // Slot mount nodes — set via callback refs so the portal contexts update
   // once the DOM nodes exist. `saveSlot` is the content-column-end mount for the
@@ -221,13 +226,16 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
     'audit.view': useCan('audit.view'),
   }
 
-  const visibleGroups = NAV_GROUPS.map((group) => ({
+  const visibleGroups = navGroups(teamState).map((group) => ({
     ...group,
     tabs: group.tabs.filter((tab) => (tab.requires ? (perm[tab.requires] ?? true) : true)),
   })).filter((group) => group.tabs.length > 0)
 
   const activeGroup = section ? visibleGroups.find((g) => g.section === section) : undefined
-  const activeTab = activeGroup?.tabs.find((t) => pathname === t.href)
+  // A route the grouping does not list (the team's name, roles or audit log,
+  // for somebody alone) still renders and is still named in the header; it
+  // just has no row in the rail.
+  const activeTab = activeGroup ? tabFor(pathname, [activeGroup]) : undefined
 
   // Switching scope lands on that scope's first visible tab.
   const goToScope = (next: Section) => {

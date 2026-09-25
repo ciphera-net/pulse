@@ -17,7 +17,7 @@ describe('team renderers', () => {
   it('team_member_invited — title is correct and body contains inviter id', () => {
     const r = makeReceipt('team_member_invited', { inviter_user_id: 'user-99' })
     const { title, body } = renderNotification(r)
-    expect(title).toBe('You were invited to this workspace')
+    expect(title).toBe('You were invited to this team')
     expect(body).toContain('user-99')
   })
 
@@ -25,6 +25,24 @@ describe('team renderers', () => {
     const r = makeReceipt('team_member_joined', { user_id: 'user-77' })
     const { title } = renderNotification(r)
     expect(title).toContain('user-77')
+  })
+
+  // Membership cards only reach somebody in a team, so they say "team", the
+  // container's name in team state (W1, PULSE-59), and never "workspace".
+  it('team_member_joined — says the team, never the workspace', () => {
+    const { title } = renderNotification(makeReceipt('team_member_joined', { user_id: 'user-77' }))
+    expect(title).toBe('user user-77 joined the team')
+  })
+
+  it('no team card says workspace or organization', () => {
+    for (const [type, payload] of [
+      ['team_member_invited', { inviter_user_id: 'user-99' }],
+      ['team_member_joined', { user_id: 'user-77' }],
+      ['team_role_changed', { user_id: 'user-55', new_role: 'admin' }],
+    ] as const) {
+      const { title, body, linkLabel } = renderNotification(makeReceipt(type, payload))
+      expect(`${title} ${body} ${linkLabel}`).not.toMatch(/workspace|organi[sz]ation/i)
+    }
   })
 
   it('team_role_changed — title contains user id and new role', () => {

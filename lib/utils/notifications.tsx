@@ -81,6 +81,8 @@ export function getTypeIcon(type: string) {
     // union without a renderer FAILS TO BUILD. That is the loud half; this is
     // the quiet half, and the reason to add the icon in the same commit.
     lifecycle_first_data:          <Broadcast        className="w-5 h-5 shrink-0 text-green-400"    aria-hidden="true" />,
+    // The first-data glyph again, in amber: the signal that arrived has stopped.
+    lifecycle_dormant:             <Broadcast        className="w-5 h-5 shrink-0 text-amber-400"    aria-hidden="true" />,
   }
 
   return iconMap[type] ?? <Lightning className="w-5 h-5 shrink-0 text-neutral-400" aria-hidden="true" />

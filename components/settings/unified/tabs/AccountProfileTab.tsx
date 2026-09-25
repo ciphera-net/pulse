@@ -11,6 +11,8 @@ import {
   getPendingEmailChange,
   cancelEmailChange,
   resendEmailChangeLink,
+  isOwnsOrgsBody,
+  ownedOrganizationsMessage,
   type DeletionBlocker,
 } from '@/lib/api/user'
 import { ApiError } from '@/lib/api/client'
@@ -28,6 +30,7 @@ import { openVaultWithKey, saveDisplayName } from '@/lib/auth/vault-restore'
 import { performSessionOpaqueReauth } from '@/lib/auth/tessera/opaque-reauth'
 import { performEmailChangeRequest } from '@/lib/auth/tessera/email-change'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
+import { useTeamState } from '@/lib/hooks/useTeamState'
 
 // Segment labels decided by the owner 18-09-2026 ("Site time" was rejected as
 // not understandable). Values are the wire modes (migration 188).
@@ -235,6 +238,8 @@ export default function AccountProfileTab() {
   // rendering either as "nothing else will be deleted" is how somebody agrees to
   // lose three sites they were never shown.
   const [blockers, setBlockers] = useState<DeletionBlocker[] | 'unavailable' | null>(null)
+  // Somebody alone has no team to name: what goes with the account is their sites (PULSE-59).
+  const alone = useTeamState() === 'alone'
 
   // ── The email-change ceremony (design §10, direction A: in the row it changes)
   const [emailChange, setEmailChange] = useState<EmailChangeState>({ kind: 'unknown' })
@@ -664,7 +669,9 @@ export default function AccountProfileTab() {
       // * generic "Something went wrong" string, so surface err.message directly
       // * when the ApiError already spells out what to do.
       if (err instanceof ApiError && err.status === 409 && err.message) {
-        toast.error(err.message)
+        // * deleteAccount words the refusal for a team; somebody alone has no
+        // * team and no Team section to go to, so it is re-worded for them.
+        toast.error(isOwnsOrgsBody(err.data) ? ownedOrganizationsMessage(err.data.organizations, alone) : err.message)
         // The list this panel showed is now known to be stale. That is what a
         // 409 means once the ids are being sent. Re-read it so the next attempt
         // agrees with the server instead of resending what it just refused.
@@ -1283,24 +1290,39 @@ export default function AccountProfileTab() {
               <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-muted-foreground">
                 <li>Your account and all personal data</li>
                 <li>All sessions and trusted devices</li>
-                <li>Your membership in every organization</li>
+                {!alone && <li>Your membership in every team</li>}
                 {/* The workspaces that go with it. Direction A (owner, 09-09-2026):
                     the panel already enumerates what deletion destroys, so a
                     workspace is one more line in that list rather than a second
                     block. Read before anything is typed, no new device to learn. */}
-                {blockers === null && <li>Checking whether any workspace goes with it…</li>}
+                {blockers === null && <li>{alone ? 'Checking what goes with it…' : 'Checking whether any team goes with it…'}</li>}
                 {blockers === 'unavailable' && (
-                  <li>We couldn&apos;t check which workspaces go with it. Deletion will say before it proceeds.</li>
+                  <li>We couldn&apos;t check {alone ? 'what goes' : 'which teams go'} with it. Deletion will say before it proceeds.</li>
                 )}
                 {Array.isArray(blockers) && blockers.map((b) => (
                   <li key={b.id}>
-                    Your workspace <span className="font-medium">{b.name}</span>
-                    {b.contents
-                      ? b.contents.site_count > 0
-                        ? `, ${b.contents.site_count} ${b.contents.site_count === 1 ? 'site' : 'sites'}: ${b.contents.domains.join(', ')}`
-                        : ', no sites'
-                      : ', and everything in it'}
-                    {b.contents?.plan_id ? `, and the ${b.contents.plan_id} subscription on it` : ''}
+                    {alone ? (
+                      // Alone, the "team" is simply their sites and plan.
+                      b.contents
+                        ? b.contents.site_count > 0
+                          ? `Your ${b.contents.site_count === 1 ? 'site' : `${b.contents.site_count} sites`}: ${b.contents.domains.join(', ')}`
+                          : 'Your sites (you have none yet)'
+                        : 'Your sites and everything in them'
+                    ) : (
+                      <>
+                        Your team <span className="font-medium">{b.name}</span>
+                        {b.contents
+                          ? b.contents.site_count > 0
+                            ? `, ${b.contents.site_count} ${b.contents.site_count === 1 ? 'site' : 'sites'}: ${b.contents.domains.join(', ')}`
+                            : ', no sites'
+                          : ', and everything in it'}
+                      </>
+                    )}
+                    {b.contents?.plan_id
+                      ? alone
+                        ? `, and your ${b.contents.plan_id} subscription`
+                        : `, and the ${b.contents.plan_id} subscription on it`
+                      : ''}
                   </li>
                 ))}
               </ul>

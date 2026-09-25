@@ -43,7 +43,7 @@ const done = (name: string): McpStep => ({
   title: 'All done',
   text: `Ask ${name} about your analytics, for example “What were my top referrers this month?”`,
 })
-const allow = 'Pulse opens: choose the workspace and sites, then click Allow.'
+const allow = 'Pulse opens: choose which sites it can read, then click Allow.'
 
 export const MCP_CLIENTS: McpClient[] = [
   {

@@ -141,7 +141,7 @@ export default function SetupSitePage() {
             Pick up where you left off
           </h1>
           <p className="mt-3 text-sm text-neutral-400 max-w-md mx-auto">
-            Your workspace and site are already set up.
+            Your site is already set up.
           </p>
         </div>
 

@@ -20,6 +20,7 @@ import { useAuth } from '@/lib/auth/context'
 import { getOrganizationMembers, type OrganizationMember } from '@/lib/api/organization'
 import { listConnectedApps, disconnectApp, type Connection } from '@/lib/api/connect'
 import { MCP_CLIENTS, mcpServerUrl, type McpClientId } from '@/lib/mcp/clients'
+import { useTeamState } from '@/lib/hooks/useTeamState'
 
 /**
  * Settings → Organization → MCP (PULSE-54, owner 24-09-2026, option A of the options round).
@@ -38,6 +39,7 @@ export default function WorkspaceMcpTab() {
   const reducedMotion = useReducedMotion()
   const { zone } = useDisplayZone()
   const { user } = useAuth()
+  const alone = useTeamState() === 'alone'
   const [clientId, setClientId] = useState<McpClientId>('claude')
   const [connections, setConnections] = useState<Connection[]>([])
   const [members, setMembers] = useState<OrganizationMember[]>([])
@@ -176,7 +178,7 @@ export default function WorkspaceMcpTab() {
       ) : (
         <SettingsPanel
           title="Connected apps"
-          description="Assistants people in this workspace have connected. Each reads only the sites it was given, and cannot change anything."
+          description={`${alone ? 'Assistants you have connected.' : 'Assistants people in this team have connected.'} Each reads only the sites it was given, and cannot change anything.`}
         >
           {connections.length === 0 ? (
             <EmptyRow
@@ -260,7 +262,7 @@ export default function WorkspaceMcpTab() {
         title={disconnecting ? `Disconnect ${disconnecting.client_name}?` : 'Disconnect this app?'}
         description={
           disconnecting
-            ? `${disconnecting.client_name} loses access to this workspace immediately and stops reading its analytics. To use it again, someone has to connect it again from ${disconnecting.client_name}.`
+            ? `${disconnecting.client_name} loses access immediately and stops reading your analytics. To use it again, ${alone ? 'you have' : 'someone has'} to connect it again from ${disconnecting.client_name}.`
             : ''
         }
         confirmLabel="Disconnect"

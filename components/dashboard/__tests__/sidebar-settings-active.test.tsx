@@ -35,6 +35,9 @@ let canEdit = true
 vi.mock('@/lib/auth/permissions', () => ({ useCan: () => canEdit }))
 vi.mock('@/lib/sidebar-context', () => ({ useSidebar: () => ({ collapsed: false, toggle: vi.fn() }) }))
 vi.mock('@/components/sites/SiteFavicon', () => ({ SiteFavicon: () => null }))
+// The home group's heading follows the ONE team-state signal (PULSE-59).
+let teamState: 'alone' | 'team' | null = 'team'
+vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => teamState }))
 vi.mock('@/components/support/HelpSupportButton', () => ({ HelpSupportButton: () => null }))
 
 // See panel-footer-save.test.tsx: a bare `get: () => () => null` proxy MODULE
@@ -136,5 +139,28 @@ describe('the sidebar settings entry — home mode', () => {
     // the section, and the settings rail picks the tab.
     expect(screen.queryByRole('link', { name: /Organization Settings/ })).toBeNull()
     expect(isActive(link(/^Settings$/))).toBe(true)
+  })
+})
+
+describe('home group heading (PULSE-59)', () => {
+  it('reads Team for a team, and while the state is not known', () => {
+    pathname = '/sites'
+    teamState = 'team'
+    const { unmount } = renderSidebar(null)
+    expect(screen.getAllByText('Team').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Organization')).toBeNull()
+    unmount()
+    teamState = null
+    renderSidebar(null)
+    expect(screen.getAllByText('Team').length).toBeGreaterThan(0)
+  })
+
+  it('reads Account for somebody alone, never team or organization', () => {
+    pathname = '/sites'
+    teamState = 'alone'
+    const { container } = renderSidebar(null)
+    expect(screen.getAllByText('Account').length).toBeGreaterThan(0)
+    expect(container.textContent).not.toMatch(/team|workspace|organi[sz]ation/i)
+    teamState = 'team'
   })
 })

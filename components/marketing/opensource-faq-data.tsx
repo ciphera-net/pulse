@@ -23,7 +23,7 @@ export const opensourceFaqData: Record<string, FAQItem[]> = {
     {
       question: 'Do I need a Pulse account to apply?',
       answer:
-        'No. Apply first, sign up whenever — approval sends a link that attaches the plan to whichever workspace you claim it from. The free tier works without a card in the meantime.',
+        'No. Apply first, sign up whenever — approval sends a link that attaches the plan to whichever account you claim it from. The free tier works without a card in the meantime.',
     },
     {
       question: 'What qualifies as open source here?',

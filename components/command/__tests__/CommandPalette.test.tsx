@@ -15,6 +15,9 @@ vi.mock('@/lib/swr/sites', () => ({
 vi.mock('@/lib/auth/permissions', () => ({
   useCan: () => true,
 }))
+// The settings group follows the ONE team-state signal (PULSE-59).
+let mockTeamState: 'alone' | 'team' | null = 'team'
+vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => mockTeamState }))
 vi.mock('@/components/sites/SiteFavicon', () => ({
   SiteFavicon: () => null,
 }))
@@ -38,6 +41,7 @@ function renderPalette(props: Partial<Parameters<typeof CommandPalette>[0]> = {}
 }
 
 beforeEach(() => {
+  mockTeamState = 'team'
   sessionStorage.clear()
   pushMock.mockClear()
   mockPathname = '/sites'
@@ -102,5 +106,27 @@ describe('the ⌘K tour action', () => {
     } finally {
       window.removeEventListener(TOUR_START_EVENT, started)
     }
+  })
+})
+
+// ─── PULSE-59: the settings entries match the rail in both states ───
+describe('CommandPalette settings entries, alone and team', () => {
+  it('team: Team Settings, Team Members and the Audit Log', () => {
+    renderPalette()
+    expect(screen.getByText('Team Settings')).toBeTruthy()
+    expect(screen.getByText('Team Members')).toBeTruthy()
+    expect(screen.getByText('Audit Log')).toBeTruthy()
+    expect(screen.queryByText('Invite people')).toBeNull()
+    expect(screen.queryByText(/Organization Settings|Workspace Notifications/)).toBeNull()
+  })
+
+  it('alone: Invite people, and no team settings or audit log', () => {
+    mockTeamState = 'alone'
+    renderPalette()
+    fireEvent.click(screen.getByText('Invite people'))
+    expect(pushMock).toHaveBeenCalledWith('/settings/organization/members')
+    expect(screen.queryByText('Team Settings')).toBeNull()
+    expect(screen.queryByText('Team Members')).toBeNull()
+    expect(screen.queryByText('Audit Log')).toBeNull()
   })
 })

@@ -13,7 +13,9 @@ import { useAuth } from '@/lib/auth/context'
 import { UnnamedSession } from '@/components/account/UnnamedSession'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
 import OnboardingChip from '@/components/onboarding/OnboardingChip'
-import { useOrgSwitcher } from '@/lib/hooks/useOrgSwitcher'
+import { useUserMenuTeamProps } from '@/components/dashboard/userMenuTeam'
+import { navGroups, tabFor } from '@/components/settings/nav'
+import { useTeamState } from '@/lib/hooks/useTeamState'
 import {
   CaretDown, CaretRight, SidebarSimple, Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, Globe as GlobeIcon,
   GearSix, Target, Eye, ShieldCheck, Robot,
@@ -81,6 +83,9 @@ const HOME_PAGE_META: Record<string, PageMeta> = {
 
 function useHomePageMeta(): PageMeta {
   const pathname = usePathname()
+  // The same team-state signal the settings rail reads (PULSE-59). The shell's
+  // user menu already reads it, so this adds no request.
+  const teamState = useTeamState()
 
   if (pathname.startsWith('/settings')) {
     const parts = pathname.split('/').filter(Boolean)
@@ -113,8 +118,12 @@ function useHomePageMeta(): PageMeta {
     if (!meta) {
       return { title: 'Settings', icon: SettingsIcon }
     }
+    // The label is the settings registry's, not this table's: the registry
+    // knows the team state (somebody alone reads "Invite people" where a team
+    // reads "Members"), and the rail and page header already use it. Tabs the
+    // registry does not list keep this table's label.
     return {
-      title: meta.label,
+      title: tabFor(pathname, navGroups(teamState))?.label ?? meta.label,
       icon: meta.icon,
       parent: { title: 'Settings', icon: SettingsIcon, href: '/settings' },
     }
@@ -323,7 +332,7 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
   const [siteName, setSiteName] = useState<string | null>(null)
   const auth = useAuth()
   const router = useRouter()
-  const { orgs, activeOrgId, switchOrganization, createOrganization } = useOrgSwitcher()
+  const teamMenuProps = useUserMenuTeamProps()
 
   useEffect(() => {
     if (!siteId) { setSiteName(null); return }
@@ -427,13 +436,11 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
           // not 'locked', which is the whole reason VaultState has three values.
           unidentifiedLabel={auth.vaultState === 'locked' ? <UnnamedSession /> : undefined}
           LinkComponent={Link}
-          orgs={orgs}
-          activeOrgId={activeOrgId}
-          onSwitchOrganization={switchOrganization}
-          onCreateOrganization={createOrganization}
+          // The container props (switcher or "Invite people", team labels,
+          // team settings) come from the team-state signal (PULSE-59).
+          {...teamMenuProps}
           allowPersonalOrganization={false}
           onOpenSettings={() => router.push('/settings/account/profile')}
-          onOpenOrgSettings={() => router.push('/settings/organization/general')}
           // Theme switch (PULSE-31, owner pick M1): endItems so a click changes
           // the theme without the menu closing under the pointer.
           endItems={<ThemeMenuSwitch />}

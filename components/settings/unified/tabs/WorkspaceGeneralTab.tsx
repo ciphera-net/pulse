@@ -22,6 +22,7 @@ import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/settings/panels'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
+import { useTeamState } from '@/lib/hooks/useTeamState'
 
 export default function WorkspaceGeneralTab() {
   const { user, refreshSession } = useAuth()
@@ -30,6 +31,9 @@ export default function WorkspaceGeneralTab() {
   // rename the workspace, but only the owner delete or transfer it.
   const canDeleteOrg = useIsOwner()
   const canEditOrg = useIsAdminOrOwner()
+  // Somebody alone does not see this page listed, but the route still renders
+  // (PULSE-59), under Account, so it never calls the container a team.
+  const alone = useTeamState() === 'alone'
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [loading, setLoading] = useState(true)
@@ -101,7 +105,7 @@ export default function WorkspaceGeneralTab() {
     try {
       await updateOrganization(user.org_id, name, slug)
       setBaseline(JSON.stringify({ name, slug }))
-      toast.success('Organization updated')
+      toast.success(alone ? 'Details updated' : 'Team updated')
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || "Couldn't save your changes. Try again in a moment.")
     }
@@ -138,7 +142,7 @@ export default function WorkspaceGeneralTab() {
       }
       window.location.href = '/setup/org'
     } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || "Couldn't delete your organization. Try again.")
+      toast.error(getAuthErrorMessage(err as Error) || (alone ? "Couldn't delete your data. Try again." : "Couldn't delete your team. Try again."))
       setDeleting(false)
     }
   }
@@ -170,7 +174,7 @@ export default function WorkspaceGeneralTab() {
   if (error) {
     return (
       <SettingsErrorState
-        title="Couldn't load your organization"
+        title={alone ? "Couldn't load your details" : "Couldn't load your team"}
         message={error}
         onRetry={handleRetry}
       />
@@ -183,7 +187,7 @@ export default function WorkspaceGeneralTab() {
 
   return (
     <div className="space-y-8">
-      <SettingsPanel title="Workspace" description="Basic details about your organization.">
+      <SettingsPanel title={alone ? 'Details' : 'Team'} description={alone ? 'Basic details about your account.' : 'Basic details about your team.'}>
         <PanelRows>
           <PanelRow
             label="Name"
@@ -200,7 +204,7 @@ export default function WorkspaceGeneralTab() {
           </PanelRow>
           <PanelRow
             label="Slug"
-            caption="Changing the slug will change your organization's URL."
+            caption={alone ? "Changing the slug will change your account's URL." : "Changing the slug will change your team's URL."}
             htmlFor="org-slug"
           >
             <InputGroup>
@@ -231,8 +235,8 @@ export default function WorkspaceGeneralTab() {
               onClick: () => { setShowTransferConfirm(prev => !prev); setShowDeleteConfirm(false) },
             },
             {
-              title: 'Delete organization',
-              description: 'Permanently delete this organization and all its data.',
+              title: alone ? 'Delete all data' : 'Delete team',
+              description: alone ? 'Permanently delete your sites and all their data.' : 'Permanently delete this team and all its data.',
               buttonLabel: 'Delete',
               variant: 'solid',
               expanded: showDeleteConfirm,
@@ -259,7 +263,7 @@ export default function WorkspaceGeneralTab() {
                     <div className="px-5 pb-4">
                       <SettingsErrorState
                         variant="banner"
-                        message="Couldn't load organization members. Try again."
+                        message="Couldn't load the members. Try again."
                         onRetry={handleRetry}
                       />
                     </div>
@@ -326,7 +330,7 @@ export default function WorkspaceGeneralTab() {
                     <p className="text-sm text-destructive">This will permanently delete:</p>
                     <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-muted-foreground">
                       <li>All sites and their analytics data</li>
-                      <li>All team members and pending invitations</li>
+                      <li>{alone ? 'All pending invitations' : 'All team members and pending invitations'}</li>
                       <li>All notifications and settings</li>
                     </ul>
                     <p className="mt-2 text-xs text-muted-foreground">It also cancels any active subscription.</p>
@@ -348,7 +352,7 @@ export default function WorkspaceGeneralTab() {
                       onClick={handleDelete}
                       disabled={deleteText !== 'DELETE' || deleting}
                     >
-                      {deleting ? 'Deleting…' : 'Delete organization'}
+                      {deleting ? 'Deleting…' : alone ? 'Delete all data' : 'Delete team'}
                     </Button>
                     <Button
                       variant="ghost"

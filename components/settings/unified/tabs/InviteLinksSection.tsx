@@ -102,7 +102,7 @@ export default function InviteLinksSection({ orgId, links, roles, onRevoked }: P
         <EmptyRow
           icon={<LinkSimple weight="regular" />}
           title="No invite links yet"
-          caption="Create a link to let teammates join without an individual invite."
+          caption="Create a link to let people join without an individual invite."
         />
       ) : (
         <PanelRows>

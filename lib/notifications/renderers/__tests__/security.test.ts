@@ -42,4 +42,12 @@ describe('security renderers', () => {
     const { title } = renderNotification(r)
     expect(title).toBe('API key created')
   })
+
+  // The email's words (PULSE-59, E3): true for a reader alone and in a team.
+  it('security_api_key_created — says Pulse, never the workspace', () => {
+    const r = makeReceipt('security_api_key_created', { key_id: 'k1', name_hash: 'abc' })
+    const { body } = renderNotification(r)
+    expect(body).toBe('A new API key was created in Pulse.')
+    expect(body).not.toMatch(/workspace|organi[sz]ation|team/i)
+  })
 })

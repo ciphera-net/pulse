@@ -36,6 +36,7 @@ import { renderNotification } from '@/lib/notifications/renderers'
 import { useResolveSiteName, useResolveUserName } from '@/lib/notifications/resolvers'
 import { NOTIFICATION_CATEGORIES } from '@/lib/notifications/categories'
 import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
+import { useTeamState } from '@/lib/hooks/useTeamState'
 import type { Receipt } from '@/lib/notifications/types'
 import { groupByDay, hhmm } from './sections'
 
@@ -45,6 +46,7 @@ export default function NotificationsPage() {
   const { receipts, categoryCounts, loading, error } = useNotifications({ limit: PAGE_LIMIT })
   const invalidateNotifications = useInvalidateNotifications()
   const { zone } = useDisplayZone()
+  const alone = useTeamState() === 'alone'
   const resolveSiteName = useResolveSiteName()
   const resolveUserName = useResolveUserName()
   // Rows with a dismiss in flight — per-page interaction state, not data. The
@@ -121,7 +123,7 @@ export default function NotificationsPage() {
           <EmptyState
             icon={<BellSimple />}
             title="You're all caught up"
-            description="Notifications from your sites and workspace land here. Cleanup is automatic — read items delete after their retention window."
+            description={`Notifications from your sites and ${alone ? 'account' : 'team'} land here. Cleanup is automatic — read items delete after their retention window.`}
             action={{ label: 'Notification settings', href: '/settings/account/notifications' }}
           />
         )}

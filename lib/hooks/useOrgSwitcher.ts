@@ -1,10 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
-import { getUserOrganizations, type OrganizationMember } from '@/lib/api/organization'
 import { switchOrganizationSession } from '@/lib/auth/switchOrganization'
+import { useUserOrganizations } from '@/lib/swr/organizations'
 import { logger } from '@/lib/utils/logger'
 
 /**
@@ -17,21 +17,19 @@ import { logger } from '@/lib/utils/logger'
  * create a workspace at all, while the identical desktop menu offered both.
  *
  * Both top bars are mounted simultaneously (hidden by breakpoint, not by
- * mount), so this hook runs twice; the API client's in-flight dedupe collapses
- * the two GET /organizations calls into one request.
+ * mount), so this hook runs twice. The list is one SWR key
+ * (lib/swr/organizations.ts), shared with the team-state signal, so the two
+ * instances and the signal make one GET /organizations between them.
  */
 export function useOrgSwitcher() {
   const auth = useAuth()
   const router = useRouter()
-  const [orgs, setOrgs] = useState<OrganizationMember[]>([])
+  const { organizations, error } = useUserOrganizations()
+  const orgs = organizations ?? []
 
   useEffect(() => {
-    if (auth.user) {
-      getUserOrganizations()
-        .then((organizations) => setOrgs(Array.isArray(organizations) ? organizations : []))
-        .catch(err => logger.error('Failed to fetch orgs', err))
-    }
-  }, [auth.user])
+    if (error) logger.error('Failed to fetch orgs', error)
+  }, [error])
 
   /**
    * The switch itself (its four ordered steps, pulse#730) lives in

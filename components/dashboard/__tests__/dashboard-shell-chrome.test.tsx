@@ -49,6 +49,13 @@ vi.mock('@ciphera-net/facet', () =>
 vi.mock('@/lib/auth/context', () => ({
   useAuth: () => ({ user: { id: 'u1', email: 'someone@example.com' }, loading: false }),
 }))
+// The team-state signal (PULSE-59). null, "not known", is what every test
+// above ran with before the breadcrumb read it, and it gets the team layout.
+let teamState: 'alone' | 'team' | null = null
+vi.mock('@/lib/hooks/useTeamState', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/hooks/useTeamState')>()),
+  useTeamState: () => teamState,
+}))
 vi.mock('@/lib/hooks/useOrgSwitcher', () => ({
   useOrgSwitcher: () => ({ orgs: [], activeOrgId: null, switchOrganization: vi.fn(), createOrganization: vi.fn() }),
 }))
@@ -89,6 +96,7 @@ async function renderAt(path: string, siteId: string | null) {
 }
 
 beforeEach(() => {
+  teamState = null
   seen.sidebar = undefined
   seen.header = undefined
   seen.palette = undefined
@@ -120,5 +128,38 @@ describe('the dashboard chrome on a site-settings tab', () => {
     await renderAt('/settings/site/general', 's1')
     expect(screen.getByText('Settings')).toBeInTheDocument()
     expect(screen.queryByText('Your Sites')).toBeNull()
+  })
+})
+
+// The breadcrumb names a settings tab the way the rail does (PULSE-59). For
+// somebody who works alone the members route is "Invite people" in the rail
+// and the page header, so the top bar must not call it "Members" (the approved
+// B1 mock reads "Settings › Invite people").
+describe('the settings breadcrumb follows the team state', () => {
+  it('calls the members route "Invite people" for somebody alone', async () => {
+    teamState = 'alone'
+    await renderAt('/settings/organization/members', null)
+    expect(screen.getByText('Invite people')).toBeInTheDocument()
+    expect(screen.queryByText('Members')).toBeNull()
+    expect(screen.getByText('Settings')).toBeInTheDocument()
+  })
+
+  it('calls it "Members" in a team', async () => {
+    teamState = 'team'
+    await renderAt('/settings/organization/members', null)
+    expect(screen.getByText('Members')).toBeInTheDocument()
+    expect(screen.queryByText('Invite people')).toBeNull()
+  })
+
+  it('calls it "Members" while the state is not known, like every other surface', async () => {
+    teamState = null
+    await renderAt('/settings/organization/members', null)
+    expect(screen.getByText('Members')).toBeInTheDocument()
+  })
+
+  it('leaves the other tabs named as before', async () => {
+    teamState = 'alone'
+    await renderAt('/settings/organization/billing', null)
+    expect(screen.getByText('Billing')).toBeInTheDocument()
   })
 })

@@ -354,7 +354,7 @@ export default function SetupDonePage() {
             panel (house rule). */}
         <p className="mt-3 text-sm text-neutral-400 max-w-md mx-auto">
           {completionForbidden
-            ? 'Your account is active. The workspace owner still has a step left to finish setting it up — that part isn’t yours to complete.'
+            ? 'Your account is active. The team owner still has a step left to finish setting it up — that part isn’t yours to complete.'
             : SETUP_COPY.done.dek}
         </p>
         {site && (

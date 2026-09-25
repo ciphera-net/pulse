@@ -13,7 +13,7 @@ interface OwnsOrgsBody {
   }>
 }
 
-function isOwnsOrgsBody(b: unknown): b is OwnsOrgsBody {
+export function isOwnsOrgsBody(b: unknown): b is OwnsOrgsBody {
   if (!b || typeof b !== 'object') return false
   const obj = b as Record<string, unknown>
   return obj.error === 'owns_organizations' && Array.isArray(obj.organizations)
@@ -62,6 +62,38 @@ export async function getDeletionPreview(): Promise<DeletionBlocker[]> {
   return res.organizations ?? []
 }
 
+/**
+ * The 409 from deleteAccount as a sentence the person can act on (PULSE-59).
+ *
+ * deleteAccount words it for a team, because this module cannot know the
+ * team state. A caller that knows the person is alone re-words it: for them
+ * the one blocking organization is simply what goes with their account, and
+ * there is no Team section in Settings to send them to. The 409 lands when
+ * the list the panel showed was stale or could not be read; the panel then
+ * re-reads it, so trying again is the way forward.
+ *
+ * Alone wording applies only while the refusal itself agrees: one
+ * organization, to be deleted. Anything else means the person has a team
+ * after all, and gets the team wording.
+ */
+export function ownedOrganizationsMessage(
+  orgs: OwnsOrgsBody['organizations'],
+  alone: boolean,
+): string {
+  if (alone && orgs.length === 1 && orgs[0].action_required === 'delete_workspace') {
+    return 'Something changed since this page loaded. Check what goes with your account, then try again.'
+  }
+  const lines = orgs.map((o) => {
+    const verb = o.action_required === 'transfer_ownership' ? 'transfer ownership' : 'delete team'
+    return `• ${o.name} — ${verb}`
+  })
+  const summary =
+    orgs.length === 1
+      ? `You own 1 team that must be resolved first:`
+      : `You own ${orgs.length} teams that must be resolved first:`
+  return `${summary}\n${lines.join('\n')}\n\nGo to Settings → Team.`
+}
+
 export async function deleteAccount(reauthToken: string, organizationIds: string[] = []): Promise<void> {
   // Loud-fail: never POST an empty token (the ceremony returning "" means the mint
   // failed — the caller must retry a fresh ceremony, not send a blank credential).
@@ -85,21 +117,7 @@ export async function deleteAccount(reauthToken: string, organizationIds: string
     // * NOTE: Pulse's ApiError stores the parsed body on `.data` (id-frontend
     // * uses `.body`) — this is the only divergence from id-frontend's port.
     if (err instanceof ApiError && err.status === 409 && isOwnsOrgsBody(err.data)) {
-      const orgs = err.data.organizations
-      const lines = orgs.map((o) => {
-        const verb =
-          o.action_required === 'transfer_ownership' ? 'transfer ownership' : 'delete workspace'
-        return `• ${o.name} — ${verb}`
-      })
-      const summary =
-        orgs.length === 1
-          ? `You own 1 workspace that must be resolved first:`
-          : `You own ${orgs.length} workspaces that must be resolved first:`
-      throw new ApiError(
-        `${summary}\n${lines.join('\n')}\n\nGo to Settings → Organizations.`,
-        409,
-        err.data,
-      )
+      throw new ApiError(ownedOrganizationsMessage(err.data.organizations, false), 409, err.data)
     }
     throw err
   }
