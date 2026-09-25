@@ -18,5 +18,7 @@ export function useMembers() {
     },
   )
 
-  return { members: data ?? [], error, isLoading }
+  // `list` is null until the first answer arrives; `members` keeps the
+  // historical empty-array shape for callers that only render the rows.
+  return { members: data ?? [], list: data ?? null, error, isLoading }
 }
