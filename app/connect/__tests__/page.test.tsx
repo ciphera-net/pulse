@@ -38,6 +38,8 @@ const h = vi.hoisted(() => {
     rememberReturnTarget: vi.fn(),
     initiateOAuthFlow: vi.fn(),
     toastError: vi.fn(),
+    // The ONE team-state signal (PULSE-59); each test sets it.
+    teamState: 'team' as 'alone' | 'team' | null,
   }
 })
 
@@ -51,6 +53,7 @@ vi.mock('@/lib/auth/context', () => ({
   useAuth: () => ({ user: h.user, loading: h.authLoading, refresh: h.refresh }),
 }))
 vi.mock('@/lib/api/client', () => ({ ApiError: h.ApiError, default: vi.fn() }))
+vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => h.teamState }))
 vi.mock('@/lib/api/connect', () => ({
   getConnectRequest: h.getConnectRequest,
   approveConnectRequest: h.approveConnectRequest,
@@ -74,8 +77,8 @@ vi.mock('@ciphera-net/facet', () => ({
   Checkbox: ({ checked, onChange, label }: any) => (
     <label><input type="checkbox" checked={checked} onChange={onChange} />{label}</label>
   ),
-  Select: ({ value, onChange, options, id, placeholder }: any) => (
-    <select id={id} aria-label="Workspace" value={value} onChange={(e) => onChange(e.target.value)}>
+  Select: ({ value, onChange, options, id, placeholder, 'aria-label': label }: any) => (
+    <select id={id} aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>
       <option value="">{placeholder}</option>
       {options.map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
@@ -109,6 +112,7 @@ beforeEach(() => {
     h.listSites, h.switchOrganizationSession, h.rememberReturnTarget, h.initiateOAuthFlow, h.toastError, assign]) f.mockReset()
   h.user = { id: 'u1', email: 'me@x', org_id: 'org_a' }
   h.authLoading = false
+  h.teamState = 'team'
   h.getConnectRequest.mockResolvedValue(claude)
   h.getUserOrganizations.mockResolvedValue(orgs)
   h.listSites.mockResolvedValue([{ id: 's1', domain: 'ciphera.net' }, { id: 's2', domain: 'pulse.ciphera.net' }])
@@ -177,11 +181,11 @@ describe('/connect', () => {
     expect(assign).not.toHaveBeenCalled()
   })
 
-  it('offers only workspaces where the person may connect apps, and switches WITHOUT navigating', async () => {
+  it('offers only teams where the person may connect apps, and switches WITHOUT navigating', async () => {
     render(<ConnectPage />)
-    const select = (await screen.findByLabelText('Workspace')) as HTMLSelectElement
+    const select = (await screen.findByLabelText('Team')) as HTMLSelectElement
     const names = Array.from(select.options).map((o) => o.textContent)
-    expect(names).toEqual(['Choose a workspace', 'Ciphera', 'Side project'])
+    expect(names).toEqual(['Choose a team', 'Ciphera', 'Side project'])
     expect(select.value).toBe('org_a')
     fireEvent.change(select, { target: { value: 'org_b' } })
     await waitFor(() => expect(h.switchOrganizationSession).toHaveBeenCalledWith('org_b', h.refresh))
@@ -189,13 +193,13 @@ describe('/connect', () => {
     expect(assign).not.toHaveBeenCalled()
   })
 
-  it('makes the person choose when the session workspace is not one they may connect', async () => {
+  it('makes the person choose when the session team is not one they may connect', async () => {
     h.user = { id: 'u1', email: 'me@x', org_id: 'org_c' }
     render(<ConnectPage />)
-    const select = (await screen.findByLabelText('Workspace')) as HTMLSelectElement
+    const select = (await screen.findByLabelText('Team')) as HTMLSelectElement
     expect(select.value).toBe('')
     fireEvent.click(screen.getByRole('button', { name: 'Allow' }))
-    expect(h.toastError).toHaveBeenCalledWith('Choose a workspace first.')
+    expect(h.toastError).toHaveBeenCalledWith('Choose a team first.')
     expect(h.approveConnectRequest).not.toHaveBeenCalled()
   })
 
@@ -210,7 +214,7 @@ describe('/connect', () => {
     h.getUserOrganizations.mockResolvedValue([orgs[2]])
     h.denyConnectRequest.mockResolvedValue({ redirect: 'https://claude.ai/api/mcp/auth_callback?error=access_denied&state=s&iss=x' })
     render(<ConnectPage />)
-    expect(await screen.findByText("You can't connect apps to your workspaces")).toBeTruthy()
+    expect(await screen.findByText("You can't connect apps to your teams")).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Allow' })).toBeNull()
     // * They HAVE a workspace (as a member): nobody hands them another one.
     expect(h.ensureDefaultOrganization).not.toHaveBeenCalled()
@@ -227,14 +231,14 @@ describe('/connect', () => {
     h.listSites.mockResolvedValue([])
     h.approveConnectRequest.mockResolvedValue({ redirect: 'https://claude.ai/api/mcp/auth_callback?code=c&state=s&iss=x' })
     render(<ConnectPage />)
-    const select = (await screen.findByLabelText('Workspace')) as HTMLSelectElement
+    const select = (await screen.findByLabelText('Team')) as HTMLSelectElement
     expect(h.ensureDefaultOrganization).toHaveBeenCalledTimes(1)
     // * The session moves to the new workspace BEFORE approve, because approve
     // * runs in the session's organisation (T5) — never by navigating away.
     expect(h.switchOrganizationSession).toHaveBeenCalledWith('org_new', h.refresh)
     expect(h.push).not.toHaveBeenCalled()
     expect(select.value).toBe('org_new')
-    expect(screen.queryByText("You can't connect apps to your workspaces")).toBeNull()
+    expect(screen.queryByText("You can't connect apps to your teams")).toBeNull()
     expect(screen.getByRole('switch').getAttribute('aria-checked')).toBe('true')
     fireEvent.click(screen.getByRole('button', { name: 'Allow' }))
     await waitFor(() => expect(h.approveConnectRequest).toHaveBeenCalledWith(REQ, { scope_all_sites: true, site_ids: [] }))
@@ -249,7 +253,7 @@ describe('/connect', () => {
     render(<ConnectPage />)
     expect(await screen.findByText("Couldn't load this connection request")).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()
-    expect(screen.queryByText("You can't connect apps to your workspaces")).toBeNull()
+    expect(screen.queryByText("You can't connect apps to your teams")).toBeNull()
     expect(screen.queryByRole('button', { name: 'Allow' })).toBeNull()
   })
 
@@ -269,5 +273,65 @@ describe('/connect', () => {
     expect(h.rememberReturnTarget).toHaveBeenCalledWith(`/connect?request=${REQ}`)
     expect(h.initiateOAuthFlow).toHaveBeenCalled()
     expect(h.getConnectRequest).not.toHaveBeenCalled()
+  })
+})
+
+// ─── PULSE-59: options C1 (alone) and CT (team) ───
+describe('/connect, alone and team', () => {
+  it('team: labels the row Team and says every site in this team', async () => {
+    render(<ConnectPage />)
+    const select = (await screen.findByLabelText('Team')) as HTMLSelectElement
+    expect(select.value).toBe('org_a')
+    expect(screen.getByText('Every site in this team, including ones you add later.')).toBeTruthy()
+  })
+
+  it('team: names an unnamed team "Untitled team"', async () => {
+    h.getUserOrganizations.mockResolvedValue([{ organization_id: 'org_a', organization_name: '', role: 'owner' }, orgs[1]])
+    render(<ConnectPage />)
+    const select = (await screen.findByLabelText('Team')) as HTMLSelectElement
+    expect(Array.from(select.options).map((o) => o.textContent)).toContain('Untitled team')
+  })
+
+  it('alone: no Team row, "Every site you have", and Allow sends the same request as before', async () => {
+    h.teamState = 'alone'
+    h.getUserOrganizations.mockResolvedValue([orgs[0]])
+    h.approveConnectRequest.mockResolvedValue({ redirect: 'https://claude.ai/api/mcp/auth_callback?code=c&state=s&iss=x' })
+    const { container } = render(<ConnectPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Allow' }))
+    expect(screen.queryByLabelText('Team')).toBeNull()
+    expect(screen.queryByRole('combobox')).toBeNull()
+    expect(screen.getByText('Every site you have, including ones you add later.')).toBeTruthy()
+    expect(container.textContent).not.toMatch(/team|workspace|organi[sz]ation/i)
+    await waitFor(() => expect(h.approveConnectRequest).toHaveBeenCalledWith(REQ, { scope_all_sites: true, site_ids: [] }))
+    // Nothing was switched: the one team was already the session's.
+    expect(h.switchOrganizationSession).not.toHaveBeenCalled()
+  })
+
+  it('alone: selects the only eligible team itself when the session is elsewhere, without navigating', async () => {
+    h.teamState = 'alone'
+    h.user = { id: 'u1', email: 'me@x', org_id: 'org_x' }
+    h.getUserOrganizations.mockResolvedValue([orgs[0]])
+    render(<ConnectPage />)
+    await waitFor(() => expect(h.switchOrganizationSession).toHaveBeenCalledWith('org_a', h.refresh))
+    expect(h.push).not.toHaveBeenCalled()
+    expect(screen.queryByLabelText('Team')).toBeNull()
+  })
+
+  it('alone: a failed automatic choice says so without naming a team, and Allow tries it again', async () => {
+    h.teamState = 'alone'
+    h.user = { id: 'u1', email: 'me@x', org_id: 'org_x' }
+    h.getUserOrganizations.mockResolvedValue([orgs[0]])
+    h.switchOrganizationSession.mockRejectedValueOnce(new Error('switch failed'))
+    render(<ConnectPage />)
+    await waitFor(() => expect(h.toastError).toHaveBeenCalledWith("Couldn't prepare the connection. Try again."))
+    fireEvent.click(screen.getByRole('button', { name: 'Allow' }))
+    await waitFor(() => expect(h.switchOrganizationSession).toHaveBeenCalledTimes(2))
+    expect(h.approveConnectRequest).not.toHaveBeenCalled()
+  })
+
+  it('shows the Team row while the state is not known', async () => {
+    h.teamState = null
+    render(<ConnectPage />)
+    expect(await screen.findByLabelText('Team')).toBeTruthy()
   })
 })
