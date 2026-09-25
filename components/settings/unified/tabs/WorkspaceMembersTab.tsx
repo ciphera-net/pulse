@@ -10,6 +10,7 @@ import { useIsAdminOrOwner } from '@/lib/auth/permissions'
 import { getOrganizationMembers, removeOrganizationMember, getInviteLinks, type OrganizationMember, type InviteLink } from '@/lib/api/organization'
 import { listRoles, type Role } from '@/lib/api/roles'
 import CreateInviteLinkModal from './CreateInviteLinkModal'
+import NameTeamModal, { suggestTeamName } from './NameTeamModal'
 import InviteLinksSection from './InviteLinksSection'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { StatusChip } from '@/components/settings/StatusChip'
@@ -21,6 +22,7 @@ import { DURATION_BASE, DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { formatDate } from '@/lib/utils/formatDate'
 import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import { useTeamState } from '@/lib/hooks/useTeamState'
+import { useUserOrganizations } from '@/lib/swr/organizations'
 
 /**
  * A role is a label, not a live state: every role chip is a plain StatusChip
@@ -60,6 +62,7 @@ export default function WorkspaceMembersTab() {
   const [retrying, setRetrying] = useState(false)
   const [inviteLinks, setInviteLinks] = useState<InviteLink[]>([])
   const [showLinkModal, setShowLinkModal] = useState(false)
+  const [showNameModal, setShowNameModal] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState<{ userId: string; email: string } | null>(null)
 
   const canManage = useIsAdminOrOwner()
@@ -68,6 +71,24 @@ export default function WorkspaceMembersTab() {
   // signal, so this page and the rail that named it cannot disagree.
   const alone = useTeamState() === 'alone'
   const { mutate } = useSWRConfig()
+  const { organizations, mutate: revalidateOrganizations } = useUserOrganizations()
+
+  // "Name your team" (option N1, owner 25-09-2026): the first invite is where
+  // somebody alone starts a team, so it asks for the team's name first. The
+  // first invite means ALONE and no invite link yet (the list this page has
+  // already loaded). Every other click opens the invite form directly.
+  const asksForTeamName = alone && inviteLinks.length === 0
+  const openInvite = () => {
+    if (asksForTeamName) setShowNameModal(true)
+    else setShowLinkModal(true)
+  }
+  const onTeamNamed = () => {
+    setShowNameModal(false)
+    setShowLinkModal(true)
+    // The organization list carries the name the user menu shows once there
+    // is a team; re-read it rather than keep the generated one.
+    void revalidateOrganizations()
+  }
 
   const loadMembers = async () => {
     if (!user?.org_id) return
@@ -131,7 +152,7 @@ export default function WorkspaceMembersTab() {
           Alone, the same action is the empty state's button instead. */}
       {canManage && !alone && (
         <MastheadAction>
-          <Button size="sm" onClick={() => setShowLinkModal(true)} variant="default" className="gap-1.5">
+          <Button size="sm" onClick={openInvite} variant="default" className="gap-1.5">
             <Plus weight="bold" className="h-4 w-4" /> Invite member
           </Button>
         </MastheadAction>
@@ -145,7 +166,7 @@ export default function WorkspaceMembersTab() {
             caption="Invite people to share your sites, billing and assistant connections."
             action={
               canManage ? (
-                <Button size="sm" onClick={() => setShowLinkModal(true)} variant="default" className="gap-1.5">
+                <Button size="sm" onClick={openInvite} variant="default" className="gap-1.5">
                   <Plus weight="bold" className="h-4 w-4" /> Invite people
                 </Button>
               ) : undefined
@@ -252,6 +273,16 @@ export default function WorkspaceMembersTab() {
       {user?.org_id && (
         <>
           <InviteLinksSection orgId={user.org_id} links={inviteLinks} roles={roles} onRevoked={loadMembers} />
+          <NameTeamModal
+            orgId={user.org_id}
+            suggestedName={suggestTeamName(
+              user.display_name,
+              organizations?.find(o => o.organization_id === user.org_id)?.organization_name,
+            )}
+            open={showNameModal}
+            onCancel={() => setShowNameModal(false)}
+            onNamed={onTeamNamed}
+          />
           <CreateInviteLinkModal orgId={user.org_id} roles={roles} open={showLinkModal} onOpenChange={setShowLinkModal} onCreated={loadMembers} />
         </>
       )}

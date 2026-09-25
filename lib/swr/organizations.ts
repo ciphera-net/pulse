@@ -22,7 +22,7 @@ export function useUserOrganizations() {
   const { user } = useAuth()
   const userId = user?.id ?? null
 
-  const { data, error, isLoading } = useSWR<OrganizationMember[]>(
+  const { data, error, isLoading, mutate } = useSWR<OrganizationMember[]>(
     userId ? ['user-organizations', userId] : null,
     async () => {
       const organizations = await getUserOrganizations()
@@ -34,5 +34,7 @@ export function useUserOrganizations() {
     },
   )
 
-  return { organizations: data ?? null, error, isLoading }
+  // `mutate` re-reads the list, for a caller that has just changed what it
+  // holds (a rename), so the user menu does not keep the old name.
+  return { organizations: data ?? null, error, isLoading, mutate }
 }
