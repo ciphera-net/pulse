@@ -83,6 +83,11 @@ export function getTypeIcon(type: string) {
     lifecycle_first_data:          <Broadcast        className="w-5 h-5 shrink-0 text-green-400"    aria-hidden="true" />,
     // The first-data glyph again, in amber: the signal that arrived has stopped.
     lifecycle_dormant:             <Broadcast        className="w-5 h-5 shrink-0 text-amber-400"    aria-hidden="true" />,
+    // The lifecycle signal glyph in amber: a site that has never been heard from
+    // (PULSE-66). Add a new type's icon in the same commit as its renderer: this
+    // map is a bare Record, so a missing key falls back to the lightning bolt
+    // silently.
+    lifecycle_install_stalled:     <Broadcast        className="w-5 h-5 shrink-0 text-amber-400"    aria-hidden="true" />,
   }
 
   return iconMap[type] ?? <Lightning className="w-5 h-5 shrink-0 text-neutral-400" aria-hidden="true" />

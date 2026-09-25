@@ -4,9 +4,10 @@ import { NOTIFICATION_CATEGORIES } from '@/lib/notifications/categories'
 import { getTypeIcon } from '@/lib/utils/notifications'
 import type { Receipt } from '@/lib/notifications/types'
 
-function makeReceipt<T>(type: string, payload: T): Receipt {
+function makeReceipt<T>(type: string, payload: T, typeDisplayName?: string | null): Receipt {
   return {
     user_id: 'u', event_id: 'e', delivered_at: null, read_at: null,
+    type_display_name: typeDisplayName,
     event: {
       id: 'e', organization_id: 'o', type: type as any, payload: payload as any,
       link_url: null, link_label_key: null,
@@ -126,18 +127,70 @@ describe('lifecycle renderers', () => {
   })
 })
 
-describe('the generic fallback', () => {
-  // The email's generic line (PULSE-59, E4): Pulse, never a workspace.
-  it('gives a type with no renderer one plain row that names Pulse, not a workspace', () => {
-    const { body, linkLabel } = renderNotification(makeReceipt('a_type_that_does_not_exist', {}))
-    expect(body).toBe('A new notification in Pulse.')
-    expect(linkLabel).toBeNull()
+describe('lifecycle_install_stalled (PULSE-66)', () => {
+  const resolvers = { resolveSiteName: () => 'Example Site', resolveUserName: () => '' }
+  const payload = { site_id: 's1', site_created_at: '2026-09-01T08:00:00Z', domain: 'example.com' }
+
+  // The email's words (Iris render.go, typeLifecycleInstallStalled).
+  it('says what the email says, naming the site the dashboard knows', () => {
+    const { title, body, linkLabel } = renderNotification(makeReceipt('lifecycle_install_stalled', payload), resolvers)
+    expect(title).toBe('Pulse has not heard from your site')
+    expect(body).toBe('You added Example Site to Pulse and it has not sent any data yet.')
+    expect(linkLabel).toBe('Check your install')
+    expectHouseVoice(`${title} ${body} ${linkLabel}`)
   })
 
-  it('gives a renderer that throws on a malformed payload the same plain row', () => {
+  it('names the site by the payload domain when it cannot resolve one', () => {
+    const { body } = renderNotification(makeReceipt('lifecycle_install_stalled', payload))
+    expect(body).toBe('You added example.com to Pulse and it has not sent any data yet.')
+  })
+
+  it('says "a site" when it has no name at all', () => {
+    const { body } = renderNotification(makeReceipt('lifecycle_install_stalled', { site_created_at: '2026-09-01T08:00:00Z' }))
+    expect(body).toBe('You added a site to Pulse and it has not sent any data yet.')
+  })
+
+  // site_created_at is stated nowhere and never turned into an age: a send that
+  // ran late must tell the same story as a prompt one.
+  it('states no age, however long ago the site was added', () => {
+    const { title, body } = renderNotification(makeReceipt('lifecycle_install_stalled', { site_created_at: '2025-01-01T00:00:00Z' }))
+    expect(`${title} ${body}`).not.toMatch(/\d/)
+  })
+
+  it('is its own card, not the fallback, and has its own icon', () => {
+    const { title } = renderNotification(makeReceipt('lifecycle_install_stalled', payload))
+    expect(title).not.toBe('lifecycle_install_stalled')
+    expect(getTypeIcon('lifecycle_install_stalled')).not.toEqual(getTypeIcon('a_type_that_does_not_exist'))
+  })
+})
+
+describe('the generic fallback', () => {
+  const GENERIC = 'A new notification in Pulse.'
+
+  // PULSE-67: the registry's label, exactly as the email's generic arm titles
+  // itself "Pulse — <display name>". The body is the email's generic line
+  // (PULSE-59, E4): Pulse, never a workspace.
+  it('titles a type with no renderer by its registry label, never its type key', () => {
+    const r = renderNotification(makeReceipt('a_type_that_does_not_exist', {}, 'Something happened'))
+    expect(r).toEqual({ title: 'Something happened', body: GENERIC, linkLabel: null })
+  })
+
+  it('without a label, names Pulse in the title and still never shows the type key', () => {
+    for (const label of [undefined, null, '', '   ']) {
+      const { title, body } = renderNotification(makeReceipt('a_type_that_does_not_exist', {}, label))
+      expect(title).toBe(GENERIC)
+      expect(body).toBe('')
+      expect(title).not.toContain('a_type_that_does_not_exist')
+    }
+  })
+
+  it('gives a renderer that throws on a malformed payload the same labelled row', () => {
     // A payload whose field cannot be read stands in for any malformed one.
     const malformed = { get user_id(): string { throw new Error('malformed payload') } }
-    const { body } = renderNotification(makeReceipt('team_member_joined', malformed))
-    expect(body).toBe('A new notification in Pulse.')
+    const labelled = renderNotification(makeReceipt('team_member_joined', malformed, 'Someone joined'))
+    expect(labelled).toEqual({ title: 'Someone joined', body: GENERIC, linkLabel: null })
+    const bare = renderNotification(makeReceipt('team_member_joined', malformed))
+    expect(bare.title).toBe(GENERIC)
+    expect(bare.title).not.toContain('team_member_joined')
   })
 })
