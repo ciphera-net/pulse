@@ -77,12 +77,34 @@ export default function WorkspaceMembersTab() {
   // somebody alone starts a team, so it asks for the team's name first. The
   // first invite means ALONE and no invite link yet (the list this page has
   // already loaded). Every other click opens the invite form directly.
-  const asksForTeamName = alone && inviteLinks.length === 0
+  //
+  // 🔴 AND ONLY ONCE. A person who names the team and then cancels the invite
+  // form still has no link, so without this the next click would ask again,
+  // pre-filled with the suggestion, and Continue would rename the team BACK.
+  // Once the step has succeeded for this organization it is not asked again.
+  // Kept per browser, like the team-state cache: on another device the step
+  // can show once more, with a pre-fill the person can see and change.
+  const namedKey = user?.org_id ? `pulse_team_named_${user.org_id}` : null
+  const [named, setNamed] = useState(false)
+  useEffect(() => {
+    try {
+      setNamed(namedKey !== null && localStorage.getItem(namedKey) === '1')
+    } catch {
+      setNamed(false)
+    }
+  }, [namedKey])
+  const asksForTeamName = alone && inviteLinks.length === 0 && !named
   const openInvite = () => {
     if (asksForTeamName) setShowNameModal(true)
     else setShowLinkModal(true)
   }
   const onTeamNamed = () => {
+    setNamed(true)
+    try {
+      if (namedKey) localStorage.setItem(namedKey, '1')
+    } catch {
+      // A convenience only: without it the step may ask once more.
+    }
     setShowNameModal(false)
     setShowLinkModal(true)
     // The organization list carries the name the user menu shows once there

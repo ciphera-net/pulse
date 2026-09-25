@@ -361,6 +361,9 @@ describe('WorkspaceMembersTab, "Name your team" at the first invite', () => {
   beforeEach(() => {
     mockTeamState = 'alone'
     getOrganizationMembers.mockReset().mockResolvedValue([members[0]])
+    // A successful name step is remembered per organization, so one test's
+    // Continue must not skip the step in the next.
+    localStorage.clear()
   })
 
   it('alone with no invite link: Invite people asks for the team name first, pre-filled from the first name', async () => {
@@ -484,3 +487,33 @@ describe('WorkspaceMembersTab, "Name your team" at the first invite', () => {
     expect(screen.getByLabelText('Team name')).toHaveValue("Ada's team")
   })
 })
+
+describe('WorkspaceMembersTab, "Name your team" is asked only once', () => {
+  beforeEach(() => {
+    mockTeamState = 'alone'
+    getOrganizationMembers.mockReset().mockResolvedValue([members[0]])
+    localStorage.clear()
+  })
+
+  // Without this, naming the team and then cancelling the invite form would
+  // ask again with the suggestion pre-filled, and Continue would rename the
+  // team back.
+  it('remembers a successful name step for this organization', async () => {
+    updateOrganization.mockReset().mockResolvedValueOnce({ id: 'org1', name: 'Acme', slug: 'quiet-harbour' })
+    renderTab()
+    await clickInvitePeople()
+    fireEvent.change(screen.getByLabelText('Team name'), { target: { value: 'Acme' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+    await waitFor(() => expect(screen.getByTestId('invite-modal')).toBeInTheDocument())
+    expect(localStorage.getItem('pulse_team_named_org1')).toBe('1')
+  })
+
+  it('once named, Invite people opens the invite form directly, even with no link yet', async () => {
+    localStorage.setItem('pulse_team_named_org1', '1')
+    renderTab()
+    await clickInvitePeople()
+    expect(nameDialog()).toBeNull()
+    expect(screen.getByTestId('invite-modal')).toBeInTheDocument()
+  })
+})
+
