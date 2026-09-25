@@ -45,14 +45,16 @@ const CAPTIONS: Record<string, string> = {
   lifecycle: 'Nudges while your account is being set up.',
 }
 
-// * PULSE-59: somebody alone has no team, so the one caption that names it
-// * describes what the category still carries for them.
-function captionFor(categoryId: string, alone: boolean): string | undefined {
-  if (alone && categoryId === 'team') return 'People joining through an invite, and role changes.'
-  return CAPTIONS[categoryId]
-}
-
 const ORDER = NOTIFICATION_CATEGORIES.map((c) => c.id as string)
+
+// * PULSE-59: nothing in the Team category can reach somebody who works alone
+// * (people joining, role changes), so the row is not shown to them until they
+// * have a team. Hidden on this page only: the server's category and the stored
+// * preference are untouched, and the row returns in team state. null (not
+// * known yet, or the lookup failed) shows it, like every other surface.
+function visibleTo(categoryId: string, alone: boolean): boolean {
+  return !(alone && categoryId === 'team')
+}
 
 export default function MyPreferencesTab() {
   const alone = useTeamState() === 'alone'
@@ -109,8 +111,10 @@ export default function MyPreferencesTab() {
 
   const categories = useMemo(() => {
     const byId = new Map((doc?.categories ?? []).map((c) => [c.category_id, c]))
-    return ORDER.map((id) => byId.get(id)).filter(Boolean) as CategoryPreferenceDoc[]
-  }, [doc])
+    return ORDER.filter((id) => visibleTo(id, alone))
+      .map((id) => byId.get(id))
+      .filter(Boolean) as CategoryPreferenceDoc[]
+  }, [doc, alone])
 
   if (error && !doc) {
     return (
@@ -141,7 +145,7 @@ export default function MyPreferencesTab() {
               <PanelRow
                 key={cat.category_id}
                 label={cat.display_name}
-                caption={captionFor(cat.category_id, alone)}
+                caption={CAPTIONS[cat.category_id]}
                 control={
                   cat.suppressible ? (
                     <Toggle

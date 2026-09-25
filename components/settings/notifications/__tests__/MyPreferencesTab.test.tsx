@@ -79,6 +79,7 @@ function doc(overrides: Partial<PreferencesDocument> = {}): PreferencesDocument 
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockTeamState = 'team'
   getPrefsDocument.mockResolvedValue(doc())
   // The PUT answers with the stored truth re-read: the fixture applies the
   // write to a fresh document, the way Iris does.
@@ -173,22 +174,34 @@ describe('MyPreferencesTab (one switch per category)', () => {
     const desc = screen.getByText(/Every notification shows in the app the moment it happens/)
     expect(desc.textContent).toMatch(/These settings are yours\.$/)
     expect(desc.textContent).not.toMatch(/team|workspace/i)
-    mockTeamState = 'team'
   })
 
-  // The row's NAME is the registry's (Iris, out of scope for PULSE-59); the
-  // caption under it is this page's own copy, so it follows the alone rule.
-  it('captions the team category without the word team for somebody alone (PULSE-59)', async () => {
+  // PULSE-59: nothing in the Team category (people joining, role changes) can
+  // reach somebody alone, so the row waits until they have a team.
+  it('shows no Team row to somebody alone, and every other category in order', async () => {
     mockTeamState = 'alone'
     render(<MyPreferencesTab />)
-    expect(await screen.findByText('People joining through an invite, and role changes.')).toBeTruthy()
+    await screen.findByText('Billing')
+    expect(screen.queryByText('Team')).toBeNull()
+    expect(screen.queryByRole('switch', { name: 'Email for Team' })).toBeNull()
     expect(screen.queryByText('People joining your team and role changes.')).toBeNull()
-    mockTeamState = 'team'
+    const labels = ['Billing', 'Security', 'Monitoring', 'Site activity', 'System', 'Getting started']
+    for (const l of labels) expect(screen.getByText(l)).toBeInTheDocument()
+    expect(screen.getAllByRole('switch')).toHaveLength(4)
   })
 
-  it('captions the team category as the team in team state', async () => {
+  it('shows the Team row, captioned as the team, in team state', async () => {
     render(<MyPreferencesTab />)
     expect(await screen.findByText('People joining your team and role changes.')).toBeTruthy()
+    expect(switchFor('Team')).toHaveAttribute('aria-checked', 'false')
+  })
+
+  it('shows the Team row while the state is not known (null renders the team layout)', async () => {
+    mockTeamState = null
+    render(<MyPreferencesTab />)
+    await screen.findByText('Billing')
+    expect(switchFor('Team')).toBeInTheDocument()
+    expect(screen.getByText('People joining your team and role changes.')).toBeInTheDocument()
   })
 
   it('🔴 the page carries none of the retired vocabulary in its CODE (comments stripped first)', () => {
