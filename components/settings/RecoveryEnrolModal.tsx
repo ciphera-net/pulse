@@ -20,6 +20,7 @@
 import { useCallback, useState } from 'react'
 import { Button, Input, RecoveryPhraseDisplay } from '@ciphera-net/facet'
 import { ApiError } from '@/lib/api/client'
+import { isInvalidCredentials } from '@/lib/auth/tessera/errors'
 import { enrolRecoveryIdentity } from '@/lib/auth/tessera/recovery-enrol'
 import { MODAL_SCROLL_CLASS, MODAL_CENTER_CLASS, MODAL_PANEL_CLASS } from '@/components/settings/modalChrome'
 
@@ -35,6 +36,11 @@ import { MODAL_SCROLL_CLASS, MODAL_CENTER_CLASS, MODAL_PANEL_CLASS } from '@/com
  * changes nothing. Same rule, and the same reason, as PasskeyEnrolModal.
  */
 function enrolErrorMessage(err: unknown): string {
+  // A wrong password is rejected in the browser, with no HTTP status, so the
+  // 401 branch below never sees it (PULSE-61).
+  if (isInvalidCredentials(err)) {
+    return 'That email or password didn’t match. Nothing was saved — please try again.'
+  }
   if (err instanceof ApiError) {
     // 0 is this client's own code for "the request never completed".
     if (err.status === 0) {

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { InvalidCredentialsError } from '@ciphera-net/tessera'
 
 /**
  * What the user READS when a passkey enrolment fails.
@@ -145,6 +146,19 @@ describe('PasskeyEnrolModal failure messages', () => {
     // And it names the thing the user can actually fix.
     expect(screen.getByText(/email or password/i)).toBeInTheDocument()
     expect(screen.getByText(/nothing was saved/i)).toBeInTheDocument()
+  })
+
+  // PULSE-61: OPAQUE rejects a wrong password IN THE BROWSER, so what reaches
+  // this dialog is the SDK's error with no HTTP status. It used to fall through
+  // to err.message and show a customer "tessera: invalid credentials".
+  it.each([
+    ['the SDK class', () => new InvalidCredentialsError()],
+    ['a second SDK copy (name only)', () => Object.assign(new Error('tessera: invalid credentials'), { name: 'InvalidCredentialsError' })],
+  ])('a wrong password rejected by the SDK (%s) reads as a mismatch, not SDK text', async (_n, make) => {
+    await submitWith(make())
+    await waitFor(() => expect(screen.getByText(/email or password/i)).toBeInTheDocument())
+    expect(screen.getByText(/nothing was saved/i)).toBeInTheDocument()
+    expect(screen.queryByText(/tessera/i)).not.toBeInTheDocument()
   })
 
   it('says the same for a 403 — the other way a bad proof comes back', async () => {

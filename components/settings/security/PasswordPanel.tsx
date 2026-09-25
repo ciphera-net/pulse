@@ -5,6 +5,7 @@ import { Button, Modal, PasswordInput, toast } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
 import { authFetch } from '@/lib/api/client'
 import { performOpaqueChangePassword } from '@/lib/auth/tessera/opaque-change-password'
+import { isInvalidCredentials } from '@/lib/auth/tessera/errors'
 import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
 
 export const MIN_PASSWORD_LENGTH = 12
@@ -15,6 +16,9 @@ export const MIN_PASSWORD_LENGTH = 12
  * shown as they are; anything else gets the one house voice.
  */
 export function changePasswordErrorMessage(err: unknown): string {
+  // A wrong CURRENT password is rejected in the browser with no HTTP status;
+  // its message is SDK text, not a sentence for a person (PULSE-61).
+  if (isInvalidCredentials(err)) return "That password didn't match. Nothing was changed. Try again."
   if (err instanceof Error && err.message) return err.message
   return "Couldn't change your password. Try again in a moment."
 }
