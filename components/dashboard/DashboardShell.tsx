@@ -14,6 +14,8 @@ import { UnnamedSession } from '@/components/account/UnnamedSession'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
 import OnboardingChip from '@/components/onboarding/OnboardingChip'
 import { useUserMenuTeamProps } from '@/components/dashboard/userMenuTeam'
+import { navGroups, tabFor } from '@/components/settings/nav'
+import { useTeamState } from '@/lib/hooks/useTeamState'
 import {
   CaretDown, CaretRight, SidebarSimple, Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, Globe as GlobeIcon,
   GearSix, Target, Eye, ShieldCheck, Robot,
@@ -81,6 +83,9 @@ const HOME_PAGE_META: Record<string, PageMeta> = {
 
 function useHomePageMeta(): PageMeta {
   const pathname = usePathname()
+  // The same team-state signal the settings rail reads (PULSE-59). The shell's
+  // user menu already reads it, so this adds no request.
+  const teamState = useTeamState()
 
   if (pathname.startsWith('/settings')) {
     const parts = pathname.split('/').filter(Boolean)
@@ -113,8 +118,12 @@ function useHomePageMeta(): PageMeta {
     if (!meta) {
       return { title: 'Settings', icon: SettingsIcon }
     }
+    // The label is the settings registry's, not this table's: the registry
+    // knows the team state (somebody alone reads "Invite people" where a team
+    // reads "Members"), and the rail and page header already use it. Tabs the
+    // registry does not list keep this table's label.
     return {
-      title: meta.label,
+      title: tabFor(pathname, navGroups(teamState))?.label ?? meta.label,
       icon: meta.icon,
       parent: { title: 'Settings', icon: SettingsIcon, href: '/settings' },
     }
