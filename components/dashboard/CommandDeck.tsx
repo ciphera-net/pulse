@@ -280,8 +280,12 @@ export default function CommandDeck({
                   surface) hides it entirely: the backend clamps public-scoped
                   reads to day buckets (F2 — an hourly bucket with one visitor
                   is that person's arrival time), so the selector there was a
-                  control wired to nothing. */}
-              {!intervalPicker || period === '1h' || period === '24h' || dateRange.start === dateRange.end ? null : (
+                  control wired to nothing. Past a year the SERVER picks week
+                  or month buckets (All time) and echoes them in `interval`;
+                  the selector then offered "1 day" over weekly points — so it
+                  goes whenever the chart is not drawn in the buckets it
+                  offers. */}
+              {!intervalPicker || period === '1h' || period === '24h' || dateRange.start === dateRange.end || interval === 'week' || interval === 'month' ? null : (
                 <Select
                   variant="input"
                   value={multiDayInterval}
