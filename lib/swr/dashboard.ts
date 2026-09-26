@@ -54,7 +54,7 @@ import {
   type TransitionsResponse,
   type EntryPoint,
 } from '@/lib/api/journeys'
-import { getSite, getInstallStatus, getIngestHealth, getTrafficStatus, type IngestHealthResponse, type TrafficStatusResponse } from '@/lib/api/sites'
+import { getSite, getSiteTeam, getInstallStatus, getIngestHealth, getTrafficStatus, type IngestHealthResponse, type TrafficStatusResponse } from '@/lib/api/sites'
 import type { Site, InstallStatusResponse } from '@/lib/api/sites'
 import { listFunnels, getFunnel, getFunnelStats, getAllFunnelStats, getFunnelTrends, getFunnelBreakdown, type Funnel, type FunnelStats, type FunnelTrends, type FunnelBreakdown } from '@/lib/api/funnels'
 import {
@@ -209,6 +209,20 @@ export function useSite(siteId: string) {
       // * Deduping interval to prevent duplicate requests
       dedupingInterval: 30 * 1000,
     }
+  )
+}
+
+/**
+ * Which team a site the session cannot read belongs to (PULSE-87). Asked only
+ * after the site itself answered 403. A 403 here means "not one of your teams"
+ * and is final, and a 404 means a server without the route — neither is worth
+ * retrying, so nothing is.
+ */
+export function useSiteTeam(siteId: string, enabled: boolean) {
+  return useSWR<{ organization_id: string }>(
+    enabled && siteId ? ['site-team', siteId] : null,
+    () => getSiteTeam(siteId),
+    { revalidateOnFocus: false, shouldRetryOnError: false },
   )
 }
 

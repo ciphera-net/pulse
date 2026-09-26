@@ -229,6 +229,15 @@ export async function getSite(id: string): Promise<Site> {
   return apiRequest<Site>(`/sites/${id}`)
 }
 
+/**
+ * The team a site belongs to, answered only to a MEMBER of that team (PULSE-87).
+ * Anyone else gets the same 403 as the site itself, so it tells a non-member
+ * nothing the site's own 403 does not already say.
+ */
+export async function getSiteTeam(id: string): Promise<{ organization_id: string }> {
+  return apiRequest<{ organization_id: string }>(`/sites/${id}/team`)
+}
+
 export async function getInstallStatus(id: string): Promise<InstallStatusResponse> {
   return apiRequest<InstallStatusResponse>(`/sites/${id}/install-status`)
 }
