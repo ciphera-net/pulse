@@ -19,7 +19,7 @@ import {
   Question,
   Globe,
 } from '@phosphor-icons/react'
-import { EmptyState } from '@/components/ui/EmptyState'
+import CardEmptyState from '@/components/dashboard/CardEmptyState'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { ListSkeleton } from '@/components/skeletons'
 import { type CampaignStat, type TopReferrer } from '@/lib/api/stats'
@@ -92,6 +92,8 @@ interface SourcesProps {
   // BOTH campaign fetches stay unarmed; the member-only full-list can never
   // fire from a share view.
   campaigns?: CampaignStat[]
+  /** Realtime mode — an empty block reads the one realtime line (CardEmptyState). */
+  live?: boolean
 }
 
 const LIMIT = 7
@@ -165,6 +167,7 @@ export default function Sources({
   memberFeatures = true,
   onFilter,
   campaigns: payloadRows,
+  live = false,
 }: SourcesProps) {
   // A row that filters is a real control; one that cannot is inert text.
   const Row = onFilter ? 'button' : 'div'
@@ -316,7 +319,8 @@ export default function Sources({
               ))}
             </CascadeGroup>
           ) : (
-            <EmptyState
+            <CardEmptyState
+              live={live}
               icon={<Globe />}
               title="Nobody's linked to you yet"
               description="Traffic sources appear here when visitors come from other websites, social media, or search engines."
@@ -351,7 +355,8 @@ export default function Sources({
               ))}
             </CascadeGroup>
           ) : (
-            <EmptyState
+            <CardEmptyState
+              live={live}
               icon={<Globe />}
               title="No channel data yet"
               description="Channels group your traffic by type — direct, organic, social, and referral — as visitors arrive."
@@ -396,7 +401,8 @@ export default function Sources({
               ))}
             </CascadeGroup>
           ) : (
-            <EmptyState
+            <CardEmptyState
+              live={live}
               icon={<Megaphone />}
               title="No UTM data yet"
               description="Tag your links with UTM parameters to track which campaigns drive the most traffic."

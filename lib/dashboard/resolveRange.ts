@@ -68,3 +68,17 @@ export function resolveDashboardRange(
 export function fetchableRange(periodReady: boolean, picked: DateRange): DateRange {
   return periodReady ? picked : { start: '', end: '' }
 }
+
+/**
+ * The period token a page SENDS alongside its dates — `all` only, and only once the
+ * view is resolved.
+ *
+ * Every other row is sent as the dates it resolved to on the page's wall clock. All
+ * time is the exception because the SERVER owns it: it resolves to the page's data
+ * window there, and it is exempt from the 366-day cap only as a token. Sent as the
+ * window's dates, a site holding more than a year would get a 400 (from 30-03-2027 on
+ * the sites keeping 24–36 months).
+ */
+export function serverResolvedPeriod(periodReady: boolean, period: string): 'all' | undefined {
+  return periodReady && period === 'all' ? 'all' : undefined
+}

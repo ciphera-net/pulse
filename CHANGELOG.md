@@ -11,6 +11,9 @@ public read API's — see that entry for what it does and does not cover.
 
 ### Added
 
+- **All time** — from a page's first day of data to its newest, worked out by the
+  server for each page. Past a year the chart switches to weekly, then monthly points.
+
 - **Ask your AI assistant about your analytics: the Pulse Analytics MCP server.**
   Claude, ChatGPT, Cursor, VS Code, Microsoft Copilot Studio and Mistral Le Chat can
   now read your Pulse numbers. Add `https://pulse-api.ciphera.net/mcp` to your
@@ -127,6 +130,16 @@ public read API's — see that entry for what it does and does not cover.
 
 ### Fixed
 
+- Uptime and Pages offered *Last 1 hour* and *Last 24 hours* over data kept by the
+  day, and showed whole days under those labels. The rows are gone (#742).
+- Journeys offered *Today*, which was always empty: journeys for a day are built
+  after it ends. It is now greyed, and a remembered *Today* shows yesterday there.
+- A custom range longer than a page can load was accepted by the calendar and then
+  refused by the server. The calendar now stops at the page's limit, and a longer
+  range carried over from another page is shortened to it, keeping its end date.
+- Visitors listed *Last 1 hour* and *Last 24 hours* twice, and opened with its
+  selected row out of sight below the fold.
+
 - **The line connecting the steps of a visit now runs through them.** It sat 12
   pixels to the left of the dots it was joining.
 
@@ -165,6 +178,47 @@ public read API's — see that entry for what it does and does not cover.
   true the moment this page existed, so it has been rewritten rather than left to age.
 
 ### Changed
+
+- **One view switcher, the same on every page.** The date menu now lists the same
+  twelve rows everywhere: *Today, Yesterday, Last 7 days, Last 30 days, Last 3 months,
+  Last 12 months, All time*, then *This month, Last month, This year, Last year*, then
+  *Custom range…*. It no longer scrolls, and *Custom range…* opens the calendar with a
+  way back to the list. Dates read "23 Sep" (the year only when it is not this one).
+
+  **A row a page has no data for is greyed, with the reason — never hidden.** Search
+  Console reports each day about two days late, so Search greys *Today* and
+  *Yesterday*; journeys are built overnight, so Journeys greys *Today*; visitor
+  history starts 26 Aug 2026. When a range starts before a page's data or ends after
+  it, the button says so: "Last 12 months · since 26 Aug", "Last 30 days · through
+  24 Sep".
+
+  **Removed from the menu:** Last 1 hour, Last 24 hours, Last 28 days, Last 6 months,
+  Last 16 months, Last week, Last quarter, Week to date and Quarter to date, and the
+  page-specific groups on Search, CDN, Uptime and Visitors. Links that carry them
+  still open, and the button shows their dates rather than the word "Custom".
+  Performance keeps its own check stepper.
+
+- **One memory for the view.** Pick *Last 7 days* on any page and every page opens on
+  *Last 7 days* — on every site. A custom range, or one moved with the arrows, follows
+  you until the tab closes. Opening a shared link never changes what you picked. On a
+  page that has no data for your view, Pulse shows the closest view that does and
+  names it on the button — *Today* on Search shows "24 Sep · latest day", on Journeys
+  "Yesterday · latest day" — without changing what you picked.
+
+- **Realtime is the last 5 minutes, for the count and the view alike** (the view was
+  30 minutes, the count 5, so the two could disagree side by side). The live count is
+  smaller — a dot and the number, grey at zero — and it is still how you enter
+  realtime. On Visitors it sits beside the view switcher and replaces the page's own
+  live windows (30 minutes, 1, 6 and 24 hours). A realtime block with nobody in it
+  says so in one line: "Nobody on the site in the last 5 minutes."
+
+- **Shared dashboards show the same twelve rows**, with *Today*, *Yesterday*, *Last 7
+  days* and *Last 30 days* available and the rest greyed: "A shared dashboard shows
+  fixed ranges." The live count under the site name is the same small dot and number,
+  for display only.
+
+- The top bar reads "Updated 6 seconds ago" instead of "Live · 6 seconds ago": it is
+  about when the page last refreshed, not about who is on the site.
 
 - **The steps of a visit are bigger, and each one branches off the line.** In an
   expanded visit the page path, the sentences beneath it and their marks all stepped up

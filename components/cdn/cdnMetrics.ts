@@ -1,11 +1,10 @@
 import type { BunnyDailyRow, BunnyLiveResponse } from '@/lib/api/bunny'
-import type { PeriodPreset } from '@/lib/constants/periods'
 
 // ---------------------------------------------------------------------------
 // CDN instrument helpers. bunny_data rows are BUNNY's chart days, which are
 // UTC calendar days (verified live: hourly buckets sum exactly to the daily
-// bucket) — the same convention as Uptime, labeled once on each axis row and
-// anchored by presetUtcRange on preset ranges.
+// bucket) — labeled once on each axis row. The CDN page's view runs on the UTC wall
+// clock (useUrlDateRange timezone 'UTC'), so its ranges are UTC days at the source.
 // ---------------------------------------------------------------------------
 
 export interface CdnPoint {
@@ -135,38 +134,4 @@ export function cdnDayLabelLong(d: Date): string {
     year: 'numeric',
     timeZone: 'UTC',
   })
-}
-
-// ─── Range vocabulary ───────────────────────────────────────────────
-
-function utcRangeDaysBack(days: number): { start: string; end: string } {
-  // * Anchored to the CURRENT UTC day — bunny_data days are UTC days; a
-  // * local-calendar anchor west of UTC would silently drop the newest day
-  // * (the presetUtcRange lesson from Uptime, applied at the source here).
-  const end = new Date()
-  const endStr = end.toISOString().slice(0, 10)
-  const start = new Date(end.getTime() - (days - 1) * 24 * 60 * 60 * 1000)
-  const startStr = start.toISOString().slice(0, 10)
-  return { start: startStr, end: endStr }
-}
-
-// * The page's ONE range control. Exclusive: Pulse's global "Today"/"24h"
-// * presets are promises a daily-granular source cannot keep. Ranges beyond
-// * ~13 months just run out of data (backfill depth) — the chart ends where
-// * history ends, no plan-gating UI.
-// *
-// * These `resolve` functions deliberately ignore DateRangePicker's `now`
-// * argument (the site's wall clock) — utcRangeDaysBack is UTC-anchored on
-// * purpose (bunny_data rows are UTC days, not site-local ones), and a real
-// * UTC instant is timezone-invariant regardless of which clock reads it.
-export const CDN_PICKER_PRESETS: { group: string; presets: PeriodPreset[]; exclusive: boolean } = {
-  group: 'CDN ranges',
-  exclusive: true,
-  presets: [
-    { key: '7', label: 'Last 7 days', group: 'CDN ranges', resolve: () => utcRangeDaysBack(7) },
-    { key: '30', label: 'Last 30 days', group: 'CDN ranges', resolve: () => utcRangeDaysBack(30) },
-    { key: '3m', label: 'Last 3 months', group: 'CDN ranges', resolve: () => utcRangeDaysBack(90) },
-    { key: '6m', label: 'Last 6 months', group: 'CDN ranges', resolve: () => utcRangeDaysBack(180) },
-    { key: '12m', label: 'Last 12 months', group: 'CDN ranges', resolve: () => utcRangeDaysBack(365) },
-  ],
 }

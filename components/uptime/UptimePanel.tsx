@@ -76,6 +76,8 @@ interface UptimePanelProps {
   /** The period token — decides the dashed in-progress tail (token
    * semantics, never client date math). Optional: custom ranges never dash. */
   period?: string | null
+  /** Sent instead of the dates when the SERVER resolves the view (All time). */
+  apiPeriod?: string
 }
 
 // ─── Availability strip: one state bar per bucket (unchanged marks) ──
@@ -253,7 +255,7 @@ function TLSNote({ monitor }: { monitor: UptimeMonitor }) {
 
 // ─── Panel ───────────────────────────────────────────────────────
 
-export default function UptimePanel({ siteId, monitor, dateRange, incidents, timezone, utcDaysBefore, period }: UptimePanelProps) {
+export default function UptimePanel({ siteId, monitor, dateRange, incidents, timezone, utcDaysBefore, period, apiPeriod }: UptimePanelProps) {
   const searchParams = useSearchParams()
   const write = useQueryParamsWriter()
 
@@ -272,6 +274,7 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, tim
     monitor.id,
     dateRange.start,
     dateRange.end,
+    apiPeriod,
   )
   const granularity = data?.granularity ?? 'day'
   const series = useMemo(() => toUptimeSeries(data?.buckets ?? []), [data])

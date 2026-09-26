@@ -28,9 +28,10 @@ import {
   ENTRY_DIMENSION,
   DEPTH_OPTIONS,
   DENSITY_OPTIONS,
-  type Period,
 } from '@/lib/hooks/useJourneyFilters'
-import { useJourneyTransitions, useSite } from '@/lib/swr/dashboard'
+import { useJourneyTransitions, useSite, useDataWindow } from '@/lib/swr/dashboard'
+import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
+import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
 
 // ---------------------------------------------------------------------------
 // Journeys (07-09-2026 simplification, owner pick "A solid"):
@@ -51,15 +52,25 @@ export default function JourneysPage() {
   const router = useRouter()
   const siteId = params.id as string
 
-  // Independent of the page's own `useDashboard` call below, and read BEFORE
-  // useJourneyFilters — the filters hook needs the zone to resolve a
-  // relative period against the SITE's wall clock rather than the browser's
-  // (the same defect class useUrlDateRange's `timezone` option closes).
   const { data: site } = useSite(siteId)
-  const filters = useJourneyFilters(site?.timezone)
+  // The view, like every other page's: the one memory, answered against Journeys'
+  // own data window — which ends YESTERDAY (the paths are built overnight), so Today
+  // is greyed here and a remembered Today opens as "Yesterday · latest day".
+  const dataWindow = useDataWindow(siteId, 'journeys')
+  const view = useUrlDateRange({
+    surface: 'journeys',
+    window: dataWindow,
+    timezone: site?.timezone,
+    retentionMonths: site?.data_retention_months,
+    daysCaption: siteDaysCaption(site?.timezone),
+  })
+  const filters = useJourneyFilters()
+  const fetchRange = fetchableRange(view.periodReady, view.dateRange)
+  const allPeriod = serverResolvedPeriod(view.periodReady, view.period)
 
-  // * The fetch waits for memory (one render): an empty siteId is a null SWR key.
-  const fetchSiteId = filters.ready ? siteId : ''
+  // * The fetch waits for the view and the Depth/Paths memory: an empty siteId is a
+  // * null SWR key.
+  const fetchSiteId = filters.ready && view.periodReady ? siteId : ''
   const {
     data: transitionsData,
     error: transitionsError,
@@ -68,16 +79,17 @@ export default function JourneysPage() {
     mutate: retryTransitions,
   } = useJourneyTransitions(
     fetchSiteId,
-    filters.dateRange.start,
-    filters.dateRange.end,
+    fetchRange.start,
+    fetchRange.end,
     filters.committedDepth,
     1,
     filters.entryPath || undefined,
     filters.filtersParam || undefined,
+    allPeriod,
   )
 
   // ── The dashboard filter system, restricted to journeys' dimensions ──
-  const fetchSuggestions = useFilterSuggestions(siteId, filters.dateRange, filters.filtersParam || undefined)
+  const fetchSuggestions = useFilterSuggestions(siteId, fetchRange, filters.filtersParam || undefined, allPeriod)
   const filterBuilder = useFilterBuilder(fetchSuggestions)
   const handleFilterApply = useCallback(
     (filter: DimensionFilter, editingIndex: number | null) => {
@@ -118,7 +130,7 @@ export default function JourneysPage() {
 
   const totalSessions = transitionsData?.total_sessions ?? 0
   const transitions = transitionsData?.transitions ?? []
-  const periodLabel = `${formatDisplayDate(new Date(filters.dateRange.start + 'T00:00:00'))} – ${formatDisplayDate(new Date(filters.dateRange.end + 'T00:00:00'))}`
+  const periodLabel = `${formatDisplayDate(new Date(view.dateRange.start + 'T00:00:00'))} – ${formatDisplayDate(new Date(view.dateRange.end + 'T00:00:00'))}`
 
   // * Lens → funnel cross-link: the heaviest chain through the lens becomes
   // * a prefilled create-funnel modal on the funnels page.
@@ -165,15 +177,7 @@ export default function JourneysPage() {
             active={filterBuilder.open}
             onClick={(anchor) => filterBuilder.openCreate(anchor)}
           />
-          <DateRangePicker
-            period={filters.period}
-            dateRange={filters.dateRange}
-            onPeriodChange={(p) => filters.setPeriod(p as Period)}
-            onDateRangeChange={(range) => filters.setPeriod('custom', range)}
-            onShift={filters.shiftPeriod}
-            now={filters.siteNow}
-            daysCaption={siteDaysCaption(site?.timezone)}
-          />
+          <DateRangePicker {...view.picker} />
         </div>
       </div>
 

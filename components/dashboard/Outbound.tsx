@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import Image from 'next/image'
 import { ArrowSquareOut, FileText, Globe } from '@phosphor-icons/react'
 import { Switcher } from '@ciphera-net/facet'
-import { EmptyState } from '@/components/ui/EmptyState'
+import CardEmptyState from '@/components/dashboard/CardEmptyState'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { CardPager, useCardPage } from '@/components/dashboard/CardPager'
 import { CascadeGroup, CascadeRow, RowBar } from '@/components/dashboard/Cascade'
@@ -47,6 +47,8 @@ interface OutboundProps {
   /** Active page filters — the endpoints ignore them, so the card labels itself whole-site. */
   filters?: string
   onFilter?: (filter: DimensionFilter) => void
+  /** Realtime mode — an empty block reads the one realtime line (CardEmptyState). */
+  live?: boolean
 }
 
 type Tab = 'domains' | 'links' | 'from_page'
@@ -90,7 +92,7 @@ function DestinationIcon({ host, failed, onFail }: { host: string; failed: boole
   )
 }
 
-export default function Outbound({ siteId, dateRange, period, goalCounts, filters, onFilter }: OutboundProps) {
+export default function Outbound({ siteId, dateRange, period, goalCounts, filters, onFilter, live = false}: OutboundProps) {
   const [activeTab, setActiveTab] = useState<Tab>('domains')
   const [faviconFailed, setFaviconFailed] = useState<Set<string>>(() => new Set())
   const { data, error, isLoading } = useOutboundLinks(siteId, dateRange.start, dateRange.end, period)
@@ -252,7 +254,8 @@ export default function Outbound({ siteId, dateRange, period, goalCounts, filter
             ))}
           </div>
         ) : (
-          <EmptyState
+          <CardEmptyState
+              live={live}
             icon={<ArrowSquareOut />}
             title="No outbound clicks yet"
             description="Clicks on links to other sites are recorded automatically and appear here. If outbound tracking is off in the script settings, nothing arrives."

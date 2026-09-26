@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { PlusIcon, LayoutDashboardIcon, PathIcon, FunnelIcon, CursorClickIcon, SearchIcon, CloudUploadIcon, HeartbeatIcon, SettingsIcon, UserMenu } from '@ciphera-net/facet'
-import { formatUpdatedAgo } from '@/lib/utils/format'
+import { formatUpdatedLabel } from '@/lib/utils/format'
 import { useFunnelDetail } from '@/lib/swr/dashboard'
 import { useAuth } from '@/lib/auth/context'
 import { UnnamedSession } from '@/components/account/UnnamedSession'
@@ -317,13 +317,13 @@ function BreadcrumbSitePicker({ currentSiteId, currentSiteName }: { currentSiteI
 
 // ─── Glass Top Bar ─────────────────────────────────────────
 
-function LiveAgo({ lastUpdatedAt }: { lastUpdatedAt: number }) {
+function UpdatedAgo({ lastUpdatedAt }: { lastUpdatedAt: number }) {
   const [, setTick] = useState(0)
   useEffect(() => {
     const timer = setInterval(() => setTick((t) => t + 1), 1000)
     return () => clearInterval(timer)
   }, [])
-  return <>{formatUpdatedAgo(lastUpdatedAt)}</>
+  return <>{formatUpdatedLabel(lastUpdatedAt)}</>
 }
 
 function GlassTopBar({ siteId }: { siteId: string | null }) {
@@ -424,7 +424,7 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
               <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
             </span>
-            Live · <LiveAgo lastUpdatedAt={lastUpdatedAt} />
+            <UpdatedAgo lastUpdatedAt={lastUpdatedAt} />
           </div>
         )}
         <OnboardingChip />

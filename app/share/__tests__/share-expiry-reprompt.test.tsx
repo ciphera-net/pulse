@@ -72,6 +72,8 @@ vi.mock('@ciphera-net/facet', () => ({
   LoadingOverlay: () => <div data-testid="loading-overlay" />,
   toast: { success: vi.fn(), error: vi.fn() },
   getAuthErrorMessage: () => 'error',
+  // lib/utils re-exports cn from facet; the live orb under the site name needs it.
+  cn: (...c: unknown[]) => c.filter(Boolean).join(' '),
   DownloadIcon: () => <span />,
   ZapIcon: () => <span />,
 }))

@@ -51,6 +51,20 @@ export function formatUpdatedAgo(timestamp: number): string {
   return `${minutes} minutes ago`
 }
 
+/**
+ * The top bar's refresh line — "Updated just now", "Updated 6 seconds ago": when the
+ * dashboard last REFRESHED its data.
+ *
+ * It read "Live · 6 seconds ago" until 25-09-2026, which shared the word "live" with the
+ * orb (people on the site now) while meaning something else entirely; in realtime mode
+ * the page said "live" three times in three colours. Owner: "Updated N ago".
+ */
+export function formatUpdatedLabel(timestamp: number): string {
+  const ago = formatUpdatedAgo(timestamp)
+  // formatUpdatedAgo leads a sentence ("Just now"); here it follows a word.
+  return `Updated ${ago.charAt(0).toLowerCase()}${ago.slice(1)}`
+}
+
 /** Format duration in seconds to "1m 30s" or "30s" */
 export function formatDuration(seconds: number): string {
   if (!seconds) return '0s'

@@ -2,30 +2,25 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { siteWallClockNow } from '@/lib/utils/siteTime'
-import {
-  DEFAULT_PERIOD,
-  isValidDateString,
-  parsePeriod,
-  periodToDateRange,
-  shiftDateRange,
-  type Period,
-} from './periodUrl'
 import { serializeFilters, parseFiltersFromURL, type DimensionFilter } from '@/lib/filters'
-
-export type { Period }
 
 // ---------------------------------------------------------------------------
 // Journeys page state (07-09-2026 simplification).
 //
 // One view (Flow); Depth and Paths are Switchers over a short ladder; the
 // entry point is a FILTER — the `entry_path` dimension in the same popover
-// and pill row as country/device/referrer — and Depth, Paths and the period
-// REMEMBER their last values the way every other page's timeframe does
-// (`useUrlDateRange`'s `pulse_last_period:<pageKey>` scheme, applied here).
+// and pill row as country/device/referrer — and Depth and Paths REMEMBER their
+// last values (page-local: they are this page's instrument, not the view).
 // The URL stays authoritative when it carries a value; memory only fills in
 // when it does not, and it is read post-mount so the server and the first
 // client render agree.
+//
+// 🔁 THE PERIOD IS NOT HERE ANY MORE (25-09-2026, PULSE-20). Journeys used to run
+// its own copy of the range hook — its own `pulse_last_period:journeys` memory,
+// parsePeriod, periodToDateRange and readiness — which checked neither the page's
+// vocabulary nor its API ceiling. Harmless while the key was private; under the one
+// shared view memory, a range picked anywhere would have reached Journeys' API
+// unchecked. The page now takes its view from useUrlDateRange like every other.
 // ---------------------------------------------------------------------------
 
 /** The entry page is the API's own `entry_path` parameter, carried as a dimension filter. */
@@ -48,7 +43,6 @@ export const DENSITY_DEFAULT = 20
 export const DENSITY_OPTIONS = [5, 10, 20, 50] as const
 
 const PAGE_KEY = 'journeys'
-const PERIOD_KEY = `pulse_last_period:${PAGE_KEY}`
 const DEPTH_KEY = `pulse_last_${PAGE_KEY}:depth`
 const DENSITY_KEY = `pulse_last_${PAGE_KEY}:density`
 
@@ -82,19 +76,6 @@ function readStoredInt(key: string, min: number, max: number): number | null {
   }
 }
 
-function readStoredPeriod(): Period | null {
-  try {
-    const raw = window.localStorage.getItem(PERIOD_KEY)
-    if (!raw) return null
-    const p = parsePeriod(raw)
-    // parsePeriod maps unknown values to the default — honour only an exact,
-    // non-custom echo so garbage in storage cannot masquerade as a choice.
-    return raw === p && p !== 'custom' ? p : null
-  } catch {
-    return null
-  }
-}
-
 function store(key: string, value: string) {
   try {
     window.localStorage.setItem(key, value)
@@ -106,7 +87,6 @@ function store(key: string, value: string) {
 interface Remembered {
   depth: number | null
   density: number | null
-  period: Period | null
 }
 
 // ─── Hook ───────────────────────────────────────────────────────────
@@ -124,34 +104,20 @@ export interface JourneyFilters {
   dimensionFilters: DimensionFilter[]
   /** Serialized `filters=` for the API — WITHOUT the entry page (that travels as `entry_path`). */
   filtersParam: string
-  period: Period
-  dateRange: { start: string; end: string }
   /**
-   * False for the one render before memory is read, AND while the caller's
-   * site timezone is unknown — see useUrlDateRange's `periodReady`, which
-   * this mirrors. `dateRange` must not be trusted before this is true, or a
-   * calendar preset resolves against the browser clock for one render.
+   * False for the one render before the Depth/Paths memory is read — until then
+   * `depth` and `density` are the defaults, not the reader's values. The page's
+   * VIEW readiness is useUrlDateRange's periodReady; fetch only when both are true.
    */
   ready: boolean
-  /** The site's wall clock — hand to DateRangePicker's `now` prop. */
-  siteNow: Date
 
   setDepth: (n: number) => void
   setDensity: (n: number) => void
   setLens: (path: string | null) => void
   setDimensionFilters: (filters: DimensionFilter[]) => void
-  setPeriod: (p: Period, customRange?: { start: string; end: string }) => void
-  shiftPeriod: (direction: -1 | 1) => void
 }
 
-/**
- * `timezone` is the site's IANA zone — `undefined` while the page's site
- * hasn't loaded yet (gates `ready`), `null` only for a caller with no site
- * concept at all (resolves in UTC). See useUrlDateRange's `timezone` option,
- * which this mirrors — Journeys builds its own range state rather than using
- * that hook, but the underlying defect (and its fix) are the same.
- */
-export function useJourneyFilters(timezone?: string | null): JourneyFilters {
+export function useJourneyFilters(): JourneyFilters {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -163,28 +129,12 @@ export function useJourneyFilters(timezone?: string | null): JourneyFilters {
     setRemembered({
       depth: readStoredInt(DEPTH_KEY, DEPTH_MIN, DEPTH_MAX),
       density: readStoredInt(DENSITY_KEY, DENSITY_MIN, DENSITY_MAX),
-      period: readStoredPeriod(),
     })
   }, [])
-  // Mirrors useUrlDateRange's periodReady: memory read AND the site's zone
-  // known, or dateRange below resolves a relative period against the
-  // browser's clock for the render(s) before the real zone arrives.
-  const ready = remembered !== null && timezone !== undefined
-
-  // Rebuilt once per MINUTE, not every render — see useUrlDateRange's
-  // siteNow for the reasoning (a plain per-render call is cheap enough
-  // either way; the bucketing just lets a long-lived mount roll "today"
-  // over at midnight without a ticking timer).
-  const minuteBucket = Math.floor(Date.now() / 60_000)
-  const siteNow = useMemo(
-    () => siteWallClockNow(timezone),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [timezone, minuteBucket],
-  )
+  const ready = remembered !== null
 
   const urlHasDepth = searchParams.has('depth')
   const urlHasDensity = searchParams.has('density')
-  const urlHasPeriod = searchParams.has('period')
 
   const depth = urlHasDepth
     ? clampInt(searchParams.get('depth'), DEPTH_MIN, DEPTH_MAX, DEPTH_DEFAULT)
@@ -216,24 +166,6 @@ export function useJourneyFilters(timezone?: string | null): JourneyFilters {
     [dimensionFilters],
   )
 
-  // Period: URL, else memory, else the default.
-  const rawPeriod = parsePeriod(searchParams.get('period'))
-  const rawStart = searchParams.get('start')
-  const rawEnd = searchParams.get('end')
-  const urlPeriod: Period =
-    rawPeriod === 'custom' && (!isValidDateString(rawStart) || !isValidDateString(rawEnd))
-      ? DEFAULT_PERIOD
-      : rawPeriod
-  const period: Period = urlHasPeriod ? urlPeriod : (remembered?.period ?? urlPeriod)
-
-  const dateRange = useMemo(
-    () =>
-      period === 'custom' && rawStart && rawEnd
-        ? { start: rawStart, end: rawEnd }
-        : periodToDateRange(period, siteNow),
-    [period, rawStart, rawEnd, siteNow],
-  )
-
   // Debounce what the canvas is asked to draw: a click on the ladder should
   // not fire a request per intermediate value.
   const [committedDepth, setCommittedDepth] = useState(depth)
@@ -256,7 +188,6 @@ export function useJourneyFilters(timezone?: string | null): JourneyFilters {
       }
       if (params.get('depth') === String(DEPTH_DEFAULT)) params.delete('depth')
       if (params.get('density') === String(DENSITY_DEFAULT)) params.delete('density')
-      if (params.get('period') === DEFAULT_PERIOD) params.delete('period')
       const qs = params.toString()
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
     },
@@ -267,7 +198,7 @@ export function useJourneyFilters(timezone?: string | null): JourneyFilters {
     (n: number) => {
       const clamped = Math.max(DEPTH_MIN, Math.min(DEPTH_MAX, n))
       updateUrl({ depth: clamped })
-      setRemembered((r) => ({ ...(r ?? { depth: null, density: null, period: null }), depth: clamped }))
+      setRemembered((r) => ({ ...(r ?? { depth: null, density: null }), depth: clamped }))
       store(DEPTH_KEY, String(clamped))
     },
     [updateUrl],
@@ -276,7 +207,7 @@ export function useJourneyFilters(timezone?: string | null): JourneyFilters {
     (n: number) => {
       const snapped = snapDensity(Math.max(DENSITY_MIN, Math.min(DENSITY_MAX, n)))
       updateUrl({ density: snapped })
-      setRemembered((r) => ({ ...(r ?? { depth: null, density: null, period: null }), density: snapped }))
+      setRemembered((r) => ({ ...(r ?? { depth: null, density: null }), density: snapped }))
       store(DENSITY_KEY, String(snapped))
     },
     [updateUrl],
@@ -286,31 +217,6 @@ export function useJourneyFilters(timezone?: string | null): JourneyFilters {
     (filters: DimensionFilter[]) => updateUrl({ filters: serializeFilters(filters) || null, entry: null }),
     [updateUrl],
   )
-  const setPeriod = useCallback(
-    (p: Period, range?: { start: string; end: string }) => {
-      if (p === 'custom' && range) updateUrl({ period: p, start: range.start, end: range.end })
-      else updateUrl({ period: p, start: null, end: null })
-      // Presets are remembered; a custom span is not (a frozen date range as
-      // the default is the F12 bug — see useUrlDateRange).
-      if (p !== 'custom') {
-        setRemembered((r) => ({ ...(r ?? { depth: null, density: null, period: null }), period: p }))
-        store(PERIOD_KEY, p)
-      }
-    },
-    [updateUrl],
-  )
-
-  // The shared, tested shift (periodUrl.ts) against the SITE's wall clock —
-  // not the page's own hand-rolled copy, which used to clamp against
-  // formatDate(new Date()), the viewer's calendar day.
-  const shiftPeriod = useCallback(
-    (direction: -1 | 1) => {
-      const next = shiftDateRange(dateRange, direction, siteNow)
-      if (next) setPeriod('custom', next)
-    },
-    [dateRange, setPeriod, siteNow],
-  )
-
   return {
     depth,
     committedDepth,
@@ -320,15 +226,10 @@ export function useJourneyFilters(timezone?: string | null): JourneyFilters {
     lens,
     dimensionFilters,
     filtersParam,
-    period,
-    dateRange,
     ready,
-    siteNow,
     setDepth,
     setDensity,
     setLens,
     setDimensionFilters,
-    setPeriod,
-    shiftPeriod,
   }
 }
