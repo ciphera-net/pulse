@@ -6,7 +6,8 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { UsersThree } from '@phosphor-icons/react'
-import DateRangePicker from '@/components/ui/DateRangePicker'
+import DateRangePicker, { type DateRangePickerProps } from '@/components/ui/DateRangePicker'
+import RealtimeOrb from '@/components/dashboard/RealtimeOrb'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { Pagination } from '@/components/search/rowPrimitives'
@@ -16,7 +17,10 @@ import { VisitorMeta } from '@/components/visitors/VisitorMeta'
 import { VisitorsOffRoom } from '@/components/visitors/VisitorsOffRoom'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
-import { useSite, useVisitors } from '@/lib/swr/dashboard'
+import { useRealtimeToggle } from '@/lib/hooks/useRealtimeToggle'
+import { REALTIME_EMPTY_LINE, REALTIME_MODES, REALTIME_ROLLING_MINUTES } from '@/lib/dashboard/realtimeRange'
+import { serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
+import { useDataWindow, useSite, useVisitors } from '@/lib/swr/dashboard'
 import { visitorPseudonym } from '@/lib/visitors/pseudonym'
 import { formatLastSeen, SITE_TIMEZONE_FALLBACK } from '@/lib/visitors/format'
 import {
@@ -25,13 +29,8 @@ import {
   identityWindowOf,
   type IdentityWindowDays,
 } from '@/lib/visitors/identityWindow'
-import {
-  VISITORS_MIN_DATE,
-  VISITORS_ROLLING_MINUTES,
-  VISITORS_PRESETS,
-  monthBoundaries,
-  presenceTicks,
-} from '@/lib/visitors/range'
+import { VISITORS_MIN_DATE, monthBoundaries, presenceTicks } from '@/lib/visitors/range'
+import { formatLongDay } from '@/lib/view/view'
 import type { VisitorRow } from '@/lib/api/visitors'
 import { displayDomain } from '@/lib/utils/displayDomain'
 
@@ -67,19 +66,26 @@ export default function VisitorsPage() {
   const siteId = params.id as string
 
   const { data: site, mutate: refreshSite } = useSite(siteId)
-  const { period, dateRange, periodReady, rollingMinutes, setPeriod, shiftPeriod, siteNow, pickerProps } =
-    useUrlDateRange({
-      pageKey: 'visitors',
-      minDate: VISITORS_MIN_DATE,
-      rollingMinutes: VISITORS_ROLLING_MINUTES,
-      extraPresets: VISITORS_PRESETS,
-      // NOT the `SITE_TIMEZONE_FALLBACK` used below for display — that
-      // fallback exists so a rendered page never shows a blank zone; here,
-      // `undefined` while `site` is loading is exactly what must gate
-      // periodReady, or a bare-URL mount would resolve "today" etc. in UTC
-      // for the one render before the real zone arrives.
-      timezone: site?.timezone,
-    })
+  // The one view (PULSE-20): the shared twelve rows answered against the visitors data
+  // window, whose floor is the identity epoch. Realtime is the dashboard's MODE, entered
+  // from the orb beside the switcher — five rolling minutes, never remembered.
+  const dataWindow = useDataWindow(siteId, 'visitors')
+  const urlRange = useUrlDateRange({
+    surface: 'visitors',
+    window: dataWindow,
+    // NOT the `SITE_TIMEZONE_FALLBACK` used below for display — that
+    // fallback exists so a rendered page never shows a blank zone; here,
+    // `undefined` while `site` is loading is exactly what must gate
+    // periodReady, or a bare-URL mount would resolve "today" etc. in UTC
+    // for the one render before the real zone arrives.
+    timezone: site?.timezone,
+    modes: REALTIME_MODES,
+    rollingMinutes: REALTIME_ROLLING_MINUTES,
+    retentionMonths: site?.data_retention_months,
+    daysCaption: siteDaysCaption(site?.timezone),
+  })
+  const { period, dateRange, periodReady, rollingMinutes, picker } = urlRange
+  const { isLive: live, toggle: toggleRealtime } = useRealtimeToggle(urlRange)
 
   const [page, setPage] = useState(1)
   const [sort, setSort] = useState('last_seen')
@@ -92,12 +98,15 @@ export default function VisitorsPage() {
     setPage(1)
   }, [dateRange.start, dateRange.end, rollingMinutes, sort, order])
 
+  // All time travels as the `all` token (the server resolves it to the visitors window);
+  // every other view as its dates; realtime as rolling minutes.
+  const allToken = serverResolvedPeriod(periodReady, period)
   const range = useMemo(
     () =>
       rollingMinutes != null
         ? { minutes: rollingMinutes }
-        : { startDate: dateRange.start, endDate: dateRange.end },
-    [rollingMinutes, dateRange.start, dateRange.end],
+        : { startDate: dateRange.start, endDate: dateRange.end, period: allToken },
+    [rollingMinutes, dateRange.start, dateRange.end, allToken],
   )
 
   const { data, error, isLoading } = useVisitors(siteId, range, {
@@ -185,7 +194,7 @@ export default function VisitorsPage() {
   if (site && site.visitor_views_enabled === false) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
-        <PageHeader live={0} showToolbar={false} identityWindow={identityWindow} />
+        <PageHeader identityWindow={identityWindow} />
         <VisitorsOffRoom site={site} onEnabled={() => refreshSite()} />
       </div>
     )
@@ -196,7 +205,7 @@ export default function VisitorsPage() {
     // SWR copy after somebody disabled it in another tab). Trust the API.
     return (
       <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
-        <PageHeader live={0} showToolbar={false} identityWindow={identityWindow} />
+        <PageHeader identityWindow={identityWindow} />
         <VisitorsOffRoom site={site} onEnabled={() => refreshSite()} />
       </div>
     )
@@ -204,8 +213,10 @@ export default function VisitorsPage() {
 
   const visitors = data?.visitors ?? []
   const total = data?.total ?? 0
+  // The orb's count, the roster badge and every row's dot all read this one number:
+  // the tracker's five-minute presence resolved to visitor keys (pulse-backend
+  // activeVisitorKeys), so nothing on the page can disagree with the orb.
   const activeNow = data?.active_now ?? 0
-  const live = rollingMinutes != null
 
   const fieldVisitors = fieldData?.visitors ?? []
   // What the field is NOT drawing. The field cannot compute this — it is handed a
@@ -220,16 +231,7 @@ export default function VisitorsPage() {
   return (
     <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
       <PageHeader
-        live={activeNow}
-        showToolbar
-        period={period}
-        dateRange={dateRange}
-        onPeriodChange={(p) => setPeriod(p as never)}
-        onDateRangeChange={(r) => setPeriod('custom', r)}
-        onShift={shiftPeriod}
-        now={siteNow}
-        daysCaption={siteDaysCaption(siteTimezone)}
-        pickerProps={pickerProps}
+        toolbar={{ picker, liveCount: activeNow, live, onToggleLive: toggleRealtime }}
         identityWindow={identityWindow}
       />
 
@@ -244,7 +246,7 @@ export default function VisitorsPage() {
           boundaries={boundaries}
           highlightKey={highlightKey}
           caption="Each dot is one visitor · nearer the right, more recently seen"
-          emptyLabel={isLoading ? 'Loading…' : 'No visitors in this range'}
+          emptyLabel={isLoading ? 'Loading…' : live ? REALTIME_EMPTY_LINE : 'No visitors in this range'}
         />
       </div>
 
@@ -314,15 +316,18 @@ export default function VisitorsPage() {
             ))}
           </div>
         ) : visitors.length === 0 ? (
-          <EmptyState
-            icon={<UsersThree className="size-6" weight="regular" />}
-            title={live ? 'Nobody on the site right now' : 'No visitors in this range'}
-            description={
-              live
-                ? 'This updates on its own — a reader arriving in the next few minutes will appear here.'
-                : describeIdentityWindow(identityWindow).emptyRangeHint
-            }
-          />
+          // Realtime says one line (owner copy, 25-09-2026) — the same line every
+          // dashboard block reads in realtime, because the old live copy promised a
+          // reader "in the next few minutes" of a view that is empty most minutes.
+          live ? (
+            <EmptyState icon={<UsersThree className="size-6" weight="regular" />} title={REALTIME_EMPTY_LINE} />
+          ) : (
+            <EmptyState
+              icon={<UsersThree className="size-6" weight="regular" />}
+              title="No visitors in this range"
+              description={describeIdentityWindow(identityWindow).emptyRangeHint}
+            />
+          )
         ) : (
           <>
             {visitors.map((v) => (
@@ -370,30 +375,18 @@ export default function VisitorsPage() {
 }
 
 function PageHeader({
-  live,
-  showToolbar,
-  period,
-  dateRange,
-  onPeriodChange,
-  onDateRangeChange,
-  onShift,
-  now,
-  daysCaption,
-  pickerProps,
+  toolbar,
   identityWindow,
 }: {
-  live: number
-  showToolbar: boolean
-  period?: string
-  dateRange?: { start: string; end: string }
-  onPeriodChange?: (p: string) => void
-  onDateRangeChange?: (r: { start: string; end: string }) => void
-  onShift?: (d: -1 | 1) => void
-  /** The site's wall clock (useUrlDateRange's `siteNow`) — the picker's
-   *  future-day cutoff and initial month. */
-  now?: Date
-  daysCaption?: string
-  pickerProps?: Record<string, unknown>
+  /** Absent when the page has nothing to range over (visitor views switched off). */
+  toolbar?: {
+    picker: DateRangePickerProps
+    /** People on the site in the last five minutes — the orb's count. */
+    liveCount: number
+    /** True in realtime mode. */
+    live: boolean
+    onToggleLive: () => void
+  }
   /** The site's identity window; undefined while unknown. */
   identityWindow?: IdentityWindowDays
 }) {
@@ -403,28 +396,17 @@ function PageHeader({
       <div>
         <h1 className="text-2xl font-medium text-white">Visitors</h1>
         <p className="mt-1 text-sm text-neutral-400">{copy.headline}</p>
-        <p className="mt-1 text-xs text-neutral-600">Data begins 26 Aug 2026 · {copy.resetCaption}</p>
+        <p className="mt-1 text-xs text-neutral-600">Data begins {formatLongDay(VISITORS_MIN_DATE)} · {copy.resetCaption}</p>
       </div>
 
-      {showToolbar && (
+      {toolbar && (
+        // The orb sits DIRECTLY LEFT of the switcher (approved mock d1-visitors,
+        // 25-09-2026): Visitors has no left-hand toolbar, so "the same place" as the
+        // dashboard is beside the control it switches. It replaced the bordered
+        // "N on the site now" chip, which said the same thing in a second design.
         <div className="flex items-center gap-2">
-          {live > 0 && (
-            <span className="flex h-10 items-center gap-2 border border-border px-3 text-sm text-neutral-300">
-              <span className="size-1.5 rounded-full bg-green-500" aria-hidden="true" />
-              {live} on the site now
-            </span>
-          )}
-          <DateRangePicker
-            period={period as string}
-            dateRange={dateRange as { start: string; end: string }}
-            onPeriodChange={onPeriodChange as (p: string) => void}
-            onDateRangeChange={onDateRangeChange as (r: { start: string; end: string }) => void}
-            onShift={onShift}
-            now={now}
-            daysCaption={daysCaption}
-            align="right"
-            {...pickerProps}
-          />
+          <RealtimeOrb count={toolbar.liveCount} live={toolbar.live} onToggle={toolbar.onToggleLive} />
+          <DateRangePicker {...toolbar.picker} />
         </div>
       )}
     </div>

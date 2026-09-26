@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { toCdnSeries, statusMix, fmtBytes, fmtHitRate, fmtOriginMs, cdnDayLabel, deriveLiveCard, CDN_PICKER_PRESETS } from '../cdnMetrics'
+import { toCdnSeries, statusMix, fmtBytes, fmtHitRate, fmtOriginMs, cdnDayLabel, deriveLiveCard } from '../cdnMetrics'
 import type { BunnyDailyRow } from '@/lib/api/bunny'
 
 function row(overrides: Partial<BunnyDailyRow> = {}): BunnyDailyRow {
@@ -75,21 +75,9 @@ describe('formatters', () => {
   })
 })
 
-describe('CDN_PICKER_PRESETS', () => {
-  it('is exclusive and anchors preset ends to the current UTC day', () => {
-    expect(CDN_PICKER_PRESETS.exclusive).toBe(true)
-    const todayUtc = new Date().toISOString().slice(0, 10)
-    for (const preset of CDN_PICKER_PRESETS.presets) {
-      expect(preset.resolve().end).toBe(todayUtc)
-    }
-  })
-  it('offers no Today/24h shortcut — the source is daily-granular', () => {
-    const keys = CDN_PICKER_PRESETS.presets.map((p) => p.key)
-    expect(keys).not.toContain('today')
-    expect(keys).not.toContain('24h')
-    expect(keys).not.toContain('1h')
-  })
-})
+// CDN_PICKER_PRESETS is gone (PULSE-20): the page shows the shared twelve rows, and its
+// view runs on the UTC wall clock — the "ranges end on the current UTC day" invariant
+// now lives in lib/view/__tests__/view.test.ts ("CDN rows are UTC days").
 
 describe('deriveLiveCard', () => {
   const hour = (requests: number, cached = 0): import('@/lib/api/bunny').BunnyLiveHour => ({

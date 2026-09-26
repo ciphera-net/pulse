@@ -9,17 +9,15 @@ import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { Heartbeat } from '@phosphor-icons/react'
 import { useCan } from '@/lib/auth/permissions'
 import { InstrumentOffState } from '@/components/ui/InstrumentOffState'
-import { useSite, useUptimeStatus, useUptimeIncidents, useUptimeChecks } from '@/lib/swr/dashboard'
+import { useSite, useUptimeStatus, useUptimeIncidents, useUptimeChecks, useDataWindow } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import type { UptimeMonitor } from '@/lib/api/uptime'
 import { formatRelativeTime } from '@/lib/utils/formatDate'
 import { toast, Button } from '@ciphera-net/facet'
 import { UptimeSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
 import DateRangePicker from '@/components/ui/DateRangePicker'
-import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
-import { fetchableRange } from '@/lib/dashboard/resolveRange'
-import { getDateRange } from '@/lib/utils/format'
-import type { PeriodPreset } from '@/lib/constants/periods'
+import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
+import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
 import UptimePanel from '@/components/uptime/UptimePanel'
 import IncidentsTable from '@/components/uptime/IncidentsTable'
 import { ErrorCard } from '@/components/ui/ErrorCard'
@@ -35,8 +33,9 @@ import {
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 // ---------------------------------------------------------------------------
-// Uptime — the instrument-panel layout. One range control (the picker, with
-// uptime's page-scoped presets; 12m is bounded by the API's 366-day cap), the
+// Uptime — the instrument-panel layout. One range control (the view switcher's
+// twelve rows, shared by every page — no sub-day rows, since the API is
+// day-granular: the #742 "Last 1 hour renders a whole day" defect), the
 // UptimePanel where each metric row is tile and strip at once, the incident
 // ledger, and the monitor strip. All day/hour bucketing is the server's, in
 // the SITE's timezone (22-08-2026 alignment — supersedes decision D5; days
@@ -49,24 +48,6 @@ const cascade = (delay: number) => ({
   animate: { opacity: 1, y: 0 },
   transition: { duration: DURATION_BASE, ease: EASE_APPLE, delay },
 })
-
-// * The DateRangePicker is the ONE range control on this page (owner call,
-// * 13-08: a pill row beside the picker was two controls for one job). These
-// * page-scoped presets keep the uptime vocabulary one click away in the
-// * picker — 7d/30d are global presets already; without this group the
-// * month-scale ranges would label as "Custom" and check-mark nothing.
-// * No 24h preset on purpose: the API is UTC-day-granular, so a "24h"
-// * shortcut would really be an up-to-48-hour window wearing a 24h label —
-// * 7d is the smallest preset and still renders at HOURLY resolution (the
-// * server serves hourly buckets for ranges ≤ 8 days).
-const UPTIME_PICKER_PRESETS: { group: string; presets: PeriodPreset[] } = {
-  group: 'Uptime ranges',
-  presets: [
-    { key: '3m', label: 'Last 3 months', group: 'Uptime ranges', resolve: (now) => getDateRange(90, now) },
-    { key: '6m', label: 'Last 6 months', group: 'Uptime ranges', resolve: (now) => getDateRange(180, now) },
-    { key: '12m', label: 'Last 12 months', group: 'Uptime ranges', resolve: (now) => getDateRange(365, now) },
-  ],
-}
 
 // ─── Header status line (the SyncStatusLine grammar, for the checker) ──
 
@@ -159,20 +140,18 @@ export default function UptimePage() {
   const siteId = params.id as string
 
   const { data: site, error: siteError, mutate: mutateSite } = useSite(siteId)
-  const { period, dateRange, periodReady, setPeriod, shiftPeriod, siteNow, pickerProps } = useUrlDateRange({
-    pageKey: 'uptime',
-    extraPresets: UPTIME_PICKER_PRESETS,
+  const dataWindow = useDataWindow(siteId, 'uptime')
+  const { period, dateRange, periodReady, picker } = useUrlDateRange({
+    surface: 'uptime',
+    window: dataWindow,
     timezone: site?.timezone,
+    retentionMonths: site?.data_retention_months,
+    daysCaption: siteDaysCaption(site?.timezone),
   })
   // Incident starts and check stamps are instants: they follow the person's
   // display preference. UptimePanel's days and buckets stay the site's calendar.
   const displayZone = useDisplayZone(site?.timezone)
 
-  // * The API reads SITE-timezone calendar days; useUrlDateRange builds
-  // * VIEWER-local ones. Preset windows re-anchor to the site's current day
-  // * so the newest checks never fall off for a viewer west of the site; a
-  // * custom pick passes through — an explicitly chosen calendar day IS the
-  // * site's day, as labeled.
   // Gated: a placeholder range must not fetch. Uptime's two hooks keyed on
   // siteId ALONE, so an empty range used to fetch anyway; they now require
   // dates (see lib/swr/dashboard.ts). The range arrives site-anchored from
@@ -181,13 +160,14 @@ export default function UptimePage() {
     () => fetchableRange(periodReady, dateRange),
     [periodReady, dateRange],
   )
+  const allPeriod = serverResolvedPeriod(periodReady, period)
   const {
     data: uptimeData,
     isLoading,
     error: uptimeError,
     mutate: mutateUptime,
-  } = useUptimeStatus(siteId, apiRange.start, apiRange.end)
-  const { data: incidentsData, error: incidentsError } = useUptimeIncidents(siteId, apiRange.start, apiRange.end)
+  } = useUptimeStatus(siteId, apiRange.start, apiRange.end, allPeriod)
+  const { data: incidentsData, error: incidentsError } = useUptimeIncidents(siteId, apiRange.start, apiRange.end, allPeriod)
   const [toggling, setToggling] = useState(false)
 
   // * Single monitor from the auto-managed uptime system
@@ -291,16 +271,7 @@ export default function UptimePage() {
           {monitor && <UptimeStatusLine monitor={monitor} status={overallStatus} />}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <DateRangePicker
-            period={period}
-            dateRange={dateRange}
-            onPeriodChange={(p) => setPeriod(p as Period)}
-            onDateRangeChange={(range) => setPeriod('custom', range)}
-            onShift={shiftPeriod}
-            now={siteNow}
-            daysCaption={siteDaysCaption(site?.timezone)}
-            {...pickerProps}
-          />
+          <DateRangePicker {...picker} />
           {canEdit && (
             <Button variant="chrome" size="toolbar" onClick={() => handleToggleUptime(false)} isLoading={toggling}>
               Disable monitoring
@@ -317,6 +288,7 @@ export default function UptimePage() {
               monitor={monitor}
               dateRange={apiRange}
               period={period}
+              apiPeriod={allPeriod}
               incidents={incidentsError ? undefined : incidentsData?.incidents}
               timezone={site?.timezone ?? null}
               utcDaysBefore={uptimeData?.utc_days_before}

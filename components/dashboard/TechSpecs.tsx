@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { getBrowserIcon, getOSIcon, getDeviceIcon } from '@/lib/utils/icons'
 import { Monitor } from '@phosphor-icons/react'
 import { DeviceMobile } from '@phosphor-icons/react'
-import { EmptyState } from '@/components/ui/EmptyState'
+import CardEmptyState from '@/components/dashboard/CardEmptyState'
 import { useFullDimensionList, type FullListKind } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
 import { MetricRowStat, MetricUnitLabel, rowBarWidth } from '@/components/dashboard/MetricRowStat'
@@ -30,6 +30,8 @@ interface TechSpecsProps {
   // what its own payload carries.
   memberFeatures?: boolean
   onFilter?: (filter: DimensionFilter) => void
+  /** Realtime mode — an empty block reads the one realtime line (CardEmptyState). */
+  live?: boolean
 }
 
 type Tab = 'browsers' | 'os' | 'devices' | 'screens'
@@ -62,7 +64,7 @@ const LIMIT = 7
 
 const TAB_TO_DIMENSION: Record<string, string> = { browsers: 'browser', os: 'os', devices: 'device', screens: 'screen_resolution' }
 
-export default function TechSpecs({ browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter }: TechSpecsProps) {
+export default function TechSpecs({ browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter, live = false}: TechSpecsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('browsers')
   type TechItem = { name: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null; icon: React.ReactNode }
 
@@ -204,7 +206,8 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
             ))}
           </CascadeGroup>
         ) : (
-          <EmptyState
+          <CardEmptyState
+              live={live}
             icon={<DeviceMobile />}
             title="No devices detected yet"
             description="Browser, OS, and screen data appears automatically as visitors arrive. No extra setup needed."

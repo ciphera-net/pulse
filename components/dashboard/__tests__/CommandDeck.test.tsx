@@ -125,6 +125,20 @@ describe('CommandDeck interval selector scope', () => {
     expect(screen.getByText('1 day')).toBeTruthy()
     expect(screen.queryByText('1 min')).toBeNull()
   })
+
+  // Found verifying on staging 26-09-2026: All time past a year is served in WEEK
+  // buckets (the server's choice, echoed as `interval`), and the selector still
+  // read "1 day" over weekly points. It cannot offer a week, so it goes.
+  it('drops the selector when the server drew the chart in weeks or months', () => {
+    for (const served of ['week', 'month'] as const) {
+      const { container, unmount } = render(
+        <CommandDeck {...baseProps} interval={served} period="all" dateRange={{ start: '2025-07-20', end: '2026-09-26' }} />,
+      )
+      expect(container.querySelectorAll('[aria-haspopup="listbox"]').length).toBe(0)
+      expect(screen.queryByText('1 day')).toBeNull()
+      unmount()
+    }
+  })
 })
 
 describe('CommandDeck delta colours', () => {

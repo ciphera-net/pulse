@@ -2,16 +2,24 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import type { PeriodPreset } from '@/lib/constants/periods'
+import { PERIOD_PRESETS } from '@/lib/constants/periods'
 import { siteWallClockNow } from '@/lib/utils/siteTime'
+import { formatDate } from '@/lib/utils/format'
+import {
+  listFootnote,
+  resolveView,
+  viewRows,
+  type AppliedView,
+  type DateSpan,
+  type RequestedView,
+  type RowState,
+  type Surface,
+  type WindowState,
+} from '@/lib/view/view'
 import {
   DEFAULT_PERIOD,
-  isUrlPeriod,
   isValidDateString,
   parsePeriod,
-  periodMaxDays,
-  periodToDateRange,
-  PERIODS,
   shiftDateRange,
   type Period,
 } from './periodUrl'
@@ -20,267 +28,252 @@ import { useQueryParamsWriter } from './useQueryParamsWriter'
 export type { Period }
 
 // ---------------------------------------------------------------------------
-// Shared URL-synced date range for date-ranged pages (dashboard, funnels,
-// search, CDN, uptime) (?period=&start=&end=) — the journeys grammar, so list
-// and detail views are shareable and survive refresh. Defaults (period=30)
-// stay out of the URL.
+// The view every date-ranged page shows (?period=&start=&end=), and the ONE memory
+// of it (owner decision 25-09-2026, PULSE-20 — reversing the 22-08-2026 per-page
+// ruling: "there should be one memory. so the user doesn't have to change views on
+// every page").
 //
-// The URL is the source of truth, but the last-chosen PRESET is remembered
-// PER PAGE (owner decision 22-08-2026): a range picked on one page never
-// changes what another page shows. The remembered preset is a page's
-// EFFECTIVE default when it mounts with no ?period= (state, applied
-// post-mount — a mount-time router.replace is silently dropped while
-// hydration is in flight, measured on the prod build). An explicit ?period=
-// in a shared link always wins, and defaults stay out of the URL as before.
-// Custom ranges are deliberately NOT remembered — a frozen stale date span as
-// the default is the exact F12 bug the URL migration removed.
+// The URL is the source of truth when it carries a period. When it does not, the
+// page opens on the reader's view: the last NAMED row they picked (localStorage,
+// global across sites), or — until the tab closes — a custom or arrow-shifted range
+// (sessionStorage). Only a pick or an arrow writes it. Opening a page, a shared
+// ?period= link, back/forward, a fallback and a closest view NEVER do.
 //
-// Every page passes its OWN declaration (pageKey + API ceiling + picker
-// vocabulary) and receives `pickerProps` back for its DateRangePicker, so the
-// menu a page renders and the periods it will actually apply come from one
-// object and structurally cannot drift.
+// Every page answers the requested view against its OWN data window
+// (GET /sites/:id/data-window): a view with no data here becomes the closest view
+// (lib/view/view.ts), fetched and ticked as what it is, while the memory keeps what
+// was asked. Plan: Pulse/docs/plans/22-09-2026-unified-time-range-design.md §12.
 // ---------------------------------------------------------------------------
 
-// Pre-22-08-2026 storage: ONE key shared by every page. That shared key IS
-// the cross-page carryover bug (pick "Today" on the dashboard → Search and
-// CDN, whose pickers deliberately do not offer "Today", applied it anyway).
-// It is never read as a value any more and is deleted on sight so storage
-// heals itself; per-page keys are namespaced under the same prefix.
-const LAST_PERIOD_PREFIX = 'pulse_last_period'
-const LEGACY_SHARED_KEY = LAST_PERIOD_PREFIX
+// 🔴 NOT `pulse_last_period`. Until this change every mount ran
+// `localStorage.removeItem('pulse_last_period')` (cleanup of the pre-22-08 shared key),
+// so reusing that name would have made the one memory erase itself on every page load
+// with every test green. The cleanup line is gone; the name is new.
+export const VIEW_KEY = 'pulse_view'
+/** sessionStorage — a custom or arrow-shifted range follows the reader until the tab closes. */
+export const VIEW_RANGE_KEY = 'pulse_view_range'
 
-function storageKey(pageKey: string): string {
-  return `${LAST_PERIOD_PREFIX}:${pageKey}`
-}
+/**
+ * The per-page keys the one memory replaces, in the order they seed it: the DASHBOARD's
+ * first (owner, 25-09-2026), then a fixed order through the rest, then the pre-22-08
+ * shared key. All of them are deleted once read, on every mount, and never written.
+ */
+export const LEGACY_VIEW_KEYS: readonly string[] = [
+  'pulse_last_period:dashboard',
+  'pulse_last_period:pages',
+  'pulse_last_period:visitors',
+  'pulse_last_period:funnels',
+  'pulse_last_period:journeys',
+  'pulse_last_period:uptime',
+  'pulse_last_period:cdn',
+  'pulse_last_period:search',
+  'pulse_last_period',
+]
 
-// 🔴 THE PRESET VOCABULARY IS GLOBAL; THE APIs BEHIND IT ARE NOT.
-//
-// Period covers up to '16m' (480 days) because Search Console retains ~480
-// days. The analytics API refuses anything over 366 days, so a ?period=16m
-// reaching the Dashboard got HTTP 400 on every card and a "Couldn't load the
-// dashboard" screen — measured in production 22-08-2026. Nothing was wrong
-// with the data; the page asked a question its own API forbids.
-//
-// So every caller declares the ceiling ITS API enforces, and a period that
-// exceeds it — whether it arrives from storage or from ?period= in a shared
-// link — falls back to the default instead of being sent. Clamping on READ is
-// what makes an already-poisoned localStorage heal itself on the next load
-// rather than needing every affected customer to clear storage by hand.
+// 🔴 THE VIEW IS GLOBAL; THE APIs BEHIND IT ARE NOT. The analytics API refuses more
+// than 366 days (measured 22-08-2026: a ?period=16m on the dashboard 400'd every card);
+// Search Console holds ~480. A span over the page's ceiling is clamped keeping its end
+// date (lib/view/view.ts) — never sent. All time is exempt: the server resolves it.
 export const ANALYTICS_MAX_DAYS = 366
 export const SEARCH_CONSOLE_MAX_DAYS = 480
 
-export interface PageRangeOptions {
-  /**
-   * Storage identity for range memory (`pulse_last_period:<pageKey>`). Pages
-   * that render the same instrument share a key on purpose (funnels list +
-   * detail are both 'funnels'); everything else declares its own.
-   */
-  pageKey: string
-  /** The ceiling this page's API enforces, in days. Defaults to analytics. */
-  maxDays?: number
-  /**
-   * The page's picker vocabulary — the SAME objects its DateRangePicker
-   * renders, handed back as `pickerProps`. An `exclusive` extra group narrows
-   * the applied grammar to exactly its own keys (Search, CDN: the global
-   * presets are dishonest there); otherwise the global URL grammar minus
-   * `excludePresets` applies, so a shared link using a preset this page's
-   * menu merely doesn't offer (e.g. ?period=3m on the dashboard) still
-   * renders the range it names.
-   */
-  extraPresets?: { group: string; presets: PeriodPreset[]; exclusive?: boolean }
-  excludePresets?: string[]
-  /**
-   * The earliest date this page can answer for ('YYYY-MM-DD'), or undefined for
-   * no floor. The Visitors surface is floored at the identity-rebuild cutover
-   * (26-08-2026): before it, `visitor_id` is NULL forever, reads fall back to a
-   * per-DAY key, and the page would render per-day identities under a per-MONTH
-   * label — a wrong answer that looks like a right one.
-   *
-   * It clamps the RESOLVED start and disables earlier days in the picker. It is
-   * deliberately not a rejection: a bookmarked link with an older start should
-   * still answer, for the part of the range that has real identities in it.
-   */
-  minDate?: string
-  /**
-   * Periods this page serves as a ROLLING window rather than a date range,
-   * mapped to their width in minutes.
-   *
-   * A rolling window genuinely is not a date range — "the last 30 minutes"
-   * cannot be written as two YYYY-MM-DD strings without losing the thing that
-   * makes it live. Declaring it here keeps the picker, the URL and the fetch in
-   * one object: the hook hands back `rollingMinutes` for the active period, and
-   * the page sends that instead of start/end. The alternative was a second,
-   * page-local range hook, which is the useJourneyFilters anti-pattern.
-   */
-  rollingMinutes?: Partial<Record<Period, number>>
+const NAMED_ROWS: ReadonlySet<string> = new Set(PERIOD_PRESETS.map((p) => p.key))
 
-  /**
-   * Periods that are a MODE rather than a remembered view.
-   *
-   * Range memory answers "what was I looking at last time" on a fresh load. A
-   * mode is not an answer to that question: the dashboard's `realtime` is
-   * entered deliberately, for as long as somebody is watching, and nobody means
-   * it as the view they want next Tuesday morning.
-   *
-   * 🔴 Without this, choosing such a period OVERWRITES the stored preference, so
-   * a later visit opens in a live view the reader never chose AND their real
-   * preference is gone — memory cannot tell you what it replaced. Listed periods
-   * still behave exactly like any other in the URL and in the picker; they are
-   * simply never written to memory.
-   */
-  ephemeralPeriods?: readonly Period[]
-  /**
-   * The site's IANA timezone — every relative preset ("today", "last 7
-   * days", "this month"…) resolves against ITS wall clock
-   * (`siteWallClockNow`), never the browser's, or a viewer whose calendar
-   * day differs from the site's asks the API for the wrong day (the API
-   * reads `start_date`/`end_date` as SITE-local calendar days).
-   *
-   * `undefined` means "not known yet" (the page's site hasn't loaded) —
-   * `periodReady` stays false and nothing resolves against the browser
-   * clock in the gap. Pass `null` only for a page that genuinely has no
-   * site concept; that resolves calendar presets in UTC, which is the one
-   * timezone that is nobody's browser by construction.
-   */
-  timezone?: string | null
+/** A view the memory can hold: a named row, or (session only) a custom span. */
+export interface StoredView {
+  period: Period
+  range?: DateSpan
 }
 
-function allowedPeriodsFor(options: PageRangeOptions): ReadonlySet<Period> {
-  const { extraPresets, excludePresets } = options
-  if (extraPresets?.exclusive) {
-    return new Set(
-      extraPresets.presets.map((p) => p.key).filter((k): k is Period => isUrlPeriod(k)),
-    )
-  }
-  const allowed = new Set(PERIODS)
-  for (const k of excludePresets ?? []) allowed.delete(k as Period)
-  for (const p of extraPresets?.presets ?? []) {
-    if (isUrlPeriod(p.key)) allowed.add(p.key as Period)
-  }
-  return allowed
-}
-
-// A period is usable on a page iff the page's declared vocabulary contains it
-// AND its span fits the page's API ceiling. This is the whole 22-08 fix: the
-// picker already filtered its MENU by the declaration, but nothing filtered
-// what memory or a shared URL APPLIED — "Today" stuck on Search even though
-// Search cannot offer it.
-function periodUsable(p: Period, allowed: ReadonlySet<Period>, maxDays: number): boolean {
-  // 'custom' is exempt: it is not a preset with a span, it carries explicit
-  // start/end chosen in the picker. Comparing its unbounded sentinel against
-  // a finite cap rejected EVERY custom range — caught by the existing suite
-  // while this ceiling was being written, which is what those tests are for.
-  if (p === 'custom') return true
-  return allowed.has(p) && periodMaxDays(p) <= maxDays
-}
-
-function readLastPeriod(
-  pageKey: string,
-  allowed: ReadonlySet<Period>,
-  maxDays: number,
-): Period | null {
+function local(): Storage | null {
   try {
-    // One-time cleanup of the pre-22-08 shared key — see LEGACY_SHARED_KEY.
-    window.localStorage.removeItem(LEGACY_SHARED_KEY)
-    const raw = window.localStorage.getItem(storageKey(pageKey))
-    if (!raw) return null
-    const p = parsePeriod(raw)
-    // parsePeriod maps unknown values to the default — honour only an exact,
-    // non-custom echo so garbage in storage cannot masquerade as a choice.
-    if (raw !== p || p === 'custom') return null
-    // A preset this page cannot serve is not a usable memory. With per-page
-    // keys a page can normally only remember what it itself wrote, but its
-    // vocabulary can SHRINK in a future deploy — dropping the value here
-    // (rather than at fetch time) means the picker shows the default it will
-    // actually request, instead of a label whose fetch 400s.
-    return periodUsable(p, allowed, maxDays) ? p : null
+    return window.localStorage
   } catch {
     return null
   }
 }
 
-export interface UrlDateRange {
-  period: Period
-  dateRange: { start: string; end: string }
-  /**
-   * False for the one render between mount and the range-memory read, when the
-   * URL carries no ?period=. During that render `period` is DEFAULT_PERIOD — a
-   * PLACEHOLDER, not the user's choice — and callers must not fetch with it.
-   *
-   * 🔴 THIS FLAG EXISTS BECAUSE A CUSTOMER WAS SHOWN 30 DAYS OF DATA UNDER A
-   * "Today" LABEL. 20-08-2026, themodestyhouse.com. The remembered preset is
-   * read in an effect (deliberately — a mount-time router.replace is dropped
-   * during hydration), so the first render reports DEFAULT_PERIOD='30' →
-   * period=30d. That render is not harmless: it is a real SWR key, and on a
-   * return navigation that key is already WARM, so the dashboard resolves
-   * instantly to a 30-day range and every card downstream renders 30 days of
-   * data one render before the period corrects to the remembered "today".
-   *
-   * The customer reported it as "Campaigns is empty, then shows data after I
-   * navigate away and back". The empty state was the CORRECT one — that site
-   * has no campaign traffic today. What was wrong was the data: `reddit`
-   * (last seen 9 days earlier) and `copilot.com` (6 days earlier) can only
-   * appear in a 30-day window, which is how the window was identified.
-   *
-   * Gating on this rather than reading storage synchronously in useState keeps
-   * server and first client render in agreement, so hydration is unaffected.
-   */
-  periodReady: boolean
-  /**
-   * The active period's rolling width in minutes, or null when the page's range
-   * is an ordinary date span. A caller sends `minutes=` when this is non-null
-   * and `start_date`/`end_date` when it is null — never both; the two are
-   * mutually exclusive on the wire and the server 400s a request carrying both.
-   */
-  rollingMinutes: number | null
-  /**
-   * This page's stored preference — what a fresh load would open on — or null
-   * when nothing is remembered yet. Never an ephemeral period.
-   *
-   * Exposed so a page leaving a MODE has somewhere honest to land when it has
-   * no in-session history to restore (a tab opened straight onto the mode's
-   * URL, or reloaded while in it). The hook owns this memory, so it answers
-   * rather than making callers re-read the storage key themselves.
-   */
-  remembered: Period | null
-  setPeriod: (p: Period, customRange?: { start: string; end: string }) => void
-  shiftPeriod: (direction: -1 | 1) => void
-  /**
-   * The site's wall clock, as a Date — the SAME value every resolver in this
-   * hook used to build `dateRange`. Exposed so a page can hand it straight to
-   * DateRangePicker's `now` prop (the future-day cutoff, the calendar's
-   * initial month) without recomputing `siteWallClockNow` a second time. Read
-   * only through LOCAL getters (getFullYear, getDate, getDay…) — see
-   * lib/utils/siteTime.ts.
-   */
-  siteNow: Date
-  /**
-   * The picker's share of the page declaration — spread into DateRangePicker
-   * so the rendered menu is exactly the vocabulary this hook validates
-   * against. Passing the picker anything else recreates the drift this
-   * exists to close.
-   */
-  pickerProps: {
-    extraPresets?: { group: string; presets: PeriodPreset[]; exclusive?: boolean }
-    excludePresets?: string[]
-    minDate?: string
+function session(): Storage | null {
+  try {
+    return window.sessionStorage
+  } catch {
+    return null
   }
 }
 
+/**
+ * Reads the one memory, migrating the old per-page keys on the way. Storage is
+ * best-effort throughout (private mode, blocked site data): any failure reads as "no
+ * memory", which is the default view, never an error.
+ */
+export function readStoredView(): StoredView | null {
+  const ls = local()
+  const ss = session()
+  try {
+    if (ls) {
+      if (ls.getItem(VIEW_KEY) === null) {
+        for (const key of LEGACY_VIEW_KEYS) {
+          const v = ls.getItem(key)
+          if (v && NAMED_ROWS.has(v)) {
+            ls.setItem(VIEW_KEY, v)
+            break
+          }
+        }
+      }
+      for (const key of LEGACY_VIEW_KEYS) ls.removeItem(key)
+    }
+  } catch {
+    // Storage unavailable — memory is best-effort.
+  }
+  // The session range is newer than any named pick in this tab: a named pick clears it.
+  try {
+    const raw = ss?.getItem(VIEW_RANGE_KEY)
+    if (raw) {
+      const r = JSON.parse(raw) as Partial<DateSpan>
+      if (isValidDateString(r.start ?? null) && isValidDateString(r.end ?? null) && r.start! <= r.end!) {
+        return { period: 'custom', range: { start: r.start!, end: r.end! } }
+      }
+    }
+  } catch {
+    // Garbage in storage is not a view.
+  }
+  try {
+    const v = ls?.getItem(VIEW_KEY)
+    if (v && NAMED_ROWS.has(v)) return { period: v as Period }
+  } catch {
+    // Storage unavailable.
+  }
+  return null
+}
+
+function rememberNamed(p: Period) {
+  try {
+    local()?.setItem(VIEW_KEY, p)
+    session()?.removeItem(VIEW_RANGE_KEY)
+  } catch {
+    // Storage unavailable (private mode) — memory is best-effort.
+  }
+}
+
+function rememberRange(range: DateSpan) {
+  try {
+    session()?.setItem(VIEW_RANGE_KEY, JSON.stringify(range))
+  } catch {
+    // Storage unavailable.
+  }
+}
+
+export interface PageRangeOptions {
+  /** Which page this is — the key of its window in the data-window response, and its words. */
+  surface: Surface
+  /**
+   * The page's data window (useDataWindow): `undefined` while loading — periodReady
+   * waits for it — `null` when unknown, which greys nothing.
+   */
+  window: WindowState
+  /**
+   * The zone this page's DAYS are in: the site's IANA zone (undefined while the site
+   * loads — periodReady waits), or 'UTC' on CDN, whose days are Bunny's UTC days. Every
+   * row resolves against this wall clock (siteWallClockNow), never the browser's.
+   */
+  timezone?: string | null
+  /** The ceiling this page's API enforces, in days. Defaults to analytics (366). */
+  maxDays?: number
+  /** Periods that are a live MODE here (realtime on the dashboard and Visitors). */
+  modes?: readonly Period[]
+  /** Periods served as a rolling window, mapped to minutes (realtime → 5). */
+  rollingMinutes?: Partial<Record<Period, number>>
+  /** For "This site keeps N months of history". */
+  retentionMonths?: number | null
+  /** The calendar's caption ("Days follow the site's timezone · …"). */
+  daysCaption?: string
+}
+
+/** Everything DateRangePicker needs, from one object — so menu and fetch cannot drift. */
+export interface ViewPickerProps {
+  label: string
+  suffix: string | null
+  tick: string | null
+  rows: RowState[]
+  footnote: string | null
+  onPick: (period: Period) => void
+  onCustom: (range: DateSpan) => void
+  onShift: (direction: -1 | 1) => void
+  shiftBackDisabled: boolean
+  shiftForwardDisabled: boolean
+  calendar: {
+    /** Days before it are greyed (the page's first day of data). */
+    min?: string
+    /** Days after it are greyed (today, or the page's newest day). */
+    max: string
+    /** The longest span the page can load; a longer pick is refused in the calendar. */
+    maxDays: number
+    caption?: string
+    range: DateSpan
+  }
+  now: Date
+}
+
+export interface UrlDateRange {
+  /**
+   * The period the page FETCHES with — the applied view's token: the requested row,
+   * 'all', a mode, or 'custom' when the view is a concrete range (a custom pick, a
+   * closest view, a clamp). Map it with PERIOD_TO_API; send dates when it maps to none.
+   */
+  period: Period
+  /** The applied range (for All time: the page's data window). */
+  dateRange: DateSpan
+  /** What the URL or the memory asked for — which the applied view may differ from. */
+  requestedPeriod: Period
+  /**
+   * The requested view whole — the token and, for a custom view, its span. A page that
+   * steps away and back (the realtime detour) returns to THIS, never to the applied view:
+   * a closest view or a clamp re-derives itself from the request on return.
+   */
+  requested: RequestedView
+  /**
+   * False until three things are known: the memory (or a URL period), the site's
+   * timezone, and the page's data window. Until then `period`/`dateRange` are
+   * PLACEHOLDERS and callers must not fetch with them.
+   *
+   * 🔴 THIS FLAG EXISTS BECAUSE A CUSTOMER WAS SHOWN 30 DAYS OF DATA UNDER A "Today"
+   * LABEL (20-08-2026). The memory is read in an effect (a mount-time router.replace is
+   * dropped during hydration), so the first render reports the default — a real SWR key,
+   * warm on a return navigation, rendering 30 days one render before the view corrected.
+   * The data window is the third gate for the same reason one layer deeper: a view
+   * resolved before the window arrives may be about to become its closest view.
+   * A ROLLING window (realtime) needs neither zone nor window: `minutes=` never touches
+   * dates.
+   */
+  periodReady: boolean
+  /** The active period's rolling width in minutes, or null for an ordinary date span. */
+  rollingMinutes: number | null
+  /** The stored view — what a fresh load would open on — or null. Never a mode. */
+  remembered: StoredView | null
+  /** The applied view, whole (label, tick, substitution) — for pages that say more. */
+  view: AppliedView
+  /** A PICK: writes the URL and the memory. */
+  setPeriod: (p: Period, customRange?: DateSpan) => void
+  /** Returns to a view without it counting as a pick (leaving realtime): URL only. */
+  restoreView: (view: StoredView) => void
+  /** An ARROW: shifts the applied range by its own span; follows the reader like a custom range. */
+  shiftPeriod: (direction: -1 | 1) => void
+  /** The page's wall clock (site's, or UTC) — the value every resolver here used. */
+  siteNow: Date
+  /** Spread into <DateRangePicker {...picker} />. */
+  picker: ViewPickerProps
+}
+
 export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
-  const { pageKey, extraPresets, excludePresets, minDate, rollingMinutes, timezone, ephemeralPeriods } = options
+  const { surface, window: dataWindow, timezone, modes, rollingMinutes, retentionMonths, daysCaption } = options
   const maxDays = options.maxDays ?? ANALYTICS_MAX_DAYS
   const searchParams = useSearchParams()
   const write = useQueryParamsWriter()
 
-  // The site's wall clock, rebuilt once per MINUTE rather than on every
-  // render — cheap enough to be a plain call per render, but bucketing to
-  // the minute means a long-lived mount still rolls "today" over at midnight
-  // without needing a ticking timer. `timezone` undefined means "not known
-  // yet"; siteWallClockNow degrades that to UTC exactly like every other
-  // unknown zone in this codebase (safeTimeZone) — periodReady below is what
-  // actually stops that UTC value reaching a fetch before the real zone
-  // arrives.
+  // The page's wall clock, rebuilt once per MINUTE rather than on every render —
+  // bucketing to the minute lets a long-lived mount roll "today" over at midnight
+  // without a ticking timer. `timezone` undefined means "not known yet"; periodReady
+  // is what stops that UTC stand-in reaching a fetch.
   const minuteBucket = Math.floor(Date.now() / 60_000)
   const siteNow = useMemo(
     () => siteWallClockNow(timezone),
@@ -288,155 +281,169 @@ export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
     [timezone, minuteBucket],
   )
 
-  const allowed = useMemo(
-    () => allowedPeriodsFor({ pageKey, extraPresets, excludePresets }),
-    [pageKey, extraPresets, excludePresets],
+  const modesKey = (modes ?? []).join(',')
+  const isMode = useCallback(
+    (p: Period) => (modes ?? []).includes(p),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [modesKey],
   )
-  // Value identity for the set, so an inline options literal (new object every
-  // render) cannot re-trigger the memory effect below.
-  const allowedKey = useMemo(() => [...allowed].sort().join(' '), [allowed])
 
-  // The silent fallback for an unusable period is DEFAULT_PERIOD, so a page
-  // whose declaration excludes the default would fall back to a period it
-  // does not offer. Fail loud in dev; in production the page still renders
-  // (with a menu-less default label) rather than crashing.
-  if (process.env.NODE_ENV !== 'production' && !periodUsable(DEFAULT_PERIOD, allowed, maxDays)) {
-    throw new Error(
-      `useUrlDateRange('${pageKey}'): the page's declared vocabulary must include ` +
-        `DEFAULT_PERIOD='${DEFAULT_PERIOD}' — it is the fallback for every unusable period.`,
-    )
-  }
+  // The memory: read post-mount (never during SSR/hydration, so server and first
+  // client render agree), then applied whenever the URL carries no period.
+  const [stored, setStored] = useState<StoredView | null>(null)
+  // Separate from `stored` on purpose: "nothing stored" and "not read yet" both read as
+  // null, and only the second must suppress fetching.
+  const [memoryRead, setMemoryRead] = useState(false)
+  useEffect(() => {
+    setStored(readStoredView())
+    setMemoryRead(true)
+  }, [])
 
+  const urlHasPeriod = searchParams.get('period') !== null
   const rawPeriod = parsePeriod(searchParams.get('period'))
   const rawStart = searchParams.get('start')
   const rawEnd = searchParams.get('end')
 
-  const ephemeralKey = (ephemeralPeriods ?? []).join(',')
-  const isEphemeral = useCallback(
-    (p: Period) => (ephemeralPeriods ?? []).includes(p),
+  const requested: RequestedView = useMemo(() => {
+    if (urlHasPeriod) {
+      if (rawPeriod === 'custom') {
+        return isValidDateString(rawStart) && isValidDateString(rawEnd) && rawStart <= rawEnd
+          ? { period: 'custom', range: { start: rawStart, end: rawEnd } }
+          : { period: DEFAULT_PERIOD }
+      }
+      return { period: rawPeriod }
+    }
+    // A mode is never the stored view (it cannot be written), and a stored one would be
+    // a defect elsewhere — refused here too, so one bug cannot trap a reader live.
+    if (stored && !isMode(stored.period)) return stored
+    return { period: DEFAULT_PERIOD }
+  }, [urlHasPeriod, rawPeriod, rawStart, rawEnd, stored, isMode])
+
+  const view = useMemo(
+    () =>
+      resolveView({
+        requested,
+        now: siteNow,
+        window: dataWindow,
+        maxDays,
+        modes,
+        surface,
+        retentionMonths,
+      }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [ephemeralKey],
+    [requested, siteNow, dataWindow, maxDays, modesKey, surface, retentionMonths],
   )
 
-  // Range memory: read post-mount (never during SSR/hydration, so server and
-  // first client render agree on the default), then applied as the effective
-  // period whenever the URL carries none.
-  const urlHasPeriod = searchParams.get('period') !== null
-  const [remembered, setRemembered] = useState<Period | null>(null)
-  // Separate from `remembered` on purpose: "no preset stored" and "storage not
-  // read yet" both read as null, and only the second one must suppress
-  // fetching. Collapsing them would leave a user who has never picked a preset
-  // permanently un-ready.
-  const [memoryRead, setMemoryRead] = useState(false)
-  useEffect(() => {
-    setRemembered(readLastPeriod(pageKey, allowed, maxDays))
-    setMemoryRead(true)
-    // allowedKey stands in for `allowed` by value — see its declaration.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageKey, maxDays, allowedKey])
-
-  // * period=custom without a valid start/end pair normalizes to the default
-  const parsedUrlPeriod: Period =
-    rawPeriod === 'custom' && (!isValidDateString(rawStart) || !isValidDateString(rawEnd))
-      ? DEFAULT_PERIOD
-      : rawPeriod
-  // * A shared link carrying a period this page cannot serve — over its API
-  // * ceiling (?period=16m on analytics) or outside its declared vocabulary
-  // * (?period=today on Search) — falls back to the default, silently, exactly
-  // * like the remembered preset does.
-  const urlPeriod: Period = periodUsable(parsedUrlPeriod, allowed, maxDays)
-    ? parsedUrlPeriod
-    : DEFAULT_PERIOD
-  const period: Period = urlHasPeriod ? urlPeriod : (remembered ?? urlPeriod)
-
-  const activeRollingMinutes = rollingMinutes?.[period] ?? null
-
-  // An explicit ?period= is authoritative immediately — there is nothing to
-  // wait for, so shared links and in-app navigations that carry the param
-  // never pay for this gate.
-  //
-  // 🔴 A ROLLING window is exempt from the second half: `minutes=` never
-  // touches `dateRange`, so a page whose ACTIVE period is one of these never
-  // needs the site's zone to be ready. Every ordinary date span does — the
-  // 20-08-2026 incident's whole point was that a placeholder RANGE must not
-  // reach the network, and a range resolved against an unknown zone is just
-  // as much a placeholder as one resolved before memory was read.
+  const activeRollingMinutes = rollingMinutes?.[view.period] ?? null
   const timezoneKnown = timezone !== undefined
-  const periodReady = (urlHasPeriod || memoryRead) && (activeRollingMinutes != null || timezoneKnown)
-
-  const dateRange = useMemo(() => {
-    const resolved =
-      period === 'custom' && rawStart && rawEnd
-        ? { start: rawStart, end: rawEnd }
-        : periodToDateRange(period, siteNow)
-    if (!minDate) return resolved
-    // Clamp, never reject — string compare is correct for YYYY-MM-DD. A range
-    // that ends before the floor collapses to the floor itself, so the page
-    // asks a well-formed question whose honest answer is "nothing here yet"
-    // rather than sending a backwards range.
-    const start = resolved.start < minDate ? minDate : resolved.start
-    const end = resolved.end < minDate ? minDate : resolved.end
-    return start === resolved.start && end === resolved.end ? resolved : { start, end }
-  }, [period, rawStart, rawEnd, minDate, siteNow])
+  const windowKnown = dataWindow !== undefined
+  const periodReady =
+    (urlHasPeriod || memoryRead) && (activeRollingMinutes != null || (timezoneKnown && windowKnown))
 
   const updateUrl = useCallback(
     (updates: Record<string, string | null>) => {
-      // * Defaults stay out of the URL (the shared writer applies the rest).
+      // Defaults stay out of the URL (the shared writer applies the rest).
       if (updates.period === DEFAULT_PERIOD) updates = { ...updates, period: null }
       write(updates)
     },
     [write],
   )
 
+  const writeUrl = useCallback(
+    (p: Period, range?: DateSpan) => {
+      if (p === 'custom' && range) updateUrl({ period: p, start: range.start, end: range.end })
+      else updateUrl({ period: p, start: null, end: null })
+    },
+    [updateUrl],
+  )
+
   const setPeriod = useCallback(
-    (p: Period, range?: { start: string; end: string }) => {
+    (p: Period, range?: DateSpan) => {
+      writeUrl(p, range)
+      // A mode is never remembered — it is something a reader is in, not a view they
+      // chose for next time. A named row is the global view; a custom span follows the
+      // reader until the tab closes. The state copy tracks the write, or picking the
+      // default while another view is stored would visibly revert.
+      if (isMode(p)) return
       if (p === 'custom' && range) {
-        updateUrl({ period: p, start: range.start, end: range.end })
-      } else {
-        updateUrl({ period: p, start: null, end: null })
-      }
-      // Presets are remembered as THIS page's future default; custom spans are
-      // not (a frozen date range as the default is the F12 bug), and neither
-      // is a period outside the page's own vocabulary — memory must only ever
-      // hold what the page declares — and neither is an EPHEMERAL one, which is a
-      // MODE somebody is in rather than a view they chose for next time.
-      // The state copy must track the write, or
-      // picking the default period while a different preset is remembered
-      // would visibly revert.
-      if (p !== 'custom' && allowed.has(p) && !isEphemeral(p)) {
-        setRemembered(p)
-        try {
-          window.localStorage.setItem(storageKey(pageKey), p)
-        } catch {
-          // Storage unavailable (private mode) — memory is best-effort.
-        }
+        rememberRange(range)
+        setStored({ period: 'custom', range })
+      } else if (NAMED_ROWS.has(p)) {
+        rememberNamed(p)
+        setStored({ period: p })
       }
     },
-    [updateUrl, allowed, pageKey, isEphemeral],
+    [writeUrl, isMode],
   )
+
+  const restoreView = useCallback((v: StoredView) => writeUrl(v.period, v.range), [writeUrl])
+
+  const today = formatDate(siteNow)
+  const noShift = view.period === 'all' || isMode(view.period)
 
   const shiftPeriod = useCallback(
     (direction: -1 | 1) => {
-      const next = shiftDateRange(dateRange, direction, siteNow)
+      if (noShift) return
+      const next = shiftDateRange(view.range, direction, siteNow)
       if (next) setPeriod('custom', next)
     },
-    [dateRange, setPeriod, siteNow],
+    [noShift, view.range, siteNow, setPeriod],
   )
 
-  const pickerProps = useMemo(
-    () => ({ extraPresets, excludePresets, minDate }),
-    [extraPresets, excludePresets, minDate],
+  const rows = useMemo(
+    () => viewRows({ surface, now: siteNow, window: dataWindow, retentionMonths }),
+    [surface, siteNow, dataWindow, retentionMonths],
+  )
+  const footnote = useMemo(
+    () => view.note ?? listFootnote({ surface, now: siteNow, window: dataWindow, retentionMonths }, rows),
+    [view.note, surface, siteNow, dataWindow, retentionMonths, rows],
+  )
+
+  const onPick = useCallback((p: Period) => setPeriod(p), [setPeriod])
+  const onCustom = useCallback((r: DateSpan) => setPeriod('custom', r), [setPeriod])
+
+  // The furthest day worth asking for: the page's newest day, or today. The calendar and
+  // the forward arrow stop at the same edge, and the back arrow at the first day — an
+  // arrow that steps into a span with no data would only bounce straight back through
+  // the closest view (on Journeys, Yesterday → an empty Today → Yesterday again).
+  const calendarMax = dataWindow && dataWindow.through < today ? dataWindow.through : today
+  const picker: ViewPickerProps = useMemo(
+    () => ({
+      label: view.label,
+      suffix: view.suffix,
+      tick: view.tick,
+      rows,
+      footnote,
+      onPick,
+      onCustom,
+      onShift: shiftPeriod,
+      shiftBackDisabled: noShift || (dataWindow != null && view.range.start <= dataWindow.from),
+      shiftForwardDisabled: noShift || view.range.end >= calendarMax,
+      calendar: {
+        min: dataWindow ? dataWindow.from : undefined,
+        max: calendarMax,
+        maxDays,
+        caption: daysCaption,
+        range: view.range,
+      },
+      now: siteNow,
+    }),
+    [view, rows, footnote, onPick, onCustom, shiftPeriod, noShift, dataWindow, calendarMax, maxDays, daysCaption, siteNow],
   )
 
   return {
-    period,
-    dateRange,
+    period: view.period,
+    dateRange: view.range,
+    requestedPeriod: requested.period,
+    requested,
     periodReady,
     rollingMinutes: activeRollingMinutes,
-    remembered,
+    remembered: stored && !isMode(stored.period) ? stored : null,
+    view,
     setPeriod,
+    restoreView,
     shiftPeriod,
     siteNow,
-    pickerProps,
+    picker,
   }
 }

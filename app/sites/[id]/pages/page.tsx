@@ -4,9 +4,9 @@ import { useParams } from 'next/navigation'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import PagesTable from '@/components/pages/PagesTable'
 import { ErrorCard } from '@/components/ui/ErrorCard'
-import { useUrlDateRange, type Period } from '@/lib/hooks/useUrlDateRange'
-import { fetchableRange } from '@/lib/dashboard/resolveRange'
-import { useSite, usePagesTable } from '@/lib/swr/dashboard'
+import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
+import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
+import { useSite, usePagesTable, useDataWindow } from '@/lib/swr/dashboard'
 import { siteDaysCaption } from '@/lib/utils/timezones'
 
 // ---------------------------------------------------------------------------
@@ -37,9 +37,12 @@ export default function PagesPage() {
 
   const { data: site } = useSite(siteId)
 
-  const { period, dateRange, periodReady, setPeriod, shiftPeriod, siteNow, pickerProps } = useUrlDateRange({
-    pageKey: 'pages',
+  const dataWindow = useDataWindow(siteId, 'pages')
+  const { period, dateRange, periodReady, picker } = useUrlDateRange({
+    surface: 'pages',
+    window: dataWindow,
     timezone: site?.timezone,
+    retentionMonths: site?.data_retention_months,
   })
 
   // 🔴 Never fetch on a period the user did not choose. Before the range-memory
@@ -48,7 +51,7 @@ export default function PagesPage() {
   const range = fetchableRange(periodReady, dateRange)
 
   const { data, error, isLoading } = usePagesTable(
-    siteId, range.start, range.end, 500, undefined, undefined
+    siteId, range.start, range.end, 500, undefined, serverResolvedPeriod(periodReady, period)
   )
 
   const rows = data?.pages ?? []
@@ -63,16 +66,7 @@ export default function PagesPage() {
             {site?.timezone ? ` ${siteDaysCaption(site.timezone)}` : ''}
           </p>
         </div>
-        <DateRangePicker
-          period={period}
-          dateRange={dateRange}
-          onPeriodChange={(p) => setPeriod(p as Period)}
-          onDateRangeChange={(r) => setPeriod('custom', r)}
-          onShift={shiftPeriod}
-          now={siteNow}
-          align="right"
-          {...pickerProps}
-        />
+        <DateRangePicker {...picker} />
       </div>
 
       {error ? (

@@ -16,7 +16,9 @@ import SectionHeader from '@/components/dashboard/SectionHeader'
 import { type MetricType } from '@/lib/dashboard/metrics'
 import { Captcha, ZapIcon } from '@ciphera-net/facet'
 import DateRangePicker from '@/components/ui/DateRangePicker'
-import { PERIOD_TO_API } from '@/lib/constants/periods'
+import RealtimeOrb from '@/components/dashboard/RealtimeOrb'
+import { PERIOD_TO_API, findPreset } from '@/lib/constants/periods'
+import { SHARE_FIXED_RANGES_REASON, SHARE_ROW_KEYS, shareRows } from '@/lib/view/view'
 import { periodToDateRange, type Period } from '@/lib/hooks/periodUrl'
 import { siteWallClockNow } from '@/lib/utils/siteTime'
 import { DEFAULT_GEO_DATA_LEVEL } from '@/lib/api/sites'
@@ -31,18 +33,14 @@ import CommandDeck from '@/components/dashboard/CommandDeck'
 
 // * The shared (public) dashboard is a public-scoped read. The backend serves only
 // * these fixed, day-granular windows there (see resolvePublicScopedRange); anything
-// * else — 1h/24h, custom ranges, sub-day intervals — is refused, because on a public
-// * link they can reconstruct an individual visitor. The picker offers only these, and
-// * loadDashboard coerces anything stale to 30 days.
-const SHARE_ALLOWED_PERIODS = ['today', 'yesterday', '7', '30']
-// The to-date keys are the URL grammar's week/month/qtd/year since the Phase 2
-// vocabulary unification — excluded by their CURRENT keys, or they reappear in
-// the picker and 400 against the server's fixed-period allowlist.
-const SHARE_EXCLUDED_PRESETS = [
-  '1h', '24h',
-  'last-week', 'last-month', 'last-quarter', 'last-year',
-  'week', 'month', 'qtd', 'year',
-]
+// * else — 1h/24h, custom ranges, sub-day intervals, All time — is refused, because on
+// * a public link they can reconstruct an individual visitor. The switcher shows the
+// * SAME twelve rows as every authed page with only these four available and the rest
+// * greyed "A shared dashboard shows fixed ranges." (owner decision 25-09-2026,
+// * PULSE-20), and loadDashboard coerces anything stale to 30 days. The share page
+// * neither reads nor writes the reader's view memory: an anonymous viewer, fixed
+// * ranges, a privacy boundary.
+const SHARE_ALLOWED_PERIODS: readonly string[] = SHARE_ROW_KEYS
 
 // The whole public dashboard view, extracted from app/share/[id]/page.tsx
 // (02-09-2026) so /demo can mount the SAME surface pinned to ciphera.net —
@@ -79,8 +77,6 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
   // required arbitrary-date fetches, which are the range-differencing primitive the
   // surface now refuses. prevStats stays undefined; the chart renders without deltas.
   const [prevStats] = useState<Stats | undefined>(undefined)
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
-  const [, setTick] = useState(0)
 
   // 🔑 This state's ACTUAL API request never sends start_date/end_date — see
   // loadDashboard below, which always sends an allowlisted `period=` token
@@ -95,16 +91,11 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
   // clock, and harmless since nothing renders this before `data` is set
   // (`if (!data) return null` below).
   const siteNow = useMemo(() => siteWallClockNow(data?.site.timezone ?? null), [data?.site.timezone])
+  const sharePeriod = SHARE_ALLOWED_PERIODS.includes(period) ? period : '30'
   const dateRange = useMemo(
-    () => periodToDateRange((SHARE_ALLOWED_PERIODS.includes(period) ? period : '30') as Period, siteNow),
-    [period, siteNow],
+    () => periodToDateRange(sharePeriod as Period, siteNow),
+    [sharePeriod, siteNow],
   )
-
-  // * Tick every 1s so "Live · Xs ago" counts in real time
-  useEffect(() => {
-    const interval = setInterval(() => setTick((t) => t + 1), 1000)
-    return () => clearInterval(interval)
-  }, [])
 
   const loadRealtime = useCallback(async () => {
     try {
@@ -130,7 +121,6 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
       // * We therefore always send an allowlisted period, never start/end, and never
       // * a previous-period comparison (which required arbitrary-date fetches — the
       // * exact range-differencing primitive the surface now refuses).
-      const sharePeriod = SHARE_ALLOWED_PERIODS.includes(period) ? period : '30'
       const sharePeriodApi = PERIOD_TO_API[sharePeriod]
 
       const dashboardData = await getPublicDashboard(
@@ -138,7 +128,6 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
       )
 
       setData(dashboardData)
-      setLastUpdatedAt(Date.now())
       setIsPasswordProtected(false)
     } catch (error: unknown) {
       const apiErr = error instanceof ApiError ? error : null
@@ -150,7 +139,6 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
         // this page exists not to tell.
         setIsPasswordProtected(true)
         setData(null)
-        setLastUpdatedAt(null)
       } else if (apiErr?.status === 404) {
         toast.error('Site not found')
       } else if (!silent) {
@@ -159,7 +147,7 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
     } finally {
       if (!silent) setLoading(false)
     }
-  }, [siteId, period])
+  }, [siteId, sharePeriod])
 
   // * Auto-refresh interval: chart, KPIs, and realtime count update every 30 seconds
   useEffect(() => {
@@ -305,14 +293,13 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
                 />
                 <h1 className="text-xl font-semibold text-foreground">{site.domain}</h1>
               </div>
-              <div className="mt-3 flex w-fit items-center gap-2 rounded-none border border-border bg-card px-3 py-1.5">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
-                </span>
-                <span className="text-sm text-muted-foreground">
-                  {realtime_visitors} current visitors
-                </span>
+              {/* The live orb, DISPLAY-ONLY here (no onToggle): realtime MODE on the
+                  public surface is still refused (pulse-backend parseLiveWindow,
+                  pending its privacy pass), so it must not become a toggle. It
+                  replaced the green "N current visitors" box — the third design for
+                  one signal (approved mock share-a, 25-09-2026). */}
+              <div className="flex">
+                <RealtimeOrb count={realtime_visitors} />
               </div>
             </div>
 
@@ -321,20 +308,17 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
                 order 02-09-2026 — the marketing chrome around the page
                 already says whose product this is. */}
             <div className="flex gap-2">
+              {/* No onCustom (Custom range… greyed with the same line) and no
+                  onShift (no arrows): nothing here can ask for a range outside the
+                  allowlist. onPick re-checks it anyway — the greying is the menu's
+                  half, not the guard. */}
               <DateRangePicker
-                period={period}
-                dateRange={dateRange}
-                onPeriodChange={(p) => setPeriod(SHARE_ALLOWED_PERIODS.includes(p) ? p : '30')}
-                // Unreachable in practice: every SHARE_ALLOWED_PERIODS key is
-                // a URL-grammar period (isUrlPeriod), so the picker's preset
-                // clicks fire only onPeriodChange, and `presetsOnly` below
-                // hides the calendar that is this callback's only other
-                // caller. Kept as a real no-op (not `setDateRange`, which no
-                // longer exists — `dateRange` is derived, not state) so the
-                // prop stays satisfied if that ever changes.
-                onDateRangeChange={() => {}}
-                excludePresets={SHARE_EXCLUDED_PRESETS}
-                presetsOnly
+                label={findPreset(sharePeriod)?.label ?? 'Last 30 days'}
+                tick={sharePeriod}
+                rows={shareRows()}
+                footnote={SHARE_FIXED_RANGES_REASON}
+                customReason={SHARE_FIXED_RANGES_REASON}
+                onPick={(p) => setPeriod(SHARE_ALLOWED_PERIODS.includes(p) ? p : '30')}
                 now={siteNow}
               />
             </div>

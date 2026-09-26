@@ -1,5 +1,18 @@
 import apiRequest from './client'
 
+/**
+ * A server-resolved period (All time, PULSE-20) or the explicit dates — never both, so
+ * there is no question which one the server answered for.
+ */
+function appendRange(params: URLSearchParams, startDate?: string, endDate?: string, period?: string) {
+  if (period) {
+    params.append('period', period)
+    return
+  }
+  if (startDate) params.append('start_date', startDate)
+  if (endDate) params.append('end_date', endDate)
+}
+
 export interface StepPropertyFilter {
   key: string
   operator: 'is' | 'is_not' | 'contains' | 'not_contains'
@@ -110,8 +123,9 @@ export async function deleteFunnel(siteId: string, funnelId: string): Promise<vo
 }
 
 /** Run the funnel engine over an UNSAVED definition — the modal's live preview. */
-export async function previewFunnel(siteId: string, steps: Omit<FunnelStep, 'order'>[], startDate: string, endDate: string): Promise<FunnelStats> {
-  const params = new URLSearchParams({ start_date: startDate, end_date: endDate })
+export async function previewFunnel(siteId: string, steps: Omit<FunnelStep, 'order'>[], startDate: string, endDate: string, period?: string): Promise<FunnelStats> {
+  const params = new URLSearchParams()
+  appendRange(params, startDate, endDate, period)
   return apiRequest<FunnelStats>(`/sites/${siteId}/funnels/preview?${params.toString()}`, {
     method: 'POST',
     body: JSON.stringify({ steps: steps.map((s, i) => ({ ...s, order: i })) }),
@@ -119,20 +133,18 @@ export async function previewFunnel(siteId: string, steps: Omit<FunnelStep, 'ord
 }
 
 /** Chained stats for EVERY funnel on the site in one request — the list surface. */
-export async function getAllFunnelStats(siteId: string, startDate?: string, endDate?: string, filters?: string): Promise<Record<string, FunnelStats>> {
+export async function getAllFunnelStats(siteId: string, startDate?: string, endDate?: string, filters?: string, period?: string): Promise<Record<string, FunnelStats>> {
   const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
+  appendRange(params, startDate, endDate, period)
   if (filters) params.append('filters', filters)
   const queryString = params.toString() ? `?${params.toString()}` : ''
   const response = await apiRequest<{ stats: Record<string, FunnelStats> }>(`/sites/${siteId}/funnels/stats${queryString}`)
   return response?.stats ?? {}
 }
 
-export async function getFunnelStats(siteId: string, funnelId: string, startDate?: string, endDate?: string, filters?: string): Promise<FunnelStats> {
+export async function getFunnelStats(siteId: string, funnelId: string, startDate?: string, endDate?: string, filters?: string, period?: string): Promise<FunnelStats> {
   const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
+  appendRange(params, startDate, endDate, period)
   if (filters) params.append('filters', filters)
   const queryString = params.toString() ? `?${params.toString()}` : ''
   return apiRequest<FunnelStats>(`/sites/${siteId}/funnels/${funnelId}/stats${queryString}`)
@@ -141,11 +153,10 @@ export async function getFunnelStats(siteId: string, funnelId: string, startDate
 export async function getFunnelTrends(
   siteId: string, funnelId: string,
   startDate?: string, endDate?: string,
-  interval: string = 'day', filters?: string
+  interval: string = 'day', filters?: string, period?: string
 ): Promise<FunnelTrends> {
   const params = new URLSearchParams()
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
+  appendRange(params, startDate, endDate, period)
   params.append('interval', interval)
   if (filters) params.append('filters', filters)
   const queryString = params.toString() ? `?${params.toString()}` : ''
@@ -156,13 +167,12 @@ export async function getFunnelBreakdown(
   siteId: string, funnelId: string,
   step: number, dimension: string,
   startDate?: string, endDate?: string,
-  filters?: string
+  filters?: string, period?: string
 ): Promise<FunnelBreakdown> {
   const params = new URLSearchParams()
   params.append('step', step.toString())
   params.append('dimension', dimension)
-  if (startDate) params.append('start_date', startDate)
-  if (endDate) params.append('end_date', endDate)
+  appendRange(params, startDate, endDate, period)
   if (filters) params.append('filters', filters)
   const queryString = params.toString() ? `?${params.toString()}` : ''
   return apiRequest<FunnelBreakdown>(`/sites/${siteId}/funnels/${funnelId}/breakdown${queryString}`)

@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { formatNumber, formatDate, getDateRange, formatDuration, formatUpdatedAgo } from '../format'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { formatNumber, formatDate, getDateRange, formatDuration, formatUpdatedAgo, formatUpdatedLabel } from '../format'
 
 describe('format (machine/number)', () => {
   it('formatNumber adds thousands separators', () => {
@@ -46,5 +46,38 @@ describe('format (machine/number)', () => {
     expect(formatUpdatedAgo(now - 30_000)).toBe('30 seconds ago')
     expect(formatUpdatedAgo(now - 90_000)).toBe('1 minute ago')
     expect(formatUpdatedAgo(now - 180_000)).toBe('3 minutes ago')
+  })
+
+  // * The top bar's own refresh line, kept apart from formatUpdatedAgo's "Just now" /
+  // * "N ago" shape (which leads a sentence). Owner, 25-09-2026: the old "Live · 6
+  // * seconds ago" said "live" three times in three colours once the orb shipped its own
+  // * meaning for the word — "Updated N ago" is about the DATA, not who is on the site.
+  describe('formatUpdatedLabel', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-09-26T12:00:00.000Z'))
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('lower-cases "Just now" so it reads mid-sentence', () => {
+      const now = Date.now()
+      expect(formatUpdatedLabel(now)).toBe('Updated just now')
+      expect(formatUpdatedLabel(now - 4_000)).toBe('Updated just now')
+    })
+
+    it('reads seconds', () => {
+      expect(formatUpdatedLabel(Date.now() - 12_000)).toBe('Updated 12 seconds ago')
+    })
+
+    it('reads a single minute', () => {
+      expect(formatUpdatedLabel(Date.now() - 90_000)).toBe('Updated 1 minute ago')
+    })
+
+    it('reads several minutes', () => {
+      expect(formatUpdatedLabel(Date.now() - 180_000)).toBe('Updated 3 minutes ago')
+    })
   })
 })

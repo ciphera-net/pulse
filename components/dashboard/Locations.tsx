@@ -9,7 +9,7 @@ import iso3166 from 'iso-3166-2'
 const MapView = dynamic(() => import('./MapView'), { ssr: false })
 import { GlobeIcon, Switcher } from '@ciphera-net/facet'
 import { GlobeHemisphereWest } from '@phosphor-icons/react'
-import { EmptyState } from '@/components/ui/EmptyState'
+import CardEmptyState from '@/components/dashboard/CardEmptyState'
 import { ShieldCheck, Detective, Broadcast } from '@phosphor-icons/react'
 import { useFullDimensionList, type FullListKind } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
@@ -35,6 +35,8 @@ interface AudienceProps {
   // Hidden on the anonymous share surface (no full-list endpoints there).
   memberFeatures?: boolean
   onFilter?: (filter: DimensionFilter) => void
+  /** Realtime mode — an empty block reads the one realtime line (CardEmptyState). */
+  live?: boolean
 }
 
 type Tab = 'map' | 'countries' | 'regions' | 'cities' | 'languages' | 'timezones'
@@ -152,7 +154,7 @@ function formatTimezone(tz: string): string {
   }
 }
 
-export default function Audience({ countries, cities, regions, languages, timezones, geoDataLevel = 'full', collectAudienceData = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter }: AudienceProps) {
+export default function Audience({ countries, cities, regions, languages, timezones, geoDataLevel = 'full', collectAudienceData = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter, live = false}: AudienceProps) {
   const [activeTab, setActiveTab] = useState<Tab>('countries')
   type AudienceItem = { country?: string; city?: string; region?: string; language?: string; timezone?: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }
 
@@ -389,7 +391,8 @@ export default function Audience({ countries, cities, regions, languages, timezo
             hasData ? (
               inView ? <MapView data={filterUnknown(countries) as { country: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }[]} /> : null
             ) : (
-              <EmptyState
+              <CardEmptyState
+              live={live}
                 icon={<GlobeHemisphereWest />}
                 title="Your first visitor hasn't arrived"
                 description="Countries and cities will light up on this map as traffic flows in from around the world."
@@ -433,7 +436,8 @@ export default function Audience({ countries, cities, regions, languages, timezo
                 ))}
             </CascadeGroup>
           ) : (
-            <EmptyState
+            <CardEmptyState
+              live={live}
               icon={<GlobeHemisphereWest />}
               title={`No ${activeTab} data yet`}
               description={`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}-level breakdowns appear once enough visitors arrive to generate meaningful geographic data.`}

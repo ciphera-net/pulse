@@ -5,15 +5,13 @@ import { motion } from 'framer-motion'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { useParams, useSearchParams } from 'next/navigation'
 import DateRangePicker from '@/components/ui/DateRangePicker'
-import { useUrlDateRange, SEARCH_CONSOLE_MAX_DAYS, type Period } from '@/lib/hooks/useUrlDateRange'
+import { useUrlDateRange, SEARCH_CONSOLE_MAX_DAYS } from '@/lib/hooks/useUrlDateRange'
 import { fetchableRange } from '@/lib/dashboard/resolveRange'
 import { useQueryParamsWriter } from '@/lib/hooks/useQueryParamsWriter'
-import { getDateRange } from '@/lib/utils/format'
-import type { PeriodPreset } from '@/lib/constants/periods'
 import { MagnifyingGlass } from '@phosphor-icons/react'
 import { useCan } from '@/lib/auth/permissions'
 import { InstrumentOffState } from '@/components/ui/InstrumentOffState'
-import { useSite, useGSCStatus, useGSCOverview, useBingStatus } from '@/lib/swr/dashboard'
+import { useSite, useGSCStatus, useGSCOverview, useBingStatus, useDataWindow } from '@/lib/swr/dashboard'
 import { SearchSkeleton } from '@/components/skeletons'
 import InstrumentPanel from '@/components/search/InstrumentPanel'
 import SearchViews from '@/components/search/SearchViews'
@@ -41,28 +39,10 @@ const cascade = (delay: number) => ({
   transition: { duration: DURATION_BASE, ease: EASE_APPLE, delay },
 })
 
-// * The DateRangePicker is the ONE range control on this page (owner call,
-// * 13-08: the pill row beside it was two controls for one job), and its
-// * preset list is EXCLUSIVELY the search providers' own vocabulary — the
-// * union of what Google Search Console (7d/28d/3m/6m/12m/16m; 16m is
-// * Google's ~480-day retention cap) and Bing Webmaster Tools (7d/30d/3m/6m)
-// * offer, plus Custom. Pulse's global presets are deliberately absent:
-// * "Today"/"24h" on a daily-only source with a ~2-day reporting lag is a
-// * promise the data cannot keep. Each provider's data simply ends where its
-// * retention ends (as-built decision D4).
-const GSC_PICKER_PRESETS: { group: string; presets: PeriodPreset[]; exclusive: boolean } = {
-  group: 'Search ranges',
-  exclusive: true,
-  presets: [
-    { key: '7', label: 'Last 7 days', group: 'Search ranges', resolve: (now) => getDateRange(7, now) },
-    { key: '28', label: 'Last 28 days', group: 'Search ranges', resolve: (now) => getDateRange(28, now) },
-    { key: '30', label: 'Last 30 days', group: 'Search ranges', resolve: (now) => getDateRange(30, now) },
-    { key: '3m', label: 'Last 3 months', group: 'Search ranges', resolve: (now) => getDateRange(90, now) },
-    { key: '6m', label: 'Last 6 months', group: 'Search ranges', resolve: (now) => getDateRange(180, now) },
-    { key: '12m', label: 'Last 12 months', group: 'Search ranges', resolve: (now) => getDateRange(365, now) },
-    { key: '16m', label: 'Last 16 months', group: 'Search ranges', resolve: (now) => getDateRange(480, now) },
-  ],
-}
+// * The view switcher is the SAME twelve rows here as on every page (PULSE-20, owner
+// * 25-09-2026 — replacing the providers' own exclusive vocabulary of 13-08). Rows the
+// * providers cannot serve (Today and Yesterday, because Search Console reports each
+// * day about two days late) are greyed with that reason, from the data window.
 
 const GRANULARITY_OPTIONS = [
   { value: 'daily', label: 'Daily' },
@@ -91,24 +71,6 @@ export default function SearchConsolePage() {
   const canManageIntegrations = useCan('integrations.manage')
 
   const { data: site } = useSite(siteId)
-  // Search Console retains ~480 days and its API accepts them, so this page
-  // opts into the wider ceiling; every analytics page keeps the 366-day one.
-  const { period, dateRange, periodReady, setPeriod, shiftPeriod, siteNow, pickerProps } = useUrlDateRange({
-    pageKey: 'search',
-    maxDays: SEARCH_CONSOLE_MAX_DAYS,
-    extraPresets: GSC_PICKER_PRESETS,
-    timezone: site?.timezone,
-  })
-  // Passed to the child panels too — their SWR keys null out on an empty date,
-  // so they hold instead of fetching a range the user did not choose.
-  const fetchRange = fetchableRange(periodReady, dateRange)
-  const granularity = parseGranularity(searchParams.get('g'))
-
-  const setGranularity = useCallback(
-    (g: Granularity) => write({ g: g === 'daily' ? null : g }),
-    [write],
-  )
-
   const { data: gscStatus, error: gscStatusError, mutate: retryGscStatus } = useGSCStatus(siteId)
   const { data: bingStatus, error: bingStatusError, mutate: retryBingStatus } = useBingStatus(siteId)
   const connected = gscStatus?.connected
@@ -120,6 +82,29 @@ export default function SearchConsolePage() {
   // * Falls back to Google whenever Bing is not connected, so a stale ?engine=bing link after a
   // * disconnect renders the Google view instead of an empty panel with no explanation.
   const engine: 'google' | 'bing' = engineParam === 'bing' && bingConnected ? 'bing' : 'google'
+
+  // Search Console retains ~480 days and its API accepts them, so this page
+  // opts into the wider ceiling; every analytics page keeps the 366-day one. The data
+  // window follows the ENGINE on screen: Google's and Bing's histories differ.
+  const dataWindow = useDataWindow(siteId, engine === 'bing' ? 'search_bing' : 'search')
+  const { dateRange, periodReady, picker } = useUrlDateRange({
+    surface: engine === 'bing' ? 'search_bing' : 'search',
+    window: dataWindow,
+    maxDays: SEARCH_CONSOLE_MAX_DAYS,
+    timezone: site?.timezone,
+  })
+  // Passed to the child panels too — their SWR keys null out on an empty date,
+  // so they hold instead of fetching a range the user did not choose. All time travels
+  // as the window's own DATES here, not as period=all: Search Console has no server
+  // range cap (gscDateRange), so the dates are exactly what the server would resolve.
+  const fetchRange = fetchableRange(periodReady, dateRange)
+  const granularity = parseGranularity(searchParams.get('g'))
+
+  const setGranularity = useCallback(
+    (g: Granularity) => write({ g: g === 'daily' ? null : g }),
+    [write],
+  )
+
   const setEngine = useCallback(
     (e: string) => write({ engine: e === 'google' ? null : e }),
     [write],
@@ -261,15 +246,7 @@ export default function SearchConsolePage() {
             />
             </span>
           )}
-          <DateRangePicker
-            period={period}
-            dateRange={dateRange}
-            onPeriodChange={(p) => setPeriod(p as Period)}
-            onDateRangeChange={(range) => setPeriod('custom', range)}
-            onShift={shiftPeriod}
-            now={siteNow}
-            {...pickerProps}
-          />
+          <DateRangePicker {...picker} />
         </div>
       </div>
 

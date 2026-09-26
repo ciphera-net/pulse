@@ -12,24 +12,6 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/sites/abc/journeys',
 }))
 
-// * Mock dateRanges to keep this unit test isolated from date helpers
-vi.mock('@/lib/utils/dateRanges', () => ({
-  getDateRange: (days: number) => ({
-    start: `start-${days}`,
-    end: `end-${days}`,
-  }),
-  getThisWeekRange: () => ({ start: 'week-start', end: 'week-end' }),
-  getThisMonthRange: () => ({ start: 'month-start', end: 'month-end' }),
-  // Real local-parts formatting (not a stub returning the literal "today")
-  // — shiftPeriod's shared periodUrl.shiftDateRange calls this for real
-  // date-arithmetic assertions, unlike every other resolver here, which is
-  // stubbed and never exercises the formatter.
-  formatDate: (d: Date) => {
-    const p = (n: number) => String(n).padStart(2, '0')
-    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
-  },
-}))
-
 beforeEach(() => {
   mockReplace.mockClear()
   mockSearchParams = new URLSearchParams()
@@ -42,7 +24,6 @@ describe('useJourneyFilters', () => {
     expect(result.current.density).toBe(20)
     expect(result.current.entryPath).toBe('')
     expect(result.current.lens).toBeNull()
-    expect(result.current.period).toBe('30')
   })
 
   it('reads depth from URL when present', () => {
@@ -183,48 +164,6 @@ describe('useJourneyFilters', () => {
     expect(calledWith).toContain('density=5')
   })
 
-  it('setPeriod with custom range writes start and end to URL', () => {
-    const { result } = renderHook(() => useJourneyFilters())
-    act(() => {
-      result.current.setPeriod('custom', { start: '2026-01-01', end: '2026-01-31' })
-    })
-    const calledWith = mockReplace.mock.calls[0][0] as string
-    expect(calledWith).toContain('period=custom')
-    expect(calledWith).toContain('start=2026-01-01')
-    expect(calledWith).toContain('end=2026-01-31')
-  })
-
-  it('switching away from custom period strips start and end from URL', () => {
-    mockSearchParams = new URLSearchParams('period=custom&start=2026-01-01&end=2026-01-31')
-    const { result } = renderHook(() => useJourneyFilters())
-    act(() => {
-      result.current.setPeriod('7')
-    })
-    const calledWith = mockReplace.mock.calls[0][0] as string
-    expect(calledWith).toContain('period=7')
-    expect(calledWith).not.toContain('start=')
-    expect(calledWith).not.toContain('end=')
-  })
-
-  it('reads custom dateRange from URL when period=custom with valid start/end', () => {
-    mockSearchParams = new URLSearchParams('period=custom&start=2026-01-01&end=2026-01-31')
-    const { result } = renderHook(() => useJourneyFilters())
-    expect(result.current.period).toBe('custom')
-    expect(result.current.dateRange).toEqual({ start: '2026-01-01', end: '2026-01-31' })
-  })
-
-  it('normalizes period=custom to default when start/end missing', () => {
-    mockSearchParams = new URLSearchParams('period=custom')
-    const { result } = renderHook(() => useJourneyFilters())
-    expect(result.current.period).toBe('30')
-  })
-
-  it('normalizes period=custom to default when start/end malformed', () => {
-    mockSearchParams = new URLSearchParams('period=custom&start=nonsense&end=also-bad')
-    const { result } = renderHook(() => useJourneyFilters())
-    expect(result.current.period).toBe('30')
-  })
-
   it('derives entryPath from an entry_path filter and keeps it OUT of filtersParam', () => {
     mockSearchParams = new URLSearchParams('filters=v2%3Aentry_path%7Cis%7C%2Fblog%2Cdevice%7Cis%7Cmobile')
     const { result } = renderHook(() => useJourneyFilters())
@@ -261,10 +200,9 @@ describe('useJourneyFilters', () => {
     it('remembers depth and paths across visits when the URL carries none', () => {
       window.localStorage.setItem('pulse_last_journeys:depth', '6')
       window.localStorage.setItem('pulse_last_journeys:density', '50')
-      // `ready` also requires a known timezone since 18-09-2026 — see the
-      // dedicated describe block below; a real site's zone would arrive
-      // async, but this test is about memory, not the zone gate.
-      const { result } = renderHook(() => useJourneyFilters('UTC'))
+      // ready is gated on the memory read alone now (PULSE-20 took the period —
+      // and its timezone gate — off this hook entirely; see useUrlDateRange).
+      const { result } = renderHook(() => useJourneyFilters())
       expect(result.current.ready).toBe(true)
       expect(result.current.depth).toBe(6)
       expect(result.current.density).toBe(50)
@@ -280,97 +218,61 @@ describe('useJourneyFilters', () => {
     it('ignores garbage in storage', () => {
       window.localStorage.setItem('pulse_last_journeys:depth', '99')
       window.localStorage.setItem('pulse_last_journeys:density', 'lots')
-      window.localStorage.setItem('pulse_last_period:journeys', 'custom')
       const { result } = renderHook(() => useJourneyFilters())
       expect(result.current.depth).toBe(4)
       expect(result.current.density).toBe(20)
-      expect(result.current.period).toBe('30')
     })
 
-    it('writes depth, paths and a preset period on change', () => {
+    it('writes depth and paths on change', () => {
       const { result } = renderHook(() => useJourneyFilters())
       act(() => { result.current.setDepth(5) })
       act(() => { result.current.setDensity(10) })
-      act(() => { result.current.setPeriod('7') })
       expect(window.localStorage.getItem('pulse_last_journeys:depth')).toBe('5')
       expect(window.localStorage.getItem('pulse_last_journeys:density')).toBe('10')
-      expect(window.localStorage.getItem('pulse_last_period:journeys')).toBe('7')
     })
+  })
 
-    it('never remembers a custom range', () => {
+  // ---------------------------------------------------------------------------
+  // PULSE-20 (25-09-2026): the period moved to useUrlDateRange, under the ONE
+  // view memory ('pulse_view' / 'pulse_view_range'). Journeys' own period state
+  // — its private `pulse_last_period:journeys` key, parsePeriod, periodToDateRange
+  // and readiness — is GONE. This is the one test that stands in for all of the
+  // removed period/dateRange/siteNow/shiftPeriod/timezone coverage: it proves
+  // the surface is gone, not merely unused, and that nothing here still touches
+  // a period-shaped storage key (this hook's own DEPTH_KEY/DENSITY_KEY are
+  // page-local and untouched by this check — see design §11.13 item 3).
+  // ---------------------------------------------------------------------------
+  describe('no period API (PULSE-20 — the period moved to useUrlDateRange)', () => {
+    it('exposes no period surface and never touches a pulse_last_period* or pulse_view* storage key', () => {
+      const setItemSpy = vi.spyOn(Storage.prototype, 'setItem')
+      const getItemSpy = vi.spyOn(Storage.prototype, 'getItem')
+
       const { result } = renderHook(() => useJourneyFilters())
-      act(() => { result.current.setPeriod('custom', { start: '2026-01-01', end: '2026-01-31' }) })
-      expect(window.localStorage.getItem('pulse_last_period:journeys')).toBeNull()
+
+      expect(result.current).not.toHaveProperty('period')
+      expect(result.current).not.toHaveProperty('dateRange')
+      expect(result.current).not.toHaveProperty('requestedPeriod')
+      expect(result.current).not.toHaveProperty('setPeriod')
+      expect(result.current).not.toHaveProperty('shiftPeriod')
+      expect(result.current).not.toHaveProperty('siteNow')
+      expect(result.current).not.toHaveProperty('timezone')
+      expect(result.current).not.toHaveProperty('picker')
+
+      act(() => { result.current.setDepth(6) })
+      act(() => { result.current.setDensity(50) })
+      act(() => { result.current.setLens('/login') })
+      act(() => {
+        result.current.setDimensionFilters([{ dimension: 'device', operator: 'is', values: ['mobile'] }])
+      })
+
+      const touchedKeys = [...setItemSpy.mock.calls, ...getItemSpy.mock.calls].map((c) => String(c[0]))
+      for (const key of touchedKeys) {
+        expect(key.startsWith('pulse_last_period')).toBe(false)
+        expect(key.startsWith('pulse_view')).toBe(false)
+      }
+
+      setItemSpy.mockRestore()
+      getItemSpy.mockRestore()
     })
-
-    it('remembers the period like the timeframe on every other page', () => {
-      window.localStorage.setItem('pulse_last_period:journeys', '7')
-      const { result } = renderHook(() => useJourneyFilters())
-      expect(result.current.period).toBe('7')
-    })
-  })
-})
-
-// ---------------------------------------------------------------------------
-// timezone gating and siteNow (18-09-2026) — the same defect class and fix
-// as useUrlDateRange's, applied here because Journeys builds its own range
-// state instead of using that hook.
-// ---------------------------------------------------------------------------
-describe('useJourneyFilters timezone', () => {
-  it('is NOT ready while the timezone is unknown, even once memory resolves', () => {
-    const seen: boolean[] = []
-    renderHook(() => {
-      const r = useJourneyFilters()
-      seen.push(r.ready)
-      return r
-    })
-    expect(seen.every((ready) => ready === false)).toBe(true)
-  })
-
-  it('becomes ready once a real timezone is supplied', () => {
-    const { result, rerender } = renderHook(
-      ({ timezone }: { timezone?: string }) => useJourneyFilters(timezone),
-      { initialProps: { timezone: undefined as string | undefined } },
-    )
-    expect(result.current.ready).toBe(false)
-    rerender({ timezone: 'Asia/Karachi' })
-    expect(result.current.ready).toBe(true)
-  })
-
-  it('`timezone: null` (no site) is ready immediately, unlike `undefined`', () => {
-    const { result } = renderHook(() => useJourneyFilters(null))
-    expect(result.current.ready).toBe(true)
-  })
-
-  it('siteNow projects the given zone, not the runtime clock', () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-09-18T19:30:00Z')) // 2026-09-19 00:30 in Asia/Karachi
-    const { result } = renderHook(() => useJourneyFilters('Asia/Karachi'))
-    expect(result.current.siteNow.getFullYear()).toBe(2026)
-    expect(result.current.siteNow.getMonth()).toBe(8)
-    expect(result.current.siteNow.getDate()).toBe(19)
-    expect(result.current.siteNow.getHours()).toBe(0)
-    expect(result.current.siteNow.getMinutes()).toBe(30)
-    vi.useRealTimers()
-  })
-
-  it('shiftPeriod refuses to move a range past the site\'s today', () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-09-18T19:30:00Z')) // site is already 2026-09-19
-    mockSearchParams = new URLSearchParams('period=custom&start=2026-09-13&end=2026-09-19')
-    const { result } = renderHook(() => useJourneyFilters('Asia/Karachi'))
-    act(() => { result.current.shiftPeriod(1) })
-    // Refused — no URL write for the forward shift past the site's today.
-    expect(mockReplace).not.toHaveBeenCalled()
-    vi.useRealTimers()
-  })
-
-  it('shiftPeriod moves a range back by its own span, using the shared periodUrl helper', () => {
-    mockSearchParams = new URLSearchParams('period=custom&start=2026-01-08&end=2026-01-14')
-    const { result } = renderHook(() => useJourneyFilters('UTC'))
-    act(() => { result.current.shiftPeriod(-1) })
-    const calledWith = mockReplace.mock.calls[0][0] as string
-    expect(calledWith).toContain('start=2026-01-01')
-    expect(calledWith).toContain('end=2026-01-07')
   })
 })

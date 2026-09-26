@@ -1,98 +1,109 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { useUrlDateRange, SEARCH_CONSOLE_MAX_DAYS, type PageRangeOptions } from '../useUrlDateRange'
-import { previousDateRange } from '../periodUrl'
-import type { PeriodPreset } from '@/lib/constants/periods'
+import {
+  useUrlDateRange,
+  readStoredView,
+  VIEW_KEY,
+  VIEW_RANGE_KEY,
+  LEGACY_VIEW_KEYS,
+  SEARCH_CONSOLE_MAX_DAYS,
+  type PageRangeOptions,
+} from '../useUrlDateRange'
+import { previousDateRange, DEFAULT_PERIOD } from '../periodUrl'
+import { PERIOD_PRESETS, CUSTOM_RANGE_LABEL } from '@/lib/constants/periods'
+import type { Surface, WindowState, DataWindow } from '@/lib/view/view'
 
-// * Mock Next.js navigation
+// ---------------------------------------------------------------------------
+// Rewritten for the ONE-MEMORY contract (owner decision 25-09-2026, PULSE-20 —
+// reversing the 22-08-2026 per-page ruling this file used to pin). The old
+// contract's `pageKey` / `extraPresets` / `exclusive` / `excludePresets` /
+// `pickerProps` are gone from PageRangeOptions; a page now declares `surface`
+// + its DATA WINDOW instead, and greying/closest-view/clamp all live in
+// lib/view/view.ts (tested on its own — this file covers the HOOK: the one
+// memory, readiness, and URL/session mechanics around it).
+// Plan: Pulse/docs/plans/22-09-2026-unified-time-range-design.md §12
+// (§11.12–11.15 for the memory + closest-view reasoning).
+//
+// 🔴 Deliberately NOT mocking @/lib/utils/dateRanges (unlike the old file).
+// resolveView/view.ts does real day arithmetic (spanDays/addDays/formatSpan)
+// on whatever the preset resolvers return, so feeding it placeholder strings
+// like `'30-start'` breaks that arithmetic silently. The resolvers are pure
+// given `now` (siteWallClockNow bridges the site's zone to LOCAL date
+// getters, so they round-trip correctly regardless of the runner's own TZ) —
+// pin `now` with fake timers instead of stubbing the date math.
+// ---------------------------------------------------------------------------
+
 const mockReplace = vi.fn()
 let mockSearchParams = new URLSearchParams()
+// Each test gets its own pathname so useQueryParamsWriter's module-level
+// `pending` cache (keyed on pathname) can never carry a write from one test
+// into the next — that module state outlives any per-test storage.clear().
+let mockPathname = '/test-0'
+let pathnameCounter = 0
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
   useSearchParams: () => mockSearchParams,
-  usePathname: () => '/sites/abc/funnels',
+  usePathname: () => mockPathname,
 }))
 
-// * Real local-parts formatDate so shift math is exercised; range getters stubbed
-vi.mock('@/lib/utils/dateRanges', () => ({
-  getDateRange: (days: number) => ({ start: `start-${days}`, end: `end-${days}` }),
-  getThisWeekRange: () => ({ start: 'week-start', end: 'week-end' }),
-  getThisMonthRange: () => ({ start: 'month-start', end: 'month-end' }),
-  // Completed 22-08-2026: the ceiling tests exercise EVERY preset, which
-  // reaches range getters the original three-stub mock never called.
-  getThisYearRange: () => ({ start: 'year-start', end: 'year-end' }),
-  getYesterdayRange: () => ({ start: 'yday-start', end: 'yday-end' }),
-  getQuarterToDateRange: () => ({ start: 'qtd-start', end: 'qtd-end' }),
-  getLastWeekRange: () => ({ start: 'lweek-start', end: 'lweek-end' }),
-  getLastMonthRange: () => ({ start: 'lmonth-start', end: 'lmonth-end' }),
-  getLastQuarterRange: () => ({ start: 'lq-start', end: 'lq-end' }),
-  getLastYearRange: () => ({ start: 'lyear-start', end: 'lyear-end' }),
-  // Rolling-window placeholders — only reached by the timezone-gating tests,
-  // which exercise a '1h'/'30m'/'6h'/'24h' active period.
-  getLast30MinutesRange: () => ({ start: '30m-start', end: '30m-end' }),
-  getLast1HourRange: () => ({ start: '1h-start', end: '1h-end' }),
-  getLast6HoursRange: () => ({ start: '6h-start', end: '6h-end' }),
-  getLast24HoursRange: () => ({ start: '24h-start', end: '24h-end' }),
-  formatDate: (d: Date) => {
-    const p = (n: number) => String(n).padStart(2, '0')
-    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
-  },
-}))
-
-// Every page passes its declaration since 22-08-2026 (per-page range memory).
-// PAGE stands in for a plain analytics page: full global grammar, 366-day cap.
-// `timezone` is a plain string here (never `undefined`) because these tests
-// are about range MEMORY and URL grammar, not the zone-readiness gate below
-// — that gate has its own describe block, where `timezone` is deliberately
-// omitted or varied.
-const PAGE: PageRangeOptions = { pageKey: 'page-a', timezone: 'UTC' }
-const PAGE_KEY = 'pulse_last_period:page-a'
-const LEGACY_SHARED_KEY = 'pulse_last_period'
-
-const preset = (key: string): PeriodPreset => ({
-  key,
-  label: key,
-  group: 'Test ranges',
-  resolve: () => ({ start: `start-${key}`, end: `end-${key}` }),
-})
+// "Today is 2026-09-26" throughout, per the run's pinned clock — individual
+// tests override vi.setSystemTime only where they need a different `now`.
+const FIXED_NOW = new Date('2026-09-26T12:00:00Z')
 
 beforeEach(() => {
   mockReplace.mockClear()
   mockSearchParams = new URLSearchParams()
+  mockPathname = `/test-${++pathnameCounter}`
   window.localStorage.clear()
+  window.sessionStorage.clear()
+  vi.useFakeTimers()
+  vi.setSystemTime(FIXED_NOW)
 })
 
-describe('useUrlDateRange', () => {
+afterEach(() => {
+  vi.useRealTimers()
+  vi.restoreAllMocks()
+})
+
+/** A page's declaration — surface + data window are the only required fields. */
+function opts(surface: Surface, overrides: Partial<PageRangeOptions> = {}): PageRangeOptions {
+  return { surface, window: null, timezone: 'UTC', ...overrides }
+}
+
+// ---------------------------------------------------------------------------
+// URL round-trip — unchanged mechanics, new options shape.
+// ---------------------------------------------------------------------------
+describe('URL round-trip', () => {
   it('defaults to period 30 with its computed range', () => {
-    const { result } = renderHook(() => useUrlDateRange(PAGE))
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard')))
     expect(result.current.period).toBe('30')
-    expect(result.current.dateRange).toEqual({ start: 'start-30', end: 'end-30' })
+    expect(result.current.dateRange).toEqual({ start: '2026-08-28', end: '2026-09-26' })
   })
 
   it('reads a preset period from the URL', () => {
     mockSearchParams = new URLSearchParams('period=7')
-    const { result } = renderHook(() => useUrlDateRange(PAGE))
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard')))
     expect(result.current.period).toBe('7')
-    expect(result.current.dateRange).toEqual({ start: 'start-7', end: 'end-7' })
+    expect(result.current.dateRange).toEqual({ start: '2026-09-20', end: '2026-09-26' })
   })
 
   it('reads a custom range from the URL when valid', () => {
     mockSearchParams = new URLSearchParams('period=custom&start=2026-01-01&end=2026-01-31')
-    const { result } = renderHook(() => useUrlDateRange(PAGE))
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard')))
     expect(result.current.period).toBe('custom')
     expect(result.current.dateRange).toEqual({ start: '2026-01-01', end: '2026-01-31' })
   })
 
   it('normalizes period=custom with missing or malformed dates to the default', () => {
     mockSearchParams = new URLSearchParams('period=custom')
-    expect(renderHook(() => useUrlDateRange(PAGE)).result.current.period).toBe('30')
+    expect(renderHook(() => useUrlDateRange(opts('dashboard'))).result.current.period).toBe('30')
     mockSearchParams = new URLSearchParams('period=custom&start=garbage&end=2026-01-31')
-    expect(renderHook(() => useUrlDateRange(PAGE)).result.current.period).toBe('30')
+    expect(renderHook(() => useUrlDateRange(opts('dashboard'))).result.current.period).toBe('30')
   })
 
   it('setPeriod custom writes period/start/end; presets strip them', () => {
-    const { result } = renderHook(() => useUrlDateRange(PAGE))
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard')))
     act(() => {
       result.current.setPeriod('custom', { start: '2026-01-01', end: '2026-01-31' })
     })
@@ -102,7 +113,7 @@ describe('useUrlDateRange', () => {
     expect(calledWith).toContain('end=2026-01-31')
 
     mockSearchParams = new URLSearchParams('period=custom&start=2026-01-01&end=2026-01-31')
-    const { result: r2 } = renderHook(() => useUrlDateRange(PAGE))
+    const { result: r2 } = renderHook(() => useUrlDateRange(opts('dashboard')))
     mockReplace.mockClear()
     act(() => {
       r2.current.setPeriod('7')
@@ -115,7 +126,7 @@ describe('useUrlDateRange', () => {
 
   it('omits the default period from the URL', () => {
     mockSearchParams = new URLSearchParams('period=7')
-    const { result } = renderHook(() => useUrlDateRange(PAGE))
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard')))
     act(() => {
       result.current.setPeriod('30')
     })
@@ -125,7 +136,7 @@ describe('useUrlDateRange', () => {
 
   it('shiftPeriod moves a custom range back by its own span', () => {
     mockSearchParams = new URLSearchParams('period=custom&start=2026-01-08&end=2026-01-14')
-    const { result } = renderHook(() => useUrlDateRange(PAGE))
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard')))
     act(() => {
       result.current.shiftPeriod(-1)
     })
@@ -136,397 +147,43 @@ describe('useUrlDateRange', () => {
 
   it('shiftPeriod forward clamps at today (no-op past it)', () => {
     mockSearchParams = new URLSearchParams('period=custom&start=2099-01-01&end=2099-01-07')
-    const { result } = renderHook(() => useUrlDateRange(PAGE))
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard')))
     act(() => {
       result.current.shiftPeriod(1)
     })
     expect(mockReplace).not.toHaveBeenCalled()
   })
-
-  it('hands the page declaration back as pickerProps — one source for menu and validation', () => {
-    const extraPresets = { group: 'Test ranges', exclusive: true, presets: [preset('7'), preset('30')] }
-    const { result } = renderHook(() =>
-      useUrlDateRange({ pageKey: 'page-a', extraPresets }),
-    )
-    expect(result.current.pickerProps.extraPresets).toBe(extraPresets)
-
-    const excludePresets = ['1h', '24h']
-    const { result: r2 } = renderHook(() =>
-      useUrlDateRange({ pageKey: 'page-a', excludePresets }),
-    )
-    expect(r2.current.pickerProps.excludePresets).toBe(excludePresets)
-  })
 })
 
 // ---------------------------------------------------------------------------
-// periodReady — the gate that stops a placeholder period reaching the network.
-//
-// 🔴 WHY THIS EXISTS. themodestyhouse.com, 20-08-2026: the Campaigns card
-// showed `reddit` (last seen 9 days earlier) and `copilot.com` (6 days) while
-// the range picker said "Today". Only a 30-DAY window contains both, and
-// DEFAULT_PERIOD is '30'.
-//
-// The range memory is read in an effect (deliberately — a mount-time
-// router.replace is dropped during hydration), so the first render of any
-// bare-URL mount reports DEFAULT_PERIOD. That render is not free: it mints a
-// real SWR cache entry for period=30d, and on the NEXT navigation to the page
-// that entry is warm, so the dashboard resolves instantly to a 30-day range
-// and every card renders 30 days of data before the period corrects.
+// siteNow — the wall clock every resolver in this hook uses (18-09-2026
+// preset-site-zone alignment). Unchanged behaviour, new options shape.
 // ---------------------------------------------------------------------------
-describe('useUrlDateRange periodReady', () => {
-  function renderTrace() {
-    const seen: Array<{ period: string; ready: boolean }> = []
-    renderHook(() => {
-      const r = useUrlDateRange(PAGE)
-      seen.push({ period: r.period, ready: r.periodReady })
-      return r
-    })
-    return seen
-  }
-
-  it('is NOT ready on the render that reports the placeholder period', () => {
-    window.localStorage.setItem(PAGE_KEY, 'today')
-    const seen = renderTrace()
-
-    // The first render still reports DEFAULT_PERIOD — that is required for
-    // server and client to agree during hydration, and is not being changed.
-    expect(seen[0].period).toBe('30')
-    // What changes is that it now declares itself unresolved, so callers can
-    // withhold the request instead of caching a 30-day answer.
-    expect(seen[0].ready).toBe(false)
-
-    const last = seen[seen.length - 1]
-    expect(last.period).toBe('today')
-    expect(last.ready).toBe(true)
-  })
-
-  it('never reports ready while showing the placeholder — the invariant', () => {
-    window.localStorage.setItem(PAGE_KEY, 'today')
-    const seen = renderTrace()
-    expect(seen.filter(r => r.ready && r.period === '30')).toEqual([])
-  })
-
-  it('is ready on the FIRST render when the URL carries an explicit period', () => {
-    mockSearchParams = new URLSearchParams('period=today')
-    const seen = renderTrace()
-    // Nothing to wait for: a shared link is authoritative immediately, so
-    // this gate must cost those navigations nothing.
-    expect(seen[0]).toEqual({ period: 'today', ready: true })
-  })
-
-  it('becomes ready when NOTHING is remembered', () => {
-    // The paired negative. "No preset stored" and "storage not read yet" both
-    // surface as null; collapsing them would leave a user who has never picked
-    // a preset permanently un-ready, i.e. a dashboard that never loads.
-    const seen = renderTrace()
-    const last = seen[seen.length - 1]
-    expect(last).toEqual({ period: '30', ready: true })
-  })
-})
-
-// ---------------------------------------------------------------------------
-// timezone gating (18-09-2026 preset-site-zone alignment) — a SECOND way to
-// be not-ready, alongside the range-memory gate above. `timezone: undefined`
-// (the option omitted, or a page passing `site?.timezone` before its site
-// has loaded) must hold `periodReady` false for every ordinary date span —
-// resolving one against an unknown zone is exactly the placeholder-range
-// problem periodReady already exists to prevent, just with the zone as the
-// missing piece instead of the remembered preset.
-// ---------------------------------------------------------------------------
-describe('useUrlDateRange timezone gating', () => {
-  it('is NOT ready with an explicit ?period= when the timezone is unknown', () => {
-    // Contrast with 'is ready on the FIRST render when the URL carries an
-    // explicit period' above: THAT page declares timezone: 'UTC'. An
-    // explicit period is no longer a free pass once dateRange itself depends
-    // on a zone nothing has supplied yet.
-    mockSearchParams = new URLSearchParams('period=today')
-    const { result } = renderHook(() => useUrlDateRange({ pageKey: 'no-tz' }))
-    expect(result.current.period).toBe('today')
-    expect(result.current.periodReady).toBe(false)
-  })
-
-  it('is NOT ready once memory resolves either, while the timezone stays unknown', () => {
-    const seen: boolean[] = []
-    renderHook(() => {
-      const r = useUrlDateRange({ pageKey: 'no-tz' })
-      seen.push(r.periodReady)
-      return r
-    })
-    expect(seen.every((ready) => ready === false)).toBe(true)
-  })
-
-  it('becomes ready once a real timezone value is supplied', () => {
-    const { result, rerender } = renderHook(
-      ({ timezone }: { timezone?: string }) => useUrlDateRange({ pageKey: 'no-tz', timezone }),
-      { initialProps: { timezone: undefined as string | undefined } },
-    )
-    expect(result.current.periodReady).toBe(false)
-    rerender({ timezone: 'Asia/Karachi' })
-    expect(result.current.periodReady).toBe(true)
-  })
-
-  it('`timezone: null` (deliberately no site) is ready immediately, unlike `undefined`', () => {
-    const { result } = renderHook(() => useUrlDateRange({ pageKey: 'no-site', timezone: null }))
-    expect(result.current.periodReady).toBe(true)
-  })
-
-  it('a ROLLING-minutes period is ready even while the timezone is unknown', () => {
-    // 'minutes=' never touches dateRange, so a page whose active period is
-    // one of these has nothing to wait for.
-    mockSearchParams = new URLSearchParams('period=1h')
-    const { result } = renderHook(() =>
-      useUrlDateRange({ pageKey: 'live', rollingMinutes: { '1h': 60 } }),
-    )
-    expect(result.current.period).toBe('1h')
-    expect(result.current.rollingMinutes).toBe(60)
-    expect(result.current.periodReady).toBe(true)
-  })
-
-  it('a NON-rolling period on the SAME page still waits for the timezone', () => {
-    // The paired negative: declaring rollingMinutes for one period must not
-    // blanket-exempt every other period the page also serves.
-    mockSearchParams = new URLSearchParams('period=30')
-    const { result } = renderHook(() =>
-      useUrlDateRange({ pageKey: 'live', rollingMinutes: { '1h': 60 } }),
-    )
-    expect(result.current.period).toBe('30')
-    expect(result.current.rollingMinutes).toBeNull()
-    expect(result.current.periodReady).toBe(false)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// siteNow (18-09-2026) — exposed so a page can hand DateRangePicker the SAME
-// wall clock the hook resolved `dateRange` against, without recomputing it.
-// ---------------------------------------------------------------------------
-describe('useUrlDateRange siteNow', () => {
+describe('siteNow', () => {
   it('is a Date whose local getters equal the given site zone wall clock', () => {
     // 19:30Z is 2026-09-19 00:30 in Asia/Karachi (UTC+5, no DST).
-    vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-09-18T19:30:00Z'))
-    const { result } = renderHook(() => useUrlDateRange({ pageKey: 'page-c', timezone: 'Asia/Karachi' }))
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard', { timezone: 'Asia/Karachi' })))
     expect(result.current.siteNow.getFullYear()).toBe(2026)
     expect(result.current.siteNow.getMonth()).toBe(8)
     expect(result.current.siteNow.getDate()).toBe(19)
     expect(result.current.siteNow.getHours()).toBe(0)
     expect(result.current.siteNow.getMinutes()).toBe(30)
-    vi.useRealTimers()
   })
 
-  it('degrades to UTC when the caller passes `timezone: null`', () => {
-    vi.useFakeTimers()
+  it('degrades to UTC when the caller passes timezone: null (CDN — Bunny UTC days)', () => {
     vi.setSystemTime(new Date('2026-09-18T19:30:00Z'))
-    const { result } = renderHook(() => useUrlDateRange({ pageKey: 'page-c', timezone: null }))
+    const { result } = renderHook(() => useUrlDateRange(opts('cdn', { timezone: null })))
     expect(result.current.siteNow.getFullYear()).toBe(2026)
     expect(result.current.siteNow.getMonth()).toBe(8)
     expect(result.current.siteNow.getDate()).toBe(18)
     expect(result.current.siteNow.getHours()).toBe(19)
     expect(result.current.siteNow.getMinutes()).toBe(30)
-    vi.useRealTimers()
-  })
-})
-
-describe('useUrlDateRange range memory', () => {
-  it('remembers a chosen preset and applies it on a bare-URL mount', () => {
-    const { result } = renderHook(() => useUrlDateRange(PAGE))
-    act(() => {
-      result.current.setPeriod('7')
-    })
-    expect(window.localStorage.getItem(PAGE_KEY)).toBe('7')
-
-    // A fresh mount with no ?period= takes the remembered preset as the
-    // effective default (state, not a URL write — a mount-time replace is
-    // dropped during hydration on the prod build).
-    mockReplace.mockClear()
-    mockSearchParams = new URLSearchParams()
-    const { result: r2 } = renderHook(() => useUrlDateRange(PAGE))
-    expect(r2.current.period).toBe('7')
-    expect(r2.current.dateRange).toEqual({ start: 'start-7', end: 'end-7' })
-  })
-
-  it('picking the default period while another preset is remembered does not revert', () => {
-    window.localStorage.setItem(PAGE_KEY, '7')
-    const { result } = renderHook(() => useUrlDateRange(PAGE))
-    expect(result.current.period).toBe('7')
-    act(() => {
-      result.current.setPeriod('30')
-    })
-    expect(result.current.period).toBe('30')
-    expect(window.localStorage.getItem(PAGE_KEY)).toBe('30')
-  })
-
-  it('an explicit URL period always wins over the memory', () => {
-    window.localStorage.setItem(PAGE_KEY, '7')
-    mockSearchParams = new URLSearchParams('period=week')
-    const { result } = renderHook(() => useUrlDateRange(PAGE))
-    expect(result.current.period).toBe('week')
-    expect(mockReplace).not.toHaveBeenCalled()
-  })
-
-  it('custom ranges are NOT remembered — a frozen date span must never become the default', () => {
-    window.localStorage.setItem(PAGE_KEY, '7')
-    const { result } = renderHook(() => useUrlDateRange(PAGE))
-    act(() => {
-      result.current.setPeriod('custom', { start: '2026-01-01', end: '2026-01-31' })
-    })
-    expect(window.localStorage.getItem(PAGE_KEY)).toBe('7')
-  })
-
-  it('garbage in storage never becomes the period', () => {
-    window.localStorage.setItem(PAGE_KEY, 'nonsense')
-    mockSearchParams = new URLSearchParams()
-    const { result } = renderHook(() => useUrlDateRange(PAGE))
-    expect(result.current.period).toBe('30')
   })
 })
 
 // ---------------------------------------------------------------------------
-// Per-page memory (owner decision 22-08-2026). The pre-existing SHARED key is
-// the reported bug: "Today" picked on the dashboard followed the customer to
-// Search and CDN, whose pickers deliberately do not offer "Today".
-// ---------------------------------------------------------------------------
-describe('per-page range memory (22-08-2026)', () => {
-  it('a preset picked on one page never changes what another page shows', () => {
-    const { result } = renderHook(() => useUrlDateRange(PAGE))
-    act(() => {
-      result.current.setPeriod('7')
-    })
-
-    const { result: other } = renderHook(() => useUrlDateRange({ pageKey: 'page-b', timezone: 'UTC' }))
-    expect(other.current.period).toBe('30')
-    expect(other.current.periodReady).toBe(true)
-    expect(window.localStorage.getItem(PAGE_KEY)).toBe('7')
-    expect(window.localStorage.getItem('pulse_last_period:page-b')).toBeNull()
-  })
-
-  it('pages declaring the same pageKey share memory — funnels list and detail are one instrument', () => {
-    // The paired positive for the isolation above: same key ⇒ same memory.
-    const { result } = renderHook(() => useUrlDateRange(PAGE))
-    act(() => {
-      result.current.setPeriod('7')
-    })
-    const { result: sibling } = renderHook(() => useUrlDateRange({ pageKey: 'page-a' }))
-    expect(sibling.current.period).toBe('7')
-  })
-
-  it('the pre-22-08 shared key is never applied as a value — and is deleted on sight', () => {
-    window.localStorage.setItem(LEGACY_SHARED_KEY, 'today')
-    const { result } = renderHook(() => useUrlDateRange(PAGE))
-    // Not seeded, not applied: per-page memory means no cross-page carryover,
-    // including from the era when carryover was the behaviour.
-    expect(result.current.period).toBe('30')
-    expect(result.current.periodReady).toBe(true)
-    expect(window.localStorage.getItem(LEGACY_SHARED_KEY)).toBeNull()
-    expect(window.localStorage.getItem(PAGE_KEY)).toBeNull()
-  })
-})
-
-// ---------------------------------------------------------------------------
-// The applied grammar follows the page's declared vocabulary (22-08-2026).
-// The picker always filtered its MENU by the declaration; nothing filtered
-// what memory or a shared URL APPLIED, so "today" stuck on pages that cannot
-// offer it. Same family as the 16m ceiling bug — this is the other half.
-// ---------------------------------------------------------------------------
-describe('page preset vocabulary — applied, not just offered', () => {
-  // A Search-page-shaped declaration: exclusive provider vocabulary, 480-day cap.
-  const SEARCH_LIKE: PageRangeOptions = {
-    pageKey: 'search-like',
-    maxDays: SEARCH_CONSOLE_MAX_DAYS,
-    timezone: 'UTC',
-    extraPresets: {
-      group: 'Search ranges',
-      exclusive: true,
-      presets: ['7', '28', '30', '3m', '6m', '12m', '16m'].map(preset),
-    },
-  }
-
-  it('an exclusive page drops a remembered period outside its vocabulary', () => {
-    window.localStorage.setItem('pulse_last_period:search-like', 'today')
-    const { result } = renderHook(() => useUrlDateRange(SEARCH_LIKE))
-    expect(result.current.period).toBe('30')
-    expect(result.current.periodReady).toBe(true)
-  })
-
-  it('an exclusive page drops a ?period= outside its vocabulary from a shared link', () => {
-    mockSearchParams = new URLSearchParams('period=today')
-    const { result } = renderHook(() => useUrlDateRange(SEARCH_LIKE))
-    expect(result.current.period).toBe('30')
-  })
-
-  it('an exclusive page honours its own vocabulary — including 16m under the wider cap', () => {
-    // The paired positive: "always fall back to 30" would pass everything above.
-    window.localStorage.setItem('pulse_last_period:search-like', '16m')
-    const { result } = renderHook(() => useUrlDateRange(SEARCH_LIKE))
-    expect(result.current.period).toBe('16m')
-  })
-
-  it('custom stays usable on an exclusive page — it carries explicit dates', () => {
-    mockSearchParams = new URLSearchParams('period=custom&start=2026-01-01&end=2026-01-31')
-    const { result } = renderHook(() => useUrlDateRange(SEARCH_LIKE))
-    expect(result.current.period).toBe('custom')
-    expect(result.current.dateRange).toEqual({ start: '2026-01-01', end: '2026-01-31' })
-  })
-
-  it('excludePresets removes those keys from the applied grammar, not just the menu', () => {
-    const FUNNELS_LIKE: PageRangeOptions = { pageKey: 'funnels-like', excludePresets: ['1h', '24h'] }
-    mockSearchParams = new URLSearchParams('period=24h')
-    expect(renderHook(() => useUrlDateRange(FUNNELS_LIKE)).result.current.period).toBe('30')
-
-    mockSearchParams = new URLSearchParams()
-    window.localStorage.setItem('pulse_last_period:funnels-like', '24h')
-    expect(renderHook(() => useUrlDateRange(FUNNELS_LIKE)).result.current.period).toBe('30')
-
-    // Paired positive: a non-excluded global preset still applies.
-    window.localStorage.clear()
-    mockSearchParams = new URLSearchParams('period=today')
-    expect(renderHook(() => useUrlDateRange(FUNNELS_LIKE)).result.current.period).toBe('today')
-  })
-
-  it('a NON-exclusive page still honours URL-grammar periods its menu does not list', () => {
-    // Deliberate looseness: ?period=3m shared from Search opens on the
-    // dashboard as the 90-day range it names (within the ceiling) — the menu
-    // not offering a shortcut is not the same as the API refusing the range.
-    mockSearchParams = new URLSearchParams('period=3m')
-    const { result } = renderHook(() => useUrlDateRange(PAGE))
-    expect(result.current.period).toBe('3m')
-  })
-
-  it('setPeriod refuses to remember a period outside the vocabulary', () => {
-    const FUNNELS_LIKE: PageRangeOptions = { pageKey: 'funnels-like', excludePresets: ['1h', '24h'] }
-    const { result } = renderHook(() => useUrlDateRange(FUNNELS_LIKE))
-    act(() => {
-      result.current.setPeriod('24h')
-    })
-    expect(window.localStorage.getItem('pulse_last_period:funnels-like')).toBeNull()
-  })
-
-  it('a declaration without the default period fails loud in dev', () => {
-    // The silent fallback IS the default — a vocabulary excluding it would
-    // fall back to a period the page does not offer.
-    expect(() =>
-      renderHook(() =>
-        useUrlDateRange({
-          pageKey: 'broken',
-          extraPresets: { group: 'X', exclusive: true, presets: [preset('7')] },
-        }),
-      ),
-    ).toThrow(/DEFAULT_PERIOD/)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// previousDateRange must REJECT an unparseable range.
-//
-// 🔴 MEASURED ON STAGING 20-08-2026. Once the date-ranged pages began
-// withholding their range while the remembered period resolved (#326,
-// fetchableRange returns empty strings), /funnels issued a real request with
-// `startDate=NaN-NaN-NaN&endDate=NaN-NaN-NaN`.
-//
-// The cause is a guard that cannot fail: both existing checks are `>` and `<`
-// comparisons, and EVERY comparison with NaN is false, so an Invalid Date
-// passed straight through and formatDate produced "NaN-NaN-NaN". That string
-// is non-empty, so callers guarding on `prevRange?.start ?? ''` treated it as
-// a usable date.
+// previousDateRange — unchanged pure function, unchanged tests.
 // ---------------------------------------------------------------------------
 describe('previousDateRange rejects what it cannot parse', () => {
   it('returns null for an empty range — the shape a withheld range has', () => {
@@ -542,17 +199,17 @@ describe('previousDateRange rejects what it cannot parse', () => {
     expect(previousDateRange({ start: '', end: '2026-08-20' })).toBeNull()
   })
 
-  // The paired positive: "always null" would pass every case above and
-  // silently delete every period-over-period comparison in the product.
   it('still computes the preceding window for a real range', () => {
-    expect(previousDateRange({ start: '2026-08-20', end: '2026-08-20' }))
-      .toEqual({ start: '2026-08-19', end: '2026-08-19' })
-    expect(previousDateRange({ start: '2026-08-14', end: '2026-08-20' }))
-      .toEqual({ start: '2026-08-07', end: '2026-08-13' })
+    expect(previousDateRange({ start: '2026-08-20', end: '2026-08-20' })).toEqual({
+      start: '2026-08-19',
+      end: '2026-08-19',
+    })
+    expect(previousDateRange({ start: '2026-08-14', end: '2026-08-20' })).toEqual({
+      start: '2026-08-07',
+      end: '2026-08-13',
+    })
   })
 
-  // Never a NaN-shaped string, whatever the input — the property that actually
-  // reached the network.
   it('never returns a NaN-shaped date', () => {
     for (const r of [{ start: '', end: '' }, { start: 'x', end: 'y' }, { start: '2026-08-20', end: '' }]) {
       const out = previousDateRange(r)
@@ -561,101 +218,500 @@ describe('previousDateRange rejects what it cannot parse', () => {
   })
 })
 
-describe('per-page range ceiling (the 22-08-2026 dashboard outage)', () => {
-  // A customer picked "Last 16 months" on Search (Google retains ~480 days),
-  // then opened the Dashboard. The preset was remembered ACROSS pages, the
-  // analytics API refuses > 366 days, and every card 400'd behind a
-  // "Couldn't load the dashboard" screen. These pin both halves of the fix.
-  // (Per-page memory has since removed the cross-page path, but a page's own
-  // memory must still respect a ceiling that tightens in a future deploy.)
+// ---------------------------------------------------------------------------
+// The one memory (25-09-2026): global across sites and surfaces, one name.
+// ---------------------------------------------------------------------------
+describe('one memory (PULSE-20, 25-09-2026): global, one name, one row', () => {
+  it('remembers a chosen preset and applies it on a bare-URL mount, on ANY surface', () => {
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard')))
+    act(() => {
+      result.current.setPeriod('7')
+    })
+    expect(window.localStorage.getItem(VIEW_KEY)).toBe('7')
 
-  it('drops a remembered preset the page\'s API cannot serve', () => {
-    window.localStorage.setItem(PAGE_KEY, '16m')
-    const { result } = renderHook(() => useUrlDateRange(PAGE))
-    // Falls back to the default rather than sending a 480-day request.
+    // A different surface, a fresh bare mount — no site id anywhere in the
+    // options, so there is nothing FOR the memory to be scoped by.
+    mockSearchParams = new URLSearchParams()
+    const { result: r2 } = renderHook(() => useUrlDateRange(opts('search')))
+    expect(r2.current.period).toBe('7')
+    expect(r2.current.dateRange).toEqual({ start: '2026-09-20', end: '2026-09-26' })
+  })
+
+  it('picking the default period while another view is stored does not revert', () => {
+    window.localStorage.setItem(VIEW_KEY, '7')
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard')))
+    expect(result.current.period).toBe('7')
+    act(() => {
+      result.current.setPeriod('30')
+    })
     expect(result.current.period).toBe('30')
+    expect(window.localStorage.getItem(VIEW_KEY)).toBe('30')
+  })
+
+  it('an explicit URL period always wins over the memory', () => {
+    window.localStorage.setItem(VIEW_KEY, '7')
+    mockSearchParams = new URLSearchParams('period=today')
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard')))
+    expect(result.current.period).toBe('today')
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('custom ranges are NOT the named memory — a frozen span never becomes the default', () => {
+    window.localStorage.setItem(VIEW_KEY, '7')
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard')))
+    act(() => {
+      result.current.setPeriod('custom', { start: '2026-01-01', end: '2026-01-31' })
+    })
+    expect(window.localStorage.getItem(VIEW_KEY)).toBe('7')
+  })
+
+  it('garbage in storage never becomes the period', () => {
+    window.localStorage.setItem(VIEW_KEY, 'nonsense')
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard')))
+    expect(result.current.period).toBe('30')
+  })
+
+  it('the key is pulse_view — not the pre-PULSE-20 pulse_last_period — and survives a remount even if the old shared key is still lying around', () => {
+    expect(VIEW_KEY).toBe('pulse_view')
+    expect(VIEW_KEY).not.toBe('pulse_last_period')
+    window.localStorage.setItem(VIEW_KEY, '7')
+    window.localStorage.setItem('pulse_last_period', 'today')
+    const { result: first } = renderHook(() => useUrlDateRange(opts('dashboard')))
+    expect(first.current.period).toBe('7')
+
+    // A remount (a navigation) must not have run the old unconditional
+    // removeItem('pulse_last_period') and taken the new key down with it —
+    // that was the trap named in §11.13: reusing the old name makes the new
+    // memory erase itself on every mount, with every test green.
+    const { result: second } = renderHook(() => useUrlDateRange(opts('search')))
+    expect(second.current.period).toBe('7')
+    expect(window.localStorage.getItem(VIEW_KEY)).toBe('7')
+    expect(window.localStorage.getItem('pulse_last_period')).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Only a pick or an arrow writes. Everything else that can produce a
+// PLACEHOLDER-looking period — a shared link, a remount, restoreView, a
+// closest view, a clamp — must never touch either storage (§11.14 rule 3).
+// ---------------------------------------------------------------------------
+describe('only a pick or an arrow writes storage', () => {
+  it('an explicit ?period= on empty storage never writes', () => {
+    mockSearchParams = new URLSearchParams('period=7')
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem')
+    renderHook(() => useUrlDateRange(opts('dashboard')))
+    expect(setItemSpy).not.toHaveBeenCalled()
+  })
+
+  it('a remount of an already-stored view never re-writes it', () => {
+    window.localStorage.setItem(VIEW_KEY, '7')
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem')
+    renderHook(() => useUrlDateRange(opts('search')))
+    expect(setItemSpy).not.toHaveBeenCalled()
+  })
+
+  it('restoreView writes the URL only', () => {
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard')))
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem')
+    act(() => {
+      result.current.restoreView({ period: '7' })
+    })
+    expect(mockReplace).toHaveBeenCalled()
+    expect(setItemSpy).not.toHaveBeenCalled()
+  })
+
+  it('a closest view never writes storage', () => {
+    window.localStorage.setItem(VIEW_KEY, 'today')
+    const dataWindow: DataWindow = { from: '2026-03-01', through: '2026-09-24' }
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem')
+    renderHook(() => useUrlDateRange(opts('search', { window: dataWindow })))
+    expect(setItemSpy).not.toHaveBeenCalled()
+  })
+
+  it('a ceiling clamp never writes storage', () => {
+    // '16m' (480 days) on the default 366-day analytics ceiling clamps.
+    mockSearchParams = new URLSearchParams('period=16m')
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem')
+    renderHook(() => useUrlDateRange(opts('dashboard')))
+    expect(setItemSpy).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Session range: a custom or arrow-shifted span follows the reader until the
+// tab closes (sessionStorage), wins over the named memory in that tab, and
+// never lands in the named key.
+// ---------------------------------------------------------------------------
+describe('session range: custom and arrow-shifted spans follow the reader for one tab', () => {
+  it('a custom pick writes sessionStorage, never the named memory', () => {
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard')))
+    act(() => {
+      result.current.setPeriod('7')
+    })
+    act(() => {
+      result.current.setPeriod('custom', { start: '2026-01-01', end: '2026-01-31' })
+    })
+    expect(JSON.parse(window.sessionStorage.getItem(VIEW_RANGE_KEY)!)).toEqual({
+      start: '2026-01-01',
+      end: '2026-01-31',
+    })
+    expect(window.localStorage.getItem(VIEW_KEY)).toBe('7')
+  })
+
+  it('the session range wins over the named memory in the same tab', () => {
+    window.localStorage.setItem(VIEW_KEY, '7')
+    window.sessionStorage.setItem(VIEW_RANGE_KEY, JSON.stringify({ start: '2026-02-01', end: '2026-02-10' }))
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard')))
+    expect(result.current.requestedPeriod).toBe('custom')
+    expect(result.current.requested.range).toEqual({ start: '2026-02-01', end: '2026-02-10' })
+  })
+
+  it('a named pick afterwards clears the session range', () => {
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard')))
+    act(() => {
+      result.current.setPeriod('custom', { start: '2026-01-01', end: '2026-01-31' })
+    })
+    expect(window.sessionStorage.getItem(VIEW_RANGE_KEY)).not.toBeNull()
+    act(() => {
+      result.current.setPeriod('30')
+    })
+    expect(window.sessionStorage.getItem(VIEW_RANGE_KEY)).toBeNull()
+  })
+
+  it('an arrow shift is remembered the same way as a custom pick — session, never pulse_view', () => {
+    mockSearchParams = new URLSearchParams('period=custom&start=2026-01-08&end=2026-01-14')
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard')))
+    act(() => {
+      result.current.shiftPeriod(-1)
+    })
+    expect(JSON.parse(window.sessionStorage.getItem(VIEW_RANGE_KEY)!)).toEqual({
+      start: '2026-01-01',
+      end: '2026-01-07',
+    })
+    expect(window.localStorage.getItem(VIEW_KEY)).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Migration onto the one key (§11.13 rule 7): dashboard first, then the
+// fixed LEGACY_VIEW_KEYS order, garbage ignored, every legacy key removed
+// regardless, an existing pulse_view is never overwritten.
+// ---------------------------------------------------------------------------
+describe('migration onto the one key', () => {
+  it('seeds from the dashboard key first, even when other legacy keys hold different values', () => {
+    window.localStorage.setItem('pulse_last_period:dashboard', '7')
+    window.localStorage.setItem('pulse_last_period:pages', 'today')
+    window.localStorage.setItem('pulse_last_period:funnels', '30')
+    expect(readStoredView()).toEqual({ period: '7' })
+    expect(window.localStorage.getItem(VIEW_KEY)).toBe('7')
+  })
+
+  it('falls through the fixed LEGACY_VIEW_KEYS order when the dashboard key is missing', () => {
+    window.localStorage.setItem('pulse_last_period:pages', 'today')
+    window.localStorage.setItem('pulse_last_period:visitors', '30')
+    expect(readStoredView()).toEqual({ period: 'today' })
+  })
+
+  it('ignores garbage and non-row values on the way to a real one', () => {
+    window.localStorage.setItem('pulse_last_period:dashboard', '16m') // legacy grammar, not a row
+    window.localStorage.setItem('pulse_last_period:pages', 'custom') // a token, never a stored row
+    window.localStorage.setItem('pulse_last_period:visitors', 'realtime') // a mode, never storable
+    window.localStorage.setItem('pulse_last_period:funnels', 'xyz') // outright garbage
+    window.localStorage.setItem('pulse_last_period:journeys', '30') // first real row in order
+    expect(readStoredView()).toEqual({ period: '30' })
+  })
+
+  it('removes every legacy key regardless of which one seeded the value', () => {
+    for (const key of LEGACY_VIEW_KEYS) window.localStorage.setItem(key, 'today')
+    readStoredView()
+    for (const key of LEGACY_VIEW_KEYS) expect(window.localStorage.getItem(key)).toBeNull()
+  })
+
+  it('never lets a legacy value overwrite an existing pulse_view', () => {
+    window.localStorage.setItem(VIEW_KEY, 'today')
+    window.localStorage.setItem('pulse_last_period:dashboard', '7')
+    expect(readStoredView()).toEqual({ period: 'today' })
+    expect(window.localStorage.getItem(VIEW_KEY)).toBe('today')
+    // Still cleaned up — an existing pulse_view stops it winning, not the cleanup.
+    expect(window.localStorage.getItem('pulse_last_period:dashboard')).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Modes (realtime): never remembered, and 'remembered' never reports one —
+// even defensively, if a page ever mis-declares a named row as a mode too.
+// ---------------------------------------------------------------------------
+describe('modes are never remembered (PULSE-65, 23-09-2026)', () => {
+  it('setPeriod writes the URL but never storage for a declared mode', () => {
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard', { modes: ['realtime'] })))
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem')
+    act(() => {
+      result.current.setPeriod('realtime')
+    })
+    expect(mockReplace).toHaveBeenCalled()
+    expect(setItemSpy).not.toHaveBeenCalled()
+  })
+
+  it('remembered is never a mode, even right after entering one', () => {
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard', { modes: ['realtime'] })))
+    act(() => {
+      result.current.setPeriod('7')
+    })
+    expect(result.current.remembered).toEqual({ period: '7' })
+    act(() => {
+      result.current.setPeriod('realtime')
+    })
+    expect(result.current.remembered).toEqual({ period: '7' })
+  })
+
+  // Defence in depth: a named row that a page ALSO declares as a mode must
+  // still be refused as memory, or one bad `modes` list traps a reader in a
+  // view they never asked to keep (the same defence useUrlDateRange.ts's
+  // `requested` comment names for the read side, tested next).
+  it('a named row declared as a mode is still refused as memory', () => {
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard', { modes: ['today'] })))
+    act(() => {
+      result.current.setPeriod('today')
+    })
+    expect(window.localStorage.getItem(VIEW_KEY)).toBeNull()
+  })
+
+  it('a stored value matching a declared mode is refused as the requested view on mount', () => {
+    window.localStorage.setItem(VIEW_KEY, 'today')
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard', { modes: ['today'] })))
+    expect(result.current.requestedPeriod).toBe(DEFAULT_PERIOD)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// periodReady — the three gates: memory (or a URL period), timezone, window.
+// ---------------------------------------------------------------------------
+describe('periodReady — the three gates', () => {
+  function renderTrace(o: PageRangeOptions) {
+    const seen: Array<{ period: string; ready: boolean }> = []
+    renderHook(() => {
+      const r = useUrlDateRange(o)
+      seen.push({ period: r.period, ready: r.periodReady })
+      return r
+    })
+    return seen
+  }
+
+  it('is not ready on the render that reports the placeholder period, ready once memory resolves', () => {
+    window.localStorage.setItem(VIEW_KEY, 'today')
+    const seen = renderTrace(opts('dashboard'))
+    expect(seen[0]).toEqual({ period: DEFAULT_PERIOD, ready: false })
+    expect(seen[seen.length - 1]).toEqual({ period: 'today', ready: true })
+  })
+
+  it('is ready on the very first render when the URL already carries a period', () => {
+    mockSearchParams = new URLSearchParams('period=today')
+    const seen = renderTrace(opts('dashboard'))
+    expect(seen[0]).toEqual({ period: 'today', ready: true })
+  })
+
+  it('waits for the timezone even with an explicit URL period', () => {
+    mockSearchParams = new URLSearchParams('period=today')
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard', { timezone: undefined })))
+    expect(result.current.periodReady).toBe(false)
+  })
+
+  it('waits for the data window even with a known timezone and an explicit period', () => {
+    mockSearchParams = new URLSearchParams('period=today')
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard', { window: undefined })))
+    expect(result.current.periodReady).toBe(false)
+  })
+
+  it('a known-empty window (null) counts as known, not as still loading', () => {
+    const { result, rerender } = renderHook(
+      ({ window: dataWindow }: { window: WindowState }) => useUrlDateRange(opts('dashboard', { window: dataWindow })),
+      { initialProps: { window: undefined as WindowState } },
+    )
+    expect(result.current.periodReady).toBe(false)
+    rerender({ window: null })
     expect(result.current.periodReady).toBe(true)
   })
 
-  it('honours that same preset on a page that opts into the wider ceiling', () => {
-    // The paired positive — without it, "always fall back to 30" would pass.
-    window.localStorage.setItem(PAGE_KEY, '16m')
-    const { result } = renderHook(() => useUrlDateRange({ pageKey: 'page-a', maxDays: SEARCH_CONSOLE_MAX_DAYS }))
-    expect(result.current.period).toBe('16m')
+  it('a rolling-minutes period is ready without either the timezone or the window', () => {
+    mockSearchParams = new URLSearchParams('period=realtime')
+    const { result } = renderHook(() =>
+      useUrlDateRange(
+        opts('dashboard', { timezone: undefined, window: undefined, rollingMinutes: { realtime: 5 } }),
+      ),
+    )
+    expect(result.current.period).toBe('realtime')
+    expect(result.current.rollingMinutes).toBe(5)
+    expect(result.current.periodReady).toBe(true)
   })
 
-  it('clamps an over-long ?period= from a shared link too', () => {
-    // A link shared from Search opened on an analytics page would 400 exactly
-    // like the remembered preset did.
-    mockSearchParams = new URLSearchParams('period=16m')
-    const { result } = renderHook(() => useUrlDateRange(PAGE))
-    expect(result.current.period).toBe('30')
+  it('a non-rolling period on the same page still waits — rollingMinutes is per-period, not per-page', () => {
+    mockSearchParams = new URLSearchParams('period=today')
+    const { result } = renderHook(() =>
+      useUrlDateRange(
+        opts('dashboard', { timezone: undefined, window: undefined, rollingMinutes: { realtime: 5 } }),
+      ),
+    )
+    expect(result.current.rollingMinutes).toBeNull()
+    expect(result.current.periodReady).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The closest view (§11.15): the most recent span of the same kind and
+// length that has data on THIS page — fetched as a concrete range, the
+// memory left exactly as it was asked.
+// ---------------------------------------------------------------------------
+describe('the closest view', () => {
+  it('Today with no data today resolves to the latest day with data, and never touches memory', () => {
+    window.localStorage.setItem(VIEW_KEY, 'today')
+    const dataWindow: DataWindow = { from: '2026-03-01', through: '2026-09-24' }
+    const { result } = renderHook(() => useUrlDateRange(opts('search', { window: dataWindow })))
+
+    expect(result.current.period).toBe('custom')
+    expect(result.current.dateRange).toEqual({ start: '2026-09-24', end: '2026-09-24' })
+    expect(result.current.requestedPeriod).toBe('today')
+    expect(result.current.picker.label).toBe('24 Sep')
+    expect(result.current.picker.suffix).toBe('latest day')
+    expect(result.current.picker.tick).toBeNull()
+    expect(window.localStorage.getItem(VIEW_KEY)).toBe('today')
   })
 
-  it('leaves every in-ceiling preset untouched', () => {
-    for (const p of ['today', 'yesterday', '7', '28', '30', '3m', '6m', '12m', 'week', 'month', 'qtd', 'year', 'last-week', 'last-month', 'last-quarter', 'last-year'] as const) {
-      window.localStorage.clear()
-      window.localStorage.setItem(PAGE_KEY, p)
-      const { result } = renderHook(() => useUrlDateRange(PAGE))
-      expect(result.current.period, `${p} must survive the 366-day ceiling`).toBe(p)
+  it('ticks Yesterday when the newest day with data happens to BE yesterday', () => {
+    const dataWindow: DataWindow = { from: '2026-01-01', through: '2026-09-25' }
+    mockSearchParams = new URLSearchParams('period=today')
+    const { result } = renderHook(() => useUrlDateRange(opts('journeys', { window: dataWindow })))
+    expect(result.current.picker.tick).toBe('yesterday')
+    expect(result.current.picker.label).toBe('Yesterday')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The ceiling clamp: a carried span over the page's API ceiling is clamped
+// KEEPING ITS END DATE — never sent past 366 days (480 on Search).
+// ---------------------------------------------------------------------------
+describe('the ceiling clamp', () => {
+  it('clamps a 500-day session range to 366 days on the default analytics ceiling, keeping the end date', () => {
+    window.sessionStorage.setItem(VIEW_RANGE_KEY, JSON.stringify({ start: '2024-08-20', end: '2026-01-01' }))
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard')))
+    expect(result.current.period).toBe('custom')
+    expect(result.current.dateRange).toEqual({ start: '2025-01-01', end: '2026-01-01' })
+    expect(result.current.view.substituted).toBe('clamped')
+  })
+
+  it('leaves a 400-day range untouched on the wider 480-day Search Console ceiling', () => {
+    window.sessionStorage.setItem(VIEW_RANGE_KEY, JSON.stringify({ start: '2024-11-28', end: '2026-01-01' }))
+    const { result } = renderHook(() =>
+      useUrlDateRange(opts('search', { maxDays: SEARCH_CONSOLE_MAX_DAYS })),
+    )
+    expect(result.current.period).toBe('custom')
+    expect(result.current.dateRange).toEqual({ start: '2024-11-28', end: '2026-01-01' })
+    expect(result.current.view.substituted).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// All time and realtime both disable the shift arrows.
+// ---------------------------------------------------------------------------
+describe('All time and realtime disable the shift arrows', () => {
+  it('All time spans the whole data window and cannot be shifted', () => {
+    const dataWindow: DataWindow = { from: '2026-03-01', through: '2026-09-20' }
+    mockSearchParams = new URLSearchParams('period=all')
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard', { window: dataWindow })))
+    expect(result.current.period).toBe('all')
+    expect(result.current.dateRange).toEqual({ start: '2026-03-01', end: '2026-09-20' })
+    expect(result.current.picker.shiftBackDisabled).toBe(true)
+    expect(result.current.picker.shiftForwardDisabled).toBe(true)
+  })
+
+  it('realtime cannot be shifted either', () => {
+    mockSearchParams = new URLSearchParams('period=realtime')
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard', { modes: ['realtime'] })))
+    expect(result.current.period).toBe('realtime')
+    expect(result.current.picker.shiftBackDisabled).toBe(true)
+    expect(result.current.picker.shiftForwardDisabled).toBe(true)
+  })
+})
+
+describe('the arrows stop at the edges of the data', () => {
+  // Found by the 26-09 review: the forward arrow stopped only at today, so on Journeys
+  // (newest day = yesterday) Yesterday → › asked for an empty Today, which the closest
+  // view bounced straight back to Yesterday — a live-looking control that did nothing.
+  it('forward is off when the view already ends on the page\'s newest day', () => {
+    const journeys: DataWindow = { from: '2026-03-13', through: '2026-09-25' }
+    mockSearchParams = new URLSearchParams('period=yesterday')
+    const { result } = renderHook(() => useUrlDateRange(opts('journeys', { window: journeys })))
+    expect(result.current.dateRange).toEqual({ start: '2026-09-25', end: '2026-09-25' })
+    expect(result.current.picker.shiftForwardDisabled).toBe(true)
+    expect(result.current.picker.shiftBackDisabled).toBe(false)
+  })
+
+  it('back is off when the view already starts on the page\'s first day', () => {
+    const young: DataWindow = { from: '2026-09-20', through: '2026-09-26' }
+    mockSearchParams = new URLSearchParams('period=7')
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard', { window: young })))
+    expect(result.current.dateRange.start).toBe('2026-09-20')
+    expect(result.current.picker.shiftBackDisabled).toBe(true)
+  })
+
+  it('both are on inside the data, and with no window at all', () => {
+    const w: DataWindow = { from: '2026-01-01', through: '2026-09-26' }
+    mockSearchParams = new URLSearchParams('period=custom&start=2026-06-01&end=2026-06-07')
+    const inside = renderHook(() => useUrlDateRange(opts('dashboard', { window: w }))).result.current.picker
+    expect(inside.shiftBackDisabled).toBe(false)
+    expect(inside.shiftForwardDisabled).toBe(false)
+    const none = renderHook(() => useUrlDateRange(opts('dashboard', { window: null }))).result.current.picker
+    expect(none.shiftBackDisabled).toBe(false)
+    expect(none.shiftForwardDisabled).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// picker.rows — one menu: the same eleven PERIOD_PRESETS rows, same order,
+// on every surface (only availability differs — tested in view.test.ts).
+// ---------------------------------------------------------------------------
+describe('picker.rows — the one-menu invariant', () => {
+  it('lists all eleven PERIOD_PRESETS keys in their declared order, on every surface', () => {
+    for (const surface of ['dashboard', 'search'] as const) {
+      const { result } = renderHook(() => useUrlDateRange(opts(surface)))
+      expect(result.current.picker.rows).toHaveLength(11)
+      expect(result.current.picker.rows.map((r) => r.key)).toEqual(PERIOD_PRESETS.map((p) => p.key))
     }
   })
 })
 
-// ─── Ephemeral periods: a MODE is not a remembered view ──────────────────────
-//
-// 🔴 The dashboard's `realtime` reached range memory until 23-09-2026, which cost
-// two things at once: a later visit opened in a live view nobody chose, AND the
-// preference it overwrote was gone for good — memory cannot tell you what it
-// replaced. `ephemeralPeriods` is what stops a mode being stored as a view.
-//
-// MUTATION CHECK: drop `&& !isEphemeral(p)` from setPeriod and the first two go red.
-describe('ephemeralPeriods', () => {
-  const LIVE = preset('realtime')
-  const EPHEMERAL: PageRangeOptions = {
-    pageKey: 'page-a',
-    timezone: 'UTC',
-    extraPresets: { group: 'Live', presets: [LIVE] },
-    ephemeralPeriods: ['realtime'],
-  }
-
-  it('does not write an ephemeral period to memory', () => {
-    const { result } = renderHook(() => useUrlDateRange(EPHEMERAL))
-    act(() => { result.current.setPeriod('7' as never) })
-    expect(window.localStorage.getItem(PAGE_KEY)).toBe('7')
-
-    act(() => { result.current.setPeriod('realtime' as never) })
-    // The mode is active in the URL...
-    expect(mockReplace).toHaveBeenCalled()
-    // ...but memory still holds the view the reader actually chose.
-    expect(window.localStorage.getItem(PAGE_KEY)).toBe('7')
+// ---------------------------------------------------------------------------
+// requested — the whole token asked for (URL or memory), separate from
+// whatever the applied view ends up being.
+// ---------------------------------------------------------------------------
+describe('requested', () => {
+  it('carries the range for a custom request', () => {
+    mockSearchParams = new URLSearchParams('period=custom&start=2026-01-01&end=2026-01-31')
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard')))
+    expect(result.current.requested).toEqual({ period: 'custom', range: { start: '2026-01-01', end: '2026-01-31' } })
   })
 
-  it('still remembers ordinary periods on the same page', () => {
-    const { result } = renderHook(() => useUrlDateRange(EPHEMERAL))
-    act(() => { result.current.setPeriod('28' as never) })
-    expect(window.localStorage.getItem(PAGE_KEY)).toBe('28')
+  it('carries only the token for a named request', () => {
+    mockSearchParams = new URLSearchParams('period=today')
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard')))
+    expect(result.current.requested).toEqual({ period: 'today' })
   })
+})
 
-  // * A page leaving a mode restores this when it has no in-session history —
-  // * a tab opened straight onto the mode's URL, or reloaded while in it. It must
-  // * therefore never be the mode, or the fallback puts the reader back into the
-  // * very view they were trying to leave.
-  it('exposes the remembered view, and it is never the mode', () => {
-    const { result } = renderHook(() => useUrlDateRange(EPHEMERAL))
-    act(() => { result.current.setPeriod('7' as never) })
-    expect(result.current.remembered).toBe('7')
-
-    act(() => { result.current.setPeriod('realtime' as never) })
-    expect(result.current.remembered).toBe('7')
-  })
-
-  // * Without the option nothing changes for every other page in the estate.
-  it('is inert when a page declares none', () => {
-    const { result } = renderHook(() => useUrlDateRange(
-      { pageKey: 'page-a', timezone: 'UTC', extraPresets: { group: 'Live', presets: [LIVE] } },
-    ))
-    act(() => { result.current.setPeriod('realtime' as never) })
-    expect(window.localStorage.getItem(PAGE_KEY)).toBe('realtime')
-  })
+// ---------------------------------------------------------------------------
+// Legacy URL grammar tokens (removed as MENU ROWS, kept as GRAMMAR — §12
+// "Removed"): an old shared link still opens, and the trigger shows its
+// dates, never the literal word "Custom".
+// ---------------------------------------------------------------------------
+describe('legacy URL grammar tokens still resolve', () => {
+  it.each(['24h', '16m', 'last-quarter'] as const)(
+    '%s opens without crashing and never labels itself "Custom"',
+    (token) => {
+      mockSearchParams = new URLSearchParams(`period=${token}`)
+      const { result } = renderHook(() => useUrlDateRange(opts('dashboard')))
+      expect(result.current.view.label).not.toContain('Custom')
+      expect(result.current.view.label).not.toBe(CUSTOM_RANGE_LABEL)
+      expect(result.current.dateRange.start).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+      expect(result.current.dateRange.end).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    },
+  )
 })
