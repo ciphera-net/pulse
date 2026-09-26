@@ -74,7 +74,7 @@ export default function SiteDashboardPage() {
   // and the range needs the site's timezone before IT can resolve — reading
   // the zone off `dashboard.site` would be circular. This is the same
   // siteId-only fetch the sidebar already dedupes against.
-  const { data: siteRecord } = useSite(siteId)
+  const { data: siteRecord, error: siteError, mutate: refetchSite } = useSite(siteId)
 
   // Range state lives in the URL (?period=&start=&end=), the estate grammar
   // every other date-ranged page already uses (F12): a shared link carries the
@@ -358,17 +358,12 @@ export default function SiteDashboardPage() {
   const showSkeleton = useMinimumLoading(!periodReady || (dashboardLoading && !dashboard))
   const fadeClass = useSkeletonFade(showSkeleton)
 
-
-  if (showSkeleton) {
-    return <DashboardSkeleton />
-  }
-
   // F8: a failed request is a FAILURE, stated as one. "Site not found" used to
   // render for ANY error with no cached data — a 500 from the fan-out, a 400
   // from interval validation, an expired session — confidently wrong about a
   // site that exists. Only an actual 404 earns that sentence.
-  if (dashboardError && !dashboard) {
-    const status = (dashboardError as { status?: number })?.status
+  const failureState = (failure: unknown, retry: () => void) => {
+    const status = (failure as { status?: number })?.status
     if (status === 404) {
       return (
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
@@ -381,10 +376,26 @@ export default function SiteDashboardPage() {
         <ErrorCard
           title="Couldn’t load the dashboard"
           description={status ? `The analytics request failed (HTTP ${status}). Your data is intact — this is a loading problem, not a data problem.` : 'The analytics request failed. Your data is intact — this is a loading problem, not a data problem.'}
-          onRetry={() => refetchDashboard()}
+          onRetry={retry}
         />
       </div>
     )
+  }
+
+  // PULSE-87: the view waits for the SITE's timezone before it can resolve a
+  // range, and a site that failed to load never supplies one — so that failure
+  // is stated BEFORE the skeleton gate, or the skeleton wins forever. (A 403 does
+  // not reach this page: the site layout shows the other-team state instead.)
+  if (!siteRecord && siteError) {
+    return failureState(siteError, () => { void refetchSite() })
+  }
+
+  if (showSkeleton) {
+    return <DashboardSkeleton />
+  }
+
+  if (dashboardError && !dashboard) {
+    return failureState(dashboardError, () => refetchDashboard())
   }
 
   if (!site) {
