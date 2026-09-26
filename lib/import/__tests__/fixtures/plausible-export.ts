@@ -10,6 +10,7 @@
 // quoting, a UTF-8 path, and one malformed row per skip reason.
 
 import { zipSync, strToU8 } from 'fflate'
+import { addDays, dayNumber } from '../../core/dates'
 import { PLAUSIBLE_COLUMNS } from '../../sources/plausible'
 
 const q = (v: string) => (/[",\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v)
@@ -21,7 +22,6 @@ function csv(columns: readonly string[], rows: readonly (readonly (string | numb
 }
 
 export const FIXTURE_RANGE = { from: '2026-03-01', through: '2026-03-03' } as const
-const SUFFIX = '20260301_20260303'
 
 /** Rows in column order, per file. Line numbers in the comments are the CSV lines (header = 1). */
 export const PLAUSIBLE_FIXTURE_ROWS = {
@@ -86,26 +86,50 @@ export const PLAUSIBLE_FIXTURE_ROWS = {
 
 export const CUSTOM_EVENTS_COLUMNS = ['date', 'name', 'link_url', 'path', 'visitors', 'events'] as const
 
+export interface FixtureOptions {
+  /**
+   * Moves the three days to start here instead of 2026-03-01 (the counts are
+   * unchanged). The staging harness uses it to put the days inside a QA site's
+   * upload window.
+   */
+  start?: string
+}
+
+function shifter(start: string | undefined): (value: string | number) => string | number {
+  if (!start) return (v) => v
+  const by = dayNumber(start) - dayNumber(FIXTURE_RANGE.from)
+  return (v) => (typeof v === 'string' && /^2026-03-0[1-3]$/.test(v) ? addDays(v, by) : v)
+}
+
 /** The file set: every documented table, including the custom events the parser ignores. */
-export function plausibleFixtureFiles(): Record<string, string> {
+export function plausibleFixtureFiles(options: FixtureOptions = {}): Record<string, string> {
+  const shift = shifter(options.start)
+  const from = options.start ?? FIXTURE_RANGE.from
+  const suffix = `${from.replace(/-/g, '')}_${addDays(from, 2).replace(/-/g, '')}`
   const files: Record<string, string> = {}
   for (const [table, rows] of Object.entries(PLAUSIBLE_FIXTURE_ROWS)) {
     const columns = PLAUSIBLE_COLUMNS[table as keyof typeof PLAUSIBLE_COLUMNS]
-    files[`imported_${table}_${SUFFIX}.csv`] = csv(columns, rows as unknown as (string | number)[][])
+    files[`imported_${table}_${suffix}.csv`] = csv(
+      columns,
+      (rows as unknown as (string | number)[][]).map((r) => r.map(shift)),
+    )
   }
-  files[`imported_custom_events_${SUFFIX}.csv`] = csv(CUSTOM_EVENTS_COLUMNS, [['2026-03-01', 'Signup', '', '/', 1, 1]])
+  files[`imported_custom_events_${suffix}.csv`] = csv(CUSTOM_EVENTS_COLUMNS, [[shift('2026-03-01'), 'Signup', '', '/', 1, 1]])
   return files
 }
 
 /** The archive's bytes. `mutate` may add, drop or rewrite files before zipping. */
-export function plausibleFixtureZip(mutate?: (files: Record<string, string>) => void): Uint8Array {
-  const files = plausibleFixtureFiles()
+export function plausibleFixtureZip(
+  mutate?: (files: Record<string, string>) => void,
+  options: FixtureOptions = {},
+): Uint8Array {
+  const files = plausibleFixtureFiles(options)
   mutate?.(files)
   const entries: Record<string, Uint8Array> = {}
   for (const [name, text] of Object.entries(files)) entries[name] = strToU8(text)
   return zipSync(entries, { level: 6 })
 }
 
-export function plausibleFixtureFile(mutate?: (files: Record<string, string>) => void): File {
-  return new File([plausibleFixtureZip(mutate) as BlobPart], 'plausible-export.zip', { type: 'application/zip' })
+export function plausibleFixtureFile(mutate?: (files: Record<string, string>) => void, options: FixtureOptions = {}): File {
+  return new File([plausibleFixtureZip(mutate, options) as BlobPart], 'plausible-export.zip', { type: 'application/zip' })
 }

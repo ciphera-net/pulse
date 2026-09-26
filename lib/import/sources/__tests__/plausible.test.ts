@@ -170,6 +170,19 @@ describe('the synthetic export', () => {
   })
 })
 
+describe('the fixture, moved (the staging harness puts it inside a QA site\'s window)', () => {
+  it('keeps every count and moves every day, file names included', async () => {
+    const { rows, skipped } = await parse(plausibleFixtureFile(undefined, { start: '2026-09-20' }))
+    expect(rows.daily.map((r) => [r.date, r.visitors])).toEqual([
+      ['2026-09-20', 10],
+      ['2026-09-21', 20],
+      ['2026-09-22', 5],
+    ])
+    expect(skipped.toCounts()).toEqual({ bad_number: 1, bad_timestamp: 1, missing_field: 2, needs_place_names: 2 })
+    expect(skipped.toSamples().bad_timestamp[0].file).toBe('imported_visitors_20260920_20260922.csv')
+  })
+})
+
 describe('tolerated shapes', () => {
   it('reads columns in any order, by name', async () => {
     const reordered = plausibleFixtureFile((files) => {
