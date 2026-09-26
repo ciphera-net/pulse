@@ -41,6 +41,7 @@ import {
   type ImportErrorDetail,
   type ServerErrorCode,
 } from './errors'
+import { isTimeZone } from './core/dates'
 import type { BatchResponse, CreateImportRequest, ImportStatus, PlanStep, UploadWindow } from './types'
 
 export type HttpMethod = 'GET' | 'POST' | 'DELETE'
@@ -407,6 +408,11 @@ export function parseWindow(v: unknown): UploadWindow {
   if (!isRecord(v)) throw malformed('the upload window is not an object')
   if (typeof v.site_timezone !== 'string' || typeof v.source_timezone !== 'string') {
     throw malformed('the upload window has no time zones')
+  }
+  // The browser computes "yesterday" in the source zone; a zone Intl does not
+  // know would otherwise surface later as an unnamed RangeError.
+  if (!isTimeZone(v.site_timezone) || !isTimeZone(v.source_timezone)) {
+    throw malformed('the upload window names a time zone this browser does not know')
   }
   if (!isDateOrNull(v.allowed_from) || !isDateOrNull(v.allowed_through)) {
     throw malformed('the upload window has no allowed range')

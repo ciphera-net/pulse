@@ -224,6 +224,13 @@ describe('ImportApiClient: the routes', () => {
     expect(w).toMatchObject({ site_timezone: 'Europe/Brussels', source_timezone: 'America/New_York', existing_import: null })
   })
 
+  it('refuses an upload window naming a zone the browser does not know', async () => {
+    const t: Transport = async () =>
+      ok({ source: 'plausible', kind: 'upload_aggregate', site_timezone: 'Mars/Olympus', source_timezone: 'UTC', allowed_from: null, allowed_through: null, collect: {}, existing_import: null })
+    const e = await failure(new ImportApiClient(t, clock().options).uploadWindow('site-1', 'plausible'))
+    expect(e.code).toBe('unexpected_response')
+  })
+
   it('refuses an answer that is not the status object as unexpected_response', async () => {
     const t: Transport = async () => ok({ id: 'x' })
     const e = await failure(new ImportApiClient(t, clock().options).status('site-1', 'imp-1'))
