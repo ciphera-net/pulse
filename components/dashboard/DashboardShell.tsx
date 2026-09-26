@@ -8,7 +8,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { PlusIcon, LayoutDashboardIcon, PathIcon, FunnelIcon, CursorClickIcon, SearchIcon, CloudUploadIcon, HeartbeatIcon, SettingsIcon, UserMenu } from '@ciphera-net/facet'
 import { formatUpdatedLabel } from '@/lib/utils/format'
-import { useFunnelDetail } from '@/lib/swr/dashboard'
+import { useFunnelDetail, useSite } from '@/lib/swr/dashboard'
 import { useAuth } from '@/lib/auth/context'
 import { UnnamedSession } from '@/components/account/UnnamedSession'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
@@ -28,7 +28,6 @@ import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { SidebarProvider, useSidebar } from '@/lib/sidebar-context'
 import { LiveIndicatorProvider, useLiveIndicator } from '@/lib/live-indicator-context'
-import { getSite } from '@/lib/api/sites'
 import { useSites } from '@/lib/swr/sites'
 import { SiteFavicon } from '@/components/sites/SiteFavicon'
 import ContentHeader from './ContentHeader'
@@ -329,15 +328,16 @@ function UpdatedAgo({ lastUpdatedAt }: { lastUpdatedAt: number }) {
 function GlassTopBar({ siteId }: { siteId: string | null }) {
   const { collapsed, toggle } = useSidebar()
   const { lastUpdatedAt } = useLiveIndicator()
-  const [siteName, setSiteName] = useState<string | null>(null)
+  // * The site's name, from the SAME SWR key the site layout and the page read
+  // * (one request between them). It used to be a raw getSite() in an effect keyed
+  // * on siteId, which swallowed its error and never ran again for the same id —
+  // * so after an in-place team switch (PULSE-87) the name could never arrive.
+  // * SWR re-fetches it with every other mounted key when the team changes.
+  const { data: siteForName } = useSite(siteId ?? '')
+  const siteName = siteForName?.name ?? null
   const auth = useAuth()
   const router = useRouter()
   const teamMenuProps = useUserMenuTeamProps()
-
-  useEffect(() => {
-    if (!siteId) { setSiteName(null); return }
-    getSite(siteId).then((s) => setSiteName(s.name)).catch(() => {})
-  }, [siteId])
 
   const pageMeta = usePageMeta()
   const homeMeta = useHomePageMeta()
@@ -372,12 +372,16 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
           <span className="inline-flex items-center gap-1 text-neutral-500">Pulse</span>
           <CaretRight className="w-3 h-3 text-neutral-600" />
           {siteId ? (
-            siteName ? (
+            <>
+              {/* "Your Sites" does not depend on the site: while the name loads, and
+                  for a site this session cannot read (PULSE-87), the trail ends here
+                  instead of trailing off after "Pulse ›". */}
+              <Link href="/" className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors ease-apple">
+                <GlobeIcon className="w-3.5 h-3.5" />
+                Your Sites
+              </Link>
+              {siteName ? (
               <>
-                <Link href="/" className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors ease-apple">
-                  <GlobeIcon className="w-3.5 h-3.5" />
-                  Your Sites
-                </Link>
                 <CaretRight className="w-3 h-3 text-neutral-600" />
                 <BreadcrumbSitePicker currentSiteId={siteId} currentSiteName={siteName} />
                 <CaretRight className="w-3 h-3 text-neutral-600" />
@@ -395,7 +399,8 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
                   {currentMeta.title}
                 </span>
               </>
-            ) : null
+              ) : null}
+            </>
           ) : currentMeta.parent ? (
             <>
               <Link href={currentMeta.parent.href} className="inline-flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors ease-apple">
@@ -469,7 +474,7 @@ export default function DashboardShell({
   // `siteId` is now also set on /settings/site/*, where it keeps the SIDEBAR in
   // site mode. Nothing ELSE may follow it there: those routes are still a
   // settings screen, with the Settings › <Tab> breadcrumb from useHomePageMeta,
-  // no site picker, no site name, no Live dot — and no getSite() fetch for a
+  // no site picker, no site name, no Live dot — and no site fetch for a
   // site whose page you are not on.
   //
   // ⚠️ The command palette belongs on that list too, and is the easy one to

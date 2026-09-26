@@ -223,7 +223,8 @@ describe('CommandDeck — the visitors sentence follows the site’s identity wi
    */
   it('the authed dashboard feeds the deck the window from the site RECORD, not the dashboard payload', () => {
     const page = fs.readFileSync(path.resolve(__dirname, '../../../app/sites/[id]/page.tsx'), 'utf8')
-    expect(page).toMatch(/const \{ data: siteRecord \} = useSite\(siteId\)/)
+    // The record's other fields (its error, since PULSE-87) may be read beside it.
+    expect(page).toMatch(/const \{ data: siteRecord[^}]*\} = useSite\(siteId\)/)
     expect(page).toContain('identityWindowDays={identityWindowOf(siteRecord)}')
     expect(page).not.toContain('identityWindowOf(site)')
   })
