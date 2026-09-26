@@ -60,7 +60,14 @@ export interface BunnyRegionEntry {
 export interface BunnyRegionsResponse {
   regions: BunnyRegionEntry[]
   total_bandwidth: number
+  /** The span the regions cover. Later than the request's start when age_capped. */
   range: { start: string; end: string }
+  /**
+   * The request reached further back than Bunny answers: /statistics refuses a
+   * dateFrom older than a year, so the server fetched the last 12 months only
+   * (PULSE-78). Absent from a server older than that change.
+   */
+  age_capped?: boolean
 }
 
 // * One UTC hour bucket from the live proxy. origin_response_ms is null when

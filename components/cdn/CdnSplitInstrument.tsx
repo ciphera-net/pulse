@@ -458,6 +458,8 @@ export interface CdnCardsProps {
   regionsTotal: number
   regionsError: boolean
   onRetryRegions: () => void
+  /** The server clamped the regions to Bunny's one-year limit (PULSE-78). */
+  regionsAgeCapped?: boolean
   mix: StatusMix
   /** Ghost mode: not-connected — rails em-dash, strips blank. */
   ghost?: boolean
@@ -471,7 +473,7 @@ export interface CdnCardsProps {
 
 const cardTitle = (p: Record<string, unknown>) => `${cdnDayLabelLong(p.date as Date)} · UTC`
 
-export function EdgeCard({ series, overview, regions, regionsTotal, regionsError, onRetryRegions, ghost = false, empty = false }: CdnCardsProps) {
+export function EdgeCard({ series, overview, regions, regionsTotal, regionsError, onRetryRegions, regionsAgeCapped = false, ghost = false, empty = false }: CdnCardsProps) {
   const railGhost = ghost || empty
   const stripRows = useMemo(() => toStripRows(series), [series])
 
@@ -547,7 +549,11 @@ export function EdgeCard({ series, overview, regions, regionsTotal, regionsError
             Served from
             <TermInfoTip term="cdn_served_from_regions" />
           </span>
-          <span className="truncate text-xs text-neutral-500">bandwidth by Bunny edge region · selected range</span>
+          {/* Bunny answers for a year at most, so a longer range shows the last 12
+              months of it — and says so (owner wording, 26-09-2026). */}
+          <span className="truncate text-xs text-neutral-500">
+            bandwidth by Bunny edge region · {regionsAgeCapped ? 'last 12 months' : 'selected range'}
+          </span>
         </div>
         {ghost ? (
           <div className="flex h-40 items-center justify-center">
