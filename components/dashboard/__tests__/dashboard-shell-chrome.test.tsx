@@ -59,7 +59,17 @@ vi.mock('@/lib/hooks/useTeamState', async (importOriginal) => ({
 vi.mock('@/lib/hooks/useOrgSwitcher', () => ({
   useOrgSwitcher: () => ({ orgs: [], activeOrgId: null, switchOrganization: vi.fn(), createOrganization: vi.fn() }),
 }))
-vi.mock('@/lib/swr/dashboard', () => ({ useFunnelDetail: () => ({ data: null }) }))
+// The breadcrumb's site name comes from useSite (PULSE-87: the shared SWR key, so an
+// in-place team switch re-fetches it). `siteAsked` records every id it is given — ''
+// means no key, no request.
+const siteAsked = vi.fn()
+vi.mock('@/lib/swr/dashboard', () => ({
+  useFunnelDetail: () => ({ data: null }),
+  useSite: (id: string) => {
+    siteAsked(id)
+    return id && id !== 'unreadable' ? { data: { id, name: 'Example Site', domain: 'example.com' } } : { data: undefined }
+  },
+}))
 vi.mock('@/lib/swr/sites', () => ({
   useSites: () => ({ sites: [{ id: 's1', name: 'Example Site', domain: 'example.com' }], isLoading: false, error: undefined, mutate: vi.fn() }),
 }))
@@ -81,10 +91,6 @@ vi.mock('@/components/command/CommandPalette', () => ({
   CommandPalette: ({ currentSiteId }: any) => { seen.palette = currentSiteId ?? null; return null },
 }))
 
-// The breadcrumb's own fetch: it must not even be ASKED for a site whose page
-// you are not on.
-const getSite = vi.fn(async (id: string) => ({ id, name: 'Example Site', domain: 'example.com' }))
-vi.mock('@/lib/api/sites', () => ({ getSite: (id: string) => getSite(id) }))
 
 import DashboardShell from '../DashboardShell'
 
@@ -100,7 +106,7 @@ beforeEach(() => {
   seen.sidebar = undefined
   seen.header = undefined
   seen.palette = undefined
-  getSite.mockClear()
+  siteAsked.mockClear()
 })
 
 describe('the dashboard chrome on a site page', () => {
@@ -120,7 +126,8 @@ describe('the dashboard chrome on a site-settings tab', () => {
     // A settings screen: no site in the header, and no site actions in ⌘K.
     expect(seen.header).toBe(null)
     expect(seen.palette).toBe(null)
-    expect(getSite).not.toHaveBeenCalled()
+    // Not even ASKED for a site whose page you are not on: every call is keyless.
+    expect(siteAsked.mock.calls.every(([id]) => id === '')).toBe(true)
     expect(screen.queryByText('Example Site')).toBeNull()
   })
 
@@ -161,5 +168,18 @@ describe('the settings breadcrumb follows the team state', () => {
     teamState = 'alone'
     await renderAt('/settings/organization/billing', null)
     expect(screen.getByText('Billing')).toBeInTheDocument()
+  })
+})
+
+// PULSE-87: a site this session cannot read (another team's) never has a name. The
+// trail used to stop at "Pulse ›" with nothing after it; it now ends at "Your Sites".
+//
+// MUTATION CHECK: put "Your Sites" back inside the `siteName ?` branch and this fails.
+describe('the breadcrumb for a site with no name to show', () => {
+  it('ends at "Your Sites" instead of trailing off', async () => {
+    await renderAt('/sites/unreadable', 'unreadable')
+    const link = screen.getByRole('link', { name: /Your Sites/ })
+    expect(link).toHaveAttribute('href', '/')
+    expect(screen.queryByText('Example Site')).toBeNull()
   })
 })
