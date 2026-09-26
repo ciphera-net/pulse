@@ -17,11 +17,12 @@ import {
 import { SettingsTH } from '@/components/settings/panels/SettingsTH'
 import { ListChecks, CaretRight, CaretDown, CalendarBlank } from '@phosphor-icons/react'
 import { SettingsPanel, EmptyRow } from '@/components/settings/panels'
-import { StatusChip, type ChipTone } from '@/components/settings/StatusChip'
+import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { useAuth } from '@/lib/auth/context'
 import { getAuditLog, type AuditLogEntry } from '@/lib/api/audit'
+import { AUDIT_ACTIONS, actionLabelFor, actionTone } from '@/lib/audit/actions'
 import { formatPlanName } from '@/lib/plans'
 import { formatDateTimeFull } from '@/lib/utils/formatDate'
 import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
@@ -29,59 +30,10 @@ import { useTeamState } from '@/lib/hooks/useTeamState'
 import { cn } from '@/lib/utils'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 
-const ACTION_LABELS: Record<string, string> = {
-  site_created: 'Created site',
-  site_updated: 'Updated site',
-  site_deleted: 'Deleted site',
-  site_restored: 'Restored site',
-  goal_created: 'Created goal',
-  goal_updated: 'Updated goal',
-  goal_deleted: 'Deleted goal',
-  funnel_created: 'Created funnel',
-  funnel_updated: 'Updated funnel',
-  funnel_deleted: 'Deleted funnel',
-  gsc_connected: 'Connected Google Search Console',
-  gsc_disconnected: 'Disconnected Google Search Console',
-  bunny_connected: 'Connected BunnyCDN',
-  bunny_disconnected: 'Disconnected BunnyCDN',
-  member_invited: 'Invited member',
-  member_removed: 'Removed member',
-  member_role_changed: 'Changed member role',
-  org_updated: 'Updated team',
-  subscription_plan_changed: 'Changed plan',
-  billing_checkout_started: 'Started checkout',
-  admin_plan_granted: 'Plan granted (admin)',
-  subscription_cancelled: 'Cancelled subscription',
-  subscription_resumed: 'Resumed subscription',
-}
-
-// * PULSE-59: somebody alone has no team, so the one label that names it reads
-// * as their details instead (the General tab's own alone wording).
-function actionLabelFor(action: string, alone: boolean): string | undefined {
-  if (alone && action === 'org_updated') return 'Updated details'
-  return ACTION_LABELS[action]
-}
-
-// * Fallback for actions the label map doesn't know yet: "quarantine_rule_created"
-// * reads as "Quarantine rule created" instead of leaking the raw event name.
-function humanizeAction(action: string): string {
-  const words = action.replace(/[._]/g, ' ').trim()
-  return words.charAt(0).toUpperCase() + words.slice(1)
-}
-
 // Same treatment for a payload key: "site_id" reads as "Site id".
 function humanizeKey(key: string): string {
   const words = key.replace(/_/g, ' ').trim()
   return words.charAt(0).toUpperCase() + words.slice(1)
-}
-
-// * ONE disciplined tone map (spec §2.3 / §6): neutral by default, coral only for
-// * genuinely destructive events (deletes, removals, disconnects, cancellations)
-// * so a scan surfaces removals. NO lone greens (creations/connections stay
-// * neutral; a "Created site" line is not a success signal).
-function actionTone(action: string): ChipTone {
-  if (/(deleted|removed|disconnected|cancelled)$/.test(action)) return 'danger'
-  return 'neutral'
 }
 
 // * A payload key that names an id, a credential or a path (site_id, api_key,
@@ -265,7 +217,7 @@ export default function WorkspaceAuditTab() {
           className="w-52"
           options={[
             { value: ACTION_FILTER_ALL, label: 'All actions' },
-            ...Object.keys(ACTION_LABELS).map((value) => ({ value, label: actionLabelFor(value, alone) ?? value })),
+            ...AUDIT_ACTIONS.map((value) => ({ value, label: actionLabelFor(value, alone) })),
           ]}
         />
       </div>
@@ -379,7 +331,7 @@ export default function WorkspaceAuditTab() {
                   {entries.map(entry => {
                     const hasPayload = Boolean(entry.payload && Object.keys(entry.payload).length > 0)
                     const isOpen = expanded.has(entry.id)
-                    const label = actionLabelFor(entry.action, alone) || humanizeAction(entry.action)
+                    const label = actionLabelFor(entry.action, alone)
                     return (
                       <Fragment key={entry.id}>
                         <TR>

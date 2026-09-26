@@ -1,52 +1,61 @@
 import type { IngestRejectionCause } from '@/lib/ingest-causes'
 
-export type NotificationType =
-  | 'billing_payment_failed'
-  | 'billing_plan_renewed'
-  | 'billing_usage_limit'
-  | 'billing_subscription_canceled'
-  | 'billing_invoice_sent'
-  | 'billing_credit_note'
-  | 'billing_pageview_80'
-  | 'billing_pageview_90'
-  | 'billing_pageview_100'
-  | 'uptime_monitor_down'
-  | 'uptime_monitor_recovered'
-  | 'uptime_ssl_expiring'
+/**
+ * The one runtime list of notification types (PULSE-72). `NotificationType`
+ * below is derived from it, so a caller that needs every type at runtime —
+ * an exhaustiveness test, an icon map assertion — has a source of truth to
+ * iterate instead of hand-copying the union.
+ */
+export const NOTIFICATION_TYPES = [
+  'billing_payment_failed',
+  'billing_plan_renewed',
+  'billing_usage_limit',
+  'billing_subscription_canceled',
+  'billing_invoice_sent',
+  'billing_credit_note',
+  'billing_pageview_80',
+  'billing_pageview_90',
+  'billing_pageview_100',
+  'uptime_monitor_down',
+  'uptime_monitor_recovered',
+  'uptime_ssl_expiring',
   // iris migration 027 — the install watchers, filed in the uptime category
   // (renamed "Monitoring") because "the script went quiet" is the same kind
   // of news as "the site is down" and shares its opt-out class.
-  | 'site_install_silent'
-  | 'site_install_recovered'
-  | 'site_events_rejected'
-  | 'security_new_device_login'
-  | 'security_password_changed'
-  | 'security_2fa_enabled'
-  | 'security_api_key_created'
-  | 'site_added'
-  | 'site_tracking_issue'
-  | 'site_export_ready'
-  | 'site_pagespeed_drop'
-  | 'site_pagespeed_recovered'
-  | 'site_traffic_spike'
-  | 'site_traffic_drop'
-  | 'site_content_decay'
-  | 'team_member_invited'
-  | 'team_member_joined'
-  | 'team_role_changed'
-  | 'system_announcement'
-  | 'system_maintenance'
-  | 'lifecycle_no_site'
+  'site_install_silent',
+  'site_install_recovered',
+  'site_events_rejected',
+  'security_new_device_login',
+  'security_password_changed',
+  'security_2fa_enabled',
+  'security_api_key_created',
+  'site_added',
+  'site_tracking_issue',
+  'site_export_ready',
+  'site_pagespeed_drop',
+  'site_pagespeed_recovered',
+  'site_traffic_spike',
+  'site_traffic_drop',
+  'site_content_decay',
+  'team_member_invited',
+  'team_member_joined',
+  'team_role_changed',
+  'system_announcement',
+  'system_maintenance',
+  'lifecycle_no_site',
   // iris migration 031 — the one moment in onboarding with unambiguously good
   // news. Same `lifecycle` category and opt-out class as the nudge above.
-  | 'lifecycle_first_data'
+  'lifecycle_first_data',
   // iris migration 035 — every site has stopped reporting. Same category and
   // opt-out class as its two siblings above.
-  | 'lifecycle_dormant'
+  'lifecycle_dormant',
   // iris migration 034 — a site that was added and has never sent an event.
   // Same `lifecycle` category and opt-out class as its siblings above, but
   // scoped to one SITE (PULSE-66).
-  | 'lifecycle_install_stalled'
+  'lifecycle_install_stalled',
+] as const
+
+export type NotificationType = typeof NOTIFICATION_TYPES[number]
 
 export type Category = 'billing' | 'uptime' | 'security' | 'site' | 'team' | 'system' | 'lifecycle'
 

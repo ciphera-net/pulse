@@ -128,6 +128,16 @@ describe('WorkspaceAuditTab', () => {
     expect(within(panel as HTMLElement).getByLabelText('Filter by action')).toBeInTheDocument()
   })
 
+  it('lists the MCP connection actions in the Action filter, labelled for a mixed human/AI audience (PULSE-73)', async () => {
+    mockGetAuditLog.mockResolvedValue({ entries: [entry()], total: 1 })
+    render(<WorkspaceAuditTab />)
+
+    await screen.findByRole('table')
+    const select = screen.getByLabelText('Filter by action')
+    expect(within(select).getByRole('option', { name: 'Connected AI assistant' })).toBeInTheDocument()
+    expect(within(select).getByRole('option', { name: 'Disconnected AI assistant' })).toBeInTheDocument()
+  })
+
   it('tones the action chip with the disciplined map, and renders a plain chip', async () => {
     mockGetAuditLog.mockResolvedValue({ entries: [entry({ action: 'site_created' })], total: 1 })
     render(<WorkspaceAuditTab />)
@@ -431,17 +441,20 @@ describe('WorkspaceAuditTab', () => {
 
 describe('WorkspaceAuditTab, alone and team (PULSE-59)', () => {
   it('team: describes changes across the team', async () => {
-    mockGetAuditLog.mockResolvedValue({ entries: [entry({ action: 'org_updated' })], total: 1 })
+    // org_updated matched nothing pulse-backend writes or any row production
+    // stores and is gone (PULSE-73): org_deleted carries the alone/team split
+    // now.
+    mockGetAuditLog.mockResolvedValue({ entries: [entry({ action: 'org_deleted' })], total: 1 })
     const { container } = render(<WorkspaceAuditTab />)
-    await screen.findAllByText('Updated team')
+    await screen.findAllByText('Deleted team')
     expect(container.textContent).toMatch(/changes made across the team/)
   })
 
   it('alone: never says team, workspace or organization', async () => {
     mockTeamState = 'alone'
-    mockGetAuditLog.mockResolvedValue({ entries: [entry({ action: 'org_updated' })], total: 1 })
+    mockGetAuditLog.mockResolvedValue({ entries: [entry({ action: 'org_deleted' })], total: 1 })
     const { container } = render(<WorkspaceAuditTab />)
-    await screen.findAllByText('Updated details')
+    await screen.findAllByText('Deleted all data')
     expect(container.textContent).toMatch(/changes made to your account/)
     expect(container.textContent).not.toMatch(/team|workspace|organi[sz]ation/i)
   })
