@@ -113,3 +113,23 @@ describe('CDN split instrument on the shared chart', () => {
     expect(container.querySelector('.w-56')).toBeNull()
   })
 })
+
+// PULSE-78: Bunny answers /statistics for a year at most, so the server clamps a
+// longer regions range to the last 12 months and says so (age_capped). The caption
+// must then stop claiming the selected range (owner wording, 26-09-2026).
+//
+// MUTATION CHECK: hard-code 'selected range' in EdgeCard and the capped case fails;
+// invert the condition and both fail.
+describe('the Served from caption names what the regions cover', () => {
+  const base = { series, overview: undefined, regions: [], regionsTotal: 0, regionsError: false, onRetryRegions: () => {}, mix }
+  it('says "selected range" when the regions cover the range asked for', () => {
+    const { container } = render(<EdgeCard {...base} />)
+    expect(container.textContent).toContain('bandwidth by Bunny edge region · selected range')
+    expect(container.textContent).not.toContain('last 12 months')
+  })
+  it('says "last 12 months" when the server clamped them to Bunny\'s one-year limit', () => {
+    const { container } = render(<EdgeCard {...base} regionsAgeCapped />)
+    expect(container.textContent).toContain('bandwidth by Bunny edge region · last 12 months')
+    expect(container.textContent).not.toContain('selected range')
+  })
+})

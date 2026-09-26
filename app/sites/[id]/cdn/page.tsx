@@ -129,6 +129,7 @@ export default function CDNPage() {
     regions: regionsData?.regions,
     regionsTotal: regionsData?.total_bandwidth ?? 0,
     regionsError: !!regionsError,
+    regionsAgeCapped: regionsData?.age_capped === true,
     onRetryRegions: () => {
       void mutateRegions()
     },
