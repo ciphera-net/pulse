@@ -21,10 +21,11 @@ const refresh = vi.fn(async () => {})
 let orgId: string | null = 'A'
 vi.mock('@/lib/auth/context', () => ({ useAuth: () => ({ user: orgId ? { id: 'u1', org_id: orgId } : null, refresh }) }))
 
-let orgs: { organization_id: string; organization_name?: string }[] | null = null
+type Team = { organization_id: string; organization_name?: string }
+let orgs: Team[] | null = null
 let orgsError: unknown = undefined
 // `afterRefresh` is what the list holds once re-read (null: unchanged).
-let afterRefresh: typeof orgs = null
+let afterRefresh: Team[] | null = null
 const refreshOrgs = vi.fn(async () => { if (afterRefresh) orgs = afterRefresh; return orgs })
 vi.mock('@/lib/swr/organizations', () => ({
   useUserOrganizations: () => ({ organizations: orgs, error: orgsError, mutate: refreshOrgs }),
