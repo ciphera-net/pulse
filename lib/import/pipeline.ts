@@ -8,7 +8,7 @@
 import { AggregateBuilder } from './core/aggregate'
 import type { Clip } from './core/cap'
 import { RawFolder } from './core/fold'
-import { buildPlan, type PlanPart } from './core/plan'
+import { buildPlan, type PlanLimits, type PlanPart } from './core/plan'
 import { SkipLedger } from './core/skipped'
 import { detectInputKind, type ReadOptions } from './core/zip'
 import { ImportError } from './errors'
@@ -26,8 +26,9 @@ export interface PipelineRequest {
 export interface PipelineHooks {
   onReading?: (bytesRead: number, bytesTotal: number) => void
   onPlanning?: () => void
-  /** Test seam: the archive caps. */
+  /** Test seams: the archive caps and the plan caps. */
   limits?: ReadOptions['limits']
+  planLimits?: PlanLimits
 }
 
 export interface PipelineResult {
@@ -57,7 +58,7 @@ export async function runPipeline(req: PipelineRequest, hooks: PipelineHooks = {
   hooks.onPlanning?.()
   let plan
   try {
-    plan = await buildPlan(rows)
+    plan = await buildPlan(rows, hooks.planLimits)
   } catch (e) {
     // "Nothing to import" is only useful with the reasons every row was dropped.
     if (e instanceof ImportError && e.code === 'no_data_in_range') {
