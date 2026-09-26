@@ -17,7 +17,7 @@
     "test:watch": "vitest",
     "test:smoke": "playwright test tests/settings-smoke.spec.ts",
     "lint:fix": "eslint . --fix",
-    "test:tz-positive": "PULSE_TEST_TZ=Pacific/Kiritimati vitest run lib/utils/__tests__/formatDate.test.ts components/settings/unified/tabs/__tests__/WorkspaceBillingTab.test.tsx lib/notifications components/uptime/__tests__/uptimeMetrics.test.ts lib/visitors"
+    "test:tz-positive": "PULSE_TEST_TZ=Pacific/Kiritimati vitest run lib/utils/__tests__/formatDate.test.ts components/settings/unified/tabs/__tests__/WorkspaceBillingTab.test.tsx lib/notifications components/uptime/__tests__/uptimeMetrics.test.ts lib/visitors lib/import"
   },
   "dependencies": {
     "@ciphera-net/auth": "0.4.0",
