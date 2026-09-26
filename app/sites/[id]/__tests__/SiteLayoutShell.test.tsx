@@ -6,7 +6,7 @@
 // for the entry redirect and the active-site selection — and, since PULSE-87,
 // recognising a site from another of the reader's teams for EVERY site page.
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 
 const shell = vi.fn(({ children }: any) => <div data-testid="shell">{children}</div>)
 vi.mock('@/components/dashboard/DashboardShell', () => ({ default: (p: any) => shell(p) }))
@@ -27,7 +27,8 @@ vi.mock('@/components/sites/SiteInAnotherTeam', () => ({
 
 import SiteLayoutShell from '../SiteLayoutShell'
 
-const withStatus = (status: number) => ({ error: Object.assign(new Error(`HTTP ${status}`), { status }) })
+const withStatus = (status: number, code?: string) =>
+  ({ error: Object.assign(new Error(`HTTP ${status}`), { status, data: code ? { error: 'x', code } : { error: 'Access denied' } }) })
 
 beforeEach(() => {
   shell.mockClear()
@@ -91,5 +92,43 @@ describe('a site from another of your teams', () => {
     site = { data: { id: 's1', name: 'Example' }, ...withStatus(403) }
     renderShell()
     expect(screen.getByText('page')).toBeInTheDocument()
+  })
+})
+
+// Review 26-09-2026: only the plain cross-team 403 ({"error":"Access denied"}, no code)
+// is "another team". A coded 403 is something else, and saying "another team" for it
+// would be untrue: ORG_REQUIRED (no team in the session), ORGANIZATION_DELETED and
+// ACCOUNT_DELETED (a token outliving its team or account).
+//
+// MUTATION CHECK: test only the status and these three render the other-team state.
+describe('a 403 that is not about another team', () => {
+  it.each(['ORG_REQUIRED', 'ORGANIZATION_DELETED', 'ACCOUNT_DELETED'])('leaves %s to the page', (code) => {
+    site = withStatus(403, code)
+    renderShell()
+    expect(screen.getByText('page')).toBeInTheDocument()
+    expect(screen.queryByTestId('other-team')).toBeNull()
+  })
+})
+
+// Review 26-09-2026: after an in-place switch the state unmounts under the reader's
+// focus. When it gives way to the page, focus moves to the page's main region.
+//
+// MUTATION CHECK: delete the focus effect and document.activeElement stays <body>.
+describe('focus after the switch', () => {
+  it('moves to <main> when the other-team state gives way to the page', async () => {
+    site = withStatus(403)
+    const { rerender } = render(<main><SiteLayoutShell siteId="s1"><p>page</p></SiteLayoutShell></main>)
+    expect(screen.getByTestId('other-team')).toBeInTheDocument()
+    site = { data: { id: 's1', name: 'Example' } }
+    rerender(<main><SiteLayoutShell siteId="s1"><p>page</p></SiteLayoutShell></main>)
+    expect(screen.getByText('page')).toBeInTheDocument()
+    await waitFor(() => expect(document.activeElement?.tagName).toBe('MAIN'))
+  })
+
+  it('does not steal focus on an ordinary load', async () => {
+    site = { data: { id: 's1', name: 'Example' } }
+    render(<main><SiteLayoutShell siteId="s1"><p>page</p></SiteLayoutShell></main>)
+    await new Promise((r) => setTimeout(r, 30))
+    expect(document.activeElement?.tagName).not.toBe('MAIN')
   })
 })

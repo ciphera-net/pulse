@@ -19,11 +19,16 @@ vi.mock('@/lib/utils/logger', () => ({ logger: { error: vi.fn() } }))
 
 const refresh = vi.fn(async () => {})
 let orgId: string | null = 'A'
-vi.mock('@/lib/auth/context', () => ({ useAuth: () => ({ user: orgId ? { org_id: orgId } : null, refresh }) }))
+vi.mock('@/lib/auth/context', () => ({ useAuth: () => ({ user: orgId ? { id: 'u1', org_id: orgId } : null, refresh }) }))
 
 let orgs: { organization_id: string; organization_name?: string }[] | null = null
 let orgsError: unknown = undefined
-vi.mock('@/lib/swr/organizations', () => ({ useUserOrganizations: () => ({ organizations: orgs, error: orgsError }) }))
+// `afterRefresh` is what the list holds once re-read (null: unchanged).
+let afterRefresh: typeof orgs = null
+const refreshOrgs = vi.fn(async () => { if (afterRefresh) orgs = afterRefresh; return orgs })
+vi.mock('@/lib/swr/organizations', () => ({
+  useUserOrganizations: () => ({ organizations: orgs, error: orgsError, mutate: refreshOrgs }),
+}))
 
 let team: { data?: { organization_id: string }; error?: unknown } = {}
 const teamAsked = vi.fn()
@@ -48,6 +53,8 @@ beforeEach(() => {
   orgs = TEAMS
   orgsError = undefined
   team = {}
+  afterRefresh = null
+  refreshOrgs.mockClear()
   teamAsked.mockClear()
   switchSession.mockReset()
   switchSession.mockImplementation(async () => {})
@@ -113,11 +120,12 @@ describe('a site in another of your teams', () => {
     expect(screen.queryByRole('button')).toBeNull()
   })
 
-  it('falls back to B when the team is not one the reader knows by name', () => {
+  it('falls back to B when the team is not one the reader knows by name, even after re-reading the list', async () => {
     team = { data: { organization_id: 'Z' } }
     render(<SiteInAnotherTeam siteId="s1" />)
-    expect(screen.getByRole('heading', { name: 'This site is in another team' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'This site is in another team' })).toBeInTheDocument()
     expect(screen.queryByRole('button')).toBeNull()
+    expect(refreshOrgs).toHaveBeenCalledTimes(1)
   })
 
   it('falls back to B when the named team is the one already signed in to', () => {
@@ -133,5 +141,35 @@ describe('a site in another of your teams', () => {
     render(<SiteInAnotherTeam siteId="s1" />)
     expect(screen.getByText("If you're a member of the site's team, switch to it under Teams in the account menu.")).toBeInTheDocument()
     expect(screen.queryByText(/signed in to/)).toBeNull()
+  })
+})
+
+// Review 26-09-2026: the server can confirm membership of a team this browser's cached
+// list does not hold yet (an invite accepted elsewhere). The list is re-read ONCE before
+// the fallback is allowed to send a member to the account menu.
+//
+// MUTATION CHECK: drop the recheck effect and the first case shows B.
+describe('a confirmed team the cached list does not hold yet', () => {
+  it('re-reads the list once, then offers the switch', async () => {
+    team = { data: { organization_id: 'C' } }
+    afterRefresh = [...TEAMS, { organization_id: 'C', organization_name: 'Studio' }]
+    const { container } = render(<SiteInAnotherTeam siteId="s1" />)
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull()
+    expect(await screen.findByRole('heading', { name: 'This site is in Studio' })).toBeInTheDocument()
+    expect(refreshOrgs).toHaveBeenCalledTimes(1)
+  })
+
+  it('settles for B when the re-read list still does not hold it', async () => {
+    team = { data: { organization_id: 'C' } }
+    render(<SiteInAnotherTeam siteId="s1" />)
+    expect(await screen.findByRole('heading', { name: 'This site is in another team' })).toBeInTheDocument()
+    expect(refreshOrgs).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not re-read for a team the list already holds', () => {
+    team = { data: { organization_id: 'B' } }
+    render(<SiteInAnotherTeam siteId="s1" />)
+    expect(screen.getByRole('heading', { name: 'This site is in Marketing' })).toBeInTheDocument()
+    expect(refreshOrgs).not.toHaveBeenCalled()
   })
 })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Globe } from '@phosphor-icons/react'
 import { toast } from '@ciphera-net/facet'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -32,22 +32,41 @@ import { logger } from '@/lib/utils/logger'
  */
 export function SiteInAnotherTeam({ siteId }: { siteId: string }) {
   const auth = useAuth()
-  const { organizations, error: orgsError } = useUserOrganizations()
+  const { organizations, error: orgsError, mutate: refreshOrgs } = useUserOrganizations()
   const { data: team, error: teamError } = useSiteTeam(siteId, true)
   const [switching, setSwitching] = useState(false)
 
+  const currentOrgId = auth.user?.org_id ?? null
+  const confirmedOther = team && team.organization_id !== currentOrgId ? team.organization_id : null
+
+  // * The server CONFIRMED membership, but this browser's list of teams does not
+  // * hold that team (an invite accepted elsewhere: the list is cached for a minute
+  // * and not refetched on focus). Re-read it once before settling for the
+  // * fallback, which would otherwise send a member to the account menu for a
+  // * switch this state can make in one click (review, 26-09-2026).
+  const needsRecheck = !!confirmedOther && organizations !== null
+    && !organizations.some((o) => o.organization_id === confirmedOther)
+  const rechecked = useRef(false)
+  const [recheckDone, setRecheckDone] = useState(false)
+  useEffect(() => {
+    if (!needsRecheck || rechecked.current) return
+    rechecked.current = true
+    refreshOrgs().catch(() => undefined).finally(() => setRecheckDone(true))
+  }, [needsRecheck, refreshOrgs])
+
   const wrapper = 'mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6'
-  // * Nothing is stated until both answers are in, so the fallback never flashes
-  // * before the one-click state.
-  if ((!team && !teamError) || (organizations === null && !orgsError)) {
+  // * Nothing is stated until every answer is in, so the fallback never flashes
+  // * before the one-click state. A reader with no user record has no team list
+  // * to wait for.
+  const orgsSettled = organizations !== null || !!orgsError || !auth.user
+  if ((!team && !teamError) || !orgsSettled || (needsRecheck && !recheckDone)) {
     return <div className={wrapper} aria-busy="true" />
   }
 
-  const currentOrgId = auth.user?.org_id ?? null
   const nameOf = (id: string | null) =>
     id ? organizations?.find((o) => o.organization_id === id)?.organization_name || null : null
   const currentName = nameOf(currentOrgId)
-  const targetName = team && team.organization_id !== currentOrgId ? nameOf(team.organization_id) : null
+  const targetName = nameOf(confirmedOther)
   const signedIn = currentName ? `You're signed in to ${currentName}. ` : ''
 
   if (team && targetName) {
