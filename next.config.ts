@@ -12,7 +12,14 @@ const withPWA = withPWAInit({
   // * fetch turned into a dead service worker for that visitor (observed
   // * 01-09-2026, Vemetric comparison audit §10). The tracker is for CUSTOMER
   // * sites anyway; the dashboard shell never imports it.
-  publicExcludes: ["script.js", "script-sri.json", "script-versions.json"],
+  // *
+  // * 🔴 EVERY ENTRY NEEDS ITS LEADING `!`. next-pwa appends these to its own
+  // * fast-glob list after `**/*`, so a bare "script.js" is one more POSITIVE
+  // * pattern — it matched a file `**/*` had already matched, and excluded
+  // * nothing. Measured 27-09-2026: all three files were still selected for the
+  // * precache until the `!` was added. __tests__/pwa-precache.test.ts runs the
+  // * real glob over these patterns so a bare entry fails a test.
+  publicExcludes: ["!script.js", "!script-sri.json", "!script-versions.json"],
 })
 
 // * ═══ /_next/static/* IS SERVED FROM ITS OWN CDN ZONE ═══
