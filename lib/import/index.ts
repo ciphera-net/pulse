@@ -119,19 +119,19 @@ export async function prepareImport(options: ImportOptions): Promise<PreparedImp
     const client = new ImportApiClient(options.transport, { ...options.client, signal: options.signal })
 
     emit({ type: 'progress', stage: 'window' })
-    const window = await client.uploadWindow(
+    const uploadWindow = await client.uploadWindow(
       options.siteId,
       options.source,
       meta.kind === 'upload_aggregate' ? requestedZone : null,
     )
-    if (meta.kind === 'upload_raw' && requestedZone !== null && requestedZone !== window.site_timezone) {
+    if (meta.kind === 'upload_raw' && requestedZone !== null && requestedZone !== uploadWindow.site_timezone) {
       throw new ImportError(
         'bad_source_timezone',
-        `This source is counted in the site's own time zone (${window.site_timezone}).`,
+        `This source is counted in the site's own time zone (${uploadWindow.site_timezone}).`,
       )
     }
 
-    const existing = window.existing_import
+    const existing = uploadWindow.existing_import
     let clip: Clip
     if (existing) {
       if (!resumable(existing, options.source)) {
@@ -148,12 +148,17 @@ export async function prepareImport(options: ImportOptions): Promise<PreparedImp
         after: 'outside_history_window',
       }
     } else {
-      if (window.allowed_from === null || window.allowed_through === null) {
+      if (uploadWindow.allowed_from === null || uploadWindow.allowed_through === null) {
         throw new ImportError('range_outside_window', 'Pulse already covers every day this site can import.', {
-          detail: { allowed_from: window.allowed_from, allowed_through: window.allowed_through },
+          detail: { allowed_from: uploadWindow.allowed_from, allowed_through: uploadWindow.allowed_through },
         })
       }
-      clip = clipFromWindow(window.allowed_from, window.allowed_through, window.source_timezone, options.now?.() ?? new Date())
+      clip = clipFromWindow(
+        uploadWindow.allowed_from,
+        uploadWindow.allowed_through,
+        uploadWindow.source_timezone,
+        options.now?.() ?? new Date(),
+      )
     }
 
     channel = new WorkerChannel((options.createWorker ?? createBrowserWorker)(options.workerUrl ?? DEFAULT_WORKER_URL))
@@ -164,7 +169,7 @@ export async function prepareImport(options: ImportOptions): Promise<PreparedImp
     if (options.signal?.aborted) throw new ImportError('aborted', 'The import was cancelled.')
 
     const plan = await channel.prepare(
-      { source: options.source, file: options.file, clip, timeZone: window.site_timezone },
+      { source: options.source, file: options.file, clip, timeZone: uploadWindow.site_timezone },
       (message) => {
         if (message.type !== 'progress') return
         if (message.stage === 'reading') {
@@ -183,8 +188,8 @@ export async function prepareImport(options: ImportOptions): Promise<PreparedImp
     }
     emit({ type: 'skipped', origin: 'browser', counts: plan.skipped, samples: plan.skipped_samples })
 
-    const sourceTimezone = existing ? existing.source_timezone : window.source_timezone
-    return new Upload(options, client, channel, window, plan, sourceTimezone, existing, emit)
+    const sourceTimezone = existing ? existing.source_timezone : uploadWindow.source_timezone
+    return new Upload(options, client, channel, uploadWindow, plan, sourceTimezone, existing, emit)
   } catch (e) {
     channel?.terminate()
     const error = asImportError(e)
@@ -300,7 +305,13 @@ class Upload implements PreparedImport {
 
       const importId = this.importId
       const steps = this.plan.steps
-      this.emit({ type: 'progress', stage: 'uploading', importId, partsDone: partsBefore(steps, cursor), partsTotal: this.plan.parts_total })
+      this.emit({
+        type: 'progress',
+        stage: 'uploading',
+        importId,
+        partsDone: partsBefore(steps, cursor),
+        partsTotal: this.plan.parts_total,
+      })
       const final = await this.client.uploadParts({
         siteId,
         importId,

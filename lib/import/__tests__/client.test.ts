@@ -357,6 +357,15 @@ describe('ImportApiClient.uploadParts', () => {
     expect(e.code).toBe('plan_mismatch')
   })
 
+  it('refuses a cursor that does not move past the batch just sent, instead of resending it for ever', async () => {
+    const t: Transport = async (req) =>
+      req.path.endsWith('/batches') ? ok({ applied: {}, skipped: {}, next: { step: 0, part: 0 }, status: 'running' }) : ok(status())
+    const e = await failure(
+      new ImportApiClient(t, clock().options).uploadParts({ siteId: 's', importId: 'i', steps: plan, from: { step: 0, part: 0 }, getPart: async (a, b) => body(a, b) }),
+    )
+    expect(e.code).toBe('unexpected_response')
+  })
+
   it('refuses a server cursor outside the plan', async () => {
     const t: Transport = async (req) =>
       req.path.endsWith('/batches') ? ok({ applied: {}, skipped: {}, next: { step: 9, part: 0 }, status: 'running' }) : ok(status())

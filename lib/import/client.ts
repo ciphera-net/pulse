@@ -178,6 +178,12 @@ export class ImportApiClient {
       c.part >= 0 &&
       c.step < steps.length &&
       c.part < steps[c.step].parts
+    // A cursor's position in plan order, so "the server moved us forward" is checkable.
+    const ordinal = (c: Cursor) => {
+      let n = c.part
+      for (let i = 0; i < c.step; i++) n += steps[i].parts
+      return n
+    }
     let cursor: Cursor | null = inPlan(args.from) ? args.from : null
     let resyncs = 0
 
@@ -216,6 +222,14 @@ export class ImportApiClient {
       }
       if (!inPlan(response.next)) {
         throw new ImportError('unexpected_response', 'The server asked for a batch outside this plan.', {
+          detail: { expected: response.next },
+        })
+      }
+      // An answered batch always moves the cursor past it (applied: the next
+      // part; already applied: the server's cursor, which is further on). One
+      // that does not would have this loop resend the same batch for ever.
+      if (ordinal(response.next) <= ordinal(cursor)) {
+        throw new ImportError('unexpected_response', 'The server accepted a batch without moving past it.', {
           detail: { expected: response.next },
         })
       }
