@@ -139,6 +139,9 @@ public read API's — see that entry for what it does and does not cover.
   range carried over from another page is shortened to it, keeping its end date.
 - Visitors listed *Last 1 hour* and *Last 24 hours* twice, and opened with its
   selected row out of sight below the fold.
+- On CDN, a range reaching back more than a year would have failed the *Served
+  from* card, because Bunny answers for a year at most. The card now shows the
+  last 12 months of such a range and says "last 12 months".
 
 - **The line connecting the steps of a visit now runs through them.** It sat 12
   pixels to the left of the dots it was joining.
