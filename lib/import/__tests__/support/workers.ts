@@ -79,7 +79,6 @@ export function bundledWorker(code: string): TestWorker {
       if (type === 'message') deliver = fn
     },
   }
-  // eslint-disable-next-line @typescript-eslint/no-implied-eval
   new Function('self', code)(self)
   if (!deliver) throw new Error('the bundle registered no message listener on self')
   const listener = deliver as (event: { data: ToWorker }) => void

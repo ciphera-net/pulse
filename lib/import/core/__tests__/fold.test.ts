@@ -360,7 +360,6 @@ describe('RawFolder throughput', () => {
       pairs.push({ perMillion, canaryMs, budget: BUDGET_MS_PER_MILLION * Math.max(1, canaryMs / CANARY_REFERENCE_MS) })
     }
     const best = pairs.reduce((a, b) => (b.perMillion / b.budget < a.perMillion / a.budget ? b : a))
-    // eslint-disable-next-line no-console
     console.info(
       `[fold] ${best.perMillion.toFixed(0)} ms per million rows; canary ${best.canaryMs.toFixed(1)} ms; budget ${best.budget.toFixed(0)} ms`,
     )
