@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -125,6 +125,25 @@ describe('SiteVisibilityTab (Facet structured panels)', () => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith('https://pulse.ciphera.net/share/s1'),
     )
     expect(toast.success).toHaveBeenCalledWith('Link copied')
+  })
+
+  it('clears the "copied" reset timer on unmount, so no state update outlives the tab', async () => {
+    // CI failed on this once: a bare 2 s timer fired after the file's jsdom
+    // environment was gone ("window is not defined"), failing a green run.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      const { unmount } = render(<SiteVisibilityTab siteId="s1" />)
+      fireEvent.click(screen.getByRole('switch'))
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Copy public link/i }))
+      })
+      expect(toast.success).toHaveBeenCalledWith('Link copied')
+      expect(vi.getTimerCount()).toBeGreaterThan(0)
+      unmount()
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('hides the save bar and disables the toggle when the user cannot edit', () => {
