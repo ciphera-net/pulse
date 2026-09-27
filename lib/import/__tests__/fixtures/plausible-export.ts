@@ -66,8 +66,8 @@ export const PLAUSIBLE_FIXTURE_ROWS = {
   ],
   locations: [
     // date, country, region, city, visitors, visits, visit_duration, bounces, pageviews
-    ['2026-03-01', 'BE', 'BE-VLG', 2803138, 3, 3, 90, 1, 6], // 2: region+city → needs_place_names
-    ['2026-03-01', 'BE', 'BE-WAL', 0, 1, 1, 10, 0, 2], // 3: region only → needs_place_names
+    ['2026-03-01', 'BE', 'BE-VLG', 2803138, 3, 3, 90, 1, 6], // 2: region+city sent as their own rows (M6)
+    ['2026-03-01', 'BE', 'BE-WAL', 0, 1, 1, 10, 0, 2], // 3: region sent; city "0" (none) sent too (M6)
     ['2026-03-01', 'DE', '', 0, 2, 2, 20, 1, 4], // 4: country only
     ['2026-03-02', 'US', '', 0, 5, 6, 30, 2, 8], // 5
   ],
