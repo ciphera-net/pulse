@@ -165,10 +165,20 @@ export type RawDimensions = Partial<Record<'country' | 'device' | 'browser' | 'o
 export interface RawPageview {
   /** Epoch ms, UTC. */
   at: number
-  /** The source's visitor (or session) id. Interned, counted, never sent. */
-  visitor: string
-  /** The source's visit id. Interned, counted, never sent. */
-  visit: string
+  /**
+   * The source's visitor (or session) id. Interned, counted, never sent.
+   * `null` for a source with no per-row identity signal (Simple Analytics,
+   * M9-e): the row still counts toward `pageviews` everywhere it lands, but
+   * contributes to no `visitors` distinct count.
+   */
+  visitor: string | null
+  /**
+   * The source's visit id. Interned, counted, never sent. `null` alongside a
+   * `null` `.visitor` (M9-e): the row contributes to no `visits` distinct
+   * count and mints no `VisitRecord` — no entrance, no exit, no acquisition
+   * from that row.
+   */
+  visit: string | null
   page: string
   acquisition: RawAcquisition | null
   dimensions: RawDimensions
@@ -254,7 +264,8 @@ function eachVisit(b: Bucket, fn: (id: number) => void): void {
 }
 
 interface VisitRecord {
-  visitor: number
+  /** `null` only when a source somehow sends a real `.visit` with no `.visitor` (M9-e never does). */
+  visitor: number | null
   pageviews: number
   firstAt: number
   firstDay: DayState
@@ -299,6 +310,14 @@ export interface FoldOptions {
   budget?: number
   /** Injected in tests to count how often the zone is resolved. */
   resolveOffset?: OffsetResolver
+  /**
+   * Whether a visit's last pageview produces an `exit_page` row (M9-e).
+   * Default `true` (every source before M9). `false` for a source whose
+   * "visit" is by construction one pageview (Simple Analytics): a computed
+   * exit page would be a mechanical duplicate of the entry page, not a real
+   * measurement. `entry_page` is unaffected either way.
+   */
+  emitExitPages?: boolean
 }
 
 export class RawFolder {
@@ -311,11 +330,13 @@ export class RawFolder {
   /** Indexed by interned visit id. */
   private readonly visits: VisitRecord[] = []
   private readonly budget: number
+  private readonly emitExitPages: boolean
   private units = 0
 
   constructor(private readonly options: FoldOptions) {
     this.days = new DayResolver(options.resolveOffset ?? intlOffsetResolver(options.timeZone))
     this.budget = options.budget ?? FOLD_BUDGET
+    this.emitExitPages = options.emitExitPages ?? true
   }
 
   /** Total Set insertions (and held records) so far — what the budget counts. */
@@ -330,8 +351,12 @@ export class RawFolder {
       return
     }
     const held = this.visitors.size + this.visitIds.size
-    const visitor = this.visitors.id(row.visitor)
-    const visit = this.visitIds.id(row.visit)
+    // M9-e: a null id is never interned (a source with no identity signal for
+    // this row, e.g. Simple Analytics' `is_unique=false`); it counts toward
+    // `pageviews` everywhere below but never toward a distinct `visitors` or
+    // `visits` count, and (visit === null) mints no VisitRecord at all.
+    const visitor = row.visitor === null ? null : this.visitors.id(row.visitor)
+    const visit = row.visit === null ? null : this.visitIds.id(row.visit)
     const fresh = this.visitors.size + this.visitIds.size - held
     if (fresh) this.charge(fresh)
 
@@ -348,6 +373,11 @@ export class RawFolder {
     if (d.city !== undefined) {
       this.count(this.dimBucket(day, DIMENSION_INDEX.city, placeKey(d.country ?? '', d.city)), visitor, visit)
     }
+
+    // No visit id: no VisitRecord, so no entrance, no exit and no acquisition
+    // come from this row (M9-e). It has already counted toward every bucket's
+    // `pageviews` above.
+    if (visit === null) return
 
     const rec = this.visits[visit]
     if (!rec) {
@@ -404,7 +434,13 @@ export class RawFolder {
     const acq = new Map<string, { a: RawAcquisition; date: string; b: Bucket }>()
     this.visits.forEach((v, visitId) => {
       this.countVisit(this.dimBucket(v.firstDay, DIMENSION_INDEX.entry_page, v.entryPage), v, visitId)
-      this.countVisit(this.dimBucket(v.lastDay, DIMENSION_INDEX.exit_page, v.exitPage), v, visitId)
+      // M9-e: a source whose "visit" is by construction one pageview
+      // (Simple Analytics) has no real exit page to report — its last
+      // pageview IS its first, so a computed exit_page row would be a
+      // mechanical duplicate, not a measurement.
+      if (this.emitExitPages) {
+        this.countVisit(this.dimBucket(v.lastDay, DIMENSION_INDEX.exit_page, v.exitPage), v, visitId)
+      }
       if (v.acquisition) {
         const a = v.acquisition
         const k = JSON.stringify([v.firstDay.date, a.referrer, a.src_source, a.src_medium, a.src_campaign])
@@ -504,15 +540,21 @@ export class RawFolder {
     return b
   }
 
-  private count(b: Bucket, visitor: number, visit: number): void {
+  private count(b: Bucket, visitor: number | null, visit: number | null): void {
     b.pageviews++
-    const grew = addVisitor(b, visitor) + addVisit(b, visit)
+    let grew = 0
+    if (visitor !== null) grew += addVisitor(b, visitor)
+    if (visit !== null) grew += addVisit(b, visit)
     if (grew) this.charge(grew)
   }
 
   private countVisit(b: Bucket, v: VisitRecord, visitId: number): void {
     b.pageviews += v.pageviews
-    const grew = addVisitor(b, v.visitor) + addVisit(b, visitId)
+    // `visitId` is always real: countVisit is only ever called for a
+    // VisitRecord, which by construction (`add()`, above) exists only for a
+    // row whose `.visit` was non-null.
+    let grew = addVisit(b, visitId)
+    if (v.visitor !== null) grew += addVisitor(b, v.visitor)
     if (grew) this.charge(grew)
   }
 
