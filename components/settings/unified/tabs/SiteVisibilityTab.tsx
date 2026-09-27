@@ -44,6 +44,10 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
   // The old ref version kept the save bar dirty after a successful save.
   const [baseline, setBaseline] = useState('')
   const hasInitialized = useRef(false)
+  // The "copied" reset is cleared on unmount: a timer left running past the
+  // component (and, in tests, past the jsdom teardown) sets state on nothing.
+  const linkCopiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (linkCopiedTimer.current) clearTimeout(linkCopiedTimer.current) }, [])
 
   useEffect(() => {
     if (!site || hasInitialized.current) return
@@ -101,7 +105,8 @@ export default function SiteVisibilityTab({ siteId }: { siteId: string }) {
       await navigator.clipboard.writeText(`${APP_URL}/share/${siteId}`)
       setLinkCopied(true)
       toast.success('Link copied')
-      setTimeout(() => setLinkCopied(false), 2000)
+      if (linkCopiedTimer.current) clearTimeout(linkCopiedTimer.current)
+      linkCopiedTimer.current = setTimeout(() => setLinkCopied(false), 2000)
     } catch {
       toast.error("Couldn't copy the link. Try again.")
     }

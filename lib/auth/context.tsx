@@ -614,7 +614,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               const me = await getMe()
               const active = pickActiveTeam(me, session.org_id ?? null)
               if (active && active !== session.org_id) {
-                await activateTeam(active)
+                try {
+                  await activateTeam(active)
+                } catch (bridgeError) {
+                  // * activateTeam's first step tells Ciphera ID (the bridge,
+                  // * until Phase 5). Pulse decides the team from the header
+                  // * regardless, so a failed bridge must not leave this
+                  // * device with NO team — on a first load there is no cookie
+                  // * to fall back to, and every team-scoped request would
+                  // * answer TEAM_REQUIRED. Keep the team /me chose, locally.
+                  logger.error('Could not tell Ciphera ID about the active team; continuing with it', bridgeError)
+                  await setActiveTeamAction(active).catch(() => {})
+                }
               }
               setActiveTeam(active)
               // * No-op if the cookie already resolved it above. Otherwise
