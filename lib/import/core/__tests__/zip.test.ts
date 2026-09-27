@@ -13,7 +13,16 @@
 import { deflateSync, gzipSync, strToU8, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 import { ImportError } from '../../errors'
-import { ARCHIVE_LIMITS, detectInputKind, readGzip, readPlain, readZip, type ArchiveLimits, type EntrySink } from '../zip'
+import {
+  ARCHIVE_LIMITS,
+  DecompressionBudget,
+  detectInputKind,
+  readGzip,
+  readPlain,
+  readZip,
+  type ArchiveLimits,
+  type EntrySink,
+} from '../zip'
 
 const MiB = 1024 * 1024
 
@@ -344,7 +353,96 @@ describe('gzip and plain input', () => {
 
   it('passes a plain file through as it is', async () => {
     const c = collector()
-    await readPlain(blob(strToU8('a,b\n1,2\n')), c.entry('x.csv'))
+    await readPlain(blob(strToU8('a,b\n1,2\n')), 'x.csv', c.entry('x.csv'))
     expect(c.files['x.csv']).toBe('a,b\n1,2\n')
+    expect(c.ends).toEqual(['x.csv'])
+  })
+})
+
+// M7-b: a plain file had no byte budget at all. It now has the same entry and
+// total caps a ZIP entry gets, and a source reading SEVERAL plain files shares
+// one budget across them.
+describe('readPlain: the byte budget', () => {
+  it('refuses a single plain file over the per-entry cap exactly like an over-cap ZIP entry', async () => {
+    const at = limits({ maxEntryBytes: 1 * MiB, maxRatio: 1e9 })
+    const plain = await failure(readPlain(blob(zeros(2 * MiB)), 'big.csv', collector().entry('big.csv'), { limits: at }))
+    const zipped = await failure(
+      readZip(blob(rawZip([{ name: 'big.csv', content: zeros(2 * MiB), method: 0 }])), (n) => collector().entry(n), {
+        limits: at,
+      }),
+    )
+    for (const e of [plain, zipped]) {
+      expect(e.code).toBe('zip_too_large')
+      expect(e.detail).toMatchObject({ guard: 'entry_bytes', file: 'big.csv', limit: 1 * MiB })
+    }
+    expect(plain.message).toBe(zipped.message)
+  })
+
+  it('refuses a plain file over the total cap with its own budget when none is passed', async () => {
+    const e = await failure(
+      readPlain(blob(zeros(2 * MiB)), 'big.csv', collector().entry('big.csv'), {
+        limits: limits({ maxEntryBytes: 4 * MiB, maxTotalBytes: 1 * MiB, maxRatio: 1e9 }),
+      }),
+    )
+    expect(e.detail).toMatchObject({ guard: 'total_bytes', file: 'big.csv' })
+  })
+
+  it('reads a plain file exactly at the caps', async () => {
+    const c = collector()
+    await readPlain(blob(zeros(1 * MiB)), 'edge.csv', c.entry('edge.csv'), {
+      limits: limits({ maxEntryBytes: 1 * MiB, maxTotalBytes: 1 * MiB }),
+    })
+    expect(c.ends).toEqual(['edge.csv'])
+  })
+
+  it('a shared budget refuses once seven files together cross the total cap, naming the file that crossed it', async () => {
+    // Seven files of 1 MiB each under a 6.5 MiB total: every file alone is
+    // fine, the first six together are fine, and the seventh crosses. The
+    // failure must name the seventh (the one whose bytes crossed), never the
+    // first, which a budget reset per file could not have noticed at all.
+    const at = limits({ maxEntryBytes: 2 * MiB, maxTotalBytes: 6.5 * MiB, maxRatio: 1 })
+    const names = ['totals.csv', 'pages.csv', 'locations.csv', 'devices.csv', 'browsers.csv', 'os.csv', 'referrers.csv']
+    const files = names.map((name) => ({ name, blob: blob(zeros(1 * MiB)) }))
+    const budget = new DecompressionBudget(at, files.reduce((sum, f) => sum + f.blob.size, 0))
+    const read: string[] = []
+    const e = await failure(
+      (async () => {
+        for (const f of files) {
+          await readPlain(f.blob, f.name, collector().entry(f.name), { limits: at }, budget)
+          read.push(f.name)
+        }
+      })(),
+    )
+    expect(e.code).toBe('zip_too_large')
+    expect(e.detail).toMatchObject({ guard: 'total_bytes', file: 'referrers.csv', limit: 6.5 * MiB })
+    expect(read).toEqual(names.slice(0, 6))
+  })
+
+  it('control: the same seven files each with its own budget are all read, which is the gap a shared budget closes', async () => {
+    const at = limits({ maxEntryBytes: 2 * MiB, maxTotalBytes: 6.5 * MiB, maxRatio: 1 })
+    let ends = 0
+    for (let i = 0; i < 7; i++) {
+      const c = collector()
+      await readPlain(blob(zeros(1 * MiB)), `f${i}.csv`, c.entry(`f${i}.csv`), { limits: at })
+      ends += c.ends.length
+    }
+    expect(ends).toBe(7)
+  })
+
+  it('the ratio guard never trips on a plain read sized from its own files', async () => {
+    const c = collector()
+    const bytes = zeros(64 * 1024)
+    await readPlain(blob(bytes), 'x.csv', c.entry('x.csv'), { limits: limits({ maxRatio: 1 }) })
+    expect(c.ends).toEqual(['x.csv'])
+  })
+
+  it('stops reading the file the moment the budget refuses it, and never hands the sink the refused chunk', async () => {
+    let chunks = 0
+    const sink: EntrySink = { chunk: () => void chunks++, end: () => {} }
+    const e = await failure(
+      readPlain(blob(zeros(8 * MiB)), 'big.csv', sink, { limits: limits({ maxEntryBytes: 1, maxRatio: 1e9 }) }),
+    )
+    expect(e.detail.guard).toBe('entry_bytes')
+    expect(chunks).toBe(0)
   })
 })
