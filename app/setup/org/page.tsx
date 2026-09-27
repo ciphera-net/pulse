@@ -8,12 +8,14 @@ import { preservePlanParams } from '@/lib/setup/utils'
 import { createOrganization } from '@/lib/api/organization'
 import { useClearOrgScopedCaches } from '@/lib/swr/org-switch'
 import { activateTeam } from '@/lib/auth/switchOrganization'
+import { getMe, teamRole } from '@/lib/api/me'
 import { trackWelcomeWorkspaceCreated } from '@/lib/welcomeAnalytics'
 import apiRequest from '@/lib/api/client'
 import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { orgCreateError } from '@/lib/api/orgErrors'
 import { Button, Input, toast } from '@ciphera-net/facet'
 import { PlusIcon } from '@ciphera-net/facet'
+import { logger } from '@/lib/utils/logger'
 
 function slugFromName(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'my-organization'
@@ -45,6 +47,20 @@ export default function SetupOrgPage() {
       // out scoped to the org the session WAS on (pulse#730). Throws if the
       // session could not be stored.
       const activated = await activateTeam(org.id)
+
+      // * Fix 3 (PULSE-89 review): the role comes from PULSE's own
+      // * membership table, never from Ciphera ID's /auth/user/me — id-backend
+      // * cannot know the role in a team pulse-backend itself just created the
+      // * membership row for. Left undefined on any /me failure rather than
+      // * falling back to a guess; the rehydrate paths (refresh(),
+      // * rehydrateRoleSnapshot) fill it in from a later /me read.
+      let role: string | undefined
+      try {
+        role = teamRole(await getMe(), org.id) ?? undefined
+      } catch (e) {
+        logger.error("Could not resolve the new team's role from /me", e)
+      }
+
       try {
         const fullProfile = await apiRequest<{
           id: string; email: string; display_name?: string;
@@ -57,10 +73,10 @@ export default function SetupOrgPage() {
           // * The team just created and switched into — known outright, never
           // * guessed from the token (activateTeam's user carries neither).
           org_id: org.id,
-          role: fullProfile.role,
+          role,
         })
       } catch {
-        login({ ...activated.user, org_id: org.id })
+        login({ ...activated.user, org_id: org.id, role })
       }
 
       setOrg(org.id, orgName.trim())

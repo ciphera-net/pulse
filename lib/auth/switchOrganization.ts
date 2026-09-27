@@ -26,8 +26,34 @@ export interface ActivateTeamResult {
  * (b) Pulse records its OWN preference: `setActiveTeam` for the running tab
  *     (what `X-Pulse-Team` sends from now on) and `setActiveTeamAction` for
  *     the `pulse_team` cookie (what the next page load starts from).
+ *
+ * 🔴 SERIALISED (Fix 2, PULSE-89 review). Two calls that overlap — the team
+ * recovery handler and a person clicking the switcher at the same moment —
+ * could otherwise interleave their two-step writes: recovery's
+ * switchContext/setSessionAction landing BETWEEN the person's own two steps
+ * would leave the cookie naming one team and the in-memory Bearer/active-team
+ * naming another. `teamActivationChain` makes every call wait for the
+ * PREVIOUS one to fully settle — success or failure — before it starts its
+ * own two steps; they never overlap, and a rejected call never blocks the
+ * next one (see `activateTeamNow`'s failure-neutralising link below).
  */
-export async function activateTeam(teamId: string | null): Promise<ActivateTeamResult> {
+let teamActivationChain: Promise<void> = Promise.resolve()
+
+export function activateTeam(teamId: string | null): Promise<ActivateTeamResult> {
+  const run = teamActivationChain.then(() => activateTeamNow(teamId))
+  // * Whatever `run` does, the NEXT caller's turn must still arrive — a
+  // * rejection here must never propagate into the chain itself, or every
+  // * activateTeam call after a failed one would wait forever. `run` itself
+  // * is returned to THIS caller unmodified, so its own rejection is still
+  // * visible to whoever awaits it.
+  teamActivationChain = run.then(
+    () => undefined,
+    () => undefined,
+  )
+  return run
+}
+
+async function activateTeamNow(teamId: string | null): Promise<ActivateTeamResult> {
   const { access_token } = await switchContext(teamId)
   const stored = await setSessionAction(access_token)
   if (!stored.success) throw new Error('The switched session could not be stored')

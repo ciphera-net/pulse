@@ -47,6 +47,15 @@ vi.mock('@/lib/api/client', () => ({
   setActiveTeam: vi.fn(),
 }))
 
+// Fix 3 (PULSE-89 review): the new team's role comes from Pulse's own /me,
+// never from Ciphera ID's /auth/user/me response (the `apiRequest` mock
+// above, which deliberately carries no `role`).
+const { getMe, teamRole } = vi.hoisted(() => ({
+  getMe: vi.fn().mockResolvedValue({ user_id: 'u1', teams: [{ id: 'org_new', role: 'owner' }], default_team_id: 'org_new' }),
+  teamRole: vi.fn().mockReturnValue('owner'),
+}))
+vi.mock('@/lib/api/me', () => ({ getMe, teamRole }))
+
 vi.mock('@/lib/welcomeAnalytics', () => ({
   trackWelcomeWorkspaceCreated: vi.fn(),
 }))
@@ -65,6 +74,8 @@ beforeEach(() => {
   mockPush.mockClear()
   apiRequest.mockClear()
   setAccessToken.mockClear()
+  getMe.mockClear()
+  teamRole.mockClear()
 })
 
 describe('SetupOrgPage org creation', () => {
@@ -107,6 +118,39 @@ describe('SetupOrgPage org creation', () => {
     await waitFor(() => expect(mockPush).toHaveBeenCalled())
     expect(setAccessToken).toHaveBeenCalledWith('tok')
     expect(setAccessToken.mock.invocationCallOrder[0]).toBeLessThan(apiRequest.mock.invocationCallOrder[0])
+  })
+
+  // Fix 3 (PULSE-89 review).
+  it("takes the new team's role from Pulse's own /me, never from Ciphera ID's /auth/user/me", async () => {
+    render(
+      <SWRConfig value={{ provider: () => new Map() }}>
+        <SetupOrgPage />
+      </SWRConfig>,
+    )
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Fresh Org' } })
+    fireEvent.click(screen.getByRole('button', { name: /Create/i }))
+
+    await waitFor(() => expect(mockPush).toHaveBeenCalled())
+    expect(getMe).toHaveBeenCalled()
+    expect(teamRole).toHaveBeenCalledWith(expect.anything(), 'org_new')
+    // The apiRequest mock's /auth/user/me answer carries no `role` at all —
+    // if this came from there it could only ever be undefined.
+    expect(login).toHaveBeenCalledWith(expect.objectContaining({ org_id: 'org_new', role: 'owner' }))
+  })
+
+  it('leaves role undefined when /me fails, rather than falling back to a guess', async () => {
+    getMe.mockRejectedValueOnce(new Error('network'))
+
+    render(
+      <SWRConfig value={{ provider: () => new Map() }}>
+        <SetupOrgPage />
+      </SWRConfig>,
+    )
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Fresh Org' } })
+    fireEvent.click(screen.getByRole('button', { name: /Create/i }))
+
+    await waitFor(() => expect(mockPush).toHaveBeenCalled())
+    expect(login).toHaveBeenCalledWith(expect.objectContaining({ org_id: 'org_new', role: undefined }))
   })
 })
 
