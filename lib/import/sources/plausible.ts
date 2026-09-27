@@ -219,7 +219,7 @@ const nullIfEmpty = (s: string) => (s === '' ? null : s)
 
 type Mapper = (f: Fields, at: RowRef) => void
 
-function mappers(rows: AggregateBuilder, skipped: SkipLedger): Record<ReadTable, { counts: string[]; optional: string[]; map: Mapper }> {
+function mappers(rows: AggregateBuilder): Record<ReadTable, { counts: string[]; optional: string[]; map: Mapper }> {
   const dimension =
     (dim: Dimension, valueColumn: string, visitsColumn: string) =>
     (f: Fields, at: RowRef) => {
@@ -298,21 +298,31 @@ function mappers(rows: AggregateBuilder, skipped: SkipLedger): Record<ReadTable,
         const visitors = f.count('visitors')
         const visits = f.count('visits')
         const pageviews = f.count('pageviews')
-        rows.addDimension({ date, dimension: 'country', parent: '', value: country, visitors, visits, pageviews }, at)
-        // Region and city travel as the file has them: an ISO 3166-2 code and a
-        // GeoNames id (`"0"` = none), never a name. Sent unconditionally, like
-        // country, even when empty or "0" — the SERVER resolves them into
-        // names or the Unknown convention (M6); this parser never resolves or
-        // skips them (D9: the customer cannot bypass the mapping by choosing
-        // what a code means).
-        rows.addDimension(
-          { date, dimension: 'region', parent: country, value: f.text('region'), visitors, visits, pageviews },
+        // `addDimension` re-checks the clip independently on every call, and
+        // `date` is identical across all three calls below, so gating region
+        // and city on country's own `kept` result reproduces "skip this
+        // physical row once" without any content-based check: a row outside
+        // the clip counts once under its reason, not three times.
+        const kept = rows.addDimension(
+          { date, dimension: 'country', parent: '', value: country, visitors, visits, pageviews },
           at,
         )
-        rows.addDimension(
-          { date, dimension: 'city', parent: country, value: f.text('city'), visitors, visits, pageviews },
-          at,
-        )
+        if (kept) {
+          // Region and city travel as the file has them: an ISO 3166-2 code and
+          // a GeoNames id (`"0"` = none), never a name. Sent unconditionally,
+          // like country, even when empty or "0" — the SERVER resolves them
+          // into names or the Unknown convention (M6); this parser never
+          // resolves or skips them (D9: the customer cannot bypass the mapping
+          // by choosing what a code means).
+          rows.addDimension(
+            { date, dimension: 'region', parent: country, value: f.text('region'), visitors, visits, pageviews },
+            at,
+          )
+          rows.addDimension(
+            { date, dimension: 'city', parent: country, value: f.text('city'), visitors, visits, pageviews },
+            at,
+          )
+        }
       },
     },
     devices: { counts: ['visitors', 'visits', 'pageviews'], optional: [], map: dimension('device', 'device', 'visits') },
@@ -336,7 +346,7 @@ export const plausibleSource: AggregateSourceParser = {
     }
     const seen = new Set<string>()
     const ignored: string[] = []
-    const map = mappers(ctx.rows, ctx.skipped)
+    const map = mappers(ctx.rows)
 
     const entry = (name: string): EntrySink | null => {
       // A folder is named by the path its entries sit under. The ZIP format

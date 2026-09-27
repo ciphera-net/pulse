@@ -129,9 +129,10 @@ describe('runImport', () => {
     const status = await runImport(options)
     expect([status.range_start, status.range_end]).toEqual(['2026-03-02', '2026-03-02'])
     const skipped = events.find((e) => e.type === 'skipped' && e.origin === 'browser') as Extract<ImportEvent, { type: 'skipped'; origin: 'browser' }>
-    // Locations rows each now send country + region + city (M6), tripling their
-    // contribution to a window-dropped day: see plausible.test.ts's own count.
-    expect(skipped.counts.outside_history_window).toBe(23)
+    // Locations rows each now send country + region + city (M6), but a
+    // clipped physical row still counts once, not once per dimension it
+    // sends — see plausible.test.ts's own regression test for this.
+    expect(skipped.counts.outside_history_window).toBe(17)
     // The window stops well before yesterday, so what lies after it is Pulse's own.
     expect(skipped.counts.pulse_measured).toBe(1)
   })

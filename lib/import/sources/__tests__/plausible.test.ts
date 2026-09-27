@@ -157,10 +157,41 @@ describe('the synthetic export', () => {
     // The BE rows fall on the 1st: counted once, under the window, not as place names.
     expect(counts.needs_place_names).toBeUndefined()
     // The valid rows on the 1st: visitors 1, sources 2, pages 3, entry 1, exit 1,
-    // locations 9 (3 rows × country+region+city each, M6), devices 2, browsers 3,
-    // operating systems 1.
-    expect(counts.outside_history_window).toBe(23)
+    // locations 3, devices 2, browsers 3, operating systems 1. Each locations row
+    // now makes three addDimension calls (country + region + city, M6), but the
+    // clip check must count the PHYSICAL row once, not once per call — see the
+    // next test.
+    expect(counts.outside_history_window).toBe(17)
     expect(counts.pulse_measured).toBe(1)
+  })
+
+  it('counts a clipped locations row once, not once per dimension it now sends (M6)', async () => {
+    const day = '2026-03-01'
+    const { skipped } = await parse(
+      plausibleFixtureFile((files) => {
+        files[file('visitors')] = 'date,visitors,pageviews,bounces,visits,visit_duration\n' + `${day},10,30,4,12,600\n`
+        files[file('locations')] =
+          'date,country,region,city,visitors,visits,visit_duration,bounces,pageviews\n' +
+          `${day},BE,BE-VLG,2803138,3,3,90,1,6\n`
+        delete files[file('sources')]
+        delete files[file('pages')]
+        delete files[file('entry_pages')]
+        delete files[file('exit_pages')]
+        delete files[file('devices')]
+        delete files[file('browsers')]
+        delete files[file('operating_systems')]
+        delete files[file('custom_events')]
+        delete files[file('custom_props')]
+      }),
+      { from: '2026-03-02', through: '2026-03-03', before: 'outside_history_window', after: 'pulse_measured' },
+    )
+    // One physical locations row now makes three addDimension calls (country +
+    // region + city, M6) sharing one date. Clipped, it must still count as ONE
+    // skipped row — not three — or the customer's own skip report triples for
+    // every location, and the ledger's 5-sample budget (core/skipped.ts) burns
+    // three slots on the same line instead of naming up to 5 distinct ones.
+    // 1 from the visitors row + 1 from the locations row.
+    expect(skipped.toCounts()).toEqual({ outside_history_window: 2 })
   })
 
   it('plans the export end to end', async () => {
