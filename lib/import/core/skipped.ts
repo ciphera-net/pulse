@@ -34,6 +34,11 @@ export type SkipReason =
    * with a breakdown and no total is not one Pulse creates.
    */
   | 'outside_totals_range'
+  /**
+   * A row naming a different website's export (M9-j, Simple Analytics' raw
+   * datapoints, which carry their own `hostname` column per row).
+   */
+  | 'hostname_mismatch'
 
 export const MAX_SAMPLES_PER_REASON = 5
 
