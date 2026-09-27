@@ -62,7 +62,7 @@ export async function runPipeline(req: PipelineRequest, hooks: PipelineHooks = {
     result = await parser.read(files, { rows: builder, skipped, read })
     rows = builder.build()
   } else {
-    const folder = new RawFolder({ timeZone: req.timeZone, clip: req.clip, skipped })
+    const folder = new RawFolder({ timeZone: req.timeZone, clip: req.clip, skipped, emitExitPages: meta.hasExitPages })
     result = await parser.read(files, { rows: folder, skipped, read })
     rows = folder.finish()
   }
