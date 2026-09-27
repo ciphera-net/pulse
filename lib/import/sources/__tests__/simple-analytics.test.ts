@@ -2,10 +2,15 @@
 //
 // Simple Analytics' raw datapoints CSV parser (design §3.12m9), on (a) a
 // SYNTHETIC fixture built from M9-c's exact required header, and (b) the real
-// export in `Pulse/docs/data/27-09-2026-analytics-import-adapters/real-exports/
-// simple-analytics/` (1,417 real rows of simpleanalytics.com's own public
-// dashboard). That real CSV predates M9-b's `type=all` fix (README: "the
-// 1,417-row CSV... lacks hostname/datapoint"), so gate 2's real-fixture check
+// export vendored at `./fixtures/simple-analytics-real-export.csv` — a copy of
+// the 1,417 real rows recorded in
+// `Pulse/docs/data/27-09-2026-analytics-import-adapters/real-exports/simple-analytics/`,
+// simpleanalytics.com's own public dashboard. It is vendored INSIDE this repo
+// (not read from that sibling docs path) because Woodpecker's `test.yml`
+// checks out only this repo — a path escaping it 404s in CI even though it
+// resolves locally in this workspace's layout. That real CSV predates M9-b's
+// `type=all` fix (README: "the 1,417-row CSV... lacks hostname/datapoint"), so
+// gate 2's real-fixture check
 // augments it with the two columns the corrected recipe adds — `hostname`
 // (the query's own `hostname=` value, true of every row in the pull) and
 // `datapoint` (every row is a real `pageview`, since the pull that produced
@@ -428,10 +433,10 @@ describe('dimension mapping', () => {
 
 // ─── Gate 2: the real export, augmented for the corrected recipe ───────────
 
-const REAL_CSV_PATH = path.resolve(
-  __dirname,
-  '../../../../../docs/data/27-09-2026-analytics-import-adapters/real-exports/simple-analytics/simpleanalytics-com-datapoints-2026-09-20-to-2026-09-21.csv',
-)
+// Vendored in-repo (see the file-header comment) — never a path that escapes
+// `__dirname`'s own tree, so a plain `npm ci` + `npm test` checkout of this
+// repo alone (exactly what Woodpecker's `test.yml` does) can read it.
+const REAL_CSV_PATH = path.resolve(__dirname, 'fixtures/simple-analytics-real-export.csv')
 
 /** A synchronous CSV read for TEST SETUP ONLY (the real parser is streaming; see core/csv.ts). */
 function readCsvSync(text: string): { header: string[]; rows: string[][] } {

@@ -54,7 +54,7 @@ import { wrongFile } from '../errors'
 import { SIMPLE_ANALYTICS_ONE_FILE_MESSAGE } from '../source-meta'
 import type { RawAcquisition } from '../core/fold'
 import { CsvByteParser } from '../core/csv'
-import type { RawSourceParser, SourceFile } from './source'
+import type { RawSourceParser } from './source'
 
 /**
  * The columns this parser reads (M9-c). Exactly 18: undercounted in the
