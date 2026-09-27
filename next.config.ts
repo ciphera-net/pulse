@@ -12,7 +12,35 @@ const withPWA = withPWAInit({
   // * fetch turned into a dead service worker for that visitor (observed
   // * 01-09-2026, Vemetric comparison audit §10). The tracker is for CUSTOMER
   // * sites anyway; the dashboard shell never imports it.
-  publicExcludes: ["script.js", "script-sri.json", "script-versions.json"],
+  // *
+  // * 🔴 EVERY ENTRY NEEDS ITS LEADING `!`. next-pwa appends these to its own
+  // * fast-glob list after `**/*`, so a bare "script.js" is one more POSITIVE
+  // * pattern — it matched a file `**/*` had already matched, and excluded
+  // * nothing. Measured 27-09-2026: all three files were still selected for the
+  // * precache until the `!` was added. __tests__/pwa-precache.test.ts runs the
+  // * real glob over these patterns so a bare entry fails a test.
+  // *
+  // * workers/**: the analytics-import worker (scripts/build-worker.mjs). It is
+  // * fetched by path when an import starts, and a precached copy would outlive
+  // * the deploy that replaced it.
+  publicExcludes: ["!script.js", "!script-sri.json", "!script-versions.json", "!workers/**"],
+  // * 🔴 ...AND out of the RUNTIME cache. next-pwa's default runtime caching
+  // * answers every `*.js` request StaleWhileRevalidate ("static-js-assets", 24 h),
+  // * and a dedicated worker's script fetch goes through the page's service
+  // * worker — so without this rule the first import after a deploy would run the
+  // * PREVIOUS build's worker, served from cache, while the cache refreshed behind
+  // * it. Custom rules are registered ahead of the defaults, and the first match
+  // * wins. `extendDefaultRuntimeCaching` keeps every default rule as it was.
+  extendDefaultRuntimeCaching: true,
+  workboxOptions: {
+    runtimeCaching: [
+      {
+        urlPattern: /\/workers\/import\.js$/i,
+        handler: "NetworkOnly",
+        options: { cacheName: "import-worker" },
+      },
+    ],
+  },
 })
 
 // * ═══ /_next/static/* IS SERVED FROM ITS OWN CDN ZONE ═══

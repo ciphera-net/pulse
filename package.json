@@ -7,7 +7,8 @@
     "dev": "next dev",
     "generate:sri": "node scripts/generate-sri.js",
     "build:scripts": "node scripts/build-scripts.mjs",
-    "prebuild": "npm run build:scripts && npm run generate:sri",
+    "build:worker": "node scripts/build-worker.mjs",
+    "prebuild": "npm run build:scripts && npm run generate:sri && npm run build:worker",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint .",
@@ -16,7 +17,7 @@
     "test:watch": "vitest",
     "test:smoke": "playwright test tests/settings-smoke.spec.ts",
     "lint:fix": "eslint . --fix",
-    "test:tz-positive": "PULSE_TEST_TZ=Pacific/Kiritimati vitest run lib/utils/__tests__/formatDate.test.ts components/settings/unified/tabs/__tests__/WorkspaceBillingTab.test.tsx lib/notifications components/uptime/__tests__/uptimeMetrics.test.ts lib/visitors"
+    "test:tz-positive": "PULSE_TEST_TZ=Pacific/Kiritimati vitest run lib/utils/__tests__/formatDate.test.ts components/settings/unified/tabs/__tests__/WorkspaceBillingTab.test.tsx lib/notifications components/uptime/__tests__/uptimeMetrics.test.ts lib/visitors lib/import"
   },
   "dependencies": {
     "@ciphera-net/auth": "0.4.0",
@@ -46,6 +47,7 @@
     "d3-scale": "^4.0.2",
     "d3-shape": "^3.2.0",
     "driver.js": "^1.8.0",
+    "fflate": "^0.8.2",
     "framer-motion": "^12.23.26",
     "html-to-image": "^1.11.13",
     "i18n-iso-countries": "^7.14.0",
@@ -86,6 +88,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.4",
     "autoprefixer": "^10.4.19",
+    "esbuild": "^0.27.3",
     "eslint": "^9.39.2",
     "eslint-config-next": "^16.1.1",
     "jsdom": "^28.1.0",
