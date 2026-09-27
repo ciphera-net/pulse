@@ -57,6 +57,12 @@ const PUBLIC_ROUTES = new Set([
   // * load logged a fetch error. Same reason sw.js/workbox-*.js are excluded from
   // * the matcher below.
   '/script-versions.json',
+  // * The history-import worker (PULSE-107, M2): a static script new Worker()
+  // * loads from this origin, and public source in this public repo. Measured on
+  // * staging 27-09-2026: without this entry a request with no session 307s to
+  // * /login, so a Worker would be handed HTML instead of JavaScript — the same
+  // * class of failure sw.js and the tracker files above are exempt from.
+  '/workers/import.js',
 ])
 
 const PUBLIC_PREFIXES = [

@@ -3,6 +3,10 @@
 # auto-generated
 /lib/integration-guides.gen.ts
 /public/build-id.json
+# The import worker, built by `npm run build:worker` (prebuild). Build output on
+# purpose: Next serves public/ from its own image, so committing it could only
+# ever let the file drift from the source it was built from.
+/public/workers/
 
 # dependencies
 /node_modules
