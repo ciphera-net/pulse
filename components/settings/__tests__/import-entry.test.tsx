@@ -48,6 +48,7 @@ vi.mock('@/lib/auth/permissions', () => ({ useCan: () => true }))
 vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => 'team' }))
 const site = { id: 's1', name: 'Acme', domain: 'acme.example', is_verified: true }
 vi.mock('@/components/settings/active-site', () => ({
+  useActiveSiteIdIfAny: () => 's1',
   useActiveSite: () => ({
     sites: [site],
     activeSite: site,

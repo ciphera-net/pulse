@@ -22,7 +22,7 @@ import { useCan } from '@/lib/auth/permissions'
 import { cn } from '@/lib/utils'
 import { SiteHeaderIdentity } from '@/components/settings/SiteHeaderIdentity'
 import { navGroups, sectionOf, tabFor, tabIsVisible, type NavGroup, type NavTab, type Section } from '@/components/settings/nav'
-import { useActiveSite } from '@/components/settings/active-site'
+import { useActiveSiteIdIfAny } from '@/components/settings/active-site'
 import { useImportAvailable } from '@/lib/import/useImportSources'
 import { useTeamState } from '@/lib/hooks/useTeamState'
 import {
@@ -229,8 +229,7 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
   }
 
   // The Import tab is listed only where the active site can import (M11-b).
-  const { activeSiteId } = useActiveSite()
-  const conditions = { import_available: useImportAvailable(activeSiteId) }
+  const conditions = { import_available: useImportAvailable(useActiveSiteIdIfAny()) }
 
   const visibleGroups = navGroups(teamState).map((group) => ({
     ...group,

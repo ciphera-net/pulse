@@ -150,3 +150,13 @@ export function useActiveSite(): ActiveSiteValue {
   if (!ctx) throw new Error('useActiveSite must be used within an ActiveSiteProvider')
   return ctx
 }
+
+/**
+ * The active site's id, or null where no provider is mounted. For the settings
+ * shell, which renders on every settings route (including before the provider's
+ * branch applies) and only needs the id to decide whether the site can import
+ * history (PULSE-118): no provider simply means no Import row, never a throw.
+ */
+export function useActiveSiteIdIfAny(): string | null {
+  return useContext(ActiveSiteContext)?.activeSiteId ?? null
+}
