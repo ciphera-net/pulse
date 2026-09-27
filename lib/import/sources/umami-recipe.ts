@@ -67,7 +67,13 @@ export const UMAMI_COLUMNS = [
 ] as const
 export type UmamiColumn = (typeof UMAMI_COLUMNS)[number]
 
-/** What the customer replaces with their own website id (Umami: Settings → Websites → Edit). */
+/**
+ * What the customer replaces with their own website id (Umami: Settings →
+ * Websites → Edit). Written out literally in both queries below, not
+ * interpolated: a template with a substitution is not something the bundler
+ * can prove side-effect free, so it would keep both queries in the worker,
+ * which never reads them. A test holds the queries to this value.
+ */
 export const UMAMI_WEBSITE_ID_PLACEHOLDER = '00000000-0000-0000-0000-000000000000'
 
 /**
@@ -101,7 +107,7 @@ COPY (
     s.city AS city
   FROM website_event we
   JOIN session s ON s.session_id = we.session_id
-  WHERE we.website_id = '${UMAMI_WEBSITE_ID_PLACEHOLDER}'
+  WHERE we.website_id = '00000000-0000-0000-0000-000000000000'
     -- Only if this website's tracking code runs on several hostnames and you
     -- want one of them: uncomment the next line and put that hostname in it.
     -- AND we.hostname = 'example.com'
@@ -141,7 +147,7 @@ SELECT
   s.city AS city
 FROM website_event we
 JOIN session s ON s.session_id = we.session_id
-WHERE we.website_id = '${UMAMI_WEBSITE_ID_PLACEHOLDER}'
+WHERE we.website_id = '00000000-0000-0000-0000-000000000000'
   -- Only if this website's tracking code runs on several hostnames and you
   -- want one of them: uncomment the next line and put that hostname in it.
   -- AND we.hostname = 'example.com'

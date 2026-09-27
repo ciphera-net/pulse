@@ -49,6 +49,11 @@ describe('the prebuilt worker bundle', () => {
     expect(code.trimStart().startsWith('"use strict";(()=>{')).toBe(true)
   })
 
+  it('carries no published export query: the recipe is for the page, never the worker (M8)', async () => {
+    const code = (await build()).outputFiles[0].text
+    expect(code).not.toMatch(/TO STDOUT|DATE_FORMAT|SET time_zone|JOIN session/)
+  })
+
   it('holds no credential code: no session header, no cookie, no API client', async () => {
     const code = (await build()).outputFiles[0].text
     expect(code).not.toMatch(/Authorization|X-CSRF-Token|document\.cookie|\/api\/v1|fetch\(/)
