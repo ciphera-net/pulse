@@ -2,14 +2,15 @@
 //
 // The keyed fold for aggregate sources (M2-d, M2-k): one row per client key,
 // the window clip with its reasons, and the cardinality caps into a real
-// `(other)` row — 1,000 values per day and dimension, 1,000 acquisition tuples
-// per day, counting `(other)` itself.
+// `(other)` row — 1,000 named values per day and dimension, 1,000 named
+// acquisition tuples per day, and the `(other)` row on top (the server's
+// reading, §3.12b "Build amendments").
 
 import { describe, expect, it } from 'vitest'
 import { ImportError } from '../../errors'
 import type { AcquisitionRow, DimensionRow } from '../../types'
 import { AggregateBuilder, MAX_COUNT } from '../aggregate'
-import { OTHER, type Clip } from '../cap'
+import { DIMENSION_VALUE_CAP, OTHER, capGroup, type Clip } from '../cap'
 import { SkipLedger } from '../skipped'
 
 const at = (line: number) => ({ file: 'f.csv', line })
@@ -130,29 +131,49 @@ describe('AggregateBuilder: the window clip', () => {
 })
 
 describe('AggregateBuilder: the cardinality caps', () => {
-  it('keeps the 999 biggest page values of a day and folds the rest into one real (other) row', () => {
+  it('keeps the 1,000 biggest page values of a day and folds the rest into one real (other) row on top', () => {
     const b = new AggregateBuilder(null, new SkipLedger())
     // 1,500 values: /v0 has the most visitors, /v1499 the fewest.
     for (let i = 0; i < 1500; i++) b.addDimension(dim({ value: `/v${i}`, visitors: 2000 - i, visits: 1, pageviews: 1 }), at(i + 2))
     const pages = b.build().dimensions
-    expect(pages).toHaveLength(1000)
+    // 1,000 named values and the (other) row: the server's cap, so it never folds again.
+    expect(pages).toHaveLength(1001)
+    expect(pages.filter((r) => r.value !== OTHER)).toHaveLength(1000)
     const other = pages.find((r) => r.value === OTHER) as DimensionRow
-    // The 501 smallest, summed.
+    // The 500 smallest, summed.
     let visitors = 0
-    for (let i = 999; i < 1500; i++) visitors += 2000 - i
-    expect(other).toEqual(dim({ value: OTHER, visitors, visits: 501, pageviews: 501 }))
-    expect(pages.some((r) => r.value === '/v998')).toBe(true)
-    expect(pages.some((r) => r.value === '/v999')).toBe(false)
+    for (let i = 1000; i < 1500; i++) visitors += 2000 - i
+    expect(other).toEqual(dim({ value: OTHER, visitors, visits: 500, pageviews: 500 }))
+    expect(pages.some((r) => r.value === '/v999')).toBe(true)
+    expect(pages.some((r) => r.value === '/v1000')).toBe(false)
+  })
+
+  it('folds one value past the cap into (other), rather than leaving a day at 1,001 named values', () => {
+    const b = new AggregateBuilder(null, new SkipLedger())
+    for (let i = 0; i < 1001; i++) b.addDimension(dim({ value: `/v${i}`, visitors: 2000 - i }), at(i + 2))
+    const pages = b.build().dimensions
+    expect(pages.filter((r) => r.value !== OTHER)).toHaveLength(1000)
+    expect(pages.filter((r) => r.value === OTHER)).toEqual([dim({ value: OTHER, visitors: 2000 - 1000 })])
   })
 
   it('folds the source\'s own (other) into the one (other) row, so there are never two', () => {
     const b = new AggregateBuilder(null, new SkipLedger())
+    for (let i = 0; i < 1001; i++) b.addDimension(dim({ value: `/v${i}`, visitors: 5 }), at(i + 2))
+    b.addDimension(dim({ value: OTHER, visitors: 1000 }), at(9999))
+    const pages = b.build().dimensions
+    // 1,001 named values and the source's (other): 1,000 kept, the 1,001st and
+    // the source's (other) summed into one row.
+    expect(pages).toHaveLength(1001)
+    expect(pages.filter((r) => r.value === OTHER)).toEqual([dim({ value: OTHER, visitors: 1000 + 5, visits: 2, pageviews: 2 })])
+  })
+
+  it('keeps the source\'s own (other) as it is beside 1,000 named values: it is not a named value', () => {
+    const b = new AggregateBuilder(null, new SkipLedger())
     for (let i = 0; i < 1000; i++) b.addDimension(dim({ value: `/v${i}`, visitors: 5 }), at(i + 2))
     b.addDimension(dim({ value: OTHER, visitors: 1000 }), at(9999))
     const pages = b.build().dimensions
-    expect(pages).toHaveLength(1000)
-    // 1,001 rows: 999 values kept, the 1,000th value and the source's (other) folded together.
-    expect(pages.filter((r) => r.value === OTHER)).toEqual([dim({ value: OTHER, visitors: 1000 + 5, visits: 2, pageviews: 2 })])
+    expect(pages).toHaveLength(1001)
+    expect(pages.filter((r) => r.value === OTHER)).toEqual([dim({ value: OTHER, visitors: 1000 })])
   })
 
   it('leaves a day with exactly 1,000 values alone', () => {
@@ -170,16 +191,20 @@ describe('AggregateBuilder: the cardinality caps', () => {
     }
     const rows = b.build().dimensions
     const count = (date: string, d: string) => rows.filter((r) => r.date === date && r.dimension === d).length
-    expect([count('2026-03-01', 'page'), count('2026-03-01', 'browser'), count('2026-03-02', 'page')]).toEqual([1000, 1000, 1000])
+    // Each group: 1,000 named values and its own (other).
+    expect([count('2026-03-01', 'page'), count('2026-03-01', 'browser'), count('2026-03-02', 'page')]).toEqual([1001, 1001, 1001])
   })
 
-  it('keeps the 999 biggest acquisition tuples of a day and folds the rest into referrer (other)', () => {
+  it('keeps the 1,000 biggest acquisition tuples of a day and folds the rest into referrer (other) on top', () => {
     const b = new AggregateBuilder(null, new SkipLedger())
     for (let i = 0; i < 1200; i++) {
       b.addAcquisition(acq({ referrer: `r${i}.example`, src_source: `r${i}.example`, visitors: 5000 - i, utm_source: 'x' }), at(i))
     }
     const rows = b.build().acquisition
-    expect(rows).toHaveLength(1000)
+    expect(rows).toHaveLength(1001)
+    expect(rows.filter((r) => r.referrer !== OTHER)).toHaveLength(1000)
+    expect(rows.some((r) => r.referrer === 'r999.example')).toBe(true)
+    expect(rows.some((r) => r.referrer === 'r1000.example')).toBe(false)
     const other = rows.find((r) => r.referrer === OTHER) as AcquisitionRow
     expect(other).toMatchObject({
       referrer: OTHER,
@@ -190,9 +215,27 @@ describe('AggregateBuilder: the cardinality caps', () => {
       src_medium: '',
       src_campaign: '',
       src_channel_group: '',
-      visits: 201,
-      pageviews: 201,
+      visits: 200,
+      pageviews: 200,
     })
+  })
+
+  it('counts only named values against the cap, as the server does (capGroup)', () => {
+    const rank = (v: string) => ({ visitors: 1, pageviews: 1, visits: 1, tiebreak: v })
+    const isOther = (v: string) => v === OTHER
+    const named = (n: number) => Array.from({ length: n }, (_, i) => `/v${String(i).padStart(5, '0')}`)
+    expect(DIMENSION_VALUE_CAP).toBe(1000)
+    // 1,000 named values and a source's (other): within the cap, nothing to fold.
+    expect(capGroup([...named(1000), OTHER], 1000, rank, isOther)).toBeNull()
+    // 1,001 named values: 1,000 kept, one folded.
+    const one = capGroup(named(1001), 1000, rank, isOther)
+    expect(one?.kept).toHaveLength(1000)
+    expect(one?.folded).toEqual(['/v01000'])
+    // Past the cap, the source's (other) is folded with the rest.
+    const both = capGroup([OTHER, ...named(1001)], 1000, rank, isOther)
+    expect(both?.kept).toHaveLength(1000)
+    expect(both?.kept).not.toContain(OTHER)
+    expect(both?.folded).toEqual(['/v01000', OTHER])
   })
 
   it('breaks ties by key so the kept set is the same every time', () => {

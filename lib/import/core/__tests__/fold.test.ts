@@ -204,20 +204,21 @@ describe('RawFolder', () => {
     })
   })
 
-  it('caps a day at 1,000 page values, the rest a real (other) row with DISTINCT visitors', () => {
+  it('caps a day at 1,000 page values, the rest a real (other) row on top with DISTINCT visitors', () => {
     const f = new RawFolder({ timeZone: 'UTC', clip: null, skipped: new SkipLedger() })
     const at = T('2026-03-10T12:00:00Z')
-    // 999 popular pages with 3 visitors each; then 300 pages all seen by the
+    // 1,000 popular pages with 3 visitors each; then 300 pages all seen by the
     // SAME one visitor. Their (other) row must count that visitor once.
-    for (let p = 0; p < 999; p++) {
+    for (let p = 0; p < 1000; p++) {
       for (const v of ['a', 'b', 'c']) f.add(pv({ at, visitor: `${v}${p}`, visit: `${v}${p}`, page: `/popular/${p}` }))
     }
     for (let p = 0; p < 300; p++) f.add(pv({ at, visitor: 'loner', visit: 'loner-visit', page: `/tail/${p}` }))
     const pages = f.finish().dimensions.filter((r) => r.dimension === 'page')
-    expect(pages).toHaveLength(1000)
+    // 1,000 named values and the (other) row: the server's cap (§3.12b "Build amendments").
+    expect(pages).toHaveLength(1001)
     const other = pages.find((r) => r.value === OTHER)
     expect(other).toEqual({ date: '2026-03-10', dimension: 'page', parent: '', value: OTHER, visitors: 1, visits: 1, pageviews: 300 })
-    expect(pages.filter((r) => r.value.startsWith('/popular/'))).toHaveLength(999)
+    expect(pages.filter((r) => r.value.startsWith('/popular/'))).toHaveLength(1000)
   })
 
   it('does not cap a day at exactly 1,000 values', () => {

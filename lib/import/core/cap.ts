@@ -4,14 +4,18 @@
 // most 1,000 acquisition tuples; everything past that folds into a real
 // `(other)` row, which is kept (§3.4), never dropped.
 //
-// 🔑 "At most 1,000" counts the `(other)` row itself. When a group overflows,
-// the 999 highest-ranked values are kept and the rest become the thousandth.
-// The server enforces the same cap (both sides, M2-k), and a batch that already
-// holds exactly 1,000 values per group is inside it under either reading of
-// whether `(other)` counts.
+// 🔑 The 1,000 counts NAMED values only; the `(other)` row comes on top of
+// them. That is the server's reading (§3.12b "Build amendments", 27-09-2026:
+// "1,000 named values per (day, dimension) plus the `(other)` row", and the
+// same for acquisition tuples), and the client caps exactly as the server
+// does, so the server never has to fold a batch again. When a group has more
+// than 1,000 named values, the 1,000 highest-ranked are kept and the rest are
+// summed into `(other)`: a group is at most 1,001 rows.
 //
-// A source's own literal `(other)` is always folded into the one `(other)` row
-// when a group overflows, so there is never a second row under that name.
+// A source's own literal `(other)` is never counted as a named value. Within
+// the cap it is sent as the source's row, the group's one `(other)`; when the
+// group overflows it is summed into the one `(other)` row with everything
+// else, so there is never a second row under that name.
 
 import type { SkipReason } from './skipped'
 
@@ -40,9 +44,10 @@ export function compareRank(a: RankKey, b: RankKey): number {
 }
 
 /**
- * Splits an overflowing group. Returns null when the group is within the cap
- * (keep every item as it is); otherwise the `cap - 1` items to keep and the
- * items to fold into `(other)`.
+ * Splits an overflowing group. Returns null when the group has at most `cap`
+ * named values (keep every item as it is, a source's own `(other)` included);
+ * otherwise the `cap` named items to keep and the items to fold into
+ * `(other)`: the rest of the named ones, and any `(other)` the source sent.
  */
 export function capGroup<T>(
   items: readonly T[],
@@ -50,6 +55,7 @@ export function capGroup<T>(
   rank: (item: T) => RankKey,
   isOther: (item: T) => boolean,
 ): { kept: T[]; folded: T[] } | null {
+  // No more items than the cap means no more named values than the cap.
   if (items.length <= cap) return null
   const others: T[] = []
   const ranked: { item: T; key: RankKey }[] = []
@@ -57,9 +63,10 @@ export function capGroup<T>(
     if (isOther(item)) others.push(item)
     else ranked.push({ item, key: rank(item) })
   }
+  if (ranked.length <= cap) return null
   ranked.sort((a, b) => compareRank(a.key, b.key))
-  const kept = ranked.slice(0, cap - 1).map((r) => r.item)
-  const folded = ranked.slice(cap - 1).map((r) => r.item)
+  const kept = ranked.slice(0, cap).map((r) => r.item)
+  const folded = ranked.slice(cap).map((r) => r.item)
   for (const o of others) folded.push(o)
   return { kept, folded }
 }

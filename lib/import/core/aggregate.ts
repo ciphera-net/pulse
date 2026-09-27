@@ -170,7 +170,7 @@ export class AggregateBuilder {
   }
 }
 
-/** Per (date, dimension): at most 1,000 values, the rest summed into `(other)`. */
+/** Per (date, dimension): at most 1,000 named values, the rest summed into one `(other)` row on top. */
 export function capDimensions(rows: DimensionRow[]): DimensionRow[] {
   const groups = new Map<string, DimensionRow[]>()
   for (const r of rows) {
@@ -212,7 +212,7 @@ export function capDimensions(rows: DimensionRow[]): DimensionRow[] {
   return out
 }
 
-/** Per date: at most 1,000 acquisition tuples, the rest summed into referrer `(other)`. */
+/** Per date: at most 1,000 named acquisition tuples, the rest summed into one referrer `(other)` row on top. */
 export function capAcquisition(rows: AcquisitionRow[]): AcquisitionRow[] {
   const groups = new Map<string, AcquisitionRow[]>()
   for (const r of rows) {
