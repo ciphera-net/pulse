@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Button, Select } from '@ciphera-net/facet'
 import { PanelRow, PanelRows } from '@/components/settings/panels'
 import { SetupReveal } from '@/components/settings/integrationRows'
@@ -40,7 +40,10 @@ import { acceptFor, dayAfterText, fileNounFor, pct, rangeText, slotPhase } from 
 //
 // 🔴 The confirm screen renders PreparedImport.plan and nothing else: the plan is
 // final before the first write (M2-c), so the screen shows exactly what will be
-// imported. `dispose()` runs on Back, Cancel and unmount.
+// imported. `dispose()` runs on Back, Cancel, unmount, and when the parent closes
+// this row by opening another (one open at a time, M11-d): nothing holds the
+// slot before the first write, so another row CAN open while this one reads or
+// confirms, and closing must stop the Worker, not merely hide it.
 
 /** W4 A (owner, Q-M11): the upload runs in this tab. */
 export const KEEP_OPEN =
@@ -153,6 +156,25 @@ export function UploadFlow({
     onClose()
   }
 
+  // The parent closed this row (another row opened, or the import was deleted):
+  // the same as Cancel, minus telling the parent. A layout effect, so a closed
+  // row never paints its confirm screen for a frame. An upload in flight is left
+  // alone: it holds the slot, so the other rows are locked and cannot open.
+  const wasOpen = useRef(open)
+  const stepRef = useRef(step)
+  stepRef.current = step
+  useLayoutEffect(() => {
+    const closed = wasOpen.current && !open
+    wasOpen.current = open
+    if (!closed || stepRef.current.name === 'uploading') return
+    release()
+    setStep({ name: 'choose' })
+    setError(null)
+    setRetryable(false)
+    setShowLines(false)
+    setFile(null)
+  }, [open, release])
+
   const onEvent = (e: ImportEvent) => {
     if (e.type !== 'progress') return
     if (e.stage === 'reading') setStep({ name: 'reading', bytesRead: e.bytesRead, bytesTotal: e.bytesTotal, planning: false })
@@ -212,10 +234,17 @@ export function UploadFlow({
         signal: controller.signal,
         onEvent,
       })
+      // Its row closed (or a newer read replaced it) while this one was reading:
+      // let the plan go rather than spring a confirm screen back open.
+      if (controller.signal.aborted) {
+        prepared.dispose()
+        return
+      }
       preparedRef.current = prepared
       if (prepared.resume) await upload(prepared)
       else setStep({ name: 'confirm', prepared })
     } catch (e) {
+      if (controller.signal.aborted) return
       preparedRef.current = null
       setStep({ name: 'choose' })
       fail(e)

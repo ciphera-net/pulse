@@ -318,6 +318,45 @@ describe('reading and confirming (A5)', () => {
     expect(screen.queryByTestId('import-confirm')).toBeNull()
   })
 
+  it('closes a row left on its confirm screen when another row opens, and disposes its prepared import', async () => {
+    const prepared = preparedImport()
+    h.prepareImport.mockResolvedValue(prepared)
+    renderTab()
+    fireEvent.click(await within(await waitFor(() => block('Plausible'))).findByRole('button', { name: 'Upload' }))
+    chooseFile()
+    fireEvent.click(screen.getByRole('button', { name: 'Review import' }))
+    await screen.findByTestId('import-confirm')
+    // Nothing holds the slot yet (M2-c: no import exists before the first write), so Matomo can open.
+    fireEvent.click(within(block('Matomo')).getByRole('button', { name: 'Connect' }))
+    // One open at a time (M11-d): the confirm screen closes with its row.
+    expect(screen.queryByTestId('import-confirm')).toBeNull()
+    expect(screen.getByTestId('matomo-connect')).toBeInTheDocument()
+    expect(prepared.dispose).toHaveBeenCalledTimes(1)
+    expect(within(block('Plausible')).getByRole('button', { name: 'Upload' })).toBeEnabled()
+  })
+
+  it('stops reading when another row opens, and never springs back to its confirm screen', async () => {
+    let signal: AbortSignal | undefined
+    let resolve: (v: unknown) => void = () => {}
+    h.prepareImport.mockImplementation((opts: any) => {
+      signal = opts.signal
+      return new Promise((r) => (resolve = r))
+    })
+    renderTab()
+    fireEvent.click(await within(await waitFor(() => block('Plausible'))).findByRole('button', { name: 'Upload' }))
+    chooseFile()
+    fireEvent.click(screen.getByRole('button', { name: 'Review import' }))
+    expect(screen.getByRole('button', { name: 'Reading…' })).toBeInTheDocument()
+    fireEvent.click(within(block('Matomo')).getByRole('button', { name: 'Connect' }))
+    expect(signal!.aborted).toBe(true)
+    // A plan that lands after its row closed is let go, never shown.
+    const late = preparedImport()
+    await act(async () => resolve(late))
+    expect(screen.queryByTestId('import-confirm')).toBeNull()
+    expect(late.dispose).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('matomo-connect')).toBeInTheDocument()
+  })
+
   it('disposes the prepared import when the tab unmounts', async () => {
     const prepared = preparedImport()
     h.prepareImport.mockResolvedValue(prepared)
@@ -645,6 +684,35 @@ describe('Matomo (M11-j)', () => {
     h.slot = { existing_import: null }
     fireEvent.click(within(b).getByRole('button', { name: 'Cancel' }))
     await waitFor(() => expect(h.deleteImport).toHaveBeenCalledWith(expect.objectContaining({ importId: 'imp-m' })))
+  })
+
+  it('deletes the waiting connection once, however often Cancel is pressed', async () => {
+    h.slot = { existing_import: awaiting }
+    h.getMatomoProperties.mockResolvedValue({ properties: [], suggested_id: null })
+    let finish: () => void = () => {}
+    h.deleteImport.mockImplementation(() => new Promise<void>((r) => (finish = r)))
+    renderTab()
+    const b = await waitFor(() => block('Matomo'))
+    const cancel = within(b).getByRole('button', { name: 'Cancel' })
+    // Both presses in one batch: the second lands before the re-render that disables the button.
+    act(() => {
+      cancel.click()
+      cancel.click()
+    })
+    expect(cancel).toBeDisabled()
+    expect(h.deleteImport).toHaveBeenCalledTimes(1)
+    h.slot = { existing_import: null }
+    await act(async () => finish())
+    expect(screen.queryByText('This import no longer exists. Refresh the page.')).toBeNull()
+  })
+
+  it('drops a typed token when another row opens', async () => {
+    renderTab()
+    fireEvent.click(await within(await waitFor(() => block('Matomo'))).findByRole('button', { name: 'Connect' }))
+    fireEvent.change(screen.getByLabelText('Token'), { target: { value: 'secret-token' } })
+    fireEvent.click(within(block('Plausible')).getByRole('button', { name: 'Upload' }))
+    fireEvent.click(within(block('Matomo')).getByRole('button', { name: 'Connect' }))
+    expect((screen.getByLabelText('Token') as HTMLInputElement).value).toBe('')
   })
 
   it('says each connect refusal in words, and keeps Matomo\'s own message behind Details', async () => {

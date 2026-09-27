@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Button, Input, Select } from '@ciphera-net/facet'
 import { PanelRow, PanelRows } from '@/components/settings/panels'
 import { SetupReveal } from '@/components/settings/integrationRows'
@@ -67,6 +67,9 @@ export function MatomoFlow({
   const [token, setToken] = useState('')
   const [connecting, setConnecting] = useState(false)
   const [starting, setStarting] = useState(false)
+  const [canceling, setCanceling] = useState(false)
+  // A second press lands before the re-render that disables the button: the ref holds.
+  const cancelingRef = useRef(false)
   const [properties, setProperties] = useState<MatomoProperty[] | null>(null)
   const [propertyId, setPropertyId] = useState('')
   const [error, setError] = useState<ImportMessage | null>(null)
@@ -132,21 +135,43 @@ export function MatomoFlow({
     }
   }
 
+  // One delete per Cancel: a second press would delete an import that is already
+  // gone and answer "This import no longer exists", after a cancel that worked.
   const cancel = async () => {
+    if (cancelingRef.current) return
+    cancelingRef.current = true
+    setCanceling(true)
     setError(null)
     setToken('')
-    if (awaiting) {
-      try {
-        await onDiscard(awaiting.id)
-      } catch (e) {
-        fail(e)
-        return
+    try {
+      if (awaiting) {
+        try {
+          await onDiscard(awaiting.id)
+        } catch (e) {
+          fail(e)
+          return
+        }
       }
+      setProperties(null)
+      setPropertyId('')
+      onClose()
+    } finally {
+      cancelingRef.current = false
+      setCanceling(false)
     }
-    setProperties(null)
-    setPropertyId('')
-    onClose()
   }
+
+  // The parent closed this row (another row opened): drop the typed token and any
+  // refusal with it, as Cancel does. Nothing server-side exists yet: a connection
+  // that did reach the server holds the slot and locks every other row.
+  const wasOpen = useRef(open)
+  useLayoutEffect(() => {
+    const closed = wasOpen.current && !open
+    wasOpen.current = open
+    if (!closed) return
+    setToken('')
+    setError(null)
+  }, [open])
 
   const siteOptions = useMemo(
     () =>
@@ -246,7 +271,7 @@ export function MatomoFlow({
           chip={{ tone: 'neutral', label: 'Choose a site' }}
           action={
             canManage ? (
-              <Button variant="outline" size="sm" onClick={() => void cancel()}>
+              <Button variant="outline" size="sm" onClick={() => void cancel()} disabled={canceling}>
                 Cancel
               </Button>
             ) : null
@@ -279,7 +304,7 @@ export function MatomoFlow({
               {whatRows}
             </PanelRows>
             <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
-              <Button size="sm" onClick={() => void start()} disabled={starting || !propertyId}>
+              <Button size="sm" onClick={() => void start()} disabled={starting || canceling || !propertyId}>
                 {starting ? 'Starting…' : 'Start the import'}
               </Button>
             </div>
@@ -366,7 +391,7 @@ export function MatomoFlow({
         action={
           canManage ? (
             open ? (
-              <Button variant="outline" size="sm" onClick={() => void cancel()} aria-expanded>
+              <Button variant="outline" size="sm" onClick={() => void cancel()} disabled={canceling} aria-expanded>
                 Cancel
               </Button>
             ) : (
