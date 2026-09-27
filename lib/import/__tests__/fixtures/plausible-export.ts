@@ -8,6 +8,11 @@
 // hostnames, a browser in two versions, a country split across regions and
 // cities, two acquisition rows that share a client key (different utm_content),
 // quoting, a UTF-8 path, and one malformed row per skip reason.
+//
+// By default it has the shape of a CURRENT export (M2-o): eleven entries, the
+// custom events and custom properties included, each named with the export's
+// date range. `FixtureOptions` gives the two other shapes a real export takes:
+// an older one with no custom properties, and names with no date range.
 
 import { zipSync, strToU8 } from 'fflate'
 import { addDays, dayNumber } from '../../core/dates'
@@ -86,6 +91,13 @@ export const PLAUSIBLE_FIXTURE_ROWS = {
 
 export const CUSTOM_EVENTS_COLUMNS = ['date', 'name', 'link_url', 'path', 'visitors', 'events'] as const
 
+/**
+ * M2-o names `imported_custom_props` but does not pin its columns, because
+ * nothing reads it (custom properties are M12's). This is a PLACEHOLDER, not a
+ * measured header; the parser's tests prove the file is never opened.
+ */
+export const CUSTOM_PROPS_PLACEHOLDER_COLUMNS = ['date', 'visitors', 'events'] as const
+
 export interface FixtureOptions {
   /**
    * Moves the three days to start here instead of 2026-03-01 (the counts are
@@ -93,6 +105,16 @@ export interface FixtureOptions {
    * upload window.
    */
   start?: string
+  /**
+   * Names each entry `imported_<table>.csv`, as an export with no date range
+   * does, instead of `imported_<table>_<YYYYMMDD>_<YYYYMMDD>.csv`. Default false.
+   */
+  noDateRange?: boolean
+  /**
+   * Leaves out `imported_custom_props`, as an export made before it joined the
+   * full export (28-08-2025) does: ten entries instead of eleven. Default false.
+   */
+  withoutCustomProps?: boolean
 }
 
 function shifter(start: string | undefined): (value: string | number) => string | number {
@@ -101,20 +123,29 @@ function shifter(start: string | undefined): (value: string | number) => string 
   return (v) => (typeof v === 'string' && /^2026-03-0[1-3]$/.test(v) ? addDays(v, by) : v)
 }
 
-/** The file set: every documented table, including the custom events the parser ignores. */
+/** The entry name the exporter writes for `table`, in the shape `options` asks for. */
+export function plausibleFixtureName(table: string, options: FixtureOptions = {}): string {
+  if (options.noDateRange) return `imported_${table}.csv`
+  const from = options.start ?? FIXTURE_RANGE.from
+  return `imported_${table}_${from.replace(/-/g, '')}_${addDays(from, 2).replace(/-/g, '')}.csv`
+}
+
+/** The file set: every documented table, including the custom events and properties the parser ignores. */
 export function plausibleFixtureFiles(options: FixtureOptions = {}): Record<string, string> {
   const shift = shifter(options.start)
-  const from = options.start ?? FIXTURE_RANGE.from
-  const suffix = `${from.replace(/-/g, '')}_${addDays(from, 2).replace(/-/g, '')}`
+  const name = (table: string) => plausibleFixtureName(table, options)
   const files: Record<string, string> = {}
   for (const [table, rows] of Object.entries(PLAUSIBLE_FIXTURE_ROWS)) {
     const columns = PLAUSIBLE_COLUMNS[table as keyof typeof PLAUSIBLE_COLUMNS]
-    files[`imported_${table}_${suffix}.csv`] = csv(
+    files[name(table)] = csv(
       columns,
       (rows as unknown as (string | number)[][]).map((r) => r.map(shift)),
     )
   }
-  files[`imported_custom_events_${suffix}.csv`] = csv(CUSTOM_EVENTS_COLUMNS, [[shift('2026-03-01'), 'Signup', '', '/', 1, 1]])
+  files[name('custom_events')] = csv(CUSTOM_EVENTS_COLUMNS, [[shift('2026-03-01'), 'Signup', '', '/', 1, 1]])
+  if (!options.withoutCustomProps) {
+    files[name('custom_props')] = csv(CUSTOM_PROPS_PLACEHOLDER_COLUMNS, [[shift('2026-03-01'), 1, 1]])
+  }
   return files
 }
 

@@ -82,7 +82,6 @@ export type WrongFileReason =
   | 'unreadable_archive'
   | 'truncated_archive'
   | 'unsupported_compression'
-  | 'unexpected_file'
   | 'duplicate_file'
   | 'missing_file'
   | 'empty_file'

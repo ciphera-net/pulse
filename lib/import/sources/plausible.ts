@@ -1,9 +1,21 @@
 // ─── Plausible: the Site Settings CSV export, the reference consumer (M2-o) ─
 //
-// Plausible's "Export to CSV" is a ZIP of ten per-day files, named
-// `imported_<table>_<YYYYMMDD>_<YYYYMMDD>.csv`, whose columns are the ones its
-// own CSV importer reads (the research's `input_structures` map). Every file is
-// already grouped by day, so this parser maps rows, it does not count events.
+// Plausible's "Export to CSV" is a ZIP of per-day files, one per table, whose
+// columns are the ones its own CSV importer reads (the research's
+// `input_structures` map). Every file is already grouped by day, so this parser
+// maps rows, it does not count events.
+//
+// 🔴 THE ARCHIVE IS 10 OR 11 FILES, AND THE NAMES VARY (M2-o, measured
+// 27-09-2026 from the exporter's own source): `imported_custom_props` joined the
+// full export on 28-08-2025, so every current Cloud export and recent CE export
+// carries it and an older CE export does not; and an entry is named
+// `imported_<table>_<YYYYMMDD>_<YYYYMMDD>.csv`, or `imported_<table>.csv` when
+// the export had no date range. So only `imported_visitors` is required, the
+// tables below are read when present, and EVERY other entry is left unread and
+// named in the plan's ignored files. The archive is refused (`wrong_file`) only
+// for a missing visitors table, two copies of one table, or a header that fails
+// the strict check — never for carrying a file this parser does not know, which
+// is how a newer export looks.
 //
 // Where each file goes (§3.12b M2-k, M2-o):
 //
@@ -23,7 +35,8 @@
 //                        and city (a GeoNames id) have no names in the file, so
 //                        they are skipped as `needs_place_names` until M6's
 //                        place-name index — counted, never guessed
-//   custom_events      → recognised and not read (D8: events ship after v1)
+//   custom_events      → not read (D8: events ship after v1)
+//   custom_props       → not read (M12)
 //
 // Values travel as the file has them. Labels, hostnames, paths and codes are
 // normalised on the SERVER (M2-l), once, so the browser and the server can
@@ -43,6 +56,7 @@ import { wrongFile } from '../errors'
 import type { Dimension } from '../types'
 import type { AggregateSourceParser } from './source'
 
+/** The tables this parser reads. Any other entry in the archive is left unread. */
 export const PLAUSIBLE_TABLES = [
   'visitors',
   'sources',
@@ -53,13 +67,16 @@ export const PLAUSIBLE_TABLES = [
   'devices',
   'browsers',
   'operating_systems',
-  'custom_events',
 ] as const
-export type PlausibleTable = (typeof PLAUSIBLE_TABLES)[number]
-type ReadTable = Exclude<PlausibleTable, 'custom_events'>
+type ReadTable = (typeof PLAUSIBLE_TABLES)[number]
 
-const FILE_RE =
-  /^imported_(visitors|sources|pages|entry_pages|exit_pages|locations|devices|browsers|operating_systems|custom_events)_(\d{8})_(\d{8})\.csv$/
+/**
+ * A table this parser reads, under either name the exporter writes: with the
+ * export's date range, or without one. The table names are listed in full, so
+ * `imported_custom_props`, `imported_custom_events` and any table a newer export
+ * adds do not match and are ignored rather than read.
+ */
+const TABLE_FILE_RE = new RegExp(`^imported_(${PLAUSIBLE_TABLES.join('|')})(?:_\\d{8}_\\d{8})?\\.csv$`)
 
 /** Every column Plausible documents for each file, in its order. */
 export const PLAUSIBLE_COLUMNS: Readonly<Record<ReadTable, readonly string[]>> = {
@@ -121,17 +138,11 @@ const READS: Readonly<Record<ReadTable, readonly string[]>> = {
   operating_systems: ['date', 'operating_system', 'visitors', 'visits', 'pageviews'],
 }
 
-const REQUIRED_TABLES: readonly ReadTable[] = [
-  'visitors',
-  'sources',
-  'pages',
-  'entry_pages',
-  'exit_pages',
-  'locations',
-  'devices',
-  'browsers',
-  'operating_systems',
-]
+/**
+ * M2-o: the visitors table is what makes an archive this export, so it is the
+ * one table required. Every other table is read when the archive has it.
+ */
+const REQUIRED_TABLES: readonly ReadTable[] = ['visitors']
 
 /** One row's fields, validated: a real date, and counts that are whole numbers in range. */
 class Fields {
@@ -327,23 +338,26 @@ export const plausibleSource: AggregateSourceParser = {
       if (name.endsWith('/')) return null
       const base = name.slice(name.lastIndexOf('/') + 1)
       // What an archive picks up when it is unpacked and re-zipped on a Mac:
-      // resource forks and folder metadata, never data.
-      if (name.startsWith('__MACOSX/') || base === '.DS_Store') return null
-      const m = FILE_RE.exec(base)
+      // resource forks and folder metadata, never data. Skipped without a word.
+      if (name.startsWith('__MACOSX/') || base === '.DS_Store' || base.startsWith('._')) return null
+      const m = TABLE_FILE_RE.exec(base)
       if (!m) {
-        throw wrongFile('unexpected_file', `${base} is not part of this export.`, { file: base })
+        // Not a table this parser reads: the custom events and custom
+        // properties (D8, M12), a table a newer export adds, or a file somebody
+        // put in the archive. It is left unread (so never decompressed, and
+        // never counted against the byte caps) and named in the plan, so the
+        // customer sees it was not imported. Refusing the archive for it would
+        // refuse every export newer than this parser.
+        ignored.push(base)
+        return null
       }
-      const table = m[1] as PlausibleTable
+      const table = m[1] as ReadTable
       if (seen.has(table)) {
         throw wrongFile('duplicate_file', `The archive holds two ${table} files. Upload one export at a time.`, {
           file: base,
         })
       }
       seen.add(table)
-      if (table === 'custom_events') {
-        ignored.push(base)
-        return null
-      }
       const schema: TableSchema = { file: base, required: READS[table], known: PLAUSIBLE_COLUMNS[table] }
       const mapper = map[table]
       let index: ColumnIndex | null = null
@@ -368,7 +382,7 @@ export const plausibleSource: AggregateSourceParser = {
     }
 
     await readZip(file, entry, ctx.read)
-    requireFiles(seen, REQUIRED_TABLES, (t) => `imported_${t}_<dates>.csv`)
+    requireFiles(seen, REQUIRED_TABLES, (t) => `imported_${t}`)
     return { ignored }
   },
 }

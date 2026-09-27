@@ -2,13 +2,15 @@
 //
 // The reference consumer, gate 5 (§3.12b M2-o): the parser on a SYNTHETIC
 // export, built from the documented headers, produces EXACTLY the expected rows
-// and skip counts. And every way the file can be the wrong one is named.
+// and skip counts. Every shape a real export takes is read (10 or 11 entries,
+// names with or without the date range), and every way the file can be the
+// wrong one is named.
 
 import { describe, expect, it } from 'vitest'
 import { AggregateBuilder } from '../../core/aggregate'
 import type { Clip } from '../../core/cap'
 import { SkipLedger } from '../../core/skipped'
-import { detectInputKind } from '../../core/zip'
+import { ARCHIVE_LIMITS, detectInputKind, type ReadOptions } from '../../core/zip'
 import { ImportError } from '../../errors'
 import { runPipeline } from '../../pipeline'
 import { plausibleFixtureFile, plausibleFixtureFiles } from '../../__tests__/fixtures/plausible-export'
@@ -17,10 +19,10 @@ import { PLAUSIBLE_COLUMNS, plausibleSource } from '../plausible'
 const SUFFIX = '20260301_20260303'
 const file = (table: string) => `imported_${table}_${SUFFIX}.csv`
 
-async function parse(blob: Blob, clip: Clip | null = null) {
+async function parse(blob: Blob, clip: Clip | null = null, read: ReadOptions = {}) {
   const skipped = new SkipLedger()
   const rows = new AggregateBuilder(clip, skipped)
-  const { ignored } = await plausibleSource.read(blob, await detectInputKind(blob), { rows, skipped, read: {} })
+  const { ignored } = await plausibleSource.read(blob, await detectInputKind(blob), { rows, skipped, read })
   return { rows: rows.build(), skipped, ignored }
 }
 
@@ -103,7 +105,8 @@ describe('the synthetic export', () => {
 
     // No monthly rows: the export has no monthly unique count (M2-k).
     expect(rows.monthly).toEqual([])
-    expect(ignored).toEqual([file('custom_events')])
+    // A current export's two tables Pulse does not import, named, never read.
+    expect(ignored).toEqual([file('custom_events'), file('custom_props')])
   })
 
   it('counts exactly the rows it skipped, by reason, with their lines and nothing else', async () => {
@@ -157,7 +160,7 @@ describe('the synthetic export', () => {
       parts_total: 1,
       totals: { rows: { daily: 3, monthly: 0, dimensions: 16, acquisition: 3 }, visitors: 35, pageviews: 89 },
       skipped: { bad_number: 1, bad_timestamp: 1, missing_field: 2, needs_place_names: 2 },
-      ignored_files: [file('custom_events')],
+      ignored_files: [file('custom_events'), file('custom_props')],
     })
     expect(summary.fingerprint).toMatch(/^[0-9a-f]{64}$/)
     expect(parts).toHaveLength(1)
@@ -220,10 +223,13 @@ describe('tolerated shapes', () => {
         delete files[name]
       }
       files['__MACOSX/plausible-export/._imported_visitors_20260301_20260303.csv'] = 'resource fork'
+      files['plausible-export/._imported_pages_20260301_20260303.csv'] = 'AppleDouble, no __MACOSX folder'
       files['plausible-export/.DS_Store'] = 'finder'
     })
-    const { rows } = await parse(nested)
+    const { rows, ignored } = await parse(nested)
     expect(rows.daily).toHaveLength(3)
+    // The litter is skipped without a word; only the export's own unread tables are named.
+    expect(ignored).toEqual([file('custom_events'), file('custom_props')])
   })
 
   it('never reads the custom events file, so its shape cannot fail an import (D8)', async () => {
@@ -231,6 +237,78 @@ describe('tolerated shapes', () => {
       files[file('custom_events')] = 'anything,at,all\n"unterminated\n'
     })
     await expect(parse(odd)).resolves.toBeDefined()
+  })
+
+  it('never reads the custom properties file either, so its shape cannot fail an import (M12)', async () => {
+    const odd = plausibleFixtureFile((files) => {
+      files[file('custom_props')] = 'anything,at,all\n"unterminated\n'
+    })
+    const { rows, ignored } = await parse(odd)
+    expect(rows.daily).toHaveLength(3)
+    expect(ignored).toContain(file('custom_props'))
+  })
+
+  it('reads a current export of eleven entries and an older one of ten alike (M2-o)', async () => {
+    expect(Object.keys(plausibleFixtureFiles())).toHaveLength(11)
+    expect(Object.keys(plausibleFixtureFiles({ withoutCustomProps: true }))).toHaveLength(10)
+    const current = await parse(plausibleFixtureFile())
+    const older = await parse(plausibleFixtureFile(undefined, { withoutCustomProps: true }))
+    expect(older.rows).toEqual(current.rows)
+    expect(older.skipped.toCounts()).toEqual(current.skipped.toCounts())
+    expect(older.ignored).toEqual([file('custom_events')])
+  })
+
+  it('reads entries named without a date range, as an export that had none names them (M2-o)', async () => {
+    const bare = await parse(plausibleFixtureFile(undefined, { noDateRange: true }))
+    const dated = await parse(plausibleFixtureFile())
+    expect(bare.rows).toEqual(dated.rows)
+    expect(bare.skipped.toCounts()).toEqual(dated.skipped.toCounts())
+    expect(bare.skipped.toSamples().bad_timestamp).toEqual([{ file: 'imported_visitors.csv', line: 5 }])
+    expect(bare.ignored).toEqual(['imported_custom_events.csv', 'imported_custom_props.csv'])
+  })
+
+  it('leaves unread, and names, a table a newer export adds', async () => {
+    const newer = plausibleFixtureFile((files) => {
+      files[`imported_some_future_table_${SUFFIX}.csv`] = 'anything\n"unterminated\n'
+    })
+    const { rows, ignored } = await parse(newer)
+    expect(rows).toEqual((await parse(plausibleFixtureFile())).rows)
+    expect(ignored).toContain(`imported_some_future_table_${SUFFIX}.csv`)
+  })
+
+  it('names a file somebody put in the archive, and imports the rest', async () => {
+    const { rows, ignored } = await parse(plausibleFixtureFile((f) => (f['notes.txt'] = 'hi')))
+    expect(rows.daily).toHaveLength(3)
+    expect(ignored).toContain('notes.txt')
+  })
+
+  it('reads an archive holding only the visitors table: daily rows and nothing else', async () => {
+    const only = plausibleFixtureFile((files) => {
+      for (const name of Object.keys(files)) if (name !== file('visitors')) delete files[name]
+    })
+    const { rows, ignored } = await parse(only)
+    expect(rows.daily).toHaveLength(3)
+    expect(rows.dimensions).toEqual([])
+    expect(rows.acquisition).toEqual([])
+    expect(ignored).toEqual([])
+  })
+
+  it('never decompresses an entry it leaves unread, so an unread entry cannot trip the byte caps', async () => {
+    const MiB = 1024 * 1024
+    const read: ReadOptions = { limits: { ...ARCHIVE_LIMITS, maxEntryBytes: MiB } }
+    // About 1.4 MiB once inflated, in the custom properties slot: left unread, so the import goes on.
+    const bigUnread = plausibleFixtureFile((files) => {
+      files[file('custom_props')] = 'date,visitors,events\n' + '2026-03-01,1,1\n'.repeat(100_000)
+    })
+    const { rows } = await parse(bigUnread, null, read)
+    expect(rows.daily).toHaveLength(3)
+    // Control: the same volume in a table that IS read trips the per-entry cap at these limits.
+    const bigRead = plausibleFixtureFile((files) => {
+      files[file('devices')] += '2026-03-01,Desktop,1,1,1,1,1\n'.repeat(50_000)
+    })
+    const e = await failure(parse(bigRead, null, read))
+    expect(e.code).toBe('zip_too_large')
+    expect(e.detail.guard).toBe('entry_bytes')
   })
 
   it('accepts a documented column it does not read being absent (an older export)', async () => {
@@ -246,15 +324,19 @@ describe('tolerated shapes', () => {
 describe('the wrong file, named', () => {
   it.each([
     [
-      'a missing file',
-      (f: Record<string, string>) => delete f[file('pages')],
-      { reason: 'missing_file', files: [`imported_pages_<dates>.csv`] },
+      'an archive with no visitors table',
+      (f: Record<string, string>) => delete f[file('visitors')],
+      { reason: 'missing_file', files: ['imported_visitors'] },
     ],
-    ['a file that is not part of the export', (f: Record<string, string>) => (f['notes.txt'] = 'hi'), { reason: 'unexpected_file', file: 'notes.txt' }],
     [
       'two exports in one archive',
       (f: Record<string, string>) => (f['imported_visitors_20260101_20260131.csv'] = f[file('visitors')]),
       { reason: 'duplicate_file' },
+    ],
+    [
+      'one table under both of its names',
+      (f: Record<string, string>) => (f['imported_visitors.csv'] = f[file('visitors')]),
+      { reason: 'duplicate_file', file: 'imported_visitors.csv' },
     ],
     [
       'a column the export never writes',
@@ -285,7 +367,8 @@ describe('the wrong file, named', () => {
     })()], 'export.zip')
     const e = await failure(parse(other))
     expect(e.code).toBe('wrong_file')
-    expect(e.detail.reason).toBe('unexpected_file')
+    // It has no visitors table, so it is not this export.
+    expect(e.detail).toMatchObject({ reason: 'missing_file', files: ['imported_visitors'] })
   })
 
   it('one CSV from inside the export instead of the ZIP', async () => {

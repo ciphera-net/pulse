@@ -11,7 +11,11 @@ import type { SkipLedger } from '../core/skipped'
 import type { InputKind, ReadOptions } from '../core/zip'
 
 export interface SourceReadResult {
-  /** Files recognised in the export and deliberately not read (e.g. events until D8's release). */
+  /**
+   * Entries in the archive that were left unread, by name: tables deliberately
+   * not imported (e.g. events until D8's release), tables a newer export adds,
+   * and anything else the archive carries. OS litter is not listed.
+   */
   ignored: string[]
 }
 

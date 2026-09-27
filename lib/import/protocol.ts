@@ -47,7 +47,7 @@ export interface PlanSummary {
   skipped: Record<string, number>
   /** Up to five file-and-line samples per reason, for the customer. Never sent. */
   skipped_samples: Record<string, SkipSample[]>
-  /** Files recognised in the export and deliberately not read. */
+  /** Entries in the archive that were left unread (not imported), for the customer. */
   ignored_files: string[]
 }
 
