@@ -46,6 +46,13 @@ export const ARCHIVE_LIMITS: Readonly<ArchiveLimits> = {
   maxRatio: 200,
 }
 
+/**
+ * The most files one import may carry (M7-a). Defined in schema.ts, which the
+ * main thread can import without pulling this module's decompressor into the
+ * page; re-exported here beside the other read limits.
+ */
+export { MAX_UPLOAD_FILES } from './schema'
+
 /** How much of the File is pushed into the decompressor at a time. */
 const PUSH_SLICE = 16 * 1024
 

@@ -19,10 +19,17 @@ export interface SourceMeta {
   visitsAreVisitors: boolean
   /** The file shapes the source's export arrives in. */
   accepts: readonly InputKind[]
+  /**
+   * Whether the export is ONE file (a ZIP, a CSV) or several the customer
+   * chooses together (Fathom's per-dimension CSVs), M7-a. For 'single', the
+   * orchestrator refuses a second file before the worker starts, and the
+   * picker (M11) allows one.
+   */
+  fileCount: 'single' | 'multiple'
 }
 
 export const SOURCE_META: Readonly<Record<ImportSource, SourceMeta>> = {
-  plausible: { kind: 'upload_aggregate', visitsAreVisitors: false, accepts: ['zip'] },
+  plausible: { kind: 'upload_aggregate', visitsAreVisitors: false, accepts: ['zip'], fileCount: 'single' },
 }
 
 export function isImportSource(value: unknown): value is ImportSource {

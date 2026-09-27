@@ -10,13 +10,20 @@
 // computed from the whole file BEFORE the first write, so the customer sees
 // exactly what will be imported):
 //
-//   const prepared = await prepareImport({ siteId, source, file, transport, onEvent })
+//   const prepared = await prepareImport({ siteId, source, files, transport, onEvent })
 //   // … show prepared.plan: range, totals, skipped rows …
 //   const status = await prepared.upload()
 //
 // `runImport` does both for a caller with nothing to confirm (the staging
 // harness). Progress, skip reports, completion and failure arrive as typed
 // events for the UI; the promises carry the same outcome for control flow.
+//
+// The export arrives as `files` (every file the customer chose, M7-a) or, for
+// a caller written before multi-file sources, as one `file` (§3.12c amendment
+// 1). Exactly one of the two is set; both become the same list of files, so
+// the worker and the parsers only ever see a list. The file count is checked
+// HERE, before the worker starts or the server is asked anything: none, more
+// than MAX_UPLOAD_FILES, or a second file for a source whose export is one.
 //
 // Resume (M2-j): if the site already has an unfinished upload from this source,
 // the file is planned against THAT import's range and must produce the stored
@@ -29,9 +36,10 @@
 
 import type { Clip } from './core/cap'
 import { addDays, isTimeZone, todayIn } from './core/dates'
+import { checkUploadCount, requireExactlyOneFile } from './core/schema'
 import type { SkipSample } from './core/skipped'
 import { ImportApiClient, type ClientOptions, type Transport } from './client'
-import { ImportError, fromWireError, type Cursor } from './errors'
+import { ImportError, fromWireError, wrongFile, type Cursor } from './errors'
 import { PROTOCOL_VERSION, type FromWorker, type PlanSummary, type PrepareRequest, type ToWorker } from './protocol'
 import { SOURCE_META, isImportSource, type ImportSource } from './source-meta'
 import type { ImportStatus, PlanStep, UploadWindow } from './types'
@@ -43,6 +51,7 @@ export type { PlanSummary } from './protocol'
 export type { ImportSource } from './source-meta'
 export type { ImportStatus, UploadWindow, PlanStep, PlanTotals, CollectSettings } from './types'
 export type { SkipSample } from './core/skipped'
+export { MAX_UPLOAD_FILES } from './core/schema'
 
 /** Where the prebuilt worker is served (scripts/build-worker.mjs), same-origin. */
 export const DEFAULT_WORKER_URL = '/workers/import.js'
@@ -70,8 +79,16 @@ export interface WorkerLike {
 export interface ImportOptions {
   siteId: string
   source: ImportSource
-  /** The export exactly as the customer selected it. It never leaves the browser. */
-  file: Blob
+  /**
+   * The export exactly as the customer selected it, for a source whose export
+   * is one file. It never leaves the browser. Set this OR `files`, not both.
+   */
+  file?: Blob
+  /**
+   * Every file the customer selected (M7-a), in the order they chose them.
+   * They never leave the browser. Set this OR `file`, not both.
+   */
+  files?: readonly File[]
   transport: Transport
   /**
    * For an aggregate source, the zone the export's days were counted in
@@ -112,6 +129,9 @@ export async function prepareImport(options: ImportOptions): Promise<PreparedImp
       throw new ImportError('source_not_enabled', `Imports from ${String(options.source)} are not available.`)
     }
     const meta = SOURCE_META[options.source]
+    const files = chosenFiles(options)
+    checkUploadCount(files.length)
+    if (meta.fileCount === 'single') requireExactlyOneFile(files)
     const requestedZone = options.sourceTimezone ?? null
     if (requestedZone !== null && !isTimeZone(requestedZone)) {
       throw new ImportError('bad_source_timezone', `${requestedZone} is not a time zone.`)
@@ -177,7 +197,7 @@ export async function prepareImport(options: ImportOptions): Promise<PreparedImp
     let plan: PlanSummary
     try {
       plan = await channel.prepare(
-        { source: options.source, file: options.file, clip, timeZone: uploadWindow.site_timezone },
+        { source: options.source, files, clip, timeZone: uploadWindow.site_timezone },
         (message) => {
           if (message.type !== 'progress') return
           if (message.stage === 'reading') {
@@ -396,6 +416,35 @@ class Upload implements PreparedImport {
     this.emit({ type: 'done', status })
     return status
   }
+}
+
+/**
+ * The files an import reads, from whichever of `file` and `files` the caller
+ * set (§3.12c amendment 1). Exactly one must be: neither is nothing to import,
+ * and both is a caller that has not decided which export it means.
+ */
+function chosenFiles(options: Pick<ImportOptions, 'file' | 'files'>): File[] {
+  const single = options.file != null
+  const several = options.files != null
+  if (single === several) {
+    throw wrongFile(
+      'missing_file',
+      single ? 'Choose the export once: as one file or as a list of files, not both.' : 'Choose a file to import.',
+    )
+  }
+  if (single) return [asFile(options.file as Blob)]
+  if (!Array.isArray(options.files)) throw wrongFile('missing_file', 'Choose a file to import.')
+  return [...(options.files as readonly File[])]
+}
+
+/**
+ * A File keeps its own name. A bare Blob (a caller that built the bytes
+ * itself) is wrapped, by reference, never copied, in a File named for what it
+ * is, so every file the worker reads has a name to echo.
+ */
+function asFile(blob: Blob): File {
+  if (typeof (blob as Partial<File>).name === 'string') return blob as File
+  return new File([blob], 'export', { type: blob.type })
 }
 
 /** How many parts precede `cursor` in plan order. */

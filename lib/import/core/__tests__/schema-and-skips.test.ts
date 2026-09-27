@@ -5,7 +5,8 @@
 
 import { describe, expect, it } from 'vitest'
 import { ImportError } from '../../errors'
-import { checkHeader, requireFiles } from '../schema'
+import { MAX_UPLOAD_FILES, checkHeader, checkUploadCount, requireExactlyOneFile, requireFiles } from '../schema'
+import { MAX_UPLOAD_FILES as FROM_ZIP } from '../zip'
 import { MAX_SAMPLES_PER_REASON, SkipLedger } from '../skipped'
 
 const schema = { file: 'imported_x.csv', required: ['date', 'visitors'], known: ['date', 'visitors', 'bounces'] }
@@ -49,6 +50,42 @@ describe('checkHeader', () => {
     const e = thrown(() => requireFiles(new Set(['a']), ['a', 'b', 'c'], (f) => `${f}.csv`))
     expect(e.code).toBe('wrong_file')
     expect(e.detail).toEqual({ reason: 'missing_file', files: ['b.csv', 'c.csv'] })
+  })
+})
+
+describe('requireFiles', () => {
+  it('keeps the archive\'s own sentence by default, and names another container when asked', () => {
+    expect(thrown(() => requireFiles(new Set(), ['visitors'])).message).toBe('The archive is missing visitors.')
+    expect(thrown(() => requireFiles(new Set(), ['totals'], (f) => f, 'This upload')).message).toBe(
+      'This upload is missing totals.',
+    )
+  })
+})
+
+// M7-a: an import is a list of files; these are the count's checks.
+describe('the file count', () => {
+  it('is capped at 16, one definition, readable beside the archive limits too', () => {
+    expect(MAX_UPLOAD_FILES).toBe(16)
+    expect(FROM_ZIP).toBe(MAX_UPLOAD_FILES)
+  })
+
+  it('refuses no file as missing_file and more than the cap as too_many_files, and passes 1 to 16', () => {
+    expect(thrown(() => checkUploadCount(0)).detail).toEqual({ reason: 'missing_file' })
+    const over = thrown(() => checkUploadCount(MAX_UPLOAD_FILES + 1))
+    expect(over.code).toBe('too_many_files')
+    expect(over.detail).toEqual({ limit: 16, observed: 17 })
+    expect(over.message).toBe('You can upload at most 16 files at once. Choose only the files this export produced.')
+    for (const n of [1, 7, MAX_UPLOAD_FILES]) expect(() => checkUploadCount(n)).not.toThrow()
+  })
+
+  it('requireExactlyOneFile returns the one file, and refuses none or several', () => {
+    expect(requireExactlyOneFile(['a'])).toBe('a')
+    expect(thrown(() => requireExactlyOneFile([])).detail).toEqual({ reason: 'missing_file' })
+    const two = thrown(() => requireExactlyOneFile(['a', 'b']))
+    expect(two.code).toBe('wrong_file')
+    expect(two.detail).toEqual({ reason: 'duplicate_file', limit: 1, observed: 2 })
+    expect(two.message).toBe('Choose one file: this export is a single file.')
+    expect(thrown(() => requireExactlyOneFile(['a', 'b', 'c'], 'Choose one.')).message).toBe('Choose one.')
   })
 })
 

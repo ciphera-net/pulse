@@ -8,7 +8,7 @@
 // worker realm). Both sides import this module, so a message one side sends is
 // a message the other side's types know.
 //
-//   main → worker   prepare {file, source, clip, timeZone}
+//   main → worker   prepare {files, source, clip, timeZone}
 //   worker → main   progress {stage: 'reading', bytesRead, bytesTotal} …
 //                   progress {stage: 'planning'}
 //                   prepared {plan}             (or error)
@@ -23,6 +23,9 @@
 // `prepare` from a different version with `worker_version_mismatch`, so a
 // mismatch is a named error ("reload the page"), not a malformed batch.
 // Bump it whenever a message or the plan summary changes shape.
+//
+// Version 2 (M7-a, M7-n): `prepare` carries `files`, every file the customer
+// chose, instead of one `file`; the plan summary gains `notes`.
 
 import type { Clip } from './core/cap'
 import type { SkipSample } from './core/skipped'
@@ -30,7 +33,7 @@ import type { WireImportError } from './errors'
 import type { ImportSource } from './source-meta'
 import type { PlanStep, PlanTotals, SourceKind } from './types'
 
-export const PROTOCOL_VERSION = 1
+export const PROTOCOL_VERSION = 2
 
 /** What the confirm screen (M11) shows, and what the create request is built from. */
 export interface PlanSummary {
@@ -49,6 +52,12 @@ export interface PlanSummary {
   skipped_samples: Record<string, SkipSample[]>
   /** Entries in the archive that were left unread (not imported), for the customer. */
   ignored_files: string[]
+  /**
+   * Facts about the read for the confirm screen to caption, by `<source>.<fact>`
+   * (M7-n); `{}` when there are none. Never sent: the create request is built
+   * field by field and this is not one of them.
+   */
+  notes: Record<string, string>
 }
 
 export interface PrepareRequest {
@@ -56,8 +65,13 @@ export interface PrepareRequest {
   id: number
   protocol: number
   source: ImportSource
-  file: Blob
-  /** The days the browser may send; null sends every day the file has. */
+  /**
+   * Every file the customer chose, in the order they chose them (M7-a). A
+   * File, so its name travels with it: a parser may echo the name, never
+   * decide by it. A File crosses to the worker by reference, never copied.
+   */
+  files: readonly File[]
+  /** The days the browser may send; null sends every day the files have. */
   clip: Clip | null
   /** The zone a raw source's instants are bucketed in: the site's (M2-g). */
   timeZone: string

@@ -43,6 +43,8 @@ export const BROWSER_ERROR_CODES = [
   'file_too_large_for_browser',
   'unsupported_encoding',
   'no_data_in_range',
+  /** More files than MAX_UPLOAD_FILES in one upload (M7-a); `limit` and `observed` say how many. */
+  'too_many_files',
 ] as const
 
 /** The transport's and the worker's own failures. */
