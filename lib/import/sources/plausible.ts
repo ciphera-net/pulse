@@ -31,10 +31,13 @@
 //   devices            → dimension `device`
 //   browsers           → dimension `browser` (folded across versions)
 //   operating_systems  → dimension `os` (folded across versions)
-//   locations          → dimension `country`; the region (an ISO 3166-2 code)
-//                        and city (a GeoNames id) have no names in the file, so
-//                        they are skipped as `needs_place_names` until M6's
-//                        place-name index — counted, never guessed
+//   locations          → dimension `country`, plus `region` (an ISO 3166-2
+//                        code) and `city` (a GeoNames id) sent unconditionally,
+//                        raw — Plausible names neither. The browser never
+//                        resolves or skips them (M6): the SERVER decides what a
+//                        code or id means, into a name or the Unknown
+//                        convention, so the customer cannot bypass that mapping
+//                        by choosing what a code means (D9)
 //   custom_events      → not read (D8: events ship after v1)
 //   custom_props       → not read (M12)
 //
@@ -290,25 +293,26 @@ function mappers(rows: AggregateBuilder, skipped: SkipLedger): Record<ReadTable,
       counts: ['visitors', 'visits', 'pageviews'],
       optional: [],
       map: (f, at) => {
-        const kept = rows.addDimension(
-          {
-            date: f.text('date'),
-            dimension: 'country',
-            parent: '',
-            value: f.text('country'),
-            visitors: f.count('visitors'),
-            visits: f.count('visits'),
-            pageviews: f.count('pageviews'),
-          },
+        const date = f.text('date')
+        const country = f.text('country')
+        const visitors = f.count('visitors')
+        const visits = f.count('visits')
+        const pageviews = f.count('pageviews')
+        rows.addDimension({ date, dimension: 'country', parent: '', value: country, visitors, visits, pageviews }, at)
+        // Region and city travel as the file has them: an ISO 3166-2 code and a
+        // GeoNames id (`"0"` = none), never a name. Sent unconditionally, like
+        // country, even when empty or "0" — the SERVER resolves them into
+        // names or the Unknown convention (M6); this parser never resolves or
+        // skips them (D9: the customer cannot bypass the mapping by choosing
+        // what a code means).
+        rows.addDimension(
+          { date, dimension: 'region', parent: country, value: f.text('region'), visitors, visits, pageviews },
           at,
         )
-        // The country half of the row is imported; its region and city are not
-        // (codes without names), and that is counted rather than silent. A row
-        // outside the window was already counted under the window's reason.
-        const city = f.text('city')
-        if (kept && (f.text('region') !== '' || (city !== '' && city !== '0'))) {
-          skipped.add('needs_place_names', at)
-        }
+        rows.addDimension(
+          { date, dimension: 'city', parent: country, value: f.text('city'), visitors, visits, pageviews },
+          at,
+        )
       },
     },
     devices: { counts: ['visitors', 'visits', 'pageviews'], optional: [], map: dimension('device', 'device', 'visits') },
