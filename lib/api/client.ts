@@ -6,6 +6,7 @@
 import { authMessageFromStatus, AUTH_ERROR_MESSAGES, type SessionRefreshResult } from '@ciphera-net/facet'
 import { generateRequestId, getRequestIdHeader, setLastRequestId } from '@/lib/utils/requestId'
 import { env } from '@/lib/env'
+import { logger } from '@/lib/utils/logger'
 
 /** Request timeout in ms; network errors surface as user-facing "Network error, please try again." */
 const FETCH_TIMEOUT_MS = 30_000
@@ -167,6 +168,98 @@ function maybeTriggerTeamRecovery(isAuthRequest: boolean, status: number, body: 
   if (code && TEAM_ERROR_CODES.has(code)) maybeRecoverTeam()
 }
 
+// * ============================================================================
+// * Team readiness gate (Fix 1, PULSE-89 review)
+// * ============================================================================
+// *
+// * On a full page load this module starts with NO active team — AuthProvider
+// * resolves it only after loadSession()/getMe() finish, an async gap. A
+// * component that fires a team-scoped pulse-api request into that gap sends
+// * no `X-Pulse-Team`, gets back 403 TEAM_REQUIRED, and — unlike the recovery
+// * handler above, which only fixes up the NEXT request — is never retried:
+// * the request that hit the gap is already dead.
+// *
+// * This gate makes `apiRequest`'s first attempt (the 401 refresh-and-retry
+// * inherits it for free: it runs later in the SAME call, after the first
+// * attempt already waited) and `apiRequestBlob` wait for the team to be
+// * KNOWN before dispatching anything, for every endpoint except the
+// * user-scoped ones that must never wait on one — see isTeamGateExempt.
+// *
+// * Resolved by AuthProvider (lib/auth/context.tsx): the moment the team is
+// * known, including "known to be none" for the zero-team provisioning flow,
+// * and immediately when there is no session at all, so a marketing page or a
+// * logged-out tab never waits on a team that will never arrive.
+// * `markTeamResolved` is idempotent, so more than one resolution path may
+// * call it without racing each other.
+const TEAM_GATE_TIMEOUT_MS = 10_000
+
+let teamGateResolved = false
+let resolveTeamGate: (() => void) | null = null
+let teamGatePromise: Promise<void> = new Promise<void>((resolve) => {
+  resolveTeamGate = resolve
+})
+let teamGateTimeoutWarned = false
+
+/** Resolves the gate. Idempotent — a second resolution path calling this is a no-op. */
+export function markTeamResolved(): void {
+  if (teamGateResolved) return
+  teamGateResolved = true
+  resolveTeamGate?.()
+  resolveTeamGate = null
+}
+
+/** Test-only: re-arms the gate as if the module had just loaded. */
+export function resetTeamGate(): void {
+  teamGateResolved = false
+  teamGateTimeoutWarned = false
+  teamGatePromise = new Promise<void>((resolve) => {
+    resolveTeamGate = resolve
+  })
+}
+
+/**
+ * `/me` and under it, `/notifications` and under it, `/public/*`, and every
+ * `/auth/*` — the endpoints that must never wait on a team. `/me` is what
+ * RESOLVES the team, so making it wait on itself would deadlock every load;
+ * `/notifications` and `/public/*` are user-scoped, not team-scoped; `/auth/*`
+ * is id-backend, a different origin with no team concept at all.
+ */
+function isTeamGateExempt(endpoint: string): boolean {
+  const path = endpoint.split('?')[0]
+  return (
+    path.startsWith('/auth') ||
+    path === '/me' || path.startsWith('/me/') ||
+    path === '/notifications' || path.startsWith('/notifications/') ||
+    path.startsWith('/public/')
+  )
+}
+
+/**
+ * Awaited once, near the top of `apiRequest`/`apiRequestBlob`, before either
+ * touches a URL or a header. A gate may DELAY a request, never deadlock one:
+ * past 10s it gives up, logs a warning once, and lets the request through
+ * exactly as if no team were active — the same shape as any other missing-
+ * team request, which the recovery handler above already knows how to heal
+ * on the NEXT one.
+ */
+async function waitForTeamGate(): Promise<void> {
+  if (teamGateResolved) return
+  let timedOut = false
+  await Promise.race([
+    teamGatePromise,
+    new Promise<void>((resolve) => {
+      setTimeout(() => {
+        timedOut = true
+        resolve()
+      }, TEAM_GATE_TIMEOUT_MS)
+    }),
+  ])
+  if (timedOut && !teamGateResolved && !teamGateTimeoutWarned) {
+    teamGateTimeoutWarned = true
+    logger.warn('pulse-api: the active team did not resolve within 10s; proceeding without X-Pulse-Team')
+  }
+}
+
 // * Shared refresh handler — injected by AuthProvider via setRefreshHandler().
 // * Routes all 401 refresh attempts through useSessionRefresh's mutex,
 // * preventing concurrent refresh calls that trigger token reuse detection.
@@ -304,6 +397,13 @@ async function apiRequest<T>(
   endpoint: string,
   options: ApiRequestOptions = {}
 ): Promise<T> {
+  // * Team readiness gate (Fix 1, PULSE-89 review) — see waitForTeamGate. The
+  // * 401 refresh-and-retry below runs later in this SAME call, so it inherits
+  // * whatever this wait already resolved without waiting again.
+  if (!isTeamGateExempt(endpoint)) {
+    await waitForTeamGate()
+  }
+
   // * Skip deduplication for non-GET requests (mutations should always execute)
   const method = options.method || 'GET'
   const shouldDedupe = method === 'GET'
@@ -430,6 +530,11 @@ async function apiRequest<T>(
           if (!outcome.transient) {
             localStorage.removeItem('user')
             setAccessToken(null)
+            // * Fix 4 (PULSE-89 review): the active team must not survive the
+            // * credential it was resolved for. Left set, the NEXT signed-in
+            // * tab (or this one after a fresh login) could send a stale
+            // * `X-Pulse-Team` for a team that belongs to nobody signed in now.
+            setActiveTeam(null)
           }
           throw new ApiError(authMessageFromStatus(401), 401, { transient: outcome.transient })
         }
@@ -535,6 +640,11 @@ export async function apiRequestBlob(
   endpoint: string,
   options: ApiRequestOptions = {},
 ): Promise<{ blob: Blob; filename: string | null }> {
+  // * Team readiness gate (Fix 1, PULSE-89 review) — see waitForTeamGate.
+  if (!isTeamGateExempt(endpoint)) {
+    await waitForTeamGate()
+  }
+
   const isAuthRequest = endpoint.startsWith('/auth')
   const baseUrl = isAuthRequest ? ID_API_URL : API_URL
   const url = endpoint.startsWith('/api/') ? `${baseUrl}${endpoint}` : `${baseUrl}/api/v1${endpoint}`

@@ -10,6 +10,7 @@ import apiRequest, {
   setActiveTeam,
   getActiveTeam,
   setTeamRecoveryHandler,
+  markTeamResolved,
 } from '@/lib/api/client'
 import { LoadingOverlay, useSessionSync, SessionExpiryWarning, useSessionRefresh } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
@@ -481,9 +482,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // * window.
   useEffect(() => {
     const recoverTeam = async () => {
-      const current = getActiveTeam()
+      const before = getActiveTeam()
       try {
         const me = await getMe()
+        // * Fix 2 (PULSE-89 review): re-read AFTER the /me round trip, not
+        // * only at the start. activateTeam's own serialisation (see
+        // * switchOrganization.ts) stops two switches from interleaving their
+        // * WRITES, but this decision was made from a snapshot that can go
+        // * stale during the network round trip above — a person's own
+        // * switch (or another recovery run) can complete while this request
+        // * was in flight. If the active team no longer matches what this
+        // * decision was based on, whatever changed it already knows better
+        // * than a stale /me read; do nothing rather than undo it.
+        const current = getActiveTeam()
+        if (current !== before) return
         const next = pickActiveTeam(me, current)
         if (next && next !== current) {
           logger.warn('team recovery: switching the active team', { from: current, to: next })
@@ -582,6 +594,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // * is aligned here: activateTeam tells Ciphera ID too, which is
             // * what keeps its claim naming the same team (the bridge) and
             // * makes TEAM_RESOLUTION=claim a real rollback until Phase 5.
+            //
+            // 🔴 FIX 1 (PULSE-89 review): the team-readiness gate
+            // (lib/api/client.ts) resolves the MOMENT the team is known, not
+            // only once /me has confirmed it. A cookie-borne preference is a
+            // KNOWN team — every pulse-api request a component fires from
+            // here on may carry it, even while /me is still validating it.
+            // Without this, a full page load with a perfectly good
+            // pulse_team cookie still blocked every early request for the
+            // full round trip to /me.
+            if (session.org_id) {
+              setActiveTeam(session.org_id)
+              markTeamResolved()
+            }
+
             let activeOrgId: string | undefined
             let activeRole: string | undefined
             try {
@@ -591,11 +617,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 await activateTeam(active)
               }
               setActiveTeam(active)
+              // * No-op if the cookie already resolved it above. Otherwise
+              // * this IS the first resolution — including a genuine
+              // * `active === null` (the zero-team case): never leave the
+              // * gate hanging on "no team", or the provisioning flow below
+              // * would wait out the full 10s timeout on its own first call.
+              markTeamResolved()
               activeOrgId = active ?? undefined
               activeRole = active ? teamRole(me, active) ?? undefined : undefined
             } catch (e) {
               logger.error('Could not resolve the active team from /me', e)
               setActiveTeam(session.org_id ?? null)
+              // * Best-effort resolution; a wrong team self-heals via team
+              // * recovery on the first team-shaped 403. Still resolves the
+              // * gate — a request must not wait 10s for a /me that already
+              // * failed once.
+              markTeamResolved()
               activeOrgId = session.org_id
               // * role stays undefined — the recovery handler re-resolves on
               // * the first team-shaped 403.
@@ -625,6 +662,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setUser((prev) => (prev ? { ...prev, org_id: activeOrgId, role: activeRole } : prev))
             }
         } else {
+            // * Fix 1 (PULSE-89 review): no session at all — logged out, or
+            // * a marketing page. Nothing here will ever resolve a team, so
+            // * resolve the gate right now rather than make every early
+            // * pulse-api request on the page wait out the full 10s
+            // * safety-net timeout for a session that does not exist.
+            markTeamResolved()
+
             // * No session. Wipe the cache ONLY when the server definitively
             // * rejected the credential (or there was never a cached user).
             // * After an ok-refresh-but-stale-build, or with no verdict at all,

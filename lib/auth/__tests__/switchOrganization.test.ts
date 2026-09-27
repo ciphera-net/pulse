@@ -65,6 +65,61 @@ describe('activateTeam', () => {
   })
 })
 
+describe('activateTeam serialisation (Fix 2, PULSE-89 review)', () => {
+  // Without this, the recovery handler and a person's own switch could
+  // interleave their two-step writes — recovery's switchContext/
+  // setSessionAction landing BETWEEN the person's own two steps.
+
+  it("two concurrent calls run strictly in order: the second's switchContext waits for the first's setActiveTeamAction to resolve", async () => {
+    let releaseFirst: (() => void) | null = null
+    h.setActiveTeamAction.mockImplementationOnce(async (_id: string | null) => {
+      await new Promise<void>((resolve) => { releaseFirst = resolve })
+      h.order.push('setActiveTeamAction')
+      return { success: true }
+    })
+
+    const p1 = activateTeam('org_a')
+    const p2 = activateTeam('org_b')
+
+    // Flush every microtask that CAN run right now: call 1 is parked inside
+    // its (gated) setActiveTeamAction, so call 2 must not have started at
+    // all — not even its switchContext, the very first step.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(h.order).toEqual(['switchContext', 'setSessionAction', 'setAccessToken', 'setActiveTeam'])
+    expect(h.switchContext).toHaveBeenCalledTimes(1)
+    expect(h.switchContext).toHaveBeenCalledWith('org_a')
+
+    releaseFirst?.()
+    await p1
+    await p2
+
+    expect(h.order).toEqual([
+      'switchContext', 'setSessionAction', 'setAccessToken', 'setActiveTeam', 'setActiveTeamAction',
+      'switchContext', 'setSessionAction', 'setAccessToken', 'setActiveTeam', 'setActiveTeamAction',
+    ])
+    expect(h.switchContext).toHaveBeenNthCalledWith(1, 'org_a')
+    expect(h.switchContext).toHaveBeenNthCalledWith(2, 'org_b')
+  })
+
+  it('a rejected first call does not block an already-queued second', async () => {
+    h.setSessionAction.mockImplementationOnce(async () => {
+      h.order.push('setSessionAction')
+      return { success: false } as never
+    })
+
+    const p1 = activateTeam('org_a')
+    const p2 = activateTeam('org_b')
+
+    await expect(p1).rejects.toThrow(/could not be stored/)
+    const result = await p2
+
+    expect(h.switchContext).toHaveBeenNthCalledWith(1, 'org_a')
+    expect(h.switchContext).toHaveBeenNthCalledWith(2, 'org_b')
+    expect(h.setActiveTeam).toHaveBeenCalledWith('org_b')
+    expect(result.user.id).toBe('u1')
+  })
+})
+
 describe('switchOrganizationSession', () => {
   it('activates the team, THEN refreshes — and goes nowhere itself', async () => {
     await switchOrganizationSession('org_b', h.refresh)
