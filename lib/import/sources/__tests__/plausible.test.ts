@@ -36,10 +36,18 @@ async function failure(p: Promise<unknown>): Promise<ImportError> {
   throw new Error('expected the parse to fail')
 }
 
-const dim = (date: string, dimension: string, value: string, visitors: number, visits: number, pageviews: number) => ({
+const dim = (
+  date: string,
+  dimension: string,
+  value: string,
+  visitors: number,
+  visits: number,
+  pageviews: number,
+  parent = '',
+) => ({
   date,
   dimension,
-  parent: '',
+  parent,
   value,
   visitors,
   visits,
@@ -61,6 +69,12 @@ describe('the synthetic export', () => {
       // Two versions of one browser are one row.
       dim('2026-03-01', 'browser', 'Chrome', 5, 6, 19),
       dim('2026-03-01', 'browser', 'Firefox', 5, 6, 11),
+      // Region and city travel as the file has them: codes and a GeoNames id,
+      // sent unconditionally (M6) — "0" is Plausible's own "no city" sentinel,
+      // sent like any other value, never resolved or guessed client-side.
+      dim('2026-03-01', 'city', '0', 1, 1, 2, 'BE'),
+      dim('2026-03-01', 'city', '2803138', 3, 3, 6, 'BE'),
+      dim('2026-03-01', 'city', '0', 2, 2, 4, 'DE'),
       // BE split across two regions and a city is one country row.
       dim('2026-03-01', 'country', 'BE', 4, 4, 8),
       dim('2026-03-01', 'country', 'DE', 2, 2, 4),
@@ -74,11 +88,16 @@ describe('the synthetic export', () => {
       // One path on two hostnames is one page row.
       dim('2026-03-01', 'page', '/', 10, 11, 23),
       dim('2026-03-01', 'page', '/über, "quoted"', 1, 1, 2),
+      dim('2026-03-01', 'region', 'BE-VLG', 3, 3, 6, 'BE'),
+      dim('2026-03-01', 'region', 'BE-WAL', 1, 1, 2, 'BE'),
+      dim('2026-03-01', 'region', '', 2, 2, 4, 'DE'),
+      dim('2026-03-02', 'city', '0', 5, 6, 8, 'US'),
       dim('2026-03-02', 'country', 'US', 5, 6, 8),
       dim('2026-03-02', 'entry_page', '/pricing', 4, 5, 9),
       dim('2026-03-02', 'exit_page', '/pricing', 3, 4, 6),
       dim('2026-03-02', 'os', 'Mac', 4, 5, 10),
       dim('2026-03-02', 'page', '/pricing', 4, 5, 7),
+      dim('2026-03-02', 'region', '', 5, 6, 8, 'US'),
     ])
 
     const acq = (date: string, source: string, visitors: number, visits: number, pageviews: number, utm: [string, string, string] | null) => ({
@@ -115,7 +134,6 @@ describe('the synthetic export', () => {
       bad_number: 1,
       bad_timestamp: 1,
       missing_field: 2,
-      needs_place_names: 2,
     })
     expect(skipped.toSamples()).toEqual({
       bad_number: [{ file: file('sources'), line: 6 }],
@@ -123,10 +141,6 @@ describe('the synthetic export', () => {
       missing_field: [
         { file: file('pages'), line: 6 },
         { file: file('exit_pages'), line: 4 },
-      ],
-      needs_place_names: [
-        { file: file('locations'), line: 2 },
-        { file: file('locations'), line: 3 },
       ],
     })
   })
@@ -143,9 +157,41 @@ describe('the synthetic export', () => {
     // The BE rows fall on the 1st: counted once, under the window, not as place names.
     expect(counts.needs_place_names).toBeUndefined()
     // The valid rows on the 1st: visitors 1, sources 2, pages 3, entry 1, exit 1,
-    // locations 3, devices 2, browsers 3, operating systems 1.
+    // locations 3, devices 2, browsers 3, operating systems 1. Each locations row
+    // now makes three addDimension calls (country + region + city, M6), but the
+    // clip check must count the PHYSICAL row once, not once per call — see the
+    // next test.
     expect(counts.outside_history_window).toBe(17)
     expect(counts.pulse_measured).toBe(1)
+  })
+
+  it('counts a clipped locations row once, not once per dimension it now sends (M6)', async () => {
+    const day = '2026-03-01'
+    const { skipped } = await parse(
+      plausibleFixtureFile((files) => {
+        files[file('visitors')] = 'date,visitors,pageviews,bounces,visits,visit_duration\n' + `${day},10,30,4,12,600\n`
+        files[file('locations')] =
+          'date,country,region,city,visitors,visits,visit_duration,bounces,pageviews\n' +
+          `${day},BE,BE-VLG,2803138,3,3,90,1,6\n`
+        delete files[file('sources')]
+        delete files[file('pages')]
+        delete files[file('entry_pages')]
+        delete files[file('exit_pages')]
+        delete files[file('devices')]
+        delete files[file('browsers')]
+        delete files[file('operating_systems')]
+        delete files[file('custom_events')]
+        delete files[file('custom_props')]
+      }),
+      { from: '2026-03-02', through: '2026-03-03', before: 'outside_history_window', after: 'pulse_measured' },
+    )
+    // One physical locations row now makes three addDimension calls (country +
+    // region + city, M6) sharing one date. Clipped, it must still count as ONE
+    // skipped row — not three — or the customer's own skip report triples for
+    // every location, and the ledger's 5-sample budget (core/skipped.ts) burns
+    // three slots on the same line instead of naming up to 5 distinct ones.
+    // 1 from the visitors row + 1 from the locations row.
+    expect(skipped.toCounts()).toEqual({ outside_history_window: 2 })
   })
 
   it('plans the export end to end', async () => {
@@ -158,8 +204,8 @@ describe('the synthetic export', () => {
       range_end: '2026-03-03',
       steps: [{ start: '2026-03-01', end: '2026-03-03', parts: 1 }],
       parts_total: 1,
-      totals: { rows: { daily: 3, monthly: 0, dimensions: 16, acquisition: 3 }, visitors: 35, pageviews: 89 },
-      skipped: { bad_number: 1, bad_timestamp: 1, missing_field: 2, needs_place_names: 2 },
+      totals: { rows: { daily: 3, monthly: 0, dimensions: 24, acquisition: 3 }, visitors: 35, pageviews: 89 },
+      skipped: { bad_number: 1, bad_timestamp: 1, missing_field: 2 },
       ignored_files: [file('custom_events'), file('custom_props')],
     })
     expect(summary.fingerprint).toMatch(/^[0-9a-f]{64}$/)
@@ -181,7 +227,7 @@ describe('the fixture, moved (the staging harness puts it inside a QA site\'s wi
       ['2026-09-21', 20],
       ['2026-09-22', 5],
     ])
-    expect(skipped.toCounts()).toEqual({ bad_number: 1, bad_timestamp: 1, missing_field: 2, needs_place_names: 2 })
+    expect(skipped.toCounts()).toEqual({ bad_number: 1, bad_timestamp: 1, missing_field: 2 })
     expect(skipped.toSamples().bad_timestamp[0].file).toBe('imported_visitors_20260920_20260922.csv')
   })
 })
