@@ -335,11 +335,17 @@ export const plausibleSource: AggregateSourceParser = {
     const map = mappers(ctx.rows, ctx.skipped)
 
     const entry = (name: string): EntrySink | null => {
-      if (name.endsWith('/')) return null
-      const base = name.slice(name.lastIndexOf('/') + 1)
+      // A folder is named by the path its entries sit under. The ZIP format
+      // separates folders with `/`, but some Windows zippers write `\`, and an
+      // export unpacked and re-zipped with one of them still holds the export:
+      // both separators name a folder, so a table is found by its own name
+      // whichever one the archive used.
+      const segments = name.split(/[\\/]/)
+      const base = segments[segments.length - 1]
+      if (base === '') return null
       // What an archive picks up when it is unpacked and re-zipped on a Mac:
       // resource forks and folder metadata, never data. Skipped without a word.
-      if (name.startsWith('__MACOSX/') || base === '.DS_Store' || base.startsWith('._')) return null
+      if (segments[0] === '__MACOSX' || base === '.DS_Store' || base.startsWith('._')) return null
       const m = TABLE_FILE_RE.exec(base)
       if (!m) {
         // Not a table this parser reads: the custom events and custom

@@ -232,6 +232,28 @@ describe('tolerated shapes', () => {
     expect(ignored).toEqual([file('custom_events'), file('custom_props')])
   })
 
+  it('finds every table inside a folder a Windows zipper named with backslashes', async () => {
+    // Some Windows zippers separate folders with `\` instead of the ZIP
+    // format's `/`. The tables are all there, so the import must read them
+    // exactly as it reads the export itself, never report its visitors table
+    // missing.
+    const windows = plausibleFixtureFile((files) => {
+      for (const name of Object.keys(files)) {
+        files[`plausible-export\\${name}`] = files[name]
+        delete files[name]
+      }
+      files['plausible-export\\'] = ''
+      files['__MACOSX\\plausible-export\\._imported_visitors_20260301_20260303.csv'] = 'resource fork'
+      files['plausible-export\\.DS_Store'] = 'finder'
+    })
+    const got = await parse(windows)
+    const want = await parse(plausibleFixtureFile())
+    expect(got.rows).toEqual(want.rows)
+    expect(got.skipped.toCounts()).toEqual(want.skipped.toCounts())
+    expect(got.skipped.toSamples()).toEqual(want.skipped.toSamples())
+    expect(got.ignored).toEqual([file('custom_events'), file('custom_props')])
+  })
+
   it('never reads the custom events file, so its shape cannot fail an import (D8)', async () => {
     const odd = plausibleFixtureFile((files) => {
       files[file('custom_events')] = 'anything,at,all\n"unterminated\n'
@@ -337,6 +359,11 @@ describe('the wrong file, named', () => {
       'one table under both of its names',
       (f: Record<string, string>) => (f['imported_visitors.csv'] = f[file('visitors')]),
       { reason: 'duplicate_file', file: 'imported_visitors.csv' },
+    ],
+    [
+      'one table twice, once under a backslash-separated folder',
+      (f: Record<string, string>) => (f[`copy\\${file('visitors')}`] = f[file('visitors')]),
+      { reason: 'duplicate_file', file: file('visitors') },
     ],
     [
       'a column the export never writes',
