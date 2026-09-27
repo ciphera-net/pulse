@@ -71,9 +71,11 @@ describe('activateTeam serialisation (Fix 2, PULSE-89 review)', () => {
   // setSessionAction landing BETWEEN the person's own two steps.
 
   it("two concurrent calls run strictly in order: the second's switchContext waits for the first's setActiveTeamAction to resolve", async () => {
-    let releaseFirst: (() => void) | null = null
+    // A holder object, not a `let`: TypeScript cannot see an assignment made
+    // inside the mock's callback and would narrow a bare variable to `null`.
+    const gate: { release: () => void } = { release: () => {} }
     h.setActiveTeamAction.mockImplementationOnce(async (_id: string | null) => {
-      await new Promise<void>((resolve) => { releaseFirst = resolve })
+      await new Promise<void>((resolve) => { gate.release = resolve })
       h.order.push('setActiveTeamAction')
       return { success: true }
     })
@@ -89,7 +91,7 @@ describe('activateTeam serialisation (Fix 2, PULSE-89 review)', () => {
     expect(h.switchContext).toHaveBeenCalledTimes(1)
     expect(h.switchContext).toHaveBeenCalledWith('org_a')
 
-    releaseFirst?.()
+    gate.release()
     await p1
     await p2
 
