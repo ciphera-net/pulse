@@ -182,8 +182,10 @@ export interface FathomHeader {
 
 /**
  * Decides what one file is from its header alone (M7-d), and checks the
- * header strictly against that file's columns. Throws `unrecognised_file` for
- * a header with no marker and no visitor-count column, or with two markers.
+ * header strictly against that file's columns. Throws `unrecognised_file` in
+ * two forms the error map tells apart by `observed`: a header with no marker
+ * and no visitor-count column (`columns` = the header seen), or one with
+ * several markers (`columns` = those markers, `limit` 1, `observed` how many).
  */
 export function classifyFathomHeader(file: string, header: readonly string[]): FathomHeader {
   const columns = new Set(header)
@@ -193,7 +195,7 @@ export function classifyFathomHeader(file: string, header: readonly string[]): F
     throw wrongFile(
       'unrecognised_file',
       `${file} combines ${found.join(', ')} in one export. Export each dimension on its own: only Country with Region and City, and Referrer with UTM Parameters, go together.`,
-      { file, columns: found },
+      { file, columns: found, limit: 1, observed: found.length },
     )
   }
   if (marked.length === 1) {
@@ -204,10 +206,11 @@ export function classifyFathomHeader(file: string, header: readonly string[]): F
   }
   const visitors = FATHOM_TOTALS_VISITOR_COLUMNS.find((c) => columns.has(c))
   if (!visitors) {
-    throw wrongFile('unrecognised_file', `${file} has none of the columns a Fathom Custom Export writes.`, {
-      file,
-      columns: header.slice(0, HEADER_ECHO),
-    })
+    throw wrongFile(
+      'unrecognised_file',
+      `This doesn't look like part of a Fathom export. ${file} has none of the columns this export writes.`,
+      { file, columns: header.slice(0, HEADER_ECHO) },
+    )
   }
   const spec = FATHOM_FILES.totals
   const required = [...spec.required.slice(0, 1), visitors, ...spec.required.slice(1)]

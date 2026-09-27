@@ -20,7 +20,8 @@ import {
 } from '../index'
 import { PLAN_LIMITS } from '../core/plan'
 import { runPipeline } from '../pipeline'
-import { PROTOCOL_VERSION, type PrepareRequest, type ToWorker } from '../protocol'
+import { PROTOCOL_VERSION, type FromWorker, type PrepareRequest, type ToWorker } from '../protocol'
+import { createWorkerHost } from '../worker-host'
 import { plausibleFixtureFile } from './fixtures/plausible-export'
 import { FakeImportServer } from './support/fake-server'
 import { inProcessWorker, workerDouble, type TestWorker } from './support/workers'
@@ -449,6 +450,33 @@ describe('the files an import reads', () => {
     const files = Array.from({ length: MAX_UPLOAD_FILES + 1 }, (_, i) => untouchable(`f${i}.zip`))
     const { options } = setup({ file: undefined, files })
     expect((await failure(runImport(options))).code).toBe('too_many_files')
+  })
+
+  it.each([
+    ['no list of files', undefined],
+    ['a lone file where the list belongs', new File(['never read'], 'lone.zip')],
+  ])('a worker handed %s refuses the prepare by name, and plans nothing', async (_what, files) => {
+    const posted: FromWorker[] = []
+    const host = createWorkerHost((m) => posted.push(m))
+    await host({
+      type: 'prepare',
+      id: 7,
+      protocol: PROTOCOL_VERSION,
+      source: 'plausible',
+      files: files as unknown as readonly File[],
+      clip: null,
+      timeZone: 'UTC',
+    })
+    expect(posted).toEqual([
+      {
+        type: 'error',
+        id: 7,
+        error: expect.objectContaining({
+          code: 'worker_failed',
+          message: 'The page handed the import worker no list of files to read.',
+        }),
+      },
+    ])
   })
 
   it('the worker checks the count too, for a caller that went round the orchestrator', async () => {

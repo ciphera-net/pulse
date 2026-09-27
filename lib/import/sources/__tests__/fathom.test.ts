@@ -292,6 +292,10 @@ describe('dispatch (M7-d)', () => {
       acquisition: ['datetime', 'referrer_hostname', 'referrer_pathname', 'utm_source', 'uniques', 'pageviews'],
     }
     for (const role of FATHOM_ROLES) expect(classifyFathomHeader('f.csv', headers[role]).role).toBe(role)
+    // `hostname` is allowed on the Page file, not required: the parser folds
+    // it away, so a Page export without it loses nothing (§5 item 4 settles
+    // what a real one carries).
+    expect(classifyFathomHeader('f.csv', ['datetime', 'pathname', 'uniques', 'pageviews']).role).toBe('page')
     // The totals' `uniques` spelling is a subset of every dimensioned header,
     // which is exactly why a name-based dispatch would misroute it (V§1a).
     for (const role of FATHOM_ROLES.filter((r) => r !== 'totals')) {
@@ -312,6 +316,8 @@ describe('dispatch (M7-d)', () => {
   it('refuses a file with no marker and no visitor column, echoing the header it saw', () => {
     const e = thrown(() => classifyFathomHeader('other.csv', ['Page', 'Visitors', 'Views']))
     expect(e.detail).toEqual({ reason: 'unrecognised_file', file: 'other.csv', columns: ['Page', 'Visitors', 'Views'] })
+    // M7-p's sentence, with the tool and the file filled in.
+    expect(e.message).toBe("This doesn't look like part of a Fathom export. other.csv has none of the columns this export writes.")
   })
 
   it('refuses two markers in one file, naming them, whatever order they come in', () => {
@@ -320,7 +326,16 @@ describe('dispatch (M7-d)', () => {
       ['country_code', 'datetime', 'uniques', 'pageviews', 'browser'],
     ]) {
       const e = thrown(() => classifyFathomHeader('mixed.csv', header))
-      expect(e.detail).toEqual({ reason: 'unrecognised_file', file: 'mixed.csv', columns: ['country_code', 'browser'] })
+      // `limit` and `observed` are what tell this form from the no-marker one
+      // (whose `columns` is the header seen): one recipe dimension per file,
+      // and how many this one combines.
+      expect(e.detail).toEqual({
+        reason: 'unrecognised_file',
+        file: 'mixed.csv',
+        columns: ['country_code', 'browser'],
+        limit: 1,
+        observed: 2,
+      })
     }
   })
 
@@ -426,7 +441,7 @@ describe('the wrong upload, named', () => {
       f[N.browser] = 'datetime,browser,country_code,uniques,pageviews\n2026-03-01 00:00:00,Chrome,BE,1,1\n'
     })
     const e = await failure(parse(browserCountry))
-    expect(e.detail).toEqual({ reason: 'unrecognised_file', file: N.browser, columns: ['country_code', 'browser'] })
+    expect(e.detail).toEqual({ reason: 'unrecognised_file', file: N.browser, columns: ['country_code', 'browser'], limit: 1, observed: 2 })
   })
 
   it('a second file of one kind is refused as duplicate_file, naming both', async () => {

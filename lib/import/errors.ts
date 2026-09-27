@@ -105,7 +105,13 @@ export type WrongFileReason =
    * `observed` is the rounded average number of days between the file's dates.
    */
   | 'wrong_grouping'
-  /** A file with none of the columns any file of this export writes (M7-d); `columns` holds the header seen. */
+  /**
+   * A file that is no file of this export (M7-d), in one of two forms, told
+   * apart by `observed`. Without it: none of the columns any file of the
+   * export writes, and `columns` holds the header seen. With it: several
+   * dimensions combined in one file, `columns` holds their marker columns,
+   * `limit` is 1 and `observed` is how many the file combines.
+   */
   | 'unrecognised_file'
 
 /** Why the archive is `zip_too_large`: which of the four guards tripped. */
