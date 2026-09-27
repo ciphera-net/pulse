@@ -347,6 +347,36 @@ describe("hostname filter against ctx.siteDomain (M9-j')", () => {
     expect(rows.daily[0]?.pageviews).toBe(1)
     expect(skipped.toCounts()).toEqual({ hostname_mismatch: 1 })
   })
+
+  it('rejects a WHOLESALE upload of another property\'s export in full — every row shares one consistent wrong host, so the intra-file fallback would see nothing to disagree with', async () => {
+    // The motivating scenario from the design doc itself (M9-j'): a file
+    // where every row agrees with every other row, just not with the site.
+    // A count-for-count fixture (one wrong row, one right row) can't tell
+    // this check apart from the pre-M9-j' first-row-reference fallback,
+    // which also happens to keep whichever row it saw first — this fixture
+    // has no "right" row at all, so only an explicit ctx.siteDomain compare
+    // can reject it.
+    const rowsIn = [
+      { hostname: 'wrong-property.com', path: '/a' },
+      { hostname: 'wrong-property.com', path: '/b' },
+      { hostname: 'wrong-property.com', path: '/c' },
+    ]
+    const { rows, skipped } = await parse([fixture(rowsIn)], { siteDomain: 'example.com' })
+    expect(rows.daily).toEqual([])
+    expect(skipped.toCounts()).toEqual({ hostname_mismatch: rowsIn.length })
+  })
+
+  it('strips a trailing root-label dot before comparing, like every other normalization this check performs', async () => {
+    // FQDN-with-trailing-dot form (`example.com.`): normaliseHost already
+    // lower-cases and strips `www.` and converts Unicode to ASCII, so a
+    // literal trailing dot — never present in `sites.domain` per the
+    // backend — should not be the one thing left un-normalised.
+    const { rows, skipped } = await parse([fixture([{ hostname: 'example.com.', path: '/a' }])], {
+      siteDomain: 'example.com',
+    })
+    expect(skipped.total()).toBe(0)
+    expect(rows.daily[0]?.pageviews).toBe(1)
+  })
 })
 
 // ─── Identity and the fold amendments (M9-e) ───────────────────────────────

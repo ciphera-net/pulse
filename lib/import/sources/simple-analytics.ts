@@ -181,11 +181,15 @@ function toAsciiHost(value: string): string {
 /**
  * Lower-cased, `www.`-stripped, and Unicode converted to ASCII:
  * `ingestnorm.IsOwnHost`'s own convention (M9-j), extended for M9-j' to also
- * match the site's own domain.
+ * match the site's own domain. A single trailing root-label dot (the
+ * `example.com.` FQDN form) is stripped too: `sites.domain` never carries one
+ * (backend), so a raw export row that does must not be the one thing left
+ * un-normalised here.
  */
 function normaliseHost(value: string): string {
   const ascii = toAsciiHost(value.trim().toLowerCase())
-  return ascii.startsWith('www.') ? ascii.slice(4) : ascii
+  const noWww = ascii.startsWith('www.') ? ascii.slice(4) : ascii
+  return noWww.endsWith('.') ? noWww.slice(0, -1) : noWww
 }
 
 const nullIfEmpty = (s: string) => (s === '' ? null : s)
