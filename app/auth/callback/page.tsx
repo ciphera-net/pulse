@@ -5,14 +5,16 @@ import { reportClientEvent } from '@/lib/utils/clientEvents'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import apiRequest from '@/lib/api/client'
-import { exchangeAuthCode, getSessionAction, setSessionAction } from '@/app/actions/auth'
+import { exchangeAuthCode, getSessionAction } from '@/app/actions/auth'
 import { setAccessToken, APP_URL } from '@/lib/api/client'
 import { AuthErrorState, LoadingOverlay, type AuthErrorType } from '@ciphera-net/facet'
 import { safeRedirectUrl } from '@/lib/utils/safe-redirect'
 import { claimPendingAuth, forgetAllPendingAuth } from '@/lib/api/oauth-store'
 import { initiateOAuthFlow } from '@/lib/api/oauth'
 import { cdnUrl } from '@/lib/cdn'
-import { ensureDefaultOrganization, shouldProvisionWorkspace, switchContext } from '@/lib/api/organization'
+import { ensureDefaultOrganization, shouldProvisionWorkspace } from '@/lib/api/organization'
+import { activateTeam } from '@/lib/auth/switchOrganization'
+import { getMe, teamRole } from '@/lib/api/me'
 import { resolveLandingTarget } from '@/lib/auth/landing-target'
 import { logger } from '@/lib/utils/logger'
 import { claimReturnTarget, peekReturnTarget } from '@/lib/auth/return-target'
@@ -68,9 +70,7 @@ function AuthCallbackContent() {
   // * Answers with the destination the caller should land on, or null when there
   // * is nothing better to say than the old default — a /join arrival, or a
   // * failure the org wall will pick up on the next route.
-  const provisionWorkspaceUnlessJoining = useCallback(async (
-    sessionRole: string | null | undefined,
-  ): Promise<string | null> => {
+  const provisionWorkspaceUnlessJoining = useCallback(async (): Promise<string | null> => {
     // * PEEK, never claim: landInApp() still needs this value, and a read that
     // * spent it here would send every invited person to the default landing
     // * instead of their invite. Storage unreadable is treated as "no invite
@@ -84,22 +84,30 @@ function AuthCallbackContent() {
       // 🔴 AND SWITCH INTO IT BEFORE LANDING. The access token was minted at the
       // exchange, a moment BEFORE this workspace existed, so it carries no
       // org_id. Landing on it makes the destination page discover the mismatch
-      // and repair it — switchContext, a new session, router.refresh() — which
-      // is a second render the person sees as a flicker on their very first
-      // screen (reported by the owner, 08-09-2026: "it flicker a lot").
-      // Repairing it here costs the same two calls and happens behind the
-      // redirect that is already running.
-      const { access_token } = await switchContext(ensured.organization.id)
-      const result = await setSessionAction(access_token)
-      if (result.success) setAccessToken(access_token)
-      // * 🔑 The role AFTER the switch, not before it. The exchange's token was
-      // * minted against whatever context the account had a moment ago; the one
-      // * that decides whether this person is walled is the one they are landing
-      // * with. Falls back to the pre-switch role rather than to nothing —
-      // * an absent role is treated as walled, which is the safe side.
+      // and repair it — a new session, router.refresh() — which is a second
+      // render the person sees as a flicker on their very first screen
+      // (reported by the owner, 08-09-2026: "it flicker a lot"). Repairing it
+      // here happens behind the redirect that is already running.
+      await activateTeam(ensured.organization.id)
+      // * 🔑 THE ROLE COMES FROM PULSE'S OWN /me NOW (Phase 2, PULSE-89) —
+      // * activateTeam's bridge carries no role any more, and the token's
+      // * claim is not read here either. A brand-new workspace never needs
+      // * asking: `createdWorkspace` short-circuits below and its creator is
+      // * certainly its owner. An EXISTING workspace does — resolved here
+      // * rather than left to the destination route, or the person would see
+      // * this page's own flicker-avoidance defeated by a second guess.
+      let role: string | undefined
+      if (!ensured.created) {
+        try {
+          const me = await getMe()
+          role = teamRole(me, ensured.organization.id) ?? undefined
+        } catch (e) {
+          logger.error("Could not resolve this workspace's role from /me", e)
+        }
+      }
       return await resolveLandingTarget({
         orgId: ensured.organization.id,
-        role: result.user?.role ?? sessionRole,
+        role,
         createdWorkspace: ensured.created,
       })
     } catch (e) {
@@ -137,7 +145,19 @@ function AuthCallbackContent() {
     // * gets the same destination for the same reason: the flash it would
     // * otherwise cause is identical, and a rescued fresh signup is exactly the
     // * case this path exists for.
-    const target = await resolveLandingTarget({ orgId: session.org_id, role: session.role })
+    // *
+    // * 🔑 Role comes from Pulse's /me (Phase 2, PULSE-89) — session carries
+    // * only the org_id preference now, never a role claim.
+    let role: string | undefined
+    if (session.org_id) {
+      try {
+        const me = await getMe()
+        role = teamRole(me, session.org_id) ?? undefined
+      } catch (e) {
+        logger.error("Could not resolve this session's role from /me", e)
+      }
+    }
+    const target = await resolveLandingTarget({ orgId: session.org_id, role })
     landInApp(target)
     return true
   }, [landInApp])
@@ -159,10 +179,15 @@ function AuthCallbackContent() {
         setAccessToken(result.access_token)
         try {
           const fullProfile = await apiRequest<{ id: string; email: string; display_name?: string; totp_enabled: boolean; org_id?: string; role?: string }>('/auth/user/me')
+          // * role is deliberately absent here (Phase 2, PULSE-89): neither
+          // * the exchange nor id-backend's /auth/user/me decides it any
+          // * more, and this state is about to be thrown away anyway —
+          // * landInApp() below is a FULL navigation, so the destination
+          // * route's own AuthProvider resolves org_id/role fresh from
+          // * Pulse's /me rather than inheriting a guess from here.
           login({
             ...fullProfile,
             org_id: result.user.org_id ?? fullProfile.org_id,
-            role: result.user.role ?? fullProfile.role,
           })
         } catch {
           login(result.user)
@@ -208,9 +233,7 @@ function AuthCallbackContent() {
         // * one of their own; the server cannot know an invite is pending.
         // * Failure is not fatal — the org wall retries on the next route, and
         // * the manual form is still there behind it.
-        const landing = await provisionWorkspaceUnlessJoining(
-          result.user.role ?? undefined,
-        )
+        const landing = await provisionWorkspaceUnlessJoining()
         // * Use full-page navigation (not router.push) so the access_token cookie set
         // * by exchangeAuthCode is guaranteed committed before AuthProvider re-initializes
         // * on the destination route. Eliminates the post-login SWR race where useSites()

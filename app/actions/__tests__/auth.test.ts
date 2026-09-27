@@ -151,6 +151,112 @@ describe('getSessionAction — reads Pulse\'s own access cookie, never the apex 
   })
 })
 
+/**
+ * Phase 2, PULSE-89. ACCESS (the token every test in this file mints) carries
+ * `org_id: 'org-1'` and `role: 'owner'` — this block exists to prove neither
+ * one leaks out of userOf/decodeUser any more. org_id now comes ONLY from the
+ * `pulse_team` cookie, and role does not come from here at all.
+ */
+describe('userOf/decodeUser ignore the token\'s org_id and role (Phase 2, PULSE-89)', () => {
+  const TEAM = 'a1b2c3d4-e5f6-4789-a012-b3c4d5e6f789'
+
+  beforeEach(() => {
+    vi.resetModules()
+  })
+
+  it('getSessionAction: org_id is undefined with no pulse_team cookie, and role never appears', async () => {
+    cookieStore = makeCookieStore({ pulse_access: ACCESS })
+    const { getSessionAction } = await import('../auth')
+
+    const session = await getSessionAction()
+
+    expect(session?.org_id).toBeUndefined()
+    expect(session).not.toHaveProperty('role')
+  })
+
+  it('getSessionAction: org_id comes from the pulse_team cookie when one is set, not the token\'s claim', async () => {
+    cookieStore = makeCookieStore({ pulse_access: ACCESS, pulse_team: TEAM })
+    const { getSessionAction } = await import('../auth')
+
+    expect((await getSessionAction())?.org_id).toBe(TEAM)
+  })
+
+  it('setSessionAction: neither org_id nor role appears on the returned user', async () => {
+    cookieStore = makeCookieStore({})
+    const { setSessionAction } = await import('../auth')
+
+    const result = await setSessionAction(ACCESS)
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.user).not.toHaveProperty('org_id')
+      expect(result.user).not.toHaveProperty('role')
+    }
+  })
+
+  it('exchangeAuthCode: org_id is undefined for a browser with no pulse_team cookie yet, and role never appears', async () => {
+    cookieStore = makeCookieStore({})
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(tokenResponse()))
+    const { exchangeAuthCode } = await import('../auth')
+
+    const result = await exchangeAuthCode('code-1', 'verifier-1', 'https://pulse.example.test/auth/callback')
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.user.org_id).toBeUndefined()
+      expect(result.user).not.toHaveProperty('role')
+    }
+  })
+
+  it('exchangeAuthCode: org_id surfaces an EXISTING pulse_team preference, never the minted token\'s org_id claim', async () => {
+    cookieStore = makeCookieStore({ pulse_team: TEAM })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(tokenResponse()))
+    const { exchangeAuthCode } = await import('../auth')
+
+    const result = await exchangeAuthCode('code-1', 'verifier-1', 'https://pulse.example.test/auth/callback')
+
+    expect(result.success && result.user.org_id).toBe(TEAM)
+  })
+})
+
+describe('setActiveTeamAction — writes/clears the pulse_team preference', () => {
+  const TEAM = 'a1b2c3d4-e5f6-4789-a012-b3c4d5e6f789'
+
+  beforeEach(() => {
+    vi.resetModules()
+  })
+
+  it('writes a real team id', async () => {
+    cookieStore = makeCookieStore({})
+    const { setActiveTeamAction } = await import('../auth')
+
+    const result = await setActiveTeamAction(TEAM)
+
+    expect(result.success).toBe(true)
+    expect(cookieStore.sets.find((c) => c.name === 'pulse_team')?.value).toBe(TEAM)
+  })
+
+  it('clears it for null', async () => {
+    cookieStore = makeCookieStore({ pulse_team: TEAM })
+    const { setActiveTeamAction } = await import('../auth')
+
+    const result = await setActiveTeamAction(null)
+
+    expect(result.success).toBe(true)
+    expect(cookieStore.deletes.map((d) => d.name)).toContain('pulse_team')
+  })
+
+  it('refuses a non-UUID value — writes nothing', async () => {
+    cookieStore = makeCookieStore({})
+    const { setActiveTeamAction } = await import('../auth')
+
+    const result = await setActiveTeamAction('not-a-uuid')
+
+    expect(result.success).toBe(false)
+    expect(cookieStore.sets).toHaveLength(0)
+  })
+})
+
 describe('logoutAction — Pulse\'s own family, revoked for real', () => {
   beforeEach(() => {
     vi.resetModules()
@@ -176,13 +282,13 @@ describe('logoutAction — Pulse\'s own family, revoked for real', () => {
     expect(h.get('user-agent')).toBe(BROWSER_UA)
   })
 
-  it('expires the three pulse_* cookies and touches nothing apex', async () => {
+  it('expires all four pulse_* cookies (the active-team preference included) and touches nothing apex', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(200, {})))
     const { logoutAction } = await import('../auth')
 
     await logoutAction()
 
-    expect(cookieStore.deletes.map((d) => d.name).sort()).toEqual(['pulse_access', 'pulse_csrf', 'pulse_refresh'])
+    expect(cookieStore.deletes.map((d) => d.name).sort()).toEqual(['pulse_access', 'pulse_csrf', 'pulse_refresh', 'pulse_team'])
     for (const d of cookieStore.deletes) expect(d.options).not.toHaveProperty('domain')
   })
 
@@ -218,7 +324,7 @@ describe('logoutAction — Pulse\'s own family, revoked for real', () => {
 
     expect(result.revoked).toBe(false)
     expect(result.already_invalid).toBe(true)
-    expect(cookieStore.deletes).toHaveLength(3)
+    expect(cookieStore.deletes).toHaveLength(4)
   })
 
   it('reports an unconfirmed revocation honestly and still clears the cookies', async () => {
@@ -230,7 +336,7 @@ describe('logoutAction — Pulse\'s own family, revoked for real', () => {
     expect(result.revoked).toBe(false)
     expect(result.already_invalid).toBe(false)
     expect(result.status).toBe(503)
-    expect(cookieStore.deletes).toHaveLength(3)
+    expect(cookieStore.deletes).toHaveLength(4)
   })
 
   it('🔴 with no Pulse session, the apex cookies in the browser are NOT used to sign anyone out', async () => {

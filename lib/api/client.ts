@@ -101,6 +101,72 @@ export function getAccessToken(): string | null {
   return accessToken
 }
 
+// * ============================================================================
+// * The active team (Phase 2, PULSE-89), held in memory like the access token
+// * ============================================================================
+// *
+// * Which team pulse-api answers a request for, sent as `X-Pulse-Team`. Never
+// * persisted by this module — same rule as the access token above. The
+// * durable copy is the `pulse_team` cookie (lib/auth/session-cookies.ts), a
+// * PREFERENCE that survives a reload; this is what a running tab actually
+// * sends. AuthProvider sets it from Pulse's own /me at init and after every
+// * switch (lib/auth/switchOrganization.ts's activateTeam).
+let activeTeam: string | null = null
+
+/** Called by the auth context whenever the active team is known; null for none. */
+export function setActiveTeam(id: string | null): void {
+  activeTeam = id && id.length > 0 ? id : null
+}
+
+/** Exposed for tests and the auth context; never persist what this returns. */
+export function getActiveTeam(): string | null {
+  return activeTeam
+}
+
+// * ============================================================================
+// * Team recovery (Phase 2, PULSE-89)
+// * ============================================================================
+// *
+// * pulse-api answers 403 { error, code } when a request's X-Pulse-Team names
+// * a team the caller cannot use any more — missing header, not a member, or
+// * the team was deleted. None of that is retryable on the SAME request (the
+// * team named in the header is simply wrong), so the handler re-resolves the
+// * active team for the NEXT one, fire-and-forget: it never blocks or changes
+// * the outcome of the request that found the problem.
+const TEAM_ERROR_CODES = new Set(['TEAM_REQUIRED', 'NOT_A_MEMBER', 'TEAM_DELETED'])
+const TEAM_RECOVERY_THROTTLE_MS = 10_000
+
+let teamRecoveryHandler: (() => Promise<void>) | null = null
+let teamRecoveryInFlight: Promise<void> | null = null
+let teamRecoveryLastRunAt = 0
+
+/** Injected by the auth context; null on sign-out. */
+export function setTeamRecoveryHandler(handler: (() => Promise<void>) | null): void {
+  teamRecoveryHandler = handler
+}
+
+/** Single-flight and throttled to at most once per 10s — see the block comment above. */
+function maybeRecoverTeam(): void {
+  if (!teamRecoveryHandler || teamRecoveryInFlight) return
+  const now = Date.now()
+  if (now - teamRecoveryLastRunAt < TEAM_RECOVERY_THROTTLE_MS) return
+  teamRecoveryLastRunAt = now
+  const handler = teamRecoveryHandler
+  teamRecoveryInFlight = handler()
+    .catch(() => {
+      // * Best-effort. A failed recovery leaves the active team as it was; the
+      // * next team-shaped 403 tries again once the throttle window passes.
+    })
+    .finally(() => { teamRecoveryInFlight = null })
+}
+
+/** Fires team recovery when `body` is a team-shaped 403; never for `/auth/*`, which has no team at all. */
+function maybeTriggerTeamRecovery(isAuthRequest: boolean, status: number, body: Record<string, unknown> | undefined): void {
+  if (isAuthRequest || status !== 403) return
+  const code = typeof body?.code === 'string' ? body.code : null
+  if (code && TEAM_ERROR_CODES.has(code)) maybeRecoverTeam()
+}
+
 // * Shared refresh handler — injected by AuthProvider via setRefreshHandler().
 // * Routes all 401 refresh attempts through useSessionRefresh's mutex,
 // * preventing concurrent refresh calls that trigger token reuse detection.
@@ -141,11 +207,19 @@ const responseCache = new Map<string, CachedResponse>()
 
 /**
  * Generate a unique key for a request based on endpoint and options
+ *
+ * 🔴 INCLUDES THE ACTIVE TEAM (Phase 2, PULSE-89) for anything that is not an
+ * `/auth/*` request. X-Pulse-Team is now silently part of every pulse-api
+ * request (see buildSessionHeaders below), so it must be part of the cache
+ * key too — otherwise a team switch could be served the PREVIOUS team's GET
+ * for up to CACHE_TTL_MS out of the 2s micro-cache, or dedupe against an
+ * identical in-flight request that was actually answering for the old team.
  */
 function getRequestKey(endpoint: string, options: RequestInit): string {
   const method = options.method || 'GET'
   const body = options.body || ''
-  return `${method}:${endpoint}:${body}`
+  const team = endpoint.startsWith('/auth') ? '' : getActiveTeam() ?? ''
+  return `${method}:${endpoint}:${body}:${team}`
 }
 
 /**
@@ -178,6 +252,49 @@ function cleanupExpiredEntries(): void {
  */
 export interface ApiRequestOptions extends RequestInit {
   skipAuthRetry?: boolean // * Set to true to skip automatic refresh on 401
+}
+
+/**
+ * Every header a session-authenticated request needs, layered onto whatever
+ * the caller already set — the ONE place this is assembled, used by
+ * `apiRequest`'s first attempt, its 401 refresh-and-retry, and
+ * `apiRequestBlob` (previously three hand-written copies that could each
+ * drift on their own).
+ *
+ * * `Authorization: Bearer` — the in-memory access token, unless the caller
+ *   already set one (the OPAQUE transports pass their own).
+ * * `X-CSRF-Token` on state-changing methods.
+ * * `X-Pulse-Team` (Phase 2, PULSE-89) — the active team, ONLY for pulse-api
+ *   requests. Never for `/auth/*`: id-backend's CORS does not allow this
+ *   header, and sending it there would fail the preflight and break every ID
+ *   call. Only when a team is actually active, and never overriding a
+ *   caller-supplied `X-Pulse-Team`.
+ */
+function buildSessionHeaders(
+  endpoint: string,
+  method: string,
+  base: Record<string, string>,
+): Record<string, string> {
+  const headers: Record<string, string> = { ...base }
+
+  const bearer = getAccessToken()
+  if (bearer && !headers['Authorization'] && !headers['authorization']) {
+    headers['Authorization'] = `Bearer ${bearer}`
+  }
+
+  if (isStateChangingMethod(method)) {
+    const csrfToken = getCSRFToken()
+    if (csrfToken) headers['X-CSRF-Token'] = csrfToken
+  }
+
+  if (!endpoint.startsWith('/auth')) {
+    const team = getActiveTeam()
+    if (team && !headers['X-Pulse-Team'] && !headers['x-pulse-team']) {
+      headers['X-Pulse-Team'] = team
+    }
+  }
+
+  return headers
 }
 
 /**
@@ -225,41 +342,24 @@ async function apiRequest<T>(
   const requestId = generateRequestId()
   setLastRequestId(requestId)
 
-  const headers: Record<string, string> = {
+  const baseHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
     [getRequestIdHeader()]: requestId,
   }
-  
+
   // * Merge any additional headers from options
   if (options.headers) {
     const additionalHeaders = options.headers as Record<string, string>
     Object.entries(additionalHeaders).forEach(([key, value]) => {
-      headers[key] = value
+      baseHeaders[key] = value
     })
   }
 
-  // * The credential is the in-memory access token, sent as a Bearer (S3).
-  // * pulse-backend checks the header before any cookie and skips its CSRF
-  // * double-submit for a Bearer; id-backend accepts the header too. A caller
-  // * that already set Authorization (the OPAQUE transports) keeps its own.
-  // *
+  // * Authorization, X-CSRF-Token, X-Pulse-Team — see buildSessionHeaders.
   // * `credentials: 'include'` stays for the transition: the ceremony's apex
   // * cookies still satisfy id-backend's CSRF pair on the /auth/* routes until
   // * S5 makes the ceremony host-only, and the browser still holds them.
-  const bearer = getAccessToken()
-  if (bearer && !headers['Authorization'] && !headers['authorization']) {
-    headers['Authorization'] = `Bearer ${bearer}`
-  }
-
-  // * Add CSRF token for all state-changing requests (Pulse API and Auth API).
-  // * pulse-backend ignores it on a Bearer request; id-backend still requires
-  // * the apex pair until S5.
-  if (isStateChangingMethod(method)) {
-    const csrfToken = getCSRFToken()
-    if (csrfToken) {
-      headers['X-CSRF-Token'] = csrfToken
-    }
-  }
+  const headers = buildSessionHeaders(endpoint, method, baseHeaders)
 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
@@ -295,24 +395,18 @@ async function apiRequest<T>(
           const outcome = await refreshHandler()
 
           if (outcome.ok) {
-            const retryHeaders: Record<string, string> = {
+            // * The renewal just primed a NEW access token; buildSessionHeaders
+            // * reads getAccessToken() fresh, so the retry carries it automatically.
+            const retryBase: Record<string, string> = {
               'Content-Type': 'application/json',
               [getRequestIdHeader()]: generateRequestId(),
             }
             if (options.headers) {
               Object.entries(options.headers as Record<string, string>).forEach(([key, value]) => {
-                retryHeaders[key] = value
+                retryBase[key] = value
               })
             }
-            // * The renewal just primed a NEW access token; the retry must carry it.
-            const renewed = getAccessToken()
-            if (renewed && !retryHeaders['Authorization'] && !retryHeaders['authorization']) {
-              retryHeaders['Authorization'] = `Bearer ${renewed}`
-            }
-            if (isStateChangingMethod(method)) {
-              const csrfToken = getCSRFToken()
-              if (csrfToken) retryHeaders['X-CSRF-Token'] = csrfToken
-            }
+            const retryHeaders = buildSessionHeaders(endpoint, method, retryBase)
             const retryResponse = await fetch(url, {
               ...options,
               headers: retryHeaders,
@@ -323,6 +417,7 @@ async function apiRequest<T>(
               return retryResponse.json()
             }
             const retryBody = await retryResponse.json().catch(() => ({}))
+            maybeTriggerTeamRecovery(isAuthRequest, retryResponse.status, retryBody)
             throw new ApiError(authMessageFromStatus(retryResponse.status), retryResponse.status, retryBody)
           }
 
@@ -350,6 +445,10 @@ async function apiRequest<T>(
         errorBody.retryAfter = parseInt(retryAfter, 10)
       }
     }
+
+    // * A team-shaped 403 (Phase 2, PULSE-89) triggers recovery for the NEXT
+    // * request; this one still fails exactly as before.
+    maybeTriggerTeamRecovery(isAuthRequest, response.status, errorBody)
 
     const message = authMessageFromStatus(response.status)
     throw new ApiError(message, response.status, errorBody)
@@ -436,24 +535,26 @@ export async function apiRequestBlob(
   endpoint: string,
   options: ApiRequestOptions = {},
 ): Promise<{ blob: Blob; filename: string | null }> {
-  const baseUrl = endpoint.startsWith('/auth') ? ID_API_URL : API_URL
+  const isAuthRequest = endpoint.startsWith('/auth')
+  const baseUrl = isAuthRequest ? ID_API_URL : API_URL
   const url = endpoint.startsWith('/api/') ? `${baseUrl}${endpoint}` : `${baseUrl}/api/v1${endpoint}`
+  const method = options.method || 'GET'
 
-  const send = (token: string | null) => {
-    const headers: Record<string, string> = { [getRequestIdHeader()]: generateRequestId() }
-    if (options.headers) {
-      Object.entries(options.headers as Record<string, string>).forEach(([k, v]) => { headers[k] = v })
-    }
+  const send = () => {
     // No Content-Type: this is a GET for bytes, and declaring JSON on it is a lie.
-    if (token && !headers['Authorization'] && !headers['authorization']) {
-      headers['Authorization'] = `Bearer ${token}`
+    const base: Record<string, string> = { [getRequestIdHeader()]: generateRequestId() }
+    if (options.headers) {
+      Object.entries(options.headers as Record<string, string>).forEach(([k, v]) => { base[k] = v })
     }
+    // * buildSessionHeaders reads getAccessToken() itself, so the SECOND call
+    // * (after a refresh) picks up the renewed token automatically.
+    const headers = buildSessionHeaders(endpoint, method, base)
     return fetch(url, { ...options, headers, credentials: 'include' })
   }
 
   let response: Response
   try {
-    response = await send(getAccessToken())
+    response = await send()
   } catch {
     throw new ApiError(AUTH_ERROR_MESSAGES.NETWORK, 0)
   }
@@ -462,7 +563,7 @@ export async function apiRequestBlob(
     const outcome = await refreshHandler()
     if (outcome.ok) {
       try {
-        response = await send(getAccessToken())
+        response = await send()
       } catch {
         throw new ApiError(AUTH_ERROR_MESSAGES.NETWORK, 0)
       }
@@ -473,6 +574,7 @@ export async function apiRequestBlob(
     // The body is a file on success and JSON on failure — read the error, but
     // never let a non-JSON body turn a clean 4xx into a parse exception.
     const data = await response.json().catch(() => ({}))
+    maybeTriggerTeamRecovery(isAuthRequest, response.status, data)
     const message = typeof data?.error === 'string' ? data.error : `Request failed (${response.status})`
     throw new ApiError(message, response.status, data)
   }

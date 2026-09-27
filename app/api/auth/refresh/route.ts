@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { env } from '@/lib/env'
-import { clearAccess, clearSession, readSession, writeSession } from '@/lib/auth/session-cookies'
+import { clearAccess, clearSession, readActiveTeam, readSession, writeSession } from '@/lib/auth/session-cookies'
 
 // Server-side runtime code. Reads from the same Zod-validated env schema
 // the client bundle imports — both phases see identical values, and Zod
@@ -36,18 +36,18 @@ export async function POST(request: Request) {
     body = await request.json()
   } catch { /* no body or invalid JSON — device signals will be omitted */ }
 
-  // * Preserve whatever organization the user is currently scoped to so the
-  // * rotated token keeps that context. Prefers the access cookie (still
-  // * valid), then falls back to the client-supplied org_id from localStorage
-  // * (survives cookie expiry). Without either, the auth backend embeds the
-  // * user's primary org automatically.
-  let previousOrgId = ''
-  if (session.access) {
-    try {
-      const payload = JSON.parse(Buffer.from(session.access.split('.')[1], 'base64').toString())
-      if (typeof payload.org_id === 'string') previousOrgId = payload.org_id
-    } catch { /* token may be malformed, proceed without org */ }
-  }
+  // * Preserve whatever team the user is currently scoped to so the rotated
+  // * token keeps that context. Prefers the pulse_team cookie — Pulse's own
+  // * preference (Phase 2, PULSE-89), not the access token's claim — then
+  // * falls back to the client-supplied org_id from localStorage (survives
+  // * cookie expiry). Without either, the auth backend embeds the user's
+  // * primary org automatically.
+  // *
+  // * 🔑 THIS IS THE BRIDGE, NOT A REGRESSION. Sending the ACTIVE team back to
+  // * id-backend on every refresh is what keeps its own claim naming the same
+  // * team the dashboard is showing, which is what makes TEAM_RESOLUTION=claim
+  // * a real rollback until Phase 5 deletes this whole call.
+  let previousOrgId = readActiveTeam(cookieStore) ?? ''
   if (!previousOrgId && body.org_id) {
     previousOrgId = body.org_id
   }

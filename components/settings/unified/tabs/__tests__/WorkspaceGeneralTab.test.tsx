@@ -7,9 +7,9 @@ import * as orgApi from '@/lib/api/organization'
 
 // --- Mocks ---------------------------------------------------------------
 
-const refreshSession = vi.fn().mockResolvedValue(undefined)
+const refresh = vi.fn().mockResolvedValue(undefined)
 vi.mock('@/lib/auth/context', () => ({
-  useAuth: () => ({ user: { id: 'u_owner', org_id: 'org_1' }, refreshSession }),
+  useAuth: () => ({ user: { id: 'u_owner', org_id: 'org_1' }, refresh }),
 }))
 
 let mockIsOwner = true
@@ -85,7 +85,7 @@ beforeEach(() => {
   mockTeamState = 'team'
   mockIsOwner = true
   mockIsAdminOrOwner = true
-  refreshSession.mockClear()
+  refresh.mockClear()
   vi.clearAllMocks()
   ;(orgApi.getOrganization as any).mockResolvedValue({ name: 'Acme Corp', slug: 'acme-corp' })
   ;(orgApi.getOrganizationMembers as any).mockResolvedValue([])
@@ -278,10 +278,10 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
       fireEvent.change(screen.getByLabelText('New owner'), { target: { value: 'u_next' } })
       fireEvent.click(screen.getByRole('button', { name: 'Transfer ownership' }))
       await waitFor(() => expect(hrefSpy).toHaveBeenCalledWith('/settings/organization/general'))
-      expect(refreshSession).toHaveBeenCalledTimes(1)
-      // Rotation strictly BEFORE navigation: a bare reload re-hydrates the old
+      expect(refresh).toHaveBeenCalledTimes(1)
+      // Re-fetch strictly BEFORE navigation: a bare reload re-hydrates the old
       // role and the ex-owner's Danger Zone survives it.
-      expect(refreshSession.mock.invocationCallOrder[0]).toBeLessThan(hrefSpy.mock.invocationCallOrder[0])
+      expect(refresh.mock.invocationCallOrder[0]).toBeLessThan(hrefSpy.mock.invocationCallOrder[0])
     } finally {
       Object.defineProperty(window, 'location', { configurable: true, value: originalLocation })
     }

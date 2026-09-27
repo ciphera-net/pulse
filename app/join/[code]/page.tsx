@@ -5,11 +5,11 @@ import { useParams } from 'next/navigation'
 import { Spinner } from '@ciphera-net/facet'
 import { ID_API_URL } from '@/lib/api/client'
 import { useAuth } from '@/lib/auth/context'
-import { acceptInviteLink, switchContext, InviteLinkInfo } from '@/lib/api/organization'
-import { setSessionAction } from '@/app/actions/auth'
+import { acceptInviteLink, InviteLinkInfo } from '@/lib/api/organization'
 import { initiateOAuthFlow, initiateSignupFlow } from '@/lib/api/oauth'
 import { ApiError } from '@/lib/api/client'
 import { rememberReturnTarget } from '@/lib/auth/return-target'
+import { activateTeam } from '@/lib/auth/switchOrganization'
 
 type PageState =
   | { type: 'loading' }
@@ -74,8 +74,7 @@ function JoinContent() {
     try {
       const result = await acceptInviteLink(code)
       try {
-        const { access_token } = await switchContext(result.organization_id)
-        await setSessionAction(access_token)
+        await activateTeam(result.organization_id)
       } catch {
         // Context switch is best-effort; proceed to dashboard regardless
       }

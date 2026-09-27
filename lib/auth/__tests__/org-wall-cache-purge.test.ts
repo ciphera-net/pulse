@@ -40,6 +40,6 @@ describe('the organization wall purges the cache when it switches org context', 
   })
 
   it('after moving a session with no context onto its first workspace', () => {
-    expect(branchAfter(/switchContext\(firstOrg\.organization_id\)/)).toMatch(PURGE)
+    expect(branchAfter(/activateTeam\(firstOrg\.organization_id\)/)).toMatch(PURGE)
   })
 })
