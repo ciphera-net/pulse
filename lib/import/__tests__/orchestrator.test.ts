@@ -103,7 +103,7 @@ describe('runImport', () => {
       range_start: '2026-03-01',
       range_end: '2026-03-03',
       visits_are_visitors: false,
-      skipped: { bad_number: 1, bad_timestamp: 1, missing_field: 2, needs_place_names: 2 },
+      skipped: { bad_number: 1, bad_timestamp: 1, missing_field: 2 },
     })
     expect(JSON.stringify(body)).not.toMatch(/"line"|imported_/)
   })
@@ -129,7 +129,9 @@ describe('runImport', () => {
     const status = await runImport(options)
     expect([status.range_start, status.range_end]).toEqual(['2026-03-02', '2026-03-02'])
     const skipped = events.find((e) => e.type === 'skipped' && e.origin === 'browser') as Extract<ImportEvent, { type: 'skipped'; origin: 'browser' }>
-    expect(skipped.counts.outside_history_window).toBe(17)
+    // Locations rows each now send country + region + city (M6), tripling their
+    // contribution to a window-dropped day: see plausible.test.ts's own count.
+    expect(skipped.counts.outside_history_window).toBe(23)
     // The window stops well before yesterday, so what lies after it is Pulse's own.
     expect(skipped.counts.pulse_measured).toBe(1)
   })
