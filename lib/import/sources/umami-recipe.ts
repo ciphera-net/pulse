@@ -37,7 +37,14 @@
 //     unlike psql's `\copy` it may span several lines.
 //   - MySQL/MariaDB (Umami v2 only; v3 dropped it): the session's time zone is
 //     set to UTC with a numeric offset, which needs none of the `mysql.time_zone*`
-//     tables `CONVERT_TZ` does (often missing on shared hosting).
+//     tables `CONVERT_TZ` does (often missing on shared hosting). This query is
+//     exported through the customer's SQL client, and some clients write a
+//     NULL into a CSV as the word `NULL` (phpMyAdmin's default), which would
+//     arrive as a referrer, a UTM tag or a city called "NULL". So every column
+//     that can be NULL is COALESCEd to an empty string in the query itself: the
+//     file says "no value" the same way whichever client wrote it. (psql's
+//     `COPY … CSV` writes a NULL as an empty field, so the PostgreSQL query
+//     needs no such step.)
 
 /**
  * The header both queries write, in their order: the columns the parser
@@ -130,21 +137,21 @@ SELECT
   we.session_id AS session_id,
   we.visit_id AS visit_id,
   we.event_type AS event_type,
-  we.event_name AS event_name,
-  we.hostname AS hostname,
+  COALESCE(we.event_name, '') AS event_name,
+  COALESCE(we.hostname, '') AS hostname,
   we.url_path AS url_path,
-  we.referrer_domain AS referrer_domain,
-  we.utm_source AS utm_source,
-  we.utm_medium AS utm_medium,
-  we.utm_campaign AS utm_campaign,
-  s.browser AS browser,
-  s.os AS os,
-  s.device AS device,
-  s.screen AS screen,
-  s.language AS language,
-  s.country AS country,
-  s.region AS region,
-  s.city AS city
+  COALESCE(we.referrer_domain, '') AS referrer_domain,
+  COALESCE(we.utm_source, '') AS utm_source,
+  COALESCE(we.utm_medium, '') AS utm_medium,
+  COALESCE(we.utm_campaign, '') AS utm_campaign,
+  COALESCE(s.browser, '') AS browser,
+  COALESCE(s.os, '') AS os,
+  COALESCE(s.device, '') AS device,
+  COALESCE(s.screen, '') AS screen,
+  COALESCE(s.language, '') AS language,
+  COALESCE(s.country, '') AS country,
+  COALESCE(s.region, '') AS region,
+  COALESCE(s.city, '') AS city
 FROM website_event we
 JOIN session s ON s.session_id = we.session_id
 WHERE we.website_id = '00000000-0000-0000-0000-000000000000'

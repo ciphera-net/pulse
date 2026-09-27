@@ -143,8 +143,20 @@ describe('the published recipe', () => {
 
   it('selects event_name, so a v1 export already holds the custom events M12 will read (amendment 6)', () => {
     expect(UMAMI_COLUMNS).toContain('event_name')
-    expect(UMAMI_POSTGRES_QUERY).toMatch(/we\.event_name AS event_name/)
-    expect(UMAMI_MYSQL_QUERY).toMatch(/we\.event_name AS event_name/)
+    expect(UMAMI_POSTGRES_QUERY).toMatch(/^\s*we\.event_name AS event_name,$/m)
+    expect(UMAMI_MYSQL_QUERY).toMatch(/^\s*COALESCE\(we\.event_name, ''\) AS event_name,$/m)
+  })
+
+  it('MySQL: every column that can be NULL is an empty string in the file, whatever client exports it', () => {
+    // Some clients write NULL into a CSV as the word "NULL" (phpMyAdmin's
+    // default): a referrer, tag or city called "NULL". The query decides.
+    const notNull = new Set(['created_at', 'session_id', 'visit_id', 'event_type', 'url_path'])
+    const lines = UMAMI_MYSQL_QUERY.split('\n')
+    for (const column of UMAMI_COLUMNS) {
+      const line = lines.find((l) => new RegExp(`\\sAS ${column},?$`).test(l)) as string
+      if (notNull.has(column)) expect(line, column).not.toMatch(/COALESCE/)
+      else expect(line, column).toMatch(new RegExp(`^\\s*COALESCE\\((we|s)\\.${column}, ''\\) AS ${column},?$`))
+    }
   })
 
   it('writes created_at as UTC with a T and a Z, never the engine default (M8-a)', () => {
