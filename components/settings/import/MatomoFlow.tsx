@@ -258,7 +258,12 @@ export function MatomoFlow({
             <PanelRows>
               <PanelRow label="Matomo site" htmlFor="matomo-site-select">
                 {properties === null ? (
-                  <span className="text-sm text-muted-foreground">Loading the sites this token can see…</span>
+                  // A failed list is said in the banner above; this line only waits.
+                  error ? null : <span className="text-sm text-muted-foreground">Loading the sites this token can see…</span>
+                ) : properties.length === 0 ? (
+                  <span className="text-sm text-muted-foreground">
+                    {importErrorMessage({ code: 'no_properties' }, 'matomo')?.text}
+                  </span>
                 ) : (
                   <Select
                     id="matomo-site-select"

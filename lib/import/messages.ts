@@ -339,8 +339,10 @@ function noDataSentence(skipped: Record<string, number> | undefined): string {
  * a pull import in the slot may not have been planned yet; the sentence then says
  * "part 1 of 1" rather than inventing a total.
  */
-export type StoppedStatus = Pick<ImportStatus, 'cursor' | 'progressed_at' | 'started_at' | 'created_at'> & {
+export type StoppedStatus = Pick<ImportStatus, 'progressed_at' | 'started_at' | 'created_at'> & {
   steps_total: number | null
+  /** Nullable: M10's pull status may send no cursor before its first step. */
+  cursor: ImportStatus['cursor'] | null
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -362,7 +364,7 @@ function dayOf(iso: string, now: Date): string {
  */
 export function stoppedUploadMessage(status: StoppedStatus, now: Date = new Date()): string {
   const total = Math.max(status.steps_total ?? 0, 1)
-  const at = Math.min(status.cursor.step + 1, total)
+  const at = Math.min((status.cursor?.step ?? 0) + 1, total)
   const when = dayOf(status.progressed_at ?? status.started_at ?? status.created_at, now)
   return `The upload stopped at part ${at} of ${total} on ${when}. Choose the same file and it carries on where it stopped. Days already imported stay until you delete them.`
 }

@@ -523,6 +523,29 @@ describe('an import moving without this tab', () => {
   })
 })
 
+// ─── an import this screen has no row for ───────────────────────────────────
+describe('an import whose source has no row in this build', () => {
+  it('is still shown, with its state and Delete, so the one slot is never held invisibly', async () => {
+    h.slot = { existing_import: status({ id: 'imp-g', source: 'ga4', kind: 'oauth', fingerprint: null }) }
+    renderTab()
+    const record = await screen.findByTestId('import-record')
+    expect(within(record).getByText('Google Analytics')).toBeInTheDocument()
+    expect(chip(record, 'Imported')).toBeInTheDocument()
+    expect(within(record).getByRole('button', { name: 'Delete imported data' })).toBeInTheDocument()
+    // The listed rows lock behind it.
+    expect(within(block('Plausible')).getByRole('button', { name: 'Upload' })).toBeDisabled()
+  })
+
+  it('names a source this build does not know without its id', async () => {
+    h.slot = { existing_import: status({ id: 'imp-x', source: 'brand_new_tool', kind: 'upload_raw', status: 'failed', error_code: 'upload_abandoned', finished_at: null }) }
+    renderTab()
+    const record = await screen.findByTestId('import-record')
+    expect(within(record).getByText('the other tool')).toBeInTheDocument()
+    expect(within(record).queryByText('brand_new_tool')).toBeNull()
+    expect(within(record).getByText(/^The upload stopped/)).toBeInTheDocument()
+  })
+})
+
 // ─── failed, not resumable: Delete only ─────────────────────────────────────
 describe('failed', () => {
   it('shows the failure in words and offers only Delete', async () => {
@@ -641,6 +664,20 @@ describe('Matomo (M11-j)', () => {
     ).toBeInTheDocument()
     expect(within(screen.getByTestId('import-error-details')).getByText('Unable to authenticate with the provided token.')).toBeInTheDocument()
     expect(screen.queryByText('raw')).toBeNull()
+  })
+
+  it('says a token that can see no site in words, and a failed list without waiting forever', async () => {
+    h.slot = { existing_import: awaiting }
+    h.getMatomoProperties.mockResolvedValueOnce({ properties: [], suggested_id: null })
+    const { unmount } = renderTab()
+    expect(await screen.findByText(/can't see any Matomo sites/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Start the import' })).toBeDisabled()
+    unmount()
+
+    h.getMatomoProperties.mockRejectedValueOnce(Object.assign(new Error('x'), { status: 409, data: { code: 'import_not_active' } }))
+    renderTab()
+    expect(await screen.findByText('This import has ended. Delete it to start again.')).toBeInTheDocument()
+    expect(screen.queryByText(/Loading the sites/)).toBeNull()
   })
 
   it('says a finished import cannot have its token revoked by Pulse', async () => {

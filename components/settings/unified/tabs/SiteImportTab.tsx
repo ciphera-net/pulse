@@ -18,6 +18,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { UploadFlow } from '@/components/settings/import/UploadFlow'
 import { MatomoFlow } from '@/components/settings/import/MatomoFlow'
 import { useImportSlot } from '@/components/settings/import/useImportSlot'
+import { ImportRecordRow } from '@/components/settings/import/ImportRows'
 
 // ─── Site settings → Import (PULSE-118, design §3.10b; owner ruling Q-M11) ──
 //
@@ -149,6 +150,9 @@ export default function SiteImportTab({ siteId }: { siteId: string }) {
               />
             )
           })}
+          {existing && !sources.some((s) => s.id === existing.source) && (
+            <ImportRecordRow status={existing} canManage={canManage} onRequestDelete={() => setConfirmDelete(true)} />
+          )}
           {!holder && <PanelRow caption={IDLE_FOOTNOTE} />}
         </PanelRows>
       </SettingsPanel>

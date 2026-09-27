@@ -6,11 +6,12 @@ import { PanelRow } from '@/components/settings/panels'
 import { LogoTile, ServiceHeaderRow, DetailRows, type DetailRow } from '@/components/settings/integrationRows'
 import { RailBar } from '@/components/setup/RailBar'
 import { DESTRUCTIVE_OUTLINE } from '@/components/settings/unified/DangerZone'
-import { SOURCE_DISPLAY, sourceLogoUrl, type SourceId } from '@/lib/import/source-display'
-import { skipLines } from '@/lib/import/messages'
+import { SOURCE_DISPLAY, isSourceId, sourceLabel, sourceLogoUrl, type SourceId } from '@/lib/import/source-display'
+import { failedImportMessage, skipLines } from '@/lib/import/messages'
 import { formatDateTime } from '@/lib/utils/formatDate'
 import type { SiteImportStatus } from '@/lib/api/dataImports'
-import { importTotals, pct, rangeText } from './importFormat'
+import { importTotals, pct, phaseChip, rangeText, slotPhase } from './importFormat'
+import { ImportErrorBanner } from './ImportErrorBanner'
 
 // ─── The rows every source's block is made of (M11-c…f) ───────────────────
 //
@@ -131,7 +132,55 @@ export function DoneDetails({ status }: { status: SiteImportStatus }) {
 }
 
 /** An import that is moving: "Part n of total" from the server's cursor. */
-export function serverProgress(status: Pick<SiteImportStatus, 'cursor' | 'steps_total'>): { done: number; total: number } | null {
+export function serverProgress(status: {
+  cursor: SiteImportStatus['cursor'] | null
+  steps_total: number | null
+}): { done: number; total: number } | null {
   if (!status.steps_total || status.steps_total <= 0) return null
-  return { done: Math.min(status.cursor.step, status.steps_total), total: status.steps_total }
+  return { done: Math.min(status.cursor?.step ?? 0, status.steps_total), total: status.steps_total }
+}
+
+/**
+ * The site's import when no row on this screen drives its source (a source this
+ * build has no flow for, or one the server no longer lists): its state, its
+ * details, and Delete, so the one-import slot is never held by something the
+ * screen cannot show or remove.
+ */
+export function ImportRecordRow({
+  status,
+  canManage,
+  onRequestDelete,
+}: {
+  status: SiteImportStatus
+  canManage: boolean
+  onRequestDelete: () => void
+}) {
+  const phase = slotPhase(status)
+  const chip = phaseChip(phase)
+  const range = status.range_start && status.range_end ? rangeText(status.range_start, status.range_end) : undefined
+  const action = canManage ? <DeleteImportButton onClick={onRequestDelete} /> : null
+  const message = phase === 'failed' || phase === 'stopped' ? failedImportMessage(status, status.source) : null
+  const control = (
+    <div className="flex items-center gap-2">
+      <StatusChip tone={chip.tone} dot>
+        {chip.label}
+      </StatusChip>
+      {action}
+    </div>
+  )
+  return (
+    <div data-testid="import-record">
+      {isSourceId(status.source) ? (
+        <SourceHeader source={status.source} description={range} chip={chip} action={action} />
+      ) : (
+        <ServiceHeaderRow logo={<LogoTile colorize>{null}</LogoTile>} name={sourceLabel(status.source)} description={range ?? ''} control={control} />
+      )}
+      {phase === 'completed' && <DoneDetails status={status} />}
+      {message && (
+        <div className="border-t border-border px-5 py-3.5">
+          <ImportErrorBanner message={message} />
+        </div>
+      )}
+    </div>
+  )
 }
