@@ -26,6 +26,7 @@
 
 import {
   BROWSER_ERROR_CODES,
+  ImportError,
   RUNTIME_ERROR_CODES,
   SERVER_ERROR_CODES,
   type ImportErrorCode,
@@ -241,6 +242,29 @@ export function importErrorMessage(error: MessageInput, source: string): ImportM
   return { text, details }
 }
 
+/**
+ * A failure from a route outside the upload library (the Matomo connect flow,
+ * the delete button), in the error map's terms. Reads the thrown error's HTTP
+ * status and body the way lib/import's client does: the server's `code` when it
+ * sent one, else a code for the status, with the server's code kept for Details.
+ */
+export function messageInputFromApiError(e: unknown): MessageInput {
+  if (e instanceof ImportError) return { code: e.code, detail: e.detail }
+  const status = (e as { status?: unknown } | null)?.status
+  const data = (e as { data?: unknown } | null)?.data
+  const body = data && typeof data === 'object' ? (data as Record<string, unknown>) : {}
+  const serverCode = typeof body.code === 'string' && body.code ? body.code : null
+  const sourceMessage = typeof body.source_message === 'string' ? body.source_message : null
+  if (serverCode) return { code: serverCode, detail: { server_code: serverCode }, sourceMessage }
+  if (typeof status !== 'number' || status === 0) return { code: 'network' }
+  if (status === 401) return { code: 'unauthorized' }
+  if (status === 403) return { code: 'forbidden' }
+  if (status === 404) return { code: 'not_found' }
+  if (status === 429) return { code: 'rate_limited' }
+  if (status >= 500) return { code: 'server_error' }
+  return { code: 'unexpected_response', detail: { server_code: `http_${status}` } }
+}
+
 /** Failures after which the SAME prepared upload can simply be sent again. */
 const RETRYABLE: ReadonlySet<string> = new Set(['network', 'server_error', 'rate_limited', 'unauthorized'])
 
@@ -310,6 +334,15 @@ function noDataSentence(skipped: Record<string, number> | undefined): string {
 
 // ─── A stopped upload ──────────────────────────────────────────────────────
 
+/**
+ * What the stopped sentence reads from a status. `steps_total` is nullable because
+ * a pull import in the slot may not have been planned yet; the sentence then says
+ * "part 1 of 1" rather than inventing a total.
+ */
+export type StoppedStatus = Pick<ImportStatus, 'cursor' | 'progressed_at' | 'started_at' | 'created_at'> & {
+  steps_total: number | null
+}
+
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 /** "26 Sep", or "26 Sep 2025" outside the current year: the viewer's own calendar day. */
@@ -327,10 +360,7 @@ function dayOf(iso: string, now: Date): string {
  * cursor names the next step to send, counted from zero, so the step it
  * stopped in is one more.
  */
-export function stoppedUploadMessage(
-  status: Pick<ImportStatus, 'cursor' | 'steps_total' | 'progressed_at' | 'started_at' | 'created_at'>,
-  now: Date = new Date(),
-): string {
+export function stoppedUploadMessage(status: StoppedStatus, now: Date = new Date()): string {
   const total = Math.max(status.steps_total ?? 0, 1)
   const at = Math.min(status.cursor.step + 1, total)
   const when = dayOf(status.progressed_at ?? status.started_at ?? status.created_at, now)
@@ -339,7 +369,7 @@ export function stoppedUploadMessage(
 
 /** A failed import's sentence, from its status: the abandoned-upload line, or its code's. */
 export function failedImportMessage(
-  status: Pick<ImportStatus, 'error_code' | 'cursor' | 'steps_total' | 'progressed_at' | 'started_at' | 'created_at'>,
+  status: StoppedStatus & Pick<ImportStatus, 'error_code'>,
   source: string,
   now: Date = new Date(),
 ): ImportMessage {
