@@ -113,6 +113,17 @@ describe('SkipLedger', () => {
     expect(Object.keys(a.toCounts())).toEqual(['bad_number', 'pulse_measured'])
   })
 
+  it('counts a breakdown row outside the site-totals range under its own reason (M7-g)', () => {
+    const s = new SkipLedger()
+    s.add('outside_totals_range', { file: 'pages.csv', line: 7 })
+    s.add('outside_totals_range', { file: 'referrers.csv', line: 6 })
+    expect(s.toCounts()).toEqual({ outside_totals_range: 2 })
+    expect(s.toSamples().outside_totals_range).toEqual([
+      { file: 'pages.csv', line: 7 },
+      { file: 'referrers.csv', line: 6 },
+    ])
+  })
+
   it('holds a sample as a file and a line, and nothing read from the line', () => {
     const s = new SkipLedger()
     s.add('bad_number', { file: 'a.csv', line: 3 })

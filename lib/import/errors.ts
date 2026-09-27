@@ -92,6 +92,21 @@ export type WrongFileReason =
   | 'duplicate_columns'
   | 'malformed_csv'
   | 'value_out_of_range'
+  /**
+   * An archive or compressed file where the source exports plain files (M7-p,
+   * shared with M9-c). The UI chooses the sentence by source: for Fathom it is
+   * the dashboard download (a ZIP of whole-range totals), for a single-CSV
+   * source the CSV inside it.
+   */
+  | 'unexpected_archive'
+  /**
+   * Rows grouped by week, month or year where the export must be daily (M7-e):
+   * a longer period's total cannot be split into days without inventing them.
+   * `observed` is the rounded average number of days between the file's dates.
+   */
+  | 'wrong_grouping'
+  /** A file with none of the columns any file of this export writes (M7-d); `columns` holds the header seen. */
+  | 'unrecognised_file'
 
 /** Why the archive is `zip_too_large`: which of the four guards tripped. */
 export type ZipGuard = 'entry_bytes' | 'total_bytes' | 'ratio'
