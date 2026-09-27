@@ -136,3 +136,26 @@ describe('ContentStats pagination (blocks round, 01-09-2026)', () => {
     expect(screen.getByRole('radio', { name: 'Pages' })).toBeTruthy()
   })
 })
+
+// PULSE-118 (M11-h): a card whose dimension the import holds no rows for says
+// so, under its rows, from the response's own provenance.
+describe('ContentStats imported-history footnote', () => {
+  const unsupported = { included: false, from: '2026-07-20', through: '2026-08-01', source: 'fathom', reason: 'surface_unsupported' }
+  const merged = { included: true, from: '2026-07-20', through: '2026-08-01', source: 'fathom', reason: null }
+
+  it('says the active tab\'s dimension is not in the import, and why when the source is known', () => {
+    render(<ContentStats {...baseProps} totals={totals} importedCards={{ page: merged, exit_page: unsupported }} />)
+    // Top pages: merged, so nothing is said.
+    expect(screen.queryByTestId('imported-card-note')).toBeNull()
+    fireEvent.click(screen.getByRole('radio', { name: 'Exits' }))
+    expect(screen.getByTestId('imported-card-note')).toHaveTextContent(
+      "Exit pages before 2 Aug aren't in the import. Fathom doesn't export them.",
+    )
+    expect(screen.getByTestId('imported-card-note').className).toBe('mt-3 text-[11px] text-neutral-500')
+  })
+
+  it('says nothing for a site with no import', () => {
+    render(<ContentStats {...baseProps} totals={totals} />)
+    expect(screen.queryByTestId('imported-card-note')).toBeNull()
+  })
+})
