@@ -65,6 +65,8 @@ const sameKeys = (o: Record<string, unknown>, keys: readonly string[]) => {
 export class FakeImportServer {
   siteId = 'site-1'
   siteTimezone = 'Europe/Brussels'
+  /** The upload window's additive `site_domain` (M9-j'); null omits the field entirely, as an older server would. */
+  siteDomain: string | null = 'example.com'
   allowedFrom: string | null = '2025-01-01'
   allowedThrough: string | null = '2026-09-26'
   /** Skip counts the server "drops" from each applied batch, to exercise the server skip report. */
@@ -150,6 +152,9 @@ export class FakeImportServer {
       allowed_through: this.allowedThrough,
       collect: { page_paths: true, referrers: true, device_info: true, geo_data: 'full', screen_resolution: true, audience_data: true },
       existing_import: live ? this.statusOf(live) : null,
+      // Additive (M9-j'); `siteDomain === null` omits the key entirely, as an
+      // older server that hasn't shipped the field yet would.
+      ...(this.siteDomain !== null ? { site_domain: this.siteDomain } : {}),
     })
   }
 

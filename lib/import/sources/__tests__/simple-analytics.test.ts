@@ -55,6 +55,8 @@ interface ParseOptions {
   clip?: Clip | null
   timeZone?: string
   read?: ReadOptions
+  /** The upload window's `site_domain` (M9-j'); defaults to null, the intra-file-check path. */
+  siteDomain?: string | null
 }
 
 async function parse(files: readonly File[], options: ParseOptions = {}) {
@@ -66,7 +68,12 @@ async function parse(files: readonly File[], options: ParseOptions = {}) {
     // The production wiring (pipeline.ts): `emitExitPages: meta.hasExitPages`.
     emitExitPages: SOURCE_META.simple_analytics.hasExitPages,
   })
-  const result = await simpleAnalyticsSource.read(await sourceFiles(files), { rows, skipped, read: options.read ?? {} })
+  const result = await simpleAnalyticsSource.read(await sourceFiles(files), {
+    rows,
+    skipped,
+    read: options.read ?? {},
+    siteDomain: options.siteDomain ?? null,
+  })
   return { rows: rows.finish(), skipped, ignored: result.ignored, notes: result.notes ?? {} }
 }
 
@@ -278,7 +285,7 @@ describe('row-level skips', () => {
     expect(skipped.toCounts()).toEqual({ not_a_pageview: 1 })
   })
 
-  it('drops a row naming a different property as hostname_mismatch, after the reference is set by the first row', async () => {
+  it('with no site_domain (an older server, M9-j\'), falls back to the intra-file check: the first row sets the reference', async () => {
     const { rows, skipped } = await parse([
       fixture([{ hostname: 'example.com' }, { hostname: 'other-site.com', path: '/x' }, { hostname: 'example.com', path: '/y' }]),
     ])
@@ -295,6 +302,50 @@ describe('row-level skips', () => {
   it('counts every skip with a file-and-line sample, never row content', async () => {
     const { skipped } = await parse([fixture([{ is_robot: 'true' }])])
     expect(skipped.toSamples().bot_row).toEqual([{ file: 'export.csv', line: 2 }])
+  })
+})
+
+// ─── The hostname filter against the site's own domain (M9-j') ────────────
+
+describe("hostname filter against ctx.siteDomain (M9-j')", () => {
+  it('drops every row from another host, even the first one — unlike the intra-file fallback, which cannot', async () => {
+    const { rows, skipped } = await parse(
+      [fixture([{ hostname: 'other-site.com', path: '/x' }, { hostname: 'example.com', path: '/y' }])],
+      { siteDomain: 'example.com' },
+    )
+    expect(rows.daily[0]?.pageviews).toBe(1)
+    expect(skipped.toCounts()).toEqual({ hostname_mismatch: 1 })
+  })
+
+  it("keeps rows from the site's own host and its www. form", async () => {
+    const { rows, skipped } = await parse(
+      [fixture([{ hostname: 'example.com', path: '/a' }, { hostname: 'www.example.com', path: '/b' }])],
+      { siteDomain: 'example.com' },
+    )
+    expect(skipped.total()).toBe(0)
+    expect(rows.daily[0]?.pageviews).toBe(2)
+  })
+
+  it("also keeps rows when the SITE's domain itself is a www. form (both sides www.-stripped)", async () => {
+    const { rows, skipped } = await parse([fixture([{ hostname: 'example.com' }])], { siteDomain: 'www.example.com' })
+    expect(skipped.total()).toBe(0)
+    expect(rows.daily[0]?.pageviews).toBe(1)
+  })
+
+  it('matches a Unicode row hostname against the site domain\'s ASCII (punycode) form, and drops an unrelated Unicode host', async () => {
+    // new URL('http://münchen.example/').hostname === 'xn--mnchen-3ya.example' —
+    // the ASCII form id-backend #526/#531 says an IDN site's `sites.domain` stores.
+    const { rows, skipped } = await parse(
+      [
+        fixture([
+          { hostname: 'münchen.example', path: '/a' },
+          { hostname: 'other-münchen.example', path: '/b' },
+        ]),
+      ],
+      { siteDomain: 'xn--mnchen-3ya.example' },
+    )
+    expect(rows.daily[0]?.pageviews).toBe(1)
+    expect(skipped.toCounts()).toEqual({ hostname_mismatch: 1 })
   })
 })
 

@@ -25,7 +25,9 @@
 // Bump it whenever a message or the plan summary changes shape.
 //
 // Version 2 (M7-a, M7-n): `prepare` carries `files`, every file the customer
-// chose, instead of one `file`; the plan summary gains `notes`.
+// chose, instead of one `file`; the plan summary gains `notes`. Still version 2,
+// unreleased (M9-j'): `prepare` additionally carries `siteDomain`, additive and
+// nullable, so it does not need its own version bump.
 
 import type { Clip } from './core/cap'
 import type { SkipSample } from './core/skipped'
@@ -83,6 +85,13 @@ export interface PrepareRequest {
   clip: Clip | null
   /** The zone a raw source's instants are bucketed in: the site's (M2-g). */
   timeZone: string
+  /**
+   * The site's own configured domain, from the upload window's `site_domain`
+   * (M9-j'); null when the server hasn't sent one. A source parser that
+   * checks a row's hostname against the site's own uses this instead of an
+   * intra-file consistency check when it is set.
+   */
+  siteDomain: string | null
 }
 
 export interface PartRequest {

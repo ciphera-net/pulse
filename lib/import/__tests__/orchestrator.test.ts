@@ -69,7 +69,7 @@ async function failure(p: Promise<unknown>): Promise<ImportError> {
 /** Every row the plan would send, table by table, for comparing with what the server stored. */
 async function expectedRows(file: File) {
   const { parts } = await runPipeline(
-    { source: 'plausible', files: [file], clip: null, timeZone: 'Europe/Brussels' },
+    { source: 'plausible', files: [file], clip: null, timeZone: 'Europe/Brussels', siteDomain: null },
     { planLimits: SMALL },
   )
   const out: Record<string, unknown[]> = { daily: [], monthly: [], dimensions: [], acquisition: [] }
@@ -124,6 +124,21 @@ describe('runImport', () => {
     expect(server.requests[0].path).toContain('source_timezone=America%2FNew_York')
     const create = server.requests.find((r) => r.method === 'POST' && r.path === '/sites/site-1/data-imports')
     expect(JSON.parse(create?.body ?? '{}').source_timezone).toBe('America/New_York')
+  })
+
+  it("passes the upload window's site_domain through to the worker's prepare message (M9-j')", async () => {
+    const { workers, options } = setup()
+    await runImport(options)
+    const prepare = workers[0].received.find((m) => m.type === 'prepare') as PrepareRequest
+    expect(prepare.siteDomain).toBe('example.com')
+  })
+
+  it('passes null through, unmodified, when the server has not shipped site_domain yet', async () => {
+    const { server, workers, options } = setup()
+    server.siteDomain = null
+    await runImport(options)
+    const prepare = workers[0].received.find((m) => m.type === 'prepare') as PrepareRequest
+    expect(prepare.siteDomain).toBeNull()
   })
 
   it('refuses a zone that is not one, before asking the server anything', async () => {
@@ -479,6 +494,7 @@ describe('the files an import reads', () => {
       files: files as unknown as readonly NamedFile[],
       clip: null,
       timeZone: 'UTC',
+      siteDomain: null,
     })
     expect(posted).toEqual([
       {
@@ -493,10 +509,10 @@ describe('the files an import reads', () => {
   })
 
   it('the worker checks the count too, for a caller that went round the orchestrator', async () => {
-    const none = await failure(runPipeline({ source: 'plausible', files: [], clip: null, timeZone: 'UTC' }))
+    const none = await failure(runPipeline({ source: 'plausible', files: [], clip: null, timeZone: 'UTC', siteDomain: null }))
     expect(none.detail).toEqual({ reason: 'missing_file' })
     const many = Array.from({ length: MAX_UPLOAD_FILES + 1 }, (_, i) => untouchable(`f${i}.csv`))
-    const over = await failure(runPipeline({ source: 'plausible', files: many, clip: null, timeZone: 'UTC' }))
+    const over = await failure(runPipeline({ source: 'plausible', files: many, clip: null, timeZone: 'UTC', siteDomain: null }))
     expect(over.code).toBe('too_many_files')
   })
 })

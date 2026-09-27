@@ -33,18 +33,22 @@
 // simply never sets (never sent, not skipped) — there is never a code to
 // resolve, unlike Plausible's ISO/GeoNames codes.
 //
-// 🔑 `hostname_mismatch` (M9-j) guards against a file that mixes rows from
-// more than one property. The parser has no channel to the SITE'S OWN
-// configured domain — `RawSourceParser.read`'s contract (M2-n, M7-a) carries
-// only the files and a fold, nothing about which site is importing — so the
-// reference hostname is the first row's own `hostname` value (lower-cased,
-// `www.`-stripped, `ingestnorm.IsOwnHost`'s convention) and every later row is
-// held to it. A customer who exports the wrong property's file entirely still
-// imports cleanly under that property's own (internally consistent) hostname:
-// this check catches a FILE THAT MIXES TWO EXPORTS, not a wrong-property
-// upload in general. Closing that fully needs the site's domain threaded
-// through the pipeline, which is outside this milestone (see the build
-// report's open choices).
+// 🔑 `hostname_mismatch` (M9-j, amended M9-j') guards against importing
+// another property's data. `ctx.siteDomain` is the site's own configured
+// domain (`sites.domain`, lower-cased, an IDN site's ASCII form), threaded in
+// from `GET …/data-imports/upload-window`'s additive `site_domain` field
+// through `PrepareRequest` into the parse context. When it is set, every
+// row's `hostname` (lower-cased, `www.`-stripped, a Unicode hostname
+// converted to its ASCII form via the WHATWG URL parser) is compared against
+// it, also `www.`-stripped: this catches a WRONG-PROPERTY UPLOAD in general,
+// not only a file that mixes two properties. `hostname_original` is not read
+// (M9-j: it only matters for a site that has rewritten its own hostname,
+// which this filter doesn't need to reconstruct). When `ctx.siteDomain` is
+// null — an older server that hasn't shipped the field yet — the parser falls
+// back to its original M9-j check: the first row's own `hostname` becomes the
+// reference and every later row is held to it, which still catches a file
+// that mixes rows from more than one property, just not a wholesale upload of
+// the wrong one.
 
 import { isCalendarDate } from '../core/dates'
 import { checkHeader, requireExactlyOneFile, type ColumnIndex } from '../core/schema'
@@ -156,10 +160,32 @@ export function parseAddedIso(value: string): number | null {
   return utcMs - offsetMs
 }
 
-/** Lower-cased, `www.`-stripped: `ingestnorm.IsOwnHost`'s own convention (M9-j). */
+/**
+ * A Unicode hostname's ASCII (punycode) form, via the WHATWG URL parser
+ * (M9-j'): the site's own configured domain already stores an IDN site's
+ * ASCII form (id-backend #526/#531), so a raw export row naming the same site
+ * in Unicode must be converted the same way before the two are compared. A
+ * value the URL parser cannot make into a hostname at all (empty, or already
+ * malformed for other reasons the row-level checks catch elsewhere) is
+ * returned unchanged rather than thrown away here.
+ */
+function toAsciiHost(value: string): string {
+  if (value === '') return value
+  try {
+    return new URL(`http://${value}/`).hostname
+  } catch {
+    return value
+  }
+}
+
+/**
+ * Lower-cased, `www.`-stripped, and Unicode converted to ASCII:
+ * `ingestnorm.IsOwnHost`'s own convention (M9-j), extended for M9-j' to also
+ * match the site's own domain.
+ */
 function normaliseHost(value: string): string {
-  const lower = value.trim().toLowerCase()
-  return lower.startsWith('www.') ? lower.slice(4) : lower
+  const ascii = toAsciiHost(value.trim().toLowerCase())
+  return ascii.startsWith('www.') ? ascii.slice(4) : ascii
 }
 
 const nullIfEmpty = (s: string) => (s === '' ? null : s)
@@ -191,6 +217,10 @@ export const simpleAnalyticsSource: RawSourceParser = {
     let width = 0
     let entrances = 0
     let referenceHost: string | null = null
+    // M9-j': the site's own domain, normalised once, when the server sent one.
+    // Set → every row is held to it. Null (an older server) → fall back to the
+    // original M9-j intra-file check, `referenceHost` above.
+    const siteHost = ctx.siteDomain !== null ? normaliseHost(ctx.siteDomain) : null
 
     const csv = new CsvByteParser((fields, line) => {
       if (!index) {
@@ -224,7 +254,12 @@ export const simpleAnalyticsSource: RawSourceParser = {
         return
       }
       const host = normaliseHost(text('hostname'))
-      if (referenceHost === null) {
+      if (siteHost !== null) {
+        if (host !== siteHost) {
+          ctx.skipped.add('hostname_mismatch', at)
+          return
+        }
+      } else if (referenceHost === null) {
         referenceHost = host
       } else if (host !== referenceHost) {
         ctx.skipped.add('hostname_mismatch', at)

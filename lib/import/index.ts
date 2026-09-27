@@ -197,7 +197,7 @@ export async function prepareImport(options: ImportOptions): Promise<PreparedImp
     let plan: PlanSummary
     try {
       plan = await channel.prepare(
-        { source: options.source, files: files.map((f) => ({ name: f.name, blob: f })), clip, timeZone: uploadWindow.site_timezone },
+        { source: options.source, files: files.map((f) => ({ name: f.name, blob: f })), clip, timeZone: uploadWindow.site_timezone, siteDomain: uploadWindow.site_domain },
         (message) => {
           if (message.type !== 'progress') return
           if (message.stage === 'reading') {

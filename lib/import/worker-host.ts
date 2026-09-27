@@ -52,7 +52,13 @@ export function createWorkerHost(
         prepared = null
         let lastProgress = -Infinity
         const result = await runPipeline(
-          { source: message.source, files: message.files, clip: message.clip, timeZone: message.timeZone },
+          {
+            source: message.source,
+            files: message.files,
+            clip: message.clip,
+            timeZone: message.timeZone,
+            siteDomain: message.siteDomain ?? null,
+          },
           {
             ...options.hooks,
             onReading: (bytesRead, bytesTotal) => {
