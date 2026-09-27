@@ -18,7 +18,7 @@
 // in SOURCE_META: that table is keyed by the sources this build can PARSE, while
 // the UI names all six (the pull sources have no parser at all).
 
-import { comparisonLogoUrl } from '@/lib/comparisons'
+import { comparisonLogoUrl } from '@/lib/comparisonLogos'
 import type { ImportSource } from './source-meta'
 
 /**
@@ -50,7 +50,7 @@ export interface SourceDisplay {
   /** The tool's name as its makers write it. Fills every {tool} in the UI and its error copy. */
   label: string
   /**
-   * The logo's slug on the CDN (`lib/comparisons.ts` `comparisonLogoUrl`). Drawn in FULL
+   * The logo's slug on the CDN (`comparisonLogoUrl`, the /vs pages' own helper). Drawn in FULL
    * COLOUR, always (owner, Q-M11: "on the settings screen, use the colored logos"), never
    * with the Integrations tab's `grayscale opacity-60` idle treatment.
    */
