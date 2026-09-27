@@ -277,6 +277,20 @@ describe('listFootnote', () => {
     expect(listFootnote(c, rows)).toBe('Visitor history starts 26 Aug 2026. Longer ranges show from that day.')
   })
 
+  it('from_import: says the history includes imported days, never that Pulse measured them', () => {
+    const w: DataWindow = { from: '2026-03-13', through: '2026-09-26', from_reason: 'from_import' }
+    const c = ctx({ surface: 'dashboard', window: w })
+    const rows = viewRows(c)
+    expect(rows.some((r) => !r.available)).toBe(true)
+    expect(listFootnote(c, rows)).toBe('Includes imported history from 13 Mar 2026.')
+  })
+
+  it('from_import: a greyed row still gives the date-based reason (no import branch)', () => {
+    const w: DataWindow = { from: '2026-03-13', through: '2026-09-26', from_reason: 'from_import' }
+    const rows = viewRows(ctx({ surface: 'dashboard', window: w }))
+    expect(rows.find((r) => r.key === 'last-year')?.reason).toBe('No data before 13 Mar 2026')
+  })
+
   it('dashboard, data from this year, Last year greyed: ends with the January line', () => {
     const w: DataWindow = { from: '2026-03-13', through: '2026-09-26' }
     const c = ctx({ surface: 'dashboard', window: w })
@@ -527,6 +541,21 @@ describe('resolveView — closest view, trailing kind', () => {
     expect(applied.range.start).toBe(addDays('2026-09-20', -6))
     expect(applied.suffix).toBe('latest 7 days')
     expect(applied.note).toMatch(/^You chose /)
+  })
+})
+
+describe('resolveView — closest view on a history that starts with an import', () => {
+  it('says the history starts with imported days, in the note the button carries', () => {
+    const w: DataWindow = { from: '2026-03-13', through: '2026-09-26', from_reason: 'from_import' }
+    const applied = resolveView({
+      surface: 'dashboard',
+      now: NOW,
+      window: w,
+      requested: { period: 'last-year' },
+      maxDays: 366,
+    })
+    expect(applied.substituted).toBe('closest')
+    expect(applied.note).toMatch(/This site's history starts 13 Mar 2026, with imported days, so this shows/)
   })
 })
 
