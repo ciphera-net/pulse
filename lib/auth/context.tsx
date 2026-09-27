@@ -4,11 +4,19 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { isSubjectToOnboardingWall } from '@/lib/auth/permissions'
 import { useRouter, usePathname } from 'next/navigation'
 import { useSWRConfig } from 'swr'
-import apiRequest, { setAccessToken, setRefreshHandler } from '@/lib/api/client'
+import apiRequest, {
+  setAccessToken,
+  setRefreshHandler,
+  setActiveTeam,
+  getActiveTeam,
+  setTeamRecoveryHandler,
+} from '@/lib/api/client'
 import { LoadingOverlay, useSessionSync, SessionExpiryWarning, useSessionRefresh } from '@ciphera-net/facet'
 import { cdnUrl } from '@/lib/cdn'
-import { logoutAction, getSessionAction, setSessionAction } from '@/app/actions/auth'
-import { getUserOrganizations, switchContext, getOrganization, ensureDefaultOrganization } from '@/lib/api/organization'
+import { logoutAction, getSessionAction, setActiveTeamAction } from '@/app/actions/auth'
+import { getUserOrganizations, getOrganization, ensureDefaultOrganization } from '@/lib/api/organization'
+import { activateTeam, switchOrganizationSession } from '@/lib/auth/switchOrganization'
+import { getMe, pickActiveTeam, teamRole } from '@/lib/api/me'
 import { listSites, type Site } from '@/lib/api/sites'
 import { logger } from '@/lib/utils/logger'
 import { forgetVaultKeys, loadVaultKey } from '@/lib/auth/vault-store'
@@ -132,6 +140,22 @@ async function loadSession(): Promise<SessionUser | null> {
   return user
 }
 
+/**
+ * This account's role in `teamId`, from Pulse's own /me — never from the
+ * token (Phase 2, PULSE-89: the dashboard decides the active team and its
+ * role itself, id-backend's claim is only the bridge's rollback path).
+ * `undefined` on any failure to read /me, same as "not resolved yet".
+ */
+async function resolveActiveTeamRole(teamId: string): Promise<string | undefined> {
+  try {
+    const me = await getMe()
+    return teamRole(me, teamId) ?? undefined
+  } catch (e) {
+    logger.error("Could not resolve the active team's role from /me", e)
+    return undefined
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [vaultState, setVaultState] = useState<VaultState>('unknown')
@@ -151,19 +175,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // * a definitive rejection (the server said the credential is dead) ends the
   // * session. See @ciphera-net/facet useSessionRefresh.
   // * Audit: Infra/Auth/docs/audits/20-08-2026-session-loss-root-cause-audit.md §4 F-G
-  // Re-read the freshly minted cookie's org_id/role into the user snapshot.
-  // The slug gates (useIsOwner/useIsAdminOrOwner) read user.role, which is
-  // otherwise hydrated only at page init and org switch — without this, a
-  // role change stays invisible for the life of the tab while the token
-  // quietly rotates every ~13 minutes.
+  // Re-read the ACTIVE TEAM's role into the user snapshot. The slug gates
+  // (useIsOwner/useIsAdminOrOwner) read user.role, which is otherwise
+  // hydrated only at page init and team switch — without this, a role change
+  // stays invisible for the life of the tab while the token quietly rotates
+  // every ~13 minutes.
+  //
+  // 🔴 FROM /me, NEVER FROM THE TOKEN (Phase 2, PULSE-89). refreshToken's own
+  // `prime()` already set the in-memory Bearer from the rotated token before
+  // this runs — this reads only the active team (the module var, already
+  // resolved by init or a switch) and asks Pulse's own membership table for
+  // its current role, which reflects a change (an ownership transfer, say)
+  // immediately, rather than waiting up to 13 minutes for the next mint.
   const rehydrateRoleSnapshot = useCallback(async () => {
+    const active = getActiveTeam()
+    if (!active) return
     try {
-      const session = await loadSession()
-      if (!session) return
+      const role = await resolveActiveTeamRole(active)
       setUser((prev) => {
         if (!prev) return prev
-        if (prev.org_id === session.org_id && prev.role === session.role) return prev
-        const merged = { ...prev, org_id: session.org_id, role: session.role }
+        if (prev.org_id === active && prev.role === role) return prev
+        const merged = { ...prev, org_id: active, role }
         localStorage.setItem('user', JSON.stringify(merged))
         return merged
       })
@@ -248,12 +280,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     apiRequest<User>('/auth/user/me')
       .then((fullProfile) => {
         setUser((prev) => {
+          // * org_id/role stay whatever the caller (login's caller) already
+          // * resolved — never from THIS response (Phase 2, PULSE-89: the
+          // * team resolution owns both, not id-backend's /auth/user/me).
           const merged = {
             ...fullProfile,
             email: fullProfile.email || prev?.email || '',
             display_name: fullProfile.display_name || prev?.display_name,
-            org_id: prev?.org_id ?? fullProfile.org_id,
-            role: prev?.role ?? fullProfile.role,
+            org_id: prev?.org_id,
+            role: prev?.role,
           }
           localStorage.setItem('user', JSON.stringify(merged))
           return merged
@@ -283,6 +318,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       reportClientEvent('logout_unconfirmed', 'threw')
     }
     setAccessToken(null)
+    setActiveTeam(null)
     localStorage.removeItem('user')
     localStorage.removeItem('ciphera_token_refreshed_at')
     localStorage.removeItem('ciphera_last_activity')
@@ -392,8 +428,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = useCallback(async () => {
     try {
-      const session = await loadSession()
+      await loadSession()
       const userData = await apiRequest<User>('/auth/user/me')
+      // * org_id/role come from the ACTIVE TEAM and /me — never from the
+      // * token (Phase 2, PULSE-89). This is what makes handleTransfer's
+      // * post-transfer refresh() actually show the new role: pulse-backend
+      // * checks it per request now, so there is a live answer to ask for
+      // * instead of waiting on the next token mint.
+      const active = getActiveTeam()
+      const role = active ? await resolveActiveTeamRole(active) : undefined
 
       setUser((prev) => {
         // * For ZKE users the server returns empty email/display_name.
@@ -402,8 +445,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           ...userData,
           email: userData.email || prev?.email || '',
           display_name: userData.display_name || prev?.display_name,
-          org_id: session?.org_id ?? userData.org_id,
-          role: session?.role ?? userData.role,
+          org_id: active ?? prev?.org_id,
+          role: active ? role : prev?.role,
         }
         localStorage.setItem('user', JSON.stringify(merged))
         return merged
@@ -430,6 +473,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await refreshWithMutex()
       await refresh()
   }, [refreshWithMutex, refresh])
+
+  // * Team recovery (Phase 2, PULSE-89). pulse-api's team-shaped 403 (missing
+  // * header, not a member, team deleted) calls this — see lib/api/client.ts's
+  // * setTeamRecoveryHandler for the fire-and-forget/single-flight/throttle
+  // * rules; this is only the RESOLUTION, run at most once per throttle
+  // * window.
+  useEffect(() => {
+    const recoverTeam = async () => {
+      const current = getActiveTeam()
+      try {
+        const me = await getMe()
+        const next = pickActiveTeam(me, current)
+        if (next && next !== current) {
+          logger.warn('team recovery: switching the active team', { from: current, to: next })
+          await switchOrganizationSession(next, refresh)
+        } else if (next === null) {
+          // * No membership left anywhere — the same state a brand-new
+          // * zero-teams account is in. Clear the preference and drop org_id
+          // * so the existing zero-teams branch above provisions a workspace.
+          logger.warn('team recovery: no team left; clearing the active team', { from: current })
+          setActiveTeam(null)
+          await setActiveTeamAction(null)
+          setUser((prev) => (prev ? { ...prev, org_id: undefined } : prev))
+        }
+      } catch (e) {
+        logger.error('team recovery failed', e)
+      }
+    }
+    setTeamRecoveryHandler(recoverTeam)
+    return () => setTeamRecoveryHandler(null)
+  }, [refresh])
 
   // Initial load
   useEffect(() => {
@@ -501,7 +575,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(session)
             localStorage.setItem('user', JSON.stringify(session))
             localStorage.setItem('ciphera_token_refreshed_at', Date.now().toString())
-            // * Fetch full profile from API; preserve org_id/role from session.
+
+            // * PULSE DECIDES THE ACTIVE TEAM (Phase 2, PULSE-89). session.org_id
+            // * is only this browser's PREFERENCE (the pulse_team cookie) —
+            // * /me is the membership truth. A device with no or a stale cookie
+            // * is aligned here: activateTeam tells Ciphera ID too, which is
+            // * what keeps its claim naming the same team (the bridge) and
+            // * makes TEAM_RESOLUTION=claim a real rollback until Phase 5.
+            let activeOrgId: string | undefined
+            let activeRole: string | undefined
+            try {
+              const me = await getMe()
+              const active = pickActiveTeam(me, session.org_id ?? null)
+              if (active && active !== session.org_id) {
+                await activateTeam(active)
+              }
+              setActiveTeam(active)
+              activeOrgId = active ?? undefined
+              activeRole = active ? teamRole(me, active) ?? undefined : undefined
+            } catch (e) {
+              logger.error('Could not resolve the active team from /me', e)
+              setActiveTeam(session.org_id ?? null)
+              activeOrgId = session.org_id
+              // * role stays undefined — the recovery handler re-resolves on
+              // * the first team-shaped 403.
+            }
+
+            // * Fetch full profile from API; org_id/role come from the team
+            // * resolution above, never from this response.
             // * For ZKE users the server returns empty email/display_name — preserve
             // * the values from the session (JWT payload / localStorage).
             try {
@@ -514,13 +615,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 ...userData,
                 email: userData.email || cachedPII.email || session.email,
                 display_name: userData.display_name || cachedPII.display_name,
-                org_id: session.org_id,
-                role: session.role,
+                org_id: activeOrgId,
+                role: activeRole,
               }
               setUser(merged)
               localStorage.setItem('user', JSON.stringify(merged))
             } catch (e) {
               logger.error('Failed to fetch full profile', e)
+              setUser((prev) => (prev ? { ...prev, org_id: activeOrgId, role: activeRole } : prev))
             }
         } else {
             // * No session. Wipe the cache ONLY when the server definitively
@@ -637,6 +739,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useSessionSync({
     onLogout: () => {
       setAccessToken(null)
+      setActiveTeam(null)
       localStorage.removeItem('user')
       localStorage.removeItem('ciphera_token_refreshed_at')
       localStorage.removeItem('ciphera_last_activity')
@@ -691,13 +794,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Idempotent server-side, so firing both is free.
             try {
               const ensured = await ensureDefaultOrganization()
-              const { access_token } = await switchContext(ensured.organization.id)
-              const result = await setSessionAction(access_token)
-              if (result.success) setAccessToken(access_token)
-              if (result.success && result.user) {
-                setUser(result.user)
-                localStorage.setItem('user', JSON.stringify(result.user))
-              }
+              // Bridge until Phase 5 (lib/auth/switchOrganization.ts): mints
+              // the new team's token, stores it, primes the Bearer, and
+              // records it as Pulse's own active-team preference. Throws if
+              // the session could not be stored.
+              const activated = await activateTeam(ensured.organization.id)
+              const role = await resolveActiveTeamRole(ensured.organization.id)
+              const merged = { ...activated.user, org_id: ensured.organization.id, role }
+              setUser(merged)
+              localStorage.setItem('user', JSON.stringify(merged))
               // 🔴 An org-context switch, so the cache goes with it. The
               // shared org list (lib/swr/organizations.ts) is keyed by user,
               // not org, and may already hold the empty answer this branch
@@ -820,34 +925,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // * If user has organizations but no context (org_id), switch to the first one
           if (!userOrgId && organizations.length > 0) {
              const firstOrg = organizations[0]
-             
-             try {
-                 const { access_token } = await switchContext(firstOrg.organization_id)
 
-                 // * Update the session cookie, and the in-memory Bearer with it.
-                 const result = await setSessionAction(access_token)
-                 if (result.success) setAccessToken(access_token)
-                 if (result.success && result.user) {
-                     try {
-                       const fullProfile = await apiRequest<{ id: string; email: string; display_name?: string; totp_enabled: boolean; org_id?: string; role?: string }>('/auth/user/me')
-                       // * For ZKE users, preserve existing PII when server returns empty values
-                       const merged = {
-                         ...fullProfile,
-                         email: fullProfile.email || user?.email || result.user.email,
-                         display_name: fullProfile.display_name || user?.display_name,
-                         org_id: result.user.org_id ?? fullProfile.org_id,
-                         role: result.user.role ?? fullProfile.role,
-                       }
-                       setUser(merged)
-                       localStorage.setItem('user', JSON.stringify(merged))
-                     } catch {
-                       setUser(result.user)
-                       localStorage.setItem('user', JSON.stringify(result.user))
-                     }
-                     // * Same org-context switch, same purge as the branch above.
-                     swrMutate(() => true, undefined, { revalidate: true })
-                     router.refresh()
+             try {
+                 // Bridge until Phase 5 — see the zero-teams branch above.
+                 const activated = await activateTeam(firstOrg.organization_id)
+                 const role = await resolveActiveTeamRole(firstOrg.organization_id)
+                 try {
+                   const fullProfile = await apiRequest<{ id: string; email: string; display_name?: string; totp_enabled: boolean; org_id?: string; role?: string }>('/auth/user/me')
+                   // * For ZKE users, preserve existing PII when server returns empty values.
+                   // * org_id/role come from the team resolution above, never from
+                   // * this response.
+                   const merged = {
+                     ...fullProfile,
+                     email: fullProfile.email || user?.email || activated.user.email,
+                     display_name: fullProfile.display_name || user?.display_name,
+                     org_id: firstOrg.organization_id,
+                     role,
+                   }
+                   setUser(merged)
+                   localStorage.setItem('user', JSON.stringify(merged))
+                 } catch {
+                   const merged = { ...activated.user, org_id: firstOrg.organization_id, role }
+                   setUser(merged)
+                   localStorage.setItem('user', JSON.stringify(merged))
                  }
+                 // * Same org-context switch, same purge as the branch above.
+                 swrMutate(() => true, undefined, { revalidate: true })
+                 router.refresh()
              } catch (e) {
                  logger.error('Failed to auto-switch context', e)
              }

@@ -33,7 +33,8 @@ vi.mock('@/lib/api/organization', () => ({
 }))
 
 vi.mock('@/app/actions/auth', () => ({
-  setSessionAction: vi.fn().mockResolvedValue({ success: true, user: { id: 'u1', email: 'qa@x', org_id: 'org_new' } }),
+  setSessionAction: vi.fn().mockResolvedValue({ success: true, user: { id: 'u1', email: 'qa@x' } }),
+  setActiveTeamAction: vi.fn().mockResolvedValue({ success: true }),
 }))
 
 const { apiRequest, setAccessToken } = vi.hoisted(() => ({
@@ -43,6 +44,7 @@ const { apiRequest, setAccessToken } = vi.hoisted(() => ({
 vi.mock('@/lib/api/client', () => ({
   default: apiRequest,
   setAccessToken,
+  setActiveTeam: vi.fn(),
 }))
 
 vi.mock('@/lib/welcomeAnalytics', () => ({
