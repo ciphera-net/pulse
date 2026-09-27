@@ -476,7 +476,7 @@ describe('the wrong file, named', () => {
     expect(e.detail).toEqual({ reason: 'missing_file' })
   })
 
-  it('two files through the whole pipeline are refused before either is read', async () => {
+  it('two files through the whole pipeline are refused before either is parsed', async () => {
     const e = await failure(
       runPipeline({ source: 'plausible', files: [plausibleFixtureFile(), plausibleFixtureFile()], clip: null, timeZone: 'UTC' }),
     )
