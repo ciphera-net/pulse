@@ -53,12 +53,16 @@ export interface DeletionBlocker {
 /**
  * What deleting this account would take with it, read BEFORE anything is typed.
  *
- * 🔑 The same read the refusal uses. Pulse could list its own organizations
- * instead, but then the screen a person agrees to and the check that enforces it
- * would be two answers, free to drift apart.
+ * 🔑 Reads from PULSE, not Ciphera ID (PULSE-91 / Phase 4 of
+ * `Pulse/docs/plans/26-09-2026-pulse-owns-teams-design.md` §7): the sole-owner
+ * rule now lives where the teams do, so this is the same read the 409 check
+ * itself uses — no second answer to drift apart from it. `deleteAccount` below
+ * is unchanged and still calls Ciphera ID with the confirmed ids; ID relays
+ * Pulse's 409 unchanged through Phase 4. The path has no `/auth` prefix, so
+ * `apiRequest` routes it to pulse-api.
  */
 export async function getDeletionPreview(): Promise<DeletionBlocker[]> {
-  const res = await apiRequest<{ organizations?: DeletionBlocker[] }>('/auth/user/deletion-preview')
+  const res = await apiRequest<{ organizations?: DeletionBlocker[] }>('/account/deletion-preview')
   return res.organizations ?? []
 }
 
