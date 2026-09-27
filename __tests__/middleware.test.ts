@@ -41,6 +41,12 @@ describe('middleware', () => {
       // * 05-09-2026: /open-source/claim 200, /startups/claim 307 → /login.
       '/open-source/claim',
       '/startups/claim',
+      // * The import worker (PULSE-107, M2): a static script loaded by
+      // * new Worker(), public source in this public repo. Measured on staging
+      // * 27-09-2026: without its entry a request with no session 307s to /login,
+      // * so a Worker would be handed HTML — the failure class sw.js and the
+      // * tracker files are already exempt from.
+      '/workers/import.js',
     ]
 
     publicPaths.forEach((path) => {
