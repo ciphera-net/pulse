@@ -5,15 +5,17 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
 import { useSetup } from '@/lib/setup/context'
 import { preservePlanParams } from '@/lib/setup/utils'
-import { createOrganization, switchContext } from '@/lib/api/organization'
+import { createOrganization } from '@/lib/api/organization'
 import { useClearOrgScopedCaches } from '@/lib/swr/org-switch'
-import { setSessionAction } from '@/app/actions/auth'
+import { activateTeam } from '@/lib/auth/switchOrganization'
+import { getMe, teamRole } from '@/lib/api/me'
 import { trackWelcomeWorkspaceCreated } from '@/lib/welcomeAnalytics'
-import apiRequest, { setAccessToken } from '@/lib/api/client'
+import apiRequest from '@/lib/api/client'
 import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { orgCreateError } from '@/lib/api/orgErrors'
 import { Button, Input, toast } from '@ciphera-net/facet'
 import { PlusIcon } from '@ciphera-net/facet'
+import { logger } from '@/lib/utils/logger'
 
 function slugFromName(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'my-organization'
@@ -39,30 +41,42 @@ export default function SetupOrgPage() {
 
     try {
       const org = await createOrganization(orgName.trim(), slugFromName(orgName.trim()))
-      const { access_token } = await switchContext(org.id)
-      const result = await setSessionAction(access_token)
+      // Bridge until Phase 5 (lib/auth/switchOrganization.ts): mints the new
+      // team's token, stores it, and primes the in-memory Bearer BEFORE the
+      // profile fetch below or the site step's listSites() run, or both go
+      // out scoped to the org the session WAS on (pulse#730). Throws if the
+      // session could not be stored.
+      const activated = await activateTeam(org.id)
 
-      if (result.success && result.user) {
-        // The Bearer is the credential pulse-api sees (per-app sessions S3);
-        // the cookie alone changes nothing about what the profile fetch below
-        // or the site step's listSites() sends. Prime it BEFORE either runs,
-        // or both go out scoped to the org the session was on (pulse#730).
-        setAccessToken(access_token)
-        try {
-          const fullProfile = await apiRequest<{
-            id: string; email: string; display_name?: string;
-            totp_enabled: boolean; org_id?: string; role?: string
-          }>('/auth/user/me')
-          login({
-            ...fullProfile,
-            email: fullProfile.email || user?.email || result.user.email,
-            display_name: fullProfile.display_name || user?.display_name,
-            org_id: result.user.org_id ?? fullProfile.org_id,
-            role: result.user.role ?? fullProfile.role,
-          })
-        } catch {
-          login(result.user)
-        }
+      // * Fix 3 (PULSE-89 review): the role comes from PULSE's own
+      // * membership table, never from Ciphera ID's /auth/user/me — id-backend
+      // * cannot know the role in a team pulse-backend itself just created the
+      // * membership row for. Left undefined on any /me failure rather than
+      // * falling back to a guess; the rehydrate paths (refresh(),
+      // * rehydrateRoleSnapshot) fill it in from a later /me read.
+      let role: string | undefined
+      try {
+        role = teamRole(await getMe(), org.id) ?? undefined
+      } catch (e) {
+        logger.error("Could not resolve the new team's role from /me", e)
+      }
+
+      try {
+        const fullProfile = await apiRequest<{
+          id: string; email: string; display_name?: string;
+          totp_enabled: boolean; org_id?: string; role?: string
+        }>('/auth/user/me')
+        login({
+          ...fullProfile,
+          email: fullProfile.email || user?.email || activated.user.email,
+          display_name: fullProfile.display_name || user?.display_name,
+          // * The team just created and switched into — known outright, never
+          // * guessed from the token (activateTeam's user carries neither).
+          org_id: org.id,
+          role,
+        })
+      } catch {
+        login({ ...activated.user, org_id: org.id, role })
       }
 
       setOrg(org.id, orgName.trim())

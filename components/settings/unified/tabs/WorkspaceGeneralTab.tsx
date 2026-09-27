@@ -14,8 +14,8 @@ import {
 } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
 import { useIsOwner, useIsAdminOrOwner } from '@/lib/auth/permissions'
-import { getOrganization, updateOrganization, deleteOrganization, getOrganizationMembers, getUserOrganizations, switchContext, transferOwnership, type OrganizationMember } from '@/lib/api/organization'
-import { setSessionAction } from '@/app/actions/auth'
+import { getOrganization, updateOrganization, deleteOrganization, getOrganizationMembers, getUserOrganizations, transferOwnership, type OrganizationMember } from '@/lib/api/organization'
+import { activateTeam } from '@/lib/auth/switchOrganization'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
@@ -25,7 +25,7 @@ import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { useTeamState } from '@/lib/hooks/useTeamState'
 
 export default function WorkspaceGeneralTab() {
-  const { user, refreshSession } = useAuth()
+  const { user, refresh } = useAuth()
   const reducedMotion = useReducedMotion()
   // Two different server rules, two gates: ciphera-id lets owner OR admin
   // rename the workspace, but only the owner delete or transfer it.
@@ -122,7 +122,7 @@ export default function WorkspaceGeneralTab() {
       // the sidebar state. Deleting one workspace has nothing to say about any
       // of them, and the tour reappearing afterwards is exactly what the owner
       // reported. Org-scoped caches are cleared by the full page navigation
-      // below; the session is repointed by switchContext, which is what the
+      // below; the session is repointed by activateTeam, which is what the
       // comment beside the clear() was actually describing.
       // Land somewhere REAL. The session JWT still names the deleted org, so
       // a bare navigation used to resume the setup wizard for whichever org
@@ -132,8 +132,7 @@ export default function WorkspaceGeneralTab() {
         const orgs = await getUserOrganizations()
         const survivor = orgs.find((o) => o.organization_id !== user.org_id) ?? orgs[0]
         if (survivor) {
-          const { access_token } = await switchContext(survivor.organization_id)
-          await setSessionAction(access_token)
+          await activateTeam(survivor.organization_id)
           window.location.href = '/'
           return
         }
@@ -153,11 +152,11 @@ export default function WorkspaceGeneralTab() {
     try {
       await transferOwnership(user.org_id, transferTargetId)
       toast.success('Ownership transferred. You are now a member.')
-      // Rotate the token BEFORE reloading: the access_token cookie is still
-      // minted with role 'owner', so a bare reload re-hydrates the old role
-      // and the ex-owner's Danger Zone survives the very reload meant to
-      // clear it. refreshSession rotates against the server's truth first.
-      await refreshSession()
+      // Re-fetch BEFORE reloading: role now comes from Pulse's /me, checked
+      // per request, so refresh() picking it up fresh here is what keeps the
+      // ex-owner's Danger Zone from surviving the very reload meant to clear
+      // it — a bare reload alone would still show it for a token's lifetime.
+      await refresh()
       window.location.href = '/settings/organization/general'
     } catch (err) {
       toast.error(getAuthErrorMessage(err as Error) || "Couldn't transfer ownership. Try again.")

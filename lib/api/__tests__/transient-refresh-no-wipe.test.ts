@@ -14,7 +14,7 @@ vi.mock('@ciphera-net/facet', () => ({
   AUTH_ERROR_MESSAGES: { NETWORK: 'Network error, please try again.' },
 }))
 
-const { authFetch, ApiError, setRefreshHandler } = await import('../client')
+const { authFetch, ApiError, setRefreshHandler, setActiveTeam, getActiveTeam } = await import('../client')
 
 function respond401(): Response {
   return new Response(JSON.stringify({ error: 'unauthorized' }), {
@@ -31,6 +31,7 @@ describe('data-401 refresh failure — cached user survival', () => {
 
   afterEach(() => {
     setRefreshHandler(null)
+    setActiveTeam(null)
     vi.unstubAllGlobals()
     localStorage.clear()
   })
@@ -47,6 +48,20 @@ describe('data-401 refresh failure — cached user survival', () => {
     expect(localStorage.getItem('user')).not.toBeNull()
   })
 
+  // Fix 4 (PULSE-89 review): a transient failure is not a statement that the
+  // session is dead, so the active team must survive it exactly like the
+  // cached user does.
+  it('a TRANSIENT refresh failure must NOT clear the active team', async () => {
+    setActiveTeam('team-a')
+    setRefreshHandler(vi.fn(async () => ({ ok: false, transient: true })))
+
+    await expect(
+      authFetch('/auth/user/display-name', { method: 'PUT', body: '{}' })
+    ).rejects.toBeInstanceOf(ApiError)
+
+    expect(getActiveTeam()).toBe('team-a')
+  })
+
   it('a DEFINITIVE refresh rejection wipes the cached user', async () => {
     setRefreshHandler(vi.fn(async () => ({ ok: false, transient: false })))
 
@@ -55,6 +70,21 @@ describe('data-401 refresh failure — cached user survival', () => {
     ).rejects.toBeInstanceOf(ApiError)
 
     expect(localStorage.getItem('user')).toBeNull()
+  })
+
+  // Fix 4 (PULSE-89 review): the active team must not outlive the credential
+  // it was resolved for — left set, the next signed-in tab (or this one after
+  // a fresh login) could send a stale X-Pulse-Team for a team that belongs to
+  // nobody signed in now.
+  it('a DEFINITIVE refresh rejection also clears the active team', async () => {
+    setActiveTeam('team-a')
+    setRefreshHandler(vi.fn(async () => ({ ok: false, transient: false })))
+
+    await expect(
+      authFetch('/auth/user/display-name', { method: 'PUT', body: '{}' })
+    ).rejects.toBeInstanceOf(ApiError)
+
+    expect(getActiveTeam()).toBeNull()
   })
 
   it('the thrown ApiError carries the transient flag for callers', async () => {

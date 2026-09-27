@@ -159,6 +159,72 @@ describe('POST /api/auth/refresh — refresh token write-back guard', () => {
   })
 })
 
+/**
+ * Phase 2, PULSE-89: the org context sent upstream comes from the `pulse_team`
+ * cookie — Pulse's own preference — not from decoding the access token.
+ */
+const TEAM_FROM_COOKIE = 'a1b2c3d4-e5f6-4789-a012-b3c4d5e6f789'
+const TEAM_FROM_TOKEN = 'f9e8d7c6-b5a4-4321-9876-543210fedcba'
+
+describe('POST /api/auth/refresh — the team context comes from the cookie', () => {
+  beforeEach(() => {
+    vi.resetModules()
+  })
+
+  it('sends the pulse_team cookie as organization_id, even though the access token names a different org', async () => {
+    cookieStore = makeCookieStore({
+      pulse_refresh: OLD_TOKEN,
+      pulse_access: accessToken(TEAM_FROM_TOKEN),
+      pulse_team: TEAM_FROM_COOKIE,
+    })
+    const fetchSpy = vi.fn().mockResolvedValue(upstreamOk(NEW_TOKEN, { rotated: true }))
+    vi.stubGlobal('fetch', fetchSpy)
+
+    await callRoute()
+
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
+    expect(JSON.parse(String(init.body)).organization_id).toBe(TEAM_FROM_COOKIE)
+  })
+
+  it('falls back to the body org_id when there is no pulse_team cookie', async () => {
+    cookieStore = makeCookieStore({ pulse_refresh: OLD_TOKEN })
+    const fetchSpy = vi.fn().mockResolvedValue(upstreamOk(NEW_TOKEN, { rotated: true }))
+    vi.stubGlobal('fetch', fetchSpy)
+    const { POST } = await import('../route')
+
+    await POST(new Request('https://pulse.example.test/api/auth/refresh', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: `pulse_refresh=${OLD_TOKEN}` },
+      body: JSON.stringify({ org_id: 'org-from-body' }),
+    }))
+
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
+    expect(JSON.parse(String(init.body)).organization_id).toBe('org-from-body')
+  })
+
+  it('sends no organization_id at all when neither the cookie nor the body names one', async () => {
+    cookieStore = makeCookieStore({ pulse_refresh: OLD_TOKEN })
+    const fetchSpy = vi.fn().mockResolvedValue(upstreamOk(NEW_TOKEN, { rotated: true }))
+    vi.stubGlobal('fetch', fetchSpy)
+
+    await callRoute()
+
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
+    expect(JSON.parse(String(init.body))).not.toHaveProperty('organization_id')
+  })
+
+  it('a malformed pulse_team cookie is treated as absent, not forwarded verbatim', async () => {
+    cookieStore = makeCookieStore({ pulse_refresh: OLD_TOKEN, pulse_team: 'not-a-uuid' })
+    const fetchSpy = vi.fn().mockResolvedValue(upstreamOk(NEW_TOKEN, { rotated: true }))
+    vi.stubGlobal('fetch', fetchSpy)
+
+    await callRoute()
+
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
+    expect(JSON.parse(String(init.body))).not.toHaveProperty('organization_id')
+  })
+})
+
 describe('POST /api/auth/refresh — the S3 cookie shape', () => {
   beforeEach(() => {
     vi.resetModules()
@@ -239,13 +305,16 @@ describe('POST /api/auth/refresh — only a verdict may destroy the session', ()
     })
   }
 
-  it('deletes the three pulse_* cookies on 401 — the credential was rejected — and nothing apex', async () => {
+  it('deletes ALL FOUR pulse_* cookies on 401 — the credential was rejected — and nothing apex', async () => {
+    // 🔴 FOUR, not three, since Phase 2 (PULSE-89): clearSession also drops
+    // pulse_team — someone else signing in on this browser must not inherit
+    // the previous person's team preference.
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstreamFailure(401)))
 
     const res = await callRoute()
 
     expect(res.status).toBe(401)
-    expect(cookieStore.deletes.map((d) => d.name).sort()).toEqual(['pulse_access', 'pulse_csrf', 'pulse_refresh'])
+    expect(cookieStore.deletes.map((d) => d.name).sort()).toEqual(['pulse_access', 'pulse_csrf', 'pulse_refresh', 'pulse_team'])
     for (const d of cookieStore.deletes) {
       expect(d.options, `${d.name} delete must carry no domain`).not.toHaveProperty('domain')
     }

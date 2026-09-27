@@ -61,3 +61,17 @@ import '@testing-library/jest-dom/vitest'
 // never appears); only a slow render stops counting as one.
 import { configure } from '@testing-library/react'
 configure({ asyncUtilTimeout: 5000 })
+
+// * Fix 1 (PULSE-89 review) — lib/api/client.ts's team-readiness gate defaults
+// * to UNRESOLVED at module load, on purpose: that is what makes a fresh page
+// * load block an early pulse-api request until AuthProvider knows the active
+// * team. Every OTHER test in the suite calls apiRequest/apiRequestBlob (or
+// * something that does) with no AuthProvider in sight and no idea the gate
+// * exists, so leaving it unresolved here would make each of those wait out
+// * the full 10s safety-net timeout. Resolve it once per test file — matching
+// * "the app has already finished starting up", the state almost every test
+// * actually wants. lib/api/__tests__/team-gate.test.ts is the one place that
+// * deliberately calls resetTeamGate() to exercise the unresolved state, and
+// * restores it (markTeamResolved()) once it is done with each case.
+const { markTeamResolved } = await import('./lib/api/client')
+markTeamResolved()
