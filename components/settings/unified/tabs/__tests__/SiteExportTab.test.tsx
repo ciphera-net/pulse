@@ -4,7 +4,8 @@ import type { ExportRequest } from '@/lib/api/export'
 
 // Settings → Site → Export (PULSE-132, design §9.3; owner rulings R1 and R4).
 // What these pin: the tile picker is the MCP tab's (buttons, aria-pressed) with
-// exactly the two tiles P1 ships; the Spreadsheet flow opens on the eight basic
+// the ruled tiles (Growth report only for sites.edit; its flow is pinned in
+// SiteExportTab.reports.test.tsx); the Spreadsheet flow opens on the eight basic
 // tables and asks for exactly what is on screen (collapsing Advanced options
 // takes its choices out of the request); a range over a year leaves only the
 // daily summary; the download sends the route's query and a failure surfaces
@@ -42,6 +43,17 @@ vi.mock('@/components/dashboard/filter/FilterBuilder', () => ({
     ) : null,
 }))
 
+// P2/P3 neighbours of the spreadsheet flow: the report tiles and Your reports.
+let canEdit = true
+vi.mock('@/lib/auth/permissions', () => ({ useCan: () => canEdit }))
+vi.mock('@/lib/auth/context', () => ({ useAuth: () => ({ user: { id: 'me' } }) }))
+vi.mock('@/lib/swr/members', () => ({ useMembers: () => ({ list: [], members: [], error: undefined }) }))
+vi.mock('@/lib/api/reports', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/api/reports')>()),
+  listReports: () => Promise.resolve([]),
+  listSchedules: () => Promise.resolve([]),
+}))
+
 const toastError = vi.fn()
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...args: any[]) => args.flat(Infinity).filter(Boolean).join(' '),
@@ -70,6 +82,7 @@ vi.mock('@ciphera-net/facet', () => ({
     </select>
   ),
   Input: ({ error, ...props }: any) => <input {...props} />,
+  Modal: ({ isOpen, children }: any) => (isOpen ? <div role="dialog">{children}</div> : null),
   toast: { success: vi.fn(), error: (...a: unknown[]) => toastError(...a) },
 }))
 
@@ -81,6 +94,7 @@ beforeEach(() => {
   // Only the clock is faked: 28 Sep 2026, 14:00 in Brussels.
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date('2026-09-28T12:00:00Z'))
+  canEdit = true
   downloadExport.mockReset().mockResolvedValue(undefined)
   toastError.mockReset()
   useSite.mockReset().mockReturnValue({ data: SITE, error: undefined, mutate: vi.fn() })
@@ -103,22 +117,33 @@ async function download() {
 }
 
 describe('SiteExportTab: the tiles', () => {
-  it('draws the two tiles P1 ships, as pressed buttons, and opens on Spreadsheet', () => {
+  it('draws the ruled tiles, in order, as pressed buttons, and opens on Spreadsheet', () => {
+    const { container } = render(<SiteExportTab siteId="site-1" />)
+    const tiles = container.querySelectorAll('[data-railgrid] > button')
+    expect([...tiles].map((t) => t.textContent)).toEqual(['Spreadsheet', 'Growth report', 'Your own tools'])
+    expect(container.querySelector('[data-railgrid]')?.className).toBe('grid-cols-3')
+    expect(screen.getByRole('button', { name: 'Spreadsheet' }).getAttribute('aria-pressed')).toBe('true')
+    for (const name of ['Growth report', 'Your own tools']) {
+      expect(screen.getByRole('button', { name }).getAttribute('aria-pressed')).toBe('false')
+    }
+  })
+
+  it('shows only the tiles that work without sites.edit: no report tile, never a disabled placeholder', () => {
+    canEdit = false
     const { container } = render(<SiteExportTab siteId="site-1" />)
     const tiles = container.querySelectorAll('[data-railgrid] > button')
     expect([...tiles].map((t) => t.textContent)).toEqual(['Spreadsheet', 'Your own tools'])
-    expect(screen.getByRole('button', { name: 'Spreadsheet' }).getAttribute('aria-pressed')).toBe('true')
-    expect(screen.getByRole('button', { name: 'Your own tools' }).getAttribute('aria-pressed')).toBe('false')
-    // No placeholder for the tiles that arrive later.
-    expect(screen.queryByText('Growth report')).toBeNull()
-    expect(screen.queryByText('Scheduled email')).toBeNull()
+    expect(container.querySelector('[data-railgrid]')?.className).toBe('grid-cols-2')
+    expect(screen.queryByRole('button', { name: 'Create report' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Start sending' })).toBeNull()
   })
 
-  it('names the panel Export and asks what the reader needs', () => {
+  it('names the panel Export and asks what the reader needs, with Your reports beneath it', () => {
     render(<SiteExportTab siteId="site-1" />)
-    const region = screen.getByRole('region')
-    expect(region.querySelector('h2')?.textContent).toBe('Export')
-    expect(region.textContent).toContain('Choose what you need.')
+    const [exportPanel, reportsPanel] = screen.getAllByRole('region')
+    expect(exportPanel.querySelector('h2')?.textContent).toBe('Export')
+    expect(exportPanel.textContent).toContain('Choose what you need.')
+    expect(reportsPanel.querySelector('h2')?.textContent).toBe('Your reports')
   })
 
   it('swaps the flow for the three tools, and keeps the spreadsheet choices while away', () => {

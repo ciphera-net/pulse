@@ -3,15 +3,20 @@
 import { useCallback, useEffect, useId, useState } from 'react'
 import Link from 'next/link'
 import type { Icon } from '@phosphor-icons/react'
-import { CalendarBlank, CaretDown, CaretUp, Code, DownloadSimple, Plus, Table } from '@phosphor-icons/react'
-import { Button, Checkbox, Input, RailGrid, Select, Switcher, toast } from '@ciphera-net/facet'
+import { CaretDown, CaretUp, Code, DownloadSimple, Plus, PresentationChart, Table } from '@phosphor-icons/react'
+import { Button, Checkbox, RailGrid, Select, Switcher, toast } from '@ciphera-net/facet'
 import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
+import { CustomRangeFields, customRangeProblem } from '@/components/settings/export/dateFields'
+import { GrowthReportFlow } from '@/components/settings/export/GrowthReportFlow'
+import { YourReports } from '@/components/settings/export/YourReports'
+import { useReportsList } from '@/components/settings/export/reportFields'
 import FilterPills from '@/components/dashboard/FilterPills'
 import FilterBuilder from '@/components/dashboard/filter/FilterBuilder'
 import { isDuplicateFilter, useFilterBuilder } from '@/components/dashboard/filter/useFilterBuilder'
 import { cn } from '@/lib/utils'
+import { useCan } from '@/lib/auth/permissions'
 import { useSite, useSubscription, useDataWindow } from '@/lib/swr/dashboard'
 import type { Site } from '@/lib/api/sites'
 import {
@@ -27,7 +32,6 @@ import {
 } from '@/lib/api/export'
 import { serializeFilters, type DimensionFilter } from '@/lib/filters'
 import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
-import { isValidDateString } from '@/lib/hooks/periodUrl'
 import { ANALYTICS_MAX_DAYS } from '@/lib/hooks/useUrlDateRange'
 import { CUSTOM_RANGE_LABEL, PERIOD_PRESETS, findPreset } from '@/lib/constants/periods'
 import { formatSpan, rowSpan, spanDays, type DateSpan } from '@/lib/view/view'
@@ -40,9 +44,12 @@ import { docsUrl } from '@/lib/docs'
 //
 // The tile picker the owner chose (R1, layout B): one panel, "Export", a
 // RailGrid of tiles built exactly as the MCP tab builds its assistant picker,
-// and the chosen tile's flow beneath it. P1 ships the two tiles that work,
-// Spreadsheet and Your own tools; Growth report arrives with P2 and Scheduled
-// email with P3, never as a placeholder (§9.1: no "coming soon" pattern exists).
+// and the chosen tile's flow beneath it; "Your reports" under it whichever tile
+// is open. Tiles, in the ruled order: Spreadsheet · Growth report (PULSE-133) ·
+// Your own tools; Scheduled email arrives with PULSE-134. Growth report makes
+// something on the server, so it appears only for people who may (sites.edit);
+// without it the tab shows the tiles that work for them, never a disabled
+// placeholder (§9.1).
 //
 // The file is made by pulse-backend (lib/api/export.ts). This tab only decides
 // what to ask for, and asks for exactly what is on screen: collapsing Advanced
@@ -50,11 +57,12 @@ import { docsUrl } from '@/lib/docs'
 // when it is opened again), so a download never carries a filter or a table
 // the reader can no longer see.
 
-type TileId = 'spreadsheet' | 'tools'
+type TileId = 'spreadsheet' | 'report' | 'tools'
 
-const TILES: { id: TileId; name: string; icon: Icon }[] = [
-  { id: 'spreadsheet', name: 'Spreadsheet', icon: Table },
-  { id: 'tools', name: 'Your own tools', icon: Code },
+const TILES: { id: TileId; name: string; icon: Icon; needsEdit: boolean }[] = [
+  { id: 'spreadsheet', name: 'Spreadsheet', icon: Table, needsEdit: false },
+  { id: 'report', name: 'Growth report', icon: PresentationChart, needsEdit: true },
+  { id: 'tools', name: 'Your own tools', icon: Code, needsEdit: false },
 ]
 
 const TABLE_LABELS: Record<ExportTable, string> = {
@@ -144,28 +152,15 @@ const DEFAULT_RANGE = '30'
  */
 export const MAX_TABLE_DAYS = ANALYTICS_MAX_DAYS
 
-/** The Audit tab's date field: the native picker, its indicator stretched invisibly over a CalendarBlank. */
-const DATE_INPUT_CLASS = cn(
-  'w-full pr-9 [color-scheme:dark] placeholder-shown:text-muted-foreground',
-  '[&::-webkit-calendar-picker-indicator]:opacity-0',
-  '[&::-webkit-calendar-picker-indicator]:absolute',
-  '[&::-webkit-calendar-picker-indicator]:inset-0',
-  '[&::-webkit-calendar-picker-indicator]:w-full',
-  '[&::-webkit-calendar-picker-indicator]:cursor-pointer',
-)
-
-/** Why a custom range cannot be exported yet, or null when it can. */
-function customRangeProblem(range: DateSpan | null, today: string): string | null {
-  if (!range || !isValidDateString(range.start) || !isValidDateString(range.end)) return 'Choose a first and a last day.'
-  if (range.start > range.end) return 'The last day comes before the first.'
-  if (range.end > today) return 'Choose days up to today.'
-  return null
-}
-
 export default function SiteExportTab({ siteId }: { siteId: string }) {
   const { data: site, error, mutate } = useSite(siteId)
+  const canEdit = useCan('sites.edit')
+  const reportsList = useReportsList(siteId)
   const [tile, setTile] = useState<TileId>('spreadsheet')
   const [retrying, setRetrying] = useState(false)
+  const tiles = TILES.filter((t) => canEdit || !t.needsEdit)
+  // A tile taken away (the permission answer arrived) falls back to the first.
+  const shown: TileId = tiles.some((t) => t.id === tile) ? tile : 'spreadsheet'
 
   // Every range resolves in the SITE's calendar, so nothing renders until the
   // site (and its timezone) is known: a range computed in the browser's zone
@@ -192,11 +187,14 @@ export default function SiteExportTab({ siteId }: { siteId: string }) {
     <div className="flex flex-col gap-6">
       <SettingsPanel title="Export" description="Choose what you need.">
         <div className="px-5 py-5">
-          {/* Two tiles in two columns: a column count that divides the tiles, so
-              RailGrid never draws a bordered ghost cell (the MCP tab's rule). */}
-          <RailGrid className="grid-cols-2" style={{ gridTemplateColumns: undefined }}>
-            {TILES.map((t) => {
-              const selected = t.id === tile
+          {/* A column count that divides the tiles, so RailGrid never draws a
+              bordered ghost cell (the MCP tab's rule). */}
+          <RailGrid
+            className={tiles.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}
+            style={{ gridTemplateColumns: undefined }}
+          >
+            {tiles.map((t) => {
+              const selected = t.id === shown
               const TileIcon = t.icon
               return (
                 <button
@@ -220,20 +218,27 @@ export default function SiteExportTab({ siteId }: { siteId: string }) {
             })}
           </RailGrid>
         </div>
-        {/* The spreadsheet flow stays mounted while Your own tools is shown, so a
-            look at the other tile never throws away the choices made here.
-            `hidden` only hides the flow's own DOM — its filter popover renders
-            through a portal straight onto document.body (FilterPopover), so
-            the tile itself has to tell the flow to close it. */}
-        <div className="border-t border-border" hidden={tile !== 'spreadsheet'}>
-          <SpreadsheetFlow site={site} active={tile === 'spreadsheet'} />
+        {/* Each flow stays mounted while another tile is shown, so a look at
+            another tile never throws away the choices made here. `hidden` only
+            hides the flow's own DOM: the spreadsheet's filter popover renders
+            through a portal straight onto document.body (FilterPopover), so the
+            tile has to tell the flow to close it. */}
+        <div className="border-t border-border" hidden={shown !== 'spreadsheet'}>
+          <SpreadsheetFlow site={site} active={shown === 'spreadsheet'} />
         </div>
-        {tile === 'tools' && (
+        {canEdit && (
+          <div className="border-t border-border" hidden={shown !== 'report'}>
+            <GrowthReportFlow site={site} onCancel={() => setTile('spreadsheet')} onChanged={() => void reportsList.reload()} />
+          </div>
+        )}
+        {shown === 'tools' && (
           <div className="border-t border-border">
             <OwnTools />
           </div>
         )}
       </SettingsPanel>
+
+      <YourReports site={site} list={reportsList} canEdit={canEdit} />
     </div>
   )
 }
@@ -419,37 +424,7 @@ function SpreadsheetFlow({ site, active }: { site: Site; active: boolean }) {
             className="w-full"
           />
           {rangeKey === CUSTOM && (
-            <>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <div className="relative">
-                  <Input
-                    type="date"
-                    aria-label="First day"
-                    value={custom?.start ?? ''}
-                    max={today}
-                    onChange={(e) => setCustom((prev) => ({ start: e.target.value, end: prev?.end ?? '' }))}
-                    className={DATE_INPUT_CLASS}
-                  />
-                  <CalendarBlank className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                </div>
-                <div className="relative">
-                  <Input
-                    type="date"
-                    aria-label="Last day"
-                    value={custom?.end ?? ''}
-                    max={today}
-                    onChange={(e) => setCustom((prev) => ({ start: prev?.start ?? '', end: e.target.value }))}
-                    className={DATE_INPUT_CLASS}
-                  />
-                  <CalendarBlank className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                </div>
-              </div>
-              {customProblem && (
-                <p role="alert" className="mt-1.5 text-xs text-destructive">
-                  {customProblem}
-                </p>
-              )}
-            </>
+            <CustomRangeFields value={custom} onChange={setCustom} today={today} problem={customProblem} />
           )}
         </PanelRow>
 

@@ -38,6 +38,20 @@ public read API's — see that entry for what it does and does not cover.
   log as *Exported data*. Beside it, **Your own tools** points at API keys, the
   `pulse` command line and AI assistants through MCP.
 
+- **Growth reports: a designed report of your site to send to investors, clients
+  or your board.** In Settings → Site → Export, choose a period, what to compare it
+  with and which slides to include: headline numbers, twelve months of growth,
+  where visitors come from, what they read and where they are, devices and goals.
+  Pulse makes it once and keeps it as it is, so a report sent in March still says
+  what it said in March. You get a link to a page of slides, and a PDF of the same
+  slides at 16:9 that drops straight into a deck, in a light or dark look you
+  choose for that report. A link can have a password and an expiry, and deleting a
+  report closes its link and deletes its numbers. The person you send it to sees
+  that report only, never your dashboard.
+
+  Reports are listed under **Your reports**, and making and deleting them is
+  recorded in your audit log.
+
 - **All time** — from a page's first day of data to its newest, worked out by the
   server for each page. Past a year the chart switches to weekly, then monthly points.
 
