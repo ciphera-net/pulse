@@ -13,7 +13,7 @@ import { useOutboundLinks } from '@/lib/swr/dashboard'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
 import { formatNumber } from '@/lib/utils/format'
 import { type DimensionFilter } from '@/lib/filters'
-import { type GoalCountStat } from '@/lib/api/stats'
+import { type GoalCountStat, type ImportedProvenance } from '@/lib/api/stats'
 
 // ---------------------------------------------------------------------------
 // Outbound — where visitors go when they leave (owner pick A, 08-09-2026;
@@ -49,7 +49,16 @@ interface OutboundProps {
   onFilter?: (filter: DimensionFilter) => void
   /** Realtime mode — an empty block reads the one realtime line (CardEmptyState). */
   live?: boolean
+  /**
+   * The goal counts' imported-history provenance (M12-f). When imported days
+   * are included, the card says its numbers are Pulse's own and where the
+   * imported clicks went (W-M12-6), because its per-link rows can't be imported.
+   */
+  goalsImported?: ImportedProvenance | null
 }
+
+/** W-M12-6 (owner pick A, 28-09-2026). */
+export const OUTBOUND_NATIVE_ONLY = 'Pulse-measured clicks only. Imported outbound clicks count in Events.'
 
 type Tab = 'domains' | 'links' | 'from_page'
 
@@ -92,7 +101,7 @@ function DestinationIcon({ host, failed, onFail }: { host: string; failed: boole
   )
 }
 
-export default function Outbound({ siteId, dateRange, period, goalCounts, filters, onFilter, live = false}: OutboundProps) {
+export default function Outbound({ siteId, dateRange, period, goalCounts, filters, onFilter, live = false, goalsImported }: OutboundProps) {
   const [activeTab, setActiveTab] = useState<Tab>('domains')
   const [faviconFailed, setFaviconFailed] = useState<Set<string>>(() => new Set())
   const { data, error, isLoading } = useOutboundLinks(siteId, dateRange.start, dateRange.end, period)
@@ -125,9 +134,15 @@ export default function Outbound({ siteId, dateRange, period, goalCounts, filter
   // cap); the summed lists are the fallback, and they are capped at 1,000
   // distinct values, so on a site with more destinations than that the
   // fallback would under-count and inflate every share.
+  //
+  // 🔴 M12-e: the denominator is the NATIVE part of that total. An import may
+  // add clicks to `outbound_link` (Q-M12-2), but these rows are Pulse's own
+  // links and can't be imported, so a share over the merged count would divide
+  // one instrument by two. `native_count` is absent only from a pre-M12 server,
+  // whose count is native by construction.
   const outboundGoal = goalCounts?.find((g) => g.event_name === 'outbound_link')
   const summedClicks = useMemo(() => (data?.urls ?? []).reduce((n, v) => n + v.count, 0), [data])
-  const totalClicks = outboundGoal?.count ?? summedClicks
+  const totalClicks = outboundGoal ? (outboundGoal.native_count ?? outboundGoal.count) : summedClicks
   const list = rows[activeTab]
   const pageCount = Math.max(1, Math.ceil(list.length / LIMIT))
   const [page, setPage] = useCardPage(`${activeTab}|${filters ?? ''}|${dateRange.start}|${dateRange.end}`, pageCount)
@@ -148,7 +163,15 @@ export default function Outbound({ siteId, dateRange, period, goalCounts, filter
   // take no filters, so under page filters this card is whole-site while every
   // other card on the screen is filtered. Dropping that line too would leave
   // the card silently answering a different question than the one asked.
-  const footnote = hasFilters ? 'Outbound is not filtered yet — these are whole-site clicks.' : null
+  //
+  // M12 (W-M12-6, constraint 2): with imported days in range, the card says
+  // its rows are Pulse's own. Never both notes: under a filter nothing is
+  // merged (M12-f), so the filter's note is the one that is true.
+  const footnote = hasFilters
+    ? 'Outbound is not filtered yet — these are whole-site clicks.'
+    : goalsImported?.included === true
+      ? OUTBOUND_NATIVE_ONLY
+      : null
 
   return (
     <div data-tour="dimension-card" data-tour-card="outbound" className="bg-card rounded-none p-6 h-full flex flex-col border border-border min-w-0">

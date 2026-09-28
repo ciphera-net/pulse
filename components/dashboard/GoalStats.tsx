@@ -31,6 +31,15 @@ interface PropertyCache {
 
 const LIMIT = 7
 
+/** The cap's fold row (M12-g): stored as `(other)`, shown as a word. */
+const OTHER = '(other)'
+
+/** A row's label: "Other" for the fold row, else its display name or the key with underscores as spaces. */
+export function goalLabel(row: Pick<GoalCountStat, 'event_name' | 'display_name'>): string {
+  if (row.event_name === OTHER) return 'Other'
+  return row.display_name ?? row.event_name.replace(/_/g, ' ')
+}
+
 export default function GoalStats({ goalCounts, siteId, dateRange, bare = false, memberFeatures = true }: GoalStatsProps) {
   const list = (goalCounts || []).slice(0, LIMIT)
   const hasData = list.length > 0
@@ -89,24 +98,34 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
           {list.map((row) => {
             const maxCount = list[0]?.count ?? 0
             const barWidth = maxCount > 0 ? (row.count / maxCount) * 75 : 0
-            const isExpanded = expanded.has(row.event_name)
+            // M12 (owner pick A): a row whose count is imported days only has
+            // no properties to show (an export carries none), so it neither
+            // expands nor offers to. The server says which rows those are.
+            const expandable = memberFeatures && row.instrument !== 'imported'
+            const isExpanded = expandable && expanded.has(row.event_name)
             const cache = propertyCache[row.event_name]
+            const RowTag = expandable || !memberFeatures ? 'button' : 'div'
 
             return (
               <div key={row.event_name}>
                 {/* Event row */}
-                <button
-                  type="button"
-                  aria-expanded={memberFeatures ? isExpanded : undefined}
-                  onClick={memberFeatures ? () => toggleExpand(row.event_name) : undefined}
-                  className={`interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2 ${memberFeatures ? 'cursor-pointer' : 'cursor-default'}`}
+                <RowTag
+                  {...(RowTag === 'button' ? { type: 'button' as const } : {})}
+                  aria-expanded={expandable ? isExpanded : undefined}
+                  onClick={expandable ? () => toggleExpand(row.event_name) : undefined}
+                  data-testid="goal-row"
+                  className={`interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2 ${expandable ? 'cursor-pointer' : 'cursor-default'}`}
                 >
                   <div
                     className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.16] md:group-hover:bg-brand-orange/[0.26] rounded-none transition-[width,background-color] ease-apple"
                     style={{ width: `${barWidth}%` }}
                   />
                   <div className="relative flex items-center flex-1 min-w-0 gap-2">
-                    {memberFeatures && (
+                    {memberFeatures && !expandable && (
+                      // Keeps the name in line with the rows that do expand.
+                      <span aria-hidden="true" className="w-3.5 h-3.5 flex-shrink-0" />
+                    )}
+                    {expandable && (
                     <svg
                       className={`w-3.5 h-3.5 text-neutral-500 flex-shrink-0 transition-transform duration-base ${isExpanded ? 'rotate-90' : ''} ease-apple`}
                       fill="none"
@@ -118,7 +137,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
                     </svg>
                     )}
                     <span className="text-sm font-medium text-white truncate">
-                      {row.display_name ?? row.event_name.replace(/_/g, ' ')}
+                      {goalLabel(row)}
                     </span>
                   </div>
                   {/* No % here by design (F9): these rows count EVENTS, and the
@@ -129,7 +148,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
                       {formatNumber(row.count)}
                     </span>
                   </div>
-                </button>
+                </RowTag>
 
                 {/* Expanded property breakdown */}
                 <AnimatePresence initial={false}>

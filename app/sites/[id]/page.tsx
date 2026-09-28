@@ -5,6 +5,7 @@ import { siteDaysCaption } from '@/lib/utils/timezones'
 import { useCallback, useEffect, useState, useMemo } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import {
+  GOALS_IMPORTED_CARD,
   type Stats,
   type DailyStat,
 } from '@/lib/api/stats'
@@ -575,6 +576,7 @@ export default function SiteDashboardPage() {
               dateRange={resolvedDateRange}
               period={apiPeriod || undefined}
               goalCounts={dashboard?.goal_counts ?? []}
+              goalsImported={dashboard?.imported_cards?.[GOALS_IMPORTED_CARD]}
               filters={filtersParam || undefined}
               onFilter={handleAddFilter}
             />
@@ -604,6 +606,7 @@ export default function SiteDashboardPage() {
         <ContentSignals
           scrollDepth={dashboard?.scroll_depth}
           goalCounts={dashboard?.goal_counts ?? []}
+          goalsImported={dashboard?.imported_cards?.[GOALS_IMPORTED_CARD]}
           siteId={siteId}
           dateRange={resolvedDateRange}
         />

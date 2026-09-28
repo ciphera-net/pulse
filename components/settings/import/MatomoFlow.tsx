@@ -347,7 +347,7 @@ export function MatomoFlow({
               {whatRows}
               {propertyId && !previewed && !previewError && (
                 <PanelRow label="Events">
-                  <span className="text-sm text-muted-foreground">Loading this site's events…</span>
+                  <span className="text-sm text-muted-foreground">{"Loading this site's events…"}</span>
                 </PanelRow>
               )}
             </PanelRows>

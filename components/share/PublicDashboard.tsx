@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { getPublicDashboard, getPublicRealtime, authenticatePublicDashboard, type DashboardData, type Stats } from '@/lib/api/stats'
+import { GOALS_IMPORTED_CARD, getPublicDashboard, getPublicRealtime, authenticatePublicDashboard, type DashboardData, type Stats } from '@/lib/api/stats'
 import { toast } from '@ciphera-net/facet'
 import { getAuthErrorMessage } from '@ciphera-net/facet'
 import { ApiError } from '@/lib/api/client'
@@ -439,6 +439,7 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
           <ContentSignals
             scrollDepth={data?.scroll_depth}
             goalCounts={data?.goal_counts ?? []}
+            goalsImported={data?.imported_cards?.[GOALS_IMPORTED_CARD]}
             siteId={siteId}
             dateRange={dateRange}
             memberFeatures={false}

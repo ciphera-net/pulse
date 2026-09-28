@@ -83,12 +83,32 @@ export interface ScreenResolutionStat {
 
 export interface GoalCountStat {
   event_name: string
-  /** Events, not people. */
+  /** Events, not people. Pulse-measured and imported together (M12-f). */
   count: number
   /** Distinct visitors who fired the event (the server sends it; older callers ignore it). */
   visitors?: number
   display_name?: string | null
+  /**
+   * Where this row's count comes from (M12, contract §3.12m12b-6), the public
+   * vocabulary: `measured` (Pulse only), `imported` (imported days only),
+   * `mixed`. Server-said, never inferred: an `imported` row has no properties
+   * to show, so it does not expand. Absent from a pre-M12 server = measured.
+   */
+  instrument?: 'measured' | 'imported' | 'mixed'
+  /**
+   * The Pulse-measured part of `count` (M12-e). The Outbound card divides by
+   * THIS, never by `count`: its per-link rows can't be imported, so a share
+   * over a merged total would mix two instruments.
+   */
+  native_count?: number
 }
+
+/**
+ * The key a combined dashboard payload's `imported_cards` carries the Events
+ * card's provenance under (M12-f). The focused goals endpoint says the same
+ * thing as its own `imported`.
+ */
+export const GOALS_IMPORTED_CARD = 'goals'
 
 export interface CampaignStat {
   source: string
@@ -398,8 +418,9 @@ export interface DashboardData {
   /**
    * Each importable card's own provenance, keyed by its dimension (page,
    * entry_page, exit_page, referrer, channel, campaign, country, region, city,
-   * browser, os, device, language, screen_resolution). Only the cards this
-   * response carries.
+   * browser, os, device, language, screen_resolution), and since M12 the
+   * Events card's under GOALS_IMPORTED_CARD. Only the cards this response
+   * carries.
    */
   imported_cards?: Record<string, ImportedProvenance>
 }
@@ -473,6 +494,8 @@ export interface DashboardReferrersData {
 
 export interface DashboardGoalsData {
   goal_counts: GoalCountStat[]
+  /** M12-f: whether the goal counts include imported days, like every merged card. */
+  imported?: ImportedProvenance
 }
 
 export function getDashboardOverview(siteId: string, startDate?: string, endDate?: string, interval?: string, filters?: string): Promise<DashboardOverviewData> {
