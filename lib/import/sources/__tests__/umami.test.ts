@@ -61,7 +61,7 @@ async function parse(files: File | File[], timeZone = 'UTC', clip: Clip | null =
   const rows = new RawFolder({ timeZone, clip, skipped })
   const chosen = []
   for (const f of list) chosen.push({ name: f.name, blob: f as Blob, input: await detectInputKind(f) })
-  const result = await umamiSource.read(chosen, { rows, skipped, read: {} })
+  const result = await umamiSource.read(chosen, { rows, skipped, read: {}, siteDomain: null })
   return { rows: rows.finish(), skipped, ...result }
 }
 
@@ -905,8 +905,8 @@ describe('the real self-hosted export', () => {
 
   it("reads the raw `\\copy` timestamps (`2026-09-22 09:00:00+00`) to the same plan, byte for byte", async () => {
     expect(REAL_RAW).toContain('\n2026-09-22 09:00:00+00,')
-    const published = await runPipeline({ source: 'umami', files: [file(REAL)], clip: null, timeZone: 'Europe/Brussels' })
-    const raw = await runPipeline({ source: 'umami', files: [file(REAL_RAW)], clip: null, timeZone: 'Europe/Brussels' })
+    const published = await runPipeline({ source: 'umami', files: [file(REAL)], clip: null, timeZone: 'Europe/Brussels', siteDomain: null })
+    const raw = await runPipeline({ source: 'umami', files: [file(REAL_RAW)], clip: null, timeZone: 'Europe/Brussels', siteDomain: null })
     expect(raw.summary.fingerprint).toBe(published.summary.fingerprint)
     expect(raw.parts.map((p) => p.rowsJson)).toEqual(published.parts.map((p) => p.rowsJson))
     // Shape 2 carries its offset: nothing was assumed.
@@ -918,13 +918,20 @@ describe('the real self-hosted export', () => {
 
 describe('registration', () => {
   it('is an upload_raw source with real visits, reading plain, gzip and ZIP, one file', () => {
-    expect(SOURCE_META.umami).toEqual({ kind: 'upload_raw', visitsAreVisitors: false, accepts: ['plain', 'gzip', 'zip'], fileCount: 'single' })
+    expect(SOURCE_META.umami).toEqual({
+      kind: 'upload_raw',
+      visitsAreVisitors: false,
+      accepts: ['plain', 'gzip', 'zip'],
+      fileCount: 'single',
+      oneFileMessage: "Choose one file: Umami's export is a single CSV file.",
+      hasExitPages: true,
+    })
     expect(SOURCE_PARSERS.umami).toBe(umamiSource)
     expect(umamiSource.kind).toBe('upload_raw')
   })
 
   it('plans the real export end to end: raw kind, real visits, the browser skips, no monthly rows', async () => {
-    const { summary, parts } = await runPipeline({ source: 'umami', files: [file(REAL)], clip: null, timeZone: 'UTC' })
+    const { summary, parts } = await runPipeline({ source: 'umami', files: [file(REAL)], clip: null, timeZone: 'UTC', siteDomain: null })
     expect(summary).toMatchObject({
       source: 'umami',
       kind: 'upload_raw',
@@ -940,7 +947,7 @@ describe('registration', () => {
   })
 
   it("the synthetic export's plan names the rows it read as UTC", async () => {
-    const { summary } = await runPipeline({ source: 'umami', files: [umamiFixtureFile()], clip: null, timeZone: 'UTC' })
+    const { summary } = await runPipeline({ source: 'umami', files: [umamiFixtureFile()], clip: null, timeZone: 'UTC', siteDomain: null })
     expect(summary.notes).toEqual({ [UMAMI_ASSUMED_UTC_NOTE]: '1' })
     expect(umamiFixtureCsv().startsWith(UMAMI_FIXTURE_HEADER)).toBe(true)
   })

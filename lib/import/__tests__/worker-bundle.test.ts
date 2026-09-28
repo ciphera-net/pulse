@@ -103,7 +103,7 @@ describe('the prebuilt worker bundle', () => {
       skipped: { bad_timestamp: 2, missing_field: 3, not_a_pageview: 3 },
     })
     const { parts } = await runPipeline(
-      { source: 'umami', files: [umamiFixtureFile()], clip: null, timeZone: server.siteTimezone },
+      { source: 'umami', files: [umamiFixtureFile()], clip: null, timeZone: server.siteTimezone, siteDomain: null },
       { planLimits: PLAN_LIMITS },
     )
     const sent = server.requests.filter((r) => r.path.endsWith('/batches')).map((r) => JSON.parse(r.body ?? '{}').rows)

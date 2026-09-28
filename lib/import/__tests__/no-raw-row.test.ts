@@ -110,7 +110,7 @@ describe('M2-q: no raw row in a batch', () => {
     }
     expect(inFile.size).toBeGreaterThan(30)
     const file = new File([csv], 'umami-export.csv')
-    const { summary, parts } = await runPipeline({ source: 'umami', files: [file], clip: null, timeZone: 'UTC' })
+    const { summary, parts } = await runPipeline({ source: 'umami', files: [file], clip: null, timeZone: 'UTC', siteDomain: null })
     expect(parts.length).toBeGreaterThan(0)
     for (const p of parts) assertOnlyWireFields(batchBody(p.step, p.part, summary.fingerprint, p.rowsJson), [...inFile])
   })
