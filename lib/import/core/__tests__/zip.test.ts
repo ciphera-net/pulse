@@ -331,6 +331,15 @@ describe('gzip and plain input', () => {
     expect(await detectInputKind(blob(new Uint8Array(0)))).toBe('plain')
   })
 
+  it('takes a ZIP with no entries for a ZIP: it opens with the end-of-directory record, not a file header', async () => {
+    const empty = zipSync({})
+    expect([...empty.subarray(0, 4)]).toEqual([0x50, 0x4b, 0x05, 0x06])
+    expect(await detectInputKind(blob(empty))).toBe('zip')
+    // A split archive's marker, and `PK` followed by anything else, which is text.
+    expect(await detectInputKind(blob(new Uint8Array([0x50, 0x4b, 0x07, 0x08, 0x50, 0x4b, 0x03, 0x04])))).toBe('zip')
+    expect(await detectInputKind(blob(strToU8('PK,visitors\n')))).toBe('plain')
+  })
+
   it('streams a .gz through DecompressionStream into one entry', async () => {
     const c = collector()
     await readGzip(blob(gzipSync(strToU8('date,visitors\n2026-03-01,4\n'))), 'events.csv', c.entry('events.csv'))

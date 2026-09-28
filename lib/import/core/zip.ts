@@ -70,10 +70,25 @@ export interface ReadOptions {
   onProgress?: (bytesRead: number, bytesTotal: number) => void
 }
 
-/** Sniffs the first bytes: a ZIP local header, a gzip member, or anything else. */
+/**
+ * The third and fourth bytes a ZIP can open with, after `PK`: a local file
+ * header (03 04), the end-of-central-directory record that is the whole of a
+ * ZIP with no entries (05 06), or the marker a split archive starts with
+ * (07 08). An empty ZIP is still a ZIP: taken for a plain file, it would be
+ * parsed as a CSV and refused with its binary bytes echoed as a header.
+ */
+const ZIP_OPENINGS: readonly (readonly [number, number])[] = [
+  [0x03, 0x04],
+  [0x05, 0x06],
+  [0x07, 0x08],
+]
+
+/** Sniffs the first bytes: a ZIP (see ZIP_OPENINGS), a gzip member, or anything else. */
 export async function detectInputKind(file: Blob): Promise<InputKind> {
   const head = new Uint8Array(await file.slice(0, 4).arrayBuffer())
-  if (head.length >= 4 && head[0] === 0x50 && head[1] === 0x4b && head[2] === 0x03 && head[3] === 0x04) return 'zip'
+  if (head.length >= 4 && head[0] === 0x50 && head[1] === 0x4b && ZIP_OPENINGS.some(([a, b]) => head[2] === a && head[3] === b)) {
+    return 'zip'
+  }
   if (head.length >= 2 && head[0] === 0x1f && head[1] === 0x8b) return 'gzip'
   return 'plain'
 }

@@ -368,7 +368,10 @@ describe('the wrong upload, named', () => {
     const texts = fathomFixtureTexts()
     const zip = zipSync({ 'Pages.csv': strToU8(texts.page), 'Site.csv': strToU8(texts.totals) })
     const dashboard = new File([zip as BlobPart], 'fathom-dashboard.zip')
-    for (const upload of [[dashboard], [...fathomFixtureFiles(), dashboard]]) {
+    // A ZIP with no entries at all (a download cut short, a zipped empty
+    // folder) is still a ZIP, and is refused the same way, never read as a CSV.
+    const empty = new File([zipSync({}) as BlobPart], 'fathom-dashboard.zip')
+    for (const upload of [[dashboard], [...fathomFixtureFiles(), dashboard], [empty]]) {
       const e = await failure(parse(upload))
       expect(e.code).toBe('wrong_file')
       expect(e.detail).toEqual({ reason: 'unexpected_archive', file: 'fathom-dashboard.zip' })
