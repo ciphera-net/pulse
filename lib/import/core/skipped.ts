@@ -40,6 +40,11 @@ export type SkipReason =
    * and Umami's raw events (M8-b′) both carry one per row.
    */
   | 'hostname_mismatch'
+  /**
+   * A custom event whose name is empty once cleaned (M12-i, core/events.ts
+   * `cleanSourceName`): there is nothing to key it by or to name it after.
+   */
+  | 'event_name_invalid'
 
 export const MAX_SAMPLES_PER_REASON = 5
 

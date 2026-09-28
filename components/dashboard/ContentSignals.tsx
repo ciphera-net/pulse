@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { formatNumber } from '@/lib/utils/format'
 import { usePagePreview } from '@/lib/swr/dashboard'
-import type { GoalCountStat, ScrollDepthDistribution } from '@/lib/api/stats'
+import type { GoalCountStat, ImportedProvenance, ScrollDepthDistribution } from '@/lib/api/stats'
 import ScrollDepthBars from './ScrollDepthBars'
 import GoalStats from './GoalStats'
 import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
@@ -26,11 +26,20 @@ interface ContentSignalsProps {
   // events drill-down hit member-strict endpoints — off means neither fetch
   // ever fires, and the scroll tab renders its rails fallback.
   memberFeatures?: boolean
+  /**
+   * The Events card's imported-history provenance (M12-f), server-said. When
+   * it says imported days are included, the header's right slot (where the
+   * Scroll tab puts its unit) says so, in M11's words (owner pick A, W-M12-5).
+   */
+  goalsImported?: ImportedProvenance | null
 }
+
+/** W-M12-5: the Events card's header word, the rail's own vocabulary (M11). */
+export const EVENTS_IMPORTED_WORD = 'incl. imported days'
 
 type Tab = 'scroll' | 'events'
 
-export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRange, memberFeatures = true }: ContentSignalsProps) {
+export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRange, memberFeatures = true, goalsImported }: ContentSignalsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('scroll')
 
   // The full-page capture behind the scroll tab's stacked sheets. null =
@@ -65,6 +74,11 @@ export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRa
         {activeTab === 'scroll' && scrollSessions > 0 && (
           <span className="shrink-0 whitespace-nowrap text-[11px] text-neutral-500">
             {formatNumber(scrollSessions)} {scrollSessions === 1 ? 'session' : 'sessions'}
+          </span>
+        )}
+        {activeTab === 'events' && goalsImported?.included === true && (
+          <span className="shrink-0 whitespace-nowrap text-[11px] text-neutral-500" data-testid="events-imported-word">
+            {EVENTS_IMPORTED_WORD}
           </span>
         )}
       </div>

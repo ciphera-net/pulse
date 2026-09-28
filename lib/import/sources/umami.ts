@@ -19,10 +19,12 @@
 //     from the published query's — a named `wrong_file`, never a guessed read.
 //
 // Each row (M8-e, M8-f, M8-g):
-//   - only `event_type` 1 is a pageview; every other type (custom events 2,
-//     link 3, pixel 4, performance 5) is skipped `not_a_pageview`, counted.
-//     M12 reads the custom events from this same file later (§3.12c
-//     amendment 6), which is why the recipe selects `event_name`;
+//   - `event_type` 1 is a pageview. `event_type` 2 is a custom event (M12-h):
+//     folded by (site day, event_name), `count` the rows and `visitors` the
+//     distinct `session_id`s that day, under the name cleaned
+//     (core/events.ts); an empty name is `event_name_invalid`. Every other
+//     type (link 3, pixel 4, performance 5) is skipped `not_a_pageview`,
+//     counted;
 //   - `session_id` is the visitor and `visit_id` the visit. Both are interned
 //     by the fold and never sent (M2-q);
 //   - `url_path` is the page, as Umami stored it (a hash-router's `#fragment`
@@ -34,7 +36,7 @@
 //     always an ISO 3166-2 code and its city an English name, and the server
 //     resolves both through M6's place-name index. A blank value is sent blank
 //     and stored as the server's Unknown, so each dimension still adds up to
-//     the day. `event_name` is checked in the header and never read;
+//     the day. `event_name` is read on custom events only;
 //   - `hostname` is held to the site's own domain (M8-b′, amending M8-b,
 //     which read it only in the header): a pageview recorded on any other
 //     host, or on none, is skipped `hostname_mismatch`, so an export of the
@@ -57,6 +59,7 @@
 // sends each one as the file has it.
 
 import { CsvByteParser } from '../core/csv'
+import { cleanSourceName } from '../core/events'
 import { isCalendarDate } from '../core/dates'
 import type { RawAcquisition } from '../core/fold'
 import { siteHostCheck } from '../core/host'
@@ -258,7 +261,7 @@ function readRows(
       return
     }
     const eventType = fields[p.event_type]
-    if (eventType !== '1') {
+    if (eventType !== '1' && eventType !== '2') {
       skipped.add(eventType === '' ? 'missing_field' : 'not_a_pageview', at)
       return
     }
@@ -269,6 +272,23 @@ function readRows(
     const time = readTimestamp(fields[p.created_at], days)
     if (!time) {
       skipped.add('bad_timestamp', at)
+      return
+    }
+    if (eventType === '2') {
+      // A custom event (M12-h): its session is its visitor, its day the
+      // site's, and nothing else about the row is kept.
+      const session = fields[p.session_id]
+      if (session === '') {
+        skipped.add('missing_field', at)
+        return
+      }
+      const name = cleanSourceName(fields[p.event_name])
+      if (name === '') {
+        skipped.add('event_name_invalid', at)
+        return
+      }
+      if (time.shape === 'bare') counts.assumedUtc++
+      rows.addEvent({ at: time.at, name, visitor: session, file, line })
       return
     }
     const visitor = fields[p.session_id]

@@ -42,14 +42,16 @@ import { ImportApiClient, type ClientOptions, type Transport } from './client'
 import { ImportError, fromWireError, wrongFile, type Cursor } from './errors'
 import { PROTOCOL_VERSION, type FromWorker, type PlanSummary, type PrepareRequest, type ToWorker } from './protocol'
 import { SOURCE_META, isImportSource, type ImportSource } from './source-meta'
-import type { ImportStatus, PlanStep, UploadWindow } from './types'
+import { MAX_SOURCE_EVENTS, MAX_SOURCE_NAME_LENGTH, defaultEventMap, eventNameProblem } from './core/events'
+import type { EventMap, ImportStatus, PlanStep, UploadWindow } from './types'
 
 export { ImportError } from './errors'
 export type { ImportErrorCode, ImportErrorDetail, Cursor, WrongFileReason } from './errors'
 export type { Transport, TransportRequest, TransportResponse, ClientOptions } from './client'
 export type { PlanSummary } from './protocol'
 export type { ImportSource } from './source-meta'
-export type { ImportStatus, UploadWindow, PlanStep, PlanTotals, CollectSettings } from './types'
+export type { ImportStatus, UploadWindow, PlanStep, PlanTotals, CollectSettings, EventMap } from './types'
+export type { SourceEvent } from './core/events'
 export type { SkipSample } from './core/skipped'
 export { MAX_UPLOAD_FILES } from './core/schema'
 
@@ -115,8 +117,14 @@ export interface PreparedImport {
   readonly sourceTimezone: string
   /** The existing import this file resumes, or null for a new one. */
   readonly resume: ImportStatus | null
-  /** Creates (or resumes) the import and sends every part. Can be called again after a failure. */
-  upload(): Promise<ImportStatus>
+  /**
+   * Creates (or resumes) the import and sends every part. Can be called again
+   * after a failure. `eventMap` is the confirmed mapping step (M12-b): every
+   * source event in `plan.events` must be a key. Omitted, each source event
+   * takes its suggested name (a caller with no mapping step, the harness). A
+   * resume ignores it: the stored import already holds its map.
+   */
+  upload(options?: { eventMap?: EventMap }): Promise<ImportStatus>
   /** Stops the worker and frees the parts it holds. */
   dispose(): void
 }
@@ -194,10 +202,21 @@ export async function prepareImport(options: ImportOptions): Promise<PreparedImp
         'This is a different file from the one this import started with. Delete the import to start again with this file.',
         { detail: { import_id: existingId } },
       )
+    // M12-c: a new import carries events. A resumed one carries them only if it
+    // was created with them: a pre-M12 import's stored fingerprint covers no
+    // event row, so sending any would make the same file look like another.
+    const events = existing ? existing.upload.events : true
     let plan: PlanSummary
     try {
       plan = await channel.prepare(
-        { source: options.source, files: files.map((f) => ({ name: f.name, blob: f })), clip, timeZone: uploadWindow.site_timezone, siteDomain: uploadWindow.site_domain },
+        {
+          source: options.source,
+          files: files.map((f) => ({ name: f.name, blob: f })),
+          clip,
+          timeZone: uploadWindow.site_timezone,
+          siteDomain: uploadWindow.site_domain,
+          events,
+        },
         (message) => {
           if (message.type !== 'progress') return
           if (message.stage === 'reading') {
@@ -298,6 +317,7 @@ class Upload implements PreparedImport {
   private running = false
   private disposed = false
   private readonly serverSkipped: Record<string, number> = {}
+  private eventMap: EventMap | null = null
 
   constructor(
     private readonly options: ImportOptions,
@@ -312,11 +332,12 @@ class Upload implements PreparedImport {
     this.importId = resume?.id ?? null
   }
 
-  async upload(): Promise<ImportStatus> {
+  async upload(options: { eventMap?: EventMap } = {}): Promise<ImportStatus> {
     if (this.running) throw new ImportError('unexpected_response', 'This upload is already running.')
     if (this.disposed) throw new ImportError('worker_failed', 'This import was disposed; prepare it again.')
     this.running = true
     try {
+      if (options.eventMap) this.eventMap = checkedEventMap(this.plan, options.eventMap)
       const { siteId } = this.options
       let cursor: Cursor
       if (this.importId) {
@@ -391,6 +412,9 @@ class Upload implements PreparedImport {
         totals: plan.totals,
         skipped: plan.skipped,
         visits_are_visitors: plan.visits_are_visitors,
+        // Always present on a new import, `{}` for a file with no events: it is
+        // what marks the import as built with events (M12-c).
+        event_map: this.eventMap ?? defaultEventMap(plan.events, source, []),
       })
     } catch (e) {
       // A create whose answer was lost (a timeout after the server committed)
@@ -416,6 +440,41 @@ class Upload implements PreparedImport {
     this.emit({ type: 'done', status })
     return status
   }
+}
+
+/**
+ * The confirmed map, checked before it is sent (M12-b): it names every source
+ * event the plan carries and nothing else, and every name is one Pulse
+ * accepts. The server re-checks all of it (D9); this turns a page bug into a
+ * named error before the create request instead of a 400 after it.
+ */
+function checkedEventMap(plan: PlanSummary, map: EventMap): EventMap {
+  const wanted = new Set(plan.events.map((e) => e.source_name))
+  // The server's own bounds on the keys (contract §3.12m12b-2): at most
+  // 10,000, each non-empty and at most 200 characters once trimmed. The plan's
+  // names already satisfy them (cleanSourceName, capSourceEvents); a map that
+  // doesn't is a page bug, named here rather than by a 400.
+  if (wanted.size > MAX_SOURCE_EVENTS) {
+    throw new ImportError('invalid_event_map', `An import can name at most ${MAX_SOURCE_EVENTS} events.`)
+  }
+  for (const name of wanted) {
+    const trimmed = name.trim()
+    if (trimmed === '' || trimmed !== name || Array.from(name).length > MAX_SOURCE_NAME_LENGTH) {
+      throw new ImportError('invalid_event_map', 'An event in the file has a name Pulse cannot key.')
+    }
+  }
+  const out: EventMap = {}
+  for (const name of wanted) {
+    if (!Object.prototype.hasOwnProperty.call(map, name)) {
+      throw new ImportError('invalid_event_map', 'Every event in the file needs a name in Pulse, or to be left out.')
+    }
+    const to = map[name]
+    if (to !== null && eventNameProblem(to) !== null) {
+      throw new ImportError('invalid_event_map', `${to} can't be an event name in Pulse.`)
+    }
+    out[name] = to
+  }
+  return out
 }
 
 /**

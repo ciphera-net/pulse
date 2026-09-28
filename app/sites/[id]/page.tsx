@@ -575,6 +575,7 @@ export default function SiteDashboardPage() {
               dateRange={resolvedDateRange}
               period={apiPeriod || undefined}
               goalCounts={dashboard?.goal_counts ?? []}
+              goalsImported={dashboard?.imported_goals}
               filters={filtersParam || undefined}
               onFilter={handleAddFilter}
             />
@@ -604,6 +605,7 @@ export default function SiteDashboardPage() {
         <ContentSignals
           scrollDepth={dashboard?.scroll_depth}
           goalCounts={dashboard?.goal_counts ?? []}
+          goalsImported={dashboard?.imported_goals}
           siteId={siteId}
           dateRange={resolvedDateRange}
         />

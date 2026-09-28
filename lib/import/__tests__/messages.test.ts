@@ -83,6 +83,7 @@ const SKIP_REASONS_ON_STAGING = [
   'bot_row',
   'missing_field',
   'bad_number',
+  'event_name_invalid',
 ] as const satisfies readonly SkipReason[]
 type ListedSkip = (typeof SKIP_REASONS_ON_STAGING)[number]
 const skipListed: Exhaustive<Exclude<SkipReason, ListedSkip | (typeof ANTICIPATED_SKIP_REASONS)[number]>> = true
@@ -428,5 +429,20 @@ describe('skipped rows', () => {
   it('writes one row in the singular', () => {
     expect(skipReasonPhrase('outside_history_window', 1)).toBe("1 row dated before this site's history window")
     expect(skipReasonPhrase('needs_place_names', 1)).toBe('1 region or city with no name Pulse knows')
+  })
+})
+
+// M12-i: the event skips, in the §3.10a voice.
+describe('M12 skip sentences', () => {
+  it('names the rows the customer left out, and the ones with no name', async () => {
+    const { skipReasonPhrase, importErrorMessage } = await import('../messages')
+    expect(skipReasonPhrase('event_excluded', 3)).toBe('3 rows for events you chose to leave out')
+    expect(skipReasonPhrase('event_name_invalid', 1)).toBe('1 row for events with no name')
+    expect(skipReasonPhrase('folded_into_other', 2)).toBe('2 rows folded into Other (more than 1,000 values in a day)')
+    expect(importErrorMessage({ code: 'invalid_event_map' }, 'plausible')).toEqual({
+      text: "Pulse couldn't use one of the event names. Check the names under Events and try again.",
+      details: 'invalid_event_map',
+    })
+    expect(importErrorMessage({ code: 'row_outside_plan' }, 'plausible')?.details).toBe('row_outside_plan')
   })
 })

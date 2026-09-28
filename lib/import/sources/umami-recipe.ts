@@ -13,12 +13,11 @@
 // screen, the docs) can show the recipe without pulling the parser, the zip
 // reader or the CSV reader into its bundle.
 //
-// 🔑 `event_name` IS SELECTED ALTHOUGH v1 NEVER READS IT (§3.12c amendment 6,
-// D8's "no re-import"). v1 imports pageviews only and skips every custom-event
-// row (`event_type` 2) as `not_a_pageview`; M12 reads those rows later from the
-// SAME file, so the file a customer exports today must already carry the event
-// names. The parser requires the column for the same reason: an export without
-// it would need exporting again the day events ship.
+// 🔑 `event_name` WAS SELECTED BEFORE ANYTHING READ IT (§3.12c amendment 6,
+// D8's "no re-import"): v1 imported pageviews only, and M12 now reads the
+// custom-event rows (`event_type` 2) from the SAME file, so an export made for
+// v1 already carries every name. The parser requires the column for that
+// reason.
 //
 // Why each choice (§3.12m8 M8-a):
 //   - The customer's own database joins `website_event` to `session`, so the

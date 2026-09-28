@@ -8,6 +8,7 @@
 import { AggregateBuilder } from './core/aggregate'
 import type { Clip } from './core/cap'
 import { RawFolder } from './core/fold'
+import { capSourceEvents, sourceEventList } from './core/events'
 import { buildPlan, type PlanLimits, type PlanPart } from './core/plan'
 import { checkUploadCount } from './core/schema'
 import { SkipLedger } from './core/skipped'
@@ -26,6 +27,13 @@ export interface PipelineRequest {
   timeZone: string
   /** The site's own configured domain, from the upload window (M9-j'); null when the server hasn't sent one. */
   siteDomain: string | null
+  /**
+   * Whether the plan carries the `events` table (M12-c). True for every new
+   * import; a resume of an import created before M12 (status `upload.events`
+   * false) passes false, and the plan is then built WITHOUT any event row, so
+   * its fingerprint is byte-identical to the one that import stored.
+   */
+  events: boolean
 }
 
 export interface PipelineHooks {
@@ -69,6 +77,13 @@ export async function runPipeline(req: PipelineRequest, hooks: PipelineHooks = {
     rows = folder.finish()
   }
 
+  // M12-c: an import that started without events never gets them. Dropped
+  // after the fold, before the plan, so nothing about them reaches a part.
+  if (!req.events) rows = { ...rows, events: [] }
+  // The server takes at most MAX_SOURCE_EVENTS names in one map; past that,
+  // the file's smallest events travel as each day's `(other)`.
+  else rows = { ...rows, events: capSourceEvents(rows.events) }
+
   hooks.onPlanning?.()
   let plan
   try {
@@ -96,6 +111,7 @@ export async function runPipeline(req: PipelineRequest, hooks: PipelineHooks = {
       skipped_samples: skipped.toSamples(),
       ignored_files: result.ignored,
       notes: sortedNotes(result.notes),
+      events: sourceEventList(rows.events),
     },
     parts: plan.parts,
   }

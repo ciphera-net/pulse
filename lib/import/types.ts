@@ -5,9 +5,11 @@
 // is a 400 (`DisallowUnknownFields`) on the first batch. Rows are snake_case
 // because that is what goes on the wire; nothing renames them in between.
 //
-// 🔴 M2-q: a batch has no field that could carry an event. There is no timestamp
-// finer than a day, no session, visit or visitor id, no IP, user agent or title,
-// and `lib/import/__tests__/no-raw-row.test.ts` fails if one is ever added.
+// 🔴 M2-q: a batch has no field that could carry a RAW event. There is no
+// timestamp finer than a day, no session, visit or visitor id, no IP, user agent
+// or title, and `lib/import/__tests__/no-raw-row.test.ts` fails if one is ever
+// added. M12's `events` table is an aggregate (a label and a count per day),
+// not an event, and that test allows exactly its table key and nothing more.
 
 import type { Cursor } from './errors'
 
@@ -74,16 +76,38 @@ export interface AcquisitionRow {
   pageviews: number
 }
 
-/** The four tables a batch may carry. Each is optional on the wire; omitted = empty. */
+/**
+ * One source event's count on one day (M12, contract §3.12m12b-3). An AGGREGATE,
+ * never an event: the tool's own label for the event, and how many times it
+ * fired that day. The client NEVER sends a Pulse name: the server applies the
+ * map the create request carried (`event_map`), so the fingerprint depends on
+ * the file only, never on the mapping the customer chose.
+ */
+export interface EventRow {
+  date: string
+  /** The source's label, cleaned (core/events.ts `cleanSourceName`), or the literal `(other)`. */
+  source_name: string
+  /** Distinct visitors that day, or null when the source has no per-event unique signal. */
+  visitors: number | null
+  count: number
+}
+
+/**
+ * The five tables a batch may carry. Each is optional on the wire; omitted =
+ * empty. `events` is last: a part whose events list is empty serialises exactly
+ * as it did before M12, which is what keeps a no-events plan's fingerprint
+ * byte-identical (M12-c).
+ */
 export interface AggregateRows {
   daily: DailyRow[]
   monthly: MonthlyRow[]
   dimensions: DimensionRow[]
   acquisition: AcquisitionRow[]
+  events: EventRow[]
 }
 
 export type TableName = keyof AggregateRows
-export const TABLES: readonly TableName[] = ['daily', 'monthly', 'dimensions', 'acquisition']
+export const TABLES: readonly TableName[] = ['daily', 'monthly', 'dimensions', 'acquisition', 'events']
 
 /** The fields each table's rows carry on the wire, in canonical order (M2-r). */
 export const WIRE_FIELDS: Readonly<Record<TableName, readonly string[]>> = {
@@ -104,6 +128,7 @@ export const WIRE_FIELDS: Readonly<Record<TableName, readonly string[]>> = {
     'visits',
     'pageviews',
   ],
+  events: ['date', 'source_name', 'visitors', 'count'],
 }
 
 /** The top-level fields of a batch body (M2-r). */
@@ -117,7 +142,8 @@ export interface PlanStep {
 }
 
 export interface PlanTotals {
-  rows: { daily: number; monthly: number; dimensions: number; acquisition: number }
+  /** `events` is additive (M12): present whenever the plan was built with events on. */
+  rows: { daily: number; monthly: number; dimensions: number; acquisition: number; events?: number }
   visitors: number
   pageviews: number
 }
@@ -145,6 +171,13 @@ export interface ImportStatus {
   started_at: string | null
   progressed_at: string | null
   finished_at: string | null
+  /**
+   * The plan's capability bits (M12-c, contract §4). `events` is false on every
+   * import created before M12: a resuming client then sends NO events rows, so
+   * the file's fingerprint still matches the one stored at create. An older
+   * server's status has no `upload` at all, which parses as `{events: false}`.
+   */
+  upload: { events: boolean }
 }
 
 export interface CollectSettings {
@@ -188,12 +221,22 @@ export interface CreateImportRequest {
   totals: PlanTotals
   skipped: Record<string, number>
   visits_are_visitors: boolean
+  /**
+   * M12-b: the confirmed map, `{source_name: pulse_name | null}` (`null` = don't
+   * import). Present (even `{}`) makes the import an events-capable one
+   * (`upload.events = true`); absent is a pre-M12 client. Every source name the
+   * batches carry, other than `(other)`, must be a key.
+   */
+  event_map?: EventMap
 }
+
+/** `{source_name: pulse_name | null}`: the name each source event gets in Pulse, or null to leave it out. */
+export type EventMap = Record<string, string | null>
 
 /** A batch's 200 answer: applied, or a retry below the cursor that wrote nothing. */
 export interface BatchResponse {
   already_applied: boolean
-  applied: { daily: number; monthly: number; dimensions: number; acquisition: number } | null
+  applied: { daily: number; monthly: number; dimensions: number; acquisition: number; events: number } | null
   skipped: Record<string, number>
   next: Cursor | null
   status: string
