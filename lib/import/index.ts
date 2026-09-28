@@ -42,7 +42,7 @@ import { ImportApiClient, type ClientOptions, type Transport } from './client'
 import { ImportError, fromWireError, wrongFile, type Cursor } from './errors'
 import { PROTOCOL_VERSION, type FromWorker, type PlanSummary, type PrepareRequest, type ToWorker } from './protocol'
 import { SOURCE_META, isImportSource, type ImportSource } from './source-meta'
-import { defaultEventMap, eventNameProblem } from './core/events'
+import { MAX_SOURCE_EVENTS, MAX_SOURCE_NAME_LENGTH, defaultEventMap, eventNameProblem } from './core/events'
 import type { EventMap, ImportStatus, PlanStep, UploadWindow } from './types'
 
 export { ImportError } from './errors'
@@ -450,6 +450,19 @@ class Upload implements PreparedImport {
  */
 function checkedEventMap(plan: PlanSummary, map: EventMap): EventMap {
   const wanted = new Set(plan.events.map((e) => e.source_name))
+  // The server's own bounds on the keys (contract §3.12m12b-2): at most
+  // 10,000, each non-empty and at most 200 characters once trimmed. The plan's
+  // names already satisfy them (cleanSourceName, capSourceEvents); a map that
+  // doesn't is a page bug, named here rather than by a 400.
+  if (wanted.size > MAX_SOURCE_EVENTS) {
+    throw new ImportError('invalid_event_map', `An import can name at most ${MAX_SOURCE_EVENTS} events.`)
+  }
+  for (const name of wanted) {
+    const trimmed = name.trim()
+    if (trimmed === '' || trimmed !== name || Array.from(name).length > MAX_SOURCE_NAME_LENGTH) {
+      throw new ImportError('invalid_event_map', 'An event in the file has a name Pulse cannot key.')
+    }
+  }
   const out: EventMap = {}
   for (const name of wanted) {
     if (!Object.prototype.hasOwnProperty.call(map, name)) {

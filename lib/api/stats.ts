@@ -103,12 +103,6 @@ export interface GoalCountStat {
   native_count?: number
 }
 
-/**
- * The key a combined dashboard payload's `imported_cards` carries the Events
- * card's provenance under (M12-f). The focused goals endpoint says the same
- * thing as its own `imported`.
- */
-export const GOALS_IMPORTED_CARD = 'goals'
 
 export interface CampaignStat {
   source: string
@@ -418,11 +412,16 @@ export interface DashboardData {
   /**
    * Each importable card's own provenance, keyed by its dimension (page,
    * entry_page, exit_page, referrer, channel, campaign, country, region, city,
-   * browser, os, device, language, screen_resolution), and since M12 the
-   * Events card's under GOALS_IMPORTED_CARD. Only the cards this response
-   * carries.
+   * browser, os, device, language, screen_resolution). Only the cards this
+   * response carries.
    */
   imported_cards?: Record<string, ImportedProvenance>
+  /**
+   * The goal counts' own provenance (M12-f): whether the Events card's numbers
+   * include imported days. A field of its own, not an `imported_cards` key. The
+   * focused goals endpoints carry the same thing as `imported`.
+   */
+  imported_goals?: ImportedProvenance
 }
 
 export interface DashboardSuppression {

@@ -30,6 +30,12 @@ export const MAX_EVENT_NAME_LENGTH = 64
 export const MAX_SOURCE_NAME_LENGTH = 200
 /** Named source events per day before the rest fold into `(other)` (M12-g). */
 export const EVENT_NAME_CAP = 1000
+/**
+ * Distinct source events one import may name: the server refuses an
+ * `event_map` with more keys (contract §3.12m12b-2), so the browser never plans
+ * more. Past it, the smallest names over the whole file travel as `(other)`.
+ */
+export const MAX_SOURCE_EVENTS = 10_000
 
 /** The server's EventNameRegex. */
 const EVENT_NAME_RE = /^[a-zA-Z0-9_]+$/
@@ -224,4 +230,33 @@ export function sourceEventList(rows: readonly EventRow[]): SourceEvent[] {
   return [...totals.entries()]
     .map(([source_name, count]) => ({ source_name, count }))
     .sort((a, b) => b.count - a.count || (a.source_name < b.source_name ? -1 : a.source_name > b.source_name ? 1 : 0))
+}
+
+/**
+ * Keeps at most `limit` distinct source names across the whole file (the
+ * largest by total count, then by name); every other name's rows are folded
+ * into that day's `(other)` row, merged with any `(other)` the day already has,
+ * so a day still carries one row per key. Deterministic in the file alone, so
+ * the fingerprint stays a function of the file.
+ */
+export function capSourceEvents(rows: readonly EventRow[], limit: number = MAX_SOURCE_EVENTS): EventRow[] {
+  const keep = new Set(sourceEventList(rows).slice(0, limit).map((e) => e.source_name))
+  const out: EventRow[] = []
+  const other = new Map<string, EventRow>()
+  for (const r of rows) {
+    if (r.source_name !== OTHER && keep.has(r.source_name)) {
+      out.push(r)
+      continue
+    }
+    const have = other.get(r.date)
+    if (!have) other.set(r.date, { date: r.date, source_name: OTHER, visitors: r.visitors, count: r.count })
+    else {
+      have.count += r.count
+      have.visitors = sumNullable(have.visitors, r.visitors)
+    }
+  }
+  if (other.size === 0) return out
+  for (const o of other.values()) out.push(o)
+  out.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.source_name < b.source_name ? -1 : a.source_name > b.source_name ? 1 : 0))
+  return out
 }

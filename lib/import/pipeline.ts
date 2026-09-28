@@ -8,7 +8,7 @@
 import { AggregateBuilder } from './core/aggregate'
 import type { Clip } from './core/cap'
 import { RawFolder } from './core/fold'
-import { sourceEventList } from './core/events'
+import { capSourceEvents, sourceEventList } from './core/events'
 import { buildPlan, type PlanLimits, type PlanPart } from './core/plan'
 import { checkUploadCount } from './core/schema'
 import { SkipLedger } from './core/skipped'
@@ -80,6 +80,9 @@ export async function runPipeline(req: PipelineRequest, hooks: PipelineHooks = {
   // M12-c: an import that started without events never gets them. Dropped
   // after the fold, before the plan, so nothing about them reaches a part.
   if (!req.events) rows = { ...rows, events: [] }
+  // The server takes at most MAX_SOURCE_EVENTS names in one map; past that,
+  // the file's smallest events travel as each day's `(other)`.
+  else rows = { ...rows, events: capSourceEvents(rows.events) }
 
   hooks.onPlanning?.()
   let plan

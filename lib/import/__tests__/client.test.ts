@@ -6,7 +6,7 @@
 // `409 batch_out_of_order`, and every M2-r code surfaced as a named error.
 
 import { describe, expect, it } from 'vitest'
-import { ImportApiClient, toImportError, type ClientOptions, type Transport, type TransportResponse } from '../client'
+import { ImportApiClient, parseBatch, parseStatus, toImportError, type ClientOptions, type Transport, type TransportResponse } from '../client'
 import { ImportError } from '../errors'
 import { FakeImportServer } from './support/fake-server'
 
@@ -424,5 +424,34 @@ describe('ImportApiClient.uploadParts', () => {
       new ImportApiClient(t, clock().options).uploadParts({ siteId: 's', importId: 'i', steps: plan, from: { step: 0, part: 0 }, getPart: async (a, b) => body(a, b) }),
     )
     expect(e.code).toBe('unexpected_response')
+  })
+})
+
+// M12 (contract §3.12m12b-3/4): the two additive fields a pre-M12 server never sends.
+describe('M12 status and batch fields', () => {
+  const status = {
+    id: 'imp-1',
+    status: 'running',
+    cursor: { step: 0, part: 0 },
+    range_start: '2026-01-01',
+    range_end: '2026-01-02',
+    steps_total: 1,
+    fingerprint: 'a'.repeat(64),
+    error_code: null,
+  }
+
+  it('reads upload.events, and an absent or malformed bit as false (a pre-M12 import resumes without events)', () => {
+    expect(parseStatus({ ...status, upload: { events: true } }).upload).toEqual({ events: true })
+    expect(parseStatus({ ...status, upload: { events: false } }).upload).toEqual({ events: false })
+    expect(parseStatus(status).upload).toEqual({ events: false })
+    expect(parseStatus({ ...status, upload: { events: 'yes' } }).upload).toEqual({ events: false })
+  })
+
+  it('reads applied.events, which the server omits when it is zero', () => {
+    expect(parseBatch({ applied: { daily: 1, events: 3 }, skipped: {}, next: null, status: 'completed' }).applied?.events).toBe(3)
+    expect(parseBatch({ applied: { daily: 1 }, skipped: { event_excluded: 2, folded_into_other: 1 }, next: null, status: 'completed' })).toMatchObject({
+      applied: { daily: 1, events: 0 },
+      skipped: { event_excluded: 2, folded_into_other: 1 },
+    })
   })
 })

@@ -9,6 +9,7 @@ import {
   MAX_SOURCE_NAME_LENGTH,
   builtinTarget,
   capEvents,
+  capSourceEvents,
   cleanSourceName,
   defaultEventMap,
   eventNameProblem,
@@ -140,5 +141,28 @@ describe('capEvents (M12-g): 1,000 source names per day plus (other)', () => {
     const other = capEvents(rows).find((r) => r.source_name === '(other)')!
     expect(other.visitors).toBeNull()
     expect(other.count).toBe(3)
+  })
+})
+
+describe('capSourceEvents: at most 10,000 names per import, the server\'s map limit', () => {
+  it('keeps the largest names and folds the rest into each day\'s one (other) row', () => {
+    const rows: EventRow[] = [
+      { date: '2026-01-01', source_name: 'big', visitors: 5, count: 50 },
+      { date: '2026-01-01', source_name: 'mid', visitors: 2, count: 20 },
+      { date: '2026-01-01', source_name: 'small', visitors: 1, count: 1 },
+      { date: '2026-01-01', source_name: '(other)', visitors: 3, count: 3 },
+      { date: '2026-01-02', source_name: 'small', visitors: 1, count: 2 },
+    ]
+    expect(capSourceEvents(rows, 2)).toEqual([
+      { date: '2026-01-01', source_name: '(other)', visitors: 4, count: 4 },
+      { date: '2026-01-01', source_name: 'big', visitors: 5, count: 50 },
+      { date: '2026-01-01', source_name: 'mid', visitors: 2, count: 20 },
+      { date: '2026-01-02', source_name: '(other)', visitors: 1, count: 2 },
+    ])
+  })
+
+  it('leaves a file under the limit exactly as it was', () => {
+    const rows: EventRow[] = [{ date: '2026-01-01', source_name: 'a', visitors: null, count: 1 }]
+    expect(capSourceEvents(rows)).toEqual(rows)
   })
 })
