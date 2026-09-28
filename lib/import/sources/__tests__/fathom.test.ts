@@ -181,7 +181,7 @@ describe('the synthetic export', () => {
   it('plans, and every batch carries only the wire fields: no hostname, no referrer path', async () => {
     const { rows } = await parse(fathomFixtureFiles())
     const plan = await buildPlan(rows)
-    expect(plan.totals).toEqual({ rows: { daily: 3, monthly: 0, dimensions: 20, acquisition: 3 }, visitors: 35, pageviews: 89 })
+    expect(plan.totals).toEqual({ rows: { daily: 3, monthly: 0, dimensions: 20, acquisition: 3, events: 0 }, visitors: 35, pageviews: 89 })
     expect(plan.fingerprint).toMatch(/^[0-9a-f]{64}$/)
     for (const p of plan.parts) {
       const body = batchBody(p.step, p.part, plan.fingerprint, p.rowsJson)
@@ -663,6 +663,7 @@ describe('dark by omission', () => {
       clip: null,
       timeZone: 'UTC',
       siteDomain: null,
+      events: true,
     })
     expect(posted).toHaveLength(1)
     expect(posted[0]).toMatchObject({ type: 'error', error: { code: 'source_not_enabled' } })

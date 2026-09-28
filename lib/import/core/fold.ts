@@ -38,6 +38,7 @@ import type { AcquisitionRow, AggregateRows, DailyRow, Dimension, DimensionRow }
 import { assertCounts, sortRows } from './aggregate'
 import { ACQUISITION_TUPLE_CAP, DIMENSION_VALUE_CAP, OTHER, capGroup, clipReason, type Clip } from './cap'
 import { fromDayNumber } from './dates'
+import { capEvents } from './events'
 import type { SkipLedger, SkipReason } from './skipped'
 
 export const FOLD_BUDGET = 20_000_000
@@ -187,6 +188,27 @@ export interface RawPageview {
 }
 
 /**
+ * One custom event a raw source recorded (M12-h). It is counted into its
+ * site-local day under its cleaned source label and dropped; nothing about the
+ * row but that label and the day ever leaves the fold.
+ */
+export interface RawEvent {
+  /** Epoch ms, UTC. */
+  at: number
+  /** The source's label, already cleaned (core/events.ts `cleanSourceName`) and non-empty. */
+  name: string
+  /**
+   * The source's visitor (Umami: `session_id`), interned and counted for the
+   * day's distinct `visitors`, never sent. `null` for a source with no unique
+   * signal on events (Simple Analytics): the day's `visitors` is then null,
+   * never a zero the source did not measure.
+   */
+  visitor: string | null
+  file: string
+  line: number
+}
+
+/**
  * One (day, dimension, value) — or one day, or one acquisition tuple. Its two
  * distinct counts hold their FIRST member inline and allocate a Set only on
  * the second: most day×value buckets of a real site never get one, and a Set
@@ -284,6 +306,13 @@ interface DayState {
   daily: Bucket
   /** One map per dimension (by DIMENSION_INDEX), keyed by the value — or, for region and city, by `placeKey`. */
   dims: (Map<string, Bucket> | undefined)[]
+  /** Custom events by cleaned source label (M12): `pageviews` counts the rows. */
+  events: Map<string, EventBucket> | undefined
+}
+
+/** A day's count of one custom event; `identified` is whether any of its rows carried a visitor. */
+interface EventBucket extends Bucket {
+  identified: boolean
 }
 
 const DIMENSION_INDEX: Readonly<Record<Dimension, number>> = {
@@ -411,9 +440,38 @@ export class RawFolder {
     }
   }
 
+  /**
+   * Counts one custom event into its site-local day (M12-h): `count` is the
+   * rows, `visitors` the distinct visitors that day. A day outside the clip
+   * counts the row under the clip's reason, as a pageview's would.
+   */
+  addEvent(row: RawEvent): void {
+    const day = this.dayState(this.days.dayIndexOf(row.at))
+    if (day.skip) {
+      this.options.skipped.add(day.skip, { file: row.file, line: row.line })
+      return
+    }
+    let events = day.events
+    if (!events) day.events = events = new Map()
+    let b = events.get(row.name)
+    if (!b) {
+      this.charge(1)
+      b = { ...newBucket(), identified: false }
+      events.set(row.name, b)
+    }
+    b.pageviews++
+    if (row.visitor === null) return
+    const held = this.visitors.size
+    const visitor = this.visitors.id(row.visitor)
+    if (this.visitors.size > held) this.charge(1)
+    b.identified = true
+    const grew = addVisitor(b, visitor)
+    if (grew) this.charge(grew)
+  }
+
   /** Every table, capped (M2-k) and sorted. The folder is spent afterwards. */
   finish(): AggregateRows {
-    const out: AggregateRows = { daily: [], monthly: [], dimensions: [], acquisition: [] }
+    const out: AggregateRows = { daily: [], monthly: [], dimensions: [], acquisition: [], events: [] }
 
     for (const day of this.byDay.values()) {
       if (day.skip) continue
@@ -426,8 +484,19 @@ export class RawFolder {
         src_bounces: null,
         src_engagement_seconds: null,
       }
-      out.daily.push(row)
+      // A day with custom events and no pageview (M12) is not a day of
+      // traffic: it sends its events and no daily row of zeros.
+      if (b.pageviews > 0) out.daily.push(row)
+      if (day.events) {
+        for (const [name, e] of day.events) {
+          out.events.push({ date: day.date, source_name: name, visitors: e.identified ? visitorsOf(e) : null, count: e.pageviews })
+        }
+      }
     }
+    // M12-g: 1,000 named events per day plus `(other)`, whose visitors are the
+    // folded names' sum (the aggregate sources' rule; a union would need every
+    // id held past this point for one row that is already an estimate).
+    out.events = capEvents(out.events)
 
     // Entrances, exits and acquisition come from the visits, counted on the
     // day of the pageview they describe.
@@ -521,7 +590,7 @@ export class RawFolder {
     let day = this.byDay.get(index)
     if (!day) {
       const date = fromDayNumber(index)
-      day = { date, skip: clipReason(this.options.clip, date), daily: newBucket(), dims: [] }
+      day = { date, skip: clipReason(this.options.clip, date), daily: newBucket(), dims: [], events: undefined }
       this.byDay.set(index, day)
     }
     this.lastIndex = index

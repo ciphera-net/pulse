@@ -27,6 +27,14 @@ describe('imported-history wiring', () => {
     expect(share.match(/importedCards=\{data\?\.imported_cards\}/g)?.length).toBe(4)
   })
 
+  // M12-f: the goal counts' provenance is its own field on the bundle
+  // (`imported_goals`, not an `imported_cards` key). The Events card reads it
+  // on both surfaces; Outbound, on the member dashboard where it renders.
+  it('hands the Events and Outbound cards the goal counts\' provenance (M12)', () => {
+    expect(page.match(/goalsImported=\{dashboard\?\.imported_goals\}/g)?.length).toBe(2)
+    expect(share.match(/goalsImported=\{data\?\.imported_goals\}/g)?.length).toBe(1)
+  })
+
   it('notes a filtered view beside the Filter button, from the response, with the imported_history glyph', () => {
     const note = page.indexOf('importLeftOutByFilter(dashboard?.imported)')
     const filterButton = page.indexOf('<FilterButton')

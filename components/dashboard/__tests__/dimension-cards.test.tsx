@@ -514,3 +514,93 @@ describe('Outbound', () => {
     expect(useOutboundLinks).toHaveBeenCalledWith('site-1', dateRange.start, dateRange.end, '30d')
   })
 })
+
+// ─── M12: imported events on the Events and Outbound cards (owner pick A) ──
+describe('M12: imported events', () => {
+  const imported = { included: true, from: '2026-08-30', through: '2026-09-14', source: 'plausible', reason: null }
+
+  describe('GoalStats', () => {
+    const rows = [
+      { event_name: 'outbound_link', count: 249, native_count: 120, instrument: 'mixed' as const },
+      { event_name: 'pulse_click', count: 117, native_count: 117, instrument: 'measured' as const },
+      { event_name: 'signup', count: 96, native_count: 0, instrument: 'imported' as const },
+      { event_name: '(other)', count: 4, native_count: 0, instrument: 'imported' as const },
+    ]
+
+    it('an imported-only row has no chevron and does not expand; mixed and measured rows still do', () => {
+      render(<GoalStats goalCounts={rows} siteId="site-1" dateRange={dateRange} />)
+      const all = screen.getAllByTestId('goal-row')
+      const byName = (label: string) => all.find((r) => r.textContent?.includes(label)) as HTMLElement
+      for (const label of ['outbound link', 'pulse click']) {
+        expect(byName(label).tagName).toBe('BUTTON')
+        expect(byName(label).getAttribute('aria-expanded')).toBe('false')
+        expect(byName(label).querySelector('svg')).not.toBeNull()
+      }
+      for (const label of ['signup', 'Other']) {
+        const row = byName(label)
+        expect(row.tagName).toBe('DIV')
+        expect(row.hasAttribute('aria-expanded')).toBe(false)
+        expect(row.querySelector('svg')).toBeNull()
+        expect(row.className).toContain('cursor-default')
+      }
+      // Clicking it fetches nothing and opens nothing.
+      fireEvent.click(byName('signup'))
+      expect(screen.queryByText('Loading properties...')).toBeNull()
+      expect(screen.queryByText('No properties recorded')).toBeNull()
+    })
+
+    it('shows the cap\'s fold row as "Other", never "(other)"', () => {
+      render(<GoalStats goalCounts={rows} siteId="site-1" dateRange={dateRange} />)
+      expect(screen.getByText('Other')).toBeTruthy()
+      expect(screen.queryByText('(other)')).toBeNull()
+    })
+
+    it('a pre-M12 row (no instrument) still expands', () => {
+      render(<GoalStats goalCounts={[{ event_name: 'signup', count: 3 }]} siteId="site-1" dateRange={dateRange} />)
+      expect(screen.getByTestId('goal-row').tagName).toBe('BUTTON')
+    })
+  })
+
+  describe('Outbound', () => {
+    const lists = {
+      urls: [
+        { value: 'https://pulse.ciphera.net/', count: 12 },
+        { value: 'https://github.com/ciphera-net', count: 8 },
+      ],
+      paths: [{ value: '/', count: 20 }],
+    }
+    const base = { siteId: 'site-1', dateRange }
+
+    it('divides by the NATIVE outbound count: an imported outbound_link leaves every share unchanged (M12-e)', () => {
+      useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
+      const { unmount } = render(<Outbound {...base} goalCounts={[{ event_name: 'outbound_link', count: 20, native_count: 20, instrument: 'measured' }]} />)
+      expect(screen.getByText('60%')).toBeTruthy() // 12 / 20
+      unmount()
+      // The same range with 4,812 imported clicks merged into outbound_link.
+      render(<Outbound {...base} goalCounts={[{ event_name: 'outbound_link', count: 4832, native_count: 20, instrument: 'mixed' }]} goalsImported={imported} />)
+      expect(screen.getByText('60%')).toBeTruthy()
+      expect(screen.queryByText('0%')).toBeNull()
+    })
+
+    it('says its clicks are Pulse-measured when imported days are in range (W-M12-6)', () => {
+      useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
+      render(<Outbound {...base} goalCounts={[{ event_name: 'outbound_link', count: 4832, native_count: 20, instrument: 'mixed' }]} goalsImported={imported} />)
+      expect(screen.getByTestId('outbound-footnote').textContent).toBe('Pulse-measured clicks only. Imported outbound clicks count in Events.')
+    })
+
+    it('under a filter, the filter note wins and the two never stack (constraint 2)', () => {
+      useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
+      render(<Outbound {...base} goalCounts={[]} goalsImported={imported} filters="country:is:DE" />)
+      const notes = screen.getAllByTestId('outbound-footnote')
+      expect(notes).toHaveLength(1)
+      expect(notes[0].textContent).toMatch(/not filtered yet/)
+      expect(screen.queryByText(/Pulse-measured clicks only/)).toBeNull()
+    })
+
+    it('says nothing when the range holds no imported day', () => {
+      useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
+      render(<Outbound {...base} goalCounts={[]} goalsImported={{ included: false, from: null, through: null, source: null, reason: null }} />)
+      expect(screen.queryByTestId('outbound-footnote')).toBeNull()
+    })
+  })
+})

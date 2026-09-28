@@ -439,6 +439,7 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
           <ContentSignals
             scrollDepth={data?.scroll_depth}
             goalCounts={data?.goal_counts ?? []}
+            goalsImported={data?.imported_goals}
             siteId={siteId}
             dateRange={dateRange}
             memberFeatures={false}

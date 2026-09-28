@@ -29,7 +29,7 @@
 // not.
 
 import { ImportError, wrongFile } from '../errors'
-import type { AcquisitionRow, AggregateRows, DailyRow, DimensionRow, MonthlyRow } from '../types'
+import type { AcquisitionRow, AggregateRows, DailyRow, DimensionRow, EventRow, MonthlyRow } from '../types'
 import {
   ACQUISITION_TUPLE_CAP,
   DIMENSION_VALUE_CAP,
@@ -40,6 +40,7 @@ import {
   type Clip,
 } from './cap'
 import { monthEnd, monthStart } from './dates'
+import { capEvents, mergeEventVisitors } from './events'
 import type { RowRef, SkipLedger, SkipReason } from './skipped'
 
 /** Distinct aggregate keys held at once before the read stops (see the header). */
@@ -53,6 +54,7 @@ export class AggregateBuilder {
   private readonly monthly = new Map<string, MonthlyRow>()
   private readonly dimensions = new Map<string, DimensionRow>()
   private readonly acquisition = new Map<string, AcquisitionRow>()
+  private readonly events = new Map<string, EventRow>()
   private keys = 0
 
   constructor(
@@ -148,6 +150,30 @@ export class AggregateBuilder {
     return true
   }
 
+  /**
+   * One source event's count on one day (M12). Folded on (date, source_name):
+   * Plausible's file is finer than that (per link and per path), so its rows
+   * for one event on one day are summed here, counts and visitors alike (the
+   * usual caveat: a visitor on two links counts twice). `source_name` must be
+   * already cleaned (core/events.ts), which is the parser's job, so that it can
+   * skip an empty one as `event_name_invalid` with its line. Labels the
+   * server would key as one (core/events.ts `cleanSourceName`) arrive here as
+   * one, and merge like any repeated name.
+   */
+  addEvent(row: EventRow, at: RowRef): boolean {
+    if (this.clipped(row.date, at)) return false
+    const key = JSON.stringify([row.date, row.source_name])
+    const have = this.events.get(key)
+    if (!have) {
+      this.hold()
+      this.events.set(key, { ...row })
+      return true
+    }
+    have.count += row.count
+    have.visitors = mergeEventVisitors(have.visitors, row.visitors)
+    return true
+  }
+
   /** Caps, sorts and returns every table. The builder is spent afterwards. */
   build(): AggregateRows {
     const rows: AggregateRows = {
@@ -155,6 +181,7 @@ export class AggregateBuilder {
       monthly: [...this.monthly.values()],
       dimensions: capDimensions([...this.dimensions.values()]),
       acquisition: capAcquisition([...this.acquisition.values()]),
+      events: capEvents([...this.events.values()]),
     }
     sortRows(rows)
     assertCounts(rows)
@@ -289,6 +316,7 @@ export function sortRows(rows: AggregateRows): void {
       cmp(a.src_medium, b.src_medium) ||
       cmp(a.src_campaign, b.src_campaign),
   )
+  rows.events.sort((a, b) => cmp(a.date, b.date) || cmp(a.source_name, b.source_name))
 }
 
 /**
@@ -323,5 +351,9 @@ export function assertCounts(rows: AggregateRows): void {
     check('acquisition', r.visitors)
     check('acquisition', r.visits)
     check('acquisition', r.pageviews)
+  }
+  for (const r of rows.events) {
+    check('events', r.visitors)
+    check('events', r.count)
   }
 }

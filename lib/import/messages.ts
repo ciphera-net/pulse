@@ -88,7 +88,14 @@ export const ANTICIPATED_WRONG_FILE_REASONS = ['unexpected_archive', 'wrong_grou
 type AnticipatedWrongFileReason = (typeof ANTICIPATED_WRONG_FILE_REASONS)[number]
 
 /** Skip reasons only the server adds, on the batches it applies. */
-export const SERVER_SKIP_REASONS = ['collection_off', 'invalid_path', 'page_rule_excluded', 'folded_into_other'] as const
+export const SERVER_SKIP_REASONS = [
+  'collection_off',
+  'invalid_path',
+  'page_rule_excluded',
+  'folded_into_other',
+  /** M12: a source event the customer switched off in the mapping step. */
+  'event_excluded',
+] as const
 export type ServerSkipReason = (typeof SERVER_SKIP_REASONS)[number]
 
 /** Skip reasons sibling milestones add to core/skipped.ts (M7-p; M9-j). */
@@ -172,6 +179,10 @@ const ERROR_SENTENCES: Record<
   batch_too_large: () => INTERNAL,
   batch_out_of_order: () => INTERNAL,
   native_overlap: () => INTERNAL,
+  // M12-b: the page checks every name before it sends the map, so the server
+  // refusing one means the two disagree about a rule; the code goes in Details.
+  invalid_event_map: () => "Pulse couldn't use one of the event names. Check the names under Events and try again.",
+  row_outside_plan: () => INTERNAL,
 
   // runtime
   network: () => "Pulse can't be reached. The import is paused where it was; it continues when you try again.",
@@ -234,6 +245,8 @@ const WITH_DETAILS: ReadonlySet<string> = new Set([
   'batch_too_large',
   'batch_out_of_order',
   'native_overlap',
+  'invalid_event_map',
+  'row_outside_plan',
   'unexpected_response',
 ])
 
@@ -483,6 +496,8 @@ const SKIP_PHRASES: Record<KnownSkipReason, (n: number) => string> = {
   bot_row: (n) => `${rows(n)} the source marked as bots`,
   outside_totals_range: (n) => `${rows(n)} for dates outside this export's site-totals file`,
   hostname_mismatch: (n) => `${rows(n)} from a different website's export`,
+  event_excluded: (n) => `${rows(n)} for events you chose to leave out`,
+  event_name_invalid: (n) => `${rows(n)} for events with no name`,
 }
 
 /** Every skip reason this map has a phrase for (the exhaustiveness test reads it). */

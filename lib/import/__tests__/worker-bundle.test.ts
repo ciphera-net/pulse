@@ -74,7 +74,7 @@ describe('the prebuilt worker bundle', () => {
     expect(status.status).toBe('completed')
     // Byte for byte the rows the pipeline plans in process.
     const { parts } = await runPipeline(
-      { source: 'plausible', files: [plausibleFixtureFile()], clip: null, timeZone: 'Europe/Brussels', siteDomain: null },
+      { source: 'plausible', files: [plausibleFixtureFile()], clip: null, timeZone: 'Europe/Brussels', siteDomain: null, events: true },
       { planLimits: PLAN_LIMITS },
     )
     const sent = server.requests.filter((r) => r.path.endsWith('/batches')).map((r) => JSON.parse(r.body ?? '{}').rows)
@@ -100,10 +100,12 @@ describe('the prebuilt worker bundle', () => {
       // A raw source is bucketed in the site's own zone (M2-g).
       source_timezone: server.siteTimezone,
       visits_are_visitors: false,
-      skipped: { bad_timestamp: 2, missing_field: 3, not_a_pageview: 3 },
+      // The fixture's custom event is read, not skipped (M12-h), and named for the map.
+      skipped: { bad_timestamp: 2, missing_field: 3, not_a_pageview: 2 },
+      event_map: { signup: 'signup' },
     })
     const { parts } = await runPipeline(
-      { source: 'umami', files: [umamiFixtureFile()], clip: null, timeZone: server.siteTimezone, siteDomain: null },
+      { source: 'umami', files: [umamiFixtureFile()], clip: null, timeZone: server.siteTimezone, siteDomain: null, events: true },
       { planLimits: PLAN_LIMITS },
     )
     const sent = server.requests.filter((r) => r.path.endsWith('/batches')).map((r) => JSON.parse(r.body ?? '{}').rows)

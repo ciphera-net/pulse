@@ -83,12 +83,26 @@ export interface ScreenResolutionStat {
 
 export interface GoalCountStat {
   event_name: string
-  /** Events, not people. */
+  /** Events, not people. Pulse-measured and imported together (M12-f). */
   count: number
   /** Distinct visitors who fired the event (the server sends it; older callers ignore it). */
   visitors?: number
   display_name?: string | null
+  /**
+   * Where this row's count comes from (M12, contract §3.12m12b-6), the public
+   * vocabulary: `measured` (Pulse only), `imported` (imported days only),
+   * `mixed`. Server-said, never inferred: an `imported` row has no properties
+   * to show, so it does not expand. Absent from a pre-M12 server = measured.
+   */
+  instrument?: 'measured' | 'imported' | 'mixed'
+  /**
+   * The Pulse-measured part of `count` (M12-e). The Outbound card divides by
+   * THIS, never by `count`: its per-link rows can't be imported, so a share
+   * over a merged total would mix two instruments.
+   */
+  native_count?: number
 }
+
 
 export interface CampaignStat {
   source: string
@@ -402,6 +416,12 @@ export interface DashboardData {
    * response carries.
    */
   imported_cards?: Record<string, ImportedProvenance>
+  /**
+   * The goal counts' own provenance (M12-f): whether the Events card's numbers
+   * include imported days. A field of its own, not an `imported_cards` key. The
+   * focused goals endpoints carry the same thing as `imported`.
+   */
+  imported_goals?: ImportedProvenance
 }
 
 export interface DashboardSuppression {
@@ -473,6 +493,8 @@ export interface DashboardReferrersData {
 
 export interface DashboardGoalsData {
   goal_counts: GoalCountStat[]
+  /** M12-f: whether the goal counts include imported days, like every merged card. */
+  imported?: ImportedProvenance
 }
 
 export function getDashboardOverview(siteId: string, startDate?: string, endDate?: string, interval?: string, filters?: string): Promise<DashboardOverviewData> {

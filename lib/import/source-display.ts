@@ -135,11 +135,42 @@ export function sourceLogoUrl(id: SourceId): string {
 
 // ─── What the confirm screen says (M11-d) ─────────────────────────────────
 
-/** Lines every source shares under "Not imported". */
+/** Lines every source shares under "Not imported". W-M12-4 (owner, 28-09-2026) replaced "Events and goals: coming in a later release". */
 export const NOT_IMPORTED_ANYWHERE: readonly string[] = [
-  'Events and goals: coming in a later release',
+  'Event properties, and the link or page each event happened on',
   'Bounce rate and visit duration: Pulse shows only its own',
 ]
+
+// ─── The mapping step's words (M12, §3.12m12a, ruled 28-09-2026) ──────────
+
+/** W-M12-4: the line "Imported" gains when the file has events to map. */
+export const EVENTS_IMPORTED_LINE = 'Events, named as you choose below'
+
+/** W-M12-1: the Events section's caption. */
+export const EVENT_MAPPING_CAPTION =
+  'Choose the name each event gets in Pulse, or leave it out. Names use letters, numbers and underscores.'
+
+/** W-M12-2: under a name that is one of Pulse's built-ins, what it adds to. */
+export const BUILTIN_EVENT_NOTE: Readonly<Record<'outbound_link' | 'file_download' | '404', string>> = {
+  outbound_link: 'Adds to the outbound clicks Pulse measures',
+  file_download: 'Adds to the file downloads Pulse measures',
+  '404': 'Adds to the 404 pages Pulse measures',
+}
+
+/** W-M12-3 (option B): under a name Pulse already records (a goal's, or one seen natively). */
+export const KNOWN_EVENT_NOTE = 'Pulse already records this event; the imported count is added'
+
+/** Constraint 5, in W-M12-2's grammar: two source events mapped to one name. */
+export function addsUpWithNote(others: readonly string[]): string {
+  const list =
+    others.length <= 1 ? (others[0] ?? '') : `${others.slice(0, -1).join(', ')} and ${others[others.length - 1]}`
+  return `Adds up with ${list}`
+}
+
+/** The section's value: how many source events will be imported. */
+export function eventsImportedCount(included: number, total: number): string {
+  return `${included.toLocaleString('en-US')} of ${total.toLocaleString('en-US')} imported`
+}
 
 /**
  * W1 A (owner, Q-M11): the concrete visitors caveat for a source whose history

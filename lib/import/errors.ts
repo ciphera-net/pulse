@@ -33,6 +33,10 @@ export const SERVER_ERROR_CODES = [
   'plan_too_large',
   'bad_source_timezone',
   'source_not_enabled',
+  /** M12-b: an `event_map` that is malformed, names an invalid or reserved Pulse name, or misses a source event. */
+  'invalid_event_map',
+  /** M12-b: a batch's `events` row names a source event the stored map doesn't (a client bug). */
+  'row_outside_plan',
 ] as const
 
 /** Codes raised in the browser before anything is sent (§3.12b, §3.8). */

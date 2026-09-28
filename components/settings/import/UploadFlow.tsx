@@ -4,11 +4,12 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Button, Select } from '@ciphera-net/facet'
 import { PanelRow, PanelRows } from '@/components/settings/panels'
 import { SetupReveal } from '@/components/settings/integrationRows'
-import { prepareImport, type ImportEvent, type PreparedImport, type SkipSample } from '@/lib/import'
+import { prepareImport, type EventMap, type ImportEvent, type PreparedImport, type SkipSample } from '@/lib/import'
 import { ImportError } from '@/lib/import/errors'
 import { appTransport } from '@/lib/import/app-transport'
 import { SOURCE_META, type ImportSource } from '@/lib/import/source-meta'
 import {
+  EVENTS_IMPORTED_LINE,
   NOT_IMPORTED_ANYWHERE,
   UPLOAD_GUIDE,
   dailyVisitorsCaveat,
@@ -26,6 +27,7 @@ import { timezoneGroupsFor } from '@/lib/utils/timezones'
 import type { SiteImportStatus } from '@/lib/api/dataImports'
 import { RailBar } from '@/components/setup/RailBar'
 import { Dropzone } from './Dropzone'
+import { EventMapping, useEventMapping, useKnownEventNames } from './EventMapping'
 import { ImportErrorBanner } from './ImportErrorBanner'
 import { DeleteImportButton, DoneDetails, ProgressRow, SourceHeader, serverProgress } from './ImportRows'
 import { acceptFor, dayAfterText, fileNounFor, pct, rangeText, slotPhase } from './importFormat'
@@ -131,6 +133,13 @@ export function UploadFlow({
   // Unmount (leaving the tab, switching site) stops the Worker and any request in flight.
   useEffect(() => release, [release])
 
+  // M12: the mapping step's rows, for the plan on the confirm screen. Hooks run
+  // on every render; the rows reset whenever a different plan is confirmed.
+  const confirmPlan = step.name === 'confirm' ? step.prepared.plan : null
+  const hasEvents = (confirmPlan?.events.length ?? 0) > 0
+  const knownNames = useKnownEventNames(siteId, hasEvents)
+  const mapping = useEventMapping(confirmPlan?.events ?? null, source, knownNames.goalNames, confirmPlan?.fingerprint ?? null)
+
   const phase = existing ? slotPhase(existing) : null
   const uploadingHere = step.name === 'uploading'
   const busy = step.name === 'reading' || uploadingHere
@@ -192,15 +201,19 @@ export function UploadFlow({
     setRetryable(isRetryableUploadError(err.code))
   }
 
-  /** Sends the prepared plan (a new import) or carries on (a resumed one). */
-  const upload = async (prepared: PreparedImport) => {
+  /**
+   * Sends the prepared plan (a new import) or carries on (a resumed one). The
+   * map rides only the first send of a new import; a retry reuses the one the
+   * library kept, and a resume's import already holds its own.
+   */
+  const upload = async (prepared: PreparedImport, eventMap?: EventMap) => {
     if (sendingRef.current) return
     sendingRef.current = true
     setError(null)
     setRetryable(false)
     setStep({ name: 'uploading', partsDone: 0, partsTotal: prepared.plan.parts_total })
     try {
-      const status = await prepared.upload()
+      const status = await prepared.upload(eventMap ? { eventMap } : undefined)
       release()
       setStep({ name: 'choose' })
       setFile(null)
@@ -450,7 +463,7 @@ export function UploadFlow({
             </PanelRow>
             <PanelRow label="Imported">
               <span className="text-sm text-foreground">
-                {guide.imported.map((t) => (
+                {[...guide.imported, ...(plan.events.length > 0 ? [EVENTS_IMPORTED_LINE] : [])].map((t) => (
                   <span key={t} className="block">
                     {t}
                   </span>
@@ -510,11 +523,12 @@ export function UploadFlow({
               </PanelRow>
             )}
           </PanelRows>
+          <EventMapping state={mapping} known={knownNames.known} />
           <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
             <Button variant="outline" size="sm" onClick={reset}>
               Back
             </Button>
-            <Button size="sm" onClick={() => void upload(prepared)}>
+            <Button size="sm" onClick={() => void upload(prepared, mapping.map)} disabled={!mapping.valid}>
               Import {dayCount}
             </Button>
           </div>

@@ -657,8 +657,10 @@ describe('the synthetic export', () => {
   })
 
   it('counts exactly the rows it skipped, by reason, with their lines and nothing else', async () => {
-    const { skipped, notes, ignored } = await parse(umamiFixtureFile())
-    expect(skipped.toCounts()).toEqual({ bad_timestamp: 2, missing_field: 3, not_a_pageview: 3 })
+    const { skipped, notes, ignored, rows } = await parse(umamiFixtureFile())
+    expect(skipped.toCounts()).toEqual({ bad_timestamp: 2, missing_field: 3, not_a_pageview: 2 })
+    // Line 4's custom event is no longer skipped: it is an event now (M12-h).
+    expect(rows.events).toEqual([{ date: '2026-03-01', source_name: 'signup', visitors: 1, count: 1 }])
     expect(skipped.toSamples()).toEqual({
       bad_timestamp: [
         { file: UMAMI_FIXTURE_NAME, line: 17 },
@@ -670,7 +672,6 @@ describe('the synthetic export', () => {
         { file: UMAMI_FIXTURE_NAME, line: 21 },
       ],
       not_a_pageview: [
-        { file: UMAMI_FIXTURE_NAME, line: 4 },
         { file: UMAMI_FIXTURE_NAME, line: 15 },
         { file: UMAMI_FIXTURE_NAME, line: 16 },
       ],
@@ -684,8 +685,9 @@ describe('the synthetic export', () => {
     const clip: Clip = { from: '2026-03-02', through: '2026-03-02', before: 'outside_history_window', after: 'pulse_measured' }
     const { rows, skipped } = await parse(umamiFixtureFile(), 'UTC', clip)
     expect(rows.daily.map((r) => r.date)).toEqual(['2026-03-02'])
-    // 5 pageviews on 03-01, 1 on 03-03, each counted under the window's reason.
-    expect(skipped.toCounts()).toMatchObject({ outside_history_window: 5, pulse_measured: 1 })
+    // 5 pageviews and the custom event on 03-01, 1 pageview on 03-03, each
+    // counted under the window's reason.
+    expect(skipped.toCounts()).toMatchObject({ outside_history_window: 6, pulse_measured: 1 })
   })
 })
 
@@ -704,9 +706,16 @@ describe('event_type', () => {
     ).join(',') +
     '\n'
 
-  it.each(['2', '3', '4', '5', '0', '6', '01', ' 1', '1.0', 'pageview'])('%j is not a pageview', async (t) => {
+  it.each(['3', '4', '5', '0', '6', '01', ' 1', '1.0', '02', 'pageview'])('%j is not a pageview', async (t) => {
     const { skipped, rows } = await parse(file(one(t)))
     expect(skipped.toCounts()).toEqual({ not_a_pageview: 1 })
+    expect(rows.daily).toEqual([{ date: '2026-03-01', visitors: 1, visits: 1, pageviews: 1, src_bounces: null, src_engagement_seconds: null }])
+  })
+
+  it('"2" is a custom event (M12-h), never not_a_pageview; one with no name is event_name_invalid', async () => {
+    const { skipped, rows } = await parse(file(one('2')))
+    expect(skipped.toCounts()).toEqual({ event_name_invalid: 1 })
+    expect(rows.events).toEqual([])
     expect(rows.daily).toEqual([{ date: '2026-03-01', visitors: 1, visits: 1, pageviews: 1, src_bounces: null, src_engagement_seconds: null }])
   })
 
@@ -798,11 +807,18 @@ describe('the real self-hosted export', () => {
     ])
   })
 
-  it('skips exactly the four custom events and the one performance event, and nothing else', async () => {
-    const { skipped, notes } = await parse(file(REAL))
-    expect(skipped.toCounts()).toEqual({ not_a_pageview: 5 })
-    expect(skipped.toSamples().not_a_pageview.map((s) => s.line)).toEqual([26, 28, 30, 33, 36])
+  it('skips exactly the one performance event, and reads the four custom events (M12-h)', async () => {
+    const { skipped, notes, rows } = await parse(file(REAL))
+    expect(skipped.toCounts()).toEqual({ not_a_pageview: 1 })
+    expect(skipped.toSamples().not_a_pageview.map((s) => s.line)).toEqual([26])
     expect(notes).toEqual({})
+    // Lines 28, 30, 33, 36: four names, one row each, each from its own session.
+    expect(rows.events).toEqual([
+      { date: '2026-09-27', source_name: 'contact_form_submit', visitors: 1, count: 1 },
+      { date: '2026-09-27', source_name: 'newsletter_signup', visitors: 1, count: 1 },
+      { date: '2026-09-27', source_name: 'outbound_click', visitors: 1, count: 1 },
+      { date: '2026-09-27', source_name: 'pricing_cta_click', visitors: 1, count: 1 },
+    ])
   })
 
   it('folds acquisition to what PostgreSQL computed from each visit\'s first pageview', async () => {
@@ -906,8 +922,8 @@ describe('the real self-hosted export', () => {
 
   it("reads the raw `\\copy` timestamps (`2026-09-22 09:00:00+00`) to the same plan, byte for byte", async () => {
     expect(REAL_RAW).toContain('\n2026-09-22 09:00:00+00,')
-    const published = await runPipeline({ source: 'umami', files: [file(REAL)], clip: null, timeZone: 'Europe/Brussels', siteDomain: null })
-    const raw = await runPipeline({ source: 'umami', files: [file(REAL_RAW)], clip: null, timeZone: 'Europe/Brussels', siteDomain: null })
+    const published = await runPipeline({ source: 'umami', files: [file(REAL)], clip: null, timeZone: 'Europe/Brussels', siteDomain: null, events: true })
+    const raw = await runPipeline({ source: 'umami', files: [file(REAL_RAW)], clip: null, timeZone: 'Europe/Brussels', siteDomain: null, events: true })
     expect(raw.summary.fingerprint).toBe(published.summary.fingerprint)
     expect(raw.parts.map((p) => p.rowsJson)).toEqual(published.parts.map((p) => p.rowsJson))
     // Shape 2 carries its offset: nothing was assumed.
@@ -932,23 +948,24 @@ describe('registration', () => {
   })
 
   it('plans the real export end to end: raw kind, real visits, the browser skips, no monthly rows', async () => {
-    const { summary, parts } = await runPipeline({ source: 'umami', files: [file(REAL)], clip: null, timeZone: 'UTC', siteDomain: null })
+    const { summary, parts } = await runPipeline({ source: 'umami', files: [file(REAL)], clip: null, timeZone: 'UTC', siteDomain: null, events: true })
     expect(summary).toMatchObject({
       source: 'umami',
       kind: 'upload_raw',
       visits_are_visitors: false,
       range_start: '2026-09-22',
       range_end: '2026-09-27',
-      skipped: { not_a_pageview: 5 },
+      skipped: { not_a_pageview: 1 },
       ignored_files: [],
       notes: {},
     })
-    expect(summary.totals).toMatchObject({ pageviews: 30, rows: { daily: 6, monthly: 0 } })
+    expect(summary.totals).toMatchObject({ pageviews: 30, rows: { daily: 6, monthly: 0, events: 4 } })
+    expect(summary.events.map((e) => e.source_name)).toEqual(['contact_form_submit', 'newsletter_signup', 'outbound_click', 'pricing_cta_click'])
     for (const p of parts) expect(JSON.parse(p.rowsJson).monthly ?? []).toEqual([])
   })
 
   it("the synthetic export's plan names the rows it read as UTC", async () => {
-    const { summary } = await runPipeline({ source: 'umami', files: [umamiFixtureFile()], clip: null, timeZone: 'UTC', siteDomain: null })
+    const { summary } = await runPipeline({ source: 'umami', files: [umamiFixtureFile()], clip: null, timeZone: 'UTC', siteDomain: null, events: true })
     expect(summary.notes).toEqual({ [UMAMI_ASSUMED_UTC_NOTE]: '1' })
     expect(umamiFixtureCsv().startsWith(UMAMI_FIXTURE_HEADER)).toBe(true)
   })
@@ -1058,12 +1075,27 @@ describe("the site's own domain (M8-b′)", () => {
 
   it("a performance row (no hostname, ever: §0.3) is still not_a_pageview, never hostname_mismatch: the event type is checked first", async () => {
     const { skipped } = await parse(
-      umamiCsv([umamiRow({ event_type: '5', hostname: '' }), umamiRow({ event_type: '2', hostname: 'other-site.com' }), umamiRow({})]),
+      umamiCsv([umamiRow({ event_type: '5', hostname: '' }), umamiRow({ event_type: '3', hostname: 'other-site.com' }), umamiRow({})]),
       'UTC',
       null,
       'example.com',
     )
     expect(skipped.toCounts()).toEqual({ not_a_pageview: 2 })
+  })
+
+  it("a custom event (M12-h) is held to the site's domain like a pageview", async () => {
+    const { skipped, rows } = await parse(
+      umamiCsv([
+        umamiRow({ event_type: '2', event_name: 'signup', hostname: 'other-site.com' }),
+        umamiRow({ event_type: '2', event_name: 'signup', hostname: 'www.example.com' }),
+        umamiRow({}),
+      ]),
+      'UTC',
+      null,
+      'example.com',
+    )
+    expect(skipped.toCounts()).toEqual({ hostname_mismatch: 1 })
+    expect(rows.events.map((e) => e.count)).toEqual([1])
   })
 
   it("with no site_domain (an older server), falls back to the intra-file check as Simple Analytics does: the first pageview's host is the reference", async () => {
@@ -1080,11 +1112,51 @@ describe("the site's own domain (M8-b′)", () => {
   })
 
   it('the real export, whose rows name the site both bare and with www., imports whole against its own domain and not at all against another', async () => {
-    const own = await runPipeline({ source: 'umami', files: [file(REAL)], clip: null, timeZone: 'UTC', siteDomain: 'example-import-test.local' })
-    expect(own.summary.skipped).toEqual({ not_a_pageview: 5 })
-    expect(own.summary.totals).toMatchObject({ pageviews: 30 })
+    const own = await runPipeline({ source: 'umami', files: [file(REAL)], clip: null, timeZone: 'UTC', siteDomain: 'example-import-test.local', events: true })
+    expect(own.summary.skipped).toEqual({ not_a_pageview: 1 })
+    expect(own.summary.totals).toMatchObject({ pageviews: 30, rows: { events: 4 } })
     const other = await parse(file(REAL), 'UTC', null, 'example.com')
-    expect(other.skipped.toCounts()).toEqual({ not_a_pageview: 5, hostname_mismatch: 30 })
+    // 30 pageviews and 4 custom events, every one of them another site's.
+    expect(other.skipped.toCounts()).toEqual({ not_a_pageview: 1, hostname_mismatch: 34 })
+    expect(other.rows.events).toEqual([])
     expect(other.rows.daily).toEqual([])
+  })
+})
+
+// ─── Custom events (M12-h) ────────────────────────────────────────────────
+
+describe('custom events (M12-h)', () => {
+  const ev = (created_at: string, session_id: string, event_name = 'signup') =>
+    umamiRow({ event_type: '2', event_name, created_at, session_id, visit_id: `v-${session_id}` })
+
+  it('folds by (site day, name): count is the rows, visitors the distinct sessions that day', async () => {
+    const { rows, skipped } = await parse(
+      umamiCsv([
+        umamiRow({}),
+        ev('2026-03-02T09:00:00Z', 's1'),
+        ev('2026-03-02T10:00:00Z', 's1'),
+        ev('2026-03-02T11:00:00Z', 's2'),
+        // 23:30Z is 00:30 on the 3rd in Brussels: the site's day, not UTC's.
+        ev('2026-03-02T23:30:00Z', 's1'),
+        ev('2026-03-02T12:00:00Z', 's3', 'download'),
+      ]),
+      'Europe/Brussels',
+    )
+    expect(skipped.toCounts()).toEqual({})
+    expect(rows.events).toEqual([
+      { date: '2026-03-02', source_name: 'download', visitors: 1, count: 1 },
+      { date: '2026-03-02', source_name: 'signup', visitors: 2, count: 3 },
+      { date: '2026-03-03', source_name: 'signup', visitors: 1, count: 1 },
+    ])
+    // A day with an event and no pageview sends its events and no daily row of zeros.
+    expect(rows.daily.map((d) => d.date)).toEqual(['2026-03-02'])
+  })
+
+  it('cleans the name before keying it, and skips an event with no session as missing_field', async () => {
+    const { rows, skipped } = await parse(
+      umamiCsv([umamiRow({}), ev('2026-03-02T09:00:00Z', 's1', ' signup '), ev('2026-03-02T10:00:00Z', 's2', 'signup'), ev('2026-03-02T11:00:00Z', '')]),
+    )
+    expect(rows.events).toEqual([{ date: '2026-03-02', source_name: 'signup', visitors: 2, count: 2 }])
+    expect(skipped.toCounts()).toEqual({ missing_field: 1 })
   })
 })

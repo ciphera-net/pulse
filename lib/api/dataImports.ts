@@ -75,8 +75,34 @@ export function getMatomoProperties(
  * POST …/data-imports/:importId/confirm (M10-d): stores the plan for the chosen
  * site and hands the import to the worker. The answer is the import, `pending`.
  */
-export function confirmDataImport(siteId: string, importId: string, propertyId: string): Promise<SiteImportStatus> {
+export function confirmDataImport(
+  siteId: string,
+  importId: string,
+  propertyId: string,
+  /**
+   * M12 (contract §3.12m12b-5): the confirmed mapping step. Absent means the
+   * import carries no events; `{}` is an events-capable import with none.
+   */
+  eventMap?: Record<string, string | null>,
+): Promise<SiteImportStatus> {
   return apiRequest<SiteImportStatus>(`/sites/${siteId}/data-imports/${encodeURIComponent(importId)}/confirm`, {
+    method: 'POST',
+    body: JSON.stringify(eventMap ? { property_id: propertyId, event_map: eventMap } : { property_id: propertyId }),
+  })
+}
+
+/**
+ * POST …/data-imports/:importId/events-preview (M12, contract §3.12m12b-5): the
+ * chosen Matomo site's event names over the range the plan will cover, largest
+ * first, so the confirm step can map them before the worker reads a day. The
+ * same guards and errors as `confirm`.
+ */
+export function previewDataImportEvents(
+  siteId: string,
+  importId: string,
+  propertyId: string,
+): Promise<{ events: { source_name: string; count: number }[] }> {
+  return apiRequest(`/sites/${siteId}/data-imports/${encodeURIComponent(importId)}/events-preview`, {
     method: 'POST',
     body: JSON.stringify({ property_id: propertyId }),
   })
