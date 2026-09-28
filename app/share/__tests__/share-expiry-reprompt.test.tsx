@@ -37,7 +37,6 @@ vi.mock('@/components/dashboard/ContentStats', () => ({ default: () => null }))
 vi.mock('@/components/dashboard/Sources', () => ({ default: () => null }))
 vi.mock('@/components/dashboard/Locations', () => ({ default: () => null }))
 vi.mock('@/components/dashboard/TechSpecs', () => ({ default: () => null }))
-vi.mock('@/components/dashboard/ExportModal', () => ({ default: () => null }))
 vi.mock('@/components/ui/DateRangePicker', () => ({ default: () => null }))
 vi.mock('@/components/sites/SiteFavicon', () => ({ SiteFavicon: () => null }))
 vi.mock('@/components/skeletons', () => ({
@@ -74,7 +73,6 @@ vi.mock('@ciphera-net/facet', () => ({
   getAuthErrorMessage: () => 'error',
   // lib/utils re-exports cn from facet; the live orb under the site name needs it.
   cn: (...c: unknown[]) => c.filter(Boolean).join(' '),
-  DownloadIcon: () => <span />,
   ZapIcon: () => <span />,
 }))
 

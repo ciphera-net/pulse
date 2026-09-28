@@ -120,10 +120,13 @@ test.describe('Campaigns card header (dev-server smoke)', () => {
     await expect(card.getByText('Build URL')).toHaveCount(0)
     await expect(card.getByText('Export', { exact: true })).toHaveCount(0)
 
-    // Positive control for the negative assertions above: the DECK's own Export
-    // (site-wide, ExportModal) is a different control and must still exist on
-    // the page — proves "no Export in the card" is not "the page failed to render".
-    await expect(page.getByRole('button', { name: /export/i })).toHaveCount(1)
+    // The dashboard carries no export at all since 28-09-2026 (PULSE-132, owner
+    // ruling D3: export lives in Settings, and the share page has none), so the
+    // whole page, not only the card, has no Export control. Positive control for
+    // every negative assertion above: the deck's KPI rail rendered, so "no
+    // Export" is never "the page failed to render".
+    await expect(page.getByRole('button', { name: /export/i })).toHaveCount(0)
+    await expect(page.getByText('Unique visitors', { exact: true }).first()).toBeVisible()
 
     // Header geometry: the unit label sits flush to the card's right padding edge.
     const cardBox = (await card.boundingBox())!

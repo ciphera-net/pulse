@@ -396,7 +396,7 @@
   justify-content: space-between;
   gap: 8px;
 }
-/* P2 — the Facet button pair (ExportModal's default + secondary). */
+/* P2 — the Facet button pair (Button's default + secondary variants). */
 .pulse-tour .driver-popover-footer button {
   all: unset;
   box-sizing: border-box;
