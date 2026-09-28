@@ -157,6 +157,7 @@ describe('registration', () => {
       visitsAreVisitors: true,
       accepts: ['plain', 'gzip'],
       fileCount: 'single',
+      oneFileMessage: "Choose one file: Simple Analytics' export is a single CSV file.",
       hasExitPages: false,
     })
   })
