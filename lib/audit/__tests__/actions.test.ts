@@ -26,9 +26,10 @@ describe('AUDIT_ACTIONS / ACTION_LABELS coverage (PULSE-73)', () => {
   })
 
   it('carries every action pulse-backend writes today and every history-only action production still stores', () => {
-    // Written today (47): the 41 from before PULSE-92 Phase 5, plus its six
+    // Written today (48): the 41 from before PULSE-92 Phase 5, plus its six
     // team-write actions (invite_link_created, invite_link_revoked,
-    // member_left, onboarding_completed, org_created, org_renamed).
+    // member_left, onboarding_completed, org_created, org_renamed), plus
+    // site_exported (PULSE-132, one row per export download).
     const writtenToday = [
       'admin_plan_granted', 'admin_refund_failed', 'admin_refund_issued', 'admin_verdict_revoked',
       'billing_checkout_started', 'billing_payment_method_update_started', 'billing_refund_failed',
@@ -43,12 +44,12 @@ describe('AUDIT_ACTIONS / ACTION_LABELS coverage (PULSE-73)', () => {
       'org.broadcast_sent', 'org.user_notified',
       'oss_application_claimed', 'oss_application_decided', 'oss_application_link_resent',
       'ownership_transferred',
-      'site_created', 'site_identity_window_changed', 'site_permanently_deleted', 'site_restored',
+      'site_created', 'site_exported', 'site_identity_window_changed', 'site_permanently_deleted', 'site_restored',
       'site_soft_deleted', 'site_timezone_changed', 'site_visitor_views_disabled', 'site_visitor_views_enabled',
       'subscription_cancel_at_period_end', 'subscription_canceled_immediate', 'subscription_plan_changed',
       'subscription_resumed',
     ]
-    expect(writtenToday).toHaveLength(47)
+    expect(writtenToday).toHaveLength(48)
     // History only (9): no code writes these any more, but production still
     // holds rows carrying them.
     const historyOnly = [
@@ -96,6 +97,14 @@ describe('actionLabelFor', () => {
   it('the alone override applies to nothing else', () => {
     expect(actionLabelFor('site_created', true)).toBe('Created site')
     expect(actionLabelFor('invite_link_created', true)).toBe('Created invite link')
+  })
+
+  // PULSE-132: one row per download from Settings → Export. The same words
+  // for a team and alone: an export names no team.
+  it('site_exported: "Exported data", alone or not, and neutral', () => {
+    expect(actionLabelFor('site_exported', false)).toBe('Exported data')
+    expect(actionLabelFor('site_exported', true)).toBe('Exported data')
+    expect(actionTone('site_exported')).toBe('neutral')
   })
 
   it('falls back to a humanised label for an action neither list knows yet', () => {
