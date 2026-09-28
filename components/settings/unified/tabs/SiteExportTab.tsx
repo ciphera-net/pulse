@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useId, useState } from 'react'
+import { useCallback, useEffect, useId, useState } from 'react'
 import Link from 'next/link'
 import type { Icon } from '@phosphor-icons/react'
 import { CalendarBlank, CaretDown, CaretUp, Code, DownloadSimple, Plus, Table } from '@phosphor-icons/react'
@@ -28,6 +28,7 @@ import {
 import { serializeFilters, type DimensionFilter } from '@/lib/filters'
 import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
 import { isValidDateString } from '@/lib/hooks/periodUrl'
+import { ANALYTICS_MAX_DAYS } from '@/lib/hooks/useUrlDateRange'
 import { CUSTOM_RANGE_LABEL, PERIOD_PRESETS, findPreset } from '@/lib/constants/periods'
 import { formatSpan, rowSpan, spanDays, type DateSpan } from '@/lib/view/view'
 import { safeTimeZone, siteWallClockNow } from '@/lib/utils/siteTime'
@@ -135,11 +136,13 @@ const DEFAULT_RANGE = '30'
 
 /**
  * The longest range any table but the daily summary covers (the server's
- * MaxDateRangeDays). Visitors are not additive across time, so a year-plus
- * dimension table cannot be summed from chunks and the route refuses one;
- * only the daily summary reaches further (design §9.1).
+ * MaxDateRangeDays) — the same cap the analytics API enforces everywhere
+ * else (`ANALYTICS_MAX_DAYS`). Visitors are not additive across time, so a
+ * year-plus dimension table cannot be summed from chunks and the route
+ * refuses one; only the daily summary reaches further (design §9.1). Kept as
+ * a table-specific alias for readability at the call site below.
  */
-export const MAX_TABLE_DAYS = 366
+export const MAX_TABLE_DAYS = ANALYTICS_MAX_DAYS
 
 /** The Audit tab's date field: the native picker, its indicator stretched invisibly over a CalendarBlank. */
 const DATE_INPUT_CLASS = cn(
@@ -218,9 +221,12 @@ export default function SiteExportTab({ siteId }: { siteId: string }) {
           </RailGrid>
         </div>
         {/* The spreadsheet flow stays mounted while Your own tools is shown, so a
-            look at the other tile never throws away the choices made here. */}
+            look at the other tile never throws away the choices made here.
+            `hidden` only hides the flow's own DOM — its filter popover renders
+            through a portal straight onto document.body (FilterPopover), so
+            the tile itself has to tell the flow to close it. */}
         <div className="border-t border-border" hidden={tile !== 'spreadsheet'}>
-          <SpreadsheetFlow site={site} />
+          <SpreadsheetFlow site={site} active={tile === 'spreadsheet'} />
         </div>
         {tile === 'tools' && (
           <div className="border-t border-border">
@@ -232,7 +238,7 @@ export default function SiteExportTab({ siteId }: { siteId: string }) {
   )
 }
 
-function SpreadsheetFlow({ site }: { site: Site }) {
+function SpreadsheetFlow({ site, active }: { site: Site; active: boolean }) {
   const idBase = useId()
   const timezone = safeTimeZone(site.timezone)
   const dataWindow = useDataWindow(site.id, 'dashboard')
@@ -275,6 +281,15 @@ function SpreadsheetFlow({ site }: { site: Site }) {
     rangeKey === 'all' ? 'all' : undefined,
   )
   const filterBuilder = useFilterBuilder(fetchSuggestions)
+
+  // A popover anchored in a row that just left the screen closes with it: the
+  // tile switch hides this flow with `hidden`, which is CSS-only and has no
+  // effect on FilterPopover's portal (it renders straight onto document.body,
+  // gated only on `open`), so this flow has to close its own popover.
+  useEffect(() => {
+    if (!active) filterBuilder.close()
+  }, [active, filterBuilder.close])
+
   const applyFilter = useCallback((filter: DimensionFilter, editingIndex: number | null) => {
     setFilters((prev) => {
       if (editingIndex !== null) return prev.map((f, i) => (i === editingIndex ? filter : f))
