@@ -40,7 +40,7 @@ import {
   type Clip,
 } from './cap'
 import { monthEnd, monthStart } from './dates'
-import { capEvents } from './events'
+import { capEvents, mergeEventVisitors } from './events'
 import type { RowRef, SkipLedger, SkipReason } from './skipped'
 
 /** Distinct aggregate keys held at once before the read stops (see the header). */
@@ -156,7 +156,9 @@ export class AggregateBuilder {
    * for one event on one day are summed here, counts and visitors alike (the
    * usual caveat: a visitor on two links counts twice). `source_name` must be
    * already cleaned (core/events.ts), which is the parser's job, so that it can
-   * skip an empty one as `event_name_invalid` with its line.
+   * skip an empty one as `event_name_invalid` with its line. Labels the
+   * server would key as one (core/events.ts `cleanSourceName`) arrive here as
+   * one, and merge like any repeated name.
    */
   addEvent(row: EventRow, at: RowRef): boolean {
     if (this.clipped(row.date, at)) return false
@@ -168,7 +170,7 @@ export class AggregateBuilder {
       return true
     }
     have.count += row.count
-    have.visitors = sumNullable(have.visitors, row.visitors)
+    have.visitors = mergeEventVisitors(have.visitors, row.visitors)
     return true
   }
 

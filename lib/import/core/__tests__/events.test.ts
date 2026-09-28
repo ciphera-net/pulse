@@ -10,6 +10,7 @@ import {
   builtinTarget,
   capEvents,
   capSourceEvents,
+  mergeEventVisitors,
   cleanSourceName,
   defaultEventMap,
   eventNameProblem,
@@ -38,6 +39,48 @@ describe('cleanSourceName', () => {
     const spaced = 'a'.repeat(199) + ' b'
     expect(cleanSourceName(spaced)).toBe('a'.repeat(199))
     expect(cleanSourceName(cleanSourceName(spaced))).toBe(cleanSourceName(spaced))
+  })
+})
+
+// The server keys source names by pulse-backend's textclean.Clean
+// (internal/textclean): invalid UTF-8 → U+FFFD, '<' and '>' dropped, every rune
+// that is a control, Cf, Other_Default_Ignorable_Code_Point, Variation_Selector,
+// Zl or Zp dropped, then Go's TrimSpace. If the browser keyed any finer, two
+// names it sends as two keys would be ONE key on the server, which refuses the
+// whole map as a duplicate (`invalid_event_map`) and no import can start.
+describe('cleanSourceName mirrors the server\'s textclean.Clean', () => {
+  // textclean_test.go's own table, verbatim (its invalid-UTF-8 case is a lone surrogate here: a JS string can't hold a bad byte).
+  const GO_TABLE: [string, string][] = [
+    ['/pricing', '/pricing'],
+    ['  Direct / None  ', 'Direct / None'],
+    ['<script>alert(1)</script>', 'scriptalert(1)/script'],
+    ['a\u0000b\u0007c\u007fd\u0085e', 'abcde'],
+    ['line\nbreak\ttab\r', 'linebreaktab'],
+    ['zero\u200bwidth\u200djoin\ufeffbom', 'zerowidthjoinbom'],
+    ['bidi\u202eoverride\u2066isolate\u2069', 'bidioverrideisolate'],
+    ['soft\u00adhyphen\u034fcgj', 'softhyphencgj'],
+    ['emoji\ufe0f\u{E0100}', 'emoji'],
+    ['para\u2028sep\u2029x', 'parasepx'],
+    ['Crème brûlée /café', 'Crème brûlée /café'],
+    ['\u200b\u200b', ''],
+    ['bad\ud800utf8', 'bad\ufffdutf8'],
+  ]
+  // The cases the coordinator listed, one rune each, plus the TrimSpace edges.
+  const MORE: [string, string][] = [
+    ['Sign\u200Dup', 'Signup'], // ZWJ, Cf
+    ['Signup\uFE0F', 'Signup'], // emoji variation selector
+    ['Signup\u{E0100}', 'Signup'], // ideographic variation selector
+    ['Sign\u00ADup', 'Signup'], // soft hyphen, Cf
+    ['Sign\u2028up', 'Signup'], // line separator, Zl
+    ['Sign\u0085up', 'Signup'], // NEL, a control
+    ['<b>Signup</b>', 'bSignup/b'],
+    ['Sign\udc00up', 'Sign\ufffdup'], // a lone low surrogate
+    ['\u115FSignup\u3164', 'Signup'], // Hangul fillers: Other_Default_Ignorable
+    ['\u00A0Signup\u3000', 'Signup'], // NBSP and ideographic space: Go's IsSpace
+    ['Sign up', 'Sign up'], // inner space kept
+  ]
+  it.each([...GO_TABLE, ...MORE])('%j → %j', (input, want) => {
+    expect(cleanSourceName(input)).toBe(want)
   })
 })
 
@@ -164,5 +207,14 @@ describe('capSourceEvents: at most 10,000 names per import, the server\'s map li
   it('leaves a file under the limit exactly as it was', () => {
     const rows: EventRow[] = [{ date: '2026-01-01', source_name: 'a', visitors: null, count: 1 }]
     expect(capSourceEvents(rows)).toEqual(rows)
+  })
+})
+
+describe('mergeEventVisitors: rows merged under one cleaned name', () => {
+  it('sums when both rows measured visitors, and is null when either did not (never a partial total)', () => {
+    expect(mergeEventVisitors(2, 3)).toBe(5)
+    expect(mergeEventVisitors(null, 3)).toBeNull()
+    expect(mergeEventVisitors(2, null)).toBeNull()
+    expect(mergeEventVisitors(null, null)).toBeNull()
   })
 })

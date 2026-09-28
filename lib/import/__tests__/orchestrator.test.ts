@@ -287,6 +287,36 @@ describe('resume', () => {
     expect(status.skipped.server).toMatchObject({ event_excluded: 1 })
   })
 
+  // The server keys a source name by textclean.Clean. Names the file spells
+  // differently but the server would collapse (a '<', a zero-width joiner, an
+  // emoji variation selector, a soft hyphen) must already be ONE name here: one
+  // mapping row, one map key, one events row per day. Two keys the server folds
+  // into one are a duplicate, and it refuses the whole map (invalid_event_map).
+  it('merges source names the server would collapse: one row, one map key, one events row per day', async () => {
+    const file = plausibleFixtureFile((files) => {
+      const k = Object.keys(files).find((f) => f.startsWith('imported_custom_events_')) as string
+      files[k] =
+        'date,name,link_url,path,visitors,events\n' +
+        '2026-03-01,Signup,,,1,1\n' +
+        '2026-03-01,Sign\u200Dup,,,1,2\n' +
+        '2026-03-01,<Signup>,,,1,1\n' +
+        '2026-03-01,Signup\uFE0F,,,2,3\n' +
+        '2026-03-02,Sign\u00ADup,,,1,1\n'
+    })
+    const { server, options } = setup({ file })
+    const prepared = await prepareImport(options)
+    expect(prepared.plan.events).toEqual([{ source_name: 'Signup', count: 8 }])
+    const status = await prepared.upload({ eventMap: { Signup: 'signup' } })
+    prepared.dispose()
+    expect(status.status).toBe('completed')
+    const create = server.requests.find((r) => r.method === 'POST' && r.path === '/sites/site-1/data-imports')
+    expect(JSON.parse(create?.body ?? '{}').event_map).toEqual({ Signup: 'signup' })
+    expect(server.imports.get(status.id)?.rows.events).toEqual([
+      { date: '2026-03-01', source_name: 'Signup', visitors: 5, count: 7 },
+      { date: '2026-03-02', source_name: 'Signup', visitors: 1, count: 1 },
+    ])
+  })
+
   it('picks up again when upload() is simply called a second time', async () => {
     const { server, options } = setup()
     let batches = 0

@@ -22,7 +22,7 @@
 // imports the names.
 
 import type { EventRow } from '../types'
-import { OTHER, capGroup, sumNullable } from './cap'
+import { OTHER, capGroup } from './cap'
 
 /** A Pulse event name's longest form (the server's MaxEventNameLen). */
 export const MAX_EVENT_NAME_LENGTH = 64
@@ -73,22 +73,60 @@ const BUILTIN_BY_SOURCE: Readonly<Record<string, Readonly<Record<string, Builtin
 }
 
 /**
- * A source label as it goes on the wire: control characters dropped, outer
- * whitespace trimmed, cut to 200 characters (code points, so an emoji is never
- * split), and trimmed again. Idempotent. `''` means the row has no usable name
- * and is skipped as `event_name_invalid`.
+ * Runes pulse-backend's textclean.Clean drops (internal/textclean): '<' and
+ * '>', every control (Go's unicode.IsControl is exactly Cc), Cf, Zl, Zp,
+ * Variation_Selector and Other_Default_Ignorable_Code_Point. JS has no
+ * `Other_` property, but Default_Ignorable_Code_Point is Other_DICP plus Cf
+ * plus Variation_Selector minus White_Space and a few Cf format marks, none of
+ * which Other_DICP holds, so adding DICP to Cf and Variation_Selector removes
+ * exactly the same set.
+ */
+const SERVER_DROPPED =
+  /[<>\p{Cc}\p{Cf}\p{Zl}\p{Zp}\p{Variation_Selector}\p{Default_Ignorable_Code_Point}]/gu
+
+const LONE_SURROGATE = /\p{Cs}/gu
+
+/** Go's unicode.IsSpace, at either end: \t \n \v \f \r, space, U+0085, U+00A0, and every Z rune. */
+const GO_SPACE_ENDS = /^[\t\n\v\f\r \u0085\u00A0\p{Z}]+|[\t\n\v\f\r \u0085\u00A0\p{Z}]+$/gu
+
+/** Go's strings.TrimSpace. */
+function goTrimSpace(s: string): string {
+  return s.replace(GO_SPACE_ENDS, '')
+}
+
+/**
+ * A source label as it goes on the wire, keyed EXACTLY as the server keys it
+ * (textclean.Clean): a lone surrogate (the only malformed text a JS string can
+ * hold; the CSV reader already refuses invalid UTF-8 bytes) becomes U+FFFD, the
+ * server's dropped runes go, Go's TrimSpace runs, then the 200-character cap
+ * (code points, so an emoji is never split) and the trim again. Idempotent.
+ *
+ * 🔴 Why exact: two labels that differ only by a '<', a zero-width joiner or an
+ * emoji variation selector are one key on the server. If the browser kept
+ * them apart, its map would hold two keys the server collapses into one, and
+ * the server refuses the whole map as a duplicate. Cleaned here, they are one
+ * name before the fold, so they merge like any repeated name.
+ *
+ * `''` means the row has no usable name and is skipped as `event_name_invalid`.
  */
 export function cleanSourceName(raw: string): string {
-  let out = ''
-  for (const ch of raw) {
-    const c = ch.codePointAt(0) as number
-    if (c < 0x20 || (c >= 0x7f && c <= 0x9f)) continue
-    out += ch
-  }
-  out = out.trim()
+  // In `u` mode a surrogate PAIR is one code point, so \p{Cs} matches only a
+  // lone half: the same as String.prototype.toWellFormed, which older browsers lack.
+  let out = goTrimSpace(raw.replace(LONE_SURROGATE, '\uFFFD').replace(SERVER_DROPPED, ''))
   const chars = Array.from(out)
-  if (chars.length > MAX_SOURCE_NAME_LENGTH) out = chars.slice(0, MAX_SOURCE_NAME_LENGTH).join('').trim()
+  if (chars.length > MAX_SOURCE_NAME_LENGTH) out = goTrimSpace(chars.slice(0, MAX_SOURCE_NAME_LENGTH).join(''))
   return out
+}
+
+/**
+ * Visitors of two rows merged under one source name: summed when both say,
+ * null when either doesn't. A merged row whose parts are partly unmeasured
+ * has no honest total, and a partial sum would read as one (null is "not
+ * measured", never zero). Within one export every row is one or the other, so
+ * in practice this only ever sums, or stays null.
+ */
+export function mergeEventVisitors(a: number | null, b: number | null): number | null {
+  return a === null || b === null ? null : a + b
 }
 
 /**
@@ -208,7 +246,7 @@ export function capEvents(rows: readonly EventRow[]): EventRow[] {
     let first = true
     for (const r of split.folded) {
       other.count += r.count
-      other.visitors = first ? r.visitors : sumNullable(other.visitors, r.visitors)
+      other.visitors = first ? r.visitors : mergeEventVisitors(other.visitors, r.visitors)
       first = false
     }
     out.push(other)
@@ -252,7 +290,7 @@ export function capSourceEvents(rows: readonly EventRow[], limit: number = MAX_S
     if (!have) other.set(r.date, { date: r.date, source_name: OTHER, visitors: r.visitors, count: r.count })
     else {
       have.count += r.count
-      have.visitors = sumNullable(have.visitors, r.visitors)
+      have.visitors = mergeEventVisitors(have.visitors, r.visitors)
     }
   }
   if (other.size === 0) return out
