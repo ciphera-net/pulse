@@ -37,11 +37,16 @@ export type ImportSourcesState =
   | { status: 'error'; error: unknown; retry: () => void }
   | { status: 'available'; sources: AvailableSource[] }
 
-/** The server's list, in the server's order (D6), narrowed to what this build can drive. */
+/**
+ * The server's list, in the server's order (D6), narrowed to what this build can
+ * drive. Called during render, so a body of the wrong shape (no list, an entry
+ * with no `kind`) drops what it cannot read instead of throwing.
+ */
 export function drivableSources(entries: readonly ImportSourceEntry[] | null | undefined): AvailableSource[] {
   const out: AvailableSource[] = []
-  for (const e of entries ?? []) {
-    if (!e || e.enabled !== true || !isSourceId(e.source)) continue
+  if (!Array.isArray(entries)) return out
+  for (const e of entries as readonly unknown[]) {
+    if (!isEntry(e) || e.enabled !== true || !isSourceId(e.source)) continue
     if (e.kind.startsWith('upload_') && isImportSource(e.source)) {
       out.push({ id: e.source, kind: e.kind, flow: 'upload' })
     } else if (e.source === 'matomo' && e.kind === 'api_key') {
@@ -49,6 +54,12 @@ export function drivableSources(entries: readonly ImportSourceEntry[] | null | u
     }
   }
   return out
+}
+
+function isEntry(e: unknown): e is ImportSourceEntry {
+  if (!e || typeof e !== 'object') return false
+  const { source, kind } = e as Record<string, unknown>
+  return typeof source === 'string' && typeof kind === 'string'
 }
 
 const statusOf = (e: unknown) => (e as { status?: number } | null)?.status
@@ -74,7 +85,7 @@ export function useImportSources(siteId: string | null | undefined): ImportSourc
     return { status: 'error', error, retry: () => void mutate() }
   }
   if (!data) return { status: 'loading' }
-  const sources = drivableSources(data.sources)
+  const sources = drivableSources((data as { sources?: ImportSourceEntry[] } | null)?.sources)
   return sources.length > 0 ? { status: 'available', sources } : { status: 'unavailable' }
 }
 

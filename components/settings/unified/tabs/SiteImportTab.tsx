@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { toast } from '@ciphera-net/facet'
 import { useCan } from '@/lib/auth/permissions'
 import { useSite } from '@/lib/swr/dashboard'
@@ -51,11 +51,32 @@ export default function SiteImportTab({ siteId }: { siteId: string }) {
   const existing = slot.status === 'ready' ? slot.existing : null
   const holder: string | null = existing?.source ?? localUpload
 
+  // A row that another import locked is never left open. Two presses in one batch
+  // (Import on one row, Connect on another) both land before the lock renders; the
+  // row that did not take the slot closes here, before the browser paints it.
+  useLayoutEffect(() => {
+    if (open !== null && holder !== null && holder !== open) setOpen(null)
+  }, [open, holder])
+
+  // A request that answers after the tab has gone (an upload rejecting after the
+  // site switched) must not read the slot again: its SWR hook is unmounted.
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
+
+  // One delete per confirm: a second press lands before the dialog's own guard
+  // renders, and would answer "This import no longer exists" after a delete that worked.
+  const deletingRef = useRef(false)
+
   // The server's newest word on the import: take it when a request just answered
   // with it, else read the slot again.
   const replace = useCallback(
     (status?: SiteImportStatus | null) => {
-      if (slot.status !== 'ready') return
+      if (!mountedRef.current || slot.status !== 'ready') return
       if (status === undefined) void slot.refresh()
       else slot.set(status)
     },
@@ -88,7 +109,8 @@ export default function SiteImportTab({ siteId }: { siteId: string }) {
   }
 
   const doDelete = async () => {
-    if (!existing) return
+    if (!existing || deletingRef.current) return
+    deletingRef.current = true
     const tool = sourceLabel(existing.source)
     try {
       await deleteImport({ siteId, importId: existing.id, transport: appTransport })
@@ -97,14 +119,17 @@ export default function SiteImportTab({ siteId }: { siteId: string }) {
       const m = importErrorMessage(messageInputFromApiError(e), existing.source)
       toast.error(m?.text ?? "Couldn't delete the imported data. Try again.")
     } finally {
-      setOpen(null)
-      if (slot.status === 'ready') await slot.refresh()
+      deletingRef.current = false
+      if (mountedRef.current) {
+        setOpen(null)
+        if (slot.status === 'ready') await slot.refresh()
+      }
     }
   }
 
   const discard = async (importId: string) => {
     await deleteImport({ siteId, importId, transport: appTransport })
-    if (slot.status === 'ready') await slot.refresh()
+    if (mountedRef.current && slot.status === 'ready') await slot.refresh()
   }
 
   return (

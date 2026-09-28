@@ -68,8 +68,10 @@ export function MatomoFlow({
   const [connecting, setConnecting] = useState(false)
   const [starting, setStarting] = useState(false)
   const [canceling, setCanceling] = useState(false)
-  // A second press lands before the re-render that disables the button: the ref holds.
+  // A second press lands before the re-render that disables the button: the refs hold.
   const cancelingRef = useRef(false)
+  const connectingRef = useRef(false)
+  const startingRef = useRef(false)
   const [properties, setProperties] = useState<MatomoProperty[] | null>(null)
   const [propertyId, setPropertyId] = useState('')
   const [error, setError] = useState<ImportMessage | null>(null)
@@ -106,7 +108,10 @@ export function MatomoFlow({
     if (['import_exists', 'import_not_active', 'not_found', 'expired'].includes(input.code)) onChanged()
   }
 
+  // One connect per press: a second would race the first for the site's one slot.
   const connect = async (importId?: string) => {
+    if (connectingRef.current) return
+    connectingRef.current = true
     setError(null)
     setConnecting(true)
     try {
@@ -116,12 +121,14 @@ export function MatomoFlow({
     } catch (e) {
       fail(e)
     } finally {
+      connectingRef.current = false
       setConnecting(false)
     }
   }
 
   const start = async () => {
-    if (!awaiting || !propertyId) return
+    if (!awaiting || !propertyId || startingRef.current) return
+    startingRef.current = true
     setError(null)
     setStarting(true)
     try {
@@ -131,6 +138,7 @@ export function MatomoFlow({
     } catch (e) {
       fail(e)
     } finally {
+      startingRef.current = false
       setStarting(false)
     }
   }

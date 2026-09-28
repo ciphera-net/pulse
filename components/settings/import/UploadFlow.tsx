@@ -112,6 +112,9 @@ export function UploadFlow({
 
   const preparedRef = useRef<PreparedImport | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  // One upload loop per plan: a second press of Import (or Retry) lands before
+  // the re-render that swaps the button out, so a ref holds, not the step.
+  const sendingRef = useRef(false)
 
   // The site's zone arrives after the first render; default the question to it once.
   useEffect(() => {
@@ -191,6 +194,8 @@ export function UploadFlow({
 
   /** Sends the prepared plan (a new import) or carries on (a resumed one). */
   const upload = async (prepared: PreparedImport) => {
+    if (sendingRef.current) return
+    sendingRef.current = true
     setError(null)
     setRetryable(false)
     setStep({ name: 'uploading', partsDone: 0, partsTotal: prepared.plan.parts_total })
@@ -210,6 +215,8 @@ export function UploadFlow({
         setStep({ name: 'choose' })
       }
       onServerChanged()
+    } finally {
+      sendingRef.current = false
     }
   }
 

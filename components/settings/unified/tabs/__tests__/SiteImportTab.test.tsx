@@ -757,3 +757,137 @@ describe('Matomo (M11-j)', () => {
     expect(within(block('Plausible')).getByRole('button', { name: 'Upload' })).toBeDisabled()
   })
 })
+
+// ─── presses that land before the re-render, and bodies of the wrong shape ──
+describe('double presses, races and malformed answers', () => {
+  async function reachConfirm() {
+    renderTab()
+    fireEvent.click(await within(await waitFor(() => block('Plausible'))).findByRole('button', { name: 'Upload' }))
+    chooseFile()
+    fireEvent.click(screen.getByRole('button', { name: 'Review import' }))
+    return screen.findByTestId('import-confirm')
+  }
+
+  it('does not crash when a listed source has no kind, or the list is not a list', async () => {
+    h.sources = { sources: [{ source: 'plausible', enabled: true } as never, { source: 'fathom', kind: null } as never, MATOMO] }
+    const { unmount } = renderTab()
+    expect(await within(await waitFor(() => block('Matomo'))).findByRole('button', { name: 'Connect' })).toBeInTheDocument()
+    expect(screen.queryByText('Plausible')).toBeNull()
+    unmount()
+    h.sources = { sources: {} as never }
+    const { container } = renderTab()
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20))
+    })
+    // No source this build can read: the tab does not exist (M11-b), and nothing throws.
+    expect(container.textContent).toBe('')
+  })
+
+  it('shows an import whose failure code is named like an Object member, without crashing', async () => {
+    h.slot = { existing_import: status({ source: 'fathom', status: 'failed', error_code: 'toLocaleString', finished_at: null }) }
+    renderTab()
+    expect(await screen.findByText('Something unexpected came back from Pulse. Nothing more was saved. Try again.')).toBeInTheDocument()
+  })
+
+  it('sends one upload for two presses of Import in one batch', async () => {
+    const prepared = preparedImport()
+    prepared.upload.mockReturnValue(new Promise(() => {}))
+    h.prepareImport.mockResolvedValue(prepared)
+    const confirm = await reachConfirm()
+    const go = within(confirm).getByRole('button', { name: 'Import 622 days' })
+    act(() => {
+      go.click()
+      go.click()
+    })
+    expect(prepared.upload).toHaveBeenCalledTimes(1)
+  })
+
+  it('deletes once for two presses of the dialog\'s Delete in one batch, and says only that it worked', async () => {
+    h.slot = { existing_import: status() }
+    const pending: Array<{ resolve: () => void; reject: (e: unknown) => void }> = []
+    h.deleteImport.mockImplementation(() => new Promise<void>((resolve, reject) => pending.push({ resolve, reject })))
+    renderTab()
+    fireEvent.click(await within(await waitFor(() => block('Plausible'))).findByRole('button', { name: 'Delete imported data' }))
+    const confirm = within(screen.getByRole('dialog', { name: 'Delete imported data' })).getByRole('button', { name: 'Delete' })
+    act(() => {
+      confirm.click()
+      confirm.click()
+    })
+    expect(h.deleteImport).toHaveBeenCalledTimes(1)
+    h.slot = { existing_import: null }
+    await act(async () => pending[0].resolve())
+    expect(toast.success).toHaveBeenCalledWith('Imported data from Plausible deleted')
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it('connects once for two presses of Load sites in one batch', async () => {
+    h.connectMatomo.mockReturnValue(new Promise(() => {}))
+    renderTab()
+    fireEvent.click(await within(await waitFor(() => block('Matomo'))).findByRole('button', { name: 'Connect' }))
+    fireEvent.change(screen.getByLabelText('Matomo address'), { target: { value: 'https://stats.example.org' } })
+    fireEvent.change(screen.getByLabelText('Token'), { target: { value: 'secret-token' } })
+    const load = screen.getByRole('button', { name: 'Load sites' })
+    act(() => {
+      load.click()
+      load.click()
+    })
+    expect(h.connectMatomo).toHaveBeenCalledTimes(1)
+  })
+
+  it('offers no Retry after the session ended, and asks for the file again', async () => {
+    const prepared = preparedImport()
+    prepared.upload.mockRejectedValueOnce(new ImportError('unauthorized', 'HTTP 401'))
+    h.prepareImport.mockResolvedValue(prepared)
+    const confirm = await reachConfirm()
+    fireEvent.click(within(confirm).getByRole('button', { name: 'Import 622 days' }))
+    expect(await screen.findByText('Your session ended. Sign in again and choose the same file to continue.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+    expect(prepared.dispose).toHaveBeenCalled()
+    expect(screen.getByTestId('import-file-input')).toBeInTheDocument()
+  })
+
+  it('never leaves a row open under a lock when Import and another row\'s Connect land in one batch', async () => {
+    const prepared = preparedImport()
+    prepared.upload.mockReturnValue(new Promise(() => {}))
+    h.prepareImport.mockResolvedValue(prepared)
+    const confirm = await reachConfirm()
+    const go = within(confirm).getByRole('button', { name: 'Import 622 days' })
+    const connect = within(block('Matomo')).getByRole('button', { name: 'Connect' })
+    act(() => {
+      go.click()
+      connect.click()
+    })
+    const matomo = block('Matomo')
+    expect(within(matomo).queryByRole('button', { name: 'Cancel' })).toBeNull()
+    expect(within(matomo).getByRole('button', { name: 'Connect' })).toBeDisabled()
+  })
+
+  it('does not read the slot again after the tab has gone, when an upload fails late', async () => {
+    const prepared = preparedImport()
+    let rejectUpload: (e: unknown) => void = () => {}
+    prepared.upload.mockImplementation(() => new Promise((_r, rej) => (rejectUpload = rej)))
+    h.prepareImport.mockResolvedValue(prepared)
+    const { unmount } = renderTab()
+    fireEvent.click(await within(await waitFor(() => block('Plausible'))).findByRole('button', { name: 'Upload' }))
+    chooseFile()
+    fireEvent.click(screen.getByRole('button', { name: 'Review import' }))
+    fireEvent.click(within(await screen.findByTestId('import-confirm')).getByRole('button', { name: 'Import 622 days' }))
+    unmount()
+    const reads = h.getImportSlot.mock.calls.length
+    let unhandled: unknown = null
+    const onUnhandled = (e: unknown) => {
+      unhandled = e
+    }
+    process.on('unhandledRejection', onUnhandled)
+    try {
+      await act(async () => {
+        rejectUpload(new ImportError('forbidden', 'HTTP 403'))
+        await new Promise((r) => setTimeout(r, 30))
+      })
+    } finally {
+      process.off('unhandledRejection', onUnhandled)
+    }
+    expect(unhandled).toBeNull()
+    expect(h.getImportSlot.mock.calls.length).toBe(reads)
+  })
+})
