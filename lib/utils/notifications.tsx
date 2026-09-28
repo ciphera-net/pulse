@@ -26,6 +26,8 @@ import {
   Waveform,
   WaveformSlash,
   Prohibit,
+  ClockCounterClockwise,
+  PauseCircle,
 } from '@phosphor-icons/react'
 import type { ReactElement } from 'react'
 import { NOTIFICATION_TYPES, type NotificationType } from '@/lib/notifications/types'
@@ -86,6 +88,12 @@ export function getTypeIcon(type: string) {
     site_traffic_spike:            <TrendUp          className="w-5 h-5 shrink-0 text-green-400"    aria-hidden="true" />,
     site_traffic_drop:             <TrendDown        className="w-5 h-5 shrink-0 text-red-400"      aria-hidden="true" />,
     site_content_decay:            <ArrowFatLineDown className="w-5 h-5 shrink-0 text-red-400"      aria-hidden="true" />,
+    // PULSE-121 (iris migration 038, design §3.10c M13-i). Completed reuses
+    // the "history" glyph in green (it succeeded); stopped is amber, not red
+    // — every stop cause is resumable (M13-a: "stopped", never "failed"), so
+    // this is not the same signal as a pagespeed drop or a rejected event.
+    site_import_completed:         <ClockCounterClockwise className="w-5 h-5 shrink-0 text-green-400" aria-hidden="true" />,
+    site_import_stopped:           <PauseCircle      className="w-5 h-5 shrink-0 text-amber-400"    aria-hidden="true" />,
     team_member_invited:           <UserPlus         className="w-5 h-5 shrink-0 text-brand-ink" aria-hidden="true" />,
     team_member_joined:            <UserCheck        className="w-5 h-5 shrink-0 text-green-400"    aria-hidden="true" />,
     team_role_changed:             <UserGear         className="w-5 h-5 shrink-0 text-neutral-400"  aria-hidden="true" />,
