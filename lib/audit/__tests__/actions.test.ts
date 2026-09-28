@@ -26,7 +26,9 @@ describe('AUDIT_ACTIONS / ACTION_LABELS coverage (PULSE-73)', () => {
   })
 
   it('carries every action pulse-backend writes today and every history-only action production still stores', () => {
-    // Written today (41).
+    // Written today (47): the 41 from before PULSE-92 Phase 5, plus its six
+    // team-write actions (invite_link_created, invite_link_revoked,
+    // member_left, onboarding_completed, org_created, org_renamed).
     const writtenToday = [
       'admin_plan_granted', 'admin_refund_failed', 'admin_refund_issued', 'admin_verdict_revoked',
       'billing_checkout_started', 'billing_payment_method_update_started', 'billing_refund_failed',
@@ -34,9 +36,11 @@ describe('AUDIT_ACTIONS / ACTION_LABELS coverage (PULSE-73)', () => {
       'funnel_created', 'funnel_updated', 'funnel_deleted',
       'goal_created', 'goal_updated', 'goal_deleted',
       'gsc_connected', 'gsc_disconnected',
+      'invite_link_created', 'invite_link_revoked',
       'mcp_connection_created', 'mcp_connection_revoked',
-      'member_added', 'member_removed', 'member_role_changed',
-      'org_deleted', 'org.broadcast_sent', 'org.user_notified',
+      'member_added', 'member_left', 'member_removed', 'member_role_changed',
+      'onboarding_completed', 'org_created', 'org_deleted', 'org_renamed',
+      'org.broadcast_sent', 'org.user_notified',
       'oss_application_claimed', 'oss_application_decided', 'oss_application_link_resent',
       'ownership_transferred',
       'site_created', 'site_identity_window_changed', 'site_permanently_deleted', 'site_restored',
@@ -44,7 +48,7 @@ describe('AUDIT_ACTIONS / ACTION_LABELS coverage (PULSE-73)', () => {
       'subscription_cancel_at_period_end', 'subscription_canceled_immediate', 'subscription_plan_changed',
       'subscription_resumed',
     ]
-    expect(writtenToday).toHaveLength(41)
+    expect(writtenToday).toHaveLength(47)
     // History only (9): no code writes these any more, but production still
     // holds rows carrying them.
     const historyOnly = [
@@ -69,8 +73,29 @@ describe('actionLabelFor', () => {
     expect(actionLabelFor('org_deleted', true)).toBe('Deleted all data')
   })
 
+  // PULSE-92 Phase 5: the other two labels that name a team someone alone
+  // does not have.
+  it('org_created: "Created team" for a team, "Set up Pulse" alone', () => {
+    expect(actionLabelFor('org_created', false)).toBe('Created team')
+    expect(actionLabelFor('org_created', true)).toBe('Set up Pulse')
+  })
+
+  it('org_renamed: "Renamed team" for a team, "Changed name" alone', () => {
+    expect(actionLabelFor('org_renamed', false)).toBe('Renamed team')
+    expect(actionLabelFor('org_renamed', true)).toBe('Changed name')
+  })
+
+  // member_left can never actually happen to someone alone (leaving needs a
+  // second member who never existed), but WorkspaceAuditTab's filter
+  // dropdown lists every action regardless, so "team" still has to go.
+  it('member_left: "Left team" for a team, "Left" alone', () => {
+    expect(actionLabelFor('member_left', false)).toBe('Left team')
+    expect(actionLabelFor('member_left', true)).toBe('Left')
+  })
+
   it('the alone override applies to nothing else', () => {
     expect(actionLabelFor('site_created', true)).toBe('Created site')
+    expect(actionLabelFor('invite_link_created', true)).toBe('Created invite link')
   })
 
   it('falls back to a humanised label for an action neither list knows yet', () => {
@@ -110,6 +135,24 @@ describe('actionTone (PULSE-73)', () => {
 
   it('leaves a scheduled (not yet effective) cancellation neutral', () => {
     expect(actionTone('subscription_cancel_at_period_end')).toBe('neutral')
+  })
+
+  // PULSE-92 Phase 5, design §12 ruling: member_left reads neutral (leaving is
+  // not a danger word); invite_link_revoked is coral by the existing
+  // "revoked" rule, same as any other revocation.
+  it('reads a member leaving as neutral, not a danger word', () => {
+    expect(actionTone('member_left')).toBe('neutral')
+  })
+
+  it('flags a revoked invite link by the existing "revoked" rule', () => {
+    expect(actionTone('invite_link_revoked')).toBe('danger')
+  })
+
+  it('never flags creating a team, renaming it, an invite link, or finishing setup', () => {
+    expect(actionTone('org_created')).toBe('neutral')
+    expect(actionTone('org_renamed')).toBe('neutral')
+    expect(actionTone('invite_link_created')).toBe('neutral')
+    expect(actionTone('onboarding_completed')).toBe('neutral')
   })
 })
 
