@@ -27,9 +27,29 @@ export type GeoDataLevel = 'full' | 'country' | 'none'
 export const DEFAULT_GEO_DATA_LEVEL: GeoDataLevel = 'full'
 
 export interface PageRule {
-  type: 'exclude' | 'group'
+  // 'keep' (PULSE-128) pins a path so it is stored verbatim, skipping both
+  // shape-based and learned-parent grouping. Like 'exclude', it needs no label.
+  type: 'exclude' | 'group' | 'keep'
   pattern: string
   label?: string
+}
+
+/**
+ * A parent path the backend has learned holds many identifier-like children
+ * (`internal/pathcardinality`, design doc §3.1) and now auto-groups under
+ * `:id`. Read-only — there is no client mutation for this list itself; the
+ * only client action is adding a `keep` PageRule that pins the parent back to
+ * verbatim storage (design doc §3.4).
+ */
+export interface LearnedDynamicParent {
+  /** The parent in grouped form, e.g. "/sites/:id/visitors/:id". */
+  template: string
+  /** When the parent was first learned. */
+  learned_at: string
+  /** Distinct identifier-like children observed. */
+  children: number
+  /** Share of this parent's children that are identifier-like (0-1). */
+  share?: number
 }
 
 export interface Site {
@@ -49,6 +69,9 @@ export interface Site {
   excluded_paths?: string[]
   page_rules?: PageRule[]
   auto_group_dynamic_paths?: boolean
+  // Parents the backend has learned to auto-group by cardinality (PULSE-128).
+  // May be missing, null, or empty on a site with nothing learned yet.
+  learned_dynamic_parents?: LearnedDynamicParent[] | null
   allowed_query_params?: string[]
   // Data collection settings (privacy controls)
   collect_page_paths?: boolean
