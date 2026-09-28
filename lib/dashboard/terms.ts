@@ -281,6 +281,15 @@ export const TERMS: Record<string, GlossaryTerm> = {
     docs: 'dashboard#timezones',
   },
 
+  // ── import ──
+  // PULSE-118 (M11-i). No `docs` until M14 publishes the import pages: an
+  // unpublished term carries no link rather than one that 404s.
+  imported_history: {
+    title: 'Imported history',
+    definition:
+      "Days before Pulse measured this site came from the tool you used before. Visitors, visits and pageviews merge into your numbers; bounce rate and visit duration stay Pulse's own.",
+  },
+
   // ── campaigns ──
   utm_campaign: {
     title: 'Campaign (UTM)',

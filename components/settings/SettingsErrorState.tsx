@@ -31,6 +31,12 @@ interface SettingsErrorStateProps {
   retrying?: boolean
   variant?: 'card' | 'banner'
   className?: string
+  /**
+   * Banner only: a disclosure under the message (the import error map's
+   * "Details", carrying a code this build does not know). Absent, the banner
+   * renders exactly as it always has.
+   */
+  children?: React.ReactNode
 }
 
 export function SettingsErrorState({
@@ -40,6 +46,7 @@ export function SettingsErrorState({
   retrying,
   variant = 'card',
   className,
+  children,
 }: SettingsErrorStateProps) {
   if (variant === 'banner') {
     return (
@@ -48,7 +55,14 @@ export function SettingsErrorState({
         className={`flex items-center gap-3 rounded-none border border-destructive/30 bg-card px-4 py-3 text-sm ${className ?? ''}`}
       >
         <WarningCircle size={16} weight="fill" className="shrink-0 text-destructive" />
-        <p className="min-w-0 flex-1 text-foreground">{message}</p>
+        {children ? (
+          <div className="min-w-0 flex-1">
+            <p className="text-foreground">{message}</p>
+            {children}
+          </div>
+        ) : (
+          <p className="min-w-0 flex-1 text-foreground">{message}</p>
+        )}
         {onRetry && (
           <Button variant="ghost" size="sm" onClick={onRetry} disabled={retrying}>
             {retrying ? 'Retrying…' : 'Retry'}

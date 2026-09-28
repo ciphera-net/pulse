@@ -1,5 +1,8 @@
 'use client'
 
+import { ImportedCardNote } from '@/components/dashboard/ImportedCardNote'
+import type { ImportedProvenance } from '@/lib/api/stats'
+import type { ImportedDimension } from '@/lib/import/source-display'
 import { useState, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { formatNumber } from '@/lib/utils/format'
@@ -37,9 +40,21 @@ interface AudienceProps {
   onFilter?: (filter: DimensionFilter) => void
   /** Realtime mode — an empty block reads the one realtime line (CardEmptyState). */
   live?: boolean
+  /** Each card's imported-history provenance, from the dashboard response (PULSE-118). */
+  importedCards?: Record<string, ImportedProvenance>
 }
 
 type Tab = 'map' | 'countries' | 'regions' | 'cities' | 'languages' | 'timezones'
+
+/** The dashboard's `imported_cards` key each tab reads (PULSE-118). Timezones stay native: no key. */
+const TAB_DIMENSION: Record<Tab, ImportedDimension | null> = {
+  map: 'country',
+  countries: 'country',
+  regions: 'region',
+  cities: 'city',
+  languages: 'language',
+  timezones: null,
+}
 
 const LIMIT = 7
 
@@ -154,7 +169,7 @@ function formatTimezone(tz: string): string {
   }
 }
 
-export default function Audience({ countries, cities, regions, languages, timezones, geoDataLevel = 'full', collectAudienceData = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter, live = false}: AudienceProps) {
+export default function Audience({ countries, cities, regions, languages, timezones, geoDataLevel = 'full', collectAudienceData = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter, live = false, importedCards }: AudienceProps) {
   const [activeTab, setActiveTab] = useState<Tab>('countries')
   type AudienceItem = { country?: string; city?: string; region?: string; language?: string; timezone?: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }
 
@@ -446,6 +461,7 @@ export default function Audience({ countries, cities, regions, languages, timezo
         )}
         </div>
 
+      <ImportedCardNote card={TAB_DIMENSION[activeTab] ? importedCards?.[TAB_DIMENSION[activeTab]!] : null} dimension={TAB_DIMENSION[activeTab]} />
       <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label={activeTab} />
     </div>
   )

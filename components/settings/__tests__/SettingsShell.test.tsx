@@ -31,7 +31,9 @@ const setActiveSiteId = vi.fn()
 let activeSiteValue: { sites: SiteLike[]; activeSite: SiteLike | null; setActiveSiteId: typeof setActiveSiteId } = {
   sites: [], activeSite: null, setActiveSiteId,
 }
-vi.mock('@/components/settings/active-site', () => ({ useActiveSite: () => activeSiteValue }))
+// The shell itself reads only the site id, to decide the Import row (PULSE-118,
+// covered in import-entry.test.tsx); null here keeps that row out of these rails.
+vi.mock('@/components/settings/active-site', () => ({ useActiveSite: () => activeSiteValue, useActiveSiteIdIfAny: () => null }))
 vi.mock('@/components/sites/SiteFavicon', () => ({ SiteFavicon: ({ name }: any) => <span data-testid="favicon">{name?.[0]}</span> }))
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...a: any[]) => a.flat(Infinity).filter(Boolean).join(' '),

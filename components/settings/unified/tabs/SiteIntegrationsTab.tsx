@@ -1,9 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { motion, useReducedMotion } from 'framer-motion'
 import { Button, Input, Select, toast, getAuthErrorMessage } from '@ciphera-net/facet'
-import { TIMING } from '@/lib/motion'
 import { useGSCStatus, useBunnyStatus, useBingStatus } from '@/lib/swr/dashboard'
 import { disconnectGSC, getGSCAuthURL, type GSCStatus } from '@/lib/api/gsc'
 import { disconnectBunny, getBunnyPullZones, connectBunny, type BunnyPullZone, type BunnyStatus } from '@/lib/api/bunny'
@@ -16,7 +14,7 @@ import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
 import { DESTRUCTIVE_OUTLINE } from '@/components/settings/unified/DangerZone'
-import { cn } from '@/lib/utils'
+import { LogoTile, ServiceHeaderRow, DetailRows, SetupReveal } from '@/components/settings/integrationRows'
 
 function GoogleIcon() {
   return (
@@ -66,24 +64,6 @@ function BingIcon() {
     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M20.176 15.406a6.48 6.48 0 01-1.736 4.414c1.338-1.47.803-3.869-1.003-4.635-.862-.305-2.488-.85-3.367-1.158a1.834 1.834 0 01-.932-.818c-.381-.975-1.163-2.968-1.548-3.948-.095-.285-.31-.625-.265-.938.046-.598.724-1.003 1.276-.754l3.682 1.888c.621.292 1.305.692 1.796 1.172a6.486 6.486 0 012.097 4.777zm-1.44 1.888c-.264-1.194-1.135-1.744-2.216-2.028-1.527.902-4.853 2.878-6.952 4.13-1.103.68-2.13 1.35-2.919 1.242a2.866 2.866 0 01-2.77-2.325c-.012-.048-.008-.03-.001.01a6.4 6.4 0 00.947 2.653 6.498 6.498 0 005.486 3.022c1.908.062 3.536-1.153 5.099-2.096.292-.188.804-.496 1.332-.831l1.423-1.51c.553-.577.764-1.426.571-2.267zm-12.04 2.97c.422 0 .822-.1 1.173-.29.355-.215.964-.579 1.7-1.018L9.57 4.502c0-.99-.497-1.864-1.257-2.382-.08-.059-2.91-1.901-2.99-1.956-.605-.432-1.523.045-1.5.797v14.887l.417 2.36a2.488 2.488 0 002.455 2.056z" />
     </svg>
-  )
-}
-
-/**
- * LogoTile: the grayscale brand tile that colorizes once the integration is
- * connected (spec §6). Grayscale lives here so both the multi-color Google mark
- * and the Bunny gradient desaturate through one wrapper.
- */
-function LogoTile({ colorize, children }: { colorize: boolean; children: React.ReactNode }) {
-  return (
-    <span
-      className={cn(
-        'flex h-10 w-10 shrink-0 items-center justify-center rounded-none bg-accent transition-[filter,opacity] duration-fast ease-apple motion-reduce:transition-none',
-        !colorize && 'grayscale opacity-60',
-      )}
-    >
-      {children}
-    </span>
   )
 }
 
@@ -139,19 +119,11 @@ function IntegrationHeaderRow({
   const chip = integrationChip(connected, status)
 
   return (
-    <PanelRow
-      label={
-        <span className="flex items-center gap-3">
-          <LogoTile colorize={connected && !hasError}>{icon}</LogoTile>
-          <span>{name}</span>
-        </span>
-      }
-      caption={
-        <>
-          <span className="block">{description}</span>
-          {!hasError && note && <span className="mt-1 block text-xs text-muted-foreground">{note}</span>}
-        </>
-      }
+    <ServiceHeaderRow
+      logo={<LogoTile colorize={connected && !hasError}>{icon}</LogoTile>}
+      name={name}
+      description={description}
+      note={hasError ? undefined : note}
       control={
         hasError ? undefined : (
           <div className="flex items-center gap-2">
@@ -180,32 +152,6 @@ function IntegrationHeaderRow({
   )
 }
 
-type DetailRowKind = 'text' | 'date' | 'code'
-
-/** A code/domain value gets `font-mono`; a date gets `tabular-nums` and never mono. */
-function DetailRows({ rows }: { rows: { label: string; value: React.ReactNode; kind?: DetailRowKind }[] }) {
-  return (
-    <div className="border-t border-border">
-      <PanelRows>
-        {rows.map(row => (
-          <PanelRow key={row.label} label={row.label}>
-            <span
-              className={cn(
-                'text-sm',
-                row.kind === 'code' && 'font-mono text-muted-foreground',
-                row.kind === 'date' && 'tabular-nums text-muted-foreground',
-                !row.kind && 'text-foreground',
-              )}
-            >
-              {row.value}
-            </span>
-          </PanelRow>
-        ))}
-      </PanelRows>
-    </div>
-  )
-}
-
 /** An integration's own reported problem (an expired token, a revoked grant): the same
  *  device as a fetch failure, named so it reads as this integration's issue, not the tab's. */
 function IntegrationIssue({ name, message }: { name: string; message: string }) {
@@ -213,34 +159,6 @@ function IntegrationIssue({ name, message }: { name: string; message: string }) 
     <div className="border-t border-border px-5 py-4">
       <SettingsErrorState variant="banner" message={`${name}: ${message}`} />
     </div>
-  )
-}
-
-/**
- * SetupReveal (M6): the Bing and Bunny inline setup forms open with a height+fade
- * rather than snapping in, house ease-apple timing (TIMING = duration-base,
- * ease-apple). Closing is a plain unmount, same as before this round: only
- * the open needed the reveal, and an exit animation would hold the form in
- * the DOM after Bunny's Connect is clicked to close it, which is exactly the
- * moment the vocabulary requires at most one open setup form. Skipped under
- * prefers-reduced-motion: the form still appears, just without the height or
- * opacity animation.
- */
-function SetupReveal({ show, children }: { show: boolean; children: React.ReactNode }) {
-  const reducedMotion = useReducedMotion()
-
-  if (!show) return null
-  if (reducedMotion) return <>{children}</>
-
-  return (
-    <motion.div
-      initial={{ height: 0, opacity: 0 }}
-      animate={{ height: 'auto', opacity: 1 }}
-      transition={TIMING}
-      className="overflow-hidden"
-    >
-      {children}
-    </motion.div>
   )
 }
 

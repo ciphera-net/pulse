@@ -279,17 +279,9 @@ export function getComparison(slug: string): Comparison | undefined {
   return comparisons.find((c) => c.slug === slug)
 }
 
-/**
- * Competitor logo on the shared CDN (the same assets the ciphera.net comparison
- * blog posts use). Filenames match the comparison slug. Referenced as an
- * absolute cross-property URL — cdn.ciphera.net is allowlisted in next.config
- * remotePatterns and the CSP img-src; never copied into public/.
- */
-export const COMPARISON_LOGO_BASE = 'https://cdn.ciphera.net/website/blog/tools'
-
-export function comparisonLogoUrl(slug: string): string {
-  return `${COMPARISON_LOGO_BASE}/${slug}.png`
-}
+// The logo helper lives in its own module (lib/comparisonLogos.ts) so a screen
+// that needs only a logo does not bundle these tables; re-exported here unchanged.
+export { COMPARISON_LOGO_BASE, comparisonLogoUrl } from './comparisonLogos'
 
 /** Slugs in the order they should surface in nav / footer / cross-links. */
 export const comparisonSlugs = comparisons.map((c) => c.slug)

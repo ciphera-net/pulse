@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { navGroups, SETTINGS_TAB_ICONS, sectionOf, tabFor } from '@/components/settings/nav'
+import { navGroups, SETTINGS_TAB_ICONS, sectionOf, tabFor, tabIsVisible } from '@/components/settings/nav'
 
 const TEAM = navGroups('team')
 const ALONE = navGroups('alone')
@@ -15,14 +15,44 @@ const tabs = TEAM.flatMap((g) => g.tabs)
 const allRows = [...tabs, ...ALONE.flatMap((g) => g.tabs)]
 
 describe('settings nav registry', () => {
-  it('has three scopes for a team, seven / seven / five tabs, the middle one named Team', () => {
+  it('has three scopes for a team, eight / seven / five tabs, the middle one named Team', () => {
     // Workspace lost its Notifications tab on 21-09-2026 (ruling D7): there
     // was no workspace-level setting behind it. It gained Connected apps on
     // 24-09-2026 (PULSE-41), renamed MCP the same day (PULSE-54). The owner
-    // named the container a team on 25-09-2026 (PULSE-59, W1).
+    // named the container a team on 25-09-2026 (PULSE-59, W1). Site gained
+    // Import on 27-09-2026 (PULSE-118), listed only where imports exist.
     expect(TEAM.map((g) => [g.section, g.label, g.tabs.length])).toEqual([
-      ['site', 'Site', 7], ['organization', 'Team', 7], ['account', 'Account', 5],
+      ['site', 'Site', 8], ['organization', 'Team', 7], ['account', 'Account', 5],
     ])
+  })
+
+  it('lists Import last among the site tabs, with no permission, behind the import condition (M11-a, M11-b)', () => {
+    const site = TEAM.find((g) => g.section === 'site')!
+    const tab = site.tabs[site.tabs.length - 1]
+    expect(tab).toMatchObject({
+      label: 'Import',
+      href: '/settings/site/import',
+      description: 'Bring history from another tool.',
+      when: 'import_available',
+    })
+    // Every member reads an import's status (§3.9): the tab carries no permission.
+    expect(tab.requires).toBeUndefined()
+    // The alone grouping shares the same Site tabs.
+    expect(ALONE.find((g) => g.section === 'site')!.tabs).toContain(tab)
+  })
+
+  it('shows a conditional tab only once its condition is known to hold', () => {
+    const tab = TEAM.find((g) => g.section === 'site')!.tabs.find((t) => t.label === 'Import')!
+    expect(tabIsVisible(tab, {}, {})).toBe(false)
+    expect(tabIsVisible(tab, {}, { import_available: false })).toBe(false)
+    expect(tabIsVisible(tab, {}, { import_available: true })).toBe(true)
+    // A member without integrations.manage still sees it: no `requires`.
+    expect(tabIsVisible(tab, { 'integrations.manage': false }, { import_available: true })).toBe(true)
+    // Permission-gated tabs behave exactly as they did.
+    const integrations = TEAM.find((g) => g.section === 'site')!.tabs.find((t) => t.label === 'Integrations')!
+    expect(tabIsVisible(integrations, { 'integrations.manage': false }, {})).toBe(false)
+    expect(tabIsVisible(integrations, { 'integrations.manage': true }, {})).toBe(true)
+    expect(tabIsVisible(integrations, {}, {})).toBe(true)
   })
 
   it('is the team grouping while the state is unknown: a failure never hides team settings', () => {

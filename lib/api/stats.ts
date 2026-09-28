@@ -29,6 +29,36 @@ export interface Stats {
   visits?: number
 }
 
+/**
+ * Imported-history provenance (PULSE-83, design §3.5 and M4-a): whether the numbers
+ * beside it include days imported from another analytics tool, and which. The
+ * member dashboard, the public API and MCP send this one shape.
+ *
+ *  - `included: false` with every other field null: the range touches no imported
+ *    day, or the site has none.
+ *  - `from`/`through`/`source` are set whenever imported days fall in the range,
+ *    counted or not; `reason` says why they were left out (null when they were not).
+ *
+ * The UI reads it and infers nothing (M11-h): every imported-history mark on the
+ * dashboard comes from this field, never from the dates on the client.
+ */
+export interface ImportedProvenance {
+  included: boolean
+  /** YYYY-MM-DD, the first imported day the range touches. */
+  from: string | null
+  /** YYYY-MM-DD, the last imported day the range touches. */
+  through: string | null
+  /** The stored source id ("plausible"); opaque, and an unknown value is not an error. */
+  source: string | null
+  /** 'filtered' | 'granularity' | 'surface_unsupported' | 'surface_excluded', or a newer one. */
+  reason: string | null
+}
+
+/** GET /stats: the Stats fields, flat, plus the provenance of the imported days they include. */
+export interface StatsResponse extends Stats {
+  imported?: ImportedProvenance
+}
+
 // visitors/rates are populated for top pages; entry/exit rows reuse this shape
 // with visitors == pageviews by construction and null rates.
 export interface TopPage {
@@ -285,8 +315,8 @@ export const getCampaigns = createListFetcher<CampaignStat>('campaigns', 'campai
 
 // ─── Stats & Realtime ───────────────────────────────────────────────
 
-export function getStats(siteId: string, startDate?: string, endDate?: string, filters?: string, period?: string): Promise<Stats> {
-  return apiRequest<Stats>(`/sites/${siteId}/stats${buildQuery({ startDate, endDate, filters, period })}`)
+export function getStats(siteId: string, startDate?: string, endDate?: string, filters?: string, period?: string): Promise<StatsResponse> {
+  return apiRequest<StatsResponse>(`/sites/${siteId}/stats${buildQuery({ startDate, endDate, filters, period })}`)
 }
 
 export function getPublicStats(siteId: string, startDate?: string, endDate?: string): Promise<Stats> {
@@ -359,6 +389,19 @@ export interface DashboardData {
    *  The counts are reported rather than silently applied so a viewer can see that
    *  the rows do not sum to the total on purpose. */
   suppression?: DashboardSuppression
+  /**
+   * Whether the headline and the chart include imported history, and which days
+   * (PULSE-83). Speaks for the headline and the series; each card speaks for
+   * itself in `imported_cards`.
+   */
+  imported?: ImportedProvenance
+  /**
+   * Each importable card's own provenance, keyed by its dimension (page,
+   * entry_page, exit_page, referrer, channel, campaign, country, region, city,
+   * browser, os, device, language, screen_resolution). Only the cards this
+   * response carries.
+   */
+  imported_cards?: Record<string, ImportedProvenance>
 }
 
 export interface DashboardSuppression {
