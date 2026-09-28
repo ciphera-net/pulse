@@ -25,7 +25,9 @@ import {
   runImport,
   type Transport,
 } from '../../index'
+import { FATHOM_FIXTURE_RANGE, fathomFixtureFiles } from '../fixtures/fathom-export'
 import { FIXTURE_RANGE, plausibleFixtureFile, plausibleFixtureZip } from '../fixtures/plausible-export'
+import { UMAMI_FIXTURE_RANGE, umamiFixtureCsv, umamiFixtureFile } from '../fixtures/umami-export'
 
 export interface FetchTransportOptions {
   /** The API origin, e.g. the staging API; requests go to `${apiBase}/api/v1${path}`. */
@@ -91,8 +93,12 @@ export async function servedSha256(path: string = DEFAULT_WORKER_URL): Promise<s
 const harness = {
   DEFAULT_WORKER_URL,
   FIXTURE_RANGE,
+  // The synthetic Fathom export (M7 gate 7), for a run against a build with
+  // Fathom registered: it is not registered in any shipped build (M7-o).
+  FATHOM_FIXTURE_RANGE,
   ImportError,
   deleteImport,
+  fathomFixtureFiles,
   fetchTransport,
   getImportStatus,
   getUploadWindow,
@@ -102,6 +108,11 @@ const harness = {
   readCookie,
   runImport,
   servedSha256,
+  // The synthetic Umami export (M8 gate 3), for the live contract run and
+  // staging: Umami is registered, so any build with M8 in it takes it.
+  UMAMI_FIXTURE_RANGE,
+  umamiFixtureCsv,
+  umamiFixtureFile,
 }
 
 ;(globalThis as { PulseImportHarness?: typeof harness }).PulseImportHarness = harness

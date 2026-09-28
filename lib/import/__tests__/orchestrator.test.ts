@@ -9,10 +9,20 @@
 
 import { describe, expect, it } from 'vitest'
 import { ImportError } from '../errors'
-import { DEFAULT_WORKER_URL, prepareImport, runImport, deleteImport, type ImportEvent, type ImportOptions } from '../index'
+import {
+  DEFAULT_WORKER_URL,
+  MAX_UPLOAD_FILES,
+  prepareImport,
+  runImport,
+  deleteImport,
+  type ImportEvent,
+  type ImportOptions,
+} from '../index'
 import { PLAN_LIMITS } from '../core/plan'
 import { runPipeline } from '../pipeline'
-import { PROTOCOL_VERSION } from '../protocol'
+import { IMPORT_SOURCES, SOURCE_META } from '../source-meta'
+import { PROTOCOL_VERSION, type FromWorker, type NamedFile, type PrepareRequest, type ToWorker } from '../protocol'
+import { createWorkerHost } from '../worker-host'
 import { plausibleFixtureFile } from './fixtures/plausible-export'
 import { FakeImportServer } from './support/fake-server'
 import { inProcessWorker, workerDouble, type TestWorker } from './support/workers'
@@ -57,9 +67,9 @@ async function failure(p: Promise<unknown>): Promise<ImportError> {
 }
 
 /** Every row the plan would send, table by table, for comparing with what the server stored. */
-async function expectedRows(file: Blob) {
+async function expectedRows(file: File) {
   const { parts } = await runPipeline(
-    { source: 'plausible', file, clip: null, timeZone: 'Europe/Brussels' },
+    { source: 'plausible', files: [file], clip: null, timeZone: 'Europe/Brussels', siteDomain: null },
     { planLimits: SMALL },
   )
   const out: Record<string, unknown[]> = { daily: [], monthly: [], dimensions: [], acquisition: [] }
@@ -114,6 +124,21 @@ describe('runImport', () => {
     expect(server.requests[0].path).toContain('source_timezone=America%2FNew_York')
     const create = server.requests.find((r) => r.method === 'POST' && r.path === '/sites/site-1/data-imports')
     expect(JSON.parse(create?.body ?? '{}').source_timezone).toBe('America/New_York')
+  })
+
+  it("passes the upload window's site_domain through to the worker's prepare message (M9-j')", async () => {
+    const { workers, options } = setup()
+    await runImport(options)
+    const prepare = workers[0].received.find((m) => m.type === 'prepare') as PrepareRequest
+    expect(prepare.siteDomain).toBe('example.com')
+  })
+
+  it('passes null through, unmodified, when the server has not shipped site_domain yet', async () => {
+    const { server, workers, options } = setup()
+    server.siteDomain = null
+    await runImport(options)
+    const prepare = workers[0].received.find((m) => m.type === 'prepare') as PrepareRequest
+    expect(prepare.siteDomain).toBeNull()
   })
 
   it('refuses a zone that is not one, before asking the server anything', async () => {
@@ -212,6 +237,30 @@ describe('resume', () => {
     expect(e.detail.import_id).toBe([...server.imports.keys()][0])
     // Only the upload-window read went out.
     expect(server.requests.slice(before).map((r) => r.method)).toEqual(['GET'])
+  })
+
+  it('names a different file plan_mismatch even when none of its days fall in the stored range', async () => {
+    const { server, options } = setup()
+    let batches = 0
+    server.fault = (req) => (req.path.endsWith('/batches') && ++batches > 1 ? { respond: { status: 500, body: {}, retryAfterSeconds: null } } : null)
+    await failure(runImport({ ...options, client: { ...fast, maxAttempts: 1 } }))
+    server.fault = null
+    const before = server.requests.length
+    // The same export shape, a month later: every day is AFTER the stored range, so
+    // clipping leaves nothing, which must read as another file, not "nothing to import".
+    for (const start of ['2026-04-01', '2026-01-01']) {
+      const e = await failure(prepareImport({ ...options, file: plausibleFixtureFile(undefined, { start }) }))
+      expect(e.code).toBe('plan_mismatch')
+      expect(e.detail.import_id).toBe([...server.imports.keys()][0])
+    }
+    expect(server.requests.slice(before).map((r) => r.method)).toEqual(['GET', 'GET'])
+  })
+
+  it('still names an empty file for a new import no_data_in_range', async () => {
+    const { server, options } = setup()
+    server.allowedFrom = '2026-05-01'
+    server.allowedThrough = '2026-05-31'
+    expect((await failure(runImport(options))).code).toBe('no_data_in_range')
   })
 
   it('revives an import the server failed as abandoned', async () => {
@@ -319,5 +368,151 @@ describe('failures on the worker side', () => {
     const last = events.at(-1)
     expect(last?.type).toBe('error')
     expect((last as Extract<ImportEvent, { type: 'error' }>).error.code).toBe('wrong_file')
+  })
+})
+
+// M7-a and §3.12c amendment 1: an import is the LIST of files the customer
+// chose. `file` stays for a caller written before that (the staging harness,
+// the settings screen); exactly one of `file` and `files` is set, and the
+// count is checked before the worker starts or the server is asked anything.
+describe('the files an import reads', () => {
+  const isPrepare = (m: ToWorker): m is PrepareRequest => m.type === 'prepare'
+
+  /** A File that fails the test if anything reads a byte of it. */
+  function untouchable(name: string): File {
+    const f = new File(['never read'], name)
+    const boom = () => {
+      throw new Error(`${name} was read`)
+    }
+    Object.defineProperty(f, 'slice', { value: boom })
+    Object.defineProperty(f, 'stream', { value: boom })
+    Object.defineProperty(f, 'arrayBuffer', { value: boom })
+    Object.defineProperty(f, 'text', { value: boom })
+    return f
+  }
+
+  it('reads `files: [zip]` exactly as it reads `file: zip`: the same plan, the same rows, the same create request', async () => {
+    const single = setup()
+    const one = await runImport(single.options)
+    const list = setup({ file: undefined, files: [plausibleFixtureFile()] })
+    const two = await runImport(list.options)
+    expect(two.fingerprint).toBe(one.fingerprint)
+    expect(list.server.imports.get(two.id)?.rows).toEqual(single.server.imports.get(one.id)?.rows)
+    const body = (x: typeof single) =>
+      x.server.requests.find((r) => r.method === 'POST' && r.path === '/sites/site-1/data-imports')?.body
+    expect(body(list)).toBe(body(single))
+  })
+
+  it('hands the worker a list of files and never a lone `file`, at protocol version 2', async () => {
+    const { workers, options } = setup()
+    await runImport(options)
+    const prepare = workers[0].received.find(isPrepare)
+    expect(prepare).toBeDefined()
+    expect(PROTOCOL_VERSION).toBe(2)
+    expect(prepare).toMatchObject({ protocol: 2 })
+    expect(Object.keys(prepare as object)).toContain('files')
+    expect(Object.keys(prepare as object)).not.toContain('file')
+    const files = prepare?.files ?? []
+    expect(files).toHaveLength(1)
+    expect(files[0].name).toBe('plausible-export.zip')
+  })
+
+  it('gives a bare Blob a name, so every file the worker reads has one to echo', async () => {
+    const { workers, options } = setup({ file: new Blob([await plausibleFixtureFile().arrayBuffer()]) })
+    expect((await runImport(options)).status).toBe('completed')
+    expect(workers[0].received.find(isPrepare)?.files[0].name).toBe('export')
+  })
+
+  it.each([
+    ['neither `file` nor `files`', { file: undefined }, 'Choose a file to import.'],
+    ['an empty list', { file: undefined, files: [] as File[] }, 'Choose a file to import.'],
+    [
+      'both `file` and `files`',
+      { files: [plausibleFixtureFile()] },
+      'Choose the export once: as one file or as a list of files, not both.',
+    ],
+  ])('refuses %s as missing_file, before the worker or the server', async (_what, over, message) => {
+    const { server, workers, events, options } = setup(over as Partial<ImportOptions>)
+    const e = await failure(runImport(options))
+    expect(e.code).toBe('wrong_file')
+    expect(e.detail).toEqual({ reason: 'missing_file' })
+    expect(e.message).toBe(message)
+    expect(server.requests).toHaveLength(0)
+    expect(workers).toHaveLength(0)
+    expect(events.at(-1)).toMatchObject({ type: 'error' })
+  })
+
+  it(`refuses more than MAX_UPLOAD_FILES (${MAX_UPLOAD_FILES}) files as too_many_files, reading none of them`, async () => {
+    expect(MAX_UPLOAD_FILES).toBe(16)
+    const files = Array.from({ length: MAX_UPLOAD_FILES + 1 }, (_, i) => untouchable(`f${i}.csv`))
+    const { server, workers, options } = setup({ file: undefined, files })
+    const e = await failure(runImport(options))
+    expect(e.code).toBe('too_many_files')
+    expect(e.detail).toEqual({ limit: 16, observed: 17 })
+    expect(server.requests).toHaveLength(0)
+    expect(workers).toHaveLength(0)
+  })
+
+  it('refuses a second file for a source whose export is one file, reading neither', async () => {
+    const { server, workers, options } = setup({ file: undefined, files: [untouchable('a.zip'), untouchable('b.zip')] })
+    const e = await failure(runImport(options))
+    expect(e.code).toBe('wrong_file')
+    expect(e.detail).toEqual({ reason: 'duplicate_file', limit: 1, observed: 2 })
+    // In the source's own words: this guard fires before the parser's own
+    // refusal can, so a generic sentence here is the one the customer sees.
+    expect(e.message).toBe("Choose one file: Plausible's export is one ZIP.")
+    expect(server.requests).toHaveLength(0)
+    expect(workers).toHaveLength(0)
+  })
+
+  it('every single-file source names its own export in its second-file refusal', () => {
+    for (const source of IMPORT_SOURCES) {
+      const meta = SOURCE_META[source]
+      if (meta.fileCount !== 'single') continue
+      expect(meta.oneFileMessage).toMatch(/^Choose one file: /)
+      expect(meta.oneFileMessage).not.toBe('Choose one file: this export is a single file.')
+    }
+  })
+
+  it('names too_many_files before a single-file source\'s second-file refusal, so the count is the first thing said', async () => {
+    const files = Array.from({ length: MAX_UPLOAD_FILES + 1 }, (_, i) => untouchable(`f${i}.zip`))
+    const { options } = setup({ file: undefined, files })
+    expect((await failure(runImport(options))).code).toBe('too_many_files')
+  })
+
+  it.each([
+    ['no list of files', undefined],
+    ['a lone file where the list belongs', new File(['never read'], 'lone.zip')],
+  ])('a worker handed %s refuses the prepare by name, and plans nothing', async (_what, files) => {
+    const posted: FromWorker[] = []
+    const host = createWorkerHost((m) => posted.push(m))
+    await host({
+      type: 'prepare',
+      id: 7,
+      protocol: PROTOCOL_VERSION,
+      source: 'plausible',
+      files: files as unknown as readonly NamedFile[],
+      clip: null,
+      timeZone: 'UTC',
+      siteDomain: null,
+    })
+    expect(posted).toEqual([
+      {
+        type: 'error',
+        id: 7,
+        error: expect.objectContaining({
+          code: 'worker_failed',
+          message: 'The page handed the import worker no list of files to read.',
+        }),
+      },
+    ])
+  })
+
+  it('the worker checks the count too, for a caller that went round the orchestrator', async () => {
+    const none = await failure(runPipeline({ source: 'plausible', files: [], clip: null, timeZone: 'UTC', siteDomain: null }))
+    expect(none.detail).toEqual({ reason: 'missing_file' })
+    const many = Array.from({ length: MAX_UPLOAD_FILES + 1 }, (_, i) => untouchable(`f${i}.csv`))
+    const over = await failure(runPipeline({ source: 'plausible', files: many, clip: null, timeZone: 'UTC', siteDomain: null }))
+    expect(over.code).toBe('too_many_files')
   })
 })

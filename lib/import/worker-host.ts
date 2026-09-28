@@ -46,10 +46,19 @@ export function createWorkerHost(
         if (!isImportSource(message.source)) {
           throw new ImportError('source_not_enabled', `Imports from ${String(message.source)} are not available.`)
         }
+        if (!Array.isArray(message.files)) {
+          throw new ImportError('worker_failed', 'The page handed the import worker no list of files to read.')
+        }
         prepared = null
         let lastProgress = -Infinity
         const result = await runPipeline(
-          { source: message.source, file: message.file, clip: message.clip, timeZone: message.timeZone },
+          {
+            source: message.source,
+            files: message.files,
+            clip: message.clip,
+            timeZone: message.timeZone,
+            siteDomain: message.siteDomain ?? null,
+          },
           {
             ...options.hooks,
             onReading: (bytesRead, bytesTotal) => {

@@ -1,5 +1,8 @@
 'use client'
 
+import { ImportedCardNote } from '@/components/dashboard/ImportedCardNote'
+import type { ImportedProvenance } from '@/lib/api/stats'
+import type { ImportedDimension } from '@/lib/import/source-display'
 import { useMemo, useState } from 'react'
 import { getBrowserIcon, getOSIcon, getDeviceIcon } from '@/lib/utils/icons'
 import { Monitor } from '@phosphor-icons/react'
@@ -32,9 +35,14 @@ interface TechSpecsProps {
   onFilter?: (filter: DimensionFilter) => void
   /** Realtime mode — an empty block reads the one realtime line (CardEmptyState). */
   live?: boolean
+  /** Each card's imported-history provenance, from the dashboard response (PULSE-118). */
+  importedCards?: Record<string, ImportedProvenance>
 }
 
 type Tab = 'browsers' | 'os' | 'devices' | 'screens'
+
+/** The dashboard's `imported_cards` key each tab reads (PULSE-118). */
+const TAB_DIMENSION: Record<Tab, ImportedDimension> = { browsers: 'browser', os: 'os', devices: 'device', screens: 'screen_resolution' }
 
 const TAB_TO_KIND: Record<Tab, FullListKind> = {
   browsers: 'browsers',
@@ -64,7 +72,7 @@ const LIMIT = 7
 
 const TAB_TO_DIMENSION: Record<string, string> = { browsers: 'browser', os: 'os', devices: 'device', screens: 'screen_resolution' }
 
-export default function TechSpecs({ browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter, live = false}: TechSpecsProps) {
+export default function TechSpecs({ browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter, live = false, importedCards }: TechSpecsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('browsers')
   type TechItem = { name: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null; icon: React.ReactNode }
 
@@ -220,6 +228,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
         )}
       </div>
 
+      <ImportedCardNote card={importedCards?.[TAB_DIMENSION[activeTab]]} dimension={TAB_DIMENSION[activeTab]} />
       <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label={activeTab} />
     </div>
   )

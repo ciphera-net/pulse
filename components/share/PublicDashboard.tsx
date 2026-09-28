@@ -344,6 +344,7 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
             setMultiDayInterval={setMultiDayInterval}
             onExport={() => setIsExportModalOpen(true)}
             intervalPicker={false}
+            imported={data?.imported}
           />
         </div>
 
@@ -386,6 +387,7 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
             totals={totals}
             memberFeatures={false}
             campaigns={data?.campaigns ?? []}
+            importedCards={data?.imported_cards}
           />
           <Audience
             countries={safeCountries}
@@ -399,6 +401,7 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
             dateRange={dateRange}
             totals={totals}
             memberFeatures={false}
+            importedCards={data?.imported_cards}
           />
         </div>
 
@@ -415,6 +418,7 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
             dateRange={dateRange}
             totals={totals}
             memberFeatures={false}
+            importedCards={data?.imported_cards}
           />
         </div>
 
@@ -430,6 +434,7 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
             dateRange={dateRange}
             totals={totals}
             memberFeatures={false}
+            importedCards={data?.imported_cards}
           />
           <ContentSignals
             scrollDepth={data?.scroll_depth}

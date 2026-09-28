@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip } from '@/components/ui/area-chart'
+import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip, ReferenceLine as VisxReferenceLine } from '@/components/ui/area-chart'
 import { curveLinear } from 'd3-shape'
 import { PERIOD_ENDS_NOW } from '@/lib/constants/periods'
 import { REALTIME_EMPTY_LINE } from '@/lib/dashboard/realtimeRange'
@@ -19,7 +19,8 @@ import { guardedPctChange, guardedPointChange, type PctChangeResult } from '@/li
 import { RailDelta } from '@/components/funnels/FunnelRail'
 import RailSparkline from '@/components/dashboard/RailSparkline'
 import { EmptyState } from '@/components/ui/EmptyState'
-import type { DailyStat, Stats } from '@/lib/api/stats'
+import type { DailyStat, ImportedProvenance, Stats } from '@/lib/api/stats'
+import { importBoundaryDay, importBoundaryLabel, importBoundaryX, railIncludesImported } from '@/lib/dashboard/importBoundary'
 import { METRIC_TERMS, visitorsTerm } from '@/lib/dashboard/terms'
 import { MetricInfoTip, buildExample } from '@/components/dashboard/MetricInfoTip'
 import type { MetricType } from '@/lib/dashboard/metrics'
@@ -73,7 +74,21 @@ interface CommandDeckProps {
   // is configured. Omitted on the share surface, whose payload lacks the
   // column; the window-neutral registry sentence is used there.
   identityWindowDays?: IdentityWindowDays
+  /**
+   * Imported-history provenance, as the responses said it (PULSE-118, dashboard
+   * option 2): the current range's (the dashboard's `imported`) and the
+   * comparison period's (`/stats`' `imported`). Absent means nothing to say.
+   */
+  imported?: ImportedProvenance | null
+  prevImported?: ImportedProvenance | null
 }
+
+/**
+ * The rail rows whose numbers imported days merge into. Bounce rate and visit
+ * duration stay Pulse's own on every range (D2), so "incl. imported days" under
+ * them would be false.
+ */
+const IMPORT_MERGED_METRICS: ReadonlySet<MetricType> = new Set(['visitors', 'pageviews', 'pages_per_visit'])
 
 // The four rail metrics read straight off Stats. Named explicitly rather than
 // `keyof Stats`, which also spans the InfoTip example counts — optional fields
@@ -141,6 +156,8 @@ export default function CommandDeck({
   setMultiDayInterval,
   onExport,
   identityWindowDays,
+  imported,
+  prevImported,
 }: CommandDeckProps) {
   // ─── Chart data (site wall clock, F10) ─────────────────────────────
   const chartData = useMemo(() => data.map((item) => {
@@ -180,6 +197,11 @@ export default function CommandDeck({
       return { ...m, title, value, change }
     })
   }, [stats, prevStats, identityWindowDays])
+
+  // Imported history (M11-h), all server-said: the boundary line on the hero
+  // chart, and the rail's word when this range or its comparison includes it.
+  const boundaryDay = importBoundaryDay(imported, dateRange)
+  const railImported = railIncludesImported(imported, prevImported)
 
   const hasData = data.length > 0
   const hasAnyNonZero = hasData && chartData.some((d) => ((d[metric] as number | null) ?? 0) > 0)
@@ -243,6 +265,7 @@ export default function CommandDeck({
                   : <AnimatedNumber value={m.value} format={m.format as (v: number) => string} className="mt-0.5 block text-xl font-semibold tabular-nums text-white" />}
                 <span className="mt-0.5 block truncate text-[11px] text-neutral-500">
                   {m.context}
+                  {railImported && IMPORT_MERGED_METRICS.has(m.key) && ' · incl. imported days'}
                 </span>
               </div>
               <span id={`deck-def-${m.key}`} className="sr-only">
@@ -363,6 +386,12 @@ export default function CommandDeck({
                   // hour is never claimed as a measured zero.
                   missingAsZero={metric === 'bounce_rate' || metric === 'avg_duration' || metric === 'pages_per_visit'}
                 />
+                {/* The first day Pulse measured, when the range includes imported
+                    days before it (dashboard option 2): the label reads what lies
+                    to its left. Drawn by the server's provenance only. */}
+                {boundaryDay && (
+                  <VisxReferenceLine x={importBoundaryX(boundaryDay)} label={importBoundaryLabel(imported)} />
+                )}
                 <VisxXAxis
                   numTicks={Math.min(chartData.length, 10)}
                   // Time-only labels are unambiguous inside one day (or the

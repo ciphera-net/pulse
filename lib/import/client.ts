@@ -431,10 +431,16 @@ export function parseWindow(v: unknown): UploadWindow {
   if (!isDateOrNull(v.allowed_from) || !isDateOrNull(v.allowed_through)) {
     throw malformed('the upload window has no allowed range')
   }
+  // Additive (M9-j'): absent on an older server's response, which must still
+  // parse — never required, only accepted when present and a string.
+  if (!(v.site_domain === undefined || v.site_domain === null || typeof v.site_domain === 'string')) {
+    throw malformed('the upload window has a non-string site_domain')
+  }
   return {
     ...(v as unknown as UploadWindow),
     allowed_from: v.allowed_from,
     allowed_through: v.allowed_through,
+    site_domain: typeof v.site_domain === 'string' ? v.site_domain : null,
     existing_import: v.existing_import == null ? null : parseStatus(v.existing_import),
   }
 }

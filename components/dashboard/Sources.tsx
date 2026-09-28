@@ -1,5 +1,8 @@
 'use client'
 
+import { ImportedCardNote } from '@/components/dashboard/ImportedCardNote'
+import type { ImportedProvenance } from '@/lib/api/stats'
+import type { ImportedDimension } from '@/lib/import/source-display'
 import { useMemo, useState } from 'react'
 import Image from 'next/image'
 import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
@@ -51,6 +54,9 @@ import { Select, Switcher } from '@ciphera-net/facet'
  */
 
 type View = 'referrers' | 'channels' | 'campaigns'
+
+/** The dashboard's `imported_cards` key each view reads (PULSE-118). */
+const VIEW_DIMENSION: Record<View, ImportedDimension> = { referrers: 'referrer', channels: 'channel', campaigns: 'campaign' }
 type UtmDimension = 'source' | 'medium' | 'campaign' | 'term' | 'content'
 // The ids that reach the InfoTip registry: the two list views plus the five
 // UTM dimensions. The `campaigns` VIEW never reaches it — on that view the
@@ -94,6 +100,8 @@ interface SourcesProps {
   campaigns?: CampaignStat[]
   /** Realtime mode — an empty block reads the one realtime line (CardEmptyState). */
   live?: boolean
+  /** Each card's imported-history provenance, from the dashboard response (PULSE-118). */
+  importedCards?: Record<string, ImportedProvenance>
 }
 
 const LIMIT = 7
@@ -168,6 +176,7 @@ export default function Sources({
   onFilter,
   campaigns: payloadRows,
   live = false,
+  importedCards,
 }: SourcesProps) {
   // A row that filters is a real control; one that cannot is inert text.
   const Row = onFilter ? 'button' : 'div'
@@ -411,6 +420,7 @@ export default function Sources({
         )}
       </div>
 
+      <ImportedCardNote card={importedCards?.[VIEW_DIMENSION[view]]} dimension={VIEW_DIMENSION[view]} />
       <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label={view} />
     </div>
   )

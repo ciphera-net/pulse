@@ -1,0 +1,36 @@
+created_at,session_id,visit_id,event_type,event_name,hostname,url_path,referrer_domain,utm_source,utm_medium,utm_campaign,browser,os,device,screen,language,country,region,city
+2026-09-22 09:00:00+00,b10a8e25-f0bd-5d6c-b99f-cbc772235fe7,118de16d-9e81-51e0-8cda-3d132f442e18,1,,example-import-test.local,/,google.com,,,,chrome,Windows 10,desktop,2560x1440,en-US,US,US-OH,Cleveland
+2026-09-22 09:03:00+00,b10a8e25-f0bd-5d6c-b99f-cbc772235fe7,118de16d-9e81-51e0-8cda-3d132f442e18,1,,example-import-test.local,/pricing/,,,,,chrome,Windows 10,desktop,2560x1440,en-US,US,US-OH,Cleveland
+2026-09-22 09:08:00+00,b10a8e25-f0bd-5d6c-b99f-cbc772235fe7,118de16d-9e81-51e0-8cda-3d132f442e18,1,,example-import-test.local,/contact,,,,,chrome,Windows 10,desktop,2560x1440,en-US,US,US-OH,Cleveland
+2026-09-23 14:00:00+00,b10a8e25-f0bd-5d6c-b99f-cbc772235fe7,09a40e16-aedc-5a3e-8482-6268717ef92f,1,,example-import-test.local,/blog/,,,,,chrome,Windows 10,desktop,2560x1440,en-US,US,US-OH,Cleveland
+2026-09-23 14:02:00+00,b10a8e25-f0bd-5d6c-b99f-cbc772235fe7,09a40e16-aedc-5a3e-8482-6268717ef92f,1,,example-import-test.local,/blog/post-one,,,,,chrome,Windows 10,desktop,2560x1440,en-US,US,US-OH,Cleveland
+2026-09-23 18:30:00+00,6e17473d-3efa-5371-a6b7-5565b151a7b7,d602a039-7b84-5483-923e-1df94ae62e5b,1,,example-import-test.local,/,t.co,,,,ios,iOS,mobile,375x812,de-DE,GB,GB-ENG,East Finchley
+2026-09-24 10:05:00+00,73931865-df53-53df-8131-5f88e4203139,21931ad7-5c2e-514a-a1e8-104acf5246e7,1,,example-import-test.local,/features,,,,,ios,iOS,tablet,768x1024,en-GB,DE,,
+2026-09-24 10:09:00+00,73931865-df53-53df-8131-5f88e4203139,21931ad7-5c2e-514a-a1e8-104acf5246e7,1,,example-import-test.local,/pricing/,,,,,ios,iOS,tablet,768x1024,en-GB,DE,,
+2026-09-24 20:15:00+00,20586f17-d169-50a2-89be-5d55c3d2e40a,17015f55-23b5-5f44-a204-7ac809ae80eb,1,,example-import-test.local,/,bing.com,,,,chrome,Android OS,mobile,412x915,en-US,JP,JP-13,Koishikawa
+2026-09-24 20:19:00+00,20586f17-d169-50a2-89be-5d55c3d2e40a,17015f55-23b5-5f44-a204-7ac809ae80eb,1,,example-import-test.local,/about,,,,,chrome,Android OS,mobile,412x915,en-US,JP,JP-13,Koishikawa
+2026-09-24 20:24:00+00,20586f17-d169-50a2-89be-5d55c3d2e40a,17015f55-23b5-5f44-a204-7ac809ae80eb,1,,example-import-test.local,/about/,,,,,chrome,Android OS,mobile,412x915,en-US,JP,JP-13,Koishikawa
+2026-09-25 08:00:00+00,18d4ba1a-8f91-5246-8718-f9e4f1138e5f,467ebb91-ae5f-51ae-b257-8b649b9382de,1,,example-import-test.local,/,,newsletter,email,september-launch,firefox,Linux,desktop,2560x1440,en-GB,SE,SE-S,Säffle
+2026-09-25 08:04:00+00,18d4ba1a-8f91-5246-8718-f9e4f1138e5f,467ebb91-ae5f-51ae-b257-8b649b9382de,1,,example-import-test.local,/features,,,,,firefox,Linux,desktop,2560x1440,en-GB,SE,SE-S,Säffle
+2026-09-25 12:40:00+00,0c929044-85f0-5594-8d08-1afb3fd236e0,90047ded-2567-5e91-8940-d184da3341a8,1,,example-import-test.local,/,facebook.com,,,,edge-chromium,Windows 10,laptop,1920x1080,es-ES,AU,AU-VIC,Melbourne
+2026-09-25 16:00:00+00,84441b4e-5482-5ce2-8996-e82ab68088e3,87f0c835-95a8-53c3-8dba-8b44c1eb31ff,1,,www.example-import-test.local,/,duckduckgo.com,,,,samsung,Android OS,mobile,384x854,de-DE,BR,BR-SP,São Paulo
+2026-09-25 16:02:00+00,84441b4e-5482-5ce2-8996-e82ab68088e3,87f0c835-95a8-53c3-8dba-8b44c1eb31ff,1,,www.example-import-test.local,/pricing/,,,,,samsung,Android OS,mobile,384x854,de-DE,BR,BR-SP,São Paulo
+2026-09-26 09:00:00+00,f3748039-1005-5064-9d21-e0a9615b59ae,6fe70754-7e64-57bf-8c78-e4b396c43764,1,,example-import-test.local,/blog/,,,,,safari,Mac OS,laptop,1920x1080,es-ES,US,,
+2026-09-26 09:05:00+00,f3748039-1005-5064-9d21-e0a9615b59ae,6fe70754-7e64-57bf-8c78-e4b396c43764,1,,example-import-test.local,/blog/post-two/,,,,,safari,Mac OS,laptop,1920x1080,es-ES,US,,
+2026-09-26 09:09:00+00,f3748039-1005-5064-9d21-e0a9615b59ae,6fe70754-7e64-57bf-8c78-e4b396c43764,1,,example-import-test.local,/contact,,,,,safari,Mac OS,laptop,1920x1080,es-ES,US,,
+2026-09-26 15:30:00+00,713b70b5-a7a6-577b-8bfa-aa37a2d85a79,befc9813-4c91-51a7-9dd9-e041b2db2393,1,,example-import-test.local,/features,news.ycombinator.com,twitter,social,launch-week,chrome,Android OS,tablet,800x1280,en-US,CA,CA-ON,Toronto
+2026-09-26 21:00:00+00,7fcb4829-befc-52bc-94e5-7beaf8d76493,15da76d6-0aea-591b-b331-7f7665f5f79d,1,,example-import-test.local,/about,,,,,chrome,Chrome OS,laptop,1920x1080,fr-FR,US,US-WA,Tacoma
+2026-09-27 06:00:00+00,b10a8e25-f0bd-5d6c-b99f-cbc772235fe7,8085c5fd-ae8e-54d2-a72d-59cd0918ebfc,1,,example-import-test.local,/,,,,,chrome,Windows 10,desktop,2560x1440,en-US,US,US-OH,Cleveland
+2026-09-27 07:00:00+00,8a7abd83-4a67-5e94-acdf-6cfce0ff31e2,b8522a4e-e84c-5b9e-a323-9c1d113f3522,1,,example-import-test.local,/,google.com,,,,chrome,Windows 10,desktop,2560x1440,en-US,GB,GB-ENG,East Finchley
+2026-09-27 07:02:00+00,8a7abd83-4a67-5e94-acdf-6cfce0ff31e2,b8522a4e-e84c-5b9e-a323-9c1d113f3522,1,,example-import-test.local,/features,,,,,chrome,Windows 10,desktop,2560x1440,en-US,GB,GB-ENG,East Finchley
+2026-09-27 07:03:00+00,8a7abd83-4a67-5e94-acdf-6cfce0ff31e2,b8522a4e-e84c-5b9e-a323-9c1d113f3522,5,,,/features,,,,,chrome,Windows 10,desktop,2560x1440,en-US,GB,GB-ENG,East Finchley
+2026-09-27 07:06:00+00,8a7abd83-4a67-5e94-acdf-6cfce0ff31e2,b8522a4e-e84c-5b9e-a323-9c1d113f3522,1,,example-import-test.local,/pricing/,,,,,chrome,Windows 10,desktop,2560x1440,en-US,GB,GB-ENG,East Finchley
+2026-09-27 07:07:00+00,8a7abd83-4a67-5e94-acdf-6cfce0ff31e2,b8522a4e-e84c-5b9e-a323-9c1d113f3522,2,pricing_cta_click,example-import-test.local,/pricing/,,,,,chrome,Windows 10,desktop,2560x1440,en-US,GB,GB-ENG,East Finchley
+2026-09-27 11:00:00+00,5d8fe527-8cf8-5123-81a7-b81df8618269,b6d21a42-e789-5181-a1f6-968f22396823,1,,example-import-test.local,/,,,,,chrome,Windows 10,laptop,1440x900,de-DE,DE,,
+2026-09-27 11:01:00+00,5d8fe527-8cf8-5123-81a7-b81df8618269,b6d21a42-e789-5181-a1f6-968f22396823,2,newsletter_signup,example-import-test.local,/,,,,,chrome,Windows 10,laptop,1440x900,de-DE,DE,,
+2026-09-27 13:00:00+00,cd22ac3d-cacb-503c-b8d4-0bc2321c15cb,9d66963e-acac-55f5-8b66-9d2b41dad320,1,,example-import-test.local,/,google.com,,,,ios,iOS,mobile,375x812,fr-FR,US,US-OH,Cleveland
+2026-09-27 13:03:00+00,cd22ac3d-cacb-503c-b8d4-0bc2321c15cb,9d66963e-acac-55f5-8b66-9d2b41dad320,1,,example-import-test.local,/blog/,,,,,ios,iOS,mobile,375x812,fr-FR,US,US-OH,Cleveland
+2026-09-27 13:04:00+00,cd22ac3d-cacb-503c-b8d4-0bc2321c15cb,9d66963e-acac-55f5-8b66-9d2b41dad320,2,outbound_click,example-import-test.local,/blog/,,,,,ios,iOS,mobile,375x812,fr-FR,US,US-OH,Cleveland
+2026-09-27 16:00:00+00,c856a05d-6501-565d-90d0-224844eae6ea,8ea690f4-671a-5454-b4f9-95f4448b1b77,1,,example-import-test.local,/account,,,,,chrome,Windows 10,laptop,1920x1080,en-US,NP,NP-P3,Kathmandu
+2026-09-27 19:45:00+00,eecf48d7-39fe-5805-a4bb-3df490fc0fdf,5818167e-40da-53c7-a5a1-1704756214ca,1,,example-import-test.local,/contact,facebook.com,,,,firefox,Linux,desktop,2560x1440,en-US,AU,AU-VIC,Melbourne
+2026-09-27 19:46:00+00,eecf48d7-39fe-5805-a4bb-3df490fc0fdf,5818167e-40da-53c7-a5a1-1704756214ca,2,contact_form_submit,example-import-test.local,/contact,,,,,firefox,Linux,desktop,2560x1440,en-US,AU,AU-VIC,Melbourne

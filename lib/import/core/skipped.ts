@@ -28,6 +28,17 @@ export type SkipReason =
   | 'missing_field'
   /** A count that is not a whole number between 0 and 1,000,000,000 (M2-k). */
   | 'bad_number'
+  /**
+   * A per-dimension row dated outside the range of the export's site-totals
+   * file (M7-g, Fathom's separately downloaded files). Not wrong, but a day
+   * with a breakdown and no total is not one Pulse creates.
+   */
+  | 'outside_totals_range'
+  /**
+   * A row naming a different website's export (M9-j, Simple Analytics' raw
+   * datapoints, which carry their own `hostname` column per row).
+   */
+  | 'hostname_mismatch'
 
 export const MAX_SAMPLES_PER_REASON = 5
 

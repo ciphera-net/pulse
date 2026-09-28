@@ -21,7 +21,9 @@ function getFocusable(container: HTMLElement): HTMLElement[] {
 import { useCan } from '@/lib/auth/permissions'
 import { cn } from '@/lib/utils'
 import { SiteHeaderIdentity } from '@/components/settings/SiteHeaderIdentity'
-import { navGroups, sectionOf, tabFor, type NavGroup, type NavTab, type Section } from '@/components/settings/nav'
+import { navGroups, sectionOf, tabFor, tabIsVisible, type NavGroup, type NavTab, type Section } from '@/components/settings/nav'
+import { useActiveSiteIdIfAny } from '@/components/settings/active-site'
+import { useImportAvailable } from '@/lib/import/useImportSources'
 import { useTeamState } from '@/lib/hooks/useTeamState'
 import {
   MastheadSlotProvider,
@@ -226,9 +228,12 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
     'audit.view': useCan('audit.view'),
   }
 
+  // The Import tab is listed only where the active site can import (M11-b).
+  const conditions = { import_available: useImportAvailable(useActiveSiteIdIfAny()) }
+
   const visibleGroups = navGroups(teamState).map((group) => ({
     ...group,
-    tabs: group.tabs.filter((tab) => (tab.requires ? (perm[tab.requires] ?? true) : true)),
+    tabs: group.tabs.filter((tab) => tabIsVisible(tab, perm, conditions)),
   })).filter((group) => group.tabs.length > 0)
 
   const activeGroup = section ? visibleGroups.find((g) => g.section === section) : undefined

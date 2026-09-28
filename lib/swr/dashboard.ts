@@ -47,6 +47,8 @@ import {
   getTimezones,
   getEventPropertyValues,
   type EventPropertyValue,
+  // /stats carries the provenance of the imported days it includes (PULSE-118).
+  type StatsResponse,
 } from '@/lib/api/stats'
 import {
   getJourneyTransitions,
@@ -76,7 +78,6 @@ import { getBunnyStatus, getBunnyOverview, getBunnyDailyStats, getBunnyRegions, 
 import type { BunnyStatus, BunnyOverview, BunnyDailyRow, BunnyRegionsResponse, BunnyLiveResponse } from '@/lib/api/bunny'
 import { getSubscription, type SubscriptionDetails } from '@/lib/api/billing'
 import type {
-  Stats,
   DailyStat,
   CampaignStat,
   DashboardData,
@@ -344,7 +345,7 @@ export function useDashboard(
 
 // * Hook for stats (refreshed less frequently)
 export function useStats(siteId: string, start: string, end: string, filters?: string, period?: string) {
-  return useSWR<Stats>(
+  return useSWR<StatsResponse>(
     siteId && (period || (start && end)) ? ['stats', siteId, period ?? '', start, end, filters] : null,
     () => getStats(siteId, start, end, filters, period),
     {

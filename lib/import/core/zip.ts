@@ -25,7 +25,7 @@
 //
 // A plain `.gz` (one CSV, compressed) goes through the platform's
 // DecompressionStream('gzip') behind the same byte guards; an uncompressed file
-// is passed through as one entry.
+// is passed through as one entry, behind the entry and total caps (M7-b).
 
 import { Unzip, UnzipInflate, type UnzipFile } from 'fflate'
 import { ImportError, wrongFile, type ZipGuard } from '../errors'
@@ -46,6 +46,13 @@ export const ARCHIVE_LIMITS: Readonly<ArchiveLimits> = {
   maxRatio: 200,
 }
 
+/**
+ * The most files one import may carry (M7-a). Defined in schema.ts, which the
+ * main thread can import without pulling this module's decompressor into the
+ * page; re-exported here beside the other read limits.
+ */
+export { MAX_UPLOAD_FILES } from './schema'
+
 /** How much of the File is pushed into the decompressor at a time. */
 const PUSH_SLICE = 16 * 1024
 
@@ -63,10 +70,25 @@ export interface ReadOptions {
   onProgress?: (bytesRead: number, bytesTotal: number) => void
 }
 
-/** Sniffs the first bytes: a ZIP local header, a gzip member, or anything else. */
+/**
+ * The third and fourth bytes a ZIP can open with, after `PK`: a local file
+ * header (03 04), the end-of-central-directory record that is the whole of a
+ * ZIP with no entries (05 06), or the marker a split archive starts with
+ * (07 08). An empty ZIP is still a ZIP: taken for a plain file, it would be
+ * parsed as a CSV and refused with its binary bytes echoed as a header.
+ */
+const ZIP_OPENINGS: readonly (readonly [number, number])[] = [
+  [0x03, 0x04],
+  [0x05, 0x06],
+  [0x07, 0x08],
+]
+
+/** Sniffs the first bytes: a ZIP (see ZIP_OPENINGS), a gzip member, or anything else. */
 export async function detectInputKind(file: Blob): Promise<InputKind> {
   const head = new Uint8Array(await file.slice(0, 4).arrayBuffer())
-  if (head.length >= 4 && head[0] === 0x50 && head[1] === 0x4b && head[2] === 0x03 && head[3] === 0x04) return 'zip'
+  if (head.length >= 4 && head[0] === 0x50 && head[1] === 0x4b && ZIP_OPENINGS.some(([a, b]) => head[2] === a && head[3] === b)) {
+    return 'zip'
+  }
   if (head.length >= 2 && head[0] === 0x1f && head[1] === 0x8b) return 'gzip'
   return 'plain'
 }
@@ -256,8 +278,27 @@ export async function readGzip(file: Blob, name: string, sink: EntrySink, option
   sink.end()
 }
 
-/** Streams an uncompressed file into `sink` as it is. */
-export async function readPlain(file: Blob, sink: EntrySink, options: ReadOptions = {}): Promise<void> {
+/**
+ * Streams an uncompressed file into `sink` as it is, behind the same byte caps
+ * a ZIP entry gets (M7-b): a plain file never had a budget, and a plain upload
+ * is the one input no decompressor bounds.
+ *
+ * `budget` is optional. Omitted, the file gets a fresh budget of its own, sized
+ * from its own size, so a single plain file needs nothing more. A source that
+ * reads SEVERAL plain files (Fathom's seven) builds ONE budget sized from the
+ * SUM of their sizes and passes it into every call, so `maxTotalBytes` bounds
+ * the whole upload rather than whichever file happens to be read last, and a
+ * failure names the file whose bytes crossed the cap. The ratio guard is a
+ * structural no-op here (a plain read never produces more bytes than the file
+ * holds), and needs no special case.
+ */
+export async function readPlain(
+  file: Blob,
+  name: string,
+  sink: EntrySink,
+  options: ReadOptions = {},
+  budget: DecompressionBudget = new DecompressionBudget(options.limits ?? ARCHIVE_LIMITS, file.size),
+): Promise<void> {
   const reader = file.stream().getReader()
   let read = 0
   for (;;) {
@@ -265,11 +306,12 @@ export async function readPlain(file: Blob, sink: EntrySink, options: ReadOption
     try {
       next = await reader.read()
     } catch (e) {
-      throw asReadError(e, null)
+      throw asReadError(e, name)
     }
     if (next.done) break
     read += next.value.length
     try {
+      budget.add(name, read, next.value.length)
       sink.chunk(next.value)
     } catch (e) {
       await reader.cancel().catch(() => {})
