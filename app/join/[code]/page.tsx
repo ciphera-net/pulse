@@ -3,13 +3,14 @@
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useParams } from 'next/navigation'
 import { Spinner } from '@ciphera-net/facet'
-import { ID_API_URL } from '@/lib/api/client'
+import { API_URL } from '@/lib/api/client'
 import { useAuth } from '@/lib/auth/context'
 import { acceptInviteLink, InviteLinkInfo } from '@/lib/api/organization'
 import { initiateOAuthFlow, initiateSignupFlow } from '@/lib/api/oauth'
 import { ApiError } from '@/lib/api/client'
 import { rememberReturnTarget } from '@/lib/auth/return-target'
 import { activateTeam } from '@/lib/auth/switchOrganization'
+import { logger } from '@/lib/utils/logger'
 
 type PageState =
   | { type: 'loading' }
@@ -20,7 +21,7 @@ type PageState =
 
 /** Fetches public invite link details by code (unauthenticated). */
 async function getPublicInviteLink(code: string): Promise<InviteLinkInfo> {
-  const res = await fetch(`${ID_API_URL}/api/v1/invite-links/${code}`)
+  const res = await fetch(`${API_URL}/api/v1/invite-links/${code}`)
   if (res.status === 410) {
     const data = await res.json().catch(() => ({}))
     throw new Error(data.reason || 'expired')
@@ -75,8 +76,11 @@ function JoinContent() {
       const result = await acceptInviteLink(code)
       try {
         await activateTeam(result.organization_id)
-      } catch {
-        // Context switch is best-effort; proceed to dashboard regardless
+      } catch (e) {
+        // Context switch is best-effort; proceed to dashboard regardless, but
+        // a failure here is not nothing — the destination page has to notice
+        // and repair it itself, which is worth knowing about.
+        logger.error('Could not switch into the joined team', e)
       }
       window.location.href = '/'
     } catch (err: unknown) {

@@ -1,65 +1,51 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// activateTeam is the bridge (Phase 2, PULSE-89): it still tells Ciphera ID
-// (switchContext → setSessionAction → setAccessToken) before recording
-// Pulse's OWN active-team preference (setActiveTeam → setActiveTeamAction).
-// switchOrganizationSession is the MCP consent page's (and the top bar's)
-// contract: activate, THEN refresh — and never navigate itself.
+// activateTeam records Pulse's OWN active-team preference — setActiveTeam for
+// the running tab, setActiveTeamAction for the pulse_team cookie. The bridge
+// that told Ciphera ID first (switchContext → setSessionAction →
+// setAccessToken) was deleted in Phase 5, PULSE-92. switchOrganizationSession
+// is the MCP consent page's (and the top bar's) contract: activate, THEN
+// refresh — and never navigate itself.
 
 const h = vi.hoisted(() => {
   const order: string[] = []
   return {
     order,
-    switchContext: vi.fn(async (_id: string | null) => { order.push('switchContext'); return { access_token: 'tok_b', expires_in: 900 } }),
-    setSessionAction: vi.fn(async (_t: string) => {
-      order.push('setSessionAction')
-      return { success: true as const, user: { id: 'u1', email: 'a@b.c', totp_enabled: false } }
-    }),
     setActiveTeamAction: vi.fn(async (_id: string | null) => { order.push('setActiveTeamAction'); return { success: true } }),
-    setAccessToken: vi.fn((_t: string | null) => { order.push('setAccessToken') }),
     setActiveTeam: vi.fn((_id: string | null) => { order.push('setActiveTeam') }),
     refresh: vi.fn(async () => { order.push('refresh') }),
   }
 })
 
-vi.mock('@/lib/api/organization', () => ({ switchContext: h.switchContext }))
-vi.mock('@/app/actions/auth', () => ({ setSessionAction: h.setSessionAction, setActiveTeamAction: h.setActiveTeamAction }))
-vi.mock('@/lib/api/client', () => ({ setAccessToken: h.setAccessToken, setActiveTeam: h.setActiveTeam }))
+vi.mock('@/app/actions/auth', () => ({ setActiveTeamAction: h.setActiveTeamAction }))
+vi.mock('@/lib/api/client', () => ({ setActiveTeam: h.setActiveTeam }))
 
 import { activateTeam, switchOrganizationSession } from '@/lib/auth/switchOrganization'
 
 beforeEach(() => {
   h.order.length = 0
-  for (const fn of [h.switchContext, h.setSessionAction, h.setActiveTeamAction, h.setAccessToken, h.setActiveTeam, h.refresh]) fn.mockClear()
+  for (const fn of [h.setActiveTeamAction, h.setActiveTeam, h.refresh]) fn.mockClear()
 })
 
 describe('activateTeam', () => {
-  it('tells Ciphera ID first, THEN records the preference — the bridge order', async () => {
-    const result = await activateTeam('org_b')
+  it('sets the in-memory active team, THEN persists the cookie preference', async () => {
+    await activateTeam('org_b')
 
-    expect(h.order).toEqual(['switchContext', 'setSessionAction', 'setAccessToken', 'setActiveTeam', 'setActiveTeamAction'])
-    expect(h.switchContext).toHaveBeenCalledWith('org_b')
-    expect(h.setSessionAction).toHaveBeenCalledWith('tok_b')
-    expect(h.setAccessToken).toHaveBeenCalledWith('tok_b')
+    expect(h.order).toEqual(['setActiveTeam', 'setActiveTeamAction'])
     expect(h.setActiveTeam).toHaveBeenCalledWith('org_b')
     expect(h.setActiveTeamAction).toHaveBeenCalledWith('org_b')
-    expect(result.user.id).toBe('u1')
   })
 
-  it('throws before priming the Bearer or recording the preference when the session could not be stored', async () => {
-    h.setSessionAction.mockImplementationOnce(async () => { h.order.push('setSessionAction'); return { success: false } as never })
+  it('has already set the in-memory team before the cookie write can fail', async () => {
+    h.setActiveTeamAction.mockRejectedValueOnce(new Error('cookie store unavailable'))
 
-    await expect(activateTeam('org_b')).rejects.toThrow(/could not be stored/)
+    await expect(activateTeam('org_b')).rejects.toThrow('cookie store unavailable')
 
-    expect(h.order).toEqual(['switchContext', 'setSessionAction'])
-    expect(h.setAccessToken).not.toHaveBeenCalled()
-    expect(h.setActiveTeam).not.toHaveBeenCalled()
-    expect(h.setActiveTeamAction).not.toHaveBeenCalled()
+    expect(h.setActiveTeam).toHaveBeenCalledWith('org_b')
   })
 
   it('accepts null (clearing the team) the same way', async () => {
     await activateTeam(null)
-    expect(h.switchContext).toHaveBeenCalledWith(null)
     expect(h.setActiveTeam).toHaveBeenCalledWith(null)
     expect(h.setActiveTeamAction).toHaveBeenCalledWith(null)
   })
@@ -67,10 +53,10 @@ describe('activateTeam', () => {
 
 describe('activateTeam serialisation (Fix 2, PULSE-89 review)', () => {
   // Without this, the recovery handler and a person's own switch could
-  // interleave their two-step writes — recovery's switchContext/
-  // setSessionAction landing BETWEEN the person's own two steps.
+  // interleave their writes — recovery's setActiveTeam/setActiveTeamAction
+  // landing BETWEEN the person's own two steps.
 
-  it("two concurrent calls run strictly in order: the second's switchContext waits for the first's setActiveTeamAction to resolve", async () => {
+  it("two concurrent calls run strictly in order: the second's setActiveTeam waits for the first's setActiveTeamAction to resolve", async () => {
     // A holder object, not a `let`: TypeScript cannot see an assignment made
     // inside the mock's callback and would narrow a bare variable to `null`.
     const gate: { release: () => void } = { release: () => {} }
@@ -85,55 +71,53 @@ describe('activateTeam serialisation (Fix 2, PULSE-89 review)', () => {
 
     // Flush every microtask that CAN run right now: call 1 is parked inside
     // its (gated) setActiveTeamAction, so call 2 must not have started at
-    // all — not even its switchContext, the very first step.
+    // all — not even its setActiveTeam, the very first step.
     await new Promise((resolve) => setTimeout(resolve, 0))
-    expect(h.order).toEqual(['switchContext', 'setSessionAction', 'setAccessToken', 'setActiveTeam'])
-    expect(h.switchContext).toHaveBeenCalledTimes(1)
-    expect(h.switchContext).toHaveBeenCalledWith('org_a')
+    expect(h.order).toEqual(['setActiveTeam'])
+    expect(h.setActiveTeam).toHaveBeenCalledTimes(1)
+    expect(h.setActiveTeam).toHaveBeenCalledWith('org_a')
 
     gate.release()
     await p1
     await p2
 
     expect(h.order).toEqual([
-      'switchContext', 'setSessionAction', 'setAccessToken', 'setActiveTeam', 'setActiveTeamAction',
-      'switchContext', 'setSessionAction', 'setAccessToken', 'setActiveTeam', 'setActiveTeamAction',
+      'setActiveTeam', 'setActiveTeamAction',
+      'setActiveTeam', 'setActiveTeamAction',
     ])
-    expect(h.switchContext).toHaveBeenNthCalledWith(1, 'org_a')
-    expect(h.switchContext).toHaveBeenNthCalledWith(2, 'org_b')
+    expect(h.setActiveTeam).toHaveBeenNthCalledWith(1, 'org_a')
+    expect(h.setActiveTeam).toHaveBeenNthCalledWith(2, 'org_b')
   })
 
   it('a rejected first call does not block an already-queued second', async () => {
-    h.setSessionAction.mockImplementationOnce(async () => {
-      h.order.push('setSessionAction')
-      return { success: false } as never
+    h.setActiveTeamAction.mockImplementationOnce(async () => {
+      h.order.push('setActiveTeamAction')
+      throw new Error('cookie store unavailable')
     })
 
     const p1 = activateTeam('org_a')
     const p2 = activateTeam('org_b')
 
-    await expect(p1).rejects.toThrow(/could not be stored/)
-    const result = await p2
+    await expect(p1).rejects.toThrow('cookie store unavailable')
+    await expect(p2).resolves.toBeUndefined()
 
-    expect(h.switchContext).toHaveBeenNthCalledWith(1, 'org_a')
-    expect(h.switchContext).toHaveBeenNthCalledWith(2, 'org_b')
-    expect(h.setActiveTeam).toHaveBeenCalledWith('org_b')
-    expect(result.user.id).toBe('u1')
+    expect(h.setActiveTeam).toHaveBeenNthCalledWith(1, 'org_a')
+    expect(h.setActiveTeam).toHaveBeenNthCalledWith(2, 'org_b')
   })
 })
 
 describe('switchOrganizationSession', () => {
   it('activates the team, THEN refreshes — and goes nowhere itself', async () => {
     await switchOrganizationSession('org_b', h.refresh)
-    expect(h.order).toEqual(['switchContext', 'setSessionAction', 'setAccessToken', 'setActiveTeam', 'setActiveTeamAction', 'refresh'])
+    expect(h.order).toEqual(['setActiveTeam', 'setActiveTeamAction', 'refresh'])
   })
 
   it('throws before refreshing when activateTeam fails', async () => {
-    h.setSessionAction.mockImplementationOnce(async () => { h.order.push('setSessionAction'); return { success: false } as never })
+    h.setActiveTeamAction.mockRejectedValueOnce(new Error('cookie store unavailable'))
 
-    await expect(switchOrganizationSession('org_b', h.refresh)).rejects.toThrow(/could not be stored/)
+    await expect(switchOrganizationSession('org_b', h.refresh)).rejects.toThrow('cookie store unavailable')
 
-    expect(h.order).toEqual(['switchContext', 'setSessionAction'])
+    expect(h.order).toEqual(['setActiveTeam'])
     expect(h.refresh).not.toHaveBeenCalled()
   })
 })

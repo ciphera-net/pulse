@@ -29,22 +29,19 @@ vi.mock('@/lib/setup/context', () => ({
 
 vi.mock('@/lib/api/organization', () => ({
   createOrganization: vi.fn().mockResolvedValue({ id: 'org_new' }),
-  switchContext: vi.fn().mockResolvedValue({ access_token: 'tok' }),
 }))
 
 vi.mock('@/app/actions/auth', () => ({
-  setSessionAction: vi.fn().mockResolvedValue({ success: true, user: { id: 'u1', email: 'qa@x' } }),
   setActiveTeamAction: vi.fn().mockResolvedValue({ success: true }),
 }))
 
-const { apiRequest, setAccessToken } = vi.hoisted(() => ({
+const { apiRequest, setActiveTeam } = vi.hoisted(() => ({
   apiRequest: vi.fn().mockResolvedValue({ id: 'u1', email: 'qa@x', totp_enabled: false, org_id: 'org_new' }),
-  setAccessToken: vi.fn(),
+  setActiveTeam: vi.fn(),
 }))
 vi.mock('@/lib/api/client', () => ({
   default: apiRequest,
-  setAccessToken,
-  setActiveTeam: vi.fn(),
+  setActiveTeam,
 }))
 
 // Fix 3 (PULSE-89 review): the new team's role comes from Pulse's own /me,
@@ -73,7 +70,7 @@ import SetupOrgPage from '../page'
 beforeEach(() => {
   mockPush.mockClear()
   apiRequest.mockClear()
-  setAccessToken.mockClear()
+  setActiveTeam.mockClear()
   getMe.mockClear()
   teamRole.mockClear()
 })
@@ -102,11 +99,11 @@ describe('SetupOrgPage org creation', () => {
     expect(cache.get('subscription')?.data).toBeUndefined()
   })
 
-  it('primes the in-memory Bearer with the new org token BEFORE anything is fetched under it', async () => {
-    // Per-app sessions S3: pulse-api sees the Bearer, not the cookie. Until
-    // pulse#730 this page stored the cookie and never primed the Bearer, so
-    // the profile fetch and the site step's listSites() went out scoped to
-    // the org the session WAS on.
+  it('sets the new team as active BEFORE anything is fetched under it', async () => {
+    // pulse-api scopes a request by the X-Pulse-Team header (Phase 2,
+    // PULSE-89). Until pulse#730 this page stored the cookie too late, so the
+    // profile fetch and the site step's listSites() went out scoped to the
+    // org the session WAS on.
     render(
       <SWRConfig value={{ provider: () => new Map() }}>
         <SetupOrgPage />
@@ -116,8 +113,8 @@ describe('SetupOrgPage org creation', () => {
     fireEvent.click(screen.getByRole('button', { name: /Create/i }))
 
     await waitFor(() => expect(mockPush).toHaveBeenCalled())
-    expect(setAccessToken).toHaveBeenCalledWith('tok')
-    expect(setAccessToken.mock.invocationCallOrder[0]).toBeLessThan(apiRequest.mock.invocationCallOrder[0])
+    expect(setActiveTeam).toHaveBeenCalledWith('org_new')
+    expect(setActiveTeam.mock.invocationCallOrder[0]).toBeLessThan(apiRequest.mock.invocationCallOrder[0])
   })
 
   // Fix 3 (PULSE-89 review).

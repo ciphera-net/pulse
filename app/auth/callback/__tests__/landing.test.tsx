@@ -25,12 +25,10 @@ vi.mock('@/lib/auth/context', () => ({ useAuth: () => ({ login }) }))
 
 const exchangeAuthCode = vi.fn()
 const getSessionAction = vi.fn()
-const setSessionAction = vi.fn()
 const setActiveTeamAction = vi.fn().mockResolvedValue({ success: true })
 vi.mock('@/app/actions/auth', () => ({
   exchangeAuthCode: (...a: unknown[]) => exchangeAuthCode(...a),
   getSessionAction: (...a: unknown[]) => getSessionAction(...a),
-  setSessionAction: (...a: unknown[]) => setSessionAction(...a),
   setActiveTeamAction: (...a: unknown[]) => setActiveTeamAction(...a),
 }))
 
@@ -59,7 +57,6 @@ vi.mock('@/lib/utils/logger', () => ({ logger: { error: vi.fn(), warn: vi.fn(), 
 // * The API layer is mocked; the RESOLUTION is not. resolveLandingTarget runs
 // * for real here, so these pin the whole chain rather than a stubbed answer.
 const ensureDefaultOrganization = vi.fn()
-const switchContext = vi.fn()
 const getOrganization = vi.fn()
 vi.mock('@/lib/api/organization', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api/organization')>()
@@ -67,7 +64,6 @@ vi.mock('@/lib/api/organization', async (importOriginal) => {
     // shouldProvisionWorkspace is pure and load-bearing — keep the real one.
     shouldProvisionWorkspace: actual.shouldProvisionWorkspace,
     ensureDefaultOrganization: (...a: unknown[]) => ensureDefaultOrganization(...a),
-    switchContext: (...a: unknown[]) => switchContext(...a),
     getOrganization: (...a: unknown[]) => getOrganization(...a),
     completeOnboarding: (...a: unknown[]) => completeOnboarding(...a),
   }
@@ -104,8 +100,6 @@ function exchangeSucceedsAs(role: string) {
     user: { id: 'u1', email: 'a@b.c', role },
     access_token: 'tok',
   })
-  switchContext.mockResolvedValue({ access_token: 'tok-scoped' })
-  setSessionAction.mockResolvedValue({ success: true, user: { id: 'u1', role } })
 }
 
 beforeEach(() => {
