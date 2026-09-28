@@ -43,11 +43,19 @@ export interface SourceReadResult {
   notes?: Record<string, string>
 }
 
+/**
+ * The site's own configured domain, from the upload window's `site_domain`
+ * (M9-j'); null when the server hasn't sent one. Every parser receives it,
+ * even one that has no use for it yet, so a source that needs it (e.g. Simple
+ * Analytics' hostname filter) never has to change the contract to get it.
+ */
+export type SiteDomain = string | null
+
 export interface AggregateSourceParser {
   kind: 'upload_aggregate'
   read(
     files: readonly SourceFile[],
-    ctx: { rows: AggregateBuilder; skipped: SkipLedger; read: ReadOptions },
+    ctx: { rows: AggregateBuilder; skipped: SkipLedger; read: ReadOptions; siteDomain: SiteDomain },
   ): Promise<SourceReadResult>
 }
 
@@ -55,7 +63,7 @@ export interface RawSourceParser {
   kind: 'upload_raw'
   read(
     files: readonly SourceFile[],
-    ctx: { rows: RawFolder; skipped: SkipLedger; read: ReadOptions },
+    ctx: { rows: RawFolder; skipped: SkipLedger; read: ReadOptions; siteDomain: SiteDomain },
   ): Promise<SourceReadResult>
 }
 

@@ -156,7 +156,7 @@ export interface CollectSettings {
   audience_data: boolean
 }
 
-/** `GET …/data-imports/upload-window` (M2-r). */
+/** `GET …/data-imports/upload-window` (M2-r; `site_domain` additive, M9-j'). */
 export interface UploadWindow {
   source: string
   kind: string
@@ -167,6 +167,14 @@ export interface UploadWindow {
   allowed_through: string | null
   collect: CollectSettings
   existing_import: ImportStatus | null
+  /**
+   * The site's own configured domain (`sites.domain`), lower-cased, an IDN
+   * site's ASCII form (M9-j'). Null from an older server that has not shipped
+   * this field yet — a source parser that needs it falls back to its own
+   * intra-file consistency check in that case, never treating null as "no
+   * domain configured".
+   */
+  site_domain: string | null
 }
 
 /** `POST …/data-imports` body (M2-r). */

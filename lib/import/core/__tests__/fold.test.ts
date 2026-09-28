@@ -256,6 +256,83 @@ describe('RawFolder', () => {
     f.add(pv({ at: T('2026-03-10T12:01:00Z'), visitor: 'v', visit: 'v1', page: '/' }))
     expect(f.insertions).toBe(7)
   })
+
+  // ─── M9-e: nullable ids and emitExitPages, additive amendments for a source ─
+  // with no per-row identity signal (Simple Analytics). Every case here that
+  // gives every row a real, non-null id must reproduce a NON-nullable caller's
+  // pre-M9 behaviour exactly — proving the amendment is a no-op for Umami (M8)
+  // and every source before it, which never sends a null id.
+
+  it('a null visitor/visit row counts toward pageviews everywhere it lands, but no visitors/visits distinct count, and mints no VisitRecord', () => {
+    const skipped = new SkipLedger()
+    const f = new RawFolder({ timeZone: 'UTC', clip: null, skipped })
+    f.add(pv({ at: T('2026-03-10T09:00:00Z'), visitor: null, visit: null, page: '/', dimensions: { country: 'BE' } }))
+    const rows = f.finish()
+    expect(rows.daily).toEqual([{ date: '2026-03-10', visitors: 0, visits: 0, pageviews: 1, src_bounces: null, src_engagement_seconds: null }])
+    expect(rows.dimensions).toEqual([
+      { date: '2026-03-10', dimension: 'country', parent: '', value: 'BE', visitors: 0, visits: 0, pageviews: 1 },
+      { date: '2026-03-10', dimension: 'page', parent: '', value: '/', visitors: 0, visits: 0, pageviews: 1 },
+    ])
+    // No VisitRecord: no entrance, no exit, no acquisition from this row.
+    expect(rows.dimensions.some((r) => r.dimension === 'entry_page' || r.dimension === 'exit_page')).toBe(false)
+    expect(rows.acquisition).toEqual([])
+    expect(skipped.total()).toBe(0)
+  })
+
+  it('a null id is never interned and never charged against the budget', () => {
+    const f = new RawFolder({ timeZone: 'UTC', clip: null, skipped: new SkipLedger() })
+    f.add(pv({ at: T('2026-03-10T12:00:00Z'), visitor: null, visit: null, page: '/' }))
+    // Nothing to intern, no VisitRecord: only the daily and page buckets'
+    // pageviews increment, which this budget never counts.
+    expect(f.insertions).toBe(0)
+  })
+
+  it('mixes null and non-null rows correctly in the same bucket: pageviews count every row, distinct counts count only the real ids', () => {
+    const f = new RawFolder({ timeZone: 'UTC', clip: null, skipped: new SkipLedger() })
+    f.add(pv({ at: T('2026-03-10T09:00:00Z'), visitor: 'A', visit: 'a', page: '/' }))
+    f.add(pv({ at: T('2026-03-10T09:01:00Z'), visitor: null, visit: null, page: '/' }))
+    f.add(pv({ at: T('2026-03-10T09:02:00Z'), visitor: null, visit: null, page: '/' }))
+    f.add(pv({ at: T('2026-03-10T09:03:00Z'), visitor: 'B', visit: 'b', page: '/' }))
+    const rows = f.finish()
+    expect(rows.daily).toEqual([{ date: '2026-03-10', visitors: 2, visits: 2, pageviews: 4, src_bounces: null, src_engagement_seconds: null }])
+    const page = rows.dimensions.find((r) => r.dimension === 'page')
+    expect(page).toEqual({ date: '2026-03-10', dimension: 'page', parent: '', value: '/', visitors: 2, visits: 2, pageviews: 4 })
+  })
+
+  it('emitExitPages: false produces zero exit_page rows and leaves entry_page unaffected', () => {
+    const f = new RawFolder({ timeZone: 'UTC', clip: null, skipped: new SkipLedger(), emitExitPages: false })
+    f.add(pv({ at: T('2026-03-10T09:00:00Z'), visitor: 'A', visit: 'a', page: '/first' }))
+    f.add(pv({ at: T('2026-03-10T09:05:00Z'), visitor: 'A', visit: 'a', page: '/second' }))
+    const rows = f.finish()
+    expect(rows.dimensions.filter((r) => r.dimension === 'exit_page')).toEqual([])
+    expect(rows.dimensions.filter((r) => r.dimension === 'entry_page')).toEqual([
+      { date: '2026-03-10', dimension: 'entry_page', parent: '', value: '/first', visitors: 1, visits: 1, pageviews: 2 },
+    ])
+  })
+
+  it('emitExitPages defaults to true (every caller before M9)', () => {
+    const f = new RawFolder({ timeZone: 'UTC', clip: null, skipped: new SkipLedger() })
+    f.add(pv({ at: T('2026-03-10T09:00:00Z'), visitor: 'A', visit: 'a', page: '/' }))
+    const rows = f.finish()
+    expect(rows.dimensions.some((r) => r.dimension === 'exit_page')).toBe(true)
+  })
+
+  it('a non-null caller (every source before M9, and M8/Umami after it) is byte-for-byte unaffected: insertions, buckets and exit pages all unchanged', () => {
+    // Reproduces the very first test in this file — the pre-M9-e behaviour —
+    // with `emitExitPages` passed explicitly `true`, proving the amendment
+    // changes nothing for a non-null, non-Simple-Analytics caller.
+    const skipped = new SkipLedger()
+    const f = new RawFolder({ timeZone: 'Europe/Brussels', clip: null, skipped, emitExitPages: true })
+    f.add(pv({ at: T('2026-03-10T09:00:00Z'), visitor: 'A', visit: 'a1', page: '/', acquisition: google, dimensions: { country: 'BE', device: 'Desktop' } }))
+    f.add(pv({ at: T('2026-03-10T09:05:00Z'), visitor: 'A', visit: 'a1', page: '/pricing', acquisition: google, dimensions: { country: 'BE', device: 'Desktop' } }))
+    f.add(pv({ at: T('2026-03-10T10:00:00Z'), visitor: 'B', visit: 'b1', page: '/', dimensions: { country: 'DE', device: 'Mobile' } }))
+    const rows = f.finish()
+    expect(rows.daily).toEqual([{ date: '2026-03-10', visitors: 2, visits: 2, pageviews: 3, src_bounces: null, src_engagement_seconds: null }])
+    expect(rows.dimensions.filter((r) => r.dimension === 'exit_page')).toEqual([
+      { date: '2026-03-10', dimension: 'exit_page', parent: '', value: '/', visitors: 1, visits: 1, pageviews: 1 },
+      { date: '2026-03-10', dimension: 'exit_page', parent: '', value: '/pricing', visitors: 1, visits: 1, pageviews: 2 },
+    ])
+  })
 })
 
 // ─── Throughput ──────────────────────────────────────────────────────────

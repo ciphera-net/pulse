@@ -24,6 +24,8 @@ export interface PipelineRequest {
   files: readonly (File | NamedFile)[]
   clip: Clip | null
   timeZone: string
+  /** The site's own configured domain, from the upload window (M9-j'); null when the server hasn't sent one. */
+  siteDomain: string | null
 }
 
 export interface PipelineHooks {
@@ -59,11 +61,11 @@ export async function runPipeline(req: PipelineRequest, hooks: PipelineHooks = {
   let result
   if (parser.kind === 'upload_aggregate') {
     const builder = new AggregateBuilder(req.clip, skipped)
-    result = await parser.read(files, { rows: builder, skipped, read })
+    result = await parser.read(files, { rows: builder, skipped, read, siteDomain: req.siteDomain })
     rows = builder.build()
   } else {
-    const folder = new RawFolder({ timeZone: req.timeZone, clip: req.clip, skipped })
-    result = await parser.read(files, { rows: folder, skipped, read })
+    const folder = new RawFolder({ timeZone: req.timeZone, clip: req.clip, skipped, emitExitPages: meta.hasExitPages })
+    result = await parser.read(files, { rows: folder, skipped, read, siteDomain: req.siteDomain })
     rows = folder.finish()
   }
 
