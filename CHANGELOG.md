@@ -11,6 +11,33 @@ public read API's — see that entry for what it does and does not cover.
 
 ### Added
 
+- **Export has moved to Settings, and the file is made from the full data.**
+  Settings → Site → Export replaces the download button on the dashboard chart.
+  Choose a range (any of the usual views, All time, or your own days, always in
+  your site's timezone), the tables you want and a format: **Excel**, one sheet
+  per table; **CSV**, a zip with one file per table; or **JSON**. The file is
+  built by Pulse's servers from everything stored, not from what the dashboard
+  happened to have loaded.
+
+  **Every file says what it holds.** A Notes sheet in Excel, a `README.txt` in the
+  CSV zip and a `notes` object in JSON name the site, the range and its timezone,
+  the filters, when the file was made, which days were imported from another
+  tool, and where a change in how Pulse measures falls inside the range. The
+  daily summary now carries **visits** beside visitors. A number Pulse did not
+  measure is an empty cell, never a zero.
+
+  **Advanced options** add the rest: 18 tables (pages, entry and exit pages,
+  sources, channels, UTM source, medium and campaign, countries, regions,
+  browsers, operating systems, devices, languages, goals, events and event
+  properties), which metrics, the daily summary's time grain (hour, day, week or
+  month), the dashboard's own filters, and how many rows per table, up to all of
+  them. The daily summary reaches back to your site's first day; every other
+  table covers up to a year at a time.
+
+  **Who can export is unchanged, and every export is recorded** in your audit
+  log as *Exported data*. Beside it, **Your own tools** points at API keys, the
+  `pulse` command line and AI assistants through MCP.
+
 - **All time** — from a page's first day of data to its newest, worked out by the
   server for each page. Past a year the chart switches to weekly, then monthly points.
 
@@ -340,6 +367,11 @@ public read API's — see that entry for what it does and does not cover.
 
 ### Removed
 
+- **The dashboard's Export button and its PDF are gone.** Export lives in
+  Settings → Site → Export now (see *Added*). The shared dashboard and the live
+  demo lose their Export button too: a shared link is for looking at the
+  numbers, not for downloading them. The old PDF, built in the browser, went
+  with the button.
 - **The funnel conversion window is gone — it never did anything.** The setting
   (24 hours to 30 days) shipped in March and was removed from the product in August:
   session identity resets at your site's midnight, so no conversion could ever span
