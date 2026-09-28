@@ -4,8 +4,8 @@ import type { ExportRequest } from '@/lib/api/export'
 
 // Settings → Site → Export (PULSE-132, design §9.3; owner rulings R1 and R4).
 // What these pin: the tile picker is the MCP tab's (buttons, aria-pressed) with
-// the ruled tiles (Growth report only for sites.edit; its flow is pinned in
-// SiteExportTab.reports.test.tsx); the Spreadsheet flow opens on the eight basic
+// the four ruled tiles (the two report tiles only for sites.edit; their flows
+// are pinned in SiteExportTab.reports.test.tsx); the Spreadsheet flow opens on the eight basic
 // tables and asks for exactly what is on screen (collapsing Advanced options
 // takes its choices out of the request); a range over a year leaves only the
 // daily summary; the download sends the route's query and a failure surfaces
@@ -117,18 +117,19 @@ async function download() {
 }
 
 describe('SiteExportTab: the tiles', () => {
-  it('draws the ruled tiles, in order, as pressed buttons, and opens on Spreadsheet', () => {
+  it('draws the four ruled tiles, in order, as pressed buttons, and opens on Spreadsheet', () => {
     const { container } = render(<SiteExportTab siteId="site-1" />)
     const tiles = container.querySelectorAll('[data-railgrid] > button')
-    expect([...tiles].map((t) => t.textContent)).toEqual(['Spreadsheet', 'Growth report', 'Your own tools'])
-    expect(container.querySelector('[data-railgrid]')?.className).toBe('grid-cols-3')
+    expect([...tiles].map((t) => t.textContent)).toEqual(['Spreadsheet', 'Growth report', 'Scheduled email', 'Your own tools'])
+    // Four tiles divide into 2×2 and 1×4, so RailGrid never draws a ghost cell.
+    expect(container.querySelector('[data-railgrid]')?.className).toBe('grid-cols-2 md:grid-cols-4')
     expect(screen.getByRole('button', { name: 'Spreadsheet' }).getAttribute('aria-pressed')).toBe('true')
-    for (const name of ['Growth report', 'Your own tools']) {
+    for (const name of ['Growth report', 'Scheduled email', 'Your own tools']) {
       expect(screen.getByRole('button', { name }).getAttribute('aria-pressed')).toBe('false')
     }
   })
 
-  it('shows only the tiles that work without sites.edit: no report tile, never a disabled placeholder', () => {
+  it('shows only the tiles that work without sites.edit: no report tiles, never a disabled placeholder', () => {
     canEdit = false
     const { container } = render(<SiteExportTab siteId="site-1" />)
     const tiles = container.querySelectorAll('[data-railgrid] > button')

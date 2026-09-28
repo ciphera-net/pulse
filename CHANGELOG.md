@@ -49,8 +49,13 @@ public read API's — see that entry for what it does and does not cover.
   report closes its link and deletes its numbers. The person you send it to sees
   that report only, never your dashboard.
 
-  Reports are listed under **Your reports**, and making and deleting them is
-  recorded in your audit log.
+- **Scheduled report emails.** Have a report made on the 1st of every month or
+  quarter, covering the one that just ended, and emailed to the members of your
+  team you choose. Each email links to its own report, which never changes
+  afterwards. Anyone else gets the link from you.
+
+  Reports and scheduled emails are listed under **Your reports**, and making,
+  deleting, starting and stopping them is recorded in your audit log.
 
 - **All time** — from a page's first day of data to its newest, worked out by the
   server for each page. Past a year the chart switches to weekly, then monthly points.

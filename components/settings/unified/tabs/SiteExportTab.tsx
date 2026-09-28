@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useId, useState } from 'react'
 import Link from 'next/link'
 import type { Icon } from '@phosphor-icons/react'
-import { CaretDown, CaretUp, Code, DownloadSimple, Plus, PresentationChart, Table } from '@phosphor-icons/react'
+import { CaretDown, CaretUp, Code, DownloadSimple, EnvelopeSimple, Plus, PresentationChart, Table } from '@phosphor-icons/react'
 import { Button, Checkbox, RailGrid, Select, Switcher, toast } from '@ciphera-net/facet'
 import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { CustomRangeFields, customRangeProblem } from '@/components/settings/export/dateFields'
 import { GrowthReportFlow } from '@/components/settings/export/GrowthReportFlow'
+import { ScheduledEmailFlow } from '@/components/settings/export/ScheduledEmailFlow'
 import { YourReports } from '@/components/settings/export/YourReports'
 import { useReportsList } from '@/components/settings/export/reportFields'
 import FilterPills from '@/components/dashboard/FilterPills'
@@ -46,8 +47,8 @@ import { docsUrl } from '@/lib/docs'
 // RailGrid of tiles built exactly as the MCP tab builds its assistant picker,
 // and the chosen tile's flow beneath it; "Your reports" under it whichever tile
 // is open. Tiles, in the ruled order: Spreadsheet · Growth report (PULSE-133) ·
-// Your own tools; Scheduled email arrives with PULSE-134. Growth report makes
-// something on the server, so it appears only for people who may (sites.edit);
+// Scheduled email (PULSE-134) · Your own tools. The two report tiles make
+// something on the server, so they appear only for people who may (sites.edit);
 // without it the tab shows the tiles that work for them, never a disabled
 // placeholder (§9.1).
 //
@@ -57,11 +58,12 @@ import { docsUrl } from '@/lib/docs'
 // when it is opened again), so a download never carries a filter or a table
 // the reader can no longer see.
 
-type TileId = 'spreadsheet' | 'report' | 'tools'
+type TileId = 'spreadsheet' | 'report' | 'email' | 'tools'
 
 const TILES: { id: TileId; name: string; icon: Icon; needsEdit: boolean }[] = [
   { id: 'spreadsheet', name: 'Spreadsheet', icon: Table, needsEdit: false },
   { id: 'report', name: 'Growth report', icon: PresentationChart, needsEdit: true },
+  { id: 'email', name: 'Scheduled email', icon: EnvelopeSimple, needsEdit: true },
   { id: 'tools', name: 'Your own tools', icon: Code, needsEdit: false },
 ]
 
@@ -188,9 +190,10 @@ export default function SiteExportTab({ siteId }: { siteId: string }) {
       <SettingsPanel title="Export" description="Choose what you need.">
         <div className="px-5 py-5">
           {/* A column count that divides the tiles, so RailGrid never draws a
-              bordered ghost cell (the MCP tab's rule). */}
+              bordered ghost cell (the MCP tab's rule): four tiles are 2×2 on a
+              phone and one row from md; two tiles are one row. */}
           <RailGrid
-            className={tiles.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}
+            className={tiles.length === 4 ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2'}
             style={{ gridTemplateColumns: undefined }}
           >
             {tiles.map((t) => {
@@ -227,9 +230,14 @@ export default function SiteExportTab({ siteId }: { siteId: string }) {
           <SpreadsheetFlow site={site} active={shown === 'spreadsheet'} />
         </div>
         {canEdit && (
-          <div className="border-t border-border" hidden={shown !== 'report'}>
-            <GrowthReportFlow site={site} onCancel={() => setTile('spreadsheet')} onChanged={() => void reportsList.reload()} />
-          </div>
+          <>
+            <div className="border-t border-border" hidden={shown !== 'report'}>
+              <GrowthReportFlow site={site} onCancel={() => setTile('spreadsheet')} onChanged={() => void reportsList.reload()} />
+            </div>
+            <div className="border-t border-border" hidden={shown !== 'email'}>
+              <ScheduledEmailFlow site={site} onCancel={() => setTile('spreadsheet')} onChanged={() => void reportsList.reload()} />
+            </div>
+          </>
         )}
         {shown === 'tools' && (
           <div className="border-t border-border">
