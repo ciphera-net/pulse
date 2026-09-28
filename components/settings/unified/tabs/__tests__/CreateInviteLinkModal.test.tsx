@@ -79,13 +79,18 @@ describe('CreateInviteLinkModal', () => {
       expect.objectContaining({
         name: 'Growth team',
         role: 'member',
-        expires_in: '7d',
+        // The default "7 days" option resolved to an absolute timestamp
+        // (Pulse's own invite-links route takes expires_at, not a duration).
+        expires_at: expect.any(String),
         max_uses: undefined,
         // metadata carries the app marker ONLY — role_id/site_ids retired
         // with the backend's escalation branch.
         metadata: { app: 'pulse' },
       }),
     )
+    const sentExpiry = new Date(createInviteLink.mock.calls[0][1].expires_at).getTime()
+    expect(sentExpiry).toBeGreaterThan(Date.now() + 6 * 86_400_000)
+    expect(sentExpiry).toBeLessThan(Date.now() + 8 * 86_400_000)
     // Success result screen replaces the form.
     await waitFor(() => expect(screen.getByText('Invite link created')).toBeInTheDocument())
   })
