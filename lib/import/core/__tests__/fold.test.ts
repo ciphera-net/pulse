@@ -65,6 +65,8 @@ describe('DayResolver', () => {
     expect(r.offsetAt(T('2026-10-03T17:15:00Z'))).toBe(10.5 * HOUR)
   })
 
+  // 20,000 instants against Intl is CPU-bound: on a saturated CI node it took 27 s (Intake 8c25e6fa),
+  // past vitest's 20 s CI budget. The work is fixed-size, so a longer budget hides nothing.
   it('agrees with a per-instant Intl lookup on 20,000 random instants across awkward zones', () => {
     const zones = [
       'Europe/Brussels',
@@ -92,7 +94,7 @@ describe('DayResolver', () => {
         expect(r.dayOf(at), `${zone} ${new Date(at).toISOString()}`).toBe(exactDay(zone, at))
       }
     }
-  })
+  }, 60_000)
 
   it('asks the zone once per UTC hour, not once per row', () => {
     let calls = 0
