@@ -3,7 +3,7 @@
 import { cookies, headers } from 'next/headers'
 import { logger } from '@/lib/utils/logger'
 import { env } from '@/lib/env'
-import { clearSession, readSession, writeSession } from '@/lib/auth/session-cookies'
+import { clearSession, readActiveTeam, readSession, writeActiveTeam, writeSession } from '@/lib/auth/session-cookies'
 import { endPulseSession } from '@/lib/auth/id-session.server'
 import { classifyExchangeFailure } from '@/lib/auth/exchange-failure'
 
@@ -29,8 +29,6 @@ interface UserPayload {
   sub: string
   email?: string
   totp_enabled?: boolean
-  org_id?: string
-  role?: string
 }
 
 /** Error type returned to client for mapping to user-facing copy (no sensitive details). */
@@ -45,13 +43,17 @@ function decodeUser(accessToken: string): UserPayload {
   return JSON.parse(Buffer.from(payloadPart, 'base64').toString())
 }
 
+// 🔴 NEITHER org_id NOR role COME FROM HERE ANY MORE (Phase 2, PULSE-89). The
+// token still carries both (Ciphera ID is still the writer until Phase 5),
+// but the dashboard now decides its own active team — see
+// lib/auth/session-cookies.ts's pulse_team cookie and lib/api/me.ts. A caller
+// that needs org_id reads it from the cookie itself (getSessionAction,
+// exchangeAuthCode, below); role comes only from Pulse's /me.
 function userOf(payload: UserPayload) {
   return {
     id: payload.sub,
     email: payload.email || '',
     totp_enabled: payload.totp_enabled || false,
-    org_id: payload.org_id,
-    role: payload.role,
   }
 }
 
@@ -135,7 +137,10 @@ export async function exchangeAuthCode(code: string, codeVerifier: string | null
 
     return {
       success: true as const,
-      user: userOf(payload),
+      // * org_id is this browser's PREFERENCE (the pulse_team cookie), not the
+      // * token's claim — undefined for a browser that has never had one. The
+      // * auth context resolves the real active team from /me right after.
+      user: { ...userOf(payload), org_id: readActiveTeam(cookieStore) ?? undefined },
       // * For the browser's in-memory Bearer — see lib/api/client.ts.
       access_token: data.access_token,
       // * 🔴 THE NONCE GOES TO THE BROWSER AND NOWHERE ELSE. It is spent by the
@@ -209,6 +214,10 @@ export async function logoutAction() {
 /**
  * The session as this server sees it — from Pulse's own access cookie — plus
  * the token itself, so the browser can re-prime its in-memory Bearer on load.
+ *
+ * org_id is the pulse_team cookie's value, undefined when absent — a
+ * preference this browser remembers, not the token's claim. The auth context
+ * treats it as a starting point and resolves the real active team from /me.
  */
 export async function getSessionAction() {
   const cookieStore = await cookies()
@@ -217,8 +226,22 @@ export async function getSessionAction() {
 
   try {
     const payload = decodeUser(access)
-    return { ...userOf(payload), access_token: access }
+    return { ...userOf(payload), org_id: readActiveTeam(cookieStore) ?? undefined, access_token: access }
   } catch {
     return null
   }
+}
+
+/**
+ * Writes or clears the browser's active-team preference (Phase 2, PULSE-89).
+ * A non-UUID `teamId` is refused rather than stored — see
+ * lib/auth/session-cookies.ts's writeActiveTeam, which this delegates to.
+ */
+export async function setActiveTeamAction(teamId: string | null): Promise<{ success: boolean }> {
+  const cookieStore = await cookies()
+  if (teamId !== null && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(teamId)) {
+    return { success: false }
+  }
+  writeActiveTeam(cookieStore, teamId)
+  return { success: true }
 }

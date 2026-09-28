@@ -26,10 +26,12 @@ vi.mock('@/lib/auth/context', () => ({ useAuth: () => ({ login }) }))
 const exchangeAuthCode = vi.fn()
 const getSessionAction = vi.fn()
 const setSessionAction = vi.fn()
+const setActiveTeamAction = vi.fn().mockResolvedValue({ success: true })
 vi.mock('@/app/actions/auth', () => ({
   exchangeAuthCode: (...a: unknown[]) => exchangeAuthCode(...a),
   getSessionAction: (...a: unknown[]) => getSessionAction(...a),
   setSessionAction: (...a: unknown[]) => setSessionAction(...a),
+  setActiveTeamAction: (...a: unknown[]) => setActiveTeamAction(...a),
 }))
 
 const claimPendingAuth = vi.fn()
@@ -74,6 +76,17 @@ vi.mock('@/lib/api/organization', async (importOriginal) => {
 const completeOnboarding = vi.fn().mockResolvedValue(undefined)
 const listSites = vi.fn()
 vi.mock('@/lib/api/sites', () => ({ listSites: (...a: unknown[]) => listSites(...a) }))
+
+// Phase 2, PULSE-89: role for an EXISTING workspace comes from Pulse's own
+// /me now, not the exchange's (removed) role claim. Left unmocked (undefined
+// role) it is treated as "unknown → walled", same as before for an owner —
+// only a NON-owner test needs to say so explicitly.
+const getMe = vi.fn()
+vi.mock('@/lib/api/me', () => ({
+  getMe: (...a: unknown[]) => getMe(...a),
+  teamRole: (me: { teams?: Array<{ id: string; role: string }> } | undefined, teamId: string) =>
+    me?.teams?.find((t) => t.id === teamId)?.role ?? null,
+}))
 
 import AuthCallback from '../page'
 
@@ -166,6 +179,14 @@ describe('auth callback — where a completed sign-in lands', () => {
       created: false,
       organization: { id: 'o1', name: 'Quiet Forge', slug: 'quiet-forge-ab12' },
     })
+    // The role now comes from Pulse's /me for an existing workspace.
+    // 🔴 ONCE, not a standing implementation: clearAllMocks() in beforeEach
+    // resets call history but NOT a configured resolved value, so a bare
+    // mockResolvedValue here would leak 'member' into every later test in
+    // this file that also resolves an existing workspace's role — which is
+    // exactly what sent the RESCUE-path test below to '/sites' instead of
+    // '/setup/site' the first time this was written.
+    getMe.mockResolvedValueOnce({ user_id: 'u1', default_team_id: 'o1', teams: [{ id: 'o1', role: 'member' }] })
 
     render(<AuthCallback />)
 

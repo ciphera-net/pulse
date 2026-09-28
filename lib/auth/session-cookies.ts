@@ -40,10 +40,22 @@ export const SESSION_COOKIE = {
   refresh: 'pulse_refresh',
   /** id-backend's CSRF token for this session, for the server-side sign-out. */
   csrf: 'pulse_csrf',
+  /**
+   * The active TEAM (Phase 2, PULSE-89) — a PREFERENCE, not a credential.
+   * Naming it here is what survives a reload and a device with no live tab;
+   * pulse-backend still checks `organization_members` on every request that
+   * carries it, so a tampered or stale value can name a team but never grant
+   * membership in one. httpOnly for the same reason the others are: nothing
+   * client-side reads it directly — lib/api/client.ts's module-level active
+   * team is what a running tab actually sends as `X-Pulse-Team`.
+   */
+  team: 'pulse_team',
 } as const
 
 export const ACCESS_TTL_S = 60 * 15
 export const REFRESH_TTL_S = 60 * 60 * 24 * 30
+/** A preference, so it outlives the refresh token on purpose. */
+export const TEAM_TTL_S = 60 * 60 * 24 * 400
 
 /**
  * Host-only by construction. `secure` follows the build, as it always did here
@@ -75,9 +87,13 @@ export function writeSession(store: CookieStore, tokens: SessionTokens): void {
   if (tokens.csrf) store.set(SESSION_COOKIE.csrf, tokens.csrf, attrs(REFRESH_TTL_S))
 }
 
-/** Expires Pulse's three cookies on this origin. The apex trio is not ours to touch. */
+/**
+ * Expires Pulse's cookies on this origin, the active-team preference
+ * included: someone else signing in on this browser must not inherit the
+ * previous person's team. The apex trio is not ours to touch.
+ */
 export function clearSession(store: CookieStore): void {
-  for (const name of [SESSION_COOKIE.access, SESSION_COOKIE.refresh, SESSION_COOKIE.csrf]) {
+  for (const name of [SESSION_COOKIE.access, SESSION_COOKIE.refresh, SESSION_COOKIE.csrf, SESSION_COOKIE.team]) {
     store.delete({ name, path: '/' })
   }
 }
@@ -99,4 +115,33 @@ export function readSession(store: CookieStore): SessionCookies {
     refresh: store.get(SESSION_COOKIE.refresh)?.value ?? null,
     csrf: store.get(SESSION_COOKIE.csrf)?.value ?? null,
   }
+}
+
+/** Anything that is not a v4-shaped UUID is not a team id worth trusting. */
+const TEAM_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * The browser's preferred team (Phase 2, PULSE-89), or `null` when there is
+ * none — including a cookie somebody tampered with or a leftover value from
+ * before this shipped. It names a team; membership is checked server-side on
+ * every request, so a malformed value is never a security question, only a
+ * "which team" one, and answering `null` is always safe.
+ */
+export function readActiveTeam(store: CookieStore): string | null {
+  const value = store.get(SESSION_COOKIE.team)?.value
+  return value && TEAM_ID_RE.test(value) ? value : null
+}
+
+/**
+ * Writes the active-team preference, or clears it for `null`. Refuses (does
+ * nothing) for a value that is not a UUID rather than storing garbage that
+ * `readActiveTeam` would just throw away on the next read.
+ */
+export function writeActiveTeam(store: CookieStore, teamId: string | null): void {
+  if (teamId === null) {
+    store.delete({ name: SESSION_COOKIE.team, path: '/' })
+    return
+  }
+  if (!TEAM_ID_RE.test(teamId)) return
+  store.set(SESSION_COOKIE.team, teamId, attrs(TEAM_TTL_S))
 }

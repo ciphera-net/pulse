@@ -17,9 +17,11 @@ const h = vi.hoisted(() => {
     }),
     setSessionAction: vi.fn(async (_token: string) => {
       order.push('setSessionAction')
-      return { success: true as const, user: { id: 'u1', email: '', totp_enabled: false, org_id: 'org_b' }, access_token: 'tok_b' }
+      return { success: true as const, user: { id: 'u1', email: '', totp_enabled: false }, access_token: 'tok_b' }
     }),
+    setActiveTeamAction: vi.fn(async (_id: string | null) => { order.push('setActiveTeamAction'); return { success: true } }),
     setAccessToken: vi.fn((_token: string | null) => { order.push('setAccessToken') }),
+    setActiveTeam: vi.fn((_id: string | null) => { order.push('setActiveTeam') }),
     error: vi.fn(),
     // One stable object: the hook's org-list effect depends on `auth.user`, and
     // a fresh object per render would re-run it (and re-render) forever.
@@ -35,24 +37,24 @@ vi.mock('@/lib/api/organization', () => ({
   getUserOrganizations: vi.fn(async () => []),
   switchContext: h.switchContext,
 }))
-vi.mock('@/app/actions/auth', () => ({ setSessionAction: h.setSessionAction }))
-vi.mock('@/lib/api/client', () => ({ setAccessToken: h.setAccessToken }))
+vi.mock('@/app/actions/auth', () => ({ setSessionAction: h.setSessionAction, setActiveTeamAction: h.setActiveTeamAction }))
+vi.mock('@/lib/api/client', () => ({ setAccessToken: h.setAccessToken, setActiveTeam: h.setActiveTeam }))
 vi.mock('@/lib/utils/logger', () => ({ logger: { error: h.error, warn: vi.fn(), info: vi.fn(), debug: vi.fn() } }))
 
 import { useOrgSwitcher } from '@/lib/hooks/useOrgSwitcher'
 
 beforeEach(() => {
   h.order.length = 0
-  for (const fn of [h.push, h.refresh, h.switchContext, h.setSessionAction, h.setAccessToken, h.error]) fn.mockClear()
+  for (const fn of [h.push, h.refresh, h.switchContext, h.setSessionAction, h.setActiveTeamAction, h.setAccessToken, h.setActiveTeam, h.error]) fn.mockClear()
 })
 
 describe('useOrgSwitcher.switchOrganization', () => {
-  it('stores the session, primes the Bearer, THEN refreshes (the purge), THEN navigates', async () => {
+  it('stores the session, primes the Bearer, records the preference, THEN refreshes (the purge), THEN navigates', async () => {
     const { result } = renderHook(() => useOrgSwitcher())
 
     await act(async () => { await result.current.switchOrganization('org_b') })
 
-    expect(h.order).toEqual(['switchContext', 'setSessionAction', 'setAccessToken', 'auth.refresh', 'router.push'])
+    expect(h.order).toEqual(['switchContext', 'setSessionAction', 'setAccessToken', 'setActiveTeam', 'setActiveTeamAction', 'auth.refresh', 'router.push'])
     expect(h.switchContext).toHaveBeenCalledWith('org_b')
     expect(h.setSessionAction).toHaveBeenCalledWith('tok_b')
     expect(h.setAccessToken).toHaveBeenCalledWith('tok_b')
