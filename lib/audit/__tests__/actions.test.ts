@@ -26,10 +26,11 @@ describe('AUDIT_ACTIONS / ACTION_LABELS coverage (PULSE-73)', () => {
   })
 
   it('carries every action pulse-backend writes today and every history-only action production still stores', () => {
-    // Written today (48): the 41 from before PULSE-92 Phase 5, plus its six
+    // Written today (52): the 41 from before PULSE-92 Phase 5, plus its six
     // team-write actions (invite_link_created, invite_link_revoked,
     // member_left, onboarding_completed, org_created, org_renamed), plus
-    // site_exported (PULSE-132, one row per export download).
+    // site_exported (PULSE-132, one row per export download), plus the four
+    // report actions (PULSE-133/134).
     const writtenToday = [
       'admin_plan_granted', 'admin_refund_failed', 'admin_refund_issued', 'admin_verdict_revoked',
       'billing_checkout_started', 'billing_payment_method_update_started', 'billing_refund_failed',
@@ -44,12 +45,13 @@ describe('AUDIT_ACTIONS / ACTION_LABELS coverage (PULSE-73)', () => {
       'org.broadcast_sent', 'org.user_notified',
       'oss_application_claimed', 'oss_application_decided', 'oss_application_link_resent',
       'ownership_transferred',
+      'report_created', 'report_revoked', 'report_schedule_created', 'report_schedule_stopped',
       'site_created', 'site_exported', 'site_identity_window_changed', 'site_permanently_deleted', 'site_restored',
       'site_soft_deleted', 'site_timezone_changed', 'site_visitor_views_disabled', 'site_visitor_views_enabled',
       'subscription_cancel_at_period_end', 'subscription_canceled_immediate', 'subscription_plan_changed',
       'subscription_resumed',
     ]
-    expect(writtenToday).toHaveLength(48)
+    expect(writtenToday).toHaveLength(52)
     // History only (9): no code writes these any more, but production still
     // holds rows carrying them.
     const historyOnly = [
@@ -105,6 +107,19 @@ describe('actionLabelFor', () => {
     expect(actionLabelFor('site_exported', false)).toBe('Exported data')
     expect(actionLabelFor('site_exported', true)).toBe('Exported data')
     expect(actionTone('site_exported')).toBe('neutral')
+  })
+
+  // PULSE-133/134: the member's own words from Settings → Export. A deleted
+  // report reads as a removal (coral); the rest are neutral.
+  it('labels the four report actions, and marks only the deletion', () => {
+    expect(actionLabelFor('report_created', false)).toBe('Created report')
+    expect(actionLabelFor('report_revoked', true)).toBe('Deleted report')
+    expect(actionLabelFor('report_schedule_created', false)).toBe('Scheduled report emails')
+    expect(actionLabelFor('report_schedule_stopped', false)).toBe('Stopped report emails')
+    expect(actionTone('report_revoked')).toBe('danger')
+    expect(actionTone('report_created')).toBe('neutral')
+    expect(actionTone('report_schedule_created')).toBe('neutral')
+    expect(actionTone('report_schedule_stopped')).toBe('neutral')
   })
 
   it('falls back to a humanised label for an action neither list knows yet', () => {
