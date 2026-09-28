@@ -269,7 +269,7 @@ describe('SiteExportTab: advanced options', () => {
     expect(screen.getByText("As far back as your plan keeps. The daily summary reaches back to this site's first day.")).toBeTruthy()
   })
 
-  it('sends the advanced choices: tables, metrics, grain, the dashboard filter DSL, rows and format', async () => {
+  it('sends the advanced choices: tables, metrics, grain, rows and format', async () => {
     render(<SiteExportTab siteId="site-1" />)
     openAdvanced()
     fireEvent.click(checkbox('Regions'))
@@ -278,10 +278,6 @@ describe('SiteExportTab: advanced options', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Week' }))
     fireEvent.click(screen.getByRole('radio', { name: 'Top 1,000' }))
     fireEvent.click(screen.getByRole('radio', { name: 'CSV' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Add filter' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Apply Country is DE' }))
-    // The dashboard's own pill, removable.
-    expect(screen.getByRole('button', { name: 'Remove Country filter' })).toBeTruthy()
 
     await download()
     expect(lastRequest()).toEqual({
@@ -289,10 +285,22 @@ describe('SiteExportTab: advanced options', () => {
       metrics: ['visitors', 'visits', 'pageviews', 'bounce_rate', 'visit_duration'],
       grain: 'week',
       range: { from: '2026-08-30', to: '2026-09-28' },
-      filters: [{ dimension: 'country', operator: 'is', values: ['DE'] }],
+      filters: [],
       limit: '1000',
       format: 'csv',
     })
+  })
+
+  it("adds a filter through the dashboard's popover, shows its pill, and drops it when the pill is removed", async () => {
+    render(<SiteExportTab siteId="site-1" />)
+    openAdvanced()
+    fireEvent.click(screen.getByRole('button', { name: 'Add filter' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Apply Country is DE' }))
+    // The dashboard's own pill, removable.
+    expect(screen.getByRole('button', { name: 'Remove Country filter' })).toBeTruthy()
+
+    await download()
+    expect(lastRequest().filters).toEqual([{ dimension: 'country', operator: 'is', values: ['DE'] }])
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove Country filter' }))
     await download()
