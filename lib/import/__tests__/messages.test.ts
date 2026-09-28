@@ -236,8 +236,80 @@ describe('the import error map', () => {
   })
 
   it('retries the same prepared upload only after a failure that left it intact', () => {
-    for (const code of ['network', 'server_error', 'rate_limited', 'unauthorized']) expect(isRetryableUploadError(code)).toBe(true)
+    for (const code of ['network', 'server_error', 'rate_limited']) expect(isRetryableUploadError(code)).toBe(true)
     for (const code of ['plan_mismatch', 'import_not_active', 'invalid_batch', 'aborted']) expect(isRetryableUploadError(code)).toBe(false)
+  })
+
+  it('never offers the same request again after the session ended: its sentence says sign in and choose the file', () => {
+    // The app's transport already spent its one refresh before the library saw the 401.
+    expect(isRetryableUploadError('unauthorized')).toBe(false)
+  })
+
+  // A code, a reason and a skip key are plain strings from the server or the file.
+  // One named like an Object member must still read as "not known", never throw.
+  const OBJECT_MEMBER_NAMES = [
+    '__proto__',
+    'constructor',
+    'toString',
+    'hasOwnProperty',
+    'valueOf',
+    'isPrototypeOf',
+    'propertyIsEnumerable',
+    'toLocaleString',
+  ]
+
+  it('reads a code named like an Object member as one it does not know', () => {
+    for (const code of OBJECT_MEMBER_NAMES) {
+      expect(importErrorMessage({ code }, 'plausible')).toEqual({
+        text: 'Something unexpected came back from Pulse. Nothing more was saved. Try again.',
+        details: code,
+      })
+      const failed = failedImportMessage(
+        { error_code: code, steps_total: 1, cursor: null, progressed_at: null, started_at: null, created_at: '2026-09-26T09:00:00Z' },
+        'plausible',
+      )
+      expect(failed.text).toMatch(/^Something unexpected/)
+    }
+  })
+
+  it('reads a wrong-file reason and a skip reason named like an Object member as unknown ones', () => {
+    for (const reason of OBJECT_MEMBER_NAMES) {
+      expect(importErrorMessage({ code: 'wrong_file', detail: { reason } as never }, 'plausible')?.text).toBe(
+        "This doesn't look like a Plausible export.",
+      )
+      expect(skipReasonPhrase(reason, 2)).toBe('2 rows skipped for another reason')
+    }
+    const parsed = JSON.parse('{"__proto__": 3, "constructor": 2}') as Record<string, number>
+    expect(skipLines([parsed], JSON.parse('{"constructor": []}')).map((l) => [l.text, l.samples])).toEqual([
+      ['3 rows skipped for another reason', []],
+      ['2 rows skipped for another reason', []],
+    ])
+  })
+
+  it('keeps the voice when a name from the customer\'s own file carries a dash or an exclamation mark', () => {
+    const names = ['urgent notes!.csv', 'export\u2014final.csv', 'export\u2013final.csv', 'wow\uFF01.csv']
+    for (const file of names) {
+      for (const reason of MAPPED_WRONG_FILE_REASONS) {
+        const detail = { reason, file, files: [file], columns: [file, 'date'], line: 4 }
+        const text = importErrorMessage({ code: 'wrong_file', detail: detail as never }, 'plausible')!.text
+        expect(text, `${reason}: ${text}`).not.toMatch(/[\u2012-\u2015!\uFF01]/)
+      }
+    }
+    expect(importErrorMessage({ code: 'wrong_file', detail: { reason: 'empty_file', file: 'urgent notes!.csv' } as never }, 'plausible')?.text).toBe(
+      "This doesn't look like a Plausible export. urgent notes.csv is empty.",
+    )
+    expect(
+      importErrorMessage({ code: 'wrong_file', detail: { reason: 'malformed_csv', file: 'export\u2014final.csv', line: 4 } as never }, 'plausible')?.text,
+    ).toBe("export-final.csv can't be read at line 4. Download the export again and choose the new file.")
+  })
+
+  it('cuts a very long name short instead of repeating it whole', () => {
+    const text = importErrorMessage(
+      { code: 'wrong_file', detail: { reason: 'missing_columns', file: 'a.csv', columns: ['x'.repeat(5000)] } as never },
+      'plausible',
+    )!.text
+    expect(text.length).toBeLessThan(200)
+    expect(text).toContain(`${'x'.repeat(77)}...`)
   })
 })
 
@@ -262,6 +334,12 @@ describe('a stopped upload', () => {
 
   it('never counts past the last part', () => {
     expect(stoppedUploadMessage({ ...base, cursor: { step: 38, part: 0 } })).toMatch(/part 38 of 38/)
+  })
+
+  it('never names a part below the first, whatever the cursor says', () => {
+    expect(stoppedUploadMessage({ ...base, steps_total: 3, cursor: { step: -7, part: 0 } })).toMatch(/part 1 of 3 /)
+    expect(stoppedUploadMessage({ ...base, steps_total: 3, cursor: { step: Number.NaN, part: 0 } })).toMatch(/part 1 of 3 /)
+    expect(stoppedUploadMessage({ ...base, steps_total: Number.NaN, cursor: { step: 2, part: 0 } })).toMatch(/part 1 of 1 /)
   })
 
   it('reads an abandoned status as the stopped sentence, and any other failure by its code', () => {

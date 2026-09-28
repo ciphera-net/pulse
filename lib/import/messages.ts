@@ -107,6 +107,17 @@ interface Vars {
 type Sentence = (v: Vars) => string
 
 /**
+ * A table's OWN entry for a key, or undefined. A code, a reason or a skip key is
+ * a plain string from the server or the file, and a bare `table[key]` would hand
+ * back an inherited member for `constructor`, `toString` or `__proto__` (a
+ * function, or Object.prototype) instead of "not known", so the unknown-code
+ * fallback would never run and the render would throw.
+ */
+function own<T>(table: Readonly<Record<string, T>>, key: string): T | undefined {
+  return Object.prototype.hasOwnProperty.call(table, key) ? table[key] : undefined
+}
+
+/**
  * One entry per code. `null` means "say nothing" (the person stopped it). The
  * Record type is what makes this exhaustive: a code added to errors.ts without
  * a sentence here fails `tsc`, before any test runs.
@@ -230,7 +241,7 @@ export interface MessageInput {
  */
 export function importErrorMessage(error: MessageInput, source: string): ImportMessage | null {
   const detail = error.detail ?? {}
-  const entry = (ERROR_SENTENCES as Record<string, Sentence | null | undefined>)[error.code]
+  const entry = own<Sentence | null>(ERROR_SENTENCES, error.code)
   if (entry === null) return null
   if (entry === undefined) {
     // A code this build does not know: never the raw text, always a way to report it.
@@ -265,8 +276,13 @@ export function messageInputFromApiError(e: unknown): MessageInput {
   return { code: 'unexpected_response', detail: { server_code: `http_${status}` } }
 }
 
-/** Failures after which the SAME prepared upload can simply be sent again. */
-const RETRYABLE: ReadonlySet<string> = new Set(['network', 'server_error', 'rate_limited', 'unauthorized'])
+/**
+ * Failures after which the SAME prepared upload can simply be sent again.
+ * Never `unauthorized`: the app's transport has already tried its one session
+ * refresh before the library sees a 401, so sending again fails the same way.
+ * Its sentence says what works instead: sign in, then choose the same file.
+ */
+const RETRYABLE: ReadonlySet<string> = new Set(['network', 'server_error', 'rate_limited'])
 
 export function isRetryableUploadError(code: string): boolean {
   return RETRYABLE.has(code)
@@ -274,8 +290,39 @@ export function isRetryableUploadError(code: string): boolean {
 
 // ─── Wrong files ───────────────────────────────────────────────────────────
 
-const fileName = (detail: ImportErrorDetail): string => detail.file ?? 'This file'
-const list = (items: readonly string[] | undefined): string => (items && items.length > 0 ? items.join(', ') : '')
+/** The longest file or column name a sentence repeats before cutting it short. */
+export const MAX_NAME_IN_SENTENCE = 80
+
+/**
+ * A name from the customer's own file (an entry in the ZIP, a column header),
+ * shown so they can find it, inside a sentence that keeps the house voice
+ * (M11-g: no dash inside a sentence, no exclamation mark). So a long dash
+ * becomes a hyphen, an exclamation mark and control characters are dropped, and
+ * a name longer than MAX_NAME_IN_SENTENCE is cut short.
+ */
+export function nameInSentence(value: unknown): string {
+  const text = Array.from(String(value))
+    .filter((c) => c.charCodeAt(0) >= 0x20 && c !== '\u007F')
+    .join('')
+    .replace(/[\u2012-\u2015\u2212]/g, '-')
+    .replace(/[!\uFF01\u00A1]/g, '')
+    .trim()
+  const chars = Array.from(text)
+  return chars.length > MAX_NAME_IN_SENTENCE ? `${chars.slice(0, MAX_NAME_IN_SENTENCE - 3).join('')}...` : text
+}
+
+const namedOr = (value: unknown, fallback: string): string => {
+  const shown = typeof value === 'string' ? nameInSentence(value) : ''
+  return shown || fallback
+}
+const fileName = (detail: ImportErrorDetail): string => namedOr(detail.file, 'This file')
+const list = (items: readonly string[] | undefined): string =>
+  Array.isArray(items)
+    ? items
+        .map((i) => nameInSentence(i))
+        .filter(Boolean)
+        .join(', ')
+    : ''
 const notAnExport = (tool: string) => `This doesn't look like a ${tool} export.`
 
 /** Every wrong-file reason, each with its sentence (exhaustive by type). */
@@ -295,11 +342,11 @@ const WRONG_FILE_SENTENCES: Record<WrongFileReason | AnticipatedWrongFileReason,
   duplicate_columns: ({ tool, detail }) =>
     `${notAnExport(tool)} ${fileName(detail)} names the same column twice: ${list(detail.columns)}.`,
   duplicate_file: ({ tool, detail }) =>
-    `${notAnExport(tool)} It holds two copies of ${detail.file ?? 'one of its files'}.`,
+    `${notAnExport(tool)} It holds two copies of ${namedOr(detail.file, 'one of its files')}.`,
   malformed_csv: ({ detail }) =>
     `${fileName(detail)} can't be read at line ${detail.line ?? 'unknown'}. Download the export again and choose the new file.`,
   value_out_of_range: ({ detail }) =>
-    `${detail.file ?? 'This export'} has a count larger than any day can hold. Check the export.`,
+    `${namedOr(detail.file, 'This export')} has a count larger than any day can hold. Check the export.`,
   // ONE reason, two sentences, chosen by SOURCE (§3.12c amendment 2): Fathom's dashboard
   // download is a ZIP of whole-range totals; every other upload source exports one CSV.
   unexpected_archive: ({ source, tool }) =>
@@ -319,7 +366,7 @@ export const MAPPED_WRONG_FILE_REASONS: readonly string[] = Object.keys(WRONG_FI
 
 function wrongFileSentence(v: Vars): string {
   const reason = v.detail.reason as string | undefined
-  const entry = reason ? (WRONG_FILE_SENTENCES as Record<string, Sentence | undefined>)[reason] : undefined
+  const entry = typeof reason === 'string' ? own<Sentence>(WRONG_FILE_SENTENCES, reason) : undefined
   return entry ? entry(v) : notAnExport(v.tool)
 }
 
@@ -363,8 +410,11 @@ function dayOf(iso: string, now: Date): string {
  * stopped in is one more.
  */
 export function stoppedUploadMessage(status: StoppedStatus, now: Date = new Date()): string {
-  const total = Math.max(status.steps_total ?? 0, 1)
-  const at = Math.min((status.cursor?.step ?? 0) + 1, total)
+  // Clamped both ways: whatever the status carries, the sentence names a part from 1 to its total.
+  const steps = Number(status.steps_total)
+  const total = Number.isFinite(steps) ? Math.max(Math.floor(steps), 1) : 1
+  const step = Number(status.cursor?.step)
+  const at = Math.min(Math.max((Number.isFinite(step) ? Math.floor(step) : 0) + 1, 1), total)
   const when = dayOf(status.progressed_at ?? status.started_at ?? status.created_at, now)
   return `The upload stopped at part ${at} of ${total} on ${when}. Choose the same file and it carries on where it stopped. Days already imported stay until you delete them.`
 }
@@ -420,7 +470,7 @@ const UNREADABLE: ReadonlySet<string> = new Set(['bad_timestamp', 'missing_field
 
 /** One reason's phrase; an unknown reason is still counted, in words, never as its raw code. */
 export function skipReasonPhrase(reason: string, n: number): string {
-  const entry = (SKIP_PHRASES as Record<string, ((n: number) => string) | undefined>)[reason]
+  const entry = own<(n: number) => string>(SKIP_PHRASES, reason)
   return entry ? entry(n) : `${rows(n)} skipped for another reason`
 }
 
@@ -441,15 +491,16 @@ export function skipLines(
   counts: ReadonlyArray<Record<string, number> | null | undefined>,
   samples: Record<string, SkipSample[]> = {},
 ): SkipLine[] {
-  const total: Record<string, number> = {}
+  // A Map, so a reason named like an Object member (`__proto__`) is still counted.
+  const total = new Map<string, number>()
   for (const source of counts) {
     for (const [reason, n] of Object.entries(source ?? {})) {
-      if (Number.isInteger(n) && n > 0) total[reason] = (total[reason] ?? 0) + n
+      if (Number.isInteger(n) && n > 0) total.set(reason, (total.get(reason) ?? 0) + n)
     }
   }
   const lines: { reasons: string[]; n: number }[] = []
   let unreadable: { reasons: string[]; n: number } | null = null
-  for (const [reason, n] of Object.entries(total)) {
+  for (const [reason, n] of total) {
     if (UNREADABLE.has(reason)) {
       if (!unreadable) {
         unreadable = { reasons: [], n: 0 }
@@ -466,7 +517,7 @@ export function skipLines(
     .map(({ reasons, n }) => ({
       reasons,
       text: skipReasonPhrase(reasons[0], n),
-      samples: reasons.flatMap((r) => samples[r] ?? []),
+      samples: reasons.flatMap((r) => own(samples, r) ?? []),
     }))
 }
 
