@@ -83,6 +83,7 @@ const SKIP_REASONS_ON_STAGING = [
   'bot_row',
   'missing_field',
   'bad_number',
+  'event_name_invalid',
 ] as const satisfies readonly SkipReason[]
 type ListedSkip = (typeof SKIP_REASONS_ON_STAGING)[number]
 const skipListed: Exhaustive<Exclude<SkipReason, ListedSkip | (typeof ANTICIPATED_SKIP_REASONS)[number]>> = true

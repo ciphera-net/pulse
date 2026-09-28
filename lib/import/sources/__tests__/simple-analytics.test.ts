@@ -280,10 +280,34 @@ describe('row-level skips', () => {
     expect(skipped.toCounts()).toEqual({ bot_row: 1 })
   })
 
-  it('drops a non-pageview datapoint as not_a_pageview, per the type=all recipe (M9-b)', async () => {
+  it('reads a non-pageview datapoint as a custom event, never not_a_pageview (M12-h)', async () => {
     const { rows, skipped } = await parse([fixture([{ datapoint: 'click_signup' }])])
     expect(rows.daily).toEqual([])
-    expect(skipped.toCounts()).toEqual({ not_a_pageview: 1 })
+    expect(skipped.toCounts()).toEqual({})
+    // No unique signal on an event row: visitors is null, never a zero the source didn't measure.
+    expect(rows.events).toEqual([{ date: '2026-03-10', source_name: 'click_signup', visitors: null, count: 1 }])
+  })
+
+  it('holds a custom event to the site\'s domain and its timestamp like a pageview, and skips a robot one as bot_row', async () => {
+    const { rows, skipped } = await parse(
+      [
+        fixture([
+          { datapoint: 'signup', hostname: 'other-site.com' },
+          { datapoint: 'signup', added_iso: 'yesterday' },
+          { datapoint: 'signup', is_robot: 'true' },
+          { datapoint: 'signup' },
+        ]),
+      ],
+      { siteDomain: 'example.com' },
+    )
+    expect(skipped.toCounts()).toEqual({ hostname_mismatch: 1, bad_timestamp: 1, bot_row: 1 })
+    expect(rows.events).toEqual([{ date: '2026-03-10', source_name: 'signup', visitors: null, count: 1 }])
+  })
+
+  it('skips a custom event whose name is empty once cleaned as event_name_invalid', async () => {
+    const { rows, skipped } = await parse([fixture([{ datapoint: ' \t ' }, { datapoint: 'signup' }])])
+    expect(skipped.toCounts()).toEqual({ event_name_invalid: 1 })
+    expect(rows.events.map((e) => e.source_name)).toEqual(['signup'])
   })
 
   it('with no site_domain (an older server, M9-j\'), falls back to the intra-file check: the first row sets the reference', async () => {
@@ -643,7 +667,7 @@ describe('gate 2: the real export, augmented for the corrected recipe', () => {
 // ─── A second, small, hand-built type=all fixture (M9-b's own recipe shape) ─
 
 describe('a second small fixture in the corrected type=all shape', () => {
-  it('keeps every pageview row and drops every custom-event row as not_a_pageview, counts still matching', async () => {
+  it('keeps every pageview row and folds every custom-event row by (day, datapoint), counts still matching (M12-h)', async () => {
     const events = ['click_login_top_nav', 'visit_pricing', 'outbound_www_capterra_com']
     const rowsIn = [
       row({ datapoint: 'pageview', is_unique: 'true', path: '/' }),
@@ -655,9 +679,12 @@ describe('a second small fixture in the corrected type=all shape', () => {
     ]
     const file = csvFile([SIMPLE_ANALYTICS_REQUIRED_COLUMNS as unknown as string[], ...rowsIn])
     const { rows, skipped } = await parse([file])
-    // 3 real pageviews kept, 3 custom-event rows skipped — the file was read
-    // whole (M9-b), never filtered at the source, and nothing else is dropped.
+    // 3 real pageviews kept, 3 custom-event rows read as events: the file was
+    // read whole (M9-b), never filtered at the source, and nothing is dropped.
     expect(sumBy(rows.daily, (r) => r.pageviews)).toBe(3)
-    expect(skipped.toCounts()).toEqual({ not_a_pageview: 3 })
+    expect(skipped.toCounts()).toEqual({})
+    expect(rows.events.map((e) => [e.source_name, e.count, e.visitors])).toEqual(
+      [...events].sort().map((name) => [name, 1, null]),
+    )
   })
 })

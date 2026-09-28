@@ -28,14 +28,19 @@
 // chose, instead of one `file`; the plan summary gains `notes`. Still version 2,
 // unreleased (M9-j'): `prepare` additionally carries `siteDomain`, additive and
 // nullable, so it does not need its own version bump.
+//
+// Version 3 (M12): `prepare` carries `events` (whether the plan includes the
+// events table: false only for a resume of a pre-M12 import), and the plan
+// summary gains `events`, the source events the mapping step lists.
 
 import type { Clip } from './core/cap'
 import type { SkipSample } from './core/skipped'
 import type { WireImportError } from './errors'
 import type { ImportSource } from './source-meta'
+import type { SourceEvent } from './core/events'
 import type { PlanStep, PlanTotals, SourceKind } from './types'
 
-export const PROTOCOL_VERSION = 2
+export const PROTOCOL_VERSION = 3
 
 /** What the confirm screen (M11) shows, and what the create request is built from. */
 export interface PlanSummary {
@@ -60,6 +65,13 @@ export interface PlanSummary {
    * field by field and this is not one of them.
    */
   notes: Record<string, string>
+  /**
+   * Every source event the batches carry (M12), with its count over the file,
+   * largest first; `(other)` is not listed (it needs no map entry). `[]` when
+   * the file has none, or the plan was built without events (a pre-M12 resume).
+   * The create request's `event_map` must name every one.
+   */
+  events: SourceEvent[]
 }
 
 /** A chosen file on the wire: its bytes, and the name the customer's file had. */
@@ -92,6 +104,8 @@ export interface PrepareRequest {
    * intra-file consistency check when it is set.
    */
   siteDomain: string | null
+  /** Build the plan with the events table (M12-c): false only to resume an import created before M12. */
+  events: boolean
 }
 
 export interface PartRequest {

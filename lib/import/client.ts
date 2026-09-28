@@ -410,11 +410,17 @@ export function parseStatus(v: unknown): ImportStatus {
     throw malformed('the error_code is not a string')
   }
   const skipped = isRecord(v.skipped) ? v.skipped : {}
+  // M12-c: `upload.events` is true only when the server says so. An older
+  // server, or an import created before M12, has no bit, and that import's
+  // fingerprint covers no event row: reading "absent" as false is what lets it
+  // resume.
+  const upload = isRecord(v.upload) ? v.upload : {}
   return {
     ...(v as unknown as ImportStatus),
     error_code: (v.error_code as string | null | undefined) ?? null,
     cursor: { step: v.cursor.step, part: v.cursor.part },
     skipped: { browser: counts(skipped.browser), server: counts(skipped.server) },
+    upload: { events: upload.events === true },
   }
 }
 
@@ -455,6 +461,7 @@ export function parseBatch(v: unknown): BatchResponse {
         monthly: isInt(v.applied.monthly) ? v.applied.monthly : 0,
         dimensions: isInt(v.applied.dimensions) ? v.applied.dimensions : 0,
         acquisition: isInt(v.applied.acquisition) ? v.applied.acquisition : 0,
+        events: isInt(v.applied.events) ? v.applied.events : 0,
       }
     : null
   return {

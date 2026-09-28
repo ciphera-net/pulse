@@ -20,7 +20,7 @@ import { addDays } from '../dates'
 import { PLAN_LIMITS, batchBody, buildPlan, utf8Bytes, type PlanLimits } from '../plan'
 
 function rows(over: Partial<AggregateRows> = {}): AggregateRows {
-  const r: AggregateRows = { daily: [], monthly: [], dimensions: [], acquisition: [], ...over }
+  const r: AggregateRows = { daily: [], monthly: [], dimensions: [], acquisition: [], events: [], ...over }
   sortRows(r)
   return r
 }
@@ -70,7 +70,7 @@ describe('buildPlan: steps and parts', () => {
     expect(plan.range_start).toBe('2026-03-01')
     expect(plan.range_end).toBe('2026-03-03')
     expect(plan.steps).toEqual([{ start: '2026-03-01', end: '2026-03-03', parts: 1 }])
-    expect(plan.totals).toEqual({ rows: { daily: 2, monthly: 0, dimensions: 1, acquisition: 0 }, visitors: 2, pageviews: 2 })
+    expect(plan.totals).toEqual({ rows: { daily: 2, monthly: 0, dimensions: 1, acquisition: 0, events: 0 }, visitors: 2, pageviews: 2 })
   })
 
   it('tiles the range with no gap and no overlap, across days with no data', async () => {

@@ -3,9 +3,11 @@
 // Simple Analytics' Export API (`GET /api/export/datapoints`, `format=csv`,
 // keyed on `hostname=`) writes ONE CSV, one row per datapoint: a pageview or a
 // custom event, `type=all` so the export never needs re-fetching once M12
-// reads events (§3.12c amendment 6; D8). This parser reads the whole stream
-// and keeps only `datapoint=pageview` rows — every other row is skipped
-// `not_a_pageview`, not dropped from the read.
+// reads events (§3.12c amendment 6; D8). This parser reads the whole stream:
+// `datapoint=pageview` rows are pageviews, and every other row is a custom
+// event (M12-h), folded by (site day, datapoint) with `count` the rows and
+// `visitors` null: Simple Analytics has no unique signal on an event row, and
+// a null is what the source measured, never a zero.
 //
 // 🔑 THERE IS NO SESSION, VISIT OR PERSISTENT VISITOR ID ANYWHERE IN THE
 // EXPORT (M9-a). The only identity signal is `is_unique`: Simple Analytics'
@@ -52,6 +54,7 @@
 // the wrong one.
 
 import { isCalendarDate } from '../core/dates'
+import { cleanSourceName } from '../core/events'
 import { siteHostCheck } from '../core/host'
 import { checkHeader, requireExactlyOneFile, type ColumnIndex } from '../core/schema'
 import type { RowRef } from '../core/skipped'
@@ -215,19 +218,13 @@ export const simpleAnalyticsSource: RawSourceParser = {
       const text = (column: string) => fields[idx[column]]
 
       // A fixed order, so a row that breaks several rules is counted once:
-      // robot, then the datapoint kind, then which property it belongs to,
-      // then whether its timestamp is one this export could have written.
+      // robot, then which property it belongs to, then whether its timestamp
+      // is one this export could have written, then (an event) its name.
       if (text('is_robot') === 'true') {
         ctx.skipped.add('bot_row', at)
         return
       }
-      if (text('datapoint') !== 'pageview') {
-        // M9-b/§3.12c amendment 6: the recipe fetches type=all on purpose, so
-        // a custom-event row is expected here, not wrong — M12 reads these
-        // once it ships, with no re-export.
-        ctx.skipped.add('not_a_pageview', at)
-        return
-      }
+      const datapoint = text('datapoint')
       if (!belongs(text('hostname'))) {
         ctx.skipped.add('hostname_mismatch', at)
         return
@@ -235,6 +232,18 @@ export const simpleAnalyticsSource: RawSourceParser = {
       const at_ = parseAddedIso(text('added_iso'))
       if (at_ === null) {
         ctx.skipped.add('bad_timestamp', at)
+        return
+      }
+      if (datapoint !== 'pageview') {
+        // M9-b/§3.12c amendment 6: the recipe fetches type=all on purpose, so
+        // a custom-event row is expected here, and M12 reads it with no
+        // re-export. No identity signal is kept (M12-h): visitors stay null.
+        const name = cleanSourceName(datapoint)
+        if (name === '') {
+          ctx.skipped.add('event_name_invalid', at)
+          return
+        }
+        ctx.rows.addEvent({ at: at_, name, visitor: null, file: file.name, line })
         return
       }
 
