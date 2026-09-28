@@ -3,8 +3,10 @@
 
 import type { ImportSource } from '../source-meta'
 import { plausibleSource } from './plausible'
+import { simpleAnalyticsSource } from './simple-analytics'
 import type { SourceParser } from './source'
 
 export const SOURCE_PARSERS: Readonly<Record<ImportSource, SourceParser>> = {
   plausible: plausibleSource,
+  simple_analytics: simpleAnalyticsSource,
 }

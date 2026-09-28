@@ -68,7 +68,7 @@ describe('the prebuilt worker bundle', () => {
     expect(status.status).toBe('completed')
     // Byte for byte the rows the pipeline plans in process.
     const { parts } = await runPipeline(
-      { source: 'plausible', files: [plausibleFixtureFile()], clip: null, timeZone: 'Europe/Brussels' },
+      { source: 'plausible', files: [plausibleFixtureFile()], clip: null, timeZone: 'Europe/Brussels', siteDomain: null },
       { planLimits: PLAN_LIMITS },
     )
     const sent = server.requests.filter((r) => r.path.endsWith('/batches')).map((r) => JSON.parse(r.body ?? '{}').rows)

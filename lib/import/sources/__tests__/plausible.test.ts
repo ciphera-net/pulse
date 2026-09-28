@@ -23,7 +23,7 @@ async function parse(blob: Blob, clip: Clip | null = null, read: ReadOptions = {
   const skipped = new SkipLedger()
   const rows = new AggregateBuilder(clip, skipped)
   const files = [{ name: 'plausible-export.zip', blob, input: await detectInputKind(blob) }]
-  const { ignored } = await plausibleSource.read(files, { rows, skipped, read })
+  const { ignored } = await plausibleSource.read(files, { rows, skipped, read, siteDomain: null })
   return { rows: rows.build(), skipped, ignored }
 }
 
@@ -196,7 +196,7 @@ describe('the synthetic export', () => {
   })
 
   it('plans the export end to end', async () => {
-    const { summary, parts } = await runPipeline({ source: 'plausible', files: [plausibleFixtureFile()], clip: null, timeZone: 'UTC' })
+    const { summary, parts } = await runPipeline({ source: 'plausible', files: [plausibleFixtureFile()], clip: null, timeZone: 'UTC', siteDomain: null })
     expect(summary).toMatchObject({
       source: 'plausible',
       kind: 'upload_aggregate',
@@ -216,8 +216,8 @@ describe('the synthetic export', () => {
   })
 
   it('gives the same fingerprint for the same export on every run', async () => {
-    const a = await runPipeline({ source: 'plausible', files: [plausibleFixtureFile()], clip: null, timeZone: 'UTC' })
-    const b = await runPipeline({ source: 'plausible', files: [plausibleFixtureFile()], clip: null, timeZone: 'UTC' })
+    const a = await runPipeline({ source: 'plausible', files: [plausibleFixtureFile()], clip: null, timeZone: 'UTC', siteDomain: null })
+    const b = await runPipeline({ source: 'plausible', files: [plausibleFixtureFile()], clip: null, timeZone: 'UTC', siteDomain: null })
     expect(b.summary.fingerprint).toBe(a.summary.fingerprint)
   })
 })
@@ -462,7 +462,7 @@ describe('the wrong file, named', () => {
       { name: 'plausible-export.zip', blob: zip, input: 'zip' as const },
       { name: 'plausible-export (1).zip', blob: zip, input: 'zip' as const },
     ]
-    const e = await failure(plausibleSource.read(two, { rows, skipped, read: {} }))
+    const e = await failure(plausibleSource.read(two, { rows, skipped, read: {}, siteDomain: null }))
     expect(e.code).toBe('wrong_file')
     expect(e.detail).toEqual({ reason: 'duplicate_file', limit: 1, observed: 2 })
     expect(e.message).toBe("Choose one file: Plausible's export is one ZIP.")
@@ -472,13 +472,13 @@ describe('the wrong file, named', () => {
 
   it('no file at all', async () => {
     const skipped = new SkipLedger()
-    const e = await failure(plausibleSource.read([], { rows: new AggregateBuilder(null, skipped), skipped, read: {} }))
+    const e = await failure(plausibleSource.read([], { rows: new AggregateBuilder(null, skipped), skipped, read: {}, siteDomain: null }))
     expect(e.detail).toEqual({ reason: 'missing_file' })
   })
 
   it('two files through the whole pipeline are refused before either is parsed', async () => {
     const e = await failure(
-      runPipeline({ source: 'plausible', files: [plausibleFixtureFile(), plausibleFixtureFile()], clip: null, timeZone: 'UTC' }),
+      runPipeline({ source: 'plausible', files: [plausibleFixtureFile(), plausibleFixtureFile()], clip: null, timeZone: 'UTC', siteDomain: null }),
     )
     expect(e.detail).toEqual({ reason: 'duplicate_file', limit: 1, observed: 2 })
   })

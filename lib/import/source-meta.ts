@@ -10,7 +10,7 @@
 import type { InputKind } from './core/zip'
 import type { SourceKind } from './types'
 
-export const IMPORT_SOURCES = ['plausible'] as const
+export const IMPORT_SOURCES = ['plausible', 'simple_analytics'] as const
 export type ImportSource = (typeof IMPORT_SOURCES)[number]
 
 /**
@@ -37,10 +37,20 @@ export type SourceMeta = SourceFileCount & {
   visitsAreVisitors: boolean
   /** The file shapes the source's export arrives in. */
   accepts: readonly InputKind[]
+  /**
+   * Whether this source's raw fold produces `exit_page` rows (M9-e), read by
+   * `pipeline.ts` into `RawFolder`'s `emitExitPages`. Irrelevant for an
+   * `upload_aggregate` source (its exit pages, if any, come straight from the
+   * export's own file, never from this flag) — `true` there by convention.
+   */
+  hasExitPages: boolean
 }
 
 /** Plausible's refusal of a second file (M7-a), said by the orchestrator and the parser alike. */
 export const PLAUSIBLE_ONE_FILE_MESSAGE = "Choose one file: Plausible's export is one ZIP."
+
+/** Simple Analytics' refusal of a second file (M7-a), said by the orchestrator and the parser alike. */
+export const SIMPLE_ANALYTICS_ONE_FILE_MESSAGE = "Choose one file: Simple Analytics' export is a single CSV file."
 
 export const SOURCE_META: Readonly<Record<ImportSource, SourceMeta>> = {
   plausible: {
@@ -49,6 +59,15 @@ export const SOURCE_META: Readonly<Record<ImportSource, SourceMeta>> = {
     accepts: ['zip'],
     fileCount: 'single',
     oneFileMessage: PLAUSIBLE_ONE_FILE_MESSAGE,
+    hasExitPages: true,
+  },
+  simple_analytics: {
+    kind: 'upload_raw',
+    visitsAreVisitors: true,
+    accepts: ['plain', 'gzip'],
+    fileCount: 'single',
+    oneFileMessage: SIMPLE_ANALYTICS_ONE_FILE_MESSAGE,
+    hasExitPages: false,
   },
 }
 

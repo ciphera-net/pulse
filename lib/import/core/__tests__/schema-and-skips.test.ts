@@ -4,7 +4,7 @@
 // never silent, never content).
 
 import { describe, expect, it } from 'vitest'
-import { ImportError } from '../../errors'
+import { ImportError, wrongFile } from '../../errors'
 import { MAX_UPLOAD_FILES, checkHeader, checkUploadCount, requireExactlyOneFile, requireFiles } from '../schema'
 import { MAX_UPLOAD_FILES as FROM_ZIP } from '../zip'
 import { MAX_SAMPLES_PER_REASON, SkipLedger } from '../skipped'
@@ -44,6 +44,12 @@ describe('checkHeader', () => {
       reason: 'duplicate_columns',
       columns: ['date'],
     })
+  })
+
+  it('carries the unexpected_archive reason (M7-p), the ONE reason every plain-file source reuses (M9-c, §3.12c amendment 2)', () => {
+    const e = wrongFile('unexpected_archive', 'This looks like a ZIP archive.', { file: 'export.zip' })
+    expect(e.code).toBe('wrong_file')
+    expect(e.detail).toEqual({ reason: 'unexpected_archive', file: 'export.zip' })
   })
 
   it('names the files an archive is missing, labelled for the customer', () => {
@@ -121,6 +127,17 @@ describe('SkipLedger', () => {
     expect(s.toSamples().outside_totals_range).toEqual([
       { file: 'pages.csv', line: 7 },
       { file: 'referrers.csv', line: 6 },
+    ])
+  })
+
+  it('counts a row naming a different property under its own reason (M9-j)', () => {
+    const s = new SkipLedger()
+    s.add('hostname_mismatch', { file: 'export.csv', line: 3 })
+    s.add('hostname_mismatch', { file: 'export.csv', line: 5 })
+    expect(s.toCounts()).toEqual({ hostname_mismatch: 2 })
+    expect(s.toSamples().hostname_mismatch).toEqual([
+      { file: 'export.csv', line: 3 },
+      { file: 'export.csv', line: 5 },
     ])
   })
 

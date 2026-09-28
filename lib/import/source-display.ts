@@ -176,14 +176,39 @@ export const UPLOAD_GUIDE: Readonly<Record<ImportSource, UploadGuide>> = {
       'Visitors, visits and pageviews',
       'Pages, entry and exit pages',
       'Referrers and campaigns',
-      // Regions and cities are NOT here yet: the export names them by code only, and
-      // they are skipped (`needs_place_names`) until M6's place-name mapper lands. The
-      // skipped row says how many. M6 turns this line into "Countries, regions and cities".
-      'Countries',
+      // M6 (PULSE-113, in production 28-09-2026) resolves the export's region codes and
+      // city ids to the names native ingest stores.
+      'Countries, regions and cities',
       'Devices, browsers and operating systems',
     ],
     notImported: ["Languages and screen sizes: Plausible doesn't export them"],
     worthKnowing: ["Visits with no referrer all show as Direct. An export can't tell Direct from Shared Link."],
+  },
+  simple_analytics: {
+    // M9-b: the raw datapoints export with type=all, so a later events import needs no new export (D8).
+    exportHelp:
+      "In Simple Analytics: export your raw datapoints as a CSV with type=all, covering the whole range you want. Pulse's import guide has the exact export address.",
+    fileNoun: 'CSV file',
+    imported: [
+      'Visitors, visits and pageviews',
+      'Pages and entry pages',
+      'Referrers and campaigns',
+      'Countries',
+      'Devices, browsers and operating systems',
+      'Languages and screen sizes',
+    ],
+    notImported: [
+      // M9-f: country only, on every plan and surface.
+      'Regions and cities: Simple Analytics records countries only',
+      // M9-e: every visit is one pageview, so an exit page would repeat the entry page.
+      "Exit pages: Simple Analytics doesn't follow a visit past its first page",
+    ],
+    worthKnowing: [
+      // M9-k: the stronger caveat, since the source's own daily figure isn't a within-day dedup.
+      'Simple Analytics counts someone who comes from two different links on the same day twice, and imported days keep that count.',
+      // M9-k: the entry-page disclosure.
+      'Entry-page pageviews always equal entry-page visitors, because Simple Analytics does not track what a visitor did after landing.',
+    ],
   },
 }
 

@@ -221,12 +221,63 @@ describe('ImportApiClient: the routes', () => {
       path: '/sites/site-1/data-imports/upload-window?source=plausible&source_timezone=America%2FNew_York',
       body: null,
     })
-    expect(w).toMatchObject({ site_timezone: 'Europe/Brussels', source_timezone: 'America/New_York', existing_import: null })
+    expect(w).toMatchObject({ site_timezone: 'Europe/Brussels', source_timezone: 'America/New_York', existing_import: null, site_domain: 'example.com' })
   })
 
   it('refuses an upload window naming a zone the browser does not know', async () => {
     const t: Transport = async () =>
       ok({ source: 'plausible', kind: 'upload_aggregate', site_timezone: 'Mars/Olympus', source_timezone: 'UTC', allowed_from: null, allowed_through: null, collect: {}, existing_import: null })
+    const e = await failure(new ImportApiClient(t, clock().options).uploadWindow('site-1', 'plausible'))
+    expect(e.code).toBe('unexpected_response')
+  })
+
+  it("parses an upload window with no site_domain (an older server, M9-j') as null, not a failure", async () => {
+    const t: Transport = async () =>
+      ok({
+        source: 'plausible',
+        kind: 'upload_aggregate',
+        site_timezone: 'Europe/Brussels',
+        source_timezone: 'UTC',
+        allowed_from: null,
+        allowed_through: null,
+        collect: {},
+        existing_import: null,
+        // no site_domain key at all
+      })
+    const w = await new ImportApiClient(t, clock().options).uploadWindow('site-1', 'plausible')
+    expect(w.site_domain).toBeNull()
+  })
+
+  it("parses an upload window's site_domain through unchanged when the server sends one", async () => {
+    const t: Transport = async () =>
+      ok({
+        source: 'plausible',
+        kind: 'upload_aggregate',
+        site_timezone: 'Europe/Brussels',
+        source_timezone: 'UTC',
+        allowed_from: null,
+        allowed_through: null,
+        collect: {},
+        existing_import: null,
+        site_domain: 'xn--mnchen-3ya.example',
+      })
+    const w = await new ImportApiClient(t, clock().options).uploadWindow('site-1', 'plausible')
+    expect(w.site_domain).toBe('xn--mnchen-3ya.example')
+  })
+
+  it('refuses an upload window whose site_domain is not a string', async () => {
+    const t: Transport = async () =>
+      ok({
+        source: 'plausible',
+        kind: 'upload_aggregate',
+        site_timezone: 'Europe/Brussels',
+        source_timezone: 'UTC',
+        allowed_from: null,
+        allowed_through: null,
+        collect: {},
+        existing_import: null,
+        site_domain: 42,
+      })
     const e = await failure(new ImportApiClient(t, clock().options).uploadWindow('site-1', 'plausible'))
     expect(e.code).toBe('unexpected_response')
   })

@@ -49,7 +49,7 @@ async function sourceFiles(files: readonly File[]) {
 async function parse(files: readonly File[], clip: Clip | null = null, read: ReadOptions = {}) {
   const skipped = new SkipLedger()
   const rows = new AggregateBuilder(clip, skipped)
-  const result = await fathomSource.read(await sourceFiles(files), { rows, skipped, read })
+  const result = await fathomSource.read(await sourceFiles(files), { rows, skipped, read, siteDomain: null })
   return { rows: rows.build(), skipped, ignored: result.ignored, notes: result.notes ?? {} }
 }
 
@@ -641,10 +641,13 @@ describe('the byte budget across the files (M7-b)', () => {
 // Gate 10: Fathom is built and tested, and unreachable (M7-o).
 describe('dark by omission', () => {
   it('is in no registry the orchestrator or the worker reads', () => {
-    expect(IMPORT_SOURCES).toEqual(['plausible'])
+    // M9 (Simple Analytics) is not dark the way Fathom is (M9-o): it joins
+    // these registries in its own milestone. Fathom stays absent from all three.
+    expect(IMPORT_SOURCES).toEqual(['plausible', 'simple_analytics'])
+    expect(IMPORT_SOURCES).not.toContain('fathom')
     expect(isImportSource('fathom')).toBe(false)
-    expect(Object.keys(SOURCE_META)).toEqual(['plausible'])
-    expect(Object.keys(SOURCE_PARSERS)).toEqual(['plausible'])
+    expect(Object.keys(SOURCE_META)).toEqual(['plausible', 'simple_analytics'])
+    expect(Object.keys(SOURCE_PARSERS)).toEqual(['plausible', 'simple_analytics'])
   })
 
   it('a worker asked to prepare a Fathom import refuses it as source_not_enabled', async () => {
@@ -658,6 +661,7 @@ describe('dark by omission', () => {
       files: fathomFixtureFiles().map((f) => ({ name: f.name, blob: f })),
       clip: null,
       timeZone: 'UTC',
+      siteDomain: null,
     })
     expect(posted).toHaveLength(1)
     expect(posted[0]).toMatchObject({ type: 'error', error: { code: 'source_not_enabled' } })
