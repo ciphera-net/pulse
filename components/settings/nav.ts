@@ -58,7 +58,17 @@ export interface NavTab {
    * neutral Badge: no colour, because colour lives in a dot or a single word, never on a surface.
    */
   badge?: string
+  /**
+   * Listed only while this runtime condition holds, decided by the server rather than
+   * by a permission. `import_available`: the Import tab exists only where the site can
+   * import (GET …/data-imports/sources answers 200 with a source, design §3.10b M11-b),
+   * so it stays out of every list while imports are off.
+   */
+  when?: NavCondition
 }
+
+/** A runtime condition a tab can depend on. Every list that shows tabs passes each one's state. */
+export type NavCondition = 'import_available'
 
 export interface NavGroup {
   label: string
@@ -80,6 +90,10 @@ const SITE_TABS: NavTab[] = [
   // one mutation (enable/disable uptime) gates on uptime.manage inside.
   { label: 'Monitoring', href: '/settings/site/monitoring', description: 'Uptime and install health.', icon: Heartbeat },
   { label: 'Integrations', href: '/settings/site/integrations', description: 'Search Console and Bunny CDN.', icon: Plugs, requires: 'integrations.manage' },
+  // Import (PULSE-118, owner ruling Q-M11): no `requires`, because every member
+  // reads an import's status (§3.9); the write controls gate on
+  // integrations.manage inside the tab. Listed only where imports exist.
+  { label: 'Import', href: '/settings/site/import', description: 'Bring history from another tool.', icon: ClockCounterClockwise, when: 'import_available' },
 ]
 
 // * The organization's tabs, one object each so both groupings share them.
@@ -152,6 +166,22 @@ const ALONE_GROUPS: NavGroup[] = [
  */
 export function navGroups(state: TeamState | null): NavGroup[] {
   return state === 'alone' ? ALONE_GROUPS : TEAM_GROUPS
+}
+
+/**
+ * Whether one tab is listed: its permission is held (an unknown permission stays
+ * listed, as it always has) and its runtime condition, if it has one, holds. A
+ * condition that has not been answered yet is false: a tab never flashes into a
+ * list and back out.
+ */
+export function tabIsVisible(
+  tab: NavTab,
+  perm: Record<string, boolean>,
+  conditions: Partial<Record<NavCondition, boolean>>,
+): boolean {
+  if (tab.requires && !(perm[tab.requires] ?? true)) return false
+  if (tab.when && conditions[tab.when] !== true) return false
+  return true
 }
 
 /** Every tab either grouping can list, each href once. */

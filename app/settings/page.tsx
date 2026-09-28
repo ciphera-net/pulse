@@ -5,7 +5,8 @@ import { CaretRight, Globe } from '@phosphor-icons/react'
 import { Badge, Button } from '@ciphera-net/facet'
 import { useCan } from '@/lib/auth/permissions'
 import { useActiveSite } from '@/components/settings/active-site'
-import { navGroups, type NavGroup, type NavTab } from '@/components/settings/nav'
+import { navGroups, tabIsVisible, type NavGroup, type NavTab } from '@/components/settings/nav'
+import { useImportAvailable } from '@/lib/import/useImportSources'
 import { useTeamState, type TeamState } from '@/lib/hooks/useTeamState'
 import { SettingsPanel } from '@/components/settings/panels/SettingsPanel'
 import { PanelRows } from '@/components/settings/panels/PanelRow'
@@ -63,7 +64,7 @@ function panelCopy(section: NavGroup['section'], state: TeamState | null): strin
  * while it kept its own table).
  */
 export default function SettingsLandingPage() {
-  const { activeSite, sites, isLoading } = useActiveSite()
+  const { activeSite, activeSiteId, sites, isLoading } = useActiveSite()
   // The same signal and grouping the rail reads (PULSE-59).
   const teamState = useTeamState()
 
@@ -77,9 +78,12 @@ export default function SettingsLandingPage() {
     'audit.view': useCan('audit.view'),
   }
 
+  // The Import link exists only where the active site can import (M11-b).
+  const conditions = { import_available: useImportAvailable(activeSiteId) }
+
   const visibleGroups = navGroups(teamState).map((group) => ({
     ...group,
-    tabs: group.tabs.filter((t) => (t.requires ? (perm[t.requires] ?? true) : true)),
+    tabs: group.tabs.filter((t) => tabIsVisible(t, perm, conditions)),
   })).filter((group) => group.tabs.length > 0)
 
   const hasSites = sites.length > 0

@@ -168,24 +168,33 @@ export async function prepareImport(options: ImportOptions): Promise<PreparedImp
     })
     if (options.signal?.aborted) throw new ImportError('aborted', 'The import was cancelled.')
 
-    const plan = await channel.prepare(
-      { source: options.source, file: options.file, clip, timeZone: uploadWindow.site_timezone },
-      (message) => {
-        if (message.type !== 'progress') return
-        if (message.stage === 'reading') {
-          emit({ type: 'progress', stage: 'reading', bytesRead: message.bytesRead, bytesTotal: message.bytesTotal })
-        } else {
-          emit({ type: 'progress', stage: 'planning' })
-        }
-      },
-    )
-    if (existing && plan.fingerprint !== existing.fingerprint) {
-      throw new ImportError(
+    const mismatch = (existingId: string) =>
+      new ImportError(
         'plan_mismatch',
         'This is a different file from the one this import started with. Delete the import to start again with this file.',
-        { detail: { import_id: existing.id } },
+        { detail: { import_id: existingId } },
       )
+    let plan: PlanSummary
+    try {
+      plan = await channel.prepare(
+        { source: options.source, file: options.file, clip, timeZone: uploadWindow.site_timezone },
+        (message) => {
+          if (message.type !== 'progress') return
+          if (message.stage === 'reading') {
+            emit({ type: 'progress', stage: 'reading', bytesRead: message.bytesRead, bytesTotal: message.bytesTotal })
+          } else {
+            emit({ type: 'progress', stage: 'planning' })
+          }
+        },
+      )
+    } catch (e) {
+      // Clipped to the stored import's range, a file with no day inside it can't be
+      // the file that import was planned from (that file's days ARE the range): it
+      // is a different file, whichever side of the range its days fall.
+      if (existing && asImportError(e).code === 'no_data_in_range') throw mismatch(existing.id)
+      throw e
     }
+    if (existing && plan.fingerprint !== existing.fingerprint) throw mismatch(existing.id)
     emit({ type: 'skipped', origin: 'browser', counts: plan.skipped, samples: plan.skipped_samples })
 
     const sourceTimezone = existing ? existing.source_timezone : uploadWindow.source_timezone

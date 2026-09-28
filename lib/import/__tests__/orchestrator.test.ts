@@ -214,6 +214,30 @@ describe('resume', () => {
     expect(server.requests.slice(before).map((r) => r.method)).toEqual(['GET'])
   })
 
+  it('names a different file plan_mismatch even when none of its days fall in the stored range', async () => {
+    const { server, options } = setup()
+    let batches = 0
+    server.fault = (req) => (req.path.endsWith('/batches') && ++batches > 1 ? { respond: { status: 500, body: {}, retryAfterSeconds: null } } : null)
+    await failure(runImport({ ...options, client: { ...fast, maxAttempts: 1 } }))
+    server.fault = null
+    const before = server.requests.length
+    // The same export shape, a month later: every day is AFTER the stored range, so
+    // clipping leaves nothing, which must read as another file, not "nothing to import".
+    for (const start of ['2026-04-01', '2026-01-01']) {
+      const e = await failure(prepareImport({ ...options, file: plausibleFixtureFile(undefined, { start }) }))
+      expect(e.code).toBe('plan_mismatch')
+      expect(e.detail.import_id).toBe([...server.imports.keys()][0])
+    }
+    expect(server.requests.slice(before).map((r) => r.method)).toEqual(['GET', 'GET'])
+  })
+
+  it('still names an empty file for a new import no_data_in_range', async () => {
+    const { server, options } = setup()
+    server.allowedFrom = '2026-05-01'
+    server.allowedThrough = '2026-05-31'
+    expect((await failure(runImport(options))).code).toBe('no_data_in_range')
+  })
+
   it('revives an import the server failed as abandoned', async () => {
     const { server, options } = setup()
     let batches = 0

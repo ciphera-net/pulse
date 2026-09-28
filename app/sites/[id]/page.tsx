@@ -60,6 +60,8 @@ import { useLiveIndicator } from '@/lib/live-indicator-context'
 import { type MetricType, isMetricType } from '@/lib/dashboard/metrics'
 import { useCan } from '@/lib/auth/permissions'
 import { displayDomain } from '@/lib/utils/displayDomain'
+import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
+import { importLeftOutByFilter } from '@/lib/dashboard/importBoundary'
 
 
 export default function SiteDashboardPage() {
@@ -419,6 +421,15 @@ export default function SiteDashboardPage() {
         onRemove={handleRemoveFilter}
         onClear={handleClearFilters}
       />
+      {/* A filtered view leaves imported days out: filters select visits, and an
+          imported day holds totals (M11-h). Said beside the control that did it,
+          from the response's own provenance. */}
+      {importLeftOutByFilter(dashboard?.imported) && (
+        <span className="inline-flex items-center gap-1 text-xs text-neutral-500" data-testid="imported-filtered-note">
+          Pulse-measured days only
+          <TermInfoTip term="imported_history" />
+        </span>
+      )}
       <FilterButton
         hasActiveFilters={filters.length > 0}
         active={filterBuilder.open}
@@ -471,6 +482,8 @@ export default function SiteDashboardPage() {
           setMultiDayInterval={setMultiDayInterval}
           onExport={canExport ? () => setIsExportModalOpen(true) : undefined}
           identityWindowDays={identityWindowOf(siteRecord)}
+          imported={dashboard?.imported}
+          prevImported={prevStats?.imported}
         />
       </div>
 
@@ -490,6 +503,7 @@ export default function SiteDashboardPage() {
           totals={totals}
           filters={filtersParam || undefined}
           onFilter={handleAddFilter}
+          importedCards={dashboard?.imported_cards}
         />
         <Audience
           countries={dashboard?.countries ?? []}
@@ -505,6 +519,7 @@ export default function SiteDashboardPage() {
           totals={totals}
           filters={filtersParam || undefined}
           onFilter={handleAddFilter}
+          importedCards={dashboard?.imported_cards}
         />
       </div>
 
@@ -547,6 +562,7 @@ export default function SiteDashboardPage() {
               totals={totals}
               filters={filtersParam || undefined}
               onFilter={handleAddFilter}
+              importedCards={dashboard?.imported_cards}
             />
           </div>
         </div>
@@ -580,6 +596,7 @@ export default function SiteDashboardPage() {
           totals={totals}
           filters={filtersParam || undefined}
           onFilter={handleAddFilter}
+          importedCards={dashboard?.imported_cards}
         />
         {/* Scroll depth arrives on the dashboard payload (computed in
             GetDashboardHandler's fan-out); events likewise. One tabbed card,

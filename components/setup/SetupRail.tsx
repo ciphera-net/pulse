@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation'
 import { useSetup } from '@/lib/setup/context'
 import { SETUP_COPY, SETUP_LADDER } from '@/lib/setup/copy'
+import { RailBar } from '@/components/setup/RailBar'
 
 // ---------------------------------------------------------------------------
 // The setup wizard's progress rail — direction B, picked by the owner on
@@ -60,17 +61,7 @@ export default function SetupRail({ className = '' }: { className?: string }) {
       aria-valuetext={`${SETUP_COPY.railCounter(step, total)}, ${ladder[index].label}`}
       data-testid="setup-rail"
     >
-      <div className="mb-2 flex items-center justify-between text-xs text-neutral-500">
-        <span>{SETUP_COPY.railCounter(step, total)}</span>
-        <span className="tabular-nums">{pct}%</span>
-      </div>
-      <div className="h-0.5 w-full bg-neutral-800">
-        <div
-          className="h-0.5 bg-brand-orange transition-[width] duration-base ease-apple motion-reduce:transition-none"
-          style={{ width: `${pct}%` }}
-          data-testid="setup-rail-fill"
-        />
-      </div>
+      <RailBar left={SETUP_COPY.railCounter(step, total)} pct={pct} fillTestId="setup-rail-fill" />
     </div>
   )
 }

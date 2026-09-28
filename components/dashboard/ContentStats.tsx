@@ -1,5 +1,8 @@
 'use client'
 
+import { ImportedCardNote } from '@/components/dashboard/ImportedCardNote'
+import type { ImportedProvenance } from '@/lib/api/stats'
+import type { ImportedDimension } from '@/lib/import/source-display'
 import Link from 'next/link'
 import { useState } from 'react'
 import { TopPage } from '@/lib/api/stats'
@@ -36,9 +39,14 @@ interface ContentStatsProps {
   onFilter?: (filter: DimensionFilter) => void
   /** Realtime mode — an empty block reads the one realtime line (CardEmptyState). */
   live?: boolean
+  /** Each card's imported-history provenance, from the dashboard response (PULSE-118). */
+  importedCards?: Record<string, ImportedProvenance>
 }
 
 type Tab = 'top_pages' | 'entry_pages' | 'exit_pages'
+
+/** The dashboard's `imported_cards` key each tab reads (PULSE-118). */
+const TAB_DIMENSION: Record<Tab, ImportedDimension> = { top_pages: 'page', entry_pages: 'entry_page', exit_pages: 'exit_page' }
 
 const LIMIT = 7
 
@@ -48,7 +56,7 @@ const TAB_TO_KIND: Record<Tab, FullListKind> = {
   exit_pages: 'exit-pages',
 }
 
-export default function ContentStats({ topPages, entryPages, exitPages, domain, collectPagePaths = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter, live = false}: ContentStatsProps) {
+export default function ContentStats({ topPages, entryPages, exitPages, domain, collectPagePaths = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter, live = false, importedCards }: ContentStatsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('top_pages')
   const tabs: Tab[] = ['top_pages', 'entry_pages', 'exit_pages']
 
@@ -216,6 +224,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
           )}
         </div>
 
+      <ImportedCardNote card={importedCards?.[TAB_DIMENSION[activeTab]]} dimension={TAB_DIMENSION[activeTab]} />
       <CardPager page={page} pageCount={pageCount} onPageChange={setPage} label="pages" />
     </div>
   )

@@ -20,8 +20,12 @@ export interface DateSpan {
   end: string
 }
 
-/** Why a surface's history starts where it does — said by the server (from_reason). */
-export type FromReason = 'first_data' | 'retention' | 'visitor_identity'
+/**
+ * Why a surface's history starts where it does — said by the server (from_reason).
+ * `from_import` (dashboard only): the history starts with days imported from another
+ * analytics tool, before Pulse's first measured day (PULSE-118, design §3.10b M11-i).
+ */
+export type FromReason = 'first_data' | 'retention' | 'visitor_identity' | 'from_import'
 
 /** One surface's data window, as GET /sites/:id/data-window reports it. */
 export interface DataWindow {
@@ -135,6 +139,7 @@ function historySentence(surface: Surface, w: DataWindow, retentionMonths?: numb
     return `This site keeps ${retentionMonths} months of history`
   }
   if (w.from_reason === 'visitor_identity') return `Visitor history starts ${formatLongDay(w.from)}`
+  if (w.from_reason === 'from_import') return `This site's history starts ${formatLongDay(w.from)}, with imported days`
   switch (surface) {
     case 'search':
       return `Search Console data starts ${formatLongDay(w.from)}`
@@ -256,6 +261,10 @@ export function listFootnote(ctx: ViewContext, rows: RowState[]): string | null 
   if (w.from_reason === 'visitor_identity' || ctx.surface === 'visitors') {
     return `Visitor history starts ${formatLongDay(w.from)}. Longer ranges show from that day.`
   }
+  // An import made the history LONGER, not shorter: say so, rather than a line that
+  // reads as if Pulse had measured back to that day. (rowReason needs no branch:
+  // availability is date-based, and the window's own dates already carry the import.)
+  if (w.from_reason === 'from_import') return `Includes imported history from ${formatLongDay(w.from)}.`
   const sentence = `${historySentence(ctx.surface, w, ctx.retentionMonths)}.`
   // "Last year opens in January" — only where the data starts THIS year, so the only
   // thing standing between the reader and Last year is the calendar.
