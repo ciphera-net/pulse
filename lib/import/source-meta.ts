@@ -13,7 +13,25 @@ import type { SourceKind } from './types'
 export const IMPORT_SOURCES = ['plausible'] as const
 export type ImportSource = (typeof IMPORT_SOURCES)[number]
 
-export interface SourceMeta {
+/**
+ * Whether the export is ONE file (a ZIP, a CSV) or several the customer
+ * chooses together (Fathom's per-dimension CSVs), M7-a. For 'single', the
+ * orchestrator refuses a second file before the worker starts, in the
+ * source's own words, and the picker (M11) allows one.
+ */
+export type SourceFileCount =
+  | {
+      fileCount: 'single'
+      /**
+       * The refusal of a second file. The parser says the same thing when it
+       * is reached directly, so both read this one string: the orchestrator's
+       * guard fires first and would otherwise say it in generic words.
+       */
+      oneFileMessage: string
+    }
+  | { fileCount: 'multiple' }
+
+export type SourceMeta = SourceFileCount & {
   kind: SourceKind
   /** True for a source with no visit concept, which sends visits = visitors (M2-k). */
   visitsAreVisitors: boolean
@@ -21,8 +39,17 @@ export interface SourceMeta {
   accepts: readonly InputKind[]
 }
 
+/** Plausible's refusal of a second file (M7-a), said by the orchestrator and the parser alike. */
+export const PLAUSIBLE_ONE_FILE_MESSAGE = "Choose one file: Plausible's export is one ZIP."
+
 export const SOURCE_META: Readonly<Record<ImportSource, SourceMeta>> = {
-  plausible: { kind: 'upload_aggregate', visitsAreVisitors: false, accepts: ['zip'] },
+  plausible: {
+    kind: 'upload_aggregate',
+    visitsAreVisitors: false,
+    accepts: ['zip'],
+    fileCount: 'single',
+    oneFileMessage: PLAUSIBLE_ONE_FILE_MESSAGE,
+  },
 }
 
 export function isImportSource(value: unknown): value is ImportSource {

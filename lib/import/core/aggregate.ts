@@ -40,7 +40,7 @@ import {
   type Clip,
 } from './cap'
 import { monthEnd, monthStart } from './dates'
-import type { RowRef, SkipLedger } from './skipped'
+import type { RowRef, SkipLedger, SkipReason } from './skipped'
 
 /** Distinct aggregate keys held at once before the read stops (see the header). */
 export const AGGREGATE_ROW_LIMIT = 2_000_000
@@ -64,6 +64,16 @@ export class AggregateBuilder {
   // Each add returns whether the row was kept (false = outside the clip,
   // already counted as skipped), so a source can attach its own skip to the
   // same row only when the row itself was in range.
+
+  /**
+   * The window's skip reason for `date`, or null inside it, WITHOUT counting
+   * anything. A source with a narrower bound of its own (Fathom's totals range,
+   * M7-g) applies it only to rows the window keeps, so a row outside both is
+   * counted under the window's reason, as it is for every other source.
+   */
+  windowReason(date: string): SkipReason | null {
+    return clipReason(this.clip, date)
+  }
 
   addDaily(row: DailyRow, at: RowRef): boolean {
     if (this.clipped(row.date, at)) return false
