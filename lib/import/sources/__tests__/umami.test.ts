@@ -19,9 +19,10 @@
 // `event_name`; treating `event_type` 2 or 5 as a pageview; reading shape 2's
 // offset as UTC; assuming shape 3 silently; keying Direct vs Shared Link on
 // the raw path instead of its bare form; taking the origin from the file's
-// first row of a visit rather than its earliest; dropping the `utm_source`
-// step of native's referrer order; keying acquisition without the campaign
-// (two campaigns from one referrer merged, the first one's tags winning).
+// first row of a visit rather than its earliest; adding an unspecified
+// `utm_source` fallback step to the referrer/Direct/Shared-Link precedence
+// (M8-g is two cases only); leaking a UTM tag into `src_source`/`src_medium`/
+// `src_campaign` instead of leaving them `''` (M8-g).
 
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -100,9 +101,10 @@ function acq(
     utm_source: utm ? utm[0] : null,
     utm_medium: utm ? utm[1] : null,
     utm_campaign: utm ? utm[2] : null,
-    src_source: referrer,
-    src_medium: utm ? utm[1] : '',
-    src_campaign: utm ? utm[2] : '',
+    // M8-g: Umami's src_* are unconditionally '', unlike an aggregate source.
+    src_source: '',
+    src_medium: '',
+    src_campaign: '',
     src_channel_group: '',
     visitors,
     visits,
@@ -331,29 +333,30 @@ describe('the origin of a visit', () => {
   })
 
   it.each([
-    // The referrer host wins, tagged or not.
-    ['google.com', 'newsletter', '/pricing', 'google.com'],
-    ['google.com', '', '/', 'google.com'],
-    // No referrer but a tagged link: its source, as native labels it.
-    ['', 'newsletter', '/', 'newsletter'],
-    ['', 'newsletter', '/pricing', 'newsletter'],
-    // No referrer and no tag: Direct on the root, Shared Link anywhere else.
-    ['', '', '/', 'Direct'],
-    ['', '', '/#features', 'Direct'],
-    ['', '', '', 'Direct'],
-    ['', '', '/pricing', 'Shared Link'],
-    ['', '', '/pricing/', 'Shared Link'],
-    ['', '', '//', 'Shared Link'],
-  ])('referrer %j, utm_source %j, landing %j: %s', (referrer, source, path, origin) => {
-    expect(umamiOrigin(referrer, source, path)).toBe(origin)
+    // The referrer host wins.
+    ['google.com', '/pricing', 'google.com'],
+    ['google.com', '/', 'google.com'],
+    // No referrer: Direct on the root, Shared Link anywhere else. M8-g is two
+    // cases only — a `utm_source` tag is not a third one; the fold-level test
+    // below proves a tagged no-referrer row still resolves this way.
+    ['', '/', 'Direct'],
+    ['', '/#features', 'Direct'],
+    ['', '', 'Direct'],
+    ['', '/pricing', 'Shared Link'],
+    ['', '/pricing/', 'Shared Link'],
+    ['', '//', 'Shared Link'],
+  ])('referrer %j, landing %j: %s', (referrer, path, origin) => {
+    expect(umamiOrigin(referrer, path)).toBe(origin)
   })
 
-  it('matches an independent re-implementation of native\'s rule on 2,000 random visits', async () => {
+  it('matches an independent re-implementation of M8-g\'s rule on 2,000 random visits, and never lets a UTM tag reach referrer or src_*', async () => {
     // The M2 red team's differential discipline: generate visits whose rows
     // are shuffled in the file, fold them through the parser, and rebuild the
-    // acquisition table from first principles (each visit's EARLIEST pageview;
-    // native's order: referrer, then utm_source, then the root test written
-    // differently: the bare path, before any `?` or `#`, is "" or "/").
+    // acquisition table from first principles (each visit's EARLIEST
+    // pageview; M8-g's rule: referrer, else Direct/Shared Link by the bare
+    // path — a `utm_source` tag is generated on many rows precisely so a
+    // regression that lets it become a third fallback, or leak into
+    // `src_source`/`src_medium`/`src_campaign`, is caught here too).
     const rand = prng(42)
     const pick = <T,>(xs: readonly T[]) => xs[Math.floor(rand() * xs.length)]
     const PATHS = ['/', '', '/#a', '/?q=1', '//', '/a', '/a/', '/b#x', '#/r', '/c?d', '///']
@@ -412,26 +415,42 @@ describe('the origin of a visit', () => {
       if (!f || Math.floor(r.at / 1000) < Math.floor(f.at / 1000)) first.set(r.visit, r)
       pageviews.set(r.visit, (pageviews.get(r.visit) ?? 0) + 1)
     }
-    const want = new Map<string, { date: string; referrer: string; medium: string; sessions: Set<string>; visits: number; pageviews: number }>()
+    // src_* are unconditionally '' for Umami (M8-g), so the acquisition key
+    // is date+referrer only: visits with different tags/mediums but the same
+    // referrer on the same day MERGE into one row.
+    const want = new Map<string, { date: string; referrer: string; sessions: Set<string>; visits: number; pageviews: number }>()
     for (const [visit, r] of first) {
       const bare = r.path.split(/[?#]/, 1)[0]
-      const referrer = r.ref || r.tag || (bare === '' || bare === '/' ? 'Direct' : 'Shared Link')
+      const referrer = r.ref || (bare === '' || bare === '/' ? 'Direct' : 'Shared Link')
       const date = new Date(Math.floor(r.at / 1000) * 1000).toISOString().slice(0, 10)
-      const k = JSON.stringify([date, referrer, r.medium])
+      const k = JSON.stringify([date, referrer])
       let w = want.get(k)
-      if (!w) want.set(k, (w = { date, referrer, medium: r.medium, sessions: new Set(), visits: 0, pageviews: 0 }))
+      if (!w) want.set(k, (w = { date, referrer, sessions: new Set(), visits: 0, pageviews: 0 }))
       w.sessions.add(r.session)
       w.visits++
       w.pageviews += pageviews.get(visit) as number
     }
-    const got = out.acquisition.map((a) => ({ date: a.date, referrer: a.referrer, medium: a.src_medium, visitors: a.visitors, visits: a.visits, pageviews: a.pageviews }))
-    const exp = [...want.values()].map((w) => ({ date: w.date, referrer: w.referrer, medium: w.medium, visitors: w.sessions.size, visits: w.visits, pageviews: w.pageviews }))
-    const order = (a: { date: string; referrer: string; medium: string }, b: typeof a) =>
-      cmp(a.date, b.date) || cmp(a.referrer, b.referrer) || cmp(a.medium, b.medium)
+    const got = out.acquisition.map((a) => ({
+      date: a.date,
+      referrer: a.referrer,
+      visitors: a.visitors,
+      visits: a.visits,
+      pageviews: a.pageviews,
+    }))
+    const exp = [...want.values()].map((w) => ({ date: w.date, referrer: w.referrer, visitors: w.sessions.size, visits: w.visits, pageviews: w.pageviews }))
+    const order = (a: { date: string; referrer: string }, b: typeof a) => cmp(a.date, b.date) || cmp(a.referrer, b.referrer)
     expect(got.sort(order)).toEqual(exp.sort(order))
-    // Both Direct and Shared Link were exercised, and tagged no-referrer visits too.
+    // Every src_* stayed '' throughout, on every row, not just the merged ones.
+    for (const a of out.acquisition) {
+      expect(a.src_source).toBe('')
+      expect(a.src_medium).toBe('')
+      expect(a.src_campaign).toBe('')
+    }
+    // Direct and Shared Link were both exercised, and a tagged no-referrer
+    // visit never turned its tag into a referrer label.
     const labels = new Set(got.map((g) => g.referrer))
-    for (const l of ['Direct', 'Shared Link', 'newsletter', 'google.com']) expect(labels).toContain(l)
+    for (const l of ['Direct', 'Shared Link', 'google.com']) expect(labels).toContain(l)
+    for (const tag of ['newsletter', 'google']) expect(labels).not.toContain(tag)
   })
 })
 
@@ -610,20 +629,21 @@ describe('the synthetic export', () => {
     )
   })
 
-  it('folds acquisition from each visit\'s earliest pageview, in native\'s referrer order', async () => {
+  it('folds acquisition from each visit\'s earliest pageview, per M8-g\'s rule', async () => {
     const { rows } = await parse(umamiFixtureFile())
     expect(rows.acquisition).toEqual([
       acq('2026-03-01', 'Direct', 1, 1, 2),
       acq('2026-03-01', 'Shared Link', 1, 1, 2),
       acq('2026-03-01', 'google.com', 1, 1, 2),
-      // Two visits from google.com on one day, differently tagged: two rows,
-      // each with its own tags.
-      acq('2026-03-02', 'google.com', 1, 1, 1),
-      acq('2026-03-02', 'google.com', 1, 1, 1, ['google', 'cpc', 'spring']),
+      // A tagged link with NO referrer is still Direct/Shared Link by its
+      // landing page (M8-g): the tag never becomes the referrer.
+      acq('2026-03-02', 'Direct', 1, 1, 2, ['newsletter', 'email', 'spring']),
+      // Two visits from google.com on one day, differently tagged: src_* are
+      // unconditionally '' for Umami, so they MERGE into one row, keeping
+      // whichever visit's own utm_* is earliest in the file (E, not F).
+      acq('2026-03-02', 'google.com', 2, 2, 2, ['google', 'cpc', 'spring']),
       // D1: its file-first row is a Shared Link landing, its EARLIEST is this.
       acq('2026-03-02', 'news.ycombinator.com', 1, 1, 2, ['hn', 'social', 'launch']),
-      // A tagged link with no referrer is its source, as native labels it.
-      acq('2026-03-02', 'newsletter', 1, 1, 2, ['newsletter', 'email', 'spring']),
       acq('2026-03-03', 'Direct', 1, 1, 1),
     ])
   })
@@ -785,9 +805,11 @@ describe('the real self-hosted export', () => {
       acq('2026-09-23', 't.co', 1, 1, 1),
       acq('2026-09-24', 'Shared Link', 1, 1, 2),
       acq('2026-09-24', 'bing.com', 1, 1, 3),
+      // A tagged link with NO referrer_domain: Direct, since it lands on the
+      // root (M8-g) — the real export's own newsletter visit.
+      acq('2026-09-25', 'Direct', 1, 1, 2, ['newsletter', 'email', 'september-launch']),
       acq('2026-09-25', 'duckduckgo.com', 1, 1, 2),
       acq('2026-09-25', 'facebook.com', 1, 1, 1),
-      acq('2026-09-25', 'newsletter', 1, 1, 2, ['newsletter', 'email', 'september-launch']),
       acq('2026-09-26', 'Shared Link', 2, 2, 4),
       acq('2026-09-26', 'news.ycombinator.com', 1, 1, 1, ['twitter', 'social', 'launch-week']),
       acq('2026-09-27', 'Direct', 2, 2, 2),

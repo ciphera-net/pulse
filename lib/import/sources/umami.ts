@@ -173,28 +173,26 @@ export function landingPath(urlPath: string): string {
 }
 
 /**
- * The origin value a visit's acquisition row carries, in native ingest's own
- * order of precedence (pulse-backend `internal/api/events.go`, steps 1, 2
- * and 5 of the referrer resolution):
+ * The origin value a visit's acquisition row carries (design §3.12m8 M8-g,
+ * binding literally — two cases only):
  *
  *   1. the referrer host, when the row has one. Umami already cleared a
- *      same-site referral before the row was written, as native does;
- *   2. else the `utm_source` tag: native labels a visit that arrived with no
- *      referrer but a tagged link (a newsletter, most email) by its source,
- *      not as Direct. Sent as the tag is; the server formats it exactly as
- *      native formats one (`FormatReferrer`, through `ImportReferrer`);
- *   3. else `Direct` when the visit landed on the site's root and `Shared Link`
+ *      same-site referral before the row was written (`route.ts:251-254`),
+ *      so there is nothing further to do for that case; the server's
+ *      `ImportReferrer`/hostname-convention pipeline still re-applies
+ *      unchanged;
+ *   2. else `Direct` when the visit landed on the site's root and `Shared Link`
  *      anywhere else (native's `NoReferrerLabel`). An aggregate source cannot
  *      make this split, having no landing page (M2-l); a raw one can.
  *
- * Native's in-app-browser inference from the user agent (step 3) has nothing
- * to read here: the export carries no user agent. Its session-sticky referrer
- * (step 4) is what the fold already does, keeping the origin of the visit's
+ * A `utm_source` tag is NOT a third fallback here: M8-g is explicit that a
+ * no-referrer row is Direct/Shared Link regardless of any UTM tag. The tag
+ * still passes through verbatim in the row's own `utm_source` field (never
+ * folded into `referrer`), and the fold keeps the one on the visit's
  * EARLIEST pageview for the whole visit.
  */
-export function umamiOrigin(referrerDomain: string, utmSource: string, urlPath: string): string {
+export function umamiOrigin(referrerDomain: string, urlPath: string): string {
   if (referrerDomain !== '') return referrerDomain
-  if (utmSource !== '') return utmSource
   return landingPath(urlPath) === '/' ? 'Direct' : 'Shared Link'
 }
 
@@ -268,20 +266,23 @@ function readRows(
     const utmSource = fields[p.utm_source]
     const medium = fields[p.utm_medium]
     const campaign = fields[p.utm_campaign]
-    const origin = umamiOrigin(fields[p.referrer_domain], utmSource, page)
+    const origin = umamiOrigin(fields[p.referrer_domain], page)
     // Every row carries its own origin: the fold keeps the one on the visit's
-    // earliest pageview, whichever row that turns out to be. `src_*` are the
-    // origin and the tags as the file has them — the same fill every source
-    // uses (M2-k) — and they are in the acquisition key, so two visits from
-    // one referrer with different campaigns stay two rows.
+    // earliest pageview, whichever row that turns out to be. `utm_*` pass
+    // through as the columns have them (M8-g). `src_*` are unconditionally
+    // `''` (M8-g: Umami has no separate provenance labels beyond the
+    // referrer/UTM columns already selected) — since they're also the
+    // acquisition key's tiebreak (alongside `referrer`), two visits from one
+    // referrer with different campaigns MERGE into one row, keeping whichever
+    // visit's own `utm_*` happens to be earliest.
     const acquisition: RawAcquisition = {
       referrer: origin,
       utm_source: nullIfEmpty(utmSource),
       utm_medium: nullIfEmpty(medium),
       utm_campaign: nullIfEmpty(campaign),
-      src_source: origin,
-      src_medium: medium,
-      src_campaign: campaign,
+      src_source: '',
+      src_medium: '',
+      src_campaign: '',
       src_channel_group: '',
     }
     rows.add({
