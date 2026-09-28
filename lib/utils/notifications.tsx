@@ -28,6 +28,7 @@ import {
   Prohibit,
   ClockCounterClockwise,
   PauseCircle,
+  PresentationChart,
 } from '@phosphor-icons/react'
 import type { ReactElement } from 'react'
 import { NOTIFICATION_TYPES, type NotificationType } from '@/lib/notifications/types'
@@ -83,6 +84,7 @@ export function getTypeIcon(type: string) {
     site_added:                    <Globe            className="w-5 h-5 shrink-0 text-green-400"    aria-hidden="true" />,
     site_tracking_issue:           <Bug              className="w-5 h-5 shrink-0 text-amber-400"    aria-hidden="true" />,
     site_export_ready:             <Export           className="w-5 h-5 shrink-0 text-brand-ink" aria-hidden="true" />,
+    site_report_ready:             <PresentationChart className="w-5 h-5 shrink-0 text-brand-ink" aria-hidden="true" />,
     site_pagespeed_drop:           <ChartLineDown    className="w-5 h-5 shrink-0 text-red-400"      aria-hidden="true" />,
     site_pagespeed_recovered:      <ChartLineUp      className="w-5 h-5 shrink-0 text-green-400"    aria-hidden="true" />,
     site_traffic_spike:            <TrendUp          className="w-5 h-5 shrink-0 text-green-400"    aria-hidden="true" />,

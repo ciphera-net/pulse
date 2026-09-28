@@ -17,7 +17,7 @@ import { applyThemeClass } from '@/lib/theme'
 //
 // The runner is handed a 5-minute print key (`pk`) that stands in for the
 // report's password on this read only. When the slides are on the page, the
-// fonts loaded and every image settled, <html data-report-ready="true"> tells
+// fonts loaded and every image settled, <html data-print-ready="true"> (data-print-error on failure, the two attributes the runner's /pdf mode waits for) tells
 // the runner it may print; a report it cannot read sets "failed" instead, so a
 // PDF of an error page is never cached as the report.
 // ---------------------------------------------------------------------------
@@ -90,13 +90,13 @@ export default function ReportPrint({
   useEffect(() => {
     const html = document.documentElement
     if (state.kind === 'failed') {
-      html.dataset.reportReady = 'failed'
+      html.dataset.printError = 'true'
       return
     }
     if (state.kind !== 'ok' || !rootRef.current) return
     let cancelled = false
     void settle(rootRef.current).then(() => {
-      if (!cancelled) html.dataset.reportReady = 'true'
+      if (!cancelled) html.dataset.printReady = 'true'
     })
     return () => {
       cancelled = true
@@ -104,7 +104,8 @@ export default function ReportPrint({
   }, [state])
 
   useEffect(() => () => {
-    delete document.documentElement.dataset.reportReady
+    delete document.documentElement.dataset.printReady
+    delete document.documentElement.dataset.printError
   }, [])
 
   return (

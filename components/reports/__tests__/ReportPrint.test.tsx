@@ -27,7 +27,8 @@ beforeEach(() => {
 })
 afterEach(() => {
   html().className = ''
-  delete html().dataset.reportReady
+  delete html().dataset.printReady
+  delete html().dataset.printError
 })
 
 describe('ReportPrint', () => {
@@ -72,6 +73,6 @@ describe('ReportPrint', () => {
   it('tells the runner "failed" when the report cannot be read, so no error page is cached as the PDF', async () => {
     getPublicReport.mockResolvedValue({ status: 'not_found' })
     render(<ReportPrint token="tok_gone" theme="light" printKey="v1.1.abc" />)
-    await waitFor(() => expect(html().dataset.reportReady).toBe('failed'))
+    await waitFor(() => expect(html().dataset.printError).toBe('true'))
   })
 })

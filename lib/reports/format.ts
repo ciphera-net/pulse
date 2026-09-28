@@ -123,12 +123,11 @@ export function formatCount(n: number | null | undefined): string {
 }
 
 /**
- * A share as a percentage. The payload carries shares and rates as fractions
- * of one (0.41 is 41%).
+ * A share as a percentage. The payload carries shares and rates as percentages
+ * with one decimal (41.3 is 41%), as pulse-backend freezes them.
  */
-export function formatShare(fraction: number | null | undefined): string {
-  if (fraction === null || fraction === undefined) return '—'
-  const pct = fraction * 100
+export function formatShare(pct: number | null | undefined): string {
+  if (pct === null || pct === undefined) return '—'
   if (pct > 0 && pct < 1) return '<1%'
   return `${Math.round(pct)}%`
 }
