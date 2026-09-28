@@ -15,20 +15,24 @@ const tabs = TEAM.flatMap((g) => g.tabs)
 const allRows = [...tabs, ...ALONE.flatMap((g) => g.tabs)]
 
 describe('settings nav registry', () => {
-  it('has three scopes for a team, eight / seven / five tabs, the middle one named Team', () => {
+  it('has three scopes for a team, nine / seven / five tabs, the middle one named Team', () => {
     // Workspace lost its Notifications tab on 21-09-2026 (ruling D7): there
     // was no workspace-level setting behind it. It gained Connected apps on
     // 24-09-2026 (PULSE-41), renamed MCP the same day (PULSE-54). The owner
     // named the container a team on 25-09-2026 (PULSE-59, W1). Site gained
-    // Import on 27-09-2026 (PULSE-118), listed only where imports exist.
+    // Import on 27-09-2026 (PULSE-118), listed only where imports exist, and
+    // Export on 28-09-2026 (PULSE-132).
     expect(TEAM.map((g) => [g.section, g.label, g.tabs.length])).toEqual([
-      ['site', 'Site', 8], ['organization', 'Team', 7], ['account', 'Account', 5],
+      ['site', 'Site', 9], ['organization', 'Team', 7], ['account', 'Account', 5],
     ])
   })
 
-  it('lists Import last among the site tabs, with no permission, behind the import condition (M11-a, M11-b)', () => {
+  // Keyed by href, not by position: Import stopped being the last site tab the
+  // day Export was listed after it, and a positional check breaks on every tab
+  // added after it.
+  it('lists Import with no permission, behind the import condition (M11-a, M11-b)', () => {
     const site = TEAM.find((g) => g.section === 'site')!
-    const tab = site.tabs[site.tabs.length - 1]
+    const tab = site.tabs.find((t) => t.href === '/settings/site/import')!
     expect(tab).toMatchObject({
       label: 'Import',
       href: '/settings/site/import',
@@ -37,6 +41,24 @@ describe('settings nav registry', () => {
     })
     // Every member reads an import's status (§3.9): the tab carries no permission.
     expect(tab.requires).toBeUndefined()
+    // The alone grouping shares the same Site tabs.
+    expect(ALONE.find((g) => g.section === 'site')!.tabs).toContain(tab)
+  })
+
+  it('lists Export right after Import, gated on the permission the download needs (PULSE-132)', () => {
+    const site = TEAM.find((g) => g.section === 'site')!
+    const hrefs = site.tabs.map((t) => t.href)
+    const tab = site.tabs.find((t) => t.href === '/settings/site/export')!
+    expect(tab).toMatchObject({
+      label: 'Export',
+      description: 'Download data and share reports.',
+      requires: 'analytics.export',
+    })
+    expect(hrefs.indexOf('/settings/site/export')).toBe(hrefs.indexOf('/settings/site/import') + 1)
+    // Always listed where the permission is held: Export has no runtime condition.
+    expect(tab.when).toBeUndefined()
+    expect(tabIsVisible(tab, { 'analytics.export': true }, {})).toBe(true)
+    expect(tabIsVisible(tab, { 'analytics.export': false }, {})).toBe(false)
     // The alone grouping shares the same Site tabs.
     expect(ALONE.find((g) => g.section === 'site')!.tabs).toContain(tab)
   })
