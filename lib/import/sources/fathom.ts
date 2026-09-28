@@ -182,6 +182,17 @@ export interface FathomHeader {
 }
 
 /**
+ * How a marker is looked for: without surrounding whitespace, in lower case.
+ * Fathom writes lower-case snake_case, so this matches nothing extra in a file
+ * as downloaded. It keeps a re-saved or retyped header (`Country_Code`,
+ * ` pathname`) from losing its marker, which would take the file for the site
+ * totals and refuse it for having a column the totals never write. The file
+ * is then checked strictly, as every file is, and refused for missing the
+ * marker as Fathom spells it: the column the customer has to fix.
+ */
+const markerKey = (column: string) => column.trim().toLowerCase()
+
+/**
  * Decides what one file is from its header alone (M7-d), and checks the
  * header strictly against that file's columns. Throws `unrecognised_file` in
  * two forms the error map tells apart by `observed`: a header with no marker
@@ -190,7 +201,8 @@ export interface FathomHeader {
  */
 export function classifyFathomHeader(file: string, header: readonly string[]): FathomHeader {
   const columns = new Set(header)
-  const marked = DIMENSION_ROLES.filter((role) => columns.has(FATHOM_FILES[role].marker as string))
+  const keys = new Set(header.map(markerKey))
+  const marked = DIMENSION_ROLES.filter((role) => keys.has(FATHOM_FILES[role].marker as string))
   if (marked.length > 1) {
     const found = marked.map((role) => FATHOM_FILES[role].marker as string)
     throw wrongFile(

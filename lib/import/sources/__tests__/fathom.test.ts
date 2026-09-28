@@ -303,6 +303,22 @@ describe('dispatch (M7-d)', () => {
     }
   })
 
+  it.each([
+    ['a marker in another case', 'datetime,Country_Code,uniques,pageviews\n2026-03-01 00:00:00,BE,3,5\n', 'locations', 'country_code'],
+    ['a marker with whitespace around it', 'datetime, pathname ,uniques,pageviews\n2026-03-01 00:00:00,/x,3,5\n', 'page', 'pathname'],
+  ] as const)('%s still names the file, never the totals, and is refused for the marker as Fathom spells it', async (_what, text, role, marker) => {
+    const name = N[role]
+    const e = await failure(parse(fathomFixtureFiles((f) => (f[name] = text))))
+    expect(e.code).toBe('wrong_file')
+    expect(e.detail).toEqual({ reason: 'missing_columns', file: name, columns: [marker] })
+    expect(e.message).toBe(`${name} is missing ${marker}.`)
+  })
+
+  it('a marker in another case also counts toward a combined export', () => {
+    const e = thrown(() => classifyFathomHeader('mixed.csv', ['datetime', 'Browser', 'country_code', 'uniques', 'pageviews']))
+    expect(e.detail).toEqual({ reason: 'unrecognised_file', file: 'mixed.csv', columns: ['country_code', 'browser'], limit: 1, observed: 2 })
+  })
+
   it('a device file alone is never taken for the totals: the upload is missing its totals', async () => {
     const alone = fathomFixtureFiles((files) => {
       for (const name of Object.keys(files)) if (name !== N.device) delete files[name]
