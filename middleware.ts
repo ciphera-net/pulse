@@ -72,6 +72,10 @@ const PUBLIC_PREFIXES = [
   '/tools/', // * Public client-side tools (UTM builder, cookie-banner calculator)
   '/docs',
   '/join/',
+  // * A shared report (PULSE-133): its reader has no Pulse account by design,
+  // * and the page's own read is the anonymous /public/reports route. Covers
+  // * /r/<token> and the PDF runner's /r/<token>/print.
+  '/r/',
 ]
 
 function isPublicRoute(pathname: string): boolean {

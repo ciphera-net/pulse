@@ -12,7 +12,7 @@ import DashboardChrome from '@/components/dashboard/DashboardChrome'
 import { ErrorBoundary } from '@/components/error-boundary'
 import VersionToast from '@/components/VersionToast'
 import SessionTakeover from '@/components/auth/SessionTakeover'
-import { isAuthedAppRoute, isStandaloneRoute } from '@/lib/auth/appRoutes'
+import { isAuthedAppRoute, isReportRoute, isStandaloneRoute } from '@/lib/auth/appRoutes'
 import { ActiveSiteProvider } from '@/components/settings/active-site'
 import ThemeSync from '@/components/theme/ThemeSync'
 
@@ -127,8 +127,9 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   // * the ones the flag never did.
 
   // Join and consent pages: standalone, no app shell, signed in or not — each
-  // renders its own "sign in to continue" state.
-  if (pathname.startsWith('/join') || pathname.startsWith('/connect')) {
+  // renders its own "sign in to continue" state. A shared report (/r, PULSE-133)
+  // is standalone for everyone too: it carries only the site's own mark.
+  if (pathname.startsWith('/join') || pathname.startsWith('/connect') || isReportRoute(pathname)) {
     return <>{children}</>
   }
 

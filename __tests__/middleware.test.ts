@@ -73,6 +73,21 @@ describe('middleware', () => {
       const res = middleware(createRequest('/docs'))
       expect(res.headers.get('Location')).toBeNull()
     })
+
+    // A shared report (PULSE-133) is read by people with no Pulse account, and
+    // the PDF runner prints its /print page with no session at all. Without the
+    // prefix both would 307 to /login and the runner would print the sign-in page.
+    it('allows /r/<token> and /r/<token>/print without auth', () => {
+      for (const path of ['/r/7Qx4mK2pLw9Zr', '/r/7Qx4mK2pLw9Zr/print?theme=light&pk=v1.1.abc']) {
+        const res = middleware(createRequest(path))
+        expect(res.headers.get('Location'), path).toBeNull()
+      }
+    })
+
+    it('does not open anything else that merely starts with /r', () => {
+      const res = middleware(createRequest('/reports'))
+      expect(res.headers.get('Location')).toContain('/login')
+    })
   })
 
   describe('protected routes', () => {
