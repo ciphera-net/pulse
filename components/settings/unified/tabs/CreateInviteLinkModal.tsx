@@ -13,16 +13,6 @@ const EXPIRY_OPTIONS = [
   { value: '30d', label: '30 days' },
 ]
 
-// Pulse's own invite-links route takes an absolute `expires_at` (PULSE-92
-// Phase 5), not the duration Ciphera ID used to accept — the duration picked
-// here is resolved to a timestamp at the moment of submission.
-const EXPIRY_MS: Record<string, number> = {
-  '1h': 3600_000,
-  '24h': 86_400_000,
-  '7d': 7 * 86_400_000,
-  '30d': 30 * 86_400_000,
-}
-
 // `unlimited` is the explicit "no cap" sentinel (facet Select treats an empty
 // value as "show placeholder", so an empty option can't render its label). It
 // maps back to an absent `max_uses` in the request body, so behavior is
@@ -78,7 +68,7 @@ export default function CreateInviteLinkModal({ orgId, roles, open, onOpenChange
         role: selectedRole?.slug ?? 'member',
         metadata: { app: 'pulse' },
         max_uses: maxUses !== NO_LIMIT ? parseInt(maxUses, 10) : undefined,
-        expires_at: new Date(Date.now() + EXPIRY_MS[expiresIn]).toISOString(),
+        expires_in: expiresIn,
       })
       if (!link.url && link.code) {
         link.url = `${window.location.origin}/join/${link.code}`
