@@ -34,8 +34,16 @@
 //     always an ISO 3166-2 code and its city an English name, and the server
 //     resolves both through M6's place-name index. A blank value is sent blank
 //     and stored as the server's Unknown, so each dimension still adds up to
-//     the day. `hostname` and `event_name` are checked in the header and never
-//     read (the hostname filter runs in the customer's query, M8-b);
+//     the day. `event_name` is checked in the header and never read;
+//   - `hostname` is held to the site's own domain (M8-b′, amending M8-b,
+//     which read it only in the header): a pageview recorded on any other
+//     host, or on none, is skipped `hostname_mismatch`, so an export of the
+//     wrong Umami website cannot import as this site's history. The rule is
+//     Simple Analytics' exactly (core/host.ts): case, a leading `www.`, a
+//     trailing root dot and Unicode spelling are ignored; a subdomain is
+//     another site. The recipe's optional hostname line only keeps those
+//     rows out of the file. Checked after the event type, so a performance
+//     row (which Umami never gives a host, §0.3) is still `not_a_pageview`;
 //   - the visit's origin is reconstructed per row, and the fold keeps the one
 //     on the visit's earliest pageview (see `umamiOrigin`).
 //
@@ -51,6 +59,7 @@
 import { CsvByteParser } from '../core/csv'
 import { isCalendarDate } from '../core/dates'
 import type { RawAcquisition } from '../core/fold'
+import { siteHostCheck } from '../core/host'
 import { checkHeader, requireExactlyOneFile, type ColumnIndex } from '../core/schema'
 import type { RowRef } from '../core/skipped'
 import { readGzip, readPlain, readZip, type EntrySink } from '../core/zip'
@@ -227,6 +236,7 @@ function readRows(
 ): FileRead {
   const { rows, skipped } = ctx
   const days = new DayCache()
+  const belongs = siteHostCheck(ctx.siteDomain)
   let p: Positions | null = null
   let width = 0
   let dataRows = 0
@@ -241,7 +251,8 @@ function readRows(
     dataRows++
     const at: RowRef = { file, line }
     // A fixed order, so a row that breaks several rules is counted once: its
-    // shape, then what kind of event it is, then its time, then its ids.
+    // shape, then what kind of event it is, then which site it was recorded
+    // on, then its time, then its ids.
     if (fields.length !== width) {
       skipped.add('missing_field', at)
       return
@@ -249,6 +260,10 @@ function readRows(
     const eventType = fields[p.event_type]
     if (eventType !== '1') {
       skipped.add(eventType === '' ? 'missing_field' : 'not_a_pageview', at)
+      return
+    }
+    if (!belongs(fields[p.hostname])) {
+      skipped.add('hostname_mismatch', at)
       return
     }
     const time = readTimestamp(fields[p.created_at], days)
