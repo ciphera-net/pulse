@@ -138,3 +138,53 @@ describe('a failed post-accept team switch is logged, not swallowed', () => {
     expect(h.logError).not.toHaveBeenCalled()
   })
 })
+
+describe('already a member (409)', () => {
+  it('shows the already-member state with the org name from the preview', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(jsonResponse(200, {
+      organization_name: 'Acme', organization_id: 'org1', role: 'member', name: 'Engineering invite',
+    })))
+    h.acceptInviteLink.mockRejectedValue(new h.ApiError('Conflict', 409))
+
+    render(<JoinPage />)
+    await waitFor(() => expect(screen.getByRole('button', { name: /Join Acme/i })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: /Join Acme/i }))
+
+    await waitFor(() => expect(screen.getByText("You're already a member")).toBeInTheDocument())
+    expect(screen.getByText('Acme')).toBeInTheDocument()
+    // Never actually switched or navigated — this is a stop, not a success.
+    expect(h.activateTeam).not.toHaveBeenCalled()
+  })
+})
+
+describe('signed out', () => {
+  it('remembers the return target and starts sign-in instead of accepting', async () => {
+    h.user = null
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(jsonResponse(200, {
+      organization_name: 'Acme', organization_id: 'org1', role: 'member', name: 'Engineering invite',
+    })))
+
+    render(<JoinPage />)
+    await waitFor(() => expect(screen.getByRole('button', { name: /Sign in to join/i })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: /Sign in to join/i }))
+
+    await waitFor(() => expect(h.initiateOAuthFlow).toHaveBeenCalled())
+    expect(h.rememberReturnTarget).toHaveBeenCalledWith('/join/abc123')
+    // Never reached the accept call at all — there was no session to accept with.
+    expect(h.acceptInviteLink).not.toHaveBeenCalled()
+  })
+
+  it('a 401 from accept (session died mid-click) is treated the same as signed out', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(jsonResponse(200, {
+      organization_name: 'Acme', organization_id: 'org1', role: 'member', name: 'Engineering invite',
+    })))
+    h.acceptInviteLink.mockRejectedValue(new h.ApiError('Unauthorized', 401))
+
+    render(<JoinPage />)
+    await waitFor(() => expect(screen.getByRole('button', { name: /Join Acme/i })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: /Join Acme/i }))
+
+    await waitFor(() => expect(h.initiateOAuthFlow).toHaveBeenCalled())
+    expect(h.rememberReturnTarget).toHaveBeenCalledWith('/join/abc123')
+  })
+})
