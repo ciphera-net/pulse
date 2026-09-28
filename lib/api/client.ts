@@ -522,6 +522,12 @@ async function apiRequest<T>(
             })
 
             if (retryResponse.ok) {
+              // * Same 204 rule as the first attempt below: leave and
+              // * remove-member answer with no body, and parsing it would
+              // * report a change that happened as a failure.
+              if (retryResponse.status === 204) {
+                return undefined as T
+              }
               return retryResponse.json()
             }
             const retryBody = await retryResponse.json().catch(() => ({}))
