@@ -131,7 +131,7 @@ export async function prepareImport(options: ImportOptions): Promise<PreparedImp
     const meta = SOURCE_META[options.source]
     const files = chosenFiles(options)
     checkUploadCount(files.length)
-    if (meta.fileCount === 'single') requireExactlyOneFile(files)
+    if (meta.fileCount === 'single') requireExactlyOneFile(files, meta.oneFileMessage)
     const requestedZone = options.sourceTimezone ?? null
     if (requestedZone !== null && !isTimeZone(requestedZone)) {
       throw new ImportError('bad_source_timezone', `${requestedZone} is not a time zone.`)

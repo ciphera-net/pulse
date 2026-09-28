@@ -56,6 +56,7 @@ import { checkHeader, requireExactlyOneFile, requireFiles, type ColumnIndex, typ
 import type { RowRef, SkipLedger } from '../core/skipped'
 import { readZip, type EntrySink } from '../core/zip'
 import { wrongFile } from '../errors'
+import { PLAUSIBLE_ONE_FILE_MESSAGE } from '../source-meta'
 import type { Dimension } from '../types'
 import type { AggregateSourceParser } from './source'
 
@@ -340,7 +341,7 @@ export const plausibleSource: AggregateSourceParser = {
   async read(files, ctx) {
     // The export is ONE ZIP (M7-a): a second file is refused, never silently
     // left unread while the first is imported.
-    const file = requireExactlyOneFile(files, "Choose one file: Plausible's export is one ZIP.")
+    const file = requireExactlyOneFile(files, PLAUSIBLE_ONE_FILE_MESSAGE)
     if (file.input !== 'zip') {
       throw wrongFile(
         'not_an_archive',

@@ -20,6 +20,7 @@ import {
 } from '../index'
 import { PLAN_LIMITS } from '../core/plan'
 import { runPipeline } from '../pipeline'
+import { IMPORT_SOURCES, SOURCE_META } from '../source-meta'
 import { PROTOCOL_VERSION, type FromWorker, type NamedFile, type PrepareRequest, type ToWorker } from '../protocol'
 import { createWorkerHost } from '../worker-host'
 import { plausibleFixtureFile } from './fixtures/plausible-export'
@@ -442,8 +443,20 @@ describe('the files an import reads', () => {
     const e = await failure(runImport(options))
     expect(e.code).toBe('wrong_file')
     expect(e.detail).toEqual({ reason: 'duplicate_file', limit: 1, observed: 2 })
+    // In the source's own words: this guard fires before the parser's own
+    // refusal can, so a generic sentence here is the one the customer sees.
+    expect(e.message).toBe("Choose one file: Plausible's export is one ZIP.")
     expect(server.requests).toHaveLength(0)
     expect(workers).toHaveLength(0)
+  })
+
+  it('every single-file source names its own export in its second-file refusal', () => {
+    for (const source of IMPORT_SOURCES) {
+      const meta = SOURCE_META[source]
+      if (meta.fileCount !== 'single') continue
+      expect(meta.oneFileMessage).toMatch(/^Choose one file: /)
+      expect(meta.oneFileMessage).not.toBe('Choose one file: this export is a single file.')
+    }
   })
 
   it('names too_many_files before a single-file source\'s second-file refusal, so the count is the first thing said', async () => {
