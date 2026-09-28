@@ -94,9 +94,14 @@ const makeSite = (over: Record<string, unknown> = {}) => ({
   ...over,
 })
 
+// The wire shape the backend actually sends: `template` is the learned PARENT
+// (pagerules.LearnedDynamicParent — "/sites/:id/visitors"), never the grouped
+// child path. The UI appends "/:id" itself. An earlier fixture used the child
+// form here, so these tests passed while staging showed "/orders" and wrote a
+// keep rule ("/orders") that pinned nothing (PULSE-128 staging, 29-09-2026).
 const LEARNED = [
-  { template: '/sites/:id/visitors/:id', learned_at: '2026-09-28T10:00:00Z', children: 189 },
-  { template: '/blog/:id/comments/:id', learned_at: '2026-09-28T11:00:00Z', children: 14 },
+  { template: '/sites/:id/visitors', learned_at: '2026-09-28T10:00:00Z', children: 189 },
+  { template: '/blog/:id/comments', learned_at: '2026-09-28T11:00:00Z', children: 14 },
 ]
 
 function mountWith(site: Record<string, unknown>) {
