@@ -36,6 +36,7 @@ import { ImportError } from '../../errors'
 import { runPipeline } from '../../pipeline'
 import { SOURCE_META } from '../../source-meta'
 import { SOURCE_PARSERS } from '../index'
+import { SIMPLE_ANALYTICS_REQUIRED_COLUMNS, simpleAnalyticsSource } from '../simple-analytics'
 import type { AcquisitionRow, AggregateRows, DimensionRow } from '../../types'
 import {
   UMAMI_ASSUMED_UTC_NOTE,
@@ -55,13 +56,13 @@ const REAL_RAW = fixture('umami-published-query-raw-timestamps.csv')
 const file = (content: string | Uint8Array, name = 'umami-export.csv') =>
   new File([typeof content === 'string' ? content : new Uint8Array(content)], name)
 
-async function parse(files: File | File[], timeZone = 'UTC', clip: Clip | null = null) {
+async function parse(files: File | File[], timeZone = 'UTC', clip: Clip | null = null, siteDomain: string | null = null) {
   const list = Array.isArray(files) ? files : [files]
   const skipped = new SkipLedger()
   const rows = new RawFolder({ timeZone, clip, skipped })
   const chosen = []
   for (const f of list) chosen.push({ name: f.name, blob: f as Blob, input: await detectInputKind(f) })
-  const result = await umamiSource.read(chosen, { rows, skipped, read: {}, siteDomain: null })
+  const result = await umamiSource.read(chosen, { rows, skipped, read: {}, siteDomain })
   return { rows: rows.finish(), skipped, ...result }
 }
 
@@ -950,5 +951,140 @@ describe('registration', () => {
     const { summary } = await runPipeline({ source: 'umami', files: [umamiFixtureFile()], clip: null, timeZone: 'UTC', siteDomain: null })
     expect(summary.notes).toEqual({ [UMAMI_ASSUMED_UTC_NOTE]: '1' })
     expect(umamiFixtureCsv().startsWith(UMAMI_FIXTURE_HEADER)).toBe(true)
+  })
+})
+
+// ─── The site's own domain (M8-b′, PULSE-126) ─────────────────────────────
+//
+// Simple Analytics' rows have been held to the site's domain since M9-j′;
+// Umami's were not, so an export of the wrong Umami website imported
+// silently. Both parsers now share ONE host check (core/host.ts), and the
+// differential test below runs the same cases through both.
+
+/** One pageview row in the published column order; override by name. */
+function umamiRow(values: Partial<Record<(typeof UMAMI_COLUMNS)[number], string>>): string {
+  const v: Record<string, string> = {
+    created_at: '2026-03-02T09:00:00Z', session_id: 's1', visit_id: 'v1', event_type: '1', event_name: '',
+    hostname: 'example.com', url_path: '/', referrer_domain: '', utm_source: '', utm_medium: '', utm_campaign: '',
+    browser: 'chrome', os: 'Linux', device: 'desktop', screen: '1920x1080', language: 'en-US',
+    country: 'BE', region: 'BE-VLG', city: 'Gent',
+    ...values,
+  }
+  return UMAMI_COLUMNS.map((c) => v[c]).join(',')
+}
+const umamiCsv = (rows: string[]) => file([UMAMI_COLUMNS.join(','), ...rows].join('\n') + '\n')
+
+describe("the site's own domain (M8-b′)", () => {
+  it('skips a row from another host as hostname_mismatch and imports the rest', async () => {
+    const { rows, skipped } = await parse(
+      umamiCsv([
+        umamiRow({ hostname: 'example.com', url_path: '/a', visit_id: 'v1' }),
+        umamiRow({ hostname: 'other-site.com', url_path: '/x', visit_id: 'v2', session_id: 's2' }),
+        umamiRow({ hostname: 'www.example.com', url_path: '/b', visit_id: 'v3', session_id: 's3' }),
+      ]),
+      'UTC',
+      null,
+      'example.com',
+    )
+    expect(skipped.toCounts()).toEqual({ hostname_mismatch: 1 })
+    expect(skipped.toSamples().hostname_mismatch).toEqual([{ file: 'umami-export.csv', line: 3 }])
+    expect(rows.daily).toEqual([
+      { date: '2026-03-02', visitors: 2, visits: 2, pageviews: 2, src_bounces: null, src_engagement_seconds: null },
+    ])
+    expect(dims(rows, 'page').map((r) => r.value)).toEqual(['/a', '/b'])
+  })
+
+  it("imports nothing from a whole export of the wrong Umami website, even though its rows all agree with each other", async () => {
+    // The mistake the check exists for: every row shares one consistent host,
+    // so a check against the file's own first row would see nothing wrong.
+    const wrong = ['/a', '/b', '/c'].map((url_path, i) =>
+      umamiRow({ hostname: 'wrong-property.com', url_path, visit_id: `v${i}`, session_id: `s${i}` }),
+    )
+    const { rows, skipped } = await parse(umamiCsv(wrong), 'UTC', null, 'example.com')
+    expect(rows.daily).toEqual([])
+    expect(rows.dimensions).toEqual([])
+    expect(rows.acquisition).toEqual([])
+    expect(skipped.toCounts()).toEqual({ hostname_mismatch: 3 })
+  })
+
+  // [row hostname, site domain, kept]: case, www. on either side, the root
+  // dot, IDN, and a subdomain or a look-alike, which are OTHER sites.
+  const CASES: readonly [string, string, boolean][] = [
+    ['example.com', 'example.com', true],
+    ['www.example.com', 'example.com', true],
+    ['example.com', 'www.example.com', true],
+    ['Example.COM', 'example.com', true],
+    ['example.com.', 'example.com', true],
+    ['WWW.Example.com.', 'example.com', true],
+    ['münchen.example', 'xn--mnchen-3ya.example', true],
+    ['blog.example.com', 'example.com', false],
+    ['example.com', 'blog.example.com', false],
+    ['www2.example.com', 'example.com', false],
+    ['notexample.com', 'example.com', false],
+    ['example.com.evil.test', 'example.com', false],
+  ]
+
+  it.each(CASES)('row host %s against site %s: kept = %s', async (host, site, kept) => {
+    const { rows, skipped } = await parse(umamiCsv([umamiRow({ hostname: host })]), 'UTC', null, site)
+    expect(skipped.toCounts()).toEqual(kept ? {} : { hostname_mismatch: 1 })
+    expect(rows.daily.length).toBe(kept ? 1 : 0)
+  })
+
+  it('decides every case exactly as the Simple Analytics parser does (one host rule, not two)', async () => {
+    const saRow = (hostname: string) =>
+      SIMPLE_ANALYTICS_REQUIRED_COLUMNS.map((c) =>
+        c === 'hostname' ? hostname : c === 'added_iso' ? '2026-03-02T09:00:00.000Z' : c === 'datapoint' ? 'pageview' : c === 'is_robot' ? 'false' : c === 'is_unique' ? 'true' : c === 'path' ? '/' : '',
+      ).join(',')
+    for (const [host, site] of [...CASES.map(([h, s]) => [h, s] as const), ['', 'example.com'] as const]) {
+      const saSkipped = new SkipLedger()
+      const saRows = new RawFolder({ timeZone: 'UTC', clip: null, skipped: saSkipped, emitExitPages: false })
+      const saFile = new File([[SIMPLE_ANALYTICS_REQUIRED_COLUMNS.join(','), saRow(host)].join('\n') + '\n'], 'sa.csv')
+      await simpleAnalyticsSource.read([{ name: 'sa.csv', blob: saFile, input: 'plain' }], { rows: saRows, skipped: saSkipped, read: {}, siteDomain: site })
+      const { skipped } = await parse(umamiCsv([umamiRow({ hostname: host })]), 'UTC', null, site)
+      expect(skipped.toCounts().hostname_mismatch ?? 0, `${host} vs ${site}`).toBe(saSkipped.toCounts().hostname_mismatch ?? 0)
+    }
+  })
+
+  it('an empty hostname on a pageview cannot be shown to be this site, so it is skipped as hostname_mismatch, as Simple Analytics does', async () => {
+    const { rows, skipped } = await parse(
+      umamiCsv([umamiRow({ hostname: '', url_path: '/a' }), umamiRow({ hostname: 'example.com', url_path: '/b', visit_id: 'v2' })]),
+      'UTC',
+      null,
+      'example.com',
+    )
+    expect(skipped.toCounts()).toEqual({ hostname_mismatch: 1 })
+    expect(rows.daily[0]?.pageviews).toBe(1)
+  })
+
+  it("a performance row (no hostname, ever: §0.3) is still not_a_pageview, never hostname_mismatch: the event type is checked first", async () => {
+    const { skipped } = await parse(
+      umamiCsv([umamiRow({ event_type: '5', hostname: '' }), umamiRow({ event_type: '2', hostname: 'other-site.com' }), umamiRow({})]),
+      'UTC',
+      null,
+      'example.com',
+    )
+    expect(skipped.toCounts()).toEqual({ not_a_pageview: 2 })
+  })
+
+  it("with no site_domain (an older server), falls back to the intra-file check as Simple Analytics does: the first pageview's host is the reference", async () => {
+    const { rows, skipped } = await parse(
+      umamiCsv([
+        umamiRow({ event_type: '5', hostname: '' }),
+        umamiRow({ hostname: 'example.com', url_path: '/a' }),
+        umamiRow({ hostname: 'other-site.com', url_path: '/x', visit_id: 'v2' }),
+        umamiRow({ hostname: 'www.example.com', url_path: '/b', visit_id: 'v3' }),
+      ]),
+    )
+    expect(skipped.toCounts()).toEqual({ not_a_pageview: 1, hostname_mismatch: 1 })
+    expect(rows.daily[0]?.pageviews).toBe(2)
+  })
+
+  it('the real export, whose rows name the site both bare and with www., imports whole against its own domain and not at all against another', async () => {
+    const own = await runPipeline({ source: 'umami', files: [file(REAL)], clip: null, timeZone: 'UTC', siteDomain: 'example-import-test.local' })
+    expect(own.summary.skipped).toEqual({ not_a_pageview: 5 })
+    expect(own.summary.totals).toMatchObject({ pageviews: 30 })
+    const other = await parse(file(REAL), 'UTC', null, 'example.com')
+    expect(other.skipped.toCounts()).toEqual({ not_a_pageview: 5, hostname_mismatch: 30 })
+    expect(other.rows.daily).toEqual([])
   })
 })

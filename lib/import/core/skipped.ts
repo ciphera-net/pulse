@@ -35,8 +35,9 @@ export type SkipReason =
    */
   | 'outside_totals_range'
   /**
-   * A row naming a different website's export (M9-j, Simple Analytics' raw
-   * datapoints, which carry their own `hostname` column per row).
+   * A row naming a different website's export: its `hostname` is not the
+   * site's own domain (core/host.ts). Simple Analytics' raw datapoints (M9-j)
+   * and Umami's raw events (M8-b′) both carry one per row.
    */
   | 'hostname_mismatch'
 
