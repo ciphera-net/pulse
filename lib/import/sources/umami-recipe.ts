@@ -28,8 +28,10 @@
 //     (Postgres writes `2026-09-22 09:00:00+00`). The parser still reads that
 //     form, and a bare one, defensively (M8-d).
 //   - The hostname line is commented out: it is for an Umami website whose
-//     tracking code runs on more than one hostname. The filter runs in the
-//     database; the parser never reads `hostname` (M8-b).
+//     tracking code runs on more than one hostname. It is optional: the
+//     parser keeps only rows whose hostname is the site's own domain, with or
+//     without `www.`, and counts every other row as `hostname_mismatch`
+//     (M8-b′), so the line only keeps those rows out of the file.
 //   - PostgreSQL: `COPY (…) TO STDOUT`, run through psql, writes the CSV to
 //     psql's own output, which the customer redirects into a file on their own
 //     machine. It needs no superuser and no access to the
