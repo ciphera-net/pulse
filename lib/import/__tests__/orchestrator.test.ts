@@ -69,10 +69,10 @@ async function failure(p: Promise<unknown>): Promise<ImportError> {
 /** Every row the plan would send, table by table, for comparing with what the server stored. */
 async function expectedRows(file: File) {
   const { parts } = await runPipeline(
-    { source: 'plausible', files: [file], clip: null, timeZone: 'Europe/Brussels', siteDomain: null },
+    { source: 'plausible', files: [file], clip: null, timeZone: 'Europe/Brussels', siteDomain: null, events: true },
     { planLimits: SMALL },
   )
-  const out: Record<string, unknown[]> = { daily: [], monthly: [], dimensions: [], acquisition: [] }
+  const out: Record<string, unknown[]> = { daily: [], monthly: [], dimensions: [], acquisition: [], events: [] }
   for (const p of parts) for (const [t, rows] of Object.entries(JSON.parse(p.rowsJson))) out[t].push(...(rows as unknown[]))
   return out
 }
@@ -104,8 +104,10 @@ describe('runImport', () => {
     const create = server.requests.find((r) => r.method === 'POST' && r.path === '/sites/site-1/data-imports')
     const body = JSON.parse(create?.body ?? '{}')
     expect(Object.keys(body).sort()).toEqual(
-      ['fingerprint', 'plan', 'range_end', 'range_start', 'skipped', 'source', 'source_timezone', 'totals', 'visits_are_visitors'].sort(),
+      ['event_map', 'fingerprint', 'plan', 'range_end', 'range_start', 'skipped', 'source', 'source_timezone', 'totals', 'visits_are_visitors'].sort(),
     )
+    // M12-b: with no mapping step, every source event goes under its suggestion.
+    expect(body.event_map).toEqual({ Signup: 'signup' })
     expect(body).toMatchObject({
       source: 'plausible',
       // An aggregate source's zone defaults to the site's (M2-g).
@@ -156,8 +158,9 @@ describe('runImport', () => {
     const skipped = events.find((e) => e.type === 'skipped' && e.origin === 'browser') as Extract<ImportEvent, { type: 'skipped'; origin: 'browser' }>
     // Locations rows each now send country + region + city (M6), but a
     // clipped physical row still counts once, not once per dimension it
-    // sends — see plausible.test.ts's own regression test for this.
-    expect(skipped.counts.outside_history_window).toBe(17)
+    // sends — see plausible.test.ts's own regression test for this. The 18th
+    // is the fixture's custom event on the 1st (M12-h).
+    expect(skipped.counts.outside_history_window).toBe(18)
     // The window stops well before yesterday, so what lies after it is Pulse's own.
     expect(skipped.counts.pulse_measured).toBe(1)
   })
@@ -207,6 +210,111 @@ describe('resume', () => {
     expect(stored.rows).toEqual(await expectedRows(plausibleFixtureFile()))
     expect(events.some((ev) => ev.type === 'progress' && ev.stage === 'resuming')).toBe(true)
     expect(first.server.requests.filter((r) => r.method === 'POST' && r.path === '/sites/site-1/data-imports')).toHaveLength(1)
+  })
+
+  // M12-c, the survey's trap: the fingerprint covers every part's rows, so a
+  // client that started sending event rows would turn every in-flight pre-M12
+  // import into a guaranteed `plan_mismatch`. A pre-M12 import (created with
+  // no `event_map`; status `upload.events` false) must resume byte for byte.
+  it('resumes an import created before M12: same fingerprint, and not one events row sent', async () => {
+    const { server, options } = setup()
+    // What a pre-M12 client created: the plan without events, and no event_map.
+    const old = await runPipeline(
+      { source: 'plausible', files: [plausibleFixtureFile()], clip: null, timeZone: 'Europe/Brussels', siteDomain: null, events: false },
+      { planLimits: SMALL },
+    )
+    const created = await server.transport({
+      method: 'POST',
+      path: '/sites/site-1/data-imports',
+      body: JSON.stringify({
+        source: 'plausible',
+        source_timezone: 'Europe/Brussels',
+        range_start: old.summary.range_start,
+        range_end: old.summary.range_end,
+        plan: old.summary.steps,
+        fingerprint: old.summary.fingerprint,
+        totals: old.summary.totals,
+        skipped: old.summary.skipped,
+        visits_are_visitors: false,
+      }),
+      signal: new AbortController().signal,
+    })
+    expect(created.status).toBe(201)
+    expect((created.body as { upload: { events: boolean } }).upload.events).toBe(false)
+
+    const prepared = await prepareImport(options)
+    expect(prepared.resume?.id).toBe((created.body as { id: string }).id)
+    expect(prepared.plan.fingerprint).toBe(old.summary.fingerprint)
+    expect(prepared.plan.events).toEqual([])
+    const status = await prepared.upload()
+    prepared.dispose()
+    expect(status.status).toBe('completed')
+    const sent = server.requests.filter((r) => r.path.endsWith('/batches')).map((r) => JSON.parse(r.body ?? '{}').rows)
+    expect(sent.length).toBeGreaterThan(0)
+    for (const rows of sent) expect(Object.keys(rows)).not.toContain('events')
+  })
+
+  it('resumes an events-capable import WITH its events, the same plan it was created from', async () => {
+    const { server, options } = setup()
+    let batches = 0
+    server.fault = (req) => (req.path.endsWith('/batches') && ++batches > 1 ? { respond: { status: 500, body: {}, retryAfterSeconds: null } } : null)
+    await failure(runImport({ ...options, client: { ...fast, maxAttempts: 1 } }))
+    server.fault = null
+    const stored = [...server.imports.values()][0]
+    expect(stored.events).toBe(true)
+    const prepared = await prepareImport(options)
+    expect(prepared.resume?.id).toBe(stored.id)
+    expect(prepared.plan.events).toEqual([{ source_name: 'Signup', count: 1 }])
+    const status = await prepared.upload()
+    prepared.dispose()
+    expect(status.status).toBe('completed')
+    expect(stored.rows.events).toEqual([{ date: '2026-03-01', source_name: 'Signup', visitors: 1, count: 1 }])
+  })
+
+  it('sends the confirmed map, and refuses one that misses an event or names a reserved one before creating anything', async () => {
+    const { server, options } = setup()
+    const prepared = await prepareImport(options)
+    const before = server.requests.length
+    expect((await failure(prepared.upload({ eventMap: {} }))).code).toBe('invalid_event_map')
+    expect((await failure(prepared.upload({ eventMap: { Signup: 'pulse_click' } }))).code).toBe('invalid_event_map')
+    expect(server.requests.length).toBe(before)
+    const status = await prepared.upload({ eventMap: { Signup: null } })
+    prepared.dispose()
+    expect(status.status).toBe('completed')
+    const create = server.requests.find((r) => r.method === 'POST' && r.path === '/sites/site-1/data-imports')
+    expect(JSON.parse(create?.body ?? '{}').event_map).toEqual({ Signup: null })
+    // The browser still sends the row (the fingerprint is the file's), and the server drops it.
+    expect(status.skipped.server).toMatchObject({ event_excluded: 1 })
+  })
+
+  // The server keys a source name by textclean.Clean. Names the file spells
+  // differently but the server would collapse (a '<', a zero-width joiner, an
+  // emoji variation selector, a soft hyphen) must already be ONE name here: one
+  // mapping row, one map key, one events row per day. Two keys the server folds
+  // into one are a duplicate, and it refuses the whole map (invalid_event_map).
+  it('merges source names the server would collapse: one row, one map key, one events row per day', async () => {
+    const file = plausibleFixtureFile((files) => {
+      const k = Object.keys(files).find((f) => f.startsWith('imported_custom_events_')) as string
+      files[k] =
+        'date,name,link_url,path,visitors,events\n' +
+        '2026-03-01,Signup,,,1,1\n' +
+        '2026-03-01,Sign\u200Dup,,,1,2\n' +
+        '2026-03-01,<Signup>,,,1,1\n' +
+        '2026-03-01,Signup\uFE0F,,,2,3\n' +
+        '2026-03-02,Sign\u00ADup,,,1,1\n'
+    })
+    const { server, options } = setup({ file })
+    const prepared = await prepareImport(options)
+    expect(prepared.plan.events).toEqual([{ source_name: 'Signup', count: 8 }])
+    const status = await prepared.upload({ eventMap: { Signup: 'signup' } })
+    prepared.dispose()
+    expect(status.status).toBe('completed')
+    const create = server.requests.find((r) => r.method === 'POST' && r.path === '/sites/site-1/data-imports')
+    expect(JSON.parse(create?.body ?? '{}').event_map).toEqual({ Signup: 'signup' })
+    expect(server.imports.get(status.id)?.rows.events).toEqual([
+      { date: '2026-03-01', source_name: 'Signup', visitors: 5, count: 7 },
+      { date: '2026-03-02', source_name: 'Signup', visitors: 1, count: 1 },
+    ])
   })
 
   it('picks up again when upload() is simply called a second time', async () => {
@@ -403,13 +511,14 @@ describe('the files an import reads', () => {
     expect(body(list)).toBe(body(single))
   })
 
-  it('hands the worker a list of files and never a lone `file`, at protocol version 2', async () => {
+  it('hands the worker a list of files and never a lone `file`, at protocol version 3', async () => {
     const { workers, options } = setup()
     await runImport(options)
     const prepare = workers[0].received.find(isPrepare)
     expect(prepare).toBeDefined()
-    expect(PROTOCOL_VERSION).toBe(2)
-    expect(prepare).toMatchObject({ protocol: 2 })
+    expect(PROTOCOL_VERSION).toBe(3)
+    // M12-c: a new import is planned with events.
+    expect(prepare).toMatchObject({ protocol: 3, events: true })
     expect(Object.keys(prepare as object)).toContain('files')
     expect(Object.keys(prepare as object)).not.toContain('file')
     const files = prepare?.files ?? []
@@ -495,6 +604,7 @@ describe('the files an import reads', () => {
       clip: null,
       timeZone: 'UTC',
       siteDomain: null,
+      events: true,
     })
     expect(posted).toEqual([
       {
@@ -509,10 +619,10 @@ describe('the files an import reads', () => {
   })
 
   it('the worker checks the count too, for a caller that went round the orchestrator', async () => {
-    const none = await failure(runPipeline({ source: 'plausible', files: [], clip: null, timeZone: 'UTC', siteDomain: null }))
+    const none = await failure(runPipeline({ source: 'plausible', files: [], clip: null, timeZone: 'UTC', siteDomain: null, events: true }))
     expect(none.detail).toEqual({ reason: 'missing_file' })
     const many = Array.from({ length: MAX_UPLOAD_FILES + 1 }, (_, i) => untouchable(`f${i}.csv`))
-    const over = await failure(runPipeline({ source: 'plausible', files: many, clip: null, timeZone: 'UTC', siteDomain: null }))
+    const over = await failure(runPipeline({ source: 'plausible', files: many, clip: null, timeZone: 'UTC', siteDomain: null, events: true }))
     expect(over.code).toBe('too_many_files')
   })
 })

@@ -58,6 +58,7 @@ export function createWorkerHost(
             clip: message.clip,
             timeZone: message.timeZone,
             siteDomain: message.siteDomain ?? null,
+            events: message.events === true,
           },
           {
             ...options.hooks,

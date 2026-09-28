@@ -51,4 +51,31 @@ describe('ContentSignals', () => {
     // The scroll session count belongs to the scroll tab's header only.
     expect(screen.queryByText('129 sessions')).toBeNull()
   })
+
+  // M12 (owner pick A, W-M12-5): the header's right slot says so when the
+  // server says the goal counts include imported days, and only then.
+  it('says "incl. imported days" on the Events tab when the server says imported days are included', () => {
+    const imported = { included: true, from: '2026-08-30', through: '2026-09-14', source: 'plausible', reason: null }
+    render(<ContentSignals {...props} goalsImported={imported} />)
+    // Not on the scroll tab: that slot is its session count.
+    expect(screen.queryByText('incl. imported days')).toBeNull()
+    fireEvent.click(screen.getByRole('radio', { name: 'Events' }))
+    const word = screen.getByTestId('events-imported-word')
+    expect(word.textContent).toBe('incl. imported days')
+    expect(word.className).toContain('text-[11px]')
+    expect(word.className).not.toContain('font-mono')
+  })
+
+  it('says nothing when the range holds no imported day, or they were left out (a filter)', () => {
+    for (const goalsImported of [
+      undefined,
+      { included: false, from: null, through: null, source: null, reason: null },
+      { included: false, from: '2026-08-30', through: '2026-09-14', source: 'plausible', reason: 'filtered' },
+    ]) {
+      const { unmount } = render(<ContentSignals {...props} goalsImported={goalsImported} />)
+      fireEvent.click(screen.getByRole('radio', { name: 'Events' }))
+      expect(screen.queryByTestId('events-imported-word')).toBeNull()
+      unmount()
+    }
+  })
 })

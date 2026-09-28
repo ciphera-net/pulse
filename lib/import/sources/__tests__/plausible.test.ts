@@ -6,6 +6,8 @@
 // names with or without the date range), and every way the file can be the
 // wrong one is named.
 
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { AggregateBuilder } from '../../core/aggregate'
 import type { Clip } from '../../core/cap'
@@ -125,8 +127,10 @@ describe('the synthetic export', () => {
 
     // No monthly rows: the export has no monthly unique count (M2-k).
     expect(rows.monthly).toEqual([])
-    // A current export's two tables Pulse does not import, named, never read.
-    expect(ignored).toEqual([file('custom_events'), file('custom_props')])
+    // M12-h: the custom events are read now, under the tool's own label.
+    expect(rows.events).toEqual([{ date: '2026-03-01', source_name: 'Signup', visitors: 1, count: 1 }])
+    // The one table a current export has that Pulse does not import, named, never read.
+    expect(ignored).toEqual([file('custom_props')])
   })
 
   it('counts exactly the rows it skipped, by reason, with their lines and nothing else', async () => {
@@ -158,11 +162,11 @@ describe('the synthetic export', () => {
     // The BE rows fall on the 1st: counted once, under the window, not as place names.
     expect(counts.needs_place_names).toBeUndefined()
     // The valid rows on the 1st: visitors 1, sources 2, pages 3, entry 1, exit 1,
-    // locations 3, devices 2, browsers 3, operating systems 1. Each locations row
+    // locations 3, devices 2, browsers 3, operating systems 1, custom events 1 (M12). Each locations row
     // now makes three addDimension calls (country + region + city, M6), but the
     // clip check must count the PHYSICAL row once, not once per call — see the
     // next test.
-    expect(counts.outside_history_window).toBe(17)
+    expect(counts.outside_history_window).toBe(18)
     expect(counts.pulse_measured).toBe(1)
   })
 
@@ -196,7 +200,7 @@ describe('the synthetic export', () => {
   })
 
   it('plans the export end to end', async () => {
-    const { summary, parts } = await runPipeline({ source: 'plausible', files: [plausibleFixtureFile()], clip: null, timeZone: 'UTC', siteDomain: null })
+    const { summary, parts } = await runPipeline({ source: 'plausible', files: [plausibleFixtureFile()], clip: null, timeZone: 'UTC', siteDomain: null, events: true })
     expect(summary).toMatchObject({
       source: 'plausible',
       kind: 'upload_aggregate',
@@ -205,9 +209,10 @@ describe('the synthetic export', () => {
       range_end: '2026-03-03',
       steps: [{ start: '2026-03-01', end: '2026-03-03', parts: 1 }],
       parts_total: 1,
-      totals: { rows: { daily: 3, monthly: 0, dimensions: 24, acquisition: 3 }, visitors: 35, pageviews: 89 },
+      totals: { rows: { daily: 3, monthly: 0, dimensions: 24, acquisition: 3, events: 1 }, visitors: 35, pageviews: 89 },
       skipped: { bad_number: 1, bad_timestamp: 1, missing_field: 2 },
-      ignored_files: [file('custom_events'), file('custom_props')],
+      ignored_files: [file('custom_props')],
+      events: [{ source_name: 'Signup', count: 1 }],
     })
     expect(summary.fingerprint).toMatch(/^[0-9a-f]{64}$/)
     expect(parts).toHaveLength(1)
@@ -216,8 +221,8 @@ describe('the synthetic export', () => {
   })
 
   it('gives the same fingerprint for the same export on every run', async () => {
-    const a = await runPipeline({ source: 'plausible', files: [plausibleFixtureFile()], clip: null, timeZone: 'UTC', siteDomain: null })
-    const b = await runPipeline({ source: 'plausible', files: [plausibleFixtureFile()], clip: null, timeZone: 'UTC', siteDomain: null })
+    const a = await runPipeline({ source: 'plausible', files: [plausibleFixtureFile()], clip: null, timeZone: 'UTC', siteDomain: null, events: true })
+    const b = await runPipeline({ source: 'plausible', files: [plausibleFixtureFile()], clip: null, timeZone: 'UTC', siteDomain: null, events: true })
     expect(b.summary.fingerprint).toBe(a.summary.fingerprint)
   })
 })
@@ -278,7 +283,7 @@ describe('tolerated shapes', () => {
     const { rows, ignored } = await parse(nested)
     expect(rows.daily).toHaveLength(3)
     // The litter is skipped without a word; only the export's own unread tables are named.
-    expect(ignored).toEqual([file('custom_events'), file('custom_props')])
+    expect(ignored).toEqual([file('custom_props')])
   })
 
   it('finds every table inside a folder a Windows zipper named with backslashes', async () => {
@@ -300,14 +305,24 @@ describe('tolerated shapes', () => {
     expect(got.rows).toEqual(want.rows)
     expect(got.skipped.toCounts()).toEqual(want.skipped.toCounts())
     expect(got.skipped.toSamples()).toEqual(want.skipped.toSamples())
-    expect(got.ignored).toEqual([file('custom_events'), file('custom_props')])
+    expect(got.ignored).toEqual([file('custom_props')])
   })
 
-  it('never reads the custom events file, so its shape cannot fail an import (D8)', async () => {
+  it('reads the custom events file under the strict header check, like every table it reads (M12-h)', async () => {
     const odd = plausibleFixtureFile((files) => {
       files[file('custom_events')] = 'anything,at,all\n"unterminated\n'
     })
-    await expect(parse(odd)).resolves.toBeDefined()
+    const e = await failure(parse(odd))
+    expect(e.code).toBe('wrong_file')
+    expect(e.detail).toMatchObject({ reason: 'missing_columns', file: file('custom_events') })
+  })
+
+  it('reads an export whose custom events file is absent, or has a header and no rows, with no events', async () => {
+    const none = await parse(plausibleFixtureFile((files) => delete files[file('custom_events')]))
+    const empty = await parse(plausibleFixtureFile((files) => (files[file('custom_events')] = 'date,name,link_url,path,visitors,events\n')))
+    expect(none.rows.events).toEqual([])
+    expect(empty.rows.events).toEqual([])
+    expect(none.rows.daily).toHaveLength(3)
   })
 
   it('never reads the custom properties file either, so its shape cannot fail an import (M12)', async () => {
@@ -326,7 +341,7 @@ describe('tolerated shapes', () => {
     const older = await parse(plausibleFixtureFile(undefined, { withoutCustomProps: true }))
     expect(older.rows).toEqual(current.rows)
     expect(older.skipped.toCounts()).toEqual(current.skipped.toCounts())
-    expect(older.ignored).toEqual([file('custom_events')])
+    expect(older.ignored).toEqual([])
   })
 
   it('reads entries named without a date range, as an export that had none names them (M2-o)', async () => {
@@ -335,7 +350,7 @@ describe('tolerated shapes', () => {
     expect(bare.rows).toEqual(dated.rows)
     expect(bare.skipped.toCounts()).toEqual(dated.skipped.toCounts())
     expect(bare.skipped.toSamples().bad_timestamp).toEqual([{ file: 'imported_visitors.csv', line: 5 }])
-    expect(bare.ignored).toEqual(['imported_custom_events.csv', 'imported_custom_props.csv'])
+    expect(bare.ignored).toEqual(['imported_custom_props.csv'])
   })
 
   it('leaves unread, and names, a table a newer export adds', async () => {
@@ -478,7 +493,7 @@ describe('the wrong file, named', () => {
 
   it('two files through the whole pipeline are refused before either is parsed', async () => {
     const e = await failure(
-      runPipeline({ source: 'plausible', files: [plausibleFixtureFile(), plausibleFixtureFile()], clip: null, timeZone: 'UTC', siteDomain: null }),
+      runPipeline({ source: 'plausible', files: [plausibleFixtureFile(), plausibleFixtureFile()], clip: null, timeZone: 'UTC', siteDomain: null, events: true }),
     )
     expect(e.detail).toEqual({ reason: 'duplicate_file', limit: 1, observed: 2 })
   })
@@ -491,5 +506,65 @@ describe('the wrong file, named', () => {
     files[file('devices')] = latin1
     const e = await failure(parse(new File([zipSync(files) as BlobPart], 'x.zip')))
     expect(e.code).toBe('unsupported_encoding')
+  })
+})
+
+// M12-h on real bytes: a Plausible CE v3.2.1 export made through Plausible's own
+// ingestion path (14 real tracker requests, one day), copied from
+// Pulse/docs/data/27-09-2026-analytics-import-m12-events/real-exports-events/plausible-ce/.
+// Its `imported_custom_events` is finer than the wire: one row per link_url and
+// path, so "Outbound Link: Click" arrives as two rows for one event on one day.
+describe('the real CE export with custom events (M12-h)', () => {
+  const real = () =>
+    new Blob([readFileSync(fileURLToPath(new URL('./fixtures/plausible-ce-with-events.zip', import.meta.url)))], {
+      type: 'application/zip',
+    })
+
+  it('sums an event\'s rows across link_url and path into one row per (day, name)', async () => {
+    const { rows, ignored, skipped } = await parse(real())
+    expect(rows.events).toEqual([
+      { date: '2026-09-27', source_name: '404', visitors: 1, count: 1 },
+      { date: '2026-09-27', source_name: 'File Download', visitors: 1, count: 1 },
+      { date: '2026-09-27', source_name: 'Form: Submission', visitors: 1, count: 1 },
+      // Two links, 1+2 events by 1+1 visitors: summed, the usual distinct-count caveat.
+      { date: '2026-09-27', source_name: 'Outbound Link: Click', visitors: 2, count: 3 },
+      { date: '2026-09-27', source_name: 'Signup', visitors: 2, count: 2 },
+    ])
+    // The custom properties stay unread: they have lost their tie to the event.
+    expect(ignored).toEqual(['imported_custom_props_20260918_20260927.csv'])
+    expect(skipped.toCounts()).toEqual({})
+  })
+
+  it('lists the source events for the mapping step, largest first, and plans them', async () => {
+    const { summary, parts } = await runPipeline({
+      source: 'plausible',
+      files: [new File([real()], 'plausible-export-with-events.zip')],
+      clip: null,
+      timeZone: 'UTC',
+      siteDomain: null,
+      events: true,
+    })
+    expect(summary.events).toEqual([
+      { source_name: 'Outbound Link: Click', count: 3 },
+      { source_name: 'Signup', count: 2 },
+      { source_name: '404', count: 1 },
+      { source_name: 'File Download', count: 1 },
+      { source_name: 'Form: Submission', count: 1 },
+    ])
+    expect(summary.totals.rows.events).toBe(5)
+    const sent = parts.flatMap((p) => (JSON.parse(p.rowsJson).events ?? []) as { source_name: string }[])
+    expect(sent.map((r) => r.source_name).sort()).toEqual(['404', 'File Download', 'Form: Submission', 'Outbound Link: Click', 'Signup'])
+    // The link and path the events happened on never leave the browser (M12-j).
+    expect(JSON.stringify(sent)).not.toMatch(/twitter\.com|github\.com|report\.pdf|\/contact|this-page-does-not-exist/)
+  })
+
+  it('skips an event whose name is empty once cleaned as event_name_invalid, with its line', async () => {
+    const zip = plausibleFixtureFile((files) => {
+      files[file('custom_events')] = 'date,name,link_url,path,visitors,events\n2026-03-01, \t ,,,1,1\n2026-03-01,Signup,,,1,1\n'
+    })
+    const { rows, skipped } = await parse(zip)
+    expect(rows.events).toEqual([{ date: '2026-03-01', source_name: 'Signup', visitors: 1, count: 1 }])
+    expect(skipped.toCounts()).toMatchObject({ event_name_invalid: 1 })
+    expect(skipped.toSamples().event_name_invalid).toEqual([{ file: file('custom_events'), line: 2 }])
   })
 })

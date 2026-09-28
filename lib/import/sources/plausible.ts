@@ -38,8 +38,16 @@
 //                        code or id means, into a name or the Unknown
 //                        convention, so the customer cannot bypass that mapping
 //                        by choosing what a code means (D9)
-//   custom_events      → not read (D8: events ship after v1)
-//   custom_props       → not read (M12)
+//   custom_events      → events (M12-h): one row per (date, name, link_url,
+//                        path), FINER than the wire's (date, source_name), so
+//                        the builder sums a name's rows across link_url and
+//                        path, events and visitors alike (a visitor on two links
+//                        counts twice, the usual distinct-count caveat). The
+//                        name travels cleaned (core/events.ts), never mapped:
+//                        the server applies the customer's map
+//   custom_props       → not read: each row has lost its tie to the event that
+//                        carried it (Plausible's own re-importer refuses it),
+//                        so no Pulse event could honestly own it (M12)
 //
 // Values travel as the file has them. Labels, hostnames, paths and codes are
 // normalised on the SERVER (M2-l), once, so the browser and the server can
@@ -52,6 +60,7 @@
 import { MAX_COUNT, type AggregateBuilder } from '../core/aggregate'
 import { CsvByteParser } from '../core/csv'
 import { isCalendarDate } from '../core/dates'
+import { cleanSourceName } from '../core/events'
 import { checkHeader, requireExactlyOneFile, requireFiles, type ColumnIndex, type TableSchema } from '../core/schema'
 import type { RowRef, SkipLedger } from '../core/skipped'
 import { readZip, type EntrySink } from '../core/zip'
@@ -71,14 +80,15 @@ export const PLAUSIBLE_TABLES = [
   'devices',
   'browsers',
   'operating_systems',
+  'custom_events',
 ] as const
 type ReadTable = (typeof PLAUSIBLE_TABLES)[number]
 
 /**
  * A table this parser reads, under either name the exporter writes: with the
  * export's date range, or without one. The table names are listed in full, so
- * `imported_custom_props`, `imported_custom_events` and any table a newer export
- * adds do not match and are ignored rather than read.
+ * `imported_custom_props` and any table a newer export adds do not match and are
+ * ignored rather than read.
  */
 const TABLE_FILE_RE = new RegExp(`^imported_(${PLAUSIBLE_TABLES.join('|')})(?:_\\d{8}_\\d{8})?\\.csv$`)
 
@@ -127,6 +137,7 @@ export const PLAUSIBLE_COLUMNS: Readonly<Record<ReadTable, readonly string[]>> =
     'bounces',
     'pageviews',
   ],
+  custom_events: ['date', 'name', 'link_url', 'path', 'visitors', 'events'],
 }
 
 /** The columns each file's mapper actually reads. */
@@ -140,6 +151,7 @@ const READS: Readonly<Record<ReadTable, readonly string[]>> = {
   devices: ['date', 'device', 'visitors', 'visits', 'pageviews'],
   browsers: ['date', 'browser', 'visitors', 'visits', 'pageviews'],
   operating_systems: ['date', 'operating_system', 'visitors', 'visits', 'pageviews'],
+  custom_events: ['date', 'name', 'visitors', 'events'],
 }
 
 /**
@@ -220,7 +232,7 @@ const nullIfEmpty = (s: string) => (s === '' ? null : s)
 
 type Mapper = (f: Fields, at: RowRef) => void
 
-function mappers(rows: AggregateBuilder): Record<ReadTable, { counts: string[]; optional: string[]; map: Mapper }> {
+function mappers(rows: AggregateBuilder, skipped: SkipLedger): Record<ReadTable, { counts: string[]; optional: string[]; map: Mapper }> {
   const dimension =
     (dim: Dimension, valueColumn: string, visitsColumn: string) =>
     (f: Fields, at: RowRef) => {
@@ -333,6 +345,18 @@ function mappers(rows: AggregateBuilder): Record<ReadTable, { counts: string[]; 
       optional: [],
       map: dimension('os', 'operating_system', 'visits'),
     },
+    custom_events: {
+      counts: ['visitors', 'events'],
+      optional: [],
+      map: (f, at) => {
+        const name = cleanSourceName(f.text('name'))
+        if (name === '') {
+          skipped.add('event_name_invalid', at)
+          return
+        }
+        rows.addEvent({ date: f.text('date'), source_name: name, visitors: f.count('visitors'), count: f.count('events') }, at)
+      },
+    },
   }
 }
 
@@ -350,7 +374,7 @@ export const plausibleSource: AggregateSourceParser = {
     }
     const seen = new Set<string>()
     const ignored: string[] = []
-    const map = mappers(ctx.rows)
+    const map = mappers(ctx.rows, ctx.skipped)
 
     const entry = (name: string): EntrySink | null => {
       // A folder is named by the path its entries sit under. The ZIP format
@@ -366,8 +390,8 @@ export const plausibleSource: AggregateSourceParser = {
       if (segments[0] === '__MACOSX' || base === '.DS_Store' || base.startsWith('._')) return null
       const m = TABLE_FILE_RE.exec(base)
       if (!m) {
-        // Not a table this parser reads: the custom events and custom
-        // properties (D8, M12), a table a newer export adds, or a file somebody
+        // Not a table this parser reads: the custom properties (M12), a
+        // table a newer export adds, or a file somebody
         // put in the archive. It is left unread (so never decompressed, and
         // never counted against the byte caps) and named in the plan, so the
         // customer sees it was not imported. Refusing the archive for it would

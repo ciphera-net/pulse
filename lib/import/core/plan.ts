@@ -12,7 +12,7 @@
 // the server's partial `import_through` relies on after a failure.
 //
 // Caps (M2-e, M2-c):
-//   - a part holds at most 5,000 rows across the four tables AND at most
+//   - a part holds at most 5,000 rows across the five tables AND at most
 //     768 KiB, well inside the server's 1 MiB body reader;
 //   - a plan has at most 5,000 steps, 50 parts per step and 10,000 parts, else
 //     `plan_too_large` (the server's own code, raised before anything is sent).
@@ -123,6 +123,10 @@ export function serializeRow(table: TableName, row: AggregateRows[TableName][num
         pageviews: r.pageviews,
       })
     }
+    case 'events': {
+      const r = row as AggregateRows['events'][number]
+      return JSON.stringify({ date: r.date, source_name: r.source_name, visitors: r.visitors, count: r.count })
+    }
   }
 }
 
@@ -141,9 +145,9 @@ interface Row {
 
 /** A part being filled. Tracks its exact serialised size as rows are added. */
 class PartBuffer {
-  readonly tables: Record<TableName, Row[]> = { daily: [], monthly: [], dimensions: [], acquisition: [] }
+  readonly tables: Record<TableName, Row[]> = { daily: [], monthly: [], dimensions: [], acquisition: [], events: [] }
   rows = 0
-  private rowBytes: Record<TableName, number> = { daily: 0, monthly: 0, dimensions: 0, acquisition: 0 }
+  private rowBytes: Record<TableName, number> = { daily: 0, monthly: 0, dimensions: 0, acquisition: 0, events: 0 }
 
   constructor(
     readonly step: number,
@@ -157,6 +161,7 @@ class PartBuffer {
       monthly: this.tables.monthly.length,
       dimensions: this.tables.dimensions.length,
       acquisition: this.tables.acquisition.length,
+      events: this.tables.events.length,
     }
     const bytes = { ...this.rowBytes }
     for (const r of extra) {
@@ -215,6 +220,7 @@ export async function buildPlan(rows: AggregateRows, limits: PlanLimits = PLAN_L
   for (const r of rows.daily) dates.push(r.date)
   for (const r of rows.dimensions) dates.push(r.date)
   for (const r of rows.acquisition) dates.push(r.date)
+  for (const r of rows.events) dates.push(r.date)
   if (dates.length === 0) {
     throw new ImportError('no_data_in_range', 'There are no days to import in this file.')
   }
@@ -242,6 +248,9 @@ export async function buildPlan(rows: AggregateRows, limits: PlanLimits = PLAN_L
   }
   for (const r of rows.dimensions) place(r.date, 'dimensions', serializeRow('dimensions', r))
   for (const r of rows.acquisition) place(r.date, 'acquisition', serializeRow('acquisition', r))
+  // M12: placed last, and serialised last in each part (TABLES order), so a
+  // plan with no events packs and fingerprints exactly as it did before them.
+  for (const r of rows.events) place(r.date, 'events', serializeRow('events', r))
 
   const days = [...byDay.keys()].sort()
   const steps: PlanStep[] = []
@@ -345,6 +354,7 @@ export async function buildPlan(rows: AggregateRows, limits: PlanLimits = PLAN_L
         monthly: rows.monthly.length,
         dimensions: rows.dimensions.length,
         acquisition: rows.acquisition.length,
+        events: rows.events.length,
       },
       visitors,
       pageviews,

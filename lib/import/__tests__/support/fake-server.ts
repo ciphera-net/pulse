@@ -34,6 +34,9 @@ interface Stored {
   serverSkipped: Record<string, number>
   visits_are_visitors: boolean
   rows: Record<TableName, Record<string, unknown>[]>
+  /** M12-c: whether the create request carried `event_map` (contract §3.12m12b-2). */
+  events: boolean
+  eventMap: Record<string, string | null>
   created_at: string
   started_at: string | null
   progressed_at: string | null
@@ -117,6 +120,7 @@ export class FakeImportServer {
       started_at: i.started_at,
       progressed_at: i.progressed_at,
       finished_at: i.finished_at,
+      upload: { events: i.events },
     }
   }
 
@@ -171,7 +175,17 @@ export class FakeImportServer {
     } catch {
       return err(400, 'invalid_plan')
     }
-    if (!sameKeys(b, CREATE_FIELDS)) return err(400, 'invalid_plan')
+    // M12-b: `event_map` is optional; present (even `{}`) marks an events-capable import.
+    const withMap = 'event_map' in b
+    if (!sameKeys(b, withMap ? [...CREATE_FIELDS, 'event_map'] : CREATE_FIELDS)) return err(400, 'invalid_plan')
+    const eventMap = (withMap ? b.event_map : {}) as Record<string, unknown>
+    if (typeof eventMap !== 'object' || eventMap === null || Array.isArray(eventMap)) return err(400, 'invalid_event_map')
+    for (const [k, v] of Object.entries(eventMap)) {
+      if (k.trim() === '' || k.length > 200) return err(400, 'invalid_event_map')
+      if (v !== null && (typeof v !== 'string' || !/^[a-zA-Z0-9_]{1,64}$/.test(v) || v === 'pageview' || v.startsWith('pulse_'))) {
+        return err(400, 'invalid_event_map')
+      }
+    }
     const kind = typeof b.source === 'string' ? this.sources[b.source] : undefined
     if (!kind) return err(422, 'source_not_enabled')
     if (kind === 'upload_raw' && b.source_timezone !== this.siteTimezone) return err(422, 'bad_source_timezone')
@@ -215,7 +229,9 @@ export class FakeImportServer {
       browserSkipped: skipped as Record<string, number>,
       serverSkipped: {},
       visits_are_visitors: b.visits_are_visitors === true,
-      rows: { daily: [], monthly: [], dimensions: [], acquisition: [] },
+      rows: { daily: [], monthly: [], dimensions: [], acquisition: [], events: [] },
+      events: withMap,
+      eventMap: eventMap as Record<string, string | null>,
       created_at: '2026-09-27T00:00:00Z',
       started_at: null,
       progressed_at: null,
@@ -254,16 +270,20 @@ export class FakeImportServer {
       monthly: (r) => String(r.month),
       dimensions: (r) => JSON.stringify([r.date, r.dimension, r.parent, r.value]),
       acquisition: (r) => JSON.stringify([r.date, r.referrer, r.src_source, r.src_medium, r.src_campaign]),
+      events: (r) => JSON.stringify([r.date, r.source_name]),
     }
+    const excluded: Record<string, number> = {}
     for (const [table, list] of Object.entries(rows)) {
       if (!(table in WIRE_FIELDS) || !Array.isArray(list)) return err(400, 'invalid_batch')
+      // M12-c: events on an import created without them is a client bug.
+      if (table === 'events' && !imp.events) return err(400, 'invalid_batch')
       total += list.length
       const seen = new Set<string>()
       for (let index = 0; index < list.length; index++) {
         const r = list[index] as Record<string, unknown>
         if (!sameKeys(r, WIRE_FIELDS[table as TableName])) return err(400, 'invalid_batch')
         for (const [k, v] of Object.entries(r)) {
-          if (['visitors', 'visits', 'pageviews', 'src_bounces', 'src_engagement_seconds'].includes(k) && v !== null && !isCount(v)) {
+          if (['visitors', 'visits', 'pageviews', 'src_bounces', 'src_engagement_seconds', 'count'].includes(k) && v !== null && !isCount(v)) {
             return err(400, 'invalid_batch')
           }
         }
@@ -271,6 +291,13 @@ export class FakeImportServer {
         const date = table === 'monthly' ? null : r.date
         if (date !== null && (!isDate(date) || date < window.start || date > window.end)) {
           return err(422, 'row_outside_step', { table, index })
+        }
+        if (table === 'events') {
+          const name = r.source_name as string
+          if (name !== '(other)' && !Object.prototype.hasOwnProperty.call(imp.eventMap, name)) {
+            return err(400, 'row_outside_plan', { table, index })
+          }
+          if (name !== '(other)' && imp.eventMap[name] === null) excluded.event_excluded = (excluded.event_excluded ?? 0) + 1
         }
         const k = keys[table as TableName](r)
         if (seen.has(k)) return err(422, 'duplicate_row', { table, index })
@@ -280,7 +307,9 @@ export class FakeImportServer {
     if (total > 5000) return err(413, 'batch_too_large')
 
     for (const [table, list] of Object.entries(rows)) imp.rows[table as TableName].push(...(list as Record<string, unknown>[]))
-    for (const [k, n] of Object.entries(this.skipPerBatch)) imp.serverSkipped[k] = (imp.serverSkipped[k] ?? 0) + n
+    const skippedHere: Record<string, number> = { ...this.skipPerBatch }
+    for (const [k, n] of Object.entries(excluded)) skippedHere[k] = (skippedHere[k] ?? 0) + n
+    for (const [k, n] of Object.entries(skippedHere)) imp.serverSkipped[k] = (imp.serverSkipped[k] ?? 0) + n
     if (imp.status === 'pending' || imp.status === 'failed') {
       imp.status = 'running'
       imp.error_code = null
@@ -294,8 +323,14 @@ export class FakeImportServer {
     }
     const count = (t: TableName) => (Array.isArray(rows[t]) ? (rows[t] as unknown[]).length : 0)
     return json(200, {
-      applied: { daily: count('daily'), monthly: count('monthly'), dimensions: count('dimensions'), acquisition: count('acquisition') },
-      skipped: { ...this.skipPerBatch },
+      applied: {
+        daily: count('daily'),
+        monthly: count('monthly'),
+        dimensions: count('dimensions'),
+        acquisition: count('acquisition'),
+        events: count('events') - (excluded.event_excluded ?? 0),
+      },
+      skipped: skippedHere,
       next: next(),
       status: imp.status,
     })
