@@ -60,17 +60,25 @@ export interface PlanSummary {
   notes: Record<string, string>
 }
 
+/** A chosen file on the wire: its bytes, and the name the customer's file had. */
+export interface NamedFile {
+  name: string
+  blob: Blob
+}
+
 export interface PrepareRequest {
   type: 'prepare'
   id: number
   protocol: number
   source: ImportSource
   /**
-   * Every file the customer chose, in the order they chose them (M7-a). A
-   * File, so its name travels with it: a parser may echo the name, never
-   * decide by it. A File crosses to the worker by reference, never copied.
+   * Every file the customer chose, in the order they chose them (M7-a), each
+   * with its name beside it: a parser may echo the name, never decide by it.
+   * The name is carried explicitly because a File's name does not survive
+   * every structured clone (Node 22 clones a File as a nameless Blob); the
+   * bytes still cross by reference, never copied.
    */
-  files: readonly File[]
+  files: readonly NamedFile[]
   /** The days the browser may send; null sends every day the files have. */
   clip: Clip | null
   /** The zone a raw source's instants are bucketed in: the site's (M2-g). */

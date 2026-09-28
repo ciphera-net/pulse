@@ -620,7 +620,7 @@ describe('dark by omission', () => {
       id: 1,
       protocol: PROTOCOL_VERSION,
       source: 'fathom' as never,
-      files: fathomFixtureFiles(),
+      files: fathomFixtureFiles().map((f) => ({ name: f.name, blob: f })),
       clip: null,
       timeZone: 'UTC',
     })

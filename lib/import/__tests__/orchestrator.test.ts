@@ -20,7 +20,7 @@ import {
 } from '../index'
 import { PLAN_LIMITS } from '../core/plan'
 import { runPipeline } from '../pipeline'
-import { PROTOCOL_VERSION, type FromWorker, type PrepareRequest, type ToWorker } from '../protocol'
+import { PROTOCOL_VERSION, type FromWorker, type NamedFile, type PrepareRequest, type ToWorker } from '../protocol'
 import { createWorkerHost } from '../worker-host'
 import { plausibleFixtureFile } from './fixtures/plausible-export'
 import { FakeImportServer } from './support/fake-server'
@@ -463,7 +463,7 @@ describe('the files an import reads', () => {
       id: 7,
       protocol: PROTOCOL_VERSION,
       source: 'plausible',
-      files: files as unknown as readonly File[],
+      files: files as unknown as readonly NamedFile[],
       clip: null,
       timeZone: 'UTC',
     })

@@ -13,15 +13,15 @@ import { checkUploadCount } from './core/schema'
 import { SkipLedger } from './core/skipped'
 import { detectInputKind, type ReadOptions } from './core/zip'
 import { ImportError } from './errors'
-import type { PlanSummary } from './protocol'
+import type { NamedFile, PlanSummary } from './protocol'
 import { SOURCE_META, type ImportSource } from './source-meta'
 import { SOURCE_PARSERS } from './sources'
 import type { SourceFile } from './sources/source'
 
 export interface PipelineRequest {
   source: ImportSource
-  /** Every file the customer chose (M7-a). */
-  files: readonly File[]
+  /** Every file the customer chose (M7-a): a File, or a name beside its bytes (the worker protocol's form). */
+  files: readonly (File | NamedFile)[]
   clip: Clip | null
   timeZone: string
 }
@@ -48,7 +48,10 @@ export async function runPipeline(req: PipelineRequest, hooks: PipelineHooks = {
   // Each file's kind from its own first bytes; the parser decides what the
   // set means (one ZIP, or several CSVs).
   const files: SourceFile[] = []
-  for (const f of req.files) files.push({ name: f.name, blob: f, input: await detectInputKind(f) })
+  for (const f of req.files) {
+    const blob = f instanceof Blob ? f : f.blob
+    files.push({ name: f.name, blob, input: await detectInputKind(blob) })
+  }
   const skipped = new SkipLedger()
   const read: ReadOptions = { onProgress: hooks.onReading, limits: hooks.limits }
 
