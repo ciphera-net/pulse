@@ -17,6 +17,7 @@ import { PLAN_LIMITS } from '../core/plan'
 import { runImport } from '../index'
 import { runPipeline } from '../pipeline'
 import { plausibleFixtureFile } from './fixtures/plausible-export'
+import { umamiFixtureFile } from './fixtures/umami-export'
 import { FakeImportServer } from './support/fake-server'
 import { bundledWorker } from './support/workers'
 
@@ -48,6 +49,11 @@ describe('the prebuilt worker bundle', () => {
     expect(code.trimStart().startsWith('"use strict";(()=>{')).toBe(true)
   })
 
+  it('carries no published export query: the recipe is for the page, never the worker (M8)', async () => {
+    const code = (await build()).outputFiles[0].text
+    expect(code).not.toMatch(/TO STDOUT|DATE_FORMAT|SET time_zone|JOIN session/)
+  })
+
   it('holds no credential code: no session header, no cookie, no API client', async () => {
     const code = (await build()).outputFiles[0].text
     expect(code).not.toMatch(/Authorization|X-CSRF-Token|document\.cookie|\/api\/v1|fetch\(/)
@@ -69,6 +75,35 @@ describe('the prebuilt worker bundle', () => {
     // Byte for byte the rows the pipeline plans in process.
     const { parts } = await runPipeline(
       { source: 'plausible', files: [plausibleFixtureFile()], clip: null, timeZone: 'Europe/Brussels', siteDomain: null },
+      { planLimits: PLAN_LIMITS },
+    )
+    const sent = server.requests.filter((r) => r.path.endsWith('/batches')).map((r) => JSON.parse(r.body ?? '{}').rows)
+    expect(sent).toEqual(parts.map((p) => JSON.parse(p.rowsJson)))
+  })
+
+  it('runs the raw source (M8) end to end too: folded in the worker, in the site\'s zone, real visits', async () => {
+    const code = (await build()).outputFiles[0].text
+    const server = new FakeImportServer()
+    const status = await runImport({
+      siteId: server.siteId,
+      source: 'umami',
+      file: umamiFixtureFile(),
+      transport: server.transport,
+      createWorker: () => bundledWorker(code),
+      client: { minIntervalMs: 0, sleep: async () => {} },
+      now: () => new Date('2026-09-27T12:00:00Z'),
+    })
+    expect(status).toMatchObject({ status: 'completed', source: 'umami', kind: 'upload_raw', visits_are_visitors: false })
+    const create = server.requests.find((r) => r.method === 'POST' && /\/data-imports$/.test(r.path))
+    expect(JSON.parse(create?.body ?? '{}')).toMatchObject({
+      source: 'umami',
+      // A raw source is bucketed in the site's own zone (M2-g).
+      source_timezone: server.siteTimezone,
+      visits_are_visitors: false,
+      skipped: { bad_timestamp: 2, missing_field: 3, not_a_pageview: 3 },
+    })
+    const { parts } = await runPipeline(
+      { source: 'umami', files: [umamiFixtureFile()], clip: null, timeZone: server.siteTimezone, siteDomain: null },
       { planLimits: PLAN_LIMITS },
     )
     const sent = server.requests.filter((r) => r.path.endsWith('/batches')).map((r) => JSON.parse(r.body ?? '{}').rows)

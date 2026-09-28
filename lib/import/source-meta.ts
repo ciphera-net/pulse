@@ -10,7 +10,7 @@
 import type { InputKind } from './core/zip'
 import type { SourceKind } from './types'
 
-export const IMPORT_SOURCES = ['plausible', 'simple_analytics'] as const
+export const IMPORT_SOURCES = ['plausible', 'simple_analytics', 'umami'] as const
 export type ImportSource = (typeof IMPORT_SOURCES)[number]
 
 /**
@@ -52,6 +52,9 @@ export const PLAUSIBLE_ONE_FILE_MESSAGE = "Choose one file: Plausible's export i
 /** Simple Analytics' refusal of a second file (M7-a), said by the orchestrator and the parser alike. */
 export const SIMPLE_ANALYTICS_ONE_FILE_MESSAGE = "Choose one file: Simple Analytics' export is a single CSV file."
 
+/** Umami's refusal of a second file (M7-a), said by the orchestrator and the parser alike. */
+export const UMAMI_ONE_FILE_MESSAGE = "Choose one file: Umami's export is a single CSV file."
+
 export const SOURCE_META: Readonly<Record<ImportSource, SourceMeta>> = {
   plausible: {
     kind: 'upload_aggregate',
@@ -68,6 +71,17 @@ export const SOURCE_META: Readonly<Record<ImportSource, SourceMeta>> = {
     fileCount: 'single',
     oneFileMessage: SIMPLE_ANALYTICS_ONE_FILE_MESSAGE,
     hasExitPages: false,
+  },
+  // M8: the published query's CSV, gzipped or not, or Umami Cloud's ZIP. Real
+  // visits (a visit id of its own), so visits are not visitors, and a visit's
+  // last pageview is a real exit page.
+  umami: {
+    kind: 'upload_raw',
+    visitsAreVisitors: false,
+    accepts: ['plain', 'gzip', 'zip'],
+    fileCount: 'single',
+    oneFileMessage: UMAMI_ONE_FILE_MESSAGE,
+    hasExitPages: true,
   },
 }
 
