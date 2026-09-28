@@ -222,6 +222,17 @@ const nextConfig: NextConfig = {
           { key: 'Content-Security-Policy', value: cspDirectives },
         ],
       },
+      {
+        // * PULSE-133: a report page's URL is its secret (/r/<token>). The site-wide
+        // * strict-origin-when-cross-origin already keeps the path off other origins;
+        // * no-referrer keeps it off every request, and noindex keeps it out of search.
+        // * Listed after '/(.*)' so its Referrer-Policy wins for these paths.
+        source: '/r/:path*',
+        headers: [
+          { key: 'Referrer-Policy', value: 'no-referrer' },
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+        ],
+      },
     ]
   },
   async redirects() {
