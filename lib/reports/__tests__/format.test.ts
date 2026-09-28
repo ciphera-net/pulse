@@ -61,8 +61,8 @@ describe('numbers', () => {
   })
 
   it('reads shares as fractions of one', () => {
-    expect(formatShare(0.41)).toBe('41%')
-    expect(formatShare(0.00006)).toBe('<1%')
+    expect(formatShare(41.3)).toBe('41%')
+    expect(formatShare(0.4)).toBe('<1%')
     expect(formatShare(0)).toBe('0%')
     expect(formatShare(null)).toBe('—')
   })
