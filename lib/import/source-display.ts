@@ -184,6 +184,30 @@ export const UPLOAD_GUIDE: Readonly<Record<ImportSource, UploadGuide>> = {
     notImported: ["Languages and screen sizes: Plausible doesn't export them"],
     worthKnowing: ["Visits with no referrer all show as Direct. An export can't tell Direct from Shared Link."],
   },
+  umami: {
+    // M8-a/M8-b: self-hosted Umami has no usable export, so the file is the output of the
+    // published read-only query (PostgreSQL or MySQL), which the import guide prints.
+    exportHelp:
+      "Run Pulse's read-only export query against your Umami database and save the result as a CSV file. Pulse's import guide has the query for PostgreSQL and MySQL.",
+    fileNoun: 'CSV file',
+    imported: [
+      'Visitors, visits and pageviews',
+      'Pages, entry and exit pages',
+      'Referrers and campaigns',
+      'Countries, regions and cities',
+      'Devices, browsers and operating systems',
+      'Languages and screen sizes',
+    ],
+    notImported: [],
+    worthKnowing: [
+      // M8-h, the salt note in plain words (§3.12m8 §6).
+      'Umami renews its anonymous visitor fingerprint once a month, so imported monthly totals are the sum of daily counts.',
+      // M8-k: Umami calls an Android tablet a tablet; Pulse's own tracking calls it a phone.
+      'Umami counts Android tablets as tablets, where Pulse counts them as phones, so imported and measured days split them differently.',
+      // M8-o: a ClickHouse-backed Umami has no rows in the tables the query reads.
+      'The query reads a PostgreSQL or MySQL Umami. An Umami that stores its events in ClickHouse gives an empty file.',
+    ],
+  },
   simple_analytics: {
     // M9-b: the raw datapoints export with type=all, so a later events import needs no new export (D8).
     exportHelp:

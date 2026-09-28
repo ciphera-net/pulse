@@ -13,6 +13,8 @@
 // The mutation this kills: any field added to a batch row, or any id leaking
 // into a value.
 
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { RawFolder } from '../core/fold'
 import { batchBody, buildPlan } from '../core/plan'
@@ -92,6 +94,25 @@ describe('M2-q: no raw row in a batch', () => {
     const plan = await buildPlan(f.finish(), { partRows: 10, partBytes: 768 * 1024, steps: 5000, partsPerStep: 50, parts: 10_000 })
     expect(plan.parts.length).toBeGreaterThan(1)
     for (const p of plan.parts) assertOnlyWireFields(batchBody(p.step, p.part, plan.fingerprint, p.rowsJson), ids)
+  })
+
+  it('the raw source\'s batches carry none of its real export\'s ids, hosts or event names (M8)', async () => {
+    // The published query's output from a real self-hosted instance: every row
+    // carries a session id and a visit id (uuids), a hostname, and custom
+    // events carry their names. All of it must stop at the fold.
+    const csv = readFileSync(fileURLToPath(new URL('../sources/__tests__/fixtures/umami-published-query.csv', import.meta.url)), 'utf8')
+    const [header, ...lines] = csv.trim().split('\n')
+    const columns = header.split(',')
+    const inFile = new Set<string>()
+    for (const line of lines) {
+      const f = line.split(',')
+      for (const c of ['session_id', 'visit_id', 'hostname', 'event_name']) if (f[columns.indexOf(c)]) inFile.add(f[columns.indexOf(c)])
+    }
+    expect(inFile.size).toBeGreaterThan(30)
+    const file = new File([csv], 'umami-export.csv')
+    const { summary, parts } = await runPipeline({ source: 'umami', files: [file], clip: null, timeZone: 'UTC', siteDomain: null })
+    expect(parts.length).toBeGreaterThan(0)
+    for (const p of parts) assertOnlyWireFields(batchBody(p.step, p.part, summary.fingerprint, p.rowsJson), [...inFile])
   })
 
   it('the reference source\'s batches carry only the wire fields too', async () => {

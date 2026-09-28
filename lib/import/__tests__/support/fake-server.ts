@@ -12,7 +12,7 @@
 
 import type { Transport, TransportRequest, TransportResponse } from '../../client'
 import { addDays } from '../../core/dates'
-import { DIMENSIONS, WIRE_FIELDS, type ImportStatus, type TableName } from '../../types'
+import { DIMENSIONS, WIRE_FIELDS, type ImportStatus, type SourceKind, type TableName } from '../../types'
 
 export type Fault = { respond: TransportResponse } | { dropResponse: true }
 
@@ -20,6 +20,7 @@ interface Stored {
   id: string
   siteId: string
   source: string
+  kind: SourceKind
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
   error_code: string | null
   source_timezone: string
@@ -67,6 +68,8 @@ export class FakeImportServer {
   siteTimezone = 'Europe/Brussels'
   /** The upload window's additive `site_domain` (M9-j'); null omits the field entirely, as an older server would. */
   siteDomain: string | null = 'example.com'
+  /** The sources enabled for upload, and each one's kind (the server's `sourceid.UploadEnabled`). */
+  sources: Record<string, SourceKind> = { plausible: 'upload_aggregate', simple_analytics: 'upload_raw', umami: 'upload_raw' }
   allowedFrom: string | null = '2025-01-01'
   allowedThrough: string | null = '2026-09-26'
   /** Skip counts the server "drops" from each applied batch, to exercise the server skip report. */
@@ -97,7 +100,7 @@ export class FakeImportServer {
     return {
       id: i.id,
       source: i.source,
-      kind: 'upload_aggregate',
+      kind: i.kind,
       status: i.status,
       error_code: i.error_code,
       source_timezone: i.source_timezone,
@@ -139,13 +142,16 @@ export class FakeImportServer {
   }
 
   private window(q: URLSearchParams): TransportResponse {
-    const source = q.get('source')
-    if (source !== 'plausible') return err(422, 'source_not_enabled')
+    const source = q.get('source') ?? ''
+    const kind = this.sources[source]
+    if (!kind) return err(422, 'source_not_enabled')
     const tz = q.get('source_timezone') ?? this.siteTimezone
+    // M2-r: a raw source is bucketed in the site's own zone, so no other is accepted.
+    if (kind === 'upload_raw' && tz !== this.siteTimezone) return err(422, 'bad_source_timezone')
     const live = this.live()
     return json(200, {
       source,
-      kind: 'upload_aggregate',
+      kind,
       site_timezone: this.siteTimezone,
       source_timezone: tz,
       allowed_from: this.allowedFrom,
@@ -166,7 +172,9 @@ export class FakeImportServer {
       return err(400, 'invalid_plan')
     }
     if (!sameKeys(b, CREATE_FIELDS)) return err(400, 'invalid_plan')
-    if (b.source !== 'plausible') return err(422, 'source_not_enabled')
+    const kind = typeof b.source === 'string' ? this.sources[b.source] : undefined
+    if (!kind) return err(422, 'source_not_enabled')
+    if (kind === 'upload_raw' && b.source_timezone !== this.siteTimezone) return err(422, 'bad_source_timezone')
     const live = this.live()
     if (live) return err(409, 'import_exists', { import_id: live.id })
     if (!isDate(b.range_start) || !isDate(b.range_end) || typeof b.fingerprint !== 'string' || !/^[0-9a-f]{64}$/.test(b.fingerprint)) {
@@ -194,6 +202,7 @@ export class FakeImportServer {
       id,
       siteId: this.siteId,
       source: b.source as string,
+      kind,
       status: 'pending',
       error_code: null,
       source_timezone: b.source_timezone as string,
