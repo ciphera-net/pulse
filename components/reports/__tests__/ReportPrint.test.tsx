@@ -39,10 +39,12 @@ describe('ReportPrint', () => {
     expect(html().classList.contains('font-a')).toBe(true)
   })
 
-  it('keeps <html> dark for theme=dark', () => {
-    render(<ReportPrint token="tok_123" theme="dark" printKey="v1.1.abc" />)
+  it('keeps <html> dark for theme=dark', async () => {
+    const { container } = render(<ReportPrint token="tok_123" theme="dark" printKey="v1.1.abc" />)
     expect(html().classList.contains('dark')).toBe(true)
     expect(html().classList.contains('light')).toBe(false)
+    // Let the fetch's state update land inside act() before the test ends.
+    await waitFor(() => expect(container.querySelectorAll('section[data-slide]').length).toBeGreaterThan(0))
   })
 
   it("falls back to the report's own PDF theme when the parameter is missing or unknown", async () => {

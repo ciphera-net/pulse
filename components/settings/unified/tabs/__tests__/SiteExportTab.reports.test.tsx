@@ -160,8 +160,9 @@ const lastReportRequest = (): CreateReportRequest => api.createReport.mock.calls
 const lastScheduleRequest = (): CreateScheduleRequest => api.createSchedule.mock.calls.at(-1)![1] as CreateScheduleRequest
 
 describe('Growth report: the form (B-3)', () => {
-  it('draws the approved rows with their defaults', () => {
+  it('draws the approved rows with their defaults', async () => {
     render(<SiteExportTab siteId="site-1" />)
+    await waitFor(() => expect(api.listReports).toHaveBeenCalledTimes(1))
     openTile('Growth report')
     expect(screen.getByRole('button', { name: 'Growth report' }).getAttribute('aria-pressed')).toBe('true')
 
@@ -369,8 +370,9 @@ describe('Scheduled email (B-4)', () => {
     expect(api.createSchedule).not.toHaveBeenCalled()
   })
 
-  it('Cancel goes back to the first tile', () => {
+  it('Cancel goes back to the first tile', async () => {
     render(<SiteExportTab siteId="site-1" />)
+    await waitFor(() => expect(api.listReports).toHaveBeenCalledTimes(1))
     openTile('Scheduled email')
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(screen.getByRole('button', { name: 'Spreadsheet' }).getAttribute('aria-pressed')).toBe('true')

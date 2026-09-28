@@ -98,14 +98,14 @@ function Slide({
 }
 
 function SlideTitle({ children }: { children: ReactNode }) {
-  return <h2 className="text-xl font-semibold tracking-tight text-white md:text-2xl">{children}</h2>
+  return <h2 className="text-xl font-semibold tracking-tight text-card-foreground md:text-2xl">{children}</h2>
 }
 
 function Hero({ label, value, change, good }: { label: string; value: string; change: ReportChange | null; good: boolean }) {
   return (
     <div className="min-w-0">
       <p className="truncate text-[13px] text-neutral-400">{label}</p>
-      <p className="mt-1 text-4xl font-semibold tabular-nums text-white md:text-5xl">{value}</p>
+      <p className="mt-1 text-4xl font-semibold tabular-nums text-card-foreground md:text-5xl">{value}</p>
       {change && (
         <p className="mt-2">
           <Delta change={change} good={good} />
@@ -124,7 +124,7 @@ function RankRow({ lead, label, value, pct, share }: { lead?: ReactNode; label: 
         className="absolute inset-y-0.5 left-0.5 rounded-none bg-brand-orange/[0.16]"
         style={{ width: `${pct}%` }}
       />
-      <div className="relative flex flex-1 items-center gap-3 truncate text-white">
+      <div className="relative flex flex-1 items-center gap-3 truncate text-card-foreground">
         {lead}
         <span className="truncate">{label}</span>
       </div>
@@ -192,8 +192,8 @@ export function MonthBars({ months, mode }: { months: NonNullable<ReportPayload[
     >
       {ticks.map((t) => (
         <g key={t}>
-          <line x1={left} x2={width} y1={y(t)} y2={y(t)} stroke="currentColor" className="text-neutral-800" strokeWidth={1} />
-          <text x={left - 8} y={y(t) + 4} textAnchor="end" fill="currentColor" className="text-neutral-500" fontSize={11}>
+          <line x1={left} x2={width} y1={y(t)} y2={y(t)} stroke="var(--chart-grid)" strokeWidth={1} />
+          <text x={left - 8} y={y(t) + 4} textAnchor="end" fill="var(--chart-axis)" fontSize={11}>
             {tickLabel(t)}
           </text>
         </g>
@@ -201,7 +201,7 @@ export function MonthBars({ months, mode }: { months: NonNullable<ReportPayload[
       {months.map((m, i) => {
         const x = left + i * (bw + gap)
         const label = (
-          <text x={x + bw / 2} y={height - 8} textAnchor="middle" fill="currentColor" className="text-neutral-500" fontSize={11}>
+          <text x={x + bw / 2} y={height - 8} textAnchor="middle" fill="var(--chart-axis)" fontSize={11}>
             {monthShort(m.month)}
           </text>
         )
@@ -228,8 +228,8 @@ export function MonthBars({ months, mode }: { months: NonNullable<ReportPayload[
                 y={y(v)}
                 width={bw}
                 height={y(0) - y(v)}
-                fill="currentColor"
-                className={m.instrument === 'imported' ? 'text-neutral-600' : 'text-brand-orange'}
+                fill={m.instrument === 'imported' ? 'var(--chart-foreground-muted)' : 'currentColor'}
+                className={m.instrument === 'imported' ? undefined : 'text-brand-orange'}
               />
             )}
             {label}
@@ -297,7 +297,7 @@ export default function ReportSlides({ payload, mode }: { payload: ReportPayload
           <span className="text-base font-medium text-foreground">{payload.site.domain}</span>
         </div>
         <div className="mt-auto pt-8">
-          <h1 className="text-3xl font-semibold tracking-tight text-white md:text-4xl">{payload.name}</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-card-foreground md:text-4xl">{payload.name}</h1>
           <p className="mt-2 text-sm text-neutral-400">{subtitle}</p>
         </div>
         {heroes.length > 0 && (
