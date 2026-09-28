@@ -21,7 +21,10 @@ const h = vi.hoisted(() => ({
   connectMatomo: vi.fn(),
   getMatomoProperties: vi.fn(),
   confirmDataImport: vi.fn(),
+  previewDataImportEvents: vi.fn(),
   getImportSlot: vi.fn(),
+  listGoals: vi.fn(),
+  getGoalStats: vi.fn(),
 }))
 
 vi.mock('@/lib/auth/permissions', () => ({ useCan: () => h.canManage }))
@@ -32,7 +35,11 @@ vi.mock('@/lib/api/dataImports', () => ({
   connectMatomo: (...a: unknown[]) => h.connectMatomo(...a),
   getMatomoProperties: (...a: unknown[]) => h.getMatomoProperties(...a),
   confirmDataImport: (...a: unknown[]) => h.confirmDataImport(...a),
+  previewDataImportEvents: (...a: unknown[]) => h.previewDataImportEvents(...a),
 }))
+// M12: the mapping step reads the site's goals and the names Pulse measured.
+vi.mock('@/lib/api/goals', () => ({ listGoals: (...a: unknown[]) => h.listGoals(...a) }))
+vi.mock('@/lib/api/stats', () => ({ getGoalStats: (...a: unknown[]) => h.getGoalStats(...a) }))
 vi.mock('@/lib/import', () => ({
   prepareImport: (...a: unknown[]) => h.prepareImport(...a),
   deleteImport: (...a: unknown[]) => h.deleteImport(...a),
@@ -47,6 +54,9 @@ vi.mock('@ciphera-net/facet', () => ({
     </button>
   ),
   Input: (props: any) => <input {...props} />,
+  Toggle: ({ checked, onChange, disabled, 'aria-label': ariaLabel }: any) => (
+    <button type="button" role="switch" aria-checked={checked} aria-label={ariaLabel} disabled={disabled} onClick={() => onChange()} />
+  ),
   Select: ({ id, value, onChange, options, groups, placeholder, disabled, 'aria-label': ariaLabel }: any) => (
     <select id={id} aria-label={ariaLabel} value={value} disabled={disabled} onChange={(e) => onChange?.(e.target.value)}>
       <option value="">{placeholder}</option>
@@ -123,7 +133,9 @@ function plan(over: Record<string, unknown> = {}) {
     totals: { rows: { daily: 622, monthly: 0, dimensions: 1, acquisition: 1 }, visitors: 212480, pageviews: 486113 },
     skipped: { outside_history_window: 412, pulse_measured: 3 },
     skipped_samples: { outside_history_window: [{ file: 'imported_visitors.csv', line: 2 }] },
-    ignored_files: ['imported_custom_events.csv'],
+    ignored_files: ['imported_custom_props.csv'],
+    notes: {},
+    events: [],
     ...over,
   }
 }
@@ -191,6 +203,9 @@ beforeEach(() => {
   h.connectMatomo.mockReset()
   h.getMatomoProperties.mockReset()
   h.confirmDataImport.mockReset()
+  h.previewDataImportEvents.mockReset().mockResolvedValue({ events: [] })
+  h.listGoals.mockReset().mockResolvedValue([])
+  h.getGoalStats.mockReset().mockResolvedValue([])
   ;(toast.success as any).mockClear()
   ;(toast.error as any).mockClear()
 })
@@ -283,8 +298,13 @@ describe('reading and confirming (A5)', () => {
     expect(within(confirm).getByText('Europe/Brussels, the same as this site')).toBeInTheDocument()
     expect(within(confirm).getByText('Visitors, visits and pageviews')).toBeInTheDocument()
     expect(within(confirm).getByText("Languages and screen sizes: Plausible doesn't export them")).toBeInTheDocument()
-    expect(within(confirm).getByText('Events and goals: coming in a later release')).toBeInTheDocument()
-    expect(within(confirm).getByText("Files it doesn't read: imported_custom_events.csv")).toBeInTheDocument()
+    // W-M12-4: the line that replaced "Events and goals: coming in a later release".
+    expect(within(confirm).getByText('Event properties, and the link or page each event happened on')).toBeInTheDocument()
+    expect(within(confirm).queryByText(/coming in a later release/)).toBeNull()
+    expect(within(confirm).getByText("Files it doesn't read: imported_custom_props.csv")).toBeInTheDocument()
+    // A file with no events has no Events section and no "named as you choose" line.
+    expect(screen.queryByTestId('import-event-mapping')).toBeNull()
+    expect(within(confirm).queryByText('Events, named as you choose below')).toBeNull()
     // W1 A, the aggregate sources' visitors caveat.
     expect(
       within(confirm).getByText("Visitors are Plausible's daily counts added up, so over a range someone who came on three days counts three times."),
@@ -669,8 +689,12 @@ describe('Matomo (M11-j)', () => {
     await waitFor(() => expect(select.value).toBe('3'))
     // M10's disclosures, before anything starts.
     expect(screen.getByText(/Matomo keeps at most 500 to 1,000 rows of a report per day by default/)).toBeInTheDocument()
+    // M12: Start waits for the chosen site's events preview.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start the import' })).toBeEnabled())
     fireEvent.click(screen.getByRole('button', { name: 'Start the import' }))
-    await waitFor(() => expect(h.confirmDataImport).toHaveBeenCalledWith('s1', 'imp-m', '3'))
+    // M12: the preview named no events, so the import carries an empty map (events-capable, none to import).
+    await waitFor(() => expect(h.previewDataImportEvents).toHaveBeenCalledWith('s1', 'imp-m', '3'))
+    await waitFor(() => expect(h.confirmDataImport).toHaveBeenCalledWith('s1', 'imp-m', '3', {}))
     // Pull: the page can close, and the status is polled.
     expect(await screen.findByText('You can close this page.')).toBeInTheDocument()
   })
@@ -891,5 +915,143 @@ describe('double presses, races and malformed answers', () => {
     }
     expect(unhandled).toBeNull()
     expect(h.getImportSlot.mock.calls.length).toBe(reads)
+  })
+})
+
+// ─── M12: the mapping step (owner pick A, words W-M12-1…4, 28-09-2026) ────
+describe('naming the events (M12 mapping A)', () => {
+  const EVENTS = [
+    { source_name: 'Outbound Link: Click', count: 4812 },
+    { source_name: 'Signup', count: 1946 },
+    { source_name: 'File Download', count: 1203 },
+    { source_name: 'Header CTA: Get started', count: 418 },
+    { source_name: '404', count: 391 },
+    { source_name: 'Test event (staging)', count: 12 },
+  ]
+
+  async function openConfirm(prepared = preparedImport({ plan: plan({ events: EVENTS }) })) {
+    h.prepareImport.mockResolvedValue(prepared)
+    renderTab()
+    fireEvent.click(await within(await waitFor(() => block('Plausible'))).findByRole('button', { name: 'Upload' }))
+    chooseFile()
+    fireEvent.click(screen.getByRole('button', { name: 'Review import' }))
+    const section = await screen.findByTestId('import-event-mapping')
+    return { prepared, section }
+  }
+  const input = (section: HTMLElement, src: string) => within(section).getByLabelText(`Name in Pulse for ${src}`) as HTMLInputElement
+  const row = (section: HTMLElement, src: string) => input(section, src).closest('div.px-5') as HTMLElement
+
+  it('lists every source event with its count, a suggested name, the ruled notes and a switch', async () => {
+    // A goal spelled with capitals, and a name Pulse measured itself.
+    h.listGoals.mockResolvedValue([{ id: 'g', site_id: 's1', name: 'CTA', event_name: 'Header_CTA_Get_Started', created_at: '', updated_at: '' }])
+    h.getGoalStats.mockResolvedValue([{ event_name: 'signup', count: 3 }])
+    const { section } = await openConfirm()
+    const confirm = screen.getByTestId('import-confirm')
+    expect(within(confirm).getByText('Events, named as you choose below')).toBeInTheDocument()
+    expect(within(confirm).getByText('Event properties, and the link or page each event happened on')).toBeInTheDocument()
+    expect(within(section).getByText('Choose the name each event gets in Pulse, or leave it out. Names use letters, numbers and underscores.')).toBeInTheDocument()
+    expect(within(section).getByTestId('import-events-count')).toHaveTextContent('6 of 6 imported')
+    expect(within(section).getByText('4,812 events')).toBeInTheDocument()
+    // Suggestions (M12-d): built-ins, the goal as the goal spells it, else the slug.
+    await waitFor(() => expect(input(section, 'Header CTA: Get started').value).toBe('Header_CTA_Get_Started'))
+    expect(EVENTS.map((e) => input(section, e.source_name).value)).toEqual([
+      'outbound_link',
+      'signup',
+      'file_download',
+      'Header_CTA_Get_Started',
+      '404',
+      'test_event_staging',
+    ])
+    // The name IS an event key: mono, as the Goals tab's field. Nothing else in the section is.
+    expect(input(section, 'Signup').className).toContain('font-mono')
+    // W-M12-2 under the three built-ins.
+    expect(within(row(section, 'Outbound Link: Click')).getByText('Adds to the outbound clicks Pulse measures')).toBeInTheDocument()
+    expect(within(row(section, 'File Download')).getByText('Adds to the file downloads Pulse measures')).toBeInTheDocument()
+    expect(within(row(section, '404')).getByText('Adds to the 404 pages Pulse measures')).toBeInTheDocument()
+    // W-M12-3 under a goal's name and a name Pulse measured.
+    const known = 'Pulse already records this event; the imported count is added'
+    await waitFor(() => expect(within(row(section, 'Signup')).getByText(known)).toBeInTheDocument())
+    expect(within(row(section, 'Header CTA: Get started')).getByText(known)).toBeInTheDocument()
+    expect(within(row(section, 'Test event (staging)')).queryByText(known)).toBeNull()
+  })
+
+  it('keeps a switched-off row\'s name, disabled, and sends it as null', async () => {
+    const { section, prepared } = await openConfirm()
+    prepared.upload.mockReturnValue(new Promise(() => {}))
+    fireEvent.click(within(section).getByRole('switch', { name: 'Import Test event (staging)' }))
+    expect(within(section).getByTestId('import-events-count')).toHaveTextContent('5 of 6 imported')
+    expect(input(section, 'Test event (staging)')).toBeDisabled()
+    expect(input(section, 'Test event (staging)').value).toBe('test_event_staging')
+    fireEvent.click(screen.getByRole('button', { name: 'Import 622 days' }))
+    await waitFor(() => expect(prepared.upload).toHaveBeenCalledTimes(1))
+    expect(prepared.upload.mock.calls[0][0]).toEqual({
+      eventMap: {
+        'Outbound Link: Click': 'outbound_link',
+        Signup: 'signup',
+        'File Download': 'file_download',
+        'Header CTA: Get started': 'header_cta_get_started',
+        '404': '404',
+        'Test event (staging)': null,
+      },
+    })
+  })
+
+  it('says when two events add up under one name, and refuses a name the server would', async () => {
+    const { section } = await openConfirm()
+    const importButton = screen.getByRole('button', { name: 'Import 622 days' })
+    fireEvent.change(input(section, 'Signup'), { target: { value: 'outbound_link' } })
+    expect(within(row(section, 'Signup')).getByText('Adds up with Outbound Link: Click')).toBeInTheDocument()
+    expect(within(row(section, 'Outbound Link: Click')).getByText('Adds up with Signup')).toBeInTheDocument()
+    expect(within(row(section, 'Signup')).getByText('Adds to the outbound clicks Pulse measures')).toBeInTheDocument()
+
+    for (const [value, words] of [
+      ['sign up', 'Use only letters, numbers and underscores.'],
+      ['', 'Enter a name, or switch this event off.'],
+      ['a'.repeat(65), 'Use at most 64 characters.'],
+      ['pulse_click', 'Pulse keeps this name for its own events.'],
+      ['rage_click', 'Pulse keeps this name for its own events.'],
+      ['pageview', 'Pulse keeps this name for its own events.'],
+    ]) {
+      fireEvent.change(input(section, 'Signup'), { target: { value } })
+      expect(within(row(section, 'Signup')).getByText(words), value).toBeInTheDocument()
+      expect(importButton).toBeDisabled()
+    }
+    // Switching the event off clears the objection: its name is not sent.
+    fireEvent.click(within(section).getByRole('switch', { name: 'Import Signup' }))
+    expect(importButton).toBeEnabled()
+    fireEvent.click(within(section).getByRole('switch', { name: 'Import Signup' }))
+    fireEvent.change(input(section, 'Signup'), { target: { value: 'signup' } })
+    expect(importButton).toBeEnabled()
+  })
+
+  it('maps a Matomo site\'s events through the preview, and confirms with the map', async () => {
+    const awaiting = status({ id: 'imp-m', source: 'matomo', kind: 'api_key', status: 'awaiting_property', range_start: null, range_end: null, steps_total: null, fingerprint: null, totals: null, finished_at: null })
+    h.slot = { existing_import: awaiting }
+    h.getMatomoProperties.mockResolvedValue({ properties: [{ id: '3', name: 'acme.example', main_url: 'https://acme.example', timezone: 'UTC' }], suggested_id: '3' })
+    h.previewDataImportEvents.mockResolvedValue({ events: [{ source_name: 'Forms - Submit', count: 40 }, { source_name: 'Video - Play', count: 7 }] })
+    h.confirmDataImport.mockResolvedValue(status({ id: 'imp-m', source: 'matomo', kind: 'api_key', status: 'pending', cursor: { step: 0, part: 0 }, finished_at: null }))
+    renderTab()
+    const section = await screen.findByTestId('import-event-mapping')
+    expect(h.previewDataImportEvents).toHaveBeenCalledWith('s1', 'imp-m', '3')
+    expect(screen.getByText('Events, named as you choose below')).toBeInTheDocument()
+    expect(input(section, 'Forms - Submit').value).toBe('forms_submit')
+    fireEvent.click(within(section).getByRole('switch', { name: 'Import Video - Play' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Start the import' }))
+    await waitFor(() =>
+      expect(h.confirmDataImport).toHaveBeenCalledWith('s1', 'imp-m', '3', { 'Forms - Submit': 'forms_submit', 'Video - Play': null }),
+    )
+  })
+
+  it('holds Matomo\'s Start while the preview fails, and says so with a retry', async () => {
+    const awaiting = status({ id: 'imp-m', source: 'matomo', kind: 'api_key', status: 'awaiting_property', range_start: null, range_end: null, steps_total: null, fingerprint: null, totals: null, finished_at: null })
+    h.slot = { existing_import: awaiting }
+    h.getMatomoProperties.mockResolvedValue({ properties: [{ id: '3', name: 'acme.example', main_url: 'https://acme.example', timezone: 'UTC' }], suggested_id: '3' })
+    h.previewDataImportEvents.mockRejectedValueOnce(Object.assign(new Error('x'), { status: 502, data: { code: 'source_unavailable' } }))
+    renderTab()
+    expect(await screen.findByText('Matomo kept failing to answer. The import is paused where it was; try again later.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Start the import' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start the import' })).toBeEnabled())
+    expect(h.previewDataImportEvents).toHaveBeenCalledTimes(2)
   })
 })

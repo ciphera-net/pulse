@@ -4,15 +4,18 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Button, Input, Select } from '@ciphera-net/facet'
 import { PanelRow, PanelRows } from '@/components/settings/panels'
 import { SetupReveal } from '@/components/settings/integrationRows'
-import { MATOMO_GUIDE, NOT_IMPORTED_ANYWHERE, dailyVisitorsCaveat } from '@/lib/import/source-display'
+import { EVENTS_IMPORTED_LINE, MATOMO_GUIDE, NOT_IMPORTED_ANYWHERE, dailyVisitorsCaveat } from '@/lib/import/source-display'
+import type { SourceEvent } from '@/lib/import/core/events'
 import { failedImportMessage, importErrorMessage, messageInputFromApiError, type ImportMessage } from '@/lib/import/messages'
 import {
   confirmDataImport,
   connectMatomo,
   getMatomoProperties,
+  previewDataImportEvents,
   type MatomoProperty,
   type SiteImportStatus,
 } from '@/lib/api/dataImports'
+import { EventMapping, useEventMapping, useKnownEventNames } from './EventMapping'
 import { ImportErrorBanner } from './ImportErrorBanner'
 import { DeleteImportButton, DoneDetails, ProgressRow, SourceHeader, serverProgress } from './ImportRows'
 import { rangeText, slotPhase } from './importFormat'
@@ -75,6 +78,12 @@ export function MatomoFlow({
   const [properties, setProperties] = useState<MatomoProperty[] | null>(null)
   const [propertyId, setPropertyId] = useState('')
   const [error, setError] = useState<ImportMessage | null>(null)
+  // M12 (contract §3.12m12b-5): the chosen site's events, read before Start so
+  // the confirm step can map them. Held with the site they belong to, so a
+  // preview that answers after the choice changed is never mapped to another.
+  const [preview, setPreview] = useState<{ propertyId: string; events: SourceEvent[] } | null>(null)
+  const [previewError, setPreviewError] = useState<ImportMessage | null>(null)
+  const [previewTry, setPreviewTry] = useState(0)
 
   const phase = existing ? slotPhase(existing) : null
   const awaiting = phase === 'awaiting_property' ? existing : null
@@ -100,6 +109,32 @@ export function MatomoFlow({
       live = false
     }
   }, [siteId, awaitingId])
+
+  useEffect(() => {
+    setPreview(null)
+    setPreviewError(null)
+    if (!awaitingId || !propertyId) return
+    let live = true
+    previewDataImportEvents(siteId, awaitingId, propertyId)
+      .then((r) => {
+        if (live) setPreview({ propertyId, events: Array.isArray(r?.events) ? r.events : [] })
+      })
+      .catch((e) => {
+        if (live) setPreviewError(importErrorMessage(messageInputFromApiError(e), 'matomo'))
+      })
+    return () => {
+      live = false
+    }
+  }, [siteId, awaitingId, propertyId, previewTry])
+
+  const previewed = preview && preview.propertyId === propertyId ? preview : null
+  const knownNames = useKnownEventNames(siteId, (previewed?.events.length ?? 0) > 0)
+  const mapping = useEventMapping(
+    previewed?.events ?? null,
+    'matomo',
+    knownNames.goalNames,
+    previewed && awaitingId ? `${awaitingId}:${previewed.propertyId}` : null,
+  )
 
   const fail = (e: unknown) => {
     const input = messageInputFromApiError(e)
@@ -127,12 +162,12 @@ export function MatomoFlow({
   }
 
   const start = async () => {
-    if (!awaiting || !propertyId || startingRef.current) return
+    if (!awaiting || !propertyId || !previewed || !mapping.valid || startingRef.current) return
     startingRef.current = true
     setError(null)
     setStarting(true)
     try {
-      const status = await confirmDataImport(siteId, awaiting.id, propertyId)
+      const status = await confirmDataImport(siteId, awaiting.id, propertyId, mapping.map)
       onChanged(status)
       onClose()
     } catch (e) {
@@ -245,7 +280,7 @@ export function MatomoFlow({
       <>
         <PanelRow label="Imported">
           <span className="text-sm text-foreground">
-            {MATOMO_GUIDE.imported.map((t) => (
+            {[...MATOMO_GUIDE.imported, ...((previewed?.events.length ?? 0) > 0 ? [EVENTS_IMPORTED_LINE] : [])].map((t) => (
               <span key={t} className="block">
                 {t}
               </span>
@@ -310,9 +345,24 @@ export function MatomoFlow({
                 )}
               </PanelRow>
               {whatRows}
+              {propertyId && !previewed && !previewError && (
+                <PanelRow label="Events">
+                  <span className="text-sm text-muted-foreground">Loading this site's events…</span>
+                </PanelRow>
+              )}
             </PanelRows>
+            {previewError && (
+              <div className="border-t border-border px-5 py-3.5">
+                <ImportErrorBanner message={previewError} onRetry={() => setPreviewTry((n) => n + 1)} />
+              </div>
+            )}
+            <EventMapping state={mapping} known={knownNames.known} />
             <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
-              <Button size="sm" onClick={() => void start()} disabled={starting || canceling || !propertyId}>
+              <Button
+                size="sm"
+                onClick={() => void start()}
+                disabled={starting || canceling || !propertyId || !previewed || !mapping.valid}
+              >
                 {starting ? 'Starting…' : 'Start the import'}
               </Button>
             </div>
