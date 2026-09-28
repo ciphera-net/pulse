@@ -46,7 +46,8 @@
 // breakdown and no total is not a state Pulse creates.
 //
 // One byte budget covers all the files together (M7-b): 1 GiB is the bound on
-// the upload, not on each file.
+// the upload, not on each file. The header pass has a second one, shared the
+// same way, so finding the files' roles is bounded by the upload's cap too.
 //
 // Fathom's Custom Export has no visits metric, so a row's visits are its
 // visitor count (`visits_are_visitors`, M7-l), and no month-level unique
@@ -59,7 +60,7 @@ import { CsvByteParser } from '../core/csv'
 import { dayNumber, isCalendarDate } from '../core/dates'
 import { checkHeader, requireFiles, type ColumnIndex } from '../core/schema'
 import type { RowRef } from '../core/skipped'
-import { ARCHIVE_LIMITS, DecompressionBudget, readPlain, type EntrySink, type ReadOptions } from '../core/zip'
+import { ARCHIVE_LIMITS, DecompressionBudget, readPlain, type ArchiveLimits, type EntrySink } from '../core/zip'
 import { wrongFile } from '../errors'
 import type { Dimension } from '../types'
 import type { AggregateSourceParser, SourceFile } from './source'
@@ -261,16 +262,20 @@ class HeaderRead {
   constructor(readonly header: string[]) {}
 }
 
-/** The first CSV record of a plain file; the rest is never read. */
-async function readHeader(file: SourceFile, read: ReadOptions): Promise<string[]> {
+/**
+ * The first CSV record of a plain file; the rest is never read. `budget` is
+ * the header pass's own, shared by every file: separate from the one that
+ * bounds the pass reading them whole, so a header re-read costs that pass
+ * nothing, and shared, so the upload's total cap holds while headers are
+ * still being found, not only per file.
+ */
+async function readHeader(file: SourceFile, limits: ArchiveLimits, budget: DecompressionBudget): Promise<string[]> {
   const csv = new CsvByteParser((fields) => {
     throw new HeaderRead(fields)
   }, file.name)
   const sink: EntrySink = { chunk: (bytes) => csv.push(bytes), end: () => csv.end() }
   try {
-    // Its own budget: the header pass reads a prefix of each file, and the
-    // shared budget bounds the pass that reads them whole.
-    await readPlain(file.blob, file.name, sink, { limits: read.limits })
+    await readPlain(file.blob, file.name, sink, { limits }, budget)
   } catch (e) {
     if (e instanceof HeaderRead) return e.header
     throw e
@@ -305,12 +310,16 @@ export const fathomSource: AggregateSourceParser = {
       }
     }
 
+    const limits = ctx.read.limits ?? ARCHIVE_LIMITS
+    const totalBytes = files.reduce((sum, f) => sum + f.blob.size, 0)
+
     // (2) Every header, so every file's role is known, and a wrong or doubled
     // file is refused, before any row is read.
+    const headerBudget = new DecompressionBudget(limits, totalBytes)
     const byRole = new Map<FathomRole, Classified>()
     const order: Classified[] = []
     for (const f of files) {
-      const header = await readHeader(f, ctx.read)
+      const header = await readHeader(f, limits, headerBudget)
       const c: Classified = { ...classifyFathomHeader(f.name, header), file: f, width: header.length }
       const seen = byRole.get(c.role)
       if (seen) {
@@ -326,8 +335,6 @@ export const fathomSource: AggregateSourceParser = {
     requireFiles(new Set(byRole.keys()), ['totals'], (role) => FATHOM_FILE_LABELS[role as FathomRole], 'This upload')
 
     // (3) One budget for the whole upload, sized from every file together.
-    const limits = ctx.read.limits ?? ARCHIVE_LIMITS
-    const totalBytes = files.reduce((sum, f) => sum + f.blob.size, 0)
     const budget = new DecompressionBudget(limits, totalBytes)
     let doneBytes = 0
     const readRows = async (c: Classified, onRow: (fields: string[], at: RowRef) => void) => {

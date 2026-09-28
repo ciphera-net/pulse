@@ -596,6 +596,22 @@ describe('the byte budget across the files (M7-b)', () => {
     expect(e.detail).toMatchObject({ guard: 'total_bytes', file: N.device, limit: cap })
   })
 
+  it('holds the header pass to the total cap too, across the files, not only per file', async () => {
+    // The pass that finds each file's role streams a prefix of every file (all
+    // of a small one) before any is read whole. Doubling the Page file puts a
+    // refusal of its own at the end of that pass: reaching it would mean the
+    // pass streamed past the cap unchecked.
+    const s = sizes()
+    const byName = Object.fromEntries(fathomFixtureFiles().map((f) => [f.name, f]))
+    const upload = [N.page, N.locations, N.device, N.browser].map((n) => byName[n])
+    upload.push(new File([byName[N.page]], 'pages (1).csv'))
+    const cap = s[N.page] + s[N.locations] + s[N.device] + 1
+    const read: ReadOptions = { limits: { ...ARCHIVE_LIMITS, maxTotalBytes: cap, maxEntryBytes: MiB } }
+    const e = await failure(parse(upload, null, read))
+    expect(e.code).toBe('zip_too_large')
+    expect(e.detail).toMatchObject({ guard: 'total_bytes', file: N.browser, limit: cap })
+  })
+
   it('reports progress across every file together, ending at their total size', async () => {
     const seen: [number, number][] = []
     const total = Object.values(sizes()).reduce((a, b) => a + b, 0)
