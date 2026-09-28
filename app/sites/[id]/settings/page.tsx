@@ -11,6 +11,11 @@ const TAB_MAP: Record<string, string> = {
   bot:           'bot-spam',
   goals:         'goals',
   integrations:  'integrations',
+  // PULSE-121, design §3.10c M13-h: the M13 import notifications' link_url is
+  // `/sites/:id/settings?tab=import` (pulse-backend's ImportTabURL). Without
+  // this entry the `??` fallback below sent every one of those links to
+  // General instead of the M11 Import tab.
+  import:        'import',
 }
 
 export default function SiteSettingsRedirect() {
