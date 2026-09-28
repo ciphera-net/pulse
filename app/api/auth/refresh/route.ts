@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { env } from '@/lib/env'
-import { clearAccess, clearSession, readActiveTeam, readSession, writeSession } from '@/lib/auth/session-cookies'
+import { clearAccess, clearSession, readSession, writeSession } from '@/lib/auth/session-cookies'
 
 // Server-side runtime code. Reads from the same Zod-validated env schema
 // the client bundle imports — both phases see identical values, and Zod
@@ -31,26 +31,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'No refresh token' }, { status: 401 })
   }
 
-  let body: { screen_width?: number; screen_height?: number; timezone?: string; org_id?: string } = {}
+  let body: { screen_width?: number; screen_height?: number; timezone?: string } = {}
   try {
     body = await request.json()
   } catch { /* no body or invalid JSON — device signals will be omitted */ }
-
-  // * Preserve whatever team the user is currently scoped to so the rotated
-  // * token keeps that context. Prefers the pulse_team cookie — Pulse's own
-  // * preference (Phase 2, PULSE-89), not the access token's claim — then
-  // * falls back to the client-supplied org_id from localStorage (survives
-  // * cookie expiry). Without either, the auth backend embeds the user's
-  // * primary org automatically.
-  // *
-  // * 🔑 THIS IS THE BRIDGE, NOT A REGRESSION. Sending the ACTIVE team back to
-  // * id-backend on every refresh is what keeps its own claim naming the same
-  // * team the dashboard is showing, which is what makes TEAM_RESOLUTION=claim
-  // * a real rollback until Phase 5 deletes this whole call.
-  let previousOrgId = readActiveTeam(cookieStore) ?? ''
-  if (!previousOrgId && body.org_id) {
-    previousOrgId = body.org_id
-  }
 
   try {
     const deviceSignals = body.screen_width ? {
@@ -59,32 +43,24 @@ export async function POST(request: Request) {
       timezone: body.timezone,
     } : {}
 
-    const doRefresh = async (orgId: string) => {
-      return fetch(`${ID_API_URL}/api/v1/auth/refresh`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': request.headers.get('user-agent') || '',
-        },
-        cache: 'no-store',
-        body: JSON.stringify({
-          refresh_token: refreshToken,
-          ...(orgId ? { organization_id: orgId } : {}),
-          ...deviceSignals,
-        }),
-      })
-    }
-
-    let res = await doRefresh(previousOrgId)
-
-    // If the org context is stale (user removed or org deleted), retry without
-    // it so the server falls back to the user's primary org.
-    if (res.status === 403 && previousOrgId) {
-      const errBody = await res.json().catch(() => null)
-      if (errBody?.error?.includes('not a member')) {
-        res = await doRefresh('')
-      }
-    }
+    // * PULSE OWNS TEAM WRITES NOW (Phase 5, PULSE-92). This call used to name
+    // * the browser's active team so id-backend's own claim kept agreeing with
+    // * it — the bridge that made TEAM_RESOLUTION=claim a real rollback.
+    // * Pulse decides the active team from the X-Pulse-Team header on every
+    // * request regardless of what this token claims, so a bare credential
+    // * refresh is all id-backend needs; it never sees organization_id again.
+    const res = await fetch(`${ID_API_URL}/api/v1/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': request.headers.get('user-agent') || '',
+      },
+      cache: 'no-store',
+      body: JSON.stringify({
+        refresh_token: refreshToken,
+        ...deviceSignals,
+      }),
+    })
 
     if (!res.ok) {
       const upstream = await res.json().catch(() => ({ error: 'Unknown' }))
@@ -111,8 +87,10 @@ export async function POST(request: Request) {
       if (credentialRejected) {
         clearSession(cookieStore)
       } else if (orgContextRejected) {
-        // * Drop only the access token so the client's retry falls back to the
-        // * org_id it carries in its body. The refresh token is still good.
+        // * Drop only the access token so the client can retry with a fresh
+        // * one; the refresh token itself is still good. id-backend no longer
+        // * receives an org context to reject (Phase 5, PULSE-92) — kept as a
+        // * defensive classification in case a 403 ever means something else.
         clearAccess(cookieStore)
       }
       // * transient → touch nothing. The cookies are the only copy of the session.

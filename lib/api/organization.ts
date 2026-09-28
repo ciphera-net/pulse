@@ -4,8 +4,13 @@ export interface Organization {
   id: string
   name: string
   slug: string
-  plan_tier: string
   created_at: string
+  // Pulse's own organizations table has no plan concept of its own (billing
+  // reads Warden separately); nothing in this app still reads this, but the
+  // field is kept optional rather than deleted outright in case an older
+  // cached `Organization` is still sitting in someone's localStorage.
+  plan_tier?: string
+  updated_at?: string
   onboarding_completed_at: string | null
 }
 
@@ -14,6 +19,9 @@ export interface OrganizationMember {
   user_id: string
   role: 'owner' | 'admin' | 'member'
   joined_at: string
+  // Pulse's own answer, not ciphera-id's: when this member last used the
+  // team. Absent on a row that has not been touched since the column shipped.
+  last_active_at?: string | null
   organization_name?: string
   organization_slug?: string
   user_email?: string
@@ -42,11 +50,10 @@ export interface InviteLinkInfo {
   metadata?: { app?: string; role_id?: string; site_ids?: string[] }
 }
 
-// Create a new organization
+// Create a new team
 export async function createOrganization(name: string, slug: string): Promise<Organization> {
-  // Use authFetch (Authenticated via Ciphera ID)
-  // * Note: authFetch returns the parsed JSON body, not the Response object
-  return await authFetch<Organization>('/auth/organizations', {
+  // * authFetch returns the parsed JSON body, not the Response object.
+  return await authFetch<Organization>('/organizations', {
     method: 'POST',
     body: JSON.stringify({ name, slug }),
   })
@@ -65,8 +72,8 @@ export interface EnsureDefaultOrganizationResult {
  *
  * 🔴 IDEMPOTENT AND SERIALISED SERVER-SIDE, which is what lets both call sites
  * (the auth callback and the org wall) fire without racing to create two.
- * ciphera-id generates the name — it owns organisation names, and Warden reads
- * them as the authoritative identity — so there is nothing to pass.
+ * Pulse generates the name — it owns team names now (PULSE-92 Phase 5) — so
+ * there is nothing to pass.
  *
  * ⚠️ NEVER call this on the /join path. Someone accepting an invite has no
  * workspace yet and must not be handed a stray one; the server cannot know an
@@ -87,70 +94,70 @@ export function shouldProvisionWorkspace(target: string | null | undefined): boo
 }
 
 export async function ensureDefaultOrganization(): Promise<EnsureDefaultOrganizationResult> {
-  return await authFetch<EnsureDefaultOrganizationResult>('/auth/organizations/ensure-default', {
+  return await authFetch<EnsureDefaultOrganizationResult>('/organizations/ensure-default', {
     method: 'POST',
     body: JSON.stringify({}),
   })
 }
 
-// List organizations user belongs to
+// List the teams this account belongs to
 export async function getUserOrganizations(): Promise<OrganizationMember[]> {
-  const data = await authFetch<{ organizations: OrganizationMember[] }>('/auth/organizations')
+  const data = await authFetch<{ organizations: OrganizationMember[] }>('/organizations')
   return data.organizations || []
 }
 
-// Switch Context (Get token for specific org)
-export async function switchContext(organizationId: string | null): Promise<{ access_token: string; expires_in: number }> {
-  const payload = { organization_id: organizationId || '' }
-  return await authFetch<{ access_token: string; expires_in: number }>('/auth/switch-context', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
-}
-
-// Get organization details
+// Get team details
 export async function getOrganization(organizationId: string): Promise<Organization> {
-  return await authFetch<Organization>(`/auth/organizations/${organizationId}`)
+  return await authFetch<Organization>(`/organizations/${organizationId}`)
 }
 
-// Delete an organization
+// Delete a team
 export async function deleteOrganization(organizationId: string): Promise<void> {
-  await authFetch(`/auth/organizations/${organizationId}`, {
+  await authFetch(`/organizations/${organizationId}`, {
     method: 'DELETE',
   })
 }
 
 export async function completeOnboarding(organizationId: string): Promise<void> {
-  await authFetch(`/auth/organizations/${organizationId}/complete-onboarding`, {
+  await authFetch(`/organizations/${organizationId}/complete-onboarding`, {
     method: 'POST',
   })
 }
 
-// Update organization details
+// Update team details
 export async function updateOrganization(organizationId: string, name: string, slug: string): Promise<Organization> {
-  return await authFetch<Organization>(`/auth/organizations/${organizationId}`, {
+  return await authFetch<Organization>(`/organizations/${organizationId}`, {
     method: 'PUT',
     body: JSON.stringify({ name, slug }),
   })
 }
 
-// Get organization members
+// Get team members
 export async function getOrganizationMembers(organizationId: string): Promise<OrganizationMember[]> {
-  const data = await authFetch<{ members: OrganizationMember[] }>(`/auth/organizations/${organizationId}/members`)
+  const data = await authFetch<{ members: OrganizationMember[] }>(`/organizations/${organizationId}/members`)
   return data.members || []
 }
 
-// Remove a member from the organization
+// Remove a member from the team
 export async function removeOrganizationMember(organizationId: string, userId: string): Promise<void> {
-  await authFetch(`/auth/organizations/${organizationId}/members/${userId}`, {
+  await authFetch(`/organizations/${organizationId}/members/${userId}`, {
     method: 'DELETE',
   })
 }
 
-// Transfer ownership of an organization to another member.
+// Leave a team. The owner is refused server-side (409) — the caller must
+// transfer ownership first; the UI keeps the row disabled for the owner
+// rather than round-tripping to find that out.
+export async function leaveOrganization(organizationId: string): Promise<void> {
+  await authFetch(`/organizations/${organizationId}/leave`, {
+    method: 'POST',
+  })
+}
+
+// Transfer ownership of a team to another member.
 // After a successful transfer the caller becomes a regular member.
 export async function transferOwnership(organizationId: string, targetUserId: string): Promise<void> {
-  await authFetch(`/auth/organizations/${organizationId}/transfer-ownership`, {
+  await authFetch(`/organizations/${organizationId}/transfer-ownership`, {
     method: 'POST',
     body: JSON.stringify({ target_user_id: targetUserId }),
   })
@@ -158,25 +165,25 @@ export async function transferOwnership(organizationId: string, targetUserId: st
 
 export async function createInviteLink(
   orgId: string,
-  params: { name: string; role: string; metadata?: object; max_uses?: number; expires_in: string }
+  params: { name: string; role: string; metadata?: object; max_uses?: number; expires_at?: string }
 ): Promise<InviteLink> {
-  return await authFetch<InviteLink>(`/auth/organizations/${orgId}/invite-links`, {
+  return await authFetch<InviteLink>(`/organizations/${orgId}/invite-links`, {
     method: 'POST',
     body: JSON.stringify(params),
   })
 }
 
 export async function getInviteLinks(orgId: string): Promise<InviteLink[]> {
-  const data = await authFetch<{ invite_links: InviteLink[] }>(`/auth/organizations/${orgId}/invite-links`)
+  const data = await authFetch<{ invite_links: InviteLink[] }>(`/organizations/${orgId}/invite-links`)
   return data.invite_links ?? []
 }
 
 export async function revokeInviteLink(orgId: string, linkId: string): Promise<void> {
-  await authFetch(`/auth/organizations/${orgId}/invite-links/${linkId}`, { method: 'DELETE' })
+  await authFetch(`/organizations/${orgId}/invite-links/${linkId}`, { method: 'DELETE' })
 }
 
 export async function acceptInviteLink(code: string): Promise<{ organization_id: string; metadata?: object }> {
-  return await authFetch<{ organization_id: string; metadata?: object }>(`/auth/invite-links/${code}/accept`, {
+  return await authFetch<{ organization_id: string; metadata?: object }>(`/invite-links/${code}/accept`, {
     method: 'POST',
   })
 }
