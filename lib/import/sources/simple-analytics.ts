@@ -40,7 +40,8 @@
 // through `PrepareRequest` into the parse context. When it is set, every
 // row's `hostname` (lower-cased, `www.`-stripped, a Unicode hostname
 // converted to its ASCII form via the WHATWG URL parser) is compared against
-// it, also `www.`-stripped: this catches a WRONG-PROPERTY UPLOAD in general,
+// it, also `www.`-stripped (core/host.ts, the one host rule Umami shares,
+// M8-b′): this catches a WRONG-PROPERTY UPLOAD in general,
 // not only a file that mixes two properties. `hostname_original` is not read
 // (M9-j: it only matters for a site that has rewritten its own hostname,
 // which this filter doesn't need to reconstruct). When `ctx.siteDomain` is
@@ -51,6 +52,7 @@
 // the wrong one.
 
 import { isCalendarDate } from '../core/dates'
+import { siteHostCheck } from '../core/host'
 import { checkHeader, requireExactlyOneFile, type ColumnIndex } from '../core/schema'
 import type { RowRef } from '../core/skipped'
 import { readGzip, readPlain, type EntrySink } from '../core/zip'
@@ -160,38 +162,6 @@ export function parseAddedIso(value: string): number | null {
   return utcMs - offsetMs
 }
 
-/**
- * A Unicode hostname's ASCII (punycode) form, via the WHATWG URL parser
- * (M9-j'): the site's own configured domain already stores an IDN site's
- * ASCII form (id-backend #526/#531), so a raw export row naming the same site
- * in Unicode must be converted the same way before the two are compared. A
- * value the URL parser cannot make into a hostname at all (empty, or already
- * malformed for other reasons the row-level checks catch elsewhere) is
- * returned unchanged rather than thrown away here.
- */
-function toAsciiHost(value: string): string {
-  if (value === '') return value
-  try {
-    return new URL(`http://${value}/`).hostname
-  } catch {
-    return value
-  }
-}
-
-/**
- * Lower-cased, `www.`-stripped, and Unicode converted to ASCII:
- * `ingestnorm.IsOwnHost`'s own convention (M9-j), extended for M9-j' to also
- * match the site's own domain. A single trailing root-label dot (the
- * `example.com.` FQDN form) is stripped too: `sites.domain` never carries one
- * (backend), so a raw export row that does must not be the one thing left
- * un-normalised here.
- */
-function normaliseHost(value: string): string {
-  const ascii = toAsciiHost(value.trim().toLowerCase())
-  const noWww = ascii.startsWith('www.') ? ascii.slice(4) : ascii
-  return noWww.endsWith('.') ? noWww.slice(0, -1) : noWww
-}
-
 const nullIfEmpty = (s: string) => (s === '' ? null : s)
 
 /**
@@ -223,11 +193,9 @@ export const simpleAnalyticsSource: RawSourceParser = {
     let index: ColumnIndex | null = null
     let width = 0
     let entrances = 0
-    let referenceHost: string | null = null
-    // M9-j': the site's own domain, normalised once, when the server sent one.
-    // Set → every row is held to it. Null (an older server) → fall back to the
-    // original M9-j intra-file check, `referenceHost` above.
-    const siteHost = ctx.siteDomain !== null ? normaliseHost(ctx.siteDomain) : null
+    // M9-j': the site's own domain when the server sent one, else the
+    // original M9-j intra-file check (core/host.ts, shared with Umami).
+    const belongs = siteHostCheck(ctx.siteDomain)
 
     const csv = new CsvByteParser((fields, line) => {
       if (!index) {
@@ -260,15 +228,7 @@ export const simpleAnalyticsSource: RawSourceParser = {
         ctx.skipped.add('not_a_pageview', at)
         return
       }
-      const host = normaliseHost(text('hostname'))
-      if (siteHost !== null) {
-        if (host !== siteHost) {
-          ctx.skipped.add('hostname_mismatch', at)
-          return
-        }
-      } else if (referenceHost === null) {
-        referenceHost = host
-      } else if (host !== referenceHost) {
+      if (!belongs(text('hostname'))) {
         ctx.skipped.add('hostname_mismatch', at)
         return
       }
