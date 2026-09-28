@@ -119,6 +119,17 @@ describe('AggregateBuilder: the window clip', () => {
     expect(rows.acquisition).toEqual([])
   })
 
+  it('names the window\'s reason for a day without counting anything (a source\'s own narrower bound runs after it)', () => {
+    const skipped = new SkipLedger()
+    const b = new AggregateBuilder(clip, skipped)
+    expect(b.windowReason('2026-03-01')).toBe('outside_history_window')
+    expect(b.windowReason('2026-03-02')).toBeNull()
+    expect(b.windowReason('2026-03-03')).toBeNull()
+    expect(b.windowReason('2026-03-04')).toBe('pulse_measured')
+    expect(skipped.total()).toBe(0)
+    expect(new AggregateBuilder(null, skipped).windowReason('1999-01-01')).toBeNull()
+  })
+
   it('drops a month that reaches outside the clip, since its unique count no longer describes the days kept', () => {
     const skipped = new SkipLedger()
     const wide: Clip = { from: '2026-02-15', through: '2026-04-30', before: 'outside_history_window', after: 'pulse_measured' }

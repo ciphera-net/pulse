@@ -52,10 +52,11 @@
 import { MAX_COUNT, type AggregateBuilder } from '../core/aggregate'
 import { CsvByteParser } from '../core/csv'
 import { isCalendarDate } from '../core/dates'
-import { checkHeader, requireFiles, type ColumnIndex, type TableSchema } from '../core/schema'
+import { checkHeader, requireExactlyOneFile, requireFiles, type ColumnIndex, type TableSchema } from '../core/schema'
 import type { RowRef, SkipLedger } from '../core/skipped'
 import { readZip, type EntrySink } from '../core/zip'
 import { wrongFile } from '../errors'
+import { PLAUSIBLE_ONE_FILE_MESSAGE } from '../source-meta'
 import type { Dimension } from '../types'
 import type { AggregateSourceParser } from './source'
 
@@ -337,8 +338,11 @@ function mappers(rows: AggregateBuilder): Record<ReadTable, { counts: string[]; 
 
 export const plausibleSource: AggregateSourceParser = {
   kind: 'upload_aggregate',
-  async read(file, input, ctx) {
-    if (input !== 'zip') {
+  async read(files, ctx) {
+    // The export is ONE ZIP (M7-a): a second file is refused, never silently
+    // left unread while the first is imported.
+    const file = requireExactlyOneFile(files, PLAUSIBLE_ONE_FILE_MESSAGE)
+    if (file.input !== 'zip') {
       throw wrongFile(
         'not_an_archive',
         'Upload the ZIP file the export produced, not a single file from inside it.',
@@ -401,7 +405,7 @@ export const plausibleSource: AggregateSourceParser = {
       }
     }
 
-    await readZip(file, entry, ctx.read)
+    await readZip(file.blob, entry, ctx.read)
     requireFiles(seen, REQUIRED_TABLES, (t) => `imported_${t}`)
     return { ignored }
   },

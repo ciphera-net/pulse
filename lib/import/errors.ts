@@ -43,6 +43,8 @@ export const BROWSER_ERROR_CODES = [
   'file_too_large_for_browser',
   'unsupported_encoding',
   'no_data_in_range',
+  /** More files than MAX_UPLOAD_FILES in one upload (M7-a); `limit` and `observed` say how many. */
+  'too_many_files',
 ] as const
 
 /** The transport's and the worker's own failures. */
@@ -90,6 +92,27 @@ export type WrongFileReason =
   | 'duplicate_columns'
   | 'malformed_csv'
   | 'value_out_of_range'
+  /**
+   * An archive or compressed file where the source exports plain files (M7-p,
+   * shared with M9-c). The UI chooses the sentence by source: for Fathom it is
+   * the dashboard download (a ZIP of whole-range totals), for a single-CSV
+   * source the CSV inside it.
+   */
+  | 'unexpected_archive'
+  /**
+   * Rows grouped by week, month or year where the export must be daily (M7-e):
+   * a longer period's total cannot be split into days without inventing them.
+   * `observed` is the rounded average number of days between the file's dates.
+   */
+  | 'wrong_grouping'
+  /**
+   * A file that is no file of this export (M7-d), in one of two forms, told
+   * apart by `observed`. Without it: none of the columns any file of the
+   * export writes, and `columns` holds the header seen. With it: several
+   * dimensions combined in one file, `columns` holds their marker columns,
+   * `limit` is 1 and `observed` is how many the file combines.
+   */
+  | 'unrecognised_file'
 
 /** Why the archive is `zip_too_large`: which of the four guards tripped. */
 export type ZipGuard = 'entry_bytes' | 'total_bytes' | 'ratio'

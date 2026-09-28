@@ -95,7 +95,7 @@ describe('M2-q: no raw row in a batch', () => {
   })
 
   it('the reference source\'s batches carry only the wire fields too', async () => {
-    const { summary, parts } = await runPipeline({ source: 'plausible', file: plausibleFixtureFile(), clip: null, timeZone: 'UTC' })
+    const { summary, parts } = await runPipeline({ source: 'plausible', files: [plausibleFixtureFile()], clip: null, timeZone: 'UTC' })
     // The fixture's hostnames and referrer URLs are read from the file and must stop at the fold.
     const inFile = ['example.com', 'blog.example.com', 'https://www.google.com/']
     for (const p of parts) assertOnlyWireFields(batchBody(p.step, p.part, summary.fingerprint, p.rowsJson), inFile)
