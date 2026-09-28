@@ -37,6 +37,12 @@ export const NOTIFICATION_TYPES = [
   'site_traffic_spike',
   'site_traffic_drop',
   'site_content_decay',
+  // iris migration 038 (PULSE-121, design §3.10c M13-a/M13-b): the analytics-
+  // history import. Filed under `site` (not a new category, not `lifecycle`)
+  // so pulse-backend's own split-on-underscore Category() agrees with the
+  // registry's.
+  'site_import_completed',
+  'site_import_stopped',
   'team_member_invited',
   'team_member_joined',
   'team_role_changed',
@@ -145,6 +151,59 @@ export interface SiteTrafficSpikePayload { site_id: string; site_domain: string;
 export interface SiteTrafficDropPayload { site_id: string; site_domain: string; current_visitors: number; baseline_visitors: number; change_percent: number }
 export interface SiteContentDecayPayload { site_id: string; domain: string; pages: Array<{ path: string; peak_views: number; current_views: number; decay_pct: number }> }
 
+/**
+ * iris migration 038 (PULSE-121, design §3.10c M13-g): a PULL import
+ * finished. Mirror of pulse-backend's SiteImportCompletedPayload
+ * (`internal/notifications/payloads.go`). NO workspace name and NO site_id —
+ * the schema's `additionalProperties: false` refuses either, so a resolver
+ * cannot fill in a name here the way `site_added` does. `range_start`/
+ * `range_end` are days on the SOURCE's calendar (YYYY-MM-DD, inclusive),
+ * exactly `data_imports`' range, carried AS MEASURED at completion so a card
+ * read a week later still says something true. `source_name` is the display
+ * name at produce time ("Matomo"); the card never maps `source` to a label
+ * itself.
+ */
+export interface SiteImportCompletedPayload {
+  domain: string
+  source: string
+  source_name: string
+  range_start: string
+  range_end: string
+}
+
+/**
+ * The closed set of stop causes iris migration 038
+ * (`pulse.site_import_stopped.v1`) ships copy for (design §3.10c M13-d,
+ * M13-j). `user_metrics_disabled` (GA4) cannot fire until M5 registers GA4,
+ * but its copy ships with the rest — "copy ships for every code now".
+ */
+export type SiteImportStoppedCode =
+  | 'upload_abandoned'
+  | 'reconnect_required'
+  | 'source_unavailable'
+  | 'connector_erased'
+  | 'user_metrics_disabled'
+
+/**
+ * iris migration 038 (PULSE-121, design §3.10c M13-g): an import stopped,
+ * and the reader can make it carry on. Mirror of pulse-backend's
+ * SiteImportStoppedPayload. `stopped_on` is the day the stop was recorded on
+ * the SITE's calendar (YYYY-MM-DD), AS MEASURED, so a delayed send still
+ * names the true day. `part`/`parts` are set ONLY for `upload_abandoned`
+ * (pulse-backend keeps them pointers for the same reason, `internal/
+ * notifications/payloads.go`): a reconnect or an erased connector has no
+ * batch position to name.
+ */
+export interface SiteImportStoppedPayload {
+  domain: string
+  source: string
+  source_name: string
+  code: SiteImportStoppedCode
+  stopped_on: string
+  part?: number
+  parts?: number
+}
+
 export type PayloadForType<T extends NotificationType> =
   T extends 'billing_payment_failed' ? BillingPaymentFailedPayload :
   T extends 'billing_plan_renewed' ? BillingPlanRenewedPayload :
@@ -173,6 +232,13 @@ export type PayloadForType<T extends NotificationType> =
   T extends 'site_traffic_spike' ? SiteTrafficSpikePayload :
   T extends 'site_traffic_drop' ? SiteTrafficDropPayload :
   T extends 'site_content_decay' ? SiteContentDecayPayload :
+  // §A3 / M13-i: PayloadForType has NO `satisfies` guard, unlike the icon map
+  // and the renderer registry. A payload interface added above without a
+  // branch here compiles clean and silently resolves to `never` for every
+  // consumer of `Receipt<'site_import_completed' | 'site_import_stopped'>` —
+  // this must be kept in sync by hand.
+  T extends 'site_import_completed' ? SiteImportCompletedPayload :
+  T extends 'site_import_stopped' ? SiteImportStoppedPayload :
   T extends 'team_member_invited' ? TeamMemberInvitedPayload :
   T extends 'team_member_joined' ? TeamMemberJoinedPayload :
   T extends 'team_role_changed' ? TeamRoleChangedPayload :
