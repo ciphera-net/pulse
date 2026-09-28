@@ -95,7 +95,14 @@ describe('the team readiness gate', () => {
     expect(lastCall(fetchSpy).headers.get('x-pulse-team')).toBe('team-a')
   })
 
-  it.each(['/me', '/me/preferences', '/notifications', '/notifications/1/read', '/public/status'])(
+  it.each([
+    '/me', '/me/preferences', '/notifications', '/notifications/1/read', '/public/status',
+    // Pulse's own team-write routes (PULSE-92 Phase 5): they name the team in
+    // the URL path, never X-Pulse-Team, and several of them (creating a team,
+    // listing the account's teams, accepting an invite) run before any team
+    // is known at all.
+    '/organizations', '/organizations/org1', '/organizations/ensure-default', '/invite-links/abc/accept',
+  ])(
     '%s never waits on the gate, even while it is unresolved',
     async (endpoint) => {
       resetTeamGate()

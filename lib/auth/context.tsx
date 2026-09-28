@@ -144,8 +144,8 @@ async function loadSession(): Promise<SessionUser | null> {
 /**
  * This account's role in `teamId`, from Pulse's own /me — never from the
  * token (Phase 2, PULSE-89: the dashboard decides the active team and its
- * role itself, id-backend's claim is only the bridge's rollback path).
- * `undefined` on any failure to read /me, same as "not resolved yet".
+ * role itself). `undefined` on any failure to read /me, same as "not
+ * resolved yet".
  */
 async function resolveActiveTeamRole(teamId: string): Promise<string | undefined> {
   try {
@@ -591,9 +591,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // * PULSE DECIDES THE ACTIVE TEAM (Phase 2, PULSE-89). session.org_id
             // * is only this browser's PREFERENCE (the pulse_team cookie) —
             // * /me is the membership truth. A device with no or a stale cookie
-            // * is aligned here: activateTeam tells Ciphera ID too, which is
-            // * what keeps its claim naming the same team (the bridge) and
-            // * makes TEAM_RESOLUTION=claim a real rollback until Phase 5.
+            // * is aligned here: activateTeam records Pulse's own preference.
             //
             // 🔴 FIX 1 (PULSE-89 review): the team-readiness gate
             // (lib/api/client.ts) resolves the MOMENT the team is known, not
@@ -616,15 +614,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               if (active && active !== session.org_id) {
                 try {
                   await activateTeam(active)
-                } catch (bridgeError) {
-                  // * activateTeam's first step tells Ciphera ID (the bridge,
-                  // * until Phase 5). Pulse decides the team from the header
-                  // * regardless, so a failed bridge must not leave this
-                  // * device with NO team — on a first load there is no cookie
-                  // * to fall back to, and every team-scoped request would
-                  // * answer TEAM_REQUIRED. Keep the team /me chose, locally.
-                  logger.error('Could not tell Ciphera ID about the active team; continuing with it', bridgeError)
-                  await setActiveTeamAction(active).catch(() => {})
+                } catch (e) {
+                  // * activateTeam sets the in-memory active team before it can
+                  // * fail — only the pulse_team cookie may not have persisted.
+                  // * Not fatal: the choice still works for this tab, and
+                  // * resolves again on the next load.
+                  logger.error('Could not persist the active team preference', e)
                 }
               }
               setActiveTeam(active)
@@ -849,13 +844,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Idempotent server-side, so firing both is free.
             try {
               const ensured = await ensureDefaultOrganization()
-              // Bridge until Phase 5 (lib/auth/switchOrganization.ts): mints
-              // the new team's token, stores it, primes the Bearer, and
-              // records it as Pulse's own active-team preference. Throws if
-              // the session could not be stored.
-              const activated = await activateTeam(ensured.organization.id)
+              // Records the new team as Pulse's own active-team preference
+              // (X-Pulse-Team header + the pulse_team cookie). Throws only if
+              // the preference could not be persisted.
+              await activateTeam(ensured.organization.id)
               const role = await resolveActiveTeamRole(ensured.organization.id)
-              const merged = { ...activated.user, org_id: ensured.organization.id, role }
+              const merged = { ...user, id: user?.id ?? '', email: user?.email ?? '', totp_enabled: user?.totp_enabled ?? false, org_id: ensured.organization.id, role }
               setUser(merged)
               localStorage.setItem('user', JSON.stringify(merged))
               // 🔴 An org-context switch, so the cache goes with it. The
@@ -982,8 +976,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
              const firstOrg = organizations[0]
 
              try {
-                 // Bridge until Phase 5 — see the zero-teams branch above.
-                 const activated = await activateTeam(firstOrg.organization_id)
+                 // Records the team as Pulse's own active-team preference —
+                 // see the zero-teams branch above.
+                 await activateTeam(firstOrg.organization_id)
                  const role = await resolveActiveTeamRole(firstOrg.organization_id)
                  try {
                    const fullProfile = await apiRequest<{ id: string; email: string; display_name?: string; totp_enabled: boolean; org_id?: string; role?: string }>('/auth/user/me')
@@ -992,7 +987,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                    // * this response.
                    const merged = {
                      ...fullProfile,
-                     email: fullProfile.email || user?.email || activated.user.email,
+                     email: fullProfile.email || user?.email,
                      display_name: fullProfile.display_name || user?.display_name,
                      org_id: firstOrg.organization_id,
                      role,
@@ -1000,7 +995,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                    setUser(merged)
                    localStorage.setItem('user', JSON.stringify(merged))
                  } catch {
-                   const merged = { ...activated.user, org_id: firstOrg.organization_id, role }
+                   // * The account's own profile does not change when it
+                   // * switches teams; only org_id/role do, and both are
+                   // * already known here.
+                   const merged = { ...user, id: user?.id ?? '', email: user?.email ?? '', totp_enabled: user?.totp_enabled ?? false, org_id: firstOrg.organization_id, role }
                    setUser(merged)
                    localStorage.setItem('user', JSON.stringify(merged))
                  }

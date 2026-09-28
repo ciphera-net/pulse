@@ -41,12 +41,11 @@ export default function SetupOrgPage() {
 
     try {
       const org = await createOrganization(orgName.trim(), slugFromName(orgName.trim()))
-      // Bridge until Phase 5 (lib/auth/switchOrganization.ts): mints the new
-      // team's token, stores it, and primes the in-memory Bearer BEFORE the
-      // profile fetch below or the site step's listSites() run, or both go
-      // out scoped to the org the session WAS on (pulse#730). Throws if the
-      // session could not be stored.
-      const activated = await activateTeam(org.id)
+      // Sets the new team as Pulse's active team (X-Pulse-Team header + the
+      // pulse_team cookie) BEFORE the profile fetch below or the site step's
+      // listSites() run, or both go out scoped to the team the session WAS on
+      // (pulse#730). Throws only if the preference could not be persisted.
+      await activateTeam(org.id)
 
       // * Fix 3 (PULSE-89 review): the role comes from PULSE's own
       // * membership table, never from Ciphera ID's /auth/user/me — id-backend
@@ -68,15 +67,17 @@ export default function SetupOrgPage() {
         }>('/auth/user/me')
         login({
           ...fullProfile,
-          email: fullProfile.email || user?.email || activated.user.email,
+          email: fullProfile.email || user?.email || '',
           display_name: fullProfile.display_name || user?.display_name,
           // * The team just created and switched into — known outright, never
-          // * guessed from the token (activateTeam's user carries neither).
+          // * guessed from the token (activateTeam no longer carries one).
           org_id: org.id,
           role,
         })
       } catch {
-        login({ ...activated.user, org_id: org.id, role })
+        // * The account's own profile does not change when it switches teams;
+        // * only org_id/role do, and both are already known here.
+        login({ ...user, id: user?.id ?? '', email: user?.email ?? '', totp_enabled: user?.totp_enabled ?? false, org_id: org.id, role })
       }
 
       setOrg(org.id, orgName.trim())

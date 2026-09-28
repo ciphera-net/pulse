@@ -81,13 +81,12 @@ function AuthCallbackContent() {
     if (!shouldProvisionWorkspace(target)) return null
     try {
       const ensured = await ensureDefaultOrganization()
-      // 🔴 AND SWITCH INTO IT BEFORE LANDING. The access token was minted at the
-      // exchange, a moment BEFORE this workspace existed, so it carries no
-      // org_id. Landing on it makes the destination page discover the mismatch
-      // and repair it — a new session, router.refresh() — which is a second
-      // render the person sees as a flicker on their very first screen
-      // (reported by the owner, 08-09-2026: "it flicker a lot"). Repairing it
-      // here happens behind the redirect that is already running.
+      // 🔴 AND SWITCH INTO IT BEFORE LANDING. Landing without this makes the
+      // destination page discover the new team late and repair it itself — a
+      // new fetch, router.refresh() — which is a second render the person
+      // sees as a flicker on their very first screen (reported by the owner,
+      // 08-09-2026: "it flicker a lot"). Setting it here happens behind the
+      // redirect that is already running.
       await activateTeam(ensured.organization.id)
       // * 🔑 THE ROLE COMES FROM PULSE'S OWN /me NOW (Phase 2, PULSE-89) —
       // * activateTeam's bridge carries no role any more, and the token's

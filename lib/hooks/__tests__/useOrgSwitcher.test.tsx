@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 
 // pulse#730: the order of the workspace switch is the contract —
-// session stored → Bearer primed → refresh (which owns the cache purge) →
-// navigate — and nothing cache-wide runs after refresh().
+// preference recorded → refresh (which owns the cache purge) → navigate —
+// and nothing cache-wide runs after refresh().
 
 const h = vi.hoisted(() => {
   const order: string[] = []
@@ -11,16 +11,7 @@ const h = vi.hoisted(() => {
     order,
     push: vi.fn((_path: string) => { order.push('router.push') }),
     refresh: vi.fn(async () => { order.push('auth.refresh') }),
-    switchContext: vi.fn(async (_id: string | null) => {
-      order.push('switchContext')
-      return { access_token: 'tok_b', expires_in: 900 }
-    }),
-    setSessionAction: vi.fn(async (_token: string) => {
-      order.push('setSessionAction')
-      return { success: true as const, user: { id: 'u1', email: '', totp_enabled: false }, access_token: 'tok_b' }
-    }),
     setActiveTeamAction: vi.fn(async (_id: string | null) => { order.push('setActiveTeamAction'); return { success: true } }),
-    setAccessToken: vi.fn((_token: string | null) => { order.push('setAccessToken') }),
     setActiveTeam: vi.fn((_id: string | null) => { order.push('setActiveTeam') }),
     error: vi.fn(),
     // One stable object: the hook's org-list effect depends on `auth.user`, and
@@ -33,46 +24,43 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ push: h.push, refresh: v
 vi.mock('@/lib/auth/context', () => ({
   useAuth: () => ({ user: h.user, refresh: h.refresh }),
 }))
-vi.mock('@/lib/api/organization', () => ({
-  getUserOrganizations: vi.fn(async () => []),
-  switchContext: h.switchContext,
+vi.mock('@/lib/swr/organizations', () => ({
+  useUserOrganizations: () => ({ organizations: [], error: null }),
 }))
-vi.mock('@/app/actions/auth', () => ({ setSessionAction: h.setSessionAction, setActiveTeamAction: h.setActiveTeamAction }))
-vi.mock('@/lib/api/client', () => ({ setAccessToken: h.setAccessToken, setActiveTeam: h.setActiveTeam }))
+vi.mock('@/app/actions/auth', () => ({ setActiveTeamAction: h.setActiveTeamAction }))
+vi.mock('@/lib/api/client', () => ({ setActiveTeam: h.setActiveTeam }))
 vi.mock('@/lib/utils/logger', () => ({ logger: { error: h.error, warn: vi.fn(), info: vi.fn(), debug: vi.fn() } }))
 
 import { useOrgSwitcher } from '@/lib/hooks/useOrgSwitcher'
 
 beforeEach(() => {
   h.order.length = 0
-  for (const fn of [h.push, h.refresh, h.switchContext, h.setSessionAction, h.setActiveTeamAction, h.setAccessToken, h.setActiveTeam, h.error]) fn.mockClear()
+  for (const fn of [h.push, h.refresh, h.setActiveTeamAction, h.setActiveTeam, h.error]) fn.mockClear()
 })
 
 describe('useOrgSwitcher.switchOrganization', () => {
-  it('stores the session, primes the Bearer, records the preference, THEN refreshes (the purge), THEN navigates', async () => {
+  it('records the preference, THEN refreshes (the purge), THEN navigates', async () => {
     const { result } = renderHook(() => useOrgSwitcher())
 
     await act(async () => { await result.current.switchOrganization('org_b') })
 
-    expect(h.order).toEqual(['switchContext', 'setSessionAction', 'setAccessToken', 'setActiveTeam', 'setActiveTeamAction', 'auth.refresh', 'router.push'])
-    expect(h.switchContext).toHaveBeenCalledWith('org_b')
-    expect(h.setSessionAction).toHaveBeenCalledWith('tok_b')
-    expect(h.setAccessToken).toHaveBeenCalledWith('tok_b')
+    expect(h.order).toEqual(['setActiveTeam', 'setActiveTeamAction', 'auth.refresh', 'router.push'])
+    expect(h.setActiveTeam).toHaveBeenCalledWith('org_b')
+    expect(h.setActiveTeamAction).toHaveBeenCalledWith('org_b')
     expect(h.push).toHaveBeenCalledWith('/')
     expect(h.error).not.toHaveBeenCalled()
   })
 
-  it('stops when the session could not be stored — no Bearer, no refresh, no navigation', async () => {
-    h.setSessionAction.mockImplementationOnce(async () => {
-      h.order.push('setSessionAction')
-      return { success: false, error: 'invalid' } as never
+  it('stops when the preference could not be persisted — no refresh, no navigation', async () => {
+    h.setActiveTeamAction.mockImplementationOnce(async () => {
+      h.order.push('setActiveTeamAction')
+      throw new Error('cookie store unavailable')
     })
     const { result } = renderHook(() => useOrgSwitcher())
 
     await act(async () => { await result.current.switchOrganization('org_b') })
 
-    expect(h.order).toEqual(['switchContext', 'setSessionAction'])
-    expect(h.setAccessToken).not.toHaveBeenCalled()
+    expect(h.order).toEqual(['setActiveTeam', 'setActiveTeamAction'])
     expect(h.refresh).not.toHaveBeenCalled()
     expect(h.push).not.toHaveBeenCalled()
     expect(h.error).toHaveBeenCalledTimes(1)
