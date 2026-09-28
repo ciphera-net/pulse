@@ -104,51 +104,63 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
             const expandable = memberFeatures && row.instrument !== 'imported'
             const isExpanded = expandable && expanded.has(row.event_name)
             const cache = propertyCache[row.event_name]
-            const RowTag = expandable || !memberFeatures ? 'button' : 'div'
+
+            const rowBody = (
+              <>
+                <div
+                  className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.16] md:group-hover:bg-brand-orange/[0.26] rounded-none transition-[width,background-color] ease-apple"
+                  style={{ width: `${barWidth}%` }}
+                />
+                <div className="relative flex items-center flex-1 min-w-0 gap-2">
+                  {memberFeatures && !expandable && (
+                    // Keeps the name in line with the rows that do expand.
+                    <span aria-hidden="true" className="w-3.5 h-3.5 flex-shrink-0" />
+                  )}
+                  {expandable && (
+                  <svg
+                    className={`w-3.5 h-3.5 text-neutral-500 flex-shrink-0 transition-transform duration-base ${isExpanded ? 'rotate-90' : ''} ease-apple`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                  )}
+                  <span className="text-sm font-medium text-white truncate">
+                    {goalLabel(row)}
+                  </span>
+                </div>
+                {/* No % here by design (F9): these rows count EVENTS, and the
+                    events total is not on the wire — any denominator this
+                    card could compute would be share-of-visible-rows. */}
+                <div className="relative flex items-center gap-2 ml-4">
+                  <span className="text-sm font-semibold text-neutral-400">
+                    {formatNumber(row.count)}
+                  </span>
+                </div>
+              </>
+            )
 
             return (
               <div key={row.event_name}>
                 {/* Event row */}
-                <RowTag
-                  {...(RowTag === 'button' ? { type: 'button' as const } : {})}
-                  aria-expanded={expandable ? isExpanded : undefined}
-                  onClick={expandable ? () => toggleExpand(row.event_name) : undefined}
-                  data-testid="goal-row"
-                  className={`interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2 ${expandable ? 'cursor-pointer' : 'cursor-default'}`}
-                >
-                  <div
-                    className="absolute inset-y-0.5 left-0.5 bg-brand-orange/[0.16] md:group-hover:bg-brand-orange/[0.26] rounded-none transition-[width,background-color] ease-apple"
-                    style={{ width: `${barWidth}%` }}
-                  />
-                  <div className="relative flex items-center flex-1 min-w-0 gap-2">
-                    {memberFeatures && !expandable && (
-                      // Keeps the name in line with the rows that do expand.
-                      <span aria-hidden="true" className="w-3.5 h-3.5 flex-shrink-0" />
-                    )}
-                    {expandable && (
-                    <svg
-                      className={`w-3.5 h-3.5 text-neutral-500 flex-shrink-0 transition-transform duration-base ${isExpanded ? 'rotate-90' : ''} ease-apple`}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                    )}
-                    <span className="text-sm font-medium text-white truncate">
-                      {goalLabel(row)}
-                    </span>
+                {expandable || !memberFeatures ? (
+                  <button
+                    type="button"
+                    aria-expanded={expandable ? isExpanded : undefined}
+                    onClick={expandable ? () => toggleExpand(row.event_name) : undefined}
+                    data-testid="goal-row"
+                    className={`interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2 ${expandable ? 'cursor-pointer' : 'cursor-default'}`}
+                  >
+                    {rowBody}
+                  </button>
+                ) : (
+                  // Imported days only: nothing to open, so not a control (M12, owner pick A).
+                  <div data-testid="goal-row" className="interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2 cursor-default">
+                    {rowBody}
                   </div>
-                  {/* No % here by design (F9): these rows count EVENTS, and the
-                      events total is not on the wire — any denominator this
-                      card could compute would be share-of-visible-rows. */}
-                  <div className="relative flex items-center gap-2 ml-4">
-                    <span className="text-sm font-semibold text-neutral-400">
-                      {formatNumber(row.count)}
-                    </span>
-                  </div>
-                </RowTag>
+                )}
 
                 {/* Expanded property breakdown */}
                 <AnimatePresence initial={false}>
