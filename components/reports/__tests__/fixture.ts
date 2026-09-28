@@ -2,7 +2,7 @@ import type { ReportPayload } from '@/lib/api/reports'
 
 // One story, the approved shots' (R-B-slides): ciphera.net, the last 90 days
 // against the 90 days before, twelve months of growth whose first five were
-// imported, September still in progress. Shares and rates are fractions of one.
+// imported, September still in progress. Shares and rates are percentages, as pulse-backend freezes them.
 const MONTHS: [string, number, 'measured' | 'imported'][] = [
   ['2025-10', 2140, 'imported'],
   ['2025-11', 2380, 'imported'],
@@ -41,13 +41,13 @@ export const PAYLOAD: ReportPayload = {
   },
   sources: {
     channels: [
-      { name: 'Organic Search', visitors: 7070, share: 0.41 },
-      { name: 'Direct', visitors: 4480, share: 0.26 },
-      { name: 'Referral', visitors: 3100, share: 0.18 },
+      { name: 'Organic Search', visitors: 7070, share: 41 },
+      { name: 'Direct', visitors: 4480, share: 26 },
+      { name: 'Referral', visitors: 3100, share: 18 },
     ],
     referrers: [
-      { name: 'Google', visitors: 6120, share: 0.35 },
-      { name: 'news.ycombinator.com', visitors: 1410, share: 0.08 },
+      { name: 'Google', visitors: 6120, share: 35 },
+      { name: 'news.ycombinator.com', visitors: 1410, share: 8 },
     ],
   },
   content: {
@@ -57,15 +57,15 @@ export const PAYLOAD: ReportPayload = {
     ],
     // No floor (D2): a one-visitor country is shown like any other row.
     countries: [
-      { code: 'DE', name: 'Germany', visitors: 2980, share: 0.17 },
-      { code: 'IS', name: 'Iceland', visitors: 1, share: 0.00006 },
+      { code: 'DE', name: 'Germany', visitors: 2980, share: 17 },
+      { code: 'IS', name: 'Iceland', visitors: 1, share: 0.006 },
     ],
   },
   devices: [
-    { name: 'Desktop', share: 0.67 },
-    { name: 'Mobile', share: 0.3 },
+    { name: 'Desktop', share: 67 },
+    { name: 'Mobile', share: 30 },
   ],
-  goals: [{ name: 'Signup', conversions: 486, visitors: 470, rate: 0.028 }],
+  goals: [{ name: 'Signup', conversions: 486, visitors: 470, rate: 2.8 }],
   notes: [
     'October 2025 to February 2026 were imported from Plausible. Pulse has measured this site since 1 March 2026.',
     'Days follow Europe/Brussels. The numbers were fixed on 28 September 2026 at 14:02.',
