@@ -60,7 +60,7 @@ describe('numbers', () => {
     expect(formatHeadline('pageviews', null)).toBe('—')
   })
 
-  it('reads shares as fractions of one', () => {
+  it('reads shares as percentages', () => {
     expect(formatShare(41.3)).toBe('41%')
     expect(formatShare(0.4)).toBe('<1%')
     expect(formatShare(0)).toBe('0%')
