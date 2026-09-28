@@ -22,9 +22,23 @@ vi.mock('@/lib/auth/permissions', () => ({
 vi.mock('@/lib/api/organization', () => ({
   getOrganization: vi.fn().mockResolvedValue({ name: 'Acme Corp', slug: 'acme-corp' }),
   getOrganizationMembers: vi.fn().mockResolvedValue([]),
+  getUserOrganizations: vi.fn().mockResolvedValue([]),
   updateOrganization: vi.fn().mockResolvedValue(undefined),
   deleteOrganization: vi.fn().mockResolvedValue(undefined),
   transferOwnership: vi.fn().mockResolvedValue(undefined),
+  leaveOrganization: vi.fn().mockResolvedValue(undefined),
+}))
+
+const activateTeam = vi.fn().mockResolvedValue(undefined)
+vi.mock('@/lib/auth/switchOrganization', () => ({
+  activateTeam: (...a: unknown[]) => activateTeam(...a),
+}))
+
+const getMe = vi.fn().mockResolvedValue({ user_id: 'u_owner', teams: [{ id: 'org_2', role: 'member' }], default_team_id: 'org_2' })
+vi.mock('@/lib/api/me', () => ({
+  getMe: (...a: unknown[]) => getMe(...a),
+  pickActiveTeam: (me: { teams: Array<{ id: string }>; default_team_id: string | null }, preferred: string | null) =>
+    (preferred && me.teams.some((t) => t.id === preferred)) ? preferred : me.default_team_id,
 }))
 
 // Minimal Facet surface used by the tab + the shared components it renders
@@ -89,6 +103,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   ;(orgApi.getOrganization as any).mockResolvedValue({ name: 'Acme Corp', slug: 'acme-corp' })
   ;(orgApi.getOrganizationMembers as any).mockResolvedValue([])
+  activateTeam.mockClear().mockResolvedValue(undefined)
+  getMe.mockClear().mockResolvedValue({ user_id: 'u_owner', teams: [{ id: 'org_2', role: 'member' }], default_team_id: 'org_2' })
 })
 
 describe('WorkspaceGeneralTab (Facet structured panels)', () => {
@@ -238,25 +254,30 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
     expect(screen.queryByText('No other members')).toBeNull()
   })
 
-  it('hides the danger zone + save bar for plain members', async () => {
+  it('hides Transfer/Delete but still offers Leave for plain members', async () => {
     mockIsOwner = false
     mockIsAdminOrOwner = false
     render(<WorkspaceGeneralTab />)
     await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
-    expect(screen.queryByText('Danger zone')).toBeNull()
+    expect(screen.getByText('Danger zone')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Transfer' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull()
+    const leaveButton = screen.getByRole('button', { name: 'Leave' })
+    expect((leaveButton as HTMLButtonElement).disabled).toBe(false)
+    expect(screen.getByText("You will lose access to this team's sites and settings.")).toBeTruthy()
   })
 
-  it('admins can rename but never see the danger zone: two server rules, two gates', async () => {
+  it('admins can rename but never see Transfer/Delete: two server rules, two gates', async () => {
     mockIsOwner = false
     mockIsAdminOrOwner = true
     render(<WorkspaceGeneralTab />)
     await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
     // Rename surfaces follow ciphera-id's owner-OR-admin rule.
     expect((screen.getByDisplayValue('Acme Corp') as HTMLInputElement).disabled).toBe(false)
-    // Deletion/transfer stay owner-only.
+    // Deletion/transfer stay owner-only; Leave is still there for an admin.
     expect(screen.queryByRole('button', { name: 'Transfer' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull()
+    expect((screen.getByRole('button', { name: 'Leave' }) as HTMLButtonElement).disabled).toBe(false)
   })
 
   it('transfer rotates the token before the reload, because the old cookie still says owner', async () => {
@@ -294,6 +315,126 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
   })
 })
 
+// ─── Leave team (Option A, owner-approved 27-09-2026, PULSE-92 Phase 5) ───
+describe('WorkspaceGeneralTab — Leave team', () => {
+  it("the owner's Leave row is disabled and points at Transfer instead", async () => {
+    render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+
+    expect(screen.getByText('Transfer ownership to another member first.')).toBeTruthy()
+    const leaveButton = screen.getByRole('button', { name: 'Leave' })
+    expect((leaveButton as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('a member opens the confirm with the team named, and Leave team / Cancel', async () => {
+    mockIsOwner = false
+    mockIsAdminOrOwner = false
+    render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Leave' }))
+    expect(await screen.findByText('Leave Acme Corp? An owner or admin can invite you back.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Leave team' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Cancel' }).getAttribute('variant')).toBe('ghost')
+  })
+
+  it("the owner's disabled Leave button opens no reveal when clicked", async () => {
+    render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Leave' }))
+    expect(screen.queryByTestId('leave-reveal')).toBeNull()
+  })
+
+  it('opening Leave (as a member) after re-rendering as owner closes an open Transfer reveal', async () => {
+    mockIsOwner = false
+    mockIsAdminOrOwner = false
+    const { rerender } = render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Leave' }))
+    expect(await screen.findByTestId('leave-reveal')).toBeTruthy()
+
+    // Re-render as the owner: the row set changes, but showLeaveConfirm is
+    // still true in state — Leave's own reveal must still close when Transfer
+    // opens, the same mutual exclusion Transfer/Delete already have.
+    mockIsOwner = true
+    mockIsAdminOrOwner = true
+    rerender(<WorkspaceGeneralTab />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Transfer' }))
+    expect(screen.getByTestId('transfer-reveal')).toBeTruthy()
+    expect(screen.queryByTestId('leave-reveal')).toBeNull()
+  })
+
+  it('leaves the team, switches to the account default team, and lands on /', async () => {
+    mockIsOwner = false
+    mockIsAdminOrOwner = false
+    const hrefSpy = vi.fn()
+    const originalLocation = window.location
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...originalLocation, set href(v: string) { hrefSpy(v) } },
+    })
+    try {
+      render(<WorkspaceGeneralTab />)
+      await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+
+      fireEvent.click(screen.getByRole('button', { name: 'Leave' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'Leave team' }))
+
+      await waitFor(() => expect(hrefSpy).toHaveBeenCalledWith('/'))
+      expect(orgApi.leaveOrganization).toHaveBeenCalledWith('org_1')
+      expect(getMe).toHaveBeenCalled()
+      expect(activateTeam).toHaveBeenCalledWith('org_2')
+      // Land only AFTER the team switch is attempted.
+      expect(activateTeam.mock.invocationCallOrder[0]).toBeLessThan(hrefSpy.mock.invocationCallOrder[0])
+    } finally {
+      Object.defineProperty(window, 'location', { configurable: true, value: originalLocation })
+    }
+  })
+
+  it('still lands on / when the best-effort team switch fails', async () => {
+    mockIsOwner = false
+    mockIsAdminOrOwner = false
+    getMe.mockRejectedValueOnce(new Error('network'))
+    const hrefSpy = vi.fn()
+    const originalLocation = window.location
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...originalLocation, set href(v: string) { hrefSpy(v) } },
+    })
+    try {
+      render(<WorkspaceGeneralTab />)
+      await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+
+      fireEvent.click(screen.getByRole('button', { name: 'Leave' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'Leave team' }))
+
+      await waitFor(() => expect(hrefSpy).toHaveBeenCalledWith('/'))
+    } finally {
+      Object.defineProperty(window, 'location', { configurable: true, value: originalLocation })
+    }
+  })
+
+  it('shows an error toast and stays put when leaving fails', async () => {
+    const { toast } = await import('@ciphera-net/facet')
+    mockIsOwner = false
+    mockIsAdminOrOwner = false
+    ;(orgApi.leaveOrganization as any).mockRejectedValueOnce(new Error('boom'))
+
+    render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Leave' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave team' }))
+
+    // The mocked getAuthErrorMessage always answers 'error'; the house
+    // fallback text only shows through when it answers empty (untested here,
+    // same as the existing Transfer/Delete failure paths).
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('error'))
+    expect(activateTeam).not.toHaveBeenCalled()
+  })
+})
+
 // ─── PULSE-59: unlisted for somebody alone, but the route still renders ───
 describe('WorkspaceGeneralTab, alone', () => {
   it('renders without calling the container a team, workspace or organization', async () => {
@@ -303,5 +444,14 @@ describe('WorkspaceGeneralTab, alone', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
     expect(await screen.findByRole('button', { name: 'Delete all data' })).toBeTruthy()
     expect(container.textContent).not.toMatch(/team|workspace|organi[sz]ation/i)
+  })
+
+  // PULSE-92 Phase 5: nobody to leave and nobody to invite you back — the row
+  // itself would also leak the word "team" the test above forbids.
+  it('never shows a Leave row: there is no team to leave', async () => {
+    mockTeamState = 'alone'
+    render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByRole('heading', { level: 2, name: 'Details' })).toBeTruthy())
+    expect(screen.queryByRole('button', { name: 'Leave' })).toBeNull()
   })
 })
