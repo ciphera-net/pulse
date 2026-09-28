@@ -4,11 +4,14 @@ import type { ChipTone } from '@/components/settings/StatusChip'
  * The Workspace audit tab's action vocabulary (PULSE-73).
  *
  * `AUDIT_ACTIONS` is every action `org_audit_log` has EVER held, not only
- * the ones a fresh row can carry today: the 41 pulse-backend writes right
- * now, plus 9 it wrote in the past and no longer does but whose rows are
- * still stored and still render (measured read-only against production
+ * the ones a fresh row can carry today: the pulse-backend writes right now,
+ * plus 9 it wrote in the past and no longer does but whose rows are still
+ * stored and still render (measured read-only against production
  * 26-09-2026; see
  * Pulse/docs/plans/26-09-2026-pulse-69-72-73-words-and-icons.md §1/§4).
+ * `invite_link_created`, `invite_link_revoked`, `member_left`,
+ * `onboarding_completed`, `org_created` and `org_renamed` are Pulse's own
+ * team-write actions (PULSE-92 Phase 5, design §12 owner ruling).
  * `AuditAction` is derived from this list, and `ACTION_LABELS` below closes
  * with `satisfies Record<AuditAction, string>`, so a future action added to
  * either without a label fails to build.
@@ -38,12 +41,18 @@ export const AUDIT_ACTIONS = [
   'goal_deleted',
   'gsc_connected',
   'gsc_disconnected',
+  'invite_link_created',
+  'invite_link_revoked',
   'mcp_connection_created',
   'mcp_connection_revoked',
   'member_added',
+  'member_left',
   'member_removed',
   'member_role_changed',
+  'onboarding_completed',
+  'org_created',
   'org_deleted',
+  'org_renamed',
   'org.broadcast_sent',
   'org.user_notified',
   'oss_application_claimed',
@@ -101,12 +110,18 @@ export const ACTION_LABELS = {
   goal_deleted: 'Deleted goal',
   gsc_connected: 'Connected Google Search Console',
   gsc_disconnected: 'Disconnected Google Search Console',
+  invite_link_created: 'Created invite link',
+  invite_link_revoked: 'Revoked invite link',
   mcp_connection_created: 'Connected AI assistant',
   mcp_connection_revoked: 'Disconnected AI assistant',
   member_added: 'Added member',
+  member_left: 'Left team',
   member_removed: 'Removed member',
   member_role_changed: 'Changed member role',
+  onboarding_completed: 'Finished setup',
+  org_created: 'Created team',
   org_deleted: 'Deleted team',
+  org_renamed: 'Renamed team',
   'org.broadcast_sent': 'Sent announcement (by Ciphera)',
   'org.user_notified': 'Sent message (by Ciphera)',
   oss_application_claimed: 'Claimed open source plan',
@@ -152,14 +167,30 @@ export function humanizeAction(action: string): string {
 }
 
 /**
- * PULSE-59: somebody alone has no team, so the one label that names one
- * reads as their details instead. `org_deleted` carries this split rather
- * than `org_updated` (retired, see the module comment above) — deleting a
- * team is "Deleted all data" for someone alone, the General tab's own
- * wording for the same event.
+ * PULSE-59: somebody alone has no team, so a label that names one reads as
+ * their details instead. `org_deleted` carries this split rather than
+ * `org_updated` (retired, see the module comment above) — deleting a team is
+ * "Deleted all data" for someone alone, the General tab's own wording for the
+ * same event. `org_created`/`org_renamed` (PULSE-92 Phase 5) follow the same
+ * rule: alone, there is no team to name, only an account being set up or
+ * renamed.
+ *
+ * `member_left` cannot actually happen to someone alone — leaving needs a
+ * second member who never existed — but WorkspaceAuditTab's filter dropdown
+ * lists every action in `AUDIT_ACTIONS` regardless of what this org's own
+ * history can produce, so the word "team" still has to come out of it.
  */
+const ALONE_OVERRIDES: Partial<Record<AuditAction, string>> = {
+  org_deleted: 'Deleted all data',
+  org_created: 'Set up Pulse',
+  org_renamed: 'Changed name',
+  member_left: 'Left',
+}
+
 export function actionLabelFor(action: string, alone: boolean): string {
-  if (alone && action === 'org_deleted') return 'Deleted all data'
+  if (alone && isAuditAction(action) && action in ALONE_OVERRIDES) {
+    return ALONE_OVERRIDES[action]!
+  }
   if (isAuditAction(action)) return ACTION_LABELS[action]
   return humanizeAction(action)
 }
