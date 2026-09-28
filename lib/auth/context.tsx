@@ -216,19 +216,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // * client has given up on is actually cancelled, not left in flight to
     // * commit a rotation the browser will never receive (the lost-rotation
     // * shape). Audit: 25-08-2026-lost-rotation-reuse-revocation-and-half-state-chrome.md §5.
-    const post = (orgId: string) =>
+    //
+    // * PULSE OWNS TEAM WRITES NOW (Phase 5, PULSE-92). The route this posts to
+    // * no longer forwards an org to id-backend at all, so there is nothing left
+    // * to name here — see app/api/auth/refresh/route.ts.
+    const post = () =>
       fetch('/api/auth/refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         signal,
-        body: JSON.stringify({ ...signals(), org_id: orgId }),
+        body: JSON.stringify(signals()),
       })
 
     try {
-      const cachedUser = localStorage.getItem('user')
-      const lastOrgId = cachedUser ? (JSON.parse(cachedUser).org_id ?? '') : ''
-
       // * The route answers with the new access token in the body; it becomes
       // * the in-memory Bearer (S3). rehydrateRoleSnapshot primes it too, from
       // * the cookie — the two say the same thing.
@@ -237,7 +238,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (typeof data?.access_token === 'string' && data.access_token) setAccessToken(data.access_token)
       }
 
-      const res = await post(lastOrgId)
+      const res = await post()
       if (res.ok) {
         await prime(res)
         await rehydrateRoleSnapshot()
@@ -246,7 +247,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const data = await res.json().catch(() => null)
       if (data?.retryable) {
-        const retry = await post(lastOrgId)
+        const retry = await post()
         if (retry.ok) {
           await prime(retry)
           await rehydrateRoleSnapshot()
