@@ -160,18 +160,22 @@ describe('POST /api/auth/refresh — refresh token write-back guard', () => {
 })
 
 /**
- * Phase 2, PULSE-89: the org context sent upstream comes from the `pulse_team`
- * cookie — Pulse's own preference — not from decoding the access token.
+ * PULSE-92 Phase 5: Pulse owns every team write, and decides the active team
+ * from the X-Pulse-Team header on every pulse-api request regardless of what
+ * the access token claims. The bridge that used to tell id-backend the active
+ * team on every refresh (so its own claim kept agreeing, Phase 2, PULSE-89) is
+ * deleted — this route must never send organization_id upstream again,
+ * whatever the browser carries.
  */
 const TEAM_FROM_COOKIE = 'a1b2c3d4-e5f6-4789-a012-b3c4d5e6f789'
 const TEAM_FROM_TOKEN = 'f9e8d7c6-b5a4-4321-9876-543210fedcba'
 
-describe('POST /api/auth/refresh — the team context comes from the cookie', () => {
+describe('POST /api/auth/refresh — never sends organization_id (Phase 5, PULSE-92)', () => {
   beforeEach(() => {
     vi.resetModules()
   })
 
-  it('sends the pulse_team cookie as organization_id, even though the access token names a different org', async () => {
+  it('sends no organization_id even with a pulse_team cookie and a differing token claim', async () => {
     cookieStore = makeCookieStore({
       pulse_refresh: OLD_TOKEN,
       pulse_access: accessToken(TEAM_FROM_TOKEN),
@@ -183,10 +187,10 @@ describe('POST /api/auth/refresh — the team context comes from the cookie', ()
     await callRoute()
 
     const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
-    expect(JSON.parse(String(init.body)).organization_id).toBe(TEAM_FROM_COOKIE)
+    expect(JSON.parse(String(init.body))).not.toHaveProperty('organization_id')
   })
 
-  it('falls back to the body org_id when there is no pulse_team cookie', async () => {
+  it('sends no organization_id even when the client-supplied body carries an org_id', async () => {
     cookieStore = makeCookieStore({ pulse_refresh: OLD_TOKEN })
     const fetchSpy = vi.fn().mockResolvedValue(upstreamOk(NEW_TOKEN, { rotated: true }))
     vi.stubGlobal('fetch', fetchSpy)
@@ -199,22 +203,11 @@ describe('POST /api/auth/refresh — the team context comes from the cookie', ()
     }))
 
     const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
-    expect(JSON.parse(String(init.body)).organization_id).toBe('org-from-body')
-  })
-
-  it('sends no organization_id at all when neither the cookie nor the body names one', async () => {
-    cookieStore = makeCookieStore({ pulse_refresh: OLD_TOKEN })
-    const fetchSpy = vi.fn().mockResolvedValue(upstreamOk(NEW_TOKEN, { rotated: true }))
-    vi.stubGlobal('fetch', fetchSpy)
-
-    await callRoute()
-
-    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
     expect(JSON.parse(String(init.body))).not.toHaveProperty('organization_id')
   })
 
-  it('a malformed pulse_team cookie is treated as absent, not forwarded verbatim', async () => {
-    cookieStore = makeCookieStore({ pulse_refresh: OLD_TOKEN, pulse_team: 'not-a-uuid' })
+  it('sends no organization_id when nothing at all names a team', async () => {
+    cookieStore = makeCookieStore({ pulse_refresh: OLD_TOKEN })
     const fetchSpy = vi.fn().mockResolvedValue(upstreamOk(NEW_TOKEN, { rotated: true }))
     vi.stubGlobal('fetch', fetchSpy)
 

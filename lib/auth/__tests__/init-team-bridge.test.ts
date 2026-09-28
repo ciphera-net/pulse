@@ -4,14 +4,14 @@ import { join } from 'node:path'
 
 /**
  * On load, AuthProvider asks Pulse's /me which team this device is on and, when
- * the device's cookie is missing or stale, aligns it with activateTeam — whose
- * first step tells Ciphera ID (the bridge kept until Phase 5 of option E).
+ * the device's cookie is missing or stale, aligns it with activateTeam — which
+ * sets the in-memory active team before it can fail (Phase 5, PULSE-92: the
+ * bridge to Ciphera ID that used to run first was deleted).
  *
- * 🔴 A failed bridge must not leave the device with NO team. On a first load
- * there is no cookie to fall back to, so the outer catch would set the active
- * team to null and every team-scoped request would answer TEAM_REQUIRED. Pulse
- * decides the team from the header regardless of what ID was told, so the team
- * /me chose is kept locally when only the bridge failed.
+ * 🔴 A failed cookie write must not leave the device with NO team. activateTeam
+ * sets the in-memory active team synchronously, before its only `await` (the
+ * cookie action) can reject, so a failure here is never fatal to the load —
+ * only logged.
  *
  * Source-text, like org-wall-cache-purge.test.ts and vault-pii-in-context.test.ts:
  * rendering AuthProvider needs half the app mocked, and that measures the mocks.
@@ -22,8 +22,8 @@ const SRC = readFileSync(join(__dirname, '../context.tsx'), 'utf8')
   .join('\n')
   .replace(/\/\*[\s\S]*?\*\//g, '')
 
-describe('the load-time team alignment survives a failed bridge to Ciphera ID', () => {
-  it('wraps the bridge in its own try and keeps the chosen team in its catch', () => {
+describe('the load-time team alignment survives a failed cookie write', () => {
+  it('wraps activateTeam in its own try and only logs in its catch', () => {
     const at = SRC.search(/await activateTeam\(active\)/)
     expect(at).toBeGreaterThan(-1)
     const before = SRC.slice(Math.max(0, at - 120), at)
@@ -31,10 +31,10 @@ describe('the load-time team alignment survives a failed bridge to Ciphera ID', 
     const after = SRC.slice(at, at + 400)
     const catchAt = after.search(/\} catch \(\w+\) \{/)
     expect(catchAt).toBeGreaterThan(-1)
-    expect(after.slice(catchAt)).toMatch(/setActiveTeamAction\(active\)/)
+    expect(after.slice(catchAt)).toMatch(/logger\.error\(/)
   })
 
-  it('still sets the chosen team after the bridge, whatever it answered', () => {
+  it('still sets the chosen team after activateTeam, whatever it answered', () => {
     const at = SRC.search(/await activateTeam\(active\)/)
     const after = SRC.slice(at, at + 700)
     expect(after).toMatch(/setActiveTeam\(active\)/)

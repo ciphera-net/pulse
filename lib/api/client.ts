@@ -218,11 +218,17 @@ export function resetTeamGate(): void {
 }
 
 /**
- * `/me` and under it, `/notifications` and under it, `/public/*`, and every
- * `/auth/*` — the endpoints that must never wait on a team. `/me` is what
+ * `/me` and under it, `/notifications` and under it, `/public/*`, every
+ * `/auth/*`, and Pulse's own `/organizations*`/`/invite-links*` (PULSE-92
+ * Phase 5) — the endpoints that must never wait on a team. `/me` is what
  * RESOLVES the team, so making it wait on itself would deadlock every load;
  * `/notifications` and `/public/*` are user-scoped, not team-scoped; `/auth/*`
  * is id-backend, a different origin with no team concept at all.
+ * `/organizations*`/`/invite-links*` name the team in the URL PATH and are
+ * authorised from the caller's membership row there (build spec §3) — they
+ * never read `X-Pulse-Team`, and several of them (creating a team, listing
+ * the account's teams, accepting an invite to one it does not belong to yet)
+ * run BEFORE any team is known at all.
  */
 function isTeamGateExempt(endpoint: string): boolean {
   const path = endpoint.split('?')[0]
@@ -230,7 +236,9 @@ function isTeamGateExempt(endpoint: string): boolean {
     path.startsWith('/auth') ||
     path === '/me' || path.startsWith('/me/') ||
     path === '/notifications' || path.startsWith('/notifications/') ||
-    path.startsWith('/public/')
+    path.startsWith('/public/') ||
+    path.startsWith('/organizations') ||
+    path.startsWith('/invite-links')
   )
 }
 
@@ -514,6 +522,12 @@ async function apiRequest<T>(
             })
 
             if (retryResponse.ok) {
+              // * Same 204 rule as the first attempt below: leave and
+              // * remove-member answer with no body, and parsing it would
+              // * report a change that happened as a failure.
+              if (retryResponse.status === 204) {
+                return undefined as T
+              }
               return retryResponse.json()
             }
             const retryBody = await retryResponse.json().catch(() => ({}))

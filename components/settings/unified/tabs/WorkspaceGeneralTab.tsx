@@ -14,8 +14,9 @@ import {
 } from '@ciphera-net/facet'
 import { useAuth } from '@/lib/auth/context'
 import { useIsOwner, useIsAdminOrOwner } from '@/lib/auth/permissions'
-import { getOrganization, updateOrganization, deleteOrganization, getOrganizationMembers, getUserOrganizations, transferOwnership, type OrganizationMember } from '@/lib/api/organization'
+import { getOrganization, updateOrganization, deleteOrganization, getOrganizationMembers, getUserOrganizations, transferOwnership, leaveOrganization, type OrganizationMember } from '@/lib/api/organization'
 import { activateTeam } from '@/lib/auth/switchOrganization'
+import { getMe, pickActiveTeam } from '@/lib/api/me'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
@@ -58,6 +59,11 @@ export default function WorkspaceGeneralTab() {
   const [showTransferConfirm, setShowTransferConfirm] = useState(false)
   const [transferTargetId, setTransferTargetId] = useState('')
   const [transferring, setTransferring] = useState(false)
+
+  // Leave team (Option A, owner-approved 27-09-2026): a third danger-zone row,
+  // visible to admins and members, disabled for the owner.
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
+  const [leaving, setLeaving] = useState(false)
 
   useEffect(() => {
     if (!user?.org_id) return
@@ -164,6 +170,29 @@ export default function WorkspaceGeneralTab() {
     }
   }
 
+  const handleLeave = async () => {
+    if (!user?.org_id) return
+    setLeaving(true)
+    try {
+      await leaveOrganization(user.org_id)
+      // Land on a team that still has you in it. The server picks the
+      // account's default (/me), same source the auth callback resolves
+      // from; best-effort, same as the delete flow below — a failure here
+      // just means the destination route resolves its own team.
+      try {
+        const me = await getMe()
+        const next = pickActiveTeam(me, null)
+        if (next) await activateTeam(next)
+      } catch {
+        // switching failed; landing on '/' still re-resolves the team itself
+      }
+      window.location.href = '/'
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || "Couldn't leave the team. Try again.")
+      setLeaving(false)
+    }
+  }
+
   const handleRetry = () => {
     setError(null)
     hasInitialized.current = false
@@ -183,6 +212,44 @@ export default function WorkspaceGeneralTab() {
   if (loading) {
     return <SettingsLoadingState rows={2} />
   }
+
+  // Leave team (Option A, owner-approved 27-09-2026): visible to admins and
+  // members always; the owner sees it too, disabled, pointed at Transfer
+  // instead. Transfer and Delete stay owner-only. Somebody alone has no team
+  // to leave and nobody to invite them back, so the row never renders for
+  // them — same reasoning as the alone-mode copy on the other two rows.
+  const transferItem = {
+    title: 'Transfer ownership',
+    description: 'Assign ownership to another member. You will become a regular member.',
+    buttonLabel: 'Transfer',
+    variant: 'outline' as const,
+    expanded: showTransferConfirm,
+    onClick: () => { setShowTransferConfirm((prev) => !prev); setShowDeleteConfirm(false); setShowLeaveConfirm(false) },
+  }
+  const deleteItem = {
+    title: alone ? 'Delete all data' : 'Delete team',
+    description: alone ? 'Permanently delete your sites and all their data.' : 'Permanently delete this team and all its data.',
+    buttonLabel: 'Delete',
+    variant: 'solid' as const,
+    expanded: showDeleteConfirm,
+    onClick: () => { setShowDeleteConfirm((prev) => !prev); setShowTransferConfirm(false); setShowLeaveConfirm(false) },
+  }
+  const leaveItem = {
+    title: 'Leave team',
+    description: canDeleteOrg
+      ? 'Transfer ownership to another member first.'
+      : "You will lose access to this team's sites and settings.",
+    buttonLabel: 'Leave',
+    variant: 'outline' as const,
+    disabled: canDeleteOrg,
+    expanded: showLeaveConfirm,
+    onClick: () => { setShowLeaveConfirm((prev) => !prev); setShowTransferConfirm(false); setShowDeleteConfirm(false) },
+  }
+  const dangerZoneItems = alone
+    ? [transferItem, deleteItem]
+    : canDeleteOrg
+      ? [transferItem, deleteItem, leaveItem]
+      : [leaveItem]
 
   return (
     <div className="space-y-8">
@@ -222,151 +289,166 @@ export default function WorkspaceGeneralTab() {
         </PanelRows>
       </SettingsPanel>
 
-      {canDeleteOrg && (
-        <DangerZone
-          items={[
-            {
-              title: 'Transfer ownership',
-              description: 'Assign ownership to another member. You will become a regular member.',
-              buttonLabel: 'Transfer',
-              variant: 'outline',
-              expanded: showTransferConfirm,
-              onClick: () => { setShowTransferConfirm(prev => !prev); setShowDeleteConfirm(false) },
-            },
-            {
-              title: alone ? 'Delete all data' : 'Delete team',
-              description: alone ? 'Permanently delete your sites and all their data.' : 'Permanently delete this team and all its data.',
-              buttonLabel: 'Delete',
-              variant: 'solid',
-              expanded: showDeleteConfirm,
-              onClick: () => { setShowDeleteConfirm(prev => !prev); setShowTransferConfirm(false) },
-            },
-          ]}
-        >
-          <AnimatePresence initial={false}>
-            {showTransferConfirm && (
-              <motion.div
-                key="transfer-reveal"
-                data-testid="transfer-reveal"
-                initial={reducedMotion ? false : { height: 0, opacity: 0 }}
-                animate={reducedMotion ? undefined : { height: 'auto', opacity: 1 }}
-                exit={reducedMotion ? undefined : { height: 0, opacity: 0 }}
-                transition={{ duration: DURATION_BASE, ease: EASE_APPLE }}
-                className="overflow-hidden"
-              >
-                <div>
-                  <p className="px-5 py-4 text-sm text-muted-foreground">
-                    Select a member to become the new owner. You will be demoted to a regular member immediately.
-                  </p>
-                  {membersError ? (
-                    <div className="px-5 pb-4">
-                      <SettingsErrorState
-                        variant="banner"
-                        message="Couldn't load the members. Try again."
-                        onRetry={handleRetry}
-                      />
-                    </div>
-                  ) : members.length === 0 ? (
-                    <EmptyRow
-                      title="No other members"
-                      caption="Invite and verify a member first."
+      <DangerZone items={dangerZoneItems}>
+        <AnimatePresence initial={false}>
+          {showTransferConfirm && (
+            <motion.div
+              key="transfer-reveal"
+              data-testid="transfer-reveal"
+              initial={reducedMotion ? false : { height: 0, opacity: 0 }}
+              animate={reducedMotion ? undefined : { height: 'auto', opacity: 1 }}
+              exit={reducedMotion ? undefined : { height: 0, opacity: 0 }}
+              transition={{ duration: DURATION_BASE, ease: EASE_APPLE }}
+              className="overflow-hidden"
+            >
+              <div>
+                <p className="px-5 py-4 text-sm text-muted-foreground">
+                  Select a member to become the new owner. You will be demoted to a regular member immediately.
+                </p>
+                {membersError ? (
+                  <div className="px-5 pb-4">
+                    <SettingsErrorState
+                      variant="banner"
+                      message="Couldn't load the members. Try again."
+                      onRetry={handleRetry}
                     />
-                  ) : (
-                    <>
-                      <PanelRows className="border-t border-border">
-                        <PanelRow label="New owner" htmlFor="org-transfer-target">
-                          <Select
-                            id="org-transfer-target"
-                            value={transferTargetId}
-                            onChange={setTransferTargetId}
-                            placeholder="Select a member…"
-                            options={members.map(m => ({
-                              value: m.user_id,
-                              label: m.user_email || `Member ${m.user_id.slice(0, 8)}`,
-                              description: m.role,
-                            }))}
-                            className="w-full"
-                            aria-label="New owner"
-                          />
-                        </PanelRow>
-                      </PanelRows>
-                      <div className="flex gap-2 border-t border-border px-5 py-4">
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={handleTransfer}
-                          disabled={!transferTargetId || transferring}
-                        >
-                          {transferring ? 'Transferring…' : 'Transfer ownership'}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => { setShowTransferConfirm(false); setTransferTargetId('') }}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <AnimatePresence initial={false}>
-            {showDeleteConfirm && (
-              <motion.div
-                key="delete-reveal"
-                data-testid="delete-reveal"
-                initial={reducedMotion ? false : { height: 0, opacity: 0 }}
-                animate={reducedMotion ? undefined : { height: 'auto', opacity: 1 }}
-                exit={reducedMotion ? undefined : { height: 0, opacity: 0 }}
-                transition={{ duration: DURATION_BASE, ease: EASE_APPLE }}
-                className="overflow-hidden"
-              >
-                <div>
-                  <div className="px-5 py-4">
-                    <p className="text-sm text-destructive">This will permanently delete:</p>
-                    <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-muted-foreground">
-                      <li>All sites and their analytics data</li>
-                      <li>{alone ? 'All pending invitations' : 'All team members and pending invitations'}</li>
-                      <li>All notifications and settings</li>
-                    </ul>
-                    <p className="mt-2 text-xs text-muted-foreground">It also cancels any active subscription.</p>
                   </div>
-                  <PanelRows className="border-t border-border">
-                    <PanelRow label="Type DELETE to confirm" htmlFor="org-delete-confirm">
-                      <Input
-                        id="org-delete-confirm"
-                        value={deleteText}
-                        onChange={e => setDeleteText(e.target.value)}
-                        placeholder="DELETE"
-                      />
-                    </PanelRow>
-                  </PanelRows>
-                  <div className="flex gap-2 border-t border-border px-5 py-4">
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={handleDelete}
-                      disabled={deleteText !== 'DELETE' || deleting}
-                    >
-                      {deleting ? 'Deleting…' : alone ? 'Delete all data' : 'Delete team'}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => { setShowDeleteConfirm(false); setDeleteText('') }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
+                ) : members.length === 0 ? (
+                  <EmptyRow
+                    title="No other members"
+                    caption="Invite and verify a member first."
+                  />
+                ) : (
+                  <>
+                    <PanelRows className="border-t border-border">
+                      <PanelRow label="New owner" htmlFor="org-transfer-target">
+                        <Select
+                          id="org-transfer-target"
+                          value={transferTargetId}
+                          onChange={setTransferTargetId}
+                          placeholder="Select a member…"
+                          options={members.map(m => ({
+                            value: m.user_id,
+                            label: m.user_email || `Member ${m.user_id.slice(0, 8)}`,
+                            description: m.role,
+                          }))}
+                          className="w-full"
+                          aria-label="New owner"
+                        />
+                      </PanelRow>
+                    </PanelRows>
+                    <div className="flex gap-2 border-t border-border px-5 py-4">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleTransfer}
+                        disabled={!transferTargetId || transferring}
+                      >
+                        {transferring ? 'Transferring…' : 'Transfer ownership'}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => { setShowTransferConfirm(false); setTransferTargetId('') }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <AnimatePresence initial={false}>
+          {showDeleteConfirm && (
+            <motion.div
+              key="delete-reveal"
+              data-testid="delete-reveal"
+              initial={reducedMotion ? false : { height: 0, opacity: 0 }}
+              animate={reducedMotion ? undefined : { height: 'auto', opacity: 1 }}
+              exit={reducedMotion ? undefined : { height: 0, opacity: 0 }}
+              transition={{ duration: DURATION_BASE, ease: EASE_APPLE }}
+              className="overflow-hidden"
+            >
+              <div>
+                <div className="px-5 py-4">
+                  <p className="text-sm text-destructive">This will permanently delete:</p>
+                  <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-muted-foreground">
+                    <li>All sites and their analytics data</li>
+                    <li>{alone ? 'All pending invitations' : 'All team members and pending invitations'}</li>
+                    <li>All notifications and settings</li>
+                  </ul>
+                  <p className="mt-2 text-xs text-muted-foreground">It also cancels any active subscription.</p>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </DangerZone>
-      )}
+                <PanelRows className="border-t border-border">
+                  <PanelRow label="Type DELETE to confirm" htmlFor="org-delete-confirm">
+                    <Input
+                      id="org-delete-confirm"
+                      value={deleteText}
+                      onChange={e => setDeleteText(e.target.value)}
+                      placeholder="DELETE"
+                    />
+                  </PanelRow>
+                </PanelRows>
+                <div className="flex gap-2 border-t border-border px-5 py-4">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleDelete}
+                    disabled={deleteText !== 'DELETE' || deleting}
+                  >
+                    {deleting ? 'Deleting…' : alone ? 'Delete all data' : 'Delete team'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setShowDeleteConfirm(false); setDeleteText('') }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <AnimatePresence initial={false}>
+          {showLeaveConfirm && (
+            <motion.div
+              key="leave-reveal"
+              data-testid="leave-reveal"
+              initial={reducedMotion ? false : { height: 0, opacity: 0 }}
+              animate={reducedMotion ? undefined : { height: 'auto', opacity: 1 }}
+              exit={reducedMotion ? undefined : { height: 0, opacity: 0 }}
+              transition={{ duration: DURATION_BASE, ease: EASE_APPLE }}
+              className="overflow-hidden"
+            >
+              <div>
+                <p className="px-5 py-4 text-sm text-muted-foreground">
+                  Leave {name}? An owner or admin can invite you back.
+                </p>
+                <div className="flex gap-2 border-t border-border px-5 py-4">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleLeave}
+                    disabled={leaving}
+                  >
+                    {leaving ? 'Leaving…' : 'Leave team'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowLeaveConfirm(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </DangerZone>
 
       {canEditOrg && (
         <SettingsSaveBar
