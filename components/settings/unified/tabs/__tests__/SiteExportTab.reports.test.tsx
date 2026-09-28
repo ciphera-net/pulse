@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import type { CreateReportRequest, CreateScheduleRequest, Report, ReportSchedule } from '@/lib/api/reports'
 
-// Settings → Site → Export, the Growth report tile (PULSE-133; approved shots
-// B-3, B-6) and "Your reports" under them.
+// Settings → Site → Export, the report tiles (PULSE-133 Growth report, PULSE-134
+// Scheduled email; approved shots B-3, B-4, B-6) and "Your reports" under them.
 // What these pin: the approved form rows and their defaults (Light PDF, 30-day
 // link, anyone with the link); nothing is sent until the form is whole, and the
 // reason is said next to the field (name, slides, the password when "Link and
@@ -320,6 +320,60 @@ describe('Growth report: made (B-6)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Done' }))
     expect(screen.getByRole('button', { name: 'Create report' })).toBeTruthy()
     expect((screen.getByPlaceholderText('Investor update') as HTMLInputElement).value).toBe('')
+  })
+})
+
+describe('Scheduled email (B-4)', () => {
+  it('draws the approved rows and sends to members of this team only, You first and ticked', async () => {
+    render(<SiteExportTab siteId="site-1" />)
+    openTile('Scheduled email')
+    expect(radios('Every').map((r) => r.textContent)).toEqual(['Month', 'Quarter'])
+    expect(picked('Every')).toBe('Month')
+    expect(screen.getByText('Made on the 1st, covering the month or quarter that just ended.')).toBeTruthy()
+    expect(screen.getByText('Members of this team. Send the link to anyone else.')).toBeTruthy()
+    expect(radios('Link expires').map((r) => r.textContent)).toEqual(['30 days', '90 days', 'Never'])
+    expect(picked('Link expires')).toBe('90 days')
+    expect(screen.getByText('Each email links to its own report.')).toBeTruthy()
+
+    const people = within(screen.getByRole('group', { name: 'Send to' })).getAllByRole('checkbox')
+    // Never a raw uuid as a name: an unknown member reads as a short id.
+    expect(people.map((c) => c.textContent)).toEqual(['You', 'anna@example.com', 'Member 0f3c9a51'])
+    expect(people.map((c) => c.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false'])
+    // No free-text address field anywhere: D7.
+    expect(screen.queryByPlaceholderText(/@/)).toBeNull()
+
+    fireEvent.change(screen.getByPlaceholderText('Monthly update'), { target: { value: 'Monthly update' } })
+    fireEvent.click(people[1])
+    pick('Every', 'Quarter')
+    fireEvent.click(screen.getByRole('button', { name: 'Start sending' }))
+    await waitFor(() => expect(api.createSchedule).toHaveBeenCalled())
+    expect(lastScheduleRequest()).toEqual({
+      name: 'Monthly update',
+      every: 'quarter',
+      compare: 'previous',
+      sections: ['headline', 'growth', 'sources', 'content', 'goals'],
+      pdf_theme: 'light',
+      expires_in_days: 90,
+      recipient_user_ids: ['me', 'anna'],
+    })
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith('Scheduled. The first report is made on 1 Oct.'))
+  })
+
+  it('sends nothing to nobody', async () => {
+    render(<SiteExportTab siteId="site-1" />)
+    openTile('Scheduled email')
+    fireEvent.change(screen.getByPlaceholderText('Monthly update'), { target: { value: 'Monthly update' } })
+    fireEvent.click(within(screen.getByRole('group', { name: 'Send to' })).getByRole('checkbox', { name: 'You' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Start sending' }))
+    expect(await screen.findByText('Choose at least one person.')).toBeTruthy()
+    expect(api.createSchedule).not.toHaveBeenCalled()
+  })
+
+  it('Cancel goes back to the first tile', () => {
+    render(<SiteExportTab siteId="site-1" />)
+    openTile('Scheduled email')
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByRole('button', { name: 'Spreadsheet' }).getAttribute('aria-pressed')).toBe('true')
   })
 })
 
