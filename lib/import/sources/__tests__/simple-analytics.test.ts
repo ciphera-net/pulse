@@ -436,6 +436,17 @@ describe('Direct vs. Shared Link, and the referrer travelling unchanged', () => 
     expect(rows.acquisition[0]?.src_source).toBe('Shared Link')
   })
 
+  it("no referrer but a utm_source → the tag is the label, before Direct or Shared Link (native's order, M9-g')", async () => {
+    // Native labels a visit with no referrer by its utm_source before the
+    // Direct/Shared Link fallback (internal/api/events.go). Without this step a
+    // tagged newsletter visit would import as Direct, which native never stores.
+    const { rows } = await parse([fixture([
+      { is_unique: 'true', document_referrer: '', path: '/', utm_source: 'newsletter' },
+      { is_unique: 'true', document_referrer: '', path: '/blog/post', utm_source: 'newsletter' },
+    ])])
+    expect(rows.acquisition.map((r) => [r.referrer, r.src_source, r.utm_source, r.visitors])).toEqual([['newsletter', 'newsletter', 'newsletter', 2]])
+  })
+
   it('an external referrer travels unchanged, in both referrer and src_source', async () => {
     const { rows } = await parse([fixture([{ is_unique: 'true', document_referrer: 'http://google.com/search' }])])
     expect(rows.acquisition[0]?.referrer).toBe('http://google.com/search')

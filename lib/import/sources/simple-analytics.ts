@@ -200,8 +200,11 @@ const nullIfEmpty = (s: string) => (s === '' ? null : s)
  * never has but a raw pageview row does. A non-empty referrer travels
  * unchanged; the server resolves its host (M2-l).
  */
-function referrerLabel(documentReferrer: string, path: string): string {
+function referrerLabel(documentReferrer: string, utmSource: string, path: string): string {
   if (documentReferrer !== '') return documentReferrer
+  // Native's order (M9-g′): with no referrer, a utm_source names the visit's
+  // origin before the Direct/Shared Link fallback (internal/api/events.go).
+  if (utmSource !== '') return utmSource
   return path === '/' ? 'Direct' : 'Shared Link'
 }
 
@@ -288,7 +291,7 @@ export const simpleAnalyticsSource: RawSourceParser = {
         visit = token
         const medium = text('utm_medium')
         const campaign = text('utm_campaign')
-        const label = referrerLabel(text('document_referrer'), path)
+        const label = referrerLabel(text('document_referrer'), text('utm_source'), path)
         acquisition = {
           referrer: label,
           utm_source: nullIfEmpty(text('utm_source')),
