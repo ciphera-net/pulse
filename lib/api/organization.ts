@@ -165,7 +165,7 @@ export async function transferOwnership(organizationId: string, targetUserId: st
 
 export async function createInviteLink(
   orgId: string,
-  params: { name: string; role: string; metadata?: object; max_uses?: number; expires_at?: string }
+  params: { name: string; role: string; metadata?: object; max_uses?: number; expires_in: string }
 ): Promise<InviteLink> {
   return await authFetch<InviteLink>(`/organizations/${orgId}/invite-links`, {
     method: 'POST',

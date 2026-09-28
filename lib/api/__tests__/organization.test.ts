@@ -146,14 +146,17 @@ describe('every organization.ts function targets Pulse (API_URL), never Ciphera 
     expect(call.body).toEqual({ target_user_id: 'u2' })
   })
 
-  it('createInviteLink: POST /organizations/:id/invite-links, sends expires_at not expires_in', async () => {
+  // Pulse's route binds `expires_in` (required, one of 1h/24h/7d/30d; see
+  // pulse-backend internal/api/invite_links.go) and resolves it server-side,
+  // exactly as Ciphera ID did. An `expires_at` body is a 400 there.
+  it('createInviteLink: POST /organizations/:id/invite-links, sends the expires_in duration', async () => {
     const fetchSpy = vi.fn().mockResolvedValue(okJson({ id: 'l1' }))
     vi.stubGlobal('fetch', fetchSpy)
-    await org.createInviteLink('o1', { name: 'Eng', role: 'member', expires_at: '2027-01-01T00:00:00Z' })
+    await org.createInviteLink('o1', { name: 'Eng', role: 'member', expires_in: '7d' })
     const call = lastCall(fetchSpy)
     expect(call.url).toBe(`${API_URL}/api/v1/organizations/o1/invite-links`)
     expect(call.method).toBe('POST')
-    expect(call.body).toEqual({ name: 'Eng', role: 'member', expires_at: '2027-01-01T00:00:00Z' })
+    expect(call.body).toEqual({ name: 'Eng', role: 'member', expires_in: '7d' })
   })
 
   it('getInviteLinks: GET /organizations/:id/invite-links, unwraps {invite_links}', async () => {
