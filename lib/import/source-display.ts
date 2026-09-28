@@ -176,10 +176,9 @@ export const UPLOAD_GUIDE: Readonly<Record<ImportSource, UploadGuide>> = {
       'Visitors, visits and pageviews',
       'Pages, entry and exit pages',
       'Referrers and campaigns',
-      // Regions and cities are NOT here yet: the export names them by code only, and
-      // they are skipped (`needs_place_names`) until M6's place-name mapper lands. The
-      // skipped row says how many. M6 turns this line into "Countries, regions and cities".
-      'Countries',
+      // M6 (PULSE-113, in production 28-09-2026) resolves the export's region codes and
+      // city ids to the names native ingest stores.
+      'Countries, regions and cities',
       'Devices, browsers and operating systems',
     ],
     notImported: ["Languages and screen sizes: Plausible doesn't export them"],
