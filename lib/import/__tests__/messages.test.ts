@@ -235,6 +235,52 @@ describe('the import error map', () => {
     )
   })
 
+  // The M10 fix pass (28-09-2026, "As built"): four codes the Matomo backend now
+  // answers. Each assertion pins the exact sentence, not just its presence, so a
+  // sentence removed or reworded here fails this test, not just the generic
+  // length check above.
+  it('says a malformed request is a try-again, not a reason', () => {
+    expect(importErrorMessage({ code: 'invalid_request' }, 'matomo')?.text).toBe(
+      'Something went wrong sending that request. Try again.',
+    )
+  })
+
+  it('says a chosen Matomo site is gone or out of the token\'s view', () => {
+    expect(importErrorMessage({ code: 'property_not_found' }, 'matomo')?.text).toBe(
+      "This Matomo site no longer exists, or this token can't see it. Choose it again.",
+    )
+  })
+
+  it('says a reconnect pointed at a different Matomo than the one this import started with', () => {
+    expect(importErrorMessage({ code: 'matomo_other_instance' }, 'matomo')?.text).toBe(
+      'This reconnect points at a different Matomo than the one this import started with. Use the same address, or delete the import to start again.',
+    )
+  })
+
+  it("tells Matomo's own unusable time zone apart from the aggregate-upload picker", () => {
+    expect(importErrorMessage({ code: 'bad_source_timezone' }, 'matomo')?.text).toBe(
+      "Matomo reports a time zone Pulse can't use for this site. Check the site's time zone in Matomo.",
+    )
+    expect(importErrorMessage({ code: 'bad_source_timezone' }, 'plausible')?.text).toBe(
+      'Choose a timezone from the list.',
+    )
+  })
+
+  it('names an unrecognised file by which of its two forms it is: no marker column, or too many', () => {
+    expect(
+      importErrorMessage(
+        { code: 'wrong_file', detail: { reason: 'unrecognised_file', file: 'export.csv', columns: ['a', 'b'] } as never },
+        'fathom',
+      )?.text,
+    ).toBe("This doesn't look like part of a Fathom export. export.csv has none of the columns this export writes.")
+    expect(
+      importErrorMessage(
+        { code: 'wrong_file', detail: { reason: 'unrecognised_file', file: 'export.csv', observed: 3, limit: 1 } as never },
+        'fathom',
+      )?.text,
+    ).toBe('export.csv combines several dimensions. Export each dimension as its own file.')
+  })
+
   it('retries the same prepared upload only after a failure that left it intact', () => {
     for (const code of ['network', 'server_error', 'rate_limited']) expect(isRetryableUploadError(code)).toBe(true)
     for (const code of ['plan_mismatch', 'import_not_active', 'invalid_batch', 'aborted']) expect(isRetryableUploadError(code)).toBe(false)
@@ -317,9 +363,11 @@ describe('a stopped upload', () => {
   const base = {
     cursor: { step: 13, part: 0 },
     steps_total: 38,
-    progressed_at: '2026-09-26T10:00:00Z',
-    started_at: '2026-09-26T09:00:00Z',
-    created_at: '2026-09-26T09:00:00Z',
+    // 05:00Z is 26 Sep in every zone CI pins, New York (UTC-4) and Kiritimati
+    // (UTC+14): the day is the viewer's, so the fixture must not straddle one.
+    progressed_at: '2026-09-26T05:00:00Z',
+    started_at: '2026-09-26T04:00:00Z',
+    created_at: '2026-09-26T04:00:00Z',
   }
 
   it('names the part it stopped in, the total and the day', () => {

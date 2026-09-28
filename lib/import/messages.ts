@@ -62,13 +62,20 @@ export const PULL_ERROR_CODES = [
 ] as const
 export type PullErrorCode = (typeof PULL_ERROR_CODES)[number]
 
-/** The Matomo connect route's own refusals (§3.12m10, "Error codes this source adds"). */
+/**
+ * The Matomo connect route's own refusals (§3.12m10, "Error codes this source
+ * adds"), plus the ones the M10 fix pass added ("As built", 28-09-2026):
+ * `invalid_request`, `property_not_found` and `matomo_other_instance`.
+ */
 export const MATOMO_CONNECT_CODES = [
   'bad_url',
   'matomo_not_matomo',
   'matomo_private_address',
   'matomo_bad_port',
   'matomo_bad_token',
+  'invalid_request',
+  'property_not_found',
+  'matomo_other_instance',
 ] as const
 export type MatomoConnectCode = (typeof MATOMO_CONNECT_CODES)[number]
 
@@ -148,7 +155,13 @@ const ERROR_SENTENCES: Record<
     'This is a different file from the one this import started with. Choose the same file, or delete the import to start again.',
   plan_too_large: () =>
     'This file needs more parts than one import allows. Export a shorter date range and import it in parts.',
-  bad_source_timezone: () => 'Choose a timezone from the list.',
+  // Matomo (M10 fix pass) reuses this code for its own site's timezone, which
+  // there is no picker for (M10-c: no customer timezone prompt) — every other
+  // source keeps the original picker sentence.
+  bad_source_timezone: ({ source }) =>
+    source === 'matomo'
+      ? "Matomo reports a time zone Pulse can't use for this site. Check the site's time zone in Matomo."
+      : 'Choose a timezone from the list.',
   source_not_enabled: ({ tool }) => `Imports from ${tool} aren't available yet.`,
   import_not_active: () => 'This import has ended. Delete it to start again.',
   not_found: () => 'This import no longer exists. Refresh the page.',
@@ -202,6 +215,11 @@ const ERROR_SENTENCES: Record<
   matomo_bad_port: () => 'Matomo must be reachable at a normal https:// address, not a custom port.',
   matomo_bad_token: () =>
     "Pulse can't sign in with this token. Check that you copied it in full and that it's still active in Matomo.",
+  // As built, M10 fix pass (28-09-2026):
+  invalid_request: () => 'Something went wrong sending that request. Try again.',
+  property_not_found: () => "This Matomo site no longer exists, or this token can't see it. Choose it again.",
+  matomo_other_instance: () =>
+    'This reconnect points at a different Matomo than the one this import started with. Use the same address, or delete the import to start again.',
 }
 
 /**
@@ -357,8 +375,13 @@ const WRONG_FILE_SENTENCES: Record<WrongFileReason | AnticipatedWrongFileReason,
     detail.observed != null
       ? `This file's dates are roughly ${detail.observed} days apart. Export it again with Daily grouping.`
       : "This file's dates aren't one day apart. Export it again with Daily grouping.",
+  // TWO forms (§3.12m7's "As built"): no marker column at all (detail.columns is
+  // the header seen), or two or more markers in one file (detail.observed is the
+  // marker count, detail.limit is 1: one file combining several dimensions).
   unrecognised_file: ({ tool, detail }) =>
-    `This doesn't look like part of a ${tool} export. ${fileName(detail)} has none of the columns this export writes.`,
+    detail.observed != null
+      ? `${fileName(detail)} combines several dimensions. Export each dimension as its own file.`
+      : `This doesn't look like part of a ${tool} export. ${fileName(detail)} has none of the columns this export writes.`,
 }
 
 /** The wrong-file reasons this map covers (the exhaustiveness test reads it). */

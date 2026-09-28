@@ -716,9 +716,11 @@ describe('Matomo (M11-j)', () => {
   })
 
   it('says each connect refusal in words, and keeps Matomo\'s own message behind Details', async () => {
+    // matomo_bad_token answers 422, not 401 (M10 fix pass), so this never looks
+    // like the user's OWN session expiring to anything reading the status alone.
     h.connectMatomo.mockRejectedValue(
-      Object.assign(new Error('Unauthorized'), {
-        status: 401,
+      Object.assign(new Error('Unprocessable'), {
+        status: 422,
         data: { error: 'raw', code: 'matomo_bad_token', source_message: 'Unable to authenticate with the provided token.' },
       }),
     )
