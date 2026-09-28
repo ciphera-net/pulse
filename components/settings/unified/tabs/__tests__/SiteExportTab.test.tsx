@@ -307,6 +307,26 @@ describe('SiteExportTab: advanced options', () => {
     expect(lastRequest().filters).toEqual([])
   })
 
+  it("closes the filter popover when the tile switches away, since it renders through a portal outside the hidden wrapper", () => {
+    // FilterPopover (the real dependency this mock stands in for) renders via
+    // createPortal onto document.body, so `hidden` on the Spreadsheet wrapper
+    // never reaches it — `hidden: true` below queries past that wrapper the
+    // same way a real portal would sit outside it, so this only passes if the
+    // tile switch actually closed the builder rather than merely hiding it.
+    render(<SiteExportTab siteId="site-1" />)
+    openAdvanced()
+    fireEvent.click(screen.getByRole('button', { name: 'Add filter' }))
+    expect(screen.getByRole('button', { name: 'Apply Country is DE', hidden: true })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Your own tools' }))
+    expect(screen.queryByRole('button', { name: 'Apply Country is DE', hidden: true })).toBeNull()
+
+    // Coming back finds the flow otherwise untouched: Advanced is still open,
+    // just with no popover left floating over it.
+    fireEvent.click(screen.getByRole('button', { name: 'Spreadsheet' }))
+    expect(screen.getByRole('button', { name: 'Add filter' })).toBeTruthy()
+  })
+
   it('asks for exactly what is on screen once the options are collapsed again', async () => {
     render(<SiteExportTab siteId="site-1" />)
     openAdvanced()
