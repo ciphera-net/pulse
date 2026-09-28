@@ -62,12 +62,21 @@ const RULE_TYPE_OPTIONS = [
   { value: 'keep', label: 'Keep as-is' },
 ]
 
-// A learned parent's template is always grouped form (":id" segments); the
-// pin a "Keep as-is" click writes is the manual-rule wildcard equivalent
-// (design doc §3.4: "each :id segment replaced by *"). Only the literal
-// ":id" segment is rewritten — a template never carries any other token.
+// A learned parent's `template` is the PARENT in grouped form
+// ("/sites/:id/visitors"), exactly as the backend stores it
+// (pagerules.LearnedDynamicParent); ingest replaces only the one segment
+// directly under it with ":id". So the row shows the grouped child path
+// (template + "/:id"), and the pin a "Keep as-is" click writes is that path's
+// manual-rule wildcard equivalent (design doc §3.4: "each :id segment replaced
+// by *") — "/sites/*/visitors/*". Deriving the pattern from the bare template
+// instead wrote "/sites/*/visitors", which matches the parent page alone and
+// pins none of its children.
+function learnedPathFor(template: string): string {
+  return `${template.replace(/\/+$/, '')}/:id`
+}
+
 function keepPatternFor(template: string): string {
-  return template
+  return learnedPathFor(template)
     .split('/')
     .map((seg) => (seg === ':id' ? '*' : seg))
     .join('/')
@@ -618,7 +627,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
                   return (
                     <PanelRow
                       key={parent.template}
-                      label={<code className="font-mono">{parent.template}</code>}
+                      label={<code className="font-mono">{learnedPathFor(parent.template)}</code>}
                       // The path is the only code-like value here; the count and
                       // date are ordinary prose (tabular-nums for the digits,
                       // never mono — house typography rule).
