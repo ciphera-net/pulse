@@ -32,6 +32,8 @@ export const NOTIFICATION_TYPES = [
   'site_added',
   'site_tracking_issue',
   'site_export_ready',
+  // PULSE-134: a scheduled growth report, frozen and ready (iris site_report_ready).
+  'site_report_ready',
   'site_pagespeed_drop',
   'site_pagespeed_recovered',
   'site_traffic_spike',
@@ -124,6 +126,7 @@ export interface SecurityAPIKeyCreatedPayload { key_id: string; name_hash: strin
 export interface SiteAddedPayload { site_id: string }
 export interface SiteTrackingIssuePayload { site_id: string; issue_code: string }
 export interface SiteExportReadyPayload { export_id: string; site_id: string }
+export interface SiteReportReadyPayload { report_id: string; site_id: string; site_domain: string; report_name: string; period_label: string; url: string }
 export interface TeamMemberInvitedPayload { inviter_user_id: string }
 export interface TeamMemberJoinedPayload { user_id: string }
 export interface TeamRoleChangedPayload { user_id: string; new_role: string }
@@ -227,6 +230,7 @@ export type PayloadForType<T extends NotificationType> =
   T extends 'site_added' ? SiteAddedPayload :
   T extends 'site_tracking_issue' ? SiteTrackingIssuePayload :
   T extends 'site_export_ready' ? SiteExportReadyPayload :
+  T extends 'site_report_ready' ? SiteReportReadyPayload :
   T extends 'site_pagespeed_drop' ? SitePagespeedDropPayload :
   T extends 'site_pagespeed_recovered' ? SitePagespeedRecoveredPayload :
   T extends 'site_traffic_spike' ? SiteTrafficSpikePayload :

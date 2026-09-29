@@ -11,7 +11,11 @@ import type { ChipTone } from '@/components/settings/StatusChip'
  * Pulse/docs/plans/26-09-2026-pulse-69-72-73-words-and-icons.md §1/§4).
  * `invite_link_created`, `invite_link_revoked`, `member_left`,
  * `onboarding_completed`, `org_created` and `org_renamed` are Pulse's own
- * team-write actions (PULSE-92 Phase 5, design §12 owner ruling).
+ * team-write actions (PULSE-92 Phase 5, design §12 owner ruling), and
+ * `site_exported` is one row per download from Settings → Export (PULSE-132,
+ * pulse-backend's testdata/audit_actions.txt), and the four `report_*` actions
+ * are a shared report made or deleted (PULSE-133) and a scheduled report email
+ * started or stopped (PULSE-134).
  * `AuditAction` is derived from this list, and `ACTION_LABELS` below closes
  * with `satisfies Record<AuditAction, string>`, so a future action added to
  * either without a label fails to build.
@@ -59,7 +63,12 @@ export const AUDIT_ACTIONS = [
   'oss_application_decided',
   'oss_application_link_resent',
   'ownership_transferred',
+  'report_created',
+  'report_revoked',
+  'report_schedule_created',
+  'report_schedule_stopped',
   'site_created',
+  'site_exported',
   'site_identity_window_changed',
   'site_permanently_deleted',
   'site_restored',
@@ -128,7 +137,15 @@ export const ACTION_LABELS = {
   oss_application_decided: 'Decided open source application (by Ciphera)',
   oss_application_link_resent: 'Resent open source claim link (by Ciphera)',
   ownership_transferred: 'Transferred ownership',
+  // The member's own words for these: Settings → Export says "Delete" for a
+  // report (the server closes its link and deletes its numbers) and "Stop
+  // sending" for a scheduled email.
+  report_created: 'Created report',
+  report_revoked: 'Deleted report',
+  report_schedule_created: 'Scheduled report emails',
+  report_schedule_stopped: 'Stopped report emails',
   site_created: 'Created site',
+  site_exported: 'Exported data',
   site_identity_window_changed: 'Changed identity window',
   site_permanently_deleted: 'Permanently deleted site',
   site_restored: 'Restored site',

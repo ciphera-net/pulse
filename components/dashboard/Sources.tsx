@@ -6,22 +6,8 @@ import type { ImportedDimension } from '@/lib/import/source-display'
 import { useMemo, useState } from 'react'
 import Image from 'next/image'
 import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
-import {
-  ArrowSquareOut,
-  Link as LinkIcon,
-  MagnifyingGlass,
-  UsersThree,
-  CurrencyCircleDollar,
-  Megaphone,
-  Robot,
-  Envelope,
-  PlayCircle,
-  Monitor,
-  Handshake,
-  ChatCircle,
-  Question,
-  Globe,
-} from '@phosphor-icons/react'
+import { Megaphone, Globe } from '@phosphor-icons/react'
+import { getChannelIcon } from '@/components/dashboard/channelIcon'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { ListSkeleton } from '@/components/skeletons'
@@ -105,25 +91,6 @@ interface SourcesProps {
 }
 
 const LIMIT = 7
-
-function getChannelIcon(channel: string) {
-  const cls = "w-5 h-5 text-neutral-500"
-  switch (channel) {
-    case 'Direct': return <LinkIcon className={cls} />
-    case 'Organic Search': return <MagnifyingGlass className={cls} />
-    case 'Organic Social': return <UsersThree className={cls} />
-    case 'Paid Search': return <CurrencyCircleDollar className={cls} />
-    case 'Paid Social': return <Megaphone className={cls} />
-    case 'AI': return <Robot className={cls} />
-    case 'Email': return <Envelope className={cls} />
-    case 'Referral': return <ArrowSquareOut className={cls} />
-    case 'Organic Video': return <PlayCircle className={cls} />
-    case 'Display': return <Monitor className={cls} />
-    case 'Affiliate': return <Handshake className={cls} />
-    case 'SMS': return <ChatCircle className={cls} />
-    default: return <Question className={cls} />
-  }
-}
 
 type GroupedRow = { name: string; visitors: number; pageviews: number; bounce_rate: number | null; avg_duration: number | null }
 

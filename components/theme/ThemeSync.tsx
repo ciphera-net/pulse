@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/auth/context'
+import { isReportPrintRoute } from '@/lib/auth/appRoutes'
 import { usePreferences } from '@/lib/hooks/usePreferences'
 import {
   DEFAULT_THEME,
@@ -36,6 +37,9 @@ export default function ThemeSync() {
   const { theme: accountTheme } = usePreferences()
 
   useEffect(() => {
+    // The report print route picks its OWN palette (the PDF theme chosen for
+    // that report, PULSE-133 R3/R5) and is the only writer of the class there.
+    if (isReportPrintRoute(pathname)) return
     // Account truth when known. Before it loads (or when signed out), the
     // device's cache, which is what the boot script already painted with.
     const cached = readThemeCookie(document.cookie)

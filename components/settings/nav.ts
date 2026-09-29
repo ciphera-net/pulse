@@ -19,6 +19,7 @@ import {
   EnvelopeSimple,
   Terminal,
   Heartbeat,
+  DownloadSimple,
 } from '@phosphor-icons/react'
 import { McpIcon } from '@/components/icons/McpIcon'
 import type { TeamState } from '@/lib/hooks/useTeamState'
@@ -94,6 +95,10 @@ const SITE_TABS: NavTab[] = [
   // reads an import's status (§3.9); the write controls gate on
   // integrations.manage inside the tab. Listed only where imports exist.
   { label: 'Import', href: '/settings/site/import', description: 'Bring history from another tool.', icon: ClockCounterClockwise, when: 'import_available' },
+  // Export (PULSE-132, design §5.1): Import's mirror image, so it sits right
+  // after it. Gated on analytics.export, the permission the download itself
+  // needs; a viewer never sees it.
+  { label: 'Export', href: '/settings/site/export', description: 'Download data and share reports.', icon: DownloadSimple, requires: 'analytics.export' },
 ]
 
 // * The organization's tabs, one object each so both groupings share them.

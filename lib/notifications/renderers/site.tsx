@@ -92,6 +92,15 @@ export const siteRenderers = {
       linkLabel: 'Download',
     }
   },
+  site_report_ready: (r: Receipt, resolvers?: Resolvers): Rendered => {
+    const p = r.event.payload as { site_id: string; site_domain: string; report_name: string; period_label: string }
+    const name = resolvers?.resolveSiteName?.(p.site_id) ?? p.site_domain
+    return {
+      title: `${p.report_name} is ready`,
+      body: `The report for ${name}, ${p.period_label}.`,
+      linkLabel: 'Open report',
+    }
+  },
   site_traffic_spike: (r: Receipt, resolvers?: Resolvers): Rendered => {
     const p = r.event.payload as { site_id: string; site_domain: string; current_visitors: number; baseline_visitors: number; change_percent: number }
     const name = resolvers?.resolveSiteName?.(p.site_id) ?? p.site_domain
