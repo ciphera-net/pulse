@@ -145,6 +145,8 @@ export interface ImportErrorDetail {
   skipped?: Record<string, number>
   /** The server's own code, kept when it is one this library does not know. */
   server_code?: string
+  /** GA4's property stops (M5): the Pulse site's domain, which the sentence names. */
+  domain?: string
 }
 
 export class ImportError extends Error {

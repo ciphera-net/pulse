@@ -79,6 +79,39 @@ export const MATOMO_CONNECT_CODES = [
 ] as const
 export type MatomoConnectCode = (typeof MATOMO_CONNECT_CODES)[number]
 
+/**
+ * The codes GA4's own routes answer beyond the shared pull codes (PULSE-140,
+ * §3.12m5; pulse-backend `ga4ErrorStatus`): the auth-url's `not_configured`,
+ * the server-resolved property's two stops (owner ruling 29-09-2026), and the
+ * confirm's refusals. `quota_waiting` is here for a confirm refused by a quota
+ * wait; on a running import it is a status, never an error (state 6 A).
+ */
+export const GA4_ERROR_CODES = [
+  'not_configured',
+  'no_matching_property',
+  'several_matching_properties',
+  'property_mismatch',
+  'stream_not_found',
+  'invalid_selection',
+  'report_incompatible',
+  'quota_waiting',
+] as const
+export type GA4ErrorCode = (typeof GA4_ERROR_CODES)[number]
+
+/** Every `?ga4=` code GA4's OAuth callback redirects the popup with (pulse-backend `ga4*` literals). */
+export const GA4_CALLBACK_CODES = [
+  'connected',
+  'reconnected',
+  'denied',
+  'no_refresh_token',
+  'invalid_state',
+  'forbidden',
+  'import_exists',
+  'import_not_active',
+  'property_not_found',
+  'error',
+] as const
+
 /** Browser codes a sibling milestone adds to errors.ts (M7-p). */
 export const ANTICIPATED_BROWSER_CODES = ['too_many_files'] as const
 type AnticipatedBrowserCode = (typeof ANTICIPATED_BROWSER_CODES)[number]
@@ -137,7 +170,7 @@ function own<T>(table: Readonly<Record<string, T>>, key: string): T | undefined 
  * a sentence here fails `tsc`, before any test runs.
  */
 const ERROR_SENTENCES: Record<
-  ImportErrorCode | AnticipatedBrowserCode | PullErrorCode | MatomoConnectCode,
+  ImportErrorCode | AnticipatedBrowserCode | PullErrorCode | MatomoConnectCode | GA4ErrorCode,
   Sentence | null
 > = {
   // browser
@@ -149,7 +182,11 @@ const ERROR_SENTENCES: Record<
   file_too_large_for_browser: () =>
     'This export holds more than a browser tab can fold at once. Export a shorter date range and import it in parts.',
   unsupported_encoding: ({ tool, detail }) => `${fileName(detail)} isn't UTF-8 text. Export it again from ${tool}.`,
-  no_data_in_range: ({ detail }) => noDataSentence(detail.skipped),
+  // A pulled source has no file (M5: GA4's confirm; the backend's own words).
+  no_data_in_range: ({ source, detail }) =>
+    source === 'ga4'
+      ? 'Google Analytics has no data for this property on the days Pulse can import.'
+      : noDataSentence(detail.skipped),
   too_many_files: ({ detail }) =>
     detail.limit != null
       ? `You can upload at most ${detail.limit} files at once. Choose only the files this export produced.`
@@ -228,9 +265,36 @@ const ERROR_SENTENCES: Record<
     "Pulse can't sign in with this token. Check that you copied it in full and that it's still active in Matomo.",
   // As built, M10 fix pass (28-09-2026):
   invalid_request: () => 'Something went wrong sending that request. Try again.',
-  property_not_found: () => "This Matomo site no longer exists, or this token can't see it. Choose it again.",
+  property_not_found: ({ source }) =>
+    source === 'ga4'
+      ? // M5 (owner, 29-09-2026: ship as written): a reconnect by an account that can't read the property the import was planned on.
+        "This Google account can't read the property this import started with. Connect again with an account that can."
+      : "This Matomo site no longer exists, or this token can't see it. Choose it again.",
   matomo_other_instance: () =>
     'This reconnect points at a different Matomo than the one this import started with. Use the same address, or delete the import to start again.',
+
+  // GA4 (M5). The two stops are the owner's words; the rest were ruled "ship as written" (both 29-09-2026).
+  not_configured: () => "Importing from Google Analytics isn't available right now. Try again later.",
+  no_matching_property: ({ detail }) => {
+    const d = domainOf(detail)
+    return `None of this Google account's Google Analytics properties measures ${d}. Use another account, or add ${d} as a web stream in Google Analytics.`
+  },
+  several_matching_properties: ({ detail }) =>
+    `More than one Google Analytics property measures ${domainOf(detail)}, so Pulse can't tell which to import. Remove the extra web stream in Google Analytics, or use an account that can read only one.`,
+  property_mismatch: () =>
+    'Google Analytics now shows a different property for this site. Check the property and start the import again.',
+  stream_not_found: () =>
+    "This property's web stream changed in Google Analytics. Reload the page and start the import again.",
+  invalid_selection: () => 'Keep at least one hostname to import.',
+  report_incompatible: () =>
+    "Google Analytics can't produce a report Pulse needs for this property, so it can't be imported.",
+  quota_waiting: () => 'Pulse has to wait a while so your Google Analytics stays usable. Try again later.',
+}
+
+/** The site's domain for a GA4 stop sentence, or words that stand in for it. */
+function domainOf(detail: ImportErrorDetail): string {
+  const d = typeof detail.domain === 'string' ? nameInSentence(detail.domain) : ''
+  return d || "this site's domain"
 }
 
 /**
@@ -305,6 +369,40 @@ export function messageInputFromApiError(e: unknown): MessageInput {
   if (status === 429) return { code: 'rate_limited' }
   if (status >= 500) return { code: 'server_error' }
   return { code: 'unexpected_response', detail: { server_code: `http_${status}` } }
+}
+
+/**
+ * The Details line under a GA4 property stop (owner ruling 29-09-2026): the
+ * server names the web-stream HOSTS it found ("Web data streams found: a, b"),
+ * and the ruled line is "Web streams found: {hosts}.". A detail in any other
+ * shape is shown as the server wrote it, never dropped.
+ */
+export function ga4StreamsDetails(code: string, raw: unknown): string | null {
+  if (typeof raw !== 'string' || !raw.trim()) return null
+  const found = /^Web data streams found: (.+?)\.?$/.exec(raw.trim())
+  if (code === 'no_matching_property' && found) return `Web streams found: ${found[1]}.`
+  return raw.trim()
+}
+
+/** Sentences for the callback codes the error map has no entry for (owner: "ship as written", 29-09-2026). */
+const GA4_CALLBACK_ONLY: Readonly<Record<string, string>> = {
+  invalid_state:
+    'Google sign-in took too long, or its link was already used, so nothing was connected. Connect again from the Import tab.',
+  error: "Pulse couldn't finish connecting to Google Analytics, so nothing was connected. Try again.",
+}
+
+/**
+ * What the popup's landing page says for GA4's `?ga4=` code (§3.12m5a
+ * constraint 1). A connection that worked says nothing: the opener learns it
+ * from its own revalidation. A code this build does not know gets the
+ * unexpected sentence with the code behind Details, never the raw code.
+ */
+export function ga4CallbackMessage(code: string): ImportMessage | null {
+  if (code === 'connected' || code === 'reconnected') return null
+  const only = own(GA4_CALLBACK_ONLY, code)
+  if (only) return { text: only, details: null }
+  if ((GA4_CALLBACK_CODES as readonly string[]).includes(code)) return importErrorMessage({ code }, 'ga4')
+  return { text: UNEXPECTED, details: code }
 }
 
 /**
@@ -571,5 +669,6 @@ export const ALL_ERROR_CODES: readonly string[] = [
     ...ANTICIPATED_BROWSER_CODES,
     ...PULL_ERROR_CODES,
     ...MATOMO_CONNECT_CODES,
+    ...GA4_ERROR_CODES,
   ]),
 ]

@@ -10,7 +10,7 @@ import { SWRConfig } from 'swr'
 // SWR and the real rail, landing page and route: a 404 (imports off) hides every
 // entry and a direct visit renders the standard not-found state; a 200 with a
 // source this build can drive shows them; a 200 whose sources this build cannot
-// drive (GA4 before M5) counts as none.
+// drive (a kind with no flow here) counts as none.
 
 const h = vi.hoisted(() => ({
   pathname: '/settings/site/general',
@@ -98,6 +98,8 @@ function fresh(ui: React.ReactElement) {
 
 const PLAUSIBLE = { sources: [{ source: 'plausible', kind: 'upload_aggregate', enabled: true }] }
 const GA4_ONLY = { sources: [{ source: 'ga4', kind: 'oauth', enabled: true }] }
+// A kind this build has no flow for (a tool on a sign-in this build cannot drive).
+const UNDRIVABLE_ONLY = { sources: [{ source: 'matomo', kind: 'oauth', enabled: true }] }
 
 beforeEach(() => {
   h.pathname = '/settings/site/general'
@@ -124,8 +126,15 @@ describe('the Import entry in the settings rail', () => {
     expect(screen.getByText('Import').closest('a')).toHaveAttribute('href', '/settings/site/import')
   })
 
-  it('stays absent when the only listed source is one this build cannot drive yet', async () => {
+  // M5 (PULSE-140): GA4's flow is built, so a listed GA4 is a drivable source.
+  it('appears when the only listed source is GA4', async () => {
     h.sources = GA4_ONLY
+    fresh(<SettingsShell><div>tab</div></SettingsShell>)
+    expect(await screen.findByText('Import')).toBeInTheDocument()
+  })
+
+  it('stays absent when the only listed source is one this build cannot drive yet', async () => {
+    h.sources = UNDRIVABLE_ONLY
     fresh(<SettingsShell><div>tab</div></SettingsShell>)
     await waitFor(() => expect(screen.getByText('Integrations')).toBeInTheDocument())
     await new Promise((r) => setTimeout(r, 20))

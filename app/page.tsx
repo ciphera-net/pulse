@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import MarketingHome from '@/components/marketing/MarketingHome'
+import { GA4LandingNotice } from '@/components/settings/import/GA4LandingNotice'
 
 // * Server component homepage. Next.js does NOT self-canonicalise — every
 // * indexable route must declare its own canonical or it inherits none. This
@@ -55,6 +56,8 @@ export default function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(homepageSchema) }}
       />
       <MarketingHome />
+      {/* A GA4 sign-in whose state failed to verify lands its popup here (PULSE-140). */}
+      <GA4LandingNotice />
     </>
   )
 }
