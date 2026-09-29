@@ -180,5 +180,25 @@ describe('middleware — a cold visit keeps where it was going', () => {
     const res = middleware(createRequest('/settings', { pulse_access: 'tok' }))
     expect(res.headers.get('location')).toBeNull()
   })
+
+  // M5 (PULSE-140): a GA4 sign-in whose state fails to verify lands the Google
+  // popup on `/?ga4=invalid_state`. The popup is signed in, so `/` redirects it
+  // home, and the code must survive that hop or the popup says nothing at all.
+  describe('the GA4 callback code on the homepage', () => {
+    it('carries ?ga4= through the signed-in redirect from /', () => {
+      const res = middleware(createRequest('/?ga4=invalid_state', { pulse_access: 'tok' }))
+      const loc = new URL(res.headers.get('location')!)
+      expect(loc.pathname).toBe('/sites')
+      expect(loc.searchParams.get('ga4')).toBe('invalid_state')
+    })
+
+    it('carries nothing else, and nothing when there is no code', () => {
+      const res = middleware(createRequest('/?ga4=invalid_state&next=//evil.example', { pulse_access: 'tok' }))
+      const loc = new URL(res.headers.get('location')!)
+      expect([...loc.searchParams.keys()]).toEqual(['ga4'])
+      const plain = new URL(middleware(createRequest('/', { pulse_access: 'tok' })).headers.get('location')!)
+      expect(plain.search).toBe('')
+    })
+  })
 })
 

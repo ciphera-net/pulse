@@ -9,8 +9,9 @@
 //
 // The server owns what is AVAILABLE; this build owns what it can DRIVE. A source
 // is shown only when both hold: an upload source this build has a parser for
-// (IMPORT_SOURCES), or a pull source whose flow is built here (Matomo, M11-j).
-// GA4's sign-in flow is M5's, so a listed `ga4` is not shown by this build.
+// (IMPORT_SOURCES), or a pull source whose flow is built here (Matomo, M11-j;
+// GA4, M5). GA4 is shown only when the server lists it as an enabled `oauth`
+// source, which it does only while GA4_IMPORT_ENABLED is on (M5-i).
 //
 // Never imported by the worker.
 
@@ -20,7 +21,7 @@ import { isImportSource } from './source-meta'
 import { isSourceId, type SourceId } from './source-display'
 
 /** How a source's history comes in, on this screen. */
-export type ImportFlow = 'upload' | 'matomo'
+export type ImportFlow = 'upload' | 'matomo' | 'ga4'
 
 export interface AvailableSource {
   id: SourceId
@@ -51,6 +52,8 @@ export function drivableSources(entries: readonly ImportSourceEntry[] | null | u
       out.push({ id: e.source, kind: e.kind, flow: 'upload' })
     } else if (e.source === 'matomo' && e.kind === 'api_key') {
       out.push({ id: e.source, kind: e.kind, flow: 'matomo' })
+    } else if (e.source === 'ga4' && e.kind === 'oauth') {
+      out.push({ id: e.source, kind: e.kind, flow: 'ga4' })
     }
   }
   return out
