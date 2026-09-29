@@ -177,6 +177,13 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
   // must re-render so isDirty clears and the beforeunload guard disarms.
   // The old ref version kept the save bar dirty after a successful save.
   const [baseline, setBaseline] = useState('')
+  // PULSE-130: the PSI frequency has its OWN baseline, owned by the PSI effect,
+  // because it arrives from a different request than the site. It used to live
+  // in the site baseline as a hard-coded 'weekly' that the PSI effect patched
+  // afterwards; when the performance config resolved FIRST there was nothing to
+  // patch, the site effect then wrote 'weekly', and a site on 'daily' opened
+  // with "Unsaved changes" before anyone touched it. null = not loaded yet.
+  const [psiBaseline, setPsiBaseline] = useState<string | null>(null)
 
   // Sync form state: only on first load, skip dirty tracking until ready
   const hasInitialized = useRef(false)
@@ -222,7 +229,6 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
       autoGroupDynamic: site.auto_group_dynamic_paths ?? true,
       pageRules: site.page_rules || [],
       allowedQueryParams: (site.allowed_query_params || []).join(', '),
-      psiFrequency: 'weekly',
     }))
     hasInitialized.current = true
   }, [site])
@@ -233,13 +239,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
     if (!psiConfig || psiInitialized.current) return
     const freq = psiConfig.frequency || 'weekly'
     setPsiFrequency(freq)
-    // Update the snapshot to include the real PSI frequency so it doesn't show as dirty
-    setBaseline((prev) => {
-      if (!prev) return prev
-      const snap = JSON.parse(prev)
-      snap.psiFrequency = freq
-      return JSON.stringify(snap)
-    })
+    setPsiBaseline(freq)
     psiInitialized.current = true
   }, [psiConfig])
 
@@ -272,7 +272,8 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
 
   // Track dirty state
   const isDirty = baseline
-    ? JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, visitorViewsEnabled, identityWindow, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency }) !== baseline
+    ? JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, visitorViewsEnabled, identityWindow, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams }) !== baseline
+      || (psiBaseline !== null && psiFrequency !== psiBaseline)
     : false
 
   // Decision E2 (owner, 11-09-2026): the identity panel's footer stays quiet
@@ -302,7 +303,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
     setAutoGroupDynamic(snap.autoGroupDynamic)
     setPageRules(snap.pageRules)
     setAllowedQueryParams(snap.allowedQueryParams)
-    setPsiFrequency(snap.psiFrequency)
+    if (psiBaseline !== null) setPsiFrequency(psiBaseline)
   }
 
   const handleSave = useCallback(async () => {
@@ -332,7 +333,8 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
         await updatePerformanceConfig(siteId, { enabled: psiConfig.enabled, frequency: psiFrequency })
         await mutatePSIConfig()
       }
-      setBaseline(JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, visitorViewsEnabled, identityWindow, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency }))
+      setBaseline(JSON.stringify({ collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, visitorViewsEnabled, identityWindow, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams }))
+      if (psiBaseline !== null) setPsiBaseline(psiFrequency)
       await mutate()
       toast.success('Privacy settings updated')
     } catch (err) {
@@ -340,7 +342,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
     } finally {
       setSaving(false)
     }
-  }, [saving, siteId, collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, visitorViewsEnabled, identityWindow, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency, psiConfig, mutatePSIConfig, mutate])
+  }, [saving, siteId, collectPagePaths, collectReferrers, collectDeviceInfo, collectScreenRes, collectAudienceData, collectGeoData, hideUnknownLocations, visitorViewsEnabled, identityWindow, dataRetention, autoGroupDynamic, pageRules, allowedQueryParams, psiFrequency, psiBaseline, psiConfig, mutatePSIConfig, mutate])
 
   const updateRule = (index: number, updates: Partial<PageRule>) => {
     setPageRules(rules => rules.map((r, i) => i === index ? { ...r, ...updates } : r))
