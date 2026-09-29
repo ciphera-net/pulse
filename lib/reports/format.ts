@@ -110,11 +110,15 @@ export function comparePhrase(from: string, to: string, compare: ReportCompare):
   return days === 1 ? 'the day before' : `the ${days} days before`
 }
 
-/** A change as its arrow and size: "↑ 38%", "↓ 4pp". The arrow is the number's direction. */
+/**
+ * A change as its arrow and size: "↑ 38%", "↓ 2.2pp". The arrow is the number's direction.
+ * Percentages round to whole numbers and points keep one decimal, as the dashboard's rail
+ * shows them (RailDelta), so a report never reads more precise than the dashboard it came from.
+ */
 export function changeText(change: ReportChange): string {
   const arrow = change.value >= 0 ? '↑' : '↓'
   const size = Math.abs(change.value)
-  const shown = Number.isInteger(size) ? String(size) : size.toFixed(1)
+  const shown = change.unit === '%' ? String(Math.round(size)) : Number.isInteger(size) ? String(size) : size.toFixed(1)
   return `${arrow} ${shown}${change.unit}`
 }
 

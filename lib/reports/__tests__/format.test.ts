@@ -50,7 +50,7 @@ describe('numbers', () => {
   it('writes changes with the arrow of the number', () => {
     expect(changeText({ value: 38, unit: '%' })).toBe('↑ 38%')
     expect(changeText({ value: -4, unit: 'pp' })).toBe('↓ 4pp')
-    expect(changeText({ value: 2.5, unit: '%' })).toBe('↑ 2.5%')
+    expect(changeText({ value: 2.5, unit: '%' })).toBe('↑ 3%')
   })
 
   it('writes headline values as the dashboard does, and null as an em dash', () => {
@@ -106,5 +106,14 @@ describe('dates', () => {
     expect(siteDay('2026-09-30T22:00:00Z', 'UTC', 2026)).toBe('30 Sep')
     expect(siteDay('2027-01-05T12:00:00Z', 'Europe/Brussels', 2026)).toBe('5 Jan 2027')
     expect(siteDayTime('2026-09-28T12:02:00Z', 'Europe/Brussels')).toBe('28 Sep 2026, 14:02')
+  })
+})
+
+describe('changeText', () => {
+  it('rounds percentages like the dashboard, and keeps one decimal for points', () => {
+    expect(changeText({ value: 95.9, unit: '%' })).toBe('↑ 96%')
+    expect(changeText({ value: -1.4, unit: '%' })).toBe('↓ 1%')
+    expect(changeText({ value: -2.2, unit: 'pp' })).toBe('↓ 2.2pp')
+    expect(changeText({ value: 4, unit: 'pp' })).toBe('↑ 4pp')
   })
 })
