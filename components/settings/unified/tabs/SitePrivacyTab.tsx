@@ -17,9 +17,10 @@ import {
 } from '@ciphera-net/facet'
 import { SettingsTH } from '@/components/settings/panels/SettingsTH'
 import { useSite, useSubscription, usePerformanceConfig } from '@/lib/swr/dashboard'
-import { updateSite, DEFAULT_GEO_DATA_LEVEL, type PageRule } from '@/lib/api/sites'
+import { updateSite, DEFAULT_GEO_DATA_LEVEL, type PageRule, type LearnedDynamicParent } from '@/lib/api/sites'
 import { updatePerformanceConfig } from '@/lib/api/performance'
 import { getRetentionOptionsForPlan, formatRetentionMonths, formatPlanName } from '@/lib/plans'
+import { formatSiteDay } from '@/lib/utils/siteTime'
 import { generatePrivacySnippet } from '@/lib/utils/privacySnippet'
 import {
   IDENTITY_WINDOW_CHANGE_WARNING,
@@ -54,6 +55,32 @@ const GEO_OPTIONS = [
   { value: 'country', label: 'Country only' },
   { value: 'none', label: 'Disabled' },
 ]
+
+const RULE_TYPE_OPTIONS = [
+  { value: 'exclude', label: 'Exclude' },
+  { value: 'group', label: 'Group' },
+  { value: 'keep', label: 'Keep as-is' },
+]
+
+// A learned parent's `template` is the PARENT in grouped form
+// ("/sites/:id/visitors"), exactly as the backend stores it
+// (pagerules.LearnedDynamicParent); ingest replaces only the one segment
+// directly under it with ":id". So the row shows the grouped child path
+// (template + "/:id"), and the pin a "Keep as-is" click writes is that path's
+// manual-rule wildcard equivalent (design doc §3.4: "each :id segment replaced
+// by *") — "/sites/*/visitors/*". Deriving the pattern from the bare template
+// instead wrote "/sites/*/visitors", which matches the parent page alone and
+// pins none of its children.
+function learnedPathFor(template: string): string {
+  return `${template.replace(/\/+$/, '')}/:id`
+}
+
+function keepPatternFor(template: string): string {
+  return learnedPathFor(template)
+    .split('/')
+    .map((seg) => (seg === ':id' ? '*' : seg))
+    .join('/')
+}
 
 // The anchored sections: ids are load-bearing deep-link targets and must not
 // change (spec §6 [keep]: section anchors deep-link). Labels are the rail's
@@ -333,6 +360,24 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
     })
   }
 
+  // "Keep as-is" on a learned parent (design doc §3.4): appends a `keep`
+  // manual rule pinning that parent back to verbatim storage. This only
+  // stages the change in pageRules — the form goes dirty and the existing
+  // save bar is what actually persists it, same as every other edit on this
+  // tab. Not idempotent-guarded here: the row itself hides the button once a
+  // matching rule exists (see keptPatterns below), so a second click can't
+  // happen through the UI.
+  const handleKeepAsIs = (template: string) => {
+    setPageRules(rules => [...rules, { type: 'keep', pattern: keepPatternFor(template) }])
+  }
+
+  // Which learned templates already have a pending or saved `keep` rule, so
+  // their row can read as handled instead of offering the action again.
+  const keptPatterns = useMemo(
+    () => new Set(pageRules.filter(r => r.type === 'keep').map(r => r.pattern)),
+    [pageRules],
+  )
+
   // Query params render as removable chips over the comma-separated Input, which
   // stays the source of truth. Every keystroke still writes the string that the
   // save payload splits, so the chip layer adds no behavioral seam.
@@ -368,6 +413,11 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
   // pre-deploy payload, and the control already reads that as the calendar
   // month, so the copy beside it must say the same thing.
   const savedIdentityCopy = describeIdentityWindow(identityWindowOf(site) ?? 0)
+
+  // May be missing, null, or empty — always render as "nothing learned yet",
+  // never a loading or error state (this rides on the same `site` fetch as
+  // everything else on this tab).
+  const learnedDynamicParents: LearnedDynamicParent[] = site.learned_dynamic_parents ?? []
 
   return (
     <div className="flex gap-8">
@@ -558,6 +608,54 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
                 control={<Toggle checked={autoGroupDynamic} onChange={() => setAutoGroupDynamic(v => !v)} disabled={!canEdit} />}
               />
             </PanelRows>
+            {/*
+              Learned dynamic parents (PULSE-128, design doc §3.4, owner-picked
+              option A): a read-only list of parents the backend has learned
+              hold many identifier-like children, one row per parent, directly
+              under the toggle's own row — same PanelRow shape, ruled off by a
+              hairline like every other panel footer on this tab. Only shown
+              while auto-grouping is ON (a learned list for a control that's
+              off describes nothing live), and only when the site actually has
+              learned parents — `learned_dynamic_parents` may be missing, null
+              or empty on a site with nothing learned yet.
+            */}
+            {autoGroupDynamic && learnedDynamicParents.length > 0 && (
+              <div className="border-t border-border divide-y divide-border">
+                {learnedDynamicParents.map((parent) => {
+                  const pattern = keepPatternFor(parent.template)
+                  const kept = keptPatterns.has(pattern)
+                  return (
+                    <PanelRow
+                      key={parent.template}
+                      label={<code className="font-mono">{learnedPathFor(parent.template)}</code>}
+                      // The path is the only code-like value here; the count and
+                      // date are ordinary prose (tabular-nums for the digits,
+                      // never mono — house typography rule).
+                      caption={
+                        <span className="tabular-nums">
+                          {parent.children} ids · since {formatSiteDay(parent.learned_at, site.timezone)}
+                        </span>
+                      }
+                      control={
+                        kept ? (
+                          <span className="text-xs text-muted-foreground">Kept</span>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleKeepAsIs(parent.template)}
+                            disabled={!canEdit}
+                          >
+                            Keep as-is
+                          </Button>
+                        )
+                      }
+                    />
+                  )
+                })}
+              </div>
+            )}
           </SettingsPanel>
 
           {/* Manual rules: its own panel. A hand-built uppercase header used to
@@ -607,11 +705,8 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
                       <TD>
                         <Select
                           value={rule.type}
-                          onChange={(v) => updateRule(index, { type: v as 'exclude' | 'group' })}
-                          options={[
-                            { value: 'exclude', label: 'Exclude' },
-                            { value: 'group', label: 'Group' },
-                          ]}
+                          onChange={(v) => updateRule(index, { type: v as PageRule['type'] })}
+                          options={RULE_TYPE_OPTIONS}
                           className="w-full min-w-0 sm:w-32"
                           aria-label={`Rule ${index + 1} type`}
                         />
