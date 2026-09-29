@@ -223,10 +223,11 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        // * PULSE-133: a report page's URL is its secret (/r/<token>). The site-wide
-        // * strict-origin-when-cross-origin already keeps the path off other origins;
-        // * no-referrer keeps it off every request, and noindex keeps it out of search.
-        // * Listed after '/(.*)' so its Referrer-Policy wins for these paths.
+        // * PULSE-133: a report page's URL is its secret (/r/<token>). noindex keeps it
+        // * out of search. The ingress overwrites Referrer-Policy with the site-wide
+        // * value (measured on staging, 29-09-2026), so the policy that actually holds
+        // * is the no-referrer <meta> in app/r/[token]/layout.tsx; this header only
+        // * helps where the app's own header reaches the browser.
         source: '/r/:path*',
         headers: [
           { key: 'Referrer-Policy', value: 'no-referrer' },
