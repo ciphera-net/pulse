@@ -86,6 +86,14 @@ vi.mock('@ciphera-net/facet', () => ({
   toast: { success: vi.fn(), error: (...a: unknown[]) => toastError(...a) },
 }))
 
+// PULSE-146: the Advanced tab's Filters row mounts FilterPills, which imports
+// the real framer-motion for its AnimatePresence — every sibling tab test in
+// this directory (SiteGoalsTab, WorkspaceGeneralTab, AccountProfileTab, …)
+// already stubs it with the shared jsdom stand-in; this file was the one that
+// didn't, so every render here paid to import the real package even though
+// nothing asserts on its animation.
+vi.mock('framer-motion', () => import('@/components/settings/__tests__/framer-mock'))
+
 import SiteExportTab from '../SiteExportTab'
 
 const SITE = { id: 'site-1', domain: 'ciphera.net', name: 'Ciphera', timezone: 'Europe/Brussels' }
