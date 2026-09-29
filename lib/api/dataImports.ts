@@ -13,6 +13,8 @@ import type { ImportStatus } from '@/lib/import/types'
 //   - the Matomo connect flow, built against M10's route contract (§3.12m10
 //     "Routes"). Its routes 404 until M10's backend mounts them, and the row
 //     that reaches them only renders once /sources lists `matomo`.
+//   - GA4's sign-in, property, hostnames and confirm (M5, below), whose routes
+//     exist only while GA4_IMPORT_ENABLED is on and /sources lists `ga4`.
 
 /**
  * The status object as the server sends it for ANY import in the site's one slot
@@ -25,6 +27,14 @@ export type SiteImportStatus = Omit<ImportStatus, 'range_start' | 'range_end' | 
   range_end: string | null
   steps_total: number | null
   source_timezone: string | null
+  /**
+   * When a WAITING import resumes (UTC RFC 3339), set only while `status` is
+   * "waiting"; with `error_code` "quota_waiting" it is GA4's quota pause (M5-f,
+   * state 6). Optional: an older server does not send it.
+   */
+  wait_until?: string | null
+  /** The Google account a GA4 import reads as, for display only (M5-b). */
+  google_email?: string | null
 }
 
 /** One entry of GET …/data-imports/sources. A source that is not available is absent, never `enabled: false`. */
@@ -127,4 +137,91 @@ export interface ImportSlot {
  */
 export function getImportSlot(siteId: string, source: string): Promise<ImportSlot> {
   return apiRequest<ImportSlot>(`/sites/${siteId}/data-imports/upload-window?source=${encodeURIComponent(source)}`)
+}
+
+// ─── Google Analytics (PULSE-140, M5; mounted only while GA4_IMPORT_ENABLED) ─
+
+/**
+ * POST …/data-imports/ga4/auth-url (M5-b): Google's consent address, opened in
+ * a popup. `importId` reconnects that import (a new Google account, or a grant
+ * Google stopped accepting) instead of creating one. Refusals: 409
+ * `import_exists` (with `import_id`), 404, 409 `import_not_active`, 503
+ * `not_configured`.
+ */
+export function getGA4AuthURL(siteId: string, importId?: string): Promise<{ url: string }> {
+  return apiRequest<{ url: string }>(`/sites/${siteId}/data-imports/ga4/auth-url`, {
+    method: 'POST',
+    body: JSON.stringify(importId ? { import_id: importId } : {}),
+  })
+}
+
+/**
+ * The property the SERVER resolved for the site (owner ruling 29-09-2026: no
+ * picker). `stream_ids` are the web streams `confirm` must name.
+ *
+ * ⚠️ `stream_ids` is NOT in pulse-backend's answer as of `e3a2cf14` (it sends
+ * `{property_id, name, stream_host}` only), yet `confirm` requires them and no
+ * other route returns them. The flow never invents one: without them Start
+ * stays disabled. Typed optional so the day the server sends them, it works.
+ */
+export interface GA4Property {
+  property_id: string
+  name: string
+  stream_host: string
+  stream_ids?: string[]
+}
+
+/**
+ * POST …/:importId/ga4/property `{}`: the resolved property, or 422
+ * `no_matching_property` / `several_matching_properties` with `detail` naming
+ * the web-stream hosts found. Nothing is stored; the import stays awaiting_property.
+ */
+export function resolveGA4Property(siteId: string, importId: string): Promise<GA4Property> {
+  return apiRequest<GA4Property>(`/sites/${siteId}/data-imports/${encodeURIComponent(importId)}/ga4/property`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+}
+
+/** One hostname the property measured over the plan's range; `suggested` is kept by default (M5-d). */
+export interface GA4Hostname {
+  host: string
+  pageviews: number
+  /** Share of the property's pageviews, 0 to 1. */
+  share: number
+  suggested: boolean
+}
+
+/** POST …/:importId/ga4/hostnames `{property_id}` (M5-d). Confirm's guards and errors; nothing stored. */
+export function getGA4Hostnames(
+  siteId: string,
+  importId: string,
+  propertyId: string,
+): Promise<{ hostnames: GA4Hostname[]; total_pageviews: number }> {
+  return apiRequest(`/sites/${siteId}/data-imports/${encodeURIComponent(importId)}/ga4/hostnames`, {
+    method: 'POST',
+    body: JSON.stringify({ property_id: propertyId }),
+  })
+}
+
+/** GA4's confirm body: the property, its web streams, the hostnames kept, and (M12) the event map. */
+export interface GA4Confirm {
+  property_id: string
+  stream_ids: string[]
+  hostnames: string[]
+  event_map?: Record<string, string | null>
+}
+
+/**
+ * POST …/:importId/confirm for GA4 (M5-d): the answer is the import, `pending`.
+ * Refusals the flow names: property_mismatch, stream_not_found,
+ * invalid_selection, report_incompatible (detail names the field),
+ * no_data_in_range, reconnect_required, user_metrics_disabled,
+ * source_unavailable, and 503 quota_waiting with `wait_until`.
+ */
+export function confirmGA4Import(siteId: string, importId: string, body: GA4Confirm): Promise<SiteImportStatus> {
+  return apiRequest<SiteImportStatus>(`/sites/${siteId}/data-imports/${encodeURIComponent(importId)}/confirm`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
 }

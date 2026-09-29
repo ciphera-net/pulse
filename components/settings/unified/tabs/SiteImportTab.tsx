@@ -7,7 +7,7 @@ import { useSite } from '@/lib/swr/dashboard'
 import { useImportSources } from '@/lib/import/useImportSources'
 import { deleteImport } from '@/lib/import'
 import { appTransport } from '@/lib/import/app-transport'
-import { importErrorMessage, messageInputFromApiError } from '@/lib/import/messages'
+import { ga4CallbackMessage, importErrorMessage, messageInputFromApiError, type ImportMessage } from '@/lib/import/messages'
 import { sourceLabel, type SourceId } from '@/lib/import/source-display'
 import type { ImportSource } from '@/lib/import/source-meta'
 import type { SiteImportStatus } from '@/lib/api/dataImports'
@@ -17,6 +17,7 @@ import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { UploadFlow } from '@/components/settings/import/UploadFlow'
 import { MatomoFlow } from '@/components/settings/import/MatomoFlow'
+import { GA4Flow } from '@/components/settings/import/GA4Flow'
 import { useImportSlot } from '@/components/settings/import/useImportSlot'
 import { ImportRecordRow } from '@/components/settings/import/ImportRows'
 
@@ -47,6 +48,21 @@ export default function SiteImportTab({ siteId }: { siteId: string }) {
 
   const [open, setOpen] = useState<SourceId | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+
+  // GA4's OAuth callback lands the Google POPUP here with `?ga4=<code>` (M5-b,
+  // forwarded by /sites/[id]/settings). The code is said in the GA4 row of the
+  // popup's own page, then scrubbed from the address so a reload doesn't say it
+  // again; the opener learns the outcome from its own revalidation.
+  const [ga4Notice, setGa4Notice] = useState<ImportMessage | null>(null)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get('ga4')
+    if (code === null) return
+    setGa4Notice(ga4CallbackMessage(code))
+    params.delete('ga4')
+    const rest = params.toString()
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}${rest ? `?${rest}` : ''}${window.location.hash}`)
+  }, [])
 
   const existing = slot.status === 'ready' ? slot.existing : null
   const holder: string | null = existing?.source ?? localUpload
@@ -156,6 +172,26 @@ export default function SiteImportTab({ siteId }: { siteId: string }) {
                   onLocalChange={(active) => setLocalUpload((cur) => (active ? s.id : cur === s.id ? null : cur))}
                   onFinished={(status) => replace(status)}
                   onServerChanged={() => replace()}
+                />
+              )
+            }
+            if (s.flow === 'ga4') {
+              return (
+                <GA4Flow
+                  key={s.id}
+                  siteId={siteId}
+                  existing={mine}
+                  locked={locked}
+                  open={open === s.id}
+                  onOpen={() => setOpen(s.id)}
+                  onClose={() => setOpen((cur) => (cur === s.id ? null : cur))}
+                  canManage={canManage}
+                  onRequestDelete={() => setConfirmDelete(true)}
+                  onDiscard={discard}
+                  onChanged={(status) => replace(status)}
+                  siteDomain={site?.domain ?? null}
+                  siteTimezone={site?.timezone ?? null}
+                  notice={ga4Notice}
                 />
               )
             }

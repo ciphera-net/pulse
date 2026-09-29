@@ -156,7 +156,7 @@ export function ImportRecordRow({
   onRequestDelete: () => void
 }) {
   const phase = slotPhase(status)
-  const chip = phaseChip(phase)
+  const chip = phaseChip(phase, status.source)
   const range = status.range_start && status.range_end ? rangeText(status.range_start, status.range_end) : undefined
   const action = canManage ? <DeleteImportButton onClick={onRequestDelete} /> : null
   const message = phase === 'failed' || phase === 'stopped' ? failedImportMessage(status, status.source) : null
