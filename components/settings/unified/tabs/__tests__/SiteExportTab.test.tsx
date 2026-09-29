@@ -86,6 +86,14 @@ vi.mock('@ciphera-net/facet', () => ({
   toast: { success: vi.fn(), error: (...a: unknown[]) => toastError(...a) },
 }))
 
+// PULSE-146: the Advanced tab's Filters row mounts FilterPills, which imports
+// the real framer-motion for its AnimatePresence — every sibling tab test in
+// this directory (SiteGoalsTab, WorkspaceGeneralTab, AccountProfileTab, …)
+// already stubs it with the shared jsdom stand-in; this file was the one that
+// didn't, so every render here paid to import the real package even though
+// nothing asserts on its animation.
+vi.mock('framer-motion', () => import('@/components/settings/__tests__/framer-mock'))
+
 import SiteExportTab from '../SiteExportTab'
 
 const SITE = { id: 'site-1', domain: 'ciphera.net', name: 'Ciphera', timezone: 'Europe/Brussels' }
@@ -293,6 +301,36 @@ describe('SiteExportTab: advanced options', () => {
     render(<SiteExportTab siteId="site-1" />)
     openAdvanced()
     expect(screen.getByText("As far back as your plan keeps. The daily summary reaches back to this site's first day.")).toBeTruthy()
+  })
+
+  it("names the site's own retention over the plan maximum", () => {
+    // Site keeps 6 months on a plan (team) whose maximum is 24: the site's
+    // own number wins.
+    useSite.mockReturnValue({ data: { ...SITE, data_retention_months: 6 }, error: undefined, mutate: vi.fn() })
+    render(<SiteExportTab siteId="site-1" />)
+    openAdvanced()
+    expect(screen.getByText("This site keeps 6 months of history. The daily summary reaches back to its first day.")).toBeTruthy()
+  })
+
+  it('keeps the sentence grammatical for a 1-month retention', () => {
+    useSite.mockReturnValue({ data: { ...SITE, data_retention_months: 1 }, error: undefined, mutate: vi.fn() })
+    render(<SiteExportTab siteId="site-1" />)
+    openAdvanced()
+    expect(screen.getByText("This site keeps 1 month of history. The daily summary reaches back to its first day.")).toBeTruthy()
+  })
+
+  it('names whole history for a site set to keep everything', () => {
+    useSite.mockReturnValue({ data: { ...SITE, data_retention_months: 0 }, error: undefined, mutate: vi.fn() })
+    render(<SiteExportTab siteId="site-1" />)
+    openAdvanced()
+    expect(screen.getByText("This site keeps its whole history, back to its first day.")).toBeTruthy()
+  })
+
+  it('falls back to the plan maximum when the site has no retention setting', () => {
+    // SITE carries no data_retention_months: the plan-maximum sentence, unchanged.
+    render(<SiteExportTab siteId="site-1" />)
+    openAdvanced()
+    expect(screen.getByText("As far back as your plan keeps (24 months). The daily summary reaches back to this site's first day.")).toBeTruthy()
   })
 
   it('sends the advanced choices: tables, metrics, grain, rows and format', async () => {
