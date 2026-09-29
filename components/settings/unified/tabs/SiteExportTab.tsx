@@ -380,8 +380,18 @@ function SpreadsheetFlow({ site, active }: { site: Site; active: boolean }) {
     { value: CUSTOM, label: rangeKey === CUSTOM && span ? formatSpan(span, 0) : CUSTOM_RANGE_LABEL },
   ]
 
+  // The site's own retention wins over the plan maximum (PULSE-144): purging
+  // follows sites.data_retention_months, not the plan (internal/retention/purge.go),
+  // so the caption has to name what actually happens to this site's data.
+  // 0 keeps everything; undefined/null means the setting was never made and
+  // the plan maximum is the honest answer.
+  const siteRetentionMonths = site.data_retention_months
   const rangeCaption = advanced
-    ? `As far back as your plan keeps${retentionMonths ? ` (${retentionMonths} months)` : ''}. The daily summary reaches back to this site's first day.`
+    ? siteRetentionMonths === 0
+      ? `This site keeps its whole history, back to its first day.`
+      : siteRetentionMonths
+        ? `This site keeps ${siteRetentionMonths === 1 ? '1 month' : `${siteRetentionMonths} months`} of history. The daily summary reaches back to its first day.`
+        : `As far back as your plan keeps${retentionMonths ? ` (${retentionMonths} months)` : ''}. The daily summary reaches back to this site's first day.`
     : `Days follow the site's timezone, ${timezone}.`
 
   const tablesCaption = (

@@ -10,9 +10,22 @@ import type { Theme } from '@/lib/theme'
 const prefs = { theme: 'dark' as Theme | null, loaded: true, setTheme: vi.fn(async (_t: Theme) => true) }
 vi.mock('@/lib/hooks/usePreferences', () => ({ usePreferences: () => prefs }))
 const toastError = vi.fn()
-vi.mock('@ciphera-net/facet', async (orig) => ({
-  ...(await orig<typeof import('@ciphera-net/facet')>()),
+// This file was the only one of 74 facet-mocking test files that spread the
+// REAL package (`await orig()`) instead of stubbing it — everywhere else
+// mocks it outright (e.g. dashboard/__tests__/sidebar-settings-active.test.tsx's
+// Tooltip stub, this file's own model). That pulled in the real Radix-backed
+// `Tooltip` (Provider/Root/Trigger/Portal/Content, real DOM measurement and
+// positioning effects) for every render, including the seven ThemePicker
+// cases that never touch Tooltip at all, plus whatever `toast`'s own real
+// implementation costs to import. None of it is under test here — these
+// cases assert ThemePicker/ThemeMenuSwitch's own markup and calls into
+// `setTheme`, never Tooltip's internals — so stubbing it the way the rest of
+// the suite does removes real, unnecessary work rather than budgeting around
+// it. (PULSE-146: this was the root cause of the file timing out under
+// full-suite load — see the fix commit for the measurement.)
+vi.mock('@ciphera-net/facet', () => ({
   toast: { error: (m: string) => toastError(m) },
+  Tooltip: ({ children }: any) => children,
 }))
 
 import ThemePicker from '../ThemePicker'
