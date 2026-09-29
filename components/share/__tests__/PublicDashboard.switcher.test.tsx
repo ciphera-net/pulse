@@ -40,7 +40,6 @@ vi.mock('@/components/dashboard/ContentStats', () => ({ default: () => null }))
 vi.mock('@/components/dashboard/Sources', () => ({ default: () => null }))
 vi.mock('@/components/dashboard/Locations', () => ({ default: () => null }))
 vi.mock('@/components/dashboard/TechSpecs', () => ({ default: () => null }))
-vi.mock('@/components/dashboard/ExportModal', () => ({ default: () => null }))
 vi.mock('@/components/sites/SiteFavicon', () => ({ SiteFavicon: () => null }))
 vi.mock('@/components/skeletons', () => ({
   DashboardSkeleton: () => <div data-testid="skeleton" />,

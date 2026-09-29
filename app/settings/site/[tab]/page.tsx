@@ -20,6 +20,7 @@ const SiteBotSpamTab      = dynamic(() => import('@/components/settings/unified/
 const SiteIntegrationsTab = dynamic(() => import('@/components/settings/unified/tabs/SiteIntegrationsTab'))
 const SiteMonitoringTab   = dynamic(() => import('@/components/settings/unified/tabs/SiteMonitoringTab'))
 const SiteImportTab       = dynamic(() => import('@/components/settings/unified/tabs/SiteImportTab'))
+const SiteExportTab       = dynamic(() => import('@/components/settings/unified/tabs/SiteExportTab'))
 
 const SITE_TAB_PERMISSIONS: Record<string, Permission> = {
   general: 'sites.edit',
@@ -27,6 +28,10 @@ const SITE_TAB_PERMISSIONS: Record<string, Permission> = {
   visibility: 'sites.edit',
   privacy: 'sites.edit',
   integrations: 'integrations.manage',
+  // Export (PULSE-132): the permission the download route itself requires, so
+  // a member without it gets the standard "Access restricted" state here and
+  // never a form whose every download would 403.
+  export: 'analytics.export',
 }
 
 const TAB_COMPONENTS: Record<string, React.ComponentType<{ siteId: string }>> = {
@@ -44,6 +49,7 @@ const TAB_COMPONENTS: Record<string, React.ComponentType<{ siteId: string }>> = 
   // gate on integrations.manage inside the tab. The tab exists only where the
   // server lists an import source (M11-b, below).
   import:         SiteImportTab,
+  export:         SiteExportTab,
 }
 
 const GSC_MESSAGES: Record<string, { type: 'success' | 'error'; text: string }> = {

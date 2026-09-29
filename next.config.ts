@@ -222,6 +222,18 @@ const nextConfig: NextConfig = {
           { key: 'Content-Security-Policy', value: cspDirectives },
         ],
       },
+      {
+        // * PULSE-133: a report page's URL is its secret (/r/<token>). noindex keeps it
+        // * out of search. The ingress overwrites Referrer-Policy with the site-wide
+        // * value (measured on staging, 29-09-2026), so the policy that actually holds
+        // * is the no-referrer <meta> in app/r/[token]/layout.tsx; this header only
+        // * helps where the app's own header reaches the browser.
+        source: '/r/:path*',
+        headers: [
+          { key: 'Referrer-Policy', value: 'no-referrer' },
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+        ],
+      },
     ]
   },
   async redirects() {

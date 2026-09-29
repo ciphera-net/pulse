@@ -100,3 +100,25 @@ describe('ThemeSync', () => {
     expect(html().classList.contains('light')).toBe(true)
   })
 })
+
+// PULSE-133 (R3/R5): the report print route sets its OWN theme class (the PDF
+// theme chosen for that report) and ThemeSync must never overwrite it. The
+// report page itself is a non-app route and stays dark like marketing.
+describe('ThemeSync and shared reports', () => {
+  it('leaves the print route alone, even for a dark account', () => {
+    html().className = 'font-a light'
+    state.pathname = '/r/tok_123/print'
+    state.theme = 'dark'
+    render(<ThemeSync />)
+    expect(html().classList.contains('light')).toBe(true)
+    expect(html().classList.contains('dark')).toBe(false)
+  })
+
+  it('keeps the report page itself dark', () => {
+    state.pathname = '/r/tok_123'
+    state.theme = 'light'
+    render(<ThemeSync />)
+    expect(html().classList.contains('dark')).toBe(true)
+    expect(html().classList.contains('light')).toBe(false)
+  })
+})

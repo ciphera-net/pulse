@@ -23,7 +23,6 @@ import { periodToDateRange, type Period } from '@/lib/hooks/periodUrl'
 import { siteWallClockNow } from '@/lib/utils/siteTime'
 import { DEFAULT_GEO_DATA_LEVEL } from '@/lib/api/sites'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
-import ExportModal from '@/components/dashboard/ExportModal'
 import { SiteFavicon } from '@/components/sites/SiteFavicon'
 // Static, unlike the authed page's dynamic() mount: there the deck defers
 // behind an app shell that renders regardless; here the deck IS the page's
@@ -67,7 +66,6 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
   const [captchaToken, setCaptchaToken] = useState('')
   
   const [period, setPeriod] = useState('30')
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
   // The deck's active rail metric. Local, not URL-persisted like the authed
   // page's — a share link should always open on visitors.
@@ -303,10 +301,11 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
               </div>
             </div>
 
-            {/* Only the picker: export lives on the deck's own icon (the
-                authed device), and the Powered-by badge was removed by owner
-                order 02-09-2026 — the marketing chrome around the page
-                already says whose product this is. */}
+            {/* Only the picker. There is no export here (owner ruling D3,
+                28-09-2026: share viewers look; a report link is how numbers
+                are handed to someone), and the Powered-by badge was removed
+                by owner order 02-09-2026 — the marketing chrome around the
+                page already says whose product this is. */}
             <div className="flex gap-2">
               {/* No onCustom (Custom range… greyed with the same line) and no
                   onShift (no arrows): nothing here can ask for a range outside the
@@ -329,7 +328,7 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
             ruling 02-09-2026, docs/plans/02-09-2026-demo-rebuild-design.md:
             the share surface matches the authed anatomy). prevStats stays
             undefined by the surface's own rule — the rail renders without
-            deltas — and the export button drives the share's existing modal. */}
+            deltas. It carries no export control, like the authed deck. */}
         <div className="mb-8">
           <CommandDeck
             data={safeDailyStats}
@@ -342,7 +341,6 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
             period={period}
             multiDayInterval={multiDayInterval}
             setMultiDayInterval={setMultiDayInterval}
-            onExport={() => setIsExportModalOpen(true)}
             intervalPicker={false}
             imported={data?.imported}
           />
@@ -447,17 +445,6 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
         </div>
 
       </div>
-
-      {data && (
-        <ExportModal
-          isOpen={isExportModalOpen}
-          onClose={() => setIsExportModalOpen(false)}
-          data={data.daily_stats || []}
-          stats={data.stats}
-          topPages={data.top_pages}
-          topReferrers={data.top_referrers}
-        />
-      )}
     </div>
   )
 }

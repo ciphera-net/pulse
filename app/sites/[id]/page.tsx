@@ -41,7 +41,6 @@ import SectionHeader from '@/components/dashboard/SectionHeader'
 
 const ContentSignals = dynamic(() => import('@/components/dashboard/ContentSignals'))
 const PeakHours = dynamic(() => import('@/components/dashboard/PeakHours'))
-const ExportModal = dynamic(() => import('@/components/dashboard/ExportModal'))
 // Client-only and off the critical path: driver.js only matters once the
 // dashboard is interactive, and the controller waits for the anchors anyway.
 const TourController = dynamic(() => import('@/lib/tour/TourController'), { ssr: false })
@@ -50,7 +49,6 @@ import {
   useDashboard,
   useRealtime,
   useStats,
-  useCampaigns,
   useSite,
   useDataWindow,
 } from '@/lib/swr/dashboard'
@@ -58,7 +56,6 @@ import { ErrorCard } from '@/components/ui/ErrorCard'
 import InstallBanner from '@/components/dashboard/InstallBanner'
 import { useLiveIndicator } from '@/lib/live-indicator-context'
 import { type MetricType, isMetricType } from '@/lib/dashboard/metrics'
-import { useCan } from '@/lib/auth/permissions'
 import { displayDomain } from '@/lib/utils/displayDomain'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { importLeftOutByFilter } from '@/lib/dashboard/importBoundary'
@@ -99,7 +96,6 @@ export default function SiteDashboardPage() {
   const { period, dateRange, periodReady, rollingMinutes, picker } = urlRange
   const isLive = isRealtimePeriod(period)
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false)
 
   // Dimension filters state
   const searchParams = useSearchParams()
@@ -290,10 +286,6 @@ export default function SiteDashboardPage() {
   // unfiltered previous one — every KPI delta was garbage under any active
   // filter, measured as a true +13% rendered −46% red (F4).
   const { data: prevStats } = useStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '', filtersParam || undefined)
-  // NOTE: the page-level campaigns fetch is NOT a duplicate of the Campaigns
-  // card's own — it feeds the ExportModal's campaigns sheet. (The audit's
-  // "duplicate fetch" was prevDailyStats, deleted with the old sparklines.)
-  const { data: campaigns } = useCampaigns(siteId, resolvedDateRange?.start ?? '', resolvedDateRange?.end ?? '', 100, apiPeriod)
   // Derive typed values from single dashboard response
   const site = dashboard?.site ?? null
   // 🔴 `dashboard.site` IS THE SANITIZED PUBLIC SHAPE — the backend builds it
@@ -335,8 +327,6 @@ export default function SiteDashboardPage() {
       toast.error('Failed to load dashboard analytics')
     }
   }, [dashboardError])
-
-  const canExport = useCan('analytics.export')
 
   // Track when dashboard data was last updated (drives the Live indicator in
   // GlassTopBar)
@@ -480,7 +470,6 @@ export default function SiteDashboardPage() {
           period={period}
           multiDayInterval={multiDayInterval}
           setMultiDayInterval={setMultiDayInterval}
-          onExport={canExport ? () => setIsExportModalOpen(true) : undefined}
           identityWindowDays={identityWindowOf(siteRecord)}
           imported={dashboard?.imported}
           prevImported={prevStats?.imported}
@@ -620,16 +609,6 @@ export default function SiteDashboardPage() {
         <PeakHours siteId={siteId} dateRange={resolvedDateRange} filters={filtersParam || undefined} />
       </div></>)}</>
       })()}
-
-      <ExportModal
-        isOpen={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
-        data={dailyStats}
-        stats={stats}
-        topPages={dashboard?.top_pages}
-        topReferrers={dashboard?.top_referrers}
-        campaigns={campaigns}
-      />
 
       <FilterBuilder
         builder={filterBuilder}

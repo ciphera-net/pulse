@@ -7,7 +7,6 @@ import { PERIOD_ENDS_NOW } from '@/lib/constants/periods'
 import { REALTIME_EMPTY_LINE } from '@/lib/dashboard/realtimeRange'
 import { Card } from '@ciphera-net/facet'
 import { formatNumber, formatDuration } from '@/lib/utils/format'
-import { DownloadIcon } from '@ciphera-net/facet'
 import Select from '@/components/ui/select'
 import { ChartLine } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
@@ -63,7 +62,6 @@ interface CommandDeckProps {
   live?: boolean
   multiDayInterval: 'hour' | 'day'
   setMultiDayInterval: (interval: 'hour' | 'day') => void
-  onExport?: () => void
   // False on the public share surface, where the backend clamps every read to
   // day buckets (F2) and an interval selector would be a dead control.
   intervalPicker?: boolean
@@ -154,7 +152,6 @@ export default function CommandDeck({
   period,
   multiDayInterval,
   setMultiDayInterval,
-  onExport,
   identityWindowDays,
   imported,
   prevImported,
@@ -286,15 +283,6 @@ export default function CommandDeck({
               <MetricInfoTip metric={metric} example={buildExample(metric, stats)} identityWindowDays={identityWindowDays} />
             </span>
             <div className="flex items-center gap-2">
-              {onExport && (
-                <button
-                  onClick={onExport}
-                  className="flex h-11 w-11 items-center justify-center rounded-none text-neutral-500 transition-colors ease-apple hover:bg-white/[0.06] hover:text-white sm:h-7 sm:w-7"
-                  aria-label="Export"
-                >
-                  <DownloadIcon className="h-3.5 w-3.5" />
-                </button>
-              )}
               {/* 1h and 24h are fixed-granularity rolling windows, and a
                   single-day range is fixed HOURLY (owner ruling 02-09-2026:
                   minute granularity belongs to the 1h range alone) — a

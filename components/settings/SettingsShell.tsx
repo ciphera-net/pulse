@@ -226,6 +226,9 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
     'billing.view': useCan('billing.view'),
     'notification_settings.manage': useCan('notification_settings.manage'),
     'audit.view': useCan('audit.view'),
+    // Export (PULSE-132). Without this entry the tab would stay listed for a
+    // viewer, because an unknown permission stays listed (tabIsVisible).
+    'analytics.export': useCan('analytics.export'),
   }
 
   // The Import tab is listed only where the active site can import (M11-b).

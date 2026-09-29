@@ -38,6 +38,25 @@ export function isStandaloneRoute(pathname: string): boolean {
 }
 
 /**
+ * A shared report, /r/<token> and its print page (PULSE-133). It owns its whole
+ * viewport like a standalone route, but for EVERY visitor, signed in or not:
+ * its reader is usually someone with no Pulse account, and a signed-in member
+ * opening a colleague's link must see the report, not their app.
+ */
+export function isReportRoute(pathname: string): boolean {
+  return pathname.startsWith('/r/')
+}
+
+/**
+ * The PDF runner's page, /r/<token>/print. It sets its own theme class on
+ * <html> (the PDF theme chosen per report, R3/R5), so ThemeSync must leave it
+ * alone.
+ */
+export function isReportPrintRoute(pathname: string): boolean {
+  return /^\/r\/[^/]+\/print\/?$/.test(pathname)
+}
+
+/**
  * Routes the onboarding wall never redirects away from. The wall sends an
  * owner of an unfinished workspace into the setup wizard; these are the pages
  * where that would destroy what the person came to do:
@@ -47,6 +66,7 @@ export function isStandaloneRoute(pathname: string): boolean {
  *     an MCP user is a brand-new account with an empty workspace — exactly the
  *     population the wall exists to catch — and the wizard has no way back to
  *     the pending request the assistant is waiting on (m3-frontend survey §6).
+ *   - /r: someone reading a report a colleague shared (PULSE-133).
  */
 export function isExemptFromOnboardingWall(pathname: string | null | undefined): boolean {
   if (!pathname) return false
@@ -54,7 +74,8 @@ export function isExemptFromOnboardingWall(pathname: string | null | undefined):
     pathname.startsWith('/setup') ||
     pathname.startsWith('/settings') ||
     pathname.startsWith('/join') ||
-    pathname.startsWith('/connect')
+    pathname.startsWith('/connect') ||
+    isReportRoute(pathname)
   )
 }
 
@@ -71,8 +92,15 @@ export function isExemptFromOnboardingWall(pathname: string | null | undefined):
  *     the wall, the page read "no workspace" once, rendered the dead end, and
  *     never noticed the workspace the wall created a moment later (M3 frontend
  *     review, 24-09-2026).
+ *   - /r: reading a shared report is not a reason to be handed a workspace
+ *     (PULSE-133).
  */
 export function isExemptFromWorkspaceProvisioning(pathname: string | null | undefined): boolean {
   if (!pathname) return false
-  return pathname.startsWith('/setup') || pathname.startsWith('/join') || pathname.startsWith('/connect')
+  return (
+    pathname.startsWith('/setup') ||
+    pathname.startsWith('/join') ||
+    pathname.startsWith('/connect') ||
+    isReportRoute(pathname)
+  )
 }

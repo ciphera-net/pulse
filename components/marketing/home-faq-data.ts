@@ -119,7 +119,7 @@ export const faqData: Record<string, FAQItem[]> = {
     {
       question: 'Can I export my data?',
       answer:
-        'Yes. The dashboard includes an export feature that lets you download your analytics data. You can also use the API for automated exports.',
+        'Yes. Settings → Export downloads your analytics as Excel, CSV or JSON. You can also use the API for automated exports.',
     },
     {
       question: 'Does Pulse support custom events?',

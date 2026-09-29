@@ -76,6 +76,9 @@ export default function SettingsLandingPage() {
     'billing.view': useCan('billing.view'),
     'notification_settings.manage': useCan('notification_settings.manage'),
     'audit.view': useCan('audit.view'),
+    // Export (PULSE-132). Without this entry the tab would stay listed for a
+    // viewer, because an unknown permission stays listed (tabIsVisible).
+    'analytics.export': useCan('analytics.export'),
   }
 
   // The Import link exists only where the active site can import (M11-b).

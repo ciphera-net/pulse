@@ -47,6 +47,8 @@ const APP_DISALLOW = [
   '/switch/',
   '/checkout/',
   '/join/',
+  // * Shared reports (PULSE-133): a customer's numbers sent to a chosen reader.
+  '/r/',
   '/login',
   '/signup',
 ]
