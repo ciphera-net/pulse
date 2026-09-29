@@ -267,13 +267,13 @@ const ERROR_SENTENCES: Record<
   invalid_request: () => 'Something went wrong sending that request. Try again.',
   property_not_found: ({ source }) =>
     source === 'ga4'
-      ? // M5: a reconnect by an account that can't read the property the import was planned on.
+      ? // M5 (owner, 29-09-2026: ship as written): a reconnect by an account that can't read the property the import was planned on.
         "This Google account can't read the property this import started with. Connect again with an account that can."
       : "This Matomo site no longer exists, or this token can't see it. Choose it again.",
   matomo_other_instance: () =>
     'This reconnect points at a different Matomo than the one this import started with. Use the same address, or delete the import to start again.',
 
-  // GA4 (M5). The two stops are the owner's words (29-09-2026); the rest are unruled.
+  // GA4 (M5). The two stops are the owner's words; the rest were ruled "ship as written" (both 29-09-2026).
   not_configured: () => "Importing from Google Analytics isn't available right now. Try again later.",
   no_matching_property: ({ detail }) => {
     const d = domainOf(detail)
@@ -384,7 +384,7 @@ export function ga4StreamsDetails(code: string, raw: unknown): string | null {
   return raw.trim()
 }
 
-/** Unruled sentences for the callback codes the error map has no entry for. */
+/** Sentences for the callback codes the error map has no entry for (owner: "ship as written", 29-09-2026). */
 const GA4_CALLBACK_ONLY: Readonly<Record<string, string>> = {
   invalid_state:
     'Google sign-in took too long, or its link was already used, so nothing was connected. Connect again from the Import tab.',

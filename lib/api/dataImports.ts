@@ -157,18 +157,14 @@ export function getGA4AuthURL(siteId: string, importId?: string): Promise<{ url:
 
 /**
  * The property the SERVER resolved for the site (owner ruling 29-09-2026: no
- * picker). `stream_ids` are the web streams `confirm` must name.
- *
- * ⚠️ `stream_ids` is NOT in pulse-backend's answer as of `e3a2cf14` (it sends
- * `{property_id, name, stream_host}` only), yet `confirm` requires them and no
- * other route returns them. The flow never invents one: without them Start
- * stays disabled. Typed optional so the day the server sends them, it works.
+ * picker), with `stream_ids`: its WEB streams, which plan-preview and confirm
+ * must name. They come only from here; the page never makes one up.
  */
 export interface GA4Property {
   property_id: string
   name: string
   stream_host: string
-  stream_ids?: string[]
+  stream_ids: string[]
 }
 
 /**
@@ -201,6 +197,39 @@ export function getGA4Hostnames(
   return apiRequest(`/sites/${siteId}/data-imports/${encodeURIComponent(importId)}/ga4/hostnames`, {
     method: 'POST',
     body: JSON.stringify({ property_id: propertyId }),
+  })
+}
+
+/** What confirming would plan (read-only; state 5 A's Range, "In the property" and Timezone rows). */
+export interface GA4PlanPreview {
+  /** YYYY-MM-DD, on the source's calendar. */
+  range_start: string
+  range_end: string
+  days: number
+  source_timezone: string
+  site_timezone: string
+  /** The site's history window cut the range's start. */
+  history_clipped: boolean
+  /** The source-calendar day Pulse's own measurement starts; null when it has none. */
+  native_start: string | null
+  totals: { visitors: number; visits: number; pageviews: number; events: number }
+}
+
+/**
+ * POST …/:importId/ga4/plan-preview `{property_id, stream_ids, hostnames}`
+ * (hostnames = the kept ones). Nothing is stored. Refusals: 400
+ * invalid_request, 422 property_mismatch / no_data_in_range /
+ * reconnect_required / report_incompatible, 503 quota_waiting with
+ * `wait_until`, 409 import_not_active.
+ */
+export function getGA4PlanPreview(
+  siteId: string,
+  importId: string,
+  body: { property_id: string; stream_ids: string[]; hostnames: string[] },
+): Promise<GA4PlanPreview> {
+  return apiRequest<GA4PlanPreview>(`/sites/${siteId}/data-imports/${encodeURIComponent(importId)}/ga4/plan-preview`, {
+    method: 'POST',
+    body: JSON.stringify(body),
   })
 }
 

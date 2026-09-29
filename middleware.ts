@@ -137,7 +137,12 @@ export function middleware(request: NextRequest) {
   // * Keeps `/` a pure, server-rendered marketing page for anonymous crawlers
   // * while preserving the authenticated landing experience.
   if (hasSession && pathname === '/') {
-    return withStagingHeader(NextResponse.redirect(new URL(AUTHED_HOME, request.url)), isStaging)
+    const home = new URL(AUTHED_HOME, request.url)
+    // * PULSE-140: a GA4 sign-in whose state failed to verify lands its popup on
+    // * `/?ga4=invalid_state`; carry that ONE parameter so /sites can say it.
+    const ga4 = request.nextUrl.searchParams.get('ga4')
+    if (ga4) home.searchParams.set('ga4', ga4)
+    return withStagingHeader(NextResponse.redirect(home), isStaging)
   }
 
   // * Public route → allow through

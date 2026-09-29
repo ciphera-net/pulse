@@ -346,7 +346,7 @@ export const GA4_GUIDE = {
   reconnectCaption: (email: string | null | undefined): string =>
     email
       ? `Sign in as ${email} again, or with another account that can read the property.`
-      : // Unruled: an import with no stored address (none was given at sign-in).
+      : // Owner, 29-09-2026 ("ship as written"): an import with no stored address (none was given at sign-in).
         'Sign in with an account that can read the property.',
   /** W-M5-18. */
   stoppedAt: (done: number, total: number): string =>

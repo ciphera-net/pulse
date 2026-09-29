@@ -16,9 +16,11 @@ import {
   confirmGA4Import,
   getGA4AuthURL,
   getGA4Hostnames,
+  getGA4PlanPreview,
   previewDataImportEvents,
   resolveGA4Property,
   type GA4Hostname,
+  type GA4PlanPreview,
   type GA4Property,
   type SiteImportStatus,
 } from '@/lib/api/dataImports'
@@ -27,6 +29,7 @@ import { EventMapping, useEventMapping, useKnownEventNames } from './EventMappin
 import { ImportErrorBanner } from './ImportErrorBanner'
 import { DeleteImportButton, DoneDetails, ProgressRow, SourceHeader, serverProgress } from './ImportRows'
 import { hostsSummary, rangeText, shareText, slotPhase, waitUntilText } from './importFormat'
+import { formatLongDay } from '@/lib/view/view'
 import { CACHE_NOTE } from './UploadFlow'
 
 // ─── Google Analytics: sign in with Google, then what to import (M5-k) ────
@@ -58,6 +61,19 @@ const PULL_PROGRESS = 'You can close this page.'
 
 /** Search Console's own sentence for a blocked popup (SiteIntegrationsTab), reused. */
 export const POPUP_BLOCKED = 'Your browser blocked the sign-in popup. Allow popups for this site and try again.'
+
+/** How long the kept hostnames must sit still before the plan is read again. */
+export const PLAN_PREVIEW_DEBOUNCE_MS = 300
+
+/** W-M5-10, each half only when it is true: where Pulse's own days start, and the window's cut. */
+export function rangeCaption(plan: Pick<GA4PlanPreview, 'native_start' | 'history_clipped'>): string | undefined {
+  const parts: string[] = []
+  if (plan.native_start) {
+    parts.push(`Pulse measures this site from ${formatLongDay(plan.native_start)}, so the import stops the day before.`)
+  }
+  if (plan.history_clipped) parts.push("Earlier days are outside this site's history window.")
+  return parts.length > 0 ? parts.join(' ') : undefined
+}
 
 /** Failures a new Google sign-in fixes: the row offers "Connect again" (state 7). */
 const RECONNECTABLE: ReadonlySet<string> = new Set(['reconnect_required', 'connector_erased'])
@@ -143,7 +159,7 @@ export function GA4Flow({
     const body = data && typeof data === 'object' ? (data as Record<string, unknown>) : {}
     if (input.code === 'quota_waiting') {
       const t = waitUntilText(typeof body.wait_until === 'string' ? body.wait_until : null, now(), zone)
-      // Unruled: the ruled pause words, for a confirm Google asked to wait.
+      // Owner, 29-09-2026 ("ship as written"): the ruled pause words, for a confirm Google asked to wait.
       if (t) return { text: `Pulse has to wait until ${t} so your Google Analytics stays usable. Start the import then.`, details: null }
     }
     const m = importErrorMessage({ ...input, detail: { ...input.detail, domain: siteDomain ?? undefined } }, 'ga4') ?? {
@@ -290,14 +306,45 @@ export function GA4Flow({
 
   const hostList = hosts?.state === 'ready' ? hosts.value : null
   const keptHosts = hostList ? hostList.filter((x) => kept.has(x.host)) : []
-  // 🔴 The web streams come from the server, never from this page: without them
-  // there is nothing honest to send, and Start waits (see GA4Property).
-  const streamIds = property?.state === 'ready' ? (property.value.stream_ids ?? []) : []
+  // 🔴 The web streams come from the server's property answer, never from this page.
+  const streamIds = property?.state === 'ready' ? property.value.stream_ids : null
+  // The plan is keyed by exactly what it was read for: a stale answer never shows as current.
+  const planKey = propertyId && streamIds && keptHosts.length > 0 ? JSON.stringify([propertyId, streamIds, keptHosts.map((x) => x.host)]) : null
+
+  // ── the plan (state 5 A): read again whenever the kept hostnames change ──
+  const [plan, setPlan] = useState<{ key: string; load: Load<GA4PlanPreview> } | null>(null)
+  const [planTry, setPlanTry] = useState(0)
+  const planSeq = useRef(0)
+  useEffect(() => {
+    const seq = ++planSeq.current
+    if (!awaitingId || !planKey) {
+      setPlan(null)
+      return
+    }
+    setPlan({ key: planKey, load: { state: 'loading' } })
+    const [pid, sids, hostnames] = JSON.parse(planKey) as [string, string[], string[]]
+    // Debounced: a run of switches reads once, for the final set.
+    const timer = setTimeout(() => {
+      getGA4PlanPreview(siteId, awaitingId, { property_id: pid, stream_ids: sids, hostnames })
+        .then((value) => {
+          // The last request wins: an answer for an older set is dropped.
+          if (planSeq.current === seq) setPlan({ key: planKey, load: { state: 'ready', value } })
+        })
+        .catch((e) => {
+          if (planSeq.current === seq) setPlan({ key: planKey, load: { state: 'error', message: messageFor(e) } })
+        })
+    }, PLAN_PREVIEW_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [siteId, awaitingId, planKey, planTry])
+  const planNow = plan && plan.key === planKey ? plan.load : null
+
   const ready =
     !!awaiting &&
     !!propertyId &&
-    streamIds.length > 0 &&
+    !!streamIds &&
     keptHosts.length > 0 &&
+    planNow?.state === 'ready' &&
     !!previewed &&
     mapping.valid
 
@@ -310,14 +357,14 @@ export function GA4Flow({
     })
 
   const start = async () => {
-    if (!awaiting || !propertyId || !ready || startingRef.current) return
+    if (!awaiting || !propertyId || !streamIds || !ready || startingRef.current) return
     startingRef.current = true
     setError(null)
     setStarting(true)
     try {
       const status = await confirmGA4Import(siteId, awaiting.id, {
         property_id: propertyId,
-        stream_ids: streamIds,
+        stream_ids: streamIds ?? [],
         hostnames: keptHosts.map((x) => x.host),
         event_map: mapping.map,
       })
@@ -467,7 +514,7 @@ export function GA4Flow({
               {waiting && waitingRow}
               {property?.state === 'loading' && (
                 <PanelRow label="Property">
-                  {/* Unruled: the property is being resolved from the site's domain. */}
+                  {/* Owner, 29-09-2026 ("ship as written"): the property is being resolved from the site's domain. */}
                   <span className="text-sm text-muted-foreground">{"Finding this site's property…"}</span>
                 </PanelRow>
               )}
@@ -477,6 +524,37 @@ export function GA4Flow({
                 </PanelRow>
               )}
               {hostRows}
+              {planNow?.state === 'loading' && (
+                <>
+                  {['Range', 'In the property', 'Timezone'].map((label) => (
+                    <PanelRow key={label} label={label}>
+                      {/* Unruled: the rows wait for the plan. */}
+                      <span className="text-sm text-muted-foreground">Loading…</span>
+                    </PanelRow>
+                  ))}
+                </>
+              )}
+              {planNow?.state === 'ready' && (
+                <>
+                  <PanelRow label="Range" caption={rangeCaption(planNow.value)}>
+                    <span className="text-sm text-foreground">
+                      {`${formatLongDay(planNow.value.range_start)} to ${formatLongDay(planNow.value.range_end)} · ${planNow.value.days.toLocaleString('en-US')} ${planNow.value.days === 1 ? 'day' : 'days'}`}
+                    </span>
+                  </PanelRow>
+                  <PanelRow label="In the property">
+                    <span className="text-sm tabular-nums text-foreground">
+                      {`${planNow.value.totals.visitors.toLocaleString('en-US')} visitors · ${planNow.value.totals.visits.toLocaleString('en-US')} visits · ${planNow.value.totals.pageviews.toLocaleString('en-US')} pageviews · ${planNow.value.totals.events.toLocaleString('en-US')} events`}
+                    </span>
+                  </PanelRow>
+                  <PanelRow label="Timezone">
+                    <span className="text-sm text-foreground">
+                      {planNow.value.source_timezone === planNow.value.site_timezone
+                        ? `${planNow.value.source_timezone}, the same as this site`
+                        : planNow.value.source_timezone}
+                    </span>
+                  </PanelRow>
+                </>
+              )}
               {property?.state === 'ready' && (
                 <>
                   <PanelRow label="Imported">
@@ -494,13 +572,18 @@ export function GA4Flow({
                   </PanelRow>
                   {!previewed && !previewError && (
                     <PanelRow label="Events">
-                      {/* Unruled: Matomo's "Loading this site's events…", for a property. */}
+                      {/* Owner, 29-09-2026 ("ship as written"): Matomo's "Loading this site's events…", for a property. */}
                       <span className="text-sm text-muted-foreground">{"Loading this property's events…"}</span>
                     </PanelRow>
                   )}
                 </>
               )}
             </PanelRows>
+            {planNow?.state === 'error' && (
+              <div className="border-t border-border px-5 py-3.5">
+                <ImportErrorBanner message={planNow.message} onRetry={() => setPlanTry((n) => n + 1)} />
+              </div>
+            )}
             {hosts?.state === 'error' && (
               <div className="border-t border-border px-5 py-3.5">
                 <ImportErrorBanner message={hosts.message} onRetry={() => setHostsTry((n) => n + 1)} />

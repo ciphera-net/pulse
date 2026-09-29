@@ -24,6 +24,7 @@ const h = vi.hoisted(() => ({
   resolveGA4Property: vi.fn(),
   getGA4Hostnames: vi.fn(),
   confirmGA4Import: vi.fn(),
+  getGA4PlanPreview: vi.fn(),
   previewDataImportEvents: vi.fn(),
   listGoals: vi.fn(),
   getGoalStats: vi.fn(),
@@ -45,6 +46,7 @@ vi.mock('@/lib/api/dataImports', () => ({
   resolveGA4Property: (...a: unknown[]) => h.resolveGA4Property(...a),
   getGA4Hostnames: (...a: unknown[]) => h.getGA4Hostnames(...a),
   confirmGA4Import: (...a: unknown[]) => h.confirmGA4Import(...a),
+  getGA4PlanPreview: (...a: unknown[]) => h.getGA4PlanPreview(...a),
 }))
 vi.mock('@/lib/api/goals', () => ({ listGoals: (...a: unknown[]) => h.listGoals(...a) }))
 vi.mock('@/lib/api/stats', () => ({ getGoalStats: (...a: unknown[]) => h.getGoalStats(...a) }))
@@ -84,6 +86,23 @@ const HOSTS = {
     { host: 'localhost', pageviews: 164, share: 0.002, suggested: false },
   ],
   total_pageviews: 98510,
+}
+
+const PLAN = {
+  range_start: '2024-09-29',
+  range_end: '2026-05-01',
+  days: 580,
+  source_timezone: 'Europe/Brussels',
+  site_timezone: 'Europe/Brussels',
+  history_clipped: true,
+  native_start: '2026-05-02',
+  totals: { visitors: 38412, visits: 51206, pageviews: 97834, events: 13721 },
+}
+
+function deferred<T>() {
+  let resolve!: (v: T) => void
+  const promise = new Promise<T>((r) => (resolve = r))
+  return { promise, resolve }
 }
 
 function ga4Status(over: Record<string, unknown> = {}) {
@@ -155,6 +174,7 @@ beforeEach(() => {
   h.resolveGA4Property.mockReset().mockResolvedValue(PROPERTY)
   h.getGA4Hostnames.mockReset().mockResolvedValue(HOSTS)
   h.confirmGA4Import.mockReset()
+  h.getGA4PlanPreview.mockReset().mockResolvedValue(PLAN)
   h.previewDataImportEvents.mockReset().mockResolvedValue({ events: [] })
   h.listGoals.mockReset().mockResolvedValue([])
   h.getGoalStats.mockReset().mockResolvedValue([])
@@ -368,6 +388,8 @@ describe('choosing what to import (states 2–5)', () => {
     // One orange button on the whole tab.
     expect(primaryButtons()).toEqual([start])
     fireEvent.click(within(b).getByRole('switch', { name: 'Keep status-mirror.example.org' }))
+    // The plan is read again for the new set before Start is offered.
+    await waitFor(() => expect(start).toBeEnabled())
     fireEvent.click(start)
     await waitFor(() =>
       expect(h.confirmGA4Import).toHaveBeenCalledWith('s1', 'imp-g', {
@@ -390,15 +412,18 @@ describe('choosing what to import (states 2–5)', () => {
     expect(within(b).getByRole('button', { name: 'Start the import' })).toBeDisabled()
   })
 
-  it('never sends a stream id it was not given', async () => {
-    const { stream_ids: _drop, ...noStreams } = PROPERTY
-    void _drop
-    h.resolveGA4Property.mockResolvedValue(noStreams)
+  it('never sends a stream id it was not given: exactly the web streams the server named', async () => {
+    h.resolveGA4Property.mockResolvedValue({ ...PROPERTY, stream_ids: ['1001', '1002'] })
+    h.confirmGA4Import.mockResolvedValue(ga4Status({ status: 'pending' }))
     renderTab()
     const b = await ga4Block()
     await within(b).findByText('2 of 4 kept')
-    expect(within(b).getByRole('button', { name: 'Start the import' })).toBeDisabled()
-    expect(h.confirmGA4Import).not.toHaveBeenCalled()
+    await waitFor(() => expect(h.getGA4PlanPreview).toHaveBeenCalled())
+    expect(h.getGA4PlanPreview.mock.calls[0][2].stream_ids).toEqual(['1001', '1002'])
+    await waitFor(() => expect(within(b).getByRole('button', { name: 'Start the import' })).toBeEnabled())
+    fireEvent.click(within(b).getByRole('button', { name: 'Start the import' }))
+    await waitFor(() => expect(h.confirmGA4Import).toHaveBeenCalled())
+    expect(h.confirmGA4Import.mock.calls[0][2].stream_ids).toEqual(['1001', '1002'])
   })
 
   it("stops with the owner's sentence and the hosts found when no property measures the site", async () => {
@@ -479,6 +504,129 @@ describe('choosing what to import (states 2–5)', () => {
     await ga4Block()
     await waitFor(() => expect(within(block('Plausible')).getByRole('button', { name: 'Upload' })).toBeDisabled())
     expect(within(block('Matomo')).getByRole('button', { name: 'Connect' })).toBeDisabled()
+  })
+})
+
+// ─── state 5 A: the plan the server would store ────────────────────────────
+describe('the plan preview (state 5 A)', () => {
+  beforeEach(() => {
+    h.slot = { existing_import: ga4Status() }
+  })
+
+  it('shows the range, the property totals and the timezone as the ruled shot does', async () => {
+    renderTab()
+    const b = await ga4Block()
+    expect(await within(b).findByText('29 Sep 2024 to 1 May 2026 · 580 days')).toBeInTheDocument()
+    expect(h.getGA4PlanPreview).toHaveBeenCalledWith('s1', 'imp-g', {
+      property_id: 'properties/556606761',
+      stream_ids: ['11223344'],
+      hostnames: ['id.ciphera.net', 'www.id.ciphera.net'],
+    })
+    expect(
+      within(b).getByText(
+        "Pulse measures this site from 2 May 2026, so the import stops the day before. Earlier days are outside this site's history window.",
+      ),
+    ).toBeInTheDocument()
+    const totals = within(b).getByText('38,412 visitors · 51,206 visits · 97,834 pageviews · 13,721 events')
+    expect(totals.className).toMatch(/tabular-nums/)
+    expect(within(b).getByText('In the property')).toBeInTheDocument()
+    expect(within(b).getByText('Europe/Brussels, the same as this site')).toBeInTheDocument()
+  })
+
+  it('says only the first sentence when the window did not clip, only the second when Pulse has no data of its own', async () => {
+    h.getGA4PlanPreview.mockResolvedValue({ ...PLAN, history_clipped: false })
+    const { unmount } = renderTab()
+    let b = await ga4Block()
+    expect(
+      await within(b).findByText('Pulse measures this site from 2 May 2026, so the import stops the day before.'),
+    ).toBeInTheDocument()
+    expect(within(b).queryByText(/history window/)).toBeNull()
+    unmount()
+
+    h.getGA4PlanPreview.mockResolvedValue({ ...PLAN, native_start: null, history_clipped: true })
+    const second = renderTab()
+    b = await ga4Block()
+    expect(await within(b).findByText("Earlier days are outside this site's history window.")).toBeInTheDocument()
+    expect(within(b).queryByText(/Pulse measures this site from/)).toBeNull()
+    second.unmount()
+
+    h.getGA4PlanPreview.mockResolvedValue({ ...PLAN, native_start: null, history_clipped: false })
+    renderTab()
+    b = await ga4Block()
+    await within(b).findByText('29 Sep 2024 to 1 May 2026 · 580 days')
+    expect(within(b).queryByText(/Pulse measures this site from/)).toBeNull()
+    expect(within(b).queryByText(/history window/)).toBeNull()
+  })
+
+  it("names the property's own zone when it differs from the site's", async () => {
+    h.getGA4PlanPreview.mockResolvedValue({ ...PLAN, source_timezone: 'America/New_York' })
+    renderTab()
+    const b = await ga4Block()
+    expect(await within(b).findByText('America/New_York')).toBeInTheDocument()
+    expect(within(b).queryByText(/the same as this site/)).toBeNull()
+  })
+
+  it('reads the plan again when the kept hostnames change, loading meanwhile, and waits to start', async () => {
+    renderTab()
+    const b = await ga4Block()
+    await within(b).findByText('29 Sep 2024 to 1 May 2026 · 580 days')
+    const later = deferred<typeof PLAN>()
+    h.getGA4PlanPreview.mockImplementation(() => later.promise)
+    fireEvent.click(within(b).getByRole('switch', { name: 'Keep localhost' }))
+    expect(await within(b).findAllByText('Loading…')).toHaveLength(3)
+    expect(within(b).getByRole('button', { name: 'Start the import' })).toBeDisabled()
+    await waitFor(() =>
+      expect(h.getGA4PlanPreview).toHaveBeenLastCalledWith('s1', 'imp-g', {
+        property_id: 'properties/556606761',
+        stream_ids: ['11223344'],
+        hostnames: ['id.ciphera.net', 'www.id.ciphera.net', 'localhost'],
+      }),
+    )
+    await act(async () => later.resolve({ ...PLAN, days: 581, range_end: '2026-05-02' }))
+    expect(await within(b).findByText('29 Sep 2024 to 2 May 2026 · 581 days')).toBeInTheDocument()
+    await waitFor(() => expect(within(b).getByRole('button', { name: 'Start the import' })).toBeEnabled())
+  })
+
+  it('reads once for a quick run of switches (debounced), and the last answer wins', async () => {
+    renderTab()
+    const b = await ga4Block()
+    await within(b).findByText('29 Sep 2024 to 1 May 2026 · 580 days')
+    const calls = h.getGA4PlanPreview.mock.calls.length
+    const first = deferred<typeof PLAN>()
+    const second = deferred<typeof PLAN>()
+    h.getGA4PlanPreview.mockImplementationOnce(() => first.promise).mockImplementationOnce(() => second.promise)
+    // Two switches a moment apart (inside the debounce): one read, for the final set.
+    fireEvent.click(within(b).getByRole('switch', { name: 'Keep localhost' }))
+    await act(() => new Promise((r) => setTimeout(r, 100)))
+    fireEvent.click(within(b).getByRole('switch', { name: 'Keep status-mirror.example.org' }))
+    await waitFor(() => expect(h.getGA4PlanPreview.mock.calls.length).toBe(calls + 1))
+    await act(() => new Promise((r) => setTimeout(r, 400)))
+    expect(h.getGA4PlanPreview.mock.calls.length).toBe(calls + 1)
+    expect(h.getGA4PlanPreview.mock.calls[calls][2].hostnames).toEqual([
+      'id.ciphera.net',
+      'www.id.ciphera.net',
+      'status-mirror.example.org',
+      'localhost',
+    ])
+    // A later change while the first read is still out: the first answer, arriving last, is dropped.
+    fireEvent.click(within(b).getByRole('switch', { name: 'Keep localhost' }))
+    await waitFor(() => expect(h.getGA4PlanPreview.mock.calls.length).toBe(calls + 2))
+    await act(async () => second.resolve({ ...PLAN, days: 222 }))
+    await act(async () => first.resolve({ ...PLAN, days: 111 }))
+    expect(await within(b).findByText('29 Sep 2024 to 1 May 2026 · 222 days')).toBeInTheDocument()
+    expect(within(b).queryByText(/111 days/)).toBeNull()
+  })
+
+  it("says the preview's refusal, with a retry", async () => {
+    h.getGA4PlanPreview.mockRejectedValue(
+      Object.assign(new Error('x'), { status: 422, data: { code: 'no_data_in_range', error: '…' } }),
+    )
+    renderTab()
+    const b = await ga4Block()
+    expect(
+      await within(b).findByText('Google Analytics has no data for this property on the days Pulse can import.'),
+    ).toBeInTheDocument()
+    expect(within(b).getByRole('button', { name: 'Start the import' })).toBeDisabled()
   })
 })
 
