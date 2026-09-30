@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { X } from '@phosphor-icons/react'
 import { type DimensionFilter, DIMENSION_LABELS, OPERATOR_LABELS } from '@/lib/filters'
 import { EASE_APPLE } from '@/lib/motion'
+import { formatLanguage } from '@/lib/dashboard/language'
 
 interface FilterPillProps {
   filter: DimensionFilter
@@ -15,9 +16,18 @@ interface FilterPillProps {
 export default function FilterPill({ filter, onEdit, onRemove }: FilterPillProps) {
   const dim = DIMENSION_LABELS[filter.dimension] || filter.dimension
   const op = OPERATOR_LABELS[filter.operator]
-  const val = filter.values.length > 1
-    ? `${filter.values[0]} +${filter.values.length - 1}`
-    : filter.values[0]
+  // PULSE-173: a grouped-language row's click produces one filter carrying
+  // every member locale of the group (e.g. ["en-US","en-GB","en",…]) — showing
+  // "en-US +8" would name one arbitrary member and hide that the filter is
+  // really "the English group". Every member shares the same base subtag by
+  // construction, so the LANGUAGE NAME (not a member) is the honest label.
+  // A single-value language filter (the ungrouped click, unchanged) still
+  // falls through to the generic branch below and reads as it always has.
+  const val = filter.dimension === 'language' && filter.values.length > 1
+    ? formatLanguage(filter.values[0].replace(/@.*$/, '').split('-')[0])
+    : filter.values.length > 1
+      ? `${filter.values[0]} +${filter.values.length - 1}`
+      : filter.values[0]
 
   return (
     <motion.div

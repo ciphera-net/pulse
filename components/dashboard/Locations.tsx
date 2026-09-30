@@ -1,14 +1,16 @@
 'use client'
 
 import { ImportedCardNote } from '@/components/dashboard/ImportedCardNote'
-import type { ImportedProvenance } from '@/lib/api/stats'
+import type { ImportedProvenance, LanguageGroupStat } from '@/lib/api/stats'
 import type { ImportedDimension } from '@/lib/import/source-display'
 import { useState, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { formatNumber } from '@/lib/utils/format'
 import { CountryFlag } from '@/components/ui/CountryFlag'
+import { hasFlag } from '@/lib/flags'
 import iso3166 from 'iso-3166-2'
 import { TIMEZONE_COUNTRY } from '@/lib/timezone-countries.gen'
+import { formatLanguage } from '@/lib/dashboard/language'
 
 const MapView = dynamic(() => import('./MapView'), { ssr: false })
 import { GlobeIcon, Switcher } from '@ciphera-net/facet'
@@ -27,6 +29,11 @@ interface AudienceProps {
   cities: Array<{ city: string; country: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
   regions: Array<{ region: string; country: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
   languages: Array<{ language: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
+  // PULSE-173: one row per base language, additive alongside `languages`.
+  // `undefined` (the prop simply not passed, or the payload predates the
+  // grouping rollout) falls back to the per-locale `languages` view — no
+  // error, no distinct loading state; see isLanguageGrouped below.
+  languageGroups?: LanguageGroupStat[]
   timezones: Array<{ timezone: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
   geoDataLevel?: 'full' | 'country' | 'none'
   collectAudienceData?: boolean
@@ -62,23 +69,6 @@ const LIMIT = 7
 const TAB_TO_DIMENSION: Record<string, string> = { countries: 'country', regions: 'region', cities: 'city', languages: 'language', timezones: 'timezone' }
 const TAB_TO_KIND: Partial<Record<Tab, FullListKind>> = { countries: 'countries', regions: 'regions', cities: 'cities', languages: 'languages', timezones: 'timezones' }
 
-function formatLanguage(locale: string): string {
-  if (locale === 'Unknown') return 'Unknown'
-  try {
-    const parts = locale.replace(/@.*$/, '').split('-')
-    const langDisplay = new Intl.DisplayNames(['en'], { type: 'language' })
-    const langName = langDisplay.of(parts[0]) || parts[0]
-    if (parts[1]) {
-      const regionDisplay = new Intl.DisplayNames(['en'], { type: 'region' })
-      const regionName = regionDisplay.of(parts[1].toUpperCase())
-      if (regionName) return `${langName} (${regionName})`
-    }
-    return langName
-  } catch {
-    return locale
-  }
-}
-
 // * IANA timezone → ISO country code, from IANA tzdata's own zone.tab + backward links
 // * (lib/timezone-countries.gen.ts, regenerate with scripts/generate-timezone-countries.mjs).
 // * It was a hand-written list of ~45 zones, so most rows had no flag (PULSE-170). A zone that
@@ -88,14 +78,41 @@ export function getTimezoneCountry(tz: string): string {
   return TIMEZONE_COUNTRY[tz] ?? ''
 }
 
-// * Get the country code to show a flag for any item in any tab
-function getItemFlagCode(item: { country?: string; language?: string; timezone?: string }, tab: Tab): string {
+// * A grouped language row's flag code (PULSE-173): the server-computed
+// * `flag_region` when it names a code we have art for, else the group key's
+// * CLDR likely-subtag region (e.g. "ja" -> "JP") when THAT has art, else ''
+// * (globe). `flag_region` already encodes "which member, if any, earned the
+// * flag" (the most-visited member that carries a region, or the floor's
+// * stricter rule on a shared dashboard) — this function only ever adds the
+// * bare-key fallback and the hasFlag gate, never re-picks a member.
+function getGroupFlagCode(item: { language?: string; flag_region?: string | null }): string {
+  const key = item.language ?? ''
+  if (!key || key === 'Unknown') return ''
+  const region = (item.flag_region ?? '').toUpperCase()
+  if (region && hasFlag(region)) return region
+  try {
+    const likely = new Intl.Locale(key).maximize().region
+    if (likely && hasFlag(likely)) return likely
+  } catch {
+    // Not a resolvable BCP47 primary subtag — no fallback flag, same as an
+    // unresolvable code anywhere else on this card.
+  }
+  return ''
+}
+
+// * Get the country code to show a flag for any item in any tab. `grouped`
+// * (PULSE-173) is true only for the Languages tab's grouped-by-base rows,
+// * where `item.language` is a bare group key ("en"), not a locale tag with
+// * its own region subtag — a distinct code path is required, not a fallback
+// * on the same one.
+function getItemFlagCode(item: { country?: string; language?: string; timezone?: string; flag_region?: string | null }, tab: Tab, grouped?: boolean): string {
   switch (tab) {
     case 'countries':
     case 'regions':
     case 'cities':
       return item.country ?? ''
     case 'languages': {
+      if (grouped) return getGroupFlagCode(item)
       const locale = (item.language ?? '').replace(/@.*$/, '')
       const parts = locale.split('-')
       return parts[1]?.toUpperCase() ?? ''
@@ -120,9 +137,20 @@ function formatTimezone(tz: string): string {
   }
 }
 
-export default function Audience({ countries, cities, regions, languages, timezones, geoDataLevel = 'full', collectAudienceData = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter, live = false, importedCards }: AudienceProps) {
+export default function Audience({ countries, cities, regions, languages, languageGroups, timezones, geoDataLevel = 'full', collectAudienceData = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter, live = false, importedCards }: AudienceProps) {
   const [activeTab, setActiveTab] = useState<Tab>('countries')
-  type AudienceItem = { country?: string; city?: string; region?: string; language?: string; timezone?: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }
+  type AudienceItem = {
+    country?: string; city?: string; region?: string; language?: string; timezone?: string
+    pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null
+    // PULSE-173, grouped language rows only:
+    members?: string[]; locale_count?: number; flag_region?: string | null
+  }
+
+  // PULSE-173: grouped mode is keyed on the PROP's presence, not its length —
+  // an empty `language_groups` array (a real site with zero language rows) is
+  // still "the backend supports grouping", just with nothing to show; only an
+  // `undefined` prop (older backend, deploy skew) falls back to per-locale.
+  const isLanguageGrouped = activeTab === 'languages' && languageGroups !== undefined
 
 
   const containerRef = useRef<HTMLDivElement>(null)
@@ -245,12 +273,30 @@ export default function Audience({ countries, cities, regions, languages, timezo
     }
   }
 
+  // PULSE-173: a grouped language row filters on ALL its members at once
+  // ("language is en-US, en-GB, en, …" compiled to the backend's IN(...) for
+  // the `is` operator — lib/filters.ts, internal/database/filters.go), not
+  // just the group key, so the filtered dashboard matches exactly the
+  // visitors the row's numbers describe. Every other tab, and an ungrouped
+  // language row, keeps the single-value behaviour unchanged.
+  const getItemFilterValues = (item: AudienceItem): string[] | undefined => {
+    if (isLanguageGrouped) {
+      if (item.members && item.members.length > 0) return item.members
+      // A grouped row with no `members` (a floored shared-dashboard payload,
+      // where onFilter is never passed anyway, or a backend that omitted it)
+      // still filters on SOMETHING sane: the group key itself.
+      return item.language ? [item.language] : undefined
+    }
+    const v = getItemFilterValue(item)
+    return v ? [v] : undefined
+  }
+
   const getData = (): AudienceItem[] => {
     switch (activeTab) {
       case 'countries': return countries
       case 'regions': return regions
       case 'cities': return cities
-      case 'languages': return languages
+      case 'languages': return isLanguageGrouped ? (languageGroups as AudienceItem[]) : languages
       case 'timezones': return timezones
       default: return []
     }
@@ -289,10 +335,14 @@ export default function Audience({ countries, cities, regions, languages, timezo
     : (data && data.length > 0)
   // The dashboard fan-out carries only the top 10 per dimension — when the
   // active tab overflows the card, fetch the full list once (same endpoint the
-  // retired view-all modal used) and paginate it client-side.
+  // retired view-all modal used) and paginate it client-side. PULSE-173: a
+  // grouped Languages tab fetches the GROUPED full list (a distinct SWR kind,
+  // not a flag on the per-locale one — see lib/swr/dashboard.ts) so its rows
+  // carry members/locale_count/flag_region same as the fan-out ones.
+  const fullListKind: FullListKind | null = isLanguageGrouped ? 'languages-grouped' : (TAB_TO_KIND[activeTab] ?? null)
   const wantsFullList = memberFeatures && !isVisualTab && !isTabDisabled() && data.length > LIMIT
   const { data: fullData } = useFullDimensionList<AudienceItem>(
-    wantsFullList ? (TAB_TO_KIND[activeTab] ?? null) : null,
+    wantsFullList ? fullListKind : null,
     siteId, dateRange?.start, dateRange?.end, 250, filters,
   )
   // Gate on wantsFullList: stale hook-state from another range must never
@@ -374,22 +424,32 @@ export default function Audience({ countries, cities, regions, languages, timezo
               <CascadeGroup flipKey={`${activeTab}-${page}`} className="space-y-2">
                 {displayedData.map((item, idx) => {
                   const dim = TAB_TO_DIMENSION[activeTab]
-                  const filterValue = getItemFilterValue(item)
-                  const canFilter = onFilter && dim && filterValue
+                  const filterValues = getItemFilterValues(item)
+                  const canFilter = onFilter && dim && filterValues && filterValues.length > 0
                   const barWidth = rowBarWidth(item, allData)
                   const itemKey = activeTab === 'languages' ? (item.language ?? idx) : activeTab === 'timezones' ? (item.timezone ?? idx) : `${item.country ?? ''}-${item.region ?? ''}-${item.city ?? ''}`
                   const Row = canFilter ? 'button' : 'div'
+                  // PULSE-173: "N regions" is a muted secondary next to the
+                  // language name, shown only for a grouped row spanning more
+                  // than one locale — a shared-dashboard payload never has
+                  // locale_count at all (omitted, not zero), so this renders
+                  // nothing there, matching the contract's "on shared
+                  // dashboards there is no locale_count".
+                  const showRegionCount = isLanguageGrouped && (item.locale_count ?? 0) > 1
                   return (
                     <CascadeRow key={itemKey} index={idx}>
                       <Row
-                        {...(canFilter ? { type: 'button' as const, onClick: () => canFilter && onFilter({ dimension: dim, operator: 'is', values: [filterValue!] }) } : {})}
+                        {...(canFilter ? { type: 'button' as const, onClick: () => canFilter && onFilter({ dimension: dim, operator: 'is', values: filterValues! }) } : {})}
                         className={`interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${canFilter ? ' cursor-pointer' : ''}`}
                       >
                         <RowBar width={barWidth} index={idx} />
                         <div className="relative flex-1 truncate text-white flex items-center gap-3">
-                          {showsFlag && <span className="shrink-0">{getFlagComponent(getItemFlagCode(item, activeTab), activeTab)}</span>}
-                          <span className="truncate">
-                            {getItemLabel(item)}
+                          {showsFlag && <span className="shrink-0">{getFlagComponent(getItemFlagCode(item, activeTab, isLanguageGrouped), activeTab)}</span>}
+                          <span className="truncate flex items-baseline gap-1.5 min-w-0">
+                            <span className="truncate">{getItemLabel(item)}</span>
+                            {showRegionCount && (
+                              <span className="text-neutral-500 text-xs shrink-0">{item.locale_count} regions</span>
+                            )}
                           </span>
                         </div>
                         <MetricRowStat row={item} totals={totals} />

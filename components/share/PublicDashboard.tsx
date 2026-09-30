@@ -393,6 +393,11 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
             cities={safeCities}
             regions={safeRegions}
             languages={safeLanguages}
+            // PULSE-173: floored the same as every other dimension row on a
+            // shared dashboard (public_floor.go) — `undefined` here just means
+            // "not present on this payload yet / older backend", the same
+            // deploy-skew fallback as the owner dashboard.
+            languageGroups={data?.language_groups}
             timezones={safeTimezones}
             geoDataLevel={site.collect_geo_data || DEFAULT_GEO_DATA_LEVEL}
             collectAudienceData={site.collect_audience_data ?? true}

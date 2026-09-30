@@ -180,6 +180,36 @@ export interface LanguageStat {
   avg_duration: number | null
 }
 
+/**
+ * One row per BASE language (PULSE-173) — the group key is the lowercased
+ * primary language subtag of the stored value (`en-US`, `en-GB`, `en` all
+ * group to `en`; `NULL`/empty groups to `"Unknown"`). Computed server-side:
+ * visitors are not additive across locales and the rates cannot be averaged
+ * without weights, so the server owns this row, never the client.
+ */
+export interface LanguageGroupStat {
+  /** The group key itself, e.g. "en" or "Unknown" — also the display name's
+   *  input (`Intl.DisplayNames`) and the value the row's filter click resolves
+   *  its label from. */
+  language: string
+  pageviews: number
+  visitors: number
+  bounce_rate: number | null
+  avg_duration: number | null
+  /** The distinct raw stored tags in the group, ordered by visitors desc
+   *  (tags only, no counts). ABSENT (not empty — omitted) on a floored
+   *  shared-dashboard payload: listing them would reveal that a locale under
+   *  the n≥5 floor exists inside an otherwise-visible group. */
+  members?: string[]
+  /** `members.length`, mirrored so a card need not compute it. Omitted for
+   *  the same reason as `members` on a floored payload. */
+  locale_count?: number
+  /** Uppercased region subtag of the group's most-visited member that HAS a
+   *  region subtag; `null` when no member has one, or (on a floored payload)
+   *  when that member itself sits under the floor. */
+  flag_region: string | null
+}
+
 export interface TimezoneStat {
   timezone: string
   pageviews: number
@@ -281,6 +311,10 @@ function buildQuery(
      * that is already known to be a 400.
      */
     minutes?: number
+    // PULSE-173: the full-list languages request's grouped variant
+    // (?group=language) — a fixed, non-user value, unlike the free-text
+    // params above.
+    group?: string
   },
 ): string {
   const params = new URLSearchParams()
@@ -297,6 +331,7 @@ function buildQuery(
   if (opts.countryLimit != null) params.append('country_limit', opts.countryLimit.toString())
   if (opts.sort) params.append('sort', opts.sort)
   if (opts.filters) params.append('filters', opts.filters)
+  if (opts.group) params.append('group', opts.group)
   const query = params.toString()
   return query ? `?${query}` : ''
 }
@@ -323,6 +358,19 @@ export const getExitPages = createListFetcher<TopPage>('exit-pages', 'pages')
 export const getScreenResolutions = createListFetcher<ScreenResolutionStat>('screen-resolutions', 'screen_resolutions')
 export const getLanguages = createListFetcher<LanguageStat>('languages', 'languages')
 export const getTimezones = createListFetcher<TimezoneStat>('timezones', 'timezones')
+
+/**
+ * The Languages tab's "view all" full list, grouped by base language
+ * (PULSE-173) — same endpoint and response envelope as `getLanguages`
+ * (`{ languages: [...] }`), with `?group=language` added so the backend
+ * returns `LanguageGroupStat`-shaped rows instead of per-locale ones. Kept as
+ * its own function (not `createListFetcher`, which has no fixed-param hook)
+ * so the plain per-locale fetcher is untouched.
+ */
+export function getLanguageGroups(siteId: string, startDate?: string, endDate?: string, limit = 10, filters?: string, period?: string): Promise<LanguageGroupStat[]> {
+  return apiRequest<Record<string, LanguageGroupStat[]>>(`/sites/${siteId}/languages${buildQuery({ startDate, endDate, limit, filters, period, group: 'language' })}`)
+    .then(r => r?.languages || [])
+}
 export const getGoalStats = createListFetcher<GoalCountStat>('goals/stats', 'goal_counts', 20)
 export const getChannels = createListFetcher<ChannelStat>('channels', 'channels', 20)
 export const getCampaigns = createListFetcher<CampaignStat>('campaigns', 'campaigns')
@@ -376,6 +424,12 @@ export interface DashboardData {
   cities: CityStat[]
   regions: RegionStat[]
   languages: LanguageStat[]
+  /** One row per base language (PULSE-173), additive alongside `languages`
+   *  (unchanged, still per-locale). Absent on a backend that predates the
+   *  grouping rollout — the card falls back to `languages` then (deploy
+   *  skew), no error. Floored like every other dimension on a shared
+   *  dashboard; see LanguageGroupStat for what a floored group omits. */
+  language_groups?: LanguageGroupStat[]
   timezones: TimezoneStat[]
   browsers: BrowserStat[]
   os: OSStat[]
