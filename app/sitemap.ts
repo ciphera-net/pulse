@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next'
 import { integrations } from '@/lib/integrations'
 import { comparisons } from '@/lib/comparisons'
 import { STATIC_ROUTES, CATEGORY_ROUTES, TOOL_ROUTES } from '@/lib/marketing-routes'
+import { routeSeo } from '@/lib/seo'
 
 const BASE_URL = 'https://pulse.ciphera.net'
 
@@ -83,11 +84,27 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.7,
   }))
 
-  return [
+  const all: MetadataRoute.Sitemap = [
     ...staticEntries,
     ...comparisonEntries,
     ...categoryEntries,
     ...toolEntries,
     ...integrationEntries,
   ]
+
+  // 🔴 THE SITEMAP MUST HONOUR THE SAME `robots` VALUE THE PAGE DOES (design §4.5).
+  // A stub's noindex flag is the agency's own toggle — without this, the page
+  // seoFor() renders as noindex would still be listed here, telling crawlers the
+  // opposite of what the page itself says. Ported from ciphera-website's
+  // app/sitemap.ts (same design section). Only the 25 L1 routes can ever carry a
+  // stub, so this is a no-op for the 75 /integrations/[slug] guides below.
+  return all
+    .map((entry) => {
+      const path = entry.url.replace(BASE_URL, '') || '/'
+      const seo = routeSeo[path]
+      if (!seo) return entry
+      if (seo.noindex) return null
+      return seo.modified ? { ...entry, lastModified: new Date(seo.modified) } : entry
+    })
+    .filter((e): e is MetadataRoute.Sitemap[number] => e !== null)
 }
