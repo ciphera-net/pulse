@@ -27,6 +27,7 @@ export function generatePrivacySnippet(site: Site): string {
   const audience = site.collect_audience_data ?? true
   const filterBots = site.filter_bots ?? true
   const retentionMonths = site.data_retention_months ?? 6
+  const respectDnt = site.respect_dnt ?? true
 
   const parts: string[] = []
   if (paths) parts.push('which pages are viewed')
@@ -42,8 +43,11 @@ export function generatePrivacySnippet(site: Site): string {
       ? parts.join(', ')
       : 'minimal anonymous data about site usage (e.g. that a page was viewed)'
 
+  // The DNT sentence is a factual claim about this site's setting (PULSE-164) —
+  // it appears only while respect_dnt is actually true, never unconditionally.
   const p1 =
-    'We use Pulse to understand how visitors use our site. Ciphera does not use cookies or other persistent identifiers. A cookie consent banner is not required for Pulse. We respect Do Not Track (DNT) browser settings.'
+    'We use Pulse to understand how visitors use our site. Ciphera does not use cookies or other persistent identifiers. A cookie consent banner is not required for Pulse.' +
+    (respectDnt ? ' We respect Do Not Track (DNT) browser settings.' : '')
 
   let p2 = `We collect anonymous data: ${list}. `
   if (filterBots) {
