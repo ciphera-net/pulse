@@ -219,16 +219,31 @@
     document.addEventListener(ACTIVITY_EVENTS[ai], noteActivity, { passive: true, capture: true });
   }
 
+  // * Engagement goes out as a keepalive fetch, NOT sendBeacon (v1.6.1, PULSE-169). Browsers
+  // * type a sendBeacon request as "ping", and EasyPrivacy's `*$ping,third-party` (on by
+  // * default in uBlock Origin and Brave) cancels every third-party ping, whatever its path.
+  // * It fails silently: sendBeacon reports success once queued, so no fallback ever ran. For
+  // * every ad-blocking visitor that lost time on page and scroll depth, and Cerberus' delayed
+  // * evaluator then convicted the visit as a zero-engagement bot. A keepalive fetch is typed
+  // * "fetch", survives page unload the way a beacon does, and is what the pageview already
+  // * uses. sendBeacon remains only for engines without fetch keepalive.
+  // *
+  // * Its CORS preflight is cached (Access-Control-Max-Age), and the first engagement send
+  // * happens seconds into the page, so the one at unload reuses it.
+  var FETCH_KEEPALIVE = (function() {
+    try { return typeof Request !== 'undefined' && 'keepalive' in Request.prototype; } catch (e) { return false; }
+  })();
+
   function beacon(data) {
-    if (navigator.sendBeacon) {
-      navigator.sendBeacon(apiUrl + ENGAGEMENT_PATH, new Blob([data], {type: 'application/json'}));
-    } else {
+    if (FETCH_KEEPALIVE || !navigator.sendBeacon) {
       fetch(apiUrl + ENGAGEMENT_PATH, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: data,
         keepalive: true
       }).catch(function() {});
+    } else {
+      navigator.sendBeacon(apiUrl + ENGAGEMENT_PATH, new Blob([data], {type: 'application/json'}));
     }
   }
 
