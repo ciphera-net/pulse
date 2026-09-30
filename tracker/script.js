@@ -31,13 +31,56 @@
   if (window.__pulseInstalled) return;
   window.__pulseInstalled = true;
 
-  // * Respect Do Not Track
-  if (navigator.doNotTrack === '1' || navigator.doNotTrack === 'yes' || navigator.msDoNotTrack === '1') {
+  // * Get config from script tag, or fall back to window.pulseConfig for GTM / tag managers
+  // * GTM Custom HTML tags may not preserve data-* attributes on the injected <script> element,
+  // * so we also search by src URL and support a global config object.
+  // * (Read before the privacy-signal checks below, which need it. Reading config touches
+  // * nothing and sends nothing, so every exit still happens in the same order as before.)
+  const script = document.currentScript
+    || document.querySelector('script[data-domain]')
+    || document.querySelector('script[src*="js.ciphera.net/script"]')
+    || document.querySelector('script[src*="pulse.ciphera.net/script"]');
+
+  const globalConfig = window.pulseConfig || {};
+
+  // * Helper: read a config value from script data-* attribute or globalConfig
+  function attr(name) {
+    // * Support both data-attr style ("some-name") and camelCase config style ("someName")
+    var camel = name.replace(/-([a-z])/g, function(_, c) { return c.toUpperCase(); });
+    return (script && script.getAttribute('data-' + name)) || globalConfig[name] || globalConfig[camel] || null;
+  }
+  function hasAttr(name) {
+    // * Support both "no-scroll" (data-attr style) and "noScroll" (camelCase config style)
+    var camel = name.replace(/-([a-z])/g, function(_, c) { return c.toUpperCase(); });
+    return (script && script.hasAttribute('data-' + name)) || globalConfig[name] === true || globalConfig[camel] === true;
+  }
+
+  // * Privacy signals: HONOURED BY DEFAULT. A browser sending Do Not Track or Global
+  // * Privacy Control is not tracked, and nothing leaves it, unless the site owner's own
+  // * tag says otherwise with data-ignore-dnt / data-ignore-gpc (ignoreDnt / ignoreGpc in
+  // * window.pulseConfig).
+  // *
+  // * Two switches, not one, on purpose: DNT has no legal force anywhere, while GPC is an
+  // * opt-out signal under the CCPA. Turning one off must never turn off the other.
+  // *
+  // * ⚠️ Stricter than hasAttr(), deliberately. hasAttr() is presence-only, and some
+  // * frameworks render a false prop as data-x="false" (PRESENT). For a switch that REDUCES
+  // * privacy that would silently stop honouring the signal, so an explicit false/0/no/off
+  // * value keeps it honoured. Only a bare attribute or a truthy value turns it off.
+  function optedOut(name) {
+    var camel = name.replace(/-([a-z])/g, function(_, c) { return c.toUpperCase(); });
+    if (globalConfig[name] === true || globalConfig[camel] === true) return true;
+    if (!script || !script.hasAttribute('data-' + name)) return false;
+    var v = String(script.getAttribute('data-' + name)).trim().toLowerCase();
+    return v !== 'false' && v !== '0' && v !== 'no' && v !== 'off';
+  }
+
+  var sendsDnt = navigator.doNotTrack === '1' || navigator.doNotTrack === 'yes' || navigator.msDoNotTrack === '1';
+  if (sendsDnt && !optedOut('ignore-dnt')) {
     return;
   }
 
-  // * Respect Global Privacy Control (legally binding under CCPA, recognized by EU regulators)
-  if (navigator.globalPrivacyControl === true) {
+  if (navigator.globalPrivacyControl === true && !optedOut('ignore-gpc')) {
     return;
   }
 
@@ -61,28 +104,6 @@
       return;
     }
   } catch (e) {}
-
-  // * Get config from script tag, or fall back to window.pulseConfig for GTM / tag managers
-  // * GTM Custom HTML tags may not preserve data-* attributes on the injected <script> element,
-  // * so we also search by src URL and support a global config object.
-  const script = document.currentScript
-    || document.querySelector('script[data-domain]')
-    || document.querySelector('script[src*="js.ciphera.net/script"]')
-    || document.querySelector('script[src*="pulse.ciphera.net/script"]');
-
-  const globalConfig = window.pulseConfig || {};
-
-  // * Helper: read a config value from script data-* attribute or globalConfig
-  function attr(name) {
-    // * Support both data-attr style ("some-name") and camelCase config style ("someName")
-    var camel = name.replace(/-([a-z])/g, function(_, c) { return c.toUpperCase(); });
-    return (script && script.getAttribute('data-' + name)) || globalConfig[name] || globalConfig[camel] || null;
-  }
-  function hasAttr(name) {
-    // * Support both "no-scroll" (data-attr style) and "noScroll" (camelCase config style)
-    var camel = name.replace(/-([a-z])/g, function(_, c) { return c.toUpperCase(); });
-    return (script && script.hasAttribute('data-' + name)) || globalConfig[name] === true || globalConfig[camel] === true;
-  }
 
   // * Resolve domain: explicit config > data-domain > auto-detect from hostname
   // * Auto-detect enables zero-config GTM installs; the backend validates Origin anyway
