@@ -361,15 +361,16 @@ export const getTimezones = createListFetcher<TimezoneStat>('timezones', 'timezo
 
 /**
  * The Languages tab's "view all" full list, grouped by base language
- * (PULSE-173) — same endpoint and response envelope as `getLanguages`
- * (`{ languages: [...] }`), with `?group=language` added so the backend
- * returns `LanguageGroupStat`-shaped rows instead of per-locale ones. Kept as
- * its own function (not `createListFetcher`, which has no fixed-param hook)
+ * (PULSE-173) — same endpoint as `getLanguages`, with `?group=language` added
+ * so the backend switches its response envelope: `{ language_groups: [...],
+ * imported: ... }` (GetLanguagesHandler), NOT the plain `{ languages: [...] }`
+ * envelope the ungrouped call returns. Kept as its own function (not
+ * `createListFetcher`, which has no fixed-param hook and reads the wrong key)
  * so the plain per-locale fetcher is untouched.
  */
 export function getLanguageGroups(siteId: string, startDate?: string, endDate?: string, limit = 10, filters?: string, period?: string): Promise<LanguageGroupStat[]> {
   return apiRequest<Record<string, LanguageGroupStat[]>>(`/sites/${siteId}/languages${buildQuery({ startDate, endDate, limit, filters, period, group: 'language' })}`)
-    .then(r => r?.languages || [])
+    .then(r => r?.language_groups || [])
 }
 export const getGoalStats = createListFetcher<GoalCountStat>('goals/stats', 'goal_counts', 20)
 export const getChannels = createListFetcher<ChannelStat>('channels', 'channels', 20)
