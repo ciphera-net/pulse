@@ -50,7 +50,25 @@ export function seoFor(path: string, fallback: Metadata): Metadata {
   // `title: { template: '%s | Pulse Analytics' }`, so a plain string here would be
   // appended to — and a WordPress title that already reads "Pulse … | Pulse
   // Analytics" would render "Pulse … | Pulse Analytics | Pulse Analytics".
-  if (wp.title) merged.title = { absolute: wp.title }
+  //
+  // 🔴 CARRY THE FALLBACK'S OWN `template` FORWARD. Next.js only propagates a
+  // template to descendant segments from THIS segment's own resolved title
+  // (resolve-title.js keys off `'template' in title`, not the nearest ancestor
+  // that declared one) — so replacing the whole title object with a bare
+  // `{ absolute }` would silently drop the template a layout re-declares for
+  // its own children (app/integrations/layout.tsx does this for the 75
+  // /integrations/[slug] guides). Setting `template` alongside `absolute` is
+  // safe for THIS segment's own title (Next resolves `absolute` first and
+  // ignores `template` for it) while keeping it live for descendants.
+  if (wp.title) {
+    const fallbackTemplate =
+      typeof fallback.title === 'object' && fallback.title && 'template' in fallback.title
+        ? fallback.title.template
+        : undefined
+    merged.title = fallbackTemplate
+      ? { absolute: wp.title, template: fallbackTemplate }
+      : { absolute: wp.title }
+  }
   if (wp.description) merged.description = wp.description
 
   // Empty means DERIVE, not "no canonical" — nullable state over a sentinel.
