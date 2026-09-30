@@ -7,8 +7,8 @@ import { SWRConfig } from 'swr'
 // The GA4 row, state by state, against the owner's rulings of 29-09-2026
 // (design §3.12m5a and its Log): Connect + the waiting state (1 A), NO picker
 // (the server resolves the property; the two stops), the account row (3 A),
-// hostnames with a switch each, collapsing when every one is the site's own
-// (4 A), the three lists then the mapping and Start (5 A), the quota pause as a
+// hostnames as ONE line of the site's own, the others counted in its caption
+// (owner, 30-09-2026: layout B, no switches), the three lists then the mapping and Start (5 A), the quota pause as a
 // caption under an unchanged "Importing" chip (6 A), and "Connect again" (7 A).
 // Mocked at the same boundary as SiteImportTab.test.tsx: the API module.
 
@@ -227,7 +227,7 @@ describe('connect (state 1 A)', () => {
       document.dispatchEvent(new Event('visibilitychange'))
     })
     await waitFor(() => expect(h.getImportSlot.mock.calls.length).toBeGreaterThan(before))
-    await waitFor(() => expect(chip(block('Google Analytics'), 'Choose a property')).toBeInTheDocument())
+    await waitFor(() => expect(chip(block('Google Analytics'), 'Ready to start')).toBeInTheDocument())
   })
 
   it('opens a second window from "Open Google again"', async () => {
@@ -278,7 +278,7 @@ describe('the callback code (?ga4=)', () => {
     h.slot = { existing_import: ga4Status() }
     renderTab()
     const b = await ga4Block()
-    await waitFor(() => expect(chip(b, 'Choose a property')).toBeInTheDocument())
+    await waitFor(() => expect(chip(b, 'Ready to start')).toBeInTheDocument())
     expect(within(b).queryByText(/Something unexpected/)).toBeNull()
     expect(window.location.search).toBe('')
   })
@@ -293,7 +293,7 @@ describe('choosing what to import (states 2–5)', () => {
   it('shows the property the server resolved as a fact, with no way to change it', async () => {
     renderTab()
     const b = await ga4Block()
-    expect(chip(b, 'Choose a property')).toBeInTheDocument()
+    expect(chip(b, 'Ready to start')).toBeInTheDocument()
     expect(await within(b).findByText('Status · web stream id.ciphera.net')).toBeInTheDocument()
     expect(h.resolveGA4Property).toHaveBeenCalledWith('s1', 'imp-g')
     expect(within(b).getByText('Property')).toBeInTheDocument()
@@ -315,25 +315,38 @@ describe('choosing what to import (states 2–5)', () => {
     expect(popup.opener).toBeNull()
   })
 
-  it("keeps the hostnames the server suggests, each with a switch and its share", async () => {
+  it("imports only the site's own hostnames, one line, the others counted and never switchable", async () => {
     renderTab()
     const b = await ga4Block()
-    expect(await within(b).findByText('2 of 4 kept')).toBeInTheDocument()
+    expect(await within(b).findByText('id.ciphera.net and www.id.ciphera.net, 99.3% of pageviews')).toBeInTheDocument()
     expect(h.getGA4Hostnames).toHaveBeenCalledWith('s1', 'imp-g', 'properties/556606761')
     expect(
-      within(b).getByText(
-        "Pulse imports only the hostnames you keep. This site's own are kept; the others are usually copies, test servers or other sites.",
-      ),
+      within(b).getByText("2 other hostnames, 0.7% of pageviews, aren't this site, so Pulse doesn't import them."),
     ).toBeInTheDocument()
-    expect(within(b).getByText('90,211 pageviews · 91.6%')).toBeInTheDocument()
-    expect(within(b).getByText('512 pageviews · 0.5%')).toBeInTheDocument()
-    const sw = (host: string) => within(b).getByRole('switch', { name: `Keep ${host}` })
-    expect(sw('id.ciphera.net')).toHaveAttribute('aria-checked', 'true')
-    expect(sw('www.id.ciphera.net')).toHaveAttribute('aria-checked', 'true')
-    expect(sw('status-mirror.example.org')).toHaveAttribute('aria-checked', 'false')
-    expect(sw('localhost')).toHaveAttribute('aria-checked', 'false')
-    fireEvent.click(sw('localhost'))
-    expect(within(b).getByText('3 of 4 kept')).toBeInTheDocument()
+    // Owner, 30-09-2026: no switch anywhere, and another website's name never shows.
+    expect(within(b).queryByRole('switch', { name: /^Keep / })).toBeNull()
+    expect(within(b).queryByText(/status-mirror\.example\.org/)).toBeNull()
+  })
+
+  it('says one other hostname in the singular', async () => {
+    h.getGA4Hostnames.mockResolvedValue({ hostnames: HOSTS.hostnames.slice(0, 3), total_pageviews: 98346 })
+    renderTab()
+    const b = await ga4Block()
+    expect(
+      await within(b).findByText("1 other hostname, 0.5% of pageviews, isn't this site, so Pulse doesn't import it."),
+    ).toBeInTheDocument()
+  })
+
+  it("has nothing to import when only other websites have data, and doesn't offer Start", async () => {
+    h.getGA4Hostnames.mockResolvedValue({ hostnames: HOSTS.hostnames.slice(2), total_pageviews: 676 })
+    renderTab()
+    const b = await ga4Block()
+    expect(
+      await within(b).findByText('Google Analytics has no data for this property on the days Pulse can import.'),
+    ).toBeInTheDocument()
+    expect(within(b).getByText(/^2 other hostnames/)).toBeInTheDocument()
+    expect(h.getGA4PlanPreview).not.toHaveBeenCalled()
+    expect(within(b).getByRole('button', { name: 'Start the import' })).toBeDisabled()
   })
 
   it('collapses the hostnames to one line when every one is the site\'s own', async () => {
@@ -354,7 +367,7 @@ describe('choosing what to import (states 2–5)', () => {
   it("lists what is imported, what is not, and what's worth knowing (the corrected possessive)", async () => {
     renderTab()
     const b = await ga4Block()
-    await within(b).findByText('2 of 4 kept')
+    await within(b).findByText('id.ciphera.net and www.id.ciphera.net, 99.3% of pageviews')
     expect(within(b).getByText("Exit pages: Google Analytics doesn't report them")).toBeInTheDocument()
     expect(
       within(b).getByText("Visitor timezones, funnels and journeys: they can't be rebuilt from Google Analytics' reports"),
@@ -380,36 +393,24 @@ describe('choosing what to import (states 2–5)', () => {
     h.confirmGA4Import.mockResolvedValue(started)
     renderTab()
     const b = await ga4Block()
-    await within(b).findByText('2 of 4 kept')
+    await within(b).findByText('id.ciphera.net and www.id.ciphera.net, 99.3% of pageviews')
     // The mapping step (M12, ruled A): GA4's click merges into the built-in.
     expect(await within(b).findByDisplayValue('outbound_link')).toBeInTheDocument()
     expect(h.previewDataImportEvents).toHaveBeenCalledWith('s1', 'imp-g', 'properties/556606761')
     const start = within(b).getByRole('button', { name: 'Start the import' })
     // One orange button on the whole tab.
     expect(primaryButtons()).toEqual([start])
-    fireEvent.click(within(b).getByRole('switch', { name: 'Keep status-mirror.example.org' }))
-    // The plan is read again for the new set before Start is offered.
     await waitFor(() => expect(start).toBeEnabled())
     fireEvent.click(start)
     await waitFor(() =>
       expect(h.confirmGA4Import).toHaveBeenCalledWith('s1', 'imp-g', {
         property_id: 'properties/556606761',
         stream_ids: ['11223344'],
-        hostnames: ['id.ciphera.net', 'www.id.ciphera.net', 'status-mirror.example.org'],
+        hostnames: ['id.ciphera.net', 'www.id.ciphera.net'],
         event_map: { sign_up: 'sign_up', click: 'outbound_link' },
       }),
     )
     await waitFor(() => expect(chip(block('Google Analytics'), 'Importing')).toBeInTheDocument())
-  })
-
-  it('waits while no hostname is kept', async () => {
-    renderTab()
-    const b = await ga4Block()
-    await within(b).findByText('2 of 4 kept')
-    await waitFor(() => expect(within(b).getByRole('button', { name: 'Start the import' })).toBeEnabled())
-    fireEvent.click(within(b).getByRole('switch', { name: 'Keep id.ciphera.net' }))
-    fireEvent.click(within(b).getByRole('switch', { name: 'Keep www.id.ciphera.net' }))
-    expect(within(b).getByRole('button', { name: 'Start the import' })).toBeDisabled()
   })
 
   it('never sends a stream id it was not given: exactly the web streams the server named', async () => {
@@ -417,7 +418,7 @@ describe('choosing what to import (states 2–5)', () => {
     h.confirmGA4Import.mockResolvedValue(ga4Status({ status: 'pending' }))
     renderTab()
     const b = await ga4Block()
-    await within(b).findByText('2 of 4 kept')
+    await within(b).findByText('id.ciphera.net and www.id.ciphera.net, 99.3% of pageviews')
     await waitFor(() => expect(h.getGA4PlanPreview).toHaveBeenCalled())
     expect(h.getGA4PlanPreview.mock.calls[0][2].stream_ids).toEqual(['1001', '1002'])
     await waitFor(() => expect(within(b).getByRole('button', { name: 'Start the import' })).toBeEnabled())
@@ -471,7 +472,7 @@ describe('choosing what to import (states 2–5)', () => {
     )
     renderTab()
     const b = await ga4Block()
-    await within(b).findByText('2 of 4 kept')
+    await within(b).findByText('id.ciphera.net and www.id.ciphera.net, 99.3% of pageviews')
     await waitFor(() => expect(within(b).getByRole('button', { name: 'Start the import' })).toBeEnabled())
     fireEvent.click(within(b).getByRole('button', { name: 'Start the import' }))
     expect(
@@ -485,7 +486,7 @@ describe('choosing what to import (states 2–5)', () => {
     )
     renderTab()
     const b = await ga4Block()
-    await within(b).findByText('2 of 4 kept')
+    await within(b).findByText('id.ciphera.net and www.id.ciphera.net, 99.3% of pageviews')
     await waitFor(() => expect(within(b).getByRole('button', { name: 'Start the import' })).toBeEnabled())
     fireEvent.click(within(b).getByRole('button', { name: 'Start the import' }))
     expect(await within(b).findByText(/^Google Analytics can't produce a report Pulse needs/)).toBeInTheDocument()
@@ -566,55 +567,17 @@ describe('the plan preview (state 5 A)', () => {
     expect(within(b).queryByText(/the same as this site/)).toBeNull()
   })
 
-  it('reads the plan again when the kept hostnames change, loading meanwhile, and waits to start', async () => {
+  it("reads the plan once, for the site's own hostnames only", async () => {
     renderTab()
     const b = await ga4Block()
     await within(b).findByText('29 Sep 2024 to 1 May 2026 · 580 days')
-    const later = deferred<typeof PLAN>()
-    h.getGA4PlanPreview.mockImplementation(() => later.promise)
-    fireEvent.click(within(b).getByRole('switch', { name: 'Keep localhost' }))
-    expect(await within(b).findAllByText('Loading…')).toHaveLength(3)
-    expect(within(b).getByRole('button', { name: 'Start the import' })).toBeDisabled()
-    await waitFor(() =>
-      expect(h.getGA4PlanPreview).toHaveBeenLastCalledWith('s1', 'imp-g', {
-        property_id: 'properties/556606761',
-        stream_ids: ['11223344'],
-        hostnames: ['id.ciphera.net', 'www.id.ciphera.net', 'localhost'],
-      }),
-    )
-    await act(async () => later.resolve({ ...PLAN, days: 581, range_end: '2026-05-02' }))
-    expect(await within(b).findByText('29 Sep 2024 to 2 May 2026 · 581 days')).toBeInTheDocument()
-    await waitFor(() => expect(within(b).getByRole('button', { name: 'Start the import' })).toBeEnabled())
-  })
-
-  it('reads once for a quick run of switches (debounced), and the last answer wins', async () => {
-    renderTab()
-    const b = await ga4Block()
-    await within(b).findByText('29 Sep 2024 to 1 May 2026 · 580 days')
-    const calls = h.getGA4PlanPreview.mock.calls.length
-    const first = deferred<typeof PLAN>()
-    const second = deferred<typeof PLAN>()
-    h.getGA4PlanPreview.mockImplementationOnce(() => first.promise).mockImplementationOnce(() => second.promise)
-    // Two switches a moment apart (inside the debounce): one read, for the final set.
-    fireEvent.click(within(b).getByRole('switch', { name: 'Keep localhost' }))
-    await act(() => new Promise((r) => setTimeout(r, 100)))
-    fireEvent.click(within(b).getByRole('switch', { name: 'Keep status-mirror.example.org' }))
-    await waitFor(() => expect(h.getGA4PlanPreview.mock.calls.length).toBe(calls + 1))
     await act(() => new Promise((r) => setTimeout(r, 400)))
-    expect(h.getGA4PlanPreview.mock.calls.length).toBe(calls + 1)
-    expect(h.getGA4PlanPreview.mock.calls[calls][2].hostnames).toEqual([
-      'id.ciphera.net',
-      'www.id.ciphera.net',
-      'status-mirror.example.org',
-      'localhost',
-    ])
-    // A later change while the first read is still out: the first answer, arriving last, is dropped.
-    fireEvent.click(within(b).getByRole('switch', { name: 'Keep localhost' }))
-    await waitFor(() => expect(h.getGA4PlanPreview.mock.calls.length).toBe(calls + 2))
-    await act(async () => second.resolve({ ...PLAN, days: 222 }))
-    await act(async () => first.resolve({ ...PLAN, days: 111 }))
-    expect(await within(b).findByText('29 Sep 2024 to 1 May 2026 · 222 days')).toBeInTheDocument()
-    expect(within(b).queryByText(/111 days/)).toBeNull()
+    expect(h.getGA4PlanPreview).toHaveBeenCalledTimes(1)
+    expect(h.getGA4PlanPreview).toHaveBeenCalledWith('s1', 'imp-g', {
+      property_id: 'properties/556606761',
+      stream_ids: ['11223344'],
+      hostnames: ['id.ciphera.net', 'www.id.ciphera.net'],
+    })
   })
 
   it("says the preview's refusal, with a retry", async () => {

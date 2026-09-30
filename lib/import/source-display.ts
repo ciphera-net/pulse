@@ -71,7 +71,8 @@ export const SOURCE_DISPLAY: Readonly<Record<SourceId, SourceDisplay>> = {
   ga4: {
     label: 'Google Analytics',
     logoSlug: 'google-analytics',
-    how: 'Sign in with Google and choose a property.',
+    // Owner, 30-09-2026: the property is found from the site's domain, so there's nothing to choose.
+    how: "Sign in with Google to import this site's history.",
     verb: 'Connect',
     // GA4 has no exit-page dimension (§3.4).
     lacks: ['exit_page'],
@@ -316,14 +317,12 @@ export const GA4_GUIDE = {
   waitingCaption: 'Finish signing in to Google in the other window. If you closed it, open it again.',
   waitingButton: 'Open Google again',
   /** §3.12m5a constraint 4: the per-source chip word while the server says awaiting_property. */
-  awaitingChip: 'Choose a property',
+  // Owner, 30-09-2026 (no picker since 29-09): the next step is Start the import.
+  awaitingChip: 'Ready to start',
   /** W-M5-6: the account row's caption. */
   accountCaption: 'Pulse reads the property with this Google account.',
   /** W-M5-7. */
   hostnamesLoading: "Loading this property's hostnames…",
-  /** W-M5-8. */
-  hostnamesCaption:
-    "Pulse imports only the hostnames you keep. This site's own are kept; the others are usually copies, test servers or other sites.",
   imported: [
     'Visitors, visits and pageviews',
     'Pages and entry pages',

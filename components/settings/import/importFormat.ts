@@ -135,6 +135,19 @@ export function shareText(share: number): string {
   return `${v.toFixed(1).replace(/\.0$/, '')}%`
 }
 
+/**
+ * The hostnames row's caption when the property also measures other websites (owner, 30-09-2026, layout B): how
+ * many hostnames aren't this site and their share, which Pulse never imports. Undefined when there are none.
+ */
+export function otherHostsCaption(others: readonly { share: number }[]): string | undefined {
+  if (others.length === 0) return undefined
+  const total = others.reduce((a, k) => a + (Number.isFinite(k.share) ? k.share : 0), 0)
+  const share = shareText(total)
+  return others.length === 1
+    ? `1 other hostname, ${share} of pageviews, isn't this site, so Pulse doesn't import it.`
+    : `${others.length.toLocaleString('en-US')} other hostnames, ${share} of pageviews, aren't this site, so Pulse doesn't import them.`
+}
+
 /** "a and b, 99.3% of pageviews" (W-M5-11): the kept hostnames and their share together. */
 export function hostsSummary(kept: readonly { host: string; share: number }[]): string {
   const names = kept.map((k) => k.host)
