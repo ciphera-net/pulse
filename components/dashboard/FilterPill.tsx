@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { X } from '@phosphor-icons/react'
 import { type DimensionFilter, DIMENSION_LABELS, OPERATOR_LABELS } from '@/lib/filters'
 import { EASE_APPLE } from '@/lib/motion'
-import { formatLanguage } from '@/lib/dashboard/language'
+import { formatLanguage, languageGroupKey } from '@/lib/dashboard/language'
 
 interface FilterPillProps {
   filter: DimensionFilter
@@ -19,12 +19,19 @@ export default function FilterPill({ filter, onEdit, onRemove }: FilterPillProps
   // PULSE-173: a grouped-language row's click produces one filter carrying
   // every member locale of the group (e.g. ["en-US","en-GB","en",…]) — showing
   // "en-US +8" would name one arbitrary member and hide that the filter is
-  // really "the English group". Every member shares the same base subtag by
-  // construction, so the LANGUAGE NAME (not a member) is the honest label.
-  // A single-value language filter (the ungrouped click, unchanged) still
-  // falls through to the generic branch below and reads as it always has.
-  const val = filter.dimension === 'language' && filter.values.length > 1
-    ? formatLanguage(filter.values[0].replace(/@.*$/, '').split('-')[0])
+  // really "the English group", so the LANGUAGE NAME (not a member) is the
+  // honest label THERE. But the chip is editable after that click (the
+  // filter popover's ValuePicker lets a reader add a free-text value, e.g.
+  // "fr-FR", to an existing language filter) and at that point the values no
+  // longer share one base language, so naming the group would be wrong too —
+  // every member's group key (languageGroupKey, mirroring the backend's
+  // LanguageGroupKey) must agree before the name branch is trusted. A mixed
+  // set, and a single-value language filter (the ungrouped click, unchanged),
+  // both fall through to the generic branch below and read as it always has.
+  const isHomogeneousLanguageGroup = filter.dimension === 'language' && filter.values.length > 1
+    && filter.values.every(v => languageGroupKey(v) === languageGroupKey(filter.values[0]))
+  const val = isHomogeneousLanguageGroup
+    ? formatLanguage(languageGroupKey(filter.values[0]))
     : filter.values.length > 1
       ? `${filter.values[0]} +${filter.values.length - 1}`
       : filter.values[0]

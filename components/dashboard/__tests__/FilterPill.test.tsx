@@ -41,4 +41,27 @@ describe('FilterPill — language chip (PULSE-173)', () => {
     expect(screen.getByText('US +2')).toBeTruthy()
     expect(screen.queryByText('United States')).toBeNull()
   })
+
+  // A grouped row's click produces a homogeneous filter, but the chip stays
+  // editable afterwards: ValuePicker's handleAddCustom lets a reader append a
+  // free-text value to an existing filter. Once that value belongs to a
+  // different base language, the filter no longer means "the English group"
+  // and must not keep saying "English".
+  it('a language filter with an appended member from a DIFFERENT base language reads the generic label, not the group name', () => {
+    const filter: DimensionFilter = {
+      dimension: 'language',
+      operator: 'is',
+      values: ['en-US', 'en-GB', 'en', 'en-PK', 'en-AU', 'en-CA', 'en-IN', 'en-IE', 'en-SG', 'fr-FR'],
+    }
+    render(<FilterPill filter={filter} onEdit={vi.fn()} onRemove={vi.fn()} />)
+    expect(screen.getByText('en-US +9')).toBeTruthy()
+    expect(screen.queryByText('English')).toBeNull()
+  })
+
+  it('mixed case and an @posix suffix still count as the same base language', () => {
+    const filter: DimensionFilter = { dimension: 'language', operator: 'is', values: ['en-US', 'EN-GB', 'en@currency=USD'] }
+    render(<FilterPill filter={filter} onEdit={vi.fn()} onRemove={vi.fn()} />)
+    expect(screen.getByText('English')).toBeTruthy()
+    expect(screen.queryByText(/en-US/)).toBeNull()
+  })
 })

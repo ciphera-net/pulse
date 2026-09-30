@@ -6,6 +6,23 @@
 // ---------------------------------------------------------------------------
 
 /**
+ * The group key a raw stored language value reduces to (PULSE-173) —
+ * lowercased primary BCP47 subtag, a POSIX `@...` modifier stripped first,
+ * empty -> "Unknown". MUST mirror the backend's `LanguageGroupKey`
+ * (internal/database/language_groups.go) byte for byte: it is what lets a
+ * filter chip tell whether every member of a multi-value language filter
+ * shares one base language, the same rule the server used to build the
+ * grouped row in the first place.
+ */
+export function languageGroupKey(raw: string): string {
+  let s = raw.replace(/@.*$/, '')
+  const dash = s.indexOf('-')
+  if (dash >= 0) s = s.slice(0, dash)
+  s = s.toLowerCase()
+  return s === '' ? 'Unknown' : s
+}
+
+/**
  * Renders a BCP47-ish language tag as a human name via `Intl.DisplayNames`:
  * "en-US" -> "English (United States)", "en" -> "English", "Unknown" stays
  * "Unknown". Also used on a bare GROUP KEY (PULSE-173's "en", no region),

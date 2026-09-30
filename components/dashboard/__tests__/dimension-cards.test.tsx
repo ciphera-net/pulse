@@ -278,6 +278,25 @@ describe('Audience', () => {
       expect(screen.getByText('English').closest('button')).toBeNull()
     })
 
+    it('never arms the GROUPED full-list fetch on the share surface, even when the rows overflow (F3)', () => {
+      // The Languages tab's own version of the share-surface guarantee every
+      // other tab already has: memberFeatures=false must keep wantsFullList
+      // false regardless of dimension, so the grouped shared dashboard never
+      // reaches a member-only endpoint (GET /sites/:id/languages) either.
+      const many = ['en', 'nl', 'fr', 'de', 'ja', 'zh', 'pt', 'it', 'es'].map((code, i) => ({
+        language: code, pageviews: 9 - i, visitors: 9 - i, bounce_rate: null, avg_duration: null, flag_region: null,
+      }))
+      render(<Audience {...groupedBaseProps} languageGroups={many} totals={totals} memberFeatures={false} />)
+      openLanguages()
+      expect(useFullDimensionList).toHaveBeenLastCalledWith(
+        null, 'site-1', '2026-07-20', '2026-08-18', 250, undefined,
+      )
+      // Still pages the fan-out rows client-side, same as the fetch-armed case.
+      expect(screen.queryByText('Italian')).toBeNull()
+      fireEvent.click(screen.getByLabelText('Next page'))
+      expect(screen.getByText('Italian')).toBeTruthy()
+    })
+
     it('arms the full-list fetch with the GROUPED kind on overflow and pages the same rendering', () => {
       const many = ['en', 'nl', 'fr', 'de', 'ja', 'zh', 'pt', 'it', 'es'].map((code, i) => ({
         language: code, pageviews: 9 - i, visitors: 9 - i, bounce_rate: null, avg_duration: null,
