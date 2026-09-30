@@ -212,6 +212,7 @@ describe('run() — end to end, D39 override semantics', () => {
       const written = fs.readFileSync(outPath, 'utf-8')
       expect(written).toContain('export const SEO_ROUTE_COUNT = 25')
       expect(written).toContain('export const SEO_OVERRIDE = false')
+      expect(written).toContain('export const SEO_GENERATED = true')
       expect(written).toContain('"/about"')
     } finally {
       fs.rmSync(outPath, { force: true })

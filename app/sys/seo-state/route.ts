@@ -1,4 +1,4 @@
-import { SEO_WATERMARK, SEO_ROUTE_COUNT, SEO_OVERRIDE } from '@/lib/seo'
+import { SEO_WATERMARK, SEO_ROUTE_COUNT, SEO_OVERRIDE, SEO_GENERATED } from '@/lib/seo'
 
 /**
  * The build's own self-report for Level 1 SEO (design §4.4).
@@ -30,6 +30,10 @@ export function GET() {
       // explicitly passed CMS_UNAVAILABLE_OK=1. Stays true on the live site
       // until the next normal build overwrites it.
       override: SEO_OVERRIDE,
+      // false means this image was built from the committed empty stub, never
+      // from the generator — which a normal `npm run build` cannot do (prebuild
+      // runs it first), so on production it would mean a broken build path.
+      generated: SEO_GENERATED,
     },
     { headers: { 'Cache-Control': 'no-store' } }
   )

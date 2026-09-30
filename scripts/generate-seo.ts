@@ -309,6 +309,14 @@ export const SEO_WATERMARK = ${JSON.stringify(watermark)}
  */
 export const SEO_OVERRIDE = ${override}
 
+/**
+ * 🔑 TRUE ONLY IN GENERATOR OUTPUT. The committed lib/seo.gen.ts is an empty stub
+ * with this set to false, so a build that somehow shipped the stub instead of
+ * running the generator says so on /sys/seo-state rather than passing as a
+ * normal build with no stubs.
+ */
+export const SEO_GENERATED = true
+
 export const routeSeo: Record<string, RouteSeo> = ${JSON.stringify(out, null, 2)}
 `
 }
