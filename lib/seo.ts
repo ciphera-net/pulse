@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { routeSeo, SEO_ROUTE_COUNT, SEO_WATERMARK, SEO_OVERRIDE } from './seo.gen'
+import { routeSeo, SEO_ROUTE_COUNT, SEO_WATERMARK, SEO_OVERRIDE, SEO_GENERATED } from './seo.gen'
 
 /**
  * Level 1: SEO fields come from WordPress; the page body does not.
@@ -26,7 +26,7 @@ export interface RouteSeo {
 }
 
 /** Every route the agency owns. Exported so app/sitemap.ts stays in step (§4.5). */
-export { routeSeo, SEO_ROUTE_COUNT, SEO_WATERMARK, SEO_OVERRIDE }
+export { routeSeo, SEO_ROUTE_COUNT, SEO_WATERMARK, SEO_OVERRIDE, SEO_GENERATED }
 
 export function seoForRoute(path: string): RouteSeo | undefined {
   return routeSeo[path]
