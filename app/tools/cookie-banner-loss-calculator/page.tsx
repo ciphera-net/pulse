@@ -10,10 +10,12 @@ import { RelatedLinks } from '@/components/marketing/seo/RelatedLinks'
 import { SeoPageCta } from '@/components/marketing/seo/SeoPageCta'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
 import { DEFAULT_OG_IMAGES } from '@/lib/og'
+import { seoFor } from '@/lib/seo'
 
 const SITE_URL = 'https://pulse.ciphera.net'
 
-export const metadata: Metadata = {
+// Level 1: merged with a WordPress stub for '/tools/cookie-banner-loss-calculator' when one exists (design §4.3).
+export const metadata: Metadata = seoFor('/tools/cookie-banner-loss-calculator', {
   title: 'Cookie-banner loss calculator',
   description:
     'Estimate how many visitors your consent-gated analytics never counts. Enter your monthly visitors and consent-accept rate — the calculator does the arithmetic in your browser.',
@@ -25,7 +27,7 @@ export const metadata: Metadata = {
     siteName: 'Pulse Analytics',
     images: DEFAULT_OG_IMAGES,
   },
-}
+})
 
 const breadcrumb = {
   '@context': 'https://schema.org',
