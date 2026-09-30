@@ -11,11 +11,13 @@ import { Eyebrow } from '@/components/marketing/system/Eyebrow'
 import { cdnUrl } from '@/lib/cdn'
 import { comparisonLogoUrl } from '@/lib/comparisons'
 import { DEFAULT_OG_IMAGES } from '@/lib/og'
+import { seoFor } from '@/lib/seo'
 
 const description =
   'Pulse is privacy-first web analytics built by Ciphera BV in Belgium — open-source client, cookie-free, and counted on Swiss infrastructure.'
 
-export const metadata: Metadata = {
+// Level 1: merged with a WordPress stub for '/about' when one exists (design §4.3).
+export const metadata: Metadata = seoFor('/about', {
   title: 'About',
   description,
   alternates: {
@@ -27,7 +29,7 @@ export const metadata: Metadata = {
     siteName: 'Pulse Analytics',
     images: DEFAULT_OG_IMAGES,
   },
-}
+})
 
 // The company facts, each with the link that proves it — the receipts-ledger
 // device from /features. Every value here is verifiable: the KBO entry is the

@@ -20,6 +20,7 @@ import { SeoCtaButtons } from '@/components/marketing/seo/SeoCtaButtons'
 import { cdnUrl } from '@/lib/cdn'
 import { comparisons, comparisonLogoUrl, getComparison } from '@/lib/comparisons'
 import { DEFAULT_OG_IMAGES } from '@/lib/og'
+import { seoFor } from '@/lib/seo'
 
 const SITE_URL = 'https://pulse.ciphera.net'
 
@@ -36,7 +37,9 @@ export async function generateMetadata({
   const comparison = getComparison(slug)
   if (!comparison) return { title: 'Compare' }
   const title = `Pulse vs ${comparison.name}`
-  return {
+  // Level 1: merged with a WordPress stub for '/vs/<slug>' when one exists
+  // (design §4.3) — the exact-path allowlist admits all 6 comparison routes.
+  return seoFor(`/vs/${slug}`, {
     title,
     description: comparison.metaDescription,
     alternates: { canonical: `/vs/${slug}` },
@@ -46,7 +49,7 @@ export async function generateMetadata({
       siteName: 'Pulse Analytics',
       images: DEFAULT_OG_IMAGES,
     },
-  }
+  })
 }
 
 // Category / directory cross-links shown at the foot of every comparison. The

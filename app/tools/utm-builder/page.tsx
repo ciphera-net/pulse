@@ -9,10 +9,12 @@ import { RelatedLinks } from '@/components/marketing/seo/RelatedLinks'
 import { SeoPageCta } from '@/components/marketing/seo/SeoPageCta'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
 import { DEFAULT_OG_IMAGES } from '@/lib/og'
+import { seoFor } from '@/lib/seo'
 
 const SITE_URL = 'https://pulse.ciphera.net'
 
-export const metadata: Metadata = {
+// Level 1: merged with a WordPress stub for '/tools/utm-builder' when one exists (design §4.3).
+export const metadata: Metadata = seoFor('/tools/utm-builder', {
   title: 'UTM builder',
   description:
     'A free UTM link builder. Add campaign source, medium and name to any URL and copy the tagged link — assembled in your browser, tracked automatically in Pulse.',
@@ -24,7 +26,7 @@ export const metadata: Metadata = {
     siteName: 'Pulse Analytics',
     images: DEFAULT_OG_IMAGES,
   },
-}
+})
 
 const breadcrumb = {
   '@context': 'https://schema.org',

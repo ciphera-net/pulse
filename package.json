@@ -5,10 +5,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "generate:seo": "node scripts/run-ts.mjs scripts/generate-seo.ts",
     "generate:sri": "node scripts/generate-sri.js",
     "build:scripts": "node scripts/build-scripts.mjs",
     "build:worker": "node scripts/build-worker.mjs",
-    "prebuild": "npm run build:scripts && npm run generate:sri && npm run build:worker",
+    "prebuild": "npm run generate:seo && npm run build:scripts && npm run generate:sri && npm run build:worker",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint .",

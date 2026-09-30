@@ -29,6 +29,10 @@ steps:
     commands:
       - export NODE_AUTH_TOKEN="$NPM_READ_TOKEN"
       - npm ci
+      # lib/seo.gen.ts is a committed empty stub, so the steps below type-check
+      # and test without reaching WordPress. The real generator runs only in
+      # push.yml's builds (prebuild), where CMS content actually ships — a PR's
+      # CI tests the PR's code, and must not go red because the CMS blipped.
       # 🔴 05-09-2026 — THE BUDGET NOW BLOCKS A MERGE, WHICH IT NEVER DID.
       # scripts/build-scripts.mjs has enforced GZIP_BUDGET (3072 B) since it was
       # written, but it runs from `prebuild`, and `npm run build` runs only in
