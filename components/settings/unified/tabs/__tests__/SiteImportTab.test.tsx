@@ -29,6 +29,8 @@ const h = vi.hoisted(() => ({
 
 vi.mock('@/lib/auth/permissions', () => ({ useCan: () => h.canManage }))
 vi.mock('@/lib/swr/dashboard', () => ({ useSite: () => ({ data: { id: 's1', timezone: 'Europe/Brussels' } }) }))
+// GA4's row (M5) renders the quota pause in the viewer's display timezone.
+vi.mock('@/lib/hooks/useDisplayZone', () => ({ useDisplayZone: () => ({ zone: 'Europe/Brussels' }) }))
 vi.mock('@/lib/api/dataImports', () => ({
   getImportSources: vi.fn(async () => h.sources),
   getImportSlot: (...a: unknown[]) => h.getImportSlot(...a),
@@ -216,10 +218,9 @@ describe('the picker (A1)', () => {
     renderTab()
     expect(await screen.findByText('Import history')).toBeInTheDocument()
     expect(screen.getByText("Bring this site's history from another analytics tool. Imported days are labelled as imported wherever they appear.")).toBeInTheDocument()
-    // GA4's sign-in flow is M5's: listed by the server, not shown by this build.
-    expect(screen.queryByText('Google Analytics')).toBeNull()
-    const names = screen.getAllByText(/^(Plausible|Matomo)$/).map((el) => el.textContent)
-    expect(names).toEqual(['Plausible', 'Matomo'])
+    // GA4's sign-in flow is M5's (PULSE-140): listed by the server, shown first (D6's order).
+    const names = screen.getAllByText(/^(Google Analytics|Plausible|Matomo)$/).map((el) => el.textContent)
+    expect(names).toEqual(['Google Analytics', 'Plausible', 'Matomo'])
     expect(within(block('Plausible')).getByRole('button', { name: 'Upload' })).toBeEnabled()
     expect(within(block('Matomo')).getByRole('button', { name: 'Connect' })).toBeEnabled()
     // Full colour, always (owner, Q-M11): never the Integrations idle treatment.
@@ -585,6 +586,8 @@ describe('an import moving without this tab', () => {
 // ─── an import this screen has no row for ───────────────────────────────────
 describe('an import whose source has no row in this build', () => {
   it('is still shown, with its state and Delete, so the one slot is never held invisibly', async () => {
+    // The server no longer lists GA4 (its flag turned off), but the import stays.
+    h.sources = { sources: [PLAUSIBLE, MATOMO] }
     h.slot = { existing_import: status({ id: 'imp-g', source: 'ga4', kind: 'oauth', fingerprint: null }) }
     renderTab()
     const record = await screen.findByTestId('import-record')

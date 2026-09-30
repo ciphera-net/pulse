@@ -31,6 +31,14 @@ export default function SiteSettingsRedirect() {
       router.replace(`/settings/site/integrations?gsc=${gsc}`)
       return
     }
+    // M5 (PULSE-140), design §3.12m5a constraint 1: GA4's callback lands the
+    // Google popup here with `?tab=import&ga4=<code>`. The Import tab says the
+    // code, so it must survive the redirect, as `gsc` does for Integrations.
+    const ga4 = searchParams.get('ga4')
+    if (ga4) {
+      router.replace(`/settings/site/import?ga4=${encodeURIComponent(ga4)}`)
+      return
+    }
     const tabParam = searchParams.get('tab')
     const tab = tabParam ? (TAB_MAP[tabParam] ?? 'general') : 'general'
     router.replace(`/settings/site/${tab}`)

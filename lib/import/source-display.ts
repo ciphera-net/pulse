@@ -71,7 +71,8 @@ export const SOURCE_DISPLAY: Readonly<Record<SourceId, SourceDisplay>> = {
   ga4: {
     label: 'Google Analytics',
     logoSlug: 'google-analytics',
-    how: 'Sign in with Google and choose a property.',
+    // Owner, 30-09-2026: the property is found from the site's domain, so there's nothing to choose.
+    how: "Sign in with Google to import this site's history.",
     verb: 'Connect',
     // GA4 has no exit-page dimension (§3.4).
     lacks: ['exit_page'],
@@ -178,7 +179,15 @@ export function eventsImportedCount(included: number, total: number): string {
  * visitor counts once per day they came.
  */
 export function dailyVisitorsCaveat(tool: string): string {
-  return `Visitors are ${tool}'s daily counts added up, so over a range someone who came on three days counts three times.`
+  return `Visitors are ${possessive(tool)} daily counts added up, so over a range someone who came on three days counts three times.`
+}
+
+/**
+ * A tool's name in the possessive (W-M5-19, design §3.12m5a constraint 5): a
+ * bare apostrophe after a name ending in "s" ("Google Analytics'"), else "'s".
+ */
+export function possessive(name: string): string {
+  return /s$/i.test(name) ? `${name}'` : `${name}'s`
 }
 
 /** What the upload flow says about an upload source's export. */
@@ -292,4 +301,55 @@ export const MATOMO_GUIDE = {
   /** M10-j: the token stays valid at Matomo, and the finish and failed states say so. */
   revokeNote:
     "Pulse can't revoke this token automatically. You can delete it now in Matomo under Administration → Personal → Security → Auth tokens.",
+} as const
+
+/**
+ * What the Google Analytics flow says (PULSE-140, §3.12m5a; the owner ruled the
+ * A line of every W-M5 row on 29-09-2026). GA4 is a pull source with no parser,
+ * so its copy lives here beside MATOMO_GUIDE rather than in UPLOAD_GUIDE.
+ */
+export const GA4_GUIDE = {
+  /** W-M5-1: the Connect row's second caption line. */
+  connectNote: 'Google opens in a new window. Pulse only asks to read your Google Analytics.',
+  /** W-M5-2: while the Google window is open. */
+  waitingChip: 'Waiting for Google',
+  waitingLabel: 'Google window',
+  waitingCaption: 'Finish signing in to Google in the other window. If you closed it, open it again.',
+  waitingButton: 'Open Google again',
+  /** §3.12m5a constraint 4: the per-source chip word while the server says awaiting_property. */
+  // Owner, 30-09-2026 (no picker since 29-09): the next step is Start the import.
+  awaitingChip: 'Ready to start',
+  /** W-M5-6: the account row's caption. */
+  accountCaption: 'Pulse reads the property with this Google account.',
+  /** W-M5-7. */
+  hostnamesLoading: "Loading this property's hostnames…",
+  imported: [
+    'Visitors, visits and pageviews',
+    'Pages and entry pages',
+    'Referrers and campaigns',
+    'Countries, regions and cities',
+    'Devices, browsers and operating systems',
+    'Languages and screen sizes',
+  ],
+  /** W-M5-14: GA4's own lines, before NOT_IMPORTED_ANYWHERE. */
+  notImported: [
+    "Exit pages: Google Analytics doesn't report them",
+    "Visitor timezones, funnels and journeys: they can't be rebuilt from Google Analytics' reports",
+  ],
+  /** W-M5-12 (the in-app browser collapse, M5-g) and W-M5-13 (thresholding, M5-f), after the visitors caveat. */
+  worthKnowing: [
+    'In-app browsers, such as Instagram or TikTok, show as Safari or Chrome on imported days, because Google Analytics reports the browser underneath them.',
+    "Google Analytics leaves out some small counts when Google signals is on. Pulse imports what Google reports and doesn't estimate the rest.",
+  ],
+  /** W-M5-17: the reconnect row's caption, naming the account that had access. */
+  reconnectCaption: (email: string | null | undefined): string =>
+    email
+      ? `Sign in as ${email} again, or with another account that can read the property.`
+      : // Owner, 29-09-2026 ("ship as written"): an import with no stored address (none was given at sign-in).
+        'Sign in with an account that can read the property.',
+  /** W-M5-18. */
+  stoppedAt: (done: number, total: number): string =>
+    `Stopped at part ${done.toLocaleString('en-US')} of ${total.toLocaleString('en-US')}`,
+  /** The ruled quota sentence (§3.10a), its time per W-M5-15. */
+  pausedUntil: (time: string): string => `Paused until ${time} so your Google Analytics stays usable.`,
 } as const
