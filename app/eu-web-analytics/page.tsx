@@ -12,10 +12,12 @@ import { RelatedLinks } from '@/components/marketing/seo/RelatedLinks'
 import { SeoPageCta } from '@/components/marketing/seo/SeoPageCta'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
 import { DEFAULT_OG_IMAGES } from '@/lib/og'
+import { seoFor } from '@/lib/seo'
 
 const SITE_URL = 'https://pulse.ciphera.net'
 
-export const metadata: Metadata = {
+// Level 1: merged with a WordPress stub for '/eu-web-analytics' when one exists (design §4.3).
+export const metadata: Metadata = seoFor('/eu-web-analytics', {
   title: 'EU web analytics',
   description:
     'EU web analytics with data on Swiss/EU infrastructure, operated by an EU company (Ciphera BV, Belgium). No transfer to the US, no US-jurisdiction cloud in the path. Sovereign by design.',
@@ -27,7 +29,7 @@ export const metadata: Metadata = {
     siteName: 'Pulse Analytics',
     images: DEFAULT_OG_IMAGES,
   },
-}
+})
 
 const breadcrumb = {
   '@context': 'https://schema.org',

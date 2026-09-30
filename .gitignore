@@ -2,6 +2,13 @@
 
 # auto-generated
 /lib/integration-guides.gen.ts
+# Level 1 SEO — built from WordPress at build time (design §4.2, D38). NOT
+# committed, deliberately: a committed copy would be a second source of truth
+# for what the CMS says, and the stale one always wins an argument nobody knew
+# was happening — same reasoning as ciphera-website's own lib/seo.gen.ts. The
+# build fails loudly if WordPress is unreachable past the bounded retry
+# (scripts/generate-seo.ts, D39), unless CMS_UNAVAILABLE_OK=1 is set.
+/lib/seo.gen.ts
 /public/build-id.json
 # The import worker, built by `npm run build:worker` (prebuild). Build output on
 # purpose: Next serves public/ from its own image, so committing it could only

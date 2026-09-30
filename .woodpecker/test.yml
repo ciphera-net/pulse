@@ -29,6 +29,17 @@ steps:
     commands:
       - export NODE_AUTH_TOKEN="$NPM_READ_TOKEN"
       - npm ci
+      # 🔴 lib/seo.gen.ts is GIT-IGNORED (see .gitignore) — everything below this
+      # line, starting with `npm run type-check`, imports it via lib/seo.ts. This
+      # step runs on the `runner: k8s` label specifically so it can reach
+      # WordPress at wordpress.apps.svc.cluster.local the same way push.yml's
+      # next-build step does (no secret needed — the NetworkPolicy already
+      # admits the whole woodpecker-builds namespace). D39: bounded retry, then
+      # a loud failure — including here, on a PR, if the 25 Pulse route stubs
+      # are not (yet) fully seeded in WordPress. That is a real, correct
+      # failure the moment this step is wired in, not a flake to retry around;
+      # do not weaken the count gate to make this pass before the stubs exist.
+      - npm run generate:seo
       # 🔴 05-09-2026 — THE BUDGET NOW BLOCKS A MERGE, WHICH IT NEVER DID.
       # scripts/build-scripts.mjs has enforced GZIP_BUDGET (3072 B) since it was
       # written, but it runs from `prebuild`, and `npm run build` runs only in

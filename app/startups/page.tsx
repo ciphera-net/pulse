@@ -7,6 +7,7 @@ import { OpenSourceApplyForm } from '@/components/marketing/OpenSourceApplyForm'
 import OpenSourceFAQ from '@/components/marketing/OpenSourceFAQ'
 import { startupsFaqCategories, startupsFaqData } from '@/components/marketing/startups-faq-data'
 import { cdnUrl } from '@/lib/cdn'
+import { seoFor } from '@/lib/seo'
 
 // /startups — the startups plan (05-09-2026). A content variant of the
 // approved /open-source page: same hero grammar, same terms strip, same
@@ -34,7 +35,8 @@ const description =
 // silently drop the root's site handle along with its image.
 const OG_IMAGE = cdnUrl('/marketing/og-startups-08-09-2026.png')
 
-export const metadata: Metadata = {
+// Level 1: merged with a WordPress stub for '/startups' when one exists (design §4.3).
+export const metadata: Metadata = seoFor('/startups', {
   title: 'The startups plan',
   description,
   alternates: {
@@ -60,7 +62,7 @@ export const metadata: Metadata = {
     description,
     images: [OG_IMAGE],
   },
-}
+})
 
 const TERMS: { value: string; unit: string; label: string }[] = [
   { value: '€0', unit: '/mo', label: 'The price, for a year' },

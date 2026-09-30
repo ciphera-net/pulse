@@ -3,11 +3,13 @@ import type { Metadata } from 'next'
 import PricingSection from '@/components/PricingSection'
 import { PricingCardsSkeleton } from '@/components/skeletons'
 import { DEFAULT_OG_IMAGES } from '@/lib/og'
+import { seoFor } from '@/lib/seo'
 
 const description =
   'Every Pulse plan runs the full product — you pay for scale, not features. Start free with 5,000 pageviews/mo; no cookies, no consent banner.'
 
-export const metadata: Metadata = {
+// Level 1: merged with a WordPress stub for '/pricing' when one exists (design §4.3).
+export const metadata: Metadata = seoFor('/pricing', {
   title: 'Pricing',
   description,
   alternates: {
@@ -19,7 +21,7 @@ export const metadata: Metadata = {
     siteName: 'Pulse Analytics',
     images: DEFAULT_OG_IMAGES,
   },
-}
+})
 
 export default function PricingPage() {
   return (

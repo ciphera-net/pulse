@@ -63,6 +63,12 @@ const PUBLIC_ROUTES = new Set([
   // * /login, so a Worker would be handed HTML instead of JavaScript — the same
   // * class of failure sw.js and the tracker files above are exempt from.
   '/workers/import.js',
+  // * The Level 1 SEO build self-report (design §4.4) — force-static JSON, no
+  // * auth, no-store. WITHOUT this entry it falls through to the default-deny
+  // * branch below and 307s to /login like any other unlisted path, which
+  // * would make it useless to a future publish watcher (D37 Phase C) reading
+  // * it from outside a session.
+  '/sys/seo-state',
 ])
 
 const PUBLIC_PREFIXES = [
