@@ -42,7 +42,7 @@ function fullFixture(): RouteStubNode[] {
 }
 
 function okResponse(body: unknown) {
-  return { ok: true, status: 200, json: async () => body }
+  return { ok: true, status: 200, text: async () => JSON.stringify(body), json: async () => body }
 }
 
 function scratchOutPath(): string {
@@ -95,6 +95,16 @@ describe('buildRouteMap — D38 allowlist + dedup', () => {
     const nodes = [validNode('/about', { routeSites: { nodes: [{ slug: 'ciphera-net' }] } })]
     const seen = buildRouteMap(nodes)
     expect(seen.size).toBe(0)
+  })
+
+  it('does NOT fail on another site\'s malformed stub — tenant isolation', () => {
+    // A ciphera.net editor's pathless stub must fail ciphera.net's build, never Pulse's.
+    const nodes = [
+      ...fullFixture(),
+      validNode('', { routeSites: { nodes: [{ slug: 'ciphera-net' }] } }),
+      validNode('no-leading-slash', { routeSites: { nodes: [{ slug: 'ciphera-net' }] } }),
+    ]
+    expect(buildRouteMap(nodes).size).toBe(25)
   })
 
   it('fails on an empty path', () => {
@@ -175,6 +185,42 @@ describe('fetchWithRetry — D39 bounded retry with backoff', () => {
       baseMs: 1,
     })
     expect(outcome).toEqual({ kind: 'client_error', lastError: 'HTTP 400 from http://wp.test/graphql' })
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(sleepImpl).not.toHaveBeenCalled()
+  })
+
+  it('aborts a HANGING attempt with its own timeout, so the window really bounds', async () => {
+    // Both measured outages were hangs, not refusals. This fetch never answers
+    // unless its signal aborts it.
+    // Without a signal it hangs for real, so removing the per-attempt timeout
+    // makes this test time out rather than pass by accident.
+    const fetchImpl = vi.fn().mockImplementation(
+      (_url: string, init?: { signal?: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(init.signal!.reason))
+        })
+    )
+    const started = Date.now()
+    const outcome = await fetchWithRetry('http://wp.test/graphql', '{}', {
+      fetchImpl,
+      sleepImpl: async () => {},
+      totalMs: 60,
+      baseMs: 1,
+    })
+    expect(outcome.kind).toBe('unavailable')
+    expect(Date.now() - started).toBeLessThan(2_000)
+  })
+
+  it('treats a 200 whose body is not JSON as a contract failure, never "unavailable"', async () => {
+    let now = 0
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: true, status: 200, text: async () => '<html>login</html>' })
+    // A fake clock, so a regression that retries this ends fast and fails cleanly
+    // instead of spinning against a real window.
+    const sleepImpl = vi.fn().mockImplementation(async (ms: number) => { now += ms })
+    const outcome = await fetchWithRetry('http://wp.test/graphql', '{}', {
+      fetchImpl, sleepImpl, totalMs: 100, baseMs: 10, now: () => now,
+    })
+    expect(outcome.kind).toBe('client_error')
     expect(fetchImpl).toHaveBeenCalledTimes(1)
     expect(sleepImpl).not.toHaveBeenCalled()
   })
@@ -300,6 +346,17 @@ describe('run() — end to end, D39 override semantics', () => {
     const fetchImpl = vi.fn().mockResolvedValue(okResponse({ data: { routeStubs: { nodes: partial } } }))
     await expect(run({ fetchImpl, outPath, cmsUnavailableOk: true })).rejects.toThrow(/expected 25/)
     expect(fs.existsSync(outPath)).toBe(false)
+  })
+
+  it('D39: the override flag never masks a 200 that is not JSON', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: true, status: 200, text: async () => '<html>nope</html>' })
+    let now = 0
+    await expect(
+      run({
+        fetchImpl, outPath: scratchOutPath(), cmsUnavailableOk: true,
+        sleepImpl: async (ms: number) => { now += ms }, totalMs: 100, baseMs: 10, now: () => now,
+      })
+    ).rejects.toThrow(/not JSON/)
   })
 
   it('D39: the override flag never masks a GraphQL errors[] response', async () => {
