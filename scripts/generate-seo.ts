@@ -358,41 +358,52 @@ export async function run(opts: {
 } = {}): Promise<{ routeCount: number; watermark: string; override: boolean }> {
   const outPath = opts.outPath ?? OUT
 
-  const outcome = await fetchWithRetry(WP, QUERY, opts)
+  // 🔴 D39, as refined 30-09-2026 (design §4.3). On the current app this build
+  // also ships the DASHBOARD, so no CMS problem may hold a product deploy
+  // hostage — not an outage, and not bad content either (an agency editor
+  // unpublishing one stub fails the count gate). Every failure below is loud
+  // by default. With CMS_UNAVAILABLE_OK=1 a human can build WITHOUT the CMS:
+  // the override DISCARDS whatever WordPress returned and writes an empty
+  // routeSeo, so every route renders its own built-in metadata. It therefore
+  // cannot ship bad CMS data, whatever the failure was — which is why it may
+  // cover a validation failure as well as an outage.
+  const skipCms = (reason: string) => {
+    console.error(`
+🔴🔴🔴 BUILDING WITHOUT THE CMS — NO LEVEL 1 SEO OVERRIDES 🔴🔴🔴
 
-  if (outcome.kind === 'client_error') {
-    // WordPress answered and refused — never retryable, never maskable by
-    // CMS_UNAVAILABLE_OK (see the FetchOutcome comment above).
-    fail(outcome.lastError)
-  }
+  ${reason}
 
-  if (outcome.kind === 'unavailable') {
-    if (opts.cmsUnavailableOk) {
-      // D39 step 3: the explicit, visible override. Never silent — every line
-      // below is deliberately loud, and it is the ONLY path that ever writes
-      // an empty routeSeo without every route having a real stub.
-      console.error(`
-🔴🔴🔴 WORDPRESS UNREACHABLE — SHIPPING WITHOUT LEVEL 1 SEO OVERRIDES 🔴🔴🔴
-
-  ${outcome.lastError}
-
-  CMS_UNAVAILABLE_OK=1 was set, so this build proceeds with NO route stubs —
-  every page renders its own built-in metadata, exactly as before Level 1
-  existed. /sys/seo-state will report override:true until the next normal
-  build.
+  CMS_UNAVAILABLE_OK=1 was set, so this build DISCARDS what WordPress returned
+  and ships every page's own built-in metadata, exactly as before Level 1
+  existed. /sys/seo-state reports override:true until the next normal build.
 
   This was a deliberate, human-triggered override, not a silent fallback.
 🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴
 `)
-      const content = renderOutput(new Map(), '', true)
-      fs.writeFileSync(outPath, content, 'utf-8')
-      return { routeCount: 0, watermark: '', override: true }
-    }
+    fs.writeFileSync(outPath, renderOutput(new Map(), '', true), 'utf-8')
+    return { routeCount: 0, watermark: '', override: true }
+  }
 
+  const outcome = await fetchWithRetry(WP, QUERY, opts)
+  if (outcome.kind !== 'ok') {
+    if (opts.cmsUnavailableOk) return skipCms(outcome.lastError)
     fail(outcome.lastError)
   }
 
-  const body = outcome.body as {
+  try {
+    return generateFrom(outcome.body, outPath)
+  } catch (e) {
+    if (e instanceof GenerateSeoError && opts.cmsUnavailableOk) return skipCms(e.message)
+    throw e
+  }
+}
+
+/** Validation and output for a response WordPress actually gave. Throws GenerateSeoError. */
+function generateFrom(
+  rawBody: unknown,
+  outPath: string
+): { routeCount: number; watermark: string; override: boolean } {
+  const body = rawBody as {
     errors?: unknown[]
     data?: { routeStubs?: { nodes?: RouteStubNode[] } }
   }
