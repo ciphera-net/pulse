@@ -26,11 +26,12 @@ describe('AUDIT_ACTIONS / ACTION_LABELS coverage (PULSE-73)', () => {
   })
 
   it('carries every action pulse-backend writes today and every history-only action production still stores', () => {
-    // Written today (52): the 41 from before PULSE-92 Phase 5, plus its six
+    // Written today (53): the 41 from before PULSE-92 Phase 5, plus its six
     // team-write actions (invite_link_created, invite_link_revoked,
     // member_left, onboarding_completed, org_created, org_renamed), plus
     // site_exported (PULSE-132, one row per export download), plus the four
-    // report actions (PULSE-133/134).
+    // report actions (PULSE-133/134), plus site_privacy_signals_changed
+    // (PULSE-164, one row per save of the DNT/GPC toggles).
     const writtenToday = [
       'admin_plan_granted', 'admin_refund_failed', 'admin_refund_issued', 'admin_verdict_revoked',
       'billing_checkout_started', 'billing_payment_method_update_started', 'billing_refund_failed',
@@ -46,12 +47,13 @@ describe('AUDIT_ACTIONS / ACTION_LABELS coverage (PULSE-73)', () => {
       'oss_application_claimed', 'oss_application_decided', 'oss_application_link_resent',
       'ownership_transferred',
       'report_created', 'report_revoked', 'report_schedule_created', 'report_schedule_stopped',
-      'site_created', 'site_exported', 'site_identity_window_changed', 'site_permanently_deleted', 'site_restored',
+      'site_created', 'site_exported', 'site_identity_window_changed', 'site_permanently_deleted',
+      'site_privacy_signals_changed', 'site_restored',
       'site_soft_deleted', 'site_timezone_changed', 'site_visitor_views_disabled', 'site_visitor_views_enabled',
       'subscription_cancel_at_period_end', 'subscription_canceled_immediate', 'subscription_plan_changed',
       'subscription_resumed',
     ]
-    expect(writtenToday).toHaveLength(52)
+    expect(writtenToday).toHaveLength(53)
     // History only (9): no code writes these any more, but production still
     // holds rows carrying them.
     const historyOnly = [
@@ -120,6 +122,14 @@ describe('actionLabelFor', () => {
     expect(actionTone('report_created')).toBe('neutral')
     expect(actionTone('report_schedule_created')).toBe('neutral')
     expect(actionTone('report_schedule_stopped')).toBe('neutral')
+  })
+
+  // PULSE-164: one row per save of the Do Not Track / GPC toggles. Neutral —
+  // turning a privacy signal on or off is neither a removal nor a creation.
+  it('site_privacy_signals_changed: labelled and neutral', () => {
+    expect(actionLabelFor('site_privacy_signals_changed', false)).toBe('Changed Do Not Track or GPC setting')
+    expect(actionLabelFor('site_privacy_signals_changed', true)).toBe('Changed Do Not Track or GPC setting')
+    expect(actionTone('site_privacy_signals_changed')).toBe('neutral')
   })
 
   it('falls back to a humanised label for an action neither list knows yet', () => {
