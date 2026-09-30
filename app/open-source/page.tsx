@@ -7,6 +7,7 @@ import { HomeClosingCta } from '@/components/marketing/HomeClosingCta'
 import { OpenSourceApplyForm } from '@/components/marketing/OpenSourceApplyForm'
 import OpenSourceFAQ from '@/components/marketing/OpenSourceFAQ'
 import { cdnUrl } from '@/lib/cdn'
+import { seoFor } from '@/lib/seo'
 
 // /open-source — the open-source plan (design approved 02-09-2026, round 8;
 // docs/plans/02-09-2026-opensource-plan-design.md §4a). Anonymous on-page
@@ -29,7 +30,8 @@ const description =
 // drop the root's site handle along with its image.
 const OG_IMAGE = cdnUrl('/marketing/og-open-source-02-09-2026.png')
 
-export const metadata: Metadata = {
+// Level 1: merged with a WordPress stub for '/open-source' when one exists (design §4.3).
+export const metadata: Metadata = seoFor('/open-source', {
   title: 'The open-source plan',
   description,
   alternates: {
@@ -55,7 +57,7 @@ export const metadata: Metadata = {
     description,
     images: [OG_IMAGE],
   },
-}
+})
 
 const TERMS: { value: string; unit: string; label: string }[] = [
   { value: '€0', unit: '/mo', label: 'The price, permanently' },

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import MarketingHome from '@/components/marketing/MarketingHome'
 import { GA4LandingNotice } from '@/components/settings/import/GA4LandingNotice'
+import { seoFor } from '@/lib/seo'
 
 // * Server component homepage. Next.js does NOT self-canonicalise — every
 // * indexable route must declare its own canonical or it inherits none. This
@@ -8,11 +9,14 @@ import { GA4LandingNotice } from '@/components/settings/import/GA4LandingNotice'
 // * top-level metadata field, so declaring it does NOT replace the site-wide
 // * `openGraph`/`twitter` blocks from the root layout (Next.js merges metadata
 // * per top-level field), and the homepage keeps the full social card.
-export const metadata: Metadata = {
+//
+// * Level 1: merged with a WordPress stub for '/' when one exists (design
+// * §4.3) — '/' matches only the literal root path, never as a prefix.
+export const metadata: Metadata = seoFor('/', {
   alternates: {
     canonical: '/',
   },
-}
+})
 
 // * Entity-graph JSON-LD. Both nodes reference the canonical Ciphera
 // * Organization on ciphera.net (`@id #organization`) rather than minting a

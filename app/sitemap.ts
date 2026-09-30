@@ -1,6 +1,8 @@
 import type { MetadataRoute } from 'next'
 import { integrations } from '@/lib/integrations'
 import { comparisons } from '@/lib/comparisons'
+import { STATIC_ROUTES, CATEGORY_ROUTES, TOOL_ROUTES } from '@/lib/marketing-routes'
+import { routeSeo } from '@/lib/seo'
 
 const BASE_URL = 'https://pulse.ciphera.net'
 
@@ -8,6 +10,10 @@ const BASE_URL = 'https://pulse.ciphera.net'
 // * that date; leave a route on its prior date only if its content genuinely
 // * has not changed. Kept as an explicit map so a future edit updates the one
 // * route it touches rather than a single global stamp drifting for all.
+//
+// * Keyed the sitemap's own way — `''` for the root, matching `route.url`
+// * below — not lib/marketing-routes.ts's `'/'` (that module's job is the
+// * exact-path allowlist; this map is purely cosmetic per-route history).
 const LAST_MODIFIED: Record<string, string> = {
   '': '2026-07-21',
   '/about': '2026-07-21',
@@ -27,38 +33,15 @@ const INTEGRATIONS_LASTMOD = '2026-07-21'
 // * in the 21-07 pass.
 const SEO_LASTMOD = '2026-07-21'
 
-// * Category landing pages — individual routes, each a distinct angle on the
-// * privacy-analytics category queries.
-const CATEGORY_ROUTES = [
-  '/cookieless-analytics',
-  '/gdpr-compliant-analytics',
-  '/google-analytics-alternative',
-  '/analytics-without-cookie-banner',
-  '/eu-web-analytics',
-]
-
-// * Client-side tool pages (no backend), indexable and linked from the cluster.
-const TOOL_ROUTES = ['/tools/utm-builder', '/tools/cookie-banner-loss-calculator']
-
 export default function sitemap(): MetadataRoute.Sitemap {
-  const publicRoutes = [
-    { url: '', priority: 1.0, changeFrequency: 'weekly' as const },
-    { url: '/about', priority: 0.8, changeFrequency: 'monthly' as const },
-    { url: '/features', priority: 0.9, changeFrequency: 'monthly' as const },
-    { url: '/pricing', priority: 0.9, changeFrequency: 'monthly' as const },
-    { url: '/faq', priority: 0.7, changeFrequency: 'monthly' as const },
-    { url: '/changelog', priority: 0.6, changeFrequency: 'weekly' as const },
-    { url: '/installation', priority: 0.8, changeFrequency: 'monthly' as const },
-    { url: '/integrations', priority: 0.8, changeFrequency: 'monthly' as const },
-    { url: '/demo', priority: 0.8, changeFrequency: 'weekly' as const },
-    { url: '/open-source', priority: 0.8, changeFrequency: 'monthly' as const },
-    { url: '/startups', priority: 0.8, changeFrequency: 'monthly' as const },
-    // * /contact was a real 200 page that no sitemap and no robots Allow line ever
-    // * mentioned (found 10-09-2026). robots.txt opens with `Allow: /`, so it was
-    // * crawlable all along — it was simply never advertised, which is the half a
-    // * sitemap exists to do.
-    { url: '/contact', priority: 0.6, changeFrequency: 'yearly' as const },
-  ]
+  // * lib/marketing-routes.ts uses '/' for the homepage; the sitemap's own
+  // * convention is '' (so `${BASE_URL}${url}` never doubles a slash) — this
+  // * is the one place that translates between the two.
+  const publicRoutes = STATIC_ROUTES.map((route) => ({
+    url: route.path === '/' ? '' : route.path,
+    priority: route.priority,
+    changeFrequency: route.changeFrequency,
+  }))
 
   const staticEntries: MetadataRoute.Sitemap = publicRoutes.map((route) => ({
     url: `${BASE_URL}${route.url}`,
@@ -68,7 +51,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }))
 
   // * Every built /integrations/[slug] guide (the long-tail "<framework>
-  // * analytics" pages) — previously absent from the sitemap.
+  // * analytics" pages) — previously absent from the sitemap. Not part of the
+  // * L1 marketing-routes allowlist (D38) — see lib/marketing-routes.ts.
   const integrationEntries: MetadataRoute.Sitemap = integrations.map((integration) => ({
     url: `${BASE_URL}/integrations/${integration.id}`,
     lastModified: new Date(INTEGRATIONS_LASTMOD),
@@ -100,11 +84,27 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.7,
   }))
 
-  return [
+  const all: MetadataRoute.Sitemap = [
     ...staticEntries,
     ...comparisonEntries,
     ...categoryEntries,
     ...toolEntries,
     ...integrationEntries,
   ]
+
+  // 🔴 THE SITEMAP MUST HONOUR THE SAME `robots` VALUE THE PAGE DOES (design §4.5).
+  // A stub's noindex flag is the agency's own toggle — without this, the page
+  // seoFor() renders as noindex would still be listed here, telling crawlers the
+  // opposite of what the page itself says. Ported from ciphera-website's
+  // app/sitemap.ts (same design section). Only the 25 L1 routes can ever carry a
+  // stub, so this is a no-op for the 75 /integrations/[slug] guides below.
+  return all
+    .map((entry) => {
+      const path = entry.url.replace(BASE_URL, '') || '/'
+      const seo = routeSeo[path]
+      if (!seo) return entry
+      if (seo.noindex) return null
+      return seo.modified ? { ...entry, lastModified: new Date(seo.modified) } : entry
+    })
+    .filter((e): e is MetadataRoute.Sitemap[number] => e !== null)
 }

@@ -12,10 +12,12 @@ import { RelatedLinks } from '@/components/marketing/seo/RelatedLinks'
 import { SeoPageCta } from '@/components/marketing/seo/SeoPageCta'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
 import { DEFAULT_OG_IMAGES } from '@/lib/og'
+import { seoFor } from '@/lib/seo'
 
 const SITE_URL = 'https://pulse.ciphera.net'
 
-export const metadata: Metadata = {
+// Level 1: merged with a WordPress stub for '/cookieless-analytics' when one exists (design §4.3).
+export const metadata: Metadata = seoFor('/cookieless-analytics', {
   title: 'Cookieless analytics',
   description:
     'How cookieless web analytics works: no cookies, no client-side identifiers, no fingerprinting. Pulse counts visits and unique visitors server-side, with nothing identifying stored in the browser — here is the mechanism.',
@@ -27,7 +29,7 @@ export const metadata: Metadata = {
     siteName: 'Pulse Analytics',
     images: DEFAULT_OG_IMAGES,
   },
-}
+})
 
 const breadcrumb = {
   '@context': 'https://schema.org',

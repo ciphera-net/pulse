@@ -3,15 +3,17 @@ import path from 'path'
 import ReactMarkdown from 'react-markdown'
 import type { Metadata } from 'next'
 import { MarketingSection } from '@/components/marketing/system/MarketingSection'
+import { seoFor } from '@/lib/seo'
 import { ChangelogReleases, type Release } from './ChangelogReleases'
 
-export const metadata: Metadata = {
+// Level 1: merged with a WordPress stub for '/changelog' when one exists (design §4.3).
+export const metadata: Metadata = seoFor('/changelog', {
   title: 'Changelog',
   description: 'Release history and notable changes for Pulse, privacy-first web analytics.',
   alternates: {
     canonical: '/changelog',
   },
-}
+})
 
 // * How many release sections (incl. Unreleased) render expanded; every other
 // * version collapses to its heading so the page stays a few screens tall.
