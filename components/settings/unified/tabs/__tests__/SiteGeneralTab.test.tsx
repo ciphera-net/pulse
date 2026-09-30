@@ -36,13 +36,26 @@ vi.mock('@/lib/api/sites', () => ({
 // this smoke render focuses on the tab's OWN composition (panels, danger zone,
 // verification chip, save wiring / partial-PUT body).
 vi.mock('@/components/sites/ScriptSetupBlock', () => ({
-  // The stub exposes onFeaturesChange so the merge contract below can be
-  // driven: clicking it emits exactly the key set the real block still owns.
-  default: ({ onFeaturesChange }: { onFeaturesChange?: (f: Record<string, unknown>) => void }) => (
-    <button
-      data-testid="script-setup"
-      onClick={() => onFeaturesChange?.({ scroll: false, outbound: true, downloads: true, sri: false })}
-    />
+  // The stub exposes onFeaturesChange and onPrivacySignalsChange so the merge
+  // contract and the respect_dnt/respect_gpc plumbing can both be driven:
+  // clicking each button emits exactly what the real block would.
+  default: ({
+    onFeaturesChange,
+    onPrivacySignalsChange,
+  }: {
+    onFeaturesChange?: (f: Record<string, unknown>) => void
+    onPrivacySignalsChange?: (s: { respect_dnt: boolean; respect_gpc: boolean }) => void
+  }) => (
+    <>
+      <button
+        data-testid="script-setup"
+        onClick={() => onFeaturesChange?.({ scroll: false, outbound: true, downloads: true, sri: false })}
+      />
+      <button
+        data-testid="privacy-signals-toggle"
+        onClick={() => onPrivacySignalsChange?.({ respect_dnt: false, respect_gpc: true })}
+      />
+    </>
   ),
 }))
 vi.mock('@/components/settings/unified/ResetDataModal', () => ({
@@ -159,7 +172,7 @@ describe('SiteGeneralTab (Facet structured panels)', () => {
     expect(screen.queryByRole('button', { name: /verify/i })).not.toBeInTheDocument()
   })
 
-  it('sends a PARTIAL PUT (name/timezone/script_features only — B1) on save', async () => {
+  it('sends a PARTIAL PUT (name/timezone/script_features/respect_dnt/respect_gpc — B1) on save', async () => {
     render(<SiteGeneralTab siteId="s1" />)
     const nameInput = await screen.findByDisplayValue('Acme')
     fireEvent.change(nameInput, { target: { value: 'Acme Corp' } })
@@ -171,8 +184,38 @@ describe('SiteGeneralTab (Facet structured panels)', () => {
         name: 'Acme Corp',
         timezone: 'UTC',
         script_features: {},
+        respect_dnt: true,
+        respect_gpc: true,
       }),
     )
+  })
+
+  it('sends respect_dnt / respect_gpc when only the privacy toggles changed, and marks the form dirty', async () => {
+    render(<SiteGeneralTab siteId="s1" />)
+    await screen.findByDisplayValue('Acme')
+    expect(screen.getByTestId('savebar').dataset.dirty).toBe('false')
+
+    fireEvent.click(screen.getByTestId('privacy-signals-toggle'))
+    await waitFor(() => expect(screen.getByTestId('savebar').dataset.dirty).toBe('true'))
+
+    fireEvent.click(screen.getByRole('button', { name: 'save' }))
+    await waitFor(() =>
+      expect(updateSite).toHaveBeenCalledWith('s1', {
+        name: 'Acme',
+        timezone: 'UTC',
+        script_features: {},
+        respect_dnt: false,
+        respect_gpc: true,
+      }),
+    )
+  })
+
+  it('initialises respect_dnt / respect_gpc from the site (undefined -> true) and stays clean until touched', async () => {
+    // siteState() carries no respect_dnt / respect_gpc at all — the undefined
+    // case this contract says must read as true, not false.
+    render(<SiteGeneralTab siteId="s1" />)
+    await screen.findByDisplayValue('Acme')
+    expect(screen.getByTestId('savebar').dataset.dirty).toBe('false')
   })
 
   it('preserves legacy script_features keys the block no longer emits (merge, not replace)', async () => {
@@ -200,6 +243,8 @@ describe('SiteGeneralTab (Facet structured panels)', () => {
           downloads: true,
           sri: false,
         },
+        respect_dnt: true,
+        respect_gpc: true,
       }),
     )
   })

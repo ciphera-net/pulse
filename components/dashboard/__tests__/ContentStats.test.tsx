@@ -137,6 +137,21 @@ describe('ContentStats pagination (blocks round, 01-09-2026)', () => {
   })
 })
 
+// PULSE-172: the "All pages" link is gone from this header — the view stays
+// reachable from the sidebar instead. The unit label keeps its own slot.
+describe('ContentStats header (PULSE-172)', () => {
+  it('renders no "All pages" link, on any surface', () => {
+    render(<ContentStats {...baseProps} totals={totals} />)
+    expect(screen.queryByRole('link', { name: /All pages/i })).toBeNull()
+    expect(screen.queryByText('All pages')).toBeNull()
+  })
+
+  it('renders no "All pages" link even on the member surface with page paths on', () => {
+    render(<ContentStats {...baseProps} totals={totals} memberFeatures collectPagePaths />)
+    expect(screen.queryByText('All pages')).toBeNull()
+  })
+})
+
 // PULSE-118 (M11-h): a card whose dimension the import holds no rows for says
 // so, under its rows, from the response's own provenance.
 describe('ContentStats imported-history footnote', () => {
