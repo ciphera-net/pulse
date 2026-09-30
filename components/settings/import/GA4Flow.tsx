@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Button, Toggle } from '@ciphera-net/facet'
+import { Button } from '@ciphera-net/facet'
 import { PanelRow, PanelRows } from '@/components/settings/panels'
 import { EVENTS_IMPORTED_LINE, GA4_GUIDE, NOT_IMPORTED_ANYWHERE, dailyVisitorsCaveat } from '@/lib/import/source-display'
 import type { SourceEvent } from '@/lib/import/core/events'
@@ -28,7 +28,7 @@ import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import { EventMapping, useEventMapping, useKnownEventNames } from './EventMapping'
 import { ImportErrorBanner } from './ImportErrorBanner'
 import { DeleteImportButton, DoneDetails, ProgressRow, SourceHeader, serverProgress } from './ImportRows'
-import { hostsSummary, rangeText, shareText, slotPhase, waitUntilText } from './importFormat'
+import { hostsSummary, otherHostsCaption, rangeText, slotPhase, waitUntilText } from './importFormat'
 import { formatLongDay } from '@/lib/view/view'
 import { CACHE_NOTE } from './UploadFlow'
 
@@ -48,8 +48,10 @@ import { CACHE_NOTE } from './UploadFlow'
 //      owner's two sentences; "Use another account" is the way out.
 //   3. The Google account row, with "Use another account" (a reconnect of the
 //      same import with another sign-in).
-//   4. Hostnames, a switch each, the site's own kept (the server's `suggested`);
-//      one line when every hostname is the site's own.
+//   4. Hostnames: ONE line, the site's own (the server's `suggested`: its
+//      domain and www.). Owner, 30-09-2026: another website measured by the
+//      same property is never imported and has no switch; the caption counts
+//      it. The server refuses any other hostname at confirm too.
 //   5. The three lists, the M12 mapping, and "Start the import": the flow's ONE
 //      orange button.
 //   6. A quota pause keeps the chip on "Importing"; the progress caption says
@@ -137,7 +139,6 @@ export function GA4Flow({
 
   const [property, setProperty] = useState<Load<GA4Property> | null>(null)
   const [hosts, setHosts] = useState<Load<GA4Hostname[]> | null>(null)
-  const [kept, setKept] = useState<ReadonlySet<string>>(new Set())
   const [hostsTry, setHostsTry] = useState(0)
   const [preview, setPreview] = useState<{ propertyId: string; events: SourceEvent[] } | null>(null)
   const [previewError, setPreviewError] = useState<ImportMessage | null>(null)
@@ -265,8 +266,6 @@ export function GA4Flow({
         if (!live) return
         const list = Array.isArray(r?.hostnames) ? r.hostnames : []
         setHosts({ state: 'ready', value: list })
-        // The server's suggestion is the default: the site's domain and its www. (M5-d).
-        setKept(new Set(list.filter((x) => x.suggested === true).map((x) => x.host)))
       })
       .catch((e) => {
         if (live) setHosts({ state: 'error', message: messageFor(e) })
@@ -305,7 +304,9 @@ export function GA4Flow({
   )
 
   const hostList = hosts?.state === 'ready' ? hosts.value : null
-  const keptHosts = hostList ? hostList.filter((x) => kept.has(x.host)) : []
+  // Only the site's own hostnames are imported (owner, 30-09-2026): the server's `suggested`.
+  const keptHosts = hostList ? hostList.filter((x) => x.suggested === true) : []
+  const otherHosts = hostList ? hostList.filter((x) => x.suggested !== true) : []
   // 🔴 The web streams come from the server's property answer, never from this page.
   const streamIds = property?.state === 'ready' ? property.value.stream_ids : null
   // The plan is keyed by exactly what it was read for: a stale answer never shows as current.
@@ -347,14 +348,6 @@ export function GA4Flow({
     planNow?.state === 'ready' &&
     !!previewed &&
     mapping.valid
-
-  const toggleHost = (host: string) =>
-    setKept((prev) => {
-      const next = new Set(prev)
-      if (next.has(host)) next.delete(host)
-      else next.add(host)
-      return next
-    })
 
   const start = async () => {
     if (!awaiting || !propertyId || !streamIds || !ready || startingRef.current) return
@@ -445,36 +438,19 @@ export function GA4Flow({
           <span className="text-sm text-muted-foreground">{importErrorMessage({ code: 'no_data_in_range' }, 'ga4')?.text}</span>
         </PanelRow>
       )
-    } else if (hostList && hostList.every((x) => x.suggested === true)) {
-      // Every hostname is the site's own: nothing to decide, one line (§3.12m5a state 4).
-      hostRows = (
-        <PanelRow label="Hostnames">
-          <span className="text-sm text-foreground">{hostsSummary(hostList)}</span>
-        </PanelRow>
-      )
     } else if (hostList) {
+      // Layout B (owner, 30-09-2026): one line, the same whether or not other websites share the property.
       hostRows = (
-        <>
-          <PanelRow label="Hostnames" caption={GA4_GUIDE.hostnamesCaption}>
-            <span className="text-sm text-muted-foreground" data-testid="ga4-hosts-kept">
-              {`${keptHosts.length.toLocaleString('en-US')} of ${hostList.length.toLocaleString('en-US')} kept`}
+        <PanelRow label="Hostnames" caption={otherHostsCaption(otherHosts)}>
+          {keptHosts.length > 0 ? (
+            <span className="text-sm text-foreground" data-testid="ga4-hosts-kept">
+              {hostsSummary(keptHosts)}
             </span>
-          </PanelRow>
-          {hostList.map((x) => (
-            <PanelRow
-              key={x.host}
-              label={
-                <span className="block truncate" title={x.host}>
-                  {x.host}
-                </span>
-              }
-              caption={
-                <span className="tabular-nums">{`${x.pageviews.toLocaleString('en-US')} pageviews · ${shareText(x.share)}`}</span>
-              }
-              control={<Toggle checked={kept.has(x.host)} onChange={() => toggleHost(x.host)} aria-label={`Keep ${x.host}`} />}
-            />
-          ))}
-        </>
+          ) : (
+            // Only other websites in the range: nothing of this site to import.
+            <span className="text-sm text-muted-foreground">{importErrorMessage({ code: 'no_data_in_range' }, 'ga4')?.text}</span>
+          )}
+        </PanelRow>
       )
     }
 
