@@ -380,6 +380,7 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
             referrers={safeTopReferrers}
             channels={data?.channels ?? []}
             collectReferrers={site.collect_referrers ?? true}
+            showReferrerDomains={site.show_referrer_domains ?? false}
             siteId={siteId}
             dateRange={dateRange}
             totals={totals}

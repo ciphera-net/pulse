@@ -92,6 +92,12 @@ vi.mock('@ciphera-net/facet', () => ({
         : options?.map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   ),
+  // The stub forwards the naming props Facet's Toggle forwards (id,
+  // aria-label, aria-labelledby, aria-describedby), matching PanelRow's own
+  // aria-labelledby clone (SitePrivacyTab.test.tsx carries the same stub).
+  Toggle: ({ checked, onChange, disabled, id, 'aria-label': ariaLabel, 'aria-labelledby': ariaLabelledBy, 'aria-describedby': ariaDescribedBy }: any) => (
+    <button role="switch" aria-checked={!!checked} disabled={disabled} onClick={() => onChange()} id={id} aria-label={ariaLabel} aria-labelledby={ariaLabelledBy} aria-describedby={ariaDescribedBy} />
+  ),
   ZapIcon: () => <svg />,
   toast: { success: vi.fn(), error: vi.fn() },
   getAuthErrorMessage: () => 'error',
@@ -186,6 +192,7 @@ describe('SiteGeneralTab (Facet structured panels)', () => {
         script_features: {},
         respect_dnt: true,
         respect_gpc: true,
+        show_referrer_domains: false,
       }),
     )
   })
@@ -206,6 +213,7 @@ describe('SiteGeneralTab (Facet structured panels)', () => {
         script_features: {},
         respect_dnt: false,
         respect_gpc: true,
+        show_referrer_domains: false,
       }),
     )
   })
@@ -216,6 +224,62 @@ describe('SiteGeneralTab (Facet structured panels)', () => {
     render(<SiteGeneralTab siteId="s1" />)
     await screen.findByDisplayValue('Acme')
     expect(screen.getByTestId('savebar').dataset.dirty).toBe('false')
+  })
+
+  // ── PULSE-171: the Dashboard panel (referrer domain names) ───────────────
+  it('renders the Dashboard panel between Tracking script and Danger zone, with the exact label and caption', async () => {
+    render(<SiteGeneralTab siteId="s1" />)
+    const headings = await screen.findAllByRole('heading', { level: 2 })
+    expect(headings.map((h) => h.textContent)).toEqual([
+      'Site', 'Tracking script', 'Dashboard', 'Danger zone',
+    ])
+    expect(screen.getByText('Show referrers as domain names')).toBeInTheDocument()
+    expect(screen.getByText(
+      "Show where visitors came from as the site's address (google.com) instead of a name (Google). Rows with no address, like Direct or a shared link, keep their name.",
+    )).toBeInTheDocument()
+  })
+
+  it('initialises show_referrer_domains from the site (undefined -> false/off) and stays clean until touched', async () => {
+    render(<SiteGeneralTab siteId="s1" />)
+    await screen.findByDisplayValue('Acme')
+    const toggle = screen.getByRole('switch', { name: 'Show referrers as domain names' })
+    expect(toggle.getAttribute('aria-checked')).toBe('false')
+    expect(screen.getByTestId('savebar').dataset.dirty).toBe('false')
+  })
+
+  it('toggling the Dashboard panel marks the form dirty and sends show_referrer_domains on save', async () => {
+    render(<SiteGeneralTab siteId="s1" />)
+    await screen.findByDisplayValue('Acme')
+    expect(screen.getByTestId('savebar').dataset.dirty).toBe('false')
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Show referrers as domain names' }))
+    await waitFor(() => expect(screen.getByTestId('savebar').dataset.dirty).toBe('true'))
+
+    fireEvent.click(screen.getByRole('button', { name: 'save' }))
+    await waitFor(() =>
+      expect(updateSite).toHaveBeenCalledWith('s1', {
+        name: 'Acme',
+        timezone: 'UTC',
+        script_features: {},
+        respect_dnt: true,
+        respect_gpc: true,
+        show_referrer_domains: true,
+      }),
+    )
+  })
+
+  it('seeds the toggle ON when the site already has it on, and discard restores it', async () => {
+    useSite.mockReturnValue(siteState({ show_referrer_domains: true }))
+    render(<SiteGeneralTab siteId="s1" />)
+    await screen.findByDisplayValue('Acme')
+    const toggle = screen.getByRole('switch', { name: 'Show referrers as domain names' })
+    expect(toggle.getAttribute('aria-checked')).toBe('true')
+
+    fireEvent.click(toggle)
+    await waitFor(() => expect(screen.getByTestId('savebar').dataset.dirty).toBe('true'))
+    fireEvent.click(screen.getByRole('button', { name: 'discard' }))
+    await waitFor(() => expect(screen.getByTestId('savebar').dataset.dirty).toBe('false'))
+    expect(screen.getByRole('switch', { name: 'Show referrers as domain names' }).getAttribute('aria-checked')).toBe('true')
   })
 
   it('preserves legacy script_features keys the block no longer emits (merge, not replace)', async () => {
@@ -245,6 +309,7 @@ describe('SiteGeneralTab (Facet structured panels)', () => {
         },
         respect_dnt: true,
         respect_gpc: true,
+        show_referrer_domains: false,
       }),
     )
   })

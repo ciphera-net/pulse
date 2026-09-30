@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Input, Select, toast, getAuthErrorMessage } from '@ciphera-net/facet'
+import { Input, Select, Toggle, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { useSite, useInstallStatus } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { useCan } from '@/lib/auth/permissions'
@@ -29,6 +29,7 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
   const [scriptFeatures, setScriptFeatures] = useState<Record<string, unknown>>({})
   const [respectDnt, setRespectDnt] = useState(true)
   const [respectGpc, setRespectGpc] = useState(true)
+  const [showReferrerDomains, setShowReferrerDomains] = useState(false)
   const [saving, setSaving] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showResetModal, setShowResetModal] = useState(false)
@@ -71,19 +72,21 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
     setScriptFeatures(site.script_features || {})
     setRespectDnt(site.respect_dnt ?? true)
     setRespectGpc(site.respect_gpc ?? true)
+    setShowReferrerDomains(site.show_referrer_domains ?? false)
     setBaseline(JSON.stringify({
       name: site.name || '',
       timezone: site.timezone || 'UTC',
       scriptFeatures: JSON.stringify(site.script_features || {}),
       respectDnt: site.respect_dnt ?? true,
       respectGpc: site.respect_gpc ?? true,
+      showReferrerDomains: site.show_referrer_domains ?? false,
     }))
     hasInitialized.current = true
   }, [site])
 
   // Track dirty state
   const isDirty = baseline
-    ? JSON.stringify({ name, timezone, scriptFeatures: JSON.stringify(scriptFeatures), respectDnt, respectGpc }) !== baseline
+    ? JSON.stringify({ name, timezone, scriptFeatures: JSON.stringify(scriptFeatures), respectDnt, respectGpc, showReferrerDomains }) !== baseline
     : false
 
   const handleDiscard = () => {
@@ -94,6 +97,7 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
     setScriptFeatures(JSON.parse(snap.scriptFeatures))
     setRespectDnt(snap.respectDnt)
     setRespectGpc(snap.respectGpc)
+    setShowReferrerDomains(snap.showReferrerDomains)
   }
 
   const handleSave = useCallback(async () => {
@@ -108,6 +112,7 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
         script_features: scriptFeatures,
         respect_dnt: respectDnt,
         respect_gpc: respectGpc,
+        show_referrer_domains: showReferrerDomains,
       })
       setBaseline(JSON.stringify({
         name,
@@ -115,6 +120,7 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
         scriptFeatures: JSON.stringify(scriptFeatures),
         respectDnt,
         respectGpc,
+        showReferrerDomains,
       }))
       await mutate()
       toast.success('Site updated')
@@ -123,7 +129,7 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
     } finally {
       setSaving(false)
     }
-  }, [site, saving, siteId, name, timezone, scriptFeatures, respectDnt, respectGpc, mutate])
+  }, [site, saving, siteId, name, timezone, scriptFeatures, respectDnt, respectGpc, showReferrerDomains, mutate])
 
   // A permanent fetch failure must not fall through to an infinite spinner —
   // surface it as a distinct, retryable error while there is no data to show.
@@ -218,6 +224,28 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
             disabled={!canEdit || saving}
           />
         </div>
+      </SettingsPanel>
+
+      {/* ── Dashboard ────────────────────────────────────────────────────── */}
+      {/* Display preferences only — nothing collected or stored changes, so
+          no action chip and no audit row (PULSE-171). */}
+      <SettingsPanel
+        title="Dashboard"
+        description="How your dashboard displays data. This does not change what Pulse collects."
+      >
+        <PanelRows>
+          <PanelRow
+            label="Show referrers as domain names"
+            caption="Show where visitors came from as the site's address (google.com) instead of a name (Google). Rows with no address, like Direct or a shared link, keep their name."
+            control={
+              <Toggle
+                checked={showReferrerDomains}
+                onChange={() => setShowReferrerDomains((v) => !v)}
+                disabled={!canEdit || saving}
+              />
+            }
+          />
+        </PanelRows>
       </SettingsPanel>
 
       {/* ── Danger zone ──────────────────────────────────────────────────── */}
