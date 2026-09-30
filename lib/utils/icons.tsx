@@ -295,6 +295,28 @@ export function getReferrerDisplayName(referrer: string): string {
   return capitalizeLabel(getReferrerLabel(hostname))
 }
 
+// A value is a host when it is dot-separated labels of [a-z0-9-], with an
+// optional :port — no spaces, no scheme. Deliberately stricter than
+// getReferrerHostname above (which URL-parses ANYTHING, so a bare brand
+// word like "ChatGPT" comes back as a one-label "hostname"): referrer-domain
+// mode (PULSE-171) must tell "this raw value IS the address" apart from
+// "this is a brand name", and a permissive check would show a fabricated
+// address for a host-less row.
+const HOST_LIKE = /^[a-z0-9-]+(?:\.[a-z0-9-]+)+(?::\d+)?$/i
+
+/**
+ * The lowercased host, or null when `referrer` doesn't look like one. Never
+ * derives or guesses a host — a bare brand word, a value with a scheme, or
+ * one with a space all return null rather than a fabricated address (the
+ * Engineering Principles rule against sentinel/fabricated values).
+ */
+export function getReferrerAddress(referrer: string | null | undefined): string | null {
+  if (!referrer || typeof referrer !== 'string') return null
+  const trimmed = referrer.trim()
+  if (!HOST_LIKE.test(trimmed)) return null
+  return trimmed.toLowerCase()
+}
+
 export function getReferrerFavicon(referrer: string): string | null {
   if (!referrer || typeof referrer !== 'string') return null
   const normalized = referrer.trim().toLowerCase()
@@ -362,13 +384,36 @@ export function getFilterValueIcon(dimension: string, value: string): ReactNode 
 }
 
 /**
+ * The group key for one merge bucket: in referrer-domain mode (PULSE-171), a
+ * host-like referrer groups by its lowercased host — so reddit.com and
+ * old.reddit.com stay separate rows instead of collapsing to one "Reddit"
+ * brand bucket — while a host-less referrer (Direct, Shared Link, a
+ * brand-only value like "ChatGPT") still groups by its display name, same
+ * as default mode. Off (the default), this is exactly getReferrerDisplayName
+ * — today's grouping, unchanged.
+ */
+function referrerGroupKey(referrer: string, showDomains: boolean): string {
+  if (showDomains) {
+    const address = getReferrerAddress(referrer)
+    if (address) return address
+  }
+  return getReferrerDisplayName(referrer)
+}
+
+/**
  * Merges referrer rows that share the same display name (e.g. chatgpt.com and https://chatgpt.com/...),
  * summing counts and keeping one referrer per group for icon/tooltip. Sorted by visitors desc
  * (the displayed primary and the server's ranking field — a pageview sort here silently undid the
  * server's ordering for exactly this one card, 01-09-2026).
+ *
+ * `showDomains` (PULSE-171, default false — today's behaviour, byte-for-byte
+ * unchanged) switches the grouping key to referrerGroupKey's domain mode;
+ * everything else about the merge (summed counts, weighted rates,
+ * allReferrers, the sort) is identical in both modes.
  */
 export function mergeReferrersByDisplayName(
-  items: Array<{ referrer: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
+  items: Array<{ referrer: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>,
+  showDomains: boolean = false
 ): Array<{ referrer: string; pageviews: number; visitors: number; bounce_rate: number | null; avg_duration: number | null; allReferrers: string[] }> {
   type Acc = {
     referrer: string; pageviews: number; visitors: number; maxSingle: number; allReferrers: Set<string>
@@ -380,7 +425,7 @@ export function mergeReferrersByDisplayName(
   }
   const byDisplayName = new Map<string, Acc>()
   for (const ref of items) {
-    const name = getReferrerDisplayName(ref.referrer)
+    const name = referrerGroupKey(ref.referrer, showDomains)
     const visitors = ref.visitors ?? 0
     let acc = byDisplayName.get(name)
     if (!acc) {

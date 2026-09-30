@@ -36,13 +36,26 @@ vi.mock('@/lib/api/sites', () => ({
 // this smoke render focuses on the tab's OWN composition (panels, danger zone,
 // verification chip, save wiring / partial-PUT body).
 vi.mock('@/components/sites/ScriptSetupBlock', () => ({
-  // The stub exposes onFeaturesChange so the merge contract below can be
-  // driven: clicking it emits exactly the key set the real block still owns.
-  default: ({ onFeaturesChange }: { onFeaturesChange?: (f: Record<string, unknown>) => void }) => (
-    <button
-      data-testid="script-setup"
-      onClick={() => onFeaturesChange?.({ scroll: false, outbound: true, downloads: true, sri: false })}
-    />
+  // The stub exposes onFeaturesChange and onPrivacySignalsChange so the merge
+  // contract and the respect_dnt/respect_gpc plumbing can both be driven:
+  // clicking each button emits exactly what the real block would.
+  default: ({
+    onFeaturesChange,
+    onPrivacySignalsChange,
+  }: {
+    onFeaturesChange?: (f: Record<string, unknown>) => void
+    onPrivacySignalsChange?: (s: { respect_dnt: boolean; respect_gpc: boolean }) => void
+  }) => (
+    <>
+      <button
+        data-testid="script-setup"
+        onClick={() => onFeaturesChange?.({ scroll: false, outbound: true, downloads: true, sri: false })}
+      />
+      <button
+        data-testid="privacy-signals-toggle"
+        onClick={() => onPrivacySignalsChange?.({ respect_dnt: false, respect_gpc: true })}
+      />
+    </>
   ),
 }))
 vi.mock('@/components/settings/unified/ResetDataModal', () => ({
@@ -78,6 +91,12 @@ vi.mock('@ciphera-net/facet', () => ({
           ))
         : options?.map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
+  ),
+  // The stub forwards the naming props Facet's Toggle forwards (id,
+  // aria-label, aria-labelledby, aria-describedby), matching PanelRow's own
+  // aria-labelledby clone (SitePrivacyTab.test.tsx carries the same stub).
+  Toggle: ({ checked, onChange, disabled, id, 'aria-label': ariaLabel, 'aria-labelledby': ariaLabelledBy, 'aria-describedby': ariaDescribedBy }: any) => (
+    <button role="switch" aria-checked={!!checked} disabled={disabled} onClick={() => onChange()} id={id} aria-label={ariaLabel} aria-labelledby={ariaLabelledBy} aria-describedby={ariaDescribedBy} />
   ),
   ZapIcon: () => <svg />,
   toast: { success: vi.fn(), error: vi.fn() },
@@ -159,7 +178,7 @@ describe('SiteGeneralTab (Facet structured panels)', () => {
     expect(screen.queryByRole('button', { name: /verify/i })).not.toBeInTheDocument()
   })
 
-  it('sends a PARTIAL PUT (name/timezone/script_features only — B1) on save', async () => {
+  it('sends a PARTIAL PUT (name/timezone/script_features/respect_dnt/respect_gpc — B1) on save', async () => {
     render(<SiteGeneralTab siteId="s1" />)
     const nameInput = await screen.findByDisplayValue('Acme')
     fireEvent.change(nameInput, { target: { value: 'Acme Corp' } })
@@ -171,8 +190,96 @@ describe('SiteGeneralTab (Facet structured panels)', () => {
         name: 'Acme Corp',
         timezone: 'UTC',
         script_features: {},
+        respect_dnt: true,
+        respect_gpc: true,
+        show_referrer_domains: false,
       }),
     )
+  })
+
+  it('sends respect_dnt / respect_gpc when only the privacy toggles changed, and marks the form dirty', async () => {
+    render(<SiteGeneralTab siteId="s1" />)
+    await screen.findByDisplayValue('Acme')
+    expect(screen.getByTestId('savebar').dataset.dirty).toBe('false')
+
+    fireEvent.click(screen.getByTestId('privacy-signals-toggle'))
+    await waitFor(() => expect(screen.getByTestId('savebar').dataset.dirty).toBe('true'))
+
+    fireEvent.click(screen.getByRole('button', { name: 'save' }))
+    await waitFor(() =>
+      expect(updateSite).toHaveBeenCalledWith('s1', {
+        name: 'Acme',
+        timezone: 'UTC',
+        script_features: {},
+        respect_dnt: false,
+        respect_gpc: true,
+        show_referrer_domains: false,
+      }),
+    )
+  })
+
+  it('initialises respect_dnt / respect_gpc from the site (undefined -> true) and stays clean until touched', async () => {
+    // siteState() carries no respect_dnt / respect_gpc at all — the undefined
+    // case this contract says must read as true, not false.
+    render(<SiteGeneralTab siteId="s1" />)
+    await screen.findByDisplayValue('Acme')
+    expect(screen.getByTestId('savebar').dataset.dirty).toBe('false')
+  })
+
+  // ── PULSE-171: the Dashboard panel (referrer domain names) ───────────────
+  it('renders the Dashboard panel between Tracking script and Danger zone, with the exact label and caption', async () => {
+    render(<SiteGeneralTab siteId="s1" />)
+    const headings = await screen.findAllByRole('heading', { level: 2 })
+    expect(headings.map((h) => h.textContent)).toEqual([
+      'Site', 'Tracking script', 'Dashboard', 'Danger zone',
+    ])
+    expect(screen.getByText('Show referrers as domain names')).toBeInTheDocument()
+    expect(screen.getByText(
+      "Show where visitors came from as the site's address (google.com) instead of a name (Google). Rows with no address, like Direct or a shared link, keep their name.",
+    )).toBeInTheDocument()
+  })
+
+  it('initialises show_referrer_domains from the site (undefined -> false/off) and stays clean until touched', async () => {
+    render(<SiteGeneralTab siteId="s1" />)
+    await screen.findByDisplayValue('Acme')
+    const toggle = screen.getByRole('switch', { name: 'Show referrers as domain names' })
+    expect(toggle.getAttribute('aria-checked')).toBe('false')
+    expect(screen.getByTestId('savebar').dataset.dirty).toBe('false')
+  })
+
+  it('toggling the Dashboard panel marks the form dirty and sends show_referrer_domains on save', async () => {
+    render(<SiteGeneralTab siteId="s1" />)
+    await screen.findByDisplayValue('Acme')
+    expect(screen.getByTestId('savebar').dataset.dirty).toBe('false')
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Show referrers as domain names' }))
+    await waitFor(() => expect(screen.getByTestId('savebar').dataset.dirty).toBe('true'))
+
+    fireEvent.click(screen.getByRole('button', { name: 'save' }))
+    await waitFor(() =>
+      expect(updateSite).toHaveBeenCalledWith('s1', {
+        name: 'Acme',
+        timezone: 'UTC',
+        script_features: {},
+        respect_dnt: true,
+        respect_gpc: true,
+        show_referrer_domains: true,
+      }),
+    )
+  })
+
+  it('seeds the toggle ON when the site already has it on, and discard restores it', async () => {
+    useSite.mockReturnValue(siteState({ show_referrer_domains: true }))
+    render(<SiteGeneralTab siteId="s1" />)
+    await screen.findByDisplayValue('Acme')
+    const toggle = screen.getByRole('switch', { name: 'Show referrers as domain names' })
+    expect(toggle.getAttribute('aria-checked')).toBe('true')
+
+    fireEvent.click(toggle)
+    await waitFor(() => expect(screen.getByTestId('savebar').dataset.dirty).toBe('true'))
+    fireEvent.click(screen.getByRole('button', { name: 'discard' }))
+    await waitFor(() => expect(screen.getByTestId('savebar').dataset.dirty).toBe('false'))
+    expect(screen.getByRole('switch', { name: 'Show referrers as domain names' }).getAttribute('aria-checked')).toBe('true')
   })
 
   it('preserves legacy script_features keys the block no longer emits (merge, not replace)', async () => {
@@ -200,6 +307,9 @@ describe('SiteGeneralTab (Facet structured panels)', () => {
           downloads: true,
           sri: false,
         },
+        respect_dnt: true,
+        respect_gpc: true,
+        show_referrer_domains: false,
       }),
     )
   })

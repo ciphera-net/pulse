@@ -108,6 +108,36 @@ describe('Sources — referrers view', () => {
     expect(screen.queryByText('Startpage')).toBeNull()
     expect(screen.queryByLabelText('Next page')).toBeNull()
   })
+
+  // ── PULSE-171: referrer-domain display ────────────────────────────────────
+  it('shows brand names when showReferrerDomains is off (default) — byte-for-byte today\'s rendering', () => {
+    render(<Sources referrers={referrers} siteId="site-1" dateRange={dateRange} totals={totals} />)
+    expect(screen.getByText('Google')).toBeTruthy()
+    expect(screen.getByText('LinkedIn')).toBeTruthy()
+    expect(screen.queryByText('google.com')).toBeNull()
+    expect(screen.queryByText('linkedin.com')).toBeNull()
+  })
+
+  it('shows the stored host, lowercased, when showReferrerDomains is on', () => {
+    render(<Sources referrers={referrers} siteId="site-1" dateRange={dateRange} totals={totals} showReferrerDomains />)
+    expect(screen.getByText('google.com')).toBeTruthy()
+    expect(screen.getByText('linkedin.com')).toBeTruthy()
+    expect(screen.queryByText('Google')).toBeNull()
+    expect(screen.queryByText('LinkedIn')).toBeNull()
+  })
+
+  it('a host-less row (Direct) keeps its name even with domain mode on — never a fabricated address', () => {
+    const withDirect = [...referrers.slice(0, 3), { referrer: 'Direct', pageviews: 50, visitors: 40 }]
+    render(<Sources referrers={withDirect} siteId="site-1" dateRange={dateRange} totals={totals} showReferrerDomains />)
+    expect(screen.getByText('Direct')).toBeTruthy()
+  })
+
+  it('renders hosts on the full-list (paged) rows too, in domain mode', () => {
+    render(<Sources referrers={referrers} siteId="site-1" dateRange={dateRange} totals={totals} memberFeatures={false} showReferrerDomains />)
+    fireEvent.click(screen.getByLabelText('Next page'))
+    expect(screen.getByText('startpage.com')).toBeTruthy()
+    expect(screen.queryByText('Startpage')).toBeNull()
+  })
 })
 
 describe('Audience', () => {

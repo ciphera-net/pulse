@@ -53,3 +53,33 @@ describe('generatePrivacySnippet — the identity window sentence', () => {
     expect(p2.indexOf('at most 7 days')).toBeLessThan(p2.indexOf("Pulse's documentation"))
   })
 })
+
+/**
+ * PULSE-164: the DNT sentence is a factual claim about the site's OWN
+ * respect_dnt setting, not boilerplate — it must say nothing false.
+ */
+describe('generatePrivacySnippet — the Do Not Track sentence', () => {
+  it('includes it when the payload does not carry respect_dnt (undefined -> true)', () => {
+    const [p1] = generatePrivacySnippet(base).split('\n\n')
+    expect(p1).toContain('We respect Do Not Track (DNT) browser settings.')
+  })
+
+  it('includes it when respect_dnt is explicitly true', () => {
+    const [p1] = generatePrivacySnippet({ ...base, respect_dnt: true }).split('\n\n')
+    expect(p1).toContain('We respect Do Not Track (DNT) browser settings.')
+  })
+
+  it('omits it entirely when respect_dnt is false — no new copy in its place', () => {
+    const [p1] = generatePrivacySnippet({ ...base, respect_dnt: false }).split('\n\n')
+    expect(p1).not.toContain('Do Not Track')
+    expect(p1).not.toContain('DNT')
+    expect(p1).toBe(
+      'We use Pulse to understand how visitors use our site. Ciphera does not use cookies or other persistent identifiers. A cookie consent banner is not required for Pulse.',
+    )
+  })
+
+  it('never mentions Global Privacy Control — GPC has no policy sentence here', () => {
+    const text = generatePrivacySnippet({ ...base, respect_gpc: false })
+    expect(text).not.toMatch(/Global Privacy Control|GPC/)
+  })
+})

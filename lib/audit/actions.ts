@@ -15,7 +15,10 @@ import type { ChipTone } from '@/components/settings/StatusChip'
  * `site_exported` is one row per download from Settings → Export (PULSE-132,
  * pulse-backend's testdata/audit_actions.txt), and the four `report_*` actions
  * are a shared report made or deleted (PULSE-133) and a scheduled report email
- * started or stopped (PULSE-134).
+ * started or stopped (PULSE-134). `site_privacy_signals_changed` is one row per
+ * save of the Do Not Track / GPC toggles on Settings → General (PULSE-164),
+ * flat (no nested object) so the tab's raw-payload rendering stays a key/value
+ * list rather than a dumped mono JSON blob.
  * `AuditAction` is derived from this list, and `ACTION_LABELS` below closes
  * with `satisfies Record<AuditAction, string>`, so a future action added to
  * either without a label fails to build.
@@ -71,6 +74,7 @@ export const AUDIT_ACTIONS = [
   'site_exported',
   'site_identity_window_changed',
   'site_permanently_deleted',
+  'site_privacy_signals_changed',
   'site_restored',
   'site_soft_deleted',
   'site_timezone_changed',
@@ -148,6 +152,7 @@ export const ACTION_LABELS = {
   site_exported: 'Exported data',
   site_identity_window_changed: 'Changed identity window',
   site_permanently_deleted: 'Permanently deleted site',
+  site_privacy_signals_changed: 'Changed Do Not Track or GPC setting',
   site_restored: 'Restored site',
   site_soft_deleted: 'Deleted site',
   site_timezone_changed: 'Changed site timezone',
