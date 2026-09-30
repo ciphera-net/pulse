@@ -102,6 +102,13 @@ export function fail(msg: string): never {
  */
 export const RETRY_TOTAL_MS = 120_000
 export const RETRY_BASE_MS = 5_000
+/**
+ * 🔴 EVERY ATTEMPT HAS ITS OWN TIMEOUT. Both measured outages were HANGS
+ * (`URLError: timed out` in the publish watcher, 10-09 and 25-09), not refusals —
+ * and fetch's own default waits ~300 s per attempt, so without this the window
+ * above would bound nothing. Capped to whatever is left of the window.
+ */
+export const ATTEMPT_TIMEOUT_MS = 30_000
 
 export type FetchOutcome =
   // WordPress answered with a usable response — proceed to validation.
@@ -147,10 +154,20 @@ export async function fetchWithRetry(
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query }),
+        signal: AbortSignal.timeout(Math.max(1, Math.min(ATTEMPT_TIMEOUT_MS, deadline - now()))),
       })
 
       if (res.ok) {
-        return { kind: 'ok', body: await res.json() }
+        // A 200 that is not JSON (an HTML page from something in front of
+        // WordPress, say) means WordPress was REACHED and answered wrongly — a
+        // contract failure, which CMS_UNAVAILABLE_OK must never mask. Parsed
+        // here, outside the reachability catch below, for exactly that reason.
+        const text = await res.text()
+        try {
+          return { kind: 'ok', body: JSON.parse(text) }
+        } catch {
+          return { kind: 'client_error', lastError: `HTTP ${res.status} from ${wp} but the body is not JSON: ${text.slice(0, 120)}` }
+        }
       }
 
       if (res.status >= 500) {
@@ -178,12 +195,16 @@ export function buildRouteMap(nodes: RouteStubNode[]): Map<string, RouteStubNode
   const seen = new Map<string, RouteStubNode>()
 
   for (const n of nodes) {
+    // 🔴 SITE FIRST, then everything else. ciphera.net's stubs live in the same
+    // WordPress, and a malformed one must fail ciphera.net's build — never this
+    // one. Validating before filtering would let one tenant's editing mistake
+    // block the other tenant's deploys.
+    const sites = n.routeSites?.nodes?.map((t) => t.slug) ?? []
+    if (!sites.includes(SITE)) continue
+
     const p = (n.cipheraPath ?? '').trim()
     if (!p) fail('a published stub has an empty path — it can never match a route, and looks correct in wp-admin')
     if (!p.startsWith('/')) fail(`path "${p}" does not start with "/"`)
-
-    const sites = n.routeSites?.nodes?.map((t) => t.slug) ?? []
-    if (!sites.includes(SITE)) continue // ciphera.net's stubs (and any other tenant's) live in the same WordPress
 
     // D38: exact-path allowlist. '/' matches only '/' because ALLOWED_PATHS
     // is a Set of literal strings, never a prefix test.
