@@ -327,42 +327,72 @@ describe('run() — end to end, D39 override semantics', () => {
     }
   })
 
-  it('D39: the override flag NEVER masks a validation failure on a REACHABLE CMS', async () => {
+  // D39, refined 30-09-2026: on the current app this build ships the dashboard too,
+  // so the override must be able to unblock a deploy whatever went wrong with the
+  // CMS. It is safe to let it cover validation failures because it DISCARDS what
+  // WordPress returned: each case below asserts the written file carries NO route
+  // data, so no bad CMS content can ever ship through it. Without the flag, every
+  // one of these still fails the build loudly.
+  const BAD_RESPONSES: Array<[string, () => unknown]> = [
+    ['a stub outside the allowlist', () => ({ data: { routeStubs: { nodes: [validNode('/not-a-real-route')] } } })],
+    ['a count shortfall (an unpublished stub)', () => ({ data: { routeStubs: { nodes: fullFixture().slice(1) } } })],
+    ['a duplicate stub', () => ({ data: { routeStubs: { nodes: [...fullFixture(), validNode('/about')] } } })],
+    ['a GraphQL errors[] response', () => ({ errors: [{ message: 'boom' }], data: { routeStubs: { nodes: fullFixture() } } })],
+    ['a stub with an off-CDN OG image', () => ({ data: { routeStubs: { nodes: [
+      ...fullFixture().filter((n) => n.cipheraPath !== '/about'),
+      validNode('/about', { cipheraOgImage: 'https://evil.example/x.png' }),
+    ] } } })],
+  ]
+
+  for (const [label, body] of BAD_RESPONSES) {
+    it(`without the override, ${label} fails the build`, async () => {
+      const outPath = scratchOutPath()
+      const fetchImpl = vi.fn().mockResolvedValue(okResponse(body()))
+      await expect(run({ fetchImpl, outPath })).rejects.toThrow(GenerateSeoError)
+      expect(fs.existsSync(outPath)).toBe(false)
+    })
+
+    it(`with the override, ${label} ships NO CMS data — only built-in metadata`, async () => {
+      const outPath = scratchOutPath()
+      const fetchImpl = vi.fn().mockResolvedValue(okResponse(body()))
+      const result = await run({ fetchImpl, outPath, cmsUnavailableOk: true })
+      expect(result).toEqual({ routeCount: 0, watermark: '', override: true })
+      const written = fs.readFileSync(outPath, 'utf-8')
+      expect(written).toContain('export const routeSeo: Record<string, RouteSeo> = {}')
+      expect(written).toContain('export const SEO_OVERRIDE = true')
+      expect(written).not.toContain('not-a-real-route')
+      expect(written).not.toContain('evil.example')
+      fs.rmSync(outPath)
+    })
+  }
+
+  it('the override is inert on a healthy CMS — a normal build ignores it', async () => {
     const outPath = scratchOutPath()
-    // WordPress answers (reachable), but with a stub outside the allowlist —
-    // a real validation failure, not an availability problem.
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValue(okResponse({ data: { routeStubs: { nodes: [validNode('/not-a-real-route')] } } }))
-    await expect(run({ fetchImpl, outPath, cmsUnavailableOk: true })).rejects.toThrow(
-      /not one of the 25 Level 1 marketing routes/
-    )
-    expect(fs.existsSync(outPath)).toBe(false)
+    const fetchImpl = vi.fn().mockResolvedValue(okResponse({ data: { routeStubs: { nodes: fullFixture() } } }))
+    const result = await run({ fetchImpl, outPath, cmsUnavailableOk: true })
+    expect(result.override).toBe(false)
+    expect(result.routeCount).toBe(25)
+    fs.rmSync(outPath)
   })
 
-  it('D39: the override flag never masks the count gate either', async () => {
-    const outPath = scratchOutPath()
-    const partial = fullFixture().slice(0, 10)
-    const fetchImpl = vi.fn().mockResolvedValue(okResponse({ data: { routeStubs: { nodes: partial } } }))
-    await expect(run({ fetchImpl, outPath, cmsUnavailableOk: true })).rejects.toThrow(/expected 25/)
-    expect(fs.existsSync(outPath)).toBe(false)
-  })
-
-  it('D39: the override flag never masks a 200 that is not JSON', async () => {
-    const fetchImpl = vi.fn().mockResolvedValue({ ok: true, status: 200, text: async () => '<html>nope</html>' })
+  it('with the override, a 200 that is not JSON also ships no CMS data', async () => {
     let now = 0
-    await expect(
-      run({
-        fetchImpl, outPath: scratchOutPath(), cmsUnavailableOk: true,
-        sleepImpl: async (ms: number) => { now += ms }, totalMs: 100, baseMs: 10, now: () => now,
-      })
-    ).rejects.toThrow(/not JSON/)
+    const outPath = scratchOutPath()
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: true, status: 200, text: async () => '<html>nope</html>' })
+    const result = await run({
+      fetchImpl, outPath, cmsUnavailableOk: true,
+      sleepImpl: async (ms: number) => { now += ms }, totalMs: 100, baseMs: 10, now: () => now,
+    })
+    expect(result.override).toBe(true)
+    expect(fs.readFileSync(outPath, 'utf-8')).toContain('export const routeSeo: Record<string, RouteSeo> = {}')
+    fs.rmSync(outPath)
   })
 
-  it('D39: the override flag never masks a GraphQL errors[] response', async () => {
-    const outPath = scratchOutPath()
-    const fetchImpl = vi.fn().mockResolvedValue(okResponse({ errors: [{ message: 'boom' }] }))
-    await expect(run({ fetchImpl, outPath, cmsUnavailableOk: true })).rejects.toThrow(/GraphQL errors/)
-    expect(fs.existsSync(outPath)).toBe(false)
+  it('without the override, a 200 that is not JSON fails the build', async () => {
+    let now = 0
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: true, status: 200, text: async () => '<html>nope</html>' })
+    await expect(
+      run({ fetchImpl, outPath: scratchOutPath(), sleepImpl: async (ms: number) => { now += ms }, totalMs: 100, baseMs: 10, now: () => now })
+    ).rejects.toThrow(/not JSON/)
   })
 })
