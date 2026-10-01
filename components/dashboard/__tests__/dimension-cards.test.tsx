@@ -190,6 +190,25 @@ describe('Audience', () => {
     expect(screen.queryByLabelText('Next page')).toBeNull()
   })
 
+  // ── PULSE-179: Timezones tab, the owner's T-A ──────────────────────────────
+  it('shows the flag-sized grey globe on Timezones rows that belong to no country (UTC, Etc/Unknown), and a flag elsewhere', () => {
+    const timezones = [
+      { timezone: 'Europe/Brussels', pageviews: 40, visitors: 30 },
+      { timezone: 'UTC', pageviews: 12, visitors: 8 },
+      { timezone: 'Etc/Unknown', pageviews: 6, visitors: 4 },
+    ]
+    const { container } = render(<Audience {...baseProps} timezones={timezones} totals={totals} />)
+    fireEvent.click(screen.getByRole('radio', { name: 'Timezones' }))
+    // The globe is GlobeHemisphereWest at a flag's size (w-5 h-5), muted; one per country-less row.
+    const globes = Array.from(container.querySelectorAll('svg.w-5.h-5.text-neutral-400'))
+    expect(globes).toHaveLength(2)
+    // Each globe sits in the same shrink-0 slot a flag uses, so every label starts in one column.
+    for (const g of globes) expect(g.parentElement?.className).toContain('shrink-0')
+    // The Brussels row still gets its country flag, not a globe.
+    const slots = Array.from(container.querySelectorAll('span.shrink-0')).filter((s) => s.querySelector('svg, img'))
+    expect(slots).toHaveLength(3)
+  })
+
   // ── PULSE-173: Languages tab grouped by base language ──────────────────────
   describe('Languages tab — grouped by base language (PULSE-173)', () => {
     const groupedBaseProps = {
