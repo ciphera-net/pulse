@@ -125,4 +125,20 @@ describe('Sources — Referrers tab: a website row\'s name opens the site (PULSE
     expect(screen.getByText('Someinappwidget')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Filter by referrer: Someinappwidget' })).toBeTruthy()
   })
+
+  it('a merged row filters on EVERY raw referrer behind it (allReferrers), not just the first', () => {
+    // google.com and search.google.com merge into one "Google" row
+    // (mergeReferrersByDisplayName); the overlay must send both raw values, the
+    // pre-existing `ref.allReferrers ?? [ref.referrer]` behaviour this change keeps.
+    const onFilter = vi.fn()
+    const merged = [
+      { referrer: 'google.com', pageviews: 60, visitors: 40 },
+      { referrer: 'search.google.com', pageviews: 35, visitors: 13 },
+    ]
+    render(<Sources referrers={merged} siteId="site-1" dateRange={dateRange} totals={totals} onFilter={onFilter} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Filter by referrer: Google' }))
+    expect(onFilter).toHaveBeenCalledTimes(1)
+    const values = onFilter.mock.calls[0][0].values as string[]
+    expect([...values].sort()).toEqual(['google.com', 'search.google.com'])
+  })
 })

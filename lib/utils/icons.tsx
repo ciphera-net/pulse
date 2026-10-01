@@ -280,7 +280,9 @@ export function getOpenHostname(referrer: string | null | undefined): string | n
   if (REFERRER_NO_FAVICON.has(lower)) return null
   if (lower.includes('.')) {
     try {
-      const url = new URL(trimmed.startsWith('http') ? trimmed : `https://${trimmed}`)
+      // A real scheme check, not startsWith('http'): a schemeless hostname such as
+      // httpbin.org or http2.pro starts with those letters too and must still link.
+      const url = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`)
       if (url.hostname.includes('.')) return url.hostname.toLowerCase()
     } catch {
       // Not a parseable URL even with a dot (e.g. a value with a space) —

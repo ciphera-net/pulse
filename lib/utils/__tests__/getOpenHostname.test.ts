@@ -81,4 +81,10 @@ describe('getOpenHostname', () => {
     expect(getOpenHostname(null)).toBeNull()
     expect(getOpenHostname(undefined)).toBeNull()
   })
+
+  it('links a schemeless hostname that merely starts with the letters "http"', () => {
+    expect(getOpenHostname('httpbin.org')).toBe('httpbin.org')
+    expect(getOpenHostname('http2.pro')).toBe('http2.pro')
+    expect(getOpenHostname('https://www.example.com/path')).toBe('www.example.com')
+  })
 })
