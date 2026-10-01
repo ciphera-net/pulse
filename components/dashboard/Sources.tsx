@@ -5,7 +5,7 @@ import type { ImportedProvenance } from '@/lib/api/stats'
 import type { ImportedDimension } from '@/lib/import/source-display'
 import { useMemo, useState } from 'react'
 import Image from 'next/image'
-import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
+import { getOpenHostname, getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
 import { Megaphone, Globe } from '@phosphor-icons/react'
 import { getChannelIcon } from '@/components/dashboard/channelIcon'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
@@ -296,21 +296,65 @@ export default function Sources({
             </div>
           ) : hasReferrerData ? (
             <CascadeGroup flipKey={`referrers-${page}`} className="space-y-2">
-              {displayedReferrers.map((ref, i) => (
-                <CascadeRow key={ref.referrer} index={i}>
-                  <Row
-                    {...(onFilter ? { type: 'button' as const, onClick: () => onFilter?.({ dimension: 'referrer', operator: 'is', values: ref.allReferrers ?? [ref.referrer] }) } : {})}
-                    className={rowClass}
-                  >
-                    <RowBar width={rowBarWidth(ref, allReferrers)} index={i} />
-                    <div className="relative flex-1 truncate text-white flex items-center gap-3">
-                      {renderFavicon(showReferrerDomains && ref.address ? ref.address : ref.referrer)}
-                      <span className="truncate" title={referrerRowLabel(ref)}>{referrerRowLabel(ref)}</span>
+              {displayedReferrers.map((ref, i) => {
+                const label = referrerRowLabel(ref)
+                const faviconKey = showReferrerDomains && ref.address ? ref.address : ref.referrer
+                const openHostname = getOpenHostname(faviconKey)
+                const labelContent = (
+                  <>
+                    {renderFavicon(faviconKey)}
+                    <span className="truncate" title={label}>{label}</span>
+                  </>
+                )
+                return (
+                  <CascadeRow key={ref.referrer} index={i}>
+                    {/* PULSE-197: a website row's label opens the referring site, so
+                       this row can no longer be a single <button> — you cannot nest
+                       an <a> (or a second <button>) inside one. It is a <div> with a
+                       full-row overlay button carrying today's filter click, plus,
+                       for a website row, a real anchor that sits above the overlay
+                       for its own box only (relative z-10) and opts back into
+                       pointer events. Every other child is pointer-events-none so a
+                       click anywhere else still reaches the overlay underneath —
+                       including RowBar, which has no click handler of its own and,
+                       once it is a SIBLING of the overlay rather than a descendant
+                       of the old clickable button, would otherwise silently
+                       swallow clicks over the bar's width. */}
+                    <div className={rowClass}>
+                      {onFilter && (
+                        // The row's own ring moved here from `.interactive-row` on
+                        // the (no-longer-focusable) outer div — same device as the
+                        // full-card overlay link FleetCard already ships (ring-2,
+                        // ring-inset so it isn't clipped by the row's own
+                        // overflow-hidden).
+                        <button
+                          type="button"
+                          className="absolute inset-0 w-full h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange"
+                          aria-label={`Filter by referrer: ${label}`}
+                          onClick={() => onFilter({ dimension: 'referrer', operator: 'is', values: ref.allReferrers ?? [ref.referrer] })}
+                        />
+                      )}
+                      <RowBar width={rowBarWidth(ref, allReferrers)} index={i} className="pointer-events-none" />
+                      {openHostname ? (
+                        <a
+                          href={`https://${openHostname}/`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`Open ${label} in a new tab`}
+                          className="relative z-10 pointer-events-auto flex-1 truncate text-white flex items-center gap-3 hover:underline rounded-sm focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange"
+                        >
+                          {labelContent}
+                        </a>
+                      ) : (
+                        <div className="relative flex-1 truncate text-white flex items-center gap-3 pointer-events-none">
+                          {labelContent}
+                        </div>
+                      )}
+                      <MetricRowStat row={ref} totals={totals} className="pointer-events-none" />
                     </div>
-                    <MetricRowStat row={ref} totals={totals} />
-                  </Row>
-                </CascadeRow>
-              ))}
+                  </CascadeRow>
+                )
+              })}
               {Array.from({ length: emptySlotsFor(displayedReferrers.length) }).map((_, i) => (
                 <div key={`empty-${i}`} className="h-9 px-2 -mx-2" aria-hidden="true" />
               ))}

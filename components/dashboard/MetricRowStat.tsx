@@ -17,14 +17,17 @@ interface MetricRowStatProps {
   totals?: { pageviews: number; visitors: number }
   /** Twin-column mode (the Pages card): visitors + views, equal weight. */
   views?: boolean
+  /** Appended to the root's classes (PULSE-197: `pointer-events-none` for a
+   *  row whose click target is a separate overlay sibling, not an ancestor). */
+  className?: string
 }
 
-export function MetricRowStat({ row, totals, views }: MetricRowStatProps) {
+export function MetricRowStat({ row, totals, views, className }: MetricRowStatProps) {
   const visitors = row.visitors ?? 0
   const denom = totals?.visitors ?? 0
   const pct = denom > 0 ? `${Math.round((visitors / denom) * 100)}%` : ''
   return (
-    <div className="relative flex items-center gap-2 ml-4">
+    <div className={cn('relative flex items-center gap-2 ml-4', className)}>
       {pct && (
         <span className="text-xs font-medium text-brand-ink opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
           {pct}
