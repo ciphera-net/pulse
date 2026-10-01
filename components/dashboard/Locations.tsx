@@ -33,7 +33,7 @@ interface AudienceProps {
   // `undefined` (the prop simply not passed, or the payload predates the
   // grouping rollout) falls back to the per-locale `languages` view — no
   // error, no distinct loading state; see isLanguageGrouped below.
-  languageGroups?: LanguageGroupStat[]
+  languageGroups?: LanguageGroupStat[] | null
   timezones: Array<{ timezone: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
   geoDataLevel?: 'full' | 'country' | 'none'
   collectAudienceData?: boolean
@@ -146,11 +146,14 @@ export default function Audience({ countries, cities, regions, languages, langua
     members?: string[]; locale_count?: number; flag_region?: string | null
   }
 
-  // PULSE-173: grouped mode is keyed on the PROP's presence, not its length —
-  // an empty `language_groups` array (a real site with zero language rows) is
-  // still "the backend supports grouping", just with nothing to show; only an
-  // `undefined` prop (older backend, deploy skew) falls back to per-locale.
-  const isLanguageGrouped = activeTab === 'languages' && languageGroups !== undefined
+  // PULSE-173: grouped mode is keyed on the PROP's presence, not its length.
+  // An empty `language_groups` array (a real site with zero language rows) is
+  // still grouped, just with nothing to show. `undefined` (an older backend,
+  // deploy skew) and `null` (the backend has no grouped view for this
+  // response: the range holds imported language history, which only the
+  // per-locale list merges, or a cached response from before the field
+  // existed) both fall back to the per-locale `languages` list.
+  const isLanguageGrouped = activeTab === 'languages' && languageGroups !== undefined && languageGroups !== null
 
 
   const containerRef = useRef<HTMLDivElement>(null)

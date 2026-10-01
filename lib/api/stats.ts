@@ -426,11 +426,14 @@ export interface DashboardData {
   regions: RegionStat[]
   languages: LanguageStat[]
   /** One row per base language (PULSE-173), additive alongside `languages`
-   *  (unchanged, still per-locale). Absent on a backend that predates the
-   *  grouping rollout — the card falls back to `languages` then (deploy
-   *  skew), no error. Floored like every other dimension on a shared
-   *  dashboard; see LanguageGroupStat for what a floored group omits. */
-  language_groups?: LanguageGroupStat[]
+   *  (unchanged, still per-locale). `[]` is grouped with nothing to show.
+   *  Absent (a backend that predates the grouping rollout) and `null` (no
+   *  grouped view for this response: the range holds imported language
+   *  history, or a cached response from before the field existed) both mean
+   *  the card shows `languages` instead, no error. Floored like every other
+   *  dimension on a shared dashboard; see LanguageGroupStat for what a
+   *  floored group omits. */
+  language_groups?: LanguageGroupStat[] | null
   timezones: TimezoneStat[]
   browsers: BrowserStat[]
   os: OSStat[]

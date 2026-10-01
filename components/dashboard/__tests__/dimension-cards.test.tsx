@@ -265,6 +265,27 @@ describe('Audience', () => {
       expect(onFilter).toHaveBeenCalledWith({ dimension: 'language', operator: 'is', values: ['en-US'] })
     })
 
+    it('falls back to per-locale rows when language_groups is null (no grouped view for this range), without throwing', () => {
+      // The backend sends null, not [], when the range holds imported language
+      // history (only the per-locale list merges it) or for a cached response
+      // from before the field existed. null must never read as "grouped".
+      const languages = [
+        { language: 'en-US', pageviews: 189, visitors: 110 },
+        { language: 'de', pageviews: 60, visitors: 50 },
+      ]
+      render(<Audience {...groupedBaseProps} languages={languages} languageGroups={null} totals={totals} />)
+      openLanguages()
+      expect(screen.getByText('English (United States)')).toBeTruthy()
+      expect(screen.queryByText(/ regions$/)).toBeNull()
+    })
+
+    it('treats an empty language_groups array as grouped with nothing to show, not as the per-locale fallback', () => {
+      const languages = [{ language: 'en-US', pageviews: 189, visitors: 110 }]
+      render(<Audience {...groupedBaseProps} languages={languages} languageGroups={[]} totals={totals} />)
+      openLanguages()
+      expect(screen.queryByText('English (United States)')).toBeNull()
+    })
+
     it('renders a floored shared-dashboard row (no members, no locale_count) with no "N regions"', () => {
       // public_floor.go omits members/locale_count entirely on a shared payload.
       const rows = [
