@@ -118,6 +118,18 @@ describe('Sources — referrers view', () => {
     expect(screen.queryByText('linkedin.com')).toBeNull()
   })
 
+  it('shows one row labelled by the host when a brand-only value of the same site has more pageviews (domain mode)', () => {
+    // pulse.ciphera.net, 01-10-2026: "uneed.best" (8 visitors) and "Uneed" (3) were two rows.
+    const split = [
+      { referrer: 'uneed.best', pageviews: 10, visitors: 8 },
+      { referrer: 'Uneed', pageviews: 20, visitors: 3 },
+      { referrer: 'github.com', pageviews: 6, visitors: 4 },
+    ]
+    render(<Sources referrers={split} siteId="site-1" dateRange={dateRange} totals={totals} showReferrerDomains />)
+    expect(screen.getAllByText('uneed.best')).toHaveLength(1)
+    expect(screen.queryByText('Uneed')).toBeNull()
+  })
+
   it('shows the stored host, lowercased, when showReferrerDomains is on', () => {
     render(<Sources referrers={referrers} siteId="site-1" dateRange={dateRange} totals={totals} showReferrerDomains />)
     expect(screen.getByText('google.com')).toBeTruthy()
@@ -188,6 +200,25 @@ describe('Audience', () => {
     expect(screen.getByText('United States')).toBeTruthy()
     expect(screen.queryByText('Spain')).toBeNull()
     expect(screen.queryByLabelText('Next page')).toBeNull()
+  })
+
+  // ── PULSE-179: Timezones tab, the owner's T-A ──────────────────────────────
+  it('shows the flag-sized grey globe on Timezones rows that belong to no country (UTC, Etc/Unknown), and a flag elsewhere', () => {
+    const timezones = [
+      { timezone: 'Europe/Brussels', pageviews: 40, visitors: 30 },
+      { timezone: 'UTC', pageviews: 12, visitors: 8 },
+      { timezone: 'Etc/Unknown', pageviews: 6, visitors: 4 },
+    ]
+    const { container } = render(<Audience {...baseProps} timezones={timezones} totals={totals} />)
+    fireEvent.click(screen.getByRole('radio', { name: 'Timezones' }))
+    // The globe is GlobeHemisphereWest at a flag's size (w-5 h-5), muted; one per country-less row.
+    const globes = Array.from(container.querySelectorAll('svg.w-5.h-5.text-neutral-400'))
+    expect(globes).toHaveLength(2)
+    // Each globe sits in the same shrink-0 slot a flag uses, so every label starts in one column.
+    for (const g of globes) expect(g.parentElement?.className).toContain('shrink-0')
+    // The Brussels row still gets its country flag, not a globe.
+    const slots = Array.from(container.querySelectorAll('span.shrink-0')).filter((s) => s.querySelector('svg, img'))
+    expect(slots).toHaveLength(3)
   })
 
   // ── PULSE-173: Languages tab grouped by base language ──────────────────────
