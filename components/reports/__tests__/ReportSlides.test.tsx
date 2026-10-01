@@ -40,8 +40,10 @@ describe('ReportSlides', () => {
     expect(within(cover).getByRole('heading', { level: 1 }).textContent).toBe('Investor update, September 2026')
     expect(within(cover).getByText('30 Jun – 27 Sep 2026, against the 90 days before.')).toBeTruthy()
     for (const [label, value, change] of [
-      ['Unique visitors', '17,240', '↑ 38%'],
-      ['Pageviews', '41,860', '↑ 41%'],
+      // PULSE-190: compact from 10,000 — both headline counts cross it; the
+      // 486-visitor Signups goal does not.
+      ['Unique visitors', '17.2K', '↑ 38%'],
+      ['Pageviews', '41.9K', '↑ 41%'],
       ['Signups', '486', '↑ 52%'],
     ]) {
       expect(within(cover).getByText(label)).toBeTruthy()

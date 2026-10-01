@@ -54,7 +54,9 @@ describe('numbers', () => {
   })
 
   it('writes headline values as the dashboard does, and null as an em dash', () => {
-    expect(formatHeadline('visitors', 17240)).toBe('17,240')
+    // PULSE-190: compact from 10,000 — 17,240 crosses it.
+    expect(formatHeadline('visitors', 17240)).toBe('17.2K')
+    expect(formatHeadline('visitors', 9876)).toBe('9,876')
     expect(formatHeadline('bounce_rate', 58.4)).toBe('58%')
     expect(formatHeadline('visit_duration', 112)).toBe('1m 52s')
     expect(formatHeadline('pageviews', null)).toBe('—')
