@@ -200,3 +200,52 @@ describe('referrer-domain mode keeps one row per known platform', () => {
     expect(merged[0].visitors).toBe(9)
   })
 })
+
+// Domain mode as an exact refinement of name mode (01-10-2026, after the first fix
+// shipped): a platform the registry does not know is split the same way —
+// pulse.ciphera.net showed "uneed.best" (8) and "Uneed" (3) as two rows.
+describe('referrer-domain mode merges a brand-only value into its host row from the list', () => {
+  it('merges an unknown brand into the host that shows its name in name mode, labelled by the host', () => {
+    const merged = mergeReferrersByDisplayName([
+      { referrer: 'uneed.best', pageviews: 10, visitors: 8 },
+      { referrer: 'Uneed', pageviews: 20, visitors: 3 },
+    ], true)
+    expect(merged).toHaveLength(1)
+    expect(merged[0].visitors).toBe(11)
+    expect(merged[0].allReferrers.sort()).toEqual(['Uneed', 'uneed.best'])
+    // The brand member has the most pageviews, so it is the representative referrer;
+    // the label must still be the address the row groups by.
+    expect(merged[0].referrer).toBe('Uneed')
+    expect(merged[0].address).toBe('uneed.best')
+  })
+
+  it('joins the most-visited host when a platform has several, and keeps the others separate', () => {
+    const merged = mergeReferrersByDisplayName([
+      { referrer: 'reddit.com', pageviews: 5, visitors: 4 },
+      { referrer: 'old.reddit.com', pageviews: 2, visitors: 2 },
+      { referrer: 'Reddit', pageviews: 15, visitors: 5 },
+    ], true)
+    expect(merged).toHaveLength(2)
+    const main = merged.find((r) => r.address === 'reddit.com')!
+    expect(main.allReferrers.sort()).toEqual(['Reddit', 'reddit.com'])
+    expect(merged.find((r) => r.address === 'old.reddit.com')!.allReferrers).toEqual(['old.reddit.com'])
+  })
+
+  it('keeps an unknown name with no host in the list as a name, with no address', () => {
+    const merged = mergeReferrersByDisplayName([
+      { referrer: 'Newsletter', pageviews: 4, visitors: 3 },
+      { referrer: 'github.com', pageviews: 6, visitors: 4 },
+    ], true)
+    const nl = merged.find((r) => r.referrer === 'Newsletter')!
+    expect(nl.address).toBeNull()
+  })
+
+  it('sets no address in name mode', () => {
+    const merged = mergeReferrersByDisplayName([
+      { referrer: 'uneed.best', pageviews: 10, visitors: 8 },
+      { referrer: 'Uneed', pageviews: 20, visitors: 3 },
+    ], false)
+    expect(merged).toHaveLength(1)
+    expect(merged[0].address).toBeNull()
+  })
+})

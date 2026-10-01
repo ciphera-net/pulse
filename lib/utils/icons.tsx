@@ -411,38 +411,53 @@ export function getFilterValueIcon(dimension: string, value: string): ReactNode 
 }
 
 /**
- * The group key for one merge bucket: in referrer-domain mode (PULSE-171), a
- * host-like referrer groups by its lowercased host — so reddit.com and
- * old.reddit.com stay separate rows — and a brand-only value of a known
- * platform ("Reddit", "ChatGPT") groups under that platform's address, so it
- * joins the platform's host row instead of showing as a second row for the same
- * platform. Rows with no address (Direct, Shared Link, an unknown name) group
- * by their display name, as in default mode. Off (the default), this is exactly
+ * The group key for one merge bucket. Off (the default) this is exactly
  * getReferrerDisplayName — today's grouping, unchanged.
+ *
+ * In referrer-domain mode (PULSE-171) domain mode is an exact refinement of
+ * name mode: every name-mode group splits only by the distinct real hosts in
+ * it. A host-like referrer groups by its lowercased host (reddit.com and
+ * old.reddit.com stay separate rows). A value with no host of its own — a
+ * brand name ingest stored when it fell back to utm_source or the in-app user
+ * agent ("Reddit", "Uneed") — joins the most-visited host row in the SAME list
+ * whose name-mode label is its own (so "Uneed" joins uneed.best, as it does in
+ * name mode); failing that, a known platform's own address (registry
+ * `domain`); failing that, its display name (Direct, Shared Link, a name with
+ * no host anywhere).
  */
-function referrerGroupKey(referrer: string, showDomains: boolean): string {
-  if (showDomains) {
-    const address = getReferrerCanonicalAddress(referrer)
-    if (address) return address
-  }
-  return getReferrerDisplayName(referrer)
+function referrerGroupKey(referrer: string, showDomains: boolean, hostForName?: Map<string, string>): string {
+  if (!showDomains) return getReferrerDisplayName(referrer)
+  const address = getReferrerAddress(referrer)
+  if (address) return address
+  const viaList = hostForName?.get(getReferrerDisplayName(referrer))
+  if (viaList) return viaList
+  return getReferrerCanonicalAddress(referrer) ?? getReferrerDisplayName(referrer)
 }
 
 /**
- * Merges referrer rows that share the same display name (e.g. chatgpt.com and https://chatgpt.com/...),
- * summing counts and keeping one referrer per group for icon/tooltip. Sorted by visitors desc
- * (the displayed primary and the server's ranking field — a pageview sort here silently undid the
- * server's ordering for exactly this one card, 01-09-2026).
- *
- * `showDomains` (PULSE-171, default false — today's behaviour, byte-for-byte
- * unchanged) switches the grouping key to referrerGroupKey's domain mode;
- * everything else about the merge (summed counts, weighted rates,
- * allReferrers, the sort) is identical in both modes.
+ * For domain mode: each name-mode label → the host, among this list's
+ * host-like rows carrying that label, with the most visitors (ties: the most
+ * pageviews, then the host's spelling, so the choice is stable).
  */
+function hostByDisplayName(items: Array<{ referrer: string; pageviews: number; visitors?: number }>): Map<string, string> {
+  const best = new Map<string, { host: string; visitors: number; pageviews: number }>()
+  for (const ref of items) {
+    const host = getReferrerAddress(ref.referrer)
+    if (!host) continue
+    const name = getReferrerDisplayName(ref.referrer)
+    const visitors = ref.visitors ?? 0
+    const cur = best.get(name)
+    if (!cur || visitors > cur.visitors || (visitors === cur.visitors && (ref.pageviews > cur.pageviews || (ref.pageviews === cur.pageviews && host < cur.host)))) {
+      best.set(name, { host, visitors, pageviews: ref.pageviews })
+    }
+  }
+  return new Map(Array.from(best, ([name, b]) => [name, b.host]))
+}
+
 export function mergeReferrersByDisplayName(
   items: Array<{ referrer: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>,
   showDomains: boolean = false
-): Array<{ referrer: string; pageviews: number; visitors: number; bounce_rate: number | null; avg_duration: number | null; allReferrers: string[] }> {
+): Array<{ referrer: string; pageviews: number; visitors: number; bounce_rate: number | null; avg_duration: number | null; allReferrers: string[]; address: string | null }> {
   type Acc = {
     referrer: string; pageviews: number; visitors: number; maxSingle: number; allReferrers: Set<string>
     // Merged rates are visitors-weighted means of the non-null components —
@@ -452,8 +467,9 @@ export function mergeReferrersByDisplayName(
     bounceWeighted: number; bounceBase: number; durationWeighted: number; durationBase: number
   }
   const byDisplayName = new Map<string, Acc>()
+  const hostForName = showDomains ? hostByDisplayName(items) : undefined
   for (const ref of items) {
-    const name = referrerGroupKey(ref.referrer, showDomains)
+    const name = referrerGroupKey(ref.referrer, showDomains, hostForName)
     const visitors = ref.visitors ?? 0
     let acc = byDisplayName.get(name)
     if (!acc) {
@@ -476,14 +492,18 @@ export function mergeReferrersByDisplayName(
       acc.durationBase += visitors
     }
   }
-  return Array.from(byDisplayName.values())
-    .map((a) => ({
+  return Array.from(byDisplayName.entries())
+    .map(([key, a]) => ({
       referrer: a.referrer,
       pageviews: a.pageviews,
       visitors: a.visitors,
       bounce_rate: a.bounceBase > 0 ? a.bounceWeighted / a.bounceBase : null,
       avg_duration: a.durationBase > 0 ? a.durationWeighted / a.durationBase : null,
       allReferrers: Array.from(a.allReferrers),
+      // The address this row groups by in domain mode — what its label must
+      // show, whichever member had the most pageviews. Null in name mode and
+      // for rows grouped by a name (Direct, Shared Link, an unknown name).
+      address: showDomains && HOST_LIKE.test(key) ? key : null,
     }))
     .sort((a, b) => b.visitors - a.visitors || b.pageviews - a.pageviews)
 }
