@@ -72,7 +72,8 @@ const TAB_TO_KIND: Partial<Record<Tab, FullListKind>> = { countries: 'countries'
 // * IANA timezone → ISO country code, from IANA tzdata's own zone.tab + backward links
 // * (lib/timezone-countries.gen.ts, regenerate with scripts/generate-timezone-countries.mjs).
 // * It was a hand-written list of ~45 zones, so most rows had no flag (PULSE-170). A zone that
-// * belongs to no country (Etc/*, UTC) returns '' and shows no flag, which is correct, not a gap.
+// * belongs to no country (UTC, Etc/*, the Etc/Unknown placeholder) returns '' and the row shows
+// * the same grey globe the Languages tab uses for "no country" (PULSE-179, the owner's T-A).
 export function getTimezoneCountry(tz: string): string {
   if (!tz || tz === 'Unknown') return ''
   return TIMEZONE_COUNTRY[tz] ?? ''
@@ -171,8 +172,11 @@ export default function Audience({ countries, cities, regions, languages, langua
   }, [])
 
   const getFlagComponent = (countryCode: string, tab?: Tab) => {
+    // * A row with no country gets the globe on the two tabs whose rows can legitimately have
+    // * none: a bare language tag, and a timezone that belongs to no country (UTC, Etc/*). The
+    // * globe is a flag's size, so the label stays in the flagged rows' column (PULSE-179).
     if (!countryCode || countryCode === 'Unknown')
-      return tab === 'languages' ? <GlobeHemisphereWest className="w-5 h-5 text-neutral-400" /> : null
+      return tab === 'languages' || tab === 'timezones' ? <GlobeHemisphereWest className="w-5 h-5 text-neutral-400" /> : null
 
     switch (countryCode) {
       case 'T1':
