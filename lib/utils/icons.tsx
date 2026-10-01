@@ -247,6 +247,63 @@ function getReferrerHostname(referrer: string): string | null {
 }
 
 /**
+ * PULSE-197 — "is this referrer a real, openable website" for the Referrers
+ * row's own open-the-site link. NOT `getReferrerHostname` reused unmodified:
+ * that function's only existing caller (`getReferrerFavicon`) bails out on a
+ * bare, undotted value *before* ever constructing a URL, so reusing it here
+ * would have shipped a dead `https://chatgpt/` link for the raw label
+ * "ChatGPT" (`new URL('https://ChatGPT')` parses without error — nothing
+ * stops a URL constructor from accepting a one-label host with no TLD).
+ *
+ * The rule:
+ *   1. One of the special non-URL values (direct/shared link/unknown/'') → no link.
+ *   2. A DOTTED raw value → trust it as a real hostname (same URL-parse
+ *      `getReferrerHostname` does, but gated on the dot FIRST — the exact
+ *      gate `getReferrerFavicon` applies before it ever reaches a bare brand
+ *      label).
+ *   3. A bare (undotted) value that exactly matches a REGISTRY brand or alias
+ *      (e.g. "ChatGPT", "fb") → that brand's own declared hostname
+ *      (`hostnames[0]`) or, lacking one, the same `${key}.com` auto-derivation
+ *      this file already uses elsewhere for `ALL_KNOWN_HOSTNAMES`.
+ *   4. A bare value that matches NO registry entry → no link — a referrer
+ *      label with nowhere real to send a click (an in-app name the tracker
+ *      recorded, not a brand this registry knows).
+ *
+ * `https://${hostname}/` is always the SITE's home, not the specific
+ * referring URL — a merged row can represent several referring URLs on one
+ * domain, and opening the home domain is the legible, always-safe choice.
+ */
+export function getOpenHostname(referrer: string | null | undefined): string | null {
+  if (!referrer || typeof referrer !== 'string') return null
+  const trimmed = referrer.trim()
+  const lower = trimmed.toLowerCase()
+  if (REFERRER_NO_FAVICON.has(lower)) return null
+  if (lower.includes('.')) {
+    try {
+      // A real scheme check, not startsWith('http'): a schemeless hostname such as
+      // httpbin.org or http2.pro starts with those letters too and must still link.
+      const url = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`)
+      if (url.hostname.includes('.')) return url.hostname.toLowerCase()
+    } catch {
+      // Not a parseable URL even with a dot (e.g. a value with a space) —
+      // fall through to the bare-registry check below, which will also
+      // reject it (no registry key contains a dot or a space).
+    }
+  }
+  const key = REFERRER_REGISTRY[lower] ? lower : ALIAS_TO_KEY[lower]
+  const entry = key ? REFERRER_REGISTRY[key] : null
+  if (!entry) return null
+  if (entry.hostnames && entry.hostnames.length) return entry.hostnames[0]
+  return `${key}.com`
+}
+
+/** The referring site's home URL, or null when `getOpenHostname` finds none. */
+export function getOpenUrl(referrer: string | null | undefined): string | null {
+  const hostname = getOpenHostname(referrer)
+  return hostname ? `https://${hostname}/` : null
+}
+
+/**
  * Resolves a raw referrer string to a registry entry.
  * Returns null if no known brand matches (unknown domain → use favicon service).
  */
