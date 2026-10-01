@@ -19,6 +19,7 @@ import { useDataWindow, useSite, useVisitorProfile, useVisitorVisits } from '@/l
 import { REALTIME_MODES, REALTIME_ROLLING_MINUTES } from '@/lib/dashboard/realtimeRange'
 import { serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
 import { visitorPseudonym } from '@/lib/visitors/pseudonym'
+import { CompactNumber } from '@/components/ui/compact-number'
 import {
   EM_DASH,
   SITE_TIMEZONE_FALLBACK,
@@ -403,7 +404,7 @@ function BackLink({ siteId }: { siteId: string }) {
 function Stat({ n, one, many }: { n: number; one: string; many: string }) {
   return (
     <>
-      <span className="tabular-nums text-neutral-300">{n}</span> {n === 1 ? one : many}
+      <CompactNumber value={n} className="text-neutral-300" /> {n === 1 ? one : many}
     </>
   )
 }
@@ -482,7 +483,7 @@ function VisitRowItem({
           )}
         </span>
         <span className="shrink-0 text-right text-sm tabular-nums text-neutral-500">
-          {visit.pageviews} {visit.pageviews === 1 ? 'page' : 'pages'} ·{' '}
+          <CompactNumber value={visit.pageviews} /> {visit.pageviews === 1 ? 'page' : 'pages'} ·{' '}
           {formatDuration(visit.duration_seconds)}
         </span>
       </button>
