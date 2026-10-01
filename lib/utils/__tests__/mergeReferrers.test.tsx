@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getReferrerAddress, mergeReferrersByDisplayName } from '@/lib/utils/icons'
+import { getReferrerAddress, getReferrerCanonicalAddress, mergeReferrersByDisplayName } from '@/lib/utils/icons'
 
 // The regression that shipped 01-09-2026: the server ranks referrer rows by
 // visitors, and this merge re-sorted them by pageviews on the way to the
@@ -137,5 +137,66 @@ describe('mergeReferrersByDisplayName domain mode (PULSE-171)', () => {
     expect(merged[0].pageviews).toBe(12)
     expect(merged[0].visitors).toBe(6)
     expect(merged[0].allReferrers).toEqual(['reddit.com'])
+  })
+})
+
+// One row per platform in referrer-domain mode (owner, 01-10-2026: "why is reddit
+// in here twice?"). Ingest stores a platform as its host when the browser sent a
+// referrer (reddit.com) and as its brand name when it fell back to utm_source or
+// the in-app user agent (Reddit). Name mode merged them by display name; domain
+// mode must merge them by the platform's address. Measured in production: the
+// same split exists for Facebook, Instagram, ChatGPT, LinkedIn and Perplexity.
+describe('referrer-domain mode keeps one row per known platform', () => {
+  it('merges a brand-only value into its platform host row, labelled by the host', () => {
+    const merged = mergeReferrersByDisplayName([
+      { referrer: 'Reddit', pageviews: 15, visitors: 5 },
+      { referrer: 'reddit.com', pageviews: 5, visitors: 4 },
+      { referrer: 'github.com', pageviews: 6, visitors: 4 },
+    ], true)
+    const reddit = merged.find((r) => r.allReferrers.includes('Reddit'))
+    expect(reddit).toBeDefined()
+    expect(reddit!.allReferrers.sort()).toEqual(['Reddit', 'reddit.com'])
+    expect(reddit!.visitors).toBe(9)
+    expect(merged).toHaveLength(2)
+    expect(getReferrerCanonicalAddress('Reddit')).toBe('reddit.com')
+  })
+
+  it('merges the other measured splits the same way', () => {
+    for (const [brand, host] of [['Facebook', 'facebook.com'], ['Instagram', 'instagram.com'], ['ChatGPT', 'chatgpt.com'], ['LinkedIn', 'linkedin.com'], ['Perplexity', 'perplexity.ai']]) {
+      const merged = mergeReferrersByDisplayName([
+        { referrer: brand, pageviews: 3, visitors: 2 },
+        { referrer: host, pageviews: 4, visitors: 3 },
+      ], true)
+      expect(merged, brand).toHaveLength(1)
+      expect(getReferrerCanonicalAddress(brand), brand).toBe(host)
+    }
+  })
+
+  it('keeps a real but different host of the same platform as its own row', () => {
+    const merged = mergeReferrersByDisplayName([
+      { referrer: 'reddit.com', pageviews: 5, visitors: 4 },
+      { referrer: 'old.reddit.com', pageviews: 2, visitors: 2 },
+    ], true)
+    expect(merged).toHaveLength(2)
+  })
+
+  it('keeps names for rows with no address of their own', () => {
+    for (const name of ['Direct', 'Shared Link', 'Some Newsletter']) {
+      expect(getReferrerCanonicalAddress(name), name).toBeNull()
+    }
+    const merged = mergeReferrersByDisplayName([
+      { referrer: 'Direct', pageviews: 10, visitors: 8 },
+      { referrer: 'Shared Link', pageviews: 4, visitors: 3 },
+    ], true)
+    expect(merged.map((r) => r.referrer).sort()).toEqual(['Direct', 'Shared Link'])
+  })
+
+  it('leaves name mode exactly as it was: brand and host already merge by display name', () => {
+    const merged = mergeReferrersByDisplayName([
+      { referrer: 'Reddit', pageviews: 15, visitors: 5 },
+      { referrer: 'reddit.com', pageviews: 5, visitors: 4 },
+    ], false)
+    expect(merged).toHaveLength(1)
+    expect(merged[0].visitors).toBe(9)
   })
 })
