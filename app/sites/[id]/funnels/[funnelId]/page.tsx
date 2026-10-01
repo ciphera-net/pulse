@@ -17,7 +17,8 @@ import FilterButton from '@/components/dashboard/FilterButton'
 import FilterPills from '@/components/dashboard/FilterPills'
 import FilterBuilder from '@/components/dashboard/filter/FilterBuilder'
 import { useFilterBuilder } from '@/components/dashboard/filter/useFilterBuilder'
-import { formatNumber, formatConvertTime } from '@/lib/utils/format'
+import { formatConvertTime } from '@/lib/utils/format'
+import { CompactNumber } from '@/components/ui/compact-number'
 import { guardedPointChange, type PctChangeResult } from '@/lib/utils/pctChange'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { ErrorCard } from '@/components/ui/ErrorCard'
@@ -305,7 +306,7 @@ export default function FunnelDetailPage() {
                 {stats && entered != null && (
                   <span className="truncate text-xs tabular-nums text-neutral-500">
                     {entered > 0
-                      ? `${formatNumber(completed ?? 0)} of ${formatNumber(entered)} entered`
+                      ? <><CompactNumber value={completed ?? 0} /> of <CompactNumber value={entered} /> entered</>
                       : 'no visitors entered in this period'}
                   </span>
                 )}

@@ -13,7 +13,7 @@ import { getDateRange } from '@/lib/utils/dateRanges'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { SegmentedControl } from '@ciphera-net/facet'
 import Select from '@/components/ui/select'
-import { formatNumber } from '@/lib/utils/format'
+import { formatCompactNumber } from '@/lib/utils/format'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 // ---------------------------------------------------------------------------
@@ -231,7 +231,7 @@ function SuggestInput({
                   {it.label ?? it.value}
                 </span>
                 <span className="shrink-0 text-xs tabular-nums text-neutral-500">
-                  {formatNumber(it.count)}
+                  {formatCompactNumber(it.count)}
                 </span>
               </button>
             ))

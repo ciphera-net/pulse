@@ -1,5 +1,6 @@
 'use client'
 
+import { Tooltip } from '@ciphera-net/facet'
 import { cn } from '@/lib/utils'
 import type { PctChangeResult } from '@/lib/utils/pctChange'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
@@ -32,6 +33,7 @@ export function RailDelta({ change, invert = false }: { change: PctChangeResult;
 export function FunnelRail({
   label,
   value,
+  exactValue,
   delta,
   context,
   labelTerm,
@@ -39,6 +41,13 @@ export function FunnelRail({
 }: {
   label: string
   value: string
+  /**
+   * The exact value, when `value` is a compact rendering of a count
+   * (PULSE-190) — reachable on hover/focus via Facet's `Tooltip` and carried
+   * as the value span's accessible name. Omit when `value` is already exact
+   * (a rate, a duration, or a count under the 10,000 threshold).
+   */
+  exactValue?: string
   delta?: PctChangeResult
   context?: string
   /** Registry key for this rail's own InfoTip — omit for a rail with no term
@@ -49,6 +58,7 @@ export function FunnelRail({
   className?: string
 }) {
   const isDash = value === '—'
+  const valueClassName = cn('mt-0.5 text-xl font-semibold tabular-nums', isDash ? 'text-neutral-600' : 'text-white')
   return (
     <div className={cn('relative flex min-w-0 flex-col justify-center px-4 py-3', className)}>
       <span aria-hidden="true" className="absolute bottom-0 left-0 top-0 w-[2px] bg-brand-orange" />
@@ -62,9 +72,15 @@ export function FunnelRail({
         </span>
         {!isDash && <RailDelta change={delta ?? null} />}
       </div>
-      <span className={cn('mt-0.5 text-xl font-semibold tabular-nums', isDash ? 'text-neutral-600' : 'text-white')}>
-        {value}
-      </span>
+      {!isDash && exactValue && exactValue !== value ? (
+        <Tooltip content={exactValue}>
+          <span tabIndex={0} aria-label={exactValue} className={cn(valueClassName, 'cursor-help')}>
+            {value}
+          </span>
+        </Tooltip>
+      ) : (
+        <span className={valueClassName}>{value}</span>
+      )}
       {!isDash && context && (
         <span className="mt-0.5 truncate text-[11px] text-neutral-500" title={context}>
           {context}

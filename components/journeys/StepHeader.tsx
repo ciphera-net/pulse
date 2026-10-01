@@ -1,6 +1,8 @@
 'use client'
 
 import { AnimatedNumber } from '@/components/ui/animated-number'
+import { CompactNumber } from '@/components/ui/compact-number'
+import { formatCompactNumber } from '@/lib/utils/format'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 
 // ---------------------------------------------------------------------------
@@ -38,11 +40,9 @@ export function StepHeader({ index, visitors, dropOffPercent, showDropoffTip }: 
         {index === 0 && <TermInfoTip term="journey_step" />}
       </span>
       <div className="flex items-baseline gap-1.5">
-        <AnimatedNumber
-          value={visitors}
-          format={(v) => Math.round(v).toLocaleString()}
-          className="text-sm font-semibold tabular-nums text-white"
-        />
+        <CompactNumber value={visitors} className="text-sm font-semibold tabular-nums text-white">
+          <AnimatedNumber value={visitors} format={(v) => formatCompactNumber(Math.round(v))} />
+        </CompactNumber>
         <span className="text-xs text-neutral-500">visitors</span>
         {dropOffPercent !== 0 && (
           <span className={`flex h-4 items-center gap-1 text-xs font-medium tabular-nums ${dropOffPercent < 0 ? 'text-red-400' : 'text-green-400'}`}>

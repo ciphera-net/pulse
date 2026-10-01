@@ -4,7 +4,7 @@ import { useCallback, useId, useRef } from 'react'
 import { FileText, House, Lightning } from '@phosphor-icons/react'
 import type { FunnelStepStats, FunnelStep } from '@/lib/api/funnels'
 import { ParentSize } from '@/lib/charts/primitives'
-import { formatNumber, formatConvertTime } from '@/lib/utils/format'
+import { formatNumber, formatCompactNumber, formatConvertTime } from '@/lib/utils/format'
 
 // ---------------------------------------------------------------------------
 // FunnelColumns — the funnels hero, approved 31-08-2026 (options round 5,
@@ -179,7 +179,7 @@ export function FunnelColumns({ steps, selectedStep, onSelectStep, compact }: Fu
                             fill="rgb(var(--white))"
                             style={{ fontVariantNumeric: 'tabular-nums' }}
                           >
-                            {formatNumber(s.visitors)}
+                            {formatCompactNumber(s.visitors)}
                           </text>
                           <text
                             x={x + colW}
@@ -219,7 +219,7 @@ export function FunnelColumns({ steps, selectedStep, onSelectStep, compact }: Fu
                           fill={INK_TEXT}
                           style={{ fontVariantNumeric: 'tabular-nums' }}
                         >
-                          −{formatNumber(lost)} · {dropPct}%
+                          −{formatCompactNumber(lost)} · {dropPct}%
                         </text>
                         {med != null && (
                           <text x={midX} y={yTxt + 16} textAnchor="middle" fontSize={10.5} fill={DIM}>

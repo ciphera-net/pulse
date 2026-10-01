@@ -6,12 +6,13 @@ import { curveLinear } from 'd3-shape'
 import { PERIOD_ENDS_NOW } from '@/lib/constants/periods'
 import { REALTIME_EMPTY_LINE } from '@/lib/dashboard/realtimeRange'
 import { Card } from '@ciphera-net/facet'
-import { formatNumber, formatDuration } from '@/lib/utils/format'
+import { formatCompactNumber, formatDuration } from '@/lib/utils/format'
 import Select from '@/components/ui/select'
 import { ChartLine } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { SPRING } from '@/lib/motion'
 import { AnimatedNumber } from '@/components/ui/animated-number'
+import { CompactNumber } from '@/components/ui/compact-number'
 import { cn } from '@/lib/utils'
 import { formatDateShortUTC, formatTimeUTC, formatDateFullUTC, parseSiteWallClock } from '@/lib/utils/formatDate'
 import { guardedPctChange, guardedPointChange, type PctChangeResult } from '@/lib/utils/pctChange'
@@ -111,16 +112,22 @@ const METRICS: {
   format: (v: number | null) => string
   isNegative?: boolean
   isRate?: boolean
+  // A raw count (not a ratio/percentage/duration) — PULSE-190 renders these
+  // compact with the exact value on hover/focus; the other three rows are
+  // already-formatted strings a compact notation can't apply to.
+  isCount?: boolean
 }[] = [
   {
     key: 'visitors', label: 'Unique visitors', context: 'unique people',
     title: METRIC_TERMS.visitors.definition,
-    format: (v) => v == null ? '—' : formatNumber(Math.round(v)),
+    format: (v) => formatCompactNumber(v == null ? null : Math.round(v)),
+    isCount: true,
   },
   {
     key: 'pageviews', label: 'Total pageviews', context: 'across the site',
     title: METRIC_TERMS.pageviews.definition,
-    format: (v) => v == null ? '—' : formatNumber(Math.round(v)),
+    format: (v) => formatCompactNumber(v == null ? null : Math.round(v)),
+    isCount: true,
   },
   {
     key: 'pages_per_visit', label: 'Pages / visit', context: 'depth',
@@ -259,7 +266,13 @@ export default function CommandDeck({
                 </div>
                 {m.value == null
                   ? <span className="mt-0.5 block text-xl font-semibold text-neutral-600">—</span>
-                  : <AnimatedNumber value={m.value} format={m.format as (v: number) => string} className="mt-0.5 block text-xl font-semibold tabular-nums text-white" />}
+                  : m.isCount
+                    ? (
+                        <CompactNumber value={m.value} className="mt-0.5 block text-xl font-semibold tabular-nums text-white">
+                          <AnimatedNumber value={m.value} format={m.format as (v: number) => string} />
+                        </CompactNumber>
+                      )
+                    : <AnimatedNumber value={m.value} format={m.format as (v: number) => string} className="mt-0.5 block text-xl font-semibold tabular-nums text-white" />}
                 <span className="mt-0.5 block truncate text-[11px] text-neutral-500">
                   {m.context}
                   {railImported && IMPORT_MERGED_METRICS.has(m.key) && ' · incl. imported days'}

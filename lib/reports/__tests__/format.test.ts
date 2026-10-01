@@ -54,7 +54,9 @@ describe('numbers', () => {
   })
 
   it('writes headline values as the dashboard does, and null as an em dash', () => {
-    expect(formatHeadline('visitors', 17240)).toBe('17,240')
+    // PULSE-190: compact from 10,000 — 17,240 crosses it.
+    expect(formatHeadline('visitors', 17240)).toBe('17.2K')
+    expect(formatHeadline('visitors', 9876)).toBe('9,876')
     expect(formatHeadline('bounce_rate', 58.4)).toBe('58%')
     expect(formatHeadline('visit_duration', 112)).toBe('1m 52s')
     expect(formatHeadline('pageviews', null)).toBe('—')
@@ -71,7 +73,9 @@ describe('numbers', () => {
     expect(axisTicks(6480)).toEqual([0, 2000, 4000, 6000, 8000])
     expect(axisTicks(90)).toEqual([0, 25, 50, 75, 100])
     expect(axisTicks(0)).toEqual([0, 1, 2, 3, 4])
-    expect([2500, 8000, 1_200_000, 400].map(tickLabel)).toEqual(['2.5k', '8k', '1.2M', '400'])
+    // PULSE-190: exact below 10,000 (the old 1,000-threshold lowercase 'k' is
+    // gone), compact from there.
+    expect([2500, 8000, 12000, 1_200_000, 400].map(tickLabel)).toEqual(['2,500', '8,000', '12K', '1.2M', '400'])
   })
 })
 
