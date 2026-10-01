@@ -15,6 +15,7 @@ import DateRangePicker from '@/components/ui/DateRangePicker'
 import { PERIOD_TO_API } from '@/lib/constants/periods'
 import { DEFAULT_GEO_DATA_LEVEL } from '@/lib/api/sites'
 import { identityWindowOf } from '@/lib/visitors/identityWindow'
+import { formatDate } from '@/lib/utils/format'
 import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
 import { useRealtimeToggle } from '@/lib/hooks/useRealtimeToggle'
 import { previousDateRange } from '@/lib/hooks/periodUrl'
@@ -151,18 +152,43 @@ export default function SiteDashboardPage() {
   // '1h' narrows to minutes; '24h' narrows to hours — the server resolves 24h as
   // a genuine rolling window (D3), and drawing it as two daily bars split the
   // window mid-bar (F5). Other multi-day ranges keep the user's interval choice.
-  const [firstHourOfDay, setFirstHourOfDay] = useState(false)
-
+  //
   // A young day cannot draw an hourly line worth reading — until THREE hours
   // of data exist, Today renders MINUTE buckets instead, the Last-1-hour
   // instrument (owner rulings 04-09 and 05-09-2026, widened from 1h after the
   // 01:02 two-bucket diagonal; supersedes the rejected full-day-axis attempt).
-  // The signal is the series' own span: first→last bucket under EITHER
-  // interval is < 3h exactly while the day is that young, so the rule cannot
-  // oscillate. It rides one render behind the fetch by design.
+  //
+  // 🔴 PULSE-201: this used to be read off the FETCHED response (span of the
+  // returned `daily_stats` < 3h), via a `firstHourOfDay` state flipped in an
+  // effect once data arrived. That info arrives one render AFTER the request
+  // that needed it, so a cold Today load always fired twice: once with
+  // interval='hour' (the state's startup default), then again with
+  // interval='minute' the instant the effect flipped it — two full
+  // /dashboard fan-outs for one page view, the double-request + 8s-timeout
+  // report this fixes.
+  //
+  // Decided up front instead, from what `GetTimeSeriesStats` itself proves:
+  // its generate_series always spans the day's LOCAL MIDNIGHT to
+  // min(requested end, now) (internal/database/stats.go) — zero-filled, never
+  // trimmed to where traffic starts — so "span of the returned buckets" IS
+  // "time elapsed since the site's local midnight", to within one bucket's
+  // width. That elapsed time needs only the site's timezone and the
+  // requested day, both already settled (periodReady gates on the timezone)
+  // before this is ever evaluated, so the very FIRST request already asks
+  // for the right granularity and no flip — and no second fetch — follows.
+  //
+  // Read off `urlRange.siteNow` (the minute-bucketed site wall-clock stand-in
+  // this page already derives its "today" from) via its LOCAL getters, rather
+  // than a fresh `Date.now()` here: the page's render body stays pure, and
+  // the minute it rolls over is the same minute every other "today" check on
+  // this page rolls over.
   // Realtime is always minute buckets: a live window drawn at day granularity is
   // one bar, which is not a chart.
-  const interval = isLive ? 'minute' : period === '1h' ? 'minute' : period === '24h' ? 'hour' : (dateRange.start === dateRange.end ? (firstHourOfDay ? 'minute' : 'hour') : multiDayInterval)
+  const isYoungSingleDay =
+    dateRange.start === dateRange.end &&
+    dateRange.start === formatDate(urlRange.siteNow) &&
+    urlRange.siteNow.getHours() * 60 + urlRange.siteNow.getMinutes() < 3 * 60
+  const interval = isLive ? 'minute' : period === '1h' ? 'minute' : period === '24h' ? 'hour' : (dateRange.start === dateRange.end ? (isYoungSingleDay ? 'minute' : 'hour') : multiDayInterval)
 
   // Single dashboard request replaces focused hooks (overview, pages, locations,
   // devices, referrers, goals). The backend runs all queries in parallel
@@ -317,20 +343,6 @@ export default function SiteDashboardPage() {
   // the owner saw (plan §11.10). One source, one number.
   const deckStats: Stats = isLive ? { ...stats, visitors: realtime } : stats
   const dailyStats: DailyStat[] = dashboard?.daily_stats ?? []
-
-  // Span of the returned series (offset-safe: both ends carry the same site
-  // offset). < 3h ⇔ the site day is still too young for an hourly line.
-  useEffect(() => {
-    if (dateRange.start !== dateRange.end || dailyStats.length === 0) {
-      setFirstHourOfDay(false)
-      return
-    }
-    const first = new Date(dailyStats[0].date).getTime()
-    const last = new Date(dailyStats[dailyStats.length - 1].date).getTime()
-    setFirstHourOfDay(last - first < 3 * 3_600_000)
-  }, [dateRange.start, dateRange.end, dailyStats])
-
-
 
   // Show error toast on fetch failure
   useEffect(() => {
