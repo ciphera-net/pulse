@@ -19,6 +19,10 @@ describe('middleware', () => {
       '/signup',
       '/auth/callback',
       '/pricing',
+      // * D43 (the marketing-app split): the dashboard address a future
+      // * marketing /pricing button links to. The marketing app has no
+      // * session, so it must be reachable exactly as /pricing itself is.
+      '/start/plan',
       '/features',
       '/about',
       '/faq',

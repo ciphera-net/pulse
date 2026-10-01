@@ -76,17 +76,22 @@ describe('exchangeAuthCode — Pulse writes only its own host-only cookies', () 
     cookieStore = makeCookieStore({})
   })
 
-  it('writes pulse_access / pulse_refresh / pulse_csrf, host-only, from the body and the header', async () => {
+  it('writes pulse_access / pulse_refresh / pulse_csrf, host-only, from the body and the header — plus the D45 signed-in hint', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(tokenResponse()))
     const { exchangeAuthCode } = await import('../auth')
 
     const result = await exchangeAuthCode('code-1', 'verifier-1', 'https://pulse.example.test/auth/callback')
 
     expect(result.success).toBe(true)
-    expect(cookieStore.sets.map((c) => c.name).sort()).toEqual(['pulse_access', 'pulse_csrf', 'pulse_refresh'])
+    // pulse_signed_in (D45): a login IS a session being established.
+    expect(cookieStore.sets.map((c) => c.name).sort()).toEqual(
+      ['pulse_access', 'pulse_csrf', 'pulse_refresh', 'pulse_signed_in'],
+    )
     for (const c of cookieStore.sets) {
       expect(c.options, `${c.name} must carry no domain`).not.toHaveProperty('domain')
-      expect(c.options.httpOnly).toBe(true)
+      // The hint is the one deliberate exception — a future marketing app
+      // with no session of its own has to be able to read it client-side.
+      expect(c.options.httpOnly).toBe(c.name !== 'pulse_signed_in')
     }
     expect(cookieStore.sets.find((c) => c.name === 'pulse_refresh')?.value).toBe('R1')
     expect(cookieStore.sets.find((c) => c.name === 'pulse_csrf')?.value).toBe('csrf-1')
@@ -282,13 +287,15 @@ describe('logoutAction — Pulse\'s own family, revoked for real', () => {
     expect(h.get('user-agent')).toBe(BROWSER_UA)
   })
 
-  it('expires all four pulse_* cookies (the active-team preference included) and touches nothing apex', async () => {
+  it('expires all five pulse_* cookies (the active-team preference and the D45 hint included) and touches nothing apex', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(200, {})))
     const { logoutAction } = await import('../auth')
 
     await logoutAction()
 
-    expect(cookieStore.deletes.map((d) => d.name).sort()).toEqual(['pulse_access', 'pulse_csrf', 'pulse_refresh', 'pulse_team'])
+    expect(cookieStore.deletes.map((d) => d.name).sort()).toEqual(
+      ['pulse_access', 'pulse_csrf', 'pulse_refresh', 'pulse_signed_in', 'pulse_team'],
+    )
     for (const d of cookieStore.deletes) expect(d.options).not.toHaveProperty('domain')
   })
 
@@ -324,7 +331,7 @@ describe('logoutAction — Pulse\'s own family, revoked for real', () => {
 
     expect(result.revoked).toBe(false)
     expect(result.already_invalid).toBe(true)
-    expect(cookieStore.deletes).toHaveLength(4)
+    expect(cookieStore.deletes).toHaveLength(5)
   })
 
   it('reports an unconfirmed revocation honestly and still clears the cookies', async () => {
@@ -336,7 +343,7 @@ describe('logoutAction — Pulse\'s own family, revoked for real', () => {
     expect(result.revoked).toBe(false)
     expect(result.already_invalid).toBe(false)
     expect(result.status).toBe(503)
-    expect(cookieStore.deletes).toHaveLength(4)
+    expect(cookieStore.deletes).toHaveLength(5)
   })
 
   it('🔴 with no Pulse session, the apex cookies in the browser are NOT used to sign anyone out', async () => {

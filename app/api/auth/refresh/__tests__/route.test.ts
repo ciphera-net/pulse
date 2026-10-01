@@ -224,18 +224,23 @@ describe('POST /api/auth/refresh — the S3 cookie shape', () => {
     cookieStore = makeCookieStore({ pulse_refresh: OLD_TOKEN, pulse_access: accessToken() })
   })
 
-  it('writes ONLY pulse_* cookies, every one host-only and httpOnly', async () => {
+  it('writes ONLY pulse_* cookies, host-only, and httpOnly except the D45 signed-in hint', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstreamOk(NEW_TOKEN, { rotated: true })))
 
     await callRoute()
 
     const names = cookieStore.sets.map((c) => c.name).sort()
-    expect(names).toEqual(['pulse_access', 'pulse_csrf', 'pulse_refresh'])
+    // pulse_signed_in (D45) is written by writeSession on every call that
+    // reaches here — a renewed access token IS a refreshed session.
+    expect(names).toEqual(['pulse_access', 'pulse_csrf', 'pulse_refresh', 'pulse_signed_in'])
     for (const c of cookieStore.sets) {
       expect(c.options, `${c.name} must carry no domain`).not.toHaveProperty('domain')
-      expect(c.options.httpOnly, `${c.name} must be httpOnly`).toBe(true)
       expect(c.options.path).toBe('/')
       expect(c.options.sameSite).toBe('lax')
+      // Every CREDENTIAL cookie is httpOnly; the hint is deliberately not —
+      // a future marketing app with no session of its own has to be able to
+      // read it client-side.
+      expect(c.options.httpOnly, `${c.name} httpOnly`).toBe(c.name !== 'pulse_signed_in')
     }
     expect(cookieStore.sets.find((c) => c.name === 'pulse_csrf')?.value).toBe('csrf-from-header')
   })
@@ -298,16 +303,20 @@ describe('POST /api/auth/refresh — only a verdict may destroy the session', ()
     })
   }
 
-  it('deletes ALL FOUR pulse_* cookies on 401 — the credential was rejected — and nothing apex', async () => {
-    // 🔴 FOUR, not three, since Phase 2 (PULSE-89): clearSession also drops
-    // pulse_team — someone else signing in on this browser must not inherit
-    // the previous person's team preference.
+  it('deletes ALL FIVE pulse_* cookies on 401 — the credential was rejected — and nothing apex', async () => {
+    // 🔴 FIVE, not three, since Phase 2 (PULSE-89) and D45 (01-10-2026):
+    // clearSession also drops pulse_team — someone else signing in on this
+    // browser must not inherit the previous person's team preference — and
+    // pulse_signed_in, or a dead session would still read as signed in to a
+    // future marketing header.
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstreamFailure(401)))
 
     const res = await callRoute()
 
     expect(res.status).toBe(401)
-    expect(cookieStore.deletes.map((d) => d.name).sort()).toEqual(['pulse_access', 'pulse_csrf', 'pulse_refresh', 'pulse_team'])
+    expect(cookieStore.deletes.map((d) => d.name).sort()).toEqual(
+      ['pulse_access', 'pulse_csrf', 'pulse_refresh', 'pulse_signed_in', 'pulse_team'],
+    )
     for (const d of cookieStore.deletes) {
       expect(d.options, `${d.name} delete must carry no domain`).not.toHaveProperty('domain')
     }

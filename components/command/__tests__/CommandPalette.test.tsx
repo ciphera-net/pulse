@@ -12,8 +12,12 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/lib/swr/sites', () => ({
   useSites: () => ({ sites: [] }),
 }))
+// Every permission defaults to granted except the ones a test overrides below
+// (D43: the pricing action's Billing gate) — most of this file's assertions
+// assume an admin's view of the palette, same as before this map existed.
+let mockPermissions: Record<string, boolean> = {}
 vi.mock('@/lib/auth/permissions', () => ({
-  useCan: () => true,
+  useCan: (perm: string) => mockPermissions[perm] ?? true,
 }))
 // The settings group follows the ONE team-state signal (PULSE-59).
 let mockTeamState: 'alone' | 'team' | null = 'team'
@@ -42,6 +46,7 @@ function renderPalette(props: Partial<Parameters<typeof CommandPalette>[0]> = {}
 
 beforeEach(() => {
   mockTeamState = 'team'
+  mockPermissions = {}
   sessionStorage.clear()
   pushMock.mockClear()
   mockPathname = '/sites'
@@ -128,5 +133,23 @@ describe('CommandPalette settings entries, alone and team', () => {
     expect(screen.queryByText('Team Settings')).toBeNull()
     expect(screen.queryByText('Team Members')).toBeNull()
     expect(screen.queryByText('Audit Log')).toBeNull()
+  })
+})
+
+// D43: the "View pricing" action opens Billing for anyone who may see that
+// tab, never a tab that would just render "Access restricted" for them.
+describe('the "View pricing" action (D43)', () => {
+  it('opens Settings → Billing when the viewer has billing.view', () => {
+    mockPermissions = { 'billing.view': true }
+    renderPalette()
+    fireEvent.click(screen.getByText('View pricing'))
+    expect(pushMock).toHaveBeenCalledWith('/settings/organization/billing')
+  })
+
+  it('falls back to the marketing /pricing page without billing.view', () => {
+    mockPermissions = { 'billing.view': false }
+    renderPalette()
+    fireEvent.click(screen.getByText('View pricing'))
+    expect(pushMock).toHaveBeenCalledWith('/pricing')
   })
 })

@@ -247,7 +247,14 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
             <Plugs size={16} weight="regular" className="opacity-60" aria-hidden="true" />
             <span><HighlightMatch text="Browse integrations" query={search} /></span>
           </CommandItem>
-          <CommandItem value="action-pricing" onSelect={() => go('/pricing')}>
+          {/* D43: opens Settings → Billing for anyone who may see that tab
+              (same gate as "Billing & Subscription" in the Settings group
+              below) — a member without the permission keeps going to the
+              marketing page, never to a tab that would just refuse them. */}
+          <CommandItem
+            value="action-pricing"
+            onSelect={() => go(canBillingView ? '/settings/organization/billing' : '/pricing')}
+          >
             <Tag size={16} weight="regular" className="opacity-60" aria-hidden="true" />
             <span><HighlightMatch text="View pricing" query={search} /></span>
           </CommandItem>
