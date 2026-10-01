@@ -157,6 +157,27 @@ describe('POST /api/auth/refresh — refresh token write-back guard', () => {
     expect(res.status).toBe(401)
     expect(fetchSpy).not.toHaveBeenCalled()
   })
+
+  it('clears a leftover D45 hint when there is no pulse_refresh cookie — and nothing else', async () => {
+    cookieStore = makeCookieStore({ pulse_signed_in: '1', pulse_team: '0b9d6d7e-1f2a-4c3b-9d8e-7f6a5b4c3d2e' })
+    vi.stubGlobal('fetch', vi.fn())
+
+    const res = await callRoute()
+
+    expect(res.status).toBe(401)
+    expect(cookieStore.deletes.map((d) => d.name)).toEqual(['pulse_signed_in'])
+    expect(cookieStore.deletes[0].options).toMatchObject({ path: '/' })
+  })
+
+  it('touches no cookie at all for an anonymous visitor with no hint', async () => {
+    cookieStore = makeCookieStore({})
+    vi.stubGlobal('fetch', vi.fn())
+
+    await callRoute()
+
+    expect(cookieStore.deletes).toHaveLength(0)
+    expect(cookieStore.sets).toHaveLength(0)
+  })
 })
 
 /**
