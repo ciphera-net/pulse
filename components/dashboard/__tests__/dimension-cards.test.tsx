@@ -118,6 +118,18 @@ describe('Sources — referrers view', () => {
     expect(screen.queryByText('linkedin.com')).toBeNull()
   })
 
+  it('shows one row labelled by the host when a brand-only value of the same site has more pageviews (domain mode)', () => {
+    // pulse.ciphera.net, 01-10-2026: "uneed.best" (8 visitors) and "Uneed" (3) were two rows.
+    const split = [
+      { referrer: 'uneed.best', pageviews: 10, visitors: 8 },
+      { referrer: 'Uneed', pageviews: 20, visitors: 3 },
+      { referrer: 'github.com', pageviews: 6, visitors: 4 },
+    ]
+    render(<Sources referrers={split} siteId="site-1" dateRange={dateRange} totals={totals} showReferrerDomains />)
+    expect(screen.getAllByText('uneed.best')).toHaveLength(1)
+    expect(screen.queryByText('Uneed')).toBeNull()
+  })
+
   it('shows the stored host, lowercased, when showReferrerDomains is on', () => {
     render(<Sources referrers={referrers} siteId="site-1" dateRange={dateRange} totals={totals} showReferrerDomains />)
     expect(screen.getByText('google.com')).toBeTruthy()

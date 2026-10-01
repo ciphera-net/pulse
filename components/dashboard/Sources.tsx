@@ -5,7 +5,7 @@ import type { ImportedProvenance } from '@/lib/api/stats'
 import type { ImportedDimension } from '@/lib/import/source-display'
 import { useMemo, useState } from 'react'
 import Image from 'next/image'
-import { getReferrerCanonicalAddress, getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
+import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
 import { Megaphone, Globe } from '@phosphor-icons/react'
 import { getChannelIcon } from '@/components/dashboard/channelIcon'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
@@ -212,16 +212,15 @@ export default function Sources({
   const emptySlotsFor = (n: number) => Math.max(0, LIMIT - n)
 
   // Referrers-view row label only (PULSE-171): with the toggle on, the
-  // address the row groups by (the stored host, or a known platform's own
-  // address for a brand-only value), else the ordinary brand/display name.
-  // Same function as the merge key, so a row is labelled by what it groups by.
-  function referrerRowLabel(referrer: string): string {
-    if (showReferrerDomains) {
-      const address = getReferrerCanonicalAddress(referrer)
-      if (address) return address
-    }
-    return getReferrerDisplayName(referrer)
+  // address the merged row groups by (mergeReferrersByDisplayName sets it),
+  // else the ordinary brand/display name. Labelling by the group key, never by
+  // whichever member had the most pageviews, keeps "Uneed" + uneed.best one
+  // row that reads uneed.best.
+  function referrerRowLabel(ref: { referrer: string; address?: string | null }): string {
+    if (showReferrerDomains && ref.address) return ref.address
+    return getReferrerDisplayName(ref.referrer)
   }
+
 
   function renderFavicon(key: string) {
     const faviconUrl = getReferrerFavicon(key)
@@ -302,8 +301,8 @@ export default function Sources({
                   >
                     <RowBar width={rowBarWidth(ref, allReferrers)} index={i} />
                     <div className="relative flex-1 truncate text-white flex items-center gap-3">
-                      {renderFavicon(ref.referrer)}
-                      <span className="truncate" title={referrerRowLabel(ref.referrer)}>{referrerRowLabel(ref.referrer)}</span>
+                      {renderFavicon(showReferrerDomains && ref.address ? ref.address : ref.referrer)}
+                      <span className="truncate" title={referrerRowLabel(ref)}>{referrerRowLabel(ref)}</span>
                     </div>
                     <MetricRowStat row={ref} totals={totals} />
                   </Row>
