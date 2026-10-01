@@ -11,6 +11,7 @@ import {
   type ChainLink,
 } from '@/lib/journeys/chain'
 import { layoutSankey, NODE_WIDTH, type SankeyLink } from '@/lib/journeys/sankeyLayout'
+import { formatNumber, formatCompactNumber } from '@/lib/utils/format'
 import { StepHeader } from './StepHeader'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { TERMS } from '@/lib/dashboard/terms'
@@ -264,7 +265,7 @@ export default function SankeyJourney({
                   x: e.clientX,
                   y: e.clientY,
                   title: `${pathOfNode(l.source)} → ${pathOfNode(l.target)}`,
-                  sub: `${l.value.toLocaleString()} sessions`,
+                  sub: `${formatCompactNumber(l.value)} sessions`,
                 })
               }}
               onMouseMove={(e) =>
@@ -294,7 +295,7 @@ export default function SankeyJourney({
                 transition={{ duration: DURATION_BASE, ease: EASE_APPLE }}
                 tabIndex={0}
                 role="button"
-                aria-label={`${n.path} — ${n.count.toLocaleString()} sessions`}
+                aria-label={`${n.path} — ${formatNumber(n.count)} sessions`}
                 aria-pressed={lens === n.path}
                 aria-describedby={n.path === '(other)' ? 'journeys-def-other' : undefined}
                 data-id={n.id}
@@ -307,7 +308,7 @@ export default function SankeyJourney({
                     x: e.clientX,
                     y: e.clientY,
                     title: n.path,
-                    sub: `${n.count.toLocaleString()} sessions`,
+                    sub: `${formatCompactNumber(n.count)} sessions`,
                   })
                 }}
                 onMouseMove={(e) =>
@@ -322,7 +323,7 @@ export default function SankeyJourney({
                     x: rect.right,
                     y: rect.top + rect.height / 2,
                     title: n.path,
-                    sub: `${n.count.toLocaleString()} sessions`,
+                    sub: `${formatCompactNumber(n.count)} sessions`,
                   })
                 }}
                 onBlur={() => {
@@ -378,7 +379,7 @@ export default function SankeyJourney({
 
       {/* Meta footer — sessions · effective depth · period */}
       <div className="mt-4 border-t border-border pt-3 text-sm text-neutral-400">
-        {totalSessions.toLocaleString()} sessions tracked
+        {formatCompactNumber(totalSessions)} sessions tracked
         {' · '}
         {layout.steps.length < depth
           ? `Showing ${layout.steps.length} of ${depth} steps — no traffic beyond step ${layout.steps.length} in this period`

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef, type CSSProperties } from 'react'
 import { Clock } from '@phosphor-icons/react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { addDays, spanDays } from '@/lib/view/view'
+import { formatCompactNumber } from '@/lib/utils/format'
 
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -65,8 +66,8 @@ function isSummable(metric: Metric): boolean {
 }
 
 function formatMetricValue(value: number, metric: Metric): string {
-  if (metric === 'pageviews') return `${value.toLocaleString()} pageviews`
-  if (metric === 'visitors') return `${value.toLocaleString()} visits`
+  if (metric === 'pageviews') return `${formatCompactNumber(value)} pageviews`
+  if (metric === 'visitors') return `${formatCompactNumber(value)} visits`
   if (metric === 'avg_duration') {
     const mins = Math.floor(value / 60)
     const secs = Math.round(value % 60)
