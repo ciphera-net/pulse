@@ -78,14 +78,24 @@ describe('Sources — referrers view', () => {
     render(<Sources referrers={referrers} siteId="site-1" dateRange={dateRange} totals={totals} filters="page:is:/" />)
     // 8 rows > LIMIT 7 — no interaction needed.
     expect(useFullDimensionList).toHaveBeenLastCalledWith(
-      'referrers', 'site-1', '2026-07-20', '2026-08-18', 100, 'page:is:/',
+      'referrers', 'site-1', '2026-07-20', '2026-08-18', 100, 'page:is:/', undefined,
+    )
+  })
+
+  // PULSE-192: in realtime mode the overflowing card's full list must describe the
+  // live window, not the calendar day its dates name (a customer saw a day's referrer
+  // totals under a five-minute KPI rail).
+  it('arms the full list for the live window in realtime mode', () => {
+    render(<Sources referrers={referrers} siteId="site-1" dateRange={dateRange} totals={totals} live liveMinutes={5} />)
+    expect(useFullDimensionList).toHaveBeenLastCalledWith(
+      'referrers', 'site-1', '2026-07-20', '2026-08-18', 100, undefined, 5,
     )
   })
 
   it('never arms the fetch on the share surface, but still pages its payload', () => {
     render(<Sources referrers={referrers} siteId="site-1" dateRange={dateRange} totals={totals} memberFeatures={false} />)
     expect(useFullDimensionList).toHaveBeenLastCalledWith(
-      null, 'site-1', '2026-07-20', '2026-08-18', 100, undefined,
+      null, 'site-1', '2026-07-20', '2026-08-18', 100, undefined, undefined,
     )
     fireEvent.click(screen.getByLabelText('Next page'))
     expect(screen.getByText('Startpage')).toBeTruthy()
@@ -173,14 +183,14 @@ describe('Audience', () => {
   it('arms the full-list fetch with the 250 limit and filters on overflow', () => {
     render(<Audience {...baseProps} totals={totals} filters="browser:is:Chrome" />)
     expect(useFullDimensionList).toHaveBeenLastCalledWith(
-      'countries', 'site-1', '2026-07-20', '2026-08-18', 250, 'browser:is:Chrome',
+      'countries', 'site-1', '2026-07-20', '2026-08-18', 250, 'browser:is:Chrome', undefined,
     )
   })
 
   it('never arms the fetch on the share surface, but still pages its payload', () => {
     render(<Audience {...baseProps} totals={totals} memberFeatures={false} />)
     expect(useFullDimensionList).toHaveBeenLastCalledWith(
-      null, 'site-1', '2026-07-20', '2026-08-18', 250, undefined,
+      null, 'site-1', '2026-07-20', '2026-08-18', 250, undefined, undefined,
     )
     fireEvent.click(screen.getByLabelText('Next page'))
     expect(screen.getByText('Spain')).toBeTruthy()
@@ -341,7 +351,7 @@ describe('Audience', () => {
       render(<Audience {...groupedBaseProps} languageGroups={many} totals={totals} memberFeatures={false} />)
       openLanguages()
       expect(useFullDimensionList).toHaveBeenLastCalledWith(
-        null, 'site-1', '2026-07-20', '2026-08-18', 250, undefined,
+        null, 'site-1', '2026-07-20', '2026-08-18', 250, undefined, undefined,
       )
       // Still pages the fan-out rows client-side, same as the fetch-armed case.
       expect(screen.queryByText('Italian')).toBeNull()
@@ -358,7 +368,7 @@ describe('Audience', () => {
       render(<Audience {...groupedBaseProps} languageGroups={many} totals={totals} filters="browser:is:Chrome" />)
       openLanguages()
       expect(useFullDimensionList).toHaveBeenLastCalledWith(
-        'languages-grouped', 'site-1', '2026-07-20', '2026-08-18', 250, 'browser:is:Chrome',
+        'languages-grouped', 'site-1', '2026-07-20', '2026-08-18', 250, 'browser:is:Chrome', undefined,
       )
       // 9 grouped rows > LIMIT 7 -> page 2 carries the tail, same pager as every other card.
       expect(screen.queryByText('Italian')).toBeNull()
@@ -374,7 +384,7 @@ describe('Audience', () => {
       render(<Audience {...baseProps} languageGroups={rows} totals={totals} />)
       expect(screen.getByText('United States')).toBeTruthy()
       expect(useFullDimensionList).toHaveBeenLastCalledWith(
-        'countries', 'site-1', '2026-07-20', '2026-08-18', 250, undefined,
+        'countries', 'site-1', '2026-07-20', '2026-08-18', 250, undefined, undefined,
       )
     })
   })
@@ -407,7 +417,7 @@ describe('TechSpecs', () => {
       kind ? { ...idle, data: fullList } : idle)
     render(<TechSpecs {...baseProps} totals={totals} filters="country:is:DE" />)
     expect(useFullDimensionList).toHaveBeenLastCalledWith(
-      'browsers', 'site-1', '2026-07-20', '2026-08-18', 100, 'country:is:DE',
+      'browsers', 'site-1', '2026-07-20', '2026-08-18', 100, 'country:is:DE', undefined,
     )
     // 10 mapped rows → page 2 carries the tail the card never showed before.
     expect(screen.queryByText('Ladybird')).toBeNull()
@@ -501,7 +511,7 @@ describe('Sources — campaigns view', () => {
     render(<Campaigns siteId="site-1" dateRange={dateRange} period="1h" totals={totals} />)
     openCampaigns()
     expect(useCampaignsList).toHaveBeenCalledWith(
-      'site-1', dateRange.start, dateRange.end, 10, undefined, true, '1h',
+      'site-1', dateRange.start, dateRange.end, 10, undefined, true, '1h', undefined,
     )
   })
 
@@ -730,7 +740,13 @@ describe('Outbound', () => {
   it('keys its request on the resolved dates AND the period token', () => {
     useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
     render(<Outbound {...baseProps} period="30d" />)
-    expect(useOutboundLinks).toHaveBeenCalledWith('site-1', dateRange.start, dateRange.end, '30d')
+    expect(useOutboundLinks).toHaveBeenCalledWith('site-1', dateRange.start, dateRange.end, '30d', undefined)
+  })
+
+  it('reads its lists for the live window in realtime mode (PULSE-192)', () => {
+    useOutboundLinks.mockReturnValue({ data: lists, error: undefined, isLoading: false })
+    render(<Outbound {...baseProps} live liveMinutes={5} />)
+    expect(useOutboundLinks.mock.calls.at(-1)?.[4]).toBe(5)
   })
 })
 

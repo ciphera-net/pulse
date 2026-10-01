@@ -48,7 +48,18 @@ describe('the dashboard', () => {
   it('sends All time to the filter suggestions as the token, never as the window\'s dates', () => {
     // Found by the 26-09 review: the suggestions fetch alone sent dates, which 400
     // once a window passes 366 days (Funnels and Journeys already sent the token).
-    expect(page).toMatch(/useFilterSuggestions\(\s*siteId,\s*resolvedDateRange,\s*filtersParam \|\| undefined,\s*serverResolvedPeriod\(periodReady, period\),?\s*\)/)
+    // PULSE-192: and in realtime mode the live window rides along, so the suggestions
+    // describe the five minutes the page shows rather than the calendar day.
+    expect(page).toMatch(/useFilterSuggestions\(\s*siteId,\s*resolvedDateRange,\s*filtersParam \|\| undefined,\s*serverResolvedPeriod\(periodReady, period\),\s*liveMinutes,?\s*\)/)
+  })
+
+  it('every list a card fetches on its own gets the live window, and refreshes on the live signal (PULSE-192)', () => {
+    for (const card of ['Sources', 'Audience', 'TechSpecs', 'Outbound', 'ContentStats', 'ContentSignals']) {
+      const start = page.indexOf(`<${card}\n`)
+      expect(start, card).toBeGreaterThan(-1)
+      expect(page.slice(start, page.indexOf('/>', start)), card).toContain('liveMinutes={liveMinutes}')
+    }
+    expect(page).toContain('void mutateLiveLists(isLiveListKey(siteId))')
   })
 
   it('draws no previous-period comparison for All time or for realtime', () => {
