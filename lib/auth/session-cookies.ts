@@ -137,6 +137,18 @@ export function clearSession(store: CookieStore): void {
   }
 }
 
+/**
+ * Expires the D45 hint ALONE, and only if it is there — for the one place a
+ * session is found dead without a verdict to act on: a refresh with no
+ * `pulse_refresh` cookie at all. `clearSession` is wrong there because it also
+ * drops `pulse_team`, a preference that outlives the session on purpose; and
+ * the conditional keeps an anonymous visitor's refresh probe from carrying a
+ * Set-Cookie for a cookie it never had.
+ */
+export function clearSignedInHint(store: CookieStore): void {
+  if (store.get(SIGNED_IN_HINT_COOKIE)) store.delete({ name: SIGNED_IN_HINT_COOKIE, path: '/' })
+}
+
 /** Expires the access token alone — the org-context retry keeps the refresh token. */
 export function clearAccess(store: CookieStore): void {
   store.delete({ name: SESSION_COOKIE.access, path: '/' })

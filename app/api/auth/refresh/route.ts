@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { env } from '@/lib/env'
-import { clearAccess, clearSession, readSession, writeSession } from '@/lib/auth/session-cookies'
+import { clearAccess, clearSession, clearSignedInHint, readSession, writeSession } from '@/lib/auth/session-cookies'
 
 // Server-side runtime code. Reads from the same Zod-validated env schema
 // the client bundle imports — both phases see identical values, and Zod
@@ -28,6 +28,10 @@ export async function POST(request: Request) {
   const refreshToken = session.refresh
 
   if (!refreshToken) {
+    // D45: no credential means no session, whatever the hint still claims —
+    // the marketing header must stop showing Dashboard. Only the hint goes;
+    // see clearSignedInHint for why not clearSession.
+    clearSignedInHint(cookieStore)
     return NextResponse.json({ error: 'No refresh token' }, { status: 401 })
   }
 
