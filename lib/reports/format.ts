@@ -1,6 +1,6 @@
 import type { ReportChange, ReportCompare, ReportPreset, ReportSection } from '@/lib/api/reports'
 import { addDays, formatSpan, spanDays, type DateSpan } from '@/lib/view/view'
-import { formatDuration } from '@/lib/utils/format'
+import { formatDuration, formatCompactNumber } from '@/lib/utils/format'
 import { safeTimeZone } from '@/lib/utils/siteTime'
 
 // ---------------------------------------------------------------------------
@@ -118,8 +118,14 @@ export function changeText(change: ReportChange): string {
   return `${arrow} ${shown}${change.unit}`
 }
 
+/**
+ * PULSE-190 (owner ruling D11): compact from 10,000, exact below it — the
+ * report slides never wire a hover Tooltip onto this (RankRow's own comment:
+ * "because paper has no hover" — these slides are printed to PDF), so the
+ * compact text is the whole story here, not exact-on-hover.
+ */
 export function formatCount(n: number | null | undefined): string {
-  return n === null || n === undefined ? '—' : Math.round(n).toLocaleString('en-US')
+  return n === null || n === undefined ? '—' : formatCompactNumber(Math.round(n))
 }
 
 /**
