@@ -8,6 +8,12 @@ const PUBLIC_ROUTES = new Set([
   '/signup',
   '/auth/callback',
   '/pricing',
+  // * D43 — the ONE dashboard address the marketing `/pricing` page's plan
+  // * buttons will link to once marketing moves to its own app. No session in
+  // * that app, so the decision (signup vs. the plan switcher vs. the setup
+  // * wizard) runs HERE instead; it must be reachable by an anonymous visitor
+  // * exactly as /pricing itself is. See lib/auth/plan-destination.ts.
+  '/start/plan',
   '/features',
   '/about',
   '/faq',

@@ -52,6 +52,22 @@ export const SESSION_COOKIE = {
   team: 'pulse_team',
 } as const
 
+/**
+ * D45 (the marketing-app split, 01-10-2026): a non-httpOnly, non-credential
+ * "signed in" hint the FUTURE marketing app's header reads to show a
+ * Dashboard button instead of Sign in · Get started — the marketing app has
+ * no session of its own, and this is the only thing it is allowed to know
+ * about one. Nothing in THIS dashboard reads it; nothing it unlocks is
+ * anything but a link back here, which authenticates for real.
+ *
+ * It carries no account data — '1' or absent, nothing else — and it tracks
+ * the credential cookies' own lifetime exactly because it is set and cleared
+ * from the same two functions below (`writeSession`/`clearSession`), never at
+ * a call site: every place a session is established, refreshed or ended
+ * already calls one of those two, so there is no third spot to remember.
+ */
+export const SIGNED_IN_HINT_COOKIE = 'pulse_signed_in'
+
 export const ACCESS_TTL_S = 60 * 15
 export const REFRESH_TTL_S = 60 * 60 * 24 * 30
 /** A preference, so it outlives the refresh token on purpose. */
@@ -73,6 +89,17 @@ function attrs(maxAge: number) {
   }
 }
 
+/** Same shape as `attrs`, minus httpOnly — this one name is read client-side. */
+function hintAttrs(maxAge: number) {
+  return {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+    path: '/',
+    maxAge,
+  }
+}
+
 export interface SessionTokens {
   access: string
   /** Only when id-backend actually rotated — see the refresh route's guard. */
@@ -85,15 +112,27 @@ export function writeSession(store: CookieStore, tokens: SessionTokens): void {
   store.set(SESSION_COOKIE.access, tokens.access, attrs(ACCESS_TTL_S))
   if (tokens.refresh) store.set(SESSION_COOKIE.refresh, tokens.refresh, attrs(REFRESH_TTL_S))
   if (tokens.csrf) store.set(SESSION_COOKIE.csrf, tokens.csrf, attrs(REFRESH_TTL_S))
+  // D45 — every call here IS a session being established or refreshed (login,
+  // an org-switch token, a renewed access token), so the hint is written here
+  // and only here. Its lifetime matches the refresh token's, not the access
+  // token's 15 minutes: it describes the SESSION, which survives a rotation.
+  store.set(SIGNED_IN_HINT_COOKIE, '1', hintAttrs(REFRESH_TTL_S))
 }
 
 /**
- * Expires Pulse's cookies on this origin, the active-team preference
- * included: someone else signing in on this browser must not inherit the
- * previous person's team. The apex trio is not ours to touch.
+ * Expires Pulse's cookies on this origin, the active-team preference and the
+ * D45 hint included: someone else signing in on this browser must not inherit
+ * the previous person's team, or have the marketing header call them signed
+ * in. The apex trio is not ours to touch.
  */
 export function clearSession(store: CookieStore): void {
-  for (const name of [SESSION_COOKIE.access, SESSION_COOKIE.refresh, SESSION_COOKIE.csrf, SESSION_COOKIE.team]) {
+  for (const name of [
+    SESSION_COOKIE.access,
+    SESSION_COOKIE.refresh,
+    SESSION_COOKIE.csrf,
+    SESSION_COOKIE.team,
+    SIGNED_IN_HINT_COOKIE,
+  ]) {
     store.delete({ name, path: '/' })
   }
 }

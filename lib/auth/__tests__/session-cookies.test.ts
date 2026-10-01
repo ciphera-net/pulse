@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { clearSession, readActiveTeam, writeActiveTeam, SESSION_COOKIE } from '../session-cookies'
+import {
+  clearSession,
+  writeSession,
+  readActiveTeam,
+  writeActiveTeam,
+  SESSION_COOKIE,
+  SIGNED_IN_HINT_COOKIE,
+} from '../session-cookies'
 
 // Phase 2, PULSE-89: the `pulse_team` cookie is a PREFERENCE, not a
 // credential — a malformed or tampered value must read as "no preference"
@@ -87,16 +94,47 @@ describe('writeActiveTeam', () => {
 })
 
 describe('clearSession', () => {
-  it('clears the active-team preference along with the other three — a new sign-in must not inherit it', () => {
+  it('clears the active-team preference and the D45 hint along with the other three — a new sign-in must not inherit either', () => {
     const { store, deletes } = makeCookieStore({
       pulse_access: 'a',
       pulse_refresh: 'r',
       pulse_csrf: 'c',
       pulse_team: TEAM_A,
+      pulse_signed_in: '1',
     })
     clearSession(store as never)
     expect(deletes.map((d) => d.name).sort()).toEqual(
-      ['pulse_access', 'pulse_csrf', 'pulse_refresh', 'pulse_team'].sort(),
+      ['pulse_access', 'pulse_csrf', 'pulse_refresh', 'pulse_signed_in', 'pulse_team'].sort(),
     )
+  })
+})
+
+// D45: the dashboard sets this wherever a session is established or
+// refreshed and clears it wherever the session ends — the marketing app's
+// header reads it (once it exists) to show Dashboard instead of
+// Sign in · Get started, and must never be left stale in either direction.
+describe('writeSession — the D45 signed-in hint', () => {
+  it('sets the hint, non-httpOnly, path /, no domain, alongside the access cookie', () => {
+    const { store, sets } = makeCookieStore()
+    writeSession(store as never, { access: 'tok' })
+    const hint = sets.find((s) => s.name === SIGNED_IN_HINT_COOKIE)
+    expect(hint).toBeDefined()
+    expect(hint!.value).toBe('1')
+    expect(hint!.options.httpOnly).toBe(false)
+    expect(hint!.options.path).toBe('/')
+    expect(hint!.options).not.toHaveProperty('domain')
+  })
+
+  it('sets the hint on every write, including a bare access-token refresh with no rotated refresh token', () => {
+    const { store, sets } = makeCookieStore({ pulse_signed_in: '' })
+    writeSession(store as never, { access: 'new-access' })
+    expect(sets.some((s) => s.name === SIGNED_IN_HINT_COOKIE && s.value === '1')).toBe(true)
+  })
+
+  it('carries no account data — always the literal "1"', () => {
+    const { store, sets } = makeCookieStore()
+    writeSession(store as never, { access: 'tok', refresh: 'r', csrf: 'c' })
+    const hint = sets.find((s) => s.name === SIGNED_IN_HINT_COOKIE)
+    expect(hint!.value).toBe('1')
   })
 })
