@@ -120,6 +120,17 @@ interface ReferrerEntry {
   icon: () => ReactNode
   hostnames?: string[]
   aliases?: string[]
+  /**
+   * The platform's own address, for referrer-domain mode (PULSE-171). Ingest
+   * stores a platform under two spellings: the lowercase host when the browser
+   * sent a referrer (reddit.com), and the brand name when it fell back to
+   * utm_source or the in-app user agent (Reddit). Domain mode groups and labels
+   * a brand-only value of a known platform under this address, so the platform
+   * is one row, as it is in name mode. It mirrors pulse-backend's
+   * knownReferrerDomains. Absent for rows that have no address of their own
+   * (Direct, Shared Link) and for brands that are not a referring site.
+   */
+  domain?: string
 }
 
 /**
@@ -133,38 +144,38 @@ const REFERRER_REGISTRY: Record<string, ReferrerEntry> = {
   'shared link': { display: 'Shared Link', icon: () => <Link className="w-5 h-5 text-neutral-500" /> },
 
   // ── Social / platforms ──
-  google:      { display: 'Google',      icon: () => brandIcon('google', 'Google') },
-  facebook:    { display: 'Facebook',    icon: () => brandIcon('facebook', 'Facebook'),    aliases: ['fb'] },
-  x:           { display: 'X',           icon: () => brandIcon('x', 'X'),                  hostnames: ['t.co', 'x.com', 'twitter.com'] },
-  linkedin:    { display: 'LinkedIn',    icon: () => brandIcon('linkedin', 'LinkedIn') },
-  instagram:   { display: 'Instagram',   icon: () => brandIcon('instagram', 'Instagram'),  aliases: ['ig'] },
-  github:      { display: 'GitHub',      icon: () => brandIcon('github', 'GitHub') },
-  youtube:     { display: 'YouTube',     icon: () => brandIcon('youtube', 'YouTube'),      aliases: ['yt'] },
-  reddit:      { display: 'Reddit',      icon: () => brandIcon('reddit', 'Reddit') },
-  whatsapp:    { display: 'WhatsApp',    icon: () => brandIcon('whatsapp', 'WhatsApp'),    hostnames: ['l.wl.co', 'wa.me'] },
-  telegram:    { display: 'Telegram',    icon: () => brandIcon('telegram', 'Telegram'),    hostnames: ['t.me'] },
-  snapchat:    { display: 'Snapchat',    icon: () => brandIcon('snapchat', 'Snapchat') },
-  pinterest:   { display: 'Pinterest',   icon: () => brandIcon('pinterest', 'Pinterest') },
-  threads:     { display: 'Threads',     icon: () => brandIcon('threads', 'Threads') },
-  discord:     { display: 'Discord',     icon: () => brandIcon('discord', 'Discord') },
-  tumblr:      { display: 'Tumblr',      icon: () => <Globe className="w-5 h-5 text-neutral-400" /> },
-  quora:       { display: 'Quora',       icon: () => <Globe className="w-5 h-5 text-neutral-400" /> },
+  google:      { display: 'Google',      icon: () => brandIcon('google', 'Google'), domain: 'google.com' },
+  facebook:    { display: 'Facebook',    icon: () => brandIcon('facebook', 'Facebook'),    aliases: ['fb'], domain: 'facebook.com' },
+  x:           { display: 'X',           icon: () => brandIcon('x', 'X'),                  hostnames: ['t.co', 'x.com', 'twitter.com'], domain: 'x.com' },
+  linkedin:    { display: 'LinkedIn',    icon: () => brandIcon('linkedin', 'LinkedIn'), domain: 'linkedin.com' },
+  instagram:   { display: 'Instagram',   icon: () => brandIcon('instagram', 'Instagram'),  aliases: ['ig'], domain: 'instagram.com' },
+  github:      { display: 'GitHub',      icon: () => brandIcon('github', 'GitHub'), domain: 'github.com' },
+  youtube:     { display: 'YouTube',     icon: () => brandIcon('youtube', 'YouTube'),      aliases: ['yt'], domain: 'youtube.com' },
+  reddit:      { display: 'Reddit',      icon: () => brandIcon('reddit', 'Reddit'), domain: 'reddit.com' },
+  whatsapp:    { display: 'WhatsApp',    icon: () => brandIcon('whatsapp', 'WhatsApp'),    hostnames: ['l.wl.co', 'wa.me'], domain: 'whatsapp.com' },
+  telegram:    { display: 'Telegram',    icon: () => brandIcon('telegram', 'Telegram'),    hostnames: ['t.me'], domain: 'telegram.org' },
+  snapchat:    { display: 'Snapchat',    icon: () => brandIcon('snapchat', 'Snapchat'), domain: 'snapchat.com' },
+  pinterest:   { display: 'Pinterest',   icon: () => brandIcon('pinterest', 'Pinterest'), domain: 'pinterest.com' },
+  threads:     { display: 'Threads',     icon: () => brandIcon('threads', 'Threads'), domain: 'threads.net' },
+  discord:     { display: 'Discord',     icon: () => brandIcon('discord', 'Discord'), domain: 'discord.com' },
+  tumblr:      { display: 'Tumblr',      icon: () => <Globe className="w-5 h-5 text-neutral-400" />, domain: 'tumblr.com' },
+  quora:       { display: 'Quora',       icon: () => <Globe className="w-5 h-5 text-neutral-400" />, domain: 'quora.com' },
 
   // ── Search engines ──
-  bing:        { display: 'Bing',        icon: () => brandIcon('bing', 'Bing') },
-  duckduckgo:  { display: 'DuckDuckGo',  icon: () => brandIcon('duckduckgo', 'DuckDuckGo') },
-  brave:       { display: 'Brave',       icon: () => brandIcon('brave', 'Brave') },
+  bing:        { display: 'Bing',        icon: () => brandIcon('bing', 'Bing'), domain: 'bing.com' },
+  duckduckgo:  { display: 'DuckDuckGo',  icon: () => brandIcon('duckduckgo', 'DuckDuckGo'), domain: 'duckduckgo.com' },
+  brave:       { display: 'Brave',       icon: () => brandIcon('brave', 'Brave'), domain: 'search.brave.com' },
 
   // ── AI assistants ──
-  chatgpt:     { display: 'ChatGPT',     icon: () => brandIcon('openai', 'ChatGPT'),                  hostnames: ['chat.openai.com', 'openai.com'] },
-  perplexity:  { display: 'Perplexity',  icon: () => brandIcon('perplexity', 'Perplexity') },
-  claude:      { display: 'Claude',      icon: () => brandIcon('anthropic', 'Claude'),                 hostnames: ['anthropic.com'] },
-  gemini:      { display: 'Gemini',      icon: () => brandIcon('googlegemini', 'Gemini'),              hostnames: ['gemini.google.com'] },
-  copilot:     { display: 'Copilot',     icon: () => brandIcon('githubcopilot', 'Copilot'),            hostnames: ['copilot.microsoft.com'] },
-  deepseek:    { display: 'DeepSeek',    icon: () => brandIcon('deepseek', 'DeepSeek'),                hostnames: ['chat.deepseek.com'] },
-  grok:        { display: 'Grok',        icon: () => brandIcon('x', 'Grok'),                           hostnames: ['grok.x.ai', 'x.ai'] },
-  you:         { display: 'You.com',     icon: () => <Globe className="w-5 h-5 text-neutral-400" /> },
-  phind:       { display: 'Phind',       icon: () => <Globe className="w-5 h-5 text-neutral-400" /> },
+  chatgpt:     { display: 'ChatGPT',     icon: () => brandIcon('openai', 'ChatGPT'),                  hostnames: ['chat.openai.com', 'openai.com'], domain: 'chatgpt.com' },
+  perplexity:  { display: 'Perplexity',  icon: () => brandIcon('perplexity', 'Perplexity'), domain: 'perplexity.ai' },
+  claude:      { display: 'Claude',      icon: () => brandIcon('anthropic', 'Claude'),                 hostnames: ['anthropic.com'], domain: 'claude.ai' },
+  gemini:      { display: 'Gemini',      icon: () => brandIcon('googlegemini', 'Gemini'),              hostnames: ['gemini.google.com'], domain: 'gemini.google.com' },
+  copilot:     { display: 'Copilot',     icon: () => brandIcon('githubcopilot', 'Copilot'),            hostnames: ['copilot.microsoft.com'], domain: 'copilot.microsoft.com' },
+  deepseek:    { display: 'DeepSeek',    icon: () => brandIcon('deepseek', 'DeepSeek'),                hostnames: ['chat.deepseek.com'], domain: 'deepseek.com' },
+  grok:        { display: 'Grok',        icon: () => brandIcon('x', 'Grok'),                           hostnames: ['grok.x.ai', 'x.ai'], domain: 'grok.com' },
+  you:         { display: 'You.com',     icon: () => <Globe className="w-5 h-5 text-neutral-400" />, domain: 'you.com' },
+  phind:       { display: 'Phind',       icon: () => <Globe className="w-5 h-5 text-neutral-400" />, domain: 'phind.com' },
 
   // ── Browsers as referrers ──
   googlechrome: { display: 'Google Chrome', icon: () => <img src={cdnUrl('/icons/browsers/chrome.svg')} alt="Chrome" width={ICON_SIZE} height={ICON_SIZE} className="inline-block" />, hostnames: ['googlechrome.github.io'] },
@@ -317,6 +328,22 @@ export function getReferrerAddress(referrer: string | null | undefined): string 
   return trimmed.toLowerCase()
 }
 
+/**
+ * The address a referrer row shows and groups by in referrer-domain mode
+ * (PULSE-171): the stored host when the value IS one (getReferrerAddress), else
+ * the known platform's own address (a brand-only value such as "Reddit", stored
+ * when ingest fell back to utm_source or the in-app user agent, belongs to
+ * reddit.com), else null and the row keeps its name (Direct, Shared Link, an
+ * unknown name). A curated address for a known platform, never one derived from
+ * an arbitrary word.
+ */
+export function getReferrerCanonicalAddress(referrer: string | null | undefined): string | null {
+  const address = getReferrerAddress(referrer)
+  if (address) return address
+  if (!referrer || typeof referrer !== 'string') return null
+  return resolveReferrer(referrer)?.domain ?? null
+}
+
 export function getReferrerFavicon(referrer: string): string | null {
   if (!referrer || typeof referrer !== 'string') return null
   const normalized = referrer.trim().toLowerCase()
@@ -386,15 +413,16 @@ export function getFilterValueIcon(dimension: string, value: string): ReactNode 
 /**
  * The group key for one merge bucket: in referrer-domain mode (PULSE-171), a
  * host-like referrer groups by its lowercased host — so reddit.com and
- * old.reddit.com stay separate rows instead of collapsing to one "Reddit"
- * brand bucket — while a host-less referrer (Direct, Shared Link, a
- * brand-only value like "ChatGPT") still groups by its display name, same
- * as default mode. Off (the default), this is exactly getReferrerDisplayName
- * — today's grouping, unchanged.
+ * old.reddit.com stay separate rows — and a brand-only value of a known
+ * platform ("Reddit", "ChatGPT") groups under that platform's address, so it
+ * joins the platform's host row instead of showing as a second row for the same
+ * platform. Rows with no address (Direct, Shared Link, an unknown name) group
+ * by their display name, as in default mode. Off (the default), this is exactly
+ * getReferrerDisplayName — today's grouping, unchanged.
  */
 function referrerGroupKey(referrer: string, showDomains: boolean): string {
   if (showDomains) {
-    const address = getReferrerAddress(referrer)
+    const address = getReferrerCanonicalAddress(referrer)
     if (address) return address
   }
   return getReferrerDisplayName(referrer)

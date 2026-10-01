@@ -5,7 +5,7 @@ import type { ImportedProvenance } from '@/lib/api/stats'
 import type { ImportedDimension } from '@/lib/import/source-display'
 import { useMemo, useState } from 'react'
 import Image from 'next/image'
-import { getReferrerAddress, getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
+import { getReferrerCanonicalAddress, getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
 import { Megaphone, Globe } from '@phosphor-icons/react'
 import { getChannelIcon } from '@/components/dashboard/channelIcon'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
@@ -211,13 +211,13 @@ export default function Sources({
   const displayedCampaigns = hasCampaignData ? slice(allCampaigns) : []
   const emptySlotsFor = (n: number) => Math.max(0, LIMIT - n)
 
-  // Referrers-view row label only (PULSE-171): the host when the row's
-  // stored value IS one and the toggle is on, else the ordinary brand/display
-  // name. Never fabricates an address — getReferrerAddress returns null for
-  // anything that isn't dot-separated host labels.
+  // Referrers-view row label only (PULSE-171): with the toggle on, the
+  // address the row groups by (the stored host, or a known platform's own
+  // address for a brand-only value), else the ordinary brand/display name.
+  // Same function as the merge key, so a row is labelled by what it groups by.
   function referrerRowLabel(referrer: string): string {
     if (showReferrerDomains) {
-      const address = getReferrerAddress(referrer)
+      const address = getReferrerCanonicalAddress(referrer)
       if (address) return address
     }
     return getReferrerDisplayName(referrer)
