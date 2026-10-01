@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback, memo } from 'react'
 import * as d3 from 'd3'
 import * as topojson from 'topojson-client'
-import { formatNumber } from '@/lib/utils/format'
+import { formatCompactNumber } from '@/lib/utils/format'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const worldJson = require('visionscarto-world-atlas/world/110m.json')
 
@@ -142,7 +142,7 @@ function MapView({ data, className }: MapViewProps) {
           // the guard is for the type, not a reachable state.
           const row = rowMap[alpha2]
           if (row) {
-            setTooltip({ x, y, name: d.properties.name, text: `${formatNumber(row.visitors ?? 0)} visitors` })
+            setTooltip({ x, y, name: d.properties.name, text: `${formatCompactNumber(row.visitors ?? 0)} visitors` })
           }
         }
       })

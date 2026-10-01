@@ -11,7 +11,7 @@ import { CascadeGroup, CascadeRow, RowBar } from '@/components/dashboard/Cascade
 import { DimensionInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { useOutboundLinks } from '@/lib/swr/dashboard'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
-import { formatNumber } from '@/lib/utils/format'
+import { CompactNumber } from '@/components/ui/compact-number'
 import { type DimensionFilter } from '@/lib/filters'
 import { type GoalCountStat, type ImportedProvenance } from '@/lib/api/stats'
 
@@ -240,7 +240,7 @@ export default function Outbound({ siteId, dateRange, period, goalCounts, filter
                           {share}
                         </span>
                       )}
-                      <span className="text-sm font-semibold text-neutral-400">{formatNumber(row.clicks)}</span>
+                      <CompactNumber value={row.clicks} className="text-sm font-semibold text-neutral-400" />
                     </div>
                   </>
                 )
