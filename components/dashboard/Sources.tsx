@@ -5,7 +5,7 @@ import type { ImportedProvenance } from '@/lib/api/stats'
 import type { ImportedDimension } from '@/lib/import/source-display'
 import { useMemo, useState } from 'react'
 import Image from 'next/image'
-import { getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
+import { getReferrerAddress, getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
 import { Megaphone, Globe } from '@phosphor-icons/react'
 import { getChannelIcon } from '@/components/dashboard/channelIcon'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
@@ -62,6 +62,12 @@ interface SourcesProps {
   referrers: Array<{ referrer: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
   channels?: Array<{ channel: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
   collectReferrers?: boolean
+  // Referrer-domain display (PULSE-171, site.show_referrer_domains, default
+  // false): a referrer row whose stored value IS a host shows that host,
+  // lowercased, instead of its brand name; a host-less row (Direct, Shared
+  // Link, a brand-only value) is unaffected. Referrers view only — the
+  // Campaigns view's UTM Source rows keep getReferrerDisplayName always.
+  showReferrerDomains?: boolean
   siteId: string
   dateRange: { start: string, end: string }
   // The API period token (1h/24h/…): sub-day rolling windows resolve on the
@@ -134,6 +140,7 @@ export default function Sources({
   referrers,
   channels = [],
   collectReferrers = true,
+  showReferrerDomains = false,
   siteId,
   dateRange,
   period,
@@ -155,7 +162,7 @@ export default function Sources({
   const filteredReferrers = (referrers || []).filter(
     ref => ref.referrer && ref.referrer !== 'Unknown' && ref.referrer !== ''
   )
-  const mergedReferrers = mergeReferrersByDisplayName(filteredReferrers)
+  const mergedReferrers = mergeReferrersByDisplayName(filteredReferrers, showReferrerDomains)
   // The dashboard fan-out carries only the top 10 — when it overflows the
   // card, fetch the full list once and paginate it client-side.
   const wantsReferrerFullList = memberFeatures && view === 'referrers' && mergedReferrers.length > LIMIT
@@ -166,7 +173,7 @@ export default function Sources({
   // Gate on the want: hook-state left over from another range must never
   // outrank the fan-out rows (the frozen-blocks bug, 01-09-2026).
   const fullMerged = wantsReferrerFullList && fullReferrers
-    ? mergeReferrersByDisplayName(fullReferrers.filter(ref => ref.referrer && ref.referrer !== 'Unknown' && ref.referrer !== ''))
+    ? mergeReferrersByDisplayName(fullReferrers.filter(ref => ref.referrer && ref.referrer !== 'Unknown' && ref.referrer !== ''), showReferrerDomains)
     : null
   const allReferrers = fullMerged && fullMerged.length >= mergedReferrers.length ? fullMerged : mergedReferrers
   const hasReferrerData = allReferrers.length > 0
@@ -203,6 +210,18 @@ export default function Sources({
   const displayedChannels = slice(filteredChannels)
   const displayedCampaigns = hasCampaignData ? slice(allCampaigns) : []
   const emptySlotsFor = (n: number) => Math.max(0, LIMIT - n)
+
+  // Referrers-view row label only (PULSE-171): the host when the row's
+  // stored value IS one and the toggle is on, else the ordinary brand/display
+  // name. Never fabricates an address — getReferrerAddress returns null for
+  // anything that isn't dot-separated host labels.
+  function referrerRowLabel(referrer: string): string {
+    if (showReferrerDomains) {
+      const address = getReferrerAddress(referrer)
+      if (address) return address
+    }
+    return getReferrerDisplayName(referrer)
+  }
 
   function renderFavicon(key: string) {
     const faviconUrl = getReferrerFavicon(key)
@@ -284,7 +303,7 @@ export default function Sources({
                     <RowBar width={rowBarWidth(ref, allReferrers)} index={i} />
                     <div className="relative flex-1 truncate text-white flex items-center gap-3">
                       {renderFavicon(ref.referrer)}
-                      <span className="truncate" title={getReferrerDisplayName(ref.referrer)}>{getReferrerDisplayName(ref.referrer)}</span>
+                      <span className="truncate" title={referrerRowLabel(ref.referrer)}>{referrerRowLabel(ref.referrer)}</span>
                     </div>
                     <MetricRowStat row={ref} totals={totals} />
                   </Row>

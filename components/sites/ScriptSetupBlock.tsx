@@ -93,11 +93,46 @@ const DEFAULT_FEATURES: Record<FeatureKey, boolean> = {
   downloads: true,
 }
 
+/**
+ * The two privacy-signal toggles (PULSE-164) — Do Not Track and Global Privacy
+ * Control. POSITIVE polarity, opposite FEATURES: ON means Pulse keeps
+ * respecting the browser's signal (the default, so a DNT/GPC visitor is not
+ * counted); OFF means "count them anyway" and adds `data-ignore-dnt` /
+ * `data-ignore-gpc` to the tag.
+ *
+ * Kept as its OWN small list and state, never folded into FEATURES or its
+ * `coreFlags` filter: FEATURES' rows mean "stop tracking this" when off, these
+ * mean "start counting despite the browser's opt-out signal" when off — two
+ * different promises that must not share one filter's meaning.
+ */
+const PRIVACY_SIGNALS = [
+  {
+    key: 'respect_dnt',
+    label: 'Respect Do Not Track',
+    description: 'Browsers that send Do Not Track are not counted. Turn off to count them; your tag gets data-ignore-dnt.',
+    attr: 'data-ignore-dnt',
+  },
+  {
+    key: 'respect_gpc',
+    label: 'Respect Global Privacy Control',
+    description: 'Browsers that send Global Privacy Control are not counted. GPC is a legal opt-out signal in California and other US states. Turn off to count them; your tag gets data-ignore-gpc.',
+    attr: 'data-ignore-gpc',
+  },
+] as const
+
+type PrivacySignalKey = (typeof PRIVACY_SIGNALS)[number]['key']
+
 export interface ScriptSetupBlockSite {
   domain: string
   name?: string
   script_features?: Record<string, unknown>
   detected_framework?: string | null
+  /** Undefined means the server hasn't sent it yet — treat as true (the
+   *  default), never false. */
+  respect_dnt?: boolean
+  /** Undefined means the server hasn't sent it yet — treat as true (the
+   *  default), never false. */
+  respect_gpc?: boolean
 }
 
 interface ScriptSetupBlockProps {
@@ -110,6 +145,10 @@ interface ScriptSetupBlockProps {
   onScriptCopy?: () => void
   /** Called when features change so the parent can save to backend. */
   onFeaturesChange?: (features: Record<string, unknown>) => void
+  /** Called when the Do Not Track / Global Privacy Control toggles change, so
+   *  the parent can save the site's respect_dnt / respect_gpc columns — these
+   *  are their own top-level fields, never part of script_features. */
+  onPrivacySignalsChange?: (signals: { respect_dnt: boolean; respect_gpc: boolean }) => void
   /** Called after the platform has been persisted, so the parent can revalidate. */
   onFrameworkPersisted?: () => void
   /** Show framework picker. Default true. */
@@ -135,6 +174,7 @@ export default function ScriptSetupBlock({
   siteId,
   onScriptCopy,
   onFeaturesChange,
+  onPrivacySignalsChange,
   onFrameworkPersisted,
   showFrameworkPicker = true,
   className = '',
@@ -156,6 +196,12 @@ export default function ScriptSetupBlock({
     clicks: sf.clicks != null ? Boolean(sf.clicks) : DEFAULT_INTERACTIONS.clicks,
     copy: sf.copy != null ? Boolean(sf.copy) : DEFAULT_INTERACTIONS.copy,
     forms: sf.forms != null ? Boolean(sf.forms) : DEFAULT_INTERACTIONS.forms,
+  })
+  // Do Not Track / Global Privacy Control — their own state, own defaults
+  // (undefined ⇒ respecting, i.e. true), never merged with `features` above.
+  const [privacySignals, setPrivacySignals] = useState<Record<PrivacySignalKey, boolean>>({
+    respect_dnt: site.respect_dnt ?? true,
+    respect_gpc: site.respect_gpc ?? true,
   })
   const [framework, setFramework] = useState(site.detected_framework ?? '')
   const [cspCopied, setCspCopied] = useState(false)
@@ -237,6 +283,26 @@ export default function ScriptSetupBlock({
   )
 
   /**
+   * The privacy-signal opt-outs — `data-ignore-dnt` / `data-ignore-gpc` for
+   * whichever of the two is switched off. Its own memo over `privacySignals`,
+   * never folded into `coreFlags`'s filter above.
+   */
+  const privacyFlags = useMemo(
+    () => PRIVACY_SIGNALS.filter((p) => !privacySignals[p.key]).map((p) => p.attr),
+    [privacySignals],
+  )
+
+  /**
+   * What actually lands in the CORE tag's flag slot: `coreFlags` and
+   * `privacyFlags` combined ONLY here, for the one slot `buildTag` and every
+   * framework snippet share ("ONE list, used by the raw tag and by every
+   * framework snippet" — see the comment above). The two source lists and
+   * their state stay separate so neither toggle group's polarity bleeds into
+   * the other; this is just where their attributes are collected for output.
+   */
+  const tagFlags = useMemo(() => [...coreFlags, ...privacyFlags], [coreFlags, privacyFlags])
+
+  /**
    * The companion's own opt-outs, or `null` when the companion is off.
    *
    * 🔑 `null` and `[]` mean different things and must not be conflated: `[]` is
@@ -252,7 +318,7 @@ export default function ScriptSetupBlock({
 
   const buildTag = useCallback(
     (file: string): string => {
-      const attrs: string[] = ['defer', `data-domain="${safeDomain}"`, ...coreFlags]
+      const attrs: string[] = ['defer', `data-domain="${safeDomain}"`, ...tagFlags]
       const meta = VERSION_MANIFEST.files[file]
       if (showSRI && meta) {
         attrs.push(`src="${VERSION_MANIFEST.baseUrl}${meta.path}"`)
@@ -263,7 +329,7 @@ export default function ScriptSetupBlock({
       }
       return `<script ${attrs.join(' ')}></script>`
     },
-    [safeDomain, coreFlags, showSRI],
+    [safeDomain, tagFlags, showSRI],
   )
 
   /**
@@ -292,12 +358,12 @@ export default function ScriptSetupBlock({
       // renderSnippet, never a bare .replace(): it writes the flags in this
       // snippet's own syntax (nuxt's is an object literal) at the indentation
       // its PULSE_FLAGS placeholder sits on.
-      return renderSnippet(selected.snippet, safeDomain, coreFlags, interactionFlags)
+      return renderSnippet(selected.snippet, safeDomain, tagFlags, interactionFlags)
     }
     // The universal path: two lines when the companion is on, one when it is not.
     const core = buildTag('script.js')
     return interactionFlags === null ? core : `${core}\n${buildInteractionTag()}`
-  }, [selected, showSRI, safeDomain, buildTag, coreFlags, interactionFlags, buildInteractionTag])
+  }, [selected, showSRI, safeDomain, buildTag, tagFlags, interactionFlags, buildInteractionTag])
 
   const copyCsp = useCallback(() => {
     navigator.clipboard.writeText(CSP_DIRECTIVES)
@@ -343,6 +409,14 @@ export default function ScriptSetupBlock({
     setKinds((prev) => {
       const next = { ...prev, [key]: !prev[key] }
       onFeaturesChange?.({ ...features, sri: showSRI, interactions, ...next })
+      return next
+    })
+  }
+
+  const togglePrivacySignal = (key: PrivacySignalKey) => {
+    setPrivacySignals((prev) => {
+      const next = { ...prev, [key]: !prev[key] }
+      onPrivacySignalsChange?.(next)
       return next
     })
   }
@@ -652,6 +726,18 @@ export default function ScriptSetupBlock({
               caption={`Pins the script to version ${VERSION_MANIFEST.version} with an integrity hash · you update the tag to adopt new versions`}
               control={<Toggle checked={showSRI} onChange={toggleSRI} disabled={disabled} />}
             />
+
+            {/* Privacy signals (PULSE-164) — own small list, own polarity;
+                deliberately last, and deliberately not merged with FEATURES
+                above. */}
+            {PRIVACY_SIGNALS.map((p) => (
+              <PanelRow
+                key={p.key}
+                label={p.label}
+                caption={p.description}
+                control={<Toggle checked={privacySignals[p.key]} onChange={() => togglePrivacySignal(p.key)} disabled={disabled} />}
+              />
+            ))}
           </PanelRows>
         )}
       </div>

@@ -485,6 +485,7 @@ export default function SiteDashboardPage() {
           referrers={dashboard?.top_referrers ?? []}
           channels={dashboard?.channels ?? []}
           collectReferrers={site.collect_referrers ?? true}
+          showReferrerDomains={site.show_referrer_domains ?? false}
           siteId={siteId}
           live={isLive}
           dateRange={resolvedDateRange}
@@ -499,6 +500,7 @@ export default function SiteDashboardPage() {
           cities={dashboard?.cities ?? []}
           regions={dashboard?.regions ?? []}
           languages={dashboard?.languages ?? []}
+          languageGroups={dashboard?.language_groups}
           timezones={dashboard?.timezones ?? []}
           geoDataLevel={site.collect_geo_data || DEFAULT_GEO_DATA_LEVEL}
           collectAudienceData={site.collect_audience_data ?? true}

@@ -96,6 +96,17 @@ export interface Site {
   // read it through lib/visitors/identityWindow's identityWindowOf, which
   // keeps "missing" as UNKNOWN rather than quietly reading it as the default.
   identity_window_days?: number
+  // Privacy-signal toggles (PULSE-164): honour the browser's Do Not Track /
+  // Global Privacy Control headers. Both default true server-side; undefined
+  // here means the server hasn't sent them yet — treat as true, never false.
+  respect_dnt?: boolean
+  respect_gpc?: boolean
+  // Referrer-domain display (PULSE-171): render a referrer row that IS a
+  // hostname as that hostname instead of its brand name. DISPLAY ONLY —
+  // nothing collected or stored changes. Default false server-side;
+  // undefined here means "off", same as every other boolean toggle above.
+  // Not audited: a dashboard display preference, not a data-handling change.
+  show_referrer_domains?: boolean
   // Script feature toggles
   script_features?: Record<string, unknown>
   // Uptime monitoring toggle
@@ -214,6 +225,14 @@ export interface UpdateSiteRequest {
   // Privacy tab carries it, and it must never be sent as 0 "to be safe": 0 and
   // 30 are different keys, and any change re-mints every identity on the site.
   identity_window_days?: number
+  // Privacy-signal toggles — see the Site interface above. Omitted by any tab
+  // that does not own them so it never resets the stored value.
+  respect_dnt?: boolean
+  respect_gpc?: boolean
+  // Referrer-domain display — see the Site interface above. A POINTER on the
+  // backend: omitted by any tab that does not own it so it never resets the
+  // stored value.
+  show_referrer_domains?: boolean
 }
 
 export async function listSites(): Promise<Site[]> {
