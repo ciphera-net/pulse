@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { formatNumber } from '@/lib/utils/format'
+import { CompactNumber } from '@/components/ui/compact-number'
 import { usePagePreview } from '@/lib/swr/dashboard'
 import type { GoalCountStat, ImportedProvenance, ScrollDepthDistribution } from '@/lib/api/stats'
 import ScrollDepthBars from './ScrollDepthBars'
@@ -73,7 +73,7 @@ export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRa
         <DimensionInfoTip tab={activeTab} className="ms-2 me-auto" />
         {activeTab === 'scroll' && scrollSessions > 0 && (
           <span className="shrink-0 whitespace-nowrap text-[11px] text-neutral-500">
-            {formatNumber(scrollSessions)} {scrollSessions === 1 ? 'session' : 'sessions'}
+            <CompactNumber value={scrollSessions} /> {scrollSessions === 1 ? 'session' : 'sessions'}
           </span>
         )}
         {activeTab === 'events' && goalsImported?.included === true && (

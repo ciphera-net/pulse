@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { ArrowLineDown } from '@phosphor-icons/react'
-import { formatNumber } from '@/lib/utils/format'
+import { CompactNumber } from '@/components/ui/compact-number'
 import { EmptyState } from '@/components/ui/EmptyState'
 import type { ScrollDepthDistribution } from '@/lib/api/stats'
 import type { PagePreview } from '@/lib/api/performance'
@@ -78,9 +78,10 @@ export default function ScrollDepthBars({ scrollDepth, preview, bare = false, si
         {shares.map((share, i) => (
           <span key={THRESHOLDS[i]} className="flex items-baseline justify-center gap-1.5">
             <span className="text-[13.5px] font-semibold tabular-nums text-white">{Math.round(share * 100)}%</span>
-            <span className={`text-[11px] tabular-nums transition-colors duration-base ease-apple ${hovered === i ? 'text-white' : 'text-neutral-500'}`}>
-              {formatNumber(counts[i])}
-            </span>
+            <CompactNumber
+              value={counts[i]}
+              className={`text-[11px] transition-colors duration-base ease-apple ${hovered === i ? 'text-white' : 'text-neutral-500'}`}
+            />
           </span>
         ))}
       </div>
@@ -163,9 +164,7 @@ export default function ScrollDepthBars({ scrollDepth, preview, bare = false, si
               <span className="text-xs font-medium text-brand-ink opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
                 {Math.round(share)}%
               </span>
-              <span className="text-sm font-semibold text-neutral-400">
-                {formatNumber(count)}
-              </span>
+              <CompactNumber value={count} className="text-sm font-semibold text-neutral-400" />
             </div>
           </div>
         )
@@ -176,7 +175,7 @@ export default function ScrollDepthBars({ scrollDepth, preview, bare = false, si
       {/* In bare mode the wrapping card's header states the session count. */}
       {!bare && (
         <p className="mt-3 text-xs text-neutral-500">
-          {formatNumber(total)} {total === 1 ? 'visit' : 'visits'}
+          <CompactNumber value={total} /> {total === 1 ? 'visit' : 'visits'}
         </p>
       )}
     </div>

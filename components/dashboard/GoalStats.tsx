@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { TIMING } from '@/lib/motion'
 import { Target } from '@phosphor-icons/react'
-import { formatNumber } from '@/lib/utils/format'
+import { CompactNumber } from '@/components/ui/compact-number'
 import { EmptyState } from '@/components/ui/EmptyState'
 import type { GoalCountStat } from '@/lib/api/stats'
 import { getEventPropertyKeys, getEventPropertyValues, type EventPropertyKey, type EventPropertyValue } from '@/lib/api/stats'
@@ -135,9 +135,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
                     events total is not on the wire — any denominator this
                     card could compute would be share-of-visible-rows. */}
                 <div className="relative flex items-center gap-2 ml-4">
-                  <span className="text-sm font-semibold text-neutral-400">
-                    {formatNumber(row.count)}
-                  </span>
+                  <CompactNumber value={row.count} className="text-sm font-semibold text-neutral-400" />
                 </div>
               </>
             )
@@ -201,9 +199,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
                                   <span className="relative text-xs font-medium text-white truncate">
                                     {v.value}
                                   </span>
-                                  <span className="relative text-sm font-semibold text-neutral-400 ml-4">
-                                    {formatNumber(v.count)}
-                                  </span>
+                                  <CompactNumber value={v.count} className="relative text-sm font-semibold text-neutral-400 ml-4" />
                                 </div>
                               )
                             })}

@@ -244,3 +244,39 @@ describe('CommandDeck tooltip zero semantics (04-09-2026)', () => {
     expect(String(rateRows({ bounce_rate: null })[0].value)).toBe('—')
   })
 })
+
+describe('CommandDeck large counts compact (owner ruling D11, PULSE-190)', () => {
+  it('the KPI tile shows compact text with the exact value as its accessible name', () => {
+    const { container } = render(
+      <CommandDeck {...baseProps} stats={{ ...stats, visitors: 4218903, pageviews: 13842117 }} />
+    )
+    expect(screen.getByText('4.2M')).toBeTruthy()
+    expect(screen.getByText('13.8M')).toBeTruthy()
+    const visitorsEl = container.querySelector('[aria-label="4,218,903"]')
+    expect(visitorsEl?.textContent).toBe('4.2M')
+    const pageviewsEl = container.querySelector('[aria-label="13,842,117"]')
+    expect(pageviewsEl?.textContent).toBe('13.8M')
+  })
+
+  it('below the threshold the tile still renders exact, with no tooltip wrapper', () => {
+    const { container } = render(<CommandDeck {...baseProps} />)
+    // baseProps' stats (317 visitors) never cross 10,000.
+    expect(screen.getByText('317')).toBeTruthy()
+    expect(container.querySelector('[aria-label="317"]')).toBeNull()
+  })
+
+  it('leaves the ratio/rate/duration tiles exact — only the two counts compact', () => {
+    render(<CommandDeck {...baseProps} stats={{ ...stats, visitors: 4218903 }} />)
+    expect(screen.getByText('81%')).toBeTruthy() // bounce_rate, untouched
+  })
+
+  it('the chart Y-axis and point tooltip read compact for visitors/pageviews too', () => {
+    render(<CommandDeck {...baseProps} stats={{ ...stats, visitors: 4218903 }} metric="visitors" />)
+    const rows = capturedTooltip.rows as (p: Record<string, unknown>) => { value: string | number }[]
+    expect(rows({ visitors: 4218903 })[0].value).toBe('4.2M')
+    // A rate metric's tooltip value is unaffected by the count rule.
+    render(<CommandDeck {...baseProps} stats={{ ...stats, visitors: 4218903 }} metric="bounce_rate" />)
+    const rateRows = capturedTooltip.rows as (p: Record<string, unknown>) => { value: string | number }[]
+    expect(rateRows({ bounce_rate: 81 })[0].value).toBe('81%')
+  })
+})
