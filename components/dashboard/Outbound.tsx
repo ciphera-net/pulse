@@ -49,6 +49,8 @@ interface OutboundProps {
   onFilter?: (filter: DimensionFilter) => void
   /** Realtime mode — an empty block reads the one realtime line (CardEmptyState). */
   live?: boolean
+  /** Realtime mode's rolling window in minutes (PULSE-192): every list this card fetches on its own uses it instead of the dates. */
+  liveMinutes?: number
   /**
    * The goal counts' imported-history provenance (M12-f). When imported days
    * are included, the card says its numbers are Pulse's own and where the
@@ -101,10 +103,10 @@ function DestinationIcon({ host, failed, onFail }: { host: string; failed: boole
   )
 }
 
-export default function Outbound({ siteId, dateRange, period, goalCounts, filters, onFilter, live = false, goalsImported }: OutboundProps) {
+export default function Outbound({ siteId, dateRange, period, goalCounts, filters, onFilter, live = false, liveMinutes, goalsImported }: OutboundProps) {
   const [activeTab, setActiveTab] = useState<Tab>('domains')
   const [faviconFailed, setFaviconFailed] = useState<Set<string>>(() => new Set())
-  const { data, error, isLoading } = useOutboundLinks(siteId, dateRange.start, dateRange.end, period)
+  const { data, error, isLoading } = useOutboundLinks(siteId, dateRange.start, dateRange.end, period, liveMinutes)
 
   const rows = useMemo<Record<Tab, Row[]>>(() => {
     const urls = data?.urls ?? []

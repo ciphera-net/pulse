@@ -38,6 +38,8 @@ interface ContentStatsProps {
   onFilter?: (filter: DimensionFilter) => void
   /** Realtime mode — an empty block reads the one realtime line (CardEmptyState). */
   live?: boolean
+  /** Realtime mode's rolling window in minutes (PULSE-192): every list this card fetches on its own uses it instead of the dates. */
+  liveMinutes?: number
   /** Each card's imported-history provenance, from the dashboard response (PULSE-118). */
   importedCards?: Record<string, ImportedProvenance>
 }
@@ -55,7 +57,7 @@ const TAB_TO_KIND: Record<Tab, FullListKind> = {
   exit_pages: 'exit-pages',
 }
 
-export default function ContentStats({ topPages, entryPages, exitPages, domain, collectPagePaths = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter, live = false, importedCards }: ContentStatsProps) {
+export default function ContentStats({ topPages, entryPages, exitPages, domain, collectPagePaths = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter, live = false, liveMinutes, importedCards }: ContentStatsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('top_pages')
   const tabs: Tab[] = ['top_pages', 'entry_pages', 'exit_pages']
 
@@ -100,7 +102,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
   const wantsFullList = memberFeatures && collectPagePaths && data.length > LIMIT
   const { data: fullData } = useFullDimensionList<TopPage>(
     wantsFullList ? TAB_TO_KIND[activeTab] : null,
-    siteId, dateRange?.start, dateRange?.end, 100, filters,
+    siteId, dateRange?.start, dateRange?.end, 100, filters, liveMinutes,
   )
   // Gate on wantsFullList: stale hook-state from another range must never
   // outrank the fan-out rows (the frozen-blocks bug, 01-09-2026).
@@ -109,7 +111,7 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
   const pageCount = Math.max(1, Math.ceil(allData.length / LIMIT))
   // Page state keys on the context: a tab/filter/range change reads as page 1,
   // and a shrinking list clamps at read time.
-  const [page, setPage] = useCardPage(`${activeTab}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}`, pageCount)
+  const [page, setPage] = useCardPage(`${activeTab}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}|${liveMinutes ?? ''}`, pageCount)
 
   const displayedData = hasData ? allData.slice((page - 1) * LIMIT, page * LIMIT) : []
   const emptySlots = Math.max(0, LIMIT - displayedData.length)

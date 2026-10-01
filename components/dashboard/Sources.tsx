@@ -92,6 +92,8 @@ interface SourcesProps {
   campaigns?: CampaignStat[]
   /** Realtime mode — an empty block reads the one realtime line (CardEmptyState). */
   live?: boolean
+  /** Realtime mode's rolling window in minutes (PULSE-192): every list this card fetches on its own uses it instead of the dates. */
+  liveMinutes?: number
   /** Each card's imported-history provenance, from the dashboard response (PULSE-118). */
   importedCards?: Record<string, ImportedProvenance>
 }
@@ -150,6 +152,7 @@ export default function Sources({
   onFilter,
   campaigns: payloadRows,
   live = false,
+  liveMinutes,
   importedCards,
 }: SourcesProps) {
   // A row that filters is a real control; one that cannot is inert text.
@@ -168,7 +171,7 @@ export default function Sources({
   const wantsReferrerFullList = memberFeatures && view === 'referrers' && mergedReferrers.length > LIMIT
   const { data: fullReferrers } = useFullDimensionList<TopReferrer>(
     wantsReferrerFullList ? 'referrers' : null,
-    siteId, dateRange?.start, dateRange?.end, 100, filters,
+    siteId, dateRange?.start, dateRange?.end, 100, filters, liveMinutes,
   )
   // Gate on the want: hook-state left over from another range must never
   // outrank the fan-out rows (the frozen-blocks bug, 01-09-2026).
@@ -185,7 +188,7 @@ export default function Sources({
   // ── Campaigns (armed only while the view is open; never from a share view) ──
   const campaignsArmed = view === 'campaigns' && payloadRows === undefined
   const { data: campaignRows, error: campaignError, isLoading: campaignsLoading, mutate: refetchCampaigns } =
-    useCampaignsList(siteId, dateRange.start, dateRange.end, 10, filters, campaignsArmed, period)
+    useCampaignsList(siteId, dateRange.start, dateRange.end, 10, filters, campaignsArmed, period, liveMinutes)
   const campaignData = payloadRows ?? campaignRows ?? []
   const sortedCampaigns = useMemo(() => [...campaignData].sort((a, b) => b.visitors - a.visitors), [campaignData])
   const groupedCampaigns = useMemo(() => groupByDimension(sortedCampaigns, utm), [sortedCampaigns, utm])
@@ -194,7 +197,7 @@ export default function Sources({
   // card genuinely has an eighth grouped row to page to.
   const wantsCampaignFullList = campaignsArmed && hasCampaignData && groupedCampaigns.length > LIMIT
   const { data: fullCampaignsRaw } =
-    useCampaignsList(siteId, dateRange.start, dateRange.end, 100, filters, wantsCampaignFullList, period)
+    useCampaignsList(siteId, dateRange.start, dateRange.end, 100, filters, wantsCampaignFullList, period, liveMinutes)
   const groupedAllCampaigns = useMemo(() => {
     const base = fullCampaignsRaw && fullCampaignsRaw.length > 0 ? fullCampaignsRaw : campaignData
     return groupByDimension([...base].sort((a, b) => b.visitors - a.visitors), utm)
@@ -204,7 +207,7 @@ export default function Sources({
   // ── Paging: one pager, keyed on the whole context ──
   const activeCount = view === 'referrers' ? allReferrers.length : view === 'channels' ? filteredChannels.length : allCampaigns.length
   const pageCount = Math.max(1, Math.ceil(activeCount / LIMIT))
-  const [page, setPage] = useCardPage(`${view}|${view === 'campaigns' ? utm : ''}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}`, pageCount)
+  const [page, setPage] = useCardPage(`${view}|${view === 'campaigns' ? utm : ''}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}|${liveMinutes ?? ''}`, pageCount)
   const slice = <T,>(rows: T[]) => rows.slice((page - 1) * LIMIT, page * LIMIT)
   const displayedReferrers = slice(allReferrers)
   const displayedChannels = slice(filteredChannels)

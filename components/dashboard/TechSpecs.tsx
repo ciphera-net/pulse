@@ -35,6 +35,8 @@ interface TechSpecsProps {
   onFilter?: (filter: DimensionFilter) => void
   /** Realtime mode — an empty block reads the one realtime line (CardEmptyState). */
   live?: boolean
+  /** Realtime mode's rolling window in minutes (PULSE-192): every list this card fetches on its own uses it instead of the dates. */
+  liveMinutes?: number
   /** Each card's imported-history provenance, from the dashboard response (PULSE-118). */
   importedCards?: Record<string, ImportedProvenance>
 }
@@ -72,7 +74,7 @@ const LIMIT = 7
 
 const TAB_TO_DIMENSION: Record<string, string> = { browsers: 'browser', os: 'os', devices: 'device', screens: 'screen_resolution' }
 
-export default function TechSpecs({ browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter, live = false, importedCards }: TechSpecsProps) {
+export default function TechSpecs({ browsers, os, devices, screenResolutions, collectDeviceInfo = true, collectScreenResolution = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter, live = false, liveMinutes, importedCards }: TechSpecsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('browsers')
   type TechItem = { name: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null; icon: React.ReactNode }
 
@@ -128,7 +130,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
   const wantsFullList = memberFeatures && !isTabDisabled() && data.length > LIMIT
   const { data: fullRaw } = useFullDimensionList<RawTechRow>(
     wantsFullList ? TAB_TO_KIND[activeTab] : null,
-    siteId, dateRange?.start, dateRange?.end, 100, filters,
+    siteId, dateRange?.start, dateRange?.end, 100, filters, liveMinutes,
   )
 
   const fullData: TechItem[] = useMemo(() => {
@@ -150,7 +152,7 @@ export default function TechSpecs({ browsers, os, devices, screenResolutions, co
   const pageCount = Math.max(1, Math.ceil(allData.length / LIMIT))
   // Page state keys on the context: a tab/filter/range change reads as page 1,
   // and a shrinking list clamps at read time.
-  const [page, setPage] = useCardPage(`${activeTab}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}`, pageCount)
+  const [page, setPage] = useCardPage(`${activeTab}|${filters ?? ''}|${dateRange?.start}|${dateRange?.end}|${liveMinutes ?? ''}`, pageCount)
 
   const displayedData = hasData ? allData.slice((page - 1) * LIMIT, page * LIMIT) : []
   const emptySlots = Math.max(0, LIMIT - displayedData.length)

@@ -532,14 +532,19 @@ export function useCampaignsList(
   // server resolves the period; dates alone are only a sufficient identity
   // for day-granular ranges.
   period?: string,
+  /** Realtime mode's rolling window; replaces the dates and the period (see LIVE_LIST_KEY). */
+  liveMinutes?: number,
 ) {
+  const live = liveMinutes != null
   return useSWR<CampaignStat[]>(
-    enabled && siteId && start && end ? ['campaignsList', siteId, start, end, limit, filters, period ?? ''] : null,
-    () => getCampaigns(siteId, start, end, limit, filters, period),
+    !enabled || !siteId ? null
+      : live ? ['campaignsList', siteId, LIVE_LIST_KEY, liveMinutes, limit, filters]
+        : start && end ? ['campaignsList', siteId, start, end, limit, filters, period ?? ''] : null,
+    () => getCampaigns(siteId, start, end, limit, filters, live ? undefined : period, liveMinutes),
     {
       ...dashboardSWRConfig,
-      refreshInterval: 60 * 1000,
-      dedupingInterval: 10 * 1000,
+      refreshInterval: live ? liveListSWRConfig.refreshInterval : 60 * 1000,
+      dedupingInterval: live ? liveListSWRConfig.dedupingInterval : 10 * 1000,
     }
   )
 }
@@ -1053,6 +1058,37 @@ export function useBingDailyTotals(siteId: string, start: string, end: string) {
 // "not enough data yet" — the fabricated-explanation antipattern the audit
 // measured on this page.
 
+// ─── Realtime mode's lists (PULSE-192) ────────────────────────────────────
+//
+// 🔴 In realtime mode the KPI rail and the chart read /dashboard?minutes=5, but until
+// 01-10-2026 every list a card fetched ON ITS OWN (the full list behind its pagination,
+// Outbound's two lists, the Campaigns view, a goal's property breakdown) was sent the
+// CALENDAR DATES of the live view, which are today. A card that overflowed one page then
+// showed the whole day under a five-minute KPI rail: a customer saw 510 visitors in the
+// rail and one referrer with 9,640 below it. Invisible on small sites, whose five-minute
+// lists rarely overflow a page.
+//
+// So every such list takes the live window as `minutes` and, when it is set:
+//  - fetches `minutes=` instead of dates (the server answers it with the dashboard's own
+//    bounds, dashboardRange in pulse-backend);
+//  - keys its SWR entry on LIVE_LIST_KEY + minutes, never on the dates. 🔴 Keying a live
+//    list on its dates would share an entry with Today's list (both are today's date) and
+//    each would serve the other's rows across a mode switch;
+//  - refreshes with the dashboard: the page's live signal revalidates every key that
+//    isLiveListKey matches, and the same 15 s backstop the fan-out uses covers a dropped
+//    signal.
+export const LIVE_LIST_KEY = '__live__'
+const LIVE_LIST_KINDS = new Set(['fullList', 'outbound', 'campaignsList'])
+
+/** Matches every live list SWR key of one site: what the page revalidates on its live signal. */
+export function isLiveListKey(siteId: string) {
+  return (key: unknown): boolean =>
+    Array.isArray(key) && LIVE_LIST_KINDS.has(key[0]) && key.includes(siteId) && key.includes(LIVE_LIST_KEY)
+}
+
+/** The live lists' refresh cadence: the dashboard fan-out's own (useDashboard). */
+const liveListSWRConfig = { refreshInterval: 15_000, dedupingInterval: 2_000 }
+
 // * The full-list fetchers behind every card's "view all" modal, keyed by the
 // * card's tab. `kind: null` (modal closed) fetches nothing; opening the modal
 // * arms the key. Filters ride along so a modal opened from a filtered card
@@ -1082,17 +1118,22 @@ export type FullListKind = keyof typeof fullListFetchers
 export function useFullDimensionList<T>(
   kind: FullListKind | null, siteId: string, start: string, end: string,
   limit: number, filters?: string,
+  /** Realtime mode's rolling window; replaces the dates (see LIVE_LIST_KEY). */
+  liveMinutes?: number,
 ) {
+  const live = liveMinutes != null
   return useSWR<T[]>(
-    kind && siteId && start && end ? ['fullList', kind, siteId, start, end, limit, filters] : null,
-    () => fullListFetchers[kind as FullListKind](siteId, start, end, limit, filters) as Promise<T[]>,
+    !kind || !siteId ? null
+      : live ? ['fullList', kind, siteId, LIVE_LIST_KEY, liveMinutes, limit, filters]
+        : start && end ? ['fullList', kind, siteId, start, end, limit, filters] : null,
+    () => fullListFetchers[kind as FullListKind](siteId, start, end, limit, filters, undefined, liveMinutes) as Promise<T[]>,
     // 🔴 NO keepPreviousData here. The cards arm this key only while their
     // list overflows; on a range switch the key can go NULL, and
     // keepPreviousData retains the OLD RANGE's rows on a null key forever —
     // which is how the blocks froze on 30-day data after switching to Today
     // (01-09-2026). While a new range's list loads, the dashboard fan-out
     // rows are the correct same-range fallback, so nothing flashes empty.
-    { ...dashboardSWRConfig }
+    { ...dashboardSWRConfig, ...(live ? liveListSWRConfig : {}) }
   )
 }
 
@@ -1108,17 +1149,21 @@ export interface OutboundLists {
   paths: EventPropertyValue[]
 }
 export const OUTBOUND_ROW_LIMIT = 1000
-export function useOutboundLinks(siteId: string, start: string, end: string, period?: string) {
+export function useOutboundLinks(siteId: string, start: string, end: string, period?: string, liveMinutes?: number) {
+  const live = liveMinutes != null
   return useSWR<OutboundLists>(
-    siteId && start && end ? ['outbound', siteId, start, end, period ?? ''] : null,
+    !siteId ? null
+      : live ? ['outbound', siteId, LIVE_LIST_KEY, liveMinutes]
+        : start && end ? ['outbound', siteId, start, end, period ?? ''] : null,
     async () => {
+      const p = live ? undefined : period
       const [urls, paths] = await Promise.all([
-        getEventPropertyValues(siteId, 'outbound_link', 'url', start, end, OUTBOUND_ROW_LIMIT, period),
-        getEventPropertyValues(siteId, 'outbound_link', 'page_path', start, end, OUTBOUND_ROW_LIMIT, period),
+        getEventPropertyValues(siteId, 'outbound_link', 'url', start, end, OUTBOUND_ROW_LIMIT, p, liveMinutes),
+        getEventPropertyValues(siteId, 'outbound_link', 'page_path', start, end, OUTBOUND_ROW_LIMIT, p, liveMinutes),
       ])
       return { urls, paths }
     },
-    { ...dashboardSWRConfig, refreshInterval: 60_000, dedupingInterval: 10_000 }
+    { ...dashboardSWRConfig, ...(live ? liveListSWRConfig : { refreshInterval: 60_000, dedupingInterval: 10_000 }) }
   )
 }
 

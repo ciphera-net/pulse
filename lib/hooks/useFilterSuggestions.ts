@@ -29,6 +29,11 @@ export function useFilterSuggestions(
   filtersParam?: string,
   /** A server-resolved period (All time) — sent instead of the dates, like the page's own fetch. */
   period?: string,
+  /**
+   * Realtime mode's rolling window in minutes (PULSE-192). When set, the suggestions
+   * (and their counts) describe the live window the page shows, not the calendar day.
+   */
+  liveMinutes?: number,
 ): (dimension: string) => Promise<FilterSuggestion[]> {
   const start = range?.start
   const end = range?.end
@@ -55,41 +60,41 @@ export function useFilterSuggestions(
             return data.map(e => ({ value: e.path, label: e.path, count: e.session_count }))
           }
           case 'page': {
-            const data = await getTopPages(siteId, start, end, limit, f, period)
+            const data = await getTopPages(siteId, start, end, limit, f, liveMinutes != null ? undefined : period, liveMinutes)
             return data.map(p => ({ value: p.path, label: p.path, count: p.pageviews }))
           }
           case 'referrer': {
-            const data = await getTopReferrers(siteId, start, end, limit, f, period)
+            const data = await getTopReferrers(siteId, start, end, limit, f, liveMinutes != null ? undefined : period, liveMinutes)
             return data.filter(r => r.referrer && r.referrer !== '').map(r => ({ value: r.referrer, label: r.referrer, count: r.pageviews }))
           }
           case 'country': {
-            const data = await getCountries(siteId, start, end, limit, f, period)
+            const data = await getCountries(siteId, start, end, limit, f, liveMinutes != null ? undefined : period, liveMinutes)
             return data.filter(c => c.country && c.country !== 'Unknown').map(c => ({ value: c.country, label: regionNames?.of(c.country) ?? c.country, count: c.pageviews }))
           }
           case 'city': {
-            const data = await getCities(siteId, start, end, limit, f, period)
+            const data = await getCities(siteId, start, end, limit, f, liveMinutes != null ? undefined : period, liveMinutes)
             return data.filter(c => c.city && c.city !== 'Unknown').map(c => ({ value: c.city, label: c.city, count: c.pageviews }))
           }
           case 'region': {
-            const data = await getRegions(siteId, start, end, limit, f, period)
+            const data = await getRegions(siteId, start, end, limit, f, liveMinutes != null ? undefined : period, liveMinutes)
             return data.filter(r => r.region && r.region !== 'Unknown').map(r => ({ value: r.region, label: r.region, count: r.pageviews }))
           }
           case 'browser': {
-            const data = await getBrowsers(siteId, start, end, limit, f, period)
+            const data = await getBrowsers(siteId, start, end, limit, f, liveMinutes != null ? undefined : period, liveMinutes)
             return data.filter(b => b.browser && b.browser !== 'Unknown').map(b => ({ value: b.browser, label: b.browser, count: b.pageviews }))
           }
           case 'os': {
-            const data = await getOS(siteId, start, end, limit, f, period)
+            const data = await getOS(siteId, start, end, limit, f, liveMinutes != null ? undefined : period, liveMinutes)
             return data.filter(o => o.os && o.os !== 'Unknown').map(o => ({ value: o.os, label: o.os, count: o.pageviews }))
           }
           case 'device': {
-            const data = await getDevices(siteId, start, end, limit, f, period)
+            const data = await getDevices(siteId, start, end, limit, f, liveMinutes != null ? undefined : period, liveMinutes)
             return data.filter(d => d.device && d.device !== 'Unknown').map(d => ({ value: d.device, label: d.device, count: d.pageviews }))
           }
           case 'utm_source':
           case 'utm_medium':
           case 'utm_campaign': {
-            const data = await getCampaigns(siteId, start, end, limit, f, period)
+            const data = await getCampaigns(siteId, start, end, limit, f, liveMinutes != null ? undefined : period, liveMinutes)
             const map = new Map<string, number>()
             const field = dimension === 'utm_source' ? 'source' : dimension === 'utm_medium' ? 'medium' : 'campaign'
             data.forEach(c => {
@@ -108,6 +113,6 @@ export function useFilterSuggestions(
         throw err
       }
     },
-    [siteId, start, end, filtersParam, period],
+    [siteId, start, end, filtersParam, period, liveMinutes],
   )
 }

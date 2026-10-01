@@ -21,6 +21,8 @@ interface GoalStatsProps {
   // member-strict event-properties endpoints, so the rows render plain there —
   // no chevron, no aria-expanded, no fetch to fail.
   memberFeatures?: boolean
+  /** Realtime mode's rolling window in minutes (PULSE-192): the property breakdown uses it instead of the dates. */
+  liveMinutes?: number
 }
 
 interface PropertyCache {
@@ -40,13 +42,25 @@ export function goalLabel(row: Pick<GoalCountStat, 'event_name' | 'display_name'
   return row.display_name ?? row.event_name.replace(/_/g, ' ')
 }
 
-export default function GoalStats({ goalCounts, siteId, dateRange, bare = false, memberFeatures = true }: GoalStatsProps) {
+export default function GoalStats({ goalCounts, siteId, dateRange, bare = false, memberFeatures = true, liveMinutes }: GoalStatsProps) {
   const list = (goalCounts || []).slice(0, LIMIT)
   const hasData = list.length > 0
   const emptySlots = Math.max(0, LIMIT - list.length)
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [propertyCache, setPropertyCache] = useState<Record<string, PropertyCache>>({})
+
+  // The breakdowns describe ONE window. When the window changes (another range, or
+  // entering/leaving realtime), what was fetched for the old one is dropped rather than
+  // shown under the new one (PULSE-192). Adjusted during render, React's pattern for
+  // state derived from props, so no frame shows the old window's rows.
+  const windowKey = liveMinutes != null ? `live:${liveMinutes}` : `${dateRange.start}|${dateRange.end}`
+  const [cachedWindow, setCachedWindow] = useState(windowKey)
+  if (cachedWindow !== windowKey) {
+    setCachedWindow(windowKey)
+    setPropertyCache({})
+    setExpanded(new Set())
+  }
 
   const toggleExpand = useCallback(async (eventName: string) => {
     setExpanded(prev => {
@@ -59,21 +73,23 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
       return next
     })
 
-    // Fetch properties on first expand
-    if (!propertyCache[eventName]) {
+    // Fetch properties on first expand. A live window moves on its own, so a live
+    // breakdown is fetched afresh on every expand rather than kept.
+    const expanding = !expanded.has(eventName)
+    if (expanding && (liveMinutes != null || !propertyCache[eventName])) {
       setPropertyCache(prev => ({
         ...prev,
         [eventName]: { keys: [], values: {}, loading: true },
       }))
 
       try {
-        const keys = await getEventPropertyKeys(siteId, eventName, dateRange.start, dateRange.end)
+        const keys = await getEventPropertyKeys(siteId, eventName, dateRange.start, dateRange.end, liveMinutes)
         const values: Record<string, EventPropertyValue[]> = {}
 
         // Fetch all property values in parallel
         await Promise.all(
           keys.map(async (k) => {
-            const vals = await getEventPropertyValues(siteId, eventName, k.key, dateRange.start, dateRange.end)
+            const vals = await getEventPropertyValues(siteId, eventName, k.key, dateRange.start, dateRange.end, 20, undefined, liveMinutes)
             values[k.key] = vals
           })
         )
@@ -89,7 +105,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
         }))
       }
     }
-  }, [propertyCache, siteId, dateRange.start, dateRange.end])
+  }, [expanded, propertyCache, siteId, dateRange.start, dateRange.end, liveMinutes])
 
   const content = (
     <>
