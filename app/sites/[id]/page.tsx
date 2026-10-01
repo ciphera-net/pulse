@@ -4,6 +4,7 @@
 import { siteDaysCaption } from '@/lib/utils/timezones'
 import { useCallback, useEffect, useState, useMemo } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
+import { useSWRConfig } from 'swr'
 import {
   type Stats,
   type DailyStat,
@@ -46,6 +47,7 @@ const PeakHours = dynamic(() => import('@/components/dashboard/PeakHours'))
 const TourController = dynamic(() => import('@/lib/tour/TourController'), { ssr: false })
 import { type DimensionFilter, serializeFilters, parseFiltersFromURL } from '@/lib/filters'
 import {
+  isLiveListKey,
   useDashboard,
   useRealtime,
   useStats,
@@ -95,6 +97,10 @@ export default function SiteDashboardPage() {
   })
   const { period, dateRange, periodReady, rollingMinutes, picker } = urlRange
   const isLive = isRealtimePeriod(period)
+  // The live window every list on this page fetches in realtime mode (PULSE-192): the
+  // fan-out sends it as minutes=, and so must every card list, Outbound, Campaigns, the
+  // goal breakdowns and the filter suggestions, or they describe the calendar day.
+  const liveMinutes = isLive ? (rollingMinutes ?? undefined) : undefined
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
 
   // Dimension filters state
@@ -228,6 +234,7 @@ export default function SiteDashboardPage() {
     resolvedDateRange,
     filtersParam || undefined,
     serverResolvedPeriod(periodReady, period),
+    liveMinutes,
   )
 
   // Sync filters to URL
@@ -265,6 +272,7 @@ export default function SiteDashboardPage() {
     [resolvedDateRange, period, isLive],
   )
   const { data: realtimeData } = useRealtime(siteId, 15_000)
+  const { mutate: mutateLiveLists } = useSWRConfig()
 
   // THE transport seam. Everything else on this page is transport-agnostic: the
   // socket says "something changed" and the page refetches over HTTP, reading
@@ -275,7 +283,10 @@ export default function SiteDashboardPage() {
     siteId,
     onChanged: useCallback(() => {
       void refetchDashboard()
-    }, [refetchDashboard]),
+      // The cards' own live lists refresh on the same signal (lib/swr/dashboard.ts,
+      // LIVE_LIST_KEY), so a card never lags the KPI rail above it.
+      void mutateLiveLists(isLiveListKey(siteId))
+    }, [refetchDashboard, mutateLiveLists, siteId]),
   })
 
   // The orb is the one switch into realtime; leaving returns to the view the reader
@@ -488,6 +499,7 @@ export default function SiteDashboardPage() {
           showReferrerDomains={site.show_referrer_domains ?? false}
           siteId={siteId}
           live={isLive}
+          liveMinutes={liveMinutes}
           dateRange={resolvedDateRange}
           period={apiPeriod || undefined}
           totals={totals}
@@ -506,6 +518,7 @@ export default function SiteDashboardPage() {
           collectAudienceData={site.collect_audience_data ?? true}
           siteId={siteId}
           live={isLive}
+          liveMinutes={liveMinutes}
           dateRange={resolvedDateRange}
           totals={totals}
           filters={filtersParam || undefined}
@@ -549,6 +562,7 @@ export default function SiteDashboardPage() {
               collectScreenResolution={site.collect_screen_resolution ?? true}
               siteId={siteId}
           live={isLive}
+          liveMinutes={liveMinutes}
               dateRange={resolvedDateRange}
               totals={totals}
               filters={filtersParam || undefined}
@@ -563,6 +577,7 @@ export default function SiteDashboardPage() {
             <Outbound
               siteId={siteId}
           live={isLive}
+          liveMinutes={liveMinutes}
               dateRange={resolvedDateRange}
               period={apiPeriod || undefined}
               goalCounts={dashboard?.goal_counts ?? []}
@@ -584,6 +599,7 @@ export default function SiteDashboardPage() {
           collectPagePaths={site.collect_page_paths ?? true}
           siteId={siteId}
           live={isLive}
+          liveMinutes={liveMinutes}
           dateRange={resolvedDateRange}
           totals={totals}
           filters={filtersParam || undefined}
@@ -599,6 +615,7 @@ export default function SiteDashboardPage() {
           goalsImported={dashboard?.imported_goals}
           siteId={siteId}
           dateRange={resolvedDateRange}
+          liveMinutes={liveMinutes}
         />
       </div>
 

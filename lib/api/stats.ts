@@ -337,9 +337,12 @@ function buildQuery(
 }
 
 /** Factory for endpoints that return an array nested under a response key. */
+// * `minutes` is realtime mode's rolling window (PULSE-192). When set it REPLACES the
+// * dates and the period (buildQuery sends only minutes=), exactly as the dashboard
+// * fan-out does, so a card's full list describes the same window as the KPI rail.
 function createListFetcher<T>(path: string, field: string, defaultLimit = 10) {
-  return (siteId: string, startDate?: string, endDate?: string, limit = defaultLimit, filters?: string, period?: string): Promise<T[]> =>
-    apiRequest<Record<string, T[]>>(`/sites/${siteId}/${path}${buildQuery({ startDate, endDate, limit, filters, period })}`)
+  return (siteId: string, startDate?: string, endDate?: string, limit = defaultLimit, filters?: string, period?: string, minutes?: number): Promise<T[]> =>
+    apiRequest<Record<string, T[]>>(`/sites/${siteId}/${path}${buildQuery({ startDate, endDate, limit, filters, period, minutes })}`)
       .then(r => r?.[field] || [])
 }
 
@@ -368,8 +371,8 @@ export const getTimezones = createListFetcher<TimezoneStat>('timezones', 'timezo
  * `createListFetcher`, which has no fixed-param hook and reads the wrong key)
  * so the plain per-locale fetcher is untouched.
  */
-export function getLanguageGroups(siteId: string, startDate?: string, endDate?: string, limit = 10, filters?: string, period?: string): Promise<LanguageGroupStat[]> {
-  return apiRequest<Record<string, LanguageGroupStat[]>>(`/sites/${siteId}/languages${buildQuery({ startDate, endDate, limit, filters, period, group: 'language' })}`)
+export function getLanguageGroups(siteId: string, startDate?: string, endDate?: string, limit = 10, filters?: string, period?: string, minutes?: number): Promise<LanguageGroupStat[]> {
+  return apiRequest<Record<string, LanguageGroupStat[]>>(`/sites/${siteId}/languages${buildQuery({ startDate, endDate, limit, filters, period, minutes, group: 'language' })}`)
     .then(r => r?.language_groups || [])
 }
 export const getGoalStats = createListFetcher<GoalCountStat>('goals/stats', 'goal_counts', 20)
@@ -637,16 +640,16 @@ export interface EventPropertyValue {
   count: number
 }
 
-export function getEventPropertyKeys(siteId: string, eventName: string, startDate?: string, endDate?: string): Promise<EventPropertyKey[]> {
-  return apiRequest<{ keys: EventPropertyKey[] }>(`/sites/${siteId}/goals/${encodeURIComponent(eventName)}/properties${buildQuery({ startDate, endDate })}`)
+export function getEventPropertyKeys(siteId: string, eventName: string, startDate?: string, endDate?: string, minutes?: number): Promise<EventPropertyKey[]> {
+  return apiRequest<{ keys: EventPropertyKey[] }>(`/sites/${siteId}/goals/${encodeURIComponent(eventName)}/properties${buildQuery({ startDate, endDate, minutes })}`)
     .then(r => r?.keys || [])
 }
 
 // `period` wins over the dates when given (buildQuery): the server resolves a
 // token like `1h` or `today` in the SITE's timezone, which a date-only fetch
 // cannot express — the same reason the campaigns fetch threads it.
-export function getEventPropertyValues(siteId: string, eventName: string, propName: string, startDate?: string, endDate?: string, limit = 20, period?: string): Promise<EventPropertyValue[]> {
-  return apiRequest<{ values: EventPropertyValue[] }>(`/sites/${siteId}/goals/${encodeURIComponent(eventName)}/properties/${encodeURIComponent(propName)}${buildQuery({ startDate, endDate, limit, period })}`)
+export function getEventPropertyValues(siteId: string, eventName: string, propName: string, startDate?: string, endDate?: string, limit = 20, period?: string, minutes?: number): Promise<EventPropertyValue[]> {
+  return apiRequest<{ values: EventPropertyValue[] }>(`/sites/${siteId}/goals/${encodeURIComponent(eventName)}/properties/${encodeURIComponent(propName)}${buildQuery({ startDate, endDate, limit, period, minutes })}`)
     .then(r => r?.values || [])
 }
 

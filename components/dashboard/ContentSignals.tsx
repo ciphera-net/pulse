@@ -32,6 +32,8 @@ interface ContentSignalsProps {
    * Scroll tab puts its unit) says so, in M11's words (owner pick A, W-M12-5).
    */
   goalsImported?: ImportedProvenance | null
+  /** Realtime mode's rolling window in minutes (PULSE-192), for the Events tab's property breakdown. */
+  liveMinutes?: number
 }
 
 /** W-M12-5: the Events card's header word, the rail's own vocabulary (M11). */
@@ -39,7 +41,7 @@ export const EVENTS_IMPORTED_WORD = 'incl. imported days'
 
 type Tab = 'scroll' | 'events'
 
-export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRange, memberFeatures = true, goalsImported }: ContentSignalsProps) {
+export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRange, memberFeatures = true, goalsImported, liveMinutes }: ContentSignalsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('scroll')
 
   // The full-page capture behind the scroll tab's stacked sheets. null =
@@ -87,7 +89,7 @@ export default function ContentSignals({ scrollDepth, goalCounts, siteId, dateRa
         {activeTab === 'scroll' ? (
           <ScrollDepthBars scrollDepth={scrollDepth} preview={pagePreview} bare siteId={siteId} />
         ) : (
-          <GoalStats goalCounts={goalCounts} siteId={siteId} dateRange={dateRange} bare memberFeatures={memberFeatures} />
+          <GoalStats goalCounts={goalCounts} siteId={siteId} dateRange={dateRange} bare memberFeatures={memberFeatures} liveMinutes={liveMinutes} />
         )}
       </div>
     </div>
