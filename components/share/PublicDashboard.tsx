@@ -20,6 +20,7 @@ import RealtimeOrb from '@/components/dashboard/RealtimeOrb'
 import { PERIOD_TO_API, findPreset } from '@/lib/constants/periods'
 import { SHARE_FIXED_RANGES_REASON, SHARE_ROW_KEYS, shareRows } from '@/lib/view/view'
 import { periodToDateRange, type Period } from '@/lib/hooks/periodUrl'
+import { formatCompactNumber } from '@/lib/utils/format'
 import { siteWallClockNow } from '@/lib/utils/siteTime'
 import { DEFAULT_GEO_DATA_LEVEL } from '@/lib/api/sites'
 import { DashboardSkeleton, useMinimumLoading, useSkeletonFade } from '@/components/skeletons'
@@ -355,9 +356,9 @@ export default function PublicDashboard({ siteId, contextLine = 'Public dashboar
             withheld, so it never appears as a reassuring zero. */}
         {data.suppression && data.suppression.rows_withheld > 0 && (
           <p className="mb-6 text-xs text-neutral-500">
-            {data.suppression.rows_withheld.toLocaleString()}{' '}
+            {formatCompactNumber(data.suppression.rows_withheld)}{' '}
             {data.suppression.rows_withheld === 1 ? 'row is' : 'rows are'} hidden below,
-            covering {data.suppression.pageviews_withheld.toLocaleString()} pageviews. A shared
+            covering {formatCompactNumber(data.suppression.pageviews_withheld)} pageviews. A shared
             dashboard only shows breakdown rows with at least {data.suppression.min_cell_size}{' '}
             visitors, so no row can describe one person. Site totals are unaffected.
           </p>

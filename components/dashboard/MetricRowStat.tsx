@@ -1,7 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import { formatNumber } from '@/lib/utils/format'
+import { CompactNumber } from '@/components/ui/compact-number'
 import { type DimensionRateRow } from '@/lib/dashboard/metrics'
 
 // ---------------------------------------------------------------------------
@@ -30,13 +30,9 @@ export function MetricRowStat({ row, totals, views }: MetricRowStatProps) {
           {pct}
         </span>
       )}
-      <span className={cn('text-sm font-semibold text-neutral-400', views && 'w-12 text-right tabular-nums')}>
-        {formatNumber(visitors)}
-      </span>
+      <CompactNumber value={visitors} className={cn('text-sm font-semibold text-neutral-400', views && 'w-12 text-right')} />
       {views && (
-        <span className="w-12 text-right tabular-nums text-sm font-semibold text-neutral-400">
-          {formatNumber(row.pageviews)}
-        </span>
+        <CompactNumber value={row.pageviews} className="w-12 text-right text-sm font-semibold text-neutral-400" />
       )}
     </div>
   )

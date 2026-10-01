@@ -7,7 +7,7 @@ import { ArrowRight, CircleNotch, FileText, House } from '@phosphor-icons/react'
 import type { FunnelStepStats } from '@/lib/api/funnels'
 import { useFunnelBreakdown } from '@/lib/swr/dashboard'
 import { getFilterValueIcon } from '@/lib/utils/icons'
-import { formatNumber } from '@/lib/utils/format'
+import { CompactNumber } from '@/components/ui/compact-number'
 import Select from '@/components/ui/select'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
@@ -141,9 +141,7 @@ function BarRow({
       {trailing && (
         <span className="relative shrink-0 text-xs tabular-nums text-neutral-500">{trailing}</span>
       )}
-      <span className="relative shrink-0 text-sm font-semibold tabular-nums text-neutral-400">
-        {count != null ? formatNumber(count) : '—'}
-      </span>
+      <CompactNumber value={count} className="relative shrink-0 text-sm font-semibold text-neutral-400" />
     </div>
   )
 }

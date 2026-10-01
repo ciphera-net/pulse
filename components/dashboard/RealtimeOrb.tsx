@@ -1,6 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
+import { formatNumber, formatCompactNumber } from '@/lib/utils/format'
 import { DASHBOARD_REALTIME_MINUTES } from '@/lib/dashboard/realtimeRange'
 
 /**
@@ -23,7 +24,9 @@ import { DASHBOARD_REALTIME_MINUTES } from '@/lib/dashboard/realtimeRange'
 export function describeLiveCount(count: number): string {
   const window = `in the last ${DASHBOARD_REALTIME_MINUTES} minutes`
   if (count === 0) return `Nobody on the site ${window}`
-  return `${count} ${count === 1 ? 'person' : 'people'} on the site ${window}`
+  // The exact count (PULSE-190) — this phrase is the orb's aria-label/title,
+  // the accessible name for the bare, compact number beside the dot.
+  return `${formatNumber(count)} ${count === 1 ? 'person' : 'people'} on the site ${window}`
 }
 
 function Dot({ here }: { here: boolean }) {
@@ -66,7 +69,7 @@ export default function RealtimeOrb({
         className={cn('inline-flex h-10 items-center gap-2 px-2 text-sm', here ? 'text-foreground' : 'text-muted-foreground')}
       >
         <Dot here={here} />
-        <span className="tabular-nums">{count}</span>
+        <span className="tabular-nums">{formatCompactNumber(count)}</span>
       </span>
     )
   }
@@ -88,7 +91,7 @@ export default function RealtimeOrb({
       )}
     >
       <Dot here={here} />
-      <span className="tabular-nums">{count}</span>
+      <span className="tabular-nums">{formatCompactNumber(count)}</span>
     </button>
   )
 }

@@ -40,8 +40,10 @@ describe('ReportSlides', () => {
     expect(within(cover).getByRole('heading', { level: 1 }).textContent).toBe('Investor update, September 2026')
     expect(within(cover).getByText('30 Jun – 27 Sep 2026, against the 90 days before.')).toBeTruthy()
     for (const [label, value, change] of [
-      ['Unique visitors', '17,240', '↑ 38%'],
-      ['Pageviews', '41,860', '↑ 41%'],
+      // PULSE-190: compact from 10,000 — both headline counts cross it; the
+      // 486-visitor Signups goal does not.
+      ['Unique visitors', '17.2K', '↑ 38%'],
+      ['Pageviews', '41.9K', '↑ 41%'],
       ['Signups', '486', '↑ 52%'],
     ]) {
       expect(within(cover).getByText(label)).toBeTruthy()
@@ -61,8 +63,9 @@ describe('ReportSlides', () => {
     expect(within(growth).getByText('Measured by Pulse')).toBeTruthy()
     expect(within(growth).getByText('Imported history')).toBeTruthy()
     expect(within(growth).getByText('September so far')).toBeTruthy()
-    // Round-number axis: 0, 2k, 4k, 6k, 8k.
-    expect([...growth.querySelectorAll('svg text[text-anchor="end"]')].map((t) => t.textContent)).toEqual(['0', '2k', '4k', '6k', '8k'])
+    // Round-number axis: 0, 2000, 4000, 6000, 8000 — PULSE-190's compact
+    // threshold is 10,000, so these stay exact (no more 1,000-threshold 'k').
+    expect([...growth.querySelectorAll('svg text[text-anchor="end"]')].map((t) => t.textContent)).toEqual(['0', '2,000', '4,000', '6,000', '8,000'])
   })
 
   it('shows a month with nothing measured as no bar, never a zero', () => {

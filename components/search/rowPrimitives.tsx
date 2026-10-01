@@ -4,7 +4,8 @@ import * as React from 'react'
 import { Monitor, DeviceMobile, DeviceTablet } from '@phosphor-icons/react'
 import { CountryFlag as CdnFlag } from '@/components/ui/CountryFlag'
 import { cn } from '@/lib/utils'
-import { formatNumber } from '@/lib/utils/format'
+import { formatNumber, formatCompactNumber } from '@/lib/utils/format'
+import { CompactNumber } from '@/components/ui/compact-number'
 import { alpha3ToAlpha2 } from '@/lib/utils/countryCodes'
 import { SkeletonLine } from '@/components/skeletons'
 import { ErrorCard } from '@/components/ui/ErrorCard'
@@ -31,10 +32,6 @@ export const formatCTR = (ctr: number) => `${(ctr * 100).toFixed(1)}%`
 
 // Protocol + trailing slash stripped for a cleaner page URL; full URL goes in title.
 export const stripProtocol = (url: string) => url.replace(/^https?:\/\//, '').replace(/\/$/, '')
-
-// Compact thousands (1.2K / 3.4M) for the opportunities upside figure.
-const compact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 })
-export const formatCompact = (n: number) => compact.format(n)
 
 // ─── Bar behind the label ────────────────────────────────────────
 
@@ -67,8 +64,8 @@ export function StandardMetrics({ clicks, impressions, ctr, position }: Standard
   // <button>, where a <div> would be invalid.
   return (
     <span className="relative ml-3 flex shrink-0 items-center gap-3 text-sm tabular-nums">
-      <span className={cn(W.clicks, 'text-right text-neutral-300')}>{formatNumber(clicks)}</span>
-      <span className={cn('hidden sm:inline-block', W.impressions, 'text-right text-neutral-400')}>{formatNumber(impressions)}</span>
+      <CompactNumber value={clicks} className={cn(W.clicks, 'text-right text-neutral-300')} />
+      <CompactNumber value={impressions} className={cn('hidden sm:inline-block', W.impressions, 'text-right text-neutral-400')} />
       <span className={cn('hidden sm:inline-block', W.ctr, 'text-right text-neutral-400')}>{formatCTR(ctr)}</span>
       <span className={cn(W.position, 'flex justify-end')}>
         {position == null ? <span className="text-neutral-600">&mdash;</span> : <PositionBadge position={position} />}
@@ -213,7 +210,7 @@ export function Pagination({ page, pageSize, total, onPage }: { page: number; pa
   return (
     <div className="flex items-center justify-between border-t border-border px-3 py-2.5">
       <span className="text-xs tabular-nums text-neutral-500">
-        {from.toLocaleString()}&ndash;{to.toLocaleString()} of {total.toLocaleString()}
+        {formatNumber(from)}&ndash;{formatNumber(to)} of {formatNumber(total)}
       </span>
       <div className="flex items-center gap-2">
         <PageButton label="Previous" disabled={page === 0} onClick={() => onPage(page - 1)} />

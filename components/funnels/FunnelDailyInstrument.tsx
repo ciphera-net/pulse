@@ -8,7 +8,7 @@ import { ErrorCard } from '@/components/ui/ErrorCard'
 import { AreaChart, Area, Grid, YAxis, ChartTooltip, ChartCrosshair } from '@/components/ui/area-chart'
 import { ChartStack, ChartStackAxis, useChartStack, STRIP_INK, STRIP_MARKER } from '@/components/ui/chart-stack'
 import { PERIOD_ENDS_NOW } from '@/lib/constants/periods'
-import { formatNumber, formatConvertTime } from '@/lib/utils/format'
+import { formatNumber, formatCompactNumber, formatConvertTime } from '@/lib/utils/format'
 import { guardedPctChange, guardedPointChange } from '@/lib/utils/pctChange'
 import { formatDateFullUTC, formatDateShortUTC } from '@/lib/utils/formatDate'
 import { FunnelRail } from './FunnelRail'
@@ -111,10 +111,12 @@ export function FunnelDailyInstrument({
         conversion != null && prevLast?.conversion != null
           ? guardedPointChange(conversion, prevLast.conversion, prevEntered)
           : null,
-      conversionContext: entered != null && entered > 0 ? `${last?.visitors ?? 0} of ${formatNumber(entered)}` : undefined,
-      entered: entered != null ? formatNumber(entered) : '—',
+      conversionContext: entered != null && entered > 0 ? `${formatCompactNumber(last?.visitors ?? 0)} of ${formatCompactNumber(entered)}` : undefined,
+      entered: entered != null ? formatCompactNumber(entered) : '—',
+      enteredExact: entered != null ? formatNumber(entered) : undefined,
       enteredDelta: entered != null && prevStats ? guardedPctChange(entered, prevEntered, prevEntered) : null,
-      completed: stats ? formatNumber(last?.visitors ?? 0) : '—',
+      completed: stats ? formatCompactNumber(last?.visitors ?? 0) : '—',
+      completedExact: stats ? formatNumber(last?.visitors ?? 0) : undefined,
       completedContext:
         stats?.median_convert_seconds != null ? `median ${formatConvertTime(stats.median_convert_seconds)}` : undefined,
     }
@@ -128,15 +130,15 @@ export function FunnelDailyInstrument({
     const h = p as DayPoint
     return [
       { color: 'var(--chart-1)', label: 'Conversion', value: measured(h) ? `${Math.round(h.rate as number)}%` : '—' },
-      { color: 'var(--chart-1)', label: 'Entered', value: formatNumber(h.entered) },
-      { color: BRAND, label: 'Completed', value: h.completed != null ? formatNumber(h.completed) : '—' },
+      { color: 'var(--chart-1)', label: 'Entered', value: formatCompactNumber(h.entered) },
+      { color: BRAND, label: 'Completed', value: h.completed != null ? formatCompactNumber(h.completed) : '—' },
     ]
   }, [])
 
   const rows = [
     { key: 'rate' as const, rail: <FunnelRail label="Conversion" value={rails.conversion} delta={rails.conversionDelta} context={rails.conversionContext} className="h-full" /> },
-    { key: 'entered' as const, rail: <FunnelRail label="Entered" value={rails.entered} delta={rails.enteredDelta} context="reached step 1" className="h-full" /> },
-    { key: 'completed' as const, rail: <FunnelRail label="Completed" value={rails.completed} context={rails.completedContext} className="h-full" /> },
+    { key: 'entered' as const, rail: <FunnelRail label="Entered" value={rails.entered} exactValue={rails.enteredExact} delta={rails.enteredDelta} context="reached step 1" className="h-full" /> },
+    { key: 'completed' as const, rail: <FunnelRail label="Completed" value={rails.completed} exactValue={rails.completedExact} context={rails.completedContext} className="h-full" /> },
   ]
 
   return (
@@ -225,7 +227,7 @@ function DayStrip({ series, kind, dashedTail }: { series: DayPoint[]; kind: 'rat
           dotColor={STRIP_MARKER}
           strokeWidth={2}
         />
-        <YAxis formatValue={(v) => (isRate ? `${Math.round(v)}%` : formatNumber(Math.round(v)))} numTicks={3} />
+        <YAxis formatValue={(v) => (isRate ? `${Math.round(v)}%` : formatCompactNumber(Math.round(v)))} numTicks={3} />
         <ChartTooltip showCard={false} showDatePill={false} />
       </AreaChart>
     </div>
@@ -282,7 +284,7 @@ function CompletedBars({ series }: { series: DayPoint[] }) {
       </svg>
       {[max, 0].map((v) => (
         <div className="pointer-events-none absolute flex justify-end" key={v} style={{ left: 0, top: y(v), width: margin.left - 8, transform: 'translateY(-50%)' }}>
-          <span className="whitespace-nowrap text-neutral-500 text-xs tabular-nums">{formatNumber(Math.round(v))}</span>
+          <span className="whitespace-nowrap text-neutral-500 text-xs tabular-nums">{formatCompactNumber(Math.round(v))}</span>
         </div>
       ))}
     </div>
