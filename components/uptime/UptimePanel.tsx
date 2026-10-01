@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { curveLinear } from 'd3-shape'
 import { useQueryParamsWriter } from '@/lib/hooks/useQueryParamsWriter'
 import { shiftDayKey } from '@/lib/utils/siteTime'
+import { formatCompactNumber } from '@/lib/utils/format'
 import { useUptimeResponseTimes } from '@/lib/swr/dashboard'
 import { UpdatingChip } from '@/components/ui/UpdatingChip'
 import { ErrorCard } from '@/components/ui/ErrorCard'
@@ -224,7 +225,7 @@ function ChecksStrip({ series }: { series: UptimePoint[] }) {
         </g>
       </svg>
       <div className="pointer-events-none absolute flex justify-end" style={{ left: 0, top: padT, width: margin.left - 8, transform: 'translateY(-50%)' }}>
-        <span className="whitespace-nowrap text-neutral-500 text-xs tabular-nums">{max}</span>
+        <span className="whitespace-nowrap text-neutral-500 text-xs tabular-nums">{formatCompactNumber(max)}</span>
       </div>
     </div>
   )
@@ -322,7 +323,7 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, tim
       case 'checks':
         // * No series loaded is "—", not a fabricated hard zero.
         return {
-          text: data == null ? '—' : totalChecks.toLocaleString('en-US'),
+          text: data == null ? '—' : formatCompactNumber(totalChecks),
           sub: `every ${Math.round(monitor.check_interval_seconds / 60)} m`,
         }
     }
@@ -349,9 +350,9 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, tim
   const cardRows = useCallback((p: Record<string, unknown>) => {
     const h = p as unknown as UptimePoint
     return [
-      { color: 'var(--chart-foreground-muted)', label: 'Checks', value: String(h.samples) },
-      { color: NEG, label: 'Failed', value: String(h.failed) },
-      { color: DEGRADED, label: 'Degraded', value: String(h.degraded) },
+      { color: 'var(--chart-foreground-muted)', label: 'Checks', value: formatCompactNumber(h.samples) },
+      { color: NEG, label: 'Failed', value: formatCompactNumber(h.failed) },
+      { color: DEGRADED, label: 'Degraded', value: formatCompactNumber(h.degraded) },
       { color: 'var(--chart-1)', label: 'Response time', value: h.avgMs == null ? '—' : fmtMs(h.avgMs) },
       { color: 'var(--chart-1)', label: 'p95', value: h.p95Ms == null ? '—' : fmtMs(h.p95Ms) },
     ]
