@@ -40,6 +40,7 @@ import {
   getCities,
   getRegions,
   getLanguages,
+  getLanguageGroups,
   getBrowsers,
   getOS,
   getDevices,
@@ -1065,6 +1066,10 @@ const fullListFetchers = {
   cities: getCities,
   regions: getRegions,
   languages: getLanguages,
+  // PULSE-173: the Languages tab's grouped-by-base-language full list. Kept as
+  // a SEPARATE kind (not a flag on 'languages') so the SWR cache key never
+  // collides between the per-locale and grouped shapes of the same endpoint.
+  'languages-grouped': getLanguageGroups,
   timezones: getTimezones,
   browsers: getBrowsers,
   os: getOS,

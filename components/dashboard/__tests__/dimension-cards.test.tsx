@@ -189,6 +189,164 @@ describe('Audience', () => {
     expect(screen.queryByText('Spain')).toBeNull()
     expect(screen.queryByLabelText('Next page')).toBeNull()
   })
+
+  // ── PULSE-173: Languages tab grouped by base language ──────────────────────
+  describe('Languages tab — grouped by base language (PULSE-173)', () => {
+    const groupedBaseProps = {
+      countries: [], cities: [], regions: [], languages: [], timezones: [],
+      siteId: 'site-1', dateRange,
+    }
+    const openLanguages = () => fireEvent.click(screen.getByRole('radio', { name: 'Languages' }))
+
+    it('renders language_groups rows, with "N regions" only when locale_count > 1', () => {
+      const rows = [
+        { language: 'en', pageviews: 283, visitors: 144, bounce_rate: null, avg_duration: null, members: ['en-US', 'en-GB', 'en', 'en-PK', 'en-AU', 'en-CA', 'en-IN', 'en-IE', 'en-SG'], locale_count: 9, flag_region: 'US' },
+        { language: 'nl', pageviews: 13, visitors: 8, bounce_rate: null, avg_duration: null, members: ['nl-NL', 'nl'], locale_count: 2, flag_region: 'NL' },
+        { language: 'ja', pageviews: 5, visitors: 3, bounce_rate: null, avg_duration: null, members: ['ja'], locale_count: 1, flag_region: null },
+      ]
+      render(<Audience {...groupedBaseProps} languageGroups={rows} totals={totals} />)
+      openLanguages()
+      expect(screen.getByText('English')).toBeTruthy()
+      expect(screen.getByText('9 regions')).toBeTruthy()
+      expect(screen.getByText('Dutch')).toBeTruthy()
+      expect(screen.getByText('2 regions')).toBeTruthy()
+      // Japanese has exactly one member: no secondary at all, not "1 regions".
+      expect(screen.getByText('Japanese')).toBeTruthy()
+      expect(screen.queryByText('1 regions')).toBeNull()
+    })
+
+    it('flag rule: server flag_region, else the group key\'s likely region, else the globe', () => {
+      const rows = [
+        // flag_region supplied directly.
+        { language: 'en', pageviews: 10, visitors: 10, bounce_rate: null, avg_duration: null, members: ['en-US'], locale_count: 1, flag_region: 'US' },
+        // no flag_region, but CLDR likely-subtag maximization on the bare key resolves to JP.
+        { language: 'ja', pageviews: 5, visitors: 5, bounce_rate: null, avg_duration: null, members: ['ja'], locale_count: 1, flag_region: null },
+        // no flag_region, and the key resolves to no region at all -> globe, no <img>.
+        { language: 'xx', pageviews: 2, visitors: 2, bounce_rate: null, avg_duration: null, members: ['xx'], locale_count: 1, flag_region: null },
+      ]
+      render(<Audience {...groupedBaseProps} languageGroups={rows} totals={totals} onFilter={vi.fn()} />)
+      openLanguages()
+
+      const enRow = screen.getByText('English').closest('button') as HTMLElement
+      expect((enRow.querySelector('img') as HTMLImageElement).src).toContain('/us.svg')
+
+      const jaRow = screen.getByText('Japanese').closest('button') as HTMLElement
+      expect((jaRow.querySelector('img') as HTMLImageElement).src).toContain('/jp.svg')
+
+      // formatLanguage falls back to the raw key when DisplayNames can't resolve it.
+      const xxRow = screen.getByText('xx').closest('button') as HTMLElement
+      expect(xxRow.querySelector('img')).toBeNull()
+      expect(xxRow.querySelector('svg')).not.toBeNull()
+    })
+
+    it('a grouped row click filters on every member locale at once, not just the group key', () => {
+      const onFilter = vi.fn()
+      const rows = [
+        { language: 'en', pageviews: 283, visitors: 144, bounce_rate: null, avg_duration: null, members: ['en-US', 'en-GB', 'en'], locale_count: 3, flag_region: 'US' },
+      ]
+      render(<Audience {...groupedBaseProps} languageGroups={rows} totals={totals} onFilter={onFilter} />)
+      openLanguages()
+      fireEvent.click(screen.getByText('English'))
+      expect(onFilter).toHaveBeenCalledWith({ dimension: 'language', operator: 'is', values: ['en-US', 'en-GB', 'en'] })
+    })
+
+    it('falls back to per-locale rows and single-value filtering when language_groups is absent (deploy skew)', () => {
+      const onFilter = vi.fn()
+      const languages = [
+        { language: 'en-US', pageviews: 189, visitors: 110 },
+        { language: 'en-GB', pageviews: 59, visitors: 21 },
+      ]
+      render(<Audience {...groupedBaseProps} languages={languages} totals={totals} onFilter={onFilter} />)
+      openLanguages()
+      expect(screen.getByText('English (United States)')).toBeTruthy()
+      // No grouping affordance at all on the old shape.
+      expect(screen.queryByText(/ regions$/)).toBeNull()
+      fireEvent.click(screen.getByText('English (United States)'))
+      expect(onFilter).toHaveBeenCalledWith({ dimension: 'language', operator: 'is', values: ['en-US'] })
+    })
+
+    it('falls back to per-locale rows when language_groups is null (no grouped view for this range), without throwing', () => {
+      // The backend sends null, not [], when the range holds imported language
+      // history (only the per-locale list merges it) or for a cached response
+      // from before the field existed. null must never read as "grouped".
+      const languages = [
+        { language: 'en-US', pageviews: 189, visitors: 110 },
+        { language: 'de', pageviews: 60, visitors: 50 },
+      ]
+      render(<Audience {...groupedBaseProps} languages={languages} languageGroups={null} totals={totals} />)
+      openLanguages()
+      expect(screen.getByText('English (United States)')).toBeTruthy()
+      expect(screen.queryByText(/ regions$/)).toBeNull()
+    })
+
+    it('treats an empty language_groups array as grouped with nothing to show, not as the per-locale fallback', () => {
+      const languages = [{ language: 'en-US', pageviews: 189, visitors: 110 }]
+      render(<Audience {...groupedBaseProps} languages={languages} languageGroups={[]} totals={totals} />)
+      openLanguages()
+      expect(screen.queryByText('English (United States)')).toBeNull()
+    })
+
+    it('renders a floored shared-dashboard row (no members, no locale_count) with no "N regions"', () => {
+      // public_floor.go omits members/locale_count entirely on a shared payload.
+      const rows = [
+        { language: 'en', pageviews: 283, visitors: 144, bounce_rate: null, avg_duration: null, flag_region: 'US' },
+      ]
+      render(<Audience {...groupedBaseProps} languageGroups={rows} totals={totals} memberFeatures={false} />)
+      openLanguages()
+      expect(screen.getByText('English')).toBeTruthy()
+      expect(screen.queryByText(/ regions$/)).toBeNull()
+      // No onFilter on the share surface either, so the row is not a button.
+      expect(screen.getByText('English').closest('button')).toBeNull()
+    })
+
+    it('never arms the GROUPED full-list fetch on the share surface, even when the rows overflow (F3)', () => {
+      // The Languages tab's own version of the share-surface guarantee every
+      // other tab already has: memberFeatures=false must keep wantsFullList
+      // false regardless of dimension, so the grouped shared dashboard never
+      // reaches a member-only endpoint (GET /sites/:id/languages) either.
+      const many = ['en', 'nl', 'fr', 'de', 'ja', 'zh', 'pt', 'it', 'es'].map((code, i) => ({
+        language: code, pageviews: 9 - i, visitors: 9 - i, bounce_rate: null, avg_duration: null, flag_region: null,
+      }))
+      render(<Audience {...groupedBaseProps} languageGroups={many} totals={totals} memberFeatures={false} />)
+      openLanguages()
+      expect(useFullDimensionList).toHaveBeenLastCalledWith(
+        null, 'site-1', '2026-07-20', '2026-08-18', 250, undefined,
+      )
+      // Still pages the fan-out rows client-side, same as the fetch-armed case.
+      expect(screen.queryByText('Italian')).toBeNull()
+      fireEvent.click(screen.getByLabelText('Next page'))
+      expect(screen.getByText('Italian')).toBeTruthy()
+    })
+
+    it('arms the full-list fetch with the GROUPED kind on overflow and pages the same rendering', () => {
+      const many = ['en', 'nl', 'fr', 'de', 'ja', 'zh', 'pt', 'it', 'es'].map((code, i) => ({
+        language: code, pageviews: 9 - i, visitors: 9 - i, bounce_rate: null, avg_duration: null,
+        members: [code], locale_count: 1, flag_region: null,
+      }))
+      useFullDimensionList.mockImplementation((kind: unknown) => (kind ? { ...idle, data: many } : idle))
+      render(<Audience {...groupedBaseProps} languageGroups={many} totals={totals} filters="browser:is:Chrome" />)
+      openLanguages()
+      expect(useFullDimensionList).toHaveBeenLastCalledWith(
+        'languages-grouped', 'site-1', '2026-07-20', '2026-08-18', 250, 'browser:is:Chrome',
+      )
+      // 9 grouped rows > LIMIT 7 -> page 2 carries the tail, same pager as every other card.
+      expect(screen.queryByText('Italian')).toBeNull()
+      fireEvent.click(screen.getByLabelText('Next page'))
+      expect(screen.getByText('Italian')).toBeTruthy()
+    })
+
+    it('leaves every other tab unaffected by a languageGroups prop being present', () => {
+      const rows = [
+        { language: 'en', pageviews: 1, visitors: 1, bounce_rate: null, avg_duration: null, members: ['en'], locale_count: 1, flag_region: 'US' },
+      ]
+      // Default tab is Countries — languageGroups must not leak into it.
+      render(<Audience {...baseProps} languageGroups={rows} totals={totals} />)
+      expect(screen.getByText('United States')).toBeTruthy()
+      expect(useFullDimensionList).toHaveBeenLastCalledWith(
+        'countries', 'site-1', '2026-07-20', '2026-08-18', 250, undefined,
+      )
+    })
+  })
 })
 
 describe('TechSpecs', () => {
