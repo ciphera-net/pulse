@@ -144,7 +144,22 @@ const fetchers = {
 
 // * Standard SWR config for dashboard data
 const dashboardSWRConfig = {
-  // * Keep stale data visible while revalidating (better UX)
+  // 🔁 CORRECTED (PULSE-226): this used to say "Keep stale data visible while
+  // revalidating (better UX)" — that is not what this flag does. SWR keeps the
+  // last-known `data` rendered while a revalidation is in flight UNCONDITIONALLY
+  // (it is how the `data`/`isValidating` pair is designed, not a side effect of
+  // any option here); turning this on or off never changes that.
+  //
+  // What `revalidateOnFocus: false` actually does: it stops SWR's default
+  // global behaviour of re-subscribing to the window `focus` and document
+  // `visibilitychange` events and firing a revalidation on them (the config
+  // default is `true` — see node_modules/swr/dist/_internal's `initFocus` and
+  // the default config). It is off here by default because turning it on for
+  // every key in this file unthrottled would mean every one of these dozens
+  // of hooks refetches on every single tab/window switch. Hooks that actually
+  // need a backgrounded tab to catch itself up opt back in individually, each
+  // with its own `focusThrottleInterval` so flipping tabs can't turn into a
+  // request storm — see useDashboard below for the first and fullest comment.
   revalidateOnFocus: false,
   // * Revalidate when reconnecting (fresh data after offline)
   revalidateOnReconnect: true,
@@ -340,6 +355,55 @@ export function useDashboard(
       // * the push signal and the backstop timer can land close together, and a
       // * 10s window would swallow the very refetch the signal asked for.
       dedupingInterval: live ? 2_000 : 10_000,
+      /**
+       * PULSE-226 (a backgrounded tab does not catch up): the 60s `refreshInterval` above
+       * already existed for every non-live period — that part was never the
+       * bug, and the fix below does not touch it. The gap is what happens
+       * while the tab is BACKGROUNDED. SWR's refreshInterval re-arms its own
+       * timer on a plain `setTimeout` chain and checks `refreshWhenHidden`
+       * (default `false`) before each tick — node_modules/swr/dist/index/index.mjs,
+       * the polling effect's `execute()`: `if (!getCache().error && (refreshWhenHidden
+       * || getConfig().isVisible()) && ...)`. While the document is hidden that
+       * condition is false, so the tick is SKIPPED (not paused and caught up —
+       * skipped, then it just reschedules another full interval via `next()`).
+       * A tab backgrounded for an hour and brought back gets nothing until the
+       * NEXT scheduled tick fires, which can be up to a full 60s away — that
+       * "stale until it happens to tick" window is the defect.
+       *
+       * `revalidateOnFocus: true` re-arms SWR's OTHER revalidation path:
+       * `initFocus` (same file, `_internal`) listens for both the window
+       * `focus` event AND the document `visibilitychange` event, and on
+       * either one every mounted key with `revalidateOnFocus` on fires a
+       * revalidation — gated only by `isActive()` (document not hidden, and
+       * online) and by `focusThrottleInterval`. So returning to a
+       * backgrounded tab fires `visibilitychange` immediately, which
+       * revalidates this key right away instead of waiting out the rest of
+       * the 60s tick.
+       *
+       * `focusThrottleInterval: 30_000`: throttled per key (a local
+       * `nextFocusRevalidatedAt` closed over inside the hook's own effect,
+       * not a global cooldown), so it only bounds how often FOCUS events can
+       * trigger a fetch for THIS key — it has no effect on the unconditional
+       * 60s timer above. 30s is half the 60s poll cadence: a visible tab can
+       * never get more than one focus-triggered fetch per half of its normal
+       * cadence, so alt-tabbing or window-switching repeatedly collapses to
+       * at most one extra request per 30s, never "one request per flip" (the
+       * library default is 5s, which would not meaningfully guard against a
+       * fast tab-flipper). It is also well above the 10s `dedupingInterval`
+       * above, so the two only interact when a focus event lands inside 10s
+       * of the periodic tick's own fetch — in that narrow case `dedupe: true`
+       * (SWR calls focus revalidation with `WITH_DEDUPE`) makes the focus
+       * fetch reuse that in-flight/just-finished request instead of firing a
+       * second one, rather than racing it.
+       *
+       * Scoped to non-live only (`!live`): realtime (minutes) mode is
+       * unchanged — it is driven by the WebSocket push via `useRealtimeSync`
+       * calling `mutate`, with the 15s timer above only as a backstop for a
+       * dropped message, so it already self-heals on its own signal and does
+       * not need a focus listener.
+       */
+      revalidateOnFocus: !live,
+      focusThrottleInterval: 30_000,
     }
   )
 }
@@ -354,6 +418,12 @@ export function useStats(siteId: string, start: string, end: string, filters?: s
       // * Refresh every 60 seconds for stats
       refreshInterval: 60_000,
       dedupingInterval: 10_000,
+      // PULSE-226: same backgrounded-tab gap as useDashboard (see its comment
+      // for the full SWR citation) — this hook drives the same dashboard
+      // page's KPI numbers on the same 60s/10s cadence, so it gets the same
+      // treatment.
+      revalidateOnFocus: true,
+      focusThrottleInterval: 30_000,
     }
   )
 }
@@ -379,6 +449,11 @@ export function usePagesTable(
       ...dashboardSWRConfig,
       refreshInterval: 60_000,
       dedupingInterval: 10_000,
+      // PULSE-226: same backgrounded-tab gap as useDashboard (see its comment).
+      // The Pages table is the same site-dashboard shell on the same 60s/10s
+      // cadence as the surfaces above.
+      revalidateOnFocus: true,
+      focusThrottleInterval: 30_000,
     }
   )
 }
@@ -399,6 +474,11 @@ export function useDailyStats(
       ...dashboardSWRConfig,
       refreshInterval: 60_000,
       dedupingInterval: 10_000,
+      // PULSE-226: same backgrounded-tab gap as useDashboard (see its
+      // comment). This is the dashboard's own trend chart (PeakHours), same
+      // page, same 60s/10s cadence.
+      revalidateOnFocus: true,
+      focusThrottleInterval: 30_000,
     }
   )
 }
@@ -545,6 +625,13 @@ export function useCampaignsList(
       ...dashboardSWRConfig,
       refreshInterval: live ? liveListSWRConfig.refreshInterval : 60 * 1000,
       dedupingInterval: live ? liveListSWRConfig.dedupingInterval : 10 * 1000,
+      // PULSE-226: same backgrounded-tab gap as useDashboard (see its
+      // comment) for the non-live branch — the Sources/Campaigns card lives
+      // on the same dashboard page. Live mode is untouched, same reason as
+      // useDashboard: it already self-heals off the dashboard fan-out's own
+      // live signal, not focus.
+      revalidateOnFocus: !live,
+      focusThrottleInterval: 30_000,
     }
   )
 }
