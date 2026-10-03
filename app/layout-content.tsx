@@ -129,7 +129,10 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   // Join and consent pages: standalone, no app shell, signed in or not — each
   // renders its own "sign in to continue" state. A shared report (/r, PULSE-133)
   // is standalone for everyone too: it carries only the site's own mark.
-  if (pathname.startsWith('/join') || pathname.startsWith('/connect') || isReportRoute(pathname)) {
+  // /start/ (D43) is the same shape: an anonymous visitor reaching it from a
+  // future marketing /pricing button must not see a flash of marketing chrome
+  // before it redirects into a signup.
+  if (pathname.startsWith('/join') || pathname.startsWith('/connect') || pathname.startsWith('/start/') || isReportRoute(pathname)) {
     return <>{children}</>
   }
 

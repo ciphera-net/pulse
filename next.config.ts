@@ -203,6 +203,10 @@ const nextConfig: NextConfig = {
             value: 'camera=(), microphone=(), geolocation=(), browsing-topics=()',
           },
           { key: 'X-XSS-Protection', value: '1; mode=block' },
+          // * The marketing split (PULSE-158, plan §6): pulse.ciphera.net is served by
+          // * TWO apps behind one Ingress, and the route test proves each path reaches the
+          // * right one by this header. The marketing app sends `website`.
+          { key: 'x-pulse-app', value: 'dashboard' },
           // ⚠️ AUTHORITATIVE COPY IS AT THE EDGE, NOT HERE.
           // Traefik's `security-headers` middleware (applied to every router via
           // `default-chain`, see Infra/Kubernetes/addons/20-traefik/middlewares.yaml)
