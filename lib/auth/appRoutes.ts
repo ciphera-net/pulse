@@ -24,16 +24,21 @@ export function isAuthedAppRoute(pathname: string): boolean {
 
 /**
  * Pages that own their whole viewport: no dashboard shell, no marketing chrome.
- * The setup wizard, the workspace switch, an invite link, and the MCP consent
- * page (/connect, PULSE-41), which a person reaches from an AI assistant and
- * which must look like one decision, not like the marketing site around it.
+ * The setup wizard, the workspace switch, an invite link, the MCP consent
+ * page (/connect, PULSE-41), and the D43 plan-routing address (/start/plan) —
+ * each reaches a verdict and leaves; none of them is a place to browse.
+ *
+ * 🔴 `/start/`, WITH THE TRAILING SLASH. `/startups` and `/startups/claim`
+ * share the `/start` prefix and are ordinary marketing pages — a bare
+ * `startsWith('/start')` would silently strip their header and footer.
  */
 export function isStandaloneRoute(pathname: string): boolean {
   return (
     pathname.startsWith('/setup') ||
     pathname.startsWith('/switch') ||
     pathname.startsWith('/join') ||
-    pathname.startsWith('/connect')
+    pathname.startsWith('/connect') ||
+    pathname.startsWith('/start/')
   )
 }
 

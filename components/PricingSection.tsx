@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth/context'
 import { initiateSignupFlow } from '@/lib/api/oauth'
 import { toast, Button, ArrowRightIcon, CheckIcon, Switcher } from '@ciphera-net/facet'
 import { useSubscription } from '@/lib/swr/dashboard'
-import { getUserOrganizations } from '@/lib/api/organization'
+import { resolvePlanDestination, type PlanInterval } from '@/lib/auth/plan-destination'
 import PricingFAQ from '@/components/marketing/PricingFAQ'
 import { Slider } from '@/components/ui/slider'
 import Select from '@/components/ui/select'
@@ -100,34 +100,28 @@ export default function PricingSection() {
   }
 
   const handleSubscribe = async (planId: string) => {
-    const selectedInterval = isYearly ? 'year' : 'month'
+    const selectedInterval: PlanInterval = isYearly ? 'year' : 'month'
     const selectedLimit = TRAFFIC_TIERS[sliderIndex]?.value ?? 10000
-    const planParams = `plan=${planId}&interval=${selectedInterval}&limit=${selectedLimit}`
 
-    if (!user) {
+    // One decision, shared with the dashboard's /start/plan address (D43) —
+    // see lib/auth/plan-destination.ts. Keeping it there, not here, is what
+    // stops the two from drifting apart on what a plan pick actually does.
+    const destination = await resolvePlanDestination({
+      isSignedIn: !!user,
+      subscriptionStatus: subscription?.subscription_status,
+      query: { plan: planId, interval: selectedInterval, limit: selectedLimit },
+    })
+
+    if (destination.kind === 'signup') {
       // Signup, not sign-in — see HeroCtas. The stored return target is
       // unchanged: whichever door they come through, they land on the plan
       // they picked.
-      rememberReturnTarget(`/setup/org?${planParams}`)
+      rememberReturnTarget(destination.returnTarget)
       initiateSignupFlow()
       return
     }
 
-    if (subscription?.subscription_status === 'active') {
-      router.push(`/switch?${planParams}`)
-      return
-    }
-
-    try {
-      const orgs = await getUserOrganizations()
-      if (orgs.length === 0) {
-        router.push(`/setup/org?${planParams}`)
-      } else {
-        router.push(`/setup/plan?${planParams}`)
-      }
-    } catch {
-      router.push(`/setup/plan?${planParams}`)
-    }
+    router.push(destination.path)
   }
 
   return (

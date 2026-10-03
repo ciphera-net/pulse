@@ -374,6 +374,11 @@ function SidebarContent({
   // The home group's heading follows the team-state signal (PULSE-59): it
   // never says team to somebody who works alone.
   const teamState = useTeamState()
+  // D43: the Pricing item opens Settings → Billing (its plan switcher already
+  // lives there, `Change plan` → `/switch`) for anyone who may see that tab;
+  // a member without the permission keeps going to the marketing page, never
+  // to a tab that would just render "Access restricted".
+  const canBillingView = useCan('billing.view')
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -472,7 +477,13 @@ function SidebarContent({
             )}
             <div className="space-y-0.5">
               <HomeNavLink href="/integrations" icon={PlugsIcon} label="Integrations" collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
-              <HomeNavLink href="/pricing" icon={TagIcon} label="Pricing" collapsed={c} onClick={isMobile ? onMobileClose : undefined} />
+              <HomeNavLink
+                href={canBillingView ? '/settings/organization/billing' : '/pricing'}
+                icon={TagIcon}
+                label="Pricing"
+                collapsed={c}
+                onClick={isMobile ? onMobileClose : undefined}
+              />
               {/* Settings, not "Team settings": home mode is what every
                   settings page that is not site-scoped renders under, and an
                   exact-match link to the org's General tab lit up on exactly one
