@@ -176,6 +176,9 @@ public read API's — see that entry for what it does and does not cover.
 
 ### Fixed
 
+- When the dashboard failed to load, the error replaced the whole page, including the
+  date picker and the realtime toggle, so the only way to try another range was to
+  edit the address. The toolbar now stays above the error, and Retry is unchanged.
 - Uptime and Pages offered *Last 1 hour* and *Last 24 hours* over data kept by the
   day, and showed whole days under those labels. The rows are gone (#742).
 - Journeys offered *Today*, which was always empty: journeys for a day are built

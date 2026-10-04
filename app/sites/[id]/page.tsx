@@ -373,6 +373,17 @@ export default function SiteDashboardPage() {
   const showSkeleton = useMinimumLoading(!periodReady || (dashboardLoading && !dashboard))
   const fadeClass = useSkeletonFade(showSkeleton)
 
+  const failureCard = (failure: unknown, retry: () => void) => {
+    const status = (failure as { status?: number })?.status
+    return (
+      <ErrorCard
+        title="Couldn’t load the dashboard"
+        description={status ? `The analytics request failed (HTTP ${status}). Your data is intact — this is a loading problem, not a data problem.` : 'The analytics request failed. Your data is intact — this is a loading problem, not a data problem.'}
+        onRetry={retry}
+      />
+    )
+  }
+
   // F8: a failed request is a FAILURE, stated as one. "Site not found" used to
   // render for ANY error with no cached data — a 500 from the fan-out, a 400
   // from interval validation, an expired session — confidently wrong about a
@@ -388,35 +399,7 @@ export default function SiteDashboardPage() {
     }
     return (
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-        <ErrorCard
-          title="Couldn’t load the dashboard"
-          description={status ? `The analytics request failed (HTTP ${status}). Your data is intact — this is a loading problem, not a data problem.` : 'The analytics request failed. Your data is intact — this is a loading problem, not a data problem.'}
-          onRetry={retry}
-        />
-      </div>
-    )
-  }
-
-  // PULSE-87: the view waits for the SITE's timezone before it can resolve a
-  // range, and a site that failed to load never supplies one — so that failure
-  // is stated BEFORE the skeleton gate, or the skeleton wins forever. (A 403 does
-  // not reach this page: the site layout shows the other-team state instead.)
-  if (!siteRecord && siteError) {
-    return failureState(siteError, () => { void refetchSite() })
-  }
-
-  if (showSkeleton) {
-    return <DashboardSkeleton />
-  }
-
-  if (dashboardError && !dashboard) {
-    return failureState(dashboardError, () => refetchDashboard())
-  }
-
-  if (!site) {
-    return (
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-        <p className="text-neutral-400">Site not found</p>
+        {failureCard(failure, retry)}
       </div>
     )
   }
@@ -452,19 +435,66 @@ export default function SiteDashboardPage() {
     </>
   )
 
+  const toolbarRow = () => (
+    <div className="mb-3">
+      {/* flex-wrap, not a single row: the five controls measure ~414px of
+          intrinsic width, so on a 390px phone the row overflowed and the
+          content panel's overflow-x-hidden SLICED the date picker in half —
+          its forward-shift arrow was unreachable. Wrapping costs desktop
+          nothing (there the row has ~1100px and never wraps). */}
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        {toolbarControls()}
+      </div>
+    </div>
+  )
+
+  // PULSE-87: the view waits for the SITE's timezone before it can resolve a
+  // range, and a site that failed to load never supplies one — so that failure
+  // is stated BEFORE the skeleton gate, or the skeleton wins forever. (A 403 does
+  // not reach this page: the site layout shows the other-team state instead.)
+  if (!siteRecord && siteError) {
+    return failureState(siteError, () => { void refetchSite() })
+  }
+
+  if (showSkeleton) {
+    return <DashboardSkeleton />
+  }
+
+  // pulse#893: a failed dashboard request keeps the toolbar. Returning only the
+  // error card took the period picker and the realtime orb with it, so a period
+  // that fails every time (a long range on a large site) left no way to choose
+  // another one except editing ?period= by hand. Retry stays on the card; the
+  // toolbar is the way to a different period. A 404 is not a loading failure:
+  // the site does not exist, so it keeps the bare "Site not found".
+  if (dashboardError && !dashboard) {
+    if ((dashboardError as { status?: number })?.status === 404) {
+      return failureState(dashboardError, () => refetchDashboard())
+    }
+    return (
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
+        {toolbarRow()}
+        {failureCard(dashboardError, () => refetchDashboard())}
+        <FilterBuilder
+          builder={filterBuilder}
+          filters={filters}
+          onApply={handleFilterApply}
+        />
+      </div>
+    )
+  }
+
+  if (!site) {
+    return (
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
+        <p className="text-neutral-400">Site not found</p>
+      </div>
+    )
+  }
+
   return (
     <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
       <TourController />
-      <div className="mb-3">
-        {/* flex-wrap, not a single row: the five controls measure ~414px of
-            intrinsic width, so on a 390px phone the row overflowed and the
-            content panel's overflow-x-hidden SLICED the date picker in half —
-            its forward-shift arrow was unreachable. Wrapping costs desktop
-            nothing (there the row has ~1100px and never wraps). */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          {toolbarControls()}
-        </div>
-      </div>
+      {toolbarRow()}
 
       {/* Install health — a fact about the SITE, above the deck, distinct from
           the chart's own "no data in this range" (a fact about the RANGE).
