@@ -479,8 +479,8 @@ export interface DashboardData {
   imported_cards?: Record<string, ImportedProvenance>
   /**
    * The goal counts' own provenance (M12-f): whether the Events card's numbers
-   * include imported days. A field of its own, not an `imported_cards` key. The
-   * focused goals endpoints carry the same thing as `imported`.
+   * include imported days. A field of its own, not an `imported_cards` key.
+   * `/goals/stats` carries the same thing as `imported`.
    */
   imported_goals?: ImportedProvenance
 }
@@ -515,53 +515,6 @@ export function getPublicDashboard(
     `/public/sites/${siteId}/dashboard${buildQuery({ startDate, endDate, limit, interval, period })}`
   )
 }
-
-// ─── Focused Dashboard Endpoints ────────────────────────────────────
-
-export interface DashboardOverviewData {
-  site: Site
-  stats: Stats
-  realtime_visitors: number
-  daily_stats: DailyStat[]
-  date_range?: { start: string; end: string }
-}
-
-export interface DashboardPagesData {
-  top_pages: TopPage[]
-  entry_pages: TopPage[]
-  exit_pages: TopPage[]
-}
-
-export interface DashboardLocationsData {
-  countries: CountryStat[]
-  cities: CityStat[]
-  regions: RegionStat[]
-  languages: LanguageStat[]
-  timezones: TimezoneStat[]
-}
-
-export interface DashboardDevicesData {
-  browsers: BrowserStat[]
-  os: OSStat[]
-  devices: DeviceStat[]
-  screen_resolutions: ScreenResolutionStat[]
-}
-
-export interface DashboardReferrersData {
-  top_referrers: TopReferrer[]
-  channels?: ChannelStat[]
-}
-
-export interface DashboardGoalsData {
-  goal_counts: GoalCountStat[]
-  /** M12-f: whether the goal counts include imported days, like every merged card. */
-  imported?: ImportedProvenance
-}
-
-export function getDashboardOverview(siteId: string, startDate?: string, endDate?: string, interval?: string, filters?: string): Promise<DashboardOverviewData> {
-  return apiRequest<DashboardOverviewData>(`/sites/${siteId}/dashboard/overview${buildQuery({ startDate, endDate, interval, filters })}`)
-}
-
 
 // ---------------------------------------------------------------------------
 // The Pages surface (PULSE-18).
@@ -602,31 +555,6 @@ export interface PagesTableData {
 export function getPagesTable(siteId: string, startDate?: string, endDate?: string, limit = 500, filters?: string, period?: string): Promise<PagesTableData> {
   return apiRequest<PagesTableData>(`/sites/${siteId}/pages/table${buildQuery({ startDate, endDate, period, limit, filters })}`)
 }
-
-export function getDashboardPages(siteId: string, startDate?: string, endDate?: string, limit = 10, filters?: string): Promise<DashboardPagesData> {
-  return apiRequest<DashboardPagesData>(`/sites/${siteId}/dashboard/pages${buildQuery({ startDate, endDate, limit, filters })}`)
-}
-
-
-export function getDashboardLocations(siteId: string, startDate?: string, endDate?: string, limit = 10, countryLimit = 250, filters?: string): Promise<DashboardLocationsData> {
-  return apiRequest<DashboardLocationsData>(`/sites/${siteId}/dashboard/locations${buildQuery({ startDate, endDate, limit, countryLimit, filters })}`)
-}
-
-
-export function getDashboardDevices(siteId: string, startDate?: string, endDate?: string, limit = 10, filters?: string): Promise<DashboardDevicesData> {
-  return apiRequest<DashboardDevicesData>(`/sites/${siteId}/dashboard/devices${buildQuery({ startDate, endDate, limit, filters })}`)
-}
-
-
-export function getDashboardReferrers(siteId: string, startDate?: string, endDate?: string, limit = 10, filters?: string): Promise<DashboardReferrersData> {
-  return apiRequest<DashboardReferrersData>(`/sites/${siteId}/dashboard/referrers${buildQuery({ startDate, endDate, limit, filters })}`)
-}
-
-
-export function getDashboardGoals(siteId: string, startDate?: string, endDate?: string, limit = 10, filters?: string): Promise<DashboardGoalsData> {
-  return apiRequest<DashboardGoalsData>(`/sites/${siteId}/dashboard/goals${buildQuery({ startDate, endDate, limit, filters })}`)
-}
-
 
 // ─── Event Properties ────────────────────────────────────────────────
 

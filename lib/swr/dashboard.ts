@@ -21,13 +21,7 @@ import {
 import { toast } from '@ciphera-net/facet'
 import {
   getDashboard,
-  getDashboardOverview,
-  getDashboardPages,
   getPagesTable,
-  getDashboardLocations,
-  getDashboardDevices,
-  getDashboardReferrers,
-  getDashboardGoals,
   getCampaigns,
   getRealtime,
   getStats,
@@ -82,12 +76,6 @@ import type {
   DailyStat,
   CampaignStat,
   DashboardData,
-  DashboardOverviewData,
-  DashboardPagesData,
-  DashboardLocationsData,
-  DashboardDevicesData,
-  DashboardReferrersData,
-  DashboardGoalsData,
   PagesTableData,
 } from '@/lib/api/stats'
 
@@ -98,12 +86,6 @@ const fetchers = {
   ingestHealth: (siteId: string) => getIngestHealth(siteId),
   trafficStatus: (siteId: string) => getTrafficStatus(siteId),
   dashboard: (siteId: string, start: string, end: string, interval?: string, filters?: string, period?: string, minutes?: number) => getDashboard(siteId, start, end, 10, interval, filters, period, minutes),
-  dashboardOverview: (siteId: string, start: string, end: string, interval?: string, filters?: string) => getDashboardOverview(siteId, start, end, interval, filters),
-  dashboardPages: (siteId: string, start: string, end: string, filters?: string) => getDashboardPages(siteId, start, end, undefined, filters),
-  dashboardLocations: (siteId: string, start: string, end: string, filters?: string) => getDashboardLocations(siteId, start, end, undefined, undefined, filters),
-  dashboardDevices: (siteId: string, start: string, end: string, filters?: string) => getDashboardDevices(siteId, start, end, undefined, filters),
-  dashboardReferrers: (siteId: string, start: string, end: string, filters?: string) => getDashboardReferrers(siteId, start, end, undefined, filters),
-  dashboardGoals: (siteId: string, start: string, end: string, filters?: string) => getDashboardGoals(siteId, start, end, undefined, filters),
   stats: (siteId: string, start: string, end: string, filters?: string) => getStats(siteId, start, end, filters),
   dailyStats: (siteId: string, start: string, end: string, interval: 'hour' | 'day' | 'minute') =>
     getDailyStats(siteId, start, end, interval),
@@ -499,84 +481,6 @@ export function useRealtime(siteId: string, refreshInterval: number = 60_000) {
       dedupingInterval: 10_000,
       // * Keep previous data while loading new data
       keepPreviousData: true,
-    }
-  )
-}
-
-// * Hook for focused dashboard overview data (Fix 4.2: Efficient Data Transfer)
-export function useDashboardOverview(siteId: string, start: string, end: string, interval?: string, filters?: string) {
-  return useSWR<DashboardOverviewData>(
-    siteId && start && end ? ['dashboardOverview', siteId, start, end, interval, filters] : null,
-    () => fetchers.dashboardOverview(siteId, start, end, interval, filters),
-    {
-      ...dashboardSWRConfig,
-      refreshInterval: 60 * 1000,
-      dedupingInterval: 10 * 1000,
-    }
-  )
-}
-
-// * Hook for focused dashboard pages data
-export function useDashboardPages(siteId: string, start: string, end: string, filters?: string) {
-  return useSWR<DashboardPagesData>(
-    siteId && start && end ? ['dashboardPages', siteId, start, end, filters] : null,
-    () => fetchers.dashboardPages(siteId, start, end, filters),
-    {
-      ...dashboardSWRConfig,
-      refreshInterval: 60 * 1000,
-      dedupingInterval: 10 * 1000,
-    }
-  )
-}
-
-// * Hook for focused dashboard locations data
-export function useDashboardLocations(siteId: string, start: string, end: string, filters?: string) {
-  return useSWR<DashboardLocationsData>(
-    siteId && start && end ? ['dashboardLocations', siteId, start, end, filters] : null,
-    () => fetchers.dashboardLocations(siteId, start, end, filters),
-    {
-      ...dashboardSWRConfig,
-      refreshInterval: 60 * 1000,
-      dedupingInterval: 10 * 1000,
-    }
-  )
-}
-
-// * Hook for focused dashboard devices data
-export function useDashboardDevices(siteId: string, start: string, end: string, filters?: string) {
-  return useSWR<DashboardDevicesData>(
-    siteId && start && end ? ['dashboardDevices', siteId, start, end, filters] : null,
-    () => fetchers.dashboardDevices(siteId, start, end, filters),
-    {
-      ...dashboardSWRConfig,
-      refreshInterval: 60 * 1000,
-      dedupingInterval: 10 * 1000,
-    }
-  )
-}
-
-// * Hook for focused dashboard referrers data
-export function useDashboardReferrers(siteId: string, start: string, end: string, filters?: string) {
-  return useSWR<DashboardReferrersData>(
-    siteId && start && end ? ['dashboardReferrers', siteId, start, end, filters] : null,
-    () => fetchers.dashboardReferrers(siteId, start, end, filters),
-    {
-      ...dashboardSWRConfig,
-      refreshInterval: 60 * 1000,
-      dedupingInterval: 10 * 1000,
-    }
-  )
-}
-
-// * Hook for focused dashboard goals data
-export function useDashboardGoals(siteId: string, start: string, end: string, filters?: string) {
-  return useSWR<DashboardGoalsData>(
-    siteId && start && end ? ['dashboardGoals', siteId, start, end, filters] : null,
-    () => fetchers.dashboardGoals(siteId, start, end, filters),
-    {
-      ...dashboardSWRConfig,
-      refreshInterval: 60 * 1000,
-      dedupingInterval: 10 * 1000,
     }
   )
 }
