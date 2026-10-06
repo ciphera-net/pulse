@@ -38,31 +38,12 @@ function stripComments(src: string): string {
 // two correctly, which is why it went unnoticed.
 // ---------------------------------------------------------------------------
 describe('every get-started CTA opens signup, not sign-in', () => {
-  const surfaces: Array<[string, string]> = [
-    ['components/marketing/HeroCtas.tsx', 'the homepage hero'],
-    ['components/marketing/HomeClosingCta.tsx', 'the closing CTA (homepage, /pricing, /vs)'],
-    ['app/features/page.tsx', 'the features page closer'],
-  ]
-
-  for (const [path, what] of surfaces) {
-    it(`${what} calls initiateSignupFlow`, () => {
-      const src = stripComments(read(path))
-      expect(src, `${path} must send a first-timer to signup`).toMatch(/initiateSignupFlow\(\)/)
-      expect(src, `${path} must not send a first-timer to the sign-in form`)
-        .not.toMatch(/initiateOAuthFlow\(\)/)
-    })
-  }
-
-  it('both pricing CTAs do too, and the paid one keeps its stored plan', () => {
-    const src = stripComments(read('components/PricingSection.tsx'))
-    expect(src).not.toMatch(/initiateOAuthFlow\(\)/)
-    expect((src.match(/initiateSignupFlow\(\)/g) ?? []).length).toBe(2)
-    // The plan the visitor picked must still survive the round trip. It is
-    // stored through lib/auth/return-target now (the slot gained a lifetime,
-    // audit §4n) — the guard follows the writer, not the key's spelling.
-    expect(src).toMatch(/rememberReturnTarget\(/)
-  })
-
+  // The homepage hero, the closing CTA, the features closer and both pricing
+  // CTAs left this app with the marketing pages (PULSE-330). Their guards moved
+  // with them: pulse-website's `__tests__/get-started-ctas.test.ts` (hero,
+  // closing CTA, features closer) and `components/__tests__/PricingSection.test.tsx`
+  // (the free-tier CTA starts a signup). The header is the one surface that
+  // stayed, because it is dashboard chrome.
   it('the header still offers a real sign-in — this is not a blanket swap', () => {
     const src = stripComments(read('components/marketing/Header.tsx'))
     expect(src).toMatch(/initiateOAuthFlow\(\)/)
