@@ -557,10 +557,15 @@ steps:
       # Deliberately NOT a single /* wildcard: images and fonts on this zone carry a
       # 30-day TTL and are purged by nothing today, so evicting them every deploy
       # would be a miss stampede against the origin.
+      #
+      # 🔑 SINCE B7 (06-10-2026) THIS APP PURGES ONLY WHAT IT SERVES: /demo. The other
+      # paths on the edge rule's allowlist render in ciphera-net/pulse-website, whose
+      # own deploy purges them (its purge-cdn step); purging them here would evict
+      # another app's cache on every dashboard deploy for nothing. The rule's
+      # allowlist is unchanged — both lists together still cover it exactly.
       - |
         FAILED=""
-        for P in "/pricing*" "/features*" "/demo*" "/faq*" "/about*" "/installation*" \
-                 "/changelog*" "/integrations*" "/vs/*" "/tools/*"; do
+        for P in "/demo*"; do
           curl -fsS --max-time 300 --retry 3 --retry-delay 10 --retry-all-errors -X POST \
             "https://api.bunny.net/purge?url=https://pulse.ciphera.net$P&async=false" \
             -H "AccessKey: $BUNNY_API_KEY" >/dev/null \
@@ -571,7 +576,7 @@ steps:
           echo "DEPLOY SHIPPED; HTML PURGE FAILED for:$FAILED — re-run the purge only, do NOT re-deploy"
           exit 1
         fi
-      - echo "Purged pulse.ciphera.net cached HTML (10 patterns)"
+      - echo "Purged pulse.ciphera.net cached HTML (/demo*)"
       # ═══ 🔴 ASSERT THE PREFIX ACTUALLY SHIPPED ═══
       # next.config.ts defaults NEXT_PUBLIC_ASSET_PREFIX to EMPTY, so a missing build arg
       # degrades safely to same-origin assets instead of 404ing every chunk. The cost of
@@ -625,14 +630,14 @@ steps:
       # (ciphera-app-static), and RETAINING EVERY BUILD'S OUTPUT IS THE ENTIRE POINT.
       # Purging them here would be a no-op today; re-adding a purge against the asset
       # zone would reintroduce exactly the blanking failure this change removes.
-      # HTML purge — staging mirrors production exactly (zone 5440501). Keeping the
-      # two lists identical is the point: staging can only rehearse a production
-      # deploy if it carries production's caching rules AND production's purge set.
-      # See the production step above for why '/' is absent.
+      # HTML purge — staging mirrors production's purge set for THIS app (zone 5440501).
+      # Since B7 (06-10-2026) that is /demo alone: staging has no marketing app, and
+      # the marketing paths it used to serve from this app now default-deny to /login
+      # (since 06-10-2026); zone 5440501's HTML-caching allowlist was trimmed to /demo*
+      # to match. See the production step above for why '/' is absent.
       - |
         FAILED=""
-        for P in "/pricing*" "/features*" "/demo*" "/faq*" "/about*" "/installation*" \
-                 "/changelog*" "/integrations*" "/vs/*" "/tools/*"; do
+        for P in "/demo*"; do
           curl -fsS --max-time 300 --retry 3 --retry-delay 10 --retry-all-errors -X POST \
             "https://api.bunny.net/purge?url=https://pulse-staging.ciphera.net$P&async=false" \
             -H "AccessKey: $BUNNY_API_KEY" >/dev/null \
@@ -643,7 +648,7 @@ steps:
           echo "DEPLOY SHIPPED; HTML PURGE FAILED for:$FAILED — re-run the purge only, do NOT re-deploy"
           exit 1
         fi
-      - echo "Purged pulse-staging.ciphera.net cached HTML (10 patterns)"
+      - echo "Purged pulse-staging.ciphera.net cached HTML (/demo*)"
       # ═══ 🔴 ASSERT THE PREFIX ACTUALLY SHIPPED ═══
       # next.config.ts defaults NEXT_PUBLIC_ASSET_PREFIX to EMPTY, so a missing build arg
       # degrades safely to same-origin assets instead of 404ing every chunk. The cost of

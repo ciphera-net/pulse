@@ -92,14 +92,6 @@ steps:
       # uncapped build self-selects ~4Gi on an 8Gi node. Caps old space only; RSS
       # lands above this.
       NODE_OPTIONS: --max-old-space-size=1280
-      # 🔴 THE STAMP HAS TO BE HERE, NOT ONLY AS A DOCKER BUILD-ARG (same trap as
-      # ciphera-website's copy). /sys/seo-state is `force-static`, so
-      # `process.env.CIPHERA_BUILD_SHA` is read at NEXT BUILD time — which
-      # happens in THIS step, via `npm run build`'s `prebuild` → generate:seo.
-      # The Dockerfile only COPYs this step's output; stamping there would be
-      # too late, and the route would bake in "unknown" while both halves
-      # looked correct in isolation.
-      CIPHERA_BUILD_SHA: ${CI_COMMIT_SHA:0:7}
       # 🔑 NEXT_PUBLIC_* MOVED HERE FROM THE DOCKERFILE'S ARG/ENV PAIR. Next.js
       # inlines them during `next build`, so this is now the only place they can
       # reach the bundle. deploy.yml asserts the result against LIVE HTML.
@@ -268,9 +260,6 @@ steps:
       # uncapped build self-selects ~4Gi on an 8Gi node. Caps old space only; RSS
       # lands above this.
       NODE_OPTIONS: --max-old-space-size=1280
-      # 🔴 THE STAMP HAS TO BE HERE, NOT ONLY AS A DOCKER BUILD-ARG — see the
-      # `next-build` step's identical comment.
-      CIPHERA_BUILD_SHA: ${CI_COMMIT_SHA:0:7}
       # 🔑 NEXT_PUBLIC_* MOVED HERE FROM THE DOCKERFILE'S ARG/ENV PAIR. Next.js
       # inlines them during `next build`, so this is now the only place they can
       # reach the bundle. deploy.yml asserts the result against LIVE HTML.

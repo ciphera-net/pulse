@@ -2,8 +2,8 @@ import { describe, it, expect, vi } from 'vitest'
 import os from 'os'
 import fs from 'fs'
 import path from 'path'
-import { MARKETING_ROUTES } from '@/lib/marketing-routes'
 import {
+  DASHBOARD_ROUTES,
   EXPECTED_ROUTES,
   ALLOWED_PATHS,
   buildRouteMap,
@@ -35,10 +35,15 @@ function validNode(cipheraPath: string, overrides: Partial<RouteStubNode> = {}):
   }
 }
 
-// The full, valid 25-route fixture — every MARKETING_ROUTES path with a
-// matching, well-formed stub. Individual tests mutate a copy of this.
+// Stubs for routes ciphera-net/pulse-website renders (B7, 06-10-2026). WordPress
+// returns them in the SAME response this app reads, so every realistic fixture
+// carries them — and this app must skip them, valid or not.
+const OTHER_APP_PATHS = ['/', '/about', '/pricing', '/cookieless-analytics', '/vs/plausible', '/tools/utm-builder']
+
+// A realistic, healthy production response: this app's own `/demo` stub first,
+// then pulse-website's. Individual tests mutate a copy of this.
 function fullFixture(): RouteStubNode[] {
-  return MARKETING_ROUTES.map((p) => validNode(p))
+  return [validNode('/demo'), ...OTHER_APP_PATHS.map((p) => validNode(p))]
 }
 
 function okResponse(body: unknown) {
@@ -50,49 +55,49 @@ function scratchOutPath(): string {
 }
 
 describe('EXPECTED_ROUTES', () => {
-  it('is derived from lib/marketing-routes.ts and equals 25 today', () => {
-    expect(EXPECTED_ROUTES).toBe(MARKETING_ROUTES.length)
-    expect(EXPECTED_ROUTES).toBe(25)
+  it('is derived from DASHBOARD_ROUTES and equals 1 (/demo) since B7', () => {
+    expect(EXPECTED_ROUTES).toBe(DASHBOARD_ROUTES.length)
+    expect([...DASHBOARD_ROUTES]).toEqual(['/demo'])
   })
 })
 
-describe('buildRouteMap — D38 allowlist + dedup', () => {
-  it('accepts every one of the 25 L1 routes', () => {
+describe('buildRouteMap — this app\'s routes only, D38 exact paths, dedup', () => {
+  it('keeps /demo from a full production response and skips pulse-website\'s stubs', () => {
     const seen = buildRouteMap(fullFixture())
-    expect(seen.size).toBe(25)
-    for (const p of MARKETING_ROUTES) expect(seen.has(p)).toBe(true)
+    expect([...seen.keys()]).toEqual(['/demo'])
   })
 
-  it('"/" matches only the literal root — not as a prefix', () => {
-    expect(ALLOWED_PATHS.has('/')).toBe(true)
-    expect(ALLOWED_PATHS.has('/about')).toBe(true)
-    // A path that merely STARTS WITH the allowed set is not itself allowed.
-    expect(ALLOWED_PATHS.has('/abou')).toBe(false)
-    expect(ALLOWED_PATHS.has('//')).toBe(false)
-
-    const seen = buildRouteMap([validNode('/')])
-    expect(seen.has('/')).toBe(true)
-    expect(seen.size).toBe(1)
+  it('matches /demo exactly — never as a prefix', () => {
+    expect(ALLOWED_PATHS.has('/demo')).toBe(true)
+    for (const p of ['/', '/dem', '/demo/', '/demo/x', '//demo']) expect(ALLOWED_PATHS.has(p)).toBe(false)
+    expect(buildRouteMap([validNode('/demo/')]).size).toBe(0)
   })
 
-  it('fails the build on a stub path outside the L1 allowlist', () => {
-    const nodes = [...fullFixture(), validNode('/settings')]
+  // 🔴 B7 OWNERSHIP: pulse-website's generator is the one that fails its build on a
+  // malformed, unknown or duplicate stub for its routes. An editing mistake there
+  // must never block a dashboard deploy — so here those stubs are skipped, unread.
+  it('skips — never fails on — another app\'s stub, even a malformed one', () => {
+    const nodes = [
+      ...fullFixture(),
+      validNode(''),
+      validNode('no-leading-slash'),
+      validNode('/settings'),
+      validNode('/integrations/nextjs'),
+      validNode('/about'), // a duplicate of a pulse-website route
+      validNode('/pricing', { cipheraTitle: '', cipheraOgImage: 'https://evil.example/x.png' }),
+    ]
+    expect(() => buildRouteMap(nodes)).not.toThrow()
+    expect([...buildRouteMap(nodes).keys()]).toEqual(['/demo'])
+  })
+
+  it('fails the build on a duplicate /demo stub', () => {
+    const nodes = [validNode('/demo'), validNode('/demo')]
     expect(() => buildRouteMap(nodes)).toThrow(GenerateSeoError)
-    expect(() => buildRouteMap(nodes)).toThrow(/not one of the 25 Level 1 marketing routes/)
-  })
-
-  it('fails the build on a stub for an excluded /integrations/[slug] guide (D35/D38)', () => {
-    const nodes = [validNode('/integrations/nextjs')]
-    expect(() => buildRouteMap(nodes)).toThrow(GenerateSeoError)
-  })
-
-  it('fails the build on a duplicate stub for the same path', () => {
-    const nodes = [validNode('/about'), validNode('/about')]
-    expect(() => buildRouteMap(nodes)).toThrow(/duplicate stub for \/about/)
+    expect(() => buildRouteMap(nodes)).toThrow(/duplicate stub for \/demo/)
   })
 
   it('skips nodes not tagged for the pulse site, without failing', () => {
-    const nodes = [validNode('/about', { routeSites: { nodes: [{ slug: 'ciphera-net' }] } })]
+    const nodes = [validNode('/demo', { routeSites: { nodes: [{ slug: 'ciphera-net' }] } })]
     const seen = buildRouteMap(nodes)
     expect(seen.size).toBe(0)
   })
@@ -104,44 +109,36 @@ describe('buildRouteMap — D38 allowlist + dedup', () => {
       validNode('', { routeSites: { nodes: [{ slug: 'ciphera-net' }] } }),
       validNode('no-leading-slash', { routeSites: { nodes: [{ slug: 'ciphera-net' }] } }),
     ]
-    expect(buildRouteMap(nodes).size).toBe(25)
-  })
-
-  it('fails on an empty path', () => {
-    expect(() => buildRouteMap([validNode('')])).toThrow(/empty path/)
-  })
-
-  it('fails on a path missing the leading slash', () => {
-    expect(() => buildRouteMap([validNode('about')])).toThrow(/does not start with/)
+    expect(buildRouteMap(nodes).size).toBe(1)
   })
 })
 
 describe('validateStub — required fields and the CDN image gate', () => {
   it('accepts a stub with a title, a description, and no OG image', () => {
-    expect(() => validateStub('/about', validNode('/about'))).not.toThrow()
+    expect(() => validateStub('/demo', validNode('/demo'))).not.toThrow()
   })
 
   it('fails a stub with no title', () => {
-    expect(() => validateStub('/about', validNode('/about', { cipheraTitle: '' }))).toThrow(/no title/)
+    expect(() => validateStub('/demo', validNode('/demo', { cipheraTitle: '' }))).toThrow(/no title/)
   })
 
   it('fails a stub with no description', () => {
     expect(() =>
-      validateStub('/about', validNode('/about', { cipheraDescription: '   ' }))
+      validateStub('/demo', validNode('/demo', { cipheraDescription: '   ' }))
     ).toThrow(/no meta description/)
   })
 
   it('fails a stub whose OG image is not on cdn.ciphera.net', () => {
     expect(() =>
-      validateStub('/about', validNode('/about', { cipheraOgImage: 'https://evil.example/x.png' }))
+      validateStub('/demo', validNode('/demo', { cipheraOgImage: 'https://evil.example/x.png' }))
     ).toThrow(/not on cdn\.ciphera\.net/)
   })
 
   it('accepts a stub whose OG image IS on cdn.ciphera.net', () => {
     expect(() =>
       validateStub(
-        '/about',
-        validNode('/about', { cipheraOgImage: 'https://cdn.ciphera.net/pulse/og-about.png' })
+        '/demo',
+        validNode('/demo', { cipheraOgImage: 'https://cdn.ciphera.net/pulse/og-demo.png' })
       )
     ).not.toThrow()
   })
@@ -247,31 +244,34 @@ describe('fetchWithRetry — D39 bounded retry with backoff', () => {
 })
 
 describe('run() — end to end, D39 override semantics', () => {
-  it('writes lib/seo.gen.ts with all 25 routes on a healthy, fully-seeded response', async () => {
+  it('writes lib/seo.gen.ts with /demo alone on a healthy, fully-seeded response', async () => {
     const outPath = scratchOutPath()
     const fetchImpl = vi
       .fn()
       .mockResolvedValue(okResponse({ data: { routeStubs: { nodes: fullFixture() } } }))
     try {
       const result = await run({ fetchImpl, outPath })
-      expect(result).toEqual({ routeCount: 25, watermark: '2026-09-30T12:00:00', override: false })
+      expect(result).toEqual({ routeCount: 1, watermark: '2026-09-30T12:00:00', override: false })
       const written = fs.readFileSync(outPath, 'utf-8')
-      expect(written).toContain('export const SEO_ROUTE_COUNT = 25')
+      expect(written).toContain('export const SEO_ROUTE_COUNT = 1')
       expect(written).toContain('export const SEO_OVERRIDE = false')
       expect(written).toContain('export const SEO_GENERATED = true')
-      expect(written).toContain('"/about"')
+      expect(written).toContain('"/demo"')
+      // pulse-website's routes never reach this app's generated file.
+      expect(written).not.toContain('"/about"')
+      expect(written).not.toContain('"/pricing"')
     } finally {
       fs.rmSync(outPath, { force: true })
     }
   })
 
-  it('fails the count gate when fewer than 25 routes are seeded — the correct state mid-rollout', async () => {
+  it('fails the count gate when the /demo stub is missing — its route would silently lose its CMS metadata', async () => {
     const outPath = scratchOutPath()
-    const partial = fullFixture().slice(0, 24) // one route not yet seeded
+    const partial = fullFixture().slice(1) // pulse-website's stubs only
     const fetchImpl = vi
       .fn()
       .mockResolvedValue(okResponse({ data: { routeStubs: { nodes: partial } } }))
-    await expect(run({ fetchImpl, outPath })).rejects.toThrow(/expected 25 pulse stubs, found 24/)
+    await expect(run({ fetchImpl, outPath })).rejects.toThrow(/expected 1 pulse stubs, found 0/)
     expect(fs.existsSync(outPath)).toBe(false)
   })
 
@@ -334,13 +334,13 @@ describe('run() — end to end, D39 override semantics', () => {
   // data, so no bad CMS content can ever ship through it. Without the flag, every
   // one of these still fails the build loudly.
   const BAD_RESPONSES: Array<[string, () => unknown]> = [
-    ['a stub outside the allowlist', () => ({ data: { routeStubs: { nodes: [validNode('/not-a-real-route')] } } })],
+    ['a response with no /demo stub (only another route\'s)', () => ({ data: { routeStubs: { nodes: [validNode('/not-a-real-route')] } } })],
     ['a count shortfall (an unpublished stub)', () => ({ data: { routeStubs: { nodes: fullFixture().slice(1) } } })],
-    ['a duplicate stub', () => ({ data: { routeStubs: { nodes: [...fullFixture(), validNode('/about')] } } })],
+    ['a duplicate /demo stub', () => ({ data: { routeStubs: { nodes: [...fullFixture(), validNode('/demo')] } } })],
     ['a GraphQL errors[] response', () => ({ errors: [{ message: 'boom' }], data: { routeStubs: { nodes: fullFixture() } } })],
     ['a stub with an off-CDN OG image', () => ({ data: { routeStubs: { nodes: [
-      ...fullFixture().filter((n) => n.cipheraPath !== '/about'),
-      validNode('/about', { cipheraOgImage: 'https://evil.example/x.png' }),
+      ...fullFixture().filter((n) => n.cipheraPath !== '/demo'),
+      validNode('/demo', { cipheraOgImage: 'https://evil.example/x.png' }),
     ] } } })],
   ]
 
@@ -371,7 +371,7 @@ describe('run() — end to end, D39 override semantics', () => {
     const fetchImpl = vi.fn().mockResolvedValue(okResponse({ data: { routeStubs: { nodes: fullFixture() } } }))
     const result = await run({ fetchImpl, outPath, cmsUnavailableOk: true })
     expect(result.override).toBe(false)
-    expect(result.routeCount).toBe(25)
+    expect(result.routeCount).toBe(1)
     fs.rmSync(outPath)
   })
 

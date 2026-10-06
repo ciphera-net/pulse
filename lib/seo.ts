@@ -25,7 +25,7 @@ export interface RouteSeo {
   modified: string
 }
 
-/** Every route the agency owns. Exported so app/sitemap.ts stays in step (§4.5). */
+/** What the generator wrote (lib/seo.gen.ts). Only `seoFor` reads it in this app since B7. */
 export { routeSeo, SEO_ROUTE_COUNT, SEO_WATERMARK, SEO_OVERRIDE, SEO_GENERATED }
 
 export function seoForRoute(path: string): RouteSeo | undefined {

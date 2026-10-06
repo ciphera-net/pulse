@@ -4,10 +4,15 @@
  * A port of Public/ciphera-website/scripts/generate-seo.ts for Pulse. Design:
  * Pulse/docs/plans/30-09-2026-pulse-headless-cms-phase-4-design.md §4
  *
- * 🔴 CONTENT REACHES THIS SITE AT BUILD TIME, NOT AT REQUEST TIME (D37 Phase A —
- * the monolith is not yet split, so this runs as an ordinary prebuild step of
- * pulse-frontend). A WordPress outage blocks the next DEPLOY, never SERVING —
- * see D39 below for what happens when it is unreachable.
+ * 🔴 CONTENT REACHES THIS SITE AT BUILD TIME, NOT AT REQUEST TIME — an ordinary
+ * prebuild step of pulse-frontend. A WordPress outage blocks the next DEPLOY, never
+ * SERVING — see D39 below for what happens when it is unreachable.
+ *
+ * 🔑 SINCE THE MARKETING SPLIT (B7, 06-10-2026) THIS APP OWNS ONE ROUTE: `/demo`.
+ * Every other Level 1 route renders in ciphera-net/pulse-website, whose own copy of
+ * this generator validates their stubs (design §5: "a shared script each app runs
+ * over the routes it serves, so /demo's stub keeps its consumer on the product
+ * app"). This copy reads the same response and keeps only `/demo`.
  *
  * ⚠️ THE ENDPOINT IS CLUSTER-INTERNAL. This runs on a Woodpecker agent inside the
  * cluster (`labels: runner: k8s`), which is why WordPress needs no public read
@@ -15,31 +20,27 @@
  */
 import fs from 'fs'
 import path from 'path'
-import { MARKETING_ROUTES } from '../lib/marketing-routes'
 
 export const WP = process.env.WORDPRESS_GRAPHQL_URL ?? 'http://wordpress.apps.svc.cluster.local/graphql'
 export const SITE = 'pulse'
 const OUT = path.join(process.cwd(), 'lib', 'seo.gen.ts')
 
 /**
- * 🔴 D38 — THE ALLOWLIST IS AN EXACT-PATH SET, NOT A PREFIX MATCH.
- * A stub is admitted only if its path is EXACTLY one of the 25 marketing routes
- * (lib/marketing-routes.ts) — `'/'` matches only `/`. A stub for any other path
- * (`/sites/[id]`, `/settings`, `/vs`, `/tools`) fails the build rather than
- * being silently skipped: a stub nobody can see take effect is exactly the
- * silent shape this programme keeps paying for.
+ * The Level 1 routes THIS APP renders (D38: an exact-path set, never a prefix
+ * match). Since B7 that is `/demo` alone — the dashboard is the only app that
+ * serves it (D36), so its stub is validated here and nowhere else.
  */
-export const ALLOWED_PATHS = new Set(MARKETING_ROUTES)
+export const DASHBOARD_ROUTES: readonly string[] = ['/demo']
+
+export const ALLOWED_PATHS = new Set(DASHBOARD_ROUTES)
 
 /**
- * 🔴 THE EXPECTED COUNT IS A COMMITTED, DERIVED GATE.
- * Derived from lib/marketing-routes.ts rather than duplicated as a bare literal
- * — the "three-part change" ciphera.net's own EXPECTED_ROUTES comment warns
- * about (route list, this number, and the alert threshold moving together)
- * collapses to two parts here, because this number can no longer drift from
- * the allowlist it is checked against. Today's value is 25.
+ * 🔴 THE EXPECTED COUNT IS A COMMITTED, DERIVED GATE — derived from
+ * DASHBOARD_ROUTES so it can never drift from the set it is checked against.
+ * Today's value is 1: a deleted or unpublished `/demo` stub fails the build
+ * (D39 decides what happens when WordPress itself is unreachable).
  */
-export const EXPECTED_ROUTES = MARKETING_ROUTES.length
+export const EXPECTED_ROUTES = DASHBOARD_ROUTES.length
 
 const QUERY = `{
   routeStubs(first: 100, where: { status: PUBLISH }) {
@@ -187,9 +188,9 @@ export async function fetchWithRetry(
 }
 
 /**
- * Validate + dedupe the fetched nodes against the D38 allowlist. Fails the
- * build on the first path outside the set, and on any duplicate — a stub
- * ships to at most one route, ever.
+ * Keep + validate this app's stubs and dedupe them. A stub for a route another
+ * app renders is SKIPPED, not failed; any duplicate fails — a stub ships to at
+ * most one route, ever.
  */
 export function buildRouteMap(nodes: RouteStubNode[]): Map<string, RouteStubNode> {
   const seen = new Map<string, RouteStubNode>()
@@ -202,20 +203,15 @@ export function buildRouteMap(nodes: RouteStubNode[]): Map<string, RouteStubNode
     const sites = n.routeSites?.nodes?.map((t) => t.slug) ?? []
     if (!sites.includes(SITE)) continue
 
+    // 🔴 OWNERSHIP SECOND, for the same reason as SITE FIRST above: every other
+    // Pulse stub belongs to a route pulse-website renders, and pulse-website's own
+    // generator fails ITS build on a malformed, unknown or duplicate one (its
+    // KNOWN_ELSEWHERE set admits exactly `/demo`, which it leaves to this app). An
+    // editing mistake on a marketing page must never block a dashboard deploy, so
+    // this app validates only what it renders. D38 still holds: an exact-path
+    // Set of literal strings, never a prefix test.
     const p = (n.cipheraPath ?? '').trim()
-    if (!p) fail('a published stub has an empty path — it can never match a route, and looks correct in wp-admin')
-    if (!p.startsWith('/')) fail(`path "${p}" does not start with "/"`)
-
-    // D38: exact-path allowlist. '/' matches only '/' because ALLOWED_PATHS
-    // is a Set of literal strings, never a prefix test.
-    if (!ALLOWED_PATHS.has(p)) {
-      fail(
-        `stub for "${p}" is not one of the ${EXPECTED_ROUTES} Level 1 marketing routes ` +
-          `(lib/marketing-routes.ts). A stub outside that set would ship to a route ` +
-          `nobody decided should be CMS-controlled — publish it under an allowed path, ` +
-          `or add the route to lib/marketing-routes.ts first.`
-      )
-    }
+    if (!ALLOWED_PATHS.has(p)) continue
 
     if (seen.has(p)) fail(`duplicate stub for ${p} — two stubs for one route`)
     seen.set(p, n)
@@ -277,7 +273,9 @@ export function toGeneratedRoute(n: RouteStubNode): GeneratedRoute {
  * the live site already served, so a naive `desired > actual` comparison would
  * go false and a future watcher would report healthy forever while serving
  * deleted content. That is why the route COUNT ships alongside the watermark
- * in /sys/seo-state, not just this string.
+ * in lib/seo.gen.ts, not just this string. (Nothing in this app serves them
+ * since B7 removed /sys/seo-state — pulse-website's copy is the one the publish
+ * watcher reads. They stay so the generated file says what a build consumed.)
  */
 export function computeWatermark(nodes: RouteStubNode[]): string {
   return (
@@ -315,8 +313,7 @@ export const SEO_ROUTE_COUNT = ${seen.size}
 /**
  * 🔑 THE WATERMARK IS WHAT MAKES A FUTURE PUBLISH WATCHER LEVEL-TRIGGERED (D37
  * Phase C — no watcher exists yet in Phase A, but this build already reports
- * what it would need). The newest \`modifiedGmt\` this build consumed, served
- * at /sys/seo-state.
+ * what it would need). The newest \`modifiedGmt\` this build consumed.
  */
 export const SEO_WATERMARK = ${JSON.stringify(watermark)}
 
@@ -324,7 +321,7 @@ export const SEO_WATERMARK = ${JSON.stringify(watermark)}
  * 🔴 D39 — SET ONLY WHEN THIS BUILD SHIPPED WITHOUT CONSULTING WORDPRESS AT
  * ALL, because WordPress stayed unreachable through the bounded retry AND a
  * human explicitly passed CMS_UNAVAILABLE_OK=1. Every route then renders its
- * page's own built-in metadata (routeSeo is empty), and /sys/seo-state reports
+ * page's own built-in metadata (routeSeo is empty), and this file carries
  * this flag until the next normal build overwrites it — so an override build
  * can never be mistaken for a normal one.
  */
@@ -333,8 +330,8 @@ export const SEO_OVERRIDE = ${override}
 /**
  * 🔑 TRUE ONLY IN GENERATOR OUTPUT. The committed lib/seo.gen.ts is an empty stub
  * with this set to false, so a build that somehow shipped the stub instead of
- * running the generator says so on /sys/seo-state rather than passing as a
- * normal build with no stubs.
+ * running the generator says so here rather than passing as a normal build
+ * with no stubs.
  */
 export const SEO_GENERATED = true
 
@@ -375,7 +372,7 @@ export async function run(opts: {
 
   CMS_UNAVAILABLE_OK=1 was set, so this build DISCARDS what WordPress returned
   and ships every page's own built-in metadata, exactly as before Level 1
-  existed. /sys/seo-state reports override:true until the next normal build.
+  existed. lib/seo.gen.ts records SEO_OVERRIDE = true until the next normal build.
 
   This was a deliberate, human-triggered override, not a silent fallback.
 🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴🔴
@@ -421,12 +418,12 @@ function generateFrom(
     fail(
       `expected ${EXPECTED_ROUTES} ${SITE} stubs, found ${seen.size}.\n` +
         `   Found: ${[...seen.keys()].sort().join(', ')}\n` +
-        `   Missing or unpublished: ${MARKETING_ROUTES.filter((r) => !seen.has(r))
+        `   Missing or unpublished: ${DASHBOARD_ROUTES.filter((r) => !seen.has(r))
           .sort()
           .join(', ')}\n` +
         `   A stub was deleted, unpublished, trashed, or has not been seeded yet — the\n` +
         `   affected route(s) would silently fall back to their hardcoded metadata. If the\n` +
-        `   route set itself changed, update lib/marketing-routes.ts in the same commit.`
+        `   route set itself changed, update DASHBOARD_ROUTES in the same commit.`
     )
   }
 
