@@ -26,16 +26,10 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   // Site pages use DashboardShell with full sidebar — no Header needed
   const isSitePage = pathname.startsWith('/sites/') && pathname !== '/sites/new'
   // Pages that use DashboardShell with home sidebar (no site context). `/sites`
-  // is the authenticated home (public `/` server-renders marketing and
-  // redirects signed-in visitors here via middleware).
-  const isDashboardPage = pathname === '/sites' || pathname.startsWith('/integrations') || pathname === '/pricing' || pathname === '/installation' || pathname === '/notifications' || pathname === '/sites/new' || pathname.startsWith('/settings')
-  // Public dashboard-shell routes (/pricing, /integrations/*) must SERVER-RENDER
-  // their marketing variant for crawlers, so they are excluded from the
-  // "hold a blank frame while the auth probe runs" guard below. Anonymous
-  // visitors get the marketing shell server-side; a signed-in visitor briefly
-  // sees it on a hard load before the client swaps to DashboardShell (a
-  // client-side navigation, where auth is already resolved, never flashes).
-  const isPublicDashboardPage = pathname === '/pricing' || pathname.startsWith('/integrations') || pathname === '/installation'
+  // is the authenticated home (middleware redirects a signed-in `/` here).
+  // /pricing, /integrations and /installation left this list at B7 (06-10-2026):
+  // they render in the marketing app, and the Ingress never sends them here.
+  const isDashboardPage = pathname === '/sites' || pathname === '/notifications' || pathname === '/sites/new' || pathname.startsWith('/settings')
   // Checkout page has its own minimal layout — no app header/footer
   const isCheckoutPage = pathname.startsWith('/checkout')
   // Auth callback is a transient route that only renders <LoadingOverlay> while
@@ -72,14 +66,13 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   }
 
   // While auth is loading on an authed-only chrome page, render nothing to
-  // prevent a flash of the public header. Public dashboard-shell routes are
-  // excluded so they server-render marketing for crawlers.
-  if (auth.loading && (isSitePage || isCheckoutPage || (isDashboardPage && !isPublicDashboardPage))) {
+  // prevent a flash of the public header.
+  if (auth.loading && (isSitePage || isCheckoutPage || isDashboardPage)) {
     return null
   }
 
-  // Authenticated dashboard pages (site pages, home, integrations, pricing,
-  // settings): ONE DashboardShell, mounted here for all of them.
+  // Authenticated dashboard pages (site pages, home, notifications, settings):
+  // ONE DashboardShell, mounted here for all of them.
   //
   // Site pages used to take their shell from the sites layout instead
   // (SiteLayoutShell), which put it at a different tree position from the
@@ -114,12 +107,11 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     return <>{children}</>
   }
 
-  // Signed-in visitors on any remaining route (marketing pages: /about, /faq,
-  // /features, the /vs cluster, guides, tools, …) get the same marketing chrome
-  // as anonymous visitors — the legacy pre-Facet app Header that used to render
-  // here was removed 07-08-2026 (it dropped the whole app frame and predated
-  // the marketing overhaul; app surfaces belong to the DashboardShell lists
-  // above).
+  // Signed-in visitors on any remaining public route (/demo, the claim pages,
+  // /login, …) get the same public chrome as anonymous visitors — the legacy
+  // pre-Facet app Header that used to render here was removed 07-08-2026 (app
+  // surfaces belong to the DashboardShell lists above). The marketing pages
+  // themselves render in the marketing app since the split.
 
   // * The pre-26-08 "Session expired" card lived here, hinged on
   // * auth.hadPriorSession. Superseded by the SessionTakeover early-return
@@ -129,8 +121,8 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   // Join and consent pages: standalone, no app shell, signed in or not — each
   // renders its own "sign in to continue" state. A shared report (/r, PULSE-133)
   // is standalone for everyone too: it carries only the site's own mark.
-  // /start/ (D43) is the same shape: an anonymous visitor reaching it from a
-  // future marketing /pricing button must not see a flash of marketing chrome
+  // /start/ (D43) is the same shape: an anonymous visitor reaching it from the
+  // marketing app's /pricing buttons must not see a flash of public chrome
   // before it redirects into a signup.
   if (pathname.startsWith('/join') || pathname.startsWith('/connect') || pathname.startsWith('/start/') || isReportRoute(pathname)) {
     return <>{children}</>

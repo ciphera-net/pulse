@@ -14,20 +14,15 @@ function createRequest(path: string, cookies: Record<string, string> = {}): Next
 describe('middleware', () => {
   describe('public routes', () => {
     const publicPaths = [
-      '/',
       '/login',
       '/signup',
       '/auth/callback',
-      '/pricing',
-      // * D43 (the marketing-app split): the dashboard address a future
-      // * marketing /pricing button links to. The marketing app has no
-      // * session, so it must be reachable exactly as /pricing itself is.
+      // * D43 (the marketing-app split): the dashboard address the marketing
+      // * app's /pricing buttons link to. The marketing app has no session, so
+      // * it must be reachable exactly as /pricing itself is.
       '/start/plan',
-      '/features',
-      '/about',
-      '/faq',
-      '/changelog',
-      '/installation',
+      // * The live demo IS the dashboard (D36) — public, indexable, no session.
+      '/demo',
       '/script.js',
       // * Measured on staging 05-09-2026 BEFORE promotion: without its
       // * PUBLIC_ROUTES entry this 307s to /login, so the readable copy published
@@ -35,10 +30,6 @@ describe('middleware', () => {
       // * origin at all. Same failure class as the next-pwa precache note in
       // * middleware.ts directly below the /script-sri.json entry.
       '/script.debug.js',
-      // * /startups is the startups programme's anonymous application page
-      // * (05-09-2026), a sibling of /open-source; without its PUBLIC_ROUTES
-      // * entry it 307s to /login, the exact failure script.debug.js shipped with.
-      '/startups',
       // * Both claim pages must render UNAUTHENTICATED (the login round-trip
       // * loses deep links, so a bounced claim link drops its token). The
       // * startups one shipped in #568 without its entry — measured live
@@ -68,11 +59,6 @@ describe('middleware', () => {
       expect(res.headers.get('Location')).toBeNull()
     })
 
-    it('allows /integrations without auth', () => {
-      const res = middleware(createRequest('/integrations'))
-      expect(res.headers.get('Location')).toBeNull()
-    })
-
     it('allows /docs without auth', () => {
       const res = middleware(createRequest('/docs'))
       expect(res.headers.get('Location')).toBeNull()
@@ -91,6 +77,51 @@ describe('middleware', () => {
     it('does not open anything else that merely starts with /r', () => {
       const res = middleware(createRequest('/reports'))
       expect(res.headers.get('Location')).toContain('/login')
+    })
+  })
+
+  // * B7 (06-10-2026): the marketing pages render in ciphera-net/pulse-website and the
+  // * Ingress sends their paths there, so on THIS app they are ordinary unlisted
+  // * paths. Re-adding one to PUBLIC_ROUTES would make the dashboard answer for a
+  // * page it no longer has.
+  describe('marketing paths are not public here (B7)', () => {
+    const marketingPaths = [
+      '/pricing',
+      '/features',
+      '/about',
+      '/faq',
+      '/changelog',
+      '/installation',
+      '/contact',
+      '/open-source',
+      '/startups',
+      '/cookieless-analytics',
+      '/integrations',
+      '/integrations/nextjs',
+      '/vs/plausible',
+      '/tools/utm-builder',
+      '/sys/seo-state',
+    ]
+
+    marketingPaths.forEach((path) => {
+      it(`sends an anonymous ${path} to /login`, () => {
+        const res = middleware(createRequest(path))
+        expect(res.headers.get('Location')).toContain('/login')
+      })
+    })
+
+    it('sends an anonymous / to /login without a returnTo', () => {
+      const location = middleware(createRequest('/')).headers.get('Location')
+      expect(location).not.toBeNull()
+      const url = new URL(location!)
+      expect(url.pathname).toBe('/login')
+      expect(url.searchParams.has('returnTo')).toBe(false)
+    })
+
+    it('still sends a signed-in / to the authed home', () => {
+      const location = middleware(createRequest('/', { pulse_access: 'tok' })).headers.get('Location')
+      expect(location).not.toBeNull()
+      expect(new URL(location!).pathname).toBe('/sites')
     })
   })
 

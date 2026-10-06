@@ -7,11 +7,10 @@
  * WHY THIS EXISTS INSTEAD OF PLAIN `node scripts/foo.ts`. Node's own type
  * stripping runs each module through its native ESM resolver, which —
  * unlike Next's bundler-style `moduleResolution` — requires the LITERAL file
- * extension on every relative import. lib/marketing-routes.ts imports
- * lib/comparisons.ts, which imports lib/comparisonLogos.ts, extensionless,
- * exactly as Next.js expects; rewriting that whole chain to satisfy node's
- * stricter resolver would touch files this change has no reason to touch,
- * and would make those files unlike every other import in the codebase.
+ * extension on every relative import, while this repo's lib/*.ts import each
+ * other extensionless, exactly as Next.js expects. (Since B7, 06-10-2026,
+ * generate-seo.ts imports no lib/ module at all; the runner stays so the next
+ * script that does needs no new mechanism.)
  *
  * esbuild is already a devDependency (vitest's own toolchain uses it), so
  * this adds no new dependency: it bundles the script's own relative-import
