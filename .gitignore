@@ -2,9 +2,6 @@
 
 # auto-generated
 /lib/integration-guides.gen.ts
-# lib/seo.gen.ts is deliberately NOT ignored: it is committed as an empty stub
-# (see its header) so a fresh clone type-checks, and `npm run build` overwrites it
-# from WordPress. A committed FILLED copy fails lib/__tests__/seo-gen-stub.test.ts.
 /public/build-id.json
 # The import worker, built by `npm run build:worker` (prebuild). Build output on
 # purpose: Next serves public/ from its own image, so committing it could only
