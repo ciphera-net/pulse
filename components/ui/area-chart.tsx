@@ -5,6 +5,7 @@ import { scaleLinear, scaleTime } from "d3-scale";
 import type { ScaleBand } from "d3-scale";
 import { localPoint, AreaClosed, LinePath, GridColumns, GridRows, ParentSize } from "@/lib/charts/primitives";
 import { formatDateShort, formatDateFull } from "@/lib/utils/formatDate";
+import { formatCompactNumber } from "@/lib/utils/format";
 import { bisector } from "d3-array";
 import { motion, useSpring } from "framer-motion";
 import {
@@ -810,7 +811,7 @@ function TooltipContent({ title, rows, children }: TooltipContentProps) {
             </div>
             <span className="whitespace-nowrap font-semibold text-white text-sm tabular-nums">
               {typeof row.value === "number"
-                ? row.value.toLocaleString()
+                ? formatCompactNumber(row.value)
                 : row.value}
             </span>
           </div>
@@ -1736,11 +1737,7 @@ export function YAxis({
     return values.map((value) => ({
       value,
       y: (yScale(value) ?? 0) + margin.top,
-      label: formatValue
-        ? formatValue(value)
-        : value >= 1000
-          ? `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k`
-          : value.toLocaleString(),
+      label: formatValue ? formatValue(value) : formatCompactNumber(value),
     }));
   }, [yScale, margin.top, numTicks, formatValue, innerHeight, yTickValues]);
 

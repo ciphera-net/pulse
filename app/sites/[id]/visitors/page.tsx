@@ -23,6 +23,7 @@ import { serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
 import { useDataWindow, useSite, useVisitors } from '@/lib/swr/dashboard'
 import { visitorPseudonym } from '@/lib/visitors/pseudonym'
 import { formatLastSeen, SITE_TIMEZONE_FALLBACK } from '@/lib/visitors/format'
+import { CompactNumber } from '@/components/ui/compact-number'
 import {
   IDENTITY_WINDOW_CALENDAR_MONTH,
   describeIdentityWindow,
@@ -255,9 +256,9 @@ export default function VisitorsPage() {
           'Rolling window · resolves against the live tracker'
         ) : (
           <>
-            <span className="tabular-nums text-neutral-300">{total}</span> visitors this range ·{' '}
+            <CompactNumber value={total} className="text-neutral-300" /> visitors this range ·{' '}
             <span className="tabular-nums text-neutral-300">{returningShare}%</span> returning ·{' '}
-            <span className="tabular-nums text-neutral-300">{pageviews}</span> pageviews on this
+            <CompactNumber value={pageviews} className="text-neutral-300" /> pageviews on this
             page · sorted by {sort.replace('_', ' ')}
           </>
         )}
@@ -276,7 +277,7 @@ export default function VisitorsPage() {
             <TermInfoTip term="visitor_identity" identityWindowDays={identityWindow} />
           </h2>
           <span className="bg-brand-orange/10 px-2 py-1 text-xs tabular-nums text-brand-ink">
-            {live ? `${activeNow} right now` : `${total} in range`}
+            {live ? <><CompactNumber value={activeNow} /> right now</> : <><CompactNumber value={total} /> in range</>}
           </span>
         </div>
 
