@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import PublicDashboard from '@/components/share/PublicDashboard'
 import { DEFAULT_OG_IMAGES } from '@/lib/og'
-import { seoFor } from '@/lib/seo'
 
 // /demo IS the dashboard now — ciphera.net's live traffic rendered directly
 // at this address (owner rulings 02-09-2026,
@@ -22,8 +21,7 @@ const DEMO_SITE_ID = 'e6a95eb8-8edb-44d4-a4e2-c400aea174a4'
 const description =
   'Our analytics dashboard, public — the live traffic of ciphera.net, the same view we use. Cookie-free, GDPR-compliant web analytics you can explore. No signup required.'
 
-// Level 1: merged with a WordPress stub for '/demo' when one exists (design §4.3).
-export const metadata: Metadata = seoFor('/demo', {
+export const metadata: Metadata = {
   title: 'Live demo',
   description,
   alternates: {
@@ -35,7 +33,7 @@ export const metadata: Metadata = seoFor('/demo', {
     siteName: 'Pulse Analytics',
     images: DEFAULT_OG_IMAGES,
   },
-})
+}
 
 export default function DemoPage() {
   return (
