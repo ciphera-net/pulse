@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, useCallback, memo } from 'react'
+import { useEffect, useMemo, useRef, useCallback, memo } from 'react'
 import * as d3 from 'd3'
 import * as topojson from 'topojson-client'
-import { formatCompactNumber } from '@/lib/utils/format'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const worldJson = require('visionscarto-world-atlas/world/110m.json')
 
@@ -35,11 +34,19 @@ const NUM_TO_ALPHA2: Record<string, string> = {
   '854':'BF','858':'UY','860':'UZ','862':'VE','876':'WF','882':'WS','887':'YE','894':'ZM',
 }
 
+export interface MapHover {
+  /** ISO alpha-2, the key the rows use. */
+  country: string
+  name: string
+  visitors: number
+}
+
 interface MapViewProps {
   data: Array<{ country: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }>
-  // The tooltip shows visitors — the fixed block metric (O3, 01-09-2026).
-  // Required: the Audience map is the only consumer since the CDN map
-  // retired, and a metric-less render has no honest tooltip to show.
+  // The map has no tooltip (PUL-14): hovering a country with traffic reports it
+  // here and the host card's headline shows it. Visitors is the fixed block
+  // metric (O3, 01-09-2026). Must be a stable callback; the paths rebind on change.
+  onHoverCountry?: (hover: MapHover | null) => void
   className?: string
 }
 
@@ -50,10 +57,9 @@ function getCountryFeatures(): CountryFeature[] {
   return (collection as unknown as GeoJSON.FeatureCollection).features as unknown as CountryFeature[]
 }
 
-function MapView({ data, className }: MapViewProps) {
+function MapView({ data, onHoverCountry, className }: MapViewProps) {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const highlightRef = useRef<d3.Selection<SVGPathElement, unknown, null, undefined> | null>(null)
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; name: string; text: string } | null>(null)
 
   const trafficMap = useMemo(() => {
     // Choropleth intensity follows visitors — the same field the rows show.
@@ -136,25 +142,20 @@ function MapView({ data, className }: MapViewProps) {
         highlightRef.current
           ?.attr('d', this.getAttribute('d'))
           .style('stroke', value > 0 ? 'rgba(249,115,22,0.6)' : 'rgb(var(--white) / 0.15)')
-        if (value > 0) {
-          const [x, y] = d3.pointer(event, svgRef.current?.parentNode)
-          // value > 0 means the country came from `data`, so the row exists;
-          // the guard is for the type, not a reachable state.
-          const row = rowMap[alpha2]
-          if (row) {
-            setTooltip({ x, y, name: d.properties.name, text: `${formatCompactNumber(row.visitors ?? 0)} visitors` })
-          }
-        }
-      })
-      .on('mousemove', function (event) {
-        const [x, y] = d3.pointer(event, svgRef.current?.parentNode)
-        setTooltip((prev) => prev ? { ...prev, x, y } : null)
+        // value > 0 means the country came from `data`, so the row exists;
+        // the guard is for the type, not a reachable state. A country with no
+        // traffic keeps the headline on the total.
+        const row = value > 0 ? rowMap[alpha2] : undefined
+        onHoverCountry?.(row ? { country: alpha2, name: d.properties.name, visitors: row.visitors ?? 0 } : null)
       })
       .on('mouseout', function () {
-        setTooltip(null)
+        onHoverCountry?.(null)
         highlightRef.current?.attr('d', null)
       })
-  }, [trafficMap, maxValue, getAlpha2])
+  }, [trafficMap, maxValue, getAlpha2, rowMap, onHoverCountry])
+
+  // Leaving the card mid-hover must not strand the headline on a country.
+  useEffect(() => () => onHoverCountry?.(null), [onHoverCountry])
 
   return (
     <div className={className} style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -165,15 +166,6 @@ function MapView({ data, className }: MapViewProps) {
           className="w-full"
           style={{ cursor: 'default' }}
         />
-        {tooltip && (
-          <div
-            className="absolute z-10 px-3 py-2 text-xs font-medium text-white bg-neutral-800 border border-neutral-700 rounded-none pointer-events-none"
-            style={{ left: tooltip.x, top: tooltip.y - 36 }}
-          >
-            <span>{tooltip.name}</span>
-            <span className="ml-2 text-brand-ink font-bold">{tooltip.text}</span>
-          </div>
-        )}
       </div>
     </div>
   )

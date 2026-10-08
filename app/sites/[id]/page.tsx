@@ -563,6 +563,7 @@ export default function SiteDashboardPage() {
           liveMinutes={liveMinutes}
           dateRange={resolvedDateRange}
           totals={totals}
+          previousVisitors={prevStats?.visitors ?? null}
           filters={filtersParam || undefined}
           onFilter={handleAddFilter}
           importedCards={dashboard?.imported_cards}
