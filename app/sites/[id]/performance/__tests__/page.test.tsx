@@ -42,7 +42,18 @@ vi.mock('@/components/skeletons', () => ({
 // X prop" on stderr, and test output that is noisy by default is test output
 // nobody reads when it starts saying something real.
 vi.mock('framer-motion', () => ({
-  motion: { div: ({ className }: { className?: string }) => <div className={className} /> },
+  motion: {
+    div: ({ className }: { className?: string }) => <div className={className} />,
+    // ScoreGauge (PUL-14): notches and the rolling number render as plain elements.
+    polygon: ({ points, fill, className }: { points?: string; fill?: string; className?: string }) => <polygon points={points} fill={fill} className={className} />,
+    span: ({ className, children }: { className?: string; children?: unknown }) => (
+      <span className={className}>{typeof children === 'object' && children && 'get' in children ? String((children as { get: () => unknown }).get()) : (children as React.ReactNode)}</span>
+    ),
+  },
+  useReducedMotion: () => true,
+  useMotionValue: (v: number) => { let cur = v; return { get: () => cur, set: (n: number) => { cur = n }, jump: (n: number) => { cur = n } } },
+  useSpring: (mv: unknown) => mv,
+  useTransform: (mv: { get: () => number }, fn: (v: number) => string) => ({ get: () => fn(mv.get()) }),
 }))
 vi.mock('@ciphera-net/facet', () => ({
   toast: { success: () => {}, error: () => {} },

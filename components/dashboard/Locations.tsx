@@ -3,9 +3,11 @@
 import { ImportedCardNote } from '@/components/dashboard/ImportedCardNote'
 import type { ImportedProvenance, LanguageGroupStat } from '@/lib/api/stats'
 import type { ImportedDimension } from '@/lib/import/source-display'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import { formatNumber } from '@/lib/utils/format'
+import type { MapHover } from './MapView'
+import { MapHeadline } from './MapHeadline'
 import { CountryFlag } from '@/components/ui/CountryFlag'
 import { hasFlag } from '@/lib/flags'
 import iso3166 from 'iso-3166-2'
@@ -41,6 +43,8 @@ interface AudienceProps {
   dateRange: { start: string, end: string }
   // True range totals — the F9 denominator; no totals → no percentages.
   totals?: { pageviews: number; visitors: number }
+  /** The comparison period's visitors, for the map headline's trend (PUL-14). Absent or null: no trend. */
+  previousVisitors?: number | null
   // Active page filters, threaded into the modal fetch (F14).
   filters?: string
   // Hidden on the anonymous share surface (no full-list endpoints there).
@@ -140,7 +144,7 @@ function formatTimezone(tz: string): string {
   }
 }
 
-export default function Audience({ countries, cities, regions, languages, languageGroups, timezones, geoDataLevel = 'full', collectAudienceData = true, siteId, dateRange, totals, filters, memberFeatures = true, onFilter, live = false, liveMinutes, importedCards }: AudienceProps) {
+export default function Audience({ countries, cities, regions, languages, languageGroups, timezones, geoDataLevel = 'full', collectAudienceData = true, siteId, dateRange, totals, previousVisitors, filters, memberFeatures = true, onFilter, live = false, liveMinutes, importedCards }: AudienceProps) {
   const [activeTab, setActiveTab] = useState<Tab>('countries')
   type AudienceItem = {
     country?: string; city?: string; region?: string; language?: string; timezone?: string
@@ -161,6 +165,9 @@ export default function Audience({ countries, cities, regions, languages, langua
 
   const containerRef = useRef<HTMLDivElement>(null)
   const [inView, setInView] = useState(false)
+  // The map's headline follows the hovered country (PUL-14); null shows the total.
+  const [mapHover, setMapHover] = useState<MapHover | null>(null)
+  const onHoverCountry = useCallback((hover: MapHover | null) => setMapHover(hover), [])
 
   useEffect(() => {
     const el = containerRef.current
@@ -414,7 +421,15 @@ export default function Audience({ countries, cities, regions, languages, langua
             </div>
           ) : isVisualTab ? (
             hasData ? (
-              inView ? <MapView data={filterUnknown(countries) as { country: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }[]} /> : null
+              inView ? (
+                <div className="flex h-full flex-col">
+                  <MapHeadline total={totals?.visitors ?? null} previous={previousVisitors ?? null} hover={mapHover} />
+                  <MapView
+                    data={filterUnknown(countries) as { country: string; pageviews: number; visitors?: number; bounce_rate?: number | null; avg_duration?: number | null }[]}
+                    onHoverCountry={onHoverCountry}
+                  />
+                </div>
+              ) : null
             ) : (
               <CardEmptyState
               live={live}

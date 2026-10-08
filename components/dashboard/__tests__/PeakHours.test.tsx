@@ -60,4 +60,31 @@ describe('PeakHours', () => {
     render(<PeakHours siteId="site-1" dateRange={dateRange} />)
     expect(screen.getByText('Too early to tell')).toBeTruthy()
   })
+
+  // PUL-14 (gallery pair 9, option B): filled borderless square cells, and
+  // hovering one dims the rest to half.
+  it('fills empty cells, draws no borders, and dims the other cells on hover', () => {
+    useDailyStats.mockReturnValue({
+      data: [hour('2026-08-17T14:00:00+02:00', 12), hour('2026-08-17T16:00:00+02:00', 4)],
+      error: undefined, isLoading: false, mutate: vi.fn(),
+    })
+    const { container } = render(<PeakHours siteId="site-1" dateRange={dateRange} />)
+    const cells = Array.from(container.querySelectorAll('div.aspect-square'))
+    expect(cells).toHaveLength(168)
+    expect(cells.some((c) => c.classList.contains('border'))).toBe(false)
+    const empty = cells.filter((c) => !c.classList.contains('animate-cell-highlight'))
+    expect(empty.length).toBe(166)
+    expect(empty.every((c) => c.classList.contains('bg-neutral-800'))).toBe(true)
+    expect(cells.some((c) => c.classList.contains('opacity-50'))).toBe(false)
+
+    const active = cells.find((c) => c.classList.contains('animate-cell-highlight'))!
+    fireEvent.mouseEnter(active)
+    const after = Array.from(container.querySelectorAll('div.aspect-square'))
+    expect(after.filter((c) => c.classList.contains('opacity-50'))).toHaveLength(167)
+    const hovered = after.find((c) => c.classList.contains('scale-110'))!
+    expect(hovered.classList.contains('opacity-50')).toBe(false)
+
+    fireEvent.mouseLeave(hovered)
+    expect(Array.from(container.querySelectorAll('div.aspect-square')).some((c) => c.classList.contains('opacity-50'))).toBe(false)
+  })
 })
