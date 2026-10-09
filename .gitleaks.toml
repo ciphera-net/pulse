@@ -1,0 +1,25 @@
+# gitleaks config for the Aegis security scan. Keeps all default rules; allowlists paths where
+# fake credentials live by design — test files and fixtures across every language in the estate
+# (Go / TS / JS / PHP / Rust). Everywhere else a detected secret is reported (advisory on rollout;
+# gating, --exit-code 1, is flipped on per-repo after triage). Triage 08-10/09-10-2026.
+# ⚠️ A real secret committed INSIDE a test/fixture path would not be caught — accepted for v1.
+title = "ciphera aegis gitleaks"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Test & fixture paths carry fake credentials by design (all languages)"
+paths = [
+  '''.*_test\.go$''',
+  '''.*\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs)$''',
+  '''(^|/)__tests__/''',
+  '''(^|/)__mocks__/''',
+  '''(^|/)tests?/''',
+  '''(^|/)[Tt]ests?/''',
+  '''.*Test\.php$''',
+  '''(^|/)testdata/''',
+  '''(^|/)fixtures?/''',
+  '''(^|/)dataimporttest/''',
+  '''.*\.stories\.(ts|tsx|js|jsx)$''',
+]
