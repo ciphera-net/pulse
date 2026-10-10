@@ -126,4 +126,28 @@ describe('Panel-footer save (option C)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Save changes' }))
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
   })
+
+  it('leaves no "Saved" timer behind when the tab unmounts inside the confirmation', async () => {
+    // A timer that outlives the component sets state after unmount; in a test run it fired after the
+    // jsdom environment was torn down ("window is not defined") and failed an unrelated file.
+    const setSpy = vi.spyOn(globalThis, 'setTimeout')
+    const clearSpy = vi.spyOn(globalThis, 'clearTimeout')
+    try {
+      const { unmount } = render(
+        <SettingsShell>
+          <Harness />
+        </SettingsShell>,
+      )
+      fireEvent.click(await screen.findByRole('button', { name: 'toggle-dirty' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'Save changes' }))
+      await waitFor(() => expect(setSpy.mock.calls.some(c => c[1] === 2000)).toBe(true))
+      const i = setSpy.mock.calls.findIndex(c => c[1] === 2000)
+      const timer = setSpy.mock.results[i].value
+      unmount()
+      expect(clearSpy).toHaveBeenCalledWith(timer)
+    } finally {
+      setSpy.mockRestore()
+      clearSpy.mockRestore()
+    }
+  })
 })
