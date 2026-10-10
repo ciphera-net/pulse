@@ -32,13 +32,23 @@ export default function SettingsSaveBar({ isDirty, onSave, onDiscard, saveLabel 
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const slot = useSaveSlot()
+  // The post-save confirmation's timer. Cleared on unmount, so a tab that closes inside those
+  // two seconds never sets state on an unmounted component.
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    if (savedTimer.current !== null) clearTimeout(savedTimer.current)
+  }, [])
 
   async function handleSave() {
     setSaving(true)
     try {
       await onSave()
       setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
+      if (savedTimer.current !== null) clearTimeout(savedTimer.current)
+      savedTimer.current = setTimeout(() => {
+        savedTimer.current = null
+        setSaved(false)
+      }, 2000)
     } catch {
       // The consumer surfaces the failure (toast/Banner) and keeps the draft;
       // we only ensure "Saved" is not shown and the rejection is not unhandled.

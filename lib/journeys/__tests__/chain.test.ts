@@ -12,14 +12,23 @@ import {
   spineThrough,
   stepOfNode,
 } from '../chain'
-import type { PathTransition } from '@/lib/api/journeys'
+import type { JourneyFlow, JourneyFlowColumn, JourneyFlowLink, JourneyFlowPage } from '@/lib/api/journeys'
 
-const t = (step_index: number, from_path: string, to_path: string, session_count: number): PathTransition => ({
-  step_index,
-  from_path,
-  to_path,
-  session_count,
+const col = (top: JourneyFlowPage[], otherSessions = 0, otherPages = 0): JourneyFlowColumn => ({
+  total_sessions: top.reduce((s, [, n]) => s + n, 0) + otherSessions,
+  pages: top.length + otherPages,
+  top,
+  other_sessions: otherSessions,
+  other_pages: otherPages,
 })
+const flowOf = (columns: JourneyFlowColumn[], links: JourneyFlowLink[]): JourneyFlow => ({
+  depth: columns.length,
+  total_sessions: columns[0]?.total_sessions ?? 0,
+  columns,
+  links,
+})
+const linksAt = (flow: JourneyFlow, P: number) =>
+  buildLinks(flow, aggregateJourney(flow, { maxPagesPerStep: P }))
 
 describe('node/link id helpers', () => {
   it('round-trips step and path through the id', () => {
@@ -34,36 +43,66 @@ describe('node/link id helpers', () => {
 })
 
 describe('buildLinks', () => {
-  it('aggregates duplicate hops into one link', () => {
-    const transitions = [t(0, '/', '/login', 3), t(0, '/', '/login', 2)]
-    const columns = aggregateJourney(transitions, { depth: 4, maxPagesPerStep: 20 })
-    const links = buildLinks(transitions, columns)
-    expect(links).toEqual([{ source: '0:/', target: '1:/login', value: 5 }])
+  // * Column 0: / (12), /x (3), and 2 more pages under the server's cut (4 sessions).
+  // * Column 1: /a (10), /b (4), /c (2), and 1 page under the cut (3 sessions).
+  const FLOW = flowOf(
+    [col([['/', 12], ['/x', 3]], 4, 2), col([['/a', 10], ['/b', 4], ['/c', 2]], 3, 1)],
+    [
+      [0, 0, 0, 9],
+      [0, -1, 1, 3],
+      [0, 0, 1, 1],
+      [0, 0, 2, 1],
+      [0, 1, 0, 1],
+      [0, 1, -1, 1],
+      [0, -1, -1, 1],
+      [0, 0, -1, 1],
+      [0, 1, 2, 1],
+    ],
+  )
+
+  it('maps indexes onto the named pages and sums links that land on the same rows', () => {
+    const { links } = linksAt(FLOW, 20)
+    expect(links).toContainEqual({ source: '0:/', target: '1:/a', value: 9 })
+    // * −1 on the from side alone is drawn, from (other)
+    expect(links).toContainEqual({ source: '0:(other)', target: '1:/b', value: 3 })
+    // * −1 on the to side alone is drawn, into (other)
+    expect(links).toContainEqual({ source: '0:/x', target: '1:(other)', value: 1 })
+    expect(links).toContainEqual({ source: '0:/', target: '1:(other)', value: 1 })
   })
 
-  it('rolls hidden paths into the (other) bucket', () => {
-    // maxPagesPerStep 1 → step 1 keeps only /a; /b and /c roll into (other)
-    const transitions = [
-      t(0, '/', '/a', 10),
-      t(0, '/', '/b', 2),
-      t(0, '/', '/c', 1),
-    ]
-    const columns = aggregateJourney(transitions, { depth: 4, maxPagesPerStep: 1 })
-    const links = buildLinks(transitions, columns)
-    expect(links).toContainEqual({ source: '0:/', target: '1:/a', value: 10 })
-    expect(links).toContainEqual({ source: '0:/', target: '1:(other)', value: 3 })
-  })
-
-  it('drops (other) to (other) hops and out-of-depth transitions', () => {
-    const transitions = [
-      t(0, '/', '/a', 10),
-      t(0, '/x', '/y', 1), // both roll up at depth cap 1 per step
-      t(5, '/deep', '/deeper', 9), // beyond aggregated depth
-    ]
-    const columns = aggregateJourney(transitions, { depth: 2, maxPagesPerStep: 1 })
-    const links = buildLinks(transitions, columns)
+  it('drops (other)→(other) and counts its sessions as undrawn', () => {
+    const { links, undrawnOtherHops } = linksAt(FLOW, 20)
     expect(links.some((l) => pathOfNode(l.source) === '(other)' && pathOfNode(l.target) === '(other)')).toBe(false)
-    expect(links.some((l) => stepOfNode(l.source) >= 2)).toBe(false)
+    expect(undrawnOtherHops).toBe(1)
+  })
+
+  it('folds an index at or beyond Paths into (other), and counts what then lands (other)→(other)', () => {
+    // * Paths 1: column 0 names only /, column 1 only /a.
+    const { links, undrawnOtherHops } = linksAt(FLOW, 1)
+    expect(links).toContainEqual({ source: '0:/', target: '1:/a', value: 9 })
+    // * / → /b (1), / → /c (1), / → (other) (1)
+    expect(links).toContainEqual({ source: '0:/', target: '1:(other)', value: 3 })
+    // * /x → /a (1)
+    expect(links).toContainEqual({ source: '0:(other)', target: '1:/a', value: 1 })
+    // * (other)→/b 3, /x→(other) 1, (other)→(other) 1, /x→/c 1
+    expect(undrawnOtherHops).toBe(3 + 1 + 1 + 1)
+    // * every drawn and undrawn session of the hop is accounted for
+    const drawn = links.reduce((s, l) => s + l.value, 0)
+    expect(drawn + undrawnOtherHops).toBe(FLOW.columns[1].total_sessions)
+  })
+
+  it('ignores hops into a trimmed (empty) column', () => {
+    // * A link into the trimmed column cannot carry sessions (the column's total
+    // * is that hop's sum); one that claims to is still never drawn or counted.
+    const flow = flowOf([col([['/', 2]]), col([['/a', 2]]), col([])], [[0, 0, 0, 2], [1, 0, -1, 1]])
+    const { links, undrawnOtherHops } = linksAt(flow, 20)
+    expect(links).toEqual([{ source: '0:/', target: '1:/a', value: 2 }])
+    expect(undrawnOtherHops).toBe(0)
+  })
+
+  it('keeps paths containing | and : intact', () => {
+    const flow = flowOf([col([['/a|b', 2]]), col([['/c:d', 2]])], [[0, 0, 0, 2]])
+    expect(linksAt(flow, 20).links).toEqual([{ source: '0:/a|b', target: '1:/c:d', value: 2 }])
   })
 })
 

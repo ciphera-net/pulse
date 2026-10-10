@@ -602,7 +602,7 @@ export const TERMS: Record<string, GlossaryTerm> = {
   journey_other_bucket: {
     title: '(other) — journeys',
     definition:
-      'Pages beyond a step\'s Paths limit are rolled into one row, not dropped: counts are kept, identities collapse. (other) to (other) hops are not drawn.',
+      'Pages beyond a step\'s Paths limit are rolled into one row, not dropped: counts are kept, identities collapse. (other) to (other) hops are not drawn; the footer says how many.',
     docs: 'user-journeys#journey-other-bucket',
   },
   journey_step: {
@@ -612,7 +612,7 @@ export const TERMS: Record<string, GlossaryTerm> = {
       // so this must count from 1 too — a panel that says "0" beside a header
       // reading "Step 1" teaches the reader the wrong thing about the very
       // label it is attached to.
-      'Each column is one hop: step 1 is where sessions started, step k is where they were after k−1 recorded hops. Counts are out of that column\'s total.',
+      'Each column is one hop: step 1 is where sessions started, step k is where they were after k−1 recorded hops. Counts are sessions, out of that column\'s total; a one-page session made no hop, so it is in no column.',
     docs: 'user-journeys#journey-step',
   },
 
