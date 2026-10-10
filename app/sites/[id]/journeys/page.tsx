@@ -29,7 +29,7 @@ import {
   DEPTH_OPTIONS,
   DENSITY_OPTIONS,
 } from '@/lib/hooks/useJourneyFilters'
-import { useJourneyTransitions, useSite, useDataWindow } from '@/lib/swr/dashboard'
+import { useJourneyFlow, useSite, useDataWindow } from '@/lib/swr/dashboard'
 import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
 import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
 
@@ -71,18 +71,19 @@ export default function JourneysPage() {
   // * The fetch waits for the view and the Depth/Paths memory: an empty siteId is a
   // * null SWR key.
   const fetchSiteId = filters.ready && view.periodReady ? siteId : ''
+  // * The flow comes bounded from the server (top 50 pages per column, exact
+  // * totals); Paths re-slices it here with no request.
   const {
-    data: transitionsData,
-    error: transitionsError,
-    isLoading: transitionsLoading,
-    isValidating: transitionsValidating,
-    mutate: retryTransitions,
-  } = useJourneyTransitions(
+    data: flowData,
+    error: flowError,
+    isLoading: flowLoading,
+    isValidating: flowValidating,
+    mutate: retryFlow,
+  } = useJourneyFlow(
     fetchSiteId,
     fetchRange.start,
     fetchRange.end,
     filters.committedDepth,
-    1,
     filters.entryPath || undefined,
     filters.filtersParam || undefined,
     allPeriod,
@@ -125,22 +126,21 @@ export default function JourneysPage() {
 
   // * First-ever load only — keepPreviousData keeps the canvas mounted with
   // * stale data on every later refetch, so this is true once per mount.
-  const showSkeleton = !filters.ready || (transitionsLoading && !transitionsData)
+  const showSkeleton = !filters.ready || (flowLoading && !flowData)
   if (showSkeleton) return <JourneysSkeleton />
 
-  const totalSessions = transitionsData?.total_sessions ?? 0
-  const transitions = transitionsData?.transitions ?? []
+  // * No sessions with a hop in range (an empty range is total_sessions 0 and
+  // * no links): the empty states below, never an empty canvas.
+  const hasJourneys = !!flowData && flowData.total_sessions > 0
   const periodLabel = `${formatDisplayDate(new Date(view.dateRange.start + 'T00:00:00'))} – ${formatDisplayDate(new Date(view.dateRange.end + 'T00:00:00'))}`
 
   // * Lens → funnel cross-link: the heaviest chain through the lens becomes
   // * a prefilled create-funnel modal on the funnels page.
   const createFunnelFromLens = () => {
-    if (!filters.lens) return
-    const columns = aggregateJourney(transitions, {
-      depth: filters.committedDepth,
-      maxPagesPerStep: filters.committedDensity,
-    })
-    const spine = spineThrough(buildLinks(transitions, columns), filters.lens, 6)
+    if (!filters.lens || !flowData) return
+    // * The same columns and links the canvas draws at this Paths value.
+    const columns = aggregateJourney(flowData, { maxPagesPerStep: filters.committedDensity })
+    const spine = spineThrough(buildLinks(flowData, columns).links, filters.lens, 6)
     const values = spine.length > 0 ? spine : [filters.lens]
     const prefill = {
       name: `Journey via ${filters.lens}`,
@@ -247,14 +247,14 @@ export default function JourneysPage() {
 
         {/* The canvas — error and settled-empty states before the flow */}
         <div data-tour="journeys-canvas" className="relative p-6">
-          <UpdatingChip active={transitionsValidating} />
-          {transitionsError ? (
+          <UpdatingChip active={flowValidating} />
+          {flowError ? (
             <ErrorCard
               title="Couldn't load journeys"
               description="The journey data request failed. Your data is safe — this is a loading problem, not a tracking one."
-              onRetry={() => { void retryTransitions() }}
+              onRetry={() => { void retryFlow() }}
             />
-          ) : transitions.length === 0 ? (
+          ) : !hasJourneys ? (
             filters.entryPath ? (
               <EmptyState
                 icon={<TreeStructure />}
@@ -279,12 +279,10 @@ export default function JourneysPage() {
             )
           ) : (
             <SankeyJourney
-              transitions={transitions}
-              depth={filters.committedDepth}
+              flow={flowData}
               maxPagesPerStep={filters.committedDensity}
               lens={filters.lens}
               onLensChange={filters.setLens}
-              totalSessions={totalSessions}
               periodLabel={periodLabel}
             />
           )}

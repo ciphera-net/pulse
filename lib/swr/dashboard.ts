@@ -46,9 +46,9 @@ import {
   type StatsResponse,
 } from '@/lib/api/stats'
 import {
-  getJourneyTransitions,
+  getJourneyFlow,
   getJourneyEntryPoints,
-  type TransitionsResponse,
+  type JourneyFlow,
   type EntryPoint,
 } from '@/lib/api/journeys'
 import { getSite, getSiteTeam, getInstallStatus, getIngestHealth, getTrafficStatus, type IngestHealthResponse, type TrafficStatusResponse } from '@/lib/api/sites'
@@ -92,8 +92,8 @@ const fetchers = {
   realtime: (siteId: string) => getRealtime(siteId),
   campaigns: (siteId: string, start: string, end: string, limit: number) =>
     getCampaigns(siteId, start, end, limit),
-  journeyTransitions: (siteId: string, start: string, end: string, depth?: number, minSessions?: number, entryPath?: string, filters?: string, period?: string) =>
-    getJourneyTransitions(siteId, start, end, { depth, minSessions, entryPath, filters, period }),
+  journeyFlow: (siteId: string, start: string, end: string, depth?: number, entryPath?: string, filters?: string, period?: string) =>
+    getJourneyFlow(siteId, start, end, { depth, entryPath, filters, period }),
   journeyEntryPoints: (siteId: string, start: string, end: string, filters?: string, period?: string) =>
     getJourneyEntryPoints(siteId, start, end, filters, period),
   funnels: (siteId: string) => listFunnels(siteId),
@@ -552,14 +552,17 @@ export function useCampaigns(siteId: string, start: string, end: string, limit =
   )
 }
 
-// * Hook for journey flow transitions (Sankey diagram data)
-export function useJourneyTransitions(siteId: string, start: string, end: string, depth?: number, minSessions?: number, entryPath?: string, filters?: string, period?: string) {
-  return useSWR<TransitionsResponse>(
-    siteId && start && end ? ['journeyTransitions', siteId, period ?? '', start, end, depth, minSessions, entryPath, filters] : null,
-    () => fetchers.journeyTransitions(siteId, start, end, depth, minSessions, entryPath, filters, period),
+// * Hook for the journeys Sankey: the flow, bounded on the server (top 50 pages
+// * per column, exact totals). NO refreshInterval: Journeys' window ends
+// * yesterday and its tables are rebuilt by a producer, so polling a once-a-day
+// * dataset every minute only re-ran the read (and the server caches it 60 s
+// * anyway). A new range, depth, entry page or filter is a new key and fetches.
+export function useJourneyFlow(siteId: string, start: string, end: string, depth?: number, entryPath?: string, filters?: string, period?: string) {
+  return useSWR<JourneyFlow>(
+    siteId && start && end ? ['journeyFlow', siteId, period ?? '', start, end, depth, entryPath, filters] : null,
+    () => fetchers.journeyFlow(siteId, start, end, depth, entryPath, filters, period),
     {
       ...dashboardSWRConfig,
-      refreshInterval: 60 * 1000,
       dedupingInterval: 10 * 1000,
       // * Depth/entry/period changes keep the canvas rendered with the previous
       // * data while the new key loads — no full-page skeleton after first load.

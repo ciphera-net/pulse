@@ -1,5 +1,5 @@
-import type { PathTransition } from '@/lib/api/journeys'
-import type { AggregatedStep } from './aggregate'
+import type { JourneyFlow } from '@/lib/api/journeys'
+import { OTHER_PATH, type AggregatedStep } from './aggregate'
 
 // ---------------------------------------------------------------------------
 // Chain/lens helpers shared by both journey views. Nodes are addressed as
@@ -29,36 +29,56 @@ export const linkKey = (source: string, target: string) => `${source}|${target}`
 export const pathOfNode = (id: string) => id.slice(id.indexOf(':') + 1)
 export const stepOfNode = (id: string) => parseInt(id, 10)
 
+export interface FlowLinks {
+  /** The links between the rows each column shows. */
+  links: ChainLink[]
+  /**
+   * Sessions on hops from (other) to (other) at this Paths value: counted by
+   * the server, not drawn. The footer states them, so the strips under a step
+   * header can sum to less than the header by exactly this many.
+   */
+  undrawnOtherHops: number
+}
+
 /**
- * Gutter links between the rows each step actually shows. Paths rolled into
- * a step's (other) bucket fall back to that bucket; (other)→(other) hops are
- * dropped as noise. Transitions outside the aggregated depth are ignored.
+ * Gutter links between the rows each step actually shows, from the server's
+ * index-encoded links. An index below the column's named-page count is that
+ * page (the named pages are `top`'s first entries, in order); anything else,
+ * −1 included, is the column's (other). Links that land on the same pair of
+ * rows are summed. (other)→(other) hops are dropped as noise, and their
+ * sessions are counted in `undrawnOtherHops`. Hops outside the columns
+ * (trailing empty columns were trimmed) are ignored.
  */
-export function buildLinks(
-  transitions: PathTransition[],
-  columns: AggregatedStep[],
-): ChainLink[] {
-  const pathsByStep = new Map<number, Set<string>>()
+export function buildLinks(flow: JourneyFlow, columns: AggregatedStep[]): FlowLinks {
+  const namedByStep = new Map<number, string[]>()
   for (const step of columns) {
-    pathsByStep.set(step.index, new Set(step.pages.map((p) => p.path)))
+    namedByStep.set(
+      step.index,
+      step.pages.filter((p) => !p.isOther).map((p) => p.path),
+    )
   }
 
-  const linkMap = new Map<string, number>()
-  for (const t of transitions) {
-    const fromPaths = pathsByStep.get(t.step_index)
-    const toPaths = pathsByStep.get(t.step_index + 1)
-    if (!fromPaths || !toPaths) continue
-    const fp = fromPaths.has(t.from_path) ? t.from_path : '(other)'
-    const tp = toPaths.has(t.to_path) ? t.to_path : '(other)'
-    if (fp === '(other)' && tp === '(other)') continue
-    const key = linkKey(nodeId(t.step_index, fp), nodeId(t.step_index + 1, tp))
-    linkMap.set(key, (linkMap.get(key) ?? 0) + t.session_count)
+  const linkMap = new Map<string, ChainLink>()
+  let undrawnOtherHops = 0
+  for (const [hop, from, to, sessions] of flow.links) {
+    const fromNamed = namedByStep.get(hop)
+    const toNamed = namedByStep.get(hop + 1)
+    if (!fromNamed || !toNamed) continue
+    const fp = from >= 0 && from < fromNamed.length ? fromNamed[from] : OTHER_PATH
+    const tp = to >= 0 && to < toNamed.length ? toNamed[to] : OTHER_PATH
+    if (fp === OTHER_PATH && tp === OTHER_PATH) {
+      undrawnOtherHops += sessions
+      continue
+    }
+    const source = nodeId(hop, fp)
+    const target = nodeId(hop + 1, tp)
+    const key = linkKey(source, target)
+    const link = linkMap.get(key)
+    if (link) link.value += sessions
+    else linkMap.set(key, { source, target, value: sessions })
   }
 
-  return Array.from(linkMap.entries()).map(([key, value]) => {
-    const [source, target] = key.split('|')
-    return { source, target, value }
-  })
+  return { links: Array.from(linkMap.values()), undrawnOtherHops }
 }
 
 /** Forward and backward adjacency over `step:path` node ids. */
@@ -221,7 +241,7 @@ export function spineThrough(links: ChainLink[], path: string, maxSteps = 6): st
     let best: string | null = null
     let bestValue = -1
     for (const nb of neighbours) {
-      if (pathOfNode(nb) === '(other)') continue
+      if (pathOfNode(nb) === OTHER_PATH) continue
       const v = valueByKey.get(dir === 'fwd' ? linkKey(id, nb) : linkKey(nb, id)) ?? 0
       if (v > bestValue) {
         best = nb
