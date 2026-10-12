@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, within, waitFor } from '@testing-library/react'
 import type { AuditLogEntry } from '@/lib/api/audit'
 import * as auditApi from '@/lib/api/audit'
+import { avatarDataUri } from '@ciphera-net/facet-avatar/render'
 
 // --- Mocks ---------------------------------------------------------------
 
@@ -466,5 +467,31 @@ describe('WorkspaceAuditTab, alone and team (PULSE-59)', () => {
     await screen.findByText('No activity yet')
     expect(screen.getByText('Changes like new sites and billing updates will appear here as they happen.')).toBeTruthy()
     expect(container.textContent).not.toMatch(/team|workspace|organi[sz]ation/i)
+  })
+})
+
+describe('WorkspaceAuditTab: who did it (PUL-21 round 4)', () => {
+  const personId = '50c09fed-1234-4c7d-9e8f-a1b2c3d4e5f6'
+
+  // Ciphera ID never hands out an email, so this cell used to read "System" for
+  // every action a person took. A person id now draws their avatar and the
+  // Members tab's name, with the seed they chose when they generated one.
+  it('names a person by their id, with the avatar of the seed they chose', async () => {
+    const seed = 'Xk3f9Qe2LrT0vB7nWmZcAa'
+    mockGetAuditLog.mockResolvedValue({ entries: [entry({ actor_id: personId, actor_email: undefined })], total: 1, avatar_seeds: { [personId]: seed } })
+    render(<WorkspaceAuditTab />)
+    const table = await screen.findByRole('table')
+    const name = within(table).getByText('Member 50c09fed')
+    expect(within(table).queryByText('System')).toBeNull()
+    const cell = name.closest('td') as HTMLElement
+    await waitFor(() => expect(cell.querySelector('img')?.getAttribute('src')).toBe(avatarDataUri(seed)))
+  })
+
+  it('keeps "System", with no avatar, only when no person acted', async () => {
+    mockGetAuditLog.mockResolvedValue({ entries: [entry({ actor_id: undefined, actor_email: undefined })], total: 1, avatar_seeds: {} })
+    render(<WorkspaceAuditTab />)
+    const table = await screen.findByRole('table')
+    const cell = within(table).getByText('System').closest('td') as HTMLElement
+    expect(cell.querySelector('img, [data-avatar-placeholder]')).toBeNull()
   })
 })
