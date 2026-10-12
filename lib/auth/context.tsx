@@ -34,6 +34,14 @@ interface User {
   email: string
   display_name?: string
   totp_enabled: boolean
+  /**
+   * The stored seed of this person's generated avatar (PUL-21), from
+   * id-backend's /auth/user/me: null until they press "Generate a new avatar".
+   * Draw with personAvatarSeed({ userId: id, avatarSeed: avatar_seed }).
+   * Random and derived from nothing, so not PII: it is a plain server field,
+   * never vault data.
+   */
+  avatar_seed?: string | null
   org_id?: string
   role?: string
   preferences?: {

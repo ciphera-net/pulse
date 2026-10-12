@@ -25,6 +25,10 @@ export interface OrganizationMember {
   organization_name?: string
   organization_slug?: string
   user_email?: string
+  // The member's stored avatar seed (PUL-21), folded in from the route's
+  // `avatar_seeds` map by getOrganizationMembers; null when they never
+  // generated one. Draw with personAvatarSeed({ userId, avatarSeed }).
+  avatar_seed?: string | null
 }
 
 export interface InviteLink {
@@ -134,8 +138,12 @@ export async function updateOrganization(organizationId: string, name: string, s
 
 // Get team members
 export async function getOrganizationMembers(organizationId: string): Promise<OrganizationMember[]> {
-  const data = await authFetch<{ members: OrganizationMember[] }>(`/organizations/${organizationId}/members`)
-  return data.members || []
+  const data = await authFetch<{ members: OrganizationMember[]; avatar_seeds?: Record<string, string> }>(`/organizations/${organizationId}/members`)
+  // The route returns each member's stored avatar seed beside the roster
+  // (PUL-21); folding it into the rows means every caller has it, whichever
+  // way it fetched the list.
+  const seeds = data.avatar_seeds ?? {}
+  return (data.members || []).map((m) => ({ ...m, avatar_seed: seeds[m.user_id] ?? null }))
 }
 
 // Remove a member from the team

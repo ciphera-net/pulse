@@ -42,11 +42,12 @@ function RoleBadge({ role, roles }: { role: string; roles: Role[] }) {
   return <StatusChip tone={isAdmin ? 'info' : 'neutral'}>{label}</StatusChip>
 }
 
-// Every member's generated avatar (PUL-21), seeded by their USER ID — never
-// the email: most members have none on this zero-PII surface, and an avatar
-// must not be a function of personal data. Round, as on every surface.
-function MemberAvatar({ userId }: { userId: string }) {
-  return <Avatar seed={personAvatarSeed({ userId })} size={36} />
+// Every member's generated avatar (PUL-21): their stored seed when they
+// generated one, else their USER ID — never the email: most members have none
+// on this zero-PII surface, and an avatar must not be a function of personal
+// data. Round, as on every surface.
+function MemberAvatar({ userId, avatarSeed }: { userId: string; avatarSeed?: string | null }) {
+  return <Avatar seed={personAvatarSeed({ userId, avatarSeed })} size={36} />
 }
 
 export default function WorkspaceMembersTab() {
@@ -245,7 +246,7 @@ export default function WorkspaceMembersTab() {
                     <PanelRow
                       label={
                         <span className="flex min-w-0 items-center gap-3">
-                          <MemberAvatar userId={member.user_id} />
+                          <MemberAvatar userId={member.user_id} avatarSeed={member.avatar_seed} />
                           {/* The joined line stacks under the NAME. As the row's
                               caption it sat under the avatar, flush with the
                               panel edge (staging, 16-09-2026). */}
