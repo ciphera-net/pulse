@@ -22,6 +22,7 @@ import { REALTIME_EMPTY_LINE, REALTIME_MODES, REALTIME_ROLLING_MINUTES } from '@
 import { serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
 import { useDataWindow, useSite, useVisitors } from '@/lib/swr/dashboard'
 import { visitorPseudonym } from '@/lib/visitors/pseudonym'
+import { Avatar, visitorAvatarSeed } from '@ciphera-net/facet-avatar'
 import { formatLastSeen, SITE_TIMEZONE_FALLBACK } from '@/lib/visitors/format'
 import { CompactNumber } from '@/components/ui/compact-number'
 import {
@@ -490,6 +491,9 @@ function VisitorRowLink({
       onBlur={() => onHighlight(null)}
       className="flex items-center gap-3 border-b border-border/60 px-4 py-2.5 transition-colors duration-fast ease-apple last:border-b-0 hover:bg-neutral-800/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange"
     >
+      {/* Seeded by the visitor key, exactly as the pseudonym is (PUL-21): it
+          rotates with the key every month, and nothing new travels with the row. */}
+      <Avatar seed={visitorAvatarSeed(visitor.visitor_key)} size={32} />
       <div className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
           <span className="truncate text-sm font-medium text-white">{name}</span>

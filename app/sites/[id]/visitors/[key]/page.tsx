@@ -19,6 +19,7 @@ import { useDataWindow, useSite, useVisitorProfile, useVisitorVisits } from '@/l
 import { REALTIME_MODES, REALTIME_ROLLING_MINUTES } from '@/lib/dashboard/realtimeRange'
 import { serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
 import { visitorPseudonym } from '@/lib/visitors/pseudonym'
+import { Avatar, visitorAvatarSeed } from '@ciphera-net/facet-avatar'
 import { CompactNumber } from '@/components/ui/compact-number'
 import {
   EM_DASH,
@@ -166,6 +167,7 @@ export default function VisitorDetailPage() {
               Part of the owner's 10-09 note: "make it consistent like the other
               screens in pulse". */}
           <h1 className="mt-2 flex items-center gap-3 text-lg font-semibold text-white">
+            <Avatar seed={visitorAvatarSeed(visitorKey)} size={44} />
             {name}
             {/* The hash is the TRUE key and is always shown here. Pseudonyms
                 collide by design; this is what makes two "Quiet Readers"

@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { useSWRConfig } from 'swr'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Button, toast } from '@ciphera-net/facet'
-import { Plus, Trash, User, Users, UsersThree } from '@phosphor-icons/react'
+import { Avatar, personAvatarSeed } from '@ciphera-net/facet-avatar'
+import { Plus, Trash, Users, UsersThree } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
 import { useIsAdminOrOwner } from '@/lib/auth/permissions'
 import { getOrganizationMembers, removeOrganizationMember, getInviteLinks, type OrganizationMember, type InviteLink } from '@/lib/api/organization'
@@ -41,14 +42,11 @@ function RoleBadge({ role, roles }: { role: string; roles: Role[] }) {
   return <StatusChip tone={isAdmin ? 'info' : 'neutral'}>{label}</StatusChip>
 }
 
-function MemberAvatar({ monogram }: { monogram?: string }) {
-  return (
-    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-none bg-accent text-muted-foreground">
-      {monogram
-        ? <span className="text-sm font-semibold">{monogram}</span>
-        : <User weight="regular" className="h-5 w-5" />}
-    </span>
-  )
+// Every member's generated avatar (PUL-21), seeded by their USER ID — never
+// the email: most members have none on this zero-PII surface, and an avatar
+// must not be a function of personal data. Round, as on every surface.
+function MemberAvatar({ userId }: { userId: string }) {
+  return <Avatar seed={personAvatarSeed({ userId })} size={36} />
 }
 
 export default function WorkspaceMembersTab() {
@@ -224,7 +222,6 @@ export default function WorkspaceMembersTab() {
                 const displayName = isYou
                   ? 'You'
                   : (member.user_email || `Member ${member.user_id.slice(0, 8)}`)
-                const monogram = (isYou ? user?.email : member.user_email)?.trim().charAt(0).toUpperCase() || undefined
                 const canRemove = canManage && member.role !== 'owner' && !isYou
                 const joined = member.joined_at ? formatDate(new Date(member.joined_at), zone) : null
 
@@ -248,7 +245,7 @@ export default function WorkspaceMembersTab() {
                     <PanelRow
                       label={
                         <span className="flex min-w-0 items-center gap-3">
-                          <MemberAvatar monogram={monogram} />
+                          <MemberAvatar userId={member.user_id} />
                           {/* The joined line stacks under the NAME. As the row's
                               caption it sat under the avatar, flush with the
                               panel edge (staging, 16-09-2026). */}
