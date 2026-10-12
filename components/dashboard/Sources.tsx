@@ -6,7 +6,7 @@ import type { ImportedDimension } from '@/lib/import/source-display'
 import { useMemo, useState } from 'react'
 import Image from 'next/image'
 import { getOpenHostname, getReferrerDisplayName, getReferrerFavicon, getReferrerIcon, mergeReferrersByDisplayName } from '@/lib/utils/icons'
-import { Megaphone, Globe } from '@phosphor-icons/react'
+import { Megaphone, Globe, ArrowSquareOut } from '@phosphor-icons/react'
 import { getChannelIcon } from '@/components/dashboard/channelIcon'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
 import { ErrorCard } from '@/components/ui/ErrorCard'
@@ -300,25 +300,20 @@ export default function Sources({
                 const label = referrerRowLabel(ref)
                 const faviconKey = showReferrerDomains && ref.address ? ref.address : ref.referrer
                 const openHostname = getOpenHostname(faviconKey)
-                const labelContent = (
-                  <>
-                    {renderFavicon(faviconKey)}
-                    <span className="truncate" title={label}>{label}</span>
-                  </>
-                )
                 return (
                   <CascadeRow key={ref.referrer} index={i}>
-                    {/* PULSE-197: a website row's label opens the referring site, so
-                       this row can no longer be a single <button> — you cannot nest
-                       an <a> (or a second <button>) inside one. It is a <div> with a
-                       full-row overlay button carrying today's filter click, plus,
-                       for a website row, a real anchor that sits above the overlay
-                       for its own box only (relative z-10) and opts back into
-                       pointer events. Every other child is pointer-events-none so a
-                       click anywhere else still reaches the overlay underneath —
-                       including RowBar, which has no click handler of its own and,
-                       once it is a SIBLING of the overlay rather than a descendant
-                       of the old clickable button, would otherwise silently
+                    {/* A click anywhere on the row FILTERS; a website row opens its
+                       site from one small icon after the name (PUL-20, owner pick A,
+                       12-10-2026). PULSE-197 had made the favicon + name the link,
+                       and that label is the row's flex-1 box: the link covered
+                       86–89% of every website row, so a click on the name left
+                       the dashboard instead of filtering it.
+                       The row cannot be a single <button> — an <a> cannot nest in
+                       one — so it is a <div> with a full-row overlay button for the
+                       filter, and the icon above it (relative z-10) opting back into
+                       pointer events for its own box only. Everything else is
+                       pointer-events-none so clicks reach the overlay — including
+                       RowBar, a SIBLING of the overlay, which would otherwise
                        swallow clicks over the bar's width. */}
                     <div className={rowClass}>
                       {onFilter && (
@@ -335,21 +330,25 @@ export default function Sources({
                         />
                       )}
                       <RowBar width={rowBarWidth(ref, allReferrers)} index={i} className="pointer-events-none" />
-                      {openHostname ? (
-                        <a
-                          href={`https://${openHostname}/`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label={`Open ${label} in a new tab`}
-                          className="relative z-10 pointer-events-auto flex-1 truncate text-white flex items-center gap-3 hover:underline rounded-sm focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-orange"
-                        >
-                          {labelContent}
-                        </a>
-                      ) : (
-                        <div className="relative flex-1 truncate text-white flex items-center gap-3 pointer-events-none">
-                          {labelContent}
-                        </div>
-                      )}
+                      <div className="relative flex-1 min-w-0 text-white flex items-center gap-3 pointer-events-none">
+                        {renderFavicon(faviconKey)}
+                        <span className="truncate" title={label}>{label}</span>
+                        {openHostname && (
+                          // Hidden at rest; the row's hover or the icon's own
+                          // keyboard focus reveals it — the device the % badge
+                          // uses. Touch has no hover, so it always shows there.
+                          // p-1 -m-1: a 22 px hit box around a 14 px glyph.
+                          <a
+                            href={`https://${openHostname}/`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`Open ${label} in a new tab`}
+                            className="relative z-10 pointer-events-auto -m-1 shrink-0 rounded-sm p-1 text-neutral-500 opacity-0 transition-opacity ease-apple hover:text-neutral-200 focus:outline-none focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-brand-orange group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+                          >
+                            <ArrowSquareOut className="h-3.5 w-3.5" aria-hidden="true" />
+                          </a>
+                        )}
+                      </div>
                       <MetricRowStat row={ref} totals={totals} className="pointer-events-none" />
                     </div>
                   </CascadeRow>

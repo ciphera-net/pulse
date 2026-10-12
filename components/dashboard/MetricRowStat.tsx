@@ -29,7 +29,13 @@ export function MetricRowStat({ row, totals, views, className }: MetricRowStatPr
   return (
     <div className={cn('relative flex items-center gap-2 ml-4', className)}>
       {pct && (
-        <span className="text-xs font-medium text-brand-ink opacity-100 translate-x-0 md:opacity-0 md:translate-x-2 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-base ease-apple">
+        // The hover % SLIDES in where it can be seen (PUL-20, owner pick B,
+        // 12-10-2026): 12 px over 400 ms on an even curve. It was 8 px / 250 ms
+        // on ease-apple, which front-loads the motion — 93% visible after
+        // 100 ms, so it read as appearing, not sliding. It LEAVES in 150 ms
+        // (the resting state's duration), so moving down a list leaves no
+        // trail of fading numbers.
+        <span className="text-xs font-medium text-brand-ink opacity-100 translate-x-0 md:opacity-0 md:translate-x-3 md:group-hover:opacity-100 md:group-hover:translate-x-0 transition-[opacity,transform] duration-fast md:group-hover:duration-slow ease-in-out">
           {pct}
         </span>
       )}

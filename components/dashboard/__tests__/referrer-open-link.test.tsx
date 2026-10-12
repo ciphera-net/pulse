@@ -2,8 +2,10 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import Sources from '@/components/dashboard/Sources'
 
-// PULSE-197: a referrer row's own name opens the referring site (owner pick
-// B). Real Cascade (CascadeGroup/CascadeRow/RowBar) is left UNMOCKED here,
+// PULSE-197 made a referrer row's favicon + name the link to the site; PUL-20
+// (12-10-2026, owner pick A) moved it to one small icon after the name, because
+// that label is the row's flex-1 box and the link covered 86–89% of the row: a
+// click on the name opened the site instead of filtering. Real Cascade (CascadeGroup/CascadeRow/RowBar) is left UNMOCKED here,
 // unlike dimension-cards.test.tsx — the whole point of this file is to pin
 // the real DOM structure (the overlay button + anchor split, and that RowBar
 // itself carries pointer-events-none), which a RowBar stub would hide.
@@ -22,17 +24,28 @@ const referrers = [
   { referrer: 'Shared Link', pageviews: 137, visitors: 64 },
 ]
 
-describe('Sources — Referrers tab: a website row\'s name opens the site (PULSE-197)', () => {
+describe('Sources — Referrers tab: the row filters, an icon opens the site (PUL-20)', () => {
   it('a website row renders an anchor with the right href, target, and rel', () => {
     render(<Sources referrers={referrers} siteId="site-1" dateRange={dateRange} totals={totals} onFilter={vi.fn()} />)
     const link = screen.getByRole('link', { name: /Open Google in a new tab/i })
     expect(link.getAttribute('href')).toBe('https://google.com/')
     expect(link.getAttribute('target')).toBe('_blank')
     expect(link.getAttribute('rel')).toBe('noopener noreferrer')
-    // Still carries the visible name, so the row's rest-state content is
-    // unchanged from today — the link doesn't replace what's shown, only
-    // what the favicon+name element now additionally does.
-    expect(link.textContent).toBe('Google')
+    // The link is the icon alone: the name is NOT inside it, so a click on
+    // the name reaches the row's filter.
+    expect(link.textContent).toBe('')
+    expect(link.querySelector('svg')).toBeTruthy()
+    const name = screen.getByText('Google')
+    expect(name.closest('a')).toBeNull()
+    expect((name.parentElement as HTMLElement).className).toContain('pointer-events-none')
+  })
+
+  it('the icon is hidden at rest, shown on row hover and keyboard focus, always on touch', () => {
+    render(<Sources referrers={referrers} siteId="site-1" dateRange={dateRange} totals={totals} onFilter={vi.fn()} />)
+    const cls = screen.getByRole('link', { name: /Open Google in a new tab/i }).className
+    for (const c of ['opacity-0', 'group-hover:opacity-100', 'focus-visible:opacity-100', '[@media(hover:none)]:opacity-100', 'pointer-events-auto']) {
+      expect(cls.split(' ')).toContain(c)
+    }
   })
 
   it('clicking the anchor does not call onFilter', () => {
