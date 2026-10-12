@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -1244,5 +1244,44 @@ describe('AccountProfileTab — a refused deletion, alone and in a team', () => 
     const said = vi.mocked(toast.error).mock.calls.map((c) => String(c[0])).join(' ')
     expect(said).toMatch(/Distant Clockhouse — transfer ownership/)
     expect(said).toMatch(/Go to Settings → Team\./)
+  })
+})
+
+// --- PUL-21: "Generate a new avatar" (option R1) -----------------------------
+
+const av = vi.hoisted(() => ({ regenerate: vi.fn() }))
+vi.mock('@/lib/api/avatar', () => ({ regenerateAvatarSeed: av.regenerate }))
+
+describe('AccountProfileTab: Generate a new avatar (PUL-21)', () => {
+  beforeEach(() => {
+    av.regenerate.mockReset()
+    vi.mocked(toast.error).mockClear()
+  })
+
+  it('draws the account with its stored seed', async () => {
+    const { avatarDataUri } = await import('@ciphera-net/facet-avatar/render')
+    h.user = { id: 'u1', email: 'ada@ciphera.net', display_name: 'Ada', avatar_seed: 'Xk3f9Qe2LrT0vB7nWmZcAa' } as typeof h.user
+    render(<AccountProfileTab />)
+    const button = await screen.findByRole('button', { name: 'Generate a new avatar' })
+    const row = button.closest('div') as HTMLElement
+    await waitFor(() => expect(row.querySelector('img')?.getAttribute('src')).toBe(avatarDataUri('Xk3f9Qe2LrT0vB7nWmZcAa')))
+  })
+
+  it('stores a new seed, then refreshes the account so every avatar follows', async () => {
+    av.regenerate.mockResolvedValue('NewSeedNewSeedNewSeed0')
+    render(<AccountProfileTab />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Generate a new avatar' }))
+    await waitFor(() => expect(h.refresh).toHaveBeenCalledTimes(1))
+    expect(av.regenerate).toHaveBeenCalledTimes(1)
+    expect(av.regenerate.mock.invocationCallOrder[0]).toBeLessThan(h.refresh.mock.invocationCallOrder[0])
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it('says so when it fails, and keeps the avatar it had', async () => {
+    av.regenerate.mockRejectedValue(new Error('network down'))
+    render(<AccountProfileTab />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Generate a new avatar' }))
+    await waitFor(() => expect(toast.error).toHaveBeenCalled())
+    expect(h.refresh).not.toHaveBeenCalled()
   })
 })
