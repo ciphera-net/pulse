@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { MenuIcon, UserMenu } from '@ciphera-net/facet'
+import { Avatar, personAvatarSeed } from '@ciphera-net/facet-avatar'
 import { useAuth } from '@/lib/auth/context'
 import { UnnamedSession } from '@/components/account/UnnamedSession'
 import { useUserMenuTeamProps } from '@/components/dashboard/userMenuTeam'
@@ -64,6 +65,8 @@ export default function ContentHeader({
           // flight would flash it before the real name arrives — 'unknown' is
           // not 'locked', which is the whole reason VaultState has three values.
           unidentifiedLabel={auth.vaultState === 'locked' ? <UnnamedSession /> : undefined}
+          // The person's generated avatar (PUL-21), seeded by the user id.
+          avatar={auth.user ? <Avatar seed={personAvatarSeed({ userId: auth.user.id })} size={28} /> : undefined}
           LinkComponent={Link}
           // The container props (switcher or "Invite people", team labels,
           // team settings) come from the team-state signal (PULSE-59).

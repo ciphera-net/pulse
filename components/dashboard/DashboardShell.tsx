@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { PlusIcon, LayoutDashboardIcon, PathIcon, FunnelIcon, CursorClickIcon, SearchIcon, CloudUploadIcon, HeartbeatIcon, SettingsIcon, UserMenu } from '@ciphera-net/facet'
+import { Avatar, personAvatarSeed } from '@ciphera-net/facet-avatar'
 import { formatUpdatedLabel } from '@/lib/utils/format'
 import { useFunnelDetail, useSite } from '@/lib/swr/dashboard'
 import { useAuth } from '@/lib/auth/context'
@@ -440,6 +441,8 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
           // flight would flash it before the real name arrives — 'unknown' is
           // not 'locked', which is the whole reason VaultState has three values.
           unidentifiedLabel={auth.vaultState === 'locked' ? <UnnamedSession /> : undefined}
+          // The person's generated avatar (PUL-21), seeded by the user id.
+          avatar={auth.user ? <Avatar seed={personAvatarSeed({ userId: auth.user.id })} size={28} /> : undefined}
           LinkComponent={Link}
           // The container props (switcher or "Invite people", team labels,
           // team settings) come from the team-state signal (PULSE-59).
