@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Button, Input, SegmentedControl, toast, getAuthErrorMessage } from '@ciphera-net/facet'
+import { Avatar, personAvatarSeed } from '@ciphera-net/facet-avatar'
+import { regenerateAvatarSeed } from '@/lib/api/avatar'
 import { usePreferences, type TimeDisplay } from '@/lib/hooks/usePreferences'
 import { useAuth } from '@/lib/auth/context'
 import {
@@ -197,6 +199,24 @@ function readStatus(err: unknown): number | null {
 export default function AccountProfileTab() {
   const { timeDisplay, setTimeDisplay, loaded: preferencesLoaded } = usePreferences()
   const { user, refresh, logout } = useAuth()
+  const [regeneratingAvatar, setRegeneratingAvatar] = useState(false)
+
+  // "Generate a new avatar" (PUL-21, option R1): applies at once. The new seed
+  // is shown only after Ciphera ID has stored it — no optimistic flip, so the
+  // screen never shows an avatar the server does not hold. refresh() re-reads
+  // /auth/user/me and revalidates every SWR key, so the account menu and the
+  // Members list follow.
+  const handleRegenerateAvatar = useCallback(async () => {
+    setRegeneratingAvatar(true)
+    try {
+      await regenerateAvatarSeed()
+      await refresh()
+    } catch (err) {
+      toast.error(getAuthErrorMessage(err as Error) || "Couldn't generate a new avatar. Try again.")
+    } finally {
+      setRegeneratingAvatar(false)
+    }
+  }, [refresh])
   const [displayName, setDisplayName] = useState('')
   // Read-unlock: the name/email live only in the encrypted vault, opened by an
   // OPAQUE ceremony against a re-entered password. The decrypted PII (never the
@@ -1004,6 +1024,23 @@ export default function AccountProfileTab() {
       {/* Profile */}
       <SettingsPanel title="Profile" description="Your personal account details.">
         <PanelRows>
+          <PanelRow
+            label="Avatar"
+            caption="Generated for your account. Shown in Pulse and when you sign in."
+          >
+            <div className="flex items-center gap-4">
+              {user && <Avatar seed={personAvatarSeed({ userId: user.id, avatarSeed: user.avatar_seed })} size={56} />}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRegenerateAvatar}
+                disabled={!user || regeneratingAvatar}
+                isLoading={regeneratingAvatar}
+              >
+                Generate a new avatar
+              </Button>
+            </div>
+          </PanelRow>
           <PanelRow
             label="Display name"
             htmlFor="account-display-name"
