@@ -23,6 +23,7 @@ import type { DailyStat, ImportedProvenance, Stats } from '@/lib/api/stats'
 import { importBoundaryDay, importBoundaryLabel, importBoundaryX, railIncludesImported } from '@/lib/dashboard/importBoundary'
 import { METRIC_TERMS, visitorsTerm } from '@/lib/dashboard/terms'
 import { MetricInfoTip, buildExample } from '@/components/dashboard/MetricInfoTip'
+import { pairPreviousSeries } from '@/lib/dashboard/previousSeries'
 import type { MetricType } from '@/lib/dashboard/metrics'
 import type { IdentityWindowDays } from '@/lib/visitors/identityWindow'
 
@@ -80,6 +81,43 @@ interface CommandDeckProps {
    */
   imported?: ImportedProvenance | null
   prevImported?: ImportedProvenance | null
+  /**
+   * The previous period's series (PUL-19): the window before `dateRange`, same
+   * interval and same filters, drawn as a dashed grey line behind this one.
+   * Absent or empty: no comparison is drawn (All time, realtime, rolling
+   * windows, minute buckets, the share surface).
+   */
+  prevData?: DailyStat[] | null
+  prevRange?: { start: string; end: string } | null
+  /** The first day the dashboard has data for (data window `from`): earlier previous buckets stay empty. */
+  prevFloor?: string | null
+}
+
+// The previous period's ink: the established secondary-line token (grey in both
+// themes), so orange stays reserved for the period being read.
+const PREV_INK = 'var(--chart-line-secondary)'
+const PREV_DASH = '4 4'
+
+/** A signed change, minus sign not hyphen: "−73%", "+4.2 pp", "New", or "—". */
+function formatChange(c: PctChangeResult): string {
+  if (!c) return '—'
+  if (c.type === 'new') return 'New'
+  const sign = c.value > 0 ? '+' : c.value < 0 ? '\u2212' : ''
+  return c.type === 'pp' ? `${sign}${Math.abs(c.value)} pp` : `${sign}${Math.abs(c.value)}%`
+}
+
+/** A signed whole-number difference: "+2", "−8", "0". */
+function formatDiff(d: number): string {
+  if (d === 0) return '0'
+  return `${d > 0 ? '+' : '\u2212'}${Math.abs(Math.round(d))}`
+}
+
+function LegendLine({ color, dash }: { color: string; dash?: string }) {
+  return (
+    <svg aria-hidden="true" width="16" height="8" viewBox="0 0 16 8" className="shrink-0">
+      <line x1="1" y1="4" x2="15" y2="4" stroke={color} strokeWidth={dash ? 1.5 : 2} strokeDasharray={dash} strokeLinecap={dash ? undefined : 'round'} />
+    </svg>
+  )
 }
 
 /**
@@ -162,23 +200,47 @@ export default function CommandDeck({
   identityWindowDays,
   imported,
   prevImported,
+  prevData,
+  prevRange,
+  prevFloor,
 }: CommandDeckProps) {
+  // On by default; the legend's "Previous period" entry hides it (PUL-19).
+  const [showPrev, setShowPrev] = useState(true)
+  const endsNow = Boolean(period && PERIOD_ENDS_NOW[period])
   // ─── Chart data (site wall clock, F10) ─────────────────────────────
-  const chartData = useMemo(() => data.map((item) => {
-    const wallClock = parseSiteWallClock(item.date) ?? new Date(item.date)
-    return {
-      dateObj: wallClock,
-      originalDate: item.date,
-      pageviews: item.pageviews,
-      visitors: item.visitors,
-      // Divide by VISITS, never visitors. `visits` is null on daily_stats rows
-      // frozen before migration 164 — the point plots as a gap rather than
-      // silently reporting pages per PERSON under a label that says per visit.
-      pages_per_visit: item.visits != null && item.visits > 0 ? item.pageviews / item.visits : null,
-      bounce_rate: item.bounce_rate,
-      avg_duration: item.avg_duration,
-    }
-  }), [data])
+  const chartData = useMemo(() => {
+    const prev = prevData && prevData.length > 0 && prevRange
+      ? pairPreviousSeries(data, prevData, dateRange.start, prevRange.start, prevFloor)
+      : null
+    return data.map((item, i) => {
+      const wallClock = parseSiteWallClock(item.date) ?? new Date(item.date)
+      const p = prev?.[i] ?? null
+      return {
+        // The previous period, by place in the window (lib/dashboard/previousSeries).
+        prevDateObj: p ? (parseSiteWallClock(p.date) ?? new Date(p.date)) : null,
+        prev_pageviews: p?.pageviews ?? null,
+        prev_visitors: p?.visitors ?? null,
+        prev_pages_per_visit: p?.pages_per_visit ?? null,
+        prev_bounce_rate: p?.bounce_rate ?? null,
+        prev_avg_duration: p?.avg_duration ?? null,
+        // The in-progress bucket: its tooltip says "(so far)".
+        isPartial: endsNow && i === data.length - 1,
+        dateObj: wallClock,
+        originalDate: item.date,
+        pageviews: item.pageviews,
+        visitors: item.visitors,
+        // Divide by VISITS, never visitors. `visits` is null on daily_stats rows
+        // frozen before migration 164 — the point plots as a gap rather than
+        // silently reporting pages per PERSON under a label that says per visit.
+        pages_per_visit: item.visits != null && item.visits > 0 ? item.pageviews / item.visits : null,
+        bounce_rate: item.bounce_rate,
+        avg_duration: item.avg_duration,
+      }
+    })
+  }, [data, prevData, prevRange, prevFloor, dateRange.start, endsNow])
+  const prevKey = `prev_${metric}`
+  const hasPrevSeries = chartData.some((d) => d.prevDateObj !== null)
+  const drawPrev = hasPrevSeries && showPrev
 
   // ─── Rail rows ─────────────────────────────────────────────────────
   const rows = useMemo(() => {
@@ -287,7 +349,7 @@ export default function CommandDeck({
 
         {/* Hero chart — fills the deck; the rail stretches to match. */}
         <div className="flex min-w-0 flex-col">
-          <div className="flex items-center justify-between gap-3 px-4 pt-3">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-3">
             {/* The toolbar names the selected metric, so ONE resident glyph
                 here reaches all six definitions — the rail rows stay clean
                 (metric info layer, 22-08-2026). */}
@@ -295,7 +357,34 @@ export default function CommandDeck({
               {metric === 'visitors' && interval === 'day' ? 'Daily unique visitors' : activeMetric?.label}
               <MetricInfoTip metric={metric} example={buildExample(metric, stats)} identityWindowDays={identityWindowDays} />
             </span>
-            <div className="flex items-center gap-2">
+            {/* The legend: one entry per series, so the two inks are never a
+                guess. On a phone it takes its own row under the toolbar. The
+                "Previous period" entry is also the switch that hides it. The
+                previous dates are not repeated here — the tooltip names the
+                previous day of every bucket. */}
+            {hasPrevSeries && (
+              <div className="order-last flex w-full items-center gap-4 md:order-none md:ml-auto md:w-auto">
+                <span className="flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-neutral-400">
+                  <LegendLine color="var(--chart-1)" />
+                  {activeMetric?.label}
+                </span>
+                <button
+                  type="button"
+                  aria-pressed={showPrev}
+                  onClick={() => setShowPrev((v) => !v)}
+                  className={cn(
+                    'flex items-center gap-1.5 whitespace-nowrap text-xs font-medium transition-colors ease-apple',
+                    showPrev ? 'text-neutral-400 hover:text-neutral-200' : 'text-neutral-600 hover:text-neutral-400',
+                  )}
+                >
+                  <span className={cn('flex items-center', !showPrev && 'opacity-40')}>
+                    <LegendLine color={PREV_INK} dash="3 3" />
+                  </span>
+                  Previous period
+                </button>
+              </div>
+            )}
+            <div className="ml-auto flex items-center gap-2 md:ml-0">
               {/* 1h and 24h are fixed-granularity rolling windows, and a
                   single-day range is fixed HOURLY (owner ruling 02-09-2026:
                   minute granularity belongs to the 1h range alone) — a
@@ -363,6 +452,24 @@ export default function CommandDeck({
                 animationDuration={400}
               >
                 <VisxGrid horizontal vertical={false} stroke="var(--chart-grid)" numTicksRows={6} />
+                {/* The previous period, drawn FIRST so it sits behind. A dashed
+                    line with no fill (owner pick A, 12-10-2026); the chart's
+                    y-domain spans both series, so a taller previous day is
+                    never cut off. Gaps where a bucket has no partner or
+                    predates the site's data — never a drawn zero. */}
+                {drawPrev && (
+                  <VisxArea
+                    dataKey={prevKey}
+                    curve={curveLinear}
+                    fill={PREV_INK}
+                    fillOpacity={0}
+                    stroke={PREV_INK}
+                    strokeWidth={1.5}
+                    strokeDasharray={PREV_DASH}
+                    fadeStrokeEdges={false}
+                    breakAtMissing
+                  />
+                )}
                 <VisxArea
                   dataKey={metric}
                   // curveLinear — the sharp-chart round (01-09-2026, artifact
@@ -431,7 +538,7 @@ export default function CommandDeck({
                       const end = new Date(dateObj.getTime() + 60 * 60_000)
                       return `${formatTimeUTC(dateObj)} – ${formatTimeUTC(end)}`
                     }
-                    return formatDateFullUTC(dateObj)
+                    return point.isPartial ? `${formatDateFullUTC(dateObj)} (so far)` : formatDateFullUTC(dateObj)
                   }}
                   rows={(point) => {
                     // An hour with no events measurably HAD zero visitors —
@@ -440,11 +547,40 @@ export default function CommandDeck({
                     // Rates keep the em dash: no visits, no denominator.
                     const raw = point[metric] as number | null
                     const v = (metric === 'visitors' || metric === 'pageviews') ? (raw ?? 0) : raw
-                    return [{
+                    const current = {
                       color: 'var(--chart-1)',
                       label: activeMetric?.label || metric,
                       value: activeMetric ? activeMetric.format(v) : String(v ?? '—'),
-                    }]
+                    }
+                    if (!drawPrev) return [current]
+                    // The previous bucket at the same place in its window,
+                    // named by its own date so "previous" is never a guess.
+                    const pd = point.prevDateObj instanceof Date ? point.prevDateObj : null
+                    const pv = (point[prevKey] as number | null | undefined) ?? null
+                    const isCount = metric === 'visitors' || metric === 'pageviews'
+                    // The rail's guard (base 10): below it a percentage is noise.
+                    const base = isCount ? (pv ?? 0) : ((point.prev_visitors as number | null) ?? 0)
+                    const change: PctChangeResult = v != null && pv != null
+                      ? (activeMetric?.isRate ? guardedPointChange(v, pv, base) : guardedPctChange(v, pv, base))
+                      : null
+                    const pLabel = !pd ? 'Previous period'
+                      : interval === 'hour'
+                        ? `${formatDateShortUTC(pd)} ${formatTimeUTC(pd)}`
+                        : formatDateFullUTC(pd)
+                    return [
+                      current,
+                      { color: PREV_INK, label: pLabel, value: pv == null ? '—' : (activeMetric ? activeMetric.format(pv) : String(pv)) },
+                      {
+                        color: 'transparent',
+                        label: 'Change',
+                        // A count's difference means something at any size; its
+                        // percentage only past the base (small sites read an
+                        // em dash most days otherwise — 26 of 30, measured).
+                        value: isCount && v != null && pv != null
+                          ? (change?.type === 'pct' ? `${formatDiff(v - pv)} (${formatChange(change)})` : formatDiff(v - pv))
+                          : formatChange(change),
+                      },
+                    ]
                   }}
                 />
               </VisxAreaChart>

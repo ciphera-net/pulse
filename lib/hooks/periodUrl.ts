@@ -192,34 +192,52 @@ export function periodToDateRange(period: Period, now: Date = new Date()): { sta
 
 const DAY_MS = 86400000
 
+/** A strict "YYYY-MM-DD" → its UTC midnight in ms, or null (no day rollover: 2026-02-30 is null). */
+function ymdToUtc(ymd: string): number | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return null
+  const [y, m, d] = ymd.split('-').map(Number)
+  const ms = Date.UTC(y, m - 1, d)
+  return utcToYmd(ms) === ymd ? ms : null
+}
+
+function utcToYmd(ms: number): string {
+  const d = new Date(ms)
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+}
+
 /**
  * The equal-length window immediately before `range`, or null when the span
- * is unreasonable (>366 days) or would reach before 2020. Local date parts
- * throughout — a toISOString() here shifts a day near midnight outside UTC.
+ * is unreasonable (>366 days) or would reach before 2020.
+ *
+ * 🔴 CALENDAR ARITHMETIC, NEVER LOCAL MILLISECONDS. The range is a pair of
+ * site-local calendar days; it carries no instant. This used to subtract
+ * browser-local milliseconds, so a 23 h or 25 h day (a DST change in the
+ * BROWSER's zone) inside either window moved the result across a midnight and
+ * the previous window came out one day LONGER: 30 days against 31 across a
+ * fall-back, 17 against 18 when the previous window crossed a spring-forward
+ * (measured 12-10-2026, PUL-19). Every rail delta and funnel comparison in
+ * those weeks compared N days with N+1, and the chart pairs the two windows
+ * bucket for bucket, which needs equal lengths. UTC day arithmetic on the
+ * strings has no zone to shift.
  */
 export function previousDateRange(range: {
   start: string
   end: string
 }): { start: string; end: string } | null {
-  const s = new Date(range.start + 'T00:00:00')
-  const e = new Date(range.end + 'T00:00:00')
+  const s = ymdToUtc(range.start)
+  const e = ymdToUtc(range.end)
   // 🔴 A GUARD THAT COMPARES AGAINST NaN IS NOT A GUARD. An unparseable range
-  // (most easily an empty one) makes every Date here Invalid, and BOTH checks
-  // below are `>` / `<` comparisons — which are false for NaN — so an invalid
-  // input sailed through and this returned {start:"NaN-NaN-NaN", end:"NaN-NaN-NaN"}.
-  // That value is a non-empty string, so callers guarding on `prevRange?.start ?? ''`
-  // saw something truthy and issued a REAL request with NaN dates. Measured on
-  // staging 20-08-2026 against /funnels, once the pages began withholding their
-  // range while the period resolved (fetchableRange returns empty strings).
-  // Rejecting here fixes every caller at once; guarding at each call site would
-  // leave the next one to rediscover it.
-  if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return null
-  const duration = e.getTime() - s.getTime()
-  if (duration > 366 * DAY_MS) return null
-  const prevEnd = new Date(s.getTime() - DAY_MS)
-  const prevStart = new Date(prevEnd.getTime() - duration)
-  if (prevStart.getFullYear() < 2020) return null
-  return { start: formatDate(prevStart), end: formatDate(prevEnd) }
+  // (most easily an empty one) once sailed through `>` / `<` checks, which are
+  // false for NaN, and returned {start:"NaN-NaN-NaN", end:"NaN-NaN-NaN"} — a
+  // truthy string that callers sent as a REAL request (measured on staging
+  // 20-08-2026 against /funnels). Rejecting here fixes every caller at once.
+  if (s === null || e === null || e < s) return null
+  const spanMs = e - s
+  if (spanMs > 366 * DAY_MS) return null
+  const prevEnd = s - DAY_MS
+  const prevStart = prevEnd - spanMs
+  if (new Date(prevStart).getUTCFullYear() < 2020) return null
+  return { start: utcToYmd(prevStart), end: utcToYmd(prevEnd) }
 }
 
 /**

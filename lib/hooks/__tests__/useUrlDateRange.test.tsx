@@ -183,7 +183,7 @@ describe('siteNow', () => {
 })
 
 // ---------------------------------------------------------------------------
-// previousDateRange — unchanged pure function, unchanged tests.
+// previousDateRange — pure calendar arithmetic (UTC on the strings since PUL-19).
 // ---------------------------------------------------------------------------
 describe('previousDateRange rejects what it cannot parse', () => {
   it('returns null for an empty range — the shape a withheld range has', () => {
@@ -208,6 +208,30 @@ describe('previousDateRange rejects what it cannot parse', () => {
       start: '2026-08-07',
       end: '2026-08-13',
     })
+  })
+
+  it('returns null for an impossible day or a reversed range', () => {
+    expect(previousDateRange({ start: '2026-02-30', end: '2026-03-05' })).toBeNull()
+    expect(previousDateRange({ start: '2026-08-20', end: '2026-08-14' })).toBeNull()
+  })
+
+  // PUL-19 (12-10-2026): local-millisecond arithmetic made the previous window
+  // one day LONGER whenever either window crossed a DST change in the test
+  // runner's zone (America/New_York here: 08-03 and 01-11 in 2026). Europe's
+  // changes (29-03, 25-10) are included because the fix must not depend on
+  // which zone the browser is in.
+  const days = (r: { start: string; end: string }) =>
+    Math.round((Date.parse(r.end + 'T00:00:00Z') - Date.parse(r.start + 'T00:00:00Z')) / 86_400_000) + 1
+  it.each([
+    ['current window crosses a fall-back', '2026-10-14', '2026-11-12', '2026-09-14', '2026-10-13'],
+    ['previous window crosses a spring-forward', '2026-03-20', '2026-04-05', '2026-03-03', '2026-03-19'],
+    ['Europe fall-back inside the window', '2026-10-20', '2026-10-30', '2026-10-09', '2026-10-19'],
+    ['Europe spring-forward inside the window', '2026-03-25', '2026-04-03', '2026-03-15', '2026-03-24'],
+    ['no clock change', '2026-09-13', '2026-10-12', '2026-08-14', '2026-09-12'],
+  ])('keeps the length when the %s', (_label, start, end, prevStart, prevEnd) => {
+    const out = previousDateRange({ start, end })
+    expect(out).toEqual({ start: prevStart, end: prevEnd })
+    expect(days(out!)).toBe(days({ start, end }))
   })
 
   it('never returns a NaN-shaped date', () => {

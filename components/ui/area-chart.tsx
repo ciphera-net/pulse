@@ -1837,6 +1837,11 @@ export interface AreaProps {
    * LineConfig; the Area itself does not draw the hover dot.
    */
   dotColor?: string;
+  /**
+   * Dash the whole line — the dashboard's previous-period series (PUL-19). Its
+   * hover lights a dashed copy (see the highlight below), never a solid one.
+   */
+  strokeDasharray?: string;
 }
 
 export function Area({
@@ -1862,6 +1867,7 @@ export function Area({
   pointOpacity = 0.5,
   // dotColor is consumed by the tooltip layer through LineConfig, not here.
   dotColor: _dotColor,
+  strokeDasharray,
 }: AreaProps) {
   const {
     data,
@@ -2018,6 +2024,21 @@ export function Area({
     [dataKey, yScale, missingAsZero]
   );
 
+  // A DASHED line cannot light its hovered stretch with the dash window below:
+  // the window REPLACES the line's own dash pattern, and the lit stretch turned
+  // solid (PUL-19 round 2). It lights a copy of itself instead — same path, same
+  // dashes — clipped to the same bucket-either-side window the solid line
+  // lights, so the dashes stay exactly where they are and only brighten.
+  const highlightClipId = `area-hl-clip-${dataKey}-${uniqueId}`;
+  const highlightX = useMemo(() => {
+    if (selection?.active) return { x0: selection.startX, x1: selection.endX };
+    if (!tooltipData) return null;
+    const s = data[Math.max(0, tooltipData.index - 1)];
+    const e = data[Math.min(data.length - 1, tooltipData.index + 1)];
+    if (!(s && e)) return null;
+    return { x0: xScale(xAccessor(s)) ?? 0, x1: xScale(xAccessor(e)) ?? 0 };
+  }, [selection, tooltipData, data, xScale, xAccessor]);
+
   const isHovering = tooltipData !== null || selection?.active === true;
   const easing = "var(--ease-apple)";
 
@@ -2151,6 +2172,7 @@ export function Area({
                   defined={definedFn}
                   innerRef={pathRef}
                   stroke={strokePaint}
+                  strokeDasharray={strokeDasharray}
                   strokeLinecap="round"
                   strokeWidth={strokeWidth}
                   x={(d) => xScale(xAccessor(d)) ?? 0}
@@ -2233,7 +2255,32 @@ export function Area({
         showLine &&
         isHovering &&
         isLoaded &&
-        pathRef.current && (
+        pathRef.current &&
+        (strokeDasharray ? (
+          highlightX && (
+            <>
+              <defs>
+                <clipPath id={highlightClipId}>
+                  <rect
+                    height={innerHeight + 40}
+                    width={Math.max(0, highlightX.x1 - highlightX.x0)}
+                    x={highlightX.x0}
+                    y={-20}
+                  />
+                </clipPath>
+              </defs>
+              <path
+                clipPath={`url(#${highlightClipId})`}
+                d={pathRef.current.getAttribute("d") || ""}
+                fill="none"
+                stroke={resolvedStroke}
+                strokeDasharray={strokeDasharray}
+                strokeLinecap="round"
+                strokeWidth={strokeWidth}
+              />
+            </>
+          )
+        ) : (
           <path
             d={pathRef.current.getAttribute("d") || ""}
             fill="none"
@@ -2243,7 +2290,7 @@ export function Area({
             strokeLinecap="round"
             strokeWidth={strokeWidth}
           />
-        )}
+        ))}
     </>
   );
 }
