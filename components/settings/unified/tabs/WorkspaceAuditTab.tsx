@@ -20,6 +20,7 @@ import { SettingsPanel, EmptyRow } from '@/components/settings/panels'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
+import { Avatar, personAvatarSeed } from '@ciphera-net/facet-avatar'
 import { useAuth } from '@/lib/auth/context'
 import { getAuditLog, type AuditLogEntry } from '@/lib/api/audit'
 import { AUDIT_ACTIONS, actionLabelFor, actionTone } from '@/lib/audit/actions'
@@ -96,6 +97,13 @@ const AUDIT_LOG_DESCRIPTION =
 const AUDIT_LOG_DESCRIPTION_ALONE =
   'A record of changes made to your account: sites, goals, funnels, integrations, people and billing.'
 
+// Who an audit entry with a person id names: "You", their email when one
+// exists, else "Member <id8>", the Members tab's rule.
+function actorName(actorId: string, actorEmail: string | undefined, myId: string | undefined): string {
+  if (actorId === myId) return 'You'
+  return actorEmail || `Member ${actorId.slice(0, 8)}`
+}
+
 export default function WorkspaceAuditTab() {
   const { user } = useAuth()
   // Somebody alone does not see this page listed, but the route still renders
@@ -103,6 +111,7 @@ export default function WorkspaceAuditTab() {
   const alone = useTeamState() === 'alone'
   const { zone } = useDisplayZone()
   const [entries, setEntries] = useState<AuditLogEntry[]>([])
+  const [avatarSeeds, setAvatarSeeds] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
@@ -135,6 +144,7 @@ export default function WorkspaceAuditTab() {
     })
       .then(data => {
         setEntries(data.entries)
+        setAvatarSeeds(data.avatar_seeds)
         setTotal(data.total)
         setHasLoadedOnce(true)
       })
@@ -357,9 +367,26 @@ export default function WorkspaceAuditTab() {
                             {formatDateTimeFull(new Date(entry.occurred_at), zone)}
                           </TD>
                           <TD className="min-w-0 font-medium text-foreground">
-                            <span className="block truncate" title={entry.actor_email || 'System'}>
-                              {entry.actor_email || 'System'}
-                            </span>
+                            {entry.actor_id ? (
+                              // A person did this (PUL-21 round 4). This cell used to read
+                              // `actor_email || 'System'`, and Ciphera ID never hands out an
+                              // email, so every person's action said "System". Named as the
+                              // Members tab names people, with their avatar; people who have
+                              // left keep the avatar they chose (avatar_seeds, owner ruling D2).
+                              <span className="flex min-w-0 items-center gap-2">
+                                <Avatar seed={personAvatarSeed({ userId: entry.actor_id, avatarSeed: avatarSeeds[entry.actor_id] })} size={20} />
+                                <span className="block truncate" title={actorName(entry.actor_id, entry.actor_email, user?.id)}>
+                                  {actorName(entry.actor_id, entry.actor_email, user?.id)}
+                                </span>
+                              </span>
+                            ) : (
+                              // No person id: an email if the entry carries one (never an
+                              // avatar, which must not be seeded by personal data), else
+                              // "System", the only case that word is true.
+                              <span className="block truncate" title={entry.actor_email || 'System'}>
+                                {entry.actor_email || 'System'}
+                              </span>
+                            )}
                           </TD>
                           <TD title={label}>
                             <StatusChip tone={actionTone(entry.action)}>{label}</StatusChip>

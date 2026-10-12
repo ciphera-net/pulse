@@ -12,6 +12,7 @@ import {
   toast,
   getAuthErrorMessage,
 } from '@ciphera-net/facet'
+import { Avatar, personAvatarSeed } from '@ciphera-net/facet-avatar'
 import { useAuth } from '@/lib/auth/context'
 import { useIsOwner, useIsAdminOrOwner } from '@/lib/auth/permissions'
 import { getOrganization, updateOrganization, deleteOrganization, getOrganizationMembers, getUserOrganizations, transferOwnership, leaveOrganization, type OrganizationMember } from '@/lib/api/organization'
@@ -331,6 +332,8 @@ export default function WorkspaceGeneralTab() {
                             value: m.user_id,
                             label: m.user_email || `Member ${m.user_id.slice(0, 8)}`,
                             description: m.role,
+                            // The member's avatar in the picker's own icon slot (PUL-21 round 4).
+                            icon: <Avatar seed={personAvatarSeed({ userId: m.user_id, avatarSeed: m.avatar_seed })} size={20} />,
                           }))}
                           className="w-full"
                           aria-label="New owner"

@@ -27,6 +27,8 @@ export interface GetAuditLogParams {
 export interface GetAuditLogResponse {
   entries: AuditLogEntry[]
   total: number
+  /** The actors' stored avatar seeds, { actor_id: seed }, for those who generated one (PUL-21). */
+  avatar_seeds: Record<string, string>
 }
 
 export async function getAuditLog(params: GetAuditLogParams = {}): Promise<GetAuditLogResponse> {
@@ -43,5 +45,6 @@ export async function getAuditLog(params: GetAuditLogParams = {}): Promise<GetAu
   return {
     entries: Array.isArray(data?.entries) ? data.entries : [],
     total: typeof data?.total === 'number' ? data.total : 0,
+    avatar_seeds: data?.avatar_seeds && typeof data.avatar_seeds === 'object' ? data.avatar_seeds : {},
   }
 }

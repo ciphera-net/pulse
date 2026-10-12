@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Button, RailGrid, toast } from '@ciphera-net/facet'
+import { Avatar, personAvatarSeed } from '@ciphera-net/facet-avatar'
 import { DotsThree } from '@phosphor-icons/react'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { CopyBlock } from '@/components/ui/CopyBlock'
@@ -42,6 +43,7 @@ export default function WorkspaceMcpTab() {
   const alone = useTeamState() === 'alone'
   const [clientId, setClientId] = useState<McpClientId>('claude')
   const [connections, setConnections] = useState<Connection[]>([])
+  const [avatarSeeds, setAvatarSeeds] = useState<Record<string, string>>({})
   const [members, setMembers] = useState<OrganizationMember[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -62,6 +64,7 @@ export default function WorkspaceMcpTab() {
       // * Live connections only. The server decides the status; anything not "connected"
       // * (disconnected, or lapsed after 30 unused days) is history and is not listed.
       setConnections(res.connections.filter((c) => c.status === 'connected'))
+      setAvatarSeeds(res.avatar_seeds ?? {})
       setMembers(Array.isArray(people) ? people : [])
     } catch {
       // Surface the failure rather than an empty list that reads as "nothing is connected".
@@ -212,7 +215,15 @@ export default function WorkspaceMcpTab() {
                         // clauses and never strands a lone "·" (the API-keys rule).
                         <span className="flex flex-wrap gap-x-2 gap-y-0.5">
                           <span className="inline-flex items-center gap-x-2">
-                            <span>Connected by {who(c.user_id)}</span>
+                            {/* The person beside their name (PUL-21 round 4, option A); the
+                                row's leading slot stays the assistant's own logo. */}
+                            <span className="inline-flex items-center gap-1.5">
+                              {/* The trailing space is for the TEXT ("Connected by you" to a
+                                  screen reader); the gap does the visual spacing. */}
+                              {'Connected by '}
+                              <Avatar seed={personAvatarSeed({ userId: c.user_id, avatarSeed: avatarSeeds[c.user_id] })} size={16} />
+                              {who(c.user_id)}
+                            </span>
                             <span aria-hidden="true">·</span>
                             <span>
                               {c.scope_all_sites ? 'All sites' : `${c.site_ids.length} site${c.site_ids.length === 1 ? '' : 's'}`}

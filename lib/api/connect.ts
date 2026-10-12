@@ -87,7 +87,9 @@ export interface Connection {
 }
 
 export const listConnectedApps = () =>
-  apiRequest<{ connections: Connection[] }>('/connected-apps')
+  // avatar_seeds (PUL-21): the stored avatar seeds of the people who connected
+  // these apps, including anyone who has since left the team.
+  apiRequest<{ connections: Connection[]; avatar_seeds?: Record<string, string> }>('/connected-apps')
 
 export const disconnectApp = (connectionId: string) =>
   apiRequest<unknown>(`/connected-apps/${encodeURIComponent(connectionId)}`, { method: 'DELETE' })

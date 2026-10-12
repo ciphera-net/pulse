@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import type { Connection } from '@/lib/api/connect'
+import { avatarDataUri } from '@ciphera-net/facet-avatar/render'
 
 // Settings → MCP (PULSE-54, option A, owner 24-09-2026): setup first, then connections.
 // What these pin: only LIVE connections are listed (no history of disconnected or lapsed ones)
@@ -94,7 +95,8 @@ describe('WorkspaceMcpTab', () => {
     expect(claudeRow.querySelector('img[data-brand="claude"]')).toBeTruthy()
     expect(within(claudeRow).queryByText('Unverified')).toBeNull()
     const botRow = screen.getByTestId('connection-row-g2')
-    expect(botRow.querySelector('img')).toBeNull()
+    // No brand logo (the row's other img is the connecting person's avatar, PUL-21).
+    expect(botRow.querySelector('img[data-brand]')).toBeNull()
     expect(botRow.querySelector('[data-monogram]')?.textContent).toBe('W')
     expect(within(botRow).getByText('Unverified')).toBeTruthy()
   })
@@ -174,5 +176,18 @@ describe('WorkspaceMcpTab', () => {
     const tiles = container.querySelectorAll('[data-railgrid] > button')
     expect(tiles.length).toBe(8)
     expect(container.querySelectorAll('[data-railgrid] img[data-client]').length).toBe(7)
+  })
+})
+
+describe('WorkspaceMcpTab: the person who connected it (PUL-21 round 4)', () => {
+  // Their avatar sits before their name, from the connections' own avatar_seeds,
+  // so someone who has left the team still shows the avatar they chose.
+  it('draws the connecting person with their stored seed, and keeps the words', async () => {
+    const seed = 'AliceSeedAliceSeedAlic'
+    listConnectedApps.mockResolvedValue({ connections: [claude, bot], avatar_seeds: { u_alex: seed } })
+    render(<WorkspaceMcpTab />)
+    const row = await screen.findByTestId('connection-row-g2')
+    expect(within(row).getByText('Connected by alex@acme.com')).toBeTruthy()
+    await waitFor(() => expect(row.querySelector('img:not([data-brand])')?.getAttribute('src')).toBe(avatarDataUri(seed)))
   })
 })
