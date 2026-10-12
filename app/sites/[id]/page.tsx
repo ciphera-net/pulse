@@ -54,6 +54,7 @@ import {
   useStats,
   useSite,
   useDataWindow,
+  useDailyStats,
 } from '@/lib/swr/dashboard'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import InstallBanner from '@/components/dashboard/InstallBanner'
@@ -63,6 +64,11 @@ import { displayDomain } from '@/lib/utils/displayDomain'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { importLeftOutByFilter } from '@/lib/dashboard/importBoundary'
 
+
+
+// Windows that end at an instant rather than at a site day: their previous
+// period has no bucket-for-bucket counterpart, so the chart draws none.
+const ROLLING_PERIODS: ReadonlySet<string> = new Set(['30m', '1h', '6h', '24h'])
 
 export default function SiteDashboardPage() {
 
@@ -323,6 +329,21 @@ export default function SiteDashboardPage() {
   // unfiltered previous one — every KPI delta was garbage under any active
   // filter, measured as a true +13% rendered −46% red (F4).
   const { data: prevStats } = useStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '', filtersParam || undefined)
+  // The previous period's SERIES, for the chart's dashed line (PUL-19): the
+  // same window, the same filters and the same buckets as the series drawn.
+  // Only where the two windows line up bucket for bucket — whole site days in
+  // day or hour buckets. Rolling windows (30m, 1h, 6h, 24h) end at an instant,
+  // not a day, so their previous window as two DATES is a different shape;
+  // minute buckets (a young Today) are left out with them.
+  const seriesInterval = dashboard?.interval ?? interval
+  const comparesSeries = prevRange !== null && !ROLLING_PERIODS.has(period) && (seriesInterval === 'day' || seriesInterval === 'hour')
+  const { data: prevDaily } = useDailyStats(
+    siteId,
+    comparesSeries && prevRange ? prevRange.start : '',
+    comparesSeries && prevRange ? prevRange.end : '',
+    seriesInterval === 'hour' ? 'hour' : 'day',
+    filtersParam || undefined,
+  )
   // Derive typed values from single dashboard response
   const site = dashboard?.site ?? null
   // 🔴 `dashboard.site` IS THE SANITIZED PUBLIC SHAPE — the backend builds it
@@ -526,6 +547,9 @@ export default function SiteDashboardPage() {
           identityWindowDays={identityWindowOf(siteRecord)}
           imported={dashboard?.imported}
           prevImported={prevStats?.imported}
+          prevData={comparesSeries ? (prevDaily ?? null) : null}
+          prevRange={prevRange}
+          prevFloor={dataWindow?.from ?? null}
         />
       </div>
 

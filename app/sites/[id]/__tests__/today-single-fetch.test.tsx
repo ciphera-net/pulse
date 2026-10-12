@@ -96,6 +96,9 @@ vi.mock('@/lib/swr/dashboard', () => ({
   useDataWindow: () => null,
   useRealtime: () => ({ data: undefined }),
   useStats: () => ({ data: undefined }),
+  // The chart's previous-period series (PUL-19) — a separate request, not the
+  // dashboard fan-out this file counts.
+  useDailyStats: () => ({ data: undefined }),
   useDashboard: (
     siteId: string,
     start: string,
