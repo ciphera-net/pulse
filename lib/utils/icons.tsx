@@ -177,6 +177,13 @@ const REFERRER_REGISTRY: Record<string, ReferrerEntry> = {
   // the spaced aliases. Without an entry the label was URL-parsed as a host.
   producthunt: { display: 'Product Hunt', icon: () => brandIcon('producthunt', 'Product Hunt'), aliases: ['product hunt'], domain: 'producthunt.com' },
   hackernews:  { display: 'Hacker News', icon: () => brandIcon('ycombinator', 'Hacker News'), aliases: ['hacker news'], hostnames: ['news.ycombinator.com'], domain: 'news.ycombinator.com' },
+  // PUL-24: utm_source values measured on production. Judge.me's own icon is behind a bot wall
+  // (the favicon proxy misses it), so its row shows the globe until a mark is supplied. Shopify
+  // Email is an email campaign, not a site anyone came from: no domain, so domain mode keeps its
+  // name and it has no open link.
+  judgeme:     { display: 'Judge.me',    icon: () => <Globe className="w-5 h-5 text-neutral-400" />, favicon: true, hostnames: ['judge.me'], domain: 'judge.me' },
+  zalo:        { display: 'Zalo',        icon: () => brandIcon('zalo', 'Zalo'), hostnames: ['zalo.me'], domain: 'zalo.me' },
+  shopifyemail: { display: 'Shopify Email', icon: () => brandIcon('shopify', 'Shopify Email'), aliases: ['shopify email', 'shopify_email'] },
   stackoverflow: { display: 'Stack Overflow', icon: () => brandIcon('stackoverflow', 'Stack Overflow'), aliases: ['stack overflow'], domain: 'stackoverflow.com' },
 
   // ── Search engines ──
@@ -290,9 +297,8 @@ function getReferrerHostname(referrer: string): string | null {
  *      label).
  *   3. A bare (undotted) value that exactly matches a REGISTRY brand or alias
  *      (e.g. "ChatGPT", "fb") → that brand's own address (`domain`), else its
- *      first declared hostname (`hostnames[0]`), else the same `${key}.com`
- *      auto-derivation this file already uses elsewhere for
- *      `ALL_KNOWN_HOSTNAMES`.
+ *      first declared hostname (`hostnames[0]`), else no link: a brand with
+ *      no address of its own (Shopify Email) is not guessed one.
  *   4. A bare value that matches NO registry entry → no link — a referrer
  *      label with nowhere real to send a click (an in-app name the tracker
  *      recorded, not a brand this registry knows).
@@ -328,7 +334,9 @@ export function getOpenHostname(referrer: string | null | undefined): string | n
   // anthropic.com.
   if (entry.domain) return entry.domain
   if (entry.hostnames && entry.hostnames.length) return entry.hostnames[0]
-  return `${key}.com`
+  // No address of its own (Shopify Email: an email campaign). Never a guessed
+  // `${key}.com`, which would link "Shopify Email" to shopifyemail.com (PUL-24).
+  return null
 }
 
 /** The referring site's home URL, or null when `getOpenHostname` finds none. */
@@ -373,6 +381,11 @@ function resolveReferrer(referrer: string): ReferrerEntry | null {
 
 // ── Public API (same signatures as before) ──
 
+/** True when the value resolves to a registry brand (any spelling the registry knows). */
+export function isKnownReferrerBrand(referrer: string | null | undefined): boolean {
+  return typeof referrer === 'string' && resolveReferrer(referrer) !== null
+}
+
 export function getReferrerIcon(referrerName: string): ReactNode {
   if (!referrerName) return <Globe className="w-5 h-5 text-neutral-400" />
   const entry = resolveReferrer(referrerName)
@@ -397,14 +410,16 @@ export function getReferrerDisplayName(referrer: string): string {
   return capitalizeLabel(getReferrerLabel(hostname))
 }
 
-// A value is a host when it is dot-separated labels of [a-z0-9-], with an
-// optional :port — no spaces, no scheme. Deliberately stricter than
+// A value is a host when it is dot-separated labels of [a-z0-9_-], with an
+// optional :port, or a single label WITH a port (localhost:3000, a LAN machine
+// on :8000; PUL-24): no spaces, no scheme. A single label without a port is
+// still a name ("Newsletter"). Deliberately stricter than
 // getReferrerHostname above (which URL-parses ANYTHING, so a bare brand
 // word like "ChatGPT" comes back as a one-label "hostname"): referrer-domain
 // mode (PULSE-171) must tell "this raw value IS the address" apart from
 // "this is a brand name", and a permissive check would show a fabricated
 // address for a host-less row.
-const HOST_LIKE = /^[a-z0-9-]+(?:\.[a-z0-9-]+)+(?::\d+)?$/i
+const HOST_LIKE = /^(?:[a-z0-9_-]+(?:\.[a-z0-9_-]+)+(?::\d+)?|[a-z0-9_-]+:\d+)$/i
 
 /**
  * The lowercased host, or null when `referrer` doesn't look like one. Never
