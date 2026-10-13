@@ -338,9 +338,11 @@ function ReportMade({ site, made, onDone }: { site: Site; made: Made; onDone: ()
         </PanelRow>
       </PanelRows>
       <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
+        {/* The outbound arrow turns orange on hover, like every outbound
+            arrow in the app (PUL-22). */}
         <Button asChild variant="ghost" size="sm">
-          <a href={url} target="_blank" rel="noopener noreferrer">
-            <ArrowSquareOut className="h-4 w-4" />
+          <a href={url} target="_blank" rel="noopener noreferrer" className="group">
+            <ArrowSquareOut className="h-4 w-4 transition-colors group-hover:text-brand-ink" />
             Open report
           </a>
         </Button>
