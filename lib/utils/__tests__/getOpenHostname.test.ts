@@ -39,13 +39,17 @@ describe('getOpenHostname', () => {
     expect(getOpenHostname('search.google.com')).toBe('search.google.com')
   })
 
-  it('resolves a bare registry brand to its declared hostname', () => {
-    // Mutation checked: swapping `entry.hostnames[0]` for `entry.domain` (the
-    // OTHER per-brand address icons.tsx carries, used by
-    // getReferrerCanonicalAddress for a different purpose) changes this to
-    // 'chatgpt.com' — the exact bug this round's README documents finding
-    // and rejecting. This pins the hostnames[0] choice specifically.
-    expect(getOpenHostname('ChatGPT')).toBe('chat.openai.com')
+  it("resolves a bare registry brand to the platform's own address (`domain`)", () => {
+    // PUL-23 (13-10-2026): `domain` first. The 01-10 README rejected the dead
+    // `https://chatgpt/` (a one-label host), not chatgpt.com; this test used
+    // to pin hostnames[0], which lists ARRIVAL hosts, shorteners and
+    // redirectors among them, and sent X to t.co, WhatsApp to l.wl.co and
+    // Claude to anthropic.com.
+    expect(getOpenHostname('ChatGPT')).toBe('chatgpt.com')
+    expect(getOpenHostname('X')).toBe('x.com')
+    expect(getOpenHostname('WhatsApp')).toBe('whatsapp.com')
+    expect(getOpenHostname('Claude')).toBe('claude.ai')
+    expect(getOpenHostname('Telegram')).toBe('telegram.org')
   })
 
   it("resolves a bare registry brand with no declared hostnames to its auto-derived `${key}.com`", () => {
