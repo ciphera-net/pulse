@@ -52,10 +52,10 @@ describe('getOpenHostname', () => {
     expect(getOpenHostname('Telegram')).toBe('telegram.org')
   })
 
-  it("resolves a bare registry brand with no declared hostnames to its auto-derived `${key}.com`", () => {
-    // Mutation checked: removing the `${key}.com` fallback (returning null
-    // instead when `entry.hostnames` is absent) breaks this, since LinkedIn's
-    // registry entry carries no `hostnames` field.
+  it('never guesses an address for a brand that has none (PUL-24)', () => {
+    // The `${key}.com` fallback is gone: every site-brand declares its domain,
+    // so the guess could only fabricate one (Shopify Email → shopifyemail.com).
+    expect(getOpenHostname('Shopify Email')).toBeNull()
     expect(getOpenHostname('LinkedIn')).toBe('linkedin.com')
   })
 

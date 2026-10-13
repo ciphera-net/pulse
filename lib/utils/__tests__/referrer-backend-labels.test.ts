@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import {
+  isKnownReferrerBrand,
+  getReferrerAddress,
   getReferrerDisplayName,
   getReferrerCanonicalAddress,
   getReferrerFavicon,
@@ -22,7 +24,14 @@ const BACKEND_LABELS = [
   'Reddit', 'Snapchat', 'WhatsApp', 'Telegram', 'Threads', 'Medium', 'Quora', 'Stack Overflow',
   'Hacker News', 'Product Hunt', 'Google', 'Bing', 'Yahoo', 'DuckDuckGo', 'ChatGPT', 'Perplexity',
   'Claude', 'Gemini', 'Copilot', 'Meta AI', 'DeepSeek', 'Grok', 'You.com', 'Phind',
+  // PUL-24
+  'Judge.me', 'Zalo', 'Shopify Email',
 ]
+
+// Labels for a source that is not a site anyone came from (an email campaign):
+// a registry brand with a logo, but no address, so no open link and domain mode
+// keeps its name.
+const NOT_A_SITE = new Set(['Shopify Email'])
 
 // pulse-backend's knownReferrerDomains: an exact host → the label it stores.
 // A browser referrer from that host is stored as the lowercase host instead,
@@ -37,12 +46,26 @@ const BACKEND_DOMAINS: Record<string, string> = {
   'chatgpt.com': 'ChatGPT', 'openai.com': 'ChatGPT', 'perplexity.ai': 'Perplexity', 'claude.ai': 'Claude',
   'anthropic.com': 'Claude', 'gemini.google.com': 'Gemini', 'copilot.microsoft.com': 'Copilot',
   'deepseek.com': 'DeepSeek', 'grok.com': 'Grok', 'you.com': 'You.com', 'phind.com': 'Phind',
+  'judge.me': 'Judge.me', 'zalo.me': 'Zalo',
 }
 
 describe('every label pulse-backend stores resolves to a registry brand (PUL-23)', () => {
-  it.each(BACKEND_LABELS)('%s has a registry entry with an address', (label) => {
-    expect(getReferrerCanonicalAddress(label), `${label} has no registry entry`).not.toBeNull()
+  it.each(BACKEND_LABELS)('%s is a registry brand, with an address unless it is not a site', (label) => {
+    expect(isKnownReferrerBrand(label), `${label} has no registry entry`).toBe(true)
+    if (NOT_A_SITE.has(label)) {
+      expect(getReferrerCanonicalAddress(label)).toBeNull()
+      expect(getOpenHostname(label)).toBeNull()
+    } else {
+      expect(getReferrerCanonicalAddress(label), `${label} has no address`).not.toBeNull()
+    }
     expect(getReferrerDisplayName(label)).not.toMatch(/%/)
+  })
+
+  it('spellings stored before the backend knew these sources resolve too (PUL-24)', () => {
+    // utm_source=judgeme / shopify_email were stored with the capitalise default.
+    expect(getReferrerDisplayName('Judgeme')).toBe('Judge.me')
+    expect(getReferrerDisplayName('Shopify_email')).toBe('Shopify Email')
+    expect(getReferrerDisplayName('Zalo')).toBe('Zalo')
   })
 
   it.each(Object.entries(BACKEND_DOMAINS))('%s and the label %s are one row in name mode', (host, label) => {
@@ -124,4 +147,20 @@ describe('a label with whitespace is never parsed as a host (PUL-23)', () => {
     expect(getReferrerFavicon('foo bar.com')).toBeNull()
     expect(getReferrerCanonicalAddress('Some App')).toBeNull()
   })
+})
+
+describe('host-like values the card reads as addresses (PUL-24)', () => {
+  it.each([
+    ['localhost:3000', 'localhost:3000'],
+    ['gladys:8000', 'gladys:8000'],
+    ['psyducks-beak.x-a32.bulbasaur_domain.x-a32.ww2.new-rutor.org', 'psyducks-beak.x-a32.bulbasaur_domain.x-a32.ww2.new-rutor.org'],
+    ['Example.com', 'example.com'],
+  ])('%s is the address %s', (value, address) => {
+    expect(getReferrerAddress(value)).toBe(address)
+  })
+
+  it.each(['Shopify_email', 'Newsletter', 'localhost', 'meta_ai', 'foo bar.com', 'https://example.com'])(
+    '%s is a name, not an address', (value) => {
+      expect(getReferrerAddress(value)).toBeNull()
+    })
 })
