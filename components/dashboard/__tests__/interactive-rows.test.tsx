@@ -16,8 +16,9 @@ import type { TopPage } from '@/lib/api/stats'
 // Two guards, because one alone is not enough:
 //   * a SOURCE SCAN over all six cards, so a new row cannot regress to a bare
 //     div without failing (13 rows are too many to pin one render at a time);
-//   * a BEHAVIOURAL test of the one row that had to keep its own key handler,
-//     because it contains a real link and so cannot be a <button>.
+//   * a BEHAVIOURAL test of the pages row, which holds a real link and so
+//     cannot itself be a <button>. Since PUL-22 it uses the Referrers device:
+//     a full-row overlay <button> filters, and the link is its sibling.
 // ---------------------------------------------------------------------------
 
 const ROOT = path.resolve(__dirname, '../../..')
@@ -117,36 +118,22 @@ describe('the pages row keeps its link and still works from the keyboard', () =>
     totals: { pageviews: 100, visitors: 80 },
   }
 
-  it('is operable by Enter and by Space, and Space does not scroll', () => {
+  it('filters from a real <button type="button">, so Enter and Space work natively', () => {
     const onFilter = vi.fn()
     render(<ContentStats {...props} onFilter={onFilter} />)
-    const row = screen.getAllByRole('button', { name: /pricing/i })[0]
-    expect(row.getAttribute('tabindex')).toBe('0')
-
-    fireEvent.keyDown(row, { key: 'Enter' })
+    const filter = screen.getByRole('button', { name: 'Filter by page: /pricing' })
+    expect(filter.tagName).toBe('BUTTON')
+    expect(filter.getAttribute('type')).toBe('button')
+    fireEvent.click(filter)
     expect(onFilter).toHaveBeenCalledWith({ dimension: 'page', operator: 'is', values: ['/pricing'] })
-
-    onFilter.mockClear()
-    const spaceEvent = createEvent(row, ' ')
-    expect(onFilter).toHaveBeenCalledTimes(1)
-    expect(spaceEvent.defaultPrevented, 'Space must not scroll the page').toBe(true)
   })
 
-  it('ignores keys that are not activation keys', () => {
-    const onFilter = vi.fn()
-    render(<ContentStats {...props} onFilter={onFilter} />)
-    const row = screen.getAllByRole('button', { name: /pricing/i })[0]
-    fireEvent.keyDown(row, { key: 'a' })
-    fireEvent.keyDown(row, { key: 'Tab' })
-    expect(onFilter).not.toHaveBeenCalled()
-  })
-
-  it('still contains a real link to the page, not a nested control', () => {
+  it('still contains a real, labelled link to the page, not nested in any control', () => {
     render(<ContentStats {...props} onFilter={vi.fn()} />)
-    const link = screen.getByRole('link', { name: '' })
+    const link = screen.getByRole('link', { name: 'Open /pricing in a new tab' })
     expect(link.getAttribute('href')).toBe('https://ciphera.net/pricing')
-    // The row is NOT a <button>, so the link is not nested inside one.
     expect(link.closest('button')).toBeNull()
+    expect(link.closest('[role="button"]')).toBeNull()
   })
 
   it('is not a tab stop when the card cannot filter', () => {
@@ -154,10 +141,3 @@ describe('the pages row keeps its link and still works from the keyboard', () =>
     expect(screen.queryAllByRole('button', { name: /pricing/i })).toEqual([])
   })
 })
-
-/** fireEvent.keyDown returns whether the default was prevented. */
-function createEvent(el: Element, key: string) {
-  const ev = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
-  el.dispatchEvent(ev)
-  return ev
-}

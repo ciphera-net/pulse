@@ -5,8 +5,8 @@ import type { ImportedProvenance } from '@/lib/api/stats'
 import type { ImportedDimension } from '@/lib/import/source-display'
 import { useState } from 'react'
 import { TopPage } from '@/lib/api/stats'
-import { FileText } from '@phosphor-icons/react'
-import { ArrowUpRightIcon, Switcher } from '@ciphera-net/facet'
+import { ArrowSquareOut, FileText } from '@phosphor-icons/react'
+import { Switcher } from '@ciphera-net/facet'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
 import { useFullDimensionList, type FullListKind } from '@/lib/swr/dashboard'
 import { type DimensionFilter } from '@/lib/filters'
@@ -152,46 +152,44 @@ export default function ContentStats({ topPages, entryPages, exitPages, domain, 
               {displayedData.map((row, i) => {
                 const barWidth = rowBarWidth(row, allData)
                 return (
-                  // This row cannot become a <button>: it contains a real
-                  // "open this page" link, and a link inside a button is
-                  // invalid — the control-inside-a-control pattern the info
-                  // glyph round removed. It gets keyboard semantics instead,
-                  // so it is reachable and operable without a mouse.
                   <CascadeRow key={row.path} index={i}>
-                  <div
-                    {...(onFilter
-                      ? {
-                          role: 'button' as const,
-                          tabIndex: 0,
-                          onClick: () => onFilter({ dimension: 'page', operator: 'is', values: [row.path] }),
-                          onKeyDown: (e: React.KeyboardEvent) => {
-                            if (e.key !== 'Enter' && e.key !== ' ') return
-                            // Space scrolls the page by default; a control must not.
-                            e.preventDefault()
-                            onFilter({ dimension: 'page', operator: 'is', values: [row.path] })
-                          },
-                        }
-                      : {})}
-                    className={`interactive-row relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}
-                  >
-                    <RowBar width={barWidth} index={i} />
-                    <div className="relative flex-1 truncate text-white flex items-center">
-                      <span className="truncate">{row.path}</span>
+                  {/* The Referrers row's device (PUL-20), ported here (PUL-22):
+                     a click anywhere on the row FILTERS, and the page opens from
+                     one small icon after the path. The row holds a real link, so
+                     it cannot be a <button> (and a role="button" div around a
+                     link is the same nesting to a screen reader): it is a <div>
+                     with a full-row overlay button for the filter, and the icon
+                     above it (relative z-10) opting back into pointer events for
+                     its own box only. Everything else is pointer-events-none so
+                     clicks reach the overlay. */}
+                  <div className={`interactive-row w-full text-left relative overflow-hidden flex items-center justify-between h-9 group rounded-none px-2 -mx-2${onFilter ? ' cursor-pointer' : ''}`}>
+                    {onFilter && (
+                      <button
+                        type="button"
+                        className="absolute inset-0 w-full h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange"
+                        aria-label={`Filter by page: ${row.path}`}
+                        onClick={() => onFilter({ dimension: 'page', operator: 'is', values: [row.path] })}
+                      />
+                    )}
+                    <RowBar width={barWidth} index={i} className="pointer-events-none" />
+                    <div className="relative flex-1 min-w-0 text-white flex items-center gap-3 pointer-events-none">
+                      <span className="truncate" title={row.path}>{row.path}</span>
+                      {/* Hidden at rest; the row's hover or the icon's own
+                          keyboard focus reveals it. Touch has no hover, so it
+                          always shows there. p-1 -m-1: a 22 px hit box around a
+                          14 px glyph. Orange on its own hover, like every
+                          outbound arrow (PUL-22). */}
                       <a
                         href={`https://${domain.replace(/^https?:\/\//, '')}${row.path}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={e => e.stopPropagation()}
-                        className="ml-2 flex-shrink-0"
+                        aria-label={`Open ${row.path} in a new tab`}
+                        className="relative z-10 pointer-events-auto -m-1 shrink-0 rounded-sm p-1 text-neutral-500 opacity-0 transition ease-apple hover:text-brand-ink focus:outline-none focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-brand-orange group-hover:opacity-100 [@media(hover:none)]:opacity-100"
                       >
-                        {/* Visible by default on touch: a phone has no hover, so
-                            this open-page link was permanently invisible yet
-                            still tappable. Bigger and dimmed on mobile, restored
-                            to the hover-reveal treatment at md+. */}
-                        <ArrowUpRightIcon className="w-4 h-4 opacity-60 md:w-3 md:h-3 md:opacity-0 text-neutral-400 md:group-hover:opacity-100 transition-opacity hover:text-brand-ink ease-apple" />
+                        <ArrowSquareOut className="h-3.5 w-3.5" aria-hidden="true" />
                       </a>
                     </div>
-                    <MetricRowStat row={row} totals={totals} views={twinColumns} />
+                    <MetricRowStat row={row} totals={totals} views={twinColumns} className="pointer-events-none" />
                   </div>
                   </CascadeRow>
                 )

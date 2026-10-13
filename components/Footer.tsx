@@ -76,15 +76,17 @@ function FooterLinkItem({
   Component: React.ElementType
 }) {
   if (link.external) {
+    // The outbound arrow turns orange while its link is hovered, like every
+    // outbound arrow in the app (PUL-22).
     return (
       <a
         href={link.href}
         target="_blank"
         rel="noopener noreferrer"
-        className={LINK_CLASS}
+        className={`group ${LINK_CLASS}`}
       >
         {link.name}
-        <ArrowUpRightIcon aria-hidden="true" className="ml-1 inline h-3 w-3" />
+        <ArrowUpRightIcon aria-hidden="true" className="ml-1 inline h-3 w-3 transition-colors duration-fast motion-reduce:transition-none group-hover:text-brand-ink" />
       </a>
     )
   }

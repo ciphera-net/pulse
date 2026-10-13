@@ -338,12 +338,14 @@ export default function Sources({
                           // keyboard focus reveals it — the device the % badge
                           // uses. Touch has no hover, so it always shows there.
                           // p-1 -m-1: a 22 px hit box around a 14 px glyph.
+                          // Orange on its own hover, like every outbound arrow
+                          // (PUL-22); ContentStats carries the same device.
                           <a
                             href={`https://${openHostname}/`}
                             target="_blank"
                             rel="noopener noreferrer"
                             aria-label={`Open ${label} in a new tab`}
-                            className="relative z-10 pointer-events-auto -m-1 shrink-0 rounded-sm p-1 text-neutral-500 opacity-0 transition-opacity ease-apple hover:text-neutral-200 focus:outline-none focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-brand-orange group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+                            className="relative z-10 pointer-events-auto -m-1 shrink-0 rounded-sm p-1 text-neutral-500 opacity-0 transition ease-apple hover:text-brand-ink focus:outline-none focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-brand-orange group-hover:opacity-100 [@media(hover:none)]:opacity-100"
                           >
                             <ArrowSquareOut className="h-3.5 w-3.5" aria-hidden="true" />
                           </a>
