@@ -182,7 +182,7 @@ export const PLAN_FEATURE_MATRIX: PlanFeatureGroup[] = [
       { label: 'API access', values: acrossPlans(true) },
       { label: 'Data export (CSV, JSON, Excel)', values: acrossPlans(true) },
       { label: 'Cookie-free tracking', values: acrossPlans(true) },
-      { label: 'GDPR compliant', values: acrossPlans(true) },
+      { label: 'No cookies, no personal data stored', values: acrossPlans(true) },
       { label: 'Swiss infrastructure', values: acrossPlans(true) },
       { label: '100% data ownership', values: acrossPlans(true) },
     ],

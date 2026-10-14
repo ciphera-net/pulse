@@ -129,8 +129,8 @@ export function Footer({ LinkComponent = Link }: FooterProps) {
                 </span>
               </Link>
               <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
-                Simple, privacy-first web analytics. No cookies, no tracking, no
-                consent banners — insight without surveillance.
+                Simple, privacy-first web analytics. Sets no cookies and stores no
+                personal data — insight without surveillance.
               </p>
               {/* Social block mirrors ciphera-website's Footer verbatim: same
                   order (GitHub, LinkedIn, X, Discord), same inline SVG glyphs, same

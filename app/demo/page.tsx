@@ -19,7 +19,7 @@ import { DEFAULT_OG_IMAGES } from '@/lib/og'
 const DEMO_SITE_ID = 'e6a95eb8-8edb-44d4-a4e2-c400aea174a4'
 
 const description =
-  'Our analytics dashboard, public — the live traffic of ciphera.net, the same view we use. Cookie-free, GDPR-compliant web analytics you can explore. No signup required.'
+  'Our analytics dashboard, public — the live traffic of ciphera.net, the same view we use. Cookie-free web analytics you can explore. No signup required.'
 
 export const metadata: Metadata = {
   title: 'Live demo',
