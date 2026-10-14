@@ -1,5 +1,6 @@
 import Script from 'next/script'
 import { Toaster } from '@ciphera-net/facet'
+import { UndoProvider } from '@ciphera-net/facet-hold'
 import { AuthProvider } from '@/lib/auth/context'
 import SWRProvider from '@/components/SWRProvider'
 import type { Metadata, Viewport } from 'next'
@@ -135,7 +136,13 @@ export default function RootLayout({
         <Script defer src="https://js.ciphera.net/script.interactions.js" />
         <SWRProvider>
           <AuthProvider>
-            <LayoutContent>{children}</LayoutContent>
+            {/* One Undo bar for the whole app (PUL-28): a confirmed destructive
+                action is sent only when its window runs out. Above the routes,
+                so a delete that navigates (a site) keeps its Undo; inside the
+                auth provider, whose session the deferred request needs. */}
+            <UndoProvider>
+              <LayoutContent>{children}</LayoutContent>
+            </UndoProvider>
             <Toaster />
           </AuthProvider>
         </SWRProvider>

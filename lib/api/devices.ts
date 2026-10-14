@@ -1,4 +1,4 @@
-import apiRequest from './client'
+import apiRequest, { type SendOptions } from './client'
 
 export interface TrustedDevice {
   id: string
@@ -12,8 +12,9 @@ export async function getUserDevices(): Promise<{ devices: TrustedDevice[] }> {
   return apiRequest<{ devices: TrustedDevice[] }>('/auth/user/devices')
 }
 
-export async function removeDevice(deviceId: string): Promise<void> {
+export async function removeDevice(deviceId: string, send: SendOptions = {}): Promise<void> {
   return apiRequest<void>(`/auth/user/devices/${deviceId}`, {
     method: 'DELETE',
+    keepalive: send.keepalive,
   })
 }

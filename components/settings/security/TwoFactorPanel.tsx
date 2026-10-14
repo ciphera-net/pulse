@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { Button, Input, Modal, Switcher, toast } from '@ciphera-net/facet'
+import { HoldDialog } from '@ciphera-net/facet-hold'
+import { Prohibit, ArrowCounterClockwise } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
 import {
   setup2FA,
@@ -50,6 +52,17 @@ export default function TwoFactorPanel() {
     setSetup(null)
   }
 
+  // Closes the disable/regenerate HoldDialog, and ONLY if it is still the one
+  // open. HoldDialog closes itself when its onConfirm resolves; a successful
+  // regenerate has already moved on to the 'codes' dialog by then, and a
+  // functional update leaves that handoff alone (no flag to keep in sync).
+  const closeHoldDialog = (which: 'disable' | 'regenerate') => {
+    setDialog((d) => (d === which ? null : d))
+    setError(null)
+    setCode('')
+    setFactor('app')
+  }
+
   const startEnable = async () => {
     setBusy(true)
     try {
@@ -85,25 +98,27 @@ export default function TwoFactorPanel() {
     }
   }
 
-  const disable = async (e: React.FormEvent) => {
-    e.preventDefault()
+  // PUL-28 ruling 6: the hold sends at once, no Undo. The code is
+  // checked by the same request that acts, so a mistyped code is reported
+  // inside the dialog rather than deferred behind a bar that could run out
+  // before anyone reads it.
+  const confirmDisable = async () => {
     setBusy(true)
     setError(null)
     try {
       await disable2FA('', factor === 'app' ? { totp_code: code } : { recovery_code: code })
       await refresh()
       toast.success('Two-factor authentication is off.')
-      setBusy(false)
-      close()
-    } catch {
+    } catch (err) {
       setError(factor === 'app' ? CODE_DID_NOT_WORK : "That recovery code didn't work. Each one works once.")
       setCode('')
       setBusy(false)
+      throw err
     }
+    setBusy(false)
   }
 
-  const regenerate = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const confirmRegenerate = async () => {
     setBusy(true)
     setError(null)
     try {
@@ -111,13 +126,16 @@ export default function TwoFactorPanel() {
       toast.success('New recovery codes issued. The old ones no longer work.')
       setCodes(res.recovery_codes)
       setCode('')
+      // Hand off to the codes dialog; HoldDialog's auto-close that follows
+      // only closes 'regenerate' (closeHoldDialog), so this survives it.
       setDialog('codes')
-    } catch {
+    } catch (err) {
       setError(CODE_DID_NOT_WORK)
       setCode('')
-    } finally {
       setBusy(false)
+      throw err
     }
+    setBusy(false)
   }
 
   const copyCodes = async () => {
@@ -147,7 +165,7 @@ export default function TwoFactorPanel() {
           caption={enabled ? 'A code from your app is required at sign-in.' : 'Add a second step to signing in.'}
           control={
             enabled ? (
-              <Button variant="outline" size="sm" className={DESTRUCTIVE_OUTLINE} onClick={() => setDialog('disable')}>
+              <Button variant="outline" size="sm" className={DESTRUCTIVE_OUTLINE} aria-haspopup="dialog" onClick={() => setDialog('disable')}>
                 Turn off…
               </Button>
             ) : (
@@ -168,7 +186,7 @@ export default function TwoFactorPanel() {
             label="Recovery codes"
             caption="Each code signs you in once if you lose your app."
             control={
-              <Button variant="outline" size="sm" onClick={() => setDialog('regenerate')}>
+              <Button variant="outline" size="sm" aria-haspopup="dialog" onClick={() => setDialog('regenerate')}>
                 Regenerate…
               </Button>
             }
@@ -209,12 +227,21 @@ export default function TwoFactorPanel() {
         )}
       </Modal>
 
-      {/* Turn off: a second factor is the whole of what is asked for. */}
-      <Modal isOpen={dialog === 'disable'} onClose={close} title="Turn off two-factor authentication">
-        <form onSubmit={disable} className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Signing in will only need your password again. Enter a code from your app, or one of your recovery codes.
-          </p>
+      {/* Turn off: a second factor is the whole of what is asked for. The
+          hold sends at once (PUL-28, ruling 6): no Undo, because the code is
+          the proof the request itself checks. */}
+      <HoldDialog
+        open={dialog === 'disable'}
+        onOpenChange={(open) => { if (!open) closeHoldDialog('disable') }}
+        title="Turn off two-factor authentication?"
+        description="Signing in will only need your password again. Enter a code from your app, or one of your recovery codes."
+        holdLabel="Hold to turn off"
+        icon={<Prohibit weight="bold" className="h-4 w-4" aria-hidden="true" />}
+        disabled={!code}
+        error={error}
+        onConfirm={confirmDisable}
+      >
+        <div className="space-y-4">
           <Switcher
             aria-label="Second factor"
             tone="solid"
@@ -232,41 +259,34 @@ export default function TwoFactorPanel() {
             autoComplete="one-time-code"
             placeholder={factor === 'app' ? '6-digit code' : 'Recovery code'}
             value={code}
+            disabled={busy}
             onChange={(e) => setCode(factor === 'app' ? e.target.value.replace(/\D/g, '').slice(0, 6) : e.target.value.trim())}
           />
-          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={close} disabled={busy}>Cancel</Button>
-            <Button type="submit" variant="destructive" size="sm" disabled={busy || !code}>
-              {busy ? 'Turning off…' : 'Turn off'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+        </div>
+      </HoldDialog>
 
       {/* Regenerate: the app code proves it is still you before the old codes die. */}
-      <Modal isOpen={dialog === 'regenerate'} onClose={close} title="Regenerate recovery codes">
-        <form onSubmit={regenerate} className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Your current codes stop working. Enter a code from your app to continue.
-          </p>
-          <Input
-            aria-label="Code from your app"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            placeholder="6-digit code"
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-          />
-          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={close} disabled={busy}>Cancel</Button>
-            <Button type="submit" size="sm" disabled={busy || code.length !== 6}>
-              {busy ? 'Regenerating…' : 'Regenerate'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+      <HoldDialog
+        open={dialog === 'regenerate'}
+        onOpenChange={(open) => { if (!open) closeHoldDialog('regenerate') }}
+        title="Issue new recovery codes?"
+        description="Your current codes stop working. Enter a code from your app to continue."
+        holdLabel="Hold to issue new codes"
+        icon={<ArrowCounterClockwise weight="bold" className="h-4 w-4" aria-hidden="true" />}
+        disabled={code.length !== 6}
+        error={error}
+        onConfirm={confirmRegenerate}
+      >
+        <Input
+          aria-label="Code from your app"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          placeholder="6-digit code"
+          value={code}
+          disabled={busy}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+        />
+      </HoldDialog>
 
       {/* The codes, shown once. */}
       <Modal isOpen={dialog === 'codes'} onClose={close} title="Your recovery codes">

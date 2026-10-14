@@ -2,19 +2,22 @@
 
 import { useState } from 'react'
 import { Button, Input, Select, toast, getAuthErrorMessage } from '@ciphera-net/facet'
+import { HoldDialog } from '@ciphera-net/facet-hold'
+import { Plugs } from '@phosphor-icons/react'
 import { useGSCStatus, useBunnyStatus, useBingStatus } from '@/lib/swr/dashboard'
 import { disconnectGSC, getGSCAuthURL, type GSCStatus } from '@/lib/api/gsc'
 import { disconnectBunny, getBunnyPullZones, connectBunny, type BunnyPullZone, type BunnyStatus } from '@/lib/api/bunny'
 import { disconnectBing, listBingSites, connectBing, type BingVerifiedSite, type BingStatus } from '@/lib/api/bing'
 import { formatDateTime } from '@/lib/utils/formatDate'
 import { useCan } from '@/lib/auth/permissions'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { StatusChip, type ChipTone } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
 import { DESTRUCTIVE_OUTLINE } from '@/components/settings/unified/DangerZone'
 import { LogoTile, ServiceHeaderRow, DetailRows, SetupReveal } from '@/components/settings/integrationRows'
+import { useDeferredRemoval } from '@/lib/hold/useDeferredRemoval'
+import { usePendingKeys } from '@/lib/hold/pending'
 
 function GoogleIcon() {
   return (
@@ -94,6 +97,7 @@ function IntegrationHeaderRow({
   onDisconnect,
   connectLabel = 'Connect',
   connecting = false,
+  waiting = false,
   expanded,
   canManage,
 }: {
@@ -112,6 +116,12 @@ function IntegrationHeaderRow({
   onDisconnect: () => void
   connectLabel?: string
   connecting?: boolean
+  /**
+   * A disconnect is waiting behind the Undo bar: the card reads disconnected
+   * but the server still holds the connection, and a reconnect made now would
+   * be removed by that disconnect when it is sent. Connect stays off.
+   */
+  waiting?: boolean
   /** Whether Connect discloses an inline setup form beneath this row. */
   expanded?: boolean
   canManage: boolean
@@ -130,7 +140,7 @@ function IntegrationHeaderRow({
             <StatusChip tone={chip.tone} dot>{chip.label}</StatusChip>
             {canManage && (
               connected ? (
-                <Button variant="outline" size="sm" className={DESTRUCTIVE_OUTLINE} onClick={onDisconnect}>
+                <Button variant="outline" size="sm" className={DESTRUCTIVE_OUTLINE} onClick={onDisconnect} aria-haspopup="dialog">
                   Disconnect
                 </Button>
               ) : (
@@ -138,7 +148,7 @@ function IntegrationHeaderRow({
                   variant="outline"
                   size="sm"
                   onClick={onConnect}
-                  disabled={connecting}
+                  disabled={connecting || waiting}
                   aria-expanded={expanded}
                 >
                   {connecting ? 'Connecting…' : connectLabel}
@@ -412,6 +422,10 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
   const [retryingGSC, setRetryingGSC] = useState(false)
   const [retryingBunny, setRetryingBunny] = useState(false)
   const [retryingBing, setRetryingBing] = useState(false)
+  const removeLater = useDeferredRemoval()
+  // A disconnect waiting behind the Undo bar (PUL-28) reads as disconnected
+  // at once: the card, not a row, is what hides.
+  const pendingKeys = usePendingKeys()
 
   if (gscLoading || bunnyLoading || bingLoading) {
     return <SettingsLoadingState rows={6} />
@@ -463,35 +477,53 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
 
   const handleDisconnectGSC = () => setConfirmDisconnect('gsc')
 
-  const doDisconnectGSC = async () => {
-    await disconnectGSC(siteId)
-    await mutateGSC()
-    toast.success('Google Search Console disconnected')
+  // Disconnected at once; the request is sent when the Undo window runs out
+  // (PUL-28).
+  const doDisconnectGSC = () => {
+    removeLater({
+      key: `integration:gsc:${siteId}`,
+      message: 'Search Console disconnected',
+      send: ({ keepalive }) => disconnectGSC(siteId, { keepalive }),
+      refresh: mutateGSC,
+      failure: "Couldn't disconnect Search Console. Try again.",
+    })
   }
 
   const handleConnectBunny = () => setOpenSetup('bunny')
   const handleDisconnectBunny = () => setConfirmDisconnect('bunny')
 
-  const doDisconnectBunny = async () => {
-    await disconnectBunny(siteId)
-    await mutateBunny()
-    setOpenSetup(prev => (prev === 'bunny' ? null : prev))
-    toast.success('Bunny CDN disconnected')
+  const doDisconnectBunny = () => {
+    removeLater({
+      key: `integration:bunny:${siteId}`,
+      message: 'Bunny CDN disconnected',
+      send: ({ keepalive }) => disconnectBunny(siteId, { keepalive }),
+      refresh: () => {
+        mutateBunny()
+        setOpenSetup(prev => (prev === 'bunny' ? null : prev))
+      },
+      failure: "Couldn't disconnect Bunny CDN. Try again.",
+    })
   }
 
   const handleConnectBing = () => setOpenSetup('bing')
   const handleDisconnectBing = () => setConfirmDisconnect('bing')
 
-  const doDisconnectBing = async () => {
-    await disconnectBing(siteId)
-    await mutateBing()
-    setOpenSetup(prev => (prev === 'bing' ? null : prev))
-    toast.success('Bing Webmaster Tools disconnected')
+  const doDisconnectBing = () => {
+    removeLater({
+      key: `integration:bing:${siteId}`,
+      message: 'Bing disconnected',
+      send: ({ keepalive }) => disconnectBing(siteId, { keepalive }),
+      refresh: () => {
+        mutateBing()
+        setOpenSetup(prev => (prev === 'bing' ? null : prev))
+      },
+      failure: "Couldn't disconnect Bing. Try again.",
+    })
   }
 
-  const gscConnected = gscStatus?.connected ?? false
-  const bunnyConnected = bunnyStatus?.connected ?? false
-  const bingConnected = bingStatus?.connected ?? false
+  const gscConnected = !pendingKeys.has(`integration:gsc:${siteId}`) && (gscStatus?.connected ?? false)
+  const bunnyConnected = !pendingKeys.has(`integration:bunny:${siteId}`) && (bunnyStatus?.connected ?? false)
+  const bingConnected = !pendingKeys.has(`integration:bing:${siteId}`) && (bingStatus?.connected ?? false)
 
   return (
     <div className="space-y-8">
@@ -508,6 +540,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
               status={gscStatus?.status}
               hasError={!!gscError}
               onConnect={handleConnectGSC}
+              waiting={pendingKeys.has(`integration:gsc:${siteId}`)}
               onDisconnect={handleDisconnectGSC}
               connectLabel="Connect with Google"
               connecting={connectingGSC}
@@ -546,6 +579,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
               status={bingStatus?.status}
               hasError={!!bingError}
               onConnect={handleConnectBing}
+              waiting={pendingKeys.has(`integration:bing:${siteId}`)}
               onDisconnect={handleDisconnectBing}
               expanded={openSetup === 'bing'}
               canManage={canManage}
@@ -589,6 +623,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
               status={bunnyStatus?.status}
               hasError={!!bunnyError}
               onConnect={handleConnectBunny}
+              waiting={pendingKeys.has(`integration:bunny:${siteId}`)}
               onDisconnect={handleDisconnectBunny}
               expanded={openSetup === 'bunny'}
               canManage={canManage}
@@ -624,33 +659,33 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
         </PanelRows>
       </SettingsPanel>
 
-      <ConfirmDialog
+      <HoldDialog
         open={confirmDisconnect === 'gsc'}
         onOpenChange={(open) => { if (!open) setConfirmDisconnect(null) }}
-        title="Disconnect Google Search Console"
+        title="Disconnect Search Console?"
         description="This will remove all synced search data."
-        confirmLabel="Disconnect"
-        variant="danger"
+        holdLabel="Hold to disconnect"
+        icon={<Plugs weight="bold" className="h-4 w-4" aria-hidden="true" />}
         onConfirm={doDisconnectGSC}
       />
 
-      <ConfirmDialog
+      <HoldDialog
         open={confirmDisconnect === 'bing'}
         onOpenChange={(open) => { if (!open) setConfirmDisconnect(null) }}
-        title="Disconnect Bing Webmaster Tools"
+        title="Disconnect Bing?"
         description="This will remove all synced Bing search data."
-        confirmLabel="Disconnect"
-        variant="danger"
+        holdLabel="Hold to disconnect"
+        icon={<Plugs weight="bold" className="h-4 w-4" aria-hidden="true" />}
         onConfirm={doDisconnectBing}
       />
 
-      <ConfirmDialog
+      <HoldDialog
         open={confirmDisconnect === 'bunny'}
         onOpenChange={(open) => { if (!open) setConfirmDisconnect(null) }}
-        title="Disconnect Bunny CDN"
+        title="Disconnect Bunny CDN?"
         description="This will remove all synced CDN data."
-        confirmLabel="Disconnect"
-        variant="danger"
+        holdLabel="Hold to disconnect"
+        icon={<Plugs weight="bold" className="h-4 w-4" aria-hidden="true" />}
         onConfirm={doDisconnectBunny}
       />
     </div>

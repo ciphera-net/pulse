@@ -1,4 +1,4 @@
-import apiRequest from './client'
+import apiRequest, { type SendOptions } from './client'
 
 /**
  * A server-resolved period (All time, PULSE-20) or the explicit dates — never both, so
@@ -116,9 +116,10 @@ export async function updateFunnel(siteId: string, funnelId: string, data: Creat
   })
 }
 
-export async function deleteFunnel(siteId: string, funnelId: string): Promise<void> {
+export async function deleteFunnel(siteId: string, funnelId: string, send: SendOptions = {}): Promise<void> {
   await apiRequest(`/sites/${siteId}/funnels/${funnelId}`, {
     method: 'DELETE',
+    keepalive: send.keepalive,
   })
 }
 

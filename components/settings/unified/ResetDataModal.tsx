@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import { Modal, Button, Input, Checkbox, toast, getAuthErrorMessage, Spinner } from '@ciphera-net/facet'
+import { useState } from 'react'
+import { Checkbox, toast, getAuthErrorMessage } from '@ciphera-net/facet'
+import { HoldDialog, useUndo } from '@ciphera-net/facet-hold'
+import { whilePending } from '@/lib/hold/pending'
 import { resetSiteData, type ResetModule } from '@/lib/api/sites'
-import { ChartBar, Path, Funnel, Heartbeat, Gauge, Cloud, MagnifyingGlass, WarningCircle } from '@phosphor-icons/react'
+import { ArrowCounterClockwise, ChartBar, Path, Funnel, Heartbeat, Gauge, Cloud, MagnifyingGlass, WarningCircle } from '@phosphor-icons/react'
 
 interface ResetModuleOption {
   id: ResetModule
@@ -73,24 +75,23 @@ interface ResetDataModalProps {
   siteId: string
 }
 
-function validateConfirmation(input: string, siteDomain: string, selectedCount: number): boolean {
-  if (selectedCount === 0) return false
-  if (selectedCount === RESET_MODULES.length) return input === siteDomain
-  return input === 'RESET'
+/** The Undo bar's line, past tense, naming what was picked (PUL-28). */
+function resetMessage(selected: Set<ResetModule>): string {
+  if (selected.size === RESET_MODULES.length) return 'All data reset'
+  const labels = RESET_MODULES.filter((m) => selected.has(m.id)).map((m) => m.label)
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]} reset`
+  if (labels.length === 1) return `${labels[0]} reset`
+  return `${labels.length} modules reset`
 }
 
 export default function ResetDataModal({ open, onClose, onReset, siteDomain, siteId }: ResetDataModalProps) {
   const [selected, setSelected] = useState<Set<ResetModule>>(new Set())
-  const [confirmInput, setConfirmInput] = useState('')
-  const [isResetting, setIsResetting] = useState(false)
+  const { defer } = useUndo()
 
-  const handleClose = useCallback(() => {
-    if (isResetting) return
+  const handleClose = () => {
     setSelected(new Set())
-    setConfirmInput('')
-    setIsResetting(false)
     onClose()
-  }, [isResetting, onClose])
+  }
 
   const toggleModule = (id: ResetModule) => {
     setSelected(prev => {
@@ -112,43 +113,49 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
     }
   }
 
-  const isConfirmed = validateConfirmation(confirmInput, siteDomain, selected.size)
   const allSelected = selected.size === RESET_MODULES.length
 
-  const handleReset = async () => {
-    if (!isConfirmed || selected.size === 0) return
-    setIsResetting(true)
-    try {
-      await resetSiteData(siteId, Array.from(selected))
-      const moduleLabels = RESET_MODULES.filter(m => selected.has(m.id)).map(m => m.label)
-      toast.success(`Reset complete: ${moduleLabels.join(', ')}`)
-      handleClose()
-      onReset()
-    } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || "Couldn't reset your data. Try again.")
-      setIsResetting(false)
-    }
+  // Nothing to hide: resetting data does not remove a row from any list, so
+  // this goes straight through useUndo() rather than useDeferredRemoval.
+  // Hidden at once is the module checklist itself clearing, below.
+  const handleConfirm = () => {
+    if (selected.size === 0) return
+    const modules = Array.from(selected)
+    defer(whilePending(`reset:${siteId}`, {
+      message: resetMessage(selected),
+      commit: ({ keepalive }) => resetSiteData(siteId, modules, { keepalive }),
+      onCommitted: () => onReset(),
+      onError: (err) => toast.error(getAuthErrorMessage(err as Error) || "Couldn't reset data. Try again."),
+    }))
+    setSelected(new Set())
   }
 
   return (
-    <Modal isOpen={open} onClose={handleClose} title="Reset data">
-      <div className="space-y-4">
-        <p className="text-sm text-muted-foreground">
+    <HoldDialog
+      open={open}
+      onOpenChange={(isOpen) => { if (!isOpen) handleClose() }}
+      title="Reset data?"
+      description={
+        <>
           Select which data modules to permanently delete for{' '}
           <span className="font-mono text-foreground">{siteDomain}</span>. Configuration and
           integrations stay as they are.
-        </p>
-
-        {/* Module picker — one ruled frame, select-all in the header. Every row
-            is the same Facet Checkbox idiom (the header row and each module
-            row used to be two different pseudo-checkbox implementations). */}
+        </>
+      }
+      holdLabel="Hold to reset"
+      icon={<ArrowCounterClockwise weight="bold" className="h-4 w-4" aria-hidden="true" />}
+      disabled={selected.size === 0}
+      onConfirm={handleConfirm}
+    >
+      <div className="space-y-4">
+        {/* Module picker, one ruled frame, select-all in the header. Every row
+            is the same Facet Checkbox idiom. */}
         <div className="rounded-none border border-border">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <Checkbox
               checked={allSelected}
               indeterminate={selected.size > 0 && !allSelected}
               onChange={toggleAll}
-              disabled={isResetting}
               label="All modules"
             />
             <span className="text-xs tabular-nums text-muted-foreground">
@@ -164,7 +171,6 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
                   <Checkbox
                     checked={selected.has(mod.id)}
                     onChange={() => toggleModule(mod.id)}
-                    disabled={isResetting}
                     label={
                       <span className="flex items-start gap-2">
                         <Icon weight="bold" aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
@@ -181,50 +187,17 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
           </div>
         </div>
 
-        {/* Confirmation */}
         {selected.size > 0 && (
-          <div className="space-y-4">
-            <div role="alert" className="flex items-start gap-3 border border-destructive/30 px-4 py-3">
-              <WarningCircle size={16} weight="fill" aria-hidden="true" className="mt-0.5 shrink-0 text-destructive" />
-              <p className="text-sm text-foreground">
-                {allSelected
-                  ? 'This deletes all data modules permanently.'
-                  : `This deletes ${selected.size} module${selected.size > 1 ? 's' : ''} permanently.`}
-              </p>
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs text-muted-foreground">
-                Type <span className="font-mono font-semibold text-destructive">{allSelected ? siteDomain : 'RESET'}</span> to confirm
-              </label>
-              <Input
-                type="text"
-                value={confirmInput}
-                onChange={(e) => setConfirmInput(e.target.value)}
-                autoComplete="off"
-                disabled={isResetting}
-                placeholder={allSelected ? siteDomain : 'RESET'}
-              />
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" size="sm" onClick={handleClose} disabled={isResetting}>
-                Cancel
-              </Button>
-              <Button variant="destructive" size="sm" onClick={handleReset} disabled={!isConfirmed || isResetting}>
-                {isResetting ? (
-                  <>
-                    <Spinner className="w-4 h-4" />
-                    Resetting…
-                  </>
-                ) : (
-                  `Reset ${selected.size} module${selected.size > 1 ? 's' : ''}`
-                )}
-              </Button>
-            </div>
+          <div role="alert" className="flex items-start gap-3 border border-destructive/30 px-4 py-3">
+            <WarningCircle size={16} weight="fill" aria-hidden="true" className="mt-0.5 shrink-0 text-destructive" />
+            <p className="text-sm text-foreground">
+              {allSelected
+                ? 'This deletes all data modules permanently.'
+                : `This deletes ${selected.size} module${selected.size > 1 ? 's' : ''} permanently.`}
+            </p>
           </div>
         )}
       </div>
-    </Modal>
+    </HoldDialog>
   )
 }

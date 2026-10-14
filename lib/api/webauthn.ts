@@ -10,7 +10,7 @@
  * believes is passwordless that can never open their vault.
  */
 
-import apiRequest from './client'
+import apiRequest, { type SendOptions } from './client'
 
 export interface PasskeyCredential {
   id: string
@@ -58,9 +58,10 @@ export async function listPasskeys(): Promise<ListPasskeysResponse> {
   }
 }
 
-export async function deletePasskey(credentialId: string): Promise<void> {
+export async function deletePasskey(credentialId: string, send: SendOptions = {}): Promise<void> {
   return apiRequest<void>(`/auth/webauthn/credentials/${encodeURIComponent(credentialId)}`, {
     method: 'DELETE',
+    keepalive: send.keepalive,
   })
 }
 

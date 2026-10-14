@@ -94,6 +94,12 @@ vi.mock('@ciphera-net/facet', () => ({
 // nothing asserts on its animation.
 vi.mock('framer-motion', () => import('@/components/settings/__tests__/framer-mock'))
 
+// YourReports (under the reports tiles) calls useUndo() unconditionally
+// (PUL-28), which throws outside an UndoProvider; its hold dialog and Undo
+// window are exercised in SiteExportTab.reports.test.tsx, not here.
+vi.mock('@ciphera-net/facet-hold', async () =>
+  (await import('@/lib/hold/__tests__/facetHoldStandIn')).facetHoldStandIn())
+
 import SiteExportTab from '../SiteExportTab'
 
 const SITE = { id: 'site-1', domain: 'ciphera.net', name: 'Ciphera', timezone: 'Europe/Brussels' }

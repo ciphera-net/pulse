@@ -22,25 +22,30 @@ vi.mock('@ciphera-net/facet', () => ({
   Modal: ({ isOpen, title, children }: any) => (isOpen ? <div role="dialog" aria-label={title}>{children}</div> : null),
   Input: (p: any) => <input {...p} />,
   toast: toastMock,
+  getAuthErrorMessage: (e: Error) => e?.message ?? '',
 }))
 vi.mock('@phosphor-icons/react', () => new Proxy({}, {
   get: (_t, prop) => (prop === 'then' ? undefined : () => null),
   has: () => true,
 }))
-vi.mock('@/components/ui/ConfirmDialog', () => ({
-  ConfirmDialog: ({ open, title, confirmLabel, onConfirm }: any) =>
-    open ? <div role="dialog" aria-label={title}><button onClick={onConfirm}>{confirmLabel}</button></div> : null,
-}))
+// The hold dialog and the Undo window are facet-hold's own suite; here a
+// confirm is one click and each deferred removal is committed, undone or
+// failed by the test itself (PUL-28).
+vi.mock('@ciphera-net/facet-hold', async () =>
+  (await import('@/lib/hold/__tests__/facetHoldStandIn')).facetHoldStandIn())
 
 import PasskeysPanel from '../PasskeysPanel'
+import { deferred, resetDeferred, commitLast, undoLast } from '@/lib/hold/__tests__/facetHoldStandIn'
 
 const one = { id: 'pk1', createdAt: '2026-09-01T10:00:00Z', display_name: 'MacBook', prf_enabled: true }
 
 beforeEach(() => {
   api.listPasskeys.mockReset()
-  api.deletePasskey.mockClear()
+  api.deletePasskey.mockClear().mockResolvedValue(undefined)
   api.renamePasskey.mockClear()
   toastMock.error.mockClear()
+  toastMock.success.mockClear()
+  resetDeferred()
 })
 
 describe('PasskeysPanel', () => {
@@ -68,9 +73,57 @@ describe('PasskeysPanel', () => {
     fireEvent.click(within(rename).getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(api.renamePasskey).toHaveBeenCalledWith('pk1', 'Work laptop'))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
-    fireEvent.click(within(screen.getByRole('dialog', { name: 'Remove this passkey?' })).getByRole('button', { name: 'Remove passkey' }))
-    await waitFor(() => expect(api.deletePasskey).toHaveBeenCalledWith('pk1'))
+    const remove = screen.getByRole('button', { name: 'Remove' })
+    expect(remove.getAttribute('aria-haspopup')).toBe('dialog')
+    fireEvent.click(remove)
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Remove this passkey?' })).getByRole('button', { name: 'Hold to remove' }))
+
+    // Hidden at once; nothing sent until the Undo window runs out.
+    await waitFor(() => expect(screen.queryByText('MacBook')).toBeNull())
+    expect(api.deletePasskey).not.toHaveBeenCalled()
+    expect(deferred[0]!.message).toBe('Passkey removed')
+
+    api.listPasskeys.mockResolvedValueOnce({ credentials: [] })
+    const loadsSoFar = api.listPasskeys.mock.calls.length
+    await commitLast()
+    expect(api.deletePasskey).toHaveBeenCalledWith('pk1', { keepalive: false })
+    await waitFor(() => expect(api.listPasskeys).toHaveBeenCalledTimes(loadsSoFar + 1))
+  })
+
+  it('a removal sent as the page closes passes keepalive through', async () => {
+    api.listPasskeys.mockResolvedValue({ credentials: [one] })
+    render(<PasskeysPanel onAdd={vi.fn()} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Remove this passkey?' })).getByRole('button', { name: 'Hold to remove' }))
+    await waitFor(() => expect(screen.queryByText('MacBook')).toBeNull())
+    await commitLast({ keepalive: true })
+    expect(api.deletePasskey).toHaveBeenCalledWith('pk1', { keepalive: true })
+  })
+
+  it('Undo restores the passkey and sends nothing', async () => {
+    api.listPasskeys.mockResolvedValue({ credentials: [one] })
+    render(<PasskeysPanel onAdd={vi.fn()} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Remove this passkey?' })).getByRole('button', { name: 'Hold to remove' }))
+    await waitFor(() => expect(screen.queryByText('MacBook')).toBeNull())
+
+    undoLast()
+    expect(await screen.findByText('MacBook')).toBeInTheDocument()
+    expect(api.deletePasskey).not.toHaveBeenCalled()
+  })
+
+  it('a failed removal brings the passkey back and says so, with no success toast', async () => {
+    api.listPasskeys.mockResolvedValue({ credentials: [one] })
+    api.deletePasskey.mockRejectedValueOnce(new Error('boom'))
+    render(<PasskeysPanel onAdd={vi.fn()} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Remove this passkey?' })).getByRole('button', { name: 'Hold to remove' }))
+    await waitFor(() => expect(screen.queryByText('MacBook')).toBeNull())
+
+    await commitLast()
+    expect(toastMock.error).toHaveBeenCalledWith('boom')
+    expect(await screen.findByText('MacBook')).toBeInTheDocument()
+    expect(toastMock.success).not.toHaveBeenCalled()
   })
 
   it('keeps the row-level Remove ghost quiet until hover, never a standing destructive colour', async () => {
@@ -107,7 +160,7 @@ describe('PasskeysPanel', () => {
   it('holds the removed row on screen through its own exit before the empty state replaces it (real framer-motion)', async () => {
     vi.resetModules()
     vi.doUnmock('framer-motion')
-    api.listPasskeys.mockResolvedValueOnce({ credentials: [one] }).mockResolvedValue({ credentials: [] })
+    api.listPasskeys.mockResolvedValue({ credentials: [one] })
 
     const { default: RealPasskeysPanel } = await import('../PasskeysPanel')
     render(<RealPasskeysPanel onAdd={vi.fn()} />)
@@ -115,16 +168,15 @@ describe('PasskeysPanel', () => {
     expect(await screen.findByText('MacBook')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
     fireEvent.click(
-      within(screen.getByRole('dialog', { name: 'Remove this passkey?' })).getByRole('button', { name: 'Remove passkey' }),
+      within(screen.getByRole('dialog', { name: 'Remove this passkey?' })).getByRole('button', { name: 'Hold to remove' }),
     )
-    // The reload that follows a successful delete is what flips `passkeys` to
-    // `[]` and triggers the row's exit — wait for it, not just for the delete
-    // call, or the assertion below could run before there is anything to hold.
-    await waitFor(() => expect(api.listPasskeys).toHaveBeenCalledTimes(2))
+    // The hold hides the row AT ONCE (PUL-28: it is pending, not yet deleted),
+    // which is what now flips the visible list to `[]` and triggers the exit.
+    // No reload to wait for first.
 
     // Against the old markup this throws: the outer ternary swapped straight
-    // to <EmptyRow/> in the same commit that emptied `passkeys`, so by this
-    // point "MacBook" was already gone and "No passkey yet" already up.
+    // to <EmptyRow/> in the same commit that emptied the visible list, so by
+    // this point "MacBook" was already gone and "No passkey yet" already up.
     expect(screen.getByText('MacBook')).toBeInTheDocument()
     expect(screen.queryByText('No passkey yet')).toBeNull()
 

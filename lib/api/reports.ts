@@ -1,4 +1,4 @@
-import apiRequest, { ApiError, apiRequestBlob } from './client'
+import apiRequest, { ApiError, apiRequestBlob, type SendOptions } from './client'
 
 // ---------------------------------------------------------------------------
 // Reports (PULSE-133) and scheduled report emails (PULSE-134), design §5.3,
@@ -142,8 +142,8 @@ export async function listReports(siteId: string): Promise<Report[]> {
 }
 
 /** Closes the link and deletes the report's numbers and cached PDFs. */
-export async function deleteReport(siteId: string, reportId: string): Promise<void> {
-  await apiRequest<void>(`/sites/${siteId}/reports/${reportId}`, { method: 'DELETE' })
+export async function deleteReport(siteId: string, reportId: string, send: SendOptions = {}): Promise<void> {
+  await apiRequest<void>(`/sites/${siteId}/reports/${reportId}`, { method: 'DELETE', keepalive: send.keepalive })
 }
 
 export async function createSchedule(siteId: string, request: CreateScheduleRequest): Promise<ReportSchedule> {
@@ -160,8 +160,8 @@ export async function listSchedules(siteId: string): Promise<ReportSchedule[]> {
 }
 
 /** Stops the emails. Reports already sent keep their own links. */
-export async function stopSchedule(siteId: string, scheduleId: string): Promise<void> {
-  await apiRequest<void>(`/sites/${siteId}/report-schedules/${scheduleId}`, { method: 'DELETE' })
+export async function stopSchedule(siteId: string, scheduleId: string, send: SendOptions = {}): Promise<void> {
+  await apiRequest<void>(`/sites/${siteId}/report-schedules/${scheduleId}`, { method: 'DELETE', keepalive: send.keepalive })
 }
 
 /** A report name as a file name: "Investor update, September 2026" → "investor-update-september-2026.pdf". */

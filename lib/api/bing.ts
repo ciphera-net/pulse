@@ -1,4 +1,4 @@
-import apiRequest from './client'
+import apiRequest, { type SendOptions } from './client'
 
 /**
  * @file Bing Webmaster Tools integration — site-level daily search stats.
@@ -79,8 +79,8 @@ export async function getBingStatus(siteId: string): Promise<BingStatus> {
   return apiRequest<BingStatus>(`/sites/${siteId}/integrations/bing/status`)
 }
 
-export async function disconnectBing(siteId: string): Promise<void> {
-  await apiRequest(`/sites/${siteId}/integrations/bing`, { method: 'DELETE' })
+export async function disconnectBing(siteId: string, send: SendOptions = {}): Promise<void> {
+  await apiRequest(`/sites/${siteId}/integrations/bing`, { method: 'DELETE', keepalive: send.keepalive })
 }
 
 export async function getBingOverview(

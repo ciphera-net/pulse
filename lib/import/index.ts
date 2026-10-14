@@ -256,13 +256,33 @@ export async function runImport(options: ImportOptions): Promise<ImportStatus> {
   }
 }
 
-/** Cancels an import; the server purges its rows (M2-j). */
+/**
+ * Cancels an import; the server purges its rows (M2-j).
+ *
+ * 🔴 `keepalive` (PUL-28): the delete is being sent as the page is hidden or
+ * left, so it must reach fetch() in THIS tick. ImportApiClient cannot do that:
+ * its queue (`.then`), its pacing and its retries all yield first. So a
+ * keepalive delete calls the transport directly, once; nothing awaits before
+ * it, and a retry would be pointless on a page that is going away.
+ */
 export async function deleteImport(options: {
   siteId: string
   importId: string
   transport: Transport
   client?: Partial<ClientOptions>
+  keepalive?: boolean
 }): Promise<void> {
+  if (options.keepalive) {
+    const res = await options.transport({
+      method: 'DELETE',
+      path: `/sites/${encodeURIComponent(options.siteId)}/data-imports/${encodeURIComponent(options.importId)}`,
+      body: null,
+      signal: new AbortController().signal,
+      keepalive: true,
+    })
+    if (res.status < 200 || res.status >= 300) throw new Error(`The import could not be deleted (${res.status}).`)
+    return
+  }
   await new ImportApiClient(options.transport, options.client).remove(options.siteId, options.importId)
 }
 

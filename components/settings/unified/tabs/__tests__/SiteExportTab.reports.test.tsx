@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react'
 import type { CreateReportRequest, CreateScheduleRequest, Report, ReportSchedule } from '@/lib/api/reports'
 
 // Settings → Site → Export, the report tiles (PULSE-133 Growth report, PULSE-134
@@ -87,7 +87,14 @@ vi.mock('@ciphera-net/facet', () => ({
   toast: { success: (...a: unknown[]) => toastSuccess(...a), error: (...a: unknown[]) => toastError(...a) },
 }))
 
+// The hold dialog and the Undo window are facet-hold's own suite; here a
+// confirm is one click and each deferred delete/stop is committed, undone or
+// failed by the test itself (PUL-28).
+vi.mock('@ciphera-net/facet-hold', async () =>
+  (await import('@/lib/hold/__tests__/facetHoldStandIn')).facetHoldStandIn())
+
 import SiteExportTab from '../SiteExportTab'
+import { deferred, resetDeferred, commitLast, undoLast } from '@/lib/hold/__tests__/facetHoldStandIn'
 
 const REPORT: Report = {
   id: 'r1',
@@ -144,6 +151,7 @@ beforeEach(() => {
   toastError.mockReset()
   toastSuccess.mockReset()
   Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn().mockResolvedValue(undefined) }, configurable: true })
+  resetDeferred()
 })
 
 afterEach(() => {
@@ -440,24 +448,74 @@ describe('Your reports: the list', () => {
     await waitFor(() => expect(api.downloadReportPdf).toHaveBeenCalledWith('site-1', REPORT))
   })
 
-  it('deletes a report only after the confirm, then reads the list again', async () => {
+  it('hides a report at once on confirm, sending nothing until the Undo window runs out, then reads the list again', async () => {
     api.listReports.mockResolvedValue([REPORT])
     render(<SiteExportTab siteId="site-1" />)
     const panel = reportsPanel()
     fireEvent.click(await within(panel).findByRole('button', { name: 'Delete Investor update, September 2026' }))
     expect(api.deleteReport).not.toHaveBeenCalled()
-    const dialog = screen.getByRole('dialog', { name: 'Delete this report?' })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete report' }))
-    await waitFor(() => expect(api.deleteReport).toHaveBeenCalledWith('site-1', 'r1'))
+    const dialog = screen.getByRole('dialog', { name: 'Delete "Investor update, September 2026"?' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Hold to delete' }))
+
+    expect(within(panel).queryByText('Investor update, September 2026')).toBeNull()
+    expect(api.deleteReport).not.toHaveBeenCalled()
+    expect(deferred[0]!.message).toBe('"Investor update, September 2026" deleted')
+
+    await act(() => commitLast())
+    expect(api.deleteReport).toHaveBeenCalledWith('site-1', 'r1', { keepalive: false })
     await waitFor(() => expect(api.listReports).toHaveBeenCalledTimes(2))
   })
 
-  it('stops a schedule only after the confirm', async () => {
+  it('passes keepalive through to the request on a commit sent as the page closes', async () => {
+    api.listReports.mockResolvedValue([REPORT])
+    render(<SiteExportTab siteId="site-1" />)
+    fireEvent.click(await within(reportsPanel()).findByRole('button', { name: 'Delete Investor update, September 2026' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
+    await act(() => commitLast({ keepalive: true }))
+    expect(api.deleteReport).toHaveBeenCalledWith('site-1', 'r1', { keepalive: true })
+  })
+
+  it('Undo restores the report and sends nothing', async () => {
+    api.listReports.mockResolvedValue([REPORT])
+    render(<SiteExportTab siteId="site-1" />)
+    const panel = reportsPanel()
+    fireEvent.click(await within(panel).findByRole('button', { name: 'Delete Investor update, September 2026' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
+    expect(within(panel).queryByText('Investor update, September 2026')).toBeNull()
+
+    act(() => undoLast())
+    expect(within(panel).getByText('Investor update, September 2026')).toBeInTheDocument()
+    expect(api.deleteReport).not.toHaveBeenCalled()
+  })
+
+  it('a rejected delete brings the report back, in the server\'s own words', async () => {
+    api.listReports.mockResolvedValue([REPORT])
+    const { ApiError } = await import('@/lib/api/client')
+    api.deleteReport.mockRejectedValueOnce(new ApiError('nope', 409, { error: 'This report is still being emailed.' }))
+    render(<SiteExportTab siteId="site-1" />)
+    const panel = reportsPanel()
+    fireEvent.click(await within(panel).findByRole('button', { name: 'Delete Investor update, September 2026' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
+
+    await act(() => commitLast())
+    expect(toastError).toHaveBeenCalledWith('This report is still being emailed.')
+    expect(within(panel).getByText('Investor update, September 2026')).toBeInTheDocument()
+  })
+
+  it('hides a schedule at once on confirm, stopping it only after the Undo window runs out', async () => {
     api.listSchedules.mockResolvedValue([SCHEDULE])
     render(<SiteExportTab siteId="site-1" />)
-    fireEvent.click(await within(reportsPanel()).findByRole('button', { name: 'Stop sending Monthly update' }))
-    fireEvent.click(within(screen.getByRole('dialog', { name: 'Stop these emails?' })).getByRole('button', { name: 'Stop sending' }))
-    await waitFor(() => expect(api.stopSchedule).toHaveBeenCalledWith('site-1', 's1'))
+    const panel = reportsPanel()
+    fireEvent.click(await within(panel).findByRole('button', { name: 'Stop sending Monthly update' }))
+    const dialog = screen.getByRole('dialog', { name: 'Stop "Monthly update" emails?' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Hold to stop' }))
+
+    expect(within(panel).queryByText('Monthly update')).toBeNull()
+    expect(api.stopSchedule).not.toHaveBeenCalled()
+    expect(deferred[0]!.message).toBe('"Monthly update" emails stopped')
+
+    await act(() => commitLast())
+    expect(api.stopSchedule).toHaveBeenCalledWith('site-1', 's1', { keepalive: false })
   })
 
   it('offers no delete or stop without sites.edit, but keeps the link and the PDF', async () => {

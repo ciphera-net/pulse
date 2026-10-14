@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
 import { Input, Select, Toggle, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { useSite, useInstallStatus } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { useCan } from '@/lib/auth/permissions'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
+import { usePendingKeys } from '@/lib/hold/pending'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 import ResetDataModal from '@/components/settings/unified/ResetDataModal'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
@@ -22,7 +22,6 @@ import { timezoneGroupsFor } from '@/lib/utils/timezones'
 // forms and the display-zone resolver: lib/utils/timezones.ts.
 
 export default function SiteGeneralTab({ siteId }: { siteId: string }) {
-  const router = useRouter()
   const { data: site, error, isValidating, mutate } = useSite(siteId)
   const [name, setName] = useState('')
   const [timezone, setTimezone] = useState('UTC')
@@ -33,6 +32,7 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
   const [saving, setSaving] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showResetModal, setShowResetModal] = useState(false)
+  const resetWaiting = usePendingKeys().has(`reset:${siteId}`)
 
   const canEdit = useCan('sites.edit')
 
@@ -254,16 +254,17 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
           items={[
             {
               title: 'Reset data',
-              description: 'Delete all stats and events. This cannot be undone.',
+              description: 'Delete all stats and events.',
               buttonLabel: 'Reset data',
-              variant: 'outline',
               onClick: () => setShowResetModal(true),
+              // A reset waiting behind the Undo bar keeps this off: a second
+              // confirm would send the first at once, past its Undo.
+              disabled: resetWaiting,
             },
             {
               title: 'Delete site',
               description: 'Schedule this site for deletion with a 7-day grace period.',
               buttonLabel: 'Delete site',
-              variant: 'solid',
               onClick: () => setShowDeleteModal(true),
             },
           ]}
@@ -281,9 +282,7 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
       <DeleteSiteModal
         open={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
-        onDeleted={() => router.push('/')}
         siteName={site?.name || ''}
-        siteDomain={site?.domain || ''}
         siteId={siteId}
       />
 

@@ -1,4 +1,4 @@
-import apiRequest from './client'
+import apiRequest, { type SendOptions } from './client'
 
 export interface TaxID {
   type: string
@@ -97,10 +97,11 @@ export interface CancelSubscriptionParams {
   at_period_end?: boolean
 }
 
-export async function cancelSubscription(params?: CancelSubscriptionParams): Promise<{ ok: boolean; at_period_end: boolean }> {
+export async function cancelSubscription(params?: CancelSubscriptionParams, send: SendOptions = {}): Promise<{ ok: boolean; at_period_end: boolean }> {
   return apiRequest<{ ok: boolean; at_period_end: boolean }>('/api/billing/cancel', {
     method: 'POST',
     body: JSON.stringify({ at_period_end: params?.at_period_end ?? true }),
+    keepalive: send.keepalive,
   })
 }
 

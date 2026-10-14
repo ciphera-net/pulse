@@ -3,12 +3,14 @@
 import { useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Button, toast } from '@ciphera-net/facet'
-import { Copy, Check, LinkSimple } from '@phosphor-icons/react'
+import { HoldDialog } from '@ciphera-net/facet-hold'
+import { Copy, Check, LinkSimple, Prohibit } from '@phosphor-icons/react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { revokeInviteLink, type InviteLink } from '@/lib/api/organization'
 import { type Role } from '@/lib/api/roles'
 import { useIsAdminOrOwner } from '@/lib/auth/permissions'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { useDeferredRemoval } from '@/lib/hold/useDeferredRemoval'
+import { usePendingKeys } from '@/lib/hold/pending'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/settings/panels'
 import { DURATION_BASE, DURATION_FAST, EASE_APPLE } from '@/lib/motion'
@@ -81,16 +83,27 @@ export default function InviteLinksSection({ orgId, links, roles, onRevoked }: P
   const canManage = useIsAdminOrOwner()
   const { zone } = useDisplayZone()
   const [confirmRevoke, setConfirmRevoke] = useState<InviteLink | null>(null)
+  const removeLater = useDeferredRemoval()
+  // A link whose revoke is waiting behind the Undo bar is hidden now (PUL-28).
+  const pendingKeys = usePendingKeys()
+  const visibleLinks = links.filter((l) => !pendingKeys.has(`invite-link:${l.id}`))
 
   const handleRevoke = (link: InviteLink) => {
     setConfirmRevoke(link)
   }
 
-  const doRevoke = async () => {
+  // The link disappears at once; the request is sent when the Undo window
+  // runs out (PUL-28).
+  const doRevoke = () => {
     if (!confirmRevoke) return
-    await revokeInviteLink(orgId, confirmRevoke.id)
-    toast.success('Invite link revoked')
-    onRevoked()
+    const { id, name } = confirmRevoke
+    removeLater({
+      key: `invite-link:${id}`,
+      message: `"${name}" revoked`,
+      send: ({ keepalive }) => revokeInviteLink(orgId, id, { keepalive }),
+      refresh: onRevoked,
+      failure: `Couldn't revoke "${name}". Try again.`,
+    })
   }
 
   return (
@@ -98,7 +111,7 @@ export default function InviteLinksSection({ orgId, links, roles, onRevoked }: P
       title="Invite links"
       description="Shareable links that let people join with a preset role."
     >
-      {links.length === 0 ? (
+      {visibleLinks.length === 0 ? (
         <EmptyRow
           icon={<LinkSimple weight="regular" />}
           title="No invite links yet"
@@ -112,7 +125,7 @@ export default function InviteLinksSection({ orgId, links, roles, onRevoked }: P
               `initial={false}` on AnimatePresence keeps rows already on the
               page from playing an entrance on first load. */}
           <AnimatePresence initial={false}>
-            {links.map(link => {
+            {visibleLinks.map(link => {
               const isExhausted = link.max_uses !== null && link.use_count >= link.max_uses
               const linkRole = link.role
               const expiresAt = new Date(link.expires_at)
@@ -168,6 +181,7 @@ export default function InviteLinksSection({ orgId, links, roles, onRevoked }: P
                             size="sm"
                             className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                             onClick={() => handleRevoke(link)}
+                            aria-haspopup="dialog"
                           >
                             Revoke
                           </Button>
@@ -182,13 +196,13 @@ export default function InviteLinksSection({ orgId, links, roles, onRevoked }: P
         </PanelRows>
       )}
 
-      <ConfirmDialog
+      <HoldDialog
         open={confirmRevoke !== null}
         onOpenChange={(open) => { if (!open) setConfirmRevoke(null) }}
-        title="Revoke invite link"
+        title={confirmRevoke ? `Revoke "${confirmRevoke.name}"?` : 'Revoke this invite link?'}
         description={confirmRevoke ? `Revoke "${confirmRevoke.name}"? Anyone with this link will no longer be able to join.` : ''}
-        confirmLabel="Revoke"
-        variant="danger"
+        holdLabel="Hold to revoke"
+        icon={<Prohibit weight="bold" className="h-4 w-4" aria-hidden="true" />}
         onConfirm={doRevoke}
       />
     </SettingsPanel>

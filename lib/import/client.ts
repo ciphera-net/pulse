@@ -54,6 +54,13 @@ export interface TransportRequest {
   body: string | null
   /** Aborts on the client's per-request timeout or the caller's cancel. Honour it. */
   signal: AbortSignal
+  /**
+   * Set only on a delete sent as the page is being hidden or left (PUL-28,
+   * `deleteImport` with `keepalive`): pass it to `fetch`'s own `keepalive`.
+   * Such a request bypasses this client entirely, because the client's queue,
+   * pacing and retries all yield before the transport is called.
+   */
+  keepalive?: boolean
 }
 
 export interface TransportResponse {

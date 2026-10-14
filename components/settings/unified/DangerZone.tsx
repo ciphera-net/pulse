@@ -7,38 +7,37 @@ interface DangerZoneItem {
   title: string
   description: string
   buttonLabel: string
-  /**
-   * Which weight the row's entry button carries:
-   * - `'outline'` = the plain outline rung (the less-final action — Transfer, Reset data)
-   * - `'solid'`   = the destructive OUTLINE in coral (the final/irreversible action — Delete)
-   *
-   * `'solid'` does not paint a filled red button. The destructive fill is
-   * reserved for the final confirm inside a dialog; danger-row entry buttons
-   * are always outlines. The prop name is kept for API compatibility with the
-   * tabs that consume this component.
-   */
-  variant: 'outline' | 'solid'
+  /** Opens the row's confirm dialog (a HoldDialog). */
   onClick: () => void
   disabled?: boolean
-  /**
-   * When the row's button opens a reveal block below the rows (a typed-DELETE
-   * form, a transfer picker), pass whether it is open so the button reads as
-   * the disclosure it is.
-   */
-  expanded?: boolean
 }
 
 interface DangerZoneProps {
   items: DangerZoneItem[]
-  children?: React.ReactNode
 }
 
-/** The destructive-outline rung of the button ladder, shared with any danger row. */
+/**
+ * The destructive-outline rung of the button ladder: every danger-zone entry
+ * button, and any other control that opens a destructive confirm (an
+ * integration's Disconnect, an import's Delete). One danger colour for all of
+ * them (PUL-28): an outline OPENS a confirm, the tinted hold inside it confirms.
+ */
 export const DESTRUCTIVE_OUTLINE = 'border-destructive/40 text-destructive hover:border-destructive/60 hover:bg-destructive/10 hover:text-destructive'
 
-export function DangerZone({ items, children }: DangerZoneProps) {
+/**
+ * A settings page's danger zone. Each row's button opens a dialog whose final
+ * button is a hold (PUL-28 rulings, 14-10-2026: dialogs for every danger
+ * zone, no inline reveals, no typed confirmations). Every confirmed action
+ * waits 6 s behind the app's Undo bar before it is sent, which is what the
+ * panel's line says.
+ */
+export function DangerZone({ items }: DangerZoneProps) {
   return (
-    <SettingsPanel tone="danger" title="Danger zone" description="These cannot be undone.">
+    <SettingsPanel
+      tone="danger"
+      title="Danger zone"
+      description="You can undo each of these for a few seconds. After that, it's permanent."
+    >
       <PanelRows>
         {items.map((item) => (
           <PanelRow
@@ -51,8 +50,8 @@ export function DangerZone({ items, children }: DangerZoneProps) {
                 size="sm"
                 onClick={item.onClick}
                 disabled={item.disabled}
-                aria-expanded={item.expanded}
-                className={item.variant === 'solid' ? DESTRUCTIVE_OUTLINE : undefined}
+                aria-haspopup="dialog"
+                className={DESTRUCTIVE_OUTLINE}
               >
                 {item.buttonLabel}
               </Button>
@@ -60,10 +59,6 @@ export function DangerZone({ items, children }: DangerZoneProps) {
           />
         ))}
       </PanelRows>
-
-      {/* Reveal blocks (typed-DELETE / transfer pickers) dock inside the danger
-          frame, ruled off from the rows above. */}
-      {children && <div className="border-t border-destructive/30">{children}</div>}
     </SettingsPanel>
   )
 }

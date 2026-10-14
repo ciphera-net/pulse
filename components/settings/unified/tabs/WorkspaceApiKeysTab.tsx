@@ -3,14 +3,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Button, Input, Select, Switcher, Checkbox, Toggle, toast } from '@ciphera-net/facet'
-import { Plus, Trash, Copy, Check, Key, Warning } from '@phosphor-icons/react'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { HoldDialog } from '@ciphera-net/facet-hold'
+import { Plus, Trash, Copy, Check, Key, Warning, Prohibit } from '@phosphor-icons/react'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/settings/panels'
 import { StatusChip, type ChipTone } from '@/components/settings/StatusChip'
 import { MastheadAction } from '@/components/settings/shell-slots'
 import { cn } from '@/lib/utils'
+import { useDeferredRemoval } from '@/lib/hold/useDeferredRemoval'
+import { usePendingKeys } from '@/lib/hold/pending'
 import { DURATION_BASE, DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { formatDate, formatRelativeTime, formatDateTimeFull } from '@/lib/utils/formatDate'
 import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
@@ -114,6 +116,10 @@ export default function WorkspaceApiKeysTab() {
   const [submitting, setSubmitting] = useState(false)
   const [newToken, setNewToken] = useState<string | null>(null)
   const [revoking, setRevoking] = useState<ApiKey | null>(null)
+  const removeLater = useDeferredRemoval()
+  // A key whose revoke is waiting behind the Undo bar is hidden now (PUL-28).
+  const pendingKeys = usePendingKeys()
+  const visibleKeys = keys.filter((k) => !pendingKeys.has(`api-key:${k.id}`))
 
   // Form state. site_ids is empty when scope_all_sites is on. The two are
   // mutually exclusive server-side (a CHECK constraint enforces it).
@@ -196,17 +202,18 @@ export default function WorkspaceApiKeysTab() {
     }
   }
 
-  const confirmRevoke = async () => {
+  // The key disappears at once; the request is sent when the Undo window
+  // runs out (PUL-28).
+  const doRevoke = () => {
     if (!revoking) return
-    try {
-      await revokeApiKey(revoking.id)
-      toast.success('The key is revoked. It stops working immediately.')
-      await load()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't revoke the key. Try again.")
-    } finally {
-      setRevoking(null)
-    }
+    const { id, name } = revoking
+    removeLater({
+      key: `api-key:${id}`,
+      message: `"${name}" revoked`,
+      send: ({ keepalive }) => revokeApiKey(id, { keepalive }),
+      refresh: load,
+      failure: `Couldn't revoke "${name}". Try again.`,
+    })
   }
 
   const toggleSite = (id: string) => {
@@ -326,7 +333,7 @@ export default function WorkspaceApiKeysTab() {
           </div>
         )}
 
-        {keys.length === 0 && !creating ? (
+        {visibleKeys.length === 0 && !creating ? (
           <EmptyRow
             icon={<Key />}
             title="No API keys yet"
@@ -339,7 +346,7 @@ export default function WorkspaceApiKeysTab() {
                 device. `initial={false}` keeps the keys already on the page from
                 playing an entrance on first load; only a later change animates. */}
             <AnimatePresence initial={false}>
-              {keys.map((key) => {
+              {visibleKeys.map((key) => {
                 const status = apiKeyStatus(key)
                 const chip = STATUS_CHIP[status]
                 // P7: a revoked key recedes. Its name and meta dim to opacity-60;
@@ -423,6 +430,7 @@ export default function WorkspaceApiKeysTab() {
                                 className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
                                 onClick={() => setRevoking(key)}
                                 aria-label={`Revoke ${key.name}`}
+                                aria-haspopup="dialog"
                               >
                                 <Trash weight="bold" className="h-3.5 w-3.5" />
                               </Button>
@@ -439,18 +447,18 @@ export default function WorkspaceApiKeysTab() {
         )}
       </SettingsPanel>
 
-      <ConfirmDialog
+      <HoldDialog
         open={revoking !== null}
         onOpenChange={(open) => { if (!open) setRevoking(null) }}
-        title="Revoke this API key?"
+        title={revoking ? `Revoke "${revoking.name}"?` : 'Revoke this API key?'}
         description={
           revoking
-            ? `"${revoking.name}" stops working immediately, and anything using it starts failing. This cannot be undone. You would need to create a new key.`
+            ? `"${revoking.name}" stops working immediately, and anything using it starts failing. You would need to create a new key.`
             : ''
         }
-        confirmLabel="Revoke key"
-        variant="danger"
-        onConfirm={confirmRevoke}
+        holdLabel="Hold to revoke"
+        icon={<Prohibit weight="bold" className="h-4 w-4" aria-hidden="true" />}
+        onConfirm={doRevoke}
       />
     </div>
   )

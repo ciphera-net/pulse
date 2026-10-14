@@ -1,4 +1,4 @@
-import apiRequest from './client'
+import apiRequest, { type SendOptions } from './client'
 import type { IngestRejectionCause } from '@/lib/ingest-causes'
 
 export type GeoDataLevel = 'full' | 'country' | 'none'
@@ -306,18 +306,20 @@ export async function updateSite(id: string, data: UpdateSiteRequest): Promise<S
   })
 }
 
-export async function deleteSite(id: string): Promise<{ message: string; purge_at: string }> {
+export async function deleteSite(id: string, send: SendOptions = {}): Promise<{ message: string; purge_at: string }> {
   return apiRequest<{ message: string; purge_at: string }>(`/sites/${id}`, {
     method: 'DELETE',
+    keepalive: send.keepalive,
   })
 }
 
 export type ResetModule = 'analytics' | 'journeys' | 'funnels' | 'uptime' | 'pagespeed' | 'cdn' | 'search_console'
 
-export async function resetSiteData(id: string, modules: ResetModule[]): Promise<{ message: string; modules: string[] }> {
+export async function resetSiteData(id: string, modules: ResetModule[], send: SendOptions = {}): Promise<{ message: string; modules: string[] }> {
   return apiRequest<{ message: string; modules: string[] }>(`/sites/${id}/reset`, {
     method: 'POST',
     body: JSON.stringify({ modules }),
+    keepalive: send.keepalive,
   })
 }
 
@@ -347,9 +349,10 @@ export async function restoreSite(id: string): Promise<void> {
   })
 }
 
-export async function permanentDeleteSite(id: string): Promise<void> {
+export async function permanentDeleteSite(id: string, send: SendOptions = {}): Promise<void> {
   await apiRequest(`/sites/${id}/permanent`, {
     method: 'DELETE',
+    keepalive: send.keepalive,
   })
 }
 

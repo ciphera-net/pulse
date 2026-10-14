@@ -21,6 +21,8 @@ import DateRangePicker from '@/components/ui/DateRangePicker'
 import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
 import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
 import { useCan } from '@/lib/auth/permissions'
+import { useDeferredRemoval } from '@/lib/hold/useDeferredRemoval'
+import { usePendingKeys } from '@/lib/hold/pending'
 
 // * ?prefill=<encodeURIComponent(JSON)> seeds the create modal (journeys lens
 // * cross-link). Parsed defensively — malformed input just opens nothing.
@@ -81,6 +83,9 @@ export default function FunnelsPage() {
   const prevRange = useMemo(() => (period === 'all' ? null : previousDateRange(fetchRange)), [fetchRange, period])
   const { data: prevListStats } = useFunnelListStats(siteId, prevRange?.start ?? '', prevRange?.end ?? '')
   const [deletingFunnel, setDeletingFunnel] = useState<{ id: string; name: string } | null>(null)
+  const removeLater = useDeferredRemoval()
+  // A funnel whose delete is waiting behind the Undo bar (PUL-28) is hidden now.
+  const pendingKeys = usePendingKeys()
   const [prefill, setPrefill] = useState<FunnelPrefill | null>(() => parsePrefill(searchParams.get('prefill')))
   const [modalOpen, setModalOpen] = useState<boolean>(() => parsePrefill(searchParams.get('prefill')) !== null || searchParams.get('create') === '1')
   const [editingFunnel, setEditingFunnel] = useState<Funnel | null>(null)
@@ -100,16 +105,18 @@ export default function FunnelsPage() {
     document.title = domain ? `Funnels · ${domain} | Pulse` : 'Funnels | Pulse'
   }, [site?.domain])
 
-  const handleDelete = async () => {
+  // The funnel disappears at once; the delete is sent when the Undo window
+  // runs out (PUL-28).
+  const handleDelete = () => {
     if (!deletingFunnel) return
-    try {
-      await deleteFunnel(siteId, deletingFunnel.id)
-      toast.success('Funnel deleted')
-      setDeletingFunnel(null)
-      mutate()
-    } catch {
-      toast.error('Failed to delete funnel')
-    }
+    const { id, name } = deletingFunnel
+    removeLater({
+      key: `funnel:${id}`,
+      message: `"${name}" deleted`,
+      send: ({ keepalive }) => deleteFunnel(siteId, id, { keepalive }),
+      refresh: mutate,
+      failure: `Couldn't delete "${name}". Try again.`,
+    })
   }
 
   // * First-ever load only — refetches keep the previous list mounted.
@@ -118,7 +125,7 @@ export default function FunnelsPage() {
   // * Detail links carry the current range so the page opens where you were.
   const qs = searchParams.toString()
   const hrefQuery = qs ? `?${qs}` : ''
-  const list = funnels ?? []
+  const list = (funnels ?? []).filter((funnel) => !pendingKeys.has(`funnel:${funnel.id}`))
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">

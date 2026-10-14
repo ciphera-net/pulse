@@ -9,7 +9,6 @@ import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/setti
 import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { formatRelativeTime, formatDateTimeFull } from '@/lib/utils/formatDate'
 
 /** "Chrome on macOS" from a user-agent string; "Unknown device" when there is none. */
@@ -34,14 +33,15 @@ export function describeSession(ua: string | null | undefined): string {
 /**
  * Active sessions — everywhere this account is signed in, with a way out.
  *
- * Revoking the current session signs this browser out, so it is confirmed
- * first and followed by logout(); revoking another only re-reads the list.
+ * PUL-28 ruling 4: signing another device out stays one click, and
+ * signing THIS device out is now one click too, same as the account menu's
+ * own Sign out. Revoking the current session signs this browser out via
+ * logout(); revoking another only re-reads the list.
  */
 export default function SessionsPanel() {
   const { logout } = useAuth()
   const [sessions, setSessions] = useState<Session[] | null>(null)
   const [failed, setFailed] = useState(false)
-  const [confirming, setConfirming] = useState<Session | null>(null)
   const [revokingId, setRevokingId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -110,7 +110,7 @@ export default function SessionsPanel() {
                   variant="ghost"
                   size="sm"
                   disabled={revokingId === s.id}
-                  onClick={() => (s.is_current ? setConfirming(s) : void revoke(s))}
+                  onClick={() => void revoke(s)}
                 >
                   {revokingId === s.id ? 'Signing out…' : 'Sign out'}
                 </Button>
@@ -119,15 +119,6 @@ export default function SessionsPanel() {
           ))}
         </PanelRows>
       )}
-
-      <ConfirmDialog
-        open={confirming !== null}
-        onOpenChange={(o) => { if (!o) setConfirming(null) }}
-        title="Sign out of this device?"
-        description="You'll need to sign in again here."
-        confirmLabel="Sign out"
-        onConfirm={async () => { if (confirming) await revoke(confirming) }}
-      />
     </SettingsPanel>
   )
 }

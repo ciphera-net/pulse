@@ -41,10 +41,11 @@ vi.mock('@/lib/api/activity', () => ({
 // structure.
 vi.mock('framer-motion', () => import('@/components/settings/__tests__/framer-mock'))
 
-vi.mock('@/components/ui/ConfirmDialog', () => ({
-  ConfirmDialog: ({ open, title, confirmLabel, onConfirm }: any) =>
-    open ? <div role="dialog" aria-label={title}><button onClick={onConfirm}>{confirmLabel}</button></div> : null,
-}))
+// The hold dialog and the Undo window are facet-hold's own suite; here a
+// confirm is one click and each deferred removal is committed, undone or
+// failed by the test itself (PUL-28).
+vi.mock('@ciphera-net/facet-hold', async () =>
+  (await import('@/lib/hold/__tests__/facetHoldStandIn')).facetHoldStandIn())
 
 // Lightweight facet stand-ins (audit/billing test precedent): the RuledTable
 // family renders real DOM so the ruled-row composition, the always-visible
@@ -64,6 +65,7 @@ vi.mock('@ciphera-net/facet', () => ({
 }))
 
 import AccountDevicesTab from '../AccountDevicesTab'
+import { deferred, resetDeferred, commitLast, undoLast } from '@/lib/hold/__tests__/facetHoldStandIn'
 
 const mockGetDevices = devicesApi.getUserDevices as unknown as ReturnType<typeof vi.fn>
 const mockRemoveDevice = devicesApi.removeDevice as unknown as ReturnType<typeof vi.fn>
@@ -99,8 +101,9 @@ const activityResp = (entries: AuditLogEntry[]) => ({
 
 beforeEach(() => {
   mockGetDevices.mockReset()
-  mockRemoveDevice.mockReset()
+  mockRemoveDevice.mockReset().mockResolvedValue(undefined)
   mockGetActivity.mockReset()
+  resetDeferred()
 })
 
 describe('AccountDevicesTab (Facet ruled lists)', () => {
@@ -181,7 +184,7 @@ describe('AccountDevicesTab (Facet ruled lists)', () => {
     expect(remove.className).toContain('ease-apple')
   })
 
-  it('exits a removed device row through its own animatable element (M5)', async () => {
+  it('hides a removed device row at once, and sends the removal only when the Undo window runs out (PUL-28)', async () => {
     mockGetDevices.mockResolvedValue({
       devices: [
         device({ id: 'd0', display_hint: 'This laptop', is_current: true }),
@@ -189,7 +192,6 @@ describe('AccountDevicesTab (Facet ruled lists)', () => {
       ],
     })
     mockGetActivity.mockResolvedValue(activityResp([]))
-    mockRemoveDevice.mockResolvedValue(undefined)
     render(<AccountDevicesTab />)
 
     await screen.findByText('Old iPhone')
@@ -198,13 +200,64 @@ describe('AccountDevicesTab (Facet ruled lists)', () => {
     // re-rendering with no transition.
     expect(screen.getByTestId('device-row-d1')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
-    fireEvent.click(within(screen.getByRole('dialog', { name: 'Remove device' })).getByRole('button', { name: 'Remove' }))
+    const remove = screen.getByRole('button', { name: 'Remove' })
+    expect(remove.getAttribute('aria-haspopup')).toBe('dialog')
+    fireEvent.click(remove)
+    const dialog = screen.getByRole('dialog', { name: 'Remove this device?' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Hold to remove' }))
 
-    await waitFor(() => expect(mockRemoveDevice).toHaveBeenCalledWith('d1'))
+    // Gone from the table at once; nothing sent yet.
     await waitFor(() => expect(screen.queryByTestId('device-row-d1')).not.toBeInTheDocument())
+    expect(mockRemoveDevice).not.toHaveBeenCalled()
+    expect(deferred[0]!.message).toBe('Old iPhone removed')
     // The current device's row survives the removal.
     expect(screen.getByTestId('device-row-d0')).toBeInTheDocument()
+
+    mockGetDevices.mockResolvedValueOnce({
+      devices: [device({ id: 'd0', display_hint: 'This laptop', is_current: true })],
+    })
+    await commitLast()
+    expect(mockRemoveDevice).toHaveBeenCalledWith('d1', { keepalive: false })
+    await waitFor(() => expect(mockGetDevices).toHaveBeenCalledTimes(2))
+  })
+
+  it('a removal sent as the page closes passes keepalive through', async () => {
+    mockGetDevices.mockResolvedValue({ devices: [device({ id: 'd1', display_hint: 'Old iPhone', is_current: false })] })
+    mockGetActivity.mockResolvedValue(activityResp([]))
+    render(<AccountDevicesTab />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Remove this device?' })).getByRole('button', { name: 'Hold to remove' }))
+    await waitFor(() => expect(screen.queryByTestId('device-row-d1')).not.toBeInTheDocument())
+    await commitLast({ keepalive: true })
+    expect(mockRemoveDevice).toHaveBeenCalledWith('d1', { keepalive: true })
+  })
+
+  it('Undo restores the device and sends nothing', async () => {
+    mockGetDevices.mockResolvedValue({ devices: [device({ id: 'd1', display_hint: 'Old iPhone', is_current: false })] })
+    mockGetActivity.mockResolvedValue(activityResp([]))
+    render(<AccountDevicesTab />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Remove this device?' })).getByRole('button', { name: 'Hold to remove' }))
+    await waitFor(() => expect(screen.queryByTestId('device-row-d1')).not.toBeInTheDocument())
+
+    undoLast()
+    expect(await screen.findByTestId('device-row-d1')).toBeInTheDocument()
+    expect(mockRemoveDevice).not.toHaveBeenCalled()
+  })
+
+  it('a rejected removal restores the device and shows the error', async () => {
+    mockGetDevices.mockResolvedValue({ devices: [device({ id: 'd1', display_hint: 'Old iPhone', is_current: false })] })
+    mockGetActivity.mockResolvedValue(activityResp([]))
+    mockRemoveDevice.mockRejectedValueOnce(new Error('boom'))
+    render(<AccountDevicesTab />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Remove this device?' })).getByRole('button', { name: 'Hold to remove' }))
+    await waitFor(() => expect(screen.queryByTestId('device-row-d1')).not.toBeInTheDocument())
+
+    const { toast } = await import('@ciphera-net/facet')
+    await commitLast()
+    expect(toast.error).toHaveBeenCalledWith('error')
+    expect(await screen.findByTestId('device-row-d1')).toBeInTheDocument()
   })
 
   it('shows First seen as the calendar date, with the full instant as a tooltip', async () => {

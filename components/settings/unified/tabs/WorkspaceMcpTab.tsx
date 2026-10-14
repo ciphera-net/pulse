@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { Button, RailGrid, toast } from '@ciphera-net/facet'
+import { Button, RailGrid } from '@ciphera-net/facet'
+import { HoldDialog } from '@ciphera-net/facet-hold'
 import { Avatar, personAvatarSeed } from '@ciphera-net/facet-avatar'
-import { DotsThree } from '@phosphor-icons/react'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { DotsThree, Plugs } from '@phosphor-icons/react'
 import { CopyBlock } from '@/components/ui/CopyBlock'
 import { McpIcon } from '@/components/icons/McpIcon'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
@@ -14,6 +14,8 @@ import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/setti
 import { AppMark } from '@/components/connect/AppMark'
 import { cn } from '@/lib/utils'
 import { cdnUrl } from '@/lib/cdn'
+import { useDeferredRemoval } from '@/lib/hold/useDeferredRemoval'
+import { usePendingKeys } from '@/lib/hold/pending'
 import { DURATION_BASE, DURATION_FAST, EASE_APPLE } from '@/lib/motion'
 import { formatDate, formatRelativeTime, formatDateTimeFull } from '@/lib/utils/formatDate'
 import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
@@ -49,6 +51,11 @@ export default function WorkspaceMcpTab() {
   const [loadError, setLoadError] = useState(false)
   const [retrying, setRetrying] = useState(false)
   const [disconnecting, setDisconnecting] = useState<Connection | null>(null)
+  const removeLater = useDeferredRemoval()
+  // A connection whose disconnect is waiting behind the Undo bar is hidden
+  // now (PUL-28).
+  const pendingKeys = usePendingKeys()
+  const visibleConnections = connections.filter((c) => !pendingKeys.has(`mcp:${c.id}`))
 
   const client = MCP_CLIENTS.find((c) => c.id === clientId) ?? MCP_CLIENTS[0]
   const steps = client.steps(mcpServerUrl())
@@ -92,17 +99,18 @@ export default function WorkspaceMcpTab() {
     return m?.user_email || `Member ${userId.slice(0, 8)}`
   }
 
-  const confirmDisconnect = async () => {
+  // The connection disappears at once; the request is sent when the Undo
+  // window runs out (PUL-28).
+  const doDisconnect = () => {
     if (!disconnecting) return
-    try {
-      await disconnectApp(disconnecting.id)
-      toast.success(`${disconnecting.client_name} is disconnected. It stops reading immediately.`)
-      await load()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't disconnect the app. Try again.")
-    } finally {
-      setDisconnecting(null)
-    }
+    const { id, client_name } = disconnecting
+    removeLater({
+      key: `mcp:${id}`,
+      message: `${client_name} disconnected`,
+      send: ({ keepalive }) => disconnectApp(id, { keepalive }),
+      refresh: load,
+      failure: `Couldn't disconnect ${client_name}. Try again.`,
+    })
   }
 
   return (
@@ -183,7 +191,7 @@ export default function WorkspaceMcpTab() {
           title="Connected apps"
           description={`${alone ? 'Assistants you have connected.' : 'Assistants people in this team have connected.'} Each reads only the sites it was given, and cannot change anything.`}
         >
-          {connections.length === 0 ? (
+          {visibleConnections.length === 0 ? (
             <EmptyRow
               icon={<McpIcon />}
               title="No assistants connected yet"
@@ -192,7 +200,7 @@ export default function WorkspaceMcpTab() {
           ) : (
             <PanelRows>
               <AnimatePresence initial={false}>
-                {connections.map((c) => (
+                {visibleConnections.map((c) => (
                   <motion.div
                     key={c.id}
                     data-testid={`connection-row-${c.id}`}
@@ -253,6 +261,7 @@ export default function WorkspaceMcpTab() {
                             className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                             onClick={() => setDisconnecting(c)}
                             aria-label={`Disconnect ${c.client_name}`}
+                            aria-haspopup="dialog"
                           >
                             Disconnect
                           </Button>
@@ -267,7 +276,7 @@ export default function WorkspaceMcpTab() {
         </SettingsPanel>
       )}
 
-      <ConfirmDialog
+      <HoldDialog
         open={disconnecting !== null}
         onOpenChange={(open) => { if (!open) setDisconnecting(null) }}
         title={disconnecting ? `Disconnect ${disconnecting.client_name}?` : 'Disconnect this app?'}
@@ -276,9 +285,9 @@ export default function WorkspaceMcpTab() {
             ? `${disconnecting.client_name} loses access immediately and stops reading your analytics. To use it again, ${alone ? 'you have' : 'someone has'} to connect it again from ${disconnecting.client_name}.`
             : ''
         }
-        confirmLabel="Disconnect"
-        variant="danger"
-        onConfirm={confirmDisconnect}
+        holdLabel="Hold to disconnect"
+        icon={<Plugs weight="bold" className="h-4 w-4" aria-hidden="true" />}
+        onConfirm={doDisconnect}
       />
     </div>
   )

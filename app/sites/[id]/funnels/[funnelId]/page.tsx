@@ -7,6 +7,7 @@ import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigat
 import { ArrowLeft, FunnelSimple } from '@phosphor-icons/react'
 import { toast, Button } from '@ciphera-net/facet'
 import { updateFunnel, deleteFunnel, type CreateFunnelRequest } from '@/lib/api/funnels'
+import { useSWRConfig } from 'swr'
 import { useFunnelDetail, useFunnelStats, useSite, useDataWindow } from '@/lib/swr/dashboard'
 import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
 import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
@@ -32,6 +33,7 @@ import { FunnelStepStrip } from '@/components/funnels/FunnelStepStrip'
 import { FunnelDailyInstrument } from '@/components/funnels/FunnelDailyInstrument'
 import { DeleteFunnelDialog } from '@/components/funnels/DeleteFunnelDialog'
 import { useCan } from '@/lib/auth/permissions'
+import { useDeferredRemoval } from '@/lib/hold/useDeferredRemoval'
 
 // ---------------------------------------------------------------------------
 // Funnel detail (31-08 overhaul, "tall columns"): ONE panel carries the
@@ -139,6 +141,12 @@ export default function FunnelDetailPage() {
 
   const [modalOpen, setModalOpen] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const removeLater = useDeferredRemoval()
+  // The BOUND mutate (not `import { mutate } from 'swr'`, which writes to the
+  // default cache nothing here reads): revalidates the LIST's SWR entry (the
+  // page this delete navigates to) once the commit lands, without mounting
+  // `useFunnels` here (PUL-28).
+  const { mutate } = useSWRConfig()
   // * Bumped after an edit so the panes and Daily refetch immediately — their
   // * SWR keys only carry ids and range, so a step change would otherwise
   // * show pre-edit numbers until the next 60s poll.
@@ -276,6 +284,7 @@ export default function FunnelDetailPage() {
                   variant="chrome"
                   size="toolbar"
                   className="text-red-400 hover:text-red-300"
+                  aria-haspopup="dialog"
                   onClick={() => setConfirmingDelete(true)}
                 >
                   Delete
@@ -377,14 +386,18 @@ export default function FunnelDetailPage() {
         open={confirmingDelete}
         funnelName={funnel.name}
         onCancel={() => setConfirmingDelete(false)}
-        onConfirm={async () => {
-          try {
-            await deleteFunnel(siteId, funnelId)
-            toast.success('Funnel deleted')
-            router.push(listHref)
-          } catch {
-            toast.error('Failed to delete funnel')
-          }
+        onConfirm={() => {
+          // Navigate to the list at once; the funnel is hidden there too (the
+          // key is shared across pages) and the delete is sent when the Undo
+          // window runs out (PUL-28).
+          removeLater({
+            key: `funnel:${funnelId}`,
+            message: `"${funnel.name}" deleted`,
+            send: ({ keepalive }) => deleteFunnel(siteId, funnelId, { keepalive }),
+            refresh: () => mutate(['funnels', siteId]),
+            failure: `Couldn't delete "${funnel.name}". Try again.`,
+          })
+          router.push(listHref)
         }}
       />
 

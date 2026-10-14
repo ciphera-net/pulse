@@ -1,4 +1,4 @@
-import apiRequest from './client'
+import apiRequest, { type SendOptions } from './client'
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -52,9 +52,10 @@ export async function getGSCStatus(siteId: string): Promise<GSCStatus> {
   return apiRequest<GSCStatus>(`/sites/${siteId}/integrations/gsc/status`)
 }
 
-export async function disconnectGSC(siteId: string): Promise<void> {
+export async function disconnectGSC(siteId: string, send: SendOptions = {}): Promise<void> {
   await apiRequest(`/sites/${siteId}/integrations/gsc`, {
     method: 'DELETE',
+    keepalive: send.keepalive,
   })
 }
 
