@@ -169,7 +169,9 @@ export default function HomeDashboard() {
                     </button>
                     <button
                       onClick={() => handlePermanentDelete(site.id)}
-                      className="rounded-none border border-red-900 px-3 py-1.5 text-xs font-medium text-red-400 transition-colors ease-apple hover:bg-red-900/20"
+                      aria-haspopup="dialog"
+                      // The one danger colour (the destructive token), not raw reds.
+                      className="rounded-none border border-destructive/40 px-3 py-1.5 text-xs font-medium text-destructive transition-colors ease-apple hover:border-destructive/60 hover:bg-destructive/10"
                     >
                       Delete Now
                     </button>

@@ -21,7 +21,7 @@ import { MatomoFlow } from '@/components/settings/import/MatomoFlow'
 import { GA4Flow } from '@/components/settings/import/GA4Flow'
 import { useImportSlot } from '@/components/settings/import/useImportSlot'
 import { ImportRecordRow } from '@/components/settings/import/ImportRows'
-import { hidePending, showPending, usePendingKeys } from '@/lib/hold/pending'
+import { usePendingKeys, whilePending } from '@/lib/hold/pending'
 
 // ─── Site settings → Import (PULSE-118, design §3.10b; owner ruling Q-M11) ──
 //
@@ -146,27 +146,27 @@ export default function SiteImportTab({ siteId }: { siteId: string }) {
     const importId = existing.id
     const source = existing.source
     const tool = sourceLabel(source)
-    const key = `import:${importId}`
-    hidePending(key)
-    defer({
+    // whilePending shows the slot's import again only after the refresh has
+    // landed, so a deleted import never flashes back.
+    defer(whilePending(`import:${importId}`, {
       message: `Imported data from ${tool} deleted`,
-      commit: ({ keepalive }) => deleteImport({ siteId, importId, transport: appTransport, keepalive }),
+      commit: ({ keepalive }: { keepalive: boolean }) => deleteImport({ siteId, importId, transport: appTransport, keepalive }),
       onUndo: () => {
         deletingRef.current = false
-        showPending(key)
       },
       onCommitted: async () => {
-        deletingRef.current = false
-        showPending(key)
-        if (mountedRef.current && slot.status === 'ready') await slot.refresh()
+        try {
+          if (mountedRef.current && slot.status === 'ready') await slot.refresh()
+        } finally {
+          deletingRef.current = false
+        }
       },
-      onError: (err) => {
+      onError: (err: unknown) => {
         deletingRef.current = false
-        showPending(key)
         const m = importErrorMessage(messageInputFromApiError(err), source)
         toast.error(m?.text ?? "Couldn't delete the imported data. Try again.")
       },
-    })
+    }))
     setOpen(null)
   }
 

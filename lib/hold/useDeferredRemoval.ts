@@ -3,7 +3,7 @@
 import { useCallback } from 'react'
 import { toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { useUndo } from '@ciphera-net/facet-hold'
-import { hidePending, showPending } from './pending'
+import { whilePending } from './pending'
 
 export interface DeferredRemoval {
   /** The item it hides at once: `<kind>:<id>`, the key lists filter on. */
@@ -31,23 +31,18 @@ export function useDeferredRemoval() {
   const { defer } = useUndo()
   return useCallback(
     (r: DeferredRemoval) => {
-      hidePending(r.key)
-      defer({
-        message: r.message,
-        commit: r.send,
-        onUndo: () => showPending(r.key),
-        onCommitted: async () => {
-          try {
-            await r.refresh?.()
-          } finally {
-            showPending(r.key)
-          }
-        },
-        onError: (err) => {
-          showPending(r.key)
-          toast.error(getAuthErrorMessage(err) || r.failure)
-        },
-      })
+      defer(
+        whilePending(r.key, {
+          message: r.message,
+          commit: r.send,
+          // Awaited by whilePending before the item is shown again: the
+          // refetch must land first, or the deleted item flashes back.
+          onCommitted: () => r.refresh?.(),
+          onError: (err: unknown) => {
+            toast.error(getAuthErrorMessage(err) || r.failure)
+          },
+        }),
+      )
     },
     [defer],
   )

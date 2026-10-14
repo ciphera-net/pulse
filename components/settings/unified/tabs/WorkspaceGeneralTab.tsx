@@ -12,6 +12,7 @@ import {
   getAuthErrorMessage,
 } from '@ciphera-net/facet'
 import { HoldDialog, useUndo } from '@ciphera-net/facet-hold'
+import { usePendingKeys, whilePending } from '@/lib/hold/pending'
 import { Avatar, personAvatarSeed } from '@ciphera-net/facet-avatar'
 import { ArrowsLeftRight, SignOut, Trash } from '@phosphor-icons/react'
 import { useAuth } from '@/lib/auth/context'
@@ -90,6 +91,13 @@ export default function WorkspaceGeneralTab() {
   }, [user?.org_id, user?.id, retryCount])
 
   // Track dirty state
+  // The team as SAVED: the dialogs and the Undo bar name what is about to be
+  // destroyed, never an unsaved draft of the Name field.
+  const savedName: string = baseline ? (JSON.parse(baseline) as { name: string }).name : name
+  // A team action waiting behind the Undo bar keeps all three rows off: a
+  // second confirm would send the first at once, past its Undo.
+  const pendingKeys = usePendingKeys()
+  const teamWaiting = user?.org_id ? pendingKeys.has(`team:${user.org_id}`) : false
   const isDirty = baseline
     ? JSON.stringify({ name, slug }) !== baseline
     : false
@@ -121,7 +129,7 @@ export default function WorkspaceGeneralTab() {
     const targetId = transferTargetId
     const target = members.find(m => m.user_id === targetId)
     const targetName = target?.user_email || `Member ${targetId.slice(0, 8)}`
-    defer({
+    defer(whilePending(`team:${orgId}`, {
       message: `Ownership transferred to ${targetName}`,
       commit: ({ keepalive }) => transferOwnership(orgId, targetId, { keepalive }),
       onCommitted: async () => {
@@ -135,14 +143,14 @@ export default function WorkspaceGeneralTab() {
       onError: (err) => {
         toast.error(getAuthErrorMessage(err as Error) || "Couldn't transfer ownership. Try again.")
       },
-    })
+    }))
   }
 
   const handleDeleteConfirm = () => {
     const orgId = user?.org_id
     if (!orgId) return
-    defer({
-      message: alone ? 'All data deleted' : `${name} deleted`,
+    defer(whilePending(`team:${orgId}`, {
+      message: alone ? 'All data deleted' : `${savedName} deleted`,
       commit: ({ keepalive }) => deleteOrganization(orgId, { keepalive }),
       onCommitted: async () => {
         // 🔴 NO localStorage.clear() HERE. It used to run on this line and wiped
@@ -172,14 +180,14 @@ export default function WorkspaceGeneralTab() {
       onError: (err) => {
         toast.error(getAuthErrorMessage(err as Error) || (alone ? "Couldn't delete your data. Try again." : "Couldn't delete your team. Try again."))
       },
-    })
+    }))
   }
 
   const handleLeaveConfirm = () => {
     const orgId = user?.org_id
     if (!orgId) return
-    defer({
-      message: `You left ${name}`,
+    defer(whilePending(`team:${orgId}`, {
+      message: `You left ${savedName}`,
       commit: ({ keepalive }) => leaveOrganization(orgId, { keepalive }),
       onCommitted: async () => {
         // Land on a team that still has you in it. The server picks the
@@ -198,7 +206,7 @@ export default function WorkspaceGeneralTab() {
       onError: (err) => {
         toast.error(getAuthErrorMessage(err as Error) || "Couldn't leave the team. Try again.")
       },
-    })
+    }))
   }
 
   const handleRetry = () => {
@@ -231,12 +239,14 @@ export default function WorkspaceGeneralTab() {
     description: 'Assign ownership to another member. You will become a regular member.',
     buttonLabel: 'Transfer',
     onClick: () => setOpenDialog('transfer'),
+    disabled: teamWaiting,
   }
   const deleteItem = {
     title: alone ? 'Delete all data' : 'Delete team',
     description: alone ? 'Permanently delete your sites and all their data.' : 'Permanently delete this team and all its data.',
     buttonLabel: 'Delete',
     onClick: () => setOpenDialog('delete'),
+    disabled: teamWaiting,
   }
   const leaveItem = {
     title: 'Leave team',
@@ -244,7 +254,7 @@ export default function WorkspaceGeneralTab() {
       ? 'Transfer ownership to another member first.'
       : "You will lose access to this team's sites and settings.",
     buttonLabel: 'Leave',
-    disabled: canDeleteOrg,
+    disabled: canDeleteOrg || teamWaiting,
     onClick: () => setOpenDialog('leave'),
   }
   const dangerZoneItems = alone
@@ -340,7 +350,7 @@ export default function WorkspaceGeneralTab() {
       <HoldDialog
         open={openDialog === 'delete'}
         onOpenChange={(open) => { if (!open) setOpenDialog(null) }}
-        title={alone ? 'Delete all your data?' : `Delete ${name}?`}
+        title={alone ? 'Delete all your data?' : `Delete ${savedName}?`}
         description={
           <>
             <p className="text-sm text-destructive">This permanently deletes:</p>
@@ -360,7 +370,7 @@ export default function WorkspaceGeneralTab() {
       <HoldDialog
         open={openDialog === 'leave'}
         onOpenChange={(open) => { if (!open) setOpenDialog(null) }}
-        title={`Leave ${name}?`}
+        title={`Leave ${savedName}?`}
         description="An owner or admin can invite you back."
         holdLabel="Hold to leave"
         icon={<SignOut weight="bold" className="h-4 w-4" aria-hidden="true" />}

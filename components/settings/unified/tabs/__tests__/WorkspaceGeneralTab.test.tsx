@@ -170,6 +170,33 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
     expect(screen.queryByPlaceholderText('DELETE')).toBeNull()
   })
 
+  it('names the team as SAVED in the dialog and the Undo bar, never an unsaved draft of the Name field', async () => {
+    // Review, 14-10-2026: the title read `Delete ${draft}?` while the request
+    // targeted the saved team.
+    render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+    fireEvent.change(screen.getByDisplayValue('Acme Corp'), { target: { value: 'Something Unsaved' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    expect(await screen.findByRole('dialog', { name: 'Delete Acme Corp?' })).toBeTruthy()
+    expect(screen.queryByRole('dialog', { name: 'Delete Something Unsaved?' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
+    expect(deferred[0]!.message).toBe('Acme Corp deleted')
+  })
+
+  it('keeps all three team actions off while one waits behind the Undo bar, then turns them back on', async () => {
+    // A second confirm would send the first at once, past its Undo.
+    render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to delete' }))
+    await waitFor(() => expect((screen.getByRole('button', { name: 'Delete' }) as HTMLButtonElement).disabled).toBe(true))
+    expect((screen.getByRole('button', { name: 'Transfer' }) as HTMLButtonElement).disabled).toBe(true)
+    undoLast()
+    await waitFor(() => expect((screen.getByRole('button', { name: 'Delete' }) as HTMLButtonElement).disabled).toBe(false))
+    expect((screen.getByRole('button', { name: 'Transfer' }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
   it('opens only one danger-zone dialog at a time', async () => {
     ;(orgApi.getOrganizationMembers as any).mockResolvedValueOnce([
       { user_id: 'u_next', user_email: 'next@acme.com', role: 'member' } as never,

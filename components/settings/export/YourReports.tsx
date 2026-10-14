@@ -19,7 +19,7 @@ import { comparePhrase, siteDay, spanLabel } from '@/lib/reports/format'
 import { safeTimeZone } from '@/lib/utils/siteTime'
 import type { Site } from '@/lib/api/sites'
 import { ReportLinkChip, reportLinkOpen, type ReportsList } from './reportFields'
-import { hidePending, showPending, usePendingKeys } from '@/lib/hold/pending'
+import { usePendingKeys, whilePending } from '@/lib/hold/pending'
 
 // "Your reports" (approved shots B-3, B-4, B-6): every report and every
 // scheduled email for this site, under the tiles panel whichever tile is open.
@@ -105,21 +105,15 @@ export function YourReports({
   const confirmDelete = () => {
     if (!deleting) return
     const { id, name } = deleting
-    const key = `report:${id}`
-    hidePending(key)
-    defer({
+    // whilePending shows the row again only after the reload has landed.
+    defer(whilePending(`report:${id}`, {
       message: `"${name}" deleted`,
-      commit: ({ keepalive }) => deleteReport(site.id, id, { keepalive }),
-      onUndo: () => showPending(key),
-      onCommitted: async () => {
-        showPending(key)
-        await list.reload()
-      },
-      onError: (err) => {
-        showPending(key)
+      commit: ({ keepalive }: { keepalive: boolean }) => deleteReport(site.id, id, { keepalive }),
+      onCommitted: () => list.reload(),
+      onError: (err: unknown) => {
         toast.error(serverMessage(err, `Couldn't delete "${name}". Try again.`))
       },
-    })
+    }))
   }
 
   // Likewise: the schedule disappears at once, and stops only when the
@@ -127,21 +121,14 @@ export function YourReports({
   const confirmStop = () => {
     if (!stopping) return
     const { id, name } = stopping
-    const key = `report-schedule:${id}`
-    hidePending(key)
-    defer({
+    defer(whilePending(`report-schedule:${id}`, {
       message: `"${name}" emails stopped`,
-      commit: ({ keepalive }) => stopSchedule(site.id, id, { keepalive }),
-      onUndo: () => showPending(key),
-      onCommitted: async () => {
-        showPending(key)
-        await list.reload()
-      },
-      onError: (err) => {
-        showPending(key)
+      commit: ({ keepalive }: { keepalive: boolean }) => stopSchedule(site.id, id, { keepalive }),
+      onCommitted: () => list.reload(),
+      onError: (err: unknown) => {
         toast.error(serverMessage(err, `Couldn't stop "${name}" emails. Try again.`))
       },
-    })
+    }))
   }
 
   const retry = async () => {

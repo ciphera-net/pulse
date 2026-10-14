@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Checkbox, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { HoldDialog, useUndo } from '@ciphera-net/facet-hold'
+import { whilePending } from '@/lib/hold/pending'
 import { resetSiteData, type ResetModule } from '@/lib/api/sites'
 import { ArrowCounterClockwise, ChartBar, Path, Funnel, Heartbeat, Gauge, Cloud, MagnifyingGlass, WarningCircle } from '@phosphor-icons/react'
 
@@ -120,12 +121,12 @@ export default function ResetDataModal({ open, onClose, onReset, siteDomain, sit
   const handleConfirm = () => {
     if (selected.size === 0) return
     const modules = Array.from(selected)
-    defer({
+    defer(whilePending(`reset:${siteId}`, {
       message: resetMessage(selected),
       commit: ({ keepalive }) => resetSiteData(siteId, modules, { keepalive }),
       onCommitted: () => onReset(),
       onError: (err) => toast.error(getAuthErrorMessage(err as Error) || "Couldn't reset data. Try again."),
-    })
+    }))
     setSelected(new Set())
   }
 

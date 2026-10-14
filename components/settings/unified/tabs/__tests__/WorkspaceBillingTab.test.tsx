@@ -299,6 +299,17 @@ describe('WorkspaceBillingTab banners & states', () => {
     expect(billingApi.cancelSubscription).toHaveBeenCalledWith(undefined, { keepalive: true })
   })
 
+  it('keeps Cancel subscription off while a cancellation waits, so it cannot be confirmed twice', async () => {
+    // A second confirm would send the first at once (one action waits at a
+    // time) and the Undo on screen would no longer undo it (review, 14-10-2026).
+    renderTab()
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel subscription' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to cancel' }))
+    await waitFor(() => expect((screen.getByRole('button', { name: 'Cancel subscription' }) as HTMLButtonElement).disabled).toBe(true))
+    undoLast()
+    await waitFor(() => expect((screen.getByRole('button', { name: 'Cancel subscription' }) as HTMLButtonElement).disabled).toBe(false))
+  })
+
   it('undoLast() sends nothing and never revalidates', async () => {
     renderTab()
     fireEvent.click(await screen.findByRole('button', { name: 'Cancel subscription' }))

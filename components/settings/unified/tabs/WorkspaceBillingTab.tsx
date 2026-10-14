@@ -20,6 +20,7 @@ import {
   getAuthErrorMessage,
 } from '@ciphera-net/facet'
 import { HoldDialog, useUndo } from '@ciphera-net/facet-hold'
+import { usePendingKeys, whilePending } from '@/lib/hold/pending'
 import { SettingsTH } from '@/components/settings/panels/SettingsTH'
 import { CreditCard, DownloadSimple, XCircle } from '@phosphor-icons/react'
 import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/settings/panels'
@@ -101,6 +102,9 @@ export default function WorkspaceBillingTab() {
   const alone = useTeamState() === 'alone'
   const { data: subscription, error: subscriptionError, isLoading, mutate } = useSubscription()
   const { defer } = useUndo()
+  // A cancellation waiting behind the Undo bar: Cancel subscription stays off,
+  // or a second confirm would send the first at once, past its Undo.
+  const cancelWaiting = usePendingKeys().has('billing:cancel')
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('')
@@ -168,7 +172,7 @@ export default function WorkspaceBillingTab() {
   // (PUL-28). The hold completing closes the dialog; the request is sent only
   // when the Undo window runs out.
   const doCancel = () => {
-    defer({
+    defer(whilePending('billing:cancel', {
       message: 'Subscription cancelled',
       commit: ({ keepalive }) => cancelSubscription(undefined, { keepalive }),
       onCommitted: async (result) => {
@@ -187,7 +191,7 @@ export default function WorkspaceBillingTab() {
       onError: (err) => {
         toast.error(getAuthErrorMessage(err as Error) || "Couldn't cancel your subscription. Try again.")
       },
-    })
+    }))
   }
 
   const handleResume = async () => {
@@ -494,7 +498,7 @@ export default function WorkspaceBillingTab() {
             </Button>
 
             {isActive && !subscription.cancel_at_period_end && (
-              <Button onClick={() => setShowCancelConfirm(true)} variant="outline" size="sm" aria-haspopup="dialog">
+              <Button onClick={() => setShowCancelConfirm(true)} variant="outline" size="sm" aria-haspopup="dialog" disabled={cancelWaiting}>
                 Cancel subscription
               </Button>
             )}

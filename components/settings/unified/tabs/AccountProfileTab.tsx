@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Button, Input, SegmentedControl, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { HoldDialog, useUndo } from '@ciphera-net/facet-hold'
+import { usePendingKeys, whilePending } from '@/lib/hold/pending'
 import { Trash } from '@phosphor-icons/react'
 import { Avatar, personAvatarSeed } from '@ciphera-net/facet-avatar'
 import { regenerateAvatarSeed } from '@/lib/api/avatar'
@@ -252,6 +253,8 @@ export default function AccountProfileTab() {
   const [deletePassword, setDeletePassword] = useState('')
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const { defer } = useUndo()
+  // The deletion waiting behind the Undo bar: the row's button stays off.
+  const accountWaiting = usePendingKeys().has('account:delete')
   // What deletion would take with the account.
   //
   // 🔴 THREE STATES, AND THEY MUST NOT COLLAPSE. `null` = not read yet,
@@ -701,7 +704,7 @@ export default function AccountProfileTab() {
     // so a workspace created after this dialog was drawn survives and the
     // refusal comes back naming it.
     const orgIds = Array.isArray(blockers) ? blockers.map((b) => b.id) : []
-    defer({
+    defer(whilePending('account:delete', {
       message: 'Account deleted',
       commit: ({ keepalive }) => deleteAccount(reauthToken, orgIds, { keepalive }),
       onCommitted: () => logout(),
@@ -723,7 +726,7 @@ export default function AccountProfileTab() {
           toast.error(getAuthErrorMessage(err as Error) || "Couldn't delete your account. Try again.")
         }
       },
-    })
+    }))
   }, [deletePassword, blockers, defer, logout, alone])
 
   const cancelDelete = () => {
@@ -1333,6 +1336,7 @@ export default function AccountProfileTab() {
             description: 'Permanently delete your account and all associated data.',
             buttonLabel: 'Delete',
             onClick: () => setShowDeleteDialog(true),
+            disabled: accountWaiting,
           },
         ]}
       />

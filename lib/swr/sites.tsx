@@ -73,11 +73,13 @@ export function useDeletedSites() {
  * not mounted when the commit happens just sees fresh data the next time it
  * mounts.
  */
-export function useRefreshSiteLists(): () => void {
+export function useRefreshSiteLists(): () => Promise<void> {
   const { mutate } = useSWRConfig()
-  return useCallback(() => {
-    void mutate(SITES_KEY)
-    void mutate(DELETED_SITES_KEY)
+  // Resolves when BOTH refetches have landed: a deferred deletion shows its
+  // item again only after this (whilePending), so returning early would let
+  // the deleted site flash back into the list while the refetch is in flight.
+  return useCallback(async () => {
+    await Promise.all([mutate(SITES_KEY), mutate(DELETED_SITES_KEY)])
   }, [mutate])
 }
 

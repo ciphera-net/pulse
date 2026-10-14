@@ -6,6 +6,7 @@ import { useSite, useInstallStatus } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
 import { useCan } from '@/lib/auth/permissions'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
+import { usePendingKeys } from '@/lib/hold/pending'
 import DeleteSiteModal from '@/components/sites/DeleteSiteModal'
 import ResetDataModal from '@/components/settings/unified/ResetDataModal'
 import ScriptSetupBlock from '@/components/sites/ScriptSetupBlock'
@@ -31,6 +32,7 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
   const [saving, setSaving] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showResetModal, setShowResetModal] = useState(false)
+  const resetWaiting = usePendingKeys().has(`reset:${siteId}`)
 
   const canEdit = useCan('sites.edit')
 
@@ -255,6 +257,9 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
               description: 'Delete all stats and events.',
               buttonLabel: 'Reset data',
               onClick: () => setShowResetModal(true),
+              // A reset waiting behind the Undo bar keeps this off: a second
+              // confirm would send the first at once, past its Undo.
+              disabled: resetWaiting,
             },
             {
               title: 'Delete site',

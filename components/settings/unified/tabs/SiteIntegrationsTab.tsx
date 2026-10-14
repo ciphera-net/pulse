@@ -97,6 +97,7 @@ function IntegrationHeaderRow({
   onDisconnect,
   connectLabel = 'Connect',
   connecting = false,
+  waiting = false,
   expanded,
   canManage,
 }: {
@@ -115,6 +116,12 @@ function IntegrationHeaderRow({
   onDisconnect: () => void
   connectLabel?: string
   connecting?: boolean
+  /**
+   * A disconnect is waiting behind the Undo bar: the card reads disconnected
+   * but the server still holds the connection, and a reconnect made now would
+   * be removed by that disconnect when it is sent. Connect stays off.
+   */
+  waiting?: boolean
   /** Whether Connect discloses an inline setup form beneath this row. */
   expanded?: boolean
   canManage: boolean
@@ -141,7 +148,7 @@ function IntegrationHeaderRow({
                   variant="outline"
                   size="sm"
                   onClick={onConnect}
-                  disabled={connecting}
+                  disabled={connecting || waiting}
                   aria-expanded={expanded}
                 >
                   {connecting ? 'Connecting…' : connectLabel}
@@ -533,6 +540,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
               status={gscStatus?.status}
               hasError={!!gscError}
               onConnect={handleConnectGSC}
+              waiting={pendingKeys.has(`integration:gsc:${siteId}`)}
               onDisconnect={handleDisconnectGSC}
               connectLabel="Connect with Google"
               connecting={connectingGSC}
@@ -571,6 +579,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
               status={bingStatus?.status}
               hasError={!!bingError}
               onConnect={handleConnectBing}
+              waiting={pendingKeys.has(`integration:bing:${siteId}`)}
               onDisconnect={handleDisconnectBing}
               expanded={openSetup === 'bing'}
               canManage={canManage}
@@ -614,6 +623,7 @@ export default function SiteIntegrationsTab({ siteId }: { siteId: string }) {
               status={bunnyStatus?.status}
               hasError={!!bunnyError}
               onConnect={handleConnectBunny}
+              waiting={pendingKeys.has(`integration:bunny:${siteId}`)}
               onDisconnect={handleDisconnectBunny}
               expanded={openSetup === 'bunny'}
               canManage={canManage}
