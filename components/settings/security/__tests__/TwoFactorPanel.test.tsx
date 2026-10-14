@@ -92,7 +92,7 @@ describe('TwoFactorPanel', () => {
     fireEvent.click(within(dialog).getByRole('radio', { name: 'Recovery code' }))
     fireEvent.change(within(dialog).getByLabelText('Recovery code'), { target: { value: ' cccc-3333 ' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Hold to turn off' }))
-    // Owner ruling 6: the hold sends at once, no Undo bar, and no success
+    // PUL-28 ruling 6: the hold sends at once, no Undo bar, and no success
     // toast is deferred behind one either.
     await waitFor(() => expect(api.disable2FA).toHaveBeenCalledWith('', { recovery_code: 'cccc-3333' }))
     expect(auth.refresh).toHaveBeenCalled()

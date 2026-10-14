@@ -26,7 +26,7 @@ export const DESTRUCTIVE_OUTLINE = 'border-destructive/40 text-destructive hover
 
 /**
  * A settings page's danger zone. Each row's button opens a dialog whose final
- * button is a hold (PUL-28, owner rulings 14-10-2026: dialogs for every danger
+ * button is a hold (PUL-28 rulings, 14-10-2026: dialogs for every danger
  * zone, no inline reveals, no typed confirmations). Every confirmed action
  * waits 6 s behind the app's Undo bar before it is sent, which is what the
  * panel's line says.

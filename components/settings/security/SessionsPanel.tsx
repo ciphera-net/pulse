@@ -33,7 +33,7 @@ export function describeSession(ua: string | null | undefined): string {
 /**
  * Active sessions — everywhere this account is signed in, with a way out.
  *
- * Owner ruling 4 (PUL-28): signing another device out stays one click, and
+ * PUL-28 ruling 4: signing another device out stays one click, and
  * signing THIS device out is now one click too, same as the account menu's
  * own Sign out. Revoking the current session signs this browser out via
  * logout(); revoking another only re-reads the list.

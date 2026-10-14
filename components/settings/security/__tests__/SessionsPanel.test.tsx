@@ -55,7 +55,7 @@ describe('SessionsPanel', () => {
     await waitFor(() => expect(api.getUserSessions).toHaveBeenCalledTimes(2))
   })
 
-  it('signs this device out in one click too, same as any other (owner ruling 4, PUL-28)', async () => {
+  it('signs this device out in one click too, same as any other (PUL-28 ruling 4)', async () => {
     api.getUserSessions.mockResolvedValue({ sessions: [mine] })
     render(<SessionsPanel />)
     fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }))

@@ -1325,7 +1325,7 @@ export default function AccountProfileTab() {
       </SettingsPanel>
 
       {/* Danger zone. Trigger row via the shared DangerZone API; the confirm
-          lives in the HoldDialog below (PUL-28, owner rulings 14-10-2026). */}
+          lives in the HoldDialog below (PUL-28 rulings, 14-10-2026). */}
       <DangerZone
         items={[
           {

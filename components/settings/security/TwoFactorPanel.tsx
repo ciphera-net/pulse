@@ -98,7 +98,7 @@ export default function TwoFactorPanel() {
     }
   }
 
-  // Owner ruling 6 (PUL-28): the hold sends at once, no Undo. The code is
+  // PUL-28 ruling 6: the hold sends at once, no Undo. The code is
   // checked by the same request that acts, so a mistyped code is reported
   // inside the dialog rather than deferred behind a bar that could run out
   // before anyone reads it.
