@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { Input, Button, toast, Spinner, getAuthErrorMessage } from '@ciphera-net/facet'
+import { Input, Button, toast, getAuthErrorMessage } from '@ciphera-net/facet'
+import { HoldDialog } from '@ciphera-net/facet-hold'
 import { Plus, Pencil, Trash, Target } from '@phosphor-icons/react'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
 import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/settings/panels'
@@ -13,6 +13,8 @@ import { DURATION_FAST, DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { useGoals } from '@/lib/swr/dashboard'
 import { createGoal, updateGoal, deleteGoal, type Goal } from '@/lib/api/goals'
 import { useCan } from '@/lib/auth/permissions'
+import { useDeferredRemoval } from '@/lib/hold/useDeferredRemoval'
+import { usePendingKeys } from '@/lib/hold/pending'
 
 export default function SiteGoalsTab({ siteId }: { siteId: string }) {
   const canManageGoals = useCan('goals.manage')
@@ -24,8 +26,11 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
   const [eventName, setEventName] = useState('')
   const [saving, setSaving] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<{ name?: string; eventName?: string }>({})
+  const removeLater = useDeferredRemoval()
+  // A goal whose delete is waiting behind the Undo bar (PUL-28) is hidden now.
+  const pendingKeys = usePendingKeys()
+  const visibleGoals = goals.filter((goal) => !pendingKeys.has(`goal:${goal.id}`))
 
   const startCreate = () => {
     setCreating(true)
@@ -84,18 +89,16 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
     }
   }
 
-  const handleDelete = async (goalId: string) => {
-    if (deletingId) return
-    setDeletingId(goalId)
-    try {
-      await deleteGoal(siteId, goalId)
-      toast.success('Goal deleted')
-      await mutate()
-    } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || "Couldn't delete the goal. Try again.")
-    } finally {
-      setDeletingId(null)
-    }
+  // The goal disappears at once; the request is sent when the Undo window
+  // runs out (PUL-28).
+  const handleDelete = (goal: Goal) => {
+    removeLater({
+      key: `goal:${goal.id}`,
+      message: `"${goal.name}" deleted`,
+      send: ({ keepalive }) => deleteGoal(siteId, goal.id, { keepalive }),
+      refresh: mutate,
+      failure: `Couldn't delete "${goal.name}". Try again.`,
+    })
   }
 
   // A loading fetch reads as the panel filling in, never a bare spinner.
@@ -199,7 +202,7 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
       </AnimatePresence>
 
       <SettingsPanel title="Goals" description="Track custom events as conversion goals.">
-        {goals.length === 0 ? (
+        {visibleGoals.length === 0 ? (
           <EmptyRow
             icon={<Target weight="regular" />}
             title="No goals yet"
@@ -215,7 +218,7 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
         ) : (
           <PanelRows>
             <AnimatePresence initial={false}>
-              {goals.map(goal => (
+              {visibleGoals.map(goal => (
                 <motion.div
                   key={goal.id}
                   layout={!reducedMotion}
@@ -247,7 +250,6 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
                             className="h-8 w-8"
                             aria-label={`Edit ${goal.name}`}
                             onClick={() => startEdit(goal)}
-                            disabled={deletingId === goal.id}
                           >
                             <Pencil weight="bold" className="h-3.5 w-3.5" />
                           </Button>
@@ -256,12 +258,10 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
                             size="icon"
                             className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
                             aria-label={`Delete ${goal.name}`}
+                            aria-haspopup="dialog"
                             onClick={() => setConfirmDeleteId(goal.id)}
-                            disabled={deletingId === goal.id}
                           >
-                            {deletingId === goal.id
-                              ? <Spinner className="h-3.5 w-3.5" />
-                              : <Trash weight="bold" className="h-3.5 w-3.5" />}
+                            <Trash weight="bold" className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       )
@@ -274,19 +274,19 @@ export default function SiteGoalsTab({ siteId }: { siteId: string }) {
         )}
       </SettingsPanel>
 
-      <ConfirmDialog
+      <HoldDialog
         open={confirmDeleteId !== null}
         onOpenChange={(open) => { if (!open) setConfirmDeleteId(null) }}
-        title="Delete this goal?"
+        title={confirmGoal ? `Delete "${confirmGoal.name}"?` : 'Delete this goal?'}
         description={
           confirmGoal
-            ? `"${confirmGoal.name}" and everything recorded against it are deleted immediately. This cannot be undone.`
+            ? `"${confirmGoal.name}" and everything recorded against it are deleted.`
             : ''
         }
-        confirmLabel="Delete goal"
-        variant="danger"
-        onConfirm={async () => {
-          if (confirmDeleteId) await handleDelete(confirmDeleteId)
+        holdLabel="Hold to delete"
+        icon={<Trash weight="bold" className="h-4 w-4" aria-hidden="true" />}
+        onConfirm={() => {
+          if (confirmGoal) handleDelete(confirmGoal)
         }}
       />
     </div>

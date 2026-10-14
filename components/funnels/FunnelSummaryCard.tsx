@@ -182,6 +182,7 @@ export function FunnelSummaryCard({
           <button
             type="button"
             aria-label={`Delete ${funnel.name}`}
+            aria-haspopup="dialog"
             onClick={() => onDelete({ id: funnel.id, name: funnel.name })}
             className="rounded-none border border-neutral-800 bg-card p-2 text-neutral-400 transition-colors duration-fast ease-apple hover:border-red-500/50 hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
           >

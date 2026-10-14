@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
-import { FilePdf, Link as LinkIcon, PresentationChart, Trash } from '@phosphor-icons/react'
+import { FilePdf, Link as LinkIcon, Prohibit, PresentationChart, Trash } from '@phosphor-icons/react'
 import { Button, toast } from '@ciphera-net/facet'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { HoldDialog, useUndo } from '@ciphera-net/facet-hold'
 import { EmptyRow, PanelRow, PanelRows, SettingsPanel } from '@/components/settings/panels'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { cn } from '@/lib/utils'
@@ -19,6 +19,7 @@ import { comparePhrase, siteDay, spanLabel } from '@/lib/reports/format'
 import { safeTimeZone } from '@/lib/utils/siteTime'
 import type { Site } from '@/lib/api/sites'
 import { ReportLinkChip, reportLinkOpen, type ReportsList } from './reportFields'
+import { hidePending, showPending, usePendingKeys } from '@/lib/hold/pending'
 
 // "Your reports" (approved shots B-3, B-4, B-6): every report and every
 // scheduled email for this site, under the tiles panel whichever tile is open.
@@ -71,6 +72,12 @@ export function YourReports({
   const [deleting, setDeleting] = useState<Report | null>(null)
   const [stopping, setStopping] = useState<ReportSchedule | null>(null)
   const [retrying, setRetrying] = useState(false)
+  // Hand-rolled on useUndo rather than useDeferredRemoval (PUL-28): a failed
+  // delete or stop reads through the server's own words (serverMessage), not
+  // the generic auth-error message, and that must survive the hold.
+  const { defer } = useUndo()
+  // A report or schedule waiting behind the Undo bar is hidden now.
+  const pendingKeys = usePendingKeys()
 
   const copy = async (url: string) => {
     try {
@@ -93,30 +100,48 @@ export function YourReports({
     }
   }
 
-  const confirmDelete = async () => {
+  // The report disappears at once; the delete is sent when the Undo window
+  // runs out (PUL-28).
+  const confirmDelete = () => {
     if (!deleting) return
-    try {
-      await deleteReport(site.id, deleting.id)
-      toast.success('The report is deleted. Its link no longer opens.')
-      await list.reload()
-    } catch (err) {
-      toast.error(serverMessage(err, "Couldn't delete the report. Try again."))
-    } finally {
-      setDeleting(null)
-    }
+    const { id, name } = deleting
+    const key = `report:${id}`
+    hidePending(key)
+    defer({
+      message: `"${name}" deleted`,
+      commit: ({ keepalive }) => deleteReport(site.id, id, { keepalive }),
+      onUndo: () => showPending(key),
+      onCommitted: async () => {
+        showPending(key)
+        await list.reload()
+      },
+      onError: (err) => {
+        showPending(key)
+        toast.error(serverMessage(err, `Couldn't delete "${name}". Try again.`))
+      },
+    })
   }
 
-  const confirmStop = async () => {
+  // Likewise: the schedule disappears at once, and stops only when the
+  // window runs out.
+  const confirmStop = () => {
     if (!stopping) return
-    try {
-      await stopSchedule(site.id, stopping.id)
-      toast.success('Stopped. No more reports will be made or emailed.')
-      await list.reload()
-    } catch (err) {
-      toast.error(serverMessage(err, "Couldn't stop the emails. Try again."))
-    } finally {
-      setStopping(null)
-    }
+    const { id, name } = stopping
+    const key = `report-schedule:${id}`
+    hidePending(key)
+    defer({
+      message: `"${name}" emails stopped`,
+      commit: ({ keepalive }) => stopSchedule(site.id, id, { keepalive }),
+      onUndo: () => showPending(key),
+      onCommitted: async () => {
+        showPending(key)
+        await list.reload()
+      },
+      onError: (err) => {
+        showPending(key)
+        toast.error(serverMessage(err, `Couldn't stop "${name}" emails. Try again.`))
+      },
+    })
   }
 
   const retry = async () => {
@@ -159,9 +184,11 @@ export function YourReports({
       />
     )
   } else {
+    const visibleReports = list.reports.filter((r) => !pendingKeys.has(`report:${r.id}`))
+    const visibleSchedules = list.schedules.filter((s) => !pendingKeys.has(`report-schedule:${s.id}`))
     body = (
       <PanelRows>
-        {orderRows(list.reports, list.schedules, now).map((row) => {
+        {orderRows(visibleReports, visibleSchedules, now).map((row) => {
           if (row.kind === 'schedule') {
             const s = row.schedule
             const people = s.recipient_user_ids.length
@@ -190,6 +217,7 @@ export function YourReports({
                           size="icon"
                           className={DANGER_BUTTON}
                           aria-label={`Stop sending ${s.name}`}
+                          aria-haspopup="dialog"
                           onClick={() => setStopping(s)}
                         >
                           <Trash className="h-3.5 w-3.5" />
@@ -248,6 +276,7 @@ export function YourReports({
                         size="icon"
                         className={DANGER_BUTTON}
                         aria-label={`Delete ${r.name}`}
+                        aria-haspopup="dialog"
                         onClick={() => setDeleting(r)}
                       >
                         <Trash className="h-3.5 w-3.5" />
@@ -272,34 +301,30 @@ export function YourReports({
         {body}
       </SettingsPanel>
 
-      <ConfirmDialog
+      <HoldDialog
         open={deleting !== null}
         onOpenChange={(open) => {
           if (!open) setDeleting(null)
         }}
-        title="Delete this report?"
-        description={
-          deleting
-            ? `The link to "${deleting.name}" stops working and its numbers are deleted. This cannot be undone.`
-            : ''
-        }
-        confirmLabel="Delete report"
-        variant="danger"
+        title={deleting ? `Delete "${deleting.name}"?` : 'Delete this report?'}
+        description={deleting ? `The link to "${deleting.name}" stops working and its numbers are deleted.` : ''}
+        holdLabel="Hold to delete"
+        icon={<Trash weight="bold" className="h-4 w-4" aria-hidden="true" />}
         onConfirm={confirmDelete}
       />
-      <ConfirmDialog
+      <HoldDialog
         open={stopping !== null}
         onOpenChange={(open) => {
           if (!open) setStopping(null)
         }}
-        title="Stop these emails?"
+        title={stopping ? `Stop "${stopping.name}" emails?` : 'Stop these emails?'}
         description={
           stopping
             ? `"${stopping.name}" stops being made and emailed. Reports already sent keep their links.`
             : ''
         }
-        confirmLabel="Stop sending"
-        variant="danger"
+        holdLabel="Hold to stop"
+        icon={<Prohibit weight="bold" className="h-4 w-4" aria-hidden="true" />}
         onConfirm={confirmStop}
       />
     </>

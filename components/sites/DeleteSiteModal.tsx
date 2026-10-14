@@ -1,15 +1,18 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { Modal, Button, toast, getAuthErrorMessage, AlertTriangleIcon } from '@ciphera-net/facet'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Button, AlertTriangleIcon } from '@ciphera-net/facet'
+import { HoldDialog } from '@ciphera-net/facet-hold'
+import { Trash } from '@phosphor-icons/react'
 import { deleteSite, permanentDeleteSite } from '@/lib/api/sites'
+import { useDeferredRemoval } from '@/lib/hold/useDeferredRemoval'
+import { useRefreshSiteLists } from '@/lib/swr/sites'
 
 interface DeleteSiteModalProps {
   open: boolean
   onClose: () => void
-  onDeleted: () => void
   siteName: string
-  siteDomain: string
   siteId: string
   permanentOnly?: boolean
 }
@@ -24,176 +27,86 @@ function WarningRow({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Site deletion dialog on Facet's Modal (replacing the former bespoke
- * framer-motion portal). Two flows: schedule (type DELETE, 7-day grace) and
- * permanent (type the exact domain). Facet's Modal traps focus but does not
- * restore it on close, so the opener's focus is restored here.
+ * Site deletion dialog, on facet-hold's HoldDialog (PUL-28). Two flows inside
+ * the SAME dialog: schedule (7-day grace) and permanent, switched by the
+ * secondary button below the warnings. The site hides from every list at
+ * once on confirm and is sent only when the Undo bar's window runs out.
+ *
+ * The pending key depends on where the site is coming FROM, not on which
+ * delete it is: a site still in the active fleet hides as `site:<id>` (the
+ * fleet, the switcher, the command palette all read that key); a site
+ * already scheduled for deletion, deleted permanently from the home page's
+ * own list, hides as `deleted-site:<id>` instead, because that row is the
+ * only one it is still visible in. `permanentOnly` is how this component is
+ * always opened from that list, so it doubles as the signal here.
  */
-export default function DeleteSiteModal({ open, onClose, onDeleted, siteName, siteDomain, siteId, permanentOnly }: DeleteSiteModalProps) {
-  const [deleteConfirm, setDeleteConfirm] = useState('')
-  const [isDeleting, setIsDeleting] = useState(false)
+export default function DeleteSiteModal({ open, onClose, siteName, siteId, permanentOnly }: DeleteSiteModalProps) {
+  const router = useRouter()
   const [showPermanent, setShowPermanent] = useState(!!permanentOnly)
-  const [permanentConfirm, setPermanentConfirm] = useState('')
-  const [isPermanentDeleting, setIsPermanentDeleting] = useState(false)
-  const restoreFocusRef = useRef<HTMLElement | null>(null)
+  const removeLater = useDeferredRemoval()
+  const refreshSiteLists = useRefreshSiteLists()
 
+  // Each open starts from the right variant: permanentOnly always opens on
+  // the permanent one, and a plain open always starts on the soft one, even
+  // if a previous visit left it toggled.
   useEffect(() => {
-    if (open && permanentOnly) setShowPermanent(true)
+    if (open) setShowPermanent(!!permanentOnly)
   }, [open, permanentOnly])
 
-  useEffect(() => {
-    if (open) {
-      restoreFocusRef.current = document.activeElement as HTMLElement | null
-    } else {
-      restoreFocusRef.current?.focus()
-      restoreFocusRef.current = null
-    }
-  }, [open])
-
-  const handleClose = () => {
-    setDeleteConfirm('')
-    setShowPermanent(false)
-    setPermanentConfirm('')
-    setIsDeleting(false)
-    setIsPermanentDeleting(false)
-    onClose()
+  const handleConfirm = () => {
+    const permanent = showPermanent
+    removeLater({
+      key: permanentOnly ? `deleted-site:${siteId}` : `site:${siteId}`,
+      message: permanent ? `${siteName} deleted forever` : `${siteName} deleted`,
+      send: ({ keepalive }) =>
+        permanent ? permanentDeleteSite(siteId, { keepalive }) : deleteSite(siteId, { keepalive }),
+      refresh: refreshSiteLists,
+      failure: `Couldn't delete ${siteName}. Try again.`,
+    })
+    // Delete site navigates home at once (the provider survives the route
+    // change, so the Undo bar keeps counting down there).
+    router.push('/')
   }
-
-  const handleSoftDelete = async () => {
-    if (deleteConfirm !== 'DELETE') return
-    setIsDeleting(true)
-    try {
-      await deleteSite(siteId)
-      toast.success('Site scheduled for deletion. You have 7 days to restore it.')
-      handleClose()
-      onDeleted()
-    } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || "Couldn't delete this site. Try again.")
-      setIsDeleting(false)
-    }
-  }
-
-  const handlePermanentDelete = async () => {
-    if (permanentConfirm !== siteDomain) return
-    setIsPermanentDeleting(true)
-    try {
-      await permanentDeleteSite(siteId)
-      toast.success('Site permanently deleted')
-      handleClose()
-      onDeleted()
-    } catch (error: unknown) {
-      toast.error(getAuthErrorMessage(error) || "Couldn't permanently delete this site. Try again.")
-      setIsPermanentDeleting(false)
-    }
-  }
-
-  const confirmInputClass =
-    'w-full rounded-none border border-input bg-transparent px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
 
   return (
-    <Modal isOpen={open} onClose={handleClose} title={`Delete ${siteName || 'Site'}?`} className="max-w-sm">
-      {!showPermanent ? (
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            This site will be scheduled for deletion with a <span className="font-semibold">7-day grace period</span>. You
-            can restore it at any time during this period.
-          </p>
-
-          <div className="space-y-2">
+    <HoldDialog
+      open={open}
+      onOpenChange={(isOpen) => { if (!isOpen) onClose() }}
+      title={showPermanent ? `Delete ${siteName} forever?` : `Delete ${siteName}?`}
+      description={
+        showPermanent
+          ? 'The site and all its data will be deleted at once, with no 7-day grace period.'
+          : 'This site will be scheduled for deletion with a 7-day grace period. You can restore it at any time during this period.'
+      }
+      holdLabel={showPermanent ? 'Hold to delete forever' : 'Hold to delete'}
+      icon={<Trash weight="bold" className="h-4 w-4" aria-hidden="true" />}
+      onConfirm={handleConfirm}
+    >
+      <div className="space-y-2">
+        {showPermanent ? (
+          <>
+            <WarningRow>All analytics data is permanently lost</WarningRow>
+            <WarningRow>Deleted at once, with no 7-day grace period</WarningRow>
+          </>
+        ) : (
+          <>
             <WarningRow>All events and analytics data</WarningRow>
             <WarningRow>Alert channels and goals</WarningRow>
-          </div>
+          </>
+        )}
+      </div>
 
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              Type <span className="font-mono font-semibold text-destructive">DELETE</span> to confirm
-            </label>
-            <input
-              type="text"
-              value={deleteConfirm}
-              onChange={(e) => setDeleteConfirm(e.target.value)}
-              autoComplete="off"
-              className={confirmInputClass}
-              placeholder="DELETE"
-            />
-          </div>
-
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={handleClose} disabled={isDeleting}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleSoftDelete}
-              disabled={deleteConfirm !== 'DELETE' || isDeleting}
-              isLoading={isDeleting}
-            >
-              Schedule deletion
-            </Button>
-          </div>
-
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowPermanent(true)}
-            className="w-full text-muted-foreground hover:text-destructive"
-          >
-            Permanently delete now (cannot be undone)
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            This action is <span className="font-semibold">irreversible</span>. The site and all its data will be
-            permanently deleted immediately.
-          </p>
-
-          <div className="space-y-2">
-            <WarningRow>All analytics data will be permanently lost</WarningRow>
-            <WarningRow>This cannot be undone</WarningRow>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              Type <span className="font-mono font-semibold text-destructive">{siteDomain}</span> to confirm
-            </label>
-            <input
-              type="text"
-              value={permanentConfirm}
-              onChange={(e) => setPermanentConfirm(e.target.value)}
-              autoComplete="off"
-              className={confirmInputClass}
-              placeholder={siteDomain}
-            />
-          </div>
-
-          <div className="flex justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (permanentOnly) {
-                  handleClose()
-                } else {
-                  setShowPermanent(false)
-                  setPermanentConfirm('')
-                }
-              }}
-              disabled={isPermanentDeleting}
-            >
-              {permanentOnly ? 'Cancel' : 'Back'}
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handlePermanentDelete}
-              disabled={permanentConfirm !== siteDomain || isPermanentDeleting}
-              isLoading={isPermanentDeleting}
-            >
-              Delete forever
-            </Button>
-          </div>
-        </div>
+      {!permanentOnly && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowPermanent((v) => !v)}
+          className="w-full text-muted-foreground hover:text-destructive"
+        >
+          {showPermanent ? 'Back' : 'Delete permanently now instead'}
+        </Button>
       )}
-    </Modal>
+    </HoldDialog>
   )
 }

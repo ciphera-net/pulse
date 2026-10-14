@@ -16,12 +16,16 @@ vi.mock('next/navigation', () => ({
 let mockSubscription: SubscriptionDetails | undefined
 let mockSubscriptionError: Error | undefined
 let mockSubscriptionLoading = false
+// A stable mock (vitest's hoisting allows a `mock`-prefixed outer variable
+// inside the factory) so a test can assert on it across the render the hold
+// dialog's onConfirm closure captured, rather than a fresh vi.fn() per call.
+const mockMutate = vi.fn()
 vi.mock('@/lib/swr/dashboard', () => ({
   useSubscription: () => ({
     data: mockSubscription,
     error: mockSubscriptionError,
     isLoading: mockSubscriptionLoading,
-    mutate: vi.fn(),
+    mutate: mockMutate,
   }),
 }))
 
@@ -39,6 +43,12 @@ vi.mock('@/lib/api/billing', () => ({
   downloadInvoicePDF: vi.fn(),
   updateBillingSettings: vi.fn(),
 }))
+
+// The hold dialog and the Undo window are facet-hold's own suite; here a
+// confirm is one click and the deferred cancel is committed, undone or
+// failed by the test itself (PUL-28).
+vi.mock('@ciphera-net/facet-hold', async () =>
+  (await import('@/lib/hold/__tests__/facetHoldStandIn')).facetHoldStandIn())
 
 vi.mock('@/lib/cdn', () => ({ cdnUrl: (p: string) => p }))
 
@@ -97,6 +107,8 @@ vi.mock('@ciphera-net/facet', () => ({
 
 import { MastheadSlotProvider, SaveSlotProvider } from '@/components/settings/shell-slots'
 import WorkspaceBillingTab from '../WorkspaceBillingTab'
+import { toast } from '@ciphera-net/facet'
+import { deferred, resetDeferred, commitLast, undoLast } from '@/lib/hold/__tests__/facetHoldStandIn'
 
 // Fresh SWR cache per render — the component fetches invoices/prices via SWR
 // now, and a shared cache would leak one test's invoice list into the next.
@@ -133,6 +145,9 @@ beforeEach(() => {
   mockSubscriptionError = undefined
   mockSubscriptionLoading = false
   mockPush.mockClear()
+  mockMutate.mockReset().mockResolvedValue(undefined)
+  vi.mocked(billingApi.cancelSubscription).mockReset()
+  resetDeferred()
 })
 
 describe('WorkspaceBillingTab structured-panels composition (smoke)', () => {
@@ -245,6 +260,67 @@ describe('WorkspaceBillingTab banners & states', () => {
     )
     // The consequences line is always present.
     expect(screen.getByText(/moves to the free Personal plan/i)).toBeTruthy()
+  })
+
+  it('opens the cancel dialog with the house title and sends nothing until the hold is confirmed', async () => {
+    renderTab()
+    const cancelBtn = await screen.findByRole('button', { name: 'Cancel subscription' })
+    fireEvent.click(cancelBtn)
+
+    const dialog = await screen.findByRole('dialog', { name: 'Cancel your subscription?' })
+    expect(dialog.textContent).toContain('stays fully active until')
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to cancel' }))
+
+    expect(billingApi.cancelSubscription).not.toHaveBeenCalled()
+    expect(deferred[0]!.message).toBe('Subscription cancelled')
+  })
+
+  it('commitLast() sends the cancellation with keepalive false and revalidates the subscription', async () => {
+    vi.spyOn(billingApi, 'cancelSubscription').mockResolvedValue({ ok: true, at_period_end: true })
+    renderTab()
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel subscription' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to cancel' }))
+
+    await commitLast()
+    expect(billingApi.cancelSubscription).toHaveBeenCalledWith(undefined, { keepalive: false })
+    await waitFor(() => expect(mockMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ cancel_at_period_end: true }),
+      { revalidate: true },
+    ))
+  })
+
+  it('commitLast({ keepalive: true }) passes keepalive through to the request', async () => {
+    vi.spyOn(billingApi, 'cancelSubscription').mockResolvedValue({ ok: true, at_period_end: true })
+    renderTab()
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel subscription' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to cancel' }))
+
+    await commitLast({ keepalive: true })
+    expect(billingApi.cancelSubscription).toHaveBeenCalledWith(undefined, { keepalive: true })
+  })
+
+  it('undoLast() sends nothing and never revalidates', async () => {
+    renderTab()
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel subscription' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to cancel' }))
+
+    undoLast()
+    expect(billingApi.cancelSubscription).not.toHaveBeenCalled()
+    expect(mockMutate).not.toHaveBeenCalled()
+  })
+
+  it('a rejected cancellation shows the house error and never revalidates', async () => {
+    // The shared facet mock's getAuthErrorMessage always returns the truthy
+    // 'error' stub (see the invoices-error test below), so that is what the
+    // toast carries here rather than the thrown error's own message.
+    vi.spyOn(billingApi, 'cancelSubscription').mockRejectedValueOnce(new Error('Server error'))
+    renderTab()
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel subscription' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to cancel' }))
+
+    await commitLast()
+    expect(toast.error).toHaveBeenCalledWith('error')
+    expect(mockMutate).not.toHaveBeenCalled()
   })
 
   it('renders a direction-neutral pending plan-change banner via formatPlanName', async () => {

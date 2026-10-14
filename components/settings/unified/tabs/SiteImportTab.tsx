@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { toast } from '@ciphera-net/facet'
+import { HoldDialog, useUndo } from '@ciphera-net/facet-hold'
+import { Trash } from '@phosphor-icons/react'
 import { useCan } from '@/lib/auth/permissions'
 import { useSite } from '@/lib/swr/dashboard'
 import { useImportSources } from '@/lib/import/useImportSources'
@@ -14,12 +16,12 @@ import type { SiteImportStatus } from '@/lib/api/dataImports'
 import { SettingsPanel, PanelRow, PanelRows } from '@/components/settings/panels'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { UploadFlow } from '@/components/settings/import/UploadFlow'
 import { MatomoFlow } from '@/components/settings/import/MatomoFlow'
 import { GA4Flow } from '@/components/settings/import/GA4Flow'
 import { useImportSlot } from '@/components/settings/import/useImportSlot'
 import { ImportRecordRow } from '@/components/settings/import/ImportRows'
+import { hidePending, showPending, usePendingKeys } from '@/lib/hold/pending'
 
 // ─── Site settings → Import (PULSE-118, design §3.10b; owner ruling Q-M11) ──
 //
@@ -48,6 +50,13 @@ export default function SiteImportTab({ siteId }: { siteId: string }) {
 
   const [open, setOpen] = useState<SourceId | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  // Hand-rolled on useUndo rather than useDeferredRemoval (PUL-28): a failed
+  // delete here reads through the import-specific error mapper, not the
+  // generic auth-error message, and that mapping must survive the hold.
+  const { defer } = useUndo()
+  // The site's one import, hidden at once while its delete waits behind the
+  // Undo bar: the slot renders as if nothing were imported.
+  const pendingKeys = usePendingKeys()
 
   // GA4's OAuth callback lands the Google POPUP here with `?ga4=<code>` (M5-b,
   // forwarded by /sites/[id]/settings). The code is said in the GA4 row of the
@@ -64,7 +73,12 @@ export default function SiteImportTab({ siteId }: { siteId: string }) {
     window.history.replaceState(window.history.state, '', `${window.location.pathname}${rest ? `?${rest}` : ''}${window.location.hash}`)
   }, [])
 
-  const existing = slot.status === 'ready' ? slot.existing : null
+  const slotExisting = slot.status === 'ready' ? slot.existing : null
+  // While the delete waits, the slot reads as empty but the server still holds
+  // the import (one per site), so starting another would be refused: every row
+  // stays locked until the delete is sent or undone.
+  const deletePending = slotExisting !== null && pendingKeys.has(`import:${slotExisting.id}`)
+  const existing = deletePending ? null : slotExisting
   const holder: string | null = existing?.source ?? localUpload
 
   // A row that another import locked is never left open. Two presses in one batch
@@ -124,23 +138,36 @@ export default function SiteImportTab({ siteId }: { siteId: string }) {
     )
   }
 
-  const doDelete = async () => {
+  // The import disappears at once; the delete is sent when the Undo window
+  // runs out (PUL-28).
+  const doDelete = () => {
     if (!existing || deletingRef.current) return
     deletingRef.current = true
-    const tool = sourceLabel(existing.source)
-    try {
-      await deleteImport({ siteId, importId: existing.id, transport: appTransport })
-      toast.success(`Imported data from ${tool} deleted`)
-    } catch (e) {
-      const m = importErrorMessage(messageInputFromApiError(e), existing.source)
-      toast.error(m?.text ?? "Couldn't delete the imported data. Try again.")
-    } finally {
-      deletingRef.current = false
-      if (mountedRef.current) {
-        setOpen(null)
-        if (slot.status === 'ready') await slot.refresh()
-      }
-    }
+    const importId = existing.id
+    const source = existing.source
+    const tool = sourceLabel(source)
+    const key = `import:${importId}`
+    hidePending(key)
+    defer({
+      message: `Imported data from ${tool} deleted`,
+      commit: ({ keepalive }) => deleteImport({ siteId, importId, transport: appTransport, keepalive }),
+      onUndo: () => {
+        deletingRef.current = false
+        showPending(key)
+      },
+      onCommitted: async () => {
+        deletingRef.current = false
+        showPending(key)
+        if (mountedRef.current && slot.status === 'ready') await slot.refresh()
+      },
+      onError: (err) => {
+        deletingRef.current = false
+        showPending(key)
+        const m = importErrorMessage(messageInputFromApiError(err), source)
+        toast.error(m?.text ?? "Couldn't delete the imported data. Try again.")
+      },
+    })
+    setOpen(null)
   }
 
   const discard = async (importId: string) => {
@@ -154,7 +181,7 @@ export default function SiteImportTab({ siteId }: { siteId: string }) {
         <PanelRows>
           {sources.map((s) => {
             const mine = existing?.source === s.id ? existing : null
-            const locked = holder !== null && holder !== s.id
+            const locked = deletePending || (holder !== null && holder !== s.id)
             if (s.flow === 'upload') {
               return (
                 <UploadFlow
@@ -218,13 +245,13 @@ export default function SiteImportTab({ siteId }: { siteId: string }) {
         </PanelRows>
       </SettingsPanel>
 
-      <ConfirmDialog
+      <HoldDialog
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
-        title="Delete imported data"
+        title="Delete imported data?"
         description={`This removes everything imported from ${existing ? sourceLabel(existing.source) : 'the other tool'} from every chart, card, export and API answer. Data Pulse measured itself isn't touched.`}
-        confirmLabel="Delete"
-        variant="danger"
+        holdLabel="Hold to delete"
+        icon={<Trash weight="bold" className="h-4 w-4" aria-hidden="true" />}
         onConfirm={doDelete}
       />
     </div>

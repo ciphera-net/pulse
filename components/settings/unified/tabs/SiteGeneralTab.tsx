@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
 import { Input, Select, Toggle, toast, getAuthErrorMessage } from '@ciphera-net/facet'
 import { useSite, useInstallStatus } from '@/lib/swr/dashboard'
 import { updateSite } from '@/lib/api/sites'
@@ -22,7 +21,6 @@ import { timezoneGroupsFor } from '@/lib/utils/timezones'
 // forms and the display-zone resolver: lib/utils/timezones.ts.
 
 export default function SiteGeneralTab({ siteId }: { siteId: string }) {
-  const router = useRouter()
   const { data: site, error, isValidating, mutate } = useSite(siteId)
   const [name, setName] = useState('')
   const [timezone, setTimezone] = useState('UTC')
@@ -254,16 +252,14 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
           items={[
             {
               title: 'Reset data',
-              description: 'Delete all stats and events. This cannot be undone.',
+              description: 'Delete all stats and events.',
               buttonLabel: 'Reset data',
-              variant: 'outline',
               onClick: () => setShowResetModal(true),
             },
             {
               title: 'Delete site',
               description: 'Schedule this site for deletion with a 7-day grace period.',
               buttonLabel: 'Delete site',
-              variant: 'solid',
               onClick: () => setShowDeleteModal(true),
             },
           ]}
@@ -281,9 +277,7 @@ export default function SiteGeneralTab({ siteId }: { siteId: string }) {
       <DeleteSiteModal
         open={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
-        onDeleted={() => router.push('/')}
         siteName={site?.name || ''}
-        siteDomain={site?.domain || ''}
         siteId={siteId}
       />
 

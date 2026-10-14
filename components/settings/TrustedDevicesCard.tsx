@@ -6,21 +6,21 @@ import { useAuth } from '@/lib/auth/context'
 import { getUserDevices, removeDevice, type TrustedDevice } from '@/lib/api/devices'
 import {
   Button,
-  toast,
-  getAuthErrorMessage,
   Table,
   THead,
   TBody,
   TR,
   TD,
 } from '@ciphera-net/facet'
+import { HoldDialog } from '@ciphera-net/facet-hold'
 import { SettingsTH } from '@/components/settings/panels/SettingsTH'
-import { Laptop, DeviceMobile } from '@phosphor-icons/react'
+import { Laptop, DeviceMobile, Prohibit } from '@phosphor-icons/react'
 import { EmptyRow, SettingsPanel } from '@/components/settings/panels'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
+import { useDeferredRemoval } from '@/lib/hold/useDeferredRemoval'
+import { usePendingKeys } from '@/lib/hold/pending'
 import { formatRelativeTime, formatDateTimeFull, formatDate } from '@/lib/utils/formatDate'
 import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import { DURATION_FAST, EASE_APPLE } from '@/lib/motion'
@@ -44,9 +44,12 @@ export default function TrustedDevicesCard() {
   const [devices, setDevices] = useState<TrustedDevice[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [removingId, setRemovingId] = useState<string | null>(null)
   const [confirmDevice, setConfirmDevice] = useState<TrustedDevice | null>(null)
   const reducedMotion = useReducedMotion()
+  const removeLater = useDeferredRemoval()
+  const pendingKeys = usePendingKeys()
+  // Hidden at once while its removal waits behind the Undo bar (PUL-28).
+  const visibleDevices = devices.filter((d) => !pendingKeys.has(`device:${d.id}`))
 
   const fetchDevices = useCallback(async () => {
     setError('')
@@ -69,22 +72,19 @@ export default function TrustedDevicesCard() {
     fetchDevices().finally(() => setLoading(false))
   }, [fetchDevices])
 
-  const handleRemove = async (device: TrustedDevice) => {
-    if (device.is_current) {
-      toast.error('You cannot remove the device you are currently using.')
-      return
-    }
-
-    setRemovingId(device.id)
-    try {
-      await removeDevice(device.id)
-      setDevices(prev => prev.filter(d => d.id !== device.id))
-      toast.success('Device removed. A new sign-in from it will trigger an alert.')
-    } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || "Couldn't remove the device. Try again in a moment.")
-    } finally {
-      setRemovingId(null)
-    }
+  // Hides the device at once; the request sends only when the Undo window
+  // runs out (PUL-28).
+  const confirmRemove = () => {
+    if (!confirmDevice) return
+    const device = confirmDevice
+    setConfirmDevice(null)
+    removeLater({
+      key: `device:${device.id}`,
+      message: `${device.display_hint || 'Unknown device'} removed`,
+      send: ({ keepalive }) => removeDevice(device.id, { keepalive }),
+      refresh: fetchDevices,
+      failure: "Couldn't remove the device. Try again.",
+    })
   }
 
   return (
@@ -102,7 +102,7 @@ export default function TrustedDevicesCard() {
           title="Trusted devices"
           description="Devices that have signed in to your account. Removing a device means the next sign-in from it triggers a new-device alert."
         >
-          {devices.length === 0 ? (
+          {visibleDevices.length === 0 ? (
             <EmptyRow
               icon={<Laptop weight="regular" />}
               title="No trusted devices yet"
@@ -129,7 +129,7 @@ export default function TrustedDevicesCard() {
                     entrance (mirrors the api-keys/passkeys device); only a
                     later removal animates, and only when motion is allowed. */}
                 <AnimatePresence initial={false}>
-                  {devices.map(device => (
+                  {visibleDevices.map(device => (
                     <motion.tr
                       key={device.id}
                       data-testid={`device-row-${device.id}`}
@@ -178,10 +178,10 @@ export default function TrustedDevicesCard() {
                             variant="ghost"
                             size="sm"
                             className="text-muted-foreground transition-colors duration-fast ease-apple hover:text-destructive motion-reduce:transition-none"
+                            aria-haspopup="dialog"
                             onClick={() => setConfirmDevice(device)}
-                            disabled={removingId === device.id}
                           >
-                            {removingId === device.id ? 'Removing…' : 'Remove'}
+                            Remove
                           </Button>
                         )}
                       </TD>
@@ -194,16 +194,14 @@ export default function TrustedDevicesCard() {
         </SettingsPanel>
       )}
 
-      <ConfirmDialog
+      <HoldDialog
         open={confirmDevice !== null}
         onOpenChange={(open) => { if (!open) setConfirmDevice(null) }}
-        title="Remove device"
+        title="Remove this device?"
         description="A new sign-in from this device will trigger a security alert."
-        confirmLabel="Remove"
-        variant="danger"
-        onConfirm={async () => {
-          if (confirmDevice) await handleRemove(confirmDevice)
-        }}
+        holdLabel="Hold to remove"
+        icon={<Prohibit weight="bold" className="h-4 w-4" aria-hidden="true" />}
+        onConfirm={confirmRemove}
       />
     </>
   )

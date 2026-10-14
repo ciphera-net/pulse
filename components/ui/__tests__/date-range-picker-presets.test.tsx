@@ -17,7 +17,7 @@ import type { Period } from '@/lib/hooks/periodUrl'
 //
 // framer-motion mocked with the shared settings stand-in (component-per-tag cache, so
 // AnimatePresence's children render/unrender synchronously — no real exit transition to
-// wait out in jsdom, same reasoning as ConfirmDialog.test.tsx and PasskeysPanel.test.tsx).
+// wait out in jsdom, same reasoning as PasskeysPanel.test.tsx).
 vi.mock('framer-motion', () => import('@/components/settings/__tests__/framer-mock'))
 
 import DateRangePicker, { type DateRangePickerProps } from '@/components/ui/DateRangePicker'

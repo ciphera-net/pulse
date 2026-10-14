@@ -19,8 +19,9 @@ import {
   Switcher,
   getAuthErrorMessage,
 } from '@ciphera-net/facet'
+import { HoldDialog, useUndo } from '@ciphera-net/facet-hold'
 import { SettingsTH } from '@/components/settings/panels/SettingsTH'
-import { CreditCard, DownloadSimple } from '@phosphor-icons/react'
+import { CreditCard, DownloadSimple, XCircle } from '@phosphor-icons/react'
 import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/settings/panels'
 import { StatusChip } from '@/components/settings/StatusChip'
 import { MastheadAction } from '@/components/settings/shell-slots'
@@ -99,7 +100,7 @@ export default function WorkspaceBillingTab() {
   // Somebody alone is billed as themselves; a team is billed as a team (PULSE-59).
   const alone = useTeamState() === 'alone'
   const { data: subscription, error: subscriptionError, isLoading, mutate } = useSubscription()
-  const [cancelling, setCancelling] = useState(false)
+  const { defer } = useUndo()
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('')
@@ -162,28 +163,31 @@ export default function WorkspaceBillingTab() {
     }
   }
 
-  const handleCancel = async () => {
-    setCancelling(true)
-    try {
-      const result = await cancelSubscription()
-      if (!result.ok) {
-        toast.error("Couldn't cancel your subscription. Try again.")
-        return
-      }
-      // Optimistic paint, then revalidate against the server — the old
-      // `revalidate: false` fabricated the cache and never read the API's
-      // actual answer, so a server-side no-op rendered as success forever.
-      await mutate(
-        subscription ? { ...subscription, cancel_at_period_end: true } : undefined,
-        { revalidate: true },
-      )
-      toast.success('Subscription cancelled')
-    } catch (err) {
-      toast.error(getAuthErrorMessage(err as Error) || "Couldn't cancel your subscription. Try again.")
-    } finally {
-      setCancelling(false)
-      setShowCancelConfirm(false)
-    }
+  // Not a list row: the subscription itself disappears nowhere, so this goes
+  // straight through the app's Undo bar rather than useDeferredRemoval
+  // (PUL-28). The hold completing closes the dialog; the request is sent only
+  // when the Undo window runs out.
+  const doCancel = () => {
+    defer({
+      message: 'Subscription cancelled',
+      commit: ({ keepalive }) => cancelSubscription(undefined, { keepalive }),
+      onCommitted: async (result) => {
+        if (!(result as { ok: boolean }).ok) {
+          toast.error("Couldn't cancel your subscription. Try again.")
+          return
+        }
+        // Optimistic paint, then revalidate against the server — the old
+        // `revalidate: false` fabricated the cache and never read the API's
+        // actual answer, so a server-side no-op rendered as success forever.
+        await mutate(
+          subscription ? { ...subscription, cancel_at_period_end: true } : undefined,
+          { revalidate: true },
+        )
+      },
+      onError: (err) => {
+        toast.error(getAuthErrorMessage(err as Error) || "Couldn't cancel your subscription. Try again.")
+      },
+    })
   }
 
   const handleResume = async () => {
@@ -490,7 +494,7 @@ export default function WorkspaceBillingTab() {
             </Button>
 
             {isActive && !subscription.cancel_at_period_end && (
-              <Button onClick={() => setShowCancelConfirm(true)} variant="outline" size="sm">
+              <Button onClick={() => setShowCancelConfirm(true)} variant="outline" size="sm" aria-haspopup="dialog">
                 Cancel subscription
               </Button>
             )}
@@ -649,27 +653,30 @@ export default function WorkspaceBillingTab() {
       </Modal>
 
       {/* Cancel confirmation */}
-      <Modal isOpen={showCancelConfirm} onClose={() => setShowCancelConfirm(false)} title="Cancel subscription" className="max-w-md">
-        <p className="mb-3 text-sm text-muted-foreground">
-          Are you sure you want to cancel your subscription?
-        </p>
-        <p className="mb-1 text-sm text-muted-foreground">
-          {nextChargeLabel
-            ? <>Your {planLabel} plan stays fully active until <span className="text-foreground">{nextChargeLabel}</span>. You won&apos;t be charged again.</>
-            : <>You&apos;ll keep access until the end of your current billing period and won&apos;t be charged again.</>}
-        </p>
-        <p className="mb-5 text-sm text-muted-foreground">
-          After that, {alone ? 'your account' : 'your team'} moves to the free Personal plan ({FREE_PAGEVIEW_LIMIT.toLocaleString()} pageviews/month, 1 site). Your data stays in place.
-        </p>
-        <div className="flex justify-end gap-3">
-          <Button variant="outline" onClick={() => setShowCancelConfirm(false)} disabled={cancelling}>
-            Keep plan
-          </Button>
-          <Button variant="destructive" onClick={handleCancel} disabled={cancelling}>
-            {cancelling ? 'Cancelling…' : 'Yes, cancel'}
-          </Button>
-        </div>
-      </Modal>
+      <HoldDialog
+        open={showCancelConfirm}
+        onOpenChange={setShowCancelConfirm}
+        title="Cancel your subscription?"
+        description={
+          <>
+            <p className="mb-3">
+              Are you sure you want to cancel your subscription?
+            </p>
+            <p className="mb-1">
+              {nextChargeLabel
+                ? <>Your {planLabel} plan stays fully active until <span className="text-foreground">{nextChargeLabel}</span>. You won&apos;t be charged again.</>
+                : <>You&apos;ll keep access until the end of your current billing period and won&apos;t be charged again.</>}
+            </p>
+            <p>
+              After that, {alone ? 'your account' : 'your team'} moves to the free Personal plan ({FREE_PAGEVIEW_LIMIT.toLocaleString()} pageviews/month, 1 site). Your data stays in place.
+            </p>
+          </>
+        }
+        cancelLabel="Keep plan"
+        holdLabel="Hold to cancel"
+        icon={<XCircle weight="bold" className="h-4 w-4" aria-hidden="true" />}
+        onConfirm={doCancel}
+      />
 
       {/* ── Billing details — always an editable form now (SettingsSaveBar owns
           the dirty/save/discard cycle), not a pencil-toggled display/edit mode.

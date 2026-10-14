@@ -4,6 +4,7 @@ import path from 'node:path'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import * as orgApi from '@/lib/api/organization'
+import { deferred, resetDeferred, commitLast, undoLast } from '@/lib/hold/__tests__/facetHoldStandIn'
 
 // --- Mocks ---------------------------------------------------------------
 
@@ -66,18 +67,11 @@ vi.mock('@ciphera-net/facet', () => ({
   getAuthErrorMessage: () => 'error',
 }))
 
-// M6: stub framer-motion with the shared mock (framer-mock.tsx), which
-// pins motion.<tag> to a single cached component per tag rather than a fresh
-// one per property access: the DangerZone reveals toggle each other off in
-// the SAME click handler (Transfer's onClick also clears showDeleteConfirm
-// and vice versa) and the typed-DELETE field re-renders the tab on every
-// keystroke, so a trap that returns a fresh function per access would change
-// the component's identity on every render, forcing React to unmount and
-// remount the whole reveal (and the confirm button a test is polling)
-// instead of just updating it in place. It also drops initial/animate/exit/
-// transition before they reach the DOM, so the height+fade device is pinned
-// against source instead (see the two tests below).
-vi.mock('framer-motion', () => import('@/components/settings/__tests__/framer-mock'))
+// The hold dialog and the Undo window are facet-hold's own suite; here a
+// confirm is one click and each deferred action is committed, undone or
+// failed by the test itself (PUL-28).
+vi.mock('@ciphera-net/facet-hold', async () =>
+  (await import('@/lib/hold/__tests__/facetHoldStandIn')).facetHoldStandIn())
 
 // The page is worded from the ONE team-state signal (PULSE-59).
 let mockTeamState: 'alone' | 'team' | null = 'team'
@@ -105,7 +99,21 @@ beforeEach(() => {
   ;(orgApi.getOrganizationMembers as any).mockResolvedValue([])
   activateTeam.mockClear().mockResolvedValue(undefined)
   getMe.mockClear().mockResolvedValue({ user_id: 'u_owner', teams: [{ id: 'org_2', role: 'member' }], default_team_id: 'org_2' })
+  resetDeferred()
 })
+
+function withHref() {
+  const hrefSpy = vi.fn()
+  const originalLocation = window.location
+  Object.defineProperty(window, 'location', {
+    configurable: true,
+    value: { ...originalLocation, set href(v: string) { hrefSpy(v) } },
+  })
+  return {
+    hrefSpy,
+    restore: () => Object.defineProperty(window, 'location', { configurable: true, value: originalLocation }),
+  }
+}
 
 describe('WorkspaceGeneralTab (Facet structured panels)', () => {
   it('loads the team panel with name + slug once the org resolves', async () => {
@@ -131,21 +139,7 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
     expect(screen.getByRole('button', { name: 'Delete' })).toBeTruthy()
   })
 
-  it('keeps the typed-DELETE gate: confirm stays disabled until DELETE is typed', async () => {
-    render(<WorkspaceGeneralTab />)
-    await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
-
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
-
-    const confirm = await screen.findByRole('button', { name: 'Delete team' })
-    expect((confirm as HTMLButtonElement).disabled).toBe(true)
-
-    const field = screen.getByPlaceholderText('DELETE')
-    fireEvent.change(field, { target: { value: 'DELETE' } })
-    await waitFor(() => expect((confirm as HTMLButtonElement).disabled).toBe(false))
-  })
-
-  it('renders reveal confirm buttons in sentence case and their dismiss buttons as ghost, never a grey secondary fill', async () => {
+  it('opens the Transfer dialog with the member picker, held off until a member is chosen', async () => {
     ;(orgApi.getOrganizationMembers as any).mockResolvedValueOnce([
       { user_id: 'u_next', user_email: 'next@acme.com', role: 'member' } as never,
     ])
@@ -153,62 +147,42 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
     await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
 
     fireEvent.click(screen.getByRole('button', { name: 'Transfer' }))
-    expect(screen.getByRole('button', { name: 'Transfer ownership' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Cancel' }).getAttribute('variant')).toBe('ghost')
+    const dialog = await screen.findByRole('dialog', { name: 'Transfer ownership?' })
+    expect(dialog.textContent).toContain('Select a member to become the new owner. You will become a regular member.')
+    const hold = screen.getByRole('button', { name: 'Hold to transfer' })
+    expect((hold as HTMLButtonElement).disabled).toBe(true)
 
-    // Opening Delete closes Transfer (mutually exclusive reveals).
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
-    expect(screen.getByRole('button', { name: 'Delete team' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Cancel' }).getAttribute('variant')).toBe('ghost')
+    fireEvent.change(screen.getByLabelText('New owner'), { target: { value: 'u_next' } })
+    expect((hold as HTMLButtonElement).disabled).toBe(false)
   })
 
-  // The shared framer-motion mock (framer-mock.tsx) deliberately drops
-  // initial/animate/exit/transition before they reach the DOM, so the two
-  // tests below can no longer read the house height+fade values off the
-  // rendered node the way the file's old per-file mock exposed them via
-  // data-motion-* attributes. `motionBlock` pins them against the reveal's
-  // own source instead, scoped to its `key=` so the check still fails the
-  // moment either reveal's literal values drift from the house device.
-  function motionBlock(key: string): string {
-    const start = SOURCE.indexOf(`key="${key}"`)
-    expect(start).toBeGreaterThan(-1)
-    const end = SOURCE.indexOf('</motion.div>', start)
-    return SOURCE.slice(start, end)
-  }
-
-  it('opens the Transfer reveal as a height+fade motion.div on the house easing, not a bare unanimated block', async () => {
+  it('opens the Delete dialog with the consequence list, no typed confirmation field', async () => {
     render(<WorkspaceGeneralTab />)
     await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
 
-    expect(screen.queryByTestId('transfer-reveal')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Delete Acme Corp?' })
+    expect(dialog.textContent).toContain('This permanently deletes:')
+    expect(dialog.textContent).toContain('All sites and their analytics data')
+    expect(dialog.textContent).toContain('All team members and pending invitations')
+    expect(dialog.textContent).toContain('It also cancels any active subscription.')
+    expect(screen.getByRole('button', { name: 'Hold to delete' })).toBeTruthy()
+    expect(screen.queryByPlaceholderText('DELETE')).toBeNull()
+  })
+
+  it('opens only one danger-zone dialog at a time', async () => {
+    ;(orgApi.getOrganizationMembers as any).mockResolvedValueOnce([
+      { user_id: 'u_next', user_email: 'next@acme.com', role: 'member' } as never,
+    ])
+    render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+
     fireEvent.click(screen.getByRole('button', { name: 'Transfer' }))
+    expect(await screen.findByRole('dialog', { name: 'Transfer ownership?' })).toBeTruthy()
 
-    // Fails against the old markup: the pre-M6 reveal was a bare `<div>` with
-    // no test id at all, and it had no exit state to fade the transfer
-    // picker back out on dismiss.
-    const reveal = await screen.findByTestId('transfer-reveal')
-    const block = motionBlock('transfer-reveal')
-    expect(block).toContain('initial={reducedMotion ? false : { height: 0, opacity: 0 }}')
-    expect(block).toContain("animate={reducedMotion ? undefined : { height: 'auto', opacity: 1 }}")
-    expect(block).toContain('exit={reducedMotion ? undefined : { height: 0, opacity: 0 }}')
-    expect(block).toContain('transition={{ duration: DURATION_BASE, ease: EASE_APPLE }}')
-    expect(reveal.className).toContain('overflow-hidden')
-  })
-
-  it('opens the Delete reveal as a height+fade motion.div on the house easing, matching the Transfer reveal device', async () => {
-    render(<WorkspaceGeneralTab />)
-    await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
-
-    expect(screen.queryByTestId('delete-reveal')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
-
-    const reveal = await screen.findByTestId('delete-reveal')
-    const block = motionBlock('delete-reveal')
-    expect(block).toContain('initial={reducedMotion ? false : { height: 0, opacity: 0 }}')
-    expect(block).toContain("animate={reducedMotion ? undefined : { height: 'auto', opacity: 1 }}")
-    expect(block).toContain('exit={reducedMotion ? undefined : { height: 0, opacity: 0 }}')
-    expect(block).toContain('transition={{ duration: DURATION_BASE, ease: EASE_APPLE }}')
-    expect(reveal.className).toContain('overflow-hidden')
+    expect(await screen.findByRole('dialog', { name: 'Delete Acme Corp?' })).toBeTruthy()
+    expect(screen.queryByRole('dialog', { name: 'Transfer ownership?' })).toBeNull()
   })
 
   it('shows the house loading skeleton while the organization loads, never a bare centred spinner', async () => {
@@ -280,38 +254,222 @@ describe('WorkspaceGeneralTab (Facet structured panels)', () => {
     expect((screen.getByRole('button', { name: 'Leave' }) as HTMLButtonElement).disabled).toBe(false)
   })
 
-  it('transfer rotates the token before the reload, because the old cookie still says owner', async () => {
-    const { getOrganizationMembers } = await import('@/lib/api/organization')
-    vi.mocked(getOrganizationMembers).mockResolvedValueOnce([
-      { user_id: 'u_next', user_email: 'next@acme.com', role: 'member' } as never,
-    ])
-    // jsdom cannot navigate; capture href assignments instead.
-    const hrefSpy = vi.fn()
-    const originalLocation = window.location
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: { ...originalLocation, set href(v: string) { hrefSpy(v) } },
-    })
-    try {
-      render(<WorkspaceGeneralTab />)
-      await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
-      fireEvent.click(screen.getByRole('button', { name: 'Transfer' }))
-      fireEvent.change(screen.getByLabelText('New owner'), { target: { value: 'u_next' } })
-      fireEvent.click(screen.getByRole('button', { name: 'Transfer ownership' }))
-      await waitFor(() => expect(hrefSpy).toHaveBeenCalledWith('/settings/organization/general'))
-      expect(refresh).toHaveBeenCalledTimes(1)
-      // Re-fetch strictly BEFORE navigation: a bare reload re-hydrates the old
-      // role and the ex-owner's Danger Zone survives it.
-      expect(refresh.mock.invocationCallOrder[0]).toBeLessThan(hrefSpy.mock.invocationCallOrder[0])
-    } finally {
-      Object.defineProperty(window, 'location', { configurable: true, value: originalLocation })
-    }
-  })
-
   it('never uses an em dash, en dash or a literal ellipsis in its source, comments included', () => {
     const stripped = stripComments(SOURCE)
     expect(stripped).not.toMatch(/[—–]/)
     expect(stripped).not.toMatch(/\.\.\./)
+  })
+})
+
+// ─── Transfer ownership (PUL-28: hold + Undo, no in-page reveal) ───
+describe('WorkspaceGeneralTab — Transfer ownership', () => {
+  function openTransferAndHold() {
+    fireEvent.click(screen.getByRole('button', { name: 'Transfer' }))
+    fireEvent.change(screen.getByLabelText('New owner'), { target: { value: 'u_next' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to transfer' }))
+  }
+
+  beforeEach(() => {
+    ;(orgApi.getOrganizationMembers as any).mockResolvedValue([
+      { user_id: 'u_next', user_email: 'next@acme.com', role: 'member' } as never,
+    ])
+  })
+
+  it('holding transfers defers the request: nothing is sent and the dialog closes at once', async () => {
+    render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+
+    openTransferAndHold()
+    expect(screen.queryByRole('dialog', { name: 'Transfer ownership?' })).toBeNull()
+    expect(orgApi.transferOwnership).not.toHaveBeenCalled()
+    expect(deferred[0]!.message).toBe('Ownership transferred to next@acme.com')
+  })
+
+  it('commitLast sends with keepalive false, re-fetches the session, then navigates', async () => {
+    const { hrefSpy, restore } = withHref()
+    try {
+      render(<WorkspaceGeneralTab />)
+      await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+      openTransferAndHold()
+
+      await commitLast()
+      expect(orgApi.transferOwnership).toHaveBeenCalledWith('org_1', 'u_next', { keepalive: false })
+      expect(refresh).toHaveBeenCalledTimes(1)
+      expect(hrefSpy).toHaveBeenCalledWith('/settings/organization/general')
+      // Re-fetch strictly BEFORE navigation: a bare reload re-hydrates the old
+      // role and the ex-owner's Danger Zone survives it.
+      expect(refresh.mock.invocationCallOrder[0]).toBeLessThan(hrefSpy.mock.invocationCallOrder[0])
+    } finally {
+      restore()
+    }
+  })
+
+  it('commitLast({ keepalive: true }) passes keepalive through to the request', async () => {
+    render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+    openTransferAndHold()
+
+    await commitLast({ keepalive: true })
+    expect(orgApi.transferOwnership).toHaveBeenCalledWith('org_1', 'u_next', { keepalive: true })
+  })
+
+  it('undoLast sends nothing and the page never navigates', async () => {
+    const { hrefSpy, restore } = withHref()
+    try {
+      render(<WorkspaceGeneralTab />)
+      await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+      openTransferAndHold()
+
+      undoLast()
+      expect(orgApi.transferOwnership).not.toHaveBeenCalled()
+      expect(hrefSpy).not.toHaveBeenCalled()
+      expect(refresh).not.toHaveBeenCalled()
+    } finally {
+      restore()
+    }
+  })
+
+  it('a rejected transfer shows the error and never navigates', async () => {
+    const { hrefSpy, restore } = withHref()
+    try {
+      ;(orgApi.transferOwnership as any).mockRejectedValueOnce(new Error('boom'))
+      const { toast } = await import('@ciphera-net/facet')
+      render(<WorkspaceGeneralTab />)
+      await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+      openTransferAndHold()
+
+      await commitLast()
+      expect(toast.error).toHaveBeenCalledWith('error')
+      expect(hrefSpy).not.toHaveBeenCalled()
+    } finally {
+      restore()
+    }
+  })
+})
+
+// ─── Delete team / Delete all data (PUL-28: hold + Undo, no typed DELETE) ───
+describe('WorkspaceGeneralTab — Delete team', () => {
+  function openDeleteAndHold() {
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
+  }
+
+  it('holding delete hides nothing yet to send: the dialog closes and the Undo bar names the team', async () => {
+    render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+
+    openDeleteAndHold()
+    expect(screen.queryByRole('dialog', { name: 'Delete Acme Corp?' })).toBeNull()
+    expect(orgApi.deleteOrganization).not.toHaveBeenCalled()
+    expect(deferred[0]!.message).toBe('Acme Corp deleted')
+  })
+
+  it('commitLast deletes with keepalive false, finds a survivor team and navigates to it', async () => {
+    const { hrefSpy, restore } = withHref()
+    try {
+      ;(orgApi.getUserOrganizations as any).mockResolvedValueOnce([
+        { organization_id: 'org_1' },
+        { organization_id: 'org_2' },
+      ])
+      render(<WorkspaceGeneralTab />)
+      await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+      openDeleteAndHold()
+
+      await commitLast()
+      expect(orgApi.deleteOrganization).toHaveBeenCalledWith('org_1', { keepalive: false })
+      expect(activateTeam).toHaveBeenCalledWith('org_2')
+      expect(hrefSpy).toHaveBeenCalledWith('/')
+    } finally {
+      restore()
+    }
+  })
+
+  it('commitLast({ keepalive: true }) passes keepalive through to the request', async () => {
+    render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+    openDeleteAndHold()
+
+    await commitLast({ keepalive: true })
+    expect(orgApi.deleteOrganization).toHaveBeenCalledWith('org_1', { keepalive: true })
+  })
+
+  it('lands in /setup/org when no survivor team is found', async () => {
+    const { hrefSpy, restore } = withHref()
+    try {
+      ;(orgApi.getUserOrganizations as any).mockResolvedValueOnce([])
+      render(<WorkspaceGeneralTab />)
+      await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+      openDeleteAndHold()
+
+      await commitLast()
+      expect(hrefSpy).toHaveBeenCalledWith('/setup/org')
+    } finally {
+      restore()
+    }
+  })
+
+  it('undoLast sends nothing and the page never navigates', async () => {
+    const { hrefSpy, restore } = withHref()
+    try {
+      render(<WorkspaceGeneralTab />)
+      await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+      openDeleteAndHold()
+
+      undoLast()
+      expect(orgApi.deleteOrganization).not.toHaveBeenCalled()
+      expect(hrefSpy).not.toHaveBeenCalled()
+    } finally {
+      restore()
+    }
+  })
+
+  it('a rejected delete shows the team-worded error and never navigates', async () => {
+    const { hrefSpy, restore } = withHref()
+    try {
+      ;(orgApi.deleteOrganization as any).mockRejectedValueOnce(new Error('boom'))
+      const { toast } = await import('@ciphera-net/facet')
+      render(<WorkspaceGeneralTab />)
+      await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+      openDeleteAndHold()
+
+      await commitLast()
+      expect(toast.error).toHaveBeenCalledWith('error')
+      expect(hrefSpy).not.toHaveBeenCalled()
+    } finally {
+      restore()
+    }
+  })
+})
+
+// ─── PULSE-59: unlisted for somebody alone, but the route still renders ───
+describe('WorkspaceGeneralTab, alone', () => {
+  it('renders without calling the container a team, workspace or organization', async () => {
+    mockTeamState = 'alone'
+    const { container } = render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByRole('heading', { level: 2, name: 'Details' })).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Delete all your data?' })
+    expect(dialog.textContent).toContain('All pending invitations')
+    expect(screen.getByRole('button', { name: 'Hold to delete' })).toBeTruthy()
+    expect(container.textContent).not.toMatch(/team|workspace|organi[sz]ation/i)
+  })
+
+  it('names the deleted account in alone mode, not the team', async () => {
+    mockTeamState = 'alone'
+    render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByRole('heading', { level: 2, name: 'Details' })).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to delete' }))
+    expect(deferred[0]!.message).toBe('All data deleted')
+  })
+
+  // PULSE-92 Phase 5: nobody to leave and nobody to invite you back, the row
+  // itself would also leak the word "team" the test above forbids.
+  it('never shows a Leave row: there is no team to leave', async () => {
+    mockTeamState = 'alone'
+    render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByRole('heading', { level: 2, name: 'Details' })).toBeTruthy())
+    expect(screen.queryByRole('button', { name: 'Leave' })).toBeNull()
   })
 })
 
@@ -326,132 +484,156 @@ describe('WorkspaceGeneralTab — Leave team', () => {
     expect((leaveButton as HTMLButtonElement).disabled).toBe(true)
   })
 
-  it('a member opens the confirm with the team named, and Leave team / Cancel', async () => {
+  it('a member opens the dialog with the team named in the title, and Hold to leave / Cancel', async () => {
     mockIsOwner = false
     mockIsAdminOrOwner = false
     render(<WorkspaceGeneralTab />)
     await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
 
     fireEvent.click(screen.getByRole('button', { name: 'Leave' }))
-    expect(await screen.findByText('Leave Acme Corp? An owner or admin can invite you back.')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Leave team' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Cancel' }).getAttribute('variant')).toBe('ghost')
+    const dialog = await screen.findByRole('dialog', { name: 'Leave Acme Corp?' })
+    expect(dialog.textContent).toContain('An owner or admin can invite you back.')
+    expect(screen.getByRole('button', { name: 'Hold to leave' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeTruthy()
   })
 
-  it("the owner's disabled Leave button opens no reveal when clicked", async () => {
+  it("the owner's disabled Leave button opens no dialog when clicked", async () => {
     render(<WorkspaceGeneralTab />)
     await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
 
     fireEvent.click(screen.getByRole('button', { name: 'Leave' }))
-    expect(screen.queryByTestId('leave-reveal')).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Leave Acme Corp?' })).toBeNull()
   })
 
-  it('opening Leave (as a member) after re-rendering as owner closes an open Transfer reveal', async () => {
+  it('opening Leave (as a member) after re-rendering as owner closes an open Transfer dialog', async () => {
     mockIsOwner = false
     mockIsAdminOrOwner = false
     const { rerender } = render(<WorkspaceGeneralTab />)
     await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
     fireEvent.click(screen.getByRole('button', { name: 'Leave' }))
-    expect(await screen.findByTestId('leave-reveal')).toBeTruthy()
+    expect(await screen.findByRole('dialog', { name: 'Leave Acme Corp?' })).toBeTruthy()
 
-    // Re-render as the owner: the row set changes, but showLeaveConfirm is
-    // still true in state — Leave's own reveal must still close when Transfer
-    // opens, the same mutual exclusion Transfer/Delete already have.
+    // Re-render as the owner: the row set changes, but openDialog is still
+    // 'leave' in state. Opening Transfer must still close Leave's dialog, the
+    // same mutual exclusion every danger-zone dialog has.
     mockIsOwner = true
     mockIsAdminOrOwner = true
     rerender(<WorkspaceGeneralTab />)
     fireEvent.click(await screen.findByRole('button', { name: 'Transfer' }))
-    expect(screen.getByTestId('transfer-reveal')).toBeTruthy()
-    expect(screen.queryByTestId('leave-reveal')).toBeNull()
+    expect(await screen.findByRole('dialog', { name: 'Transfer ownership?' })).toBeTruthy()
+    expect(screen.queryByRole('dialog', { name: 'Leave Acme Corp?' })).toBeNull()
   })
 
-  it('leaves the team, switches to the account default team, and lands on /', async () => {
+  it('holding leave defers the request: nothing is sent and the dialog closes at once', async () => {
     mockIsOwner = false
     mockIsAdminOrOwner = false
-    const hrefSpy = vi.fn()
-    const originalLocation = window.location
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: { ...originalLocation, set href(v: string) { hrefSpy(v) } },
-    })
+    render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Leave' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to leave' }))
+    expect(screen.queryByRole('dialog', { name: 'Leave Acme Corp?' })).toBeNull()
+    expect(orgApi.leaveOrganization).not.toHaveBeenCalled()
+    expect(deferred[0]!.message).toBe('You left Acme Corp')
+  })
+
+  it('commitLast leaves with keepalive false, switches to the account default team, and lands on /', async () => {
+    mockIsOwner = false
+    mockIsAdminOrOwner = false
+    const { hrefSpy, restore } = withHref()
     try {
       render(<WorkspaceGeneralTab />)
       await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
 
       fireEvent.click(screen.getByRole('button', { name: 'Leave' }))
-      fireEvent.click(await screen.findByRole('button', { name: 'Leave team' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'Hold to leave' }))
+      await commitLast()
 
-      await waitFor(() => expect(hrefSpy).toHaveBeenCalledWith('/'))
-      expect(orgApi.leaveOrganization).toHaveBeenCalledWith('org_1')
+      expect(orgApi.leaveOrganization).toHaveBeenCalledWith('org_1', { keepalive: false })
       expect(getMe).toHaveBeenCalled()
       expect(activateTeam).toHaveBeenCalledWith('org_2')
+      expect(hrefSpy).toHaveBeenCalledWith('/')
       // Land only AFTER the team switch is attempted.
       expect(activateTeam.mock.invocationCallOrder[0]).toBeLessThan(hrefSpy.mock.invocationCallOrder[0])
     } finally {
-      Object.defineProperty(window, 'location', { configurable: true, value: originalLocation })
+      restore()
     }
+  })
+
+  it('commitLast({ keepalive: true }) passes keepalive through to the request', async () => {
+    mockIsOwner = false
+    mockIsAdminOrOwner = false
+    render(<WorkspaceGeneralTab />)
+    await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Leave' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to leave' }))
+    await commitLast({ keepalive: true })
+    expect(orgApi.leaveOrganization).toHaveBeenCalledWith('org_1', { keepalive: true })
   })
 
   it('still lands on / when the best-effort team switch fails', async () => {
     mockIsOwner = false
     mockIsAdminOrOwner = false
     getMe.mockRejectedValueOnce(new Error('network'))
-    const hrefSpy = vi.fn()
-    const originalLocation = window.location
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: { ...originalLocation, set href(v: string) { hrefSpy(v) } },
-    })
+    const { hrefSpy, restore } = withHref()
     try {
       render(<WorkspaceGeneralTab />)
       await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
 
       fireEvent.click(screen.getByRole('button', { name: 'Leave' }))
-      fireEvent.click(await screen.findByRole('button', { name: 'Leave team' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'Hold to leave' }))
+      await commitLast()
 
-      await waitFor(() => expect(hrefSpy).toHaveBeenCalledWith('/'))
+      expect(hrefSpy).toHaveBeenCalledWith('/')
     } finally {
-      Object.defineProperty(window, 'location', { configurable: true, value: originalLocation })
+      restore()
+    }
+  })
+
+  it('undoLast sends nothing and the page never navigates', async () => {
+    mockIsOwner = false
+    mockIsAdminOrOwner = false
+    const { hrefSpy, restore } = withHref()
+    try {
+      render(<WorkspaceGeneralTab />)
+      await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+
+      fireEvent.click(screen.getByRole('button', { name: 'Leave' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'Hold to leave' }))
+      undoLast()
+
+      expect(orgApi.leaveOrganization).not.toHaveBeenCalled()
+      expect(hrefSpy).not.toHaveBeenCalled()
+      expect(activateTeam).not.toHaveBeenCalled()
+    } finally {
+      restore()
     }
   })
 
   it('shows an error toast and stays put when leaving fails', async () => {
-    const { toast } = await import('@ciphera-net/facet')
     mockIsOwner = false
     mockIsAdminOrOwner = false
+    const { toast } = await import('@ciphera-net/facet')
     ;(orgApi.leaveOrganization as any).mockRejectedValueOnce(new Error('boom'))
+    const { hrefSpy, restore } = withHref()
 
-    render(<WorkspaceGeneralTab />)
-    await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
+    try {
+      render(<WorkspaceGeneralTab />)
+      await waitFor(() => expect(screen.getByDisplayValue('Acme Corp')).toBeTruthy())
 
-    fireEvent.click(screen.getByRole('button', { name: 'Leave' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Leave team' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Leave' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'Hold to leave' }))
+      await commitLast()
 
-    // The mocked getAuthErrorMessage always answers 'error'; the house
-    // fallback text only shows through when it answers empty (untested here,
-    // same as the existing Transfer/Delete failure paths).
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('error'))
-    expect(activateTeam).not.toHaveBeenCalled()
-  })
-})
-
-// ─── PULSE-59: unlisted for somebody alone, but the route still renders ───
-describe('WorkspaceGeneralTab, alone', () => {
-  it('renders without calling the container a team, workspace or organization', async () => {
-    mockTeamState = 'alone'
-    const { container } = render(<WorkspaceGeneralTab />)
-    await waitFor(() => expect(screen.getByRole('heading', { level: 2, name: 'Details' })).toBeTruthy())
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
-    expect(await screen.findByRole('button', { name: 'Delete all data' })).toBeTruthy()
-    expect(container.textContent).not.toMatch(/team|workspace|organi[sz]ation/i)
-  })
-
-  // PULSE-92 Phase 5: nobody to leave and nobody to invite you back — the row
-  // itself would also leak the word "team" the test above forbids.
-  it('never shows a Leave row: there is no team to leave', async () => {
-    mockTeamState = 'alone'
-    render(<WorkspaceGeneralTab />)
-    await waitFor(() => expect(screen.getByRole('heading', { level: 2, name: 'Details' })).toBeTruthy())
-    expect(screen.queryByRole('button', { name: 'Leave' })).toBeNull()
+      // The mocked getAuthErrorMessage always answers 'error'; the house
+      // fallback text only shows through when it answers empty (untested
+      // here, same as the Transfer/Delete failure paths).
+      expect(toast.error).toHaveBeenCalledWith('error')
+      expect(activateTeam).not.toHaveBeenCalled()
+      expect(hrefSpy).not.toHaveBeenCalled()
+    } finally {
+      restore()
+    }
   })
 })

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
 const auth = vi.hoisted(() => ({ logout: vi.fn() }))
 vi.mock('@/lib/auth/context', () => ({ useAuth: () => ({ logout: auth.logout }) }))
@@ -16,10 +16,6 @@ vi.mock('@ciphera-net/facet', () => ({
 vi.mock('@phosphor-icons/react', () => new Proxy({}, {
   get: (_t, prop) => (prop === 'then' ? undefined : () => null),
   has: () => true,
-}))
-vi.mock('@/components/ui/ConfirmDialog', () => ({
-  ConfirmDialog: ({ open, title, confirmLabel, onConfirm }: any) =>
-    open ? <div role="dialog" aria-label={title}><button onClick={onConfirm}>{confirmLabel}</button></div> : null,
 }))
 
 import SessionsPanel, { describeSession } from '../SessionsPanel'
@@ -59,12 +55,11 @@ describe('SessionsPanel', () => {
     await waitFor(() => expect(api.getUserSessions).toHaveBeenCalledTimes(2))
   })
 
-  it('confirms before signing out this device, then signs out', async () => {
+  it('signs this device out in one click too, same as any other (owner ruling 4, PUL-28)', async () => {
     api.getUserSessions.mockResolvedValue({ sessions: [mine] })
     render(<SessionsPanel />)
     fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }))
-    const dialog = screen.getByRole('dialog', { name: 'Sign out of this device?' })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Sign out' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
     await waitFor(() => expect(api.revokeSession).toHaveBeenCalledWith('s-me'))
     await waitFor(() => expect(auth.logout).toHaveBeenCalledTimes(1))
   })

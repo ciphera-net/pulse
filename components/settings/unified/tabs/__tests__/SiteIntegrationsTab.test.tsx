@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -51,12 +51,13 @@ vi.mock('@/lib/api/bing', () => ({
   disconnectBing: (...a: unknown[]) => disconnectBing(...a),
 }))
 
-// ConfirmDialog + SettingsErrorState are exercised by their own suites, so
-// stub them to markers so this smoke render stays focused on the panel composition.
-vi.mock('@/components/ui/ConfirmDialog', () => ({
-  ConfirmDialog: ({ open, title }: { open: boolean; title: string }) =>
-    open ? <div data-testid="confirm-dialog">{title}</div> : null,
-}))
+// The hold dialog and the Undo window are facet-hold's own suite; here a
+// confirm is one click and each deferred disconnect is committed, undone or
+// failed by the test itself (PUL-28).
+vi.mock('@ciphera-net/facet-hold', async () =>
+  (await import('@/lib/hold/__tests__/facetHoldStandIn')).facetHoldStandIn())
+// SettingsErrorState is exercised by its own suite, so stub it to a marker so
+// this smoke render stays focused on the panel composition.
 vi.mock('@/components/settings/SettingsErrorState', () => ({
   SettingsErrorState: ({ message }: { message: string }) => <div data-testid="error-banner">{message}</div>,
 }))
@@ -74,11 +75,12 @@ vi.mock('@ciphera-net/facet', () => ({
   ),
   Spinner: () => <span data-testid="spinner" />,
   toast: { success: vi.fn(), error: vi.fn() },
-  getAuthErrorMessage: () => 'error',
+  getAuthErrorMessage: (e: Error) => e?.message ?? '',
 }))
 
 import SiteIntegrationsTab from '../SiteIntegrationsTab'
 import { toast } from '@ciphera-net/facet'
+import { deferred, resetDeferred, commitLast, undoLast } from '@/lib/hold/__tests__/facetHoldStandIn'
 
 const mutateGSC = vi.fn().mockResolvedValue(undefined)
 const mutateBunny = vi.fn().mockResolvedValue(undefined)
@@ -112,6 +114,7 @@ beforeEach(() => {
   disconnectBing.mockClear()
   ;(toast.success as any).mockClear?.()
   ;(toast.error as any).mockClear?.()
+  resetDeferred()
 })
 
 
@@ -360,5 +363,86 @@ describe('SiteIntegrationsTab (Facet structured panels)', () => {
       expect(tile.className).toMatch(/\bduration-fast\b/)
       expect(tile.className).toMatch(/\bease-apple\b/)
     })
+  })
+})
+
+describe('disconnecting through a hold dialog (PUL-28)', () => {
+  it('names Search Console in a hold dialog, reads as disconnected at once, and sends nothing until the Undo window runs out', async () => {
+    useGSCStatus.mockReturnValue(gscState({
+      data: { connected: true, status: 'active', google_email: 'owner@acme.com', gsc_property: 'https://acme.com/' },
+    }))
+    render(<SiteIntegrationsTab siteId="s1" />)
+    fireEvent.click(screen.getByRole('button', { name: /Disconnect/i }))
+    const dialog = screen.getByRole('dialog', { name: 'Disconnect Search Console?' })
+    expect(within(dialog).getByText('This will remove all synced search data.')).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Hold to disconnect' }))
+
+    // The card reads as disconnected at once; nothing sent yet.
+    expect(within(row('Google Search Console')).getByText('Not connected')).toBeInTheDocument()
+    expect(screen.queryByText('Google account')).toBeNull()
+    expect(disconnectGSC).not.toHaveBeenCalled()
+    expect(deferred[0]!.message).toBe('Search Console disconnected')
+
+    await act(() => commitLast())
+    expect(disconnectGSC).toHaveBeenCalledWith('s1', { keepalive: false })
+    expect(mutateGSC).toHaveBeenCalledTimes(1)
+  })
+
+  it('passes keepalive through to the request on a commit sent as the page closes', async () => {
+    useGSCStatus.mockReturnValue(gscState({ data: { connected: true, status: 'active' } }))
+    render(<SiteIntegrationsTab siteId="s1" />)
+    fireEvent.click(screen.getByRole('button', { name: /Disconnect/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to disconnect' }))
+    await act(() => commitLast({ keepalive: true }))
+    expect(disconnectGSC).toHaveBeenCalledWith('s1', { keepalive: true })
+  })
+
+  it('Undo restores the connected state and sends nothing', async () => {
+    useGSCStatus.mockReturnValue(gscState({ data: { connected: true, status: 'active' } }))
+    render(<SiteIntegrationsTab siteId="s1" />)
+    fireEvent.click(screen.getByRole('button', { name: /Disconnect/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to disconnect' }))
+    expect(within(row('Google Search Console')).getByText('Not connected')).toBeInTheDocument()
+
+    act(() => undoLast())
+    expect(within(row('Google Search Console')).getByText('Connected')).toBeInTheDocument()
+    expect(disconnectGSC).not.toHaveBeenCalled()
+  })
+
+  it('a rejected disconnect restores the connected state and says so', async () => {
+    useGSCStatus.mockReturnValue(gscState({ data: { connected: true, status: 'active' } }))
+    disconnectGSC.mockRejectedValueOnce(new Error())
+    render(<SiteIntegrationsTab siteId="s1" />)
+    fireEvent.click(screen.getByRole('button', { name: /Disconnect/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to disconnect' }))
+    expect(within(row('Google Search Console')).getByText('Not connected')).toBeInTheDocument()
+
+    await act(() => commitLast())
+    expect(toast.error).toHaveBeenCalledWith("Couldn't disconnect Search Console. Try again.")
+    expect(within(row('Google Search Console')).getByText('Connected')).toBeInTheDocument()
+  })
+
+  it('names Bing and Bunny in their own hold dialogs, and sends their own disconnect', async () => {
+    useBingStatus.mockReturnValue(bingState({ data: { connected: true, status: 'active', site_url: 'https://acme.com/' } }))
+    render(<SiteIntegrationsTab siteId="s1" />)
+    fireEvent.click(within(row('Bing Webmaster Tools')).getByRole('button', { name: /Disconnect/i }))
+    const bingDialog = screen.getByRole('dialog', { name: 'Disconnect Bing?' })
+    expect(within(bingDialog).getByText('This will remove all synced Bing search data.')).toBeInTheDocument()
+    fireEvent.click(within(bingDialog).getByRole('button', { name: 'Hold to disconnect' }))
+    await act(() => commitLast())
+    expect(disconnectBing).toHaveBeenCalledWith('s1', { keepalive: false })
+    expect(mutateBing).toHaveBeenCalledTimes(1)
+  })
+
+  it('names Bunny CDN in its own hold dialog, and sends its own disconnect', async () => {
+    useBunnyStatus.mockReturnValue(bunnyState({ data: { connected: true, status: 'active', pull_zone_name: 'zone-a' } }))
+    render(<SiteIntegrationsTab siteId="s1" />)
+    fireEvent.click(within(row('Bunny CDN')).getByRole('button', { name: /Disconnect/i }))
+    const bunnyDialog = screen.getByRole('dialog', { name: 'Disconnect Bunny CDN?' })
+    expect(within(bunnyDialog).getByText('This will remove all synced CDN data.')).toBeInTheDocument()
+    fireEvent.click(within(bunnyDialog).getByRole('button', { name: 'Hold to disconnect' }))
+    await act(() => commitLast())
+    expect(disconnectBunny).toHaveBeenCalledWith('s1', { keepalive: false })
+    expect(mutateBunny).toHaveBeenCalledTimes(1)
   })
 })

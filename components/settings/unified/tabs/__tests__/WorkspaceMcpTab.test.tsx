@@ -25,17 +25,12 @@ vi.mock('@/lib/auth/context', () => ({
   useAuth: () => ({ user: { id: 'u_me', email: 'me@x', org_id: 'org_a' } }),
 }))
 vi.mock('@/lib/hooks/useDisplayZone', () => ({ useDisplayZone: () => ({ zone: 'UTC' }) }))
-vi.mock('@/components/ui/ConfirmDialog', () => ({
-  ConfirmDialog: ({ open, title, description, onConfirm }: any) =>
-    open ? (
-      <div role="dialog">
-        <p>{title}</p>
-        <p>{description}</p>
-        <button onClick={onConfirm}>Confirm disconnect</button>
-      </div>
-    ) : null,
-}))
-const toastSuccess = vi.fn()
+// The hold dialog and the Undo window are facet-hold's own suite; here a
+// confirm is one click and each deferred disconnect is committed, undone or
+// failed by the test itself (PUL-28).
+vi.mock('@ciphera-net/facet-hold', async () =>
+  (await import('@/lib/hold/__tests__/facetHoldStandIn')).facetHoldStandIn())
+const toastError = vi.fn()
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...args: any[]) => args.flat(Infinity).filter(Boolean).join(' '),
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
@@ -43,11 +38,13 @@ vi.mock('@ciphera-net/facet', () => ({
   Spinner: () => <span />,
   CheckIcon: () => <span />,
   CopyIcon: () => <span />,
-  toast: { success: (...a: unknown[]) => toastSuccess(...a), error: vi.fn() },
+  toast: { success: vi.fn(), error: (...a: unknown[]) => toastError(...a) },
+  getAuthErrorMessage: (e: Error) => e?.message ?? '',
 }))
 vi.mock('@/lib/api/client', () => ({ API_URL: 'https://pulse-api-staging.ciphera.net' }))
 
 import WorkspaceMcpTab from '../WorkspaceMcpTab'
+import { deferred, resetDeferred, commitLast, undoLast } from '@/lib/hold/__tests__/facetHoldStandIn'
 
 const base: Omit<Connection, 'id' | 'client_name' | 'client_verified' | 'client_brand' | 'user_id' | 'status'> = {
   redirect_host: 'claude.ai', scope_all_sites: false, site_ids: ['s1', 's2'], created_at: '2026-09-24T08:00:00Z',
@@ -61,7 +58,8 @@ beforeEach(() => {
   listConnectedApps.mockReset().mockResolvedValue({ connections: [claude, bot, cursor] })
   disconnectApp.mockReset().mockResolvedValue({})
   getOrganizationMembers.mockReset().mockResolvedValue([{ user_id: 'u_alex', user_email: 'alex@acme.com', role: 'admin' }])
-  toastSuccess.mockReset()
+  toastError.mockReset()
+  resetDeferred()
 })
 
 describe('WorkspaceMcpTab', () => {
@@ -107,14 +105,65 @@ describe('WorkspaceMcpTab', () => {
     expect(within(screen.getByTestId('connection-row-g2')).getByText('Connected by alex@acme.com')).toBeTruthy()
   })
 
-  it('confirms before disconnecting, then calls the server', async () => {
+  it('hides the connection at once and sends nothing until the hold is confirmed', async () => {
     render(<WorkspaceMcpTab />)
     await screen.findByTestId('connection-row-g1')
     fireEvent.click(screen.getByRole('button', { name: 'Disconnect Claude' }))
     expect(disconnectApp).not.toHaveBeenCalled()
-    expect(screen.getByRole('dialog').textContent).toContain('Disconnect Claude?')
-    fireEvent.click(screen.getByText('Confirm disconnect'))
-    await waitFor(() => expect(disconnectApp).toHaveBeenCalledWith('g1'))
+    const dialog = await screen.findByRole('dialog', { name: 'Disconnect Claude?' })
+    expect(dialog.textContent).toContain('loses access immediately')
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to disconnect' }))
+
+    await waitFor(() => expect(screen.queryByTestId('connection-row-g1')).toBeNull())
+    expect(disconnectApp).not.toHaveBeenCalled()
+    expect(deferred[0]!.message).toBe('Claude disconnected')
+  })
+
+  it('commitLast() sends the disconnect with keepalive false and refreshes the list', async () => {
+    render(<WorkspaceMcpTab />)
+    await screen.findByTestId('connection-row-g1')
+    fireEvent.click(screen.getByRole('button', { name: 'Disconnect Claude' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to disconnect' }))
+
+    listConnectedApps.mockResolvedValue({ connections: [bot, cursor] })
+    await commitLast()
+    expect(disconnectApp).toHaveBeenCalledWith('g1', { keepalive: false })
+    await waitFor(() => expect(listConnectedApps).toHaveBeenCalledTimes(2))
+  })
+
+  it('commitLast({ keepalive: true }) passes keepalive through to the request', async () => {
+    render(<WorkspaceMcpTab />)
+    await screen.findByTestId('connection-row-g1')
+    fireEvent.click(screen.getByRole('button', { name: 'Disconnect Claude' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to disconnect' }))
+
+    await commitLast({ keepalive: true })
+    expect(disconnectApp).toHaveBeenCalledWith('g1', { keepalive: true })
+  })
+
+  it('undoLast() restores the connection and sends nothing', async () => {
+    render(<WorkspaceMcpTab />)
+    await screen.findByTestId('connection-row-g1')
+    fireEvent.click(screen.getByRole('button', { name: 'Disconnect Claude' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to disconnect' }))
+    await waitFor(() => expect(screen.queryByTestId('connection-row-g1')).toBeNull())
+
+    undoLast()
+    expect(await screen.findByTestId('connection-row-g1')).toBeInTheDocument()
+    expect(disconnectApp).not.toHaveBeenCalled()
+  })
+
+  it('a rejected disconnect brings the connection back and shows the house error', async () => {
+    disconnectApp.mockRejectedValueOnce(new Error('Server error'))
+    render(<WorkspaceMcpTab />)
+    await screen.findByTestId('connection-row-g1')
+    fireEvent.click(screen.getByRole('button', { name: 'Disconnect Claude' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to disconnect' }))
+    await waitFor(() => expect(screen.queryByTestId('connection-row-g1')).toBeNull())
+
+    await commitLast()
+    expect(toastError).toHaveBeenCalledWith('Server error')
+    expect(await screen.findByTestId('connection-row-g1')).toBeInTheDocument()
   })
 
   it('shows the empty state when nothing is live', async () => {

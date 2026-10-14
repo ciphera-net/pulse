@@ -69,7 +69,14 @@ vi.mock('@ciphera-net/facet', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }))
 
+// SiteImportTab calls useUndo() unconditionally (PUL-28), which throws
+// outside an UndoProvider; the hold dialog and the Undo window are
+// facet-hold's own suite, not this file's.
+vi.mock('@ciphera-net/facet-hold', async () =>
+  (await import('@/lib/hold/__tests__/facetHoldStandIn')).facetHoldStandIn())
+
 import SiteImportTab from '../SiteImportTab'
+import { resetDeferred } from '@/lib/hold/__tests__/facetHoldStandIn'
 
 // ─── fixtures ──────────────────────────────────────────────────────────────
 const PLAUSIBLE = { source: 'plausible', kind: 'upload_aggregate', enabled: true }
@@ -181,6 +188,7 @@ beforeEach(() => {
   popup = { opener: window, closed: false }
   openSpy = vi.spyOn(window, 'open').mockImplementation(() => popup as unknown as Window)
   window.history.replaceState({}, '', '/settings/site/import')
+  resetDeferred()
 })
 
 afterEach(() => {

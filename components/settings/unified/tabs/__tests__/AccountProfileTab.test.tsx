@@ -155,9 +155,16 @@ vi.mock('@phosphor-icons/react', () => new Proxy({}, {
 // section/div semantics stay intact.
 vi.mock('framer-motion', () => import('@/components/settings/__tests__/framer-mock'))
 
+// The hold dialog and the Undo window are facet-hold's own suite; here a
+// confirm is one click and each deferred delete is committed, undone or
+// failed by the test itself (PUL-28).
+vi.mock('@ciphera-net/facet-hold', async () =>
+  (await import('@/lib/hold/__tests__/facetHoldStandIn')).facetHoldStandIn())
+
 import AccountProfileTab from '../AccountProfileTab'
 import { toast } from '@ciphera-net/facet'
 import { ApiError } from '@/lib/api/client'
+import { deferred, resetDeferred, commitLast, undoLast } from '@/lib/hold/__tests__/facetHoldStandIn'
 
 beforeEach(() => {
   h.user = { id: 'u1', email: 'ada@ciphera.net', display_name: 'Ada' }
@@ -180,6 +187,7 @@ beforeEach(() => {
   vault.load.mockClear().mockResolvedValue(null)
   vault.open.mockClear()
   vault.saveName.mockClear().mockResolvedValue(undefined)
+  resetDeferred()
 })
 
 describe('AccountProfileTab (Facet structured panels)', () => {
@@ -244,19 +252,22 @@ describe('AccountProfileTab (Facet structured panels)', () => {
     }
   })
 
-  it('gates the typed-DELETE confirm: delete stays disabled until DELETE + password', async () => {
+  it('gates the hold: Hold to delete stays disabled until a password is typed, no typed DELETE any more', async () => {
     const { container } = render(<AccountProfileTab />)
-    // Reveal the confirm via the DangerZone trigger. Opening it also reads the
+    // Open the dialog via the DangerZone trigger. Opening it also reads the
     // deletion preview, so let that land before asserting.
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    const trigger = screen.getByRole('button', { name: 'Delete' })
+    expect(trigger.getAttribute('aria-haspopup')).toBe('dialog')
+    fireEvent.click(trigger)
     await act(async () => { await Promise.resolve() })
-    const confirmBtn = screen.getByRole('button', { name: /Delete account/i }) as HTMLButtonElement
+    const confirmBtn = screen.getByRole('button', { name: 'Hold to delete' }) as HTMLButtonElement
     expect(confirmBtn.disabled).toBe(true)
+    // No typed-confirmation field any more (hold replaces it, PUL-28).
+    expect(container.querySelector('#account-delete-confirm')).toBeNull()
+    expect(screen.queryByText(/type delete/i)).toBeNull()
 
     const password = container.querySelector('#account-delete-password') as HTMLInputElement
-    const confirmText = container.querySelector('#account-delete-confirm') as HTMLInputElement
     fireEvent.change(password, { target: { value: 'hunter2' } })
-    fireEvent.change(confirmText, { target: { value: 'DELETE' } })
     expect(confirmBtn.disabled).toBe(false)
   })
 
@@ -641,19 +652,22 @@ describe('AccountProfileTab — the workspace that goes with the account', () =>
     expect(container.textContent).not.toMatch(/couldn.t check/i)
   })
 
-  it('echoes the ids it showed, and nothing else', async () => {
+  it('echoes the ids it showed, and nothing else, once the hold is confirmed', async () => {
     api.getDeletionPreview.mockResolvedValue([{ ...WORKSPACE, contents: { site_count: 0, domains: [] } }])
     const { container } = await openDangerPanel()
     await screen.findByText(/Distant Clockhouse/)
 
     fireEvent.change(container.querySelector('#account-delete-password') as HTMLInputElement, { target: { value: 'hunter2' } })
-    fireEvent.change(container.querySelector('#account-delete-confirm') as HTMLInputElement, { target: { value: 'DELETE' } })
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /^Delete account$/i }))
-    })
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
+    await waitFor(() => expect(reauth.fn).toHaveBeenCalledWith({ password: 'hunter2', purpose: 'del' }))
 
-    expect(reauth.fn).toHaveBeenCalledWith({ password: 'hunter2', purpose: 'del' })
-    expect(api.deleteAccount).toHaveBeenCalledWith('tok', ['org-1'])
+    // Deferred behind the Undo bar: nothing sent until the window runs out.
+    expect(api.deleteAccount).not.toHaveBeenCalled()
+    expect(deferred[0]!.message).toBe('Account deleted')
+
+    await commitLast()
+    expect(api.deleteAccount).toHaveBeenCalledWith('tok', ['org-1'], { keepalive: false })
+    await waitFor(() => expect(h.logout).toHaveBeenCalledTimes(1))
   })
 
   it('sends NO ids when the list could not be read', async () => {
@@ -664,12 +678,33 @@ describe('AccountProfileTab — the workspace that goes with the account', () =>
     await screen.findByText(/couldn.t check/i)
 
     fireEvent.change(container.querySelector('#account-delete-password') as HTMLInputElement, { target: { value: 'hunter2' } })
-    fireEvent.change(container.querySelector('#account-delete-confirm') as HTMLInputElement, { target: { value: 'DELETE' } })
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /^Delete account$/i }))
-    })
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
+    await waitFor(() => expect(reauth.fn).toHaveBeenCalledWith({ password: 'hunter2', purpose: 'del' }))
 
-    expect(api.deleteAccount).toHaveBeenCalledWith('tok', [])
+    await commitLast()
+    expect(api.deleteAccount).toHaveBeenCalledWith('tok', [], { keepalive: false })
+  })
+
+  it('a removal sent as the page closes passes keepalive through', async () => {
+    api.getDeletionPreview.mockResolvedValue([])
+    const { container } = await openDangerPanel()
+    fireEvent.change(container.querySelector('#account-delete-password') as HTMLInputElement, { target: { value: 'hunter2' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
+    await waitFor(() => expect(reauth.fn).toHaveBeenCalled())
+    await commitLast({ keepalive: true })
+    expect(api.deleteAccount).toHaveBeenCalledWith('tok', [], { keepalive: true })
+  })
+
+  it('Undo cancels the deletion and sends nothing', async () => {
+    api.getDeletionPreview.mockResolvedValue([])
+    const { container } = await openDangerPanel()
+    fireEvent.change(container.querySelector('#account-delete-password') as HTMLInputElement, { target: { value: 'hunter2' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
+    await waitFor(() => expect(reauth.fn).toHaveBeenCalled())
+
+    undoLast()
+    expect(api.deleteAccount).not.toHaveBeenCalled()
+    expect(h.logout).not.toHaveBeenCalled()
   })
 
   it('never asks for the email a second time', async () => {
@@ -679,12 +714,12 @@ describe('AccountProfileTab — the workspace that goes with the account', () =>
     api.getDeletionPreview.mockResolvedValue([WORKSPACE])
     const { container } = await openDangerPanel()
     await screen.findByText(/Distant Clockhouse/)
-    // ⚠️ Scoped to the DELETE panel. The page-wide form of this assertion
+    // ⚠️ Scoped to the DELETE dialog. The page-wide form of this assertion
     // stopped meaning what it said the moment the email row became editable
     // (10-09-2026) — it would have failed on a change that added an email field
-    // nowhere near this panel, which is not what it is guarding.
+    // nowhere near this dialog, which is not what it is guarding.
     const panel = (container.querySelector('#account-delete-password') as HTMLElement)
-      .closest('section') as HTMLElement
+      .closest('[role="dialog"]') as HTMLElement
     expect(panel).not.toBeNull()
     expect(panel.querySelectorAll('input[type="email"]').length).toBe(0)
     expect(panel.textContent).not.toMatch(/email you sign in with/i)
@@ -1071,15 +1106,9 @@ describe('AccountProfileTab — chrome and copy contract', () => {
     expect(cancel.getAttribute('variant')).not.toBe('secondary')
   })
 
-  /** Same fix, same reasoning, in the delete-confirmation panel. */
-  it('uses the ghost rung for the delete-confirmation Cancel, never the retired grey secondary fill', async () => {
-    const { container } = await openDangerPanel()
-    const section = (container.querySelector('#account-delete-password') as HTMLElement).closest('section') as HTMLElement
-    const cancel = Array.from(section.querySelectorAll('button')).find(b => b.textContent === 'Cancel') as HTMLButtonElement
-    expect(cancel).toBeTruthy()
-    expect(cancel.getAttribute('variant')).toBe('ghost')
-    expect(cancel.getAttribute('variant')).not.toBe('secondary')
-  })
+  // The delete-confirmation panel's own hand-rolled Cancel button is gone
+  // (PUL-28): the dialog's Cancel is facet-hold's own HoldDialog, styled and
+  // tested in its own suite, not this one.
 
   it('never uses an em dash, en dash or a literal ellipsis in a user-facing string', () => {
     // Scoped to string and template literals, not the whole stripped source:
@@ -1218,10 +1247,11 @@ describe('AccountProfileTab — a refused deletion, alone and in a team', () => 
     const { container } = await openDangerPanel()
     await screen.findByText(/couldn.t check/i)
     fireEvent.change(container.querySelector('#account-delete-password') as HTMLInputElement, { target: { value: 'hunter2' } })
-    fireEvent.change(container.querySelector('#account-delete-confirm') as HTMLInputElement, { target: { value: 'DELETE' } })
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /^Delete account$/i }))
-    })
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
+    await waitFor(() => expect(reauth.fn).toHaveBeenCalled())
+    // The refusal arrives from the deferred commit, once the Undo window
+    // (simulated here) runs out.
+    await commitLast()
   }
 
   it('alone: says to check what goes with the account and try again, never a team', async () => {

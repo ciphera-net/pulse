@@ -1,9 +1,14 @@
 import { useCallback } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
-import { listSites, getSitesOverview, type Site, type SiteOverview } from '@/lib/api/sites'
+import { listSites, getSitesOverview, listDeletedSites, type Site, type SiteOverview } from '@/lib/api/sites'
 import { FAVICON_SERVICE_URL } from '@/lib/utils/favicon'
+import { usePendingKeys } from '@/lib/hold/pending'
 
-const SITES_KEY = 'sites'
+// Exported (PUL-28): a site deletion commits through the global Undo bar, so
+// the commit's refresh has to reach these caches from wherever it runs, not
+// only from a mounted useSites()/useDeletedSites(). See useRefreshSiteLists.
+export const SITES_KEY = 'sites'
+export const DELETED_SITES_KEY = 'deleted-sites'
 const SITES_OVERVIEW_KEY = 'sites-overview'
 
 export function useSites() {
@@ -16,12 +21,64 @@ export function useSites() {
     }
   )
 
+  // A site whose deletion is waiting behind the Undo bar (PUL-28) is hidden
+  // from every list built on this hook at once: the fleet, the site switcher,
+  // the command palette. Nothing is sent until the window runs out; see
+  // useDeferredRemoval and DeleteSiteModal.
+  const pendingKeys = usePendingKeys()
+  const sites = (data ?? []).filter((s) => !pendingKeys.has(`site:${s.id}`))
+
   return {
-    sites: data ?? [],
+    sites,
     isLoading,
     error,
     mutate,
   }
+}
+
+/**
+ * The home page's "Scheduled for deletion" list. Separate from `useSites()`
+ * (and its own pending key, `deleted-site:<id>`) because a site already in
+ * this list is already absent from the active one: permanently deleting it
+ * from here must hide THIS row, not a row in the fleet that was never there.
+ */
+export function useDeletedSites() {
+  const { data, error, isLoading, mutate } = useSWR<Site[]>(
+    DELETED_SITES_KEY,
+    () => listDeletedSites(),
+    {
+      revalidateOnFocus: false,
+    }
+  )
+
+  const pendingKeys = usePendingKeys()
+  const deletedSites = (data ?? []).filter((s) => !pendingKeys.has(`deleted-site:${s.id}`))
+
+  return {
+    deletedSites,
+    isLoading,
+    error,
+    mutate,
+  }
+}
+
+/**
+ * Revalidates both site lists from ANY component inside the app's
+ * SWRProvider (the bound-`mutate` reasoning is `useSitesCache`'s, just below).
+ * A confirmed site deletion changes both lists regardless of which one its
+ * trigger lived on: a soft delete moves the site from active to scheduled,
+ * and a permanent delete removes it from whichever one it was in. Chosen
+ * over an event bus as the simplest robust option, because SWR's own cache
+ * is already the shared channel every mounted list reads, so a page that is
+ * not mounted when the commit happens just sees fresh data the next time it
+ * mounts.
+ */
+export function useRefreshSiteLists(): () => void {
+  const { mutate } = useSWRConfig()
+  return useCallback(() => {
+    void mutate(SITES_KEY)
+    void mutate(DELETED_SITES_KEY)
+  }, [mutate])
 }
 
 /**

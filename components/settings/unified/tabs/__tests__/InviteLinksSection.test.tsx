@@ -12,6 +12,7 @@ vi.mock('@/lib/auth/permissions', () => ({ useIsAdminOrOwner: () => true }))
 vi.mock('@ciphera-net/facet', () => ({
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
   toast: { success: vi.fn(), error: vi.fn() },
+  getAuthErrorMessage: (e: Error) => e?.message ?? '',
   // `@/lib/utils` re-exports `cn` from facet — the panel primitives call it.
   cn: (...args: any[]) => args.flat(Infinity).filter(Boolean).join(' '),
 }))
@@ -23,12 +24,18 @@ vi.mock('@/components/ui/tooltip', () => ({
   TooltipTrigger: ({ children }: any) => <>{children}</>,
 }))
 
-vi.mock('@/components/ui/ConfirmDialog', () => ({ ConfirmDialog: () => null }))
+// The hold dialog and the Undo window are facet-hold's own suite; here a
+// confirm is one click and each deferred revoke is committed, undone or
+// failed by the test itself (PUL-28).
+vi.mock('@ciphera-net/facet-hold', async () =>
+  (await import('@/lib/hold/__tests__/facetHoldStandIn')).facetHoldStandIn())
 
-vi.mock('@/lib/api/organization', () => ({ revokeInviteLink: vi.fn() }))
+const revokeInviteLink = vi.fn()
+vi.mock('@/lib/api/organization', () => ({ revokeInviteLink: (...a: unknown[]) => revokeInviteLink(...a) }))
 
 import InviteLinksSection from '../InviteLinksSection'
 import { toast } from '@ciphera-net/facet'
+import { deferred, resetDeferred, commitLast, undoLast } from '@/lib/hold/__tests__/facetHoldStandIn'
 
 function sourceWithoutComments(path: string): string {
   const raw = readFileSync(path, 'utf8')
@@ -49,6 +56,9 @@ const links: InviteLink[] = [
 const noop = () => {}
 
 beforeEach(() => {
+  revokeInviteLink.mockReset().mockResolvedValue(undefined)
+  vi.mocked(toast.error).mockClear()
+  resetDeferred()
   document.body.innerHTML = ''
 })
 
@@ -182,5 +192,68 @@ describe('InviteLinksSection row motion (round two, M5)', () => {
 
     await waitFor(() => expect(screen.queryByTestId('invite-link-row-l-active')).toBeNull(), { timeout: 2000 })
     expect(screen.getByTestId('invite-link-row-l-expired')).toBeInTheDocument()
+  })
+})
+
+describe('InviteLinksSection revoke through the hold (PUL-28)', () => {
+  const onRevoked = vi.fn()
+
+  beforeEach(() => {
+    onRevoked.mockReset()
+  })
+
+  it('hides the link at once and sends nothing until the hold is confirmed', async () => {
+    render(<InviteLinksSection orgId="o" links={links} roles={[]} onRevoked={onRevoked} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Revoke "Engineering invite"?' })
+    expect(dialog.textContent).toContain('Anyone with this link will no longer be able to join.')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to revoke' }))
+
+    await waitFor(() => expect(screen.queryByTestId('invite-link-row-l-active')).toBeNull())
+    expect(revokeInviteLink).not.toHaveBeenCalled()
+    expect(deferred[0]!.message).toBe('"Engineering invite" revoked')
+  })
+
+  it('commitLast() sends the revoke with keepalive false and refreshes the list', async () => {
+    render(<InviteLinksSection orgId="o" links={links} roles={[]} onRevoked={onRevoked} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to revoke' }))
+
+    await commitLast()
+    expect(revokeInviteLink).toHaveBeenCalledWith('o', 'l-active', { keepalive: false })
+    expect(onRevoked).toHaveBeenCalledTimes(1)
+  })
+
+  it('commitLast({ keepalive: true }) passes keepalive through to the request', async () => {
+    render(<InviteLinksSection orgId="o" links={links} roles={[]} onRevoked={onRevoked} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to revoke' }))
+
+    await commitLast({ keepalive: true })
+    expect(revokeInviteLink).toHaveBeenCalledWith('o', 'l-active', { keepalive: true })
+  })
+
+  it('undoLast() restores the link and sends nothing', async () => {
+    render(<InviteLinksSection orgId="o" links={links} roles={[]} onRevoked={onRevoked} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to revoke' }))
+    await waitFor(() => expect(screen.queryByTestId('invite-link-row-l-active')).toBeNull())
+
+    undoLast()
+    expect(await screen.findByTestId('invite-link-row-l-active')).toBeInTheDocument()
+    expect(revokeInviteLink).not.toHaveBeenCalled()
+  })
+
+  it('a rejected revoke brings the link back and shows the house error', async () => {
+    revokeInviteLink.mockRejectedValueOnce(new Error('Server error'))
+    render(<InviteLinksSection orgId="o" links={links} roles={[]} onRevoked={onRevoked} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hold to revoke' }))
+    await waitFor(() => expect(screen.queryByTestId('invite-link-row-l-active')).toBeNull())
+
+    await commitLast()
+    expect(toast.error).toHaveBeenCalledWith('Server error')
+    expect(await screen.findByTestId('invite-link-row-l-active')).toBeInTheDocument()
   })
 })
