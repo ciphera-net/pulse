@@ -1,4 +1,4 @@
-import apiRequest, { ApiError } from './client'
+import apiRequest, { ApiError, type SendOptions } from './client'
 
 interface OwnsOrgsBody {
   error: 'owns_organizations'
@@ -98,7 +98,7 @@ export function ownedOrganizationsMessage(
   return `${summary}\n${lines.join('\n')}\n\nGo to Settings → Team.`
 }
 
-export async function deleteAccount(reauthToken: string, organizationIds: string[] = []): Promise<void> {
+export async function deleteAccount(reauthToken: string, organizationIds: string[] = [], send: SendOptions = {}): Promise<void> {
   // Loud-fail: never POST an empty token (the ceremony returning "" means the mint
   // failed — the caller must retry a fresh ceremony, not send a blank credential).
   if (!reauthToken) throw new Error('Re-authentication token missing')
@@ -111,6 +111,7 @@ export async function deleteAccount(reauthToken: string, organizationIds: string
       // not in this list, so the server refuses again and shows the new one,
       // rather than destroying something nobody agreed to.
       body: JSON.stringify({ reauth_token: reauthToken, delete_organizations: organizationIds }),
+      keepalive: send.keepalive,
     })
   } catch (err) {
     // * B.1 D1: server returns HTTP 409 with a structured list of organizations

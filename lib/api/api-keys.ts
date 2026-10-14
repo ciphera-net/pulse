@@ -1,4 +1,4 @@
-import apiRequest from '@/lib/api/client'
+import apiRequest, { type SendOptions } from '@/lib/api/client'
 
 /**
  * An issued API key, as the server is willing to describe it.
@@ -47,8 +47,8 @@ export const createApiKey = (data: {
     body: JSON.stringify(data),
   })
 
-export const revokeApiKey = (keyId: string) =>
-  apiRequest<{ revoked: boolean }>(`/api-keys/${keyId}`, { method: 'DELETE' })
+export const revokeApiKey = (keyId: string, send: SendOptions = {}) =>
+  apiRequest<{ revoked: boolean }>(`/api-keys/${keyId}`, { method: 'DELETE', keepalive: send.keepalive })
 
 /**
  * Live means usable right now. Revocation wins over a future expiry, matching

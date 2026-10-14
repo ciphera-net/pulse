@@ -28,6 +28,10 @@ const config: Config = {
     // the 21 black-only brand logos silently render fill:black on the dark UI.
     './lib/**/*.{js,ts,jsx,tsx,mdx}',
     './node_modules/@ciphera-net/facet/dist/**/*.{js,mjs,cjs}',
+    // facet-hold (the hold-to-confirm button, its dialog, the Undo bar) ships
+    // Tailwind classes in its own package: the facet glob above does not match
+    // it, and without this line the hold renders unstyled.
+    './node_modules/@ciphera-net/facet-hold/dist/**/*.{js,mjs,cjs}',
   ],
   theme: {
     extend: {
@@ -95,7 +99,14 @@ const config: Config = {
         border: 'rgb(var(--border) / <alpha-value>)',
         input: 'rgb(var(--input) / <alpha-value>)',
         ring: 'rgb(var(--ring) / <alpha-value>)',
-        destructive: 'rgb(var(--destructive) / <alpha-value>)',
+        // An object, like every other paired token here: a flat value replaced
+        // the preset's whole `destructive` entry, foreground included, so
+        // `text-destructive-foreground` did not exist and every destructive
+        // button drew its label in the inherited colour instead of the token.
+        destructive: {
+          DEFAULT: 'rgb(var(--destructive) / <alpha-value>)',
+          foreground: 'rgb(var(--destructive-foreground) / <alpha-value>)',
+        },
         muted: {
           DEFAULT: 'rgb(var(--muted) / <alpha-value>)',
           foreground: 'rgb(var(--muted-foreground) / <alpha-value>)',

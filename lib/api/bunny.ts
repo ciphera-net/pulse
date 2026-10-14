@@ -1,4 +1,4 @@
-import apiRequest from './client'
+import apiRequest, { type SendOptions } from './client'
 import { rangeQuery } from './rangeQuery'
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -122,8 +122,8 @@ export async function getBunnyStatus(siteId: string): Promise<BunnyStatus> {
   return apiRequest<BunnyStatus>(`/sites/${siteId}/integrations/bunny/status`)
 }
 
-export async function disconnectBunny(siteId: string): Promise<void> {
-  await apiRequest(`/sites/${siteId}/integrations/bunny`, { method: 'DELETE' })
+export async function disconnectBunny(siteId: string, send: SendOptions = {}): Promise<void> {
+  await apiRequest(`/sites/${siteId}/integrations/bunny`, { method: 'DELETE', keepalive: send.keepalive })
 }
 
 export async function getBunnyOverview(siteId: string, startDate: string, endDate: string, period?: string): Promise<BunnyOverview> {
