@@ -713,9 +713,11 @@ export default function ScriptSetupBlock({
               INTERACTION_KINDS.map((k) => (
                 <PanelRow
                   key={k.key}
-                  className="md:grid-cols-[220px_1fr_auto]"
-                  label={<span className="pl-5">{k.label}</span>}
-                  caption={<span className="pl-5">{k.description}</span>}
+                  // `block`, not an inline span: padding on an inline element
+                  // indents only its FIRST line, so a caption that wrapped
+                  // fell back to the row's edge on its second line.
+                  label={<span className="block pl-5">{k.label}</span>}
+                  caption={<span className="block pl-5">{k.description}</span>}
                   control={<Toggle checked={kinds[k.key]} onChange={() => toggleKind(k.key)} disabled={disabled} />}
                 />
               ))}
