@@ -64,6 +64,20 @@ describe('pairPreviousSeries (PUL-19)', () => {
     expect(out[0]).toMatchObject({ date: '2026-09-08T00:00:00+02:00', visitors: null, pageviews: null })
     expect(out[1]?.visitors).toBeNull()
     expect(out[2]?.visitors).toBe(2)
+    expect(out.map((p) => p?.predatesData)).toEqual([true, true, false, false, false])
+  })
+
+  it('an hour with no visits is MEASURED: rates are null but nothing is withheld', () => {
+    // The server sends a zero-visit hour as visits null, bounce and duration
+    // null. That is "nobody came", which the chart plots at zero; it must not
+    // be confused with a bucket that predates the data, which breaks the line.
+    const prev = [
+      row('2026-10-14T03:00:00+02:00', 1, { bounce_rate: 100, avg_duration: 7 }),
+      row('2026-10-14T04:00:00+02:00', 0, { visits: null, bounce_rate: null, avg_duration: null }),
+    ]
+    const cur = [row('2026-10-15T03:00:00+02:00', 0), row('2026-10-15T04:00:00+02:00', 1)]
+    const out = pairPreviousSeries(cur, prev, '2026-10-15', '2026-10-14', '2026-09-01')
+    expect(out[1]).toMatchObject({ visitors: 0, bounce_rate: null, avg_duration: null, pages_per_visit: null, predatesData: false, durationWithheld: false })
   })
 
   it('leaves out a previous visit duration from before engaged time began', () => {
@@ -72,6 +86,8 @@ describe('pairPreviousSeries (PUL-19)', () => {
     const out = pairPreviousSeries(cur, prev, '2026-09-30', '2026-09-02')
     expect(ENGAGED_DURATION_SINCE).toBe('2026-09-04')
     expect(out.map((p) => p?.avg_duration)).toEqual([null, null, 60, 60])
+    expect(out.map((p) => p?.durationWithheld)).toEqual([true, true, false, false])
+    expect(out.every((p) => p?.predatesData === false)).toBe(true)
     expect(out[0]?.visitors).toBe(0) // only the duration is withheld
   })
 
@@ -81,5 +97,13 @@ describe('pairPreviousSeries (PUL-19)', () => {
     const out = pairPreviousSeries(cur, prev, '2026-09-03', '2026-09-01')
     expect(out[0]?.pages_per_visit).toBe(3)
     expect(out[1]?.pages_per_visit).toBeNull()
+    // Visitors but no visit count: unknown (a break). No visitors: empty (a zero).
+    expect(out.map((p) => p?.visitsUnknown)).toEqual([false, true])
+  })
+
+  it('a bucket with no visitors is empty, not unknown, though its visit count is null too', () => {
+    const prev = [row('2026-10-14T04:00:00+02:00', 0, { visits: null, pageviews: 0, bounce_rate: null })]
+    const out = pairPreviousSeries([row('2026-10-15T04:00:00+02:00', 1)], prev, '2026-10-15', '2026-10-14')
+    expect(out[0]).toMatchObject({ pages_per_visit: null, visitsUnknown: false })
   })
 })

@@ -118,6 +118,16 @@ describe('resolveTooltipYPositions', () => {
     expect(y).toEqual({ v: 200 })
   })
 
+  it('yields no anchor where the line is a gap by its `defined` predicate, even under missing-as-zero', () => {
+    // The previous-period line: an empty hour plots at zero, a bucket with
+    // nothing to compare is a gap. A dot on the zero line there would sit on
+    // nothing.
+    const lines = [{ dataKey: 'v', missingAsZero: true, defined: (d: Record<string, unknown>) => d.gap !== true }]
+    expect(resolveTooltipYPositions({ v: null, gap: true }, lines, scale)).toEqual({})
+    expect(resolveTooltipYPositions({ v: 1, gap: true }, lines, scale)).toEqual({})
+    expect(resolveTooltipYPositions({ v: null }, lines, scale)).toEqual({ v: 200 })
+  })
+
   it('yields NO entry for a missing bucket without the flag — the dot hides', () => {
     // Pinning the dot anywhere would fabricate a measurement the tooltip's
     // em dash just denied.

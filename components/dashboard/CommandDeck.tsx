@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { AreaChart as VisxAreaChart, Area as VisxArea, Grid as VisxGrid, XAxis as VisxXAxis, YAxis as VisxYAxis, ChartTooltip as VisxChartTooltip, ReferenceLine as VisxReferenceLine } from '@/components/ui/area-chart'
 import { curveLinear } from 'd3-shape'
 import { PERIOD_ENDS_NOW } from '@/lib/constants/periods'
@@ -97,6 +97,13 @@ interface CommandDeckProps {
 // themes), so orange stays reserved for the period being read.
 const PREV_INK = 'var(--chart-line-secondary)'
 const PREV_DASH = '4 4'
+
+// Rates, durations and ratios are null in an hour with no visits (no
+// denominator). Every line that draws them plots that null AT ZERO (owner
+// decision 19-08-2026: "no disappearing charts"); the tooltip still reads the
+// null and shows '—'. Counts are never null there: an empty hour is a real 0.
+const plotsMissingAsZero = (key: string) =>
+  key === 'bounce_rate' || key === 'avg_duration' || key === 'pages_per_visit'
 
 /** A signed change, minus sign not hyphen: "−73%", "+4.2 pp", "New", or "—". */
 function formatChange(c: PctChangeResult): string {
@@ -223,6 +230,13 @@ export default function CommandDeck({
         prev_pages_per_visit: p?.pages_per_visit ?? null,
         prev_bounce_rate: p?.bounce_rate ?? null,
         prev_avg_duration: p?.avg_duration ?? null,
+        // Where the previous line BREAKS, as opposed to plotting an empty hour
+        // at zero: no partner bucket (a DST hour) or a day before the site's
+        // data; for visit duration also a day before engaged time began, and
+        // for pages per visit a day with visitors but no visit count.
+        prevWithheld: p == null || p.predatesData,
+        prevDurationWithheld: p == null || p.durationWithheld,
+        prevPagesWithheld: p == null || p.predatesData || p.visitsUnknown,
         // The in-progress bucket: its tooltip says "(so far)".
         isPartial: endsNow && i === data.length - 1,
         dateObj: wallClock,
@@ -241,6 +255,17 @@ export default function CommandDeck({
   const prevKey = `prev_${metric}`
   const hasPrevSeries = chartData.some((d) => d.prevDateObj !== null)
   const drawPrev = hasPrevSeries && showPrev
+  // The previous line has a point wherever there is something to compare.
+  // An hour with no visits counts: under missingAsZero it plots at zero,
+  // exactly as the current line does, so the dashed line no longer breaks
+  // at every hour the previous day happened to be empty.
+  const prevDefined = useCallback((d: Record<string, unknown>) => {
+    const withheld = metric === 'avg_duration' ? d.prevDurationWithheld
+      : metric === 'pages_per_visit' ? d.prevPagesWithheld
+      : d.prevWithheld
+    if (withheld === true) return false
+    return plotsMissingAsZero(metric) || typeof d[prevKey] === 'number'
+  }, [metric, prevKey])
 
   // ─── Rail rows ─────────────────────────────────────────────────────
   const rows = useMemo(() => {
@@ -310,7 +335,7 @@ export default function CommandDeck({
                 dashedTail={Boolean(period && PERIOD_ENDS_NOW[period])}
                 // Mirror the big chart's missing-as-zero rule (its VisxArea
                 // flag below) — the mini must draw the shape the chart draws.
-                missingAsZero={m.key === 'bounce_rate' || m.key === 'avg_duration' || m.key === 'pages_per_visit'}
+                missingAsZero={plotsMissingAsZero(m.key)}
               />
               {metric === m.key && (
                 <motion.span
@@ -455,8 +480,10 @@ export default function CommandDeck({
                 {/* The previous period, drawn FIRST so it sits behind. A dashed
                     line with no fill (owner pick A, 12-10-2026); the chart's
                     y-domain spans both series, so a taller previous day is
-                    never cut off. Gaps where a bucket has no partner or
-                    predates the site's data — never a drawn zero. */}
+                    never cut off. An hour with no visits plots at zero like
+                    the current line (prevDefined); gaps only where a bucket
+                    has no partner or predates the site's data — never a
+                    drawn zero there. */}
                 {drawPrev && (
                   <VisxArea
                     dataKey={prevKey}
@@ -467,7 +494,8 @@ export default function CommandDeck({
                     strokeWidth={1.5}
                     strokeDasharray={PREV_DASH}
                     fadeStrokeEdges={false}
-                    breakAtMissing
+                    missingAsZero={plotsMissingAsZero(metric)}
+                    defined={prevDefined}
                   />
                 )}
                 <VisxArea
@@ -492,7 +520,7 @@ export default function CommandDeck({
                   // 19-08-2026, superseding F11's gap rendering here); the
                   // tooltip still reads the null and shows '—', so an empty
                   // hour is never claimed as a measured zero.
-                  missingAsZero={metric === 'bounce_rate' || metric === 'avg_duration' || metric === 'pages_per_visit'}
+                  missingAsZero={plotsMissingAsZero(metric)}
                 />
                 {/* The first day Pulse measured, when the range includes imported
                     days before it (dashboard option 2): the label reads what lies
