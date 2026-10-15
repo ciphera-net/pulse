@@ -102,6 +102,9 @@ export interface LineConfig {
   // missing bucket exactly where the line plots it — see
   // resolveTooltipYPositions.
   missingAsZero: boolean;
+  // Mirrors the Area's own `defined`: where it is false the line has a gap,
+  // so the hover dot hides there too (even under missingAsZero).
+  defined?: (d: Record<string, unknown>) => boolean;
 }
 
 export interface ChartSelection {
@@ -1419,14 +1422,17 @@ export function resolvePlottedY(
 // no entry here and the dot call-site's `?? 0` fallback parked it at the
 // chart TOP while the line sat on the zero line). Without the flag a missing
 // bucket yields NO entry and the dot hides — pinning it anywhere would
-// fabricate a measurement the tooltip's em dash just denied.
+// fabricate a measurement the tooltip's em dash just denied. A bucket the
+// line's `defined` predicate rejects is a gap in the line, so it yields no
+// entry either — a dot on the zero line there would sit on nothing.
 export function resolveTooltipYPositions(
   point: Record<string, unknown>,
-  lines: readonly Pick<LineConfig, "dataKey" | "missingAsZero">[],
+  lines: readonly Pick<LineConfig, "dataKey" | "missingAsZero" | "defined">[],
   scale: (n: number) => number | undefined
 ): Record<string, number> {
   const yPositions: Record<string, number> = {};
   for (const line of lines) {
+    if (line.defined && !line.defined(point)) continue;
     const value = point[line.dataKey];
     if (typeof value === "number") {
       yPositions[line.dataKey] = scale(value) ?? 0;
@@ -1796,7 +1802,9 @@ export interface AreaProps {
   // (owner decision 19-08-2026: "no disappearing charts"). The tooltip still
   // reads the ORIGINAL value, so an empty hour shows '—', never a fake "0s":
   // continuity is a rendering choice, not a data claim. Mutually exclusive
-  // with breakAtMissing.
+  // with breakAtMissing. Composes with `defined`: a bucket the predicate
+  // rejects is still a gap (nothing was measured there at all), and every
+  // other missing value plots at zero.
   missingAsZero?: boolean;
   /**
    * Fade the stroke's first/last 15% via a gradient. Default preserves the
@@ -2581,6 +2589,7 @@ function extractAreaConfigs(children: ReactNode): LineConfig[] {
         strokeWidth: props.strokeWidth || 2,
         dotColor: props.dotColor,
         missingAsZero: props.missingAsZero ?? false,
+        defined: props.defined,
       });
     }
   });

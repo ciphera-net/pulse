@@ -30,6 +30,21 @@ export interface PreviousPoint {
   pages_per_visit: number | null
   bounce_rate: number | null
   avg_duration: number | null
+  /**
+   * The bucket predates the site's data (before `floor`): every value is null
+   * because nothing was measured, and the line BREAKS here. Distinct from a
+   * measured bucket with no visits, whose rates are null too but which plots
+   * at zero like the current line (owner decision 19-08-2026).
+   */
+  predatesData: boolean
+  /** `avg_duration` is withheld (before ENGAGED_DURATION_SINCE): a break, not a zero. */
+  durationWithheld: boolean
+  /**
+   * The bucket had visitors but no visit count (a daily_stats row frozen before
+   * migration 164): pages per visit is UNKNOWN there, a break, not a zero. A
+   * bucket with no visitors has a null visit count too, and plots at zero.
+   */
+  visitsUnknown: boolean
 }
 
 /** "2026-09-16T14:00:00+02:00" → its wall-clock day and time, as written. */
@@ -69,7 +84,7 @@ export function pairPreviousSeries(
     if (!partner) return null
     const pDay = wallParts(partner.date).day
     if (floor && pDay < floor) {
-      return { date: partner.date, pageviews: null, visitors: null, pages_per_visit: null, bounce_rate: null, avg_duration: null }
+      return { date: partner.date, pageviews: null, visitors: null, pages_per_visit: null, bounce_rate: null, avg_duration: null, predatesData: true, durationWithheld: true, visitsUnknown: true }
     }
     return {
       date: partner.date,
@@ -78,6 +93,9 @@ export function pairPreviousSeries(
       pages_per_visit: partner.visits != null && partner.visits > 0 ? partner.pageviews / partner.visits : null,
       bounce_rate: partner.bounce_rate,
       avg_duration: pDay < ENGAGED_DURATION_SINCE ? null : partner.avg_duration,
+      predatesData: false,
+      durationWithheld: pDay < ENGAGED_DURATION_SINCE,
+      visitsUnknown: partner.visits == null && partner.visitors > 0,
     }
   })
 }
