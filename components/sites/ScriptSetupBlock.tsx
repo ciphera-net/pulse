@@ -713,7 +713,6 @@ export default function ScriptSetupBlock({
               INTERACTION_KINDS.map((k) => (
                 <PanelRow
                   key={k.key}
-                  className="md:grid-cols-[220px_1fr_auto]"
                   // `block`, not an inline span: padding on an inline element
                   // indents only its FIRST line, so a caption that wrapped
                   // fell back to the row's edge on its second line.

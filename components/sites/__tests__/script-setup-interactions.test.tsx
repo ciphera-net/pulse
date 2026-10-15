@@ -60,6 +60,22 @@ describe('interaction capture rows', () => {
     }
   })
 
+  it('indents each kind on every line and gives it the parent rows’ width', () => {
+    // An INLINE span with pl-5 indented only a caption’s first line: a
+    // wrapped second line fell back to the row edge. And a fixed 220px label
+    // column made these three wrap at half the width of the rows above.
+    mount({ interactions: true })
+    for (const k of ['Clicks', 'Copies', 'Form submits']) {
+      const label = screen.getByText(k)
+      expect(label.className).toContain('block')
+      expect(label.className).toContain('pl-5')
+      const row = label.closest('div[class*="grid"]') as HTMLElement
+      expect(row.className).not.toContain('220px')
+      const caption = [...row.querySelectorAll('span.pl-5')].find((s) => s !== label)!
+      expect(caption.className).toContain('block')
+    }
+  })
+
   it('emits ONE tag while the companion is off', () => {
     const { container } = mount()
     const text = snippet(container)
