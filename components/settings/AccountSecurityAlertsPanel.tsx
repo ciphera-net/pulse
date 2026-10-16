@@ -138,7 +138,7 @@ export default function AccountSecurityAlertsPanel() {
             a disabled switch would advertise a setting that does not exist. */}
         <PanelRow
           label="Blocked sign-in attempts"
-          caption="A sign-in blocked as suspicious. Always sent: it is the warning a takeover victim gets while there is still time to act."
+          caption="A sign-in we blocked as suspicious. Always sent, so a stolen session cannot switch it off."
           control={<StatusChip tone="neutral">Always sent</StatusChip>}
         />
       </PanelRows>

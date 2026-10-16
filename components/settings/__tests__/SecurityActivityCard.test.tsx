@@ -182,10 +182,12 @@ describe('SecurityActivityCard', () => {
         event({ id: 'e5', event_type: 'recovery_reset', metadata: {} }),
         event({ id: 'e6', event_type: 'passkey_added', metadata: {} }),
         event({ id: 'e7', event_type: 'passkey_removed', metadata: {} }),
+        event({ id: 'e8', event_type: 'sign_in_used_twice', metadata: {} }),
       ]),
     )
     render(<SecurityActivityCard />)
     expect(await screen.findByText('Account created')).toBeInTheDocument()
+    expect(screen.getByText('A browser was signed out because its sign-in was used twice')).toBeInTheDocument()
     expect(screen.getByText('Passkey added')).toBeInTheDocument()
     expect(screen.getByText('Passkey removed')).toBeInTheDocument()
     expect(screen.getByText('Email change requested')).toBeInTheDocument()

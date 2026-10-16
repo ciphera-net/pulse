@@ -57,6 +57,9 @@ const EVENT_LABELS: Record<string, string> = {
   recovery_reset: 'Password reset with the recovery phrase',
   passkey_added: 'Passkey added',
   passkey_removed: 'Passkey removed',
+  // A convicted reuse that proves somebody else held the sign-in (id-backend
+  // sign_in_used_twice, 16-10-2026); wording from the device-identity design §7.
+  sign_in_used_twice: 'A browser was signed out because its sign-in was used twice',
 }
 
 const EVENT_ICONS: Record<string, Icon> = {
@@ -81,6 +84,7 @@ const EVENT_ICONS: Record<string, Icon> = {
   recovery_reset: Key,
   passkey_added: Fingerprint,
   passkey_removed: Fingerprint,
+  sign_in_used_twice: ShieldWarning,
 }
 
 function getEventTone(eventType: string, outcome: string): ChipTone {
@@ -93,6 +97,7 @@ function getEventTone(eventType: string, outcome: string): ChipTone {
   if (eventType === 'recovery_login') return 'warning'
   if (eventType === 'recovery_reset') return 'warning'
   if (eventType === 'passkey_removed') return 'warning'
+  if (eventType === 'sign_in_used_twice') return 'danger'
   if (eventType === 'passkey_clone_warning') return 'danger'
   return 'neutral'
 }
