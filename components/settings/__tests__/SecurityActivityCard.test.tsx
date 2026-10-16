@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import type { AuditLogEntry } from '@/lib/api/activity'
@@ -168,6 +168,34 @@ describe('SecurityActivityCard', () => {
     render(<SecurityActivityCard />)
     await screen.findByText('Sign in')
     expect(screen.queryByText(/refresh token/i)).not.toBeInTheDocument()
+  })
+
+  it('advances the load-more offset by the raw page size, not the filtered count', async () => {
+    // The fetched page holds 3 raw rows but only 1 survives the refresh-token
+    // filter. The next page must start after all 3 raw rows (what has_more /
+    // total_count describe), never after the 1 that got rendered - otherwise
+    // the next fetch re-reads rows this page already consumed and duplicates
+    // any real event caught in that overlap.
+    mockGetActivity.mockResolvedValueOnce({
+      entries: [
+        event({ id: 'e1', event_type: 'login_success' }),
+        event({ id: 'e2', event_type: 'refresh_token_reuse_benign', metadata: {} }),
+        event({ id: 'e3', event_type: 'refresh_token_recovered', metadata: {} }),
+      ],
+      total_count: 50,
+      has_more: true,
+      limit: 20,
+      offset: 0,
+    })
+    mockGetActivity.mockResolvedValueOnce(activityResp([event({ id: 'e4', event_type: 'login_success' })]))
+
+    render(<SecurityActivityCard />)
+    await screen.findByText('Sign in')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }))
+
+    await waitFor(() => expect(mockGetActivity).toHaveBeenCalledTimes(2))
+    expect(mockGetActivity).toHaveBeenLastCalledWith(20, 3)
   })
 
   it('shows the event count with a thousands separator, not in parentheses', async () => {

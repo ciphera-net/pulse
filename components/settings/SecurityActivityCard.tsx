@@ -161,11 +161,17 @@ export default function SecurityActivityCard() {
     setError('')
     try {
       const data = await getUserActivity(PAGE_SIZE, currentOffset)
-      const newEntries = (data.entries ?? []).filter((e) => !isRefreshTokenNoise(e.event_type))
+      // The offset tracks how far we've consumed the server's RAW list (what
+      // has_more/total_count describe), not how many rows survived the
+      // client-side noise filter below — advancing by the filtered count
+      // would make the next page overlap whatever noise rows this page had,
+      // re-fetching and duplicating any real event caught in that overlap.
+      const rawEntries = data.entries ?? []
+      const newEntries = rawEntries.filter((e) => !isRefreshTokenNoise(e.event_type))
       setEntries(prev => append ? [...prev, ...newEntries] : newEntries)
       setTotalCount(data.total_count)
       setHasMore(data.has_more)
-      setOffset(currentOffset + newEntries.length)
+      setOffset(currentOffset + rawEntries.length)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't load your security activity.")
     }
