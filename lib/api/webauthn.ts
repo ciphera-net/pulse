@@ -58,9 +58,19 @@ export async function listPasskeys(): Promise<ListPasskeysResponse> {
   }
 }
 
-export async function deletePasskey(credentialId: string, send: SendOptions = {}): Promise<void> {
+/**
+ * Remove a passkey. A passkey signs in without a second factor, so removing one
+ * proves the password first, as enrolment and account deletion do: `reauthToken`
+ * is the single-use token the `pkr` re-auth ceremony mints
+ * (`performSessionOpaqueReauth({ purpose: 'pkr' })`), spent by id-backend on this
+ * request. Loud-fail on an empty one, like `deleteAccount`: a blank token is a
+ * failed mint, and the caller must run a fresh ceremony rather than send it.
+ */
+export async function deletePasskey(credentialId: string, reauthToken: string, send: SendOptions = {}): Promise<void> {
+  if (!reauthToken) throw new Error('Re-authentication token missing')
   return apiRequest<void>(`/auth/webauthn/credentials/${encodeURIComponent(credentialId)}`, {
     method: 'DELETE',
+    body: JSON.stringify({ reauth_token: reauthToken }),
     keepalive: send.keepalive,
   })
 }

@@ -21,6 +21,7 @@ import {
   type DeletionBlocker,
 } from '@/lib/api/user'
 import { ApiError } from '@/lib/api/client'
+import { readStatus } from '@/lib/api/status'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
@@ -185,19 +186,6 @@ export function expiryPhrase(expiresAt: string | null, now: number): string {
   return `it expires in about ${minutes} minute${minutes === 1 ? '' : 's'}`
 }
 
-/** HTTP status from an ApiError, a wrapper carrying one, or a status in the text. */
-function readStatus(err: unknown): number | null {
-  for (const candidate of [err, (err as { cause?: unknown } | null)?.cause]) {
-    if (candidate instanceof ApiError) return candidate.status
-    const s = (candidate as { status?: unknown } | null)?.status
-    if (typeof s === 'number' && s >= 100 && s < 600) return s
-  }
-  if (err instanceof Error) {
-    const m = err.message.match(/\b(4\d{2}|5\d{2})\b/)
-    if (m) return Number(m[1])
-  }
-  return null
-}
 
 export default function AccountProfileTab() {
   const { timeDisplay, setTimeDisplay, loaded: preferencesLoaded } = usePreferences()
