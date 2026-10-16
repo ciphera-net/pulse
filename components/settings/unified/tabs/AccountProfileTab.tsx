@@ -22,6 +22,7 @@ import {
 } from '@/lib/api/user'
 import { ApiError } from '@/lib/api/client'
 import { readStatus } from '@/lib/api/status'
+import { reauthErrorMessage } from '@/lib/auth/tessera/reauth-error'
 import { DangerZone } from '@/components/settings/unified/DangerZone'
 import SettingsSaveBar from '@/components/settings/SettingsSaveBar'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
@@ -679,12 +680,9 @@ export default function AccountProfileTab() {
       reauthToken = await performSessionOpaqueReauth({ password: deletePassword, purpose: 'del' })
     } catch (err) {
       // 🔑 The ceremony no longer asks for an email, so the message must not
-      // mention one. A 401 here is the OPAQUE finish refusing the password.
-      setDeleteError(
-        readStatus(err) === 401
-          ? "That password didn't match. Try again."
-          : getAuthErrorMessage(err as Error) || "Couldn't confirm your password. Try again.",
-      )
+      // mention one. A wrong password usually carries NO status at all (the
+      // client's OPAQUE step refuses it): reauthErrorMessage defaults to it.
+      setDeleteError(reauthErrorMessage(err))
       throw err
     }
     // 🔴 What the person was SHOWN, echoed back. Never a blanket "yes": the

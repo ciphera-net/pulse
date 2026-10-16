@@ -196,6 +196,17 @@ describe('PasskeysPanel', () => {
     expect(api.deletePasskey).not.toHaveBeenCalled()
   })
 
+  it('a wrong password as OPAQUE reports it (no HTTP status) still says the password did not match', async () => {
+    // Measured on production: a wrong password never reaches /auth/reauth/finish;
+    // the client's own key exchange throws a plain error.
+    api.listPasskeys.mockResolvedValue({ credentials: [one] })
+    reauth.performSessionOpaqueReauth.mockRejectedValueOnce(new Error('login failed'))
+    render(<PasskeysPanel onAdd={vi.fn()} />)
+    await screen.findByRole('button', { name: 'Remove' })
+    const dialog = removeWithPassword('wrong')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent("That password didn't match. Try again.")
+  })
+
   it('closing the dialog forgets the password and the error', async () => {
     api.listPasskeys.mockResolvedValue({ credentials: [one] })
     reauth.performSessionOpaqueReauth.mockRejectedValueOnce(Object.assign(new Error('unauthorized'), { status: 401 }))

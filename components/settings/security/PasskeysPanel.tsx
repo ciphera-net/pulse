@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { Button, Input, Modal, toast, getAuthErrorMessage } from '@ciphera-net/facet'
+import { Button, Input, Modal, toast } from '@ciphera-net/facet'
 import { HoldDialog } from '@ciphera-net/facet-hold'
 import { Fingerprint, Prohibit } from '@phosphor-icons/react'
 import { listPasskeys, deletePasskey, renamePasskey, type PasskeyCredential } from '@/lib/api/webauthn'
-import { readStatus } from '@/lib/api/status'
 import { performSessionOpaqueReauth } from '@/lib/auth/tessera/opaque-reauth'
+import { reauthErrorMessage } from '@/lib/auth/tessera/reauth-error'
 import { SettingsPanel, PanelRow, PanelRows, EmptyRow } from '@/components/settings/panels'
 import { SettingsErrorState } from '@/components/settings/SettingsErrorState'
 import SettingsLoadingState from '@/components/settings/SettingsLoadingState'
@@ -114,11 +114,7 @@ export default function PasskeysPanel({ onAdd }: Props) {
     try {
       reauthToken = await performSessionOpaqueReauth({ password: removePassword, purpose: 'pkr' })
     } catch (err) {
-      setRemoveError(
-        readStatus(err) === 401
-          ? "That password didn't match. Try again."
-          : getAuthErrorMessage(err as Error) || "Couldn't confirm your password. Try again.",
-      )
+      setRemoveError(reauthErrorMessage(err))
       throw err
     }
     const pk = removing

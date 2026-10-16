@@ -670,6 +670,19 @@ describe('AccountProfileTab — the workspace that goes with the account', () =>
     await waitFor(() => expect(h.logout).toHaveBeenCalledTimes(1))
   })
 
+  it('a wrong password with no HTTP status (OPAQUE refuses it in the client) says it did not match', async () => {
+    // Measured on production 16-10-2026: the dialog said "Something went wrong"
+    // because only a 401 was read as a wrong password, and a wrong password
+    // never gets one.
+    api.getDeletionPreview.mockResolvedValue([])
+    reauth.fn.mockRejectedValueOnce(new Error('login failed'))
+    const { container } = await openDangerPanel()
+    fireEvent.change(container.querySelector('#account-delete-password') as HTMLInputElement, { target: { value: 'wrong' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
+    expect(await screen.findByText("That password didn't match. Try again.")).toBeInTheDocument()
+    expect(api.deleteAccount).not.toHaveBeenCalled()
+  })
+
   it('sends NO ids when the list could not be read', async () => {
     // Sending a blanket agreement here would destroy workspaces nobody was
     // shown. The server refuses instead, and its 409 says why.
