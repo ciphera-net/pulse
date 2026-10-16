@@ -71,8 +71,6 @@ type EmailNotifications = UserPreferences['email_notifications']
 
 /** Server-side default for every key: alerts are opt-OUT. */
 const DEFAULTS: EmailNotifications = {
-  new_file_received: true,
-  file_downloaded: true,
   login_alerts: true,
   password_alerts: true,
   two_factor_alerts: true,

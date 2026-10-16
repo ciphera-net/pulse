@@ -85,8 +85,6 @@ describe('AccountSecurityAlertsPanel', () => {
       email: '',
       preferences: {
         email_notifications: {
-          new_file_received: true,
-          file_downloaded: true,
           login_alerts: false,
           password_alerts: true,
           two_factor_alerts: false,
@@ -108,8 +106,6 @@ describe('AccountSecurityAlertsPanel', () => {
     await waitFor(() =>
       expect(mockUpdate).toHaveBeenCalledWith({
         email_notifications: {
-          new_file_received: true,
-          file_downloaded: true,
           login_alerts: true,
           password_alerts: false,
           two_factor_alerts: true,
