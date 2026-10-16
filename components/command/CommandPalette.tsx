@@ -330,7 +330,7 @@ export function CommandPalette({ open, onOpenChange, currentSiteId }: CommandPal
           </CommandItem>
           <CommandItem value="settings-account-devices" onSelect={() => go('/settings/account/devices')}>
             <DeviceMobile size={16} weight="regular" className="opacity-60" aria-hidden="true" />
-            <span><HighlightMatch text="Trusted Devices" query={search} /></span>
+            <span><HighlightMatch text="Devices" query={search} /></span>
           </CommandItem>
           <CommandItem value="settings-account-notifications" onSelect={() => go('/settings/account/notifications')}>
             <Bell size={16} weight="regular" className="opacity-60" aria-hidden="true" />

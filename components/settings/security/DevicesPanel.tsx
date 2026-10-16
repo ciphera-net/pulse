@@ -153,7 +153,11 @@ export default function DevicesPanel() {
                   {device.is_current && <StatusChip tone="neutral">This device</StatusChip>}
                 </span>
               }
-              caption={`${describeApps(device.apps)} · Signed in ${formatDate(new Date(device.signed_in_at), zone)} · Active ${describeActive(device.last_active_at)}`}
+              caption={[
+                describeApps(device.apps),
+                `Signed in ${formatDate(new Date(device.signed_in_at), zone)}`,
+                `Active ${describeActive(device.last_active_at)}`,
+              ].filter(Boolean).join(' · ')}
               control={
                 <Button
                   variant="ghost"

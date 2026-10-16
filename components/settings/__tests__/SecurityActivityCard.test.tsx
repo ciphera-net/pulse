@@ -180,10 +180,14 @@ describe('SecurityActivityCard', () => {
         event({ id: 'e3', event_type: 'email_change', metadata: {} }),
         event({ id: 'e4', event_type: 'recovery_identity_enrolled', metadata: {} }),
         event({ id: 'e5', event_type: 'recovery_reset', metadata: {} }),
+        event({ id: 'e6', event_type: 'passkey_added', metadata: {} }),
+        event({ id: 'e7', event_type: 'passkey_removed', metadata: {} }),
       ]),
     )
     render(<SecurityActivityCard />)
     expect(await screen.findByText('Account created')).toBeInTheDocument()
+    expect(screen.getByText('Passkey added')).toBeInTheDocument()
+    expect(screen.getByText('Passkey removed')).toBeInTheDocument()
     expect(screen.getByText('Email change requested')).toBeInTheDocument()
     expect(screen.getByText('Email changed')).toBeInTheDocument()
     expect(screen.getByText('Recovery phrase set up')).toBeInTheDocument()

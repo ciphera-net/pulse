@@ -120,6 +120,16 @@ describe('DevicesPanel', () => {
     expect(await screen.findByText(/^Pulse and Link · Signed in 05\/01\/2026/)).toBeInTheDocument()
   })
 
+  it('starts the caption at the sign-in date when no app on the device is one it can name', async () => {
+    // A client registered after this build: the row must not open with a stray separator.
+    api.listDevices.mockResolvedValue({
+      devices: [device({ id: 'd1', apps: ['some-future-client'], signed_in_at: '2026-01-05T00:00:00Z' })],
+      current_device_known: false,
+    })
+    render(<DevicesPanel />)
+    expect(await screen.findByText(/^Signed in 05\/01\/2026 · Active /)).toBeInTheDocument()
+  })
+
   it('shows "now" rather than "Just now" for activity under a minute old', async () => {
     api.listDevices.mockResolvedValue({
       devices: [device({ id: 'd1', last_active_at: new Date().toISOString() })],

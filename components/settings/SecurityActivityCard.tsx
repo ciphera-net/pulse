@@ -16,6 +16,7 @@ import {
   TrashSimple,
   Key,
   Warning,
+  Fingerprint,
   EnvelopeSimple,
   UserPlus,
   type Icon,
@@ -54,6 +55,8 @@ const EVENT_LABELS: Record<string, string> = {
   email_change: 'Email changed',
   recovery_identity_enrolled: 'Recovery phrase set up',
   recovery_reset: 'Password reset with the recovery phrase',
+  passkey_added: 'Passkey added',
+  passkey_removed: 'Passkey removed',
 }
 
 const EVENT_ICONS: Record<string, Icon> = {
@@ -76,6 +79,8 @@ const EVENT_ICONS: Record<string, Icon> = {
   email_change: EnvelopeSimple,
   recovery_identity_enrolled: Key,
   recovery_reset: Key,
+  passkey_added: Fingerprint,
+  passkey_removed: Fingerprint,
 }
 
 function getEventTone(eventType: string, outcome: string): ChipTone {
@@ -87,6 +92,7 @@ function getEventTone(eventType: string, outcome: string): ChipTone {
   if (eventType === 'sessions_revoked_by_operator') return 'warning'
   if (eventType === 'recovery_login') return 'warning'
   if (eventType === 'recovery_reset') return 'warning'
+  if (eventType === 'passkey_removed') return 'warning'
   if (eventType === 'passkey_clone_warning') return 'danger'
   return 'neutral'
 }
