@@ -57,6 +57,9 @@ const EVENT_LABELS: Record<string, string> = {
   recovery_reset: 'Password reset with the recovery phrase',
   passkey_added: 'Passkey added',
   passkey_removed: 'Passkey removed',
+  // A convicted reuse that proves somebody else held the sign-in (id-backend
+  // sign_in_used_twice, 16-10-2026); wording from the device-identity design §7.
+  sign_in_used_twice: 'A browser was signed out because its sign-in was used twice',
 }
 
 const EVENT_ICONS: Record<string, Icon> = {
@@ -81,6 +84,7 @@ const EVENT_ICONS: Record<string, Icon> = {
   recovery_reset: Key,
   passkey_added: Fingerprint,
   passkey_removed: Fingerprint,
+  sign_in_used_twice: ShieldWarning,
 }
 
 function getEventTone(eventType: string, outcome: string): ChipTone {
@@ -93,6 +97,7 @@ function getEventTone(eventType: string, outcome: string): ChipTone {
   if (eventType === 'recovery_login') return 'warning'
   if (eventType === 'recovery_reset') return 'warning'
   if (eventType === 'passkey_removed') return 'warning'
+  if (eventType === 'sign_in_used_twice') return 'danger'
   if (eventType === 'passkey_clone_warning') return 'danger'
   return 'neutral'
 }
@@ -117,8 +122,19 @@ function getMethodLabel(entry: AuditLogEntry): string | null {
   return method as string
 }
 
+/**
+ * Events whose label is the whole story. id-backend records sign_in_used_twice
+ * with outcome "failure" and the reuse classifier's reason
+ * (successor_already_used, no_successor_recorded, ...): both are the
+ * operator's. From the person's side nothing failed, a browser was signed out
+ * to protect them, and the row says so in words. Without this the row showed a
+ * "Failed" chip and "Successor already used".
+ */
+const LABEL_IS_THE_STORY = new Set(['sign_in_used_twice'])
+
 function getFailureReason(entry: AuditLogEntry): string | null {
   if (entry.outcome !== 'failure') return null
+  if (LABEL_IS_THE_STORY.has(entry.event_type)) return null
   const reason = entry.metadata?.reason
   if (!reason) return null
   const labels: Record<string, string> = {
@@ -269,7 +285,7 @@ export default function SecurityActivityCard() {
                                   across two lines, doubling every row's height and
                                   reading as two separate events. */}
                               <span className="whitespace-nowrap font-medium text-foreground">{label}</span>
-                              {entry.outcome === 'failure' && (
+                              {entry.outcome === 'failure' && !LABEL_IS_THE_STORY.has(entry.event_type) && (
                                 <StatusChip tone="danger" dot className="shrink-0">Failed</StatusChip>
                               )}
                             </div>

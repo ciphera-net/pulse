@@ -182,10 +182,17 @@ describe('SecurityActivityCard', () => {
         event({ id: 'e5', event_type: 'recovery_reset', metadata: {} }),
         event({ id: 'e6', event_type: 'passkey_added', metadata: {} }),
         event({ id: 'e7', event_type: 'passkey_removed', metadata: {} }),
+        // As id-backend writes it: outcome failure, the classifier's reason.
+        event({ id: 'e8', event_type: 'sign_in_used_twice', outcome: 'failure', metadata: { reason: 'successor_already_used' } }),
       ]),
     )
     render(<SecurityActivityCard />)
     expect(await screen.findByText('Account created')).toBeInTheDocument()
+    expect(screen.getByText('A browser was signed out because its sign-in was used twice')).toBeInTheDocument()
+    // The operator's data stays out of the person's row: no reason code, no
+    // "Failed" chip (nothing failed; a browser was signed out to protect them).
+    expect(screen.queryByText('Successor already used')).not.toBeInTheDocument()
+    expect(screen.queryByText('Failed')).not.toBeInTheDocument()
     expect(screen.getByText('Passkey added')).toBeInTheDocument()
     expect(screen.getByText('Passkey removed')).toBeInTheDocument()
     expect(screen.getByText('Email change requested')).toBeInTheDocument()
