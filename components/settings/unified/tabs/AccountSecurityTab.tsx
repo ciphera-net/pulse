@@ -9,17 +9,19 @@ import PasswordPanel from '@/components/settings/security/PasswordPanel'
 import TwoFactorPanel from '@/components/settings/security/TwoFactorPanel'
 import PasskeysPanel from '@/components/settings/security/PasskeysPanel'
 import RecoveryPanel from '@/components/settings/security/RecoveryPanel'
-import SessionsPanel from '@/components/settings/security/SessionsPanel'
 
 /**
  * Account · Security, in Pulse's own panel grammar.
  *
  * This used to wrap Facet's ProfileSettings and accept the visual seam that
- * came with it (18-07-2026 spec §6). The five panels under
+ * came with it (18-07-2026 spec §6). The panels under
  * components/settings/security/ now draw the same surface with the shared
  * vocabulary, and each runs exactly the ceremony the wrapper ran. This file
  * owns only what has to be shared across panels: the two enrolment dialogs
  * (a passkey, a recovery phrase) and the recovery nudge.
+ *
+ * Active sessions moved out (16-10-2026, OPS-17): the Devices tab's one list
+ * now carries sign-out, so this tab no longer renders SessionsPanel.
  */
 export default function AccountSecurityTab() {
   const { requestPasskeyEnrol, modal: passkeyModal } = usePasskeyEnrolModal()
@@ -82,7 +84,6 @@ export default function AccountSecurityTab() {
       <TwoFactorPanel />
       <PasskeysPanel onAdd={addPasskey} />
       <RecoveryPanel onEnrol={enrolRecovery} />
-      <SessionsPanel />
       {passkeyModal}
       {recoveryModal}
     </div>

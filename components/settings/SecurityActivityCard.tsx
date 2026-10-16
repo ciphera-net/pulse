@@ -8,11 +8,14 @@ import { SettingsTH } from '@/components/settings/panels/SettingsTH'
 import {
   Shield,
   SignIn,
+  SignOut,
   ShieldWarning,
   Password,
   ShieldCheck,
   ShieldSlash,
   TrashSimple,
+  Key,
+  Warning,
   type Icon,
 } from '@phosphor-icons/react'
 import { EmptyRow, SettingsPanel } from '@/components/settings/panels'
@@ -35,6 +38,13 @@ const EVENT_LABELS: Record<string, string> = {
   '2fa_disabled': '2FA disabled',
   recovery_codes_regenerated: 'Recovery codes regenerated',
   account_deleted: 'Account deleted',
+  // Device identity (16-10-2026, OPS-17): the Devices tab's own actions,
+  // surfaced here as activity.
+  device_signed_out: 'Signed a browser out',
+  other_devices_signed_out: 'Signed out of every other browser',
+  sessions_revoked_by_operator: 'Sessions ended by Ciphera',
+  recovery_login: 'Signed in with the recovery phrase',
+  passkey_clone_warning: 'Passkey may have been copied',
 }
 
 const EVENT_ICONS: Record<string, Icon> = {
@@ -47,6 +57,22 @@ const EVENT_ICONS: Record<string, Icon> = {
   '2fa_disabled': ShieldSlash,
   recovery_codes_regenerated: Password,
   account_deleted: TrashSimple,
+  device_signed_out: SignOut,
+  other_devices_signed_out: SignOut,
+  sessions_revoked_by_operator: ShieldWarning,
+  recovery_login: Key,
+  passkey_clone_warning: Warning,
+}
+
+/**
+ * Refresh-token bookkeeping ("refresh_token_reuse_benign",
+ * "refresh_token_recovered", …) is not a person-meaningful event: it is the
+ * token-rotation machinery doing its job, not something that happened TO
+ * someone. The new `/auth/user/activity` allowlist already withholds these;
+ * this filter is defence in depth against a build that still sends them.
+ */
+function isRefreshTokenNoise(eventType: string): boolean {
+  return eventType.startsWith('refresh_token')
 }
 
 function getEventTone(eventType: string, outcome: string): ChipTone {
@@ -55,6 +81,9 @@ function getEventTone(eventType: string, outcome: string): ChipTone {
   if (eventType === '2fa_disabled') return 'warning'
   if (eventType === 'account_deleted') return 'danger'
   if (eventType === 'recovery_codes_regenerated') return 'warning'
+  if (eventType === 'sessions_revoked_by_operator') return 'warning'
+  if (eventType === 'recovery_login') return 'warning'
+  if (eventType === 'passkey_clone_warning') return 'danger'
   return 'neutral'
 }
 
@@ -66,11 +95,15 @@ function sentenceCase(value: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1)
 }
 
+/** Never the protocol name: a sign-in method reads as what it IS to the
+ *  person, never as what it is to the server (OPAQUE is "Password"). */
 function getMethodLabel(entry: AuditLogEntry): string | null {
   const method = entry.metadata?.method
   if (!method) return null
+  if (method === 'opaque') return 'Password'
   if (method === 'magic_link') return 'Magic link'
   if (method === 'passkey') return 'Passkey'
+  if (method === 'recovery_phrase') return 'Recovery phrase'
   return method as string
 }
 
@@ -86,26 +119,6 @@ function getFailureReason(entry: AuditLogEntry): string | null {
     invalid_2fa: 'Invalid 2FA code',
   }
   return labels[reason as string] || sentenceCase(reason as string)
-}
-
-function parseBrowserName(ua: string): string {
-  if (!ua) return 'Unknown'
-  if (ua.includes('Firefox')) return 'Firefox'
-  if (ua.includes('Edg/')) return 'Edge'
-  if (ua.includes('Chrome')) return 'Chrome'
-  if (ua.includes('Safari')) return 'Safari'
-  if (ua.includes('Opera') || ua.includes('OPR')) return 'Opera'
-  return 'Browser'
-}
-
-function parseOS(ua: string): string {
-  if (!ua) return ''
-  if (ua.includes('Mac OS X')) return 'macOS'
-  if (ua.includes('Windows')) return 'Windows'
-  if (ua.includes('Linux')) return 'Linux'
-  if (ua.includes('Android')) return 'Android'
-  if (ua.includes('iPhone') || ua.includes('iPad')) return 'iOS'
-  return ''
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -148,7 +161,7 @@ export default function SecurityActivityCard() {
     setError('')
     try {
       const data = await getUserActivity(PAGE_SIZE, currentOffset)
-      const newEntries = data.entries ?? []
+      const newEntries = (data.entries ?? []).filter((e) => !isRefreshTokenNoise(e.event_type))
       setEntries(prev => append ? [...prev, ...newEntries] : newEntries)
       setTotalCount(data.total_count)
       setHasMore(data.has_more)
@@ -213,9 +226,6 @@ export default function SecurityActivityCard() {
                     const EventIcon = EVENT_ICONS[entry.event_type] || Shield
                     const method = getMethodLabel(entry)
                     const reason = getFailureReason(entry)
-                    const browser = entry.user_agent ? parseBrowserName(entry.user_agent) : null
-                    const os = entry.user_agent ? parseOS(entry.user_agent) : null
-                    const deviceStr = [browser, os].filter(Boolean).join(' on ')
                     const created = new Date(entry.created_at)
 
                     const prevKey = i > 0 ? dayKey(new Date(entries[i - 1].created_at), zone) : null
@@ -259,8 +269,7 @@ export default function SecurityActivityCard() {
                                 <span className="font-medium">{sentenceCase(method)}</span>
                               )}
                               {reason && <span>{reason}</span>}
-                              {deviceStr && <span>{deviceStr}</span>}
-                              {entry.ip_address && <span className="font-mono">{entry.ip_address}</span>}
+                              {entry.user_agent && <span>{entry.user_agent}</span>}
                             </div>
                           </TD>
                           <TD

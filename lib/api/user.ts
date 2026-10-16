@@ -128,26 +128,6 @@ export async function deleteAccount(reauthToken: string, organizationIds: string
   }
 }
 
-export interface Session {
-  id: string
-  client_ip: string
-  user_agent: string
-  created_at: string
-  expires_at: string
-  is_current: boolean
-}
-
-export async function getUserSessions(): Promise<{ sessions: Session[] }> {
-  // Current session is identified server-side via the httpOnly refresh token cookie
-  return apiRequest<{ sessions: Session[] }>('/auth/user/sessions')
-}
-
-export async function revokeSession(sessionId: string): Promise<void> {
-  return apiRequest<void>(`/auth/user/sessions/${sessionId}`, {
-    method: 'DELETE',
-  })
-}
-
 /**
  * The PUT body. Every key is REQUIRED here on purpose: the write replaces the
  * whole `email_notifications` block, so a partial body silently resets
@@ -157,7 +137,7 @@ export async function revokeSession(sessionId: string): Promise<void> {
  * security-alert key it has never been given a value for, so that "never
  * chosen" stays distinguishable from "switched off" — absent means ON and the
  * sender treats it that way. Hydrate a UI from a defaults spread
- * (AccountSecurityAlertsTab does), never by reading one of those keys direct.
+ * (AccountSecurityAlertsPanel does), never by reading one of those keys direct.
  * The auth-context type still declares them required because Facet's
  * ProfileSettings prop type does; that surface has notifications suppressed
  * and never reads them, so it is a naming mismatch rather than a live bug.

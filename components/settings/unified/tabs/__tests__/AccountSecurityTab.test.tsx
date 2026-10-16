@@ -13,7 +13,6 @@ vi.mock('@/components/settings/security/RecoveryPanel', () => ({
     <section data-panel="recovery"><button onClick={() => void onEnrol()}>enrol-recovery</button></section>
   ),
 }))
-vi.mock('@/components/settings/security/SessionsPanel', () => ({ default: () => <section data-panel="sessions" /> }))
 const captured = vi.hoisted(() => ({ onAdd: null as null | (() => Promise<void>) }))
 vi.mock('@/components/settings/security/PasskeysPanel', () => ({
   default: ({ onAdd }: { onAdd: () => Promise<void> }) => {
@@ -60,10 +59,10 @@ beforeEach(() => {
 })
 
 describe('AccountSecurityTab', () => {
-  it('composes the five panels in order, with both enrolment dialogs mounted and no heading of its own', () => {
+  it('composes the four panels in order, with both enrolment dialogs mounted and no heading of its own', () => {
     const { container } = render(<AccountSecurityTab />)
     const order = Array.from(container.querySelectorAll('[data-panel]')).map((el) => el.getAttribute('data-panel'))
-    expect(order).toEqual(['password', 'two-factor', 'passkeys', 'recovery', 'sessions'])
+    expect(order).toEqual(['password', 'two-factor', 'passkeys', 'recovery'])
     expect(screen.getByTestId('passkey-modal')).toBeInTheDocument()
     expect(screen.getByTestId('recovery-modal')).toBeInTheDocument()
     expect(screen.queryByRole('heading')).toBeNull()

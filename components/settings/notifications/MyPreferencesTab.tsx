@@ -13,6 +13,7 @@ import {
 } from '@/lib/api/notifications-preferences'
 import { NOTIFICATION_CATEGORIES } from '@/lib/notifications/categories'
 import { useTeamState } from '@/lib/hooks/useTeamState'
+import AccountSecurityAlertsPanel from '@/components/settings/AccountSecurityAlertsPanel'
 
 /**
  * Account, Notifications: one switch per category (owner rulings 21-09-2026,
@@ -37,7 +38,9 @@ import { useTeamState } from '@/lib/hooks/useTeamState'
 
 const CAPTIONS: Record<string, string> = {
   billing: 'Invoices, failed payments, renewals and your pageview quota.',
-  security: 'New device sign-ins, password changes, API keys.',
+  // New-device and password emails moved out (16-10-2026, OPS-17): Ciphera ID
+  // sends those now, in the "Your account" panel below.
+  security: 'API keys created in your team.',
   uptime: 'A monitored site going down or recovering, and certificates about to expire.',
   site: 'Tracking issues, performance changes, exports that are ready.',
   team: 'People joining your team and role changes.',
@@ -163,6 +166,8 @@ export default function MyPreferencesTab() {
           </PanelRows>
         )}
       </SettingsPanel>
+
+      <AccountSecurityAlertsPanel />
     </div>
   )
 }
