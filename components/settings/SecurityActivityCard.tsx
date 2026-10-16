@@ -122,8 +122,19 @@ function getMethodLabel(entry: AuditLogEntry): string | null {
   return method as string
 }
 
+/**
+ * Events whose label is the whole story. id-backend records sign_in_used_twice
+ * with outcome "failure" and the reuse classifier's reason
+ * (successor_already_used, no_successor_recorded, ...): both are the
+ * operator's. From the person's side nothing failed, a browser was signed out
+ * to protect them, and the row says so in words. Without this the row showed a
+ * "Failed" chip and "Successor already used".
+ */
+const LABEL_IS_THE_STORY = new Set(['sign_in_used_twice'])
+
 function getFailureReason(entry: AuditLogEntry): string | null {
   if (entry.outcome !== 'failure') return null
+  if (LABEL_IS_THE_STORY.has(entry.event_type)) return null
   const reason = entry.metadata?.reason
   if (!reason) return null
   const labels: Record<string, string> = {
@@ -274,7 +285,7 @@ export default function SecurityActivityCard() {
                                   across two lines, doubling every row's height and
                                   reading as two separate events. */}
                               <span className="whitespace-nowrap font-medium text-foreground">{label}</span>
-                              {entry.outcome === 'failure' && (
+                              {entry.outcome === 'failure' && !LABEL_IS_THE_STORY.has(entry.event_type) && (
                                 <StatusChip tone="danger" dot className="shrink-0">Failed</StatusChip>
                               )}
                             </div>
