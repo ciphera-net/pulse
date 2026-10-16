@@ -157,30 +157,45 @@ describe('SecurityActivityCard', () => {
     expect(screen.queryByText('203.0.113.7')).not.toBeInTheDocument()
   })
 
-  it('drops refresh-token bookkeeping entirely rather than showing it as an alert', async () => {
+  it('renders every entry the server sends: its allowlist is the only filter', async () => {
+    // A refresh_token_* type is what the convicted-theft event will be called;
+    // the server withholds the bookkeeping kinds, and the card must not second
+    // guess it by dropping a prefix.
     mockGetActivity.mockResolvedValue(
       activityResp([
         event({ id: 'e1', event_type: 'login_success' }),
-        event({ id: 'e2', event_type: 'refresh_token_reuse_benign', metadata: {} }),
-        event({ id: 'e3', event_type: 'refresh_token_recovered', metadata: {} }),
+        event({ id: 'e2', event_type: 'refresh_token_reuse', metadata: {} }),
       ]),
     )
     render(<SecurityActivityCard />)
     await screen.findByText('Sign in')
-    expect(screen.queryByText(/refresh token/i)).not.toBeInTheDocument()
+    expect(screen.getByText('Refresh token reuse')).toBeInTheDocument()
   })
 
-  it('advances the load-more offset by the raw page size, not the filtered count', async () => {
-    // The fetched page holds 3 raw rows but only 1 survives the refresh-token
-    // filter. The next page must start after all 3 raw rows (what has_more /
-    // total_count describe), never after the 1 that got rendered - otherwise
-    // the next fetch re-reads rows this page already consumed and duplicates
-    // any real event caught in that overlap.
+  it('labels every event on the server allowlist, never a raw key', async () => {
+    mockGetActivity.mockResolvedValue(
+      activityResp([
+        event({ id: 'e1', event_type: 'user_created', metadata: {} }),
+        event({ id: 'e2', event_type: 'email_change_requested', metadata: {} }),
+        event({ id: 'e3', event_type: 'email_change', metadata: {} }),
+        event({ id: 'e4', event_type: 'recovery_identity_enrolled', metadata: {} }),
+        event({ id: 'e5', event_type: 'recovery_reset', metadata: {} }),
+      ]),
+    )
+    render(<SecurityActivityCard />)
+    expect(await screen.findByText('Account created')).toBeInTheDocument()
+    expect(screen.getByText('Email change requested')).toBeInTheDocument()
+    expect(screen.getByText('Email changed')).toBeInTheDocument()
+    expect(screen.getByText('Recovery phrase set up')).toBeInTheDocument()
+    expect(screen.getByText('Password reset with the recovery phrase')).toBeInTheDocument()
+  })
+
+  it('advances the load-more offset by the page size the server returned', async () => {
     mockGetActivity.mockResolvedValueOnce({
       entries: [
         event({ id: 'e1', event_type: 'login_success' }),
-        event({ id: 'e2', event_type: 'refresh_token_reuse_benign', metadata: {} }),
-        event({ id: 'e3', event_type: 'refresh_token_recovered', metadata: {} }),
+        event({ id: 'e2', event_type: 'password_change', metadata: {} }),
+        event({ id: 'e3', event_type: '2fa_enabled', metadata: {} }),
       ],
       total_count: 50,
       has_more: true,

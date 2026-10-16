@@ -16,6 +16,8 @@ import {
   TrashSimple,
   Key,
   Warning,
+  EnvelopeSimple,
+  UserPlus,
   type Icon,
 } from '@phosphor-icons/react'
 import { EmptyRow, SettingsPanel } from '@/components/settings/panels'
@@ -45,6 +47,13 @@ const EVENT_LABELS: Record<string, string> = {
   sessions_revoked_by_operator: 'Sessions ended by Ciphera',
   recovery_login: 'Signed in with the recovery phrase',
   passkey_clone_warning: 'Passkey may have been copied',
+  // The rest of the server's allowlist (id-backend PersonVisibleAuditEvents):
+  // every event it sends has a label here, never a sentence-cased key.
+  user_created: 'Account created',
+  email_change_requested: 'Email change requested',
+  email_change: 'Email changed',
+  recovery_identity_enrolled: 'Recovery phrase set up',
+  recovery_reset: 'Password reset with the recovery phrase',
 }
 
 const EVENT_ICONS: Record<string, Icon> = {
@@ -62,17 +71,11 @@ const EVENT_ICONS: Record<string, Icon> = {
   sessions_revoked_by_operator: ShieldWarning,
   recovery_login: Key,
   passkey_clone_warning: Warning,
-}
-
-/**
- * Refresh-token bookkeeping ("refresh_token_reuse_benign",
- * "refresh_token_recovered", …) is not a person-meaningful event: it is the
- * token-rotation machinery doing its job, not something that happened TO
- * someone. The new `/auth/user/activity` allowlist already withholds these;
- * this filter is defence in depth against a build that still sends them.
- */
-function isRefreshTokenNoise(eventType: string): boolean {
-  return eventType.startsWith('refresh_token')
+  user_created: UserPlus,
+  email_change_requested: EnvelopeSimple,
+  email_change: EnvelopeSimple,
+  recovery_identity_enrolled: Key,
+  recovery_reset: Key,
 }
 
 function getEventTone(eventType: string, outcome: string): ChipTone {
@@ -83,6 +86,7 @@ function getEventTone(eventType: string, outcome: string): ChipTone {
   if (eventType === 'recovery_codes_regenerated') return 'warning'
   if (eventType === 'sessions_revoked_by_operator') return 'warning'
   if (eventType === 'recovery_login') return 'warning'
+  if (eventType === 'recovery_reset') return 'warning'
   if (eventType === 'passkey_clone_warning') return 'danger'
   return 'neutral'
 }
@@ -161,17 +165,15 @@ export default function SecurityActivityCard() {
     setError('')
     try {
       const data = await getUserActivity(PAGE_SIZE, currentOffset)
-      // The offset tracks how far we've consumed the server's RAW list (what
-      // has_more/total_count describe), not how many rows survived the
-      // client-side noise filter below — advancing by the filtered count
-      // would make the next page overlap whatever noise rows this page had,
-      // re-fetching and duplicating any real event caught in that overlap.
-      const rawEntries = data.entries ?? []
-      const newEntries = rawEntries.filter((e) => !isRefreshTokenNoise(e.event_type))
+      // The server decides what a person sees (the /auth/user/activity
+      // allowlist), so every entry it sends is rendered. A second filter here
+      // would be a silent second source of truth, and it would hide a new
+      // event type the server starts to send on purpose.
+      const newEntries = data.entries ?? []
       setEntries(prev => append ? [...prev, ...newEntries] : newEntries)
       setTotalCount(data.total_count)
       setHasMore(data.has_more)
-      setOffset(currentOffset + rawEntries.length)
+      setOffset(currentOffset + newEntries.length)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't load your security activity.")
     }
