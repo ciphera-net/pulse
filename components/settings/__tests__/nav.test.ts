@@ -15,15 +15,16 @@ const tabs = TEAM.flatMap((g) => g.tabs)
 const allRows = [...tabs, ...ALONE.flatMap((g) => g.tabs)]
 
 describe('settings nav registry', () => {
-  it('has three scopes for a team, nine / seven / five tabs, the middle one named Team', () => {
+  it('has three scopes for a team, nine / seven / four tabs, the middle one named Team', () => {
     // Workspace lost its Notifications tab on 21-09-2026 (ruling D7): there
     // was no workspace-level setting behind it. It gained Connected apps on
     // 24-09-2026 (PULSE-41), renamed MCP the same day (PULSE-54). The owner
     // named the container a team on 25-09-2026 (PULSE-59, W1). Site gained
     // Import on 27-09-2026 (PULSE-118), listed only where imports exist, and
-    // Export on 28-09-2026 (PULSE-132).
+    // Export on 28-09-2026 (PULSE-132). Account lost Security alerts on
+    // 16-10-2026 (OPS-17): folded into Notifications as a panel.
     expect(TEAM.map((g) => [g.section, g.label, g.tabs.length])).toEqual([
-      ['site', 'Site', 9], ['organization', 'Team', 7], ['account', 'Account', 5],
+      ['site', 'Site', 9], ['organization', 'Team', 7], ['account', 'Account', 4],
     ])
   })
 
@@ -85,7 +86,7 @@ describe('settings nav registry', () => {
     expect(ALONE.map((g) => [g.section, g.label])).toEqual([['site', 'Site'], ['account', 'Account']])
     const account = ALONE.find((g) => g.section === 'account')!
     expect(account.tabs.map((t) => t.label)).toEqual([
-      'Profile', 'Security', 'Devices', 'Notifications', 'Security alerts',
+      'Profile', 'Security', 'Devices', 'Notifications',
       'Billing', 'API Keys', 'MCP', 'Invite people',
     ])
     const invite = account.tabs.find((t) => t.label === 'Invite people')!
@@ -116,6 +117,14 @@ describe('settings nav registry', () => {
     expect(byLabel['Members']).toBe('Invite and manage your team.')
     expect(byLabel['Audit Log']).toBe('Team activity.')
     for (const tab of team.tabs) expect(tab.description, tab.href).not.toMatch(/workspace|organi[sz]ation/i)
+  })
+
+  it('words Devices and Notifications for the one-list, folded-in world (16-10-2026, OPS-17)', () => {
+    const byLabel = Object.fromEntries(tabs.map((t) => [t.label, t.description]))
+    expect(byLabel['Devices']).toBe("Where you're signed in.")
+    expect(byLabel['Notifications']).toBe('Which emails you get.')
+    expect(tabs.some((t) => t.label === 'Security alerts')).toBe(false)
+    expect(tabs.some((t) => t.href === '/settings/account/security-alerts')).toBe(false)
   })
 
   it('names the MCP page MCP, marks it New, and gates it like API keys', () => {

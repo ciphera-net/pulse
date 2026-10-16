@@ -11,17 +11,19 @@ const AccountDevicesTab  = dynamic(() => import('@/components/settings/unified/t
 // * Since 21-09-2026 the page is one email switch per category; the digest,
 // * quiet hours, mute and retention controls it used to carry are retired.
 const MyPreferencesTab   = dynamic(() => import('@/components/settings/notifications/MyPreferencesTab'))
-// * Ciphera ID's own account alert emails — a different system from Pulse's
-// * notification categories above, so a different tab rather than a section
-// * bolted onto one of them.
-const AccountSecurityAlertsTab = dynamic(() => import('@/components/settings/unified/tabs/AccountSecurityAlertsTab'))
 
 const TAB_COMPONENTS: Record<string, React.ComponentType> = {
   profile:       AccountProfileTab,
   security:      AccountSecurityTab,
   devices:       AccountDevicesTab,
   notifications: MyPreferencesTab,
-  'security-alerts': AccountSecurityAlertsTab,
+}
+
+// * Old slugs that moved. "security-alerts" folded into Notifications
+// * (16-10-2026, OPS-17): Ciphera ID's own account alerts are now a panel on
+// * that tab, so a bookmark to the old address still lands on the alerts.
+const TAB_ALIASES: Record<string, string> = {
+  'security-alerts': 'notifications',
 }
 
 export default function AccountSettingsTabPage() {
@@ -34,8 +36,10 @@ export default function AccountSettingsTabPage() {
   // * Unknown tabs never dead-end on a raw fallback string — redirect to the
   // * section default.
   useEffect(() => {
-    if (!TabComponent) router.replace('/settings/account/profile')
-  }, [TabComponent, router])
+    const alias = TAB_ALIASES[tab]
+    if (alias) router.replace(`/settings/account/${alias}`)
+    else if (!TabComponent) router.replace('/settings/account/profile')
+  }, [TabComponent, router, tab])
 
   if (!TabComponent) return null
 

@@ -20,7 +20,7 @@ vi.mock('@/lib/api/notifications-preferences', () => ({
 const toastError = vi.fn()
 // Toggle keeps its real switch semantics (role + aria-checked) and forwards
 // the naming props Facet's Toggle forwards, the same stand-in
-// AccountSecurityAlertsTab's test uses.
+// AccountSecurityAlertsPanel's test uses.
 // The panel line names the container from the ONE team-state signal (PULSE-59).
 let mockTeamState: 'alone' | 'team' | null = 'team'
 vi.mock('@/lib/hooks/useTeamState', () => ({ useTeamState: () => mockTeamState }))
@@ -37,6 +37,13 @@ vi.mock('@ciphera-net/facet', () => ({
   ),
   toast: { error: (...a: any[]) => toastError(...a), success: vi.fn() },
   getAuthErrorMessage: (e: Error) => e?.message ?? '',
+}))
+
+// The Ciphera ID account alerts are their own panel, tested on their own
+// (AccountSecurityAlertsPanel.test.tsx); here a marker stands in so this
+// file only asserts the composition and the Email panel's own copy.
+vi.mock('@/components/settings/AccountSecurityAlertsPanel', () => ({
+  default: () => <section data-panel="account-security-alerts" />,
 }))
 
 import MyPreferencesTab from '../MyPreferencesTab'
@@ -251,6 +258,19 @@ describe('MyPreferencesTab (one switch per category)', () => {
     expect(screen.queryByRole('button', { name: /^Purge/ })).toBeNull()
     expect(screen.queryByText(/Notification history/)).toBeNull()
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('captions Security as the API-keys-only email it is now (new-device and password alerts moved to Ciphera ID)', async () => {
+    render(<MyPreferencesTab />)
+    await screen.findByText('Billing')
+    expect(screen.getByText('API keys created in your team.')).toBeInTheDocument()
+    expect(screen.queryByText(/new device sign-ins/i)).not.toBeInTheDocument()
+  })
+
+  it('renders the account-alerts panel below the Email panel (16-10-2026, OPS-17)', async () => {
+    const { container } = render(<MyPreferencesTab />)
+    await screen.findByText('Billing')
+    expect(container.querySelector('[data-panel="account-security-alerts"]')).toBeInTheDocument()
   })
 
   it('renders an empty row when the registry returns no categories', async () => {

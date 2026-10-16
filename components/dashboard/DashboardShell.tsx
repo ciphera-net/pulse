@@ -109,7 +109,6 @@ function useHomePageMeta(): PageMeta {
       // "Settings" in the top bar while its siblings named themselves.
       monitoring: { label: 'Monitoring', icon: Heartbeat },
       'api-keys': { label: 'API Keys', icon: Terminal },
-      'security-alerts': { label: 'Security alerts', icon: EnvelopeSimple },
     }
     const tabSlug = parts[2] ?? ''
     const meta = TAB_META[tabSlug]

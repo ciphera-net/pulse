@@ -24,13 +24,6 @@ vi.mock('@/lib/api/user', () => ({
   updateUserPreferences: vi.fn().mockResolvedValue(undefined),
 }))
 
-// Facet stand-ins. The Banner stand-in went with the "not enforced yet" banner
-// on 03-09-2026 — a mock for a component the subject no longer imports would
-// let the banner come back without the mock ever being noticed as missing.
-// Toggle keeps its real switch semantics (role + aria-checked)
-// so the test queries the way a screen reader would, and the label association
-// is what names each switch — a toggle nobody can name is a toggle nobody can
-// use. StatusChip / SettingsPanel / the panel primitives render for real.
 vi.mock('@ciphera-net/facet', () => ({
   cn: (...a: unknown[]) => a.filter(Boolean).join(' '),
   Toggle: ({ checked, onChange, disabled }: any) => (
@@ -45,7 +38,7 @@ vi.mock('@ciphera-net/facet', () => ({
   getAuthErrorMessage: () => 'error',
 }))
 
-import AccountSecurityAlertsTab from '../AccountSecurityAlertsTab'
+import AccountSecurityAlertsPanel from '../AccountSecurityAlertsPanel'
 import { toast } from '@ciphera-net/facet'
 
 const mockUpdate = userApi.updateUserPreferences as unknown as ReturnType<typeof vi.fn>
@@ -57,7 +50,7 @@ function stripComments(src: string): string {
 const SOURCE_PATH = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
-  'AccountSecurityAlertsTab.tsx',
+  'AccountSecurityAlertsPanel.tsx',
 )
 
 /** The switch sitting in the same PanelRow as `label`. */
@@ -78,10 +71,10 @@ beforeEach(() => {
   mockUpdate.mockClear().mockResolvedValue(undefined)
 })
 
-describe('AccountSecurityAlertsTab', () => {
+describe('AccountSecurityAlertsPanel', () => {
   it('renders one switch per ID alert preference, defaulting to on', () => {
-    const { container } = render(<AccountSecurityAlertsTab />)
-    for (const label of ['Login activity', 'Password changes', 'Two-factor authentication']) {
+    const { container } = render(<AccountSecurityAlertsPanel />)
+    for (const label of ['New sign-ins', 'Password changes', 'Two-factor and passkeys']) {
       expect(switchFor(container, label).getAttribute('aria-checked')).toBe('true')
     }
   })
@@ -100,14 +93,14 @@ describe('AccountSecurityAlertsTab', () => {
         },
       },
     }
-    const { container } = render(<AccountSecurityAlertsTab />)
-    expect(switchFor(container, 'Login activity').getAttribute('aria-checked')).toBe('false')
+    const { container } = render(<AccountSecurityAlertsPanel />)
+    expect(switchFor(container, 'New sign-ins').getAttribute('aria-checked')).toBe('false')
     expect(switchFor(container, 'Password changes').getAttribute('aria-checked')).toBe('true')
-    expect(switchFor(container, 'Two-factor authentication').getAttribute('aria-checked')).toBe('false')
+    expect(switchFor(container, 'Two-factor and passkeys').getAttribute('aria-checked')).toBe('false')
   })
 
   it('writes the FULL preference block with only the flipped key changed', async () => {
-    const { container } = render(<AccountSecurityAlertsTab />)
+    const { container } = render(<AccountSecurityAlertsPanel />)
     fireEvent.click(switchFor(container, 'Password changes'))
 
     // The PUT replaces the block, so a partial body silently resets the keys it
@@ -128,13 +121,13 @@ describe('AccountSecurityAlertsTab', () => {
 
   it('sends the key the toggle claims to control — each row wires its own preference', async () => {
     const cases: Array<[string, string]> = [
-      ['Login activity', 'login_alerts'],
+      ['New sign-ins', 'login_alerts'],
       ['Password changes', 'password_alerts'],
-      ['Two-factor authentication', 'two_factor_alerts'],
+      ['Two-factor and passkeys', 'two_factor_alerts'],
     ]
     for (const [label, key] of cases) {
       mockUpdate.mockClear()
-      const { container, unmount } = render(<AccountSecurityAlertsTab />)
+      const { container, unmount } = render(<AccountSecurityAlertsPanel />)
       fireEvent.click(switchFor(container, label))
       await waitFor(() => expect(mockUpdate).toHaveBeenCalled())
       const sent = mockUpdate.mock.calls[0][0].email_notifications as Record<string, boolean>
@@ -146,17 +139,17 @@ describe('AccountSecurityAlertsTab', () => {
 
   it('puts the switch back and surfaces the failure when the write is rejected', async () => {
     mockUpdate.mockRejectedValueOnce(new Error('nope'))
-    const { container } = render(<AccountSecurityAlertsTab />)
-    const control = switchFor(container, 'Login activity')
+    const { container } = render(<AccountSecurityAlertsPanel />)
+    const control = switchFor(container, 'New sign-ins')
     fireEvent.click(control)
 
     await waitFor(() => expect(toast.error).toHaveBeenCalled())
     // No silent failure: the switch must not sit in a state the server rejected.
-    expect(switchFor(container, 'Login activity').getAttribute('aria-checked')).toBe('true')
+    expect(switchFor(container, 'New sign-ins').getAttribute('aria-checked')).toBe('true')
   })
 
   it('states the always-sent blocked-sign-in alert as a fact, with no switch', () => {
-    const { container } = render(<AccountSecurityAlertsTab />)
+    const { container } = render(<AccountSecurityAlertsPanel />)
     expect(screen.getByText('Blocked sign-in attempts')).toBeInTheDocument()
     expect(screen.getByText('Always sent')).toBeInTheDocument()
     // id-backend sends id_suspicious_login_blocked with no preference gate. A
@@ -166,50 +159,30 @@ describe('AccountSecurityAlertsTab', () => {
     expect(container.querySelectorAll('[role="switch"]')).toHaveLength(3)
   })
 
-  it('no longer warns that the switches are unenforced', () => {
-    // The inverse of the assertion that stood here from 02-09 to 03-09-2026,
-    // and it is kept rather than deleted so the claim on this tab stays tied to
-    // a measurement in both directions. id-backend gates every one of these
-    // three categories at the sender since ciphera-id#64, so the banner would
-    // now be the false statement.
-    render(<AccountSecurityAlertsTab />)
-    expect(screen.queryByText(/not enforced/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/no sender checks these preferences/i)).not.toBeInTheDocument()
-    // The one honest exception survives: it is a fact, not a disclaimer.
-    expect(screen.getByText('Always sent')).toBeInTheDocument()
-  })
-
   it('renders the loading skeleton (not blank) while the session hydrates', () => {
     h.user = null
-    render(<AccountSecurityAlertsTab />)
+    render(<AccountSecurityAlertsPanel />)
     expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument()
   })
 
-  it('titles the panel the way the dashboard titles a section, sentence case, no kicker', () => {
-    render(<AccountSecurityAlertsTab />)
-    const h2 = screen.getByRole('heading', { level: 2, name: 'Security alerts' })
+  it('titles the panel "Your account" and explains it comes from Ciphera ID', () => {
+    render(<AccountSecurityAlertsPanel />)
+    const h2 = screen.getByRole('heading', { level: 2, name: 'Your account' })
     expect(h2.className).toMatch(/\btext-sm\b/)
     expect(h2.className).toMatch(/\bfont-semibold\b/)
     expect(h2.className).not.toMatch(/uppercase|micro-label/)
     expect(
-      screen.getByText('Emails Ciphera ID sends you when something changes on your account.'),
+      screen.getByText('Emails about signing in to your Ciphera account. They come from Ciphera ID, the sign-in behind Pulse.'),
     ).toBeInTheDocument()
   })
 
-  it('has no raw button in the tree, only the four named switches and the panel', () => {
-    render(<AccountSecurityAlertsTab />)
-    // The Facet mock renders Toggle as role="switch", never role="button", so a
-    // survivor here would be a hand-rolled control the vocabulary retired.
+  it('has no raw button in the tree, only the three named switches and the panel', () => {
+    render(<AccountSecurityAlertsPanel />)
     expect(screen.queryAllByRole('button')).toHaveLength(0)
     expect(screen.getAllByRole('switch')).toHaveLength(3)
   })
 
   it('never uses an em dash, en dash or a literal ellipsis in its user-facing copy', () => {
-    // Scoped to string literals, not the whole stripped source: this file's
-    // handleToggle legitimately spreads objects (`...settings`, `...DEFAULTS`),
-    // and a bare `...` scan would flag that JS syntax as if it were prose.
-    // Comments are stripped first so a decision note ("Sent — it is the…")
-    // doesn't trip the same copy rule its own quoted strings must obey.
     const stripped = stripComments(readFileSync(SOURCE_PATH, 'utf8'))
     const stringLiterals = stripped.match(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g) ?? []
     const offenders = stringLiterals.filter(s => /[—–]/.test(s) || /\.\.\./.test(s))

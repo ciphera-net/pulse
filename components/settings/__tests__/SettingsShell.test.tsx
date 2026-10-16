@@ -308,7 +308,6 @@ describe('SettingsShell — alone (B1)', () => {
       '/settings/account/security',
       '/settings/account/devices',
       '/settings/account/notifications',
-      '/settings/account/security-alerts',
       '/settings/organization/billing',
       '/settings/organization/api-keys',
       '/settings/organization/mcp',
