@@ -23,7 +23,7 @@ export class ErrorBoundary extends Component<Props, State> {
       message: error.message,
       stack: error.stack?.slice(0, 500),
       componentStack: info.componentStack?.slice(0, 500),
-      url: typeof window !== "undefined" ? window.location.href : "",
+      url: typeof window !== "undefined" ? window.location.pathname : "",
       timestamp: new Date().toISOString(),
     };
 

@@ -35,6 +35,15 @@ describe('InlineErrorDisplay', () => {
     expect(sendBeacon.mock.calls[0][0]).toBe('/api/client-errors')
   })
 
+  it('beacons the pathname only, never the query string or fragment', async () => {
+    window.history.pushState({}, '', '/sites/abc?token=secret#frag')
+    render(<InlineErrorDisplay title="t" error={new Error('boom')} />)
+    const blob = sendBeacon.mock.calls[0][1] as Blob
+    const body = JSON.parse(await blob.text())
+    expect(body.url).toBe('/sites/abc')
+    window.history.pushState({}, '', '/')
+  })
+
   it('does not flash the card for a chunk-load failure (self-heal runs)', () => {
     const chunkError = new Error('Loading chunk 42 failed (error: https://x/_next/static/chunks/42.js)')
     chunkError.name = 'ChunkLoadError'
