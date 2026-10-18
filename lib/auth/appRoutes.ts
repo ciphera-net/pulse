@@ -109,3 +109,19 @@ export function isExemptFromWorkspaceProvisioning(pathname: string | null | unde
     isReportRoute(pathname)
   )
 }
+
+/**
+ * The signed-out pages that load the interaction-capture companion
+ * (script.interactions.js). An ALLOW-list on purpose: it records the label of
+ * whatever control is clicked, and inside the app those labels carry site and
+ * team names. A route added later therefore does not load it until somebody
+ * decides it should. A shared dashboard (/share), a shared report (/r) and the
+ * claim pages are not here either: each shows or handles a customer's data.
+ */
+const INTERACTION_CAPTURE_ROUTES = new Set(['/', '/demo', '/login', '/signup'])
+
+export function isInteractionCaptureRoute(pathname: string | null | undefined): boolean {
+  if (!pathname) return false
+  const path = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname
+  return INTERACTION_CAPTURE_ROUTES.has(path)
+}
