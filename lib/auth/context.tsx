@@ -120,6 +120,22 @@ export function scrubStoredUserPii(): void {
   }
 }
 
+/**
+ * Empty every Cache Storage cache. The service worker's runtime caches hold
+ * pages and API responses fetched under the session that is ending, so they
+ * must not outlive it. Environments without Cache Storage (insecure origins,
+ * older browsers) have nothing to clear.
+ */
+export async function clearCacheStorage(): Promise<void> {
+  if (typeof caches === 'undefined') return
+  try {
+    const keys = await caches.keys()
+    await Promise.all(keys.map((key) => caches.delete(key)))
+  } catch (e) {
+    logger.warn('Could not clear Cache Storage at sign-out', e)
+  }
+}
+
 export function mergeVaultPii(
   prev: User | null,
   forUserId: string,
@@ -369,6 +385,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // trusted, and a key that survives it is a key nobody chose to keep.
     // Awaited: the navigation below would otherwise race the delete.
     await forgetVaultKeys()
+    await clearCacheStorage()
     // * Logout ends with a full navigation to /login, which starts a fresh
     // * attempt. Anything still pending belongs to the session being ended.
     forgetAllPendingAuth()
@@ -837,6 +854,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('ciphera_last_activity')
       // A sibling tab signed out, which is a sign-out. Same rule 1.
       void forgetVaultKeys()
+      void clearCacheStorage()
       setUser(null)
       // * hadPriorSession deliberately NOT cleared: this browser demonstrably
       // * had a session (a sibling tab just ended it). Clearing it here was one
