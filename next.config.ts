@@ -242,6 +242,10 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // /docs was rewritten to a third-party documentation host that answered 404 for every path. The product's
+      // documentation is docs.ciphera.net/pulse; the old paths do not map onto it, so every one lands on its start.
+      { source: '/docs', destination: 'https://docs.ciphera.net/pulse', permanent: true },
+      { source: '/docs/:path*', destination: 'https://docs.ciphera.net/pulse', permanent: true },
       {
         source: '/dashboard',
         destination: '/',
@@ -270,18 +274,6 @@ const nextConfig: NextConfig = {
       // (app/integrations/[slug]) and pointed at a defunct host (docs moved to
       // help.ciphera.net). Each guide page now links out to help.ciphera.net
       // via the registry's docsSlug.
-    ]
-  },
-  async rewrites() {
-    return [
-      {
-        source: '/docs',
-        destination: 'https://ciphera-e9ed055e.mintlify.dev/docs',
-      },
-      {
-        source: '/docs/:path*',
-        destination: 'https://ciphera-e9ed055e.mintlify.dev/docs/:path*',
-      },
     ]
   },
 }
