@@ -37,7 +37,7 @@ export default function InlineErrorDisplay({ title, description, onRetry, error 
         new Blob([JSON.stringify({
           message: error.message,
           stack: error.stack?.slice(0, 500),
-          url: window.location.href,
+          url: window.location.pathname,
           timestamp: new Date().toISOString(),
           chunkRecovery: chunkFailure,
         })], { type: 'application/json' })

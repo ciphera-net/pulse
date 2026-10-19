@@ -26,7 +26,7 @@ export default function GlobalError({
       new Blob([JSON.stringify({
         message: error.message,
         stack: error.stack?.slice(0, 500),
-        url: window.location.href,
+        url: window.location.pathname,
         timestamp: new Date().toISOString(),
         level: "global",
         // Distinguish routine deploy-staleness self-heals from real crashes.

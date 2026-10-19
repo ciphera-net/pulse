@@ -37,6 +37,14 @@ describe('POST /api/client-errors', () => {
     expect(out.chunkRecovery).toBe(false)
   })
 
+  it('logs the url without its query string or fragment', async () => {
+    await POST(post({ message: 'x', url: 'https://pulse.ciphera.net/auth/callback?token=abc123&state=s#frag=secret' }))
+    const out = logged()
+    expect(out.url).toBe('https://pulse.ciphera.net/auth/callback')
+    expect(JSON.stringify(out)).not.toContain('token=')
+    expect(JSON.stringify(out)).not.toContain('frag')
+  })
+
   it('keeps chunkRecovery=true distinguishable from a real crash', async () => {
     await POST(post({ message: 'Loading chunk 9 failed', chunkRecovery: true }))
     expect(logged().chunkRecovery).toBe(true)
