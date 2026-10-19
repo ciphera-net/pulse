@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@ciphera-net/auth": "0.4.0",
-    "@ciphera-net/facet": "^0.25.1",
+    "@ciphera-net/facet": "^0.25.2",
     "@ciphera-net/facet-avatar": "^0.1.0",
     "@ciphera-net/facet-hold": "^0.1.0",
     "@ciphera-net/facet-tailwind": "^0.3.0",
