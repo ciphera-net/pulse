@@ -80,7 +80,7 @@ export type SiteSWRResponse<Data> = SWRResponse<Data, any> & { available: boolea
 /**
  * Adds `available` to an SWR response without disturbing it.
  *
- * 🔑 The getters forward instead of copying. SWR's response is a set of lazy getters, and each one a
+ * The getters forward instead of copying. SWR's response is a set of lazy getters, and each one a
  * component reads is what subscribes it to that part of the state; spreading the response would read all
  * four, and every component using `{ data }` alone would re-render on every revalidation's isValidating flip.
  */

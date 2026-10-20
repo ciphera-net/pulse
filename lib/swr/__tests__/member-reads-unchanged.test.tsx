@@ -70,100 +70,7 @@ const swrSpy = vi.fn((...args: unknown[]) => {
 vi.mock('swr', () => ({ default: (...args: unknown[]) => swrSpy(...args) }))
 vi.mock('swr/infinite', () => ({ default: vi.fn(() => ({ data: undefined, size: 0, setSize: vi.fn() })) }))
 
-import * as hooks from '../dashboard'
-import type { VisitorRange } from '@/lib/api/visitors'
-
-const S = 'site-1'
-const D1 = '2026-10-01'
-const D2 = '2026-10-07'
-const F = 'v2:country|is|NL'
-const RANGE: VisitorRange = { startDate: D1, endDate: D2 }
-const LIVE_RANGE: VisitorRange = { minutes: 5 }
-const VISITOR_OPTS = { sort: 'last_seen', order: 'desc' as const, page: 1, pageSize: 25 }
-
-// Every exported hook, each with the argument shapes that change its key.
-const CASES: Array<[string, () => unknown]> = [
-  ['useDataWindow', () => hooks.useDataWindow(S, 'dashboard')],
-  ['useSite', () => hooks.useSite(S)],
-  ['useSiteTeam#enabled', () => hooks.useSiteTeam(S, true)],
-  ['useSiteTeam#disabled', () => hooks.useSiteTeam(S, false)],
-  ['useInstallStatus', () => hooks.useInstallStatus(S)],
-  ['useInstallStatus#poll', () => hooks.useInstallStatus(S, { poll: true })],
-  ['useInstallStatus#noSite', () => hooks.useInstallStatus(undefined)],
-  ['useIngestHealth', () => hooks.useIngestHealth(S)],
-  ['useTrafficStatus', () => hooks.useTrafficStatus(S)],
-  ['useDashboard#period', () => hooks.useDashboard(S, D1, D2, 'day', F, 'today')],
-  ['useDashboard#dates', () => hooks.useDashboard(S, D1, D2, 'hour', undefined, undefined)],
-  ['useDashboard#live', () => hooks.useDashboard(S, D1, D1, 'minute', undefined, undefined, 5)],
-  ['useDashboard#withheld', () => hooks.useDashboard(S, '', '', 'day', undefined, undefined)],
-  ['useStats', () => hooks.useStats(S, D1, D2, F, '7d')],
-  ['useStats#dates', () => hooks.useStats(S, D1, D2)],
-  ['usePagesTable', () => hooks.usePagesTable(S, D1, D2, 250, F, '30d')],
-  ['usePagesTable#defaults', () => hooks.usePagesTable(S, D1, D2)],
-  ['useDailyStats', () => hooks.useDailyStats(S, D1, D2, 'day', F, 'today')],
-  ['useRealtime', () => hooks.useRealtime(S)],
-  ['useRealtime#interval', () => hooks.useRealtime(S, 15_000)],
-  ['useCampaignsList#dated', () => hooks.useCampaignsList(S, D1, D2, 10, F, true, '7d')],
-  ['useCampaignsList#live', () => hooks.useCampaignsList(S, D1, D1, 10, F, true, undefined, 5)],
-  ['useCampaignsList#disarmed', () => hooks.useCampaignsList(S, D1, D2, 10, F, false)],
-  ['useCampaigns', () => hooks.useCampaigns(S, D1, D2, 100, '30d')],
-  ['useJourneyFlow', () => hooks.useJourneyFlow(S, D1, D2, 4, '/pricing', F, '30d')],
-  ['useJourneyEntryPoints', () => hooks.useJourneyEntryPoints(S, D1, D2, F, '30d')],
-  ['useFunnels', () => hooks.useFunnels(S)],
-  ['useFunnelDetail', () => hooks.useFunnelDetail(S, 'funnel-1')],
-  ['useFunnelListStats', () => hooks.useFunnelListStats(S, D1, D2, F, '30d')],
-  ['useFunnelStats', () => hooks.useFunnelStats(S, 'funnel-1', D1, D2, F, '30d')],
-  ['useFunnelTrends', () => hooks.useFunnelTrends(S, 'funnel-1', D1, D2, F, 3, '30d')],
-  ['useFunnelBreakdown', () => hooks.useFunnelBreakdown(S, 'funnel-1', 2, 'country', D1, D2, F, 3, '30d')],
-  ['useUptimeStatus', () => hooks.useUptimeStatus(S, D1, D2, '30d')],
-  ['useUptimeIncidents', () => hooks.useUptimeIncidents(S, D1, D2, '30d')],
-  ['useUptimeResponseTimes', () => hooks.useUptimeResponseTimes(S, 'monitor-1', D1, D2, '30d')],
-  ['useUptimeResponseTimes#noMonitor', () => hooks.useUptimeResponseTimes(S, undefined, D1, D2)],
-  ['useUptimeChecks', () => hooks.useUptimeChecks(S, 'monitor-1', 25)],
-  ['useGoals', () => hooks.useGoals(S)],
-  ['useGSCStatus', () => hooks.useGSCStatus(S)],
-  ['useGSCOverview', () => hooks.useGSCOverview(S, D1, D2)],
-  ['useGSCTopQueries', () => hooks.useGSCTopQueries(S, D1, D2, 20, 40)],
-  ['useGSCTopPages', () => hooks.useGSCTopPages(S, D1, D2, 20, 40)],
-  ['useGSCDailyTotals', () => hooks.useGSCDailyTotals(S, D1, D2)],
-  ['useGSCNewQueries', () => hooks.useGSCNewQueries(S, D1, D2)],
-  ['useGSCTopCountries', () => hooks.useGSCTopCountries(S, D1, D2, 20, 40)],
-  ['useGSCTopDevices', () => hooks.useGSCTopDevices(S, D1, D2)],
-  ['useGSCOpportunities', () => hooks.useGSCOpportunities(S, D1, D2, 30)],
-  ['useGSCQueryPages', () => hooks.useGSCQueryPages(S, 'privacy analytics', D1, D2)],
-  ['useGSCPageQueries', () => hooks.useGSCPageQueries(S, '/pricing', D1, D2)],
-  ['useGSCQueryTrend', () => hooks.useGSCQueryTrend(S, 'privacy analytics', D1, D2)],
-  ['useBunnyStatus', () => hooks.useBunnyStatus(S)],
-  ['useBunnyOverview', () => hooks.useBunnyOverview(S, D1, D2, '30d')],
-  ['useBunnyDailyStats', () => hooks.useBunnyDailyStats(S, D1, D2, '30d')],
-  ['useBunnyRegions', () => hooks.useBunnyRegions(S, D1, D2, '30d')],
-  ['useBunnyLive', () => hooks.useBunnyLive(S)],
-  ['useSubscription', () => hooks.useSubscription()],
-  ['useQuarantineStats', () => hooks.useQuarantineStats(S)],
-  ['usePerformanceConfig', () => hooks.usePerformanceConfig(S)],
-  ['usePerformanceLatest', () => hooks.usePerformanceLatest(S)],
-  ['usePerformanceHistory', () => hooks.usePerformanceHistory(S, 'mobile', 30)],
-  ['usePerformanceHistory#defaults', () => hooks.usePerformanceHistory(S, 'desktop')],
-  ['useBingStatus', () => hooks.useBingStatus(S)],
-  ['useBingOverview', () => hooks.useBingOverview(S, D1, D2)],
-  ['useBingDailyTotals', () => hooks.useBingDailyTotals(S, D1, D2)],
-  ['useFullDimensionList#dated', () => hooks.useFullDimensionList('countries', S, D1, D2, 250, F)],
-  ['useFullDimensionList#live', () => hooks.useFullDimensionList('referrers', S, D1, D1, 250, F, 5)],
-  ['useFullDimensionList#languages-grouped', () => hooks.useFullDimensionList('languages-grouped', S, D1, D2, 250)],
-  ['useFullDimensionList#closed', () => hooks.useFullDimensionList(null, S, D1, D2, 250)],
-  ['useOutboundLinks#dated', () => hooks.useOutboundLinks(S, D1, D2, 'today')],
-  ['useOutboundLinks#live', () => hooks.useOutboundLinks(S, D1, D1, 'today', 5)],
-  ['usePagePreview#member', () => hooks.usePagePreview(S)],
-  ['usePagePreview#anonymous', () => hooks.usePagePreview(S, false)],
-  ['usePagePreview#noSite', () => hooks.usePagePreview('')],
-  ['useVisitors', () => hooks.useVisitors(S, RANGE, VISITOR_OPTS)],
-  ['useVisitors#live', () => hooks.useVisitors(S, LIVE_RANGE, { ...VISITOR_OPTS, enabled: true })],
-  ['useVisitors#off', () => hooks.useVisitors(S, RANGE, { ...VISITOR_OPTS, enabled: false })],
-  ['useVisitorProfile', () => hooks.useVisitorProfile(S, 'visitor-1', RANGE)],
-  ['useVisitorVisits', () => hooks.useVisitorVisits(S, 'visitor-1', RANGE, 2, 10)],
-  ['useVisitEvents', () => hooks.useVisitEvents(S, 'visitor-1', 'visit-1', RANGE, 1)],
-  ['useVisitEvents#collapsed', () => hooks.useVisitEvents(S, 'visitor-1', null, RANGE, 1)],
-]
+import { HOOK_CASES, exportedHookNames } from './hook-cases'
 
 /** JSON with `undefined` kept distinct from `null`, so an argument that disappeared is visible. */
 function serialise(value: unknown): unknown {
@@ -220,14 +127,13 @@ beforeEach(() => {
 
 describe('member reads are unchanged by the site scope (PUL-34 Phase 2)', () => {
   it('covers every hook the module exports that reads through SWR', () => {
-    const covered = new Set(CASES.map(([name]) => name.split('#')[0]))
-    const exported = Object.keys(hooks).filter((name) => /^use[A-Z]/.test(name))
-    expect(exported.filter((name) => !covered.has(name))).toEqual([])
+    const covered = new Set(HOOK_CASES.map(({ name }) => name.split('#')[0]))
+    expect(exportedHookNames().filter((name) => !covered.has(name))).toEqual([])
   })
 
   it('every hook asks SWR for the same key, with the same options, and calls the same API function the same way', async () => {
     const actual: Record<string, Recorded> = {}
-    for (const [name, call] of CASES) actual[name] = await record(call)
+    for (const { name, call } of HOOK_CASES) actual[name] = await record(call)
 
     if (process.env.GOLDEN_OUT) {
       writeFileSync(process.env.GOLDEN_OUT, JSON.stringify(actual, null, 2) + '\n')
