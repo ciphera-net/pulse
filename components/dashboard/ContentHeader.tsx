@@ -10,15 +10,58 @@ import { useUserMenuTeamProps } from '@/components/dashboard/userMenuTeam'
 import { useSites } from '@/lib/swr/sites'
 import OnboardingChip from '@/components/onboarding/OnboardingChip'
 import ThemeMenuSwitch from '@/components/theme/ThemeMenuSwitch'
+import { SampleDataLabel, TryPulseFreeButton } from '@/components/public/chrome'
+import { useSite } from '@/lib/swr/dashboard'
+import { useOptionalSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
 
-export default function ContentHeader({
-  onMobileMenuOpen,
-  siteId,
-}: {
+interface ContentHeaderProps {
   onMobileMenuOpen: () => void
   /** Current site, when the shell is rendering a site page. Names the header. */
   siteId?: string | null
-}) {
+}
+
+/**
+ * The phone's header: the member's, or under a public scope (/demo, /share/<id>) the public
+ * one. Two components, because the member header reads the account and the sites list, and a
+ * public visitor has neither.
+ */
+export default function ContentHeader(props: ContentHeaderProps) {
+  const scope = useOptionalSiteScope()
+  if (scope?.mode === 'public') {
+    return <PublicContentHeader onMobileMenuOpen={props.onMobileMenuOpen} scope={scope} />
+  }
+  return <MemberContentHeader {...props} />
+}
+
+/**
+ * The public page's phone header: the menu, the site's name and, on the demo, the sample
+ * data label under it and the way into the product. No account, notifications or onboarding.
+ * (The desktop top bar draws the same two in DashboardShell; this one is `md:hidden`.)
+ */
+function PublicContentHeader({ onMobileMenuOpen, scope }: { onMobileMenuOpen: () => void; scope: SiteScope }) {
+  const { data: site } = useSite(scope.siteId)
+
+  return (
+    <div className="shrink-0 flex items-center justify-between gap-2 border-b border-neutral-800/60 bg-card px-4 py-3.5 md:hidden">
+      <button
+        onClick={onMobileMenuOpen}
+        className="-ml-2.5 flex h-11 w-11 shrink-0 items-center justify-center text-neutral-400 hover:text-white"
+        aria-label="Open navigation"
+      >
+        <MenuIcon className="w-5 h-5" />
+      </button>
+
+      <div className="flex min-w-0 flex-1 flex-col px-2">
+        {site?.name && <span className="truncate text-sm font-medium text-white">{site.name}</span>}
+        {scope.demo && <SampleDataLabel />}
+      </div>
+
+      {scope.demo && <TryPulseFreeButton />}
+    </div>
+  )
+}
+
+function MemberContentHeader({ onMobileMenuOpen, siteId }: ContentHeaderProps) {
   const auth = useAuth()
   const router = useRouter()
   const teamMenuProps = useUserMenuTeamProps()

@@ -1,11 +1,11 @@
 import type { Metadata } from 'next'
+import PublicShareRoot from '@/components/public/PublicShareRoot'
 import { DEFAULT_OG_IMAGE, DEFAULT_OG_IMAGES } from '@/lib/og'
 
 // * Static, static-safe metadata for the public share dashboard.
 // *
-// * /demo (the address the announcement links) is a landing page whose CTA
-// * links here, so this is the card social crawlers unfurl for direct share
-// * links. It is deliberately STATIC: the
+// * This is the card social crawlers unfurl for direct share links (/demo has
+// * its own, in app/demo/layout.tsx). It is deliberately STATIC: the
 // * previous generateMetadata did a per-request server-side fetch to build a
 // * per-domain title, but that call targeted the API without its `/api/v1`
 // * prefix, so it always 404'd and silently fell back to exactly the copy
@@ -42,10 +42,17 @@ export const metadata: Metadata = {
   },
 }
 
-export default function ShareLayout({
+// A share link is the product's pages in a public read-only mode (PUL-34): this layout mounts
+// the public shell for the link's site, and the pages under it are the same components
+// /sites/<id> renders. Which of them the link serves is decided from the site's public view
+// (components/public/PublicShareRoot.tsx), and the password gate lives there too.
+export default async function ShareLayout({
   children,
+  params,
 }: {
   children: React.ReactNode
+  params: Promise<{ id: string }>
 }) {
-  return children
+  const { id } = await params
+  return <PublicShareRoot siteId={id}>{children}</PublicShareRoot>
 }
