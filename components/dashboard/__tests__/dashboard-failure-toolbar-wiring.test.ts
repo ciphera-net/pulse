@@ -27,7 +27,7 @@ const failureBranch = (src: string) => {
 }
 
 describe('a failed dashboard request keeps the toolbar', () => {
-  const src = read('app/sites/[id]/page.tsx')
+  const src = read('components/surfaces/DashboardSurface.tsx')
   const branch = failureBranch(src)
 
   it('renders the toolbar row above the error card', () => {

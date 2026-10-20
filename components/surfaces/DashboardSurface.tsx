@@ -2,8 +2,8 @@
 
 
 import { siteDaysCaption } from '@/lib/utils/timezones'
-import { useCallback, useEffect, useState, useMemo } from 'react'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useSWRConfig } from 'swr'
 import {
   type Stats,
@@ -13,9 +13,9 @@ import { useFilterSuggestions } from '@/lib/hooks/useFilterSuggestions'
 import { toast } from '@ciphera-net/facet'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { PERIOD_TO_API } from '@/lib/constants/periods'
-import { DEFAULT_GEO_DATA_LEVEL } from '@/lib/api/sites'
+import { DEFAULT_GEO_DATA_LEVEL, type Site } from '@/lib/api/sites'
 import { identityWindowOf } from '@/lib/visitors/identityWindow'
-import { formatDate } from '@/lib/utils/format'
+import { formatCompactNumber, formatDate } from '@/lib/utils/format'
 import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
 import { useRealtimeToggle } from '@/lib/hooks/useRealtimeToggle'
 import { previousDateRange } from '@/lib/hooks/periodUrl'
@@ -29,7 +29,7 @@ import {
   REALTIME_ROLLING_MINUTES,
   isRealtimePeriod,
 } from '@/lib/dashboard/realtimeRange'
-import { useRealtimeSync } from '@/lib/hooks/useRealtimeSync'
+import { PollLiveSync, SocketLiveSync } from '@/components/dashboard/LiveSync'
 import FilterPills from '@/components/dashboard/FilterPills'
 import FilterBuilder from '@/components/dashboard/filter/FilterBuilder'
 import { useFilterBuilder } from '@/components/dashboard/filter/useFilterBuilder'
@@ -48,7 +48,6 @@ const PeakHours = dynamic(() => import('@/components/dashboard/PeakHours'))
 const TourController = dynamic(() => import('@/lib/tour/TourController'), { ssr: false })
 import { type DimensionFilter, serializeFilters, parseFiltersFromURL } from '@/lib/filters'
 import {
-  isLiveListKey,
   useDashboard,
   useRealtime,
   useStats,
@@ -63,6 +62,11 @@ import { type MetricType, isMetricType } from '@/lib/dashboard/metrics'
 import { displayDomain } from '@/lib/utils/displayDomain'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { importLeftOutByFilter } from '@/lib/dashboard/importBoundary'
+import type { WindowState } from '@/lib/view/view'
+import { useSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
+import { postEmbedReady } from '@/lib/scope/embed'
+import { dashboardCapabilities, type DashboardCapabilities } from '@/lib/dashboard/capabilities'
+import { isLockedShare, liveListKeyMatcher } from '@/lib/dashboard/publicView'
 
 
 
@@ -70,19 +74,59 @@ import { importLeftOutByFilter } from '@/lib/dashboard/importBoundary'
 // period has no bucket-for-bucket counterpart, so the chart draws none.
 const ROLLING_PERIODS: ReadonlySet<string> = new Set(['30m', '1h', '6h', '24h'])
 
-export default function SiteDashboardPage() {
+/**
+ * The site record and the data window: the two reads that exist only where the site
+ * itself is served, and that the page waits on before it can resolve a range.
+ */
+interface SiteFacts {
+  siteRecord: Site | undefined
+  siteError: unknown
+  refetchSite: () => Promise<unknown>
+  dataWindow: WindowState
+}
 
-
-
-  const params = useParams()
-  const siteId = params.id as string
-
+function useSiteFacts(siteId: string): SiteFacts {
   // Independent of the dashboard's own combined fetch ON PURPOSE: the
   // dashboard request itself needs a resolved date range before it can fire,
   // and the range needs the site's timezone before IT can resolve — reading
   // the zone off `dashboard.site` would be circular. This is the same
   // siteId-only fetch the sidebar already dedupes against.
   const { data: siteRecord, error: siteError, mutate: refetchSite } = useSite(siteId)
+  const dataWindow = useDataWindow(siteId, 'dashboard')
+  return { siteRecord, siteError, refetchSite, dataWindow }
+}
+
+/**
+ * THE DASHBOARD, FOR EVERY READER (PUL-34 Phase 2). One composition renders the member's
+ * dashboard (/sites/<id>), the demo (/demo) and a customer's share link (/share/<id>): the
+ * scope says which (lib/scope/SiteScope.tsx), and `dashboardCapabilities` says what that
+ * scope may show, so the demo cannot drift from the product.
+ */
+export default function DashboardSurface() {
+  const scope = useSiteScope()
+  const caps = useMemo(() => dashboardCapabilities(scope), [scope])
+  // 🔴 A customer's share link is served FIVE routes (stats, daily, realtime, dashboard,
+  // page-preview) and the site record and the data window are not among them: every other
+  // route answers 404 to it. So under that scope the two reads are not made at all (a
+  // missing record is not a failure to retry three times and toast); the site rides the
+  // dashboard payload, as it always did on the share page.
+  return caps.siteRecord
+    ? <SiteDashboardWithRecord scope={scope} caps={caps} />
+    : <SiteDashboard scope={scope} caps={caps} facts={null} />
+}
+
+function SiteDashboardWithRecord({ scope, caps }: { scope: SiteScope; caps: DashboardCapabilities }) {
+  const facts = useSiteFacts(scope.siteId)
+  return <SiteDashboard scope={scope} caps={caps} facts={facts} />
+}
+
+function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: DashboardCapabilities; facts: SiteFacts | null }) {
+  const siteId = scope.siteId
+  const siteRecord = facts?.siteRecord
+  const siteError = facts?.siteError
+  const refetchSite = facts?.refetchSite
+  // `null` is "known, no window": the switcher greys nothing and nothing waits on it.
+  const dataWindow: WindowState = facts ? facts.dataWindow : null
 
   // Range state lives in the URL (?period=&start=&end=), the estate grammar
   // every other date-ranged page already uses (F12): a shared link carries the
@@ -92,13 +136,15 @@ export default function SiteDashboardPage() {
   // every page (PULSE-20), answered against this page's data window.
   // Realtime is a MODE entered from the orb — never a menu row, never remembered;
   // `rollingMinutes` turns it into a `minutes=` fetch instead of a date span.
-  const dataWindow = useDataWindow(siteId, 'dashboard')
+  //
+  // A customer's share link is the exception that proves the rule: its four fixed
+  // windows are decided inside the hook, from the scope (see useUrlDateRange).
   const urlRange = useUrlDateRange({
     surface: 'dashboard',
     window: dataWindow,
     timezone: siteRecord?.timezone,
-    modes: REALTIME_MODES,
-    rollingMinutes: REALTIME_ROLLING_MINUTES,
+    modes: caps.realtimeMode ? REALTIME_MODES : undefined,
+    rollingMinutes: caps.realtimeMode ? REALTIME_ROLLING_MINUTES : undefined,
     retentionMonths: siteRecord?.data_retention_months,
     daysCaption: siteDaysCaption(siteRecord?.timezone),
   })
@@ -110,10 +156,11 @@ export default function SiteDashboardPage() {
   const liveMinutes = isLive ? (rollingMinutes ?? undefined) : undefined
   const [multiDayInterval, setMultiDayInterval] = useState<'hour' | 'day'>('day')
 
-  // Dimension filters state
+  // Dimension filters state. A share link carries none: a filtered public-scoped read is
+  // refused (400), so a `?filters=` in its URL is never parsed, let alone sent.
   const searchParams = useSearchParams()
   const [filters, setFilters] = useState<DimensionFilter[]>(() => {
-    const raw = searchParams.get('filters')
+    const raw = caps.filters ? searchParams.get('filters') : null
     return raw ? parseFiltersFromURL(raw) : []
   })
   const filtersParam = useMemo(() => serializeFilters(filters), [filters])
@@ -190,11 +237,15 @@ export default function SiteDashboardPage() {
   // this page rolls over.
   // Realtime is always minute buckets: a live window drawn at day granularity is
   // one bar, which is not a chart.
+  //
+  // A customer's share link is day-granular whatever the range: the server clamps every
+  // public-scoped read to day buckets (an hourly bucket holding one visitor is that
+  // person's arrival time), so it is asked for exactly that.
   const isYoungSingleDay =
     dateRange.start === dateRange.end &&
     dateRange.start === formatDate(urlRange.siteNow) &&
     urlRange.siteNow.getHours() * 60 + urlRange.siteNow.getMinutes() < 3 * 60
-  const interval = isLive ? 'minute' : period === '1h' ? 'minute' : period === '24h' ? 'hour' : (dateRange.start === dateRange.end ? (isYoungSingleDay ? 'minute' : 'hour') : multiDayInterval)
+  const interval = !caps.hourlyBuckets ? 'day' : isLive ? 'minute' : period === '1h' ? 'minute' : period === '24h' ? 'hour' : (dateRange.start === dateRange.end ? (isYoungSingleDay ? 'minute' : 'hour') : multiDayInterval)
 
   // Single dashboard request replaces focused hooks (overview, pages, locations,
   // devices, referrers, goals). The backend runs all queries in parallel
@@ -204,10 +255,14 @@ export default function SiteDashboardPage() {
   // all. Withholding only the token would fall through to the client-computed
   // dateRange for the placeholder period — the same 30-day window by another
   // route.
+  //
+  // A share link names no date at all: its request is the period token alone (the server
+  // refuses a start/end on a public-scoped read), so it is handed none to carry.
+  const datedRead = periodReady && caps.explicitDates
   const { data: dashboard, isLoading: dashboardLoading, error: dashboardError, mutate: refetchDashboard } = useDashboard(
     siteId,
-    periodReady ? (dateRange?.start || '') : '',
-    periodReady ? (dateRange?.end || '') : '',
+    datedRead ? (dateRange?.start || '') : '',
+    datedRead ? (dateRange?.end || '') : '',
     interval,
     filtersParam || undefined,
     apiPeriod,
@@ -247,6 +302,10 @@ export default function SiteDashboardPage() {
   const handleClearFilters = useCallback(() => {
     setFilters([])
   }, [])
+
+  // A row that filters is a real control and one that cannot is inert text: the cards
+  // take no `onFilter` where filtering is refused (a share link).
+  const onCardFilter = caps.filters ? handleAddFilter : undefined
 
   // * Commit a draft from the filter popover — replaces the filter at its
   // * index when editing, appends (via the duplicate-guarded add) otherwise.
@@ -297,29 +356,32 @@ export default function SiteDashboardPage() {
   // so it carries no comparison rather than one against days with no data. Nor does
   // realtime: the server echoes a live window as the day it falls in, so the "previous
   // period" was all of yesterday, and every rail delta compared five minutes with a
-  // whole day (a red −99% under a live view).
+  // whole day (a red −99% under a live view). Nor does a share link: the previous
+  // window is a read over arbitrary dates, the one primitive a public-scoped read refuses.
   const prevRange = useMemo(
     (): { start: string; end: string } | null =>
-      resolvedDateRange && period !== 'all' && !isLive ? previousDateRange(resolvedDateRange) : null,
-    [resolvedDateRange, period, isLive],
+      caps.comparison && resolvedDateRange && period !== 'all' && !isLive ? previousDateRange(resolvedDateRange) : null,
+    [caps.comparison, resolvedDateRange, period, isLive],
   )
   const { data: realtimeData } = useRealtime(siteId, 15_000)
   const { mutate: mutateLiveLists } = useSWRConfig()
 
   // THE transport seam. Everything else on this page is transport-agnostic: the
-  // socket says "something changed" and the page refetches over HTTP, reading
-  // the same endpoints every other period reads. Only wired while live, so a
-  // historical view holds no connection.
-  useRealtimeSync({
-    enabled: isLive,
-    siteId,
-    onChanged: useCallback(() => {
-      void refetchDashboard()
-      // The cards' own live lists refresh on the same signal (lib/swr/dashboard.ts,
-      // LIVE_LIST_KEY), so a card never lags the KPI rail above it.
-      void mutateLiveLists(isLiveListKey(siteId))
-    }, [refetchDashboard, mutateLiveLists, siteId]),
-  })
+  // transport says "something changed" and the page refetches over HTTP, reading
+  // the same endpoints every other period reads. Only mounted while live, so a
+  // historical view holds no connection: a member's page by the realtime socket, a
+  // public one (which has no socket to open) by a timer (components/dashboard/LiveSync).
+  const refreshLive = useCallback(() => {
+    void refetchDashboard()
+    // The cards' own live lists refresh on the same signal (lib/swr/dashboard.ts,
+    // LIVE_LIST_KEY), so a card never lags the KPI rail above it.
+    void mutateLiveLists(liveListKeyMatcher(siteId))
+  }, [refetchDashboard, mutateLiveLists, siteId])
+  const liveSync = isLive
+    ? (caps.member
+        ? <SocketLiveSync siteId={siteId} onChanged={refreshLive} />
+        : <PollLiveSync onChanged={refreshLive} />)
+    : null
 
   // The orb is the one switch into realtime; leaving returns to the view the reader
   // was on (useRealtimeToggle — shared with Visitors, so the two cannot drift).
@@ -394,12 +456,36 @@ export default function SiteDashboardPage() {
   const showSkeleton = useMinimumLoading(!periodReady || (dashboardLoading && !dashboard))
   const fadeClass = useSkeletonFade(showSkeleton)
 
+  // The hero frames /demo over a capture of it and swaps the capture for the frame only
+  // once the frame says its page has drawn REAL numbers (lib/scope/embed.ts). So it says
+  // so once, when the dashboard payload has first rendered: never on the skeleton, and
+  // never again when a period change sends the page back through it.
+  const dashboardDrawn = Boolean(dashboard) && !showSkeleton
+  const embedAnnounced = useRef(false)
+  useEffect(() => {
+    if (!caps.embedReady || !dashboardDrawn || embedAnnounced.current) return
+    embedAnnounced.current = true
+    postEmbedReady()
+  }, [caps.embedReady, dashboardDrawn])
+
   const failureCard = (failure: unknown, retry: () => void) => {
+    // A password-protected share link whose unlock lapsed: retrying cannot work, the
+    // reader has to enter the password again, and that happens on a reload.
+    if (!caps.member && isLockedShare(failure)) {
+      return (
+        <ErrorCard
+          title="This dashboard is password protected"
+          description="Reload the page and enter the password again."
+        />
+      )
+    }
     const status = (failure as { status?: number })?.status
+    // "Your data is intact" speaks to the site's owner: a public reader has no data here.
+    const reassurance = caps.member ? ' Your data is intact — this is a loading problem, not a data problem.' : ''
     return (
       <ErrorCard
         title="Couldn’t load the dashboard"
-        description={status ? `The analytics request failed (HTTP ${status}). Your data is intact — this is a loading problem, not a data problem.` : 'The analytics request failed. Your data is intact — this is a loading problem, not a data problem.'}
+        description={status ? `The analytics request failed (HTTP ${status}).${reassurance}` : `The analytics request failed.${reassurance}`}
         onRetry={retry}
       />
     )
@@ -427,31 +513,42 @@ export default function SiteDashboardPage() {
 
   const toolbarControls = () => (
     <>
-      <RealtimeOrb count={realtime} live={isLive} onToggle={toggleRealtime} />
+      {caps.realtimeMode ? (
+        <RealtimeOrb count={realtime} live={isLive} onToggle={toggleRealtime} />
+      ) : (
+        // Display-only: a share link's realtime MODE is refused by the server (a live
+        // window on a public link can single out one visitor), so the orb shows the
+        // count and must not become a toggle.
+        <RealtimeOrb count={realtime} />
+      )}
       {/* The spacer pushes the filter/date cluster to the right edge on desktop.
           In a wrapped mobile row a flex-1 spacer would claim a whole line and
           strand the controls, so it only exists at sm+. */}
       <div className="hidden flex-1 sm:block" />
-      <FilterPills
-        filters={filters}
-        onEdit={(index, anchor) => filterBuilder.openEdit(filters[index], index, anchor)}
-        onRemove={handleRemoveFilter}
-        onClear={handleClearFilters}
-      />
-      {/* A filtered view leaves imported days out: filters select visits, and an
-          imported day holds totals (M11-h). Said beside the control that did it,
-          from the response's own provenance. */}
-      {importLeftOutByFilter(dashboard?.imported) && (
-        <span className="inline-flex items-center gap-1 text-xs text-neutral-500" data-testid="imported-filtered-note">
-          Pulse-measured days only
-          <TermInfoTip term="imported_history" />
-        </span>
+      {caps.filters && (
+        <>
+          <FilterPills
+            filters={filters}
+            onEdit={(index, anchor) => filterBuilder.openEdit(filters[index], index, anchor)}
+            onRemove={handleRemoveFilter}
+            onClear={handleClearFilters}
+          />
+          {/* A filtered view leaves imported days out: filters select visits, and an
+              imported day holds totals (M11-h). Said beside the control that did it,
+              from the response's own provenance. */}
+          {importLeftOutByFilter(dashboard?.imported) && (
+            <span className="inline-flex items-center gap-1 text-xs text-neutral-500" data-testid="imported-filtered-note">
+              Pulse-measured days only
+              <TermInfoTip term="imported_history" />
+            </span>
+          )}
+          <FilterButton
+            hasActiveFilters={filters.length > 0}
+            active={filterBuilder.open}
+            onClick={anchor => filterBuilder.openCreate(anchor)}
+          />
+        </>
       )}
-      <FilterButton
-        hasActiveFilters={filters.length > 0}
-        active={filterBuilder.open}
-        onClick={anchor => filterBuilder.openCreate(anchor)}
-      />
       <DateRangePicker {...picker} />
     </>
   )
@@ -474,7 +571,7 @@ export default function SiteDashboardPage() {
   // is stated BEFORE the skeleton gate, or the skeleton wins forever. (A 403 does
   // not reach this page: the site layout shows the other-team state instead.)
   if (!siteRecord && siteError) {
-    return failureState(siteError, () => { void refetchSite() })
+    return failureState(siteError, () => { void refetchSite?.() })
   }
 
   if (showSkeleton) {
@@ -493,13 +590,16 @@ export default function SiteDashboardPage() {
     }
     return (
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
+        {liveSync}
         {toolbarRow()}
         {failureCard(dashboardError, () => refetchDashboard())}
-        <FilterBuilder
-          builder={filterBuilder}
-          filters={filters}
-          onApply={handleFilterApply}
-        />
+        {caps.filters && (
+          <FilterBuilder
+            builder={filterBuilder}
+            filters={filters}
+            onApply={handleFilterApply}
+          />
+        )}
       </div>
     )
   }
@@ -514,13 +614,15 @@ export default function SiteDashboardPage() {
 
   return (
     <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 ${fadeClass}`}>
-      <TourController />
+      {liveSync}
+      {caps.member && <TourController />}
       {toolbarRow()}
 
       {/* Install health — a fact about the SITE, above the deck, distinct from
           the chart's own "no data in this range" (a fact about the RANGE).
-          Renders nothing when the site is reporting normally. */}
-      <InstallBanner siteId={siteId} />
+          Renders nothing when the site is reporting normally. A member's affordance:
+          a public reader has nothing to install. */}
+      {caps.member && <InstallBanner siteId={siteId} />}
 
       {/* The command deck: provenance strip + KPI rail + full-height chart,
           then the sectioned briefing IA (Acquisition · Audience · Content ·
@@ -544,6 +646,9 @@ export default function SiteDashboardPage() {
           period={period}
           multiDayInterval={multiDayInterval}
           setMultiDayInterval={setMultiDayInterval}
+          // False on a share link, where the backend clamps every read to day buckets
+          // and a selector would be a control wired to nothing.
+          intervalPicker={caps.hourlyBuckets}
           identityWindowDays={identityWindowOf(siteRecord)}
           imported={dashboard?.imported}
           prevImported={prevStats?.imported}
@@ -553,10 +658,30 @@ export default function SiteDashboardPage() {
         />
       </div>
 
+      {/* What the minimum-cell-size floor withheld.
+          Stated rather than applied silently: a shared dashboard drops every
+          dimension row describing fewer than min_cell_size people, so the rows
+          below deliberately do not sum to the totals above. Without this line the
+          gap reads as a bug in the numbers — and the first person to notice would
+          be right to report it. The block is absent entirely when nothing was
+          withheld, so it never appears as a reassuring zero (and a member's read
+          is never floored, so it never appears there). */}
+      {dashboard?.suppression && dashboard.suppression.rows_withheld > 0 && (
+        <p className="mb-3 text-xs text-neutral-500">
+          {formatCompactNumber(dashboard.suppression.rows_withheld)}{' '}
+          {dashboard.suppression.rows_withheld === 1 ? 'row is' : 'rows are'} hidden below,
+          covering {formatCompactNumber(dashboard.suppression.pageviews_withheld)} pageviews. A shared
+          dashboard only shows breakdown rows with at least {dashboard.suppression.min_cell_size}{' '}
+          visitors, so no row can describe one person. Site totals are unaffected.
+        </p>
+      )}
+
       <SectionHeader title="Acquisition" />
       {/* One Sources card (owner pick BH, 06-09-2026): Referrers · Channels ·
           Campaigns, the UTM dimension behind a Select. The Locations card moved
-          up to fill the row the Campaigns card left. */}
+          up to fill the row the Campaigns card left. A share link's Campaigns
+          rows arrive ON its payload (floored, capped), which also keeps the
+          campaigns fetch unarmed: that read is not served to it. */}
       <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
         <Sources
           referrers={dashboard?.top_referrers ?? []}
@@ -570,7 +695,9 @@ export default function SiteDashboardPage() {
           period={apiPeriod || undefined}
           totals={totals}
           filters={filtersParam || undefined}
-          onFilter={handleAddFilter}
+          onFilter={onCardFilter}
+          memberFeatures={caps.fullReads}
+          campaigns={caps.fullReads ? undefined : (dashboard?.campaigns ?? [])}
           importedCards={dashboard?.imported_cards}
         />
         <Audience
@@ -589,7 +716,8 @@ export default function SiteDashboardPage() {
           totals={totals}
           previousVisitors={prevStats?.visitors ?? null}
           filters={filtersParam || undefined}
-          onFilter={handleAddFilter}
+          onFilter={onCardFilter}
+          memberFeatures={caps.fullReads}
           importedCards={dashboard?.imported_cards}
         />
       </div>
@@ -615,7 +743,10 @@ export default function SiteDashboardPage() {
 
           The card is wrapped in `flex-1 min-h-0` because it sets `h-full`: with
           the header as a sibling, 100% of the cell would overflow by exactly the
-          header's height. */}
+          header's height.
+
+          A share link has no Outbound: its two lists are the event-property reads,
+          which a public-scoped read is not served. Its row is the left card alone. */}
       <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
         <div className="flex flex-col">
           <SectionHeader title="Audience" />
@@ -633,11 +764,13 @@ export default function SiteDashboardPage() {
               dateRange={resolvedDateRange}
               totals={totals}
               filters={filtersParam || undefined}
-              onFilter={handleAddFilter}
+              onFilter={onCardFilter}
+              memberFeatures={caps.fullReads}
               importedCards={dashboard?.imported_cards}
             />
           </div>
         </div>
+        {caps.fullReads && (
         <div className="flex flex-col">
           <SectionHeader title="Outbound" />
           <div className="flex-1 min-h-0">
@@ -650,10 +783,11 @@ export default function SiteDashboardPage() {
               goalCounts={dashboard?.goal_counts ?? []}
               goalsImported={dashboard?.imported_goals}
               filters={filtersParam || undefined}
-              onFilter={handleAddFilter}
+              onFilter={onCardFilter}
             />
           </div>
         </div>
+        )}
       </div>
 
       <SectionHeader title="Content" />
@@ -670,7 +804,8 @@ export default function SiteDashboardPage() {
           dateRange={resolvedDateRange}
           totals={totals}
           filters={filtersParam || undefined}
-          onFilter={handleAddFilter}
+          onFilter={onCardFilter}
+          memberFeatures={caps.fullReads}
           importedCards={dashboard?.imported_cards}
         />
         {/* Scroll depth arrives on the dashboard payload (computed in
@@ -683,24 +818,30 @@ export default function SiteDashboardPage() {
           siteId={siteId}
           dateRange={resolvedDateRange}
           liveMinutes={liveMinutes}
+          memberFeatures={caps.fullReads}
         />
       </div>
 
       {/* Peak hours is a weekly hour-of-day heatmap: a single live instant has no
           day-of-week distribution to draw, so it is HIDDEN in realtime rather
-          than rendered as an almost-empty grid that looks like missing data. */}
-      {!isLive && (<>
+          than rendered as an almost-empty grid that looks like missing data. A
+          share link has none either: hour buckets are refused on a public-scoped
+          read by design (an hourly bucket with one visitor is that person's
+          arrival time). */}
+      {!isLive && caps.hourlyBuckets && (<>
       <SectionHeader title="Behaviour" />
       <div className="grid gap-3 mb-3 [&>*]:min-w-0">
         <PeakHours siteId={siteId} dateRange={resolvedDateRange} filters={filtersParam || undefined} />
       </div></>)}</>
       })()}
 
-      <FilterBuilder
-        builder={filterBuilder}
-        filters={filters}
-        onApply={handleFilterApply}
-      />
+      {caps.filters && (
+        <FilterBuilder
+          builder={filterBuilder}
+          filters={filters}
+          onApply={handleFilterApply}
+        />
+      )}
     </div>
   )
 }
