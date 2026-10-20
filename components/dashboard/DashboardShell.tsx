@@ -10,6 +10,7 @@ import { PlusIcon, LayoutDashboardIcon, PathIcon, FunnelIcon, CursorClickIcon, S
 import { Avatar, personAvatarSeed } from '@ciphera-net/facet-avatar'
 import { formatUpdatedLabel } from '@/lib/utils/format'
 import { useFunnelDetail, useSite } from '@/lib/swr/dashboard'
+import { usePublicSiteIdentity } from '@/lib/swr/public-site-identity'
 import { useAuth } from '@/lib/auth/context'
 import { UnnamedSession } from '@/components/account/UnnamedSession'
 import OnboardingChip from '@/components/onboarding/OnboardingChip'
@@ -504,8 +505,8 @@ function usePublicPageMeta(scope: SiteScope): PageMeta | null {
 function PublicTopBar({ scope }: { scope: SiteScope }) {
   const { collapsed, toggle } = useSidebar()
   const { lastUpdatedAt } = useLiveIndicator()
-  // * The site's name from the SAME SWR key the page reads, as the member bar does.
-  const { data: site } = useSite(scope.siteId)
+  // * The site's name: the demo's site record, or on a share link the dashboard read's own (usePublicSiteIdentity).
+  const site = usePublicSiteIdentity(scope.siteId)
   const meta = usePublicPageMeta(scope)
   const PageIcon = meta?.icon
 

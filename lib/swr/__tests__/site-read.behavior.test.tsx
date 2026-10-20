@@ -3,6 +3,7 @@ import { render, waitFor, cleanup } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import { SiteScopeProvider, memberScope, SITE_PAGES, type SiteScope } from '@/lib/scope/SiteScope'
 import { isLiveListKey, LIVE_LIST_KEY, useDashboard, useInstallStatus, usePagePreview, usePerformanceLatest, useSite, useVisitors, useFunnels } from '@/lib/swr/dashboard'
+import { usePublicSiteIdentity, useRecordPublicSiteIdentity } from '@/lib/swr/public-site-identity'
 import { markTeamResolved, setAccessToken, setActiveTeam } from '@/lib/api/client'
 import { publicSiteRef } from '@/lib/scope/site-ref'
 
@@ -224,5 +225,66 @@ describe('isLiveListKey', () => {
     expect(isLiveListKey('site-1')(memberKey)).toBe(true)
     expect(isLiveListKey('site-1')(publicKey)).toBe(false)
     expect(isLiveListKey(publicSiteRef('site-2'))(publicKey)).toBe(false)
+  })
+})
+
+// The public headers' name for the site (lib/swr/public-site-identity.ts). A share link is never served the site
+// record (a demo-class read), so the name comes from the dashboard payload's own `site`; the demo is served its record.
+// Found 20-10-2026 on the local production build: every share link's bar named no site, because the shell read only
+// the record.
+describe('the public headers name the site (usePublicSiteIdentity)', () => {
+  // What components/surfaces/DashboardSurface does: read the dashboard, record its payload's site.
+  function DashboardRead({ siteId }: { siteId: string }) {
+    const { data } = useDashboard(siteId, '', '', 'day', undefined, '7d')
+    useRecordPublicSiteIdentity(siteId, data?.site)
+    return null
+  }
+  function Name({ siteId }: { siteId: string }) {
+    const site = usePublicSiteIdentity(siteId)
+    return <span data-testid="name">{site ? `${site.name}|${site.domain}` : 'none'}</span>
+  }
+  const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } })
+
+  it('a share link: named from the dashboard read, and the site record is never asked for', async () => {
+    const id = nextId()
+    fetchSpy.mockImplementation(async (url: string) =>
+      json(url.includes('/dashboard') ? { site: { id, name: 'Shared Co', domain: 'shared.example' } } : {}))
+    const { getByTestId } = render(under(linkScope(id), <><DashboardRead siteId={id} /><Name siteId={id} /></>))
+    await waitFor(() => expect(getByTestId('name').textContent).toBe('Shared Co|shared.example'))
+    const endpoints = seen().map((s) => s.endpoint)
+    expect(endpoints.some((e) => e.startsWith(`/public/sites/${id}/dashboard`))).toBe(true)
+    expect(endpoints).not.toContain(`/public/sites/${id}`)
+  })
+
+  it('a share link with no dashboard read names nothing and asks nothing', async () => {
+    const id = nextId()
+    const { getByTestId } = render(under(linkScope(id), <Name siteId={id} />))
+    await new Promise((r) => setTimeout(r, 50))
+    expect(getByTestId('name').textContent).toBe('none')
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('the demo: named from its site record', async () => {
+    const id = nextId()
+    fetchSpy.mockImplementation(async (url: string) =>
+      json(url.endsWith(`/public/sites/${id}`) ? { id, name: 'Halden Cycles', domain: 'haldencycles.example' } : {}))
+    const { getByTestId } = render(under(demoScope(id), <Name siteId={id} />))
+    await waitFor(() => expect(getByTestId('name').textContent).toBe('Halden Cycles|haldencycles.example'))
+  })
+})
+
+describe('a member records no public identity', () => {
+  it('the recorder writes nothing without a public scope', async () => {
+    const id = nextId()
+    let seen: unknown = 'unset'
+    function Probe() {
+      useRecordPublicSiteIdentity(id, { name: 'Mine', domain: 'mine.example' })
+      seen = usePublicSiteIdentity(id)
+      return null
+    }
+    render(under(null, <Probe />))
+    await new Promise((r) => setTimeout(r, 50))
+    // A member's useSite answers from the (stubbed) record, which names nothing; the recorder wrote nothing.
+    expect(seen).toBeUndefined()
   })
 })

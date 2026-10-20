@@ -77,6 +77,10 @@ vi.mock('@/lib/swr/dashboard', () => ({
   useSite: (id: string) => ({ data: id ? site : undefined }),
   useFunnelDetail: (_siteId: string, funnelId: string) => ({ data: funnelId ? funnel : undefined }),
 }))
+// The real hook names a share link from the dashboard payload (lib/swr/__tests__/site-read.behavior.test.tsx).
+vi.mock('@/lib/swr/public-site-identity', () => ({
+  usePublicSiteIdentity: (id: string) => (id && site ? { name: site.name, domain: site.domain } : undefined),
+}))
 vi.mock('@/components/sites/SiteFavicon', () => ({
   SiteFavicon: ({ domain }: { domain: string }) => <i data-testid="favicon" data-domain={domain} />,
 }))

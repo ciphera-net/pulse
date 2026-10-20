@@ -58,6 +58,7 @@ import {
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import InstallBanner from '@/components/dashboard/InstallBanner'
 import { useLiveIndicator } from '@/lib/live-indicator-context'
+import { useRecordPublicSiteIdentity } from '@/lib/swr/public-site-identity'
 import { type MetricType, isMetricType } from '@/lib/dashboard/metrics'
 import { displayDomain } from '@/lib/utils/displayDomain'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
@@ -408,6 +409,9 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
   )
   // Derive typed values from single dashboard response
   const site = dashboard?.site ?? null
+  // A share link is never served the site record, so the public headers name it from this payload
+  // (lib/swr/public-site-identity.ts); recorded under a public scope only.
+  useRecordPublicSiteIdentity(siteId, site)
   // 🔴 `dashboard.site` IS THE SANITIZED PUBLIC SHAPE — the backend builds it
   // with NewPublicSiteResponse, the same whitelist the share surface gets — so
   // it does not carry identity_window_days, and the deck rendered the

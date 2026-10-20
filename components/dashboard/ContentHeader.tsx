@@ -11,7 +11,7 @@ import { useSites } from '@/lib/swr/sites'
 import OnboardingChip from '@/components/onboarding/OnboardingChip'
 import ThemeMenuSwitch from '@/components/theme/ThemeMenuSwitch'
 import { SampleDataLabel, TryPulseFreeButton } from '@/components/public/chrome'
-import { useSite } from '@/lib/swr/dashboard'
+import { usePublicSiteIdentity } from '@/lib/swr/public-site-identity'
 import { useOptionalSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
 
 interface ContentHeaderProps {
@@ -39,7 +39,7 @@ export default function ContentHeader(props: ContentHeaderProps) {
  * (The desktop top bar draws the same two in DashboardShell; this one is `md:hidden`.)
  */
 function PublicContentHeader({ onMobileMenuOpen, scope }: { onMobileMenuOpen: () => void; scope: SiteScope }) {
-  const { data: site } = useSite(scope.siteId)
+  const site = usePublicSiteIdentity(scope.siteId)
 
   return (
     <div className="shrink-0 flex items-center justify-between gap-2 border-b border-neutral-800/60 bg-card px-4 py-3.5 md:hidden">
