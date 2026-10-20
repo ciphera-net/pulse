@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { API_URL } from '@/lib/api/client'
 import apiRequest from '@/lib/api/client'
+import { useOptionalSiteScope } from '@/lib/scope/SiteScope'
 
 /**
  * useRealtimeSync — THE transport seam for realtime mode.
@@ -32,6 +33,12 @@ import apiRequest from '@/lib/api/client'
  * matters here because the stream deliberately runs on a direct hostname that
  * bypasses the CDN, which inherits the cluster's known intermittent
  * connection failures on node churn.
+ *
+ * A PUBLIC SCOPE (/demo, /share/<id>) HAS NO SOCKET. The ticket is minted by an authenticated POST and the
+ * stream is a member surface, so a public page makes no connection attempt, mints no ticket and starts no
+ * timer: this hook does nothing there. The page stays current the way every other read does, by polling:
+ * the dashboard key, the live lists and the realtime count each carry their own refresh interval (a
+ * dropped signal was always their backstop, and here it is the only mechanism).
  */
 
 /** Poll cadence used when the socket is unavailable. Matches the server's own 5s live cache. */
@@ -75,8 +82,12 @@ export function useRealtimeSync({ enabled, siteId, onChanged }: RealtimeSyncOpti
   const changedRef = useRef(onChanged)
   changedRef.current = onChanged
 
+  // Any public scope, not only one for this site: the ticket is a member write, and a public page never
+  // makes one.
+  const isPublic = useOptionalSiteScope()?.mode === 'public'
+
   useEffect(() => {
-    if (!enabled || !siteId) return
+    if (!enabled || !siteId || isPublic) return
 
     let cancelled = false
     let socket: WebSocket | null = null
@@ -195,5 +206,5 @@ export function useRealtimeSync({ enabled, siteId, onChanged }: RealtimeSyncOpti
         s.close()
       }
     }
-  }, [enabled, siteId])
+  }, [enabled, siteId, isPublic])
 }
