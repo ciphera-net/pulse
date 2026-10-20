@@ -269,6 +269,17 @@ public read API's — see that entry for what it does and does not cover.
   fixed ranges." The live count under the site name is the same small dot and number,
   for display only.
 
+- **Share links open in Pulse's own dashboard.** A link shows the pages it shares in a
+  read-only version of the dashboard, with the same charts and cards you see. Its side
+  rail lists only those pages, and a page the link does not share says "This page isn't
+  shared." What a link shares, and who can open it, have not changed.
+
+- **The live demo is the real dashboard, on a sample site.**
+  [pulse.ciphera.net/demo](https://pulse.ciphera.net/demo) opens every page of Pulse
+  (Dashboard, Pages, Journeys, Funnels, Performance, Uptime, Search and CDN) on Halden
+  Cycles, a bike shop that does not exist. It has thirteen months of generated data, and
+  new visits keep arriving while you look. The demo is labelled *Sample data*.
+
 - The top bar reads "Updated 6 seconds ago" instead of "Live · 6 seconds ago": it is
   about when the page last refreshed, not about who is on the site.
 
