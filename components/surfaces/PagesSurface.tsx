@@ -1,12 +1,14 @@
 'use client'
 
-import { useParams } from 'next/navigation'
+import { FileText } from '@phosphor-icons/react'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import PagesTable from '@/components/pages/PagesTable'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
 import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
 import { useSite, usePagesTable, useDataWindow } from '@/lib/swr/dashboard'
+import { useSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
 import { siteDaysCaption } from '@/lib/utils/timezones'
 
 // ---------------------------------------------------------------------------
@@ -31,10 +33,37 @@ import { siteDaysCaption } from '@/lib/utils/timezones'
 // half-wiring the filter popover's state. Adding it is additive.
 // ---------------------------------------------------------------------------
 
-export default function PagesPage() {
-  const params = useParams()
-  const siteId = params.id as string
+// * Whether this scope draws the Pages table at all (PUL-34). A member's scope and the demo's do. A
+// * customer's share link serves the dashboard family only (fidelity 'scoped'), and a page the
+// * site's owner did not share is not served either. Neither mounts a data hook: the server
+// * answers every read of a page it does not serve with 404.
+function servesPages(scope: SiteScope): boolean {
+  return scope.fidelity === 'full' && scope.pages.includes('pages')
+}
 
+function PagesNotAvailable() {
+  return (
+    <EmptyState
+      icon={<FileText />}
+      title="This page is not available"
+      description="The site owner has not shared it."
+    />
+  )
+}
+
+export default function PagesSurface() {
+  const scope = useSiteScope()
+  if (!servesPages(scope)) {
+    return (
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 pt-4">
+        <PagesNotAvailable />
+      </div>
+    )
+  }
+  return <PagesList siteId={scope.siteId} />
+}
+
+function PagesList({ siteId }: { siteId: string }) {
   const { data: site } = useSite(siteId)
 
   const dataWindow = useDataWindow(siteId, 'pages')
@@ -76,6 +105,11 @@ export default function PagesPage() {
         />
       ) : isLoading && rows.length === 0 ? (
         <div className="rounded-none border border-border bg-card h-96 animate-pulse" aria-hidden="true" />
+      ) : periodReady && !data ? (
+        // * The request was switched on (the view is known) and there is still no table, no error
+        // * and nothing in flight: the read was not made, because the scope does not answer it.
+        // * That is "not available", never an empty table, which would claim a site with no pages.
+        <PagesNotAvailable />
       ) : (
         <PagesTable rows={rows} total={rows.length} showTitle={false} />
       )}
