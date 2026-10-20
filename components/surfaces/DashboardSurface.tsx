@@ -468,17 +468,18 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
     postEmbedReady()
   }, [caps.embedReady, dashboardDrawn])
 
+  // A password-protected share link whose unlock lapsed: retrying cannot work, the
+  // reader has to enter the password again, and that happens on a reload.
+  const lockedShareCard = (
+    <ErrorCard
+      title="This dashboard is password protected"
+      description="Reload the page and enter the password again."
+    />
+  )
+  const lockedShare = !caps.member && isLockedShare(dashboardError)
+
   const failureCard = (failure: unknown, retry: () => void) => {
-    // A password-protected share link whose unlock lapsed: retrying cannot work, the
-    // reader has to enter the password again, and that happens on a reload.
-    if (!caps.member && isLockedShare(failure)) {
-      return (
-        <ErrorCard
-          title="This dashboard is password protected"
-          description="Reload the page and enter the password again."
-        />
-      )
-    }
+    if (!caps.member && isLockedShare(failure)) return lockedShareCard
     const status = (failure as { status?: number })?.status
     // "Your data is intact" speaks to the site's owner: a public reader has no data here.
     const reassurance = caps.member ? ' Your data is intact — this is a loading problem, not a data problem.' : ''
@@ -572,6 +573,19 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
   // not reach this page: the site layout shows the other-team state instead.)
   if (!siteRecord && siteError) {
     return failureState(siteError, () => { void refetchSite?.() })
+  }
+
+  // 🔴 A protected share whose unlock lapsed stops painting numbers. The share cookie is the
+  // ONLY grant, so its expiry is the normal failure mode of a protected link left open; SWR
+  // keeps the last answer beside the error, and hour-old numbers behind a live-looking page
+  // are the lie this page was built not to tell (share-expiry-reprompt). The lock replaces
+  // them, stale payload or not, and the toolbar goes with them: no other window can help.
+  if (lockedShare) {
+    return (
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
+        {lockedShareCard}
+      </div>
+    )
   }
 
   if (showSkeleton) {

@@ -565,6 +565,40 @@ describe('a share link (public, scoped): today\'s share page, inside the surface
     expect(screen.queryByText('Retry')).toBeNull()
   })
 
+  it('stops painting hour-old numbers when a protected share\'s unlock lapses mid-session (SWR keeps the stale payload beside the error)', async () => {
+    const view = await mount(shareScope)
+    expect(screen.getByTestId('deck')).toBeTruthy()
+
+    dashboardState = {
+      data: payload({ start: '2026-09-21', end: '2026-10-20' }),
+      error: Object.assign(new Error('locked'), { status: 401, data: { error: 'password required', is_protected: true } }),
+    }
+    view.rerender(<SiteScopeProvider scope={shareScope}><DashboardSurface /></SiteScopeProvider>)
+    await act(async () => {})
+    expect(screen.getByText('This dashboard is password protected')).toBeTruthy()
+    expect(screen.queryByTestId('deck')).toBeNull()
+    expect(screen.queryByTestId('card-sources')).toBeNull()
+
+    // Entered again elsewhere, the next refresh succeeds and the numbers come back.
+    dashboardState = { data: payload({ start: '2026-09-21', end: '2026-10-20' }) }
+    view.rerender(<SiteScopeProvider scope={shareScope}><DashboardSurface /></SiteScopeProvider>)
+    await act(async () => {})
+    expect(screen.getByTestId('deck')).toBeTruthy()
+    expect(screen.queryByText('This dashboard is password protected')).toBeNull()
+  })
+
+  it('keeps showing a member the numbers they have when a refresh fails: only a lapsed share lock replaces them', async () => {
+    const view = await mount(memberScope('site-1'))
+    dashboardState = {
+      data: payload({ start: '2026-09-21', end: '2026-10-20' }),
+      error: Object.assign(new Error('locked'), { status: 401, data: { is_protected: true } }),
+    }
+    view.rerender(<SiteScopeProvider scope={memberScope('site-1')}><DashboardSurface /></SiteScopeProvider>)
+    await act(async () => {})
+    expect(screen.getByTestId('deck')).toBeTruthy()
+    expect(screen.queryByText('This dashboard is password protected')).toBeNull()
+  })
+
   it('does not tell a public reader that "your data is intact"', async () => {
     dashboardState = { error: Object.assign(new Error('boom'), { status: 500 }) }
     await mount(shareScope)
