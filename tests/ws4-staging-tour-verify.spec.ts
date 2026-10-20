@@ -86,7 +86,7 @@ test('the tour runs on staging', async ({ browser }) => {
     if (i < EXPECTED.length - 1) await popover.locator('.driver-popover-next-btn').click()
   }
   await page.waitForTimeout(550)
-  await page.screenshot({ path: `${OUT}/st-7-close.jpg`, type: 'jpeg', quality: 85 })
+  await page.screenshot({ path: `${OUT}/st-6-close.jpg`, type: 'jpeg', quality: 85 })
   await expect(popover.locator('.driver-popover-next-btn')).toHaveText('Done')
   await popover.locator('.driver-popover-next-btn').click()
   await expect(popover).toHaveCount(0)

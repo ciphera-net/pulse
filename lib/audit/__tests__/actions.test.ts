@@ -16,8 +16,8 @@ const SOURCE_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..'
 // PULSE-73: ACTION_LABELS closes with `satisfies Record<AuditAction, string>`,
 // which is a build-time guarantee. This is its run-time twin, so a future
 // action added to AUDIT_ACTIONS without a label still fails a test under a
-// runner that does not type-check, the same discipline as the icon map's own
-// test (lib/utils/__tests__/notifications-icons.test.tsx, PULSE-72).
+// runner that does not type-check, the same discipline the notification icon
+// map's test had (PULSE-72; both went with the in-app inbox on 20-10-2026).
 describe('AUDIT_ACTIONS / ACTION_LABELS coverage (PULSE-73)', () => {
   it('every declared action has a non-empty label', () => {
     for (const action of AUDIT_ACTIONS) {

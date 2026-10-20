@@ -60,7 +60,8 @@ describe('error boundaries self-heal chunk-load failures', () => {
   })
 
   it('found the app’s boundaries (guard against the glob silently matching nothing)', () => {
-    // 10 as of 18-08-2026: root, notifications, share, sites/[id] + its six tools.
+    // 10 as of 18-08-2026: root, notifications, share, sites/[id] + its six tools
+    // (notifications' went with the in-app inbox on 20-10-2026).
     expect(Object.keys(boundaryModules).length).toBeGreaterThanOrEqual(10)
   })
 

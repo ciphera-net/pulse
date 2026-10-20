@@ -152,7 +152,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
     // One app-wide honour of `prefers-reduced-motion` — every framer-motion
-    // consumer (settings bottom-sheet, accordions, notification panel, …) drops
+    // consumer (settings bottom-sheet, accordions, the onboarding chip, …) drops
     // transform/opacity animation to an instant cut when the OS asks for it.
     <MotionConfig reducedMotion="user">
       <ErrorBoundary>
