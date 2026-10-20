@@ -221,7 +221,7 @@ describe('public full scope (the demo)', () => {
     mockUseFunnels.mockReturnValue(loaded([]))
     renderUnder(demo)
     expect(screen.getByText('No funnels yet')).toBeInTheDocument()
-    expect(screen.getByText('This site has not set up any funnels yet.')).toBeInTheDocument()
+    expect(screen.getByText('Funnels track how visitors move through a site. This site has not set up any.')).toBeInTheDocument()
     expect(screen.queryByRole('button')).toBeNull()
     expect(screen.queryByRole('link')).toBeNull()
   })

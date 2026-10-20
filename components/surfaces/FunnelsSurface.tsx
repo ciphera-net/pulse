@@ -227,7 +227,7 @@ function FunnelsList({ scope }: { scope: SiteScope }) {
           title="No funnels yet"
           description={
             !member
-              ? 'This site has not set up any funnels yet.'
+              ? 'Funnels track how visitors move through a site. This site has not set up any.'
               : canManageFunnels
                 ? 'Create a funnel to track how visitors move through your site and where they drop off.'
                 : 'Funnels track how visitors move through your site. They are set up by teammates with the analytics permission.'
