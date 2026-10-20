@@ -2,7 +2,7 @@
 
 import { siteDaysCaption } from '@/lib/utils/timezones'
 import { useCallback, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { FunnelSimple, TreeStructure, X } from '@phosphor-icons/react'
 import { Switcher } from '@ciphera-net/facet'
 import { aggregateJourney } from '@/lib/journeys/aggregate'
@@ -32,6 +32,7 @@ import {
 import { useJourneyFlow, useSite, useDataWindow } from '@/lib/swr/dashboard'
 import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
 import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
+import { canWrite, scopeHref, useSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
 
 // ---------------------------------------------------------------------------
 // Journeys (07-09-2026 simplification, owner pick "A solid"):
@@ -47,10 +48,41 @@ import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRan
 const DEPTH_SWITCH = DEPTH_OPTIONS.map((n) => ({ value: String(n), label: String(n) }))
 const DENSITY_SWITCH = DENSITY_OPTIONS.map((n) => ({ value: String(n), label: String(n) }))
 
-export default function JourneysPage() {
-  const params = useParams()
+// * Whether this scope draws Journeys at all (PUL-34). A member's scope and the demo's do. A
+// * customer's share link serves the dashboard family only (fidelity 'scoped'), and a page the
+// * site's owner did not share is not served either. Neither mounts a data hook: the server
+// * answers every read of a page it does not serve with 404.
+function servesJourneys(scope: SiteScope): boolean {
+  return scope.fidelity === 'full' && scope.pages.includes('journeys')
+}
+
+function JourneysNotAvailable() {
+  return (
+    <EmptyState
+      icon={<TreeStructure />}
+      title="This page is not available"
+      description="The site owner has not shared it."
+    />
+  )
+}
+
+export default function JourneysSurface() {
+  const scope = useSiteScope()
+  if (!servesJourneys(scope)) {
+    return (
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
+        <JourneysNotAvailable />
+      </div>
+    )
+  }
+  return <Journeys scope={scope} />
+}
+
+function Journeys({ scope }: { scope: SiteScope }) {
   const router = useRouter()
-  const siteId = params.id as string
+  const siteId = scope.siteId
+  // * Only a member starts a funnel or is sent to set up tracking; the public view reads.
+  const member = canWrite(scope)
 
   const { data: site } = useSite(siteId)
   // The view, like every other page's: the one memory, answered against Journeys'
@@ -132,6 +164,10 @@ export default function JourneysPage() {
   // * No sessions with a hop in range (an empty range is total_sessions 0 and
   // * no links): the empty states below, never an empty canvas.
   const hasJourneys = !!flowData && flowData.total_sessions > 0
+  // * The fetch was switched on (the view and the memory are known) and there is still no flow, no
+  // * error and nothing in flight: the read was not made, because the scope does not answer it.
+  // * That is "not available", never "No journey data yet", which would claim an empty site.
+  const readNotMade = fetchSiteId !== '' && !flowData && !flowError && !flowLoading
   const periodLabel = `${formatDisplayDate(new Date(view.dateRange.start + 'T00:00:00'))} – ${formatDisplayDate(new Date(view.dateRange.end + 'T00:00:00'))}`
 
   // * Lens → funnel cross-link: the heaviest chain through the lens becomes
@@ -146,7 +182,7 @@ export default function JourneysPage() {
       name: `Journey via ${filters.lens}`,
       steps: values.map((value) => ({ value, type: 'exact', category: 'page' })),
     }
-    router.push(`/sites/${siteId}/funnels?prefill=${encodeURIComponent(JSON.stringify(prefill))}`)
+    router.push(scopeHref(scope, 'funnels', `?prefill=${encodeURIComponent(JSON.stringify(prefill))}`))
   }
 
   const hasFilters = filters.dimensionFilters.length > 0
@@ -160,7 +196,7 @@ export default function JourneysPage() {
             Journeys
           </h1>
           <p className="text-sm text-neutral-400">
-            How visitors navigate through your site
+            {member ? 'How visitors navigate through your site' : 'How visitors navigate through this site'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -217,15 +253,17 @@ export default function JourneysPage() {
               <span className="truncate text-sm text-white" title={filters.lens}>
                 {filters.lens}
               </span>
-              <button
-                type="button"
-                aria-label="Create funnel from this path"
-                title="Create funnel from this path"
-                onClick={createFunnelFromLens}
-                className="ml-0.5 rounded-none p-0.5 text-neutral-500 transition-colors duration-fast ease-apple hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
-              >
-                <FunnelSimple className="h-3.5 w-3.5" />
-              </button>
+              {member && (
+                <button
+                  type="button"
+                  aria-label="Create funnel from this path"
+                  title="Create funnel from this path"
+                  onClick={createFunnelFromLens}
+                  className="ml-0.5 rounded-none p-0.5 text-neutral-500 transition-colors duration-fast ease-apple hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+                >
+                  <FunnelSimple className="h-3.5 w-3.5" />
+                </button>
+              )}
               <button
                 type="button"
                 aria-label="Clear lens"
@@ -251,9 +289,15 @@ export default function JourneysPage() {
           {flowError ? (
             <ErrorCard
               title="Couldn't load journeys"
-              description="The journey data request failed. Your data is safe — this is a loading problem, not a tracking one."
+              description={
+                member
+                  ? 'The journey data request failed. Your data is safe — this is a loading problem, not a tracking one.'
+                  : 'The journey data request failed. This is usually temporary.'
+              }
               onRetry={() => { void retryFlow() }}
             />
+          ) : readNotMade ? (
+            <JourneysNotAvailable />
           ) : !hasJourneys ? (
             filters.entryPath ? (
               <EmptyState
@@ -273,8 +317,13 @@ export default function JourneysPage() {
               <EmptyState
                 icon={<TreeStructure />}
                 title="No journey data yet"
-                description="Navigation flows will appear here as visitors browse through your site."
-                action={{ label: 'View setup guide', href: '/installation' }}
+                description={
+                  member
+                    ? 'Navigation flows will appear here as visitors browse through your site.'
+                    : 'Navigation flows will appear here as visitors browse through this site.'
+                }
+                // * The setup guide is the site team's: the public view has no call to action here.
+                action={member ? { label: 'View setup guide', href: '/installation' } : undefined}
               />
             )
           ) : (
