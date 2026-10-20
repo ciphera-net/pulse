@@ -368,7 +368,7 @@ describe('TourController step wiring', () => {
     return driverConfig
   }
 
-  it('the welcome is uncounted and offers Skip; counted steps carry "n of 7"', async () => {
+  it('the welcome is uncounted and offers Skip; counted steps carry "n of 6"', async () => {
     const cfg = await getConfig()
     expect(cfg.showProgress).toBe(false)
     const welcome = cfg.steps[0]
@@ -380,8 +380,8 @@ describe('TourController step wiring', () => {
     expect(welcome.popover.disableButtons).toEqual([])
     expect(welcome.popover.showProgress).toBeUndefined()
     expect(cfg.steps[1].popover.showProgress).toBe(true)
-    expect(cfg.steps[1].popover.progressText).toBe('1 of 7')
-    expect(cfg.steps[7].popover.progressText).toBe('7 of 7')
+    expect(cfg.steps[1].popover.progressText).toBe('1 of 6')
+    expect(cfg.steps[6].popover.progressText).toBe('6 of 6')
   })
 
   it('every counted step carries a live resolver for its own anchor', async () => {
@@ -433,17 +433,18 @@ describe('TourController step wiring', () => {
   })
 
   it('a user missing a surface gets a shorter tour with an honest counter', async () => {
-    // The bell is gone for this user: its step is dropped at start time and
-    // the remaining steps renumber — no corner-pinned 0×0 spotlight, no wait.
-    unmountAnchor('notification-bell')
+    // The realtime trigger is gone for this user: its step is dropped at start
+    // time and the remaining steps renumber — no corner-pinned 0×0 spotlight,
+    // no wait.
+    unmountAnchor('realtime-trigger')
     render(<TourController />)
     await waitFor(() => expect(driveMock).toHaveBeenCalledTimes(1))
     const cfg = driverConfig
     expect(cfg.steps.length).toBe(TOUR_STEPS.length - 1)
     const titles = cfg.steps.map((s) => s.popover.title)
-    expect(titles).not.toContain('Alerts land here')
-    expect(cfg.steps[1].popover.progressText).toBe('1 of 6')
-    expect(cfg.steps[cfg.steps.length - 1].popover.progressText).toBe('6 of 6')
+    expect(titles).not.toContain('Right now')
+    expect(cfg.steps[1].popover.progressText).toBe('1 of 5')
+    expect(cfg.steps[cfg.steps.length - 1].popover.progressText).toBe('5 of 5')
     // The closing gesture survives as the last step.
     expect(cfg.steps[cfg.steps.length - 1].popover.title).toBe('More than the dashboard')
   })

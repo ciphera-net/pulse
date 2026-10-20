@@ -117,11 +117,6 @@ export function ShortcutHandler({
           router.push('/integrations')
           return
         }
-        if (key === 'n') {
-          e.preventDefault()
-          router.push('/notifications')
-          return
-        }
         if (siteId && SITE_KEY_MAP[key]) {
           e.preventDefault()
           const page = SITE_KEY_MAP[key]

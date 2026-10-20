@@ -13,7 +13,8 @@
 // timestamps that fill fixtures, UTC-4 shifts the DATE backwards, which is the
 // failure that actually reaches a customer. A UTC+10 zone leaves those same
 // dates unchanged and would have proved less. It found one real defect
-// immediately — see lib/notifications/renderers/billing.tsx.
+// immediately, in the billing notification renderer (deleted with the in-app
+// inbox on 20-10-2026).
 //
 // Set here rather than in the npm script so it holds for `npx vitest run` and
 // for an IDE runner too. Verified effective: Intl resolves to America/New_York

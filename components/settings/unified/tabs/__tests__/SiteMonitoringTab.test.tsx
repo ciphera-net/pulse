@@ -251,8 +251,11 @@ describe('SiteMonitoringTab — Tracking', () => {
   it('names the delivery route and links to Notifications without editing it', () => {
     arm()
     render(<SiteMonitoringTab siteId="s1" />)
-    expect(screen.getByText(/Monitoring category in your notification settings/)).toBeInTheDocument()
+    const route = screen.getByText(/Monitoring category in your notification settings/)
+    expect(route.textContent).toMatch(/^Uptime alerts arrive by email,/)
     expect(screen.getByRole('link', { name: /Notification settings/ })).toHaveAttribute('href', '/settings/account/notifications')
+    // Email-only since 20-10-2026: no line on the tab may promise the dashboard.
+    expect(document.body.textContent).not.toMatch(/in-app|in the dashboard/i)
   })
 })
 

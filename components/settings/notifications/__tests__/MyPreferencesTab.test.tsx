@@ -168,17 +168,28 @@ describe('MyPreferencesTab (one switch per category)', () => {
     render(<MyPreferencesTab />)
     await screen.findByText('Billing')
     expect(screen.getByRole('heading', { name: 'Email' })).toBeInTheDocument()
-    const desc = screen.getByText(/Every notification shows in the app the moment it happens/)
-    expect(desc.textContent).toMatch(/Switch it off per category/)
+    const desc = screen.getByText(/Notifications arrive by email as they happen/)
+    expect(desc.textContent).toMatch(/Switch off a category to stop its emails/)
     expect(desc.textContent).toMatch(/yours, not the team's/)
+    // Email-only since 20-10-2026: nothing may promise an in-app copy.
+    expect(desc.textContent).not.toMatch(/in the app|in-app/i)
     expect(desc.textContent).not.toMatch(/[—–]/)
+  })
+
+  it("says where the billing notices a member does not get go (D2)", async () => {
+    // Invoices, failed payments and refunds are emailed to the team's billing
+    // email only. With no in-app copy left, a caption that listed them under an
+    // Always on chip promised every member a notice they never receive.
+    render(<MyPreferencesTab />)
+    await screen.findByText('Billing')
+    expect(screen.getByText(/Invoices, failed payments and refunds go to the team's billing email\./)).toBeInTheDocument()
   })
 
   it('says only "These settings are yours." to somebody alone (PULSE-59)', async () => {
     mockTeamState = 'alone'
     render(<MyPreferencesTab />)
     await screen.findByText('Billing')
-    const desc = screen.getByText(/Every notification shows in the app the moment it happens/)
+    const desc = screen.getByText(/Notifications arrive by email as they happen/)
     expect(desc.textContent).toMatch(/These settings are yours\.$/)
     expect(desc.textContent).not.toMatch(/team|workspace/i)
   })

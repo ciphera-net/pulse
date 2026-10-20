@@ -12,7 +12,6 @@ import { formatUpdatedLabel } from '@/lib/utils/format'
 import { useFunnelDetail, useSite } from '@/lib/swr/dashboard'
 import { useAuth } from '@/lib/auth/context'
 import { UnnamedSession } from '@/components/account/UnnamedSession'
-import NotificationCenter from '@/components/notifications/NotificationCenter'
 import OnboardingChip from '@/components/onboarding/OnboardingChip'
 import { useUserMenuTeamProps } from '@/components/dashboard/userMenuTeam'
 import { navGroups, tabFor } from '@/components/settings/nav'
@@ -433,7 +432,6 @@ function GlassTopBar({ siteId }: { siteId: string | null }) {
           </div>
         )}
         <OnboardingChip />
-        <NotificationCenter anchor="bottom" variant="default" />
         <UserMenu
           auth={auth}
           // 🔴 ONLY WHEN WE KNOW. Passing this while the vault read is still in

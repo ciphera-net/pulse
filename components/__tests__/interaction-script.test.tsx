@@ -1,7 +1,8 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { renderToString } from 'react-dom/server'
+import { render } from '@testing-library/react'
 
 /**
  * The interaction-capture companion records the label of a clicked control. In
@@ -73,5 +74,73 @@ describe('script.interactions.js', () => {
     expect(isInteractionCaptureRoute('/demo/')).toBe(true)
     expect(isInteractionCaptureRoute(null)).toBe(false)
     expect(isInteractionCaptureRoute('/demonstration')).toBe(false)
+  })
+})
+
+/**
+ * The fence (security note 20-10-2026, item 2). Loading is decided per route,
+ * but a companion loaded on /login keeps listening after a client-side
+ * navigation into the app, so the body carries data-pulse-ignore on every route
+ * that is not a capture route.
+ */
+describe('data-pulse-ignore on the body', () => {
+  const COMPANION = readFileSync(join(process.cwd(), 'tracker/script.interactions.js'), 'utf8')
+  let detach: Array<() => void> = []
+
+  afterEach(() => {
+    for (const d of detach) d()
+    detach = []
+    document.body.removeAttribute('data-pulse-ignore')
+    delete (window as unknown as { pulse?: unknown }).pulse
+  })
+
+  it('is set on an app route, cleared on a capture route, and cleared on unmount', () => {
+    mockPath = '/sites/abc-123'
+    const view = render(<InteractionScript />)
+    expect(document.body.hasAttribute('data-pulse-ignore')).toBe(true)
+
+    mockPath = '/login'
+    view.rerender(<InteractionScript />)
+    expect(document.body.hasAttribute('data-pulse-ignore')).toBe(false)
+
+    mockPath = '/settings/account/profile'
+    view.rerender(<InteractionScript />)
+    expect(document.body.hasAttribute('data-pulse-ignore')).toBe(true)
+
+    view.unmount()
+    expect(document.body.hasAttribute('data-pulse-ignore')).toBe(false)
+  })
+
+  it('stops a loaded companion recording a click in a portal on an app route', () => {
+    const track = vi.fn()
+    ;(window as unknown as { pulse: unknown }).pulse = { track, cleanPath: () => location.pathname }
+    // Load the real companion, recording its listeners so they can be removed.
+    const real = document.addEventListener.bind(document)
+    const spy = vi.spyOn(document, 'addEventListener').mockImplementation(((t: string, h: never, o: never) => {
+      detach.push(() => document.removeEventListener(t, h, o))
+      return real(t, h, o)
+    }) as typeof document.addEventListener)
+    new Function(COMPANION)()
+    spy.mockRestore()
+
+    // A menu portalled into <body>, outside the rendered tree: a shell-level
+    // attribute could not reach it.
+    const portal = document.createElement('div')
+    portal.innerHTML = '<button>Switch to Example Team</button>'
+    document.body.appendChild(portal)
+    detach.push(() => portal.remove())
+
+    mockPath = '/sites/abc-123'
+    const view = render(<InteractionScript />)
+    portal.querySelector('button')!.click()
+    expect(track).not.toHaveBeenCalled()
+
+    // n−1: the same click on a capture route is recorded, so the silence above
+    // is the fence and not a companion that records nothing.
+    mockPath = '/login'
+    view.rerender(<InteractionScript />)
+    portal.querySelector('button')!.click()
+    expect(track).toHaveBeenCalledWith('pulse_click', expect.objectContaining({ text: 'Switch to Example Team' }))
+    view.unmount()
   })
 })

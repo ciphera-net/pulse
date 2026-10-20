@@ -122,7 +122,7 @@ describe('welcome step against the real driver.js', () => {
       expect(title?.textContent).toBe('Your key metrics')
     })
     const progress = document.querySelector('.driver-popover-progress-text')
-    expect(progress?.textContent).toBe('1 of 7')
+    expect(progress?.textContent).toBe('1 of 6')
     // On a counted step, Back is a real previous and stays enabled too.
     const back = document.querySelector<HTMLButtonElement>('.driver-popover-prev-btn')
     expect(back!.textContent).toBe('Back')

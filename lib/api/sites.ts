@@ -135,8 +135,8 @@ export interface InstallStatusResponse {
  *  these three words (pulse-backend internal/ingestdrops/causes.go).
  *
  *  🔴 DECLARED ONCE, IN `lib/ingest-causes.ts`, and re-exported here for the API
- *  surface's own readers. The notification card renders the same three causes in
- *  a different register; a second union here is how the two would drift. */
+ *  surface's own readers. The Monitoring tab renders the same three causes; a
+ *  second union here is how the two would drift. */
 export type { IngestRejectionCause }
 
 export interface IngestHealthResponse {
