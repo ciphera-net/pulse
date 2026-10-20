@@ -149,7 +149,7 @@ export default function SiteMonitoringTab({ siteId }: { siteId: string }) {
             caption={
               <>
                 Checks <span className="font-mono">{site.domain}</span> every 5 minutes for availability,
-                response time and incident history, with alerts by email and in the dashboard.
+                response time and incident history, with alerts by email.
                 {!canManageUptime && ' Only an owner or admin can turn this on or off.'}
               </>
             }
@@ -219,7 +219,7 @@ export default function SiteMonitoringTab({ siteId }: { siteId: string }) {
             truth. */}
         <div className="flex items-center justify-between gap-4 border-t border-border px-5 py-3.5">
           <p className="text-xs text-muted-foreground">
-            Uptime alerts arrive in-app and by email, through the Monitoring category in your notification settings.
+            Uptime alerts arrive by email, through the Monitoring category in your notification settings.
           </p>
           {/* The house link: foreground with an underline (Organization →
               Notifications draws the same link the same way). Orange is for

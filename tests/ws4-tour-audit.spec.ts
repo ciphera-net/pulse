@@ -29,7 +29,7 @@ const VIEWPORTS = [
 
 const STEP_TITLES = [
   'Your key metrics', 'The chart', 'Break it down', 'Pick your window',
-  'Right now', 'Alerts land here', 'More than the dashboard',
+  'Right now', 'More than the dashboard',
 ]
 
 interface StepMeasure {

@@ -389,6 +389,14 @@ public read API's — see that entry for what it does and does not cover.
 
 ### Removed
 
+- **The notification bell and the `/notifications` page are gone. Pulse notifications arrive by email.**
+  Every notification already had an email, and the emails now link straight into Pulse. You switch off a
+  category's emails in Settings → Account → Notifications, and `/notifications` redirects there, so bookmarks
+  and older links keep working. The tour's "Alerts land here" step, the `g n` shortcut and the command
+  palette's Notifications entry went with the page. Failed-payment, invoice and refund notices go by email to
+  the workspace's billing contact, as they always have; the workspace's other members saw them only in the
+  bell, so they no longer get them. The "Site added" notification is retired: it told the person who had just
+  added a site that they had added one.
 - **The dashboard's Export button and its PDF are gone.** Export lives in
   Settings → Site → Export now (see *Added*). The shared dashboard and the live
   demo lose their Export button too: a shared link is for looking at the

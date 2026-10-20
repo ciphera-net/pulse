@@ -8,7 +8,6 @@ import { useAuth } from '@/lib/auth/context'
 import { UnnamedSession } from '@/components/account/UnnamedSession'
 import { useUserMenuTeamProps } from '@/components/dashboard/userMenuTeam'
 import { useSites } from '@/lib/swr/sites'
-import NotificationCenter from '@/components/notifications/NotificationCenter'
 import OnboardingChip from '@/components/onboarding/OnboardingChip'
 import ThemeMenuSwitch from '@/components/theme/ThemeMenuSwitch'
 
@@ -54,7 +53,6 @@ export default function ContentHeader({
 
       <div className="flex shrink-0 items-center gap-1">
         <OnboardingChip />
-        <NotificationCenter anchor="bottom" variant="default" />
         {/* Prop parity with the desktop GlassTopBar instance: without the
             org props the Facet menu silently drops its whole team section,
             which left multi-org customers on a phone unable to switch, create,

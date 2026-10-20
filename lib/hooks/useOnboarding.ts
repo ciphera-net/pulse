@@ -96,7 +96,7 @@ export function useOnboarding() {
 
   // Gate visibility on the data actually being there. The chip is top-bar
   // chrome: appearing with a provisional 0/5 and then settling (or vanishing
-  // at allDone) would visibly shift the bell/avatar cluster on every load.
+  // at allDone) would visibly shift the chip/avatar cluster on every load.
   // Members are part of "there": without them the teammate row flickered
   // unchecked→checked on every open.
   const dataReady =

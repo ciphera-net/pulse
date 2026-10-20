@@ -269,6 +269,15 @@ const nextConfig: NextConfig = {
         destination: '/sites/:id/performance/:path*',
         permanent: true,
       },
+      // The in-app inbox went on 20-10-2026: Pulse notifications are email-only.
+      // `/notifications` is bookmarkable and older emails fell back to it, so it
+      // keeps resolving, to the page that controls those emails. Only the page
+      // route: the API's /notifications/preferences is a different host and path.
+      {
+        source: '/notifications',
+        destination: '/settings/account/notifications',
+        permanent: true,
+      },
       // NOTE: the former `/integrations/:slug` → docs.ciphera.net redirects were
       // removed. They shadowed the real per-integration guide pages
       // (app/integrations/[slug]) and pointed at a defunct host (docs moved to

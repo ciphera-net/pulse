@@ -19,8 +19,9 @@ import AccountSecurityAlertsPanel from '@/components/settings/AccountSecurityAle
  * Account, Notifications: one switch per category (owner rulings 21-09-2026,
  * direction A of the options round the same day).
  *
- * Every notification shows in the app the moment it happens. Email is instant
- * too, and the only control a person has is email on or off per category.
+ * Notifications are email-only (20-10-2026: the in-app inbox was removed).
+ * Each one arrives by email as it happens, and the only control a person has
+ * is email on or off per category.
  * Billing and Security cannot be switched off. There is no digest, no
  * schedule, no mute, no in-app toggle and nothing about retention on this
  * page; the retention windows are the registry's and cleanup is automatic.
@@ -135,7 +136,7 @@ export default function MyPreferencesTab() {
     <div className="space-y-8">
       <SettingsPanel
         title="Email"
-        description={`Every notification shows in the app the moment it happens. Email is instant too. Switch it off per category. ${alone ? 'These settings are yours.' : "These settings are yours, not the team's."}`}
+        description={`Notifications arrive by email as they happen. Switch off a category to stop its emails. ${alone ? 'These settings are yours.' : "These settings are yours, not the team's."}`}
       >
         {categories.length === 0 ? (
           <EmptyRow

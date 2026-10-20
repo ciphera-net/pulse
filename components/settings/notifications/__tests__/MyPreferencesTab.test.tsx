@@ -168,9 +168,11 @@ describe('MyPreferencesTab (one switch per category)', () => {
     render(<MyPreferencesTab />)
     await screen.findByText('Billing')
     expect(screen.getByRole('heading', { name: 'Email' })).toBeInTheDocument()
-    const desc = screen.getByText(/Every notification shows in the app the moment it happens/)
-    expect(desc.textContent).toMatch(/Switch it off per category/)
+    const desc = screen.getByText(/Notifications arrive by email as they happen/)
+    expect(desc.textContent).toMatch(/Switch off a category to stop its emails/)
     expect(desc.textContent).toMatch(/yours, not the team's/)
+    // Email-only since 20-10-2026: nothing may promise an in-app copy.
+    expect(desc.textContent).not.toMatch(/in the app|in-app/i)
     expect(desc.textContent).not.toMatch(/[—–]/)
   })
 
@@ -178,7 +180,7 @@ describe('MyPreferencesTab (one switch per category)', () => {
     mockTeamState = 'alone'
     render(<MyPreferencesTab />)
     await screen.findByText('Billing')
-    const desc = screen.getByText(/Every notification shows in the app the moment it happens/)
+    const desc = screen.getByText(/Notifications arrive by email as they happen/)
     expect(desc.textContent).toMatch(/These settings are yours\.$/)
     expect(desc.textContent).not.toMatch(/team|workspace/i)
   })

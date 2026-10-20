@@ -29,13 +29,13 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   // is the authenticated home (middleware redirects a signed-in `/` here).
   // /pricing, /integrations and /installation left this list at B7 (06-10-2026):
   // they render in the marketing app, and the Ingress never sends them here.
-  const isDashboardPage = pathname === '/sites' || pathname === '/notifications' || pathname === '/sites/new' || pathname.startsWith('/settings')
+  const isDashboardPage = pathname === '/sites' || pathname === '/sites/new' || pathname.startsWith('/settings')
   // Checkout page has its own minimal layout — no app header/footer
   const isCheckoutPage = pathname.startsWith('/checkout')
   // Auth callback is a transient route that only renders <LoadingOverlay> while
   // exchanging the OAuth code. The app shell must not mount here — it would
-  // fire layout-level data hooks (NotificationCenter polling, sites via
-  // UnifiedSettingsModal, organizations) using the stale pre-login session,
+  // fire layout-level data hooks (sites via UnifiedSettingsModal,
+  // organizations) using the stale pre-login session,
   // all of which 403 and create the post-login flicker / slow-load.
   const isAuthCallback = pathname.startsWith('/auth/callback')
 
@@ -71,7 +71,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
     return null
   }
 
-  // Authenticated dashboard pages (site pages, home, notifications, settings):
+  // Authenticated dashboard pages (site pages, home, settings):
   // ONE DashboardShell, mounted here for all of them.
   //
   // Site pages used to take their shell from the sites layout instead
