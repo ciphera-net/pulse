@@ -45,9 +45,8 @@ export function PublicRoot({
   const { mutate } = useSWRConfig()
   const [relocked, setRelocked] = useState(false)
 
-  // Any public read under this root: the page's data hooks and the shell's. A failing one
-  // that says "protected" locks the page again. (Not `useSWRConfig`'s own: this is the config
-  // the subtree below inherits.)
+  // The page's own reads and the shell's all run under this config (the provider below). One
+  // that fails with 401 `is_protected` locks the page again: the share cookie has expired.
   const swrConfig = useMemo(
     () => ({
       onError: (error: unknown) => {
