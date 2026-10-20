@@ -386,6 +386,17 @@ describe('a share link (public, scoped): today\'s share page, inside the surface
     }
   })
 
+  it('asks for day buckets in every window, a single day included', async () => {
+    for (const query of ['period=today', 'period=yesterday', 'period=7', 'period=30']) {
+      dashboardCalls = []
+      mockSearchParams = new URLSearchParams(query)
+      const view = await mount(shareScope)
+      expect(dashboardCalls.length, query).toBeGreaterThan(0)
+      expect(dashboardCalls.every((c) => c.interval === 'day'), query).toBe(true)
+      view.unmount()
+    }
+  })
+
   it('never reads a filter from the URL, whatever the link carries', async () => {
     mockSearchParams = new URLSearchParams({ filters: serializeFilters([{ dimension: 'country', operator: 'is', values: ['NO'] }]) })
     await mount(shareScope)
