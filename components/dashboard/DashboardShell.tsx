@@ -483,6 +483,9 @@ function usePublicPageMeta(scope: SiteScope): PageMeta | null {
   const funnelId = route?.page === 'funnels' ? (route.funnelId ?? '') : ''
   const { data: funnel } = useFunnelDetail(scope.siteId, funnelId)
   if (!route) return null
+  // * A page the scope does not share shows the not-shared state, so it has no crumb either (and no parent link
+  // * to a page that is not shared).
+  if (!scope.pages.includes(route.page)) return null
 
   const item = navItemForPage(route.page)
   if (funnelId) {

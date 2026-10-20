@@ -288,6 +288,15 @@ describe('the bars in public mode', () => {
     expect(within(nav).getByRole('link', { name: 'Funnels' })).toHaveAttribute('href', '/demo/funnels')
   })
 
+  it('has no page crumb for a page the link does not share, nor a parent link to one', async () => {
+    renderPublic(customerScope(), '/share/site-9/funnels/f-1')
+    await railLinks()
+    const nav = screen.getByRole('navigation', { name: 'Breadcrumb' })
+    expect(within(nav).queryByText('Funnels')).toBeNull()
+    expect(within(nav).queryByText('Bike purchase')).toBeNull()
+    expect(within(nav).queryByRole('link')).toBeNull()
+  })
+
   it('has no page crumb for an address that is no page', async () => {
     renderPublic(demoScope(), '/demo/visitors')
     await railLinks()
