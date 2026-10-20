@@ -1,4 +1,5 @@
 import apiRequest from './client'
+import { isPublicSiteRef, sitePath, type SiteRef } from '@/lib/scope/site-ref'
 
 // * Types for Performance monitoring.
 // *
@@ -110,8 +111,8 @@ export interface PerformanceLatest {
   attempts: PerformanceAttempt[]
 }
 
-export async function getPerformanceConfig(siteId: string): Promise<PerformanceConfig> {
-  return apiRequest<PerformanceConfig>(`/sites/${siteId}/performance/config`)
+export async function getPerformanceConfig(site: SiteRef): Promise<PerformanceConfig> {
+  return apiRequest<PerformanceConfig>(sitePath(site, '/performance/config'))
 }
 
 export async function updatePerformanceConfig(
@@ -124,24 +125,24 @@ export async function updatePerformanceConfig(
   })
 }
 
-export async function getPerformanceLatest(siteId: string): Promise<PerformanceLatest> {
-  const res = await apiRequest<PerformanceLatest>(`/sites/${siteId}/performance/latest`)
+export async function getPerformanceLatest(site: SiteRef): Promise<PerformanceLatest> {
+  const res = await apiRequest<PerformanceLatest>(sitePath(site, '/performance/latest'))
   return { checks: res?.checks ?? [], attempts: res?.attempts ?? [] }
 }
 
 export async function getPerformanceHistory(
-  siteId: string,
+  site: SiteRef,
   strategy: 'mobile' | 'desktop' = 'mobile',
   days = 90
 ): Promise<PerformanceCheck[]> {
   const res = await apiRequest<{ checks: PerformanceCheck[] }>(
-    `/sites/${siteId}/performance/history?strategy=${strategy}&days=${days}`
+    sitePath(site, `/performance/history?strategy=${strategy}&days=${days}`)
   )
   return res?.checks ?? []
 }
 
-export async function getPerformanceCheck(siteId: string, checkId: string): Promise<PerformanceCheck> {
-  return apiRequest<PerformanceCheck>(`/sites/${siteId}/performance/checks/${checkId}`)
+export async function getPerformanceCheck(site: SiteRef, checkId: string): Promise<PerformanceCheck> {
+  return apiRequest<PerformanceCheck>(sitePath(site, `/performance/checks/${checkId}`))
 }
 
 // * Triggers an async Performance check. Returns immediately (202).
@@ -162,9 +163,14 @@ export interface PagePreview {
   checked_at: string
 }
 
-export async function getPagePreview(siteId: string): Promise<PagePreview | null> {
+/**
+ * The member read is the performance page's own route; a public ref reads the dashboard family's
+ * `/page-preview` instead, because that is the one route a share link is served (the performance
+ * routes are the demo's alone), and it answers the same capture.
+ */
+export async function getPagePreview(site: SiteRef): Promise<PagePreview | null> {
   try {
-    return await apiRequest<PagePreview>(`/sites/${siteId}/performance/page-preview`)
+    return await apiRequest<PagePreview>(sitePath(site, isPublicSiteRef(site) ? '/page-preview' : '/performance/page-preview'))
   } catch (e) {
     if ((e as { status?: number })?.status === 404) return null
     throw e
@@ -175,6 +181,9 @@ export async function getPagePreview(siteId: string): Promise<PagePreview | null
 // carries the same backdrop as the authed one. Serves only is_public sites —
 // the capture is a screenshot of the site's own public page, never visitor
 // data. 404 (no capture, or site not public) is the card's fallback state.
+//
+// @deprecated getPagePreview(publicSiteRef(id)) reads the same route; this stays for the share page
+// that still calls it.
 export async function getPublicPagePreview(siteId: string): Promise<PagePreview | null> {
   try {
     return await apiRequest<PagePreview>(`/public/sites/${siteId}/page-preview`)

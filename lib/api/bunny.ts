@@ -1,5 +1,6 @@
 import apiRequest, { type SendOptions } from './client'
 import { rangeQuery } from './rangeQuery'
+import { sitePath, type SiteRef } from '@/lib/scope/site-ref'
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -118,26 +119,26 @@ export async function connectBunny(siteId: string, apiKey: string, pullZoneId: n
   })
 }
 
-export async function getBunnyStatus(siteId: string): Promise<BunnyStatus> {
-  return apiRequest<BunnyStatus>(`/sites/${siteId}/integrations/bunny/status`)
+export async function getBunnyStatus(site: SiteRef): Promise<BunnyStatus> {
+  return apiRequest<BunnyStatus>(sitePath(site, '/integrations/bunny/status'))
 }
 
 export async function disconnectBunny(siteId: string, send: SendOptions = {}): Promise<void> {
   await apiRequest(`/sites/${siteId}/integrations/bunny`, { method: 'DELETE', keepalive: send.keepalive })
 }
 
-export async function getBunnyOverview(siteId: string, startDate: string, endDate: string, period?: string): Promise<BunnyOverview> {
-  return apiRequest<BunnyOverview>(`/sites/${siteId}/bunny/overview?${rangeQuery(startDate, endDate, period)}`)
+export async function getBunnyOverview(site: SiteRef, startDate: string, endDate: string, period?: string): Promise<BunnyOverview> {
+  return apiRequest<BunnyOverview>(sitePath(site, `/bunny/overview?${rangeQuery(startDate, endDate, period)}`))
 }
 
-export async function getBunnyDailyStats(siteId: string, startDate: string, endDate: string, period?: string): Promise<{ daily_stats: BunnyDailyRow[] }> {
-  return apiRequest<{ daily_stats: BunnyDailyRow[] }>(`/sites/${siteId}/bunny/daily-stats?${rangeQuery(startDate, endDate, period)}`)
+export async function getBunnyDailyStats(site: SiteRef, startDate: string, endDate: string, period?: string): Promise<{ daily_stats: BunnyDailyRow[] }> {
+  return apiRequest<{ daily_stats: BunnyDailyRow[] }>(sitePath(site, `/bunny/daily-stats?${rangeQuery(startDate, endDate, period)}`))
 }
 
-export async function getBunnyRegions(siteId: string, startDate: string, endDate: string, period?: string): Promise<BunnyRegionsResponse> {
-  return apiRequest<BunnyRegionsResponse>(`/sites/${siteId}/bunny/regions?${rangeQuery(startDate, endDate, period)}`)
+export async function getBunnyRegions(site: SiteRef, startDate: string, endDate: string, period?: string): Promise<BunnyRegionsResponse> {
+  return apiRequest<BunnyRegionsResponse>(sitePath(site, `/bunny/regions?${rangeQuery(startDate, endDate, period)}`))
 }
 
-export async function getBunnyLive(siteId: string): Promise<BunnyLiveResponse> {
-  return apiRequest<BunnyLiveResponse>(`/sites/${siteId}/bunny/live`)
+export async function getBunnyLive(site: SiteRef): Promise<BunnyLiveResponse> {
+  return apiRequest<BunnyLiveResponse>(sitePath(site, '/bunny/live'))
 }

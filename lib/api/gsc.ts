@@ -1,4 +1,5 @@
 import apiRequest, { type SendOptions } from './client'
+import { sitePath, type SiteRef } from '@/lib/scope/site-ref'
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -48,8 +49,8 @@ export async function getGSCAuthURL(siteId: string): Promise<{ auth_url: string 
   return apiRequest<{ auth_url: string }>(`/sites/${siteId}/integrations/gsc/auth-url`)
 }
 
-export async function getGSCStatus(siteId: string): Promise<GSCStatus> {
-  return apiRequest<GSCStatus>(`/sites/${siteId}/integrations/gsc/status`)
+export async function getGSCStatus(site: SiteRef): Promise<GSCStatus> {
+  return apiRequest<GSCStatus>(sitePath(site, '/integrations/gsc/status'))
 }
 
 export async function disconnectGSC(siteId: string, send: SendOptions = {}): Promise<void> {
@@ -59,24 +60,24 @@ export async function disconnectGSC(siteId: string, send: SendOptions = {}): Pro
   })
 }
 
-export async function getGSCOverview(siteId: string, startDate: string, endDate: string): Promise<GSCOverview> {
-  return apiRequest<GSCOverview>(`/sites/${siteId}/gsc/overview?start_date=${startDate}&end_date=${endDate}`)
+export async function getGSCOverview(site: SiteRef, startDate: string, endDate: string): Promise<GSCOverview> {
+  return apiRequest<GSCOverview>(sitePath(site, `/gsc/overview?start_date=${startDate}&end_date=${endDate}`))
 }
 
-export async function getGSCTopQueries(siteId: string, startDate: string, endDate: string, limit = 50, offset = 0): Promise<GSCQueryResponse> {
-  return apiRequest<GSCQueryResponse>(`/sites/${siteId}/gsc/top-queries?start_date=${startDate}&end_date=${endDate}&limit=${limit}&offset=${offset}`)
+export async function getGSCTopQueries(site: SiteRef, startDate: string, endDate: string, limit = 50, offset = 0): Promise<GSCQueryResponse> {
+  return apiRequest<GSCQueryResponse>(sitePath(site, `/gsc/top-queries?start_date=${startDate}&end_date=${endDate}&limit=${limit}&offset=${offset}`))
 }
 
-export async function getGSCTopPages(siteId: string, startDate: string, endDate: string, limit = 50, offset = 0): Promise<GSCPageResponse> {
-  return apiRequest<GSCPageResponse>(`/sites/${siteId}/gsc/top-pages?start_date=${startDate}&end_date=${endDate}&limit=${limit}&offset=${offset}`)
+export async function getGSCTopPages(site: SiteRef, startDate: string, endDate: string, limit = 50, offset = 0): Promise<GSCPageResponse> {
+  return apiRequest<GSCPageResponse>(sitePath(site, `/gsc/top-pages?start_date=${startDate}&end_date=${endDate}&limit=${limit}&offset=${offset}`))
 }
 
-export async function getGSCQueryPages(siteId: string, query: string, startDate: string, endDate: string): Promise<GSCPageResponse> {
-  return apiRequest<GSCPageResponse>(`/sites/${siteId}/gsc/query-pages?query=${encodeURIComponent(query)}&start_date=${startDate}&end_date=${endDate}`)
+export async function getGSCQueryPages(site: SiteRef, query: string, startDate: string, endDate: string): Promise<GSCPageResponse> {
+  return apiRequest<GSCPageResponse>(sitePath(site, `/gsc/query-pages?query=${encodeURIComponent(query)}&start_date=${startDate}&end_date=${endDate}`))
 }
 
-export async function getGSCPageQueries(siteId: string, page: string, startDate: string, endDate: string): Promise<GSCQueryResponse> {
-  return apiRequest<GSCQueryResponse>(`/sites/${siteId}/gsc/page-queries?page=${encodeURIComponent(page)}&start_date=${startDate}&end_date=${endDate}`)
+export async function getGSCPageQueries(site: SiteRef, page: string, startDate: string, endDate: string): Promise<GSCQueryResponse> {
+  return apiRequest<GSCQueryResponse>(sitePath(site, `/gsc/page-queries?page=${encodeURIComponent(page)}&start_date=${startDate}&end_date=${endDate}`))
 }
 
 export interface GSCDailyTotal {
@@ -132,24 +133,24 @@ export interface GSCOpportunityResponse {
   total: number
 }
 
-export async function getGSCDailyTotals(siteId: string, startDate: string, endDate: string): Promise<{ daily_totals: GSCDailyTotal[] }> {
-  return apiRequest<{ daily_totals: GSCDailyTotal[] }>(`/sites/${siteId}/gsc/daily-totals?start_date=${startDate}&end_date=${endDate}`)
+export async function getGSCDailyTotals(site: SiteRef, startDate: string, endDate: string): Promise<{ daily_totals: GSCDailyTotal[] }> {
+  return apiRequest<{ daily_totals: GSCDailyTotal[] }>(sitePath(site, `/gsc/daily-totals?start_date=${startDate}&end_date=${endDate}`))
 }
 
-export async function getGSCNewQueries(siteId: string, startDate: string, endDate: string): Promise<GSCNewQueries> {
-  return apiRequest<GSCNewQueries>(`/sites/${siteId}/gsc/new-queries?start_date=${startDate}&end_date=${endDate}`)
+export async function getGSCNewQueries(site: SiteRef, startDate: string, endDate: string): Promise<GSCNewQueries> {
+  return apiRequest<GSCNewQueries>(sitePath(site, `/gsc/new-queries?start_date=${startDate}&end_date=${endDate}`))
 }
 
-export async function getGSCTopCountries(siteId: string, startDate: string, endDate: string, limit = 50, offset = 0): Promise<GSCCountryResponse> {
-  return apiRequest<GSCCountryResponse>(`/sites/${siteId}/gsc/top-countries?start_date=${startDate}&end_date=${endDate}&limit=${limit}&offset=${offset}`)
+export async function getGSCTopCountries(site: SiteRef, startDate: string, endDate: string, limit = 50, offset = 0): Promise<GSCCountryResponse> {
+  return apiRequest<GSCCountryResponse>(sitePath(site, `/gsc/top-countries?start_date=${startDate}&end_date=${endDate}&limit=${limit}&offset=${offset}`))
 }
 
-export async function getGSCTopDevices(siteId: string, startDate: string, endDate: string): Promise<GSCDeviceResponse> {
-  return apiRequest<GSCDeviceResponse>(`/sites/${siteId}/gsc/top-devices?start_date=${startDate}&end_date=${endDate}`)
+export async function getGSCTopDevices(site: SiteRef, startDate: string, endDate: string): Promise<GSCDeviceResponse> {
+  return apiRequest<GSCDeviceResponse>(sitePath(site, `/gsc/top-devices?start_date=${startDate}&end_date=${endDate}`))
 }
 
-export async function getGSCOpportunities(siteId: string, startDate: string, endDate: string, limit = 50): Promise<GSCOpportunityResponse> {
-  return apiRequest<GSCOpportunityResponse>(`/sites/${siteId}/gsc/opportunities?start_date=${startDate}&end_date=${endDate}&limit=${limit}`)
+export async function getGSCOpportunities(site: SiteRef, startDate: string, endDate: string, limit = 50): Promise<GSCOpportunityResponse> {
+  return apiRequest<GSCOpportunityResponse>(sitePath(site, `/gsc/opportunities?start_date=${startDate}&end_date=${endDate}&limit=${limit}`))
 }
 
 export interface GSCQueryTrendPoint {
@@ -161,7 +162,7 @@ export interface GSCQueryTrendPoint {
 }
 
 export async function getGSCQueryTrend(
-  siteId: string,
+  site: SiteRef,
   query: string,
   startDate?: string,
   endDate?: string
@@ -170,7 +171,7 @@ export async function getGSCQueryTrend(
   if (startDate) params.set('start_date', startDate)
   if (endDate) params.set('end_date', endDate)
   const res = await apiRequest<{ trend: GSCQueryTrendPoint[] }>(
-    `/sites/${siteId}/gsc/query-trend?${params}`
+    sitePath(site, `/gsc/query-trend?${params}`)
   )
   return res.trend
 }

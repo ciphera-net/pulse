@@ -1,4 +1,5 @@
 import apiRequest from './client'
+import { sitePath, type SiteRef } from '@/lib/scope/site-ref'
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -78,31 +79,31 @@ function buildQuery(opts: {
 // ─── API Functions ──────────────────────────────────────────────────
 
 export function getJourneyFlow(
-  siteId: string,
+  site: SiteRef,
   startDate?: string,
   endDate?: string,
   opts?: { depth?: number; entryPath?: string; filters?: string; period?: string }
 ): Promise<JourneyFlow> {
   return apiRequest<JourneyFlow>(
-    `/sites/${siteId}/journeys/flow${buildQuery({
+    sitePath(site, `/journeys/flow${buildQuery({
       startDate,
       endDate,
       period: opts?.period,
       depth: opts?.depth,
       entry_path: opts?.entryPath,
       filters: opts?.filters,
-    })}`
+    })}`)
   ).then(r => r ?? { depth: opts?.depth ?? 0, total_sessions: 0, columns: [], links: [] })
 }
 
 export function getJourneyEntryPoints(
-  siteId: string,
+  site: SiteRef,
   startDate?: string,
   endDate?: string,
   filters?: string,
   period?: string
 ): Promise<EntryPoint[]> {
   return apiRequest<{ entry_points: EntryPoint[] }>(
-    `/sites/${siteId}/journeys/entry-points${buildQuery({ startDate, endDate, filters, period })}`
+    sitePath(site, `/journeys/entry-points${buildQuery({ startDate, endDate, filters, period })}`)
   ).then(r => r?.entry_points ?? [])
 }
