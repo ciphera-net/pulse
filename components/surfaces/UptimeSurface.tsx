@@ -3,7 +3,6 @@
 import { siteDaysCaption } from '@/lib/utils/timezones'
 import { useDisplayZone } from '@/lib/hooks/useDisplayZone'
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { Heartbeat } from '@phosphor-icons/react'
@@ -31,6 +30,7 @@ import {
   fmtCheckTime,
 } from '@/components/uptime/uptimeMetrics'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
+import { canWrite, useSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
 
 // ---------------------------------------------------------------------------
 // Uptime — the instrument-panel layout. One range control (the view switcher's
@@ -41,6 +41,13 @@ import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 // the SITE's timezone (22-08-2026 alignment — supersedes decision D5; days
 // older than the raw-check retention stay UTC-bucketed and the panel labels
 // that boundary).
+//
+// One page, two audiences (PUL-34). A member's scope is the page as it always
+// was. The demo's public scope draws the same page read-only: every control
+// that writes (enable, disable, the set-up states) is ABSENT, not disabled, and
+// the reads are the public routes that mirror the member ones (status,
+// incidents, a monitor's response times and checks). A share link's scoped reads
+// never include this page, so under a scoped scope it says so up front.
 // ---------------------------------------------------------------------------
 
 const cascade = (delay: number) => ({
@@ -132,12 +139,64 @@ function RecentChecks({ siteId, monitorId, timezone }: { siteId: string; monitor
   )
 }
 
+// ─── Scopes that cannot show the page, and the visitor's empty states ──
+
+/**
+ * Whether this scope may show Uptime at all. 🔑 Decided BEFORE any read, so a scope that
+ * cannot show the page says so instead of holding a skeleton for requests that can only
+ * fail: a share link's scoped reads (`scoped`) are five routes and none of them is
+ * Uptime's, and a scope whose site did not share the page has no such route either.
+ */
+function showsUptime(scope: SiteScope): boolean {
+  return scope.fidelity === 'full' && scope.pages.includes('uptime')
+}
+
+function UptimeTitle() {
+  return (
+    <div className="mb-6">
+      <h1 className="mb-1 text-lg font-semibold text-neutral-200">Uptime</h1>
+      <p className="text-sm text-neutral-400">Availability, response time and incident history</p>
+    </div>
+  )
+}
+
+/** Where a visitor's page has nothing to draw. Plain: nothing here can be set up from this view. */
+function UptimeNothingYet({ reason }: { reason: string }) {
+  return (
+    <div className="rounded-none border border-border bg-card px-6 py-10 text-center">
+      <p className="text-sm text-neutral-400">No uptime data yet.</p>
+      <p className="mt-1 text-xs text-neutral-500">{reason}</p>
+    </div>
+  )
+}
+
+function UptimeNotShared() {
+  return (
+    <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
+      <UptimeTitle />
+      <div className="rounded-none border border-border bg-card px-6 py-10 text-center">
+        <p className="text-sm text-neutral-400">This page is not shared.</p>
+        <p className="mt-1 text-xs text-neutral-500">Only the pages chosen for this link are shown.</p>
+      </div>
+    </div>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────
 
-export default function UptimePage() {
-  const canEdit = useCan('uptime.manage')
-  const params = useParams()
-  const siteId = params.id as string
+export default function UptimeSurface() {
+  const scope = useSiteScope()
+  if (!showsUptime(scope)) return <UptimeNotShared />
+  return <UptimePage scope={scope} />
+}
+
+function UptimePage({ scope }: { scope: SiteScope }) {
+  // The viewer's own permission is not enough: a public scope never writes, whoever is
+  // looking at it (a signed-in member can open the demo too).
+  const publicView = !canWrite(scope)
+  const mayManage = useCan('uptime.manage')
+  const canEdit = !publicView && mayManage
+  const siteId = scope.siteId
 
   const { data: site, error: siteError, mutate: mutateSite } = useSite(siteId)
   const dataWindow = useDataWindow(siteId, 'uptime')
@@ -199,7 +258,13 @@ export default function UptimePage() {
     if (site?.domain) document.title = `Uptime · ${site.domain} | Pulse`
   }, [site?.domain])
 
-  const showSkeleton = useMinimumLoading(isLoading && !uptimeData)
+  // The status request is not made until the view's range is known (`periodReady`), so
+  // until then there is neither data nor a failure to report. A visitor's page often opens
+  // cold (a deep link, a reload) and must not be told "no uptime data yet" about a request
+  // that has not started. A member's page has the same instant and shows its set-up note
+  // for it; that is left as it was.
+  const awaitingView = publicView && !periodReady
+  const showSkeleton = useMinimumLoading((isLoading || awaitingView) && !uptimeData)
   const fadeClass = useSkeletonFade(showSkeleton)
 
   if (showSkeleton) return <UptimeSkeleton />
@@ -217,7 +282,11 @@ export default function UptimePage() {
           </div>
           <ErrorCard
             title="Couldn’t load uptime"
-            description="The site request failed. Your monitoring is unaffected — this is a loading problem, not a data problem."
+            description={
+              publicView
+                ? 'The site request failed.'
+                : 'The site request failed. Your monitoring is unaffected — this is a loading problem, not a data problem.'
+            }
             onRetry={() => {
               void mutateSite()
             }}
@@ -232,6 +301,15 @@ export default function UptimePage() {
   // ─── Disabled — the panel's shape, ghosted, with the CTA ──────
 
   if (!site.uptime_enabled) {
+    // A public view has no one to enable it: say there is nothing yet, offer nothing.
+    if (publicView) {
+      return (
+        <div className={`mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 ${fadeClass}`}>
+          <UptimeTitle />
+          <UptimeNothingYet reason="Uptime monitoring is off for this site." />
+        </div>
+      )
+    }
     return (
       <div className={`mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 ${fadeClass}`}>
         <div className="mb-6">
@@ -292,6 +370,7 @@ export default function UptimePage() {
               incidents={incidentsError ? undefined : incidentsData?.incidents}
               timezone={site?.timezone ?? null}
               utcDaysBefore={uptimeData?.utc_days_before}
+              publicView={publicView}
             />
           </motion.div>
 
@@ -313,9 +392,15 @@ export default function UptimePage() {
         // * it as "setting up" would be a false success (review finding).
         <ErrorCard
           title="Couldn't load uptime status"
-          description="The uptime request failed. Your monitoring is unaffected — this is a loading problem."
+          description={
+            publicView
+              ? 'The uptime request failed.'
+              : 'The uptime request failed. Your monitoring is unaffected — this is a loading problem.'
+          }
           onRetry={() => { void mutateUptime() }}
         />
+      ) : publicView ? (
+        <UptimeNothingYet reason="No monitor has reported for this site." />
       ) : (
         // * Enabled moments ago — the monitor row exists after the toggle's
         // * auto-create, but a fresh SWR read may not carry it yet.

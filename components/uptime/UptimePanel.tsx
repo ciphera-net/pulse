@@ -79,6 +79,11 @@ interface UptimePanelProps {
   period?: string | null
   /** Sent instead of the dates when the SERVER resolves the view (All time). */
   apiPeriod?: string
+  /**
+   * A public view (the demo, PUL-34): nobody looking at it enabled anything, so the empty
+   * note drops its "of enabling" hint. Nothing else about the panel differs: it only reads.
+   */
+  publicView?: boolean
 }
 
 // ─── Availability strip: one state bar per bucket (unchanged marks) ──
@@ -256,7 +261,7 @@ function TLSNote({ monitor }: { monitor: UptimeMonitor }) {
 
 // ─── Panel ───────────────────────────────────────────────────────
 
-export default function UptimePanel({ siteId, monitor, dateRange, incidents, timezone, utcDaysBefore, period, apiPeriod }: UptimePanelProps) {
+export default function UptimePanel({ siteId, monitor, dateRange, incidents, timezone, utcDaysBefore, period, apiPeriod, publicView = false }: UptimePanelProps) {
   const searchParams = useSearchParams()
   const write = useQueryParamsWriter()
 
@@ -473,7 +478,7 @@ export default function UptimePanel({ siteId, monitor, dateRange, incidents, tim
         ) : !isLoading && series.length === 0 ? (
           <div className="pointer-events-none absolute inset-y-0 left-40 right-0 flex flex-col items-center justify-center sm:left-48">
             <p className="text-sm text-neutral-400">No checks in this period yet.</p>
-            <p className="mt-1 text-xs text-neutral-500">The first check lands within a minute of enabling.</p>
+            {!publicView && <p className="mt-1 text-xs text-neutral-500">The first check lands within a minute of enabling.</p>}
           </div>
         ) : null}
       </div>
