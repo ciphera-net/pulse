@@ -533,6 +533,25 @@ describe('a share link (public, scoped): today\'s share page, inside the surface
     expect(screen.queryByText(/hidden below/)).toBeNull()
   })
 
+  it('hands the Languages tab the grouped rows beside the floored per-locale list, and the per-locale list alone from an older backend (PULSE-173)', async () => {
+    const range = { start: '2026-09-21', end: '2026-10-20' }
+    const groups = [{ language: 'en', pageviews: 283, visitors: 144, bounce_rate: null, avg_duration: null, flag_region: 'US' }]
+    dashboardState = { data: payload(range, { languages: [], language_groups: groups }) }
+    const grouped = await mount(shareScope)
+    expect(h.captured.Audience.languageGroups).toEqual(groups)
+    expect(h.captured.Audience.languages).toEqual([])
+    grouped.unmount()
+
+    const languages = [
+      { language: 'en-US', pageviews: 189, visitors: 110, bounce_rate: null, avg_duration: null },
+      { language: 'en-GB', pageviews: 59, visitors: 21, bounce_rate: null, avg_duration: null },
+    ]
+    dashboardState = { data: payload(range, { languages }) }
+    await mount(shareScope)
+    expect(h.captured.Audience.languageGroups).toBeUndefined()
+    expect(h.captured.Audience.languages).toEqual(languages)
+  })
+
   it('tells the hero when its page has drawn, so the fallback demo can be framed too', async () => {
     await mount(shareScope)
     expect(h.postEmbedReady).toHaveBeenCalledTimes(1)
