@@ -73,6 +73,10 @@ const demo: SiteScope = {
 const customerLink: SiteScope = {
   siteId: 'cust-site', mode: 'public', basePath: '/share/cust-site', pages: ['dashboard'], demo: false, fidelity: 'scoped',
 }
+// The case the design says cannot happen yet and must still be safe: a scoped link whose shared
+// pages list this one. The server serves a scoped link the dashboard family only, so the page
+// must not ask for what it would be refused.
+const scopedLinkListingThePage: SiteScope = { ...customerLink, pages: SITE_PAGES }
 const demoWithoutJourneys: SiteScope = { ...demo, pages: ['dashboard', 'funnels'] }
 
 const FLOW = { depth: 4, total_sessions: 12, columns: [], links: [] }
@@ -206,6 +210,7 @@ describe('public full scope (the demo)', () => {
 describe('a scope that does not serve the page', () => {
   it.each([
     ['a customer link (scoped fidelity)', customerLink],
+    ['a scoped link that lists the page anyway', scopedLinkListingThePage],
     ['a scope whose owner did not share journeys', demoWithoutJourneys],
   ])('%s says so plainly and mounts no data hook', (_name, scope) => {
     renderUnder(scope)
