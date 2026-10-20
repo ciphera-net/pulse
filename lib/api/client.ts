@@ -319,8 +319,13 @@ const responseCache = new Map<string, CachedResponse>()
 function getRequestKey(endpoint: string, options: RequestInit): string {
   const method = options.method || 'GET'
   const body = options.body || ''
-  const team = endpoint.startsWith('/auth') ? '' : getActiveTeam() ?? ''
+  const team = endpoint.startsWith('/auth') || isPublicEndpoint(endpoint) ? '' : getActiveTeam() ?? ''
   return `${method}:${endpoint}:${body}:${team}`
+}
+
+/** `/public/*`: the anonymous surface, which no session header reaches (see buildSessionHeaders). */
+function isPublicEndpoint(endpoint: string): boolean {
+  return endpoint.startsWith('/public/')
 }
 
 /**
@@ -386,6 +391,12 @@ function buildSessionHeaders(
   base: Record<string, string>,
 ): Record<string, string> {
   const headers: Record<string, string> = { ...base }
+
+  // * The public share surface takes no credential at all (PUL-34 Phase 2): /demo and
+  // * /share/<id> read it whether or not the visitor is signed in, and a signed-in
+  // * visitor's token and team must not travel with an anonymous read. A password
+  // * unlock rides the share-session cookie, which `credentials: 'include'` still sends.
+  if (isPublicEndpoint(endpoint)) return headers
 
   const bearer = getAccessToken()
   if (bearer && !headers['Authorization'] && !headers['authorization']) {
