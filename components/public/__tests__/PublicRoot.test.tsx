@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { renderToString } from 'react-dom/server'
 import useSWR, { SWRConfig, useSWRConfig } from 'swr'
+import { unstable_serialize } from 'swr'
 
 // The public roots (PUL-34 Phase 2): what /demo and /share/<id> make of the answers the API
 // gives for a site's public view. Real SWR; the API, the shell and the Facet widgets are
@@ -386,7 +387,15 @@ describe('the gate comes back when a later read says protected', () => {
 describe('the HTML before the browser takes over', () => {
   it('is the same skeleton for everyone, whoever is asking', () => {
     apiRequest.mockResolvedValue(view({ is_demo: true }))
-    const html = () => renderToString(withSWR(<PublicDemoRoot><Page /></PublicDemoRoot>))
+    // The view is already in the cache the server renders from, so only the browser gate stands
+    // between this and the whole shell and page.
+    const fallback = { [unstable_serialize(['public-view', 'demo'])]: view({ is_demo: true }) }
+    const html = () =>
+      renderToString(
+        <SWRConfig value={{ provider: () => new Map(), fallback }}>
+          <PublicDemoRoot><Page /></PublicDemoRoot>
+        </SWRConfig>,
+      )
 
     document.cookie = 'pulse_access=signed-in-token; path=/'
     const signedIn = html()

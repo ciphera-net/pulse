@@ -84,7 +84,7 @@ describe('the demo cannot drift from the product', () => {
   })
 
   it('fails for a member page that has neither (control: the check can come out the other way)', () => {
-    expect(unaccounted([...routes, 'reports', 'reports/[id]'], PRIVATE_MEMBER_ROUTES)).toEqual(['reports', 'reports/[id]'])
+    expect(unaccounted([...routes, 'zz-control-page', 'zz-control-page/[id]'], PRIVATE_MEMBER_ROUTES)).toEqual(['zz-control-page', 'zz-control-page/[id]'])
   })
 
   it('maps each public member page to the page of the same name', () => {

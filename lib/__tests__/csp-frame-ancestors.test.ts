@@ -100,6 +100,22 @@ describe('Pulse cannot be framed, except /demo by Pulse itself', () => {
     }
   })
 
+  // The two demo rules overlap (Next's matcher lets `/demo/:path*` match the bare /demo too), so
+  // the checks above would pass with either one broken. Each is held to its own paths here.
+  it('answers /demo from its own rule, and what is under /demo from its own', async () => {
+    const demoRules = (await rules()).filter((r) => r.source.startsWith('/demo'))
+    expect(demoRules.map((r) => r.source)).toEqual(['/demo', '/demo/:path*'])
+    const matches = (source: string, path: string) => getPathMatch(source, { removeUnnamedParams: true, strict: true })(path) !== false
+    expect(matches('/demo', '/demo')).toBe(true)
+    expect(matches('/demo', '/demo/pages')).toBe(false)
+    expect(matches('/demo/:path*', '/demo/pages')).toBe(true)
+    for (const rule of demoRules) {
+      const byKey = Object.fromEntries(rule.headers.map((h) => [h.key, h.value]))
+      expect(byKey['X-Frame-Options'], rule.source).toBe('SAMEORIGIN')
+      expect(frameAncestors(byKey['Content-Security-Policy']), rule.source).toBe("frame-ancestors 'self'")
+    }
+  })
+
   // The controls: the evaluation above is only worth anything if it can come out the other way.
   it('control: without the demo rules every path would be locked', async () => {
     const all = await rules()
