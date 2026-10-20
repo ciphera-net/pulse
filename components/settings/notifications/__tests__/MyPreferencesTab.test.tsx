@@ -176,6 +176,15 @@ describe('MyPreferencesTab (one switch per category)', () => {
     expect(desc.textContent).not.toMatch(/[—–]/)
   })
 
+  it("says where the billing notices a member does not get go (D2)", async () => {
+    // Invoices, failed payments and refunds are emailed to the team's billing
+    // email only. With no in-app copy left, a caption that listed them under an
+    // Always on chip promised every member a notice they never receive.
+    render(<MyPreferencesTab />)
+    await screen.findByText('Billing')
+    expect(screen.getByText(/Invoices, failed payments and refunds go to the team's billing email\./)).toBeInTheDocument()
+  })
+
   it('says only "These settings are yours." to somebody alone (PULSE-59)', async () => {
     mockTeamState = 'alone'
     render(<MyPreferencesTab />)

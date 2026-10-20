@@ -38,7 +38,10 @@ import AccountSecurityAlertsPanel from '@/components/settings/AccountSecurityAle
  */
 
 const CAPTIONS: Record<string, string> = {
-  billing: 'Invoices, failed payments, renewals and your pageview quota.',
+  // Invoices, failed payments and refunds are emailed to the team's billing
+  // email only, and nothing else shows them since the in-app inbox went
+  // (20-10-2026), so the caption says where they go.
+  billing: "Renewals and your pageview quota. Invoices, failed payments and refunds go to the team's billing email.",
   // New-device and password emails moved out (16-10-2026, OPS-17): Ciphera ID
   // sends those now, in the "Your account" panel below.
   security: 'API keys created in your team.',
