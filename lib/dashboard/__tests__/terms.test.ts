@@ -52,7 +52,8 @@ function referencedTerms(source: string): string[] {
 const TEMPLATES = [
   'components/uptime/UptimePanel.tsx',
   'components/uptime/IncidentsTable.tsx',
-  'app/sites/[id]/uptime/page.tsx',
+  // The Uptime page's body (the route file is a wrapper since PUL-34 Phase 2 moved it into a surface).
+  'components/surfaces/UptimeSurface.tsx',
 ]
 
 /**
