@@ -3,14 +3,14 @@
 import { useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { useUrlDateRange, SEARCH_CONSOLE_MAX_DAYS } from '@/lib/hooks/useUrlDateRange'
 import { fetchableRange } from '@/lib/dashboard/resolveRange'
 import { useQueryParamsWriter } from '@/lib/hooks/useQueryParamsWriter'
 import { MagnifyingGlass } from '@phosphor-icons/react'
-import { useCan } from '@/lib/auth/permissions'
-import { InstrumentOffState } from '@/components/ui/InstrumentOffState'
+import { canWrite, useSiteScope } from '@/lib/scope/SiteScope'
+import { IntegrationOffState, PageUnavailable, scopeServes } from '@/components/integrations/IntegrationStates'
 import { useSite, useGSCStatus, useGSCOverview, useBingStatus, useDataWindow } from '@/lib/swr/dashboard'
 import { SearchSkeleton } from '@/components/skeletons'
 import InstrumentPanel from '@/components/search/InstrumentPanel'
@@ -31,6 +31,16 @@ import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 // client-side, and the InstrumentPanel
 // where each metric row is both the KPI tile and the chart strip. Table views
 // live in SearchViews below, sharing the same URL-synced date state.
+//
+// SCOPE (PUL-34 Phase 2). The page reads its site from the SiteScope, never from
+// the path, because /demo renders this same component in a public scope. A public
+// scope reads only the routes the backend serves the sample site: the Search Console
+// status and its eleven reads, and Bing's status, overview and daily totals (the site
+// record and the data window besides). It never asks the member API anything, so no
+// permission is read there. Every control that changes something is ABSENT, not
+// disabled: connecting, and the links into settings. A share link on any other site is
+// public-scoped and is not served this page at all (scopeServes), so it says so and
+// reads nothing.
 // ---------------------------------------------------------------------------
 
 const cascade = (delay: number) => ({
@@ -63,12 +73,24 @@ function engineLabel(domain: string, text: string) {
   )
 }
 
-export default function SearchConsolePage() {
-  const params = useParams()
-  const siteId = params.id as string
+export default function SearchSurface() {
+  const scope = useSiteScope()
+  // Checked in this wrapper, before the page's hooks run, so an unserved scope reads nothing.
+  if (!scopeServes(scope, 'search')) {
+    return <PageUnavailable title="Search Console" icon={<MagnifyingGlass />} />
+  }
+  return <SearchConsolePage />
+}
+
+function SearchConsolePage() {
+  const scope = useSiteScope()
+  const siteId = scope.siteId
+  const mayWrite = canWrite(scope)
   const searchParams = useSearchParams()
   const write = useQueryParamsWriter()
-  const canManageIntegrations = useCan('integrations.manage')
+  // * Where a failed sync is fixed — a member only. A public visitor has no settings, and
+  // * the provider's own error text is for members, who can act on it.
+  const settingsHref = mayWrite ? '/settings/site/integrations' : undefined
 
   const { data: site } = useSite(siteId)
   const { data: gscStatus, error: gscStatusError, mutate: retryGscStatus } = useGSCStatus(siteId)
@@ -143,7 +165,11 @@ export default function SearchConsolePage() {
         </div>
         <ErrorCard
           title="Couldn’t check the search connections"
-          description="The connection status request failed. Your data is intact — this is a loading problem, not a data problem."
+          description={
+            mayWrite
+              ? 'The connection status request failed. Your data is intact — this is a loading problem, not a data problem.'
+              : 'The connection status request failed.'
+          }
           onRetry={() => {
             void retryGscStatus()
             void retryBingStatus()
@@ -169,14 +195,20 @@ export default function SearchConsolePage() {
             Google Search performance, queries, and page rankings
           </p>
         </div>
-        <InstrumentOffState
+        <IntegrationOffState
           rails={METRIC_ORDER.map((key) => METRIC_LABEL[key])}
           icon={<MagnifyingGlass size={40} />}
-          heading="Connect Google Search Console"
-          body="See how your site performs in Google Search. View top queries, pages, click-through rates, and average position data."
-          canAct={canManageIntegrations}
-          action={{ label: 'Connect in Settings', href: '/settings/site/integrations' }}
-          fallback="An owner or admin can connect it."
+          connect={{
+            heading: 'Connect Google Search Console',
+            body: 'See how your site performs in Google Search. View top queries, pages, click-through rates, and average position data.',
+            actionLabel: 'Connect in Settings',
+            href: '/settings/site/integrations',
+            fallback: 'An owner or admin can connect it.',
+          }}
+          absent={{
+            heading: 'Search Console is not connected',
+            body: 'Search Console shows how this site performs in Google Search: queries, pages, click-through rates and average position.',
+          }}
         />
       </div>
     )
@@ -202,16 +234,16 @@ export default function SearchConsolePage() {
                 <SyncStatusLine
                   status={bingStatus.status}
                   lastSyncedAt={bingStatus.last_synced_at}
-                  errorMessage={bingStatus.error_message}
-                  settingsHref="/settings/site/integrations"
+                  errorMessage={mayWrite ? bingStatus.error_message : null}
+                  settingsHref={settingsHref}
                 />
               )
             : gscStatus && (
                 <SyncStatusLine
                   status={gscStatus.status}
                   lastSyncedAt={gscStatus.last_synced_at}
-                  errorMessage={gscStatus.error_message}
-                  settingsHref="/settings/site/integrations"
+                  errorMessage={mayWrite ? gscStatus.error_message : null}
+                  settingsHref={settingsHref}
                 />
               )}
           {/* Provenance: these days are the PROVIDER's own reporting days —
@@ -278,7 +310,11 @@ export default function SearchConsolePage() {
         {overviewError ? (
           <ErrorCard
             title="Couldn't load search data"
-            description="The Search Console request failed for this period. Your data is safe — this is a loading problem."
+            description={
+              mayWrite
+                ? 'The Search Console request failed for this period. Your data is safe — this is a loading problem.'
+                : 'The Search Console request failed for this period.'
+            }
             onRetry={() => { void retryOverview() }}
           />
         ) : overview ? (

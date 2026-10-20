@@ -17,7 +17,13 @@ interface SyncStatusLineProps {
   status?: 'active' | 'syncing' | 'error'
   lastSyncedAt?: string | null
   errorMessage?: string | null
-  settingsHref: string
+  /**
+   * Where a failed sync is fixed. Left out on a public page (/demo, /share), which has
+   * no settings to go to: the line then says the sync failed and stops there. The
+   * caller also leaves the provider's `errorMessage` out there, since that text is for
+   * members, who can act on it.
+   */
+  settingsHref?: string
 }
 
 const SPINNER_DELAY_MS = 150
@@ -41,13 +47,17 @@ export function SyncStatusLine({ status, lastSyncedAt, errorMessage, settingsHre
     return (
       <p className="mt-1.5 text-xs text-red-400">
         Sync failed{errorMessage ? ` — ${errorMessage}` : ''}
-        <span aria-hidden="true" className="mx-1.5 text-red-400/50">·</span>
-        <Link
-          href={settingsHref}
-          className="text-red-300 underline-offset-2 transition-colors duration-fast ease-apple hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
-        >
-          Fix in Settings
-        </Link>
+        {settingsHref && (
+          <>
+            <span aria-hidden="true" className="mx-1.5 text-red-400/50">·</span>
+            <Link
+              href={settingsHref}
+              className="text-red-300 underline-offset-2 transition-colors duration-fast ease-apple hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+            >
+              Fix in Settings
+            </Link>
+          </>
+        )}
       </p>
     )
   }

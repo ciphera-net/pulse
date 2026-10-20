@@ -1,13 +1,12 @@
 'use client'
 
 import { useEffect, useMemo } from 'react'
-import { useParams } from 'next/navigation'
 
 import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
 import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
 import { CloudArrowUp } from '@phosphor-icons/react'
-import { useCan } from '@/lib/auth/permissions'
-import { InstrumentOffState } from '@/components/ui/InstrumentOffState'
+import { canWrite, useSiteScope } from '@/lib/scope/SiteScope'
+import { IntegrationOffState, PageUnavailable, scopeServes } from '@/components/integrations/IntegrationStates'
 import { useSite, useBunnyStatus, useBunnyOverview, useBunnyDailyStats, useBunnyRegions, useDataWindow } from '@/lib/swr/dashboard'
 
 import DateRangePicker from '@/components/ui/DateRangePicker'
@@ -20,10 +19,33 @@ import { CdnLiveCard } from '@/components/cdn/CdnLiveCard'
 import { toCdnSeries, statusMix, cdnDayLabel } from '@/components/cdn/cdnMetrics'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 
-export default function CDNPage() {
-  const params = useParams()
-  const siteId = params.id as string
-  const canManageIntegrations = useCan('integrations.manage')
+// ---------------------------------------------------------------------------
+// SCOPE (PUL-34 Phase 2). The page reads its site from the SiteScope, never from the
+// path, because /demo renders this same component in a public scope. A public scope
+// reads only the routes the backend serves the sample site: the Bunny status,
+// overview, daily stats, regions and live reads (the site record and the data window
+// besides). It never asks the member API anything, so no permission is read there.
+// Connecting and the links into settings are ABSENT in public mode, not disabled. A
+// share link on any other site is public-scoped and is not served this page at all
+// (scopeServes), so it says so and reads nothing.
+// ---------------------------------------------------------------------------
+
+export default function CdnSurface() {
+  const scope = useSiteScope()
+  // Checked in this wrapper, before the page's hooks run, so an unserved scope reads nothing.
+  if (!scopeServes(scope, 'cdn')) {
+    return <PageUnavailable title="CDN" icon={<CloudArrowUp />} />
+  }
+  return <CDNPage />
+}
+
+function CDNPage() {
+  const scope = useSiteScope()
+  const siteId = scope.siteId
+  const mayWrite = canWrite(scope)
+  // * Where a failed sync is fixed — a member only. A public visitor has no settings, and
+  // * the provider's own error text is for members, who can act on it.
+  const settingsHref = mayWrite ? '/settings/site/integrations' : undefined
 
   const { data: site } = useSite(siteId)
   // * bunny_data days are UTC days (Bunny's chart convention, verified live), so this
@@ -84,7 +106,11 @@ export default function CDNPage() {
         </div>
         <ErrorCard
           title="Couldn’t check the Bunny connection"
-          description="The connection status request failed. Your data is intact — this is a loading problem, not a data problem."
+          description={
+            mayWrite
+              ? 'The connection status request failed. Your data is intact — this is a loading problem, not a data problem.'
+              : 'The connection status request failed.'
+          }
           onRetry={() => {
             void retryBunnyStatus()
           }}
@@ -107,14 +133,20 @@ export default function CDNPage() {
           <h1 className="text-lg font-semibold text-white">CDN</h1>
           <p className="mt-1 text-sm text-neutral-400">Bunny bandwidth, requests, cache performance and errors</p>
         </div>
-        <InstrumentOffState
+        <IntegrationOffState
           rails={['Served from cache', 'Cache hit rate', 'Origin traffic', 'Origin latency', 'Errors']}
           icon={<CloudArrowUp size={40} />}
-          heading="Connect Bunny CDN"
-          body="See bandwidth, cache performance and errors. Read-only · uses a Bunny API key with account-wide scope · synced every 3 hours."
-          canAct={canManageIntegrations}
-          action={{ label: 'Connect in Settings', href: '/settings/site/integrations' }}
-          fallback="An owner or admin can connect it."
+          connect={{
+            heading: 'Connect Bunny CDN',
+            body: 'See bandwidth, cache performance and errors. Read-only · uses a Bunny API key with account-wide scope · synced every 3 hours.',
+            actionLabel: 'Connect in Settings',
+            href: '/settings/site/integrations',
+            fallback: 'An owner or admin can connect it.',
+          }}
+          absent={{
+            heading: 'Bunny CDN is not connected',
+            body: 'The CDN page shows bandwidth, cache performance and errors for a Bunny pull zone.',
+          }}
         />
       </div>
     )
@@ -148,8 +180,8 @@ export default function CDNPage() {
             <SyncStatusLine
               status={bunnyStatus.status}
               lastSyncedAt={bunnyStatus.last_synced_at}
-              errorMessage={bunnyStatus.error_message}
-              settingsHref="/settings/site/integrations"
+              errorMessage={mayWrite ? bunnyStatus.error_message : null}
+              settingsHref={settingsHref}
             />
           )}
         </div>
