@@ -1,11 +1,12 @@
 // The dashboard shell in public mode (PUL-34 Phase 2): what /demo and /share/<id> wear.
 //
 // The same shell as the product's, with the account taken out: the rail lists the pages the
-// scope shares and nothing else, the bars carry no account, notifications, onboarding, site
-// switcher or sites list, no palette or shortcut is mounted (every destination they offer is a
-// member route), and the demo, and only the demo, says its numbers are a sample and offers the
-// way into the product. Member-only components are markers or call counters here, so the
-// absence assertions have something to fail on, and a control renders the member shell.
+// scope shares and nothing else, the bars carry no account, onboarding, site switcher or sites
+// list, no palette or shortcut is mounted (every destination they offer is a member route), and
+// the demo, and only the demo, says its numbers are a sample and offers the way into the
+// product. Neither shell has a notification bell since 20-10-2026 (notifications are
+// email-only). Member-only components are markers or call counters here, so the absence
+// assertions have something to fail on, and a control renders the member shell.
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
@@ -60,7 +61,6 @@ vi.mock('@/lib/swr/sites', () => ({
   FaviconPreloader: () => null,
 }))
 vi.mock('@/lib/auth/permissions', () => ({ useCan: () => { calls.can += 1; return true } }))
-vi.mock('@/components/notifications/NotificationCenter', () => ({ default: () => <div data-testid="notifications" /> }))
 vi.mock('@/components/onboarding/OnboardingChip', () => ({ default: () => <div data-testid="onboarding" /> }))
 vi.mock('@/components/account/UnnamedSession', () => ({ UnnamedSession: () => null }))
 vi.mock('@/components/theme/ThemeMenuSwitch', () => ({ default: () => null }))
@@ -237,11 +237,10 @@ describe('the sidebar in public mode', () => {
 })
 
 describe('the bars in public mode', () => {
-  it('reads no account: no auth, team, sites list or permission, and shows no menu, notifications or onboarding', async () => {
+  it('reads no account: no auth, team, sites list or permission, and shows no menu or onboarding', async () => {
     renderPublic(demoScope(), '/demo')
     await railLinks()
     expect(calls).toEqual({ auth: 0, teamProps: 0, teamState: 0, sites: 0, can: 0 })
-    expect(screen.queryByTestId('notifications')).toBeNull()
     expect(screen.queryByTestId('onboarding')).toBeNull()
     expect(screen.queryByText('Your Sites')).toBeNull()
   })
@@ -400,7 +399,7 @@ describe('control: the member shell', () => {
     expect(calls.auth).toBeGreaterThan(0)
     expect(calls.sites).toBeGreaterThan(0)
     expect(calls.can).toBeGreaterThan(0)
-    for (const id of ['palette', 'shortcuts', 'shortcuts-overlay', 'notifications', 'onboarding']) {
+    for (const id of ['palette', 'shortcuts', 'shortcuts-overlay', 'onboarding']) {
       expect(screen.getAllByTestId(id).length, id).toBeGreaterThan(0)
     }
     expect(screen.getByRole('link', { name: 'Site Settings' })).toBeInTheDocument()
