@@ -107,6 +107,10 @@ const loaded = (data: unknown, over: Record<string, unknown> = {}) => ({
   data, error: undefined, isLoading: false, mutate: vi.fn(), ...over,
 })
 
+/** Every link the page draws, as written in its href. */
+const hrefsIn = (container: HTMLElement) =>
+  Array.from(container.querySelectorAll('a[href]')).map((a) => a.getAttribute('href') ?? '')
+
 const renderUnder = (scope: SiteScope) =>
   render(
     <SiteScopeProvider scope={scope}>
@@ -192,6 +196,13 @@ describe('public full scope (the demo)', () => {
     mockSearch = 'period=7'
     renderUnder(demo)
     expect(screen.getByRole('link', { name: /Signup flow/ })).toHaveAttribute('href', '/demo/funnels/f1?period=7')
+  })
+
+  it('draws no link out of the demo: no Visitors, settings, setup or member route', () => {
+    mockSearch = 'period=7'
+    const { container } = renderUnder(demo)
+    const links = hrefsIn(container)
+    expect(links).toEqual(['/demo/funnels/f1?period=7'])
   })
 
   it('has no create, edit or delete, even for a visitor who holds the permission in their own team', () => {

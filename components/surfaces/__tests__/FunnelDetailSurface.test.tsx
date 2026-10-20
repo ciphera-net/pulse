@@ -121,6 +121,10 @@ const funnelState = (over: Record<string, unknown> = {}) => ({
   data: FUNNEL, error: undefined, isLoading: false, mutate: vi.fn(), ...over,
 })
 
+/** Every link the page draws, as written in its href. */
+const hrefsIn = (container: HTMLElement) =>
+  Array.from(container.querySelectorAll('a[href]')).map((a) => a.getAttribute('href') ?? '')
+
 const renderUnder = (scope: SiteScope, funnelId = 'funnel-1') =>
   render(
     <SiteScopeProvider scope={scope}>
@@ -195,6 +199,11 @@ describe('public full scope (the demo)', () => {
     mockSearch = 'period=7&step=2&filters=country%3Ais%3ANO'
     renderUnder(demo)
     expect(screen.getByRole('link', { name: 'Funnels' })).toHaveAttribute('href', '/demo/funnels?period=7')
+  })
+
+  it('draws no link out of the demo: no Visitors, settings or member route', () => {
+    const { container } = renderUnder(demo)
+    expect(hrefsIn(container)).toEqual(['/demo/funnels'])
   })
 
   it('has no Edit, Delete, dialog or modal, even for a visitor who holds the permission in their own team', () => {

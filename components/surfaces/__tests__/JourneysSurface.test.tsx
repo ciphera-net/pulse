@@ -86,6 +86,10 @@ const flowState = (data: unknown, over: Record<string, unknown> = {}) => ({
   data, error: undefined, isLoading: false, isValidating: false, mutate: vi.fn(), ...over,
 })
 
+/** Every link the page draws, as written in its href. */
+const hrefsIn = (container: HTMLElement) =>
+  Array.from(container.querySelectorAll('a[href]')).map((a) => a.getAttribute('href') ?? '')
+
 const renderUnder = (scope: SiteScope) =>
   render(
     <SiteScopeProvider scope={scope}>
@@ -158,6 +162,12 @@ describe('public full scope (the demo)', () => {
     renderUnder(demo)
     expect(screen.getByText('How visitors navigate through this site')).toBeInTheDocument()
     expect(screen.queryByText('How visitors navigate through your site')).toBeNull()
+  })
+
+  it('draws no link at all: no Visitors, settings, setup or member route', () => {
+    mockSearch = 'lens=%2Fpricing'
+    const { container } = renderUnder(demo)
+    expect(hrefsIn(container)).toEqual([])
   })
 
   it('has no way to create a funnel from the pinned path, but the lens can still be cleared', () => {

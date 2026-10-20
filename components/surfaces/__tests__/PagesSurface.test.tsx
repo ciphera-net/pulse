@@ -60,6 +60,10 @@ const tableState = (data: unknown, over: Record<string, unknown> = {}) => ({
   data, error: undefined, isLoading: false, ...over,
 })
 
+/** Every link the page draws, as written in its href. */
+const hrefsIn = (container: HTMLElement) =>
+  Array.from(container.querySelectorAll('a[href]')).map((a) => a.getAttribute('href') ?? '')
+
 const renderUnder = (scope: SiteScope) =>
   render(
     <SiteScopeProvider scope={scope}>
@@ -116,9 +120,9 @@ describe('public full scope (the demo)', () => {
   })
 
   it('has nothing to write and nothing to follow out of the page', () => {
-    renderUnder(demo)
+    const { container } = renderUnder(demo)
     expect(screen.queryByRole('button')).toBeNull()
-    expect(screen.queryByRole('link')).toBeNull()
+    expect(hrefsIn(container)).toEqual([])
   })
 
   it('says not available, not an empty table, when the read was not made', () => {
