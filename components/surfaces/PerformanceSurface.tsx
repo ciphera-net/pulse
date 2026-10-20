@@ -2,7 +2,7 @@
 
 import { useCan } from '@/lib/auth/permissions'
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { useSite, usePerformanceConfig, usePerformanceLatest, usePerformanceHistory } from '@/lib/swr/dashboard'
 import {
   updatePerformanceConfig,
@@ -28,6 +28,7 @@ import { ErrorCard } from '@/components/ui/ErrorCard'
 import { useMinimumLoading } from '@/components/skeletons'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { TERMS } from '@/lib/dashboard/terms'
+import { canWrite, useSiteRef, useSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
 
 type Strategy = 'mobile' | 'desktop'
 
@@ -118,12 +119,34 @@ function formatMs(ms: number): string {
 // * The check navigator's compact stamp is formatSiteStampShort — the status
 // * line above carries the full zone-labelled one, so this stays terse.
 
-export default function PerformancePage() {
-  const canEdit = useCan('pagespeed.manage')
-  const params = useParams()
+/**
+ * Whether this scope may show Performance at all. 🔑 Decided BEFORE any read, so a scope
+ * that cannot show the page says so instead of holding a skeleton for requests that can
+ * only fail: a share link's scoped reads (`scoped`) are five routes and none of them is
+ * Performance's, and a scope whose site did not share the page has no such route either.
+ */
+function showsPerformance(scope: SiteScope): boolean {
+  return scope.fidelity === 'full' && scope.pages.includes('performance')
+}
+
+export default function PerformanceSurface() {
+  const scope = useSiteScope()
+  if (!showsPerformance(scope)) return <PerformanceNotShared />
+  return <PerformancePage scope={scope} />
+}
+
+function PerformancePage({ scope }: { scope: SiteScope }) {
+  // The viewer's own permission is not enough: a public scope never writes, whoever is
+  // looking at it (a signed-in member can open the demo too).
+  const publicView = !canWrite(scope)
+  const mayManage = useCan('pagespeed.manage')
+  const canEdit = !publicView && mayManage
   const searchParams = useSearchParams()
   const write = useQueryParamsWriter()
-  const siteId = params.id as string
+  const siteId = scope.siteId
+  // How a read that bypasses the SWR hooks addresses this site: the public surface under
+  // a public scope, the member route otherwise (lib/scope/site-ref.ts).
+  const siteRef = useSiteRef(siteId)
 
   // * ?strategy= — mobile is the default and is kept OUT of the URL, matching
   // * the ?engine= convention on the Search page.
@@ -251,7 +274,7 @@ export default function PerformancePage() {
     let cancelled = false
     setLoadingCheck(true)
     setCheckFetchFailed(false)
-    getPerformanceCheck(siteId, selectedCheckId)
+    getPerformanceCheck(siteRef, selectedCheckId)
       .then(data => {
         if (cancelled) return
         setSelectedCheckData(data)
@@ -269,7 +292,7 @@ export default function PerformancePage() {
     return () => {
       cancelled = true
     }
-  }, [selectedCheckId, siteId, retryNonce])
+  }, [selectedCheckId, siteId, siteRef, retryNonce])
 
   // * When a historical fetch fails we render NOTHING for the check body rather
   // * than substituting the latest one under the wrong timestamp.
@@ -390,7 +413,11 @@ export default function PerformancePage() {
           </div>
           <ErrorCard
             title="Couldn’t load performance"
-            description="The site request failed. Your checks are unaffected — this is a loading problem, not a data problem."
+            description={
+              publicView
+                ? 'The site request failed.'
+                : 'The site request failed. Your checks are unaffected — this is a loading problem, not a data problem.'
+            }
             onRetry={() => {
               void mutateSite()
             }}
@@ -413,7 +440,11 @@ export default function PerformancePage() {
         <PageHeader domain={site.domain} frequency={null} />
         <ErrorCard
           title="Couldn't load performance settings"
-          description="The settings request failed, so we can't tell whether monitoring is on. Your checks are unaffected — this is a loading problem."
+          description={
+            publicView
+              ? "The settings request failed, so we can't tell whether monitoring is on."
+              : "The settings request failed, so we can't tell whether monitoring is on. Your checks are unaffected — this is a loading problem."
+          }
           onRetry={() => {
             void mutateConfig()
           }}
@@ -430,6 +461,18 @@ export default function PerformancePage() {
 
   // ── State: not configured ─────────────────────────────────────────────────
   if (!enabled) {
+    // A public view has no one to switch it on: say there is nothing yet, offer nothing.
+    if (publicView) {
+      return (
+        <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
+          <PageHeader domain={site.domain} frequency={null} />
+          <div className={`${CARD} p-6 text-center md:p-12`}>
+            <h3 className="mb-2 font-semibold text-white">No performance checks yet</h3>
+            <p className="mx-auto max-w-md text-sm text-neutral-400">Performance monitoring is off for this site.</p>
+          </div>
+        </div>
+      )
+    }
     return (
       <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
         <PageHeader domain={site.domain} frequency={null} />
@@ -574,7 +617,11 @@ export default function PerformancePage() {
       {latestError && !latest ? (
         <ErrorCard
           title="Couldn't load the latest check"
-          description="The request failed. Your scheduled checks are unaffected — this is a loading problem."
+          description={
+            publicView
+              ? 'The request for the latest check failed.'
+              : 'The request failed. Your scheduled checks are unaffected — this is a loading problem.'
+          }
           onRetry={() => {
             void mutateLatest()
           }}
@@ -863,6 +910,21 @@ export default function PerformancePage() {
           <SpecPlate domain={site.domain} check={currentCheck} attempt={attemptForStrategy} />
         </div>
       )}
+    </div>
+  )
+}
+
+function PerformanceNotShared() {
+  return (
+    <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
+      <div className="mb-6">
+        <h1 className="text-lg font-semibold text-white">Performance</h1>
+        <p className="mt-1 text-sm text-neutral-400">Lab performance scores, mobile and desktop.</p>
+      </div>
+      <div className={`${CARD} p-6 text-center md:p-12`}>
+        <h3 className="mb-2 font-semibold text-white">This page is not shared</h3>
+        <p className="mx-auto max-w-md text-sm text-neutral-400">Only the pages chosen for this link are shown.</p>
+      </div>
     </div>
   )
 }
