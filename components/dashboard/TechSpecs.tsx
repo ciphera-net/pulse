@@ -29,8 +29,9 @@ interface TechSpecsProps {
   totals?: { pageviews: number; visitors: number }
   // Active page filters, threaded into the full-list fetch (F14).
   filters?: string
-  // The anonymous share surface has no full-list endpoints; it paginates only
-  // what its own payload carries.
+  // False only on a customer's share link, whose public-scoped read is served no
+  // full-list endpoints: the card paginates what its own payload carries. The demo
+  // site is served them, so it keeps this on.
   memberFeatures?: boolean
   onFilter?: (filter: DimensionFilter) => void
   /** Realtime mode — an empty block reads the one realtime line (CardEmptyState). */

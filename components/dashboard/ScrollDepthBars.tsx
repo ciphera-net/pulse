@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { ArrowLineDown } from '@phosphor-icons/react'
 import { CompactNumber } from '@/components/ui/compact-number'
-import { EmptyState } from '@/components/ui/EmptyState'
+import CardEmptyState from '@/components/dashboard/CardEmptyState'
 import type { ScrollDepthDistribution } from '@/lib/api/stats'
 import type { PagePreview } from '@/lib/api/performance'
 
@@ -186,7 +186,7 @@ export default function ScrollDepthBars({ scrollDepth, preview, bare = false, si
       {hasData ? (
         preview?.screenshot ? renderLayered(preview.screenshot) : rails
       ) : (
-        <EmptyState
+        <CardEmptyState
           icon={<ArrowLineDown />}
           title="No scrolls recorded yet"
           description="Scroll tracking is automatic — depth data appears once visitors start reading your pages."

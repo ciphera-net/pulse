@@ -19,6 +19,7 @@ import { guardedPctChange, guardedPointChange, type PctChangeResult } from '@/li
 import { RailDelta } from '@/components/funnels/FunnelRail'
 import RailSparkline from '@/components/dashboard/RailSparkline'
 import { EmptyState } from '@/components/ui/EmptyState'
+import CardEmptyState from '@/components/dashboard/CardEmptyState'
 import type { DailyStat, ImportedProvenance, Stats } from '@/lib/api/stats'
 import { importBoundaryDay, importBoundaryLabel, importBoundaryX, railIncludesImported } from '@/lib/dashboard/importBoundary'
 import { METRIC_TERMS, visitorsTerm } from '@/lib/dashboard/terms'
@@ -450,7 +451,7 @@ export default function CommandDeck({
               </div>
             ) : !hasData ? (
               <div className="flex h-full min-h-72 flex-col items-center justify-center">
-                <EmptyState
+                <CardEmptyState
                   icon={<ChartLine />}
                   title="No visitors yet"
                   description="Your traffic chart will come alive once visitors start arriving. Share your site to get the first data point."
@@ -459,7 +460,7 @@ export default function CommandDeck({
               </div>
             ) : !hasAnyNonZero ? (
               <div className="flex h-full min-h-72 flex-col items-center justify-center">
-                <EmptyState
+                <CardEmptyState
                   icon={<ChartLine />}
                   title={`No ${activeMetric?.label.toLowerCase()} recorded`}
                   description="Try expanding the time range or checking back later."
