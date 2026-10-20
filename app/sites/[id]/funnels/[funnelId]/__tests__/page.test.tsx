@@ -100,8 +100,19 @@ vi.mock('@ciphera-net/facet-hold', async () =>
   (await import('@/lib/hold/__tests__/facetHoldStandIn')).facetHoldStandIn())
 
 import FunnelDetailPage from '../page'
+import { SiteScopeProvider, memberScope } from '@/lib/scope/SiteScope'
 import { ApiError } from '@/lib/api/client'
 import { deferred, resetDeferred, commitLast, undoLast } from '@/lib/hold/__tests__/facetHoldStandIn'
+
+// The page hands the route's funnel id to a surface that reads the site from the scope
+// (PUL-34), so it renders under the member scope the site layout provides. Public mode has
+// its own suite: components/surfaces/__tests__/FunnelDetailSurface.test.tsx.
+const renderPage = () =>
+  render(
+    <SiteScopeProvider scope={memberScope('site-1')}>
+      <FunnelDetailPage />
+    </SiteScopeProvider>,
+  )
 
 const errorState = (error: unknown) => ({
   data: undefined,
@@ -121,27 +132,27 @@ beforeEach(() => {
 describe('funnel detail 404-vs-error split', () => {
   it('renders "Funnel not found" for a 404 that is NOT an ApiError instance (chunk-split shape)', () => {
     mockFunnelDetail.mockReturnValue(errorState({ status: 404 }))
-    const { getByText, queryByText } = render(<FunnelDetailPage />)
+    const { getByText, queryByText } = renderPage()
     expect(getByText('Funnel not found')).toBeTruthy()
     expect(queryByText("Couldn't load this funnel")).toBeNull()
   })
 
   it('renders "Funnel not found" for a real ApiError 404 too', () => {
     mockFunnelDetail.mockReturnValue(errorState(new ApiError('not found', 404)))
-    const { getByText } = render(<FunnelDetailPage />)
+    const { getByText } = renderPage()
     expect(getByText('Funnel not found')).toBeTruthy()
   })
 
   it('renders the retryable ErrorCard for a non-404 failure, never "not found"', () => {
     mockFunnelDetail.mockReturnValue(errorState(new ApiError('boom', 500)))
-    const { getByText, queryByText } = render(<FunnelDetailPage />)
+    const { getByText, queryByText } = renderPage()
     expect(getByText("Couldn't load this funnel")).toBeTruthy()
     expect(queryByText('Funnel not found')).toBeNull()
   })
 
   it('renders the ErrorCard for a status-less error (no fabricated 404)', () => {
     mockFunnelDetail.mockReturnValue(errorState(new Error('network down')))
-    const { getByText, queryByText } = render(<FunnelDetailPage />)
+    const { getByText, queryByText } = renderPage()
     expect(getByText("Couldn't load this funnel")).toBeTruthy()
     expect(queryByText('Funnel not found')).toBeNull()
   })
@@ -153,7 +164,7 @@ const funnelState = (over: Record<string, unknown> = {}) => ({ data: FUNNEL, err
 describe('funnel detail: delete through a hold dialog, navigating at once (PUL-28)', () => {
   it('navigates to the list at once, with nothing sent until the Undo window runs out', async () => {
     mockFunnelDetail.mockReturnValue(funnelState())
-    render(<FunnelDetailPage />)
+    renderPage()
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
     const dialog = screen.getByRole('dialog', { name: 'Delete "Signup flow"?' })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Hold to delete' }))
@@ -168,7 +179,7 @@ describe('funnel detail: delete through a hold dialog, navigating at once (PUL-2
 
   it('passes keepalive through to the request on a commit sent as the page closes', async () => {
     mockFunnelDetail.mockReturnValue(funnelState())
-    render(<FunnelDetailPage />)
+    renderPage()
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
     fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
     await commitLast({ keepalive: true })
@@ -177,7 +188,7 @@ describe('funnel detail: delete through a hold dialog, navigating at once (PUL-2
 
   it('Undo sends nothing', async () => {
     mockFunnelDetail.mockReturnValue(funnelState())
-    render(<FunnelDetailPage />)
+    renderPage()
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
     fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
     undoLast()
@@ -187,7 +198,7 @@ describe('funnel detail: delete through a hold dialog, navigating at once (PUL-2
   it('a rejected delete says so', async () => {
     deleteFunnel.mockRejectedValueOnce(new Error())
     mockFunnelDetail.mockReturnValue(funnelState())
-    render(<FunnelDetailPage />)
+    renderPage()
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
     fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
     await commitLast()

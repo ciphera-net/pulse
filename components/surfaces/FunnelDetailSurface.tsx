@@ -3,7 +3,7 @@
 import { siteDaysCaption } from '@/lib/utils/timezones'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, FunnelSimple } from '@phosphor-icons/react'
 import { toast, Button } from '@ciphera-net/facet'
 import { updateFunnel, deleteFunnel, type CreateFunnelRequest } from '@/lib/api/funnels'
@@ -34,6 +34,7 @@ import { FunnelDailyInstrument } from '@/components/funnels/FunnelDailyInstrumen
 import { DeleteFunnelDialog } from '@/components/funnels/DeleteFunnelDialog'
 import { useCan } from '@/lib/auth/permissions'
 import { useDeferredRemoval } from '@/lib/hold/useDeferredRemoval'
+import { canWrite, scopeHref, useSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
 
 // ---------------------------------------------------------------------------
 // Funnel detail (31-08 overhaul, "tall columns"): ONE panel carries the
@@ -56,14 +57,51 @@ function HeaderDelta({ change }: { change: PctChangeResult }) {
   )
 }
 
-export default function FunnelDetailPage() {
-  const params = useParams()
+// * Whether this scope draws a funnel at all (PUL-34). A member's scope and the demo's do. A
+// * customer's share link serves the dashboard family only (fidelity 'scoped'), and a page the
+// * site's owner did not share is not served either. Neither mounts a data hook: the server
+// * answers every read of a page it does not serve with 404.
+function servesFunnels(scope: SiteScope): boolean {
+  return scope.fidelity === 'full' && scope.pages.includes('funnels')
+}
+
+function FunnelNotAvailable() {
+  return (
+    <EmptyState
+      icon={<FunnelSimple />}
+      title="This page is not available"
+      description="The site owner has not shared it."
+    />
+  )
+}
+
+/**
+ * One funnel's page. The site comes from the scope, the funnel from the route that renders this
+ * (`/sites/<id>/funnels/<funnelId>`, `/demo/funnels/<funnelId>`, …), which passes it in.
+ */
+export default function FunnelDetailSurface({ funnelId }: { funnelId: string }) {
+  const scope = useSiteScope()
+  if (!servesFunnels(scope)) {
+    return (
+      <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
+        <FunnelNotAvailable />
+      </div>
+    )
+  }
+  return <FunnelDetail scope={scope} funnelId={funnelId} />
+}
+
+function FunnelDetail({ scope, funnelId }: { scope: SiteScope; funnelId: string }) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const siteId = params.id as string
-  const funnelId = params.funnelId as string
-  const canManage = useCan('funnels.manage')
+  const siteId = scope.siteId
+  // * Edit and delete exist for a member only. `useCan` answers for whoever is SIGNED IN, and a
+  // * member who opens the demo holds the permission in their own team and still changes
+  // * nothing here, so the scope decides first.
+  const member = canWrite(scope)
+  const permitted = useCan('funnels.manage')
+  const canManage = member && permitted
 
   const { data: site } = useSite(siteId)
   const dataWindow = useDataWindow(siteId, 'funnels')
@@ -208,8 +246,8 @@ export default function FunnelDetailPage() {
       if (v) keep.set(key, v)
     }
     const s = keep.toString()
-    return `/sites/${siteId}/funnels${s ? `?${s}` : ''}`
-  }, [siteId, searchParams])
+    return scopeHref(scope, 'funnels', s ? `?${s}` : '')
+  }, [scope, searchParams])
 
   // ── Route-level states ─────────────────────────────────────────────
   if (funnelLoading && !funnel) return <FunnelDetailSkeleton />
@@ -232,7 +270,11 @@ export default function FunnelDetailPage() {
         ) : (
           <ErrorCard
             title="Couldn't load this funnel"
-            description="The funnel request failed. Your data is safe — this is a loading problem."
+            description={
+              member
+                ? 'The funnel request failed. Your data is safe — this is a loading problem.'
+                : 'The funnel request failed. This is usually temporary.'
+            }
             onRetry={() => { void retryFunnel() }}
           />
         )}
@@ -240,7 +282,15 @@ export default function FunnelDetailPage() {
     )
   }
 
-  if (!funnel) return <FunnelDetailSkeleton />
+  // * No funnel, no error, nothing in flight: the read was not made (a scope the server does not
+  // * answer). A skeleton would wait for a response that never comes.
+  if (!funnel) {
+    return (
+      <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
+        <FunnelNotAvailable />
+      </div>
+    )
+  }
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
@@ -382,24 +432,26 @@ export default function FunnelDetailPage() {
       {/* Filter popover — create anchors to the button, edit to the pill */}
       <FilterBuilder builder={filterBuilder} filters={filters} onApply={handleFilterApply} />
 
-      <DeleteFunnelDialog
-        open={confirmingDelete}
-        funnelName={funnel.name}
-        onCancel={() => setConfirmingDelete(false)}
-        onConfirm={() => {
-          // Navigate to the list at once; the funnel is hidden there too (the
-          // key is shared across pages) and the delete is sent when the Undo
-          // window runs out (PUL-28).
-          removeLater({
-            key: `funnel:${funnelId}`,
-            message: `"${funnel.name}" deleted`,
-            send: ({ keepalive }) => deleteFunnel(siteId, funnelId, { keepalive }),
-            refresh: () => mutate(['funnels', siteId]),
-            failure: `Couldn't delete "${funnel.name}". Try again.`,
-          })
-          router.push(listHref)
-        }}
-      />
+      {canManage && (
+        <DeleteFunnelDialog
+          open={confirmingDelete}
+          funnelName={funnel.name}
+          onCancel={() => setConfirmingDelete(false)}
+          onConfirm={() => {
+            // Navigate to the list at once; the funnel is hidden there too (the
+            // key is shared across pages) and the delete is sent when the Undo
+            // window runs out (PUL-28).
+            removeLater({
+              key: `funnel:${funnelId}`,
+              message: `"${funnel.name}" deleted`,
+              send: ({ keepalive }) => deleteFunnel(siteId, funnelId, { keepalive }),
+              refresh: () => mutate(['funnels', siteId]),
+              failure: `Couldn't delete "${funnel.name}". Try again.`,
+            })
+            router.push(listHref)
+          }}
+        />
+      )}
 
       {/* Edit modal — dateRange feeds the live preview (the detail page used
           to omit it, so the same modal previewed from the list and silently

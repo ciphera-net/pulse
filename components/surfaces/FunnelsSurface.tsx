@@ -2,7 +2,7 @@
 
 import { siteDaysCaption } from '@/lib/utils/timezones'
 import { useState, useEffect, useMemo } from 'react'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
 import { deleteFunnel, createFunnel, updateFunnel, type Funnel, type CreateFunnelRequest } from '@/lib/api/funnels'
@@ -23,6 +23,7 @@ import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRan
 import { useCan } from '@/lib/auth/permissions'
 import { useDeferredRemoval } from '@/lib/hold/useDeferredRemoval'
 import { usePendingKeys } from '@/lib/hold/pending'
+import { canWrite, scopeHref, useSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
 
 // * ?prefill=<encodeURIComponent(JSON)> seeds the create modal (journeys lens
 // * cross-link). Parsed defensively — malformed input just opens nothing.
@@ -50,11 +51,47 @@ function parsePrefill(raw: string | null): FunnelPrefill | null {
   }
 }
 
-export default function FunnelsPage() {
-  const params = useParams()
+// * Whether this scope draws the funnels list at all (PUL-34). A member's scope and the demo's
+// * do. A customer's share link serves the dashboard family only (fidelity 'scoped'), and a page
+// * the site's owner did not share is not served either. Neither mounts a data hook: the server
+// * answers every read of a page it does not serve with 404.
+function servesFunnels(scope: SiteScope): boolean {
+  return scope.fidelity === 'full' && scope.pages.includes('funnels')
+}
+
+function FunnelsNotAvailable() {
+  return (
+    <EmptyState
+      icon={<FunnelSimple />}
+      title="This page is not available"
+      description="The site owner has not shared it."
+    />
+  )
+}
+
+function FunnelsUnavailable() {
+  return (
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
+      <FunnelsNotAvailable />
+    </div>
+  )
+}
+
+export default function FunnelsSurface() {
+  const scope = useSiteScope()
+  if (!servesFunnels(scope)) return <FunnelsUnavailable />
+  return <FunnelsList scope={scope} />
+}
+
+function FunnelsList({ scope }: { scope: SiteScope }) {
   const searchParams = useSearchParams()
-  const siteId = params.id as string
-  const canManageFunnels = useCan('funnels.manage')
+  const siteId = scope.siteId
+  // * Write controls exist for a member only. `useCan` answers for whoever is SIGNED IN, and a
+  // * member who opens the demo holds the permission in their own team and still changes
+  // * nothing here, so the scope decides first.
+  const member = canWrite(scope)
+  const permitted = useCan('funnels.manage')
+  const canManageFunnels = member && permitted
 
   const { data: site } = useSite(siteId)
   const { data: funnels, error: funnelsError, isLoading, mutate } = useFunnels(siteId)
@@ -121,6 +158,9 @@ export default function FunnelsPage() {
 
   // * First-ever load only — refetches keep the previous list mounted.
   if (isLoading && !funnels) return <FunnelsListSkeleton />
+  // * No list, no error, nothing in flight: the read was not made (a scope the server does not
+  // * answer). That is "not available", never "No funnels yet", which would claim an empty site.
+  if (!funnels && !funnelsError) return <FunnelsUnavailable />
 
   // * Detail links carry the current range so the page opens where you were.
   const qs = searchParams.toString()
@@ -158,16 +198,26 @@ export default function FunnelsPage() {
         // false for a real 404 (measured on staging — the 404 rendered the
         // generic card).
         (funnelsError as { status?: number })?.status === 404 ? (
-          <EmptyState
-            icon={<FunnelSimple />}
-            title="Site not found"
-            description="It may have been deleted, or the link points to a site you don't have access to."
-            action={{ label: 'Back to your sites', href: '/' }}
-          />
+          member ? (
+            <EmptyState
+              icon={<FunnelSimple />}
+              title="Site not found"
+              description="It may have been deleted, or the link points to a site you don't have access to."
+              action={{ label: 'Back to your sites', href: '/' }}
+            />
+          ) : (
+            // * The public surface answers 404 for a page its owner did not share. There is no
+            // * "your sites" to go back to: that list is a member's.
+            <FunnelsNotAvailable />
+          )
         ) : (
           <ErrorCard
             title="Couldn't load funnels"
-            description="The funnels request failed. Your funnels are safe — this is a loading problem."
+            description={
+              member
+                ? 'The funnels request failed. Your funnels are safe — this is a loading problem.'
+                : 'The funnels request failed. This is usually temporary.'
+            }
             onRetry={() => { void mutate() }}
           />
         )
@@ -176,9 +226,11 @@ export default function FunnelsPage() {
           icon={<FunnelSimple />}
           title="No funnels yet"
           description={
-            canManageFunnels
-              ? 'Create a funnel to track how visitors move through your site and where they drop off.'
-              : 'Funnels track how visitors move through your site. They are set up by teammates with the analytics permission.'
+            !member
+              ? 'This site has not set up any funnels yet.'
+              : canManageFunnels
+                ? 'Create a funnel to track how visitors move through your site and where they drop off.'
+                : 'Funnels track how visitors move through your site. They are set up by teammates with the analytics permission.'
           }
           action={canManageFunnels ? { label: 'Create funnel', onClick: () => { setEditingFunnel(null); setModalOpen(true) } } : undefined}
         />
@@ -193,11 +245,10 @@ export default function FunnelsPage() {
             >
               <FunnelSummaryCard
                 funnel={funnel}
-                siteId={siteId}
+                href={scopeHref(scope, 'funnels', `/${funnel.id}${hrefQuery}`)}
                 stats={listStats?.[funnel.id]}
                 prevStats={prevListStats?.[funnel.id]}
                 statsError={!!listStatsError}
-                hrefQuery={hrefQuery}
                 canManage={canManageFunnels}
                 onEdit={(f) => { setEditingFunnel(f); setModalOpen(true) }}
                 onDelete={setDeletingFunnel}
@@ -207,12 +258,14 @@ export default function FunnelsPage() {
         </div>
       )}
 
-      <DeleteFunnelDialog
-        open={!!deletingFunnel}
-        funnelName={deletingFunnel?.name ?? ''}
-        onCancel={() => setDeletingFunnel(null)}
-        onConfirm={handleDelete}
-      />
+      {canManageFunnels && (
+        <DeleteFunnelDialog
+          open={!!deletingFunnel}
+          funnelName={deletingFunnel?.name ?? ''}
+          onCancel={() => setDeletingFunnel(null)}
+          onConfirm={handleDelete}
+        />
+      )}
 
       {modalOpen && canManageFunnels && (
         <FunnelModal
