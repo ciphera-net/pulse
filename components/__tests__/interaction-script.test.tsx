@@ -33,7 +33,8 @@ function pagePaths(dir: string, out: string[] = []): string[] {
       if (name !== '__tests__' && name !== 'api') pagePaths(full, out)
     } else if (name === 'page.tsx') {
       const route = '/' + relative(join(process.cwd(), 'app'), dir)
-      out.push(route.replace(/\[[^\]]+\]/g, 'x'))
+      // An optional catch-all answers its own base path too: /demo/[[...page]] is /demo.
+      out.push(route.replace(/\/\[\[\.\.\.[^\]]+\]\]/g, '').replace(/\[[^\]]+\]/g, 'x') || '/')
     }
   }
   return out

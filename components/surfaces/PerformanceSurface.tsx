@@ -28,7 +28,8 @@ import { ErrorCard } from '@/components/ui/ErrorCard'
 import { useMinimumLoading } from '@/components/skeletons'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { TERMS } from '@/lib/dashboard/terms'
-import { canWrite, useSiteRef, useSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
+import { canWrite, servesPage, useSiteRef, useSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
+import { NotShared } from '@/components/public/states'
 
 type Strategy = 'mobile' | 'desktop'
 
@@ -125,13 +126,10 @@ function formatMs(ms: number): string {
  * only fail: a share link's scoped reads (`scoped`) are five routes and none of them is
  * Performance's, and a scope whose site did not share the page has no such route either.
  */
-function showsPerformance(scope: SiteScope): boolean {
-  return scope.fidelity === 'full' && scope.pages.includes('performance')
-}
 
 export default function PerformanceSurface() {
   const scope = useSiteScope()
-  if (!showsPerformance(scope)) return <PerformanceNotShared />
+  if (!servesPage(scope, 'performance')) return <NotShared scope={scope} />
   return <PerformancePage scope={scope} />
 }
 
@@ -910,21 +908,6 @@ function PerformancePage({ scope }: { scope: SiteScope }) {
           <SpecPlate domain={site.domain} check={currentCheck} attempt={attemptForStrategy} />
         </div>
       )}
-    </div>
-  )
-}
-
-function PerformanceNotShared() {
-  return (
-    <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
-      <div className="mb-6">
-        <h1 className="text-lg font-semibold text-white">Performance</h1>
-        <p className="mt-1 text-sm text-neutral-400">Lab performance scores, mobile and desktop.</p>
-      </div>
-      <div className={`${CARD} p-6 text-center md:p-12`}>
-        <h3 className="mb-2 font-semibold text-white">This page is not shared</h3>
-        <p className="mx-auto max-w-md text-sm text-neutral-400">Only the pages chosen for this link are shown.</p>
-      </div>
     </div>
   )
 }

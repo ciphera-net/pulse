@@ -56,6 +56,13 @@ export type { Period }
 export const VIEW_KEY = 'pulse_view'
 /** sessionStorage — a custom or arrow-shifted range follows the reader until the tab closes. */
 export const VIEW_RANGE_KEY = 'pulse_view_range'
+/**
+ * The public demo's own memory (PUL-34): session only and under its own keys, so a pick inside /demo (which
+ * pulse.ciphera.net's home page also frames) carries across the demo's pages but never changes a member's own
+ * dashboard view on the same origin. A share link (scoped) has no memory at all.
+ */
+export const PUBLIC_VIEW_KEY = 'pulse_view_public'
+export const PUBLIC_VIEW_RANGE_KEY = 'pulse_view_range_public'
 
 /**
  * The per-page keys the one memory replaces, in the order they seed it: the DASHBOARD's
@@ -110,9 +117,10 @@ function session(): Storage | null {
  * best-effort throughout (private mode, blocked site data): any failure reads as "no
  * memory", which is the default view, never an error.
  */
-export function readStoredView(): StoredView | null {
-  const ls = local()
+export function readStoredView(publicView = false): StoredView | null {
   const ss = session()
+  if (publicView) return readSessionView(ss, PUBLIC_VIEW_RANGE_KEY, () => ss?.getItem(PUBLIC_VIEW_KEY) ?? null)
+  const ls = local()
   try {
     if (ls) {
       if (ls.getItem(VIEW_KEY) === null) {
@@ -129,9 +137,13 @@ export function readStoredView(): StoredView | null {
   } catch {
     // Storage unavailable — memory is best-effort.
   }
-  // The session range is newer than any named pick in this tab: a named pick clears it.
+  return readSessionView(ss, VIEW_RANGE_KEY, () => ls?.getItem(VIEW_KEY) ?? null)
+}
+
+/** The session range first (it is newer than any named pick in this tab: a named pick clears it), then the named row. */
+function readSessionView(ss: Storage | null, rangeKey: string, named: () => string | null): StoredView | null {
   try {
-    const raw = ss?.getItem(VIEW_RANGE_KEY)
+    const raw = ss?.getItem(rangeKey)
     if (raw) {
       const r = JSON.parse(raw) as Partial<DateSpan>
       if (isValidDateString(r.start ?? null) && isValidDateString(r.end ?? null) && r.start! <= r.end!) {
@@ -142,7 +154,7 @@ export function readStoredView(): StoredView | null {
     // Garbage in storage is not a view.
   }
   try {
-    const v = ls?.getItem(VIEW_KEY)
+    const v = named()
     if (v && NAMED_ROWS.has(v)) return { period: v as Period }
   } catch {
     // Storage unavailable.
@@ -150,18 +162,19 @@ export function readStoredView(): StoredView | null {
   return null
 }
 
-function rememberNamed(p: Period) {
+function rememberNamed(p: Period, publicView = false) {
   try {
-    local()?.setItem(VIEW_KEY, p)
-    session()?.removeItem(VIEW_RANGE_KEY)
+    if (publicView) session()?.setItem(PUBLIC_VIEW_KEY, p)
+    else local()?.setItem(VIEW_KEY, p)
+    session()?.removeItem(publicView ? PUBLIC_VIEW_RANGE_KEY : VIEW_RANGE_KEY)
   } catch {
     // Storage unavailable (private mode) — memory is best-effort.
   }
 }
 
-function rememberRange(range: DateSpan) {
+function rememberRange(range: DateSpan, publicView = false) {
   try {
-    session()?.setItem(VIEW_RANGE_KEY, JSON.stringify(range))
+    session()?.setItem(publicView ? PUBLIC_VIEW_RANGE_KEY : VIEW_RANGE_KEY, JSON.stringify(range))
   } catch {
     // Storage unavailable.
   }
@@ -290,6 +303,8 @@ export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
   // under a share link follows it without having to know.
   const scope = useOptionalSiteScope()
   const fixedWindows = scope?.mode === 'public' && scope.fidelity === 'scoped'
+  // The demo (public, full fidelity) remembers in its own session keys, never in a member's (PUBLIC_VIEW_KEY).
+  const publicView = scope?.mode === 'public'
 
   // The page's wall clock, rebuilt once per MINUTE rather than on every render —
   // bucketing to the minute lets a long-lived mount roll "today" over at midnight
@@ -317,9 +332,9 @@ export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
   const [memoryRead, setMemoryRead] = useState(false)
   useEffect(() => {
     if (fixedWindows) return
-    setStored(readStoredView())
+    setStored(readStoredView(publicView))
     setMemoryRead(true)
-  }, [fixedWindows])
+  }, [fixedWindows, publicView])
 
   const urlHasPeriod = searchParams.get('period') !== null
   const rawPeriod = parsePeriod(searchParams.get('period'))
@@ -403,14 +418,14 @@ export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
       // default while another view is stored would visibly revert.
       if (isMode(p)) return
       if (p === 'custom' && range) {
-        rememberRange(range)
+        rememberRange(range, publicView)
         setStored({ period: 'custom', range })
       } else if (NAMED_ROWS.has(p)) {
-        rememberNamed(p)
+        rememberNamed(p, publicView)
         setStored({ period: p })
       }
     },
-    [writeUrl, isMode, fixedWindows],
+    [writeUrl, isMode, fixedWindows, publicView],
   )
 
   const restoreView = useCallback(

@@ -257,8 +257,8 @@ describe('a scope that does not serve the page', () => {
     ['a scope whose owner did not share funnels', demoWithoutFunnels],
   ])('%s says so plainly and mounts no data hook', (_name, scope) => {
     renderUnder(scope)
-    expect(screen.getByText('This page is not available')).toBeInTheDocument()
-    expect(screen.getByText('The site owner has not shared it.')).toBeInTheDocument()
+    // The shell's one state for a page this scope does not show (components/public/states.tsx).
+    expect(screen.getByRole('heading', { name: "This page isn't shared." })).toBeInTheDocument()
     expect(screen.queryByRole('button')).toBeNull()
     expect(mockUseFunnels).not.toHaveBeenCalled()
     expect(mockUseSite).not.toHaveBeenCalled()

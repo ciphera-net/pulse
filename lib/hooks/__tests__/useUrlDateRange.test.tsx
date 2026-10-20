@@ -5,6 +5,8 @@ import {
   readStoredView,
   VIEW_KEY,
   VIEW_RANGE_KEY,
+  PUBLIC_VIEW_KEY,
+  PUBLIC_VIEW_RANGE_KEY,
   LEGACY_VIEW_KEYS,
   SEARCH_CONSOLE_MAX_DAYS,
   type PageRangeOptions,
@@ -860,9 +862,10 @@ describe('a share link: four fixed windows, nothing else', () => {
     expect(window.localStorage.getItem(LEGACY_VIEW_KEYS[0])).toBe('12m')
   })
 
-  it('leaves the member alone: the same hook under a member scope, or none, keeps every row and its memory', () => {
+  it('leaves the member alone: the same hook under a member scope, the demo, or none, keeps every row', () => {
     for (const scope of [memberScope('s1'), demoScope, null]) {
       window.localStorage.clear()
+      window.sessionStorage.clear()
       mockSearchParams = new URLSearchParams('period=3m')
       const { result } = renderHook(() => useUrlDateRange(opts('dashboard')), { wrapper: within(scope) })
       expect(result.current.period).toBe('3m')
@@ -871,7 +874,47 @@ describe('a share link: four fixed windows, nothing else', () => {
       expect(result.current.picker.onShift).toBeTypeOf('function')
       expect(result.current.picker.calendar).toBeDefined()
       act(() => result.current.picker.onPick('12m'))
-      expect(window.localStorage.getItem(VIEW_KEY)).toBe('12m')
+      // A member (or no scope) remembers in the one memory; the demo in its own session keys (next test).
+      expect(window.localStorage.getItem(VIEW_KEY)).toBe(scope === demoScope ? null : '12m')
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The demo (PUL-34, public at full fidelity): its own memory, session only, so a pick inside /demo (which
+// pulse.ciphera.net's home page also frames) carries across the demo's pages and never changes a member's own
+// dashboard view on the same origin.
+// ---------------------------------------------------------------------------
+describe('the demo remembers in its own session keys, never in a member\'s', () => {
+  const demoScope: SiteScope = { siteId: 's1', mode: 'public', basePath: '/demo', pages: SITE_PAGES, demo: true, fidelity: 'full' }
+  const within = (scope: SiteScope) => {
+    function Wrapper({ children }: { children: React.ReactNode }) {
+      return <SiteScopeProvider scope={scope}>{children}</SiteScopeProvider>
+    }
+    return Wrapper
+  }
+
+  it('a pick lands in the demo\'s session key and the member\'s memory stays as it was', () => {
+    window.localStorage.setItem(VIEW_KEY, '3m')
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard')), { wrapper: within(demoScope) })
+    act(() => result.current.picker.onPick('7'))
+    expect(window.sessionStorage.getItem(PUBLIC_VIEW_KEY)).toBe('7')
+    expect(window.localStorage.getItem(VIEW_KEY)).toBe('3m')
+  })
+
+  it('opens on the demo\'s own pick, not on a member\'s remembered view', () => {
+    window.localStorage.setItem(VIEW_KEY, '3m')
+    window.sessionStorage.setItem(PUBLIC_VIEW_KEY, '7')
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard')), { wrapper: within(demoScope) })
+    expect(result.current.period).toBe('7')
+    expect(readStoredView()).toEqual({ period: '3m' })
+    expect(readStoredView(true)).toEqual({ period: '7' })
+  })
+
+  it('a custom span follows the demo\'s tab in its own key', () => {
+    const { result } = renderHook(() => useUrlDateRange(opts('dashboard')), { wrapper: within(demoScope) })
+    act(() => result.current.picker.onCustom?.({ start: '2026-09-01', end: '2026-09-05' }))
+    expect(JSON.parse(window.sessionStorage.getItem(PUBLIC_VIEW_RANGE_KEY) ?? 'null')).toEqual({ start: '2026-09-01', end: '2026-09-05' })
+    expect(window.sessionStorage.getItem(VIEW_RANGE_KEY)).toBeNull()
   })
 })

@@ -24,6 +24,7 @@ import { guardedPointChange, type PctChangeResult } from '@/lib/utils/pctChange'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { NotShared } from '@/components/public/states'
 import { UpdatingChip } from '@/components/ui/UpdatingChip'
 import { FunnelDetailSkeleton } from '@/components/skeletons'
 import FunnelModal from '@/components/funnels/FunnelModal'
@@ -34,7 +35,7 @@ import { FunnelDailyInstrument } from '@/components/funnels/FunnelDailyInstrumen
 import { DeleteFunnelDialog } from '@/components/funnels/DeleteFunnelDialog'
 import { useCan } from '@/lib/auth/permissions'
 import { useDeferredRemoval } from '@/lib/hold/useDeferredRemoval'
-import { canWrite, scopeHref, useSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
+import { canWrite, scopeHref, servesPage, useSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
 
 // ---------------------------------------------------------------------------
 // Funnel detail (31-08 overhaul, "tall columns"): ONE panel carries the
@@ -57,14 +58,6 @@ function HeaderDelta({ change }: { change: PctChangeResult }) {
   )
 }
 
-// * Whether this scope draws a funnel at all (PUL-34). A member's scope and the demo's do. A
-// * customer's share link serves the dashboard family only (fidelity 'scoped'), and a page the
-// * site's owner did not share is not served either. Neither mounts a data hook: the server
-// * answers every read of a page it does not serve with 404.
-function servesFunnels(scope: SiteScope): boolean {
-  return scope.fidelity === 'full' && scope.pages.includes('funnels')
-}
-
 function FunnelNotAvailable() {
   return (
     <EmptyState
@@ -81,13 +74,7 @@ function FunnelNotAvailable() {
  */
 export default function FunnelDetailSurface({ funnelId }: { funnelId: string }) {
   const scope = useSiteScope()
-  if (!servesFunnels(scope)) {
-    return (
-      <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
-        <FunnelNotAvailable />
-      </div>
-    )
-  }
+  if (!servesPage(scope, 'funnels')) return <NotShared scope={scope} />
   return <FunnelDetail scope={scope} funnelId={funnelId} />
 }
 

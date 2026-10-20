@@ -367,8 +367,7 @@ describe('Uptime page — a scope that cannot show it', () => {
       const { container } = renderUnder(scope)
       const text = container.textContent ?? ''
       // Not a skeleton that never resolves: the page says what it is and that it is not shared.
-      expect(text).toContain('Uptime')
-      expect(text).toContain('This page is not shared')
+      expect(text).toContain("This page isn't shared.")
       expect(container.querySelector('.animate-pulse')).toBeNull()
       // No request was even started, so none can fail.
       expect(mockSite).not.toHaveBeenCalled()

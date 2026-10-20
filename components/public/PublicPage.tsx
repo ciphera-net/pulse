@@ -1,6 +1,5 @@
 'use client'
 
-import type { ComponentType } from 'react'
 import CdnSurface from '@/components/surfaces/CdnSurface'
 import DashboardSurface from '@/components/surfaces/DashboardSurface'
 import FunnelDetailSurface from '@/components/surfaces/FunnelDetailSurface'
@@ -13,10 +12,6 @@ import UptimeSurface from '@/components/surfaces/UptimeSurface'
 import { NotShared } from '@/components/public/states'
 import { resolvePublicRoute } from '@/components/public/routes'
 import { useSiteScope } from '@/lib/scope/SiteScope'
-
-// FunnelDetailSurface takes the funnel as a prop once its package lands; until the branches
-// are combined it still reads it from the URL. The combine removes this cast.
-const FunnelDetail = FunnelDetailSurface as unknown as ComponentType<{ funnelId: string }>
 
 /**
  * The page a public URL shows: the one place the segments under /demo and /share/<id> become
@@ -42,7 +37,7 @@ export default function PublicPage({ segments }: { segments: readonly string[] }
       return <JourneysSurface />
     case 'funnels':
       // Keyed by funnel: a different funnel is a different page, as it is under /sites/<id>.
-      return route.funnelId ? <FunnelDetail key={route.funnelId} funnelId={route.funnelId} /> : <FunnelsSurface />
+      return route.funnelId ? <FunnelDetailSurface key={route.funnelId} funnelId={route.funnelId} /> : <FunnelsSurface />
     case 'performance':
       return <PerformanceSurface />
     case 'uptime':

@@ -12,6 +12,7 @@ import DateRangePicker from '@/components/ui/DateRangePicker'
 import SankeyJourney from '@/components/journeys/SankeyJourney'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { NotShared } from '@/components/public/states'
 import { UpdatingChip } from '@/components/ui/UpdatingChip'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { JourneysSkeleton } from '@/components/skeletons'
@@ -32,7 +33,7 @@ import {
 import { useJourneyFlow, useSite, useDataWindow } from '@/lib/swr/dashboard'
 import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
 import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
-import { canWrite, scopeHref, useSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
+import { canWrite, scopeHref, servesPage, useSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
 
 // ---------------------------------------------------------------------------
 // Journeys (07-09-2026 simplification, owner pick "A solid"):
@@ -48,14 +49,6 @@ import { canWrite, scopeHref, useSiteScope, type SiteScope } from '@/lib/scope/S
 const DEPTH_SWITCH = DEPTH_OPTIONS.map((n) => ({ value: String(n), label: String(n) }))
 const DENSITY_SWITCH = DENSITY_OPTIONS.map((n) => ({ value: String(n), label: String(n) }))
 
-// * Whether this scope draws Journeys at all (PUL-34). A member's scope and the demo's do. A
-// * customer's share link serves the dashboard family only (fidelity 'scoped'), and a page the
-// * site's owner did not share is not served either. Neither mounts a data hook: the server
-// * answers every read of a page it does not serve with 404.
-function servesJourneys(scope: SiteScope): boolean {
-  return scope.fidelity === 'full' && scope.pages.includes('journeys')
-}
-
 function JourneysNotAvailable() {
   return (
     <EmptyState
@@ -68,13 +61,7 @@ function JourneysNotAvailable() {
 
 export default function JourneysSurface() {
   const scope = useSiteScope()
-  if (!servesJourneys(scope)) {
-    return (
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8">
-        <JourneysNotAvailable />
-      </div>
-    )
-  }
+  if (!servesPage(scope, 'journeys')) return <NotShared scope={scope} />
   return <Journeys scope={scope} />
 }
 

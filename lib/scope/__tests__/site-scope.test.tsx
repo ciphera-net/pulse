@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { publicSiteRef, siteIdOf, sitePath, siteRefKey, isPublicSiteRef } from '@/lib/scope/site-ref'
-import { SiteScopeProvider, memberScope, scopeHref, canWrite, useSiteRef, useSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
+import { SiteScopeProvider, memberScope, scopeHref, canWrite, servesPage, useSiteRef, useSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
 
 const ID = 'e6a95eb8-8edb-44d4-a4e2-c400aea174a4'
 
@@ -10,8 +10,10 @@ const publicScope: SiteScope = {
 }
 
 function withScope(scope: SiteScope | null) {
-  return ({ children }: { children: React.ReactNode }) =>
-    scope ? <SiteScopeProvider scope={scope}>{children}</SiteScopeProvider> : <>{children}</>
+  function ScopeWrapper({ children }: { children: React.ReactNode }) {
+    return scope ? <SiteScopeProvider scope={scope}>{children}</SiteScopeProvider> : <>{children}</>
+  }
+  return ScopeWrapper
 }
 
 describe('site-ref', () => {
@@ -39,6 +41,16 @@ describe('SiteScope', () => {
     expect(scopeHref(publicScope, 'dashboard')).toBe('/demo')
     expect(scopeHref(publicScope, 'funnels', '/f1')).toBe('/demo/funnels/f1')
     expect(scopeHref(memberScope(ID), 'cdn')).toBe(`/sites/${ID}/cdn`)
+  })
+
+  it('serves a member and the demo every page they list, and nothing to a share link but its own dashboard', () => {
+    expect(servesPage(memberScope(ID), 'search')).toBe(true)
+    expect(servesPage(publicScope, 'funnels')).toBe(true)
+    // the demo serves only what it lists
+    expect(servesPage(publicScope, 'cdn')).toBe(false)
+    // a share link is public-scoped: the dashboard draws its own scoped mode and never asks
+    const shareLink: SiteScope = { ...publicScope, basePath: '/share/x', demo: false, fidelity: 'scoped', pages: ['dashboard', 'search'] }
+    expect(servesPage(shareLink, 'search')).toBe(false)
   })
 
   it('lets only a member write', () => {

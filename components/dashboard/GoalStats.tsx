@@ -8,6 +8,7 @@ import { CompactNumber } from '@/components/ui/compact-number'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
 import type { GoalCountStat } from '@/lib/api/stats'
 import { getEventPropertyKeys, getEventPropertyValues, type EventPropertyKey, type EventPropertyValue } from '@/lib/api/stats'
+import { useSiteRef } from '@/lib/scope/SiteScope'
 import { docsUrl } from '@/lib/docs'
 
 interface GoalStatsProps {
@@ -44,6 +45,9 @@ export function goalLabel(row: Pick<GoalCountStat, 'event_name' | 'display_name'
 }
 
 export default function GoalStats({ goalCounts, siteId, dateRange, bare = false, memberFeatures = true, liveMinutes }: GoalStatsProps) {
+  // The drill-down reads the property lists directly, not through a hook, so it resolves the read itself: on /demo
+  // these are the public routes, for a member the member ones (PUL-34).
+  const site = useSiteRef(siteId)
   const list = (goalCounts || []).slice(0, LIMIT)
   const hasData = list.length > 0
   const emptySlots = Math.max(0, LIMIT - list.length)
@@ -84,13 +88,13 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
       }))
 
       try {
-        const keys = await getEventPropertyKeys(siteId, eventName, dateRange.start, dateRange.end, liveMinutes)
+        const keys = await getEventPropertyKeys(site, eventName, dateRange.start, dateRange.end, liveMinutes)
         const values: Record<string, EventPropertyValue[]> = {}
 
         // Fetch all property values in parallel
         await Promise.all(
           keys.map(async (k) => {
-            const vals = await getEventPropertyValues(siteId, eventName, k.key, dateRange.start, dateRange.end, 20, undefined, liveMinutes)
+            const vals = await getEventPropertyValues(site, eventName, k.key, dateRange.start, dateRange.end, 20, undefined, liveMinutes)
             values[k.key] = vals
           })
         )
@@ -106,7 +110,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
         }))
       }
     }
-  }, [expanded, propertyCache, siteId, dateRange.start, dateRange.end, liveMinutes])
+  }, [expanded, propertyCache, site, dateRange.start, dateRange.end, liveMinutes])
 
   const content = (
     <>

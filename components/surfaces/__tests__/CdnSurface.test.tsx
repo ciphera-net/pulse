@@ -174,9 +174,10 @@ describe('CDN surface: the sample site at /demo (public, full fidelity)', () => 
 describe('CDN surface: a share link on another site (public-scoped)', () => {
   it('says the page is not shared, and reads nothing', async () => {
     const { container } = renderInScope(<CdnSurface />, SHARE_LINK)
-    expect(await screen.findByText('This page is not shared')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'CDN' })).toBeInTheDocument()
-    expect(container.querySelectorAll('a[href], button')).toHaveLength(0)
+    expect(await screen.findByRole('heading', { name: "This page isn't shared." })).toBeInTheDocument()
+    // The shell's one state for a page this scope does not show: no control, one way back to what IS shared.
+    expect(container.querySelectorAll('button')).toHaveLength(0)
+    expect([...container.querySelectorAll('a[href]')].map((a) => a.getAttribute('href'))).toEqual([SHARE_LINK.basePath])
     // Let anything that would have fired fire.
     await new Promise((r) => setTimeout(r, 100))
     expect(rec.reads).toEqual([])

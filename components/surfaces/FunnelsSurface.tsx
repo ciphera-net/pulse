@@ -11,6 +11,7 @@ import { previousDateRange } from '@/lib/hooks/periodUrl'
 import { toast, PlusIcon, Button } from '@ciphera-net/facet'
 import { FunnelsListSkeleton } from '@/components/skeletons'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { NotShared } from '@/components/public/states'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { FunnelSummaryCard } from '@/components/funnels/FunnelSummaryCard'
 import { FunnelStatusLine } from '@/components/funnels/FunnelStatusLine'
@@ -23,7 +24,7 @@ import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRan
 import { useCan } from '@/lib/auth/permissions'
 import { useDeferredRemoval } from '@/lib/hold/useDeferredRemoval'
 import { usePendingKeys } from '@/lib/hold/pending'
-import { canWrite, scopeHref, useSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
+import { canWrite, scopeHref, servesPage, useSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
 
 // * ?prefill=<encodeURIComponent(JSON)> seeds the create modal (journeys lens
 // * cross-link). Parsed defensively — malformed input just opens nothing.
@@ -51,14 +52,6 @@ function parsePrefill(raw: string | null): FunnelPrefill | null {
   }
 }
 
-// * Whether this scope draws the funnels list at all (PUL-34). A member's scope and the demo's
-// * do. A customer's share link serves the dashboard family only (fidelity 'scoped'), and a page
-// * the site's owner did not share is not served either. Neither mounts a data hook: the server
-// * answers every read of a page it does not serve with 404.
-function servesFunnels(scope: SiteScope): boolean {
-  return scope.fidelity === 'full' && scope.pages.includes('funnels')
-}
-
 function FunnelsNotAvailable() {
   return (
     <EmptyState
@@ -79,7 +72,7 @@ function FunnelsUnavailable() {
 
 export default function FunnelsSurface() {
   const scope = useSiteScope()
-  if (!servesFunnels(scope)) return <FunnelsUnavailable />
+  if (!servesPage(scope, 'funnels')) return <NotShared scope={scope} />
   return <FunnelsList scope={scope} />
 }
 

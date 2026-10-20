@@ -5,8 +5,9 @@ import { useEffect, useMemo } from 'react'
 import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
 import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
 import { CloudArrowUp } from '@phosphor-icons/react'
-import { canWrite, useSiteScope } from '@/lib/scope/SiteScope'
-import { IntegrationOffState, PageUnavailable, scopeServes } from '@/components/integrations/IntegrationStates'
+import { canWrite, servesPage, useSiteScope } from '@/lib/scope/SiteScope'
+import { NotShared } from '@/components/public/states'
+import { IntegrationOffState } from '@/components/integrations/IntegrationStates'
 import { useSite, useBunnyStatus, useBunnyOverview, useBunnyDailyStats, useBunnyRegions, useDataWindow } from '@/lib/swr/dashboard'
 
 import DateRangePicker from '@/components/ui/DateRangePicker'
@@ -27,15 +28,13 @@ import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 // besides). It never asks the member API anything, so no permission is read there.
 // Connecting and the links into settings are ABSENT in public mode, not disabled. A
 // share link on any other site is public-scoped and is not served this page at all
-// (scopeServes), so it says so and reads nothing.
+// (servesPage), so it says so and reads nothing.
 // ---------------------------------------------------------------------------
 
 export default function CdnSurface() {
   const scope = useSiteScope()
   // Checked in this wrapper, before the page's hooks run, so an unserved scope reads nothing.
-  if (!scopeServes(scope, 'cdn')) {
-    return <PageUnavailable title="CDN" icon={<CloudArrowUp />} />
-  }
+  if (!servesPage(scope, 'cdn')) return <NotShared scope={scope} />
   return <CDNPage />
 }
 

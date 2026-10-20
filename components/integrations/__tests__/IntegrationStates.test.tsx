@@ -5,7 +5,7 @@ import { MagnifyingGlass } from '@phosphor-icons/react'
 const mockUseCan = vi.fn<(permission: string) => boolean>(() => true)
 vi.mock('@/lib/auth/permissions', () => ({ useCan: (permission: string) => mockUseCan(permission) }))
 
-import { IntegrationOffState, PageUnavailable, scopeServes } from '../IntegrationStates'
+import { IntegrationOffState } from '../IntegrationStates'
 import { SiteScopeProvider, type SiteScope } from '@/lib/scope/SiteScope'
 import { DEMO, MEMBER, SHARE_LINK } from '@/components/surfaces/__tests__/integrationHarness'
 
@@ -31,31 +31,6 @@ const offState = (scope: SiteScope) =>
       />
     </SiteScopeProvider>,
   )
-
-describe('scopeServes', () => {
-  it('serves a member and the sample site every page they list', () => {
-    expect(scopeServes(MEMBER, 'search')).toBe(true)
-    expect(scopeServes(DEMO, 'cdn')).toBe(true)
-  })
-
-  it('does not serve a share link on another site, which is public-scoped, even a page it lists', () => {
-    expect(scopeServes(SHARE_LINK, 'search')).toBe(false)
-    expect(scopeServes({ ...SHARE_LINK, pages: ['dashboard', 'search'] }, 'search')).toBe(false)
-  })
-
-  it('does not serve a page the scope does not list', () => {
-    expect(scopeServes({ ...DEMO, pages: ['dashboard'] }, 'search')).toBe(false)
-  })
-})
-
-describe('PageUnavailable', () => {
-  it('names the page and says it is not shared, with nothing to click', () => {
-    const { container } = render(<PageUnavailable title="CDN" icon={<MagnifyingGlass />} />)
-    expect(screen.getByRole('heading', { level: 1, name: 'CDN' })).toBeInTheDocument()
-    expect(screen.getByText('This page is not shared')).toBeInTheDocument()
-    expect(container.querySelectorAll('a[href], button')).toHaveLength(0)
-  })
-})
 
 describe('IntegrationOffState', () => {
   it('offers a member who may connect it the way to', () => {

@@ -30,7 +30,8 @@ import {
   fmtCheckTime,
 } from '@/components/uptime/uptimeMetrics'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
-import { canWrite, useSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
+import { canWrite, servesPage, useSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
+import { NotShared } from '@/components/public/states'
 
 // ---------------------------------------------------------------------------
 // Uptime — the instrument-panel layout. One range control (the view switcher's
@@ -147,9 +148,6 @@ function RecentChecks({ siteId, monitorId, timezone }: { siteId: string; monitor
  * fail: a share link's scoped reads (`scoped`) are five routes and none of them is
  * Uptime's, and a scope whose site did not share the page has no such route either.
  */
-function showsUptime(scope: SiteScope): boolean {
-  return scope.fidelity === 'full' && scope.pages.includes('uptime')
-}
 
 function UptimeTitle() {
   return (
@@ -170,23 +168,11 @@ function UptimeNothingYet({ reason }: { reason: string }) {
   )
 }
 
-function UptimeNotShared() {
-  return (
-    <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
-      <UptimeTitle />
-      <div className="rounded-none border border-border bg-card px-6 py-10 text-center">
-        <p className="text-sm text-neutral-400">This page is not shared.</p>
-        <p className="mt-1 text-xs text-neutral-500">Only the pages chosen for this link are shown.</p>
-      </div>
-    </div>
-  )
-}
-
 // ─── Page ─────────────────────────────────────────────────────────
 
 export default function UptimeSurface() {
   const scope = useSiteScope()
-  if (!showsUptime(scope)) return <UptimeNotShared />
+  if (!servesPage(scope, 'uptime')) return <NotShared scope={scope} />
   return <UptimePage scope={scope} />
 }
 

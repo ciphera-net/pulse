@@ -58,6 +58,15 @@ export function scopeHref(scope: Pick<SiteScope, 'basePath'>, page: SitePage, re
   return page === 'dashboard' ? `${scope.basePath}${rest}` : `${scope.basePath}/${page}${rest}`
 }
 
+/**
+ * Whether this scope shows `page`: the one rule every surface's gate asks, before any of its hooks run. A member sees
+ * every page; a public scope only the pages its site shares, at full fidelity. A customer's share link is public-scoped
+ * and is served the dashboard alone, which draws its scoped mode itself and never asks this.
+ */
+export function servesPage(scope: Pick<SiteScope, 'fidelity' | 'pages'>, page: SitePage): boolean {
+  return scope.fidelity === 'full' && scope.pages.includes(page)
+}
+
 /** Whether this scope may change anything. Write controls are absent, not disabled, when it may not. */
 export function canWrite(scope: Pick<SiteScope, 'mode'>): boolean {
   return scope.mode === 'member'

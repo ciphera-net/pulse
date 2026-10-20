@@ -7,44 +7,16 @@ import { useCan } from '@/lib/auth/permissions'
 import { canWrite, useSiteScope, type SitePage, type SiteScope } from '@/lib/scope/SiteScope'
 
 // ---------------------------------------------------------------------------
-// The Search and CDN pages have three states whose words and controls depend on WHO
+// The Search and CDN pages have a state whose words and controls depend on WHO
 // is looking (PUL-34 Phase 2: /demo and /share/<id> render these same pages, in a
 // public scope, beside the member's). Kept in one place so the two pages cannot
-// disagree about them.
+// disagree about it. Whether a scope shows the page at all is servesPage (lib/scope/SiteScope.tsx),
+// the rule every surface's gate asks.
 //
-//  - `scopeServes`: whether the scope can serve the page at all;
-//  - `PageUnavailable`: what a page says when it cannot, instead of a skeleton that
-//    never resolves or an error card for a request that was never going to work;
 //  - `IntegrationOffState`: an integration that is not connected. A member is offered
 //    the way to connect it; a public visitor is told it is not connected, with
 //    nothing to click (a write control is absent in public mode, never disabled).
 // ---------------------------------------------------------------------------
-
-/**
- * Whether this scope serves a page. Search and CDN read the integrations' own routes,
- * which the backend answers at full fidelity only: for a member, and for the sample
- * site. A share link on any other site is public-scoped and answers 404 "This page is
- * not shared" to every one of them, so those pages say so up front and read nothing.
- */
-export function scopeServes(scope: Pick<SiteScope, 'fidelity' | 'pages'>, page: SitePage): boolean {
-  return scope.fidelity === 'full' && scope.pages.includes(page)
-}
-
-/** What a page shows when its scope does not serve it. */
-export function PageUnavailable({ title, icon }: { title: string; icon: ReactNode }) {
-  return (
-    <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
-      <div className="mb-6">
-        <h1 className="text-lg font-semibold text-white">{title}</h1>
-      </div>
-      <EmptyState
-        icon={icon}
-        title="This page is not shared"
-        description="Only the pages shared on this link are available."
-      />
-    </div>
-  )
-}
 
 interface IntegrationOffStateProps {
   /** Ghost rail labels, in rail order (the instrument's own metric names). */

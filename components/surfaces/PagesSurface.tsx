@@ -4,11 +4,12 @@ import { FileText } from '@phosphor-icons/react'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import PagesTable from '@/components/pages/PagesTable'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { NotShared } from '@/components/public/states'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
 import { fetchableRange, serverResolvedPeriod } from '@/lib/dashboard/resolveRange'
 import { useSite, usePagesTable, useDataWindow } from '@/lib/swr/dashboard'
-import { useSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
+import { servesPage, useSiteScope } from '@/lib/scope/SiteScope'
 import { siteDaysCaption } from '@/lib/utils/timezones'
 
 // ---------------------------------------------------------------------------
@@ -33,14 +34,6 @@ import { siteDaysCaption } from '@/lib/utils/timezones'
 // half-wiring the filter popover's state. Adding it is additive.
 // ---------------------------------------------------------------------------
 
-// * Whether this scope draws the Pages table at all (PUL-34). A member's scope and the demo's do. A
-// * customer's share link serves the dashboard family only (fidelity 'scoped'), and a page the
-// * site's owner did not share is not served either. Neither mounts a data hook: the server
-// * answers every read of a page it does not serve with 404.
-function servesPages(scope: SiteScope): boolean {
-  return scope.fidelity === 'full' && scope.pages.includes('pages')
-}
-
 function PagesNotAvailable() {
   return (
     <EmptyState
@@ -53,13 +46,7 @@ function PagesNotAvailable() {
 
 export default function PagesSurface() {
   const scope = useSiteScope()
-  if (!servesPages(scope)) {
-    return (
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pb-8 pt-4">
-        <PagesNotAvailable />
-      </div>
-    )
-  }
+  if (!servesPage(scope, 'pages')) return <NotShared scope={scope} />
   return <PagesList siteId={scope.siteId} />
 }
 
