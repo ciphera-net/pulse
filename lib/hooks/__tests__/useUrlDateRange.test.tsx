@@ -752,9 +752,12 @@ describe('legacy URL grammar tokens still resolve', () => {
 describe('a share link: four fixed windows, nothing else', () => {
   const shareScope: SiteScope = { siteId: 's1', mode: 'public', basePath: '/share/s1', pages: ['dashboard'], demo: false, fidelity: 'scoped' }
   const demoScope: SiteScope = { siteId: 's1', mode: 'public', basePath: '/demo', pages: SITE_PAGES, demo: true, fidelity: 'full' }
-  const within = (scope: SiteScope | null) =>
-    ({ children }: { children: React.ReactNode }) =>
-      scope ? <SiteScopeProvider scope={scope}>{children}</SiteScopeProvider> : <>{children}</>
+  const within = (scope: SiteScope | null) => {
+    function Wrapper({ children }: { children: React.ReactNode }) {
+      return scope ? <SiteScopeProvider scope={scope}>{children}</SiteScopeProvider> : <>{children}</>
+    }
+    return Wrapper
+  }
   const share = (overrides: Partial<PageRangeOptions> = {}) =>
     renderHook(() => useUrlDateRange(opts('dashboard', overrides)), { wrapper: within(shareScope) })
 
