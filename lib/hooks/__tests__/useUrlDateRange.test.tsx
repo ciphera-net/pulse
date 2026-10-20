@@ -11,7 +11,8 @@ import {
 } from '../useUrlDateRange'
 import { previousDateRange, DEFAULT_PERIOD } from '../periodUrl'
 import { PERIOD_PRESETS, CUSTOM_RANGE_LABEL } from '@/lib/constants/periods'
-import type { Surface, WindowState, DataWindow } from '@/lib/view/view'
+import { SHARE_FIXED_RANGES_REASON, SHARE_ROW_KEYS, type Surface, type WindowState, type DataWindow } from '@/lib/view/view'
+import { SiteScopeProvider, memberScope, SITE_PAGES, type SiteScope } from '@/lib/scope/SiteScope'
 
 // ---------------------------------------------------------------------------
 // Rewritten for the ONE-MEMORY contract (owner decision 25-09-2026, PULSE-20 —
@@ -738,4 +739,136 @@ describe('legacy URL grammar tokens still resolve', () => {
       expect(result.current.dateRange.end).toMatch(/^\d{4}-\d{2}-\d{2}$/)
     },
   )
+})
+
+// ---------------------------------------------------------------------------
+// A customer's share link (PUL-34 Phase 2). Its reads are public-scoped: the server serves
+// four fixed day-granular windows and refuses everything else, so the hook — decided from
+// the ambient scope, so every page under a share link follows it — offers exactly those,
+// coerces the rest of the URL grammar to the default, waits for nothing, and never touches
+// the reader's view memory. (This is the old share page's own contract, PULSE-20 §12 /
+// §11.13, now enforced where the dashboard reads its range.)
+// ---------------------------------------------------------------------------
+describe('a share link: four fixed windows, nothing else', () => {
+  const shareScope: SiteScope = { siteId: 's1', mode: 'public', basePath: '/share/s1', pages: ['dashboard'], demo: false, fidelity: 'scoped' }
+  const demoScope: SiteScope = { siteId: 's1', mode: 'public', basePath: '/demo', pages: SITE_PAGES, demo: true, fidelity: 'full' }
+  const within = (scope: SiteScope | null) =>
+    ({ children }: { children: React.ReactNode }) =>
+      scope ? <SiteScopeProvider scope={scope}>{children}</SiteScopeProvider> : <>{children}</>
+  const share = (overrides: Partial<PageRangeOptions> = {}) =>
+    renderHook(() => useUrlDateRange(opts('dashboard', overrides)), { wrapper: within(shareScope) })
+
+  it.each(SHARE_ROW_KEYS)('opens on ?period=%s as itself', (period) => {
+    mockSearchParams = new URLSearchParams(`period=${period}`)
+    const { result } = share()
+    expect(result.current.period).toBe(period)
+    expect(result.current.picker.tick).toBe(period)
+  })
+
+  it.each([
+    'period=3m',
+    'period=12m',
+    'period=all',
+    'period=month',
+    'period=1h',
+    'period=24h',
+    'period=realtime',
+    'period=custom&start=2026-09-01&end=2026-09-05',
+    'period=nonsense',
+  ])('opens on the default window for ?%s, which the server would refuse', (query) => {
+    mockSearchParams = new URLSearchParams(query)
+    const { result } = share({ modes: ['realtime'], rollingMinutes: { realtime: 5 } })
+    expect(result.current.period).toBe(DEFAULT_PERIOD)
+    expect(result.current.rollingMinutes).toBeNull()
+    expect(result.current.requested).toEqual({ period: DEFAULT_PERIOD })
+  })
+
+  it('is ready on the first render: nothing waits on a memory, a timezone or a data window', () => {
+    const { result } = renderHook(() => useUrlDateRange({ surface: 'dashboard', window: undefined, timezone: undefined }), {
+      wrapper: within(shareScope),
+    })
+    expect(result.current.periodReady).toBe(true)
+  })
+
+  it('lists the eleven rows with only the four fixed windows available, and the one reason on the rest', () => {
+    const { result } = share({ window: { from: '2026-10-10', through: '2026-09-26' } })
+    const rows = result.current.picker.rows
+    expect(rows.map((r) => r.key)).toEqual(PERIOD_PRESETS.map((p) => p.key))
+    for (const row of rows) {
+      expect(row.available, row.key).toBe((SHARE_ROW_KEYS as readonly string[]).includes(row.key))
+      if (!row.available) expect(row.reason, row.key).toBe(SHARE_FIXED_RANGES_REASON)
+    }
+    expect(result.current.picker.footnote).toBe(SHARE_FIXED_RANGES_REASON)
+  })
+
+  it('hands the picker no custom range, no arrows and no calendar, and the reason "Custom range…" is greyed for', () => {
+    const { picker } = share().result.current
+    expect(picker.onCustom).toBeUndefined()
+    expect(picker.onShift).toBeUndefined()
+    expect(picker.calendar).toBeUndefined()
+    expect(picker.customReason).toBe(SHARE_FIXED_RANGES_REASON)
+    expect(picker.suffix).toBeNull()
+  })
+
+  it('never shifts, even when asked', () => {
+    mockSearchParams = new URLSearchParams('period=7')
+    const { result } = share()
+    act(() => result.current.shiftPeriod(-1))
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('writes a pick of a fixed window to the URL, and nothing outside the four', () => {
+    const { result } = share()
+    act(() => result.current.picker.onPick('7'))
+    expect(mockReplace.mock.calls.at(-1)?.[0]).toContain('period=7')
+
+    mockReplace.mockClear()
+    // The menu greys these rows, but the guard is here: whoever asks, the URL never carries them.
+    act(() => result.current.picker.onPick('3m'))
+    act(() => result.current.setPeriod('custom', { start: '2026-09-01', end: '2026-09-05' }))
+    act(() => result.current.setPeriod('realtime'))
+    act(() => result.current.restoreView({ period: 'all' }))
+    for (const call of mockReplace.mock.calls) {
+      const url = String(call[0])
+      expect(url).not.toContain('period=')
+      expect(url).not.toContain('start=')
+      expect(url).not.toContain('end=')
+    }
+  })
+
+  it('never reads or writes the reader\'s view memory, and leaves a member\'s own memory alone', () => {
+    window.localStorage.setItem(VIEW_KEY, '3m')
+    window.localStorage.setItem(LEGACY_VIEW_KEYS[0], '12m')
+    window.sessionStorage.setItem(VIEW_RANGE_KEY, JSON.stringify({ start: '2026-09-01', end: '2026-09-05' }))
+    const getItem = vi.spyOn(Storage.prototype, 'getItem')
+    const setItem = vi.spyOn(Storage.prototype, 'setItem')
+    const removeItem = vi.spyOn(Storage.prototype, 'removeItem')
+
+    const { result } = share()
+    // Neither the remembered 3 months nor the session range is the view: the link opens on 30 days.
+    expect(result.current.period).toBe(DEFAULT_PERIOD)
+    expect(result.current.remembered).toBeNull()
+    act(() => result.current.picker.onPick('7'))
+
+    const touched = [...getItem.mock.calls, ...setItem.mock.calls, ...removeItem.mock.calls].map((c) => String(c[0]))
+    expect(touched.filter((k) => k.startsWith('pulse_'))).toEqual([])
+    // The member's memory, on the same origin, is exactly as the member left it.
+    expect(window.localStorage.getItem(VIEW_KEY)).toBe('3m')
+    expect(window.localStorage.getItem(LEGACY_VIEW_KEYS[0])).toBe('12m')
+  })
+
+  it('leaves the member alone: the same hook under a member scope, or none, keeps every row and its memory', () => {
+    for (const scope of [memberScope('s1'), demoScope, null]) {
+      window.localStorage.clear()
+      mockSearchParams = new URLSearchParams('period=3m')
+      const { result } = renderHook(() => useUrlDateRange(opts('dashboard')), { wrapper: within(scope) })
+      expect(result.current.period).toBe('3m')
+      expect(result.current.picker.rows.every((r) => r.available)).toBe(true)
+      expect(result.current.picker.onCustom).toBeTypeOf('function')
+      expect(result.current.picker.onShift).toBeTypeOf('function')
+      expect(result.current.picker.calendar).toBeDefined()
+      act(() => result.current.picker.onPick('12m'))
+      expect(window.localStorage.getItem(VIEW_KEY)).toBe('12m')
+    }
+  })
 })

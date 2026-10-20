@@ -6,8 +6,11 @@ import { PERIOD_PRESETS } from '@/lib/constants/periods'
 import { siteWallClockNow } from '@/lib/utils/siteTime'
 import { formatDate } from '@/lib/utils/format'
 import {
+  SHARE_FIXED_RANGES_REASON,
   listFootnote,
   resolveView,
+  shareRows,
+  toShareView,
   viewRows,
   type AppliedView,
   type DateSpan,
@@ -16,6 +19,7 @@ import {
   type Surface,
   type WindowState,
 } from '@/lib/view/view'
+import { useOptionalSiteScope } from '@/lib/scope/SiteScope'
 import {
   DEFAULT_PERIOD,
   isValidDateString,
@@ -197,11 +201,15 @@ export interface ViewPickerProps {
   rows: RowState[]
   footnote: string | null
   onPick: (period: Period) => void
-  onCustom: (range: DateSpan) => void
-  onShift: (direction: -1 | 1) => void
-  shiftBackDisabled: boolean
-  shiftForwardDisabled: boolean
-  calendar: {
+  /** Absent on a share link: "Custom range…" is greyed with `customReason`. */
+  onCustom?: (range: DateSpan) => void
+  customReason?: string
+  /** Absent on a share link: no arrows. */
+  onShift?: (direction: -1 | 1) => void
+  shiftBackDisabled?: boolean
+  shiftForwardDisabled?: boolean
+  /** Absent on a share link, which has no calendar to open. */
+  calendar?: {
     /** Days before it are greyed (the page's first day of data). */
     min?: string
     /** Days after it are greyed (today, or the page's newest day). */
@@ -270,6 +278,19 @@ export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
   const searchParams = useSearchParams()
   const write = useQueryParamsWriter()
 
+  // 🔴 A CUSTOMER'S SHARE LINK READS FOUR FIXED WINDOWS AND NOTHING ELSE.
+  // Its reads are public-scoped: the server serves today, yesterday, 7d and 30d at day
+  // granularity and refuses every other period, any start/end date and any live window
+  // with a 400 (pulse-backend public_surface.go: a free choice of both endpoints is what
+  // lets two floored answers be subtracted down to one visitor). So under that scope the
+  // hook offers exactly those rows, coerces anything else in the URL to the default, sends
+  // no date, and neither reads nor writes the reader's view memory (an anonymous viewer on
+  // fixed ranges has nothing to remember, and must not touch a member's own memory on the
+  // same origin). It is decided HERE, from the ambient scope, so every page rendered
+  // under a share link follows it without having to know.
+  const scope = useOptionalSiteScope()
+  const fixedWindows = scope?.mode === 'public' && scope.fidelity === 'scoped'
+
   // The page's wall clock, rebuilt once per MINUTE rather than on every render —
   // bucketing to the minute lets a long-lived mount roll "today" over at midnight
   // without a ticking timer. `timezone` undefined means "not known yet"; periodReady
@@ -295,9 +316,10 @@ export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
   // null, and only the second must suppress fetching.
   const [memoryRead, setMemoryRead] = useState(false)
   useEffect(() => {
+    if (fixedWindows) return
     setStored(readStoredView())
     setMemoryRead(true)
-  }, [])
+  }, [fixedWindows])
 
   const urlHasPeriod = searchParams.get('period') !== null
   const rawPeriod = parsePeriod(searchParams.get('period'))
@@ -305,40 +327,49 @@ export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
   const rawEnd = searchParams.get('end')
 
   const requested: RequestedView = useMemo(() => {
-    if (urlHasPeriod) {
-      if (rawPeriod === 'custom') {
-        return isValidDateString(rawStart) && isValidDateString(rawEnd) && rawStart <= rawEnd
-          ? { period: 'custom', range: { start: rawStart, end: rawEnd } }
-          : { period: DEFAULT_PERIOD }
+    const asked = ((): RequestedView => {
+      if (urlHasPeriod) {
+        if (rawPeriod === 'custom') {
+          return isValidDateString(rawStart) && isValidDateString(rawEnd) && rawStart <= rawEnd
+            ? { period: 'custom', range: { start: rawStart, end: rawEnd } }
+            : { period: DEFAULT_PERIOD }
+        }
+        return { period: rawPeriod }
       }
-      return { period: rawPeriod }
-    }
-    // A mode is never the stored view (it cannot be written), and a stored one would be
-    // a defect elsewhere — refused here too, so one bug cannot trap a reader live.
-    if (stored && !isMode(stored.period)) return stored
-    return { period: DEFAULT_PERIOD }
-  }, [urlHasPeriod, rawPeriod, rawStart, rawEnd, stored, isMode])
+      // A mode is never the stored view (it cannot be written), and a stored one would be
+      // a defect elsewhere — refused here too, so one bug cannot trap a reader live.
+      if (stored && !isMode(stored.period)) return stored
+      return { period: DEFAULT_PERIOD }
+    })()
+    return fixedWindows ? toShareView(asked) : asked
+  }, [urlHasPeriod, rawPeriod, rawStart, rawEnd, stored, isMode, fixedWindows])
 
   const view = useMemo(
     () =>
       resolveView({
         requested,
         now: siteNow,
-        window: dataWindow,
+        // A share link has no data window to grey rows by (that route is not served to
+        // it): its only greying is the fixed-windows rule.
+        window: fixedWindows ? null : dataWindow,
         maxDays,
-        modes,
+        modes: fixedWindows ? undefined : modes,
         surface,
         retentionMonths,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [requested, siteNow, dataWindow, maxDays, modesKey, surface, retentionMonths],
+    [requested, siteNow, dataWindow, maxDays, modesKey, surface, retentionMonths, fixedWindows],
   )
 
-  const activeRollingMinutes = rollingMinutes?.[view.period] ?? null
+  const activeRollingMinutes = fixedWindows ? null : (rollingMinutes?.[view.period] ?? null)
   const timezoneKnown = timezone !== undefined
   const windowKnown = dataWindow !== undefined
+  // A share link's windows travel as period tokens the SERVER resolves, so nothing here
+  // waits on a memory, a timezone or a data window: the URL is the whole answer and is
+  // known on the first render.
   const periodReady =
-    (urlHasPeriod || memoryRead) && (activeRollingMinutes != null || (timezoneKnown && windowKnown))
+    fixedWindows ||
+    ((urlHasPeriod || memoryRead) && (activeRollingMinutes != null || (timezoneKnown && windowKnown)))
 
   const updateUrl = useCallback(
     (updates: Record<string, string | null>) => {
@@ -359,6 +390,12 @@ export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
 
   const setPeriod = useCallback(
     (p: Period, range?: DateSpan) => {
+      if (fixedWindows) {
+        // The menu greys the other rows, but the guard is here: nothing outside the four
+        // windows is written to the URL, whoever asks. Never the memory.
+        writeUrl(toShareView({ period: p }).period)
+        return
+      }
       writeUrl(p, range)
       // A mode is never remembered — it is something a reader is in, not a view they
       // chose for next time. A named row is the global view; a custom span follows the
@@ -373,13 +410,16 @@ export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
         setStored({ period: p })
       }
     },
-    [writeUrl, isMode],
+    [writeUrl, isMode, fixedWindows],
   )
 
-  const restoreView = useCallback((v: StoredView) => writeUrl(v.period, v.range), [writeUrl])
+  const restoreView = useCallback(
+    (v: StoredView) => (fixedWindows ? writeUrl(toShareView(v).period) : writeUrl(v.period, v.range)),
+    [writeUrl, fixedWindows],
+  )
 
   const today = formatDate(siteNow)
-  const noShift = view.period === 'all' || isMode(view.period)
+  const noShift = fixedWindows || view.period === 'all' || isMode(view.period)
 
   const shiftPeriod = useCallback(
     (direction: -1 | 1) => {
@@ -391,12 +431,15 @@ export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
   )
 
   const rows = useMemo(
-    () => viewRows({ surface, now: siteNow, window: dataWindow, retentionMonths }),
-    [surface, siteNow, dataWindow, retentionMonths],
+    () => (fixedWindows ? shareRows() : viewRows({ surface, now: siteNow, window: dataWindow, retentionMonths })),
+    [fixedWindows, surface, siteNow, dataWindow, retentionMonths],
   )
   const footnote = useMemo(
-    () => view.note ?? listFootnote({ surface, now: siteNow, window: dataWindow, retentionMonths }, rows),
-    [view.note, surface, siteNow, dataWindow, retentionMonths, rows],
+    () =>
+      fixedWindows
+        ? SHARE_FIXED_RANGES_REASON
+        : (view.note ?? listFootnote({ surface, now: siteNow, window: dataWindow, retentionMonths }, rows)),
+    [fixedWindows, view.note, surface, siteNow, dataWindow, retentionMonths, rows],
   )
 
   const onPick = useCallback((p: Period) => setPeriod(p), [setPeriod])
@@ -408,27 +451,42 @@ export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
   // the closest view (on Journeys, Yesterday → an empty Today → Yesterday again).
   const calendarMax = dataWindow && dataWindow.through < today ? dataWindow.through : today
   const picker: ViewPickerProps = useMemo(
-    () => ({
-      label: view.label,
-      suffix: view.suffix,
-      tick: view.tick,
-      rows,
-      footnote,
-      onPick,
-      onCustom,
-      onShift: shiftPeriod,
-      shiftBackDisabled: noShift || (dataWindow != null && view.range.start <= dataWindow.from),
-      shiftForwardDisabled: noShift || view.range.end >= calendarMax,
-      calendar: {
-        min: dataWindow ? dataWindow.from : undefined,
-        max: calendarMax,
-        maxDays,
-        caption: daysCaption,
-        range: view.range,
-      },
-      now: siteNow,
-    }),
-    [view, rows, footnote, onPick, onCustom, shiftPeriod, noShift, dataWindow, calendarMax, maxDays, daysCaption, siteNow],
+    () =>
+      fixedWindows
+        ? {
+            // The four windows, the rest greyed with one reason; no custom range, no
+            // arrows, no calendar (DateRangePicker greys "Custom range…" with
+            // `customReason` when it is handed no `onCustom`).
+            label: view.label,
+            suffix: null,
+            tick: view.tick,
+            rows,
+            footnote,
+            onPick,
+            customReason: SHARE_FIXED_RANGES_REASON,
+            now: siteNow,
+          }
+        : {
+            label: view.label,
+            suffix: view.suffix,
+            tick: view.tick,
+            rows,
+            footnote,
+            onPick,
+            onCustom,
+            onShift: shiftPeriod,
+            shiftBackDisabled: noShift || (dataWindow != null && view.range.start <= dataWindow.from),
+            shiftForwardDisabled: noShift || view.range.end >= calendarMax,
+            calendar: {
+              min: dataWindow ? dataWindow.from : undefined,
+              max: calendarMax,
+              maxDays,
+              caption: daysCaption,
+              range: view.range,
+            },
+            now: siteNow,
+          },
+    [fixedWindows, view, rows, footnote, onPick, onCustom, shiftPeriod, noShift, dataWindow, calendarMax, maxDays, daysCaption, siteNow],
   )
 
   return {
