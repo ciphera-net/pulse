@@ -1,9 +1,10 @@
-import Script from 'next/script'
 import { Toaster } from '@ciphera-net/facet'
 import { UndoProvider } from '@ciphera-net/facet-hold'
 import { AuthProvider } from '@/lib/auth/context'
 import SWRProvider from '@/components/SWRProvider'
 import InteractionScript from '@/components/InteractionScript'
+import PulseOwnTracker from '@/components/PulseOwnTracker'
+import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
 import type { Metadata, Viewport } from 'next'
 import { Geist, JetBrains_Mono } from 'next/font/google'
 import LayoutContent from './layout-content'
@@ -114,18 +115,11 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        {/* Outbound-link tracking is OFF on Pulse's own install. A customer
-            clicking a link from inside their dashboard would otherwise record
-            THEIR destination — their own pages, and the sites they link out to —
-            into Pulse's own analytics (owner ruling, 08-09-2026). File downloads
-            stay on: they resolve to Ciphera's own domains and carry no customer
-            destination. */}
-        <Script
-          defer
-          data-domain="pulse.ciphera.net"
-          data-no-outbound=""
-          src="https://js.ciphera.net/script.js"
-        />
+        {/* Pulse's own tracking tag, in a top-level window only: the home page
+            frames /demo, and a frame is not a visit. Outbound-link tracking stays
+            OFF on it (owner ruling, 08-09-2026); see components/PulseOwnTracker.tsx. */}
+        <PulseOwnTracker />
+        <ServiceWorkerRegister />
         {/* Interaction capture loads on the signed-out pages only; see
             components/InteractionScript.tsx. */}
         <InteractionScript />

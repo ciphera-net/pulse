@@ -9,6 +9,22 @@
  */
 export const EMBED_READY_MESSAGE = 'pulse:demo-ready'
 
+/**
+ * Whether this document runs inside a frame: the hero's /demo. A framed page is not a visit
+ * of its own (the home page that frames it already counted one), so Pulse's own tracker and
+ * the service worker stay out of it (components/PulseOwnTracker.tsx,
+ * components/ServiceWorkerRegister.tsx). False on the server: callers decide after mount.
+ */
+export function isFramed(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return window.top !== window.self
+  } catch {
+    // Reading a cross-origin top can throw in some engines: only a framed document gets here.
+    return true
+  }
+}
+
 export function postEmbedReady(): void {
   if (typeof window === 'undefined' || window.parent === window) return
   try {

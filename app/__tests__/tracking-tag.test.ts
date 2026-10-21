@@ -16,12 +16,17 @@
  * difference. Its only symptom is data quietly reappearing.
  *
  * The guard strips comments first, so the prose above cannot satisfy it.
+ *
+ * The tag lives in components/PulseOwnTracker.tsx since 21-10-2026 (it loads in a top-level
+ * window only: the home page frames /demo), so that is the file asserted on, and the layout
+ * must mount it and carry no bare tracker tag of its own.
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-const raw = readFileSync(join(process.cwd(), 'app/layout.tsx'), 'utf8')
+const raw = readFileSync(join(process.cwd(), 'components/PulseOwnTracker.tsx'), 'utf8')
+const layout = readFileSync(join(process.cwd(), 'app/layout.tsx'), 'utf8')
 
 /** Source with every block and line comment removed, so only real code is asserted on. */
 const code = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[^\n]*?\/\/[^\n]*$/gm, '')
@@ -55,5 +60,10 @@ describe("Pulse's own tracking tag", () => {
 
   it('still names the site it tracks', () => {
     expect(code).toContain('data-domain="pulse.ciphera.net"')
+  })
+
+  it('is mounted by the root layout through the component, never as a bare tag', () => {
+    expect(layout).toContain('<PulseOwnTracker />')
+    expect(layout).not.toContain('js.ciphera.net/script.js')
   })
 })
