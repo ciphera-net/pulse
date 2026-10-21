@@ -90,8 +90,7 @@ export function getTimezoneCountry(tz: string): string {
 // * `flag_region` when it names a code we have art for, else the group key's
 // * CLDR likely-subtag region (e.g. "ja" -> "JP") when THAT has art, else ''
 // * (globe). `flag_region` already encodes "which member, if any, earned the
-// * flag" (the most-visited member that carries a region, or the floor's
-// * stricter rule on a shared dashboard) — this function only ever adds the
+// * flag" (the most-visited member that carries a region) — this function only ever adds the
 // * bare-key fallback and the hasFlag gate, never re-picks a member.
 function getGroupFlagCode(item: { language?: string; flag_region?: string | null }): string {
   const key = item.language ?? ''
@@ -299,9 +298,9 @@ export default function Audience({ countries, cities, regions, languages, langua
   const getItemFilterValues = (item: AudienceItem): string[] | undefined => {
     if (isLanguageGrouped) {
       if (item.members && item.members.length > 0) return item.members
-      // A grouped row with no `members` (a floored shared-dashboard payload,
-      // where onFilter is never passed anyway, or a backend that omitted it)
-      // still filters on SOMETHING sane: the group key itself.
+      // A grouped row with no `members` (a backend that omitted it, as a shared
+      // dashboard's did until 21-10-2026) still filters on SOMETHING sane: the
+      // group key itself.
       return item.language ? [item.language] : undefined
     }
     const v = getItemFilterValue(item)
@@ -457,10 +456,8 @@ export default function Audience({ countries, cities, regions, languages, langua
                   const Row = canFilter ? 'button' : 'div'
                   // PULSE-173: "N regions" is a muted secondary next to the
                   // language name, shown only for a grouped row spanning more
-                  // than one locale — a shared-dashboard payload never has
-                  // locale_count at all (omitted, not zero), so this renders
-                  // nothing there, matching the contract's "on shared
-                  // dashboards there is no locale_count".
+                  // than one locale. A shared dashboard carries locale_count
+                  // too since the five-visitor floor went (21-10-2026).
                   const showRegionCount = isLanguageGrouped && (item.locale_count ?? 0) > 1
                   return (
                     <CascadeRow key={itemKey} index={idx}>

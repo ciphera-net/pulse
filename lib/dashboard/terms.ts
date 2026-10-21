@@ -617,12 +617,6 @@ export const TERMS: Record<string, GlossaryTerm> = {
   },
 
   // ── funnels ──
-  funnel_breakdown_floor: {
-    title: 'Funnel breakdown privacy floor',
-    definition:
-      'Values with fewer than 5 entrants are withheld entirely — no row, never a zero — so a small slice and an empty one look the same and iterating a dimension cannot isolate one visitor.',
-    docs: 'funnels#funnel-breakdown-floor',
-  },
   funnel_exit_pages: {
     title: 'Exit pages (funnels)',
     definition:

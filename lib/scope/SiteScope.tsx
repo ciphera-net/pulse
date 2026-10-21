@@ -29,8 +29,8 @@ export function isSitePage(value: string): value is SitePage {
  *  - `full`: exactly as a member sees it: filters, any range, every interval. A member,
  *    and the demo site (synthetic data, the gate's full-fidelity rule).
  *  - `scoped`: a customer's share link, a public-scoped read: fixed day-granular periods
- *    only, no filters, no hourly buckets, breakdown rows under five visitors withheld
- *    (pulse-backend public_surface.go, public_floor.go). Pages must not ask it for more.
+ *    only, no filters, no hourly buckets (pulse-backend public_surface.go; there is no
+ *    five-visitor floor since 21-10-2026). Pages must not ask it for more.
  */
 export type ScopeFidelity = 'full' | 'scoped'
 

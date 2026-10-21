@@ -510,30 +510,7 @@ describe('a share link (public, scoped): today\'s share page, inside the surface
     expect(h.captured.Sources.dateRange).toEqual({ start: '2026-10-14', end: '2026-10-20' })
   })
 
-  it('says what the floor withheld, in the words the share page used, and only when something was', async () => {
-    dashboardState = {
-      data: payload(
-        { start: '2026-09-21', end: '2026-10-20' },
-        { suppression: { min_cell_size: 5, rows_withheld: 12, pageviews_withheld: 1500 } },
-      ),
-    }
-    const view = await mount(shareScope)
-    expect(screen.getByText(/hidden below/).textContent?.replace(/\s+/g, ' ')).toBe(
-      '12 rows are hidden below, covering 1,500 pageviews. A shared dashboard only shows breakdown rows with at least 5 visitors, so no row can describe one person. Site totals are unaffected.',
-    )
-    view.unmount()
-
-    dashboardState = { data: payload({ start: '2026-09-21', end: '2026-10-20' }, { suppression: { min_cell_size: 5, rows_withheld: 1, pageviews_withheld: 3 } }) }
-    const single = await mount(shareScope)
-    expect(screen.getByText(/hidden below/).textContent).toMatch(/^1 row is hidden below, covering 3 pageviews\./)
-    single.unmount()
-
-    dashboardState = { data: payload({ start: '2026-09-21', end: '2026-10-20' }, { suppression: { min_cell_size: 5, rows_withheld: 0, pageviews_withheld: 0 } }) }
-    await mount(shareScope)
-    expect(screen.queryByText(/hidden below/)).toBeNull()
-  })
-
-  it('hands the Languages tab the grouped rows beside the floored per-locale list, and the per-locale list alone from an older backend (PULSE-173)', async () => {
+  it('hands the Languages tab the grouped rows beside the per-locale list, and the per-locale list alone from an older backend (PULSE-173)', async () => {
     const range = { start: '2026-09-21', end: '2026-10-20' }
     const groups = [{ language: 'en', pageviews: 283, visitors: 144, bounce_rate: null, avg_duration: null, flag_region: 'US' }]
     dashboardState = { data: payload(range, { languages: [], language_groups: groups }) }

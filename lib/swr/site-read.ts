@@ -20,7 +20,7 @@ import { isPublicSiteRef, siteRefKey, type SiteRef } from '@/lib/scope/site-ref'
  * internal/api/public_share_routes.go).
  *
  *  - `customer`: the five routes every share link is served, public-scoped (fixed day-granular
- *    periods, no filters, no sub-day buckets, small rows withheld): `/stats`, `/daily`, `/realtime`,
+ *    periods, no filters, no sub-day buckets): `/stats`, `/daily`, `/realtime`,
  *    `/dashboard` and `/page-preview`.
  *  - `demo`: every other public route. Only the demo site is served these, at full fidelity; a share link
  *    answers 404 "This page is not shared" until the Sharing round (D10) rules on each page. That includes

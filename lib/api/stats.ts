@@ -198,16 +198,14 @@ export interface LanguageGroupStat {
   bounce_rate: number | null
   avg_duration: number | null
   /** The distinct raw stored tags in the group, ordered by visitors desc
-   *  (tags only, no counts). ABSENT (not empty — omitted) on a floored
-   *  shared-dashboard payload: listing them would reveal that a locale under
-   *  the n≥5 floor exists inside an otherwise-visible group. */
+   *  (tags only, no counts). Optional: a backend before 21-10-2026 omitted
+   *  it on a shared dashboard (the five-visitor floor, since removed). */
   members?: string[]
-  /** `members.length`, mirrored so a card need not compute it. Omitted for
-   *  the same reason as `members` on a floored payload. */
+  /** `members.length`, mirrored so a card need not compute it. Optional for
+   *  the same reason as `members`. */
   locale_count?: number
   /** Uppercased region subtag of the group's most-visited member that HAS a
-   *  region subtag; `null` when no member has one, or (on a floored payload)
-   *  when that member itself sits under the floor. */
+   *  region subtag; `null` when no member has one. */
   flag_region: string | null
 }
 
@@ -256,8 +254,7 @@ export interface DeviceStat {
 // LITERAL yyyy-mm-ddThh:mm prefix is the site's wall clock under both the old
 // (Z-stamped) and new wire formats — parse it with parseSiteWallClock and read
 // UTC getters, never local ones. The four averages are nullable like Stats';
-// a null bucket is "not measured" (or floored on a public-scoped read) and
-// draws as a GAP, not a zero.
+// a null bucket is "not measured" and draws as a GAP, not a zero.
 export interface DailyStat {
   date: string
   pageviews: number
@@ -437,9 +434,7 @@ export interface DashboardData {
    *  Absent (a backend that predates the grouping rollout) and `null` (no
    *  grouped view for this response: the range holds imported language
    *  history, or a cached response from before the field existed) both mean
-   *  the card shows `languages` instead, no error. Floored like every other
-   *  dimension on a shared dashboard; see LanguageGroupStat for what a
-   *  floored group omits. */
+   *  the card shows `languages` instead, no error. */
   language_groups?: LanguageGroupStat[] | null
   timezones: TimezoneStat[]
   browsers: BrowserStat[]
@@ -448,9 +443,8 @@ export interface DashboardData {
   screen_resolutions: ScreenResolutionStat[]
   goal_counts?: GoalCountStat[]
   scroll_depth?: ScrollDepthDistribution
-  // Campaign rows joined the payload 02-09-2026 (floored on public-scoped
-  // reads like every dimension) so the share surface can render the
-  // Campaigns card without the member-only /campaigns endpoint.
+  // Campaign rows joined the payload 02-09-2026 so the share surface can
+  // render the Campaigns card without the member-only /campaigns endpoint.
   campaigns?: CampaignStat[]
   date_range?: { start: string; end: string }
   /**
@@ -458,16 +452,6 @@ export interface DashboardData {
    * "All time" past a year, where the server picks week or month (PULSE-20).
    */
   interval?: 'minute' | 'hour' | 'day' | 'week' | 'month'
-  /** What the minimum-cell-size floor withheld. Present ONLY on a shared dashboard
-   *  and ONLY when something was withheld, so its presence is itself the signal that
-   *  this payload was served anonymously.
-   *
-   *  A shared dashboard drops every dimension row describing fewer than
-   *  `min_cell_size` people, because the payload carries fifteen dimensions computed
-   *  over the same sessions and small cells in several of them join into one person.
-   *  The counts are reported rather than silently applied so a viewer can see that
-   *  the rows do not sum to the total on purpose. */
-  suppression?: DashboardSuppression
   /**
    * Whether the headline and the chart include imported history, and which days
    * (PULSE-83). Speaks for the headline and the series; each card speaks for
@@ -487,12 +471,6 @@ export interface DashboardData {
    * `/goals/stats` carries the same thing as `imported`.
    */
   imported_goals?: ImportedProvenance
-}
-
-export interface DashboardSuppression {
-  min_cell_size: number
-  rows_withheld: number
-  pageviews_withheld: number
 }
 
 export interface ScrollDepthDistribution {
