@@ -4,7 +4,10 @@ import withPWAInit from "@ducanh2912/next-pwa"
 
 const withPWA = withPWAInit({
   dest: "public",
-  register: true,
+  // * NOT next-pwa's own registration: components/ServiceWorkerRegister.tsx calls
+  // * window.workbox.register() in a top-level window only, so the /demo that
+  // * pulse.ciphera.net's home page frames never installs the dashboard's worker.
+  register: false,
   disable: process.env.NODE_ENV === "development",
   // * The tracker and its release manifests must NOT be in the SW precache.
   // * Workbox aborts the ENTIRE install when any one precache fetch fails, and
