@@ -1,5 +1,6 @@
 import apiRequest from './client'
 import { Site } from './sites'
+import { sitePath, type SiteRef } from '@/lib/scope/site-ref'
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -341,8 +342,8 @@ function buildQuery(
 // * dates and the period (buildQuery sends only minutes=), exactly as the dashboard
 // * fan-out does, so a card's full list describes the same window as the KPI rail.
 function createListFetcher<T>(path: string, field: string, defaultLimit = 10) {
-  return (siteId: string, startDate?: string, endDate?: string, limit = defaultLimit, filters?: string, period?: string, minutes?: number): Promise<T[]> =>
-    apiRequest<Record<string, T[]>>(`/sites/${siteId}/${path}${buildQuery({ startDate, endDate, limit, filters, period, minutes })}`)
+  return (site: SiteRef, startDate?: string, endDate?: string, limit = defaultLimit, filters?: string, period?: string, minutes?: number): Promise<T[]> =>
+    apiRequest<Record<string, T[]>>(sitePath(site, `/${path}${buildQuery({ startDate, endDate, limit, filters, period, minutes })}`))
       .then(r => r?.[field] || [])
 }
 
@@ -371,8 +372,8 @@ export const getTimezones = createListFetcher<TimezoneStat>('timezones', 'timezo
  * `createListFetcher`, which has no fixed-param hook and reads the wrong key)
  * so the plain per-locale fetcher is untouched.
  */
-export function getLanguageGroups(siteId: string, startDate?: string, endDate?: string, limit = 10, filters?: string, period?: string, minutes?: number): Promise<LanguageGroupStat[]> {
-  return apiRequest<Record<string, LanguageGroupStat[]>>(`/sites/${siteId}/languages${buildQuery({ startDate, endDate, limit, filters, period, minutes, group: 'language' })}`)
+export function getLanguageGroups(site: SiteRef, startDate?: string, endDate?: string, limit = 10, filters?: string, period?: string, minutes?: number): Promise<LanguageGroupStat[]> {
+  return apiRequest<Record<string, LanguageGroupStat[]>>(sitePath(site, `/languages${buildQuery({ startDate, endDate, limit, filters, period, minutes, group: 'language' })}`))
     .then(r => r?.language_groups || [])
 }
 export const getGoalStats = createListFetcher<GoalCountStat>('goals/stats', 'goal_counts', 20)
@@ -381,29 +382,32 @@ export const getCampaigns = createListFetcher<CampaignStat>('campaigns', 'campai
 
 // ─── Stats & Realtime ───────────────────────────────────────────────
 
-export function getStats(siteId: string, startDate?: string, endDate?: string, filters?: string, period?: string): Promise<StatsResponse> {
-  return apiRequest<StatsResponse>(`/sites/${siteId}/stats${buildQuery({ startDate, endDate, filters, period })}`)
+export function getStats(site: SiteRef, startDate?: string, endDate?: string, filters?: string, period?: string): Promise<StatsResponse> {
+  return apiRequest<StatsResponse>(sitePath(site, `/stats${buildQuery({ startDate, endDate, filters, period })}`))
 }
 
+/** @deprecated Read the public surface through getStats(publicSiteRef(id), …) (lib/scope/site-ref); kept for the share page that still calls it. */
 export function getPublicStats(siteId: string, startDate?: string, endDate?: string): Promise<Stats> {
   return apiRequest<Stats>(`/public/sites/${siteId}/stats${buildQuery({ startDate, endDate })}`)
 }
 
-export function getRealtime(siteId: string): Promise<RealtimeStats> {
-  return apiRequest<RealtimeStats>(`/sites/${siteId}/realtime`)
+export function getRealtime(site: SiteRef): Promise<RealtimeStats> {
+  return apiRequest<RealtimeStats>(sitePath(site, '/realtime'))
 }
 
+/** @deprecated Read the public surface through getRealtime(publicSiteRef(id)) (lib/scope/site-ref); kept for the share page that still calls it. */
 export function getPublicRealtime(siteId: string): Promise<RealtimeStats> {
   return apiRequest<RealtimeStats>(`/public/sites/${siteId}/realtime`)
 }
 
 // ─── Daily Stats ────────────────────────────────────────────────────
 
-export function getDailyStats(siteId: string, startDate?: string, endDate?: string, interval?: string, filters?: string, period?: string): Promise<DailyStat[]> {
-  return apiRequest<{ stats: DailyStat[] }>(`/sites/${siteId}/daily${buildQuery({ startDate, endDate, interval, filters, period })}`)
+export function getDailyStats(site: SiteRef, startDate?: string, endDate?: string, interval?: string, filters?: string, period?: string): Promise<DailyStat[]> {
+  return apiRequest<{ stats: DailyStat[] }>(sitePath(site, `/daily${buildQuery({ startDate, endDate, interval, filters, period })}`))
     .then(r => r?.stats || [])
 }
 
+/** @deprecated Read the public surface through getDailyStats(publicSiteRef(id), …) (lib/scope/site-ref); kept for the share page that still calls it. */
 export function getPublicDailyStats(siteId: string, startDate?: string, endDate?: string, interval?: string): Promise<DailyStat[]> {
   return apiRequest<{ stats: DailyStat[] }>(`/public/sites/${siteId}/daily${buildQuery({ startDate, endDate, interval })}`)
     .then(r => r?.stats || [])
@@ -499,10 +503,11 @@ export interface ScrollDepthDistribution {
   total_sessions: number
 }
 
-export function getDashboard(siteId: string, startDate?: string, endDate?: string, limit = 10, interval?: string, filters?: string, period?: string, minutes?: number): Promise<DashboardData> {
-  return apiRequest<DashboardData>(`/sites/${siteId}/dashboard${buildQuery({ startDate, endDate, limit, interval, filters, period, minutes })}`)
+export function getDashboard(site: SiteRef, startDate?: string, endDate?: string, limit = 10, interval?: string, filters?: string, period?: string, minutes?: number): Promise<DashboardData> {
+  return apiRequest<DashboardData>(sitePath(site, `/dashboard${buildQuery({ startDate, endDate, limit, interval, filters, period, minutes })}`))
 }
 
+/** @deprecated Read the public surface through getDashboard(publicSiteRef(id), …) (lib/scope/site-ref); kept for the share page that still calls it. */
 export function getPublicDashboard(
   siteId: string,
   startDate?: string,
@@ -552,8 +557,8 @@ export interface PagesTableData {
   pages: PageTableRow[]
 }
 
-export function getPagesTable(siteId: string, startDate?: string, endDate?: string, limit = 500, filters?: string, period?: string): Promise<PagesTableData> {
-  return apiRequest<PagesTableData>(`/sites/${siteId}/pages/table${buildQuery({ startDate, endDate, period, limit, filters })}`)
+export function getPagesTable(site: SiteRef, startDate?: string, endDate?: string, limit = 500, filters?: string, period?: string): Promise<PagesTableData> {
+  return apiRequest<PagesTableData>(sitePath(site, `/pages/table${buildQuery({ startDate, endDate, period, limit, filters })}`))
 }
 
 // ─── Event Properties ────────────────────────────────────────────────
@@ -568,16 +573,16 @@ export interface EventPropertyValue {
   count: number
 }
 
-export function getEventPropertyKeys(siteId: string, eventName: string, startDate?: string, endDate?: string, minutes?: number): Promise<EventPropertyKey[]> {
-  return apiRequest<{ keys: EventPropertyKey[] }>(`/sites/${siteId}/goals/${encodeURIComponent(eventName)}/properties${buildQuery({ startDate, endDate, minutes })}`)
+export function getEventPropertyKeys(site: SiteRef, eventName: string, startDate?: string, endDate?: string, minutes?: number): Promise<EventPropertyKey[]> {
+  return apiRequest<{ keys: EventPropertyKey[] }>(sitePath(site, `/goals/${encodeURIComponent(eventName)}/properties${buildQuery({ startDate, endDate, minutes })}`))
     .then(r => r?.keys || [])
 }
 
 // `period` wins over the dates when given (buildQuery): the server resolves a
 // token like `1h` or `today` in the SITE's timezone, which a date-only fetch
 // cannot express — the same reason the campaigns fetch threads it.
-export function getEventPropertyValues(siteId: string, eventName: string, propName: string, startDate?: string, endDate?: string, limit = 20, period?: string, minutes?: number): Promise<EventPropertyValue[]> {
-  return apiRequest<{ values: EventPropertyValue[] }>(`/sites/${siteId}/goals/${encodeURIComponent(eventName)}/properties/${encodeURIComponent(propName)}${buildQuery({ startDate, endDate, limit, period, minutes })}`)
+export function getEventPropertyValues(site: SiteRef, eventName: string, propName: string, startDate?: string, endDate?: string, limit = 20, period?: string, minutes?: number): Promise<EventPropertyValue[]> {
+  return apiRequest<{ values: EventPropertyValue[] }>(sitePath(site, `/goals/${encodeURIComponent(eventName)}/properties/${encodeURIComponent(propName)}${buildQuery({ startDate, endDate, limit, period, minutes })}`))
     .then(r => r?.values || [])
 }
 

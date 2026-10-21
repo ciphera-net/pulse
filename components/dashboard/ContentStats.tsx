@@ -31,9 +31,10 @@ interface ContentStatsProps {
   // (the modal) so a modal opened from a filtered card shows the same
   // population as the card (F14).
   filters?: string
-  // The anonymous share surface has no full-list endpoints (member-strict
-  // since Phase 0) — hide the affordance rather than show an error for a
-  // capability that does not exist there.
+  // A customer's share link is served no full-list endpoints (its public-scoped read
+  // is a closed list of five routes) — hide the affordance rather than show an error
+  // for a capability that does not exist there. The demo site is served them, so it
+  // keeps this on.
   memberFeatures?: boolean
   onFilter?: (filter: DimensionFilter) => void
   /** Realtime mode — an empty block reads the one realtime line (CardEmptyState). */

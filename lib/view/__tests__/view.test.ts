@@ -6,11 +6,13 @@ import {
   formatLongDay,
   formatSpan,
   hasData,
+  isSharePeriod,
   listFootnote,
   resolveView,
   rowSpan,
   shareRows,
   spanDays,
+  toShareView,
   viewRows,
   SHARE_FIXED_RANGES_REASON,
   SHARE_ROW_KEYS,
@@ -632,5 +634,34 @@ describe('rowSpan', () => {
     const w: DataWindow = { from: '2020-01-01', through: '2020-01-01' }
     const todayPreset = findPreset('today')!
     expect(rowSpan(todayPreset, NOW, w)).toEqual({ start: '2026-09-26', end: '2026-09-26' })
+  })
+})
+
+// ─── What a share link may ask for (PUL-34 Phase 2) ──────────────────────────
+describe('isSharePeriod — the four windows the server serves a share link', () => {
+  it('is exactly SHARE_ROW_KEYS', () => {
+    expect(['today', 'yesterday', '7', '30'].every(isSharePeriod)).toBe(true)
+    for (const row of PERIOD_PRESETS) {
+      expect(isSharePeriod(row.key), row.key).toBe((SHARE_ROW_KEYS as readonly string[]).includes(row.key))
+    }
+  })
+
+  it('refuses every other token of the URL grammar, and any string at all', () => {
+    for (const token of ['all', '3m', '12m', '28', '16m', 'week', 'month', 'year', 'last-month', 'last-year', '1h', '24h', '30m', '6h', 'realtime', 'custom', '', '7d', '30d']) {
+      expect(isSharePeriod(token), token).toBe(false)
+    }
+  })
+})
+
+describe('toShareView — a share link\'s view is one of the four, or the default', () => {
+  it('keeps a fixed window as itself', () => {
+    for (const period of SHARE_ROW_KEYS) expect(toShareView({ period })).toEqual({ period })
+  })
+
+  it('turns everything else into 30 days, a custom span included, and drops its range', () => {
+    expect(toShareView({ period: '3m' })).toEqual({ period: '30' })
+    expect(toShareView({ period: 'all' })).toEqual({ period: '30' })
+    expect(toShareView({ period: 'realtime' })).toEqual({ period: '30' })
+    expect(toShareView({ period: 'custom', range: { start: '2026-09-01', end: '2026-09-05' } })).toEqual({ period: '30' })
   })
 })

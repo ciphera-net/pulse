@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { rememberLastSite, markSessionEntered } from '@/lib/last-site'
 import { useSite } from '@/lib/swr/dashboard'
 import { SiteInAnotherTeam } from '@/components/sites/SiteInAnotherTeam'
+import { SiteScopeProvider, memberScope } from '@/lib/scope/SiteScope'
 
 /**
  * A site from another of the reader's teams: the server's plain cross-team 403,
@@ -36,6 +37,10 @@ function isOtherTeam(error: unknown): boolean {
  * The site request is the SAME SWR key the pages use, so it costs nothing extra.
  * Every other failure (404, 5xx, network, a coded 403) is left to the page, which
  * states it.
+ *
+ * It also provides the MEMBER scope (PUL-34 Phase 2): the page bodies are surface
+ * components shared with /demo and /share/<id>, and they read the site from the
+ * scope, never from the path.
  */
 export default function SiteLayoutShell({
   siteId,
@@ -45,6 +50,7 @@ export default function SiteLayoutShell({
   children: React.ReactNode
 }) {
   const { data: site, error } = useSite(siteId)
+  const scope = useMemo(() => memberScope(siteId), [siteId])
   const otherTeam = !site && isOtherTeam(error)
 
   useEffect(() => {
@@ -85,5 +91,5 @@ export default function SiteLayoutShell({
   if (otherTeam) {
     return <SiteInAnotherTeam siteId={siteId} />
   }
-  return <>{children}</>
+  return <SiteScopeProvider scope={scope}>{children}</SiteScopeProvider>
 }

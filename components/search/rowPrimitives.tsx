@@ -11,6 +11,7 @@ import { SkeletonLine } from '@/components/skeletons'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { PositionBadge } from './PositionBadge'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
+import { canWrite, useOptionalSiteScope } from '@/lib/scope/SiteScope'
 
 // ---------------------------------------------------------------------------
 // The one row grammar for the Search Console views. A card, mono sentence-case
@@ -264,12 +265,20 @@ export function ViewBody({
   onRetry: () => void
   children: React.ReactNode
 }) {
+  // * The reassurance is for members, whose data it is. A public visitor (/demo) has none
+  // * of their own to be told is safe; outside any scope the member copy stands.
+  const scope = useOptionalSiteScope()
+  const memberCopy = !scope || canWrite(scope)
   if (isLoading && !hasData) return <ViewSkeleton />
   if (error) {
     return (
       <ErrorCard
         title="Couldn't load this view"
-        description="The Search Console request failed for this period. Your data is safe — this is a loading problem."
+        description={
+          memberCopy
+            ? 'The Search Console request failed for this period. Your data is safe — this is a loading problem.'
+            : 'The Search Console request failed for this period.'
+        }
         onRetry={onRetry}
         className="py-10"
       />

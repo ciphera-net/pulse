@@ -1,0 +1,2291 @@
+{
+  "useDataWindow": {
+    "key": [
+      "dataWindow",
+      "site-1"
+    ],
+    "config": {
+      "refreshInterval": 300000,
+      "dedupingInterval": 60000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "dataWindow.getDataWindow",
+        [
+          "site-1"
+        ]
+      ]
+    ]
+  },
+  "useSite": {
+    "key": [
+      "site",
+      "site-1"
+    ],
+    "config": {
+      "refreshInterval": 300000,
+      "dedupingInterval": 30000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "sites.getSite",
+        [
+          "site-1"
+        ]
+      ]
+    ]
+  },
+  "useSiteTeam#enabled": {
+    "key": [
+      "site-team",
+      "site-1"
+    ],
+    "config": {
+      "revalidateOnFocus": false,
+      "shouldRetryOnError": false
+    },
+    "api": [
+      [
+        "sites.getSiteTeam",
+        [
+          "site-1"
+        ]
+      ]
+    ]
+  },
+  "useSiteTeam#disabled": {
+    "key": null,
+    "config": {
+      "revalidateOnFocus": false,
+      "shouldRetryOnError": false
+    },
+    "api": []
+  },
+  "useInstallStatus": {
+    "key": [
+      "install-status",
+      "site-1"
+    ],
+    "config": {
+      "refreshInterval": "fn",
+      "dedupingInterval": 2000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "sites.getInstallStatus",
+        [
+          "site-1"
+        ]
+      ]
+    ]
+  },
+  "useInstallStatus#poll": {
+    "key": [
+      "install-status",
+      "site-1"
+    ],
+    "config": {
+      "refreshInterval": "fn",
+      "dedupingInterval": 2000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "sites.getInstallStatus",
+        [
+          "site-1"
+        ]
+      ]
+    ]
+  },
+  "useInstallStatus#noSite": {
+    "key": null,
+    "config": {
+      "refreshInterval": "fn",
+      "dedupingInterval": 2000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": []
+  },
+  "useIngestHealth": {
+    "key": [
+      "ingest-health",
+      "site-1"
+    ],
+    "config": {
+      "refreshInterval": 0,
+      "dedupingInterval": 60000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "sites.getIngestHealth",
+        [
+          "site-1"
+        ]
+      ]
+    ]
+  },
+  "useTrafficStatus": {
+    "key": [
+      "traffic-status",
+      "site-1"
+    ],
+    "config": {
+      "refreshInterval": 0,
+      "dedupingInterval": 60000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "sites.getTrafficStatus",
+        [
+          "site-1"
+        ]
+      ]
+    ]
+  },
+  "useDashboard#period": {
+    "key": [
+      "dashboard",
+      "site-1",
+      "today",
+      "2026-10-01",
+      "2026-10-07",
+      "day",
+      "v2:country|is|NL",
+      ""
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": true,
+      "revalidateOnReconnect": true,
+      "focusThrottleInterval": 30000,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getDashboard",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07",
+          10,
+          "day",
+          "v2:country|is|NL",
+          "today",
+          "__undefined__"
+        ]
+      ]
+    ]
+  },
+  "useDashboard#dates": {
+    "key": [
+      "dashboard",
+      "site-1",
+      "",
+      "2026-10-01",
+      "2026-10-07",
+      "hour",
+      "__undefined__",
+      ""
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": true,
+      "revalidateOnReconnect": true,
+      "focusThrottleInterval": 30000,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getDashboard",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07",
+          10,
+          "hour",
+          "__undefined__",
+          "__undefined__",
+          "__undefined__"
+        ]
+      ]
+    ]
+  },
+  "useDashboard#live": {
+    "key": [
+      "dashboard",
+      "site-1",
+      "",
+      "2026-10-01",
+      "2026-10-01",
+      "minute",
+      "__undefined__",
+      5
+    ],
+    "config": {
+      "refreshInterval": 15000,
+      "dedupingInterval": 2000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "focusThrottleInterval": 30000,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getDashboard",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-01",
+          10,
+          "minute",
+          "__undefined__",
+          "__undefined__",
+          5
+        ]
+      ]
+    ]
+  },
+  "useDashboard#withheld": {
+    "key": null,
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": true,
+      "revalidateOnReconnect": true,
+      "focusThrottleInterval": 30000,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": []
+  },
+  "useStats": {
+    "key": [
+      "stats",
+      "site-1",
+      "7d",
+      "2026-10-01",
+      "2026-10-07",
+      "v2:country|is|NL"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": true,
+      "revalidateOnReconnect": true,
+      "focusThrottleInterval": 30000,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getStats",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07",
+          "v2:country|is|NL",
+          "7d"
+        ]
+      ]
+    ]
+  },
+  "useStats#dates": {
+    "key": [
+      "stats",
+      "site-1",
+      "",
+      "2026-10-01",
+      "2026-10-07",
+      "__undefined__"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": true,
+      "revalidateOnReconnect": true,
+      "focusThrottleInterval": 30000,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getStats",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07",
+          "__undefined__",
+          "__undefined__"
+        ]
+      ]
+    ]
+  },
+  "usePagesTable": {
+    "key": [
+      "pagesTable",
+      "site-1",
+      "30d",
+      "2026-10-01",
+      "2026-10-07",
+      250,
+      "v2:country|is|NL"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": true,
+      "revalidateOnReconnect": true,
+      "focusThrottleInterval": 30000,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getPagesTable",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07",
+          250,
+          "v2:country|is|NL",
+          "30d"
+        ]
+      ]
+    ]
+  },
+  "usePagesTable#defaults": {
+    "key": [
+      "pagesTable",
+      "site-1",
+      "",
+      "2026-10-01",
+      "2026-10-07",
+      500,
+      "__undefined__"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": true,
+      "revalidateOnReconnect": true,
+      "focusThrottleInterval": 30000,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getPagesTable",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07",
+          500,
+          "__undefined__",
+          "__undefined__"
+        ]
+      ]
+    ]
+  },
+  "useDailyStats": {
+    "key": [
+      "dailyStats",
+      "site-1",
+      "today",
+      "2026-10-01",
+      "2026-10-07",
+      "day",
+      "v2:country|is|NL"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": true,
+      "revalidateOnReconnect": true,
+      "focusThrottleInterval": 30000,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getDailyStats",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07",
+          "day",
+          "v2:country|is|NL",
+          "today"
+        ]
+      ]
+    ]
+  },
+  "useRealtime": {
+    "key": [
+      "realtime",
+      "site-1"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": true,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getRealtime",
+        [
+          "site-1"
+        ]
+      ]
+    ]
+  },
+  "useRealtime#interval": {
+    "key": [
+      "realtime",
+      "site-1"
+    ],
+    "config": {
+      "refreshInterval": 15000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": true,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getRealtime",
+        [
+          "site-1"
+        ]
+      ]
+    ]
+  },
+  "useCampaignsList#dated": {
+    "key": [
+      "campaignsList",
+      "site-1",
+      "2026-10-01",
+      "2026-10-07",
+      10,
+      "v2:country|is|NL",
+      "7d"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": true,
+      "revalidateOnReconnect": true,
+      "focusThrottleInterval": 30000,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getCampaigns",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07",
+          10,
+          "v2:country|is|NL",
+          "7d",
+          "__undefined__"
+        ]
+      ]
+    ]
+  },
+  "useCampaignsList#live": {
+    "key": [
+      "campaignsList",
+      "site-1",
+      "__live__",
+      5,
+      10,
+      "v2:country|is|NL"
+    ],
+    "config": {
+      "refreshInterval": 15000,
+      "dedupingInterval": 2000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "focusThrottleInterval": 30000,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getCampaigns",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-01",
+          10,
+          "v2:country|is|NL",
+          "__undefined__",
+          5
+        ]
+      ]
+    ]
+  },
+  "useCampaignsList#disarmed": {
+    "key": null,
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": true,
+      "revalidateOnReconnect": true,
+      "focusThrottleInterval": 30000,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": []
+  },
+  "useCampaigns": {
+    "key": [
+      "campaigns",
+      "site-1",
+      "30d",
+      "2026-10-01",
+      "2026-10-07",
+      100
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getCampaigns",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07",
+          100,
+          "__undefined__",
+          "30d"
+        ]
+      ]
+    ]
+  },
+  "useJourneyFlow": {
+    "key": [
+      "journeyFlow",
+      "site-1",
+      "30d",
+      "2026-10-01",
+      "2026-10-07",
+      4,
+      "/pricing",
+      "v2:country|is|NL"
+    ],
+    "config": {
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "journeys.getJourneyFlow",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07",
+          {
+            "depth": 4,
+            "entryPath": "/pricing",
+            "filters": "v2:country|is|NL",
+            "period": "30d"
+          }
+        ]
+      ]
+    ]
+  },
+  "useJourneyEntryPoints": {
+    "key": [
+      "journeyEntryPoints",
+      "site-1",
+      "30d",
+      "2026-10-01",
+      "2026-10-07",
+      "v2:country|is|NL"
+    ],
+    "config": {
+      "refreshInterval": 300000,
+      "dedupingInterval": 30000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "journeys.getJourneyEntryPoints",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07",
+          "v2:country|is|NL",
+          "30d"
+        ]
+      ]
+    ]
+  },
+  "useFunnels": {
+    "key": [
+      "funnels",
+      "site-1"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "funnels.listFunnels",
+        [
+          "site-1"
+        ]
+      ]
+    ]
+  },
+  "useFunnelDetail": {
+    "key": [
+      "funnel",
+      "site-1",
+      "funnel-1"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "funnels.getFunnel",
+        [
+          "site-1",
+          "funnel-1"
+        ]
+      ]
+    ]
+  },
+  "useFunnelListStats": {
+    "key": [
+      "funnelListStats",
+      "site-1",
+      "30d",
+      "2026-10-01-2026-10-07",
+      "v2:country|is|NL"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "funnels.getAllFunnelStats",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07",
+          "v2:country|is|NL",
+          "30d"
+        ]
+      ]
+    ]
+  },
+  "useFunnelStats": {
+    "key": [
+      "funnelStats",
+      "site-1",
+      "funnel-1",
+      "30d",
+      "2026-10-01-2026-10-07",
+      "v2:country|is|NL"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "funnels.getFunnelStats",
+        [
+          "site-1",
+          "funnel-1",
+          "2026-10-01",
+          "2026-10-07",
+          "v2:country|is|NL",
+          "30d"
+        ]
+      ]
+    ]
+  },
+  "useFunnelTrends": {
+    "key": [
+      "funnelTrends",
+      "site-1",
+      "funnel-1",
+      "30d",
+      "2026-10-01-2026-10-07",
+      "v2:country|is|NL",
+      3
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "funnels.getFunnelTrends",
+        [
+          "site-1",
+          "funnel-1",
+          "2026-10-01",
+          "2026-10-07",
+          "day",
+          "v2:country|is|NL",
+          "30d"
+        ]
+      ]
+    ]
+  },
+  "useFunnelBreakdown": {
+    "key": [
+      "funnelBreakdown",
+      "site-1",
+      "funnel-1",
+      2,
+      "country",
+      "30d",
+      "2026-10-01-2026-10-07",
+      "v2:country|is|NL",
+      3
+    ],
+    "config": {
+      "dedupingInterval": 30000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "funnels.getFunnelBreakdown",
+        [
+          "site-1",
+          "funnel-1",
+          2,
+          "country",
+          "2026-10-01",
+          "2026-10-07",
+          "v2:country|is|NL",
+          "30d"
+        ]
+      ]
+    ]
+  },
+  "useUptimeStatus": {
+    "key": [
+      "uptimeStatus",
+      "site-1",
+      "30d",
+      "2026-10-01",
+      "2026-10-07"
+    ],
+    "config": {
+      "refreshInterval": 30000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "uptime.getUptimeStatus",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07",
+          "30d"
+        ]
+      ]
+    ]
+  },
+  "useUptimeIncidents": {
+    "key": [
+      "uptimeIncidents",
+      "site-1",
+      "30d",
+      "2026-10-01",
+      "2026-10-07"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "uptime.getUptimeIncidents",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07",
+          200,
+          "30d"
+        ]
+      ]
+    ]
+  },
+  "useUptimeResponseTimes": {
+    "key": [
+      "uptimeResponseTimes",
+      "site-1",
+      "monitor-1",
+      "30d",
+      "2026-10-01",
+      "2026-10-07"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "uptime.getUptimeResponseTimes",
+        [
+          "site-1",
+          "monitor-1",
+          "2026-10-01",
+          "2026-10-07",
+          "30d"
+        ]
+      ]
+    ]
+  },
+  "useUptimeResponseTimes#noMonitor": {
+    "key": null,
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": []
+  },
+  "useUptimeChecks": {
+    "key": [
+      "uptimeChecks",
+      "site-1",
+      "monitor-1",
+      25
+    ],
+    "config": {
+      "refreshInterval": 30000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "uptime.getMonitorChecks",
+        [
+          "site-1",
+          "monitor-1",
+          25
+        ]
+      ]
+    ]
+  },
+  "useGoals": {
+    "key": [
+      "goals",
+      "site-1"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "goals.listGoals",
+        [
+          "site-1"
+        ]
+      ]
+    ]
+  },
+  "useGSCStatus": {
+    "key": [
+      "gscStatus",
+      "site-1"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 30000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "gsc.getGSCStatus",
+        [
+          "site-1"
+        ]
+      ]
+    ]
+  },
+  "useGSCOverview": {
+    "key": [
+      "gscOverview",
+      "site-1",
+      "2026-10-01",
+      "2026-10-07"
+    ],
+    "config": {
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "gsc.getGSCOverview",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07"
+        ]
+      ]
+    ]
+  },
+  "useGSCTopQueries": {
+    "key": [
+      "gscTopQueries",
+      "site-1",
+      "2026-10-01",
+      "2026-10-07",
+      20,
+      40
+    ],
+    "config": {
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "gsc.getGSCTopQueries",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07",
+          20,
+          40
+        ]
+      ]
+    ]
+  },
+  "useGSCTopPages": {
+    "key": [
+      "gscTopPages",
+      "site-1",
+      "2026-10-01",
+      "2026-10-07",
+      20,
+      40
+    ],
+    "config": {
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "gsc.getGSCTopPages",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07",
+          20,
+          40
+        ]
+      ]
+    ]
+  },
+  "useGSCDailyTotals": {
+    "key": [
+      "gscDailyTotals",
+      "site-1",
+      "2026-10-01",
+      "2026-10-07"
+    ],
+    "config": {
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "gsc.getGSCDailyTotals",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07"
+        ]
+      ]
+    ]
+  },
+  "useGSCNewQueries": {
+    "key": [
+      "gscNewQueries",
+      "site-1",
+      "2026-10-01",
+      "2026-10-07"
+    ],
+    "config": {
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "gsc.getGSCNewQueries",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07"
+        ]
+      ]
+    ]
+  },
+  "useGSCTopCountries": {
+    "key": [
+      "gsc-top-countries",
+      "site-1",
+      "2026-10-01",
+      "2026-10-07",
+      20,
+      40
+    ],
+    "config": {
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "gsc.getGSCTopCountries",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07",
+          20,
+          40
+        ]
+      ]
+    ]
+  },
+  "useGSCTopDevices": {
+    "key": [
+      "gsc-top-devices",
+      "site-1",
+      "2026-10-01",
+      "2026-10-07"
+    ],
+    "config": {
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "gsc.getGSCTopDevices",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07"
+        ]
+      ]
+    ]
+  },
+  "useGSCOpportunities": {
+    "key": [
+      "gsc-opportunities",
+      "site-1",
+      "2026-10-01",
+      "2026-10-07",
+      30
+    ],
+    "config": {
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "gsc.getGSCOpportunities",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07",
+          30
+        ]
+      ]
+    ]
+  },
+  "useGSCQueryPages": {
+    "key": [
+      "gscQueryPages",
+      "site-1",
+      "privacy analytics",
+      "2026-10-01",
+      "2026-10-07"
+    ],
+    "config": {
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "gsc.getGSCQueryPages",
+        [
+          "site-1",
+          "privacy analytics",
+          "2026-10-01",
+          "2026-10-07"
+        ]
+      ]
+    ]
+  },
+  "useGSCPageQueries": {
+    "key": [
+      "gscPageQueries",
+      "site-1",
+      "/pricing",
+      "2026-10-01",
+      "2026-10-07"
+    ],
+    "config": {
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "gsc.getGSCPageQueries",
+        [
+          "site-1",
+          "/pricing",
+          "2026-10-01",
+          "2026-10-07"
+        ]
+      ]
+    ]
+  },
+  "useGSCQueryTrend": {
+    "key": [
+      "gscQueryTrend",
+      "site-1",
+      "privacy analytics",
+      "2026-10-01",
+      "2026-10-07"
+    ],
+    "config": {
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "gsc.getGSCQueryTrend",
+        [
+          "site-1",
+          "privacy analytics",
+          "2026-10-01",
+          "2026-10-07"
+        ]
+      ]
+    ]
+  },
+  "useBunnyStatus": {
+    "key": [
+      "bunnyStatus",
+      "site-1"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 30000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "bunny.getBunnyStatus",
+        [
+          "site-1"
+        ]
+      ]
+    ]
+  },
+  "useBunnyOverview": {
+    "key": [
+      "bunnyOverview",
+      "site-1",
+      "30d",
+      "2026-10-01",
+      "2026-10-07"
+    ],
+    "config": {
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "bunny.getBunnyOverview",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07",
+          "30d"
+        ]
+      ]
+    ]
+  },
+  "useBunnyDailyStats": {
+    "key": [
+      "bunnyDailyStats",
+      "site-1",
+      "30d",
+      "2026-10-01",
+      "2026-10-07"
+    ],
+    "config": {
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "bunny.getBunnyDailyStats",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07",
+          "30d"
+        ]
+      ]
+    ]
+  },
+  "useBunnyRegions": {
+    "key": [
+      "bunnyRegions",
+      "site-1",
+      "30d",
+      "2026-10-01",
+      "2026-10-07"
+    ],
+    "config": {
+      "dedupingInterval": 60000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "bunny.getBunnyRegions",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07",
+          "30d"
+        ]
+      ]
+    ]
+  },
+  "useBunnyLive": {
+    "key": [
+      "bunnyLive",
+      "site-1"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 60000,
+      "revalidateOnFocus": true,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "bunny.getBunnyLive",
+        [
+          "site-1"
+        ]
+      ]
+    ]
+  },
+  "useSubscription": {
+    "key": "subscription",
+    "config": {
+      "refreshInterval": 300000,
+      "dedupingInterval": 30000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "billing.getSubscription",
+        []
+      ]
+    ]
+  },
+  "useQuarantineStats": {
+    "key": [
+      "quarantineStats",
+      "site-1"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "quarantine.getQuarantineStats",
+        [
+          "site-1"
+        ]
+      ]
+    ]
+  },
+  "usePerformanceConfig": {
+    "key": [
+      "performanceConfig",
+      "site-1"
+    ],
+    "config": {
+      "refreshInterval": 0,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "performance.getPerformanceConfig",
+        [
+          "site-1"
+        ]
+      ]
+    ]
+  },
+  "usePerformanceLatest": {
+    "key": [
+      "performanceLatest",
+      "site-1"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "performance.getPerformanceLatest",
+        [
+          "site-1"
+        ]
+      ]
+    ]
+  },
+  "usePerformanceHistory": {
+    "key": [
+      "performanceHistory",
+      "site-1",
+      "mobile",
+      30
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "performance.getPerformanceHistory",
+        [
+          "site-1",
+          "mobile",
+          30
+        ]
+      ]
+    ]
+  },
+  "usePerformanceHistory#defaults": {
+    "key": [
+      "performanceHistory",
+      "site-1",
+      "desktop",
+      90
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "performance.getPerformanceHistory",
+        [
+          "site-1",
+          "desktop",
+          90
+        ]
+      ]
+    ]
+  },
+  "useBingStatus": {
+    "key": [
+      "bingStatus",
+      "site-1"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 30000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "bing.getBingStatus",
+        [
+          "site-1"
+        ]
+      ]
+    ]
+  },
+  "useBingOverview": {
+    "key": [
+      "bing-overview",
+      "site-1",
+      "2026-10-01",
+      "2026-10-07"
+    ],
+    "config": {
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "bing.getBingOverview",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07"
+        ]
+      ]
+    ]
+  },
+  "useBingDailyTotals": {
+    "key": [
+      "bing-daily-totals",
+      "site-1",
+      "2026-10-01",
+      "2026-10-07"
+    ],
+    "config": {
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "bing.getBingDailyTotals",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07"
+        ]
+      ]
+    ]
+  },
+  "useFullDimensionList#dated": {
+    "key": [
+      "fullList",
+      "countries",
+      "site-1",
+      "2026-10-01",
+      "2026-10-07",
+      250,
+      "v2:country|is|NL"
+    ],
+    "config": {
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getCountries",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07",
+          250,
+          "v2:country|is|NL",
+          "__undefined__",
+          "__undefined__"
+        ]
+      ]
+    ]
+  },
+  "useFullDimensionList#live": {
+    "key": [
+      "fullList",
+      "referrers",
+      "site-1",
+      "__live__",
+      5,
+      250,
+      "v2:country|is|NL"
+    ],
+    "config": {
+      "refreshInterval": 15000,
+      "dedupingInterval": 2000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getTopReferrers",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-01",
+          250,
+          "v2:country|is|NL",
+          "__undefined__",
+          5
+        ]
+      ]
+    ]
+  },
+  "useFullDimensionList#languages-grouped": {
+    "key": [
+      "fullList",
+      "languages-grouped",
+      "site-1",
+      "2026-10-01",
+      "2026-10-07",
+      250,
+      "__undefined__"
+    ],
+    "config": {
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getLanguageGroups",
+        [
+          "site-1",
+          "2026-10-01",
+          "2026-10-07",
+          250,
+          "__undefined__",
+          "__undefined__",
+          "__undefined__"
+        ]
+      ]
+    ]
+  },
+  "useFullDimensionList#closed": {
+    "key": null,
+    "config": {
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": []
+  },
+  "useOutboundLinks#dated": {
+    "key": [
+      "outbound",
+      "site-1",
+      "2026-10-01",
+      "2026-10-07",
+      "today"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getEventPropertyValues",
+        [
+          "site-1",
+          "outbound_link",
+          "url",
+          "2026-10-01",
+          "2026-10-07",
+          1000,
+          "today",
+          "__undefined__"
+        ]
+      ],
+      [
+        "stats.getEventPropertyValues",
+        [
+          "site-1",
+          "outbound_link",
+          "page_path",
+          "2026-10-01",
+          "2026-10-07",
+          1000,
+          "today",
+          "__undefined__"
+        ]
+      ]
+    ]
+  },
+  "useOutboundLinks#live": {
+    "key": [
+      "outbound",
+      "site-1",
+      "__live__",
+      5
+    ],
+    "config": {
+      "refreshInterval": 15000,
+      "dedupingInterval": 2000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "stats.getEventPropertyValues",
+        [
+          "site-1",
+          "outbound_link",
+          "url",
+          "2026-10-01",
+          "2026-10-01",
+          1000,
+          "__undefined__",
+          5
+        ]
+      ],
+      [
+        "stats.getEventPropertyValues",
+        [
+          "site-1",
+          "outbound_link",
+          "page_path",
+          "2026-10-01",
+          "2026-10-01",
+          1000,
+          "__undefined__",
+          5
+        ]
+      ]
+    ]
+  },
+  "usePagePreview#member": {
+    "key": [
+      "pagePreview",
+      "site-1",
+      true
+    ],
+    "config": {
+      "refreshInterval": 0,
+      "dedupingInterval": 300000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "performance.getPagePreview",
+        [
+          "site-1"
+        ]
+      ]
+    ]
+  },
+  "usePagePreview#anonymous": {
+    "key": [
+      "pagePreview",
+      "site-1",
+      false
+    ],
+    "config": {
+      "refreshInterval": 0,
+      "dedupingInterval": 300000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "performance.getPublicPagePreview",
+        [
+          "site-1"
+        ]
+      ]
+    ]
+  },
+  "usePagePreview#noSite": {
+    "key": null,
+    "config": {
+      "refreshInterval": 0,
+      "dedupingInterval": 300000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": []
+  },
+  "useVisitors": {
+    "key": [
+      "visitors",
+      "site-1",
+      "2026-10-01",
+      "2026-10-07",
+      "__undefined__",
+      "__undefined__",
+      "last_seen",
+      "desc",
+      1,
+      25
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "visitors.getVisitors",
+        [
+          "site-1",
+          {
+            "startDate": "2026-10-01",
+            "endDate": "2026-10-07"
+          },
+          {
+            "sort": "last_seen",
+            "order": "desc",
+            "page": 1,
+            "pageSize": 25
+          }
+        ]
+      ]
+    ]
+  },
+  "useVisitors#live": {
+    "key": [
+      "visitors",
+      "site-1",
+      "__undefined__",
+      "__undefined__",
+      5,
+      "__undefined__",
+      "last_seen",
+      "desc",
+      1,
+      25
+    ],
+    "config": {
+      "refreshInterval": 20000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "visitors.getVisitors",
+        [
+          "site-1",
+          {
+            "minutes": 5
+          },
+          {
+            "sort": "last_seen",
+            "order": "desc",
+            "page": 1,
+            "pageSize": 25,
+            "enabled": true
+          }
+        ]
+      ]
+    ]
+  },
+  "useVisitors#off": {
+    "key": null,
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": []
+  },
+  "useVisitorProfile": {
+    "key": [
+      "visitorProfile",
+      "site-1",
+      "visitor-1",
+      "2026-10-01",
+      "2026-10-07",
+      "__undefined__",
+      "__undefined__"
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "visitors.getVisitorProfile",
+        [
+          "site-1",
+          "visitor-1",
+          {
+            "startDate": "2026-10-01",
+            "endDate": "2026-10-07"
+          }
+        ]
+      ]
+    ]
+  },
+  "useVisitorVisits": {
+    "key": [
+      "visitorVisits",
+      "site-1",
+      "visitor-1",
+      "2026-10-01",
+      "2026-10-07",
+      "__undefined__",
+      "__undefined__",
+      2,
+      10
+    ],
+    "config": {
+      "refreshInterval": 60000,
+      "dedupingInterval": 10000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "visitors.getVisitorVisits",
+        [
+          "site-1",
+          "visitor-1",
+          {
+            "startDate": "2026-10-01",
+            "endDate": "2026-10-07"
+          },
+          {
+            "page": 2,
+            "pageSize": 10
+          }
+        ]
+      ]
+    ]
+  },
+  "useVisitEvents": {
+    "key": [
+      "visitEvents",
+      "site-1",
+      "visitor-1",
+      "visit-1",
+      "2026-10-01",
+      "2026-10-07",
+      "__undefined__",
+      "__undefined__",
+      1
+    ],
+    "config": {
+      "refreshInterval": 0,
+      "dedupingInterval": 30000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": [
+      [
+        "visitors.getVisitEvents",
+        [
+          "site-1",
+          "visitor-1",
+          "visit-1",
+          {
+            "startDate": "2026-10-01",
+            "endDate": "2026-10-07"
+          },
+          1
+        ]
+      ]
+    ]
+  },
+  "useVisitEvents#collapsed": {
+    "key": null,
+    "config": {
+      "refreshInterval": 0,
+      "dedupingInterval": 30000,
+      "revalidateOnFocus": false,
+      "revalidateOnReconnect": true,
+      "keepPreviousData": true,
+      "shouldRetryOnError": true,
+      "errorRetryCount": 3,
+      "errorRetryInterval": 5000,
+      "onErrorRetry": "fn"
+    },
+    "api": []
+  }
+}

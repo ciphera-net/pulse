@@ -75,7 +75,7 @@ describe('dashboard F4 wiring', () => {
   // the argument's presence, which is exactly what a future miscopy drops.
   it('prevStats carries filtersParam', async () => {
     const fs = await import('node:fs')
-    const src = fs.readFileSync('app/sites/[id]/page.tsx', 'utf8')
+    const src = fs.readFileSync('components/surfaces/DashboardSurface.tsx', 'utf8')
     const call = src.match(/const \{ data: prevStats \} = useStats\(([^)]*)\)/)
     expect(call, 'prevStats useStats call not found').not.toBeNull()
     expect(call![1]).toContain('filtersParam')

@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
+import React from 'react'
 import { useJourneyFilters } from '../useJourneyFilters'
+import { SITE_PAGES, SiteScopeProvider, type SiteScope } from '@/lib/scope/SiteScope'
 
 // * Mock Next.js navigation
 const mockReplace = vi.fn()
@@ -274,5 +276,30 @@ describe('useJourneyFilters', () => {
       setItemSpy.mockRestore()
       getItemSpy.mockRestore()
     })
+  })
+})
+
+// A public page keeps no Depth/Paths memory (PUL-34 Phase 2 review): those keys are a member's own, in the same origin's
+// storage, so a pick on the demo must neither read nor change them.
+describe('useJourneyFilters under a public scope', () => {
+  const demo: SiteScope = { siteId: 'halden', mode: 'public', basePath: '/demo', pages: SITE_PAGES, demo: true, fidelity: 'full' }
+  const wrapper = ({ children }: { children: React.ReactNode }) => <SiteScopeProvider scope={demo}>{children}</SiteScopeProvider>
+
+  beforeEach(() => window.localStorage.clear())
+
+  it("neither reads nor writes the member's Depth and Paths", () => {
+    window.localStorage.setItem('pulse_last_journeys:depth', '6')
+    const { result } = renderHook(() => useJourneyFilters(), { wrapper })
+    expect(result.current.depth).toBe(4)
+    act(() => { result.current.setDepth(3); result.current.setDensity(40) })
+    expect(window.localStorage.getItem('pulse_last_journeys:depth')).toBe('6')
+    expect(window.localStorage.getItem('pulse_last_journeys:density')).toBeNull()
+    expect(mockReplace).toHaveBeenCalled()
+  })
+
+  it('control: a member keeps them', () => {
+    const { result } = renderHook(() => useJourneyFilters())
+    act(() => { result.current.setDepth(3) })
+    expect(window.localStorage.getItem('pulse_last_journeys:depth')).toBe('3')
   })
 })

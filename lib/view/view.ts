@@ -1,5 +1,5 @@
 import { PERIOD_PRESETS, findPreset, type PeriodPreset } from '@/lib/constants/periods'
-import { periodToDateRange, type Period } from '@/lib/hooks/periodUrl'
+import { DEFAULT_PERIOD, periodToDateRange, type Period } from '@/lib/hooks/periodUrl'
 import { formatDate } from '@/lib/utils/format'
 
 // ─── What the view switcher shows, as pure functions (PULSE-20, 25-09-2026) ──
@@ -240,6 +240,25 @@ export function shareRows(): RowState[] {
       ...(available ? {} : { reason: SHARE_FIXED_RANGES_REASON }),
     }
   })
+}
+
+/** True for the four windows a customer's share link may ask for; the server serves no others. */
+export function isSharePeriod(period: string): boolean {
+  return (SHARE_ROW_KEYS as readonly string[]).includes(period)
+}
+
+/**
+ * The view a share link opens on: the requested one when the link may ask for it, else the
+ * default window.
+ *
+ * 🔴 A share link's `?period=` is read from a URL anybody can write, and the server refuses
+ * (400) every window outside the four, a custom span included. So the URL is never trusted
+ * past this function: 1h, All time, a custom range or realtime all open on the default
+ * rather than on a request the server will refuse, and the menu's own pick is re-checked
+ * here too: the greying is the menu's half of the rule, this is the guard.
+ */
+export function toShareView(requested: RequestedView): RequestedView {
+  return isSharePeriod(requested.period) ? { period: requested.period } : { period: DEFAULT_PERIOD }
 }
 
 /**

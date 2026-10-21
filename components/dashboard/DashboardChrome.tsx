@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import DashboardShell from '@/components/dashboard/DashboardShell'
 import { useActiveSite } from '@/components/settings/active-site'
+import { useOptionalSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
 
 /**
  * The dashboard chrome's site hinge — one component whose whole job is deciding
@@ -38,7 +39,24 @@ import { useActiveSite } from '@/components/settings/active-site'
  */
 const SITE_PAGE = /^\/sites\/([^/]+)(?:\/|$)/
 
+/**
+ * Under a public scope (/demo, /share/<id>, PUL-34) the site is the scope's, and the hinge
+ * has nothing to decide: there is no path to read it from and no account whose active site
+ * could differ. Two components rather than a branch, because the member hinge reads the
+ * active site, which only exists where its provider is mounted, and the public pages do
+ * not mount it.
+ */
 export default function DashboardChrome({ children }: { children: React.ReactNode }) {
+  const scope = useOptionalSiteScope()
+  if (scope?.mode === 'public') return <PublicChrome scope={scope}>{children}</PublicChrome>
+  return <MemberChrome>{children}</MemberChrome>
+}
+
+function PublicChrome({ scope, children }: { scope: SiteScope; children: React.ReactNode }) {
+  return <DashboardShell siteId={scope.siteId}>{children}</DashboardShell>
+}
+
+function MemberChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const { activeSiteId } = useActiveSite()
   const sitePage = pathname.match(SITE_PAGE)

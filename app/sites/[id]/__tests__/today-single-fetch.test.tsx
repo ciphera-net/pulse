@@ -147,6 +147,16 @@ vi.mock('@/components/dashboard/MetricInfoTip', () => ({ TermInfoTip: () => null
 vi.mock('@/components/ui/ErrorCard', () => ({ ErrorCard: () => null }))
 
 import SiteDashboardPage from '../page'
+import { SiteScopeProvider, memberScope } from '@/lib/scope/SiteScope'
+
+// The page body is a surface that reads the site from its scope, never from the path
+// (PUL-34 Phase 2): the member route provides the member scope, and so does this test.
+const renderDashboard = () =>
+  render(
+    <SiteScopeProvider scope={memberScope('site-1')}>
+      <SiteDashboardPage />
+    </SiteScopeProvider>,
+  )
 
 /** The real SWR key shape (lib/swr/dashboard.ts useDashboard), stringified. */
 function keyOf(c: DashboardCall): string {
@@ -171,7 +181,7 @@ describe('Today loads with one dashboard request, not two (PULSE-201)', () => {
       { date: '2026-10-01T01:00:00+00:00', pageviews: 2, visitors: 2, visits: 2, bounce_rate: 0, avg_duration: 12, avg_scroll_depth: 40, avg_visible_duration: 10 },
     ]
 
-    render(<SiteDashboardPage />)
+    renderDashboard()
     // Flush mount effects and any dynamic (next/dynamic) children settling —
     // the old code's bug was exactly a SECOND render landing here with a
     // different interval, so this tick is where it would show up.
@@ -198,7 +208,7 @@ describe('Today loads with one dashboard request, not two (PULSE-201)', () => {
       { date: '2026-10-01T09:00:00+00:00', pageviews: 25, visitors: 18, visits: 18, bounce_rate: 0, avg_duration: 12, avg_scroll_depth: 40, avg_visible_duration: 10 },
     ]
 
-    render(<SiteDashboardPage />)
+    renderDashboard()
     await act(async () => {})
     await act(async () => {})
 

@@ -12,6 +12,7 @@ import Select from '@/components/ui/select'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { TermInfoTip } from '@/components/dashboard/MetricInfoTip'
 import { DURATION_BASE, EASE_APPLE } from '@/lib/motion'
+import { scopeHref, useSiteScope } from '@/lib/scope/SiteScope'
 import { formatFunnelPct } from './FunnelColumns'
 
 // ---------------------------------------------------------------------------
@@ -158,6 +159,11 @@ export function FunnelStepStrip({
 }: FunnelStepStripProps) {
   const [dimension, setDimension] = useState('device')
   const step = steps[selectedStep - 1]
+  // * The link below goes to the Journeys page of the scope this funnel is drawn in, and only
+  // * when that scope shares it: a link to a page the site's owner did not share would land on
+  // * "not available".
+  const scope = useSiteScope()
+  const journeysShared = scope.pages.includes('journeys')
   // * Breakdown target is ALWAYS the final step: entered → completed per
   // * segment, end to end. (0-based on the wire.)
   const {
@@ -204,9 +210,9 @@ export function FunnelStepStrip({
             </span>
             <TermInfoTip term="funnel_exit_pages" />
           </span>
-          {step.step.category !== 'event' && step.step.type === 'exact' && (
+          {journeysShared && step.step.category !== 'event' && step.step.type === 'exact' && (
             <Link
-              href={`/sites/${siteId}/journeys?entry=${encodeURIComponent(step.step.value)}`}
+              href={scopeHref(scope, 'journeys', `?entry=${encodeURIComponent(step.step.value)}`)}
               className="inline-flex shrink-0 items-center gap-1 text-xs text-neutral-500 transition-colors duration-fast ease-apple hover:text-neutral-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
             >
               View journeys from here

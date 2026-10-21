@@ -47,7 +47,8 @@ interface AudienceProps {
   previousVisitors?: number | null
   // Active page filters, threaded into the modal fetch (F14).
   filters?: string
-  // Hidden on the anonymous share surface (no full-list endpoints there).
+  // False only on a customer's share link (its public-scoped read has no full-list
+  // endpoints); the demo site is served them, so it keeps this on.
   memberFeatures?: boolean
   onFilter?: (filter: DimensionFilter) => void
   /** Realtime mode — an empty block reads the one realtime line (CardEmptyState). */
@@ -435,6 +436,7 @@ export default function Audience({ countries, cities, regions, languages, langua
               live={live}
                 icon={<GlobeHemisphereWest />}
                 title="Your first visitor hasn't arrived"
+                publicTitle="No visitors yet"
                 description="Countries and cities will light up on this map as traffic flows in from around the world."
                 action={{
                 label: 'Install tracking script',

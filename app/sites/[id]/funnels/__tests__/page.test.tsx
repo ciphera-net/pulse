@@ -6,6 +6,10 @@ import { toast } from '@ciphera-net/facet'
 // old inline confirm, the funnel disappears at once, and the delete is sent
 // only when the Undo window runs out. Everything else about this page
 // (empty/error states, the create modal) is out of this file's scope.
+//
+// The page body is a surface that reads the site from the scope (PUL-34), so it
+// renders under the member scope the site layout provides. Public mode has its
+// own suite: components/surfaces/__tests__/FunnelsSurface.test.tsx.
 
 const mockUseFunnels = vi.fn()
 const deleteFunnel = vi.fn()
@@ -63,6 +67,7 @@ vi.mock('@ciphera-net/facet-hold', async () =>
   (await import('@/lib/hold/__tests__/facetHoldStandIn')).facetHoldStandIn())
 
 import FunnelsPage from '../page'
+import { SiteScopeProvider, memberScope } from '@/lib/scope/SiteScope'
 import { deferred, resetDeferred, commitLast, undoLast } from '@/lib/hold/__tests__/facetHoldStandIn'
 
 const FUNNEL = {
@@ -78,6 +83,13 @@ const FUNNEL = {
   updated_at: '',
 }
 
+const renderPage = () =>
+  render(
+    <SiteScopeProvider scope={memberScope('site-1')}>
+      <FunnelsPage />
+    </SiteScopeProvider>,
+  )
+
 function funnelsState(over: Partial<ReturnType<typeof mockUseFunnels>> = {}) {
   return { data: [FUNNEL], error: undefined, isLoading: false, mutate: vi.fn(), ...over }
 }
@@ -90,7 +102,7 @@ beforeEach(() => {
 
 describe('funnels list: delete through a hold dialog (PUL-28)', () => {
   it('names the funnel in a hold dialog, hides it at once, and sends nothing until the Undo window runs out', async () => {
-    render(<FunnelsPage />)
+    renderPage()
     fireEvent.click(screen.getByRole('button', { name: 'Delete Signup flow' }))
     const dialog = screen.getByRole('dialog', { name: 'Delete "Signup flow"?' })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Hold to delete' }))
@@ -106,7 +118,7 @@ describe('funnels list: delete through a hold dialog (PUL-28)', () => {
   })
 
   it('passes keepalive through to the request on a commit sent as the page closes', async () => {
-    render(<FunnelsPage />)
+    renderPage()
     fireEvent.click(screen.getByRole('button', { name: 'Delete Signup flow' }))
     fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
     await act(() => commitLast({ keepalive: true }))
@@ -114,7 +126,7 @@ describe('funnels list: delete through a hold dialog (PUL-28)', () => {
   })
 
   it('Undo restores the funnel and sends nothing', async () => {
-    render(<FunnelsPage />)
+    renderPage()
     fireEvent.click(screen.getByRole('button', { name: 'Delete Signup flow' }))
     fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
     expect(screen.queryByText('Signup flow')).toBeNull()
@@ -126,7 +138,7 @@ describe('funnels list: delete through a hold dialog (PUL-28)', () => {
 
   it('a rejected delete brings the funnel back and says so', async () => {
     deleteFunnel.mockRejectedValueOnce(new Error())
-    render(<FunnelsPage />)
+    renderPage()
     fireEvent.click(screen.getByRole('button', { name: 'Delete Signup flow' }))
     fireEvent.click(screen.getByRole('button', { name: 'Hold to delete' }))
     expect(screen.queryByText('Signup flow')).toBeNull()

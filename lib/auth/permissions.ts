@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/lib/auth/context'
 import { getMyPermissions } from '@/lib/api/roles'
+import { useOptionalSiteScope } from '@/lib/scope/SiteScope'
 import useSWR from 'swr'
 
 // Seven strings the server never checked (sites.view, analytics.view,
@@ -69,11 +70,15 @@ function getDefaultPermissions(role?: string): Set<Permission> {
 
 export function usePermissions(): Set<Permission> {
   const { user } = useAuth()
+  // A public page (/demo, /share/<id>; PUL-34) offers no write to anyone and makes no member read, so a signed-in
+  // visitor's permissions are neither asked for nor used there (the request would carry their session and team).
+  const isPublic = useOptionalSiteScope()?.mode === 'public'
   const { data, error } = useSWR(
-    user ? 'permissions' : null,
+    user && !isPublic ? 'permissions' : null,
     () => getMyPermissions(),
     { revalidateOnFocus: false, dedupingInterval: 300_000 }
   )
+  if (isPublic) return new Set()
   if (data?.permissions) return new Set(data.permissions as Permission[])
   // No data yet — errored OR still in flight. Both fall back to the JWT role's
   // defaults rather than an empty Set: an empty Set reads as "may do nothing",

@@ -11,15 +11,8 @@ import { DOCS_ORIGIN } from '@/lib/docs'
 import { useSidebar } from '@/lib/sidebar-context'
 import { useTeamState } from '@/lib/hooks/useTeamState'
 import { SiteFavicon } from '@/components/sites/SiteFavicon'
-import { CardsThree as CardsThreeIcon, Gauge as GaugeIcon, Plugs as PlugsIcon, Tag as TagIcon, MagnifyingGlass, UsersThree as UsersThreeIcon } from '@phosphor-icons/react'
+import { Plugs as PlugsIcon, Tag as TagIcon, MagnifyingGlass } from '@phosphor-icons/react'
 import {
-  LayoutDashboardIcon,
-  PathIcon,
-  FunnelIcon,
-  CursorClickIcon,
-  SearchIcon,
-  CloudUploadIcon,
-  HeartbeatIcon,
   SettingsIcon,
   PlusIcon,
   XIcon,
@@ -27,67 +20,12 @@ import {
   Tooltip,
 } from '@ciphera-net/facet'
 import { HelpSupportButton } from '@/components/support/HelpSupportButton'
+import { PULSE_HOME_URL } from '@/components/public/links'
+import { scopeHref, useOptionalSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
+import { NAV_GROUPS, SETTINGS_ITEM, publicNavGroups, type IconWeight, type NavGroup, type NavItem } from './siteNav'
 
 const EXPANDED = 256
 const COLLAPSED = 64
-
-type IconWeight = 'thin' | 'light' | 'regular' | 'bold' | 'fill' | 'duotone'
-
-interface NavItem {
-  label: string
-  href: (siteId: string) => string
-  icon: React.ComponentType<{ className?: string; weight?: IconWeight }>
-  matchPrefix?: boolean
-  /**
-   * The path the active rule matches on, when it differs from where the link
-   * GOES. Settings needs both: the href carries ?siteId= so the destination
-   * knows which site, while the match has to be the bare route prefix.
-   */
-  matchHref?: (siteId: string) => string
-}
-
-interface NavGroup { label: string; items: NavItem[] }
-
-const NAV_GROUPS: NavGroup[] = [
-  {
-    label: 'Analytics',
-    items: [
-      { label: 'Dashboard', href: (id) => `/sites/${id}`, icon: LayoutDashboardIcon },
-      { label: 'Pages', href: (id) => `/sites/${id}/pages`, icon: CardsThreeIcon, matchPrefix: true },
-      { label: 'Journeys', href: (id) => `/sites/${id}/journeys`, icon: PathIcon, matchPrefix: true },
-      { label: 'Visitors', href: (id) => `/sites/${id}/visitors`, icon: UsersThreeIcon, matchPrefix: true },
-      { label: 'Funnels', href: (id) => `/sites/${id}/funnels`, icon: FunnelIcon, matchPrefix: true },
-      { label: 'Search', href: (id) => `/sites/${id}/search`, icon: SearchIcon, matchPrefix: true },
-    ],
-  },
-  {
-    label: 'Infrastructure',
-    items: [
-      { label: 'CDN', href: (id) => `/sites/${id}/cdn`, icon: CloudUploadIcon, matchPrefix: true },
-      { label: 'Uptime', href: (id) => `/sites/${id}/uptime`, icon: HeartbeatIcon, matchPrefix: true },
-      { label: 'Performance', href: (id) => `/sites/${id}/performance`, icon: GaugeIcon, matchPrefix: true },
-    ],
-  },
-]
-
-const SETTINGS_ITEM: NavItem = {
-  // Carry the CURRENT site into settings — ActiveSiteProvider adopts the
-  // ?siteId= deep link; without it, settings opened on whatever site was
-  // stored (or the org's first site) instead of the one being viewed.
-  //
-  // 🔴 The href can never be the match target: usePathname() returns the path
-  // WITHOUT the query, so `pathname.startsWith('/settings/site/general?siteId=…')`
-  // was false on every settings tab and this entry could not light up anywhere.
-  // Match the bare section instead, so every tab under /settings/site is "here".
-  // (Written without a trailing glob on purpose: sidebar-highlight.test.tsx
-  // strips block comments before line comments, so a `/` + `*` anywhere in a
-  // line comment opens a comment that swallows the rest of this file.)
-  label: 'Site Settings',
-  href: (id) => `/settings/site/general?siteId=${id}`,
-  matchHref: () => '/settings/site',
-  icon: SettingsIcon,
-  matchPrefix: true,
-}
 
 const NAV_SHORTCUTS: Record<string, string> = {
   Dashboard: 'G D', Pages: 'G P', Journeys: 'G J', Visitors: 'G V', Funnels: 'G F', Search: 'G S',
@@ -217,10 +155,12 @@ function SidebarNav({
 const stripQuery = (s: string) => s.split('?')[0]
 
 function NavLink({
-  item, siteId, collapsed, onClick, pendingHref, onNavigate,
+  item, siteId, collapsed, onClick, pendingHref, onNavigate, shortcuts = true,
 }: {
   item: NavItem; siteId: string; collapsed: boolean; onClick?: () => void
   pendingHref: string | null; onNavigate: (href: string) => void
+  /** The key hints shown on hover. The public pages bind no shortcuts, so they pass false. */
+  shortcuts?: boolean
 }) {
   const pathname = usePathname()
   const href = item.href(siteId)
@@ -248,7 +188,7 @@ function NavLink({
         <item.icon className="w-[18px] h-[18px]" weight={active ? 'fill' : 'regular'} />
       </span>
       <Label collapsed={collapsed}>{item.label}</Label>
-      {!collapsed && NAV_SHORTCUTS[item.label] && (
+      {shortcuts && !collapsed && NAV_SHORTCUTS[item.label] && (
         <span className="ml-auto flex items-center gap-0.5 opacity-0 group-hover/nav:opacity-100 transition-opacity duration-fast ease-apple">
           {NAV_SHORTCUTS[item.label].split(' ').map((key) => (
             <kbd key={key} className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-medium text-neutral-500 bg-neutral-800/80 border border-neutral-700/50 rounded-none leading-none">
@@ -264,6 +204,23 @@ function NavLink({
   return link
 }
 
+
+// ─── Group heading (site rails) ─────────────────────────────
+
+/** The small caps heading over a group of site links; a hairline when the rail is collapsed. */
+function NavGroupHeading({ label, collapsed }: { label: string; collapsed: boolean }) {
+  return (
+    <div className="h-5 flex items-center overflow-hidden">
+      {collapsed ? (
+        <div className="mx-1 w-full border-t border-neutral-800" />
+      ) : (
+        <p className="px-2.5 text-caption font-semibold text-neutral-500 uppercase tracking-wider whitespace-nowrap">
+          {label}
+        </p>
+      )}
+    </div>
+  )
+}
 
 // ─── Home Nav Link (static href, no siteId) ───────────────
 
@@ -345,6 +302,22 @@ function HomeSiteLink({
   return link
 }
 
+// ─── Logo ───────────────────────────────────────────────────
+
+/** The mark and the name, inside a link the caller owns: a member's goes home, a public page's out to the marketing site. */
+function SidebarLogoMark({ collapsed }: { collapsed: boolean }) {
+  return (
+    <>
+      <span className="w-9 h-9 flex items-center justify-center shrink-0">
+        <img src={cdnUrl('/pulse_icon_no_margins.png')} alt="Pulse" className="w-9 h-9 shrink-0 object-contain group-hover:scale-105 transition-transform duration-base ease-apple" />
+      </span>
+      <span className={`text-xl font-bold text-white tracking-tight group-hover:text-brand-ink whitespace-nowrap transition-opacity duration-fast ${collapsed ? 'opacity-0' : 'opacity-100'} ease-apple`}>
+        Pulse
+      </span>
+    </>
+  )
+}
+
 // ─── Sidebar Content ────────────────────────────────────────
 
 interface SidebarContentProps {
@@ -384,12 +357,7 @@ function SidebarContent({
     <div className="flex flex-col h-full overflow-hidden">
       {/* Logo — fixed layout, text fades */}
       <Link href="/" className="flex items-center gap-3 px-[14px] py-4 shrink-0 group overflow-hidden">
-        <span className="w-9 h-9 flex items-center justify-center shrink-0">
-          <img src={cdnUrl('/pulse_icon_no_margins.png')} alt="Pulse" className="w-9 h-9 shrink-0 object-contain group-hover:scale-105 transition-transform duration-base ease-apple" />
-        </span>
-        <span className={`text-xl font-bold text-white tracking-tight group-hover:text-brand-ink whitespace-nowrap transition-opacity duration-fast ${c ? 'opacity-0' : 'opacity-100'} ease-apple`}>
-          Pulse
-        </span>
+        <SidebarLogoMark collapsed={c} />
       </Link>
 
       {/* Search trigger — opens ⌘K command palette */}
@@ -423,15 +391,7 @@ function SidebarContent({
         <SidebarNav data-tour="sidebar-nav" activeKey={activeKey} collapsed={c}>
           {NAV_GROUPS.map((group) => (
             <div key={group.label}>
-              <div className="h-5 flex items-center overflow-hidden">
-                {c ? (
-                  <div className="mx-1 w-full border-t border-neutral-800" />
-                ) : (
-                  <p className="px-2.5 text-caption font-semibold text-neutral-500 uppercase tracking-wider whitespace-nowrap">
-                    {group.label}
-                  </p>
-                )}
-              </div>
+              <NavGroupHeading label={group.label} collapsed={c} />
               <div className="space-y-0.5">
                 {group.items.map((item) => (
                   <NavLink key={item.label} item={item} siteId={siteId} collapsed={c} onClick={isMobile ? onMobileClose : undefined} pendingHref={pendingHref} onNavigate={onNavigate} />
@@ -528,16 +488,85 @@ function SidebarContent({
   )
 }
 
-// ─── Main Sidebar ───────────────────────────────────────────
+// ─── Public sidebar content (/demo, /share/<id>) ─────────────
 
-export default function Sidebar({
-  siteId, mobileOpen, onMobileClose, onMobileOpen, onOpenPalette,
-}: {
-  siteId: string | null; mobileOpen: boolean; onMobileClose: () => void; onMobileOpen: () => void; onOpenPalette: () => void
-}) {
-  const canEdit = useCan('sites.edit')
+interface PublicSidebarContentProps {
+  isMobile: boolean
+  collapsed: boolean
+  scope: SiteScope
+  pendingHref: string | null
+  onNavigate: (href: string) => void
+  onMobileClose: () => void
+}
+
+/**
+ * The rail of a public page (PUL-34): the member rail's groups, order, labels and icons, cut
+ * down to the pages the scope shares, linked under the scope's base path. Nothing else is
+ * on it: no search (the palette opens member routes), no sites, no account or team links, no
+ * settings, no Visitors, no key hints (the public pages bind no shortcuts) and no support
+ * link. The logo leaves the page, into the whole window: inside the marketing page's frame
+ * it must not load the marketing page inside the frame.
+ */
+function PublicSidebarContent({ isMobile, collapsed, scope, pendingHref, onNavigate, onMobileClose }: PublicSidebarContentProps) {
+  const c = isMobile ? false : collapsed
   const pathname = usePathname()
-  const { sites } = useSites()
+  const activeKey = pendingHref ?? pathname
+  const groups = publicNavGroups(scope.pages)
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      <a href={PULSE_HOME_URL} target="_top" className="flex items-center gap-3 px-[14px] py-4 shrink-0 group overflow-hidden">
+        <SidebarLogoMark collapsed={c} />
+      </a>
+
+      <SidebarNav activeKey={activeKey} collapsed={c}>
+        {groups.map((group: NavGroup) => (
+          <div key={group.label}>
+            <NavGroupHeading label={group.label} collapsed={c} />
+            <div className="space-y-0.5">
+              {group.items.map((item: NavItem) => (
+                <NavLink
+                  key={item.label}
+                  // The dashboard is the base path itself and matches exactly; every other page owns what is under it.
+                  item={{ ...item, href: () => scopeHref(scope, item.page!), matchHref: undefined, matchPrefix: item.page !== 'dashboard' }}
+                  siteId={scope.siteId}
+                  collapsed={c}
+                  onClick={isMobile ? onMobileClose : undefined}
+                  pendingHref={pendingHref}
+                  onNavigate={onNavigate}
+                  shortcuts={false}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </SidebarNav>
+    </div>
+  )
+}
+
+// ─── The sidebar's frame ────────────────────────────────────
+
+interface SidebarFrameState {
+  isMobile: boolean
+  collapsed: boolean
+  pendingHref: string | null
+  onNavigate: (href: string) => void
+  onMobileClose: () => void
+  onToggle: () => void
+}
+
+/**
+ * The desktop rail and the mobile drawer around whatever content the caller draws, one
+ * frame for the member sidebar and the public one so the drawer, the collapse and the
+ * pending-link highlight behave identically in both.
+ */
+function SidebarFrame({
+  mobileOpen, onMobileClose, children,
+}: {
+  mobileOpen: boolean; onMobileClose: () => void; children: (frame: SidebarFrameState) => React.ReactNode
+}) {
+  const pathname = usePathname()
   const [pendingHref, setPendingHref] = useState<string | null>(null)
   const [mobileClosing, setMobileClosing] = useState(false)
   const { collapsed, toggle } = useSidebar()
@@ -556,24 +585,14 @@ export default function Sidebar({
 
   return (
     <>
-      <FaviconPreloader sites={sites} />
       {/* Desktop — ssr:false means this only renders on client, no hydration flash */}
       <aside
         className="hidden md:flex flex-col shrink-0 bg-transparent overflow-hidden relative z-10"
         style={{ width: collapsed ? COLLAPSED : EXPANDED, transition: 'width var(--duration-base) var(--ease-apple)' }}
       >
-        <SidebarContent
-          isMobile={false}
-          collapsed={collapsed}
-          siteId={siteId}
-          sites={sites}
-          canEdit={canEdit}
-          pendingHref={pendingHref}
-          onNavigate={handleNavigate}
-          onMobileClose={onMobileClose}
-          onToggle={toggle}
-          onOpenPalette={onOpenPalette}
-        />
+        {children({
+          isMobile: false, collapsed, pendingHref, onNavigate: handleNavigate, onMobileClose, onToggle: toggle,
+        })}
       </aside>
 
       {/* Mobile overlay */}
@@ -598,21 +617,79 @@ export default function Sidebar({
                 <XIcon className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
-            <SidebarContent
-              isMobile={true}
-              collapsed={collapsed}
-              siteId={siteId}
-              sites={sites}
-              canEdit={canEdit}
-              pendingHref={pendingHref}
-              onNavigate={handleNavigate}
-              onMobileClose={handleMobileClose}
-              onToggle={toggle}
-              onOpenPalette={onOpenPalette}
-            />
+            {children({
+              isMobile: true, collapsed, pendingHref, onNavigate: handleNavigate, onMobileClose: handleMobileClose, onToggle: toggle,
+            })}
           </aside>
         </>
       )}
     </>
   )
+}
+
+// ─── Main Sidebar ───────────────────────────────────────────
+
+interface SidebarProps {
+  siteId: string | null
+  mobileOpen: boolean
+  onMobileClose: () => void
+  onMobileOpen: () => void
+  onOpenPalette: () => void
+}
+
+function MemberSidebar({ siteId, mobileOpen, onMobileClose, onOpenPalette }: SidebarProps) {
+  const canEdit = useCan('sites.edit')
+  const { sites } = useSites()
+
+  return (
+    <>
+      <FaviconPreloader sites={sites} />
+      <SidebarFrame mobileOpen={mobileOpen} onMobileClose={onMobileClose}>
+        {(frame) => (
+          <SidebarContent
+            isMobile={frame.isMobile}
+            collapsed={frame.collapsed}
+            siteId={siteId}
+            sites={sites}
+            canEdit={canEdit}
+            pendingHref={frame.pendingHref}
+            onNavigate={frame.onNavigate}
+            onMobileClose={frame.onMobileClose}
+            onToggle={frame.onToggle}
+            onOpenPalette={onOpenPalette}
+          />
+        )}
+      </SidebarFrame>
+    </>
+  )
+}
+
+function PublicSidebar({ scope, mobileOpen, onMobileClose }: Pick<SidebarProps, 'mobileOpen' | 'onMobileClose'> & { scope: SiteScope }) {
+  return (
+    <SidebarFrame mobileOpen={mobileOpen} onMobileClose={onMobileClose}>
+      {(frame) => (
+        <PublicSidebarContent
+          isMobile={frame.isMobile}
+          collapsed={frame.collapsed}
+          scope={scope}
+          pendingHref={frame.pendingHref}
+          onNavigate={frame.onNavigate}
+          onMobileClose={frame.onMobileClose}
+        />
+      )}
+    </SidebarFrame>
+  )
+}
+
+/**
+ * The member's rail, or under a public scope (/demo, /share/<id>) the public one. They are
+ * two components, not one with branches, because the member rail reads the account (the
+ * sites list, permissions, the team) and a public visitor has none of that to read.
+ */
+export default function Sidebar(props: SidebarProps) {
+  const scope = useOptionalSiteScope()
+  if (scope?.mode === 'public') {
+    return <PublicSidebar scope={scope} mobileOpen={props.mobileOpen} onMobileClose={props.onMobileClose} />
+  }
+  return <MemberSidebar {...props} />
 }

@@ -12,17 +12,20 @@ const read = (rel: string) =>
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/(^|[^:])\/\/.*$/gm, '$1')
 
+// The site pages' bodies are surface components since PUL-34 Phase 2 (each app/sites/[id]/**/page.tsx renders one), so
+// the pins read the surfaces. The dashboard's own pins live in dashboard-surface-wiring.test.ts; the share page they
+// also pinned is the dashboard surface in scoped mode now (app/sites/[id]/__tests__/dashboard-scopes.test.tsx).
 const SWITCHER_PAGES: Record<string, string> = {
-  dashboard: 'app/sites/[id]/page.tsx',
-  pages: 'app/sites/[id]/pages/page.tsx',
+  dashboard: 'components/surfaces/DashboardSurface.tsx',
+  pages: 'components/surfaces/PagesSurface.tsx',
   visitors: 'app/sites/[id]/visitors/page.tsx',
   'visitors (detail)': 'app/sites/[id]/visitors/[key]/page.tsx',
-  funnels: 'app/sites/[id]/funnels/page.tsx',
-  'funnels (detail)': 'app/sites/[id]/funnels/[funnelId]/page.tsx',
-  journeys: 'app/sites/[id]/journeys/page.tsx',
-  search: 'app/sites/[id]/search/page.tsx',
-  cdn: 'app/sites/[id]/cdn/page.tsx',
-  uptime: 'app/sites/[id]/uptime/page.tsx',
+  funnels: 'components/surfaces/FunnelsSurface.tsx',
+  'funnels (detail)': 'components/surfaces/FunnelDetailSurface.tsx',
+  journeys: 'components/surfaces/JourneysSurface.tsx',
+  search: 'components/surfaces/SearchSurface.tsx',
+  cdn: 'components/surfaces/CdnSurface.tsx',
+  uptime: 'components/surfaces/UptimeSurface.tsx',
 }
 
 describe('every switcher page renders the one menu from the one hook', () => {
@@ -42,38 +45,6 @@ describe('every switcher page renders the one menu from the one hook', () => {
   })
 })
 
-describe('the dashboard', () => {
-  const page = read('app/sites/[id]/page.tsx')
-
-  it('sends All time to the filter suggestions as the token, never as the window\'s dates', () => {
-    // Found by the 26-09 review: the suggestions fetch alone sent dates, which 400
-    // once a window passes 366 days (Funnels and Journeys already sent the token).
-    // PULSE-192: and in realtime mode the live window rides along, so the suggestions
-    // describe the five minutes the page shows rather than the calendar day.
-    expect(page).toMatch(/useFilterSuggestions\(\s*siteId,\s*resolvedDateRange,\s*filtersParam \|\| undefined,\s*serverResolvedPeriod\(periodReady, period\),\s*liveMinutes,?\s*\)/)
-  })
-
-  it('every list a card fetches on its own gets the live window, and refreshes on the live signal (PULSE-192)', () => {
-    for (const card of ['Sources', 'Audience', 'TechSpecs', 'Outbound', 'ContentStats', 'ContentSignals']) {
-      const start = page.indexOf(`<${card}\n`)
-      expect(start, card).toBeGreaterThan(-1)
-      expect(page.slice(start, page.indexOf('/>', start)), card).toContain('liveMinutes={liveMinutes}')
-    }
-    expect(page).toContain('void mutateLiveLists(isLiveListKey(siteId))')
-  })
-
-  it('draws no previous-period comparison for All time or for realtime', () => {
-    // Realtime's live window is echoed as the day it falls in, so the "previous
-    // period" was all of yesterday — a five-minute count against a whole day.
-    expect(page).toMatch(/resolvedDateRange && period !== 'all' && !isLive \? previousDateRange\(resolvedDateRange\) : null/)
-  })
-
-  it('the orb is the one way into realtime, and leaving goes through the shared toggle', () => {
-    expect(page).toContain('useRealtimeToggle(urlRange)')
-    expect(page).toMatch(/<RealtimeOrb count=\{realtime\} live=\{isLive\} onToggle=\{toggleRealtime\} \/>/)
-  })
-})
-
 describe('Visitors', () => {
   const page = read('app/sites/[id]/visitors/page.tsx')
 
@@ -85,23 +56,6 @@ describe('Visitors', () => {
     expect(page).toContain('modes: REALTIME_MODES')
     expect(page).toContain('rollingMinutes: REALTIME_ROLLING_MINUTES')
     expect(page).toContain('serverResolvedPeriod(periodReady, period)')
-  })
-})
-
-describe('the share page', () => {
-  const page = read('components/share/PublicDashboard.tsx')
-
-  it('shows the orb for display only and never touches the view memory', () => {
-    expect(page).toMatch(/<RealtimeOrb count=\{realtime_visitors\} \/>/)
-    expect(page).not.toContain('useUrlDateRange')
-    expect(page).not.toContain('pulse_view')
-  })
-
-  it('offers no custom range and no arrows', () => {
-    const picker = page.slice(page.indexOf('<DateRangePicker'), page.indexOf('/>', page.indexOf('<DateRangePicker')))
-    expect(picker).toContain('rows={shareRows()}')
-    expect(picker).not.toContain('onCustom')
-    expect(picker).not.toContain('onShift')
   })
 })
 

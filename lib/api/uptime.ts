@@ -1,5 +1,6 @@
 import apiRequest from './client'
 import { rangeQuery } from './rangeQuery'
+import { sitePath, type SiteRef } from '@/lib/scope/site-ref'
 
 // * Types for uptime monitoring — mirrors pulse-backend internal/database/uptime.go
 // * (migration 135: TLS observation, p50/p95, incidents, response-time series).
@@ -126,7 +127,7 @@ export interface UptimeResponseTimesResponse {
  * Fetches the uptime status overview for all monitors of a site.
  * Dates are UTC calendar days (the uptime subsystem's deliberate convention).
  */
-export async function getUptimeStatus(siteId: string, startDate?: string, endDate?: string, period?: string): Promise<UptimeStatusResponse> {
+export async function getUptimeStatus(site: SiteRef, startDate?: string, endDate?: string, period?: string): Promise<UptimeStatusResponse> {
   const params = new URLSearchParams()
   if (period) {
     // All time — the server resolves it to the uptime rollup's own span (PULSE-20).
@@ -136,7 +137,7 @@ export async function getUptimeStatus(siteId: string, startDate?: string, endDat
     if (endDate) params.append('end_date', endDate)
   }
   const query = params.toString()
-  return apiRequest<UptimeStatusResponse>(`/sites/${siteId}/uptime/status${query ? `?${query}` : ''}`)
+  return apiRequest<UptimeStatusResponse>(sitePath(site, `/uptime/status${query ? `?${query}` : ''}`))
 }
 
 /**
@@ -144,21 +145,21 @@ export async function getUptimeStatus(siteId: string, startDate?: string, endDat
  * limit is the API's maximum — the ledger states its count as fact, so it
  * fetches as much fact as the API allows and labels the cutoff if it hits it.
  */
-export async function getUptimeIncidents(siteId: string, startDate: string, endDate: string, limit = 200, period?: string): Promise<UptimeIncidentsResponse> {
-  return apiRequest<UptimeIncidentsResponse>(`/sites/${siteId}/uptime/incidents?${rangeQuery(startDate, endDate, period)}&limit=${limit}`)
+export async function getUptimeIncidents(site: SiteRef, startDate: string, endDate: string, limit = 200, period?: string): Promise<UptimeIncidentsResponse> {
+  return apiRequest<UptimeIncidentsResponse>(sitePath(site, `/uptime/incidents?${rangeQuery(startDate, endDate, period)}&limit=${limit}`))
 }
 
 /**
  * Fetches the server-bucketed latency series + range summary for a monitor.
  */
-export async function getUptimeResponseTimes(siteId: string, monitorId: string, startDate: string, endDate: string, period?: string): Promise<UptimeResponseTimesResponse> {
-  return apiRequest<UptimeResponseTimesResponse>(`/sites/${siteId}/uptime/monitors/${monitorId}/response-times?${rangeQuery(startDate, endDate, period)}`)
+export async function getUptimeResponseTimes(site: SiteRef, monitorId: string, startDate: string, endDate: string, period?: string): Promise<UptimeResponseTimesResponse> {
+  return apiRequest<UptimeResponseTimesResponse>(sitePath(site, `/uptime/monitors/${monitorId}/response-times?${rangeQuery(startDate, endDate, period)}`))
 }
 
 /**
  * Fetches recent checks for a specific monitor.
  */
-export async function getMonitorChecks(siteId: string, monitorId: string, limit = 50): Promise<UptimeCheck[]> {
-  const res = await apiRequest<{ checks: UptimeCheck[] }>(`/sites/${siteId}/uptime/monitors/${monitorId}/checks?limit=${limit}`)
+export async function getMonitorChecks(site: SiteRef, monitorId: string, limit = 50): Promise<UptimeCheck[]> {
+  const res = await apiRequest<{ checks: UptimeCheck[] }>(sitePath(site, `/uptime/monitors/${monitorId}/checks?limit=${limit}`))
   return res?.checks ?? []
 }

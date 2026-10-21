@@ -3,12 +3,14 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 
 // Source-level pins for wiring that no rendered assertion can defend cheaply
-// (the Phase 1 F4 idiom): dropping a prop from page.tsx leaves every
-// component test green while the page silently regresses.
+// (the Phase 1 F4 idiom): dropping a prop from the dashboard leaves every
+// component test green while the page silently regresses. The page body is the
+// dashboard SURFACE since PUL-34 Phase 2: the member's dashboard, the demo and a share
+// link render this one file, so these pins hold for all three.
 const read = (rel: string) => readFileSync(join(process.cwd(), rel), 'utf8')
 
 describe('dashboard page wiring (Phase 3)', () => {
-  const page = read('app/sites/[id]/page.tsx')
+  const page = read('components/surfaces/DashboardSurface.tsx')
 
   it('passes the true totals and filters to every list card', () => {
     // FOUR cards take totals — Sources (Referrers · Channels · Campaigns in
@@ -104,19 +106,21 @@ describe('command deck chart (approved C mockup fidelity)', () => {
   })
 })
 
-describe('share page wiring (Phase 3)', () => {
-  // The view moved out of the page on 02-09-2026 so /demo mounts the same
-  // surface — the wiring contract travels with the component, not the route.
-  const share = read('components/share/PublicDashboard.tsx')
+describe('share link wiring (Phase 3)', () => {
+  // The share page was its own component until PUL-34 Phase 2 (02-09-2026 it moved out of
+  // the route so /demo could mount it). Now a share link renders the dashboard surface
+  // itself, and what a public-scoped read is not served is switched off by ONE flag.
+  const share = read('components/surfaces/DashboardSurface.tsx')
 
-  it('passes totals to all five cards and disables view-all (member-only endpoints)', () => {
-    // Five: Sources, Audience, TechSpecs, ContentStats plus ContentSignals
-    // (whose page-preview + events drill-down are member-only).
-    expect(share.match(/memberFeatures=\{false\}/g)?.length).toBe(5)
+  it('turns the full lists and drill-downs off, on all five cards, from the one flag', () => {
+    // Five: Sources, Audience, TechSpecs, ContentStats plus ContentSignals (whose events
+    // drill-down is not served to a share link). The flag is dashboardCapabilities().fullReads,
+    // false only for a public-scoped read; the demo, served the full surface, keeps it on.
+    expect(share.match(/memberFeatures=\{caps\.fullReads\}/g)?.length).toBe(5)
     // Four take totals — the Campaigns rows now live inside Sources.
     expect(share.match(/totals=\{totals\}/g)?.length).toBe(4)
-    // The payload-rows prop is what keeps the campaigns member-only endpoint
-    // unarmed on the share surface — remove it and the card starts fetching.
-    expect(share).toContain('campaigns={data?.campaigns ?? []}')
+    // The payload-rows prop is what keeps the campaigns endpoint unarmed on a share link —
+    // remove it and the card starts fetching a route that link is not served.
+    expect(share).toContain('campaigns={caps.fullReads ? undefined : (dashboard?.campaigns ?? [])}')
   })
 })

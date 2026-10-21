@@ -5,9 +5,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { TIMING } from '@/lib/motion'
 import { Target } from '@phosphor-icons/react'
 import { CompactNumber } from '@/components/ui/compact-number'
-import { EmptyState } from '@/components/ui/EmptyState'
+import CardEmptyState from '@/components/dashboard/CardEmptyState'
 import type { GoalCountStat } from '@/lib/api/stats'
 import { getEventPropertyKeys, getEventPropertyValues, type EventPropertyKey, type EventPropertyValue } from '@/lib/api/stats'
+import { useSiteRef } from '@/lib/scope/SiteScope'
 import { docsUrl } from '@/lib/docs'
 
 interface GoalStatsProps {
@@ -17,9 +18,10 @@ interface GoalStatsProps {
   // Render only the list, no card chrome/header — for composition inside the
   // Content section's tabbed card (Scroll depth · Events).
   bare?: boolean
-  // Off on the public share surface (02-09-2026): expanding a row fetches the
-  // member-strict event-properties endpoints, so the rows render plain there —
-  // no chevron, no aria-expanded, no fetch to fail.
+  // Off on a customer's share link (02-09-2026): expanding a row fetches the
+  // event-properties endpoints, which its public-scoped read is not served, so the
+  // rows render plain there — no chevron, no aria-expanded, no fetch to fail. The
+  // demo site is served them, so it keeps this on.
   memberFeatures?: boolean
   /** Realtime mode's rolling window in minutes (PULSE-192): the property breakdown uses it instead of the dates. */
   liveMinutes?: number
@@ -43,6 +45,9 @@ export function goalLabel(row: Pick<GoalCountStat, 'event_name' | 'display_name'
 }
 
 export default function GoalStats({ goalCounts, siteId, dateRange, bare = false, memberFeatures = true, liveMinutes }: GoalStatsProps) {
+  // The drill-down reads the property lists directly, not through a hook, so it resolves the read itself: on /demo
+  // these are the public routes, for a member the member ones (PUL-34).
+  const site = useSiteRef(siteId)
   const list = (goalCounts || []).slice(0, LIMIT)
   const hasData = list.length > 0
   const emptySlots = Math.max(0, LIMIT - list.length)
@@ -83,13 +88,13 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
       }))
 
       try {
-        const keys = await getEventPropertyKeys(siteId, eventName, dateRange.start, dateRange.end, liveMinutes)
+        const keys = await getEventPropertyKeys(site, eventName, dateRange.start, dateRange.end, liveMinutes)
         const values: Record<string, EventPropertyValue[]> = {}
 
         // Fetch all property values in parallel
         await Promise.all(
           keys.map(async (k) => {
-            const vals = await getEventPropertyValues(siteId, eventName, k.key, dateRange.start, dateRange.end, 20, undefined, liveMinutes)
+            const vals = await getEventPropertyValues(site, eventName, k.key, dateRange.start, dateRange.end, 20, undefined, liveMinutes)
             values[k.key] = vals
           })
         )
@@ -105,7 +110,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
         }))
       }
     }
-  }, [expanded, propertyCache, siteId, dateRange.start, dateRange.end, liveMinutes])
+  }, [expanded, propertyCache, site, dateRange.start, dateRange.end, liveMinutes])
 
   const content = (
     <>
@@ -237,7 +242,7 @@ export default function GoalStats({ goalCounts, siteId, dateRange, bare = false,
           ))}
         </div>
       ) : (
-        <EmptyState
+        <CardEmptyState
           icon={<Target />}
           title="No events tracked yet"
           description="Add pulse.track('event') where actions happen on your site, then see conversion counts here."

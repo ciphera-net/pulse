@@ -80,15 +80,16 @@ interface SourcesProps {
   totals?: { pageviews: number; visitors: number }
   // Active page filters, threaded into the full-list fetches (F14).
   filters?: string
-  // The anonymous share surface has no full-list endpoints; it paginates only
-  // what its own payload carries.
+  // False only on a customer's share link, whose public-scoped read is served no
+  // full-list endpoints: the card paginates what its own payload carries. The demo
+  // site is served them (it reads as a member does), so it keeps this on.
   memberFeatures?: boolean
   onFilter?: (filter: DimensionFilter) => void
-  // The public share surface's diet (02-09-2026): campaign rows arrive ON the
+  // A customer's share link's diet (02-09-2026): campaign rows arrive ON the
   // dashboard payload — floored and capped by the backend's single public
-  // exit — instead of the member-only /campaigns endpoint. When provided,
-  // BOTH campaign fetches stay unarmed; the member-only full-list can never
-  // fire from a share view.
+  // exit — instead of the /campaigns endpoint it is not served. When provided,
+  // BOTH campaign fetches stay unarmed; the full-list can never fire from a
+  // share link.
   campaigns?: CampaignStat[]
   /** Realtime mode — an empty block reads the one realtime line (CardEmptyState). */
   live?: boolean
@@ -365,6 +366,7 @@ export default function Sources({
               live={live}
               icon={<Globe />}
               title="Nobody's linked to you yet"
+              publicTitle="No referrers yet"
               description="Traffic sources appear here when visitors come from other websites, social media, or search engines."
               action={{
                 label: 'Install tracking script',

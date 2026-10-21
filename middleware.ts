@@ -17,7 +17,7 @@ const PUBLIC_ROUTES = new Set([
   // * must be reachable by an anonymous visitor exactly as /pricing itself is.
   // * See lib/auth/plan-destination.ts.
   '/start/plan',
-  '/demo', // * Public live-demo landing page — the dashboard itself, on ciphera.net's live traffic
+  '/demo', // * The public demo: the real dashboard pages over a sample site (every page lives under /demo/, below)
   // * The claim page must be reachable UNAUTHENTICATED: the login round-trip
   // * loses deep links (ledger 5-3), so a bounced claim link would drop its
   // * token. The page itself tells a signed-out visitor to sign in and click
@@ -60,6 +60,11 @@ const PUBLIC_ROUTES = new Set([
 
 const PUBLIC_PREFIXES = [
   '/share/',
+  // * Every page of the demo (PUL-34): /demo/pages, /demo/funnels/<id>, … render the product's real
+  // * pages over the sample site. A link to one of them, opened signed out, must not bounce to
+  // * /login. 🔑 Nothing here may read the session: the edge caches /demo* for 300 s under a key that
+  // * ignores cookies, so a redirect or a variation by session would be served to everyone.
+  '/demo/',
   '/docs',
   '/join/',
   // * A shared report (PULSE-133): its reader has no Pulse account by design,

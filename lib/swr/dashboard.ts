@@ -4,6 +4,9 @@
 import { useEffect } from 'react'
 import useSWR from 'swr'
 import { getDataWindow, type DataWindowResponse } from '@/lib/api/dataWindow'
+import { useOptionalSiteScope } from '@/lib/scope/SiteScope'
+import { isPublicSiteRef, siteRefKey, type SiteRef } from '@/lib/scope/site-ref'
+import { siteReadAvailable, useSiteSWR, withAvailability } from '@/lib/swr/site-read'
 import type { Surface, WindowState } from '@/lib/view/view'
 import { getBingStatus, getBingOverview, getBingDailyTotals, type BingStatus, type BingOverview, type BingDailyRow, type BingDateBasis } from '@/lib/api/bing'
 import { useAuth } from '@/lib/auth/context'
@@ -79,48 +82,52 @@ import type {
   PagesTableData,
 } from '@/lib/api/stats'
 
-// * SWR fetcher functions
+// * SWR fetcher functions.
+// *
+// * The reads that have a public route take a SiteRef (lib/scope/site-ref): a plain id is the member read,
+// * a public ref reads /public/sites/<id>/<same path>. A read with no public route keeps a plain site id,
+// * so handing it a public ref is a type error rather than a request the demo answers with a 404.
 const fetchers = {
-  site: (siteId: string) => getSite(siteId),
+  site: (site: SiteRef) => getSite(site),
   installStatus: (siteId: string) => getInstallStatus(siteId),
   ingestHealth: (siteId: string) => getIngestHealth(siteId),
   trafficStatus: (siteId: string) => getTrafficStatus(siteId),
-  dashboard: (siteId: string, start: string, end: string, interval?: string, filters?: string, period?: string, minutes?: number) => getDashboard(siteId, start, end, 10, interval, filters, period, minutes),
-  stats: (siteId: string, start: string, end: string, filters?: string) => getStats(siteId, start, end, filters),
-  dailyStats: (siteId: string, start: string, end: string, interval: 'hour' | 'day' | 'minute') =>
-    getDailyStats(siteId, start, end, interval),
-  realtime: (siteId: string) => getRealtime(siteId),
-  campaigns: (siteId: string, start: string, end: string, limit: number) =>
-    getCampaigns(siteId, start, end, limit),
-  journeyFlow: (siteId: string, start: string, end: string, depth?: number, entryPath?: string, filters?: string, period?: string) =>
-    getJourneyFlow(siteId, start, end, { depth, entryPath, filters, period }),
-  journeyEntryPoints: (siteId: string, start: string, end: string, filters?: string, period?: string) =>
-    getJourneyEntryPoints(siteId, start, end, filters, period),
-  funnels: (siteId: string) => listFunnels(siteId),
-  uptimeStatus: (siteId: string, start?: string, end?: string, period?: string) => getUptimeStatus(siteId, start, end, period),
-  uptimeIncidents: (siteId: string, start: string, end: string, period?: string) => getUptimeIncidents(siteId, start, end, 200, period),
-  uptimeResponseTimes: (siteId: string, monitorId: string, start: string, end: string, period?: string) =>
-    getUptimeResponseTimes(siteId, monitorId, start, end, period),
-  uptimeChecks: (siteId: string, monitorId: string, limit: number) => getMonitorChecks(siteId, monitorId, limit),
-  performanceConfig: (siteId: string) => getPerformanceConfig(siteId),
-  performanceLatest: (siteId: string) => getPerformanceLatest(siteId),
-  performanceHistory: (siteId: string, strategy: 'mobile' | 'desktop', days: number) => getPerformanceHistory(siteId, strategy, days),
-  goals: (siteId: string) => listGoals(siteId),
-  gscStatus: (siteId: string) => getGSCStatus(siteId),
-  bingStatus: (siteId: string) => getBingStatus(siteId),
-  gscOverview: (siteId: string, start: string, end: string) => getGSCOverview(siteId, start, end),
-  gscTopQueries: (siteId: string, start: string, end: string, limit: number, offset: number) => getGSCTopQueries(siteId, start, end, limit, offset),
-  gscTopPages: (siteId: string, start: string, end: string, limit: number, offset: number) => getGSCTopPages(siteId, start, end, limit, offset),
-  gscDailyTotals: (siteId: string, start: string, end: string) => getGSCDailyTotals(siteId, start, end),
-  gscNewQueries: (siteId: string, start: string, end: string) => getGSCNewQueries(siteId, start, end),
-  gscTopCountries: (siteId: string, start: string, end: string, limit: number, offset: number) => getGSCTopCountries(siteId, start, end, limit, offset),
-  gscTopDevices: (siteId: string, start: string, end: string) => getGSCTopDevices(siteId, start, end),
-  gscOpportunities: (siteId: string, start: string, end: string, limit: number) => getGSCOpportunities(siteId, start, end, limit),
-  bunnyStatus: (siteId: string) => getBunnyStatus(siteId),
-  bunnyOverview: (siteId: string, start: string, end: string, period?: string) => getBunnyOverview(siteId, start, end, period),
-  bunnyDailyStats: (siteId: string, start: string, end: string, period?: string) => getBunnyDailyStats(siteId, start, end, period),
-  bunnyRegions: (siteId: string, start: string, end: string, period?: string) => getBunnyRegions(siteId, start, end, period),
-  bunnyLive: (siteId: string) => getBunnyLive(siteId),
+  dashboard: (site: SiteRef, start: string, end: string, interval?: string, filters?: string, period?: string, minutes?: number) => getDashboard(site, start, end, 10, interval, filters, period, minutes),
+  stats: (site: SiteRef, start: string, end: string, filters?: string) => getStats(site, start, end, filters),
+  dailyStats: (site: SiteRef, start: string, end: string, interval: 'hour' | 'day' | 'minute') =>
+    getDailyStats(site, start, end, interval),
+  realtime: (site: SiteRef) => getRealtime(site),
+  campaigns: (site: SiteRef, start: string, end: string, limit: number) =>
+    getCampaigns(site, start, end, limit),
+  journeyFlow: (site: SiteRef, start: string, end: string, depth?: number, entryPath?: string, filters?: string, period?: string) =>
+    getJourneyFlow(site, start, end, { depth, entryPath, filters, period }),
+  journeyEntryPoints: (site: SiteRef, start: string, end: string, filters?: string, period?: string) =>
+    getJourneyEntryPoints(site, start, end, filters, period),
+  funnels: (site: SiteRef) => listFunnels(site),
+  uptimeStatus: (site: SiteRef, start?: string, end?: string, period?: string) => getUptimeStatus(site, start, end, period),
+  uptimeIncidents: (site: SiteRef, start: string, end: string, period?: string) => getUptimeIncidents(site, start, end, 200, period),
+  uptimeResponseTimes: (site: SiteRef, monitorId: string, start: string, end: string, period?: string) =>
+    getUptimeResponseTimes(site, monitorId, start, end, period),
+  uptimeChecks: (site: SiteRef, monitorId: string, limit: number) => getMonitorChecks(site, monitorId, limit),
+  performanceConfig: (site: SiteRef) => getPerformanceConfig(site),
+  performanceLatest: (site: SiteRef) => getPerformanceLatest(site),
+  performanceHistory: (site: SiteRef, strategy: 'mobile' | 'desktop', days: number) => getPerformanceHistory(site, strategy, days),
+  goals: (site: SiteRef) => listGoals(site),
+  gscStatus: (site: SiteRef) => getGSCStatus(site),
+  bingStatus: (site: SiteRef) => getBingStatus(site),
+  gscOverview: (site: SiteRef, start: string, end: string) => getGSCOverview(site, start, end),
+  gscTopQueries: (site: SiteRef, start: string, end: string, limit: number, offset: number) => getGSCTopQueries(site, start, end, limit, offset),
+  gscTopPages: (site: SiteRef, start: string, end: string, limit: number, offset: number) => getGSCTopPages(site, start, end, limit, offset),
+  gscDailyTotals: (site: SiteRef, start: string, end: string) => getGSCDailyTotals(site, start, end),
+  gscNewQueries: (site: SiteRef, start: string, end: string) => getGSCNewQueries(site, start, end),
+  gscTopCountries: (site: SiteRef, start: string, end: string, limit: number, offset: number) => getGSCTopCountries(site, start, end, limit, offset),
+  gscTopDevices: (site: SiteRef, start: string, end: string) => getGSCTopDevices(site, start, end),
+  gscOpportunities: (site: SiteRef, start: string, end: string, limit: number) => getGSCOpportunities(site, start, end, limit),
+  bunnyStatus: (site: SiteRef) => getBunnyStatus(site),
+  bunnyOverview: (site: SiteRef, start: string, end: string, period?: string) => getBunnyOverview(site, start, end, period),
+  bunnyDailyStats: (site: SiteRef, start: string, end: string, period?: string) => getBunnyDailyStats(site, start, end, period),
+  bunnyRegions: (site: SiteRef, start: string, end: string, period?: string) => getBunnyRegions(site, start, end, period),
+  bunnyLive: (site: SiteRef) => getBunnyLive(site),
   subscription: () => getSubscription(),
 }
 
@@ -176,11 +183,16 @@ const dashboardSWRConfig = {
  *    page on a loading state. The failure is logged, never swallowed silently;
  *  - the window.
  * One request per site serves every surface (the key has no surface in it).
+ *
+ * Route class `demo`: a share link is not served the data window, so under it there is no
+ * request and the answer is `null` (nothing known, nothing greyed), never `undefined`, which would hold
+ * the page on its loading state for ever. A link's pages use their own fixed period rows instead.
  */
 export function useDataWindow(siteId: string, surface: Surface): WindowState {
-  const { data, error } = useSWR<DataWindowResponse>(
-    siteId ? ['dataWindow', siteId] : null,
-    () => getDataWindow(siteId),
+  const { data, error, available } = useSiteSWR<DataWindowResponse>(
+    siteId, 'demo',
+    (siteKey) => siteId ? ['dataWindow', siteKey] : null,
+    (ref) => getDataWindow(ref),
     {
       ...dashboardSWRConfig,
       // The window moves at most once a day per surface (a sync landing, midnight).
@@ -191,16 +203,23 @@ export function useDataWindow(siteId: string, surface: Surface): WindowState {
   useEffect(() => {
     if (error) console.error('data window request failed; the view switcher greys nothing', error)
   }, [error])
+  if (!available) return null
   if (error) return null
   if (!data) return undefined
   return data.surfaces[surface] ?? null
 }
 
-// * Hook for site data (loads once, refreshes rarely)
+// * Hook for site data (loads once, refreshes rarely).
+// *
+// * Route class `demo`: under a public scope this is GET /public/sites/<id>, the PUBLIC subset of the
+// * record (PublicSite in lib/api/sites.ts: no owner, no configuration), which only the demo site is
+// * served. A share link has no site record to read here (`available: false`): it reads `site` from
+// * its dashboard payload.
 export function useSite(siteId: string) {
-  return useSWR<Site>(
-    siteId ? ['site', siteId] : null,
-    () => fetchers.site(siteId),
+  return useSiteSWR<Site>(
+    siteId, 'demo',
+    (siteKey) => siteId ? ['site', siteKey] : null,
+    (ref) => fetchers.site(ref),
     {
       ...dashboardSWRConfig,
       // * Site data changes rarely, refresh every 5 minutes
@@ -216,10 +235,13 @@ export function useSite(siteId: string) {
  * after the site itself answered 403. A 403 here means "not one of your teams"
  * and is final, and a 404 means a server without the route — neither is worth
  * retrying, so nothing is.
+ *
+ * Route class `member`.
  */
 export function useSiteTeam(siteId: string, enabled: boolean) {
-  return useSWR<{ organization_id: string }>(
-    enabled && siteId ? ['site-team', siteId] : null,
+  return useSiteSWR<{ organization_id: string }>(
+    siteId, 'member',
+    (siteKey) => enabled && siteId ? ['site-team', siteKey] : null,
     () => getSiteTeam(siteId),
     { revalidateOnFocus: false, shouldRetryOnError: false },
   )
@@ -229,11 +251,14 @@ export function useSiteTeam(siteId: string, enabled: boolean) {
  * Install-health for a site. Polls more eagerly while waiting for the first
  * event (so the install-flow "listening…" loop feels live), and backs off once
  * the install is active. Returns undefined data while loading.
+ *
+ * Route class `member`.
  */
 export function useInstallStatus(siteId: string | undefined, options?: { poll?: boolean }) {
   const poll = options?.poll ?? false
-  const swr = useSWR<InstallStatusResponse>(
-    siteId ? ['install-status', siteId] : null,
+  const swr = useSiteSWR<InstallStatusResponse>(
+    siteId, 'member',
+    (siteKey) => siteId ? ['install-status', siteKey] : null,
     () => fetchers.installStatus(siteId as string),
     {
       ...dashboardSWRConfig,
@@ -257,10 +282,13 @@ export function useInstallStatus(siteId: string | undefined, options?: { poll?: 
  * above already polls, so a second poller on the same panel would double the
  * traffic for a number that moves once a day at most. Returns undefined while
  * loading; the consumer must render that as unresolved, never as "none".
+ *
+ * Route class `member`.
  */
 export function useIngestHealth(siteId: string | undefined) {
-  return useSWR<IngestHealthResponse>(
-    siteId ? ['ingest-health', siteId] : null,
+  return useSiteSWR<IngestHealthResponse>(
+    siteId, 'member',
+    (siteKey) => siteId ? ['ingest-health', siteKey] : null,
     () => fetchers.ingestHealth(siteId as string),
     { ...dashboardSWRConfig, refreshInterval: 0, dedupingInterval: 60 * 1000 }
   )
@@ -277,10 +305,13 @@ export function useIngestHealth(siteId: string | undefined) {
  *
  * Returns undefined while loading; the consumer MUST render that as unresolved
  * and never as "normal" — three states, and only the last is a measurement.
+ *
+ * Route class `member`.
  */
 export function useTrafficStatus(siteId: string | undefined) {
-  return useSWR<TrafficStatusResponse>(
-    siteId ? ['traffic-status', siteId] : null,
+  return useSiteSWR<TrafficStatusResponse>(
+    siteId, 'member',
+    (siteKey) => siteId ? ['traffic-status', siteKey] : null,
     () => fetchers.trafficStatus(siteId as string),
     { ...dashboardSWRConfig, refreshInterval: 0, dedupingInterval: 60 * 1000 }
   )
@@ -300,6 +331,10 @@ export function useTrafficStatus(siteId: string | undefined) {
 // Both now. The token still drives the request (the server owns the timezone
 // resolution and echoes meta.range); the dates only distinguish one day's
 // answer from the next.
+//
+// Route class `customer` (/dashboard is one of the five routes a share link is served): it is
+// read under every scope. On a share link (fidelity `scoped`) the page must ask for a fixed period
+// token and nothing else: no filters, no dates, no minutes, no hour or minute interval.
 
 export function useDashboard(
   siteId: string,
@@ -325,11 +360,12 @@ export function useDashboard(
   minutes?: number,
 ) {
   const live = minutes != null
-  return useSWR<DashboardData>(
-    siteId && (live || period || (start && end))
-      ? ['dashboard', siteId, period ?? '', start, end, interval, filters, minutes ?? '']
+  return useSiteSWR<DashboardData>(
+    siteId, 'customer',
+    (siteKey) => siteId && (live || period || (start && end))
+      ? ['dashboard', siteKey, period ?? '', start, end, interval, filters, minutes ?? '']
       : null,
-    () => fetchers.dashboard(siteId, start, end, interval, filters, live ? undefined : period, minutes),
+    (ref) => fetchers.dashboard(ref, start, end, interval, filters, live ? undefined : period, minutes),
     {
       ...dashboardSWRConfig,
       refreshInterval: live ? 15_000 : 60_000,
@@ -390,11 +426,12 @@ export function useDashboard(
   )
 }
 
-// * Hook for stats (refreshed less frequently)
+// * Hook for stats (refreshed less frequently). Route class `customer`.
 export function useStats(siteId: string, start: string, end: string, filters?: string, period?: string) {
-  return useSWR<StatsResponse>(
-    siteId && (period || (start && end)) ? ['stats', siteId, period ?? '', start, end, filters] : null,
-    () => getStats(siteId, start, end, filters, period),
+  return useSiteSWR<StatsResponse>(
+    siteId, 'customer',
+    (siteKey) => siteId && (period || (start && end)) ? ['stats', siteKey, period ?? '', start, end, filters] : null,
+    (ref) => getStats(ref, start, end, filters, period),
     {
       ...dashboardSWRConfig,
       // * Refresh every 60 seconds for stats
@@ -416,6 +453,7 @@ export function useStats(siteId: string, start: string, end: string, filters?: s
 // * the tail matters — production's busiest site has 520 distinct paths with only
 // * 49.3% of its pageviews in the top 10. Sorting and searching happen client
 // * side over the fetched set, so the fetch has to carry more than a screenful.
+// * Route class `demo`.
 export function usePagesTable(
   siteId: string,
   start: string,
@@ -424,9 +462,10 @@ export function usePagesTable(
   filters?: string,
   period?: string
 ) {
-  return useSWR<PagesTableData>(
-    siteId && (period || (start && end)) ? ['pagesTable', siteId, period ?? '', start, end, limit, filters] : null,
-    () => getPagesTable(siteId, start, end, limit, filters, period),
+  return useSiteSWR<PagesTableData>(
+    siteId, 'demo',
+    (siteKey) => siteId && (period || (start && end)) ? ['pagesTable', siteKey, period ?? '', start, end, limit, filters] : null,
+    (ref) => getPagesTable(ref, start, end, limit, filters, period),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60_000,
@@ -440,7 +479,7 @@ export function usePagesTable(
   )
 }
 
-// * Hook for daily stats (refreshed less frequently)
+// * Hook for daily stats (refreshed less frequently). Route class `customer`.
 export function useDailyStats(
   siteId: string,
   start: string,
@@ -449,9 +488,10 @@ export function useDailyStats(
   filters?: string,
   period?: string
 ) {
-  return useSWR<DailyStat[]>(
-    siteId && (period || (start && end)) ? ['dailyStats', siteId, period ?? '', start, end, interval, filters] : null,
-    () => getDailyStats(siteId, start, end, interval, filters, period),
+  return useSiteSWR<DailyStat[]>(
+    siteId, 'customer',
+    (siteKey) => siteId && (period || (start && end)) ? ['dailyStats', siteKey, period ?? '', start, end, interval, filters] : null,
+    (ref) => getDailyStats(ref, start, end, interval, filters, period),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60_000,
@@ -465,11 +505,14 @@ export function useDailyStats(
   )
 }
 
-// * Hook for realtime visitor count (refreshes with dashboard data)
+// * Hook for realtime visitor count (refreshes with dashboard data).
+// * Route class `customer`. Under a public scope there is no socket (useRealtimeSync does nothing), so the
+// * count is only as live as this poll: `refreshInterval`.
 export function useRealtime(siteId: string, refreshInterval: number = 60_000) {
-  return useSWR<{ visitors: number }>(
-    siteId ? ['realtime', siteId] : null,
-    () => fetchers.realtime(siteId),
+  return useSiteSWR<{ visitors: number }>(
+    siteId, 'customer',
+    (siteKey) => siteId ? ['realtime', siteKey] : null,
+    (ref) => fetchers.realtime(ref),
     {
       ...dashboardSWRConfig,
       // * Refresh every 60 seconds, aligned with dashboard data cycle
@@ -520,11 +563,12 @@ export function useCampaignsList(
   liveMinutes?: number,
 ) {
   const live = liveMinutes != null
-  return useSWR<CampaignStat[]>(
-    !enabled || !siteId ? null
-      : live ? ['campaignsList', siteId, LIVE_LIST_KEY, liveMinutes, limit, filters]
-        : start && end ? ['campaignsList', siteId, start, end, limit, filters, period ?? ''] : null,
-    () => getCampaigns(siteId, start, end, limit, filters, live ? undefined : period, liveMinutes),
+  return useSiteSWR<CampaignStat[]>(
+    siteId, 'demo',
+    (siteKey) => !enabled || !siteId ? null
+      : live ? ['campaignsList', siteKey, LIVE_LIST_KEY, liveMinutes, limit, filters]
+        : start && end ? ['campaignsList', siteKey, start, end, limit, filters, period ?? ''] : null,
+    (ref) => getCampaigns(ref, start, end, limit, filters, live ? undefined : period, liveMinutes),
     {
       ...dashboardSWRConfig,
       refreshInterval: live ? liveListSWRConfig.refreshInterval : 60 * 1000,
@@ -541,9 +585,10 @@ export function useCampaignsList(
 }
 
 export function useCampaigns(siteId: string, start: string, end: string, limit = 100, period?: string) {
-  return useSWR<CampaignStat[]>(
-    siteId && (period || (start && end)) ? ['campaigns', siteId, period ?? '', start, end, limit] : null,
-    () => getCampaigns(siteId, start, end, limit, undefined, period),
+  return useSiteSWR<CampaignStat[]>(
+    siteId, 'demo',
+    (siteKey) => siteId && (period || (start && end)) ? ['campaigns', siteKey, period ?? '', start, end, limit] : null,
+    (ref) => getCampaigns(ref, start, end, limit, undefined, period),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
@@ -558,9 +603,10 @@ export function useCampaigns(siteId: string, start: string, end: string, limit =
 // * dataset every minute only re-ran the read (and the server caches it 60 s
 // * anyway). A new range, depth, entry page or filter is a new key and fetches.
 export function useJourneyFlow(siteId: string, start: string, end: string, depth?: number, entryPath?: string, filters?: string, period?: string) {
-  return useSWR<JourneyFlow>(
-    siteId && start && end ? ['journeyFlow', siteId, period ?? '', start, end, depth, entryPath, filters] : null,
-    () => fetchers.journeyFlow(siteId, start, end, depth, entryPath, filters, period),
+  return useSiteSWR<JourneyFlow>(
+    siteId, 'demo',
+    (siteKey) => siteId && start && end ? ['journeyFlow', siteKey, period ?? '', start, end, depth, entryPath, filters] : null,
+    (ref) => fetchers.journeyFlow(ref, start, end, depth, entryPath, filters, period),
     {
       ...dashboardSWRConfig,
       dedupingInterval: 10 * 1000,
@@ -573,9 +619,10 @@ export function useJourneyFlow(siteId: string, start: string, end: string, depth
 
 // * Hook for journey entry points (refreshes less frequently)
 export function useJourneyEntryPoints(siteId: string, start: string, end: string, filters?: string, period?: string) {
-  return useSWR<EntryPoint[]>(
-    siteId && start && end ? ['journeyEntryPoints', siteId, period ?? '', start, end, filters] : null,
-    () => fetchers.journeyEntryPoints(siteId, start, end, filters, period),
+  return useSiteSWR<EntryPoint[]>(
+    siteId, 'demo',
+    (siteKey) => siteId && start && end ? ['journeyEntryPoints', siteKey, period ?? '', start, end, filters] : null,
+    (ref) => fetchers.journeyEntryPoints(ref, start, end, filters, period),
     {
       ...dashboardSWRConfig,
       refreshInterval: 5 * 60 * 1000,
@@ -585,11 +632,12 @@ export function useJourneyEntryPoints(siteId: string, start: string, end: string
   )
 }
 
-// * Hook for funnels list
+// * Hook for funnels list. Route class `demo`: every funnel read is.
 export function useFunnels(siteId: string) {
-  return useSWR<Funnel[]>(
-    siteId ? ['funnels', siteId] : null,
-    () => fetchers.funnels(siteId),
+  return useSiteSWR<Funnel[]>(
+    siteId, 'demo',
+    (siteKey) => siteId ? ['funnels', siteKey] : null,
+    (ref) => fetchers.funnels(ref),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
@@ -601,9 +649,10 @@ export function useFunnels(siteId: string) {
 
 // * Hook for a single funnel
 export function useFunnelDetail(siteId: string, funnelId: string) {
-  return useSWR<Funnel>(
-    siteId && funnelId ? ['funnel', siteId, funnelId] : null,
-    () => getFunnel(siteId, funnelId),
+  return useSiteSWR<Funnel>(
+    siteId, 'demo',
+    (siteKey) => siteId && funnelId ? ['funnel', siteKey, funnelId] : null,
+    (ref) => getFunnel(ref, funnelId),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60_000,
@@ -616,9 +665,10 @@ export function useFunnelDetail(siteId: string, funnelId: string) {
 // * request. The list page calls this twice (current + previous range)
 // * instead of two requests per funnel per poll.
 export function useFunnelListStats(siteId: string, startDate: string, endDate: string, filters?: string, period?: string) {
-  return useSWR<Record<string, FunnelStats>>(
-    siteId && startDate && endDate ? ['funnelListStats', siteId, period ?? '', `${startDate}-${endDate}`, filters] : null,
-    () => getAllFunnelStats(siteId, startDate, endDate, filters, period),
+  return useSiteSWR<Record<string, FunnelStats>>(
+    siteId, 'demo',
+    (siteKey) => siteId && startDate && endDate ? ['funnelListStats', siteKey, period ?? '', `${startDate}-${endDate}`, filters] : null,
+    (ref) => getAllFunnelStats(ref, startDate, endDate, filters, period),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60_000,
@@ -630,9 +680,10 @@ export function useFunnelListStats(siteId: string, startDate: string, endDate: s
 
 // * Hook for funnel step-level stats
 export function useFunnelStats(siteId: string, funnelId: string, startDate: string, endDate: string, filters?: string, period?: string) {
-  return useSWR<FunnelStats>(
-    siteId && funnelId && startDate && endDate ? ['funnelStats', siteId, funnelId, period ?? '', `${startDate}-${endDate}`, filters] : null,
-    () => getFunnelStats(siteId, funnelId, startDate, endDate, filters, period),
+  return useSiteSWR<FunnelStats>(
+    siteId, 'demo',
+    (siteKey) => siteId && funnelId && startDate && endDate ? ['funnelStats', siteKey, funnelId, period ?? '', `${startDate}-${endDate}`, filters] : null,
+    (ref) => getFunnelStats(ref, funnelId, startDate, endDate, filters, period),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60_000,
@@ -647,9 +698,10 @@ export function useFunnelStats(siteId: string, funnelId: string, startDate: stri
 // * step change would otherwise keep showing pre-edit numbers for up to a
 // * poll cycle (the key carries only ids and range).
 export function useFunnelTrends(siteId: string, funnelId: string, startDate: string, endDate: string, filters?: string, editEpoch?: number, period?: string) {
-  return useSWR<FunnelTrends>(
-    siteId && funnelId && startDate && endDate ? ['funnelTrends', siteId, funnelId, period ?? '', `${startDate}-${endDate}`, filters, editEpoch ?? 0] : null,
-    () => getFunnelTrends(siteId, funnelId, startDate, endDate, 'day', filters, period),
+  return useSiteSWR<FunnelTrends>(
+    siteId, 'demo',
+    (siteKey) => siteId && funnelId && startDate && endDate ? ['funnelTrends', siteKey, funnelId, period ?? '', `${startDate}-${endDate}`, filters, editEpoch ?? 0] : null,
+    (ref) => getFunnelTrends(ref, funnelId, startDate, endDate, 'day', filters, period),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60_000,
@@ -672,11 +724,12 @@ export function useFunnelBreakdown(
   editEpoch?: number,
   period?: string,
 ) {
-  return useSWR<FunnelBreakdown>(
-    siteId && funnelId && step >= 0 && dimension && startDate && endDate
-      ? ['funnelBreakdown', siteId, funnelId, step, dimension, period ?? '', `${startDate}-${endDate}`, filters, editEpoch ?? 0]
+  return useSiteSWR<FunnelBreakdown>(
+    siteId, 'demo',
+    (siteKey) => siteId && funnelId && step >= 0 && dimension && startDate && endDate
+      ? ['funnelBreakdown', siteKey, funnelId, step, dimension, period ?? '', `${startDate}-${endDate}`, filters, editEpoch ?? 0]
       : null,
-    () => getFunnelBreakdown(siteId, funnelId, step, dimension, startDate, endDate, filters, period),
+    (ref) => getFunnelBreakdown(ref, funnelId, step, dimension, startDate, endDate, filters, period),
     {
       ...dashboardSWRConfig,
       dedupingInterval: 30_000,
@@ -688,12 +741,13 @@ export function useFunnelBreakdown(
 // * Hook for uptime status (refreshes every 30s to match original polling).
 // * start/end are UTC calendar days; omitted = the API's 90-day default.
 export function useUptimeStatus(siteId: string, start?: string, end?: string, period?: string) {
-  return useSWR<UptimeStatusResponse>(
+  return useSiteSWR<UptimeStatusResponse>(
+    siteId, 'demo',
     // 🔴 Requires the dates. This keyed on siteId ALONE, so a page withholding
     // its range while the period resolved still fired — the one gate the other
     // hooks give for free by null-keying on an empty date.
-    siteId && start && end ? ['uptimeStatus', siteId, period ?? '', start, end] : null,
-    () => fetchers.uptimeStatus(siteId, start, end, period),
+    (siteKey) => siteId && start && end ? ['uptimeStatus', siteKey, period ?? '', start, end] : null,
+    (ref) => fetchers.uptimeStatus(ref, start, end, period),
     {
       ...dashboardSWRConfig,
       refreshInterval: 30 * 1000,
@@ -705,9 +759,10 @@ export function useUptimeStatus(siteId: string, start?: string, end?: string, pe
 
 // * Hook for uptime incident episodes overlapping the range
 export function useUptimeIncidents(siteId: string, start: string, end: string, period?: string) {
-  return useSWR<UptimeIncidentsResponse>(
-    siteId && start && end ? ['uptimeIncidents', siteId, period ?? '', start, end] : null,
-    () => fetchers.uptimeIncidents(siteId, start, end, period),
+  return useSiteSWR<UptimeIncidentsResponse>(
+    siteId, 'demo',
+    (siteKey) => siteId && start && end ? ['uptimeIncidents', siteKey, period ?? '', start, end] : null,
+    (ref) => fetchers.uptimeIncidents(ref, start, end, period),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
@@ -720,9 +775,10 @@ export function useUptimeIncidents(siteId: string, start: string, end: string, p
 // * Hook for the server-bucketed latency series (the server owns hour/day
 // * granularity and echoes it — never re-bucket client-side)
 export function useUptimeResponseTimes(siteId: string, monitorId: string | undefined, start: string, end: string, period?: string) {
-  return useSWR<UptimeResponseTimesResponse>(
-    siteId && monitorId ? ['uptimeResponseTimes', siteId, monitorId, period ?? '', start, end] : null,
-    () => fetchers.uptimeResponseTimes(siteId, monitorId as string, start, end, period),
+  return useSiteSWR<UptimeResponseTimesResponse>(
+    siteId, 'demo',
+    (siteKey) => siteId && monitorId ? ['uptimeResponseTimes', siteKey, monitorId, period ?? '', start, end] : null,
+    (ref) => fetchers.uptimeResponseTimes(ref, monitorId as string, start, end, period),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
@@ -735,9 +791,10 @@ export function useUptimeResponseTimes(siteId: string, monitorId: string | undef
 // * Hook for a monitor's recent raw checks (replaces the page's imperative
 // * useEffect fetch — same SWR error/retry semantics as everything else)
 export function useUptimeChecks(siteId: string, monitorId: string | undefined, limit = 50) {
-  return useSWR<UptimeCheck[]>(
-    siteId && monitorId ? ['uptimeChecks', siteId, monitorId, limit] : null,
-    () => fetchers.uptimeChecks(siteId, monitorId as string, limit),
+  return useSiteSWR<UptimeCheck[]>(
+    siteId, 'demo',
+    (siteKey) => siteId && monitorId ? ['uptimeChecks', siteKey, monitorId, limit] : null,
+    (ref) => fetchers.uptimeChecks(ref, monitorId as string, limit),
     {
       ...dashboardSWRConfig,
       refreshInterval: 30 * 1000,
@@ -747,11 +804,12 @@ export function useUptimeChecks(siteId: string, monitorId: string | undefined, l
   )
 }
 
-// * Hook for goals list
+// * Hook for goals list. Route class `demo`.
 export function useGoals(siteId: string) {
-  return useSWR<Goal[]>(
-    siteId ? ['goals', siteId] : null,
-    () => fetchers.goals(siteId),
+  return useSiteSWR<Goal[]>(
+    siteId, 'demo',
+    (siteKey) => siteId ? ['goals', siteKey] : null,
+    (ref) => fetchers.goals(ref),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
@@ -760,11 +818,13 @@ export function useGoals(siteId: string) {
   )
 }
 
+// * Hooks for Search Console: route class `demo` throughout (the status, the data and the drill-downs).
 // * Hook for GSC connection status
 export function useGSCStatus(siteId: string) {
-  return useSWR<GSCStatus>(
-    siteId ? ['gscStatus', siteId] : null,
-    () => fetchers.gscStatus(siteId),
+  return useSiteSWR<GSCStatus>(
+    siteId, 'demo',
+    (siteKey) => siteId ? ['gscStatus', siteKey] : null,
+    (ref) => fetchers.gscStatus(ref),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
@@ -775,45 +835,50 @@ export function useGSCStatus(siteId: string) {
 
 // * Hook for GSC overview metrics (clicks, impressions, CTR, position)
 export function useGSCOverview(siteId: string, start: string, end: string) {
-  return useSWR<GSCOverview>(
-    siteId && start && end ? ['gscOverview', siteId, start, end] : null,
-    () => fetchers.gscOverview(siteId, start, end),
+  return useSiteSWR<GSCOverview>(
+    siteId, 'demo',
+    (siteKey) => siteId && start && end ? ['gscOverview', siteKey, start, end] : null,
+    (ref) => fetchers.gscOverview(ref, start, end),
     { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
 // * Hook for GSC top queries
 export function useGSCTopQueries(siteId: string, start: string, end: string, limit = 50, offset = 0) {
-  return useSWR<GSCQueryResponse>(
-    siteId && start && end ? ['gscTopQueries', siteId, start, end, limit, offset] : null,
-    () => fetchers.gscTopQueries(siteId, start, end, limit, offset),
+  return useSiteSWR<GSCQueryResponse>(
+    siteId, 'demo',
+    (siteKey) => siteId && start && end ? ['gscTopQueries', siteKey, start, end, limit, offset] : null,
+    (ref) => fetchers.gscTopQueries(ref, start, end, limit, offset),
     { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
 // * Hook for GSC top pages
 export function useGSCTopPages(siteId: string, start: string, end: string, limit = 50, offset = 0) {
-  return useSWR<GSCPageResponse>(
-    siteId && start && end ? ['gscTopPages', siteId, start, end, limit, offset] : null,
-    () => fetchers.gscTopPages(siteId, start, end, limit, offset),
+  return useSiteSWR<GSCPageResponse>(
+    siteId, 'demo',
+    (siteKey) => siteId && start && end ? ['gscTopPages', siteKey, start, end, limit, offset] : null,
+    (ref) => fetchers.gscTopPages(ref, start, end, limit, offset),
     { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
 // * Hook for GSC daily totals (clicks & impressions per day)
 export function useGSCDailyTotals(siteId: string, start: string, end: string) {
-  return useSWR<{ daily_totals: GSCDailyTotal[] }>(
-    siteId && start && end ? ['gscDailyTotals', siteId, start, end] : null,
-    () => fetchers.gscDailyTotals(siteId, start, end),
+  return useSiteSWR<{ daily_totals: GSCDailyTotal[] }>(
+    siteId, 'demo',
+    (siteKey) => siteId && start && end ? ['gscDailyTotals', siteKey, start, end] : null,
+    (ref) => fetchers.gscDailyTotals(ref, start, end),
     { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
 // * Hook for GSC new queries (queries that appeared in the current period)
 export function useGSCNewQueries(siteId: string, start: string, end: string) {
-  return useSWR<GSCNewQueries>(
-    siteId && start && end ? ['gscNewQueries', siteId, start, end] : null,
-    () => fetchers.gscNewQueries(siteId, start, end),
+  return useSiteSWR<GSCNewQueries>(
+    siteId, 'demo',
+    (siteKey) => siteId && start && end ? ['gscNewQueries', siteKey, start, end] : null,
+    (ref) => fetchers.gscNewQueries(ref, start, end),
     { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
@@ -821,9 +886,10 @@ export function useGSCNewQueries(siteId: string, start: string, end: string) {
 // * Hook for GSC top countries
 export function useGSCTopCountries(siteId: string, start: string, end: string, limit = 50, offset = 0) {
   const { data: status } = useGSCStatus(siteId)
-  return useSWR<GSCCountryResponse>(
-    status?.connected ? [`gsc-top-countries`, siteId, start, end, limit, offset] : null,
-    () => getGSCTopCountries(siteId, start, end, limit, offset),
+  return useSiteSWR<GSCCountryResponse>(
+    siteId, 'demo',
+    (siteKey) => status?.connected ? [`gsc-top-countries`, siteKey, start, end, limit, offset] : null,
+    (ref) => getGSCTopCountries(ref, start, end, limit, offset),
     { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
@@ -831,9 +897,10 @@ export function useGSCTopCountries(siteId: string, start: string, end: string, l
 // * Hook for GSC top devices
 export function useGSCTopDevices(siteId: string, start: string, end: string) {
   const { data: status } = useGSCStatus(siteId)
-  return useSWR<GSCDeviceResponse>(
-    status?.connected ? [`gsc-top-devices`, siteId, start, end] : null,
-    () => getGSCTopDevices(siteId, start, end),
+  return useSiteSWR<GSCDeviceResponse>(
+    siteId, 'demo',
+    (siteKey) => status?.connected ? [`gsc-top-devices`, siteKey, start, end] : null,
+    (ref) => getGSCTopDevices(ref, start, end),
     { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
@@ -841,9 +908,10 @@ export function useGSCTopDevices(siteId: string, start: string, end: string) {
 // * Hook for GSC opportunities (striking-distance queries)
 export function useGSCOpportunities(siteId: string, start: string, end: string, limit = 50) {
   const { data: status } = useGSCStatus(siteId)
-  return useSWR<GSCOpportunityResponse>(
-    status?.connected ? [`gsc-opportunities`, siteId, start, end, limit] : null,
-    () => getGSCOpportunities(siteId, start, end, limit),
+  return useSiteSWR<GSCOpportunityResponse>(
+    siteId, 'demo',
+    (siteKey) => status?.connected ? [`gsc-opportunities`, siteKey, start, end, limit] : null,
+    (ref) => getGSCOpportunities(ref, start, end, limit),
     { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
@@ -854,18 +922,20 @@ export function useGSCOpportunities(siteId: string, start: string, end: string, 
 // * collapsed (query empty); keepPreviousData holds the prior pages across a
 // * range revalidation.
 export function useGSCQueryPages(siteId: string, query: string, start: string, end: string) {
-  return useSWR<GSCPageResponse>(
-    siteId && query && start && end ? ['gscQueryPages', siteId, query, start, end] : null,
-    () => getGSCQueryPages(siteId, query, start, end),
+  return useSiteSWR<GSCPageResponse>(
+    siteId, 'demo',
+    (siteKey) => siteId && query && start && end ? ['gscQueryPages', siteKey, query, start, end] : null,
+    (ref) => getGSCQueryPages(ref, query, start, end),
     { ...dashboardSWRConfig, keepPreviousData: true },
   )
 }
 
 // * Drill-down: the queries contributing to a page (pages-view expansion).
 export function useGSCPageQueries(siteId: string, page: string, start: string, end: string) {
-  return useSWR<GSCQueryResponse>(
-    siteId && page && start && end ? ['gscPageQueries', siteId, page, start, end] : null,
-    () => getGSCPageQueries(siteId, page, start, end),
+  return useSiteSWR<GSCQueryResponse>(
+    siteId, 'demo',
+    (siteKey) => siteId && page && start && end ? ['gscPageQueries', siteKey, page, start, end] : null,
+    (ref) => getGSCPageQueries(ref, page, start, end),
     { ...dashboardSWRConfig, keepPreviousData: true },
   )
 }
@@ -873,36 +943,41 @@ export function useGSCPageQueries(siteId: string, page: string, start: string, e
 // * A single query's daily position/clicks trend (queries-view sparkline). Null
 // * key until the row is expanded (query empty).
 export function useGSCQueryTrend(siteId: string, query: string, start: string, end: string) {
-  return useSWR<GSCQueryTrendPoint[]>(
-    siteId && query && start && end ? ['gscQueryTrend', siteId, query, start, end] : null,
-    () => getGSCQueryTrend(siteId, query, start, end),
+  return useSiteSWR<GSCQueryTrendPoint[]>(
+    siteId, 'demo',
+    (siteKey) => siteId && query && start && end ? ['gscQueryTrend', siteKey, query, start, end] : null,
+    (ref) => getGSCQueryTrend(ref, query, start, end),
     { ...dashboardSWRConfig, keepPreviousData: true },
   )
 }
 
+// * Hooks for the CDN page: route class `demo` throughout.
 // * Hook for BunnyCDN connection status
 export function useBunnyStatus(siteId: string) {
-  return useSWR<BunnyStatus>(
-    siteId ? ['bunnyStatus', siteId] : null,
-    () => fetchers.bunnyStatus(siteId),
+  return useSiteSWR<BunnyStatus>(
+    siteId, 'demo',
+    (siteKey) => siteId ? ['bunnyStatus', siteKey] : null,
+    (ref) => fetchers.bunnyStatus(ref),
     { ...dashboardSWRConfig, refreshInterval: 60 * 1000, dedupingInterval: 30 * 1000 }
   )
 }
 
 // * Hook for BunnyCDN overview metrics (bandwidth, requests, cache hit rate)
 export function useBunnyOverview(siteId: string, startDate: string, endDate: string, period?: string) {
-  return useSWR<BunnyOverview>(
-    siteId && startDate && endDate ? ['bunnyOverview', siteId, period ?? '', startDate, endDate] : null,
-    () => fetchers.bunnyOverview(siteId, startDate, endDate, period),
+  return useSiteSWR<BunnyOverview>(
+    siteId, 'demo',
+    (siteKey) => siteId && startDate && endDate ? ['bunnyOverview', siteKey, period ?? '', startDate, endDate] : null,
+    (ref) => fetchers.bunnyOverview(ref, startDate, endDate, period),
     { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
 
 // * Hook for BunnyCDN daily stats (bandwidth & requests per day)
 export function useBunnyDailyStats(siteId: string, startDate: string, endDate: string, period?: string) {
-  return useSWR<{ daily_stats: BunnyDailyRow[] }>(
-    siteId && startDate && endDate ? ['bunnyDailyStats', siteId, period ?? '', startDate, endDate] : null,
-    () => fetchers.bunnyDailyStats(siteId, startDate, endDate, period),
+  return useSiteSWR<{ daily_stats: BunnyDailyRow[] }>(
+    siteId, 'demo',
+    (siteKey) => siteId && startDate && endDate ? ['bunnyDailyStats', siteKey, period ?? '', startDate, endDate] : null,
+    (ref) => fetchers.bunnyDailyStats(ref, startDate, endDate, period),
     { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
@@ -912,9 +987,10 @@ export function useBunnyDailyStats(siteId: string, startDate: string, endDate: s
 // * migration 137), so a slightly longer dedupe keeps a tab-refocus from
 // * re-spending the customer's API budget inside the backend's own 2-min cache.
 export function useBunnyRegions(siteId: string, startDate: string, endDate: string, period?: string) {
-  return useSWR<BunnyRegionsResponse>(
-    siteId && startDate && endDate ? ['bunnyRegions', siteId, period ?? '', startDate, endDate] : null,
-    () => fetchers.bunnyRegions(siteId, startDate, endDate, period),
+  return useSiteSWR<BunnyRegionsResponse>(
+    siteId, 'demo',
+    (siteKey) => siteId && startDate && endDate ? ['bunnyRegions', siteKey, period ?? '', startDate, endDate] : null,
+    (ref) => fetchers.bunnyRegions(ref, startDate, endDate, period),
     { ...dashboardSWRConfig, keepPreviousData: true, dedupingInterval: 60 * 1000 }
   )
 }
@@ -929,9 +1005,10 @@ export function useBunnyRegions(siteId: string, startDate: string, endDate: stri
 // * cadence indefinitely (auth failures excepted — retrying those makes it
 // * worse), and returning to the tab revalidates, same as useRealtime.
 export function useBunnyLive(siteId: string) {
-  return useSWR<BunnyLiveResponse>(
-    siteId ? ['bunnyLive', siteId] : null,
-    () => fetchers.bunnyLive(siteId),
+  return useSiteSWR<BunnyLiveResponse>(
+    siteId, 'demo',
+    (siteKey) => siteId ? ['bunnyLive', siteKey] : null,
+    (ref) => fetchers.bunnyLive(ref),
     {
       ...dashboardSWRConfig,
       keepPreviousData: true,
@@ -948,10 +1025,13 @@ export function useBunnyLive(siteId: string) {
 
 // * Hook for subscription details (changes rarely).
 // * Returns null key when not authenticated to avoid 401 on public pages.
+// * Route class `member` (no site, no public route): never read under a public scope, so a signed-in
+// * visitor on /demo does not send their billing read from a public page.
 export function useSubscription() {
   const { user } = useAuth()
-  return useSWR<SubscriptionDetails>(
-    user ? 'subscription' : null,
+  const available = siteReadAvailable(useOptionalSiteScope(), null, 'member')
+  const swr = useSWR<SubscriptionDetails>(
+    available && user ? 'subscription' : null,
     () => fetchers.subscription(),
     {
       ...dashboardSWRConfig,
@@ -959,22 +1039,27 @@ export function useSubscription() {
       dedupingInterval: 30 * 1000,
     }
   )
+  return withAvailability(swr, available)
 }
 
-// * Hook for quarantine stats (Cerberus)
+// * Hook for quarantine stats (Cerberus). Route class `member`.
 export function useQuarantineStats(siteId: string | undefined) {
-  return useSWR<QuarantineStats>(
-    siteId ? ['quarantineStats', siteId] : null,
+  return useSiteSWR<QuarantineStats>(
+    siteId, 'member',
+    (siteKey) => siteId ? ['quarantineStats', siteKey] : null,
     () => getQuarantineStats(siteId!),
     { ...dashboardSWRConfig, refreshInterval: 60 * 1000, dedupingInterval: 10 * 1000 }
   )
 }
 
-// * Hook for Performance config
+// * Hooks for the Performance page: route class `demo` throughout (a share link serves none of them).
+// * Hook for Performance config. GET only: it is the page's read of whether checks are on, and the public
+// * route answers it; the write that changes it is a member action the page does not draw publicly.
 export function usePerformanceConfig(siteId: string) {
-  return useSWR<PerformanceConfig>(
-    siteId ? ['performanceConfig', siteId] : null,
-    () => fetchers.performanceConfig(siteId),
+  return useSiteSWR<PerformanceConfig>(
+    siteId, 'demo',
+    (siteKey) => siteId ? ['performanceConfig', siteKey] : null,
+    (ref) => fetchers.performanceConfig(ref),
     { ...dashboardSWRConfig, refreshInterval: 0, dedupingInterval: 10 * 1000 }
   )
 }
@@ -985,18 +1070,20 @@ export function usePerformanceConfig(siteId: string) {
 // * reports). They are not the same thing after a failed check, and treating
 // * them as one is how a stale check used to be presented as current.
 export function usePerformanceLatest(siteId: string) {
-  return useSWR<PerformanceLatest>(
-    siteId ? ['performanceLatest', siteId] : null,
-    () => fetchers.performanceLatest(siteId),
+  return useSiteSWR<PerformanceLatest>(
+    siteId, 'demo',
+    (siteKey) => siteId ? ['performanceLatest', siteKey] : null,
+    (ref) => fetchers.performanceLatest(ref),
     { ...dashboardSWRConfig, refreshInterval: 60 * 1000, dedupingInterval: 10 * 1000, keepPreviousData: true }
   )
 }
 
 // * Hook for Performance score history (trend chart)
 export function usePerformanceHistory(siteId: string, strategy: 'mobile' | 'desktop', days = 90) {
-  return useSWR<PerformanceCheck[]>(
-    siteId ? ['performanceHistory', siteId, strategy, days] : null,
-    () => fetchers.performanceHistory(siteId, strategy, days),
+  return useSiteSWR<PerformanceCheck[]>(
+    siteId, 'demo',
+    (siteKey) => siteId ? ['performanceHistory', siteKey, strategy, days] : null,
+    (ref) => fetchers.performanceHistory(ref, strategy, days),
     { ...dashboardSWRConfig, refreshInterval: 60 * 1000, dedupingInterval: 10 * 1000, keepPreviousData: true }
   )
 }
@@ -1009,12 +1096,14 @@ export { fetchers }
 // * Daily totals only. Bing's per-query endpoint refreshes weekly and takes no date range, so it
 // * cannot honour the Search tab's date picker — see pulse-backend migration 134.
 
+// * Bing: route class `demo` throughout.
 // * Hook for Bing connection status. Same cadence as GSC: a connect or a sync failure should
 // * appear on the settings card without a manual refresh.
 export function useBingStatus(siteId: string) {
-  return useSWR<BingStatus>(
-    siteId ? ['bingStatus', siteId] : null,
-    () => fetchers.bingStatus(siteId),
+  return useSiteSWR<BingStatus>(
+    siteId, 'demo',
+    (siteKey) => siteId ? ['bingStatus', siteKey] : null,
+    (ref) => fetchers.bingStatus(ref),
     {
       ...dashboardSWRConfig,
       refreshInterval: 60 * 1000,
@@ -1030,9 +1119,10 @@ export function useBingStatus(siteId: string) {
 // * would answer with empty rows that are indistinguishable from "connected, no traffic".
 export function useBingOverview(siteId: string, start: string, end: string) {
   const { data: status } = useBingStatus(siteId)
-  return useSWR<{ overview: BingOverview; date_basis: BingDateBasis }>(
-    status?.connected ? ['bing-overview', siteId, start, end] : null,
-    () => getBingOverview(siteId, start, end),
+  return useSiteSWR<{ overview: BingOverview; date_basis: BingDateBasis }>(
+    siteId, 'demo',
+    (siteKey) => status?.connected ? ['bing-overview', siteKey, start, end] : null,
+    (ref) => getBingOverview(ref, start, end),
     { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
@@ -1040,9 +1130,10 @@ export function useBingOverview(siteId: string, start: string, end: string) {
 // * Hook for the Bing daily series that backs the chart.
 export function useBingDailyTotals(siteId: string, start: string, end: string) {
   const { data: status } = useBingStatus(siteId)
-  return useSWR<{ daily_totals: BingDailyRow[]; date_basis: BingDateBasis }>(
-    status?.connected ? ['bing-daily-totals', siteId, start, end] : null,
-    () => getBingDailyTotals(siteId, start, end),
+  return useSiteSWR<{ daily_totals: BingDailyRow[]; date_basis: BingDateBasis }>(
+    siteId, 'demo',
+    (siteKey) => status?.connected ? ['bing-daily-totals', siteKey, start, end] : null,
+    (ref) => getBingDailyTotals(ref, start, end),
     { ...dashboardSWRConfig, keepPreviousData: true }
   )
 }
@@ -1074,10 +1165,16 @@ export function useBingDailyTotals(siteId: string, start: string, end: string) {
 export const LIVE_LIST_KEY = '__live__'
 const LIVE_LIST_KINDS = new Set(['fullList', 'outbound', 'campaignsList'])
 
-/** Matches every live list SWR key of one site: what the page revalidates on its live signal. */
-export function isLiveListKey(siteId: string) {
+/**
+ * Matches every live list SWR key of one site: what the page revalidates on its live signal.
+ *
+ * A plain id matches the member keys (as it always did); a public ref matches that site's public keys,
+ * which carry `public:<id>` where a member key carries the id (siteRefKey).
+ */
+export function isLiveListKey(site: SiteRef) {
+  const siteKey = siteRefKey(site)
   return (key: unknown): boolean =>
-    Array.isArray(key) && LIVE_LIST_KINDS.has(key[0]) && key.includes(siteId) && key.includes(LIVE_LIST_KEY)
+    Array.isArray(key) && LIVE_LIST_KINDS.has(key[0]) && key.includes(siteKey) && key.includes(LIVE_LIST_KEY)
 }
 
 /** The live lists' refresh cadence: the dashboard fan-out's own (useDashboard). */
@@ -1109,6 +1206,8 @@ const fullListFetchers = {
 
 export type FullListKind = keyof typeof fullListFetchers
 
+// * Route class `demo`: every dimension list is a route only the demo is served; a share link reads
+// * the top rows out of its dashboard payload and has no "view all".
 export function useFullDimensionList<T>(
   kind: FullListKind | null, siteId: string, start: string, end: string,
   limit: number, filters?: string,
@@ -1116,11 +1215,12 @@ export function useFullDimensionList<T>(
   liveMinutes?: number,
 ) {
   const live = liveMinutes != null
-  return useSWR<T[]>(
-    !kind || !siteId ? null
-      : live ? ['fullList', kind, siteId, LIVE_LIST_KEY, liveMinutes, limit, filters]
-        : start && end ? ['fullList', kind, siteId, start, end, limit, filters] : null,
-    () => fullListFetchers[kind as FullListKind](siteId, start, end, limit, filters, undefined, liveMinutes) as Promise<T[]>,
+  return useSiteSWR<T[]>(
+    siteId, 'demo',
+    (siteKey) => !kind || !siteId ? null
+      : live ? ['fullList', kind, siteKey, LIVE_LIST_KEY, liveMinutes, limit, filters]
+        : start && end ? ['fullList', kind, siteKey, start, end, limit, filters] : null,
+    (ref) => fullListFetchers[kind as FullListKind](ref, start, end, limit, filters, undefined, liveMinutes) as Promise<T[]>,
     // 🔴 NO keepPreviousData here. The cards arm this key only while their
     // list overflows; on a range switch the key can go NULL, and
     // keepPreviousData retains the OLD RANGE's rows on a null key forever —
@@ -1143,17 +1243,19 @@ export interface OutboundLists {
   paths: EventPropertyValue[]
 }
 export const OUTBOUND_ROW_LIMIT = 1000
+// * Route class `demo`.
 export function useOutboundLinks(siteId: string, start: string, end: string, period?: string, liveMinutes?: number) {
   const live = liveMinutes != null
-  return useSWR<OutboundLists>(
-    !siteId ? null
-      : live ? ['outbound', siteId, LIVE_LIST_KEY, liveMinutes]
-        : start && end ? ['outbound', siteId, start, end, period ?? ''] : null,
-    async () => {
+  return useSiteSWR<OutboundLists>(
+    siteId, 'demo',
+    (siteKey) => !siteId ? null
+      : live ? ['outbound', siteKey, LIVE_LIST_KEY, liveMinutes]
+        : start && end ? ['outbound', siteKey, start, end, period ?? ''] : null,
+    async (ref) => {
       const p = live ? undefined : period
       const [urls, paths] = await Promise.all([
-        getEventPropertyValues(siteId, 'outbound_link', 'url', start, end, OUTBOUND_ROW_LIMIT, p, liveMinutes),
-        getEventPropertyValues(siteId, 'outbound_link', 'page_path', start, end, OUTBOUND_ROW_LIMIT, p, liveMinutes),
+        getEventPropertyValues(ref, 'outbound_link', 'url', start, end, OUTBOUND_ROW_LIMIT, p, liveMinutes),
+        getEventPropertyValues(ref, 'outbound_link', 'page_path', start, end, OUTBOUND_ROW_LIMIT, p, liveMinutes),
       ])
       return { urls, paths }
     },
@@ -1165,14 +1267,21 @@ export function useOutboundLinks(siteId: string, start: string, end: string, per
 // * (a state the card renders via its rails fallback); errors are real
 // * failures and also fall back. The image changes at most once per
 // * performance check, so no polling and a long dedupe.
+//
+// * Route class `customer`: /page-preview is one of the five routes a share link is served, so
+// * the card reads it under every scope. Under a public scope the read goes to the public route by itself,
+// * whatever `member` says: the scope decides, not the caller (components/dashboard/ContentSignals passes
+// * `member` today, and a public page cannot be allowed to get it wrong).
 export function usePagePreview(siteId: string, member = true) {
-  // member=false is the anonymous share surface: same card, the public
+  // member=false outside a scope is the legacy anonymous share page: same card, the public
   // endpoint (is_public sites only; the capture is the site's own page).
   // The flag is part of the key so a member view never shares an entry with
-  // a public one.
-  return useSWR<PagePreviewData | null>(
-    siteId ? ['pagePreview', siteId, member] : null,
-    () => (member ? getPagePreview(siteId) : getPublicPagePreview(siteId)),
+  // a public one. Under a public scope the key's site part already says so (`public:<id>`), and the flag
+  // is false, as for any anonymous read.
+  return useSiteSWR<PagePreviewData | null>(
+    siteId, 'customer',
+    (siteKey, ref) => siteId ? ['pagePreview', siteKey, isPublicSiteRef(ref) ? false : member] : null,
+    (ref) => (isPublicSiteRef(ref) || member ? getPagePreview(ref) : getPublicPagePreview(siteId)),
     { ...dashboardSWRConfig, refreshInterval: 0, dedupingInterval: 5 * 60 * 1000, keepPreviousData: true }
   )
 }
@@ -1201,6 +1310,8 @@ function visitorRangeReady(range: VisitorRange): boolean {
   return range.minutes != null || range.period != null || Boolean(range.startDate && range.endDate)
 }
 
+// * Route class `member` for all four: Visitors is never public (one row per person), so under a public
+// * scope none of them makes a request, whatever else a page asks.
 export function useVisitors(
   siteId: string,
   range: VisitorRange,
@@ -1208,8 +1319,9 @@ export function useVisitors(
 ) {
   const { startDate, endDate, minutes, period } = range
   const ready = opts.enabled !== false && Boolean(siteId) && visitorRangeReady(range)
-  return useSWR<VisitorsResponse>(
-    ready ? ['visitors', siteId, startDate, endDate, minutes, period, opts.sort, opts.order, opts.page, opts.pageSize] : null,
+  return useSiteSWR<VisitorsResponse>(
+    siteId, 'member',
+    (siteKey) => ready ? ['visitors', siteKey, startDate, endDate, minutes, period, opts.sort, opts.order, opts.page, opts.pageSize] : null,
     () => getVisitors(siteId, range, opts),
     {
       ...dashboardSWRConfig,
@@ -1230,8 +1342,9 @@ export function useVisitorProfile(
 ) {
   const { startDate, endDate, minutes, period } = range
   const ready = Boolean(siteId && key) && visitorRangeReady(range)
-  return useSWR<VisitorProfileResponse>(
-    ready ? ['visitorProfile', siteId, key, startDate, endDate, minutes, period] : null,
+  return useSiteSWR<VisitorProfileResponse>(
+    siteId, 'member',
+    (siteKey) => ready ? ['visitorProfile', siteKey, key, startDate, endDate, minutes, period] : null,
     () => getVisitorProfile(siteId, key, range),
     { ...dashboardSWRConfig, refreshInterval: 60 * 1000, dedupingInterval: 10 * 1000, keepPreviousData: true },
   )
@@ -1246,8 +1359,9 @@ export function useVisitorVisits(
 ) {
   const { startDate, endDate, minutes, period } = range
   const ready = Boolean(siteId && key) && visitorRangeReady(range)
-  return useSWR<VisitsResponse>(
-    ready ? ['visitorVisits', siteId, key, startDate, endDate, minutes, period, page, pageSize] : null,
+  return useSiteSWR<VisitsResponse>(
+    siteId, 'member',
+    (siteKey) => ready ? ['visitorVisits', siteKey, key, startDate, endDate, minutes, period, page, pageSize] : null,
     () => getVisitorVisits(siteId, key, range, { page, pageSize }),
     { ...dashboardSWRConfig, refreshInterval: 60 * 1000, dedupingInterval: 10 * 1000, keepPreviousData: true },
   )
@@ -1265,8 +1379,9 @@ export function useVisitEvents(
 ) {
   const { startDate, endDate, minutes, period } = range
   const ready = Boolean(siteId && key && visitKey) && visitorRangeReady(range)
-  return useSWR<VisitEventsResponse>(
-    ready ? ['visitEvents', siteId, key, visitKey, startDate, endDate, minutes, period, page] : null,
+  return useSiteSWR<VisitEventsResponse>(
+    siteId, 'member',
+    (siteKey) => ready ? ['visitEvents', siteKey, key, visitKey, startDate, endDate, minutes, period, page] : null,
     () => getVisitEvents(siteId, key, visitKey as string, range, page),
     { ...dashboardSWRConfig, refreshInterval: 0, dedupingInterval: 30 * 1000, keepPreviousData: true },
   )
