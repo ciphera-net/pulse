@@ -1824,8 +1824,8 @@ export interface AreaProps {
   /**
    * Custom "this point is measured" predicate — a gap wherever it is false.
    * Generalises breakAtMissing (which tests only null-ness): the funnel's
-   * conversion line breaks where FEWER THAN FIVE entrants exist even though a
-   * rate is present (the n≥5 floor), which a null test cannot express.
+   * conversion line (isMeasuredDay) tests the day's entrant count as well as
+   * its rate (a guard: the server already sends a null rate for an empty day).
    */
   defined?: (d: Record<string, unknown>) => boolean;
   /**

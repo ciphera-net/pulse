@@ -358,7 +358,7 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
   // realtime: the server echoes a live window as the day it falls in, so the "previous
   // period" was all of yesterday, and every rail delta compared five minutes with a
   // whole day (a red −99% under a live view). Nor does a share link: the previous
-  // window is a read over arbitrary dates, the one primitive a public-scoped read refuses.
+  // window is a read over arbitrary dates, which a public-scoped read refuses.
   const prevRange = useMemo(
     (): { start: string; end: string } | null =>
       caps.comparison && resolvedDateRange && period !== 'all' && !isLive ? previousDateRange(resolvedDateRange) : null,
@@ -680,7 +680,7 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
       {/* One Sources card (owner pick BH, 06-09-2026): Referrers · Channels ·
           Campaigns, the UTM dimension behind a Select. The Locations card moved
           up to fill the row the Campaigns card left. A share link's Campaigns
-          rows arrive ON its payload (floored, capped), which also keeps the
+          rows arrive ON its payload (capped), which also keeps the
           campaigns fetch unarmed: that read is not served to it. */}
       <div className="grid gap-3 lg:grid-cols-2 mb-3 [&>*]:min-w-0">
         <Sources
