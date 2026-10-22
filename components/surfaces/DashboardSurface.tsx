@@ -15,7 +15,7 @@ import DateRangePicker from '@/components/ui/DateRangePicker'
 import { PERIOD_TO_API } from '@/lib/constants/periods'
 import { DEFAULT_GEO_DATA_LEVEL, type Site } from '@/lib/api/sites'
 import { identityWindowOf } from '@/lib/visitors/identityWindow'
-import { formatCompactNumber, formatDate } from '@/lib/utils/format'
+import { formatDate } from '@/lib/utils/format'
 import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
 import { useRealtimeToggle } from '@/lib/hooks/useRealtimeToggle'
 import { previousDateRange } from '@/lib/hooks/periodUrl'
@@ -675,24 +675,6 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
           prevFloor={dataWindow?.from ?? null}
         />
       </div>
-
-      {/* What the minimum-cell-size floor withheld.
-          Stated rather than applied silently: a shared dashboard drops every
-          dimension row describing fewer than min_cell_size people, so the rows
-          below deliberately do not sum to the totals above. Without this line the
-          gap reads as a bug in the numbers — and the first person to notice would
-          be right to report it. The block is absent entirely when nothing was
-          withheld, so it never appears as a reassuring zero (and a member's read
-          is never floored, so it never appears there). */}
-      {dashboard?.suppression && dashboard.suppression.rows_withheld > 0 && (
-        <p className="mb-3 text-xs text-neutral-500">
-          {formatCompactNumber(dashboard.suppression.rows_withheld)}{' '}
-          {dashboard.suppression.rows_withheld === 1 ? 'row is' : 'rows are'} hidden below,
-          covering {formatCompactNumber(dashboard.suppression.pageviews_withheld)} pageviews. A shared
-          dashboard only shows breakdown rows with at least {dashboard.suppression.min_cell_size}{' '}
-          visitors, so no row can describe one person. Site totals are unaffected.
-        </p>
-      )}
 
       <SectionHeader title="Acquisition" />
       {/* One Sources card (owner pick BH, 06-09-2026): Referrers · Channels ·

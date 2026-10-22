@@ -86,8 +86,8 @@ interface SourcesProps {
   memberFeatures?: boolean
   onFilter?: (filter: DimensionFilter) => void
   // A customer's share link's diet (02-09-2026): campaign rows arrive ON the
-  // dashboard payload — floored and capped by the backend's single public
-  // exit — instead of the /campaigns endpoint it is not served. When provided,
+  // dashboard payload — capped by the backend's public row limit — instead of
+  // the /campaigns endpoint it is not served. When provided,
   // BOTH campaign fetches stay unarmed; the full-list can never fire from a
   // share link.
   campaigns?: CampaignStat[]

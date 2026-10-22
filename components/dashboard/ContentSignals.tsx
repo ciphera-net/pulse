@@ -23,7 +23,7 @@ interface ContentSignalsProps {
   siteId: string
   dateRange: { start: string; end: string }
   // A customer's share link (02-09-2026): the numbers on this card already ride
-  // the floored dashboard payload, but its events drill-down hits endpoints a
+  // the dashboard payload, but its events drill-down hits endpoints a
   // public-scoped read is not served — off means that fetch never fires. The demo
   // site is served them, so it keeps this on.
   memberFeatures?: boolean

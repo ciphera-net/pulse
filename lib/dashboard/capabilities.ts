@@ -14,8 +14,8 @@ import type { SiteScope } from '@/lib/scope/SiteScope'
  *    reads it (filters, any range, every interval, live windows), anonymously.
  *  - `public` + `scoped`: a customer's share link, served five routes (stats, daily,
  *    realtime, dashboard, page-preview) as public-scoped reads: four fixed day-granular
- *    windows, no filters, no hourly buckets, breakdown rows under five visitors withheld
- *    (pulse-backend public_surface.go, public_floor.go). The page must not ask for more:
+ *    windows, no filters, no hourly buckets (pulse-backend public_surface.go; there is no
+ *    five-visitor floor since 21-10-2026). The page must not ask for more:
  *    every request outside that list is refused, and a refused request on a public page
  *    is a visible failure.
  */

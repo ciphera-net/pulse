@@ -260,7 +260,6 @@ export function FunnelStepStrip({
         <div className="mb-3 flex h-10 items-center justify-between gap-3">
           <span className="flex items-center gap-1 text-xs text-neutral-500">
             Breakdown · funnel conversion
-            <TermInfoTip term="funnel_breakdown_floor" />
           </span>
           <Select
             variant="input"
@@ -287,9 +286,9 @@ export function FunnelStepStrip({
                   icon={getFilterValueIcon(dimension, entry.value)}
                   label={entry.value}
                   count={entry.visitors}
-                  // Sub-floor values are withheld as WHOLE ROWS server-side
-                  // (26-08 ruling) — nothing here is ever floored; the null
-                  // guards survive only as wire-robustness.
+                  // Every value is a row since the five-entrant floor went
+                  // (21-10-2026); the null guards survive only as
+                  // wire-robustness.
                   pct={entry.visitors != null && maxEntry > 0 ? (entry.visitors / maxEntry) * 100 : 0}
                   trailing={entry.conversion != null ? `${formatFunnelPct(entry.conversion)} conv` : '—'}
                 />
