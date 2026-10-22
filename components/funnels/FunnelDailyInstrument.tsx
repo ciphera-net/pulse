@@ -21,10 +21,12 @@ import { FunnelRail } from './FunnelRail'
 // strip height and the stack carries the dashboard's card:
 //
 //   Conversion — the instrument with a `defined` predicate: a day is measured
-//                only with ≥5 entrants AND a rate; everything else is a GAP (a
-//                gap is a fact, a bridge is a guess, and a 1-visitor day plotted
-//                at 100% is noise sold as measurement). The per-day dots stay —
-//                they are the evidence marks — drawn where the line is defined.
+//                when anyone entered and it has a rate; a day nobody entered is
+//                a GAP (a gap is a fact, a bridge is a guess). Every such day is
+//                drawn however few entered (since 22-10-2026; days under five
+//                entrants were left out before): a one-entrant day reads 0% or
+//                100%, and its Entered row says how few it was. The per-day dots
+//                stay — they are the evidence marks — drawn where the line is defined.
 //   Entered    — the instrument, every day
 //   Completed  — orange bars (the funnel's own accent; zero days draw nothing),
 //                a hand-rolled member on the stack's scale and cursor
@@ -36,7 +38,6 @@ import { FunnelRail } from './FunnelRail'
 const BRAND = '#FD5E0F'
 const STRIP_H = 92
 const STRIP_MARGIN = { top: 8, right: 16, bottom: 6, left: 48 }
-const MIN_RATE_ENTRANTS = 5
 
 interface DayPoint extends Record<string, unknown> {
   date: Date
@@ -46,7 +47,8 @@ interface DayPoint extends Record<string, unknown> {
   completed: number | null
 }
 
-const measured = (d: Record<string, unknown>) => typeof d.rate === 'number' && (d.entered as number) >= MIN_RATE_ENTRANTS
+/** A day's rate is a measurement when anyone entered that day and the server gave a rate. */
+export const isMeasuredDay = (d: Record<string, unknown>) => typeof d.rate === 'number' && (d.entered as number) > 0
 
 export function FunnelDailyInstrument({
   siteId,
@@ -129,7 +131,7 @@ export function FunnelDailyInstrument({
   const cardRows = useCallback((p: Record<string, unknown>) => {
     const h = p as DayPoint
     return [
-      { color: 'var(--chart-1)', label: 'Conversion', value: measured(h) ? `${Math.round(h.rate as number)}%` : '—' },
+      { color: 'var(--chart-1)', label: 'Conversion', value: isMeasuredDay(h) ? `${Math.round(h.rate as number)}%` : '—' },
       { color: 'var(--chart-1)', label: 'Entered', value: formatCompactNumber(h.entered) },
       { color: BRAND, label: 'Completed', value: h.completed != null ? formatCompactNumber(h.completed) : '—' },
     ]
@@ -147,7 +149,6 @@ export function FunnelDailyInstrument({
           the one liveness indicator; two chips on one screen read as noise. */}
       <div className="flex items-baseline justify-between gap-4 border-b border-border px-4 py-3">
         <span className="text-sm font-medium text-neutral-200">Daily</span>
-        <span className="truncate text-xs text-neutral-500">rate marked only where ≥{MIN_RATE_ENTRANTS} entered</span>
       </div>
 
       {error ? (
@@ -212,8 +213,8 @@ function DayStrip({ series, kind, dashedTail }: { series: DayPoint[]; kind: 'rat
           curve={curveLinear}
           dashedTailFrom={dashedTail && series.length >= 2 ? series.length - 2 : undefined}
           dataKey={kind}
-          // The n≥5 floor: a rate is a measurement only with enough entrants.
-          defined={isRate ? measured : undefined}
+          // A day nobody entered has no rate: a gap, never a bridge.
+          defined={isRate ? isMeasuredDay : undefined}
           fadeStrokeEdges={false}
           fill={STRIP_INK}
           fillOpacity={isRate ? 0 : 0.15}
