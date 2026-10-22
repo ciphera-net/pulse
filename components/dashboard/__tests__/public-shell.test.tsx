@@ -312,12 +312,12 @@ describe('the bars in public mode', () => {
 })
 
 describe('the demo, and only the demo', () => {
-  it('says "Sample data" in the top bar and on the phone, at every width', async () => {
+  it('says "Live demo" in the top bar and on the phone, at every width', async () => {
     renderPublic(demoScope(), '/demo/uptime')
     await railLinks()
     // One in the desktop bar, one in the phone's header: the CSS decides which is on screen.
-    expect(screen.getAllByText('Sample data')).toHaveLength(2)
-    for (const el of screen.getAllByText('Sample data')) expect(el.closest('span')?.querySelector('span[aria-hidden="true"]')).not.toBeNull()
+    expect(screen.getAllByText('Live demo')).toHaveLength(2)
+    for (const el of screen.getAllByText('Live demo')) expect(el.closest('span')?.querySelector('span[aria-hidden="true"]')).not.toBeNull()
   })
 
   it('offers "Try Pulse free" to /signup, in the top window, in both bars', async () => {
@@ -334,7 +334,7 @@ describe('the demo, and only the demo', () => {
   it('says nothing of the kind on a customer\'s link', async () => {
     renderPublic(customerScope(), '/share/site-9')
     await railLinks()
-    expect(screen.queryByText('Sample data')).toBeNull()
+    expect(screen.queryByText('Live demo')).toBeNull()
     expect(screen.queryByRole('link', { name: 'Try Pulse free' })).toBeNull()
   })
 
@@ -359,7 +359,7 @@ describe('the demo, and only the demo', () => {
       view.rerender(tree())
       // The crumb follows the address, so the bar has really been drawn again for this one.
       expect(screen.getByRole('navigation', { name: 'Breadcrumb' }).textContent, path).toMatch(new RegExp(`${crumbEnd}$`))
-      expect(screen.getAllByText('Sample data'), path).toHaveLength(2)
+      expect(screen.getAllByText('Live demo'), path).toHaveLength(2)
       expect(screen.getAllByRole('link', { name: 'Try Pulse free' }), path).toHaveLength(2)
     }
   })
@@ -403,7 +403,7 @@ describe('control: the member shell', () => {
       expect(screen.getAllByTestId(id).length, id).toBeGreaterThan(0)
     }
     expect(screen.getByRole('link', { name: 'Site Settings' })).toBeInTheDocument()
-    expect(screen.queryByText('Sample data')).toBeNull()
+    expect(screen.queryByText('Live demo')).toBeNull()
     expect(screen.queryByRole('link', { name: 'Try Pulse free' })).toBeNull()
   })
 

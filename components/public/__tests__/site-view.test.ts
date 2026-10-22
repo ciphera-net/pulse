@@ -19,7 +19,7 @@ describe('scopeFromView', () => {
     expect(scope).toEqual({ siteId: 'demo-1', mode: 'public', basePath: '/demo', pages: ['dashboard', 'pages', 'cdn'], demo: true, fidelity: 'full' })
   })
 
-  it("reads any other site as a customer's link: scoped, and never labelled as sample data", () => {
+  it("reads any other site as a customer's link: scoped, and never labelled as the demo", () => {
     const scope = scopeFromView(view({ share_pages: ['dashboard', 'funnels'] }), '/share/site-1')
     expect(scope).toMatchObject({ mode: 'public', demo: false, fidelity: 'scoped', basePath: '/share/site-1' })
   })

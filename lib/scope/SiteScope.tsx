@@ -41,7 +41,7 @@ export interface SiteScope {
   basePath: string
   /** The pages this scope may show: every page for a member; the site's shared pages in public. */
   pages: readonly SitePage[]
-  /** The sample site (`is_demo`): labelled as sample data on every view. */
+  /** The demo's site (`is_demo`): labelled as the live demo on every view. */
   demo: boolean
   fidelity: ScopeFidelity
 }
