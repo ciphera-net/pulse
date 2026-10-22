@@ -221,7 +221,7 @@ public read API's — see that entry for what it does and does not cover.
   share link, in the public read API, in an export, or on the internal admin surface —
   four exclusions pinned by tests rather than by convention, because Pulse runs a live
   public demo through the share surface. Sessions Cerberus has convicted stay invisible
-  here exactly as everywhere else. The n≥5 privacy floor on the public API is untouched.
+  here exactly as everywhere else.
 
   Some of our own wording had to change with it: several pages said Pulse keeps "no
   individual records" or is "architecturally incapable of identifying individual
@@ -400,18 +400,17 @@ public read API's — see that entry for what it does and does not cover.
 
 ### Removed
 
-- **Small numbers are no longer hidden anywhere.** Every row and every number
-  now shows at any size, filtered or not. A shared dashboard shows the same rows
-  your team sees for the same range, a page or a city with one visitor included,
-  and the line naming what it had hidden is gone. The read API, the CLI and the
-  MCP tools answer a filter that matches one visitor with its real numbers, list
-  every page in realtime, and keep a small day's averages and a small filtered
-  row in the exports. Funnel breakdowns list every value, however few entrants
-  it had, and a funnel's Daily chart draws the conversion rate on every day
-  anyone entered, where it used to skip days with fewer than five. Fields kept
-  for older clients say nothing was withheld (`suppressed` is `false`, the
-  export headers are `0`). Filters stay off on a shared link, and its ranges
-  stay fixed.
+- **Small numbers are no longer hidden anywhere.** Every row and every metric
+  now shows at any size, filtered or not. A shared dashboard shows the same top
+  rows your team sees for the same range, a page or a city with one visitor
+  included, and the line naming what it had hidden is gone. The read API, the
+  CLI and the MCP tools answer a filter that matches one visitor with its real
+  numbers, list a page in realtime however few visitors it has, and keep a small
+  day's averages and a small filtered row in the exports. Funnel breakdowns list
+  a value however few entrants it had, and a funnel's Daily chart no longer
+  skips a day with fewer than five entrants. Fields kept for older clients say
+  nothing was withheld (`suppressed` is `false`, the export headers are `0`).
+  Filters stay off on a shared link, and its ranges stay fixed.
 
 - **The notification bell and the `/notifications` page are gone. Pulse notifications arrive by email.** The
   emails now link straight into Pulse. You switch off a category's emails in Settings → Account → Notifications,

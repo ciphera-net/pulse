@@ -294,8 +294,11 @@ export function useUrlDateRange(options: PageRangeOptions): UrlDateRange {
   // 🔴 A CUSTOMER'S SHARE LINK READS FOUR FIXED WINDOWS AND NOTHING ELSE.
   // Its reads are public-scoped: the server serves today, yesterday, 7d and 30d at day
   // granularity and refuses every other period, any start/end date and any live window
-  // with a 400 (pulse-backend public_surface.go: a free choice of both endpoints is what
-  // lets two floored answers be subtracted down to one visitor). So under that scope the
+  // with a 400 (pulse-backend public_surface.go and utils_extra.go). The windows were
+  // fixed because, until D8 (21-10-2026), a free choice of both endpoints let two floored
+  // answers be subtracted down to one visitor. That floor is gone; the four stay as the
+  // share page's fixed set until the Sharing round (D10) rules on what a customer's link
+  // may ask for. So under that scope the
   // hook offers exactly those rows, coerces anything else in the URL to the default, sends
   // no date, and neither reads nor writes the reader's view memory (an anonymous viewer on
   // fixed ranges has nothing to remember, and must not touch a member's own memory on the

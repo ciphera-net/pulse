@@ -13,8 +13,8 @@
  *
  * 🔴 The cache key must say which surface it is for. A public answer is a different
  * document from the member one (the site record is its public subset, a customer's link
- * is floored), so a key that could not tell them apart would let one tab serve a member
- * the public body or the reverse. `siteRefKey` is that difference.
+ * is held to the public row limit), so a key that could not tell them apart would let
+ * one tab serve a member the public body or the reverse. `siteRefKey` is that difference.
  */
 export interface PublicSiteRef {
   readonly id: string

@@ -8,7 +8,7 @@ import { useState } from 'react'
 //   - linked hover: N charts driven by one index move as one cursor
 //   - showCard={false}: crosshair + dot without the card (the stack draws one)
 //   - invertY / yDomain / yTicks: fixed and inverted frames
-//   - defined: a predicate gap (the funnel's n<5 rule)
+//   - defined: a predicate gap (the caller's rule, e.g. the funnel's isMeasuredDay)
 //   - pointsKey: static per-datum dots from a second key
 //   - ReferenceLine: a dashed instant with HTML chrome
 //   - stable ids: two charts with the same dataKey never collide

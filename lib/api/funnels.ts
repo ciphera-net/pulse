@@ -71,7 +71,7 @@ export interface FunnelTrends {
   dates: string[]
   /** null per bucket when that bucket had zero entrants — an empty day is not a 0% day */
   overall: (number | null)[]
-  /** per-bucket entrant denominator, for gating small-n buckets */
+  /** per-bucket entrants: the denominator of each bucket's rate */
   entered: number[]
 }
 
@@ -79,12 +79,13 @@ export interface FunnelBreakdownEntry {
   value: string
   /**
    * Sessions that reached the target step, chained through every prior step.
-   * null when the row is under the n≥5 entrant floor — withheld, not zero.
+   * Always set on a returned row (since 26-08-2026); typed nullable only so the
+   * wire shape stays stable and readers keep their null guards.
    */
   visitors: number | null
   /** sessions that entered the funnel under this dimension value — the denominator */
   entrants: number
-  /** null when floored */
+  /** always set on a returned row; nullable for the same reason as `visitors` */
   conversion: number | null
 }
 

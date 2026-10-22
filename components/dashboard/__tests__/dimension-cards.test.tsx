@@ -327,8 +327,8 @@ describe('Audience', () => {
       expect(screen.queryByText('English (United States)')).toBeNull()
     })
 
-    it('renders a floored shared-dashboard row (no members, no locale_count) with no "N regions"', () => {
-      // public_floor.go omits members/locale_count entirely on a shared payload.
+    it('renders a grouped row with no members and no locale_count (the shared-dashboard shape before 21-10-2026) with no "N regions"', () => {
+      // Until D8 (21-10-2026) a shared payload omitted members/locale_count; the card still renders that shape.
       const rows = [
         { language: 'en', pageviews: 283, visitors: 144, bounce_rate: null, avg_duration: null, flag_region: 'US' },
       ]
@@ -515,10 +515,10 @@ describe('Sources — campaigns view', () => {
     )
   })
 
-  // The share surface's diet: rows arrive on the floored dashboard payload,
+  // The share surface's diet: rows arrive on the dashboard payload,
   // and the `campaigns` prop must keep BOTH member-only fetches unarmed —
   // every hook call carries enabled=false, so no request can ever leave a
-  // share view for an endpoint that would 403 it.
+  // share view for an endpoint that would refuse it.
   it('payload rows keep the member-only endpoint unarmed', () => {
     useCampaignsList.mockClear()
     render(

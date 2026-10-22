@@ -22,7 +22,7 @@ import { FunnelRail } from './FunnelRail'
 //
 //   Conversion — the instrument with a `defined` predicate: a day is measured
 //                when anyone entered and it has a rate; a day nobody entered is
-//                a GAP (a gap is a fact, a bridge is a guess). Every such day is
+//                a GAP (a gap is a fact, a bridge is a guess). Such a day is
 //                drawn however few entered (since 22-10-2026; days under five
 //                entrants were left out before): a one-entrant day reads 0% or
 //                100%, and its Entered row says how few it was. The per-day dots
