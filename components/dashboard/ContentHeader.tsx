@@ -10,7 +10,7 @@ import { useUserMenuTeamProps } from '@/components/dashboard/userMenuTeam'
 import { useSites } from '@/lib/swr/sites'
 import OnboardingChip from '@/components/onboarding/OnboardingChip'
 import ThemeMenuSwitch from '@/components/theme/ThemeMenuSwitch'
-import { SampleDataLabel, TryPulseFreeButton } from '@/components/public/chrome'
+import { DemoLabel, TryPulseFreeButton } from '@/components/public/chrome'
 import { usePublicSiteIdentity } from '@/lib/swr/public-site-identity'
 import { useOptionalSiteScope, type SiteScope } from '@/lib/scope/SiteScope'
 
@@ -53,7 +53,7 @@ function PublicContentHeader({ onMobileMenuOpen, scope }: { onMobileMenuOpen: ()
 
       <div className="flex min-w-0 flex-1 flex-col px-2">
         {site?.name && <span className="truncate text-sm font-medium text-white">{site.name}</span>}
-        {scope.demo && <SampleDataLabel />}
+        {scope.demo && <DemoLabel />}
       </div>
 
       {scope.demo && <TryPulseFreeButton />}

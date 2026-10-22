@@ -36,7 +36,7 @@ import { ShortcutHandler } from '@/components/keyboard/ShortcutHandler'
 import { ShortcutsOverlay } from '@/components/keyboard/ShortcutsOverlay'
 import { CommandPalette } from '@/components/command/CommandPalette'
 import ThemeMenuSwitch from '@/components/theme/ThemeMenuSwitch'
-import { SampleDataLabel, TryPulseFreeButton } from '@/components/public/chrome'
+import { DemoLabel, TryPulseFreeButton } from '@/components/public/chrome'
 import { resolvePublicRoute } from '@/components/public/routes'
 import { navItemForPage } from './siteNav'
 import { postEmbedReady } from '@/lib/scope/embed'
@@ -566,7 +566,7 @@ function PublicTopBar({ scope }: { scope: SiteScope }) {
         {lastUpdatedAt != null && <UpdatedIndicator lastUpdatedAt={lastUpdatedAt} />}
         {scope.demo && (
           <>
-            <SampleDataLabel />
+            <DemoLabel />
             <TryPulseFreeButton />
           </>
         )}
