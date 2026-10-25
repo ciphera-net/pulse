@@ -121,17 +121,16 @@ describe('identity anchor', () => {
     expect(customEvents()[0].anchor_id).toBe('evt-2')
   })
 
-  it('the anchor survives a reload of the same tab — the reloaded document continues the visit', async () => {
-    // * A reload is a FRESH document over the SAME sessionStorage. jsdom cannot share
-    // * storage between windows, so the reload is modelled the way the engagement suite
-    // * models the refresh-dedup record: seed what the previous document would have left.
+  it('a reload starts with no anchor — nothing is kept in the browser, so nothing survives a full page load', async () => {
+    // * v1.4.0 to v1.6.1 kept the anchor in sessionStorage and a reloaded document read it
+    // * back. Seed what such a script would have left: v1.7.0 must neither read it nor write.
     win.sessionStorage.setItem('ciphera_anchor', 'evt-prev')
     installScript()
     await flush()
     expect(pageviews()).toHaveLength(1)
-    expect(pageviews()[0].anchor_id).toBe('evt-prev')
-    // * And this document's own pageview becomes the anchor for what follows.
-    expect(win.sessionStorage.getItem('ciphera_anchor')).toBe('evt-1')
+    expect(pageviews()[0]).not.toHaveProperty('anchor_id')
+    expect(win.sessionStorage.getItem('ciphera_anchor')).toBe('evt-prev')
+    expect(win.sessionStorage.length).toBe(1)
   })
 
   it('a new tab has no anchor — nothing crosses tabs and nothing outlives one', async () => {
@@ -148,17 +147,39 @@ describe('identity anchor', () => {
     expect(fresh).not.toHaveProperty('anchor_id')
   })
 
-  it('never touches localStorage or cookies', async () => {
+  it('keeps nothing in the browser: no session storage, no local storage, no cookie', async () => {
+    // * Every storage call the script makes, counted through the window's own getters. The
+    // * one permitted access is reading the site owner's opt-out flag (pulse_ignore), which
+    // * is only ever WRITTEN by a visit with ?pulse-ignore.
+    const calls: string[] = []
+    const spy = (name: string, real: Storage) =>
+      new Proxy(real, {
+        get(target, prop) {
+          const v = Reflect.get(target, prop, target)
+          if (typeof v !== 'function') return v
+          return (...args: any[]) => {
+            calls.push(`${name}.${String(prop)}(${args.map((a) => JSON.stringify(a)).join(',')})`)
+            return v.apply(target, args)
+          }
+        },
+      })
+    const session = spy('sessionStorage', win.sessionStorage)
+    const local = spy('localStorage', win.localStorage)
+    Object.defineProperty(win, 'sessionStorage', { configurable: true, get: () => session })
+    Object.defineProperty(win, 'localStorage', { configurable: true, get: () => local })
+
     installScript()
     await flush()
-    win.pulse.track('x')
+    win.history.pushState({}, '', '/pricing')
     await flush()
-    // * sessionStorage is the ONLY storage the anchor may use. (A prototype spy would
-    // * also see sessionStorage writes — Storage is one prototype in jsdom — so the
-    // * assertion is on what localStorage actually holds.)
-    expect(win.localStorage.length).toBe(0)
+    win.pulse.track('x')
+    await flush(20_000)
+    win.dispatchEvent(new win.Event('pagehide'))
+    await flush()
+
+    expect(calls).toEqual(['localStorage.getItem("pulse_ignore")'])
     expect(doc.cookie).toBe('')
-    expect(win.sessionStorage.getItem('ciphera_anchor')).toBe('evt-1')
+    expect(customEvents()[0].anchor_id).toBe('evt-2')
   })
 
   it('still sends when sessionStorage is unavailable — the anchor is a convenience, never a dependency', async () => {
@@ -174,7 +195,7 @@ describe('identity anchor', () => {
     await flush()
     expect(pageviews()).toHaveLength(1)
     expect(customEvents()).toHaveLength(1)
-    // * Without storage the in-memory anchor still works within the document.
+    // * The anchor never needed storage: it lives in the document's memory.
     expect(customEvents()[0].anchor_id).toBe('evt-1')
   })
 })

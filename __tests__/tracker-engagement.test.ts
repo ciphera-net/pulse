@@ -190,18 +190,48 @@ describe('pageviews are people seeing pages', () => {
     expect(pageviews).toHaveLength(1)
   })
 
-  it('a reload inside the dedup window adopts the previous pageview instead of going dark', async () => {
-    win.sessionStorage.setItem('ciphera_last_pv', JSON.stringify({ p: '/', t: Date.now() - 1000, id: 'evt-prev', e: 4 }))
+  it('a reloaded document says so, and reports against the pageview the server says it repeats', async () => {
+    // * v1.7.0 keeps nothing in the browser, so a reloaded document cannot know what it
+    // * replaced. It sends the browser's own navigation type instead, and the server answers
+    // * a reload of a page loaded under five seconds ago with that pageview's id. Modelled
+    // * here by a server that recognises the reload.
+    win.performance.getEntriesByType = (kind: string) => (kind === 'navigation' ? [{ type: 'reload' }] : [])
+    const serve = win.fetch
+    win.fetch = vi.fn(async (url: string, init: any) => {
+      const body = init?.body ? JSON.parse(init.body) : null
+      if (url.endsWith('/api/v1/events') && body?.reload) {
+        pageviews.push(body)
+        return { json: async () => ({ status: 'queued', id: 'evt-prev' }) }
+      }
+      return serve(url, init)
+    })
     installScript()
     await flush(10)
-    expect(pageviews).toHaveLength(0)
+    expect(pageviews).toHaveLength(1)
+    expect(pageviews[0].reload).toBe(true)
 
     activity()
     await flush(20_000)
-    const b = lastBeacon()
-    expect(b.body.event_id).toBe('evt-prev')
-    // * The previous document's 4 s carry over, so the total keeps growing.
-    expect(b.body.engaged_duration).toBeGreaterThanOrEqual(20)
+    expect(lastBeacon().body.event_id).toBe('evt-prev')
+    expect(win.sessionStorage.length).toBe(0)
+  })
+
+  it('only the first pageview of a reloaded document is a reload; a navigation after it is not', async () => {
+    win.performance.getEntriesByType = (kind: string) => (kind === 'navigation' ? [{ type: 'reload' }] : [])
+    installScript()
+    await flush(10)
+    win.history.pushState({}, '', '/pricing')
+    await flush(10)
+    expect(pageviews).toHaveLength(2)
+    expect(pageviews[0].reload).toBe(true)
+    expect(pageviews[1]).not.toHaveProperty('reload')
+  })
+
+  it('an ordinary load sends no reload flag', async () => {
+    installScript()
+    await flush(10)
+    expect(pageviews).toHaveLength(1)
+    expect(pageviews[0]).not.toHaveProperty('reload')
   })
 })
 

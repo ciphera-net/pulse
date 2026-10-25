@@ -56,7 +56,9 @@ const DIST_ROOT = join(ROOT, 'dist', 'scripts')
 // means. (Measured before bumping: /v1.3.0/* has never actually been published —
 // js.ciphera.net 404s it — so nothing was pinned against the old bytes. Recorded
 // in the round-7 log; the publish gap is its own change.)
-const SCRIPT_VERSION = '1.6.1'
+// * 1.7.0 (25-10-2026, PUL-37): nothing kept in the browser; the anchor and the refresh
+// * record live in memory, and a reloaded document's first pageview says so (`reload`).
+const SCRIPT_VERSION = '1.7.0'
 const BASE_URL = 'https://js.ciphera.net'
 
 // * script.interactions.js is the OPTIONAL companion: clicks, copies and form

@@ -765,3 +765,28 @@ steps:
             -H "AccessKey: $BUNNY_API_KEY"
         done
         echo "CDN cache purged"
+      # 🔴 VERIFY WHAT THE EDGE SERVES, AND PURGE AGAIN UNTIL IT IS THE COMMITTED BYTES (25-10-2026).
+      # On 18-09-2026 the purge above raced replication across the storage zone's regions:
+      # the edge re-fetched the OLD script from a region that had not caught up and served it
+      # for two hours, with this step green. A purge is a request, not a result. So every
+      # served file is fetched back (no query string: a cache-busting `?` would cache a copy
+      # under another key and prove nothing) and compared to the file just uploaded; a
+      # mismatch waits, purges that file again, and retries for up to five minutes, then
+      # fails the step. Origin Shield sits in front of every PoP, so the copy one PoP fetches
+      # after a purge is the copy all of them fetch.
+      - |
+        for file in script.js script.debug.js script.interactions.js script.interactions.debug.js script-sri.json; do
+          [ -f "public/$file" ] || continue
+          want=$(openssl dgst -sha384 -binary "public/$file" | openssl base64 -A)
+          ok=false
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            got=$(curl -fsS --max-time 30 "https://js.ciphera.net/$file" | openssl dgst -sha384 -binary | openssl base64 -A) || got=fetch-failed
+            if [ "$got" = "$want" ]; then ok=true; break; fi
+            echo "$file: the edge serves sha384-$got, the upload is sha384-$want (attempt $attempt); purging again in 30 s"
+            sleep 30
+            curl -fsS -X POST "https://api.bunny.net/purge?url=https://js.ciphera.net/$file&async=false" \
+              -H "AccessKey: $BUNNY_API_KEY" >/dev/null || true
+          done
+          $ok || { echo "🔴 $file: the edge still serves other bytes after 10 purges; production runs the previous script"; exit 1; }
+          echo "$file: the edge serves the uploaded bytes (sha384-$want)"
+        done
