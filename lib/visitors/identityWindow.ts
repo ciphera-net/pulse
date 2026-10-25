@@ -128,7 +128,7 @@ export function describeIdentityWindow(days: IdentityWindowDays | undefined): Id
       headline: 'Every reader is a short-lived pseudonym — then the slate wipes clean',
       rosterHeading: 'Readers in this range',
       identityDefinition:
-        'A pseudonym derived server-side from a short-lived key, scoped to this site. It cannot be linked to a person or to another site, and the key is re-minted on the site’s identity window — the calendar month unless its owner chose a shorter one — so a returning reader eventually becomes a new visitor. There is no cookie and nothing stored on their device.',
+        'A pseudonym derived server-side from a short-lived key, scoped to this site. It cannot be linked to another site, and the key is re-minted on the site’s identity window — the calendar month unless its owner chose a shorter one — so a returning reader eventually becomes a new visitor. There is no cookie.',
       resetCaption: 'identities are short-lived by design',
       emptyRangeHint: 'Identities begin on 26 August 2026 and are short-lived by design. Try a wider range.',
       notFoundHint:
@@ -137,7 +137,7 @@ export function describeIdentityWindow(days: IdentityWindowDays | undefined): Id
       metricDefinition:
         "People, not visits: a returning reader counts once within the site’s identity window — the calendar month unless its owner chose a shorter one — so a range that spans a boundary counts a returning reader once per window. Before 26 Aug 2026, deduplication was per day.",
       policySentence:
-        'Visitors are counted using a short-lived, server-derived identifier that is never stored on your device and is discarded on a fixed schedule.',
+        'Visitors are counted using a short-lived, server-derived identifier that changes on a fixed schedule.',
     }
   }
 
@@ -148,7 +148,7 @@ export function describeIdentityWindow(days: IdentityWindowDays | undefined): Id
       headline: 'Every reader is a one-day pseudonym — a returning reader is never recognised',
       rosterHeading: 'Readers, one day at a time',
       identityDefinition:
-        'A pseudonym derived server-side from a daily key, scoped to this site. It cannot be linked to a person, to another site, or to the same reader tomorrow — on this site no identity outlives the day it was minted in your site’s timezone, so a returning reader is never recognised. There is no cookie and nothing stored on their device.',
+        'A pseudonym derived server-side from a daily key, scoped to this site. It cannot be linked to another site or to the same reader tomorrow — on this site no identity outlives the day it was minted in your site’s timezone, so a returning reader is never recognised. There is no cookie.',
       resetCaption: 'a reader is counted once per day and never recognised again',
       emptyRangeHint:
         'Identities begin on 26 August 2026 and last a single day on this site. Try a wider range.',
@@ -159,7 +159,7 @@ export function describeIdentityWindow(days: IdentityWindowDays | undefined): Id
       metricDefinition:
         'People, not visits — but on this site a returning reader is never recognised: identity lasts a single day in your site’s timezone, so a reader who comes back tomorrow counts again. Before 26 Aug 2026, deduplication was per day everywhere.',
       policySentence:
-        'Visitors are counted using a short-lived, server-derived identifier that lasts a single day, so a returning visitor is never recognised on a later visit.',
+        'Visitors are counted using a short-lived, server-derived identifier that changes every day, so a returning visitor is never recognised on a later day.',
     }
   }
 
@@ -169,7 +169,7 @@ export function describeIdentityWindow(days: IdentityWindowDays | undefined): Id
       headline: 'Every reader is a month-long pseudonym — then the slate wipes clean',
       rosterHeading: 'This month’s readers',
       identityDefinition:
-        'A pseudonym derived server-side from a monthly key, scoped to this site. It cannot be linked to a person, to another site, or to the same reader next month — the key is re-minted at the start of each calendar month in your site’s timezone, so a returning reader becomes a new visitor. There is no cookie and nothing stored on their device.',
+        'A pseudonym derived server-side from a monthly key, scoped to this site. It cannot be linked to another site or to the same reader next month — the key is re-minted at the start of each calendar month in your site’s timezone, so a returning reader becomes a new visitor. There is no cookie.',
       resetCaption: 'identities reset each calendar month',
       emptyRangeHint: 'Identities begin on 26 August 2026 and reset each calendar month. Try a wider range.',
       notFoundHint:
@@ -188,12 +188,12 @@ export function describeIdentityWindow(days: IdentityWindowDays | undefined): Id
     scope: `Identities are pseudonymous, scoped to this site, and recognise a returning reader for up to ${span}.`,
     headline: `Every reader is a pseudonym for up to ${span} — then the slate wipes clean`,
     rosterHeading: 'Readers in this range',
-    identityDefinition: `A pseudonym derived server-side from a key that lasts up to ${span}, scoped to this site. It cannot be linked to a person, to another site, or to the same reader once the window has passed — the key is re-minted on a rolling ${span} window in your site’s timezone, so a returning reader eventually becomes a new visitor. There is no cookie and nothing stored on their device.`,
+    identityDefinition: `A pseudonym derived server-side from a key that lasts up to ${span}, scoped to this site. It cannot be linked to another site, or to the same reader once the window has passed — the key is re-minted on a rolling ${span} window in your site’s timezone, so a returning reader eventually becomes a new visitor. There is no cookie.`,
     resetCaption: `identities last up to ${span}`,
     emptyRangeHint: `Identities begin on 26 August 2026 and last up to ${span}. Try a wider range.`,
     notFoundHint: `This identity has no visible activity in the selected range. It may belong to an earlier window — identities last up to ${span}.`,
     quietFooter: `Today a reader is recognised for up to ${span}. Changing this is recorded in your audit trail.`,
     metricDefinition: `People, not visits: a returning reader counts once within a window of up to ${span} in your site’s timezone, so a range longer than that can count a returning reader more than once. Before 26 Aug 2026, deduplication was per day.`,
-    policySentence: `Visitors are counted using a short-lived, server-derived identifier that is discarded after at most ${span}.`,
+    policySentence: `Visitors are counted using a short-lived, server-derived identifier that is used for at most ${span}.`,
   }
 }

@@ -38,18 +38,15 @@ export function generatePrivacySnippet(site: Site): string {
   if (screen) parts.push('screen resolution')
   if (audience) parts.push('browser language and timezone')
 
-  const list =
-    parts.length > 0
-      ? parts.join(', ')
-      : 'minimal anonymous data about site usage (e.g. that a page was viewed)'
-
+  // Customers paste this into their own privacy policy, so it states only what holds for every site: no claim of
+  // anonymity, of no consent being needed, or of nothing being stored in the browser.
   // The DNT sentence is a factual claim about this site's setting (PULSE-164) —
   // it appears only while respect_dnt is actually true, never unconditionally.
   const p1 =
-    'We use Pulse to understand how visitors use our site. Ciphera does not use cookies or other persistent identifiers. A cookie consent banner is not required for Pulse.' +
+    'We use Pulse to understand how visitors use our site. Pulse does not use cookies.' +
     (respectDnt ? ' We respect Do Not Track (DNT) browser settings.' : '')
 
-  let p2 = `We collect anonymous data: ${list}. `
+  let p2 = parts.length > 0 ? `We collect: ${parts.join(', ')}. ` : 'We collect only that a page was viewed. '
   if (filterBots) {
     p2 += 'Known bots and referrer spam are excluded from our analytics. '
   }
@@ -61,7 +58,7 @@ export function generatePrivacySnippet(site: Site): string {
   // here: a site on "Session only" tells its readers they are never recognised
   // again, and a site on a rolling window names the ceiling as "at most".
   p2 += `${describeIdentityWindow(identityWindowOf(site)).policySentence} `
-  p2 += `Data is processed in a privacy-preserving way and is not used to identify individuals. For more information, see Pulse's documentation: ${DOCS_URL}`
+  p2 += `We do not use this data to identify individuals. For more information, see Pulse's documentation: ${DOCS_URL}`
 
   return `${p1}\n\n${p2}`
 }
