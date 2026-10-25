@@ -1,7 +1,8 @@
 /**
  * Pulse Analytics - Privacy-First Tracking Script
  * Lightweight, no cookies, and nothing kept in the visitor's browser: the one exception is a
- * site owner's own opt-out flag, written only when they visit their site with ?pulse-ignore.
+ * site owner's own opt-out flag, written only when they visit their site with ?pulse-ignore,
+ * and read from localStorage on every load so their own visits are not counted.
  * Visits are recognised server-side, from the IP address and the browser string; the browser
  * holds no identifier.
  *
@@ -116,16 +117,17 @@
 
   const apiUrl = attr('api') || 'https://pulse-api.ciphera.net';
 
-  // * Identity is server-side, from the IP address and the browser string: no cookie, no
-  // * storage, no client-generated identifier.
+  // * Identity is server-side, from the IP address and the browser string: no cookie, nothing
+  // * written to storage (the opt-out flag above is only read), no client-generated identifier.
   // *
-  // * v1.7.0 keeps NOTHING in the browser. From v1.4.0 to v1.6.1 the tab held the id of its
-  // * most recent pageview, and its last pageview, in sessionStorage, so the server could
-  // * keep one visit together when the address changed between full page loads and a reload
-  // * did not count twice. Both now live in this document's memory only: custom events,
-  // * single-page navigations and a page restored from the back-forward cache still name the
-  // * anchor (`anchor_id`), and nothing survives a full page load. A reload is told to the
-  // * server instead (`reload`, below), which applies the five-second rule itself.
+  // * v1.7.0 writes NOTHING to the browser. Earlier versions kept two records in
+  // * sessionStorage: the tab's last pageview, so a reload did not count twice, and from
+  // * v1.4.0 the id of its most recent pageview, so the server could keep one visit together
+  // * when the address changed between full page loads. Both now live in this document's
+  // * memory only: custom events, single-page navigations and a page restored from the
+  // * back-forward cache still name the anchor (`anchor_id`), and nothing survives a full
+  // * page load. A reload is told to the server instead (`reload`, below), which applies the
+  // * five-second rule itself.
 
   // * Engagement beacon path — deliberately NOT '/api/v1/metrics'.
   // * EasyPrivacy carries a bare, domain-agnostic substring rule for that path (written
