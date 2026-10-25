@@ -25,9 +25,9 @@ describe('generatePrivacySnippet — the identity window sentence', () => {
     expect(text).toContain('reset at the end of each calendar month')
   })
 
-  it('says a returning visitor is never recognised on a site set to Session only', () => {
+  it('says a returning visitor is never recognised on a later day on a site set to Session only', () => {
     const text = generatePrivacySnippet({ ...base, identity_window_days: -1 })
-    expect(text).toContain('never recognised on a later visit')
+    expect(text).toContain('never recognised on a later day')
     expect(text).not.toMatch(/calendar month/)
   })
 
@@ -35,7 +35,7 @@ describe('generatePrivacySnippet — the identity window sentence', () => {
     'names a rolling window of %s as a ceiling — "at most %s"',
     (days, span) => {
       const text = generatePrivacySnippet({ ...base, identity_window_days: days })
-      expect(text).toContain(`discarded after at most ${span}`)
+      expect(text).toContain(`used for at most ${span}`)
       expect(text).not.toMatch(/calendar month|exactly/)
     },
   )
@@ -73,13 +73,35 @@ describe('generatePrivacySnippet — the Do Not Track sentence', () => {
     const [p1] = generatePrivacySnippet({ ...base, respect_dnt: false }).split('\n\n')
     expect(p1).not.toContain('Do Not Track')
     expect(p1).not.toContain('DNT')
-    expect(p1).toBe(
-      'We use Pulse to understand how visitors use our site. Ciphera does not use cookies or other persistent identifiers. A cookie consent banner is not required for Pulse.',
-    )
+    expect(p1).toBe('We use Pulse to understand how visitors use our site. Pulse does not use cookies.')
   })
 
   it('never mentions Global Privacy Control — GPC has no policy sentence here', () => {
     const text = generatePrivacySnippet({ ...base, respect_gpc: false })
     expect(text).not.toMatch(/Global Privacy Control|GPC/)
+  })
+})
+
+/**
+ * The snippet speaks in the customer's name, in their privacy policy. It must not claim what does not hold for every
+ * site: that the data is anonymous, that no consent is needed, or that nothing is kept in the browser.
+ */
+describe('generatePrivacySnippet — claims it must never make', () => {
+  const sites: Site[] = [
+    base,
+    { ...base, identity_window_days: -1 },
+    { ...base, identity_window_days: 0 },
+    { ...base, identity_window_days: 7 },
+    { ...base, collect_page_paths: false, collect_referrers: false, collect_device_info: false, collect_geo_data: 'none', collect_screen_resolution: false, collect_audience_data: false } as Site,
+  ]
+
+  it.each(sites.map((s, i) => [i, s] as const))('site variant %i', (_, site) => {
+    const text = generatePrivacySnippet(site)
+    expect(text).not.toMatch(/anonymous|consent banner|persistent identifier|never stored|nothing stored|discarded/i)
+  })
+
+  it('says plainly when nothing but a page view is collected', () => {
+    const text = generatePrivacySnippet(sites[4])
+    expect(text).toContain('We collect only that a page was viewed.')
   })
 })
