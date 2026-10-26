@@ -79,8 +79,8 @@ test('the Visitors surface renders the approved design on staging', async ({ pag
   // ─── 1. The roster ───────────────────────────────────────────────
   await page.goto(`${BASE_URL}/sites/${SITE_ID}/visitors?period=30`)
   await expect(page.getByRole('heading', { name: 'Visitors', level: 1 })).toBeVisible()
-  await expect(page.getByText('Every reader is a month-long pseudonym')).toBeVisible()
-  await expect(page.getByText('Data begins 26 Aug 2026')).toBeVisible()
+  // One-day identity (decision H-A): no subtitle, one caption under the heading.
+  await expect(page.getByText('Data begins 26 Aug 2026 · each profile covers up to one day')).toBeVisible()
 
   const rows = page.locator('a[href*="/visitors/"]')
   await expect(rows.first()).toBeVisible()
@@ -152,9 +152,11 @@ test('the Visitors surface renders the approved design on staging', async ({ pag
   // Scoped to the h1: `span.font-mono` unscoped matches code spans elsewhere.
   await expect(page.getByRole('heading', { level: 1 }).locator('span.font-mono')).toBeVisible()
   await expect(page.getByText(/avg visit/)).toBeVisible()
-  await expect(page.getByText(/this identity resets/)).toBeVisible()
-  // Signature device #3: the month ribbon.
-  await expect(page.getByText(/day by day/)).toBeVisible()
+  // One-day identity: "First seen" with nothing after it (decision B), and no
+  // month ribbon (decision A). A profile covers up to one day.
+  await expect(page.getByText(/^First seen /)).toBeVisible()
+  await expect(page.getByText(/identity resets?/)).toHaveCount(0)
+  await expect(page.getByText(/day by day/)).toHaveCount(0)
   await expect(page.getByText('newest first')).toBeVisible()
   await expect(page.getByText('first touch · latest observed')).toBeVisible()
   await page.screenshot({ path: `${SHOTS}/staging-detail.png`, fullPage: true })

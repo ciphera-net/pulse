@@ -395,14 +395,14 @@ test('10 · a viewer in another timezone sees the SITE\'s days, not their own', 
   await expect(page.getByText('newest first')).toBeVisible({ timeout: 30_000 })
   await page.screenshot({ path: `${SHOTS}/10a-detail-auckland.png`, fullPage: true })
 
-  const reset = await page.locator('text=/this identity resets/').first().innerText()
+  const firstSeen = await page.getByText(/^First seen /).first().innerText()
   const firstVisit = await page
     .locator('button[aria-expanded]')
     .filter({ hasText: /\d+ pages?\s·/ })
     .first()
     .innerText()
   // eslint-disable-next-line no-console
-  console.log(`AUCKLAND reset line : ${reset.replace(/\n/g, ' ')}`)
+  console.log(`AUCKLAND first seen : ${firstSeen.replace(/\n/g, ' ')}`)
   // eslint-disable-next-line no-console
   console.log(`AUCKLAND first visit: ${firstVisit.replace(/\n/g, ' | ')}`)
 
@@ -417,21 +417,21 @@ test('10 · a viewer in another timezone sees the SITE\'s days, not their own', 
   await page2.goto(`${BASE}/sites/${SCALE}/visitors/${MANY_VISITS}?period=30`)
   await expect(page2.getByText('newest first')).toBeVisible({ timeout: 30_000 })
   await page2.screenshot({ path: `${SHOTS}/10b-detail-brussels.png`, fullPage: true })
-  const reset2 = await page2.locator('text=/this identity resets/').first().innerText()
+  const firstSeen2 = await page2.getByText(/^First seen /).first().innerText()
   const firstVisit2 = await page2
     .locator('button[aria-expanded]')
     .filter({ hasText: /\d+ pages?\s·/ })
     .first()
     .innerText()
   // eslint-disable-next-line no-console
-  console.log(`BRUSSELS reset line : ${reset2.replace(/\n/g, ' ')}`)
+  console.log(`BRUSSELS first seen : ${firstSeen2.replace(/\n/g, ' ')}`)
   // eslint-disable-next-line no-console
   console.log(`BRUSSELS first visit: ${firstVisit2.replace(/\n/g, ' | ')}`)
 
-  // The server resolves this range and this month in the SITE's timezone. Two
+  // The server resolves this range and these days in the SITE's timezone. Two
   // readers of the same site must be shown the same day for the same visit.
   expect(firstVisit, 'the same visit renders on different days for different viewers').toBe(firstVisit2)
-  expect(reset, 'the identity reset date depends on who is looking').toBe(reset2)
+  expect(firstSeen, 'the first-seen date depends on who is looking').toBe(firstSeen2)
 
   await ctx.close()
   await ctx2.close()

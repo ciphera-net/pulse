@@ -3,15 +3,11 @@ import { visitorPseudonym, PSEUDONYM_POOL } from '../pseudonym'
 import {
   EM_DASH,
   countryName,
-  daysUntilMonthReset,
   formatDuration,
   formatLastSeen,
   formatShortDate,
   formatVisitStart,
-  monthResetDate,
   visitorLocalTime,
-  zonedDayOfMonth,
-  zonedMonthKey,
 } from '../format'
 import * as visitorsRange from '../range'
 import { VISITORS_MIN_DATE, presenceTicks } from '../range'
@@ -150,63 +146,10 @@ describe('dates render in the SITE calendar, never the reader’s', () => {
     }
   })
 
-  it('buckets a day and a month by the site’s calendar', () => {
-    expect(zonedDayOfMonth(CROSSES_MIDNIGHT, 'Europe/Brussels')).toBe(31)
-    expect(zonedDayOfMonth(CROSSES_MIDNIGHT, 'Pacific/Auckland')).toBe(1)
-    expect(zonedMonthKey(CROSSES_MIDNIGHT, 'Europe/Brussels')).toBe('2026-08')
-    expect(zonedMonthKey(CROSSES_MIDNIGHT, 'Pacific/Auckland')).toBe('2026-09')
-  })
-
   it('renders an unparseable instant as an em dash, never as 1970', () => {
     expect(formatShortDate('not-a-date', 'UTC')).toBe(EM_DASH)
     expect(formatLastSeen('not-a-date', 'UTC')).toBe(EM_DASH)
     expect(formatVisitStart('not-a-date', 'UTC')).toBe(EM_DASH)
-    expect(zonedDayOfMonth('not-a-date', 'UTC')).toBeNull()
-    expect(zonedMonthKey('not-a-date', 'UTC')).toBeNull()
-  })
-})
-
-describe('the identity horizon comes from the server’s instant', () => {
-  // The server sends `month_resets_at`: midnight on the 1st of the following
-  // month IN THE SITE'S ZONE. The page used to derive it from the 'YYYY-MM'
-  // string with `new Date(y, m, 1)` — browser midnight — which is a different
-  // instant for every reader.
-  const AUGUST_RESET_BRUSSELS = '2026-08-31T22:00:00Z' // 1 Sep 00:00 CEST
-
-  it('counts the days left from the instant', () => {
-    const now = Date.parse('2026-08-30T00:00:00Z')
-    expect(daysUntilMonthReset(AUGUST_RESET_BRUSSELS, now)).toBe(2)
-  })
-
-  it('is null once the reset has happened — it is not "coming"', () => {
-    const now = Date.parse('2026-09-15T12:00:00Z')
-    expect(daysUntilMonthReset(AUGUST_RESET_BRUSSELS, now)).toBeNull()
-  })
-
-  it('🔴 is null for TODAY against an August identity — the tense bug', () => {
-    // The live symptom on 10-09-2026: the header said "this identity resets
-    // 1 Sep", present tense, nine days late, on 322 of one site's 517 rows.
-    // Null here is what makes the page switch to the past tense and what makes
-    // MonthRibbon hide its "resets in N days" caption.
-    const tenSeptember = Date.parse('2026-09-10T12:00:00Z')
-    expect(daysUntilMonthReset(AUGUST_RESET_BRUSSELS, tenSeptember)).toBeNull()
-  })
-
-  it('says nothing at all when the server sent no instant', () => {
-    // Not a guess, not an em dash inside a sentence — the caller drops the
-    // clause entirely, which is what a null return is for.
-    expect(daysUntilMonthReset(null)).toBeNull()
-    expect(daysUntilMonthReset(undefined)).toBeNull()
-    expect(monthResetDate(null, 'UTC')).toBeNull()
-    expect(monthResetDate('not-a-date', 'UTC')).toBeNull()
-  })
-
-  it('formats the reset date in the site’s zone, so it names the 1st', () => {
-    // 🔑 THE POINT: this instant is 31 AUGUST in UTC and in every negative
-    // offset. Only the site's own zone calls it the 1st, and the sentence
-    // beside it promises a reset "on the 1st of the month".
-    expect(monthResetDate(AUGUST_RESET_BRUSSELS, 'Europe/Brussels')).toBe('1 Sept')
-    expect(monthResetDate(AUGUST_RESET_BRUSSELS, 'UTC')).toBe('31 Aug')
   })
 })
 

@@ -218,7 +218,7 @@ describe('SitePrivacyTab', () => {
   it('titles every panel the way the dashboard titles a section: a real level-2 heading, sentence case, no kicker', () => {
     render(<SitePrivacyTab siteId="s1" />)
 
-    for (const name of ['Data and privacy', 'Visitor views', 'Visitor identity', 'Manual rules']) {
+    for (const name of ['Data and privacy', 'Visitor views', 'Geographic', 'Manual rules']) {
       const heading = screen.getByRole('heading', { level: 2, name })
       expect(heading.className).toMatch(/\btext-sm\b/)
       expect(heading.className).toMatch(/\bfont-semibold\b/)
