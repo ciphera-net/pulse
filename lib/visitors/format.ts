@@ -21,7 +21,7 @@
 //    (`site_timezone`, on all four visitors responses), so the data and the
 //    calendar it must be read in can never be out of step.
 
-import { formatSiteDay, formatSiteTime, zoneDayKey, zoneParts } from '@/lib/utils/siteTime'
+import { formatSiteDay, formatSiteTime, zoneParts } from '@/lib/utils/siteTime'
 
 export const EM_DASH = '—'
 
@@ -78,24 +78,6 @@ export function formatDuration(seconds?: number | null): string {
 // renders midnight as "24" in some engines (so it uses `hourCycle: 'h23'`), and
 // a zone's offset at a UTC guess can differ from its offset at the real local
 // midnight across a DST transition (so `zoneDayStartMs` resolves in two passes).
-//
-// The thin wrappers below exist only to give this surface's callers names in its
-// own vocabulary — day-of-month for the ribbon's bucket, a 'YYYY-MM' key to
-// compare against the server's `month`.
-
-/** Day-of-month for an instant, in the site's zone — the month ribbon's bucket. */
-export function zonedDayOfMonth(iso: string | number | Date, timeZone: string): number | null {
-  const t = iso instanceof Date ? iso : new Date(iso)
-  if (!Number.isFinite(t.getTime())) return null
-  return zoneParts(t, timeZone).day
-}
-
-/** 'YYYY-MM' for an instant, in the site's zone — the same key the server's `month` is. */
-export function zonedMonthKey(iso: string | number | Date, timeZone: string): string | null {
-  const t = iso instanceof Date ? iso : new Date(iso)
-  if (!Number.isFinite(t.getTime())) return null
-  return zoneDayKey(t, timeZone).slice(0, 7)
-}
 
 /**
  * calendarDay turns an instant into a comparable CALENDAR-day integer in a zone.
@@ -178,47 +160,4 @@ export function visitorLocalTime(timezone?: string | null, now = Date.now()): st
     // An unknown zone string is a client-reported value we could not honour.
     return null
   }
-}
-
-// ─── The identity's horizon ─────────────────────────────────────────
-//
-// 🔴 BOTH OF THESE TAKE THE SERVER'S `month_resets_at` INSTANT, not the
-// 'YYYY-MM' string they used to take.
-//
-// The string version computed `new Date(y, m, 1)` — midnight in the BROWSER —
-// for a month Postgres had built with `AT TIME ZONE <site tz>`. The two disagree
-// by the offset between reader and site, so the page could print a reset date a
-// day out, and (measured 10-09-2026, nine days after the boundary) it captioned
-// an identity that had ALREADY expired in the present tense on 322 of one
-// production site's 517 rows.
-
-/**
- * daysUntilMonthReset counts the days left in the identity's month.
- *
- * Null when the reset has already happened — a historical identity does not have
- * a reset "coming", it already reset, and the page says that instead. Null too
- * when the server sent no instant, because a page that cannot say when an
- * identity ends must say nothing rather than guess.
- */
-export function daysUntilMonthReset(
-  resetsAt: string | null | undefined,
-  now = Date.now(),
-): number | null {
-  if (!resetsAt) return null
-  const t = new Date(resetsAt).getTime()
-  if (!Number.isFinite(t)) return null
-  const diff = t - now
-  if (diff <= 0) return null
-  return Math.max(1, Math.ceil(diff / 86_400_000))
-}
-
-/** "1 Sep" — the date this identity resets, in the SITE's calendar. */
-export function monthResetDate(
-  resetsAt: string | null | undefined,
-  timeZone: string,
-): string | null {
-  if (!resetsAt) return null
-  const t = new Date(resetsAt)
-  if (!Number.isFinite(t.getTime())) return null
-  return formatSiteDay(t, timeZone)
 }

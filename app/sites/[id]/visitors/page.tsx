@@ -25,12 +25,7 @@ import { visitorPseudonym } from '@/lib/visitors/pseudonym'
 import { Avatar, visitorAvatarSeed } from '@ciphera-net/facet-avatar'
 import { formatLastSeen, SITE_TIMEZONE_FALLBACK } from '@/lib/visitors/format'
 import { CompactNumber } from '@/components/ui/compact-number'
-import {
-  IDENTITY_COPY,
-  describeIdentityWindow,
-  identityWindowOf,
-  type IdentityWindowDays,
-} from '@/lib/visitors/identityWindow'
+import { IDENTITY_COPY } from '@/lib/visitors/identityWindow'
 import { VISITORS_MIN_DATE, presenceTicks } from '@/lib/visitors/range'
 import { formatLongDay } from '@/lib/view/view'
 import type { VisitorRow } from '@/lib/api/visitors'
@@ -161,20 +156,12 @@ export default function VisitorsPage() {
   // about where the reader is standing.
   const siteTimezone = data?.site_timezone || site?.timezone || SITE_TIMEZONE_FALLBACK
 
-  // The site's identity window (Settings → Privacy → Visitor identity). Every
-  // sentence on this page that used to assert "the calendar month" reads it
-  // instead: on a site set to "Session only" a returning reader is never
-  // recognised, and the page has to say so where the readers are listed.
-  // Unknown while the site row is still loading, and the copy says something
-  // true of every window until it arrives.
-  const identityWindow = identityWindowOf(site)
-
   const { from, to, ticks } = presenceTicks(dateRange, rollingMinutes, siteTimezone)
 
   if (site && site.visitor_views_enabled === false) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
-        <PageHeader identityWindow={identityWindow} />
+        <PageHeader />
         <VisitorsOffRoom site={site} onEnabled={() => refreshSite()} />
       </div>
     )
@@ -185,7 +172,7 @@ export default function VisitorsPage() {
     // SWR copy after somebody disabled it in another tab). Trust the API.
     return (
       <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
-        <PageHeader identityWindow={identityWindow} />
+        <PageHeader />
         <VisitorsOffRoom site={site} onEnabled={() => refreshSite()} />
       </div>
     )
@@ -202,18 +189,11 @@ export default function VisitorsPage() {
   // What the field is NOT drawing. The field cannot compute this — it is handed a
   // bounded page on purpose — so the page, which knows the range total, tells it.
   const undrawn = Math.max(0, total - fieldVisitors.length)
-  const returningShare =
-    visitors.length > 0
-      ? Math.round((visitors.filter((v) => v.visits > 1).length / visitors.length) * 100)
-      : 0
   const pageviews = visitors.reduce((sum, v) => sum + v.pageviews, 0)
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6">
-      <PageHeader
-        toolbar={{ picker, liveCount: activeNow, live, onToggleLive: toggleRealtime }}
-        identityWindow={identityWindow}
-      />
+      <PageHeader toolbar={{ picker, liveCount: activeNow, live, onToggleLive: toggleRealtime }} />
 
       <div className="mt-5">
         <PresenceField
@@ -235,7 +215,6 @@ export default function VisitorsPage() {
         ) : (
           <>
             <CompactNumber value={total} className="text-neutral-300" /> visitors this range ·{' '}
-            <span className="tabular-nums text-neutral-300">{returningShare}%</span> returning ·{' '}
             <CompactNumber value={pageviews} className="text-neutral-300" /> pageviews on this
             page · sorted by {sort.replace('_', ' ')}
           </>
@@ -353,7 +332,6 @@ export default function VisitorsPage() {
 
 function PageHeader({
   toolbar,
-  identityWindow,
 }: {
   /** Absent when the page has nothing to range over (visitor views switched off). */
   toolbar?: {
@@ -364,16 +342,12 @@ function PageHeader({
     live: boolean
     onToggleLive: () => void
   }
-  /** The site's identity window; undefined while unknown. */
-  identityWindow?: IdentityWindowDays
 }) {
-  const copy = describeIdentityWindow(identityWindow)
   return (
     <div className="flex flex-wrap items-start justify-between gap-4 pt-6">
       <div>
         <h1 className="text-2xl font-medium text-white">Visitors</h1>
-        <p className="mt-1 text-sm text-neutral-400">{copy.headline}</p>
-        <p className="mt-1 text-xs text-neutral-600">Data begins {formatLongDay(VISITORS_MIN_DATE)} · {copy.resetCaption}</p>
+        <p className="mt-1 text-xs text-neutral-600">Data begins {formatLongDay(VISITORS_MIN_DATE)} · {IDENTITY_COPY.headerCaption}</p>
       </div>
 
       {toolbar && (

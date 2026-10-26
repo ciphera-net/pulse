@@ -102,11 +102,10 @@ export interface Site {
   // writes the same columns either way, and this controls whether anyone can
   // read them at visitor grain. Default false; flipping it is audit-logged.
   visitor_views_enabled?: boolean
-  // How long a returning reader keeps ONE visitor_id (migration 182):
-  // -1 session only · 0 calendar month (the default) · 1 / 7 / 30 days.
-  // Optional on the type because the PUBLIC share payload does not carry it —
-  // read it through lib/visitors/identityWindow's identityWindowOf, which
-  // keeps "missing" as UNKNOWN rather than quietly reading it as the default.
+  // RETIRED: Pulse recognises a visitor for one day at most, whatever the value, so the
+  // stored value has no effect. The field stays because old rows and the audit trail still
+  // carry it. Do not read it for display, and do not send it in an update (the Privacy tab
+  // no longer does; if sent, it must still be one of -1, 0, 1, 7, 30).
   identity_window_days?: number
   // Privacy-signal toggles (PULSE-164): honour the browser's Do Not Track /
   // Global Privacy Control headers. Both default true server-side; undefined
@@ -269,10 +268,10 @@ export interface UpdateSiteRequest {
   data_retention_months?: number
   // Visitor-grain read surface (display gate — see the Site interface above)
   visitor_views_enabled?: boolean
-  // The identity window — see the Site interface above. A POINTER on the
-  // backend, so a tab that omits it merges against the stored value; only the
-  // Privacy tab carries it, and it must never be sent as 0 "to be safe": 0 and
-  // 30 are different keys, and any change re-mints every identity on the site.
+  // RETIRED: Pulse recognises a visitor for one day at most, whatever the value, so the
+  // stored value has no effect. The field stays because old rows and the audit trail still
+  // carry it. Do not read it for display, and do not send it in an update (the Privacy tab
+  // no longer does; if sent, it must still be one of -1, 0, 1, 7, 30).
   identity_window_days?: number
   // Privacy-signal toggles — see the Site interface above. Omitted by any tab
   // that does not own them so it never resets the stored value.

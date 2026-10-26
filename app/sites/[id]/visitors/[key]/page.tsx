@@ -10,7 +10,6 @@ import DateRangePicker from '@/components/ui/DateRangePicker'
 import { ErrorCard } from '@/components/ui/ErrorCard'
 import { Pagination } from '@/components/search/rowPrimitives'
 import { JourneyStrand } from '@/components/visitors/JourneyStrand'
-import { MonthRibbon } from '@/components/visitors/MonthRibbon'
 import { VisitTrail } from '@/components/visitors/VisitTrail'
 import { CountryFlag } from '@/components/ui/CountryFlag'
 import { BrowserMark, OSMark, ReferrerMark, DeviceGlyph, referrerLabel } from '@/components/visitors/VisitorIcons'
@@ -25,20 +24,12 @@ import {
   EM_DASH,
   SITE_TIMEZONE_FALLBACK,
   countryName,
-  daysUntilMonthReset,
   formatDuration,
   formatShortDate,
   formatVisitStart,
-  monthResetDate,
   visitorLocalTime,
-  zonedDayOfMonth,
-  zonedMonthKey,
 } from '@/lib/visitors/format'
-import {
-  IDENTITY_COPY,
-  IDENTITY_WINDOW_CALENDAR_MONTH,
-  identityWindowOf,
-} from '@/lib/visitors/identityWindow'
+import { IDENTITY_COPY } from '@/lib/visitors/identityWindow'
 import { deviceLabel } from '@/components/visitors/VisitorMeta'
 import type { VisitRow, VisitorRange } from '@/lib/api/visitors'
 
@@ -104,25 +95,7 @@ export default function VisitorDetailPage() {
     document.title = `${name} · Visitors | Pulse`
   }, [name])
 
-  // Memoised because it is a useMemo DEPENDENCY below: `?? []` mints a new
-  // array every render, which would recompute the ribbon on every render.
-  const visits = useMemo(() => visitsData?.visits ?? [], [visitsData])
-
-  // The ribbon's day buckets come from the VISITS the page already has, not
-  // from a second request. It is therefore honest about its own scope: it
-  // shows the visits in this range, and the caption says which month.
-  //
-  // 🔴 Bucketed by the SITE's day-of-month, not `getDate()`. A visit at 02:30 in
-  // Brussels read from New York used to land in the previous day's cell — and could fall
-  // outside the month whose label is printed above the ribbon.
-  const visitsByDay = useMemo(() => {
-    const acc: Record<number, number> = {}
-    for (const v of visits) {
-      const day = zonedDayOfMonth(v.started_at, siteTimezone)
-      if (day !== null) acc[day] = (acc[day] ?? 0) + 1
-    }
-    return acc
-  }, [visits, siteTimezone])
+  const visits = visitsData?.visits ?? []
 
   if (error) {
     const status = (error as { status?: number }).status
@@ -143,18 +116,6 @@ export default function VisitorDetailPage() {
     )
   }
 
-  // 🔴 THE SERVER'S `month_resets_at` IS THE END OF THE CALENDAR MONTH, WHATEVER
-  // THE SITE'S WINDOW. The read path does not know the window yet (design
-  // §9.6, item 3 — the per-site boundary marker is still owed), so on a site
-  // set to "7 days" or "Session only" that instant is not when this identity
-  // resets, and printing it would caption a 7-day identity with next month's
-  // date. The page already has a contract for "cannot say": null, and then it
-  // says nothing about the reset rather than guessing. So the month reset is
-  // shown only where it is true — a site on the calendar month — and stays
-  // silent while the site row (and so the window) is still unknown.
-  const monthlyIdentity = identityWindowOf(site) === IDENTITY_WINDOW_CALENDAR_MONTH
-  const resetsIn = profile && monthlyIdentity ? daysUntilMonthReset(profile.month_resets_at) : null
-  const resetDate = profile && monthlyIdentity ? monthResetDate(profile.month_resets_at, siteTimezone) : null
   const localTime = visitorLocalTime(profile?.timezone)
 
   return (
@@ -216,29 +177,7 @@ export default function VisitorDetailPage() {
 
           {profile && (
             <p className="mt-1 text-xs text-neutral-600">
-              {/*
-                🔴 TENSE FOLLOWS THE CLOCK. This line read "this identity resets 1 Sep"
-                UNCONDITIONALLY, so on 10-09-2026 — nine days after the boundary — it was
-                still saying so in the present tense on 322 of themodestyhouse's 517 rows.
-                MonthRibbon twelve lines below already got this right by hiding its
-                caption when `resetsInDays` is null; the header now reads the same
-                nullable, so the two can never disagree again.
-
-                When the server sent no reset instant at all (`resetDate` null) the
-                sentence says nothing about the reset rather than guessing at a date.
-              */}
               First seen {formatShortDate(profile.first_seen, siteTimezone)}
-              {resetDate !== null &&
-                (resetsIn !== null ? (
-                  <> · this identity resets {resetDate} — a returning reader becomes a new visitor</>
-                ) : (
-                  // Owner decision 10-09-2026: once the reset is PAST the clause stops
-                  // there. The mechanic ("a returning reader becomes a new visitor") is
-                  // a thing about to happen; on a historical identity it has already
-                  // happened, and MonthRibbon's caption below carries what is left to
-                  // say. Less text on a row nobody can act on.
-                  <> · this identity reset {resetDate}</>
-                ))}
             </p>
           )}
 
@@ -258,24 +197,12 @@ export default function VisitorDetailPage() {
         <DateRangePicker {...picker} />
       </div>
 
-      {profile && (
-        <div className="mt-6">
-          <MonthRibbon
-            month={profile.month}
-            visitsByDay={visitsByDay}
-            today={todayInMonth(profile.month, siteTimezone)}
-            resetsInDays={resetsIn}
-          />
-        </div>
-      )}
-
       {/* ─── Visits ─── */}
       <div className="mt-6 rounded-none border border-border bg-card">
         <div className="flex h-12 items-center justify-between border-b border-border px-4">
           <h2 className="text-sm font-medium text-white">Visits</h2>
           {/* Round-6 decision B: the page still holds the newest visits, and reads
-              forwards in time — the same direction as the ribbon above and the
-              trail inside. The caption has to say BOTH, or "oldest first" alone
+              forwards in time — the same direction as the trail inside. The caption has to say BOTH, or "oldest first" alone
               reads as "page 1 is the beginning of time", which it is not. */}
           <span className="text-xs text-neutral-500">oldest first &middot; newest {VISITS_PAGE_SIZE}</span>
         </div>
@@ -495,18 +422,4 @@ function VisitRowItem({
       )}
     </div>
   )
-}
-
-/**
- * Today's day-of-month, but only when today falls inside the identity's month.
- *
- * 🔴 Resolved in the SITE's calendar. `profile.month` was computed by Postgres as
- * `to_char(… AT TIME ZONE <site tz>, 'YYYY-MM')`, so comparing it against the browser's
- * own month put the ribbon's "today" ring on the wrong cell — or on no cell at all —
- * for any reader whose date differs from the site's, which is most of a working day
- * somewhere.
- */
-function todayInMonth(month: string, siteTimezone: string): number | null {
-  const now = Date.now()
-  return zonedMonthKey(now, siteTimezone) === month ? zonedDayOfMonth(now, siteTimezone) : null
 }
