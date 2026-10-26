@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
 import { PresenceField } from '../PresenceField'
-import { monthBoundaries } from '@/lib/visitors/range'
 import type { VisitorRow } from '@/lib/api/visitors'
 
 // ─── Round 5 / 5b, the approved field ───────────────────────────────────
@@ -118,36 +117,17 @@ describe('no labels, and a dot lit from the roster', () => {
   })
 })
 
-describe('the month boundary', () => {
-  it('draws a hairline where identities reset', () => {
-    const b = [{ at: Date.parse('2026-08-31T22:00:00Z'), label: '1 Sept · identities reset' }]
-    const { container } = field({ boundaries: b })
-    expect(container.textContent).toMatch(/1 Sept · identities reset/)
+describe('no identity boundary (one-day identity)', () => {
+  // Every profile covers up to one day and every day counts visitors per day, so
+  // the field draws no "identities reset" marker: there is nothing to mark. The
+  // dashed now-line is the only line besides the gridlines.
+  it('draws no reset marker, whatever the range', () => {
+    const { container } = field({})
+    expect(container.textContent).not.toMatch(/identities reset/)
   })
 
-  it('🔑 resolves the boundary in the SITE zone, not the reader’s', () => {
-    // 1 September 00:00 in Brussels is 31 August 22:00 UTC — a different calendar
-    // day. A boundary computed in the reader's zone would be drawn in the wrong
-    // place, which is the same defect class as the dates the audit found.
-    const from = Date.parse('2026-08-12T00:00:00Z')
-    const to = Date.parse('2026-09-10T00:00:00Z')
-    const brussels = monthBoundaries(from, to, 'Europe/Brussels')
-    const auckland = monthBoundaries(from, to, 'Pacific/Auckland')
-    expect(brussels).toHaveLength(1)
-    expect(brussels[0].at).toBe(Date.parse('2026-08-31T22:00:00Z'))
-    expect(auckland[0].at).toBe(Date.parse('2026-08-31T12:00:00Z'))
-    expect(brussels[0].at).not.toBe(auckland[0].at)
-  })
-
-  it('finds every boundary in a long range, and none in a short one', () => {
-    const long = monthBoundaries(
-      Date.parse('2026-06-15T00:00:00Z'), Date.parse('2026-09-15T00:00:00Z'), 'UTC')
-    expect(long.map((b) => new Date(b.at).toISOString().slice(0, 7))).toEqual(['2026-07', '2026-08', '2026-09'])
-    // A rolling window never spans a month.
-    expect(monthBoundaries(
-      Date.parse('2026-09-10T10:00:00Z'), Date.parse('2026-09-10T10:30:00Z'), 'UTC')).toEqual([])
-    // A range that ENDS exactly on a boundary does not draw one at its edge.
-    expect(monthBoundaries(
-      Date.parse('2026-08-15T00:00:00Z'), Date.parse('2026-09-01T00:00:00Z'), 'UTC')).toHaveLength(1)
+  it('the page no longer computes month boundaries', async () => {
+    const range = await import('@/lib/visitors/range')
+    expect('monthBoundaries' in range).toBe(false)
   })
 })
