@@ -231,6 +231,12 @@ public read API's — see that entry for what it does and does not cover.
 
 ### Changed
 
+- **A visitor is recognised for one day, at most.** From each site’s own midnight at the start of 27-10-2026, Pulse derives one id per visitor per day from the IP address and browser, with a random key made for that site and that day. Five minutes after the site’s day ends, Ciphera deletes the key and keeps no copy of it, so Pulse cannot recompute that day’s ids. Requests from the same IP address and browser are one visitor and one session within a day, and a reader first seen at 23:50 is recognised for ten minutes. No visitor id is written any more.
+
+  **Visitors over a range add up each day’s unique visitors**, so a returning reader counts once for each day. This is the one rule for every day since a site joined Pulse. `visitor_id` is NULL on every row written before a site’s switch to one-day identity: the monthly ids of 26-08-2026..26-10-2026 were nulled on 28-10-2026, day-state and the day archive were rebuilt, and multi-day visitor figures for that period are restated upward. Imported history keeps the visitor figures its source reported. The public read API’s and MCP’s `visitors` field keeps its name and type, so there is no wire change.
+
+  **The identity window setting is retired**: Session only, 24 hours, 7 days, 30 days and calendar month are gone, and values stored on sites have no effect. **Tracking script 1.7.0 keeps nothing in the browser** (no cookie, session storage or local storage) apart from the opt-out flag a site owner sets in their own browser, only when they open their own site with `?pulse-ignore`; a reload within five seconds still counts once because the server applies that rule. Visitor views keep working, but each profile covers up to one day: profiles of 26-08-2026..26-10-2026 were rebuilt as one-day profiles on 28-10-2026, so a link to a month-long profile no longer resolves.
+
 - **One view switcher, the same on every page.** The date menu now lists the same
   twelve rows everywhere: *Today, Yesterday, Last 7 days, Last 30 days, Last 3 months,
   Last 12 months, All time*, then *This month, Last month, This year, Last year*, then
