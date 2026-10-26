@@ -237,6 +237,8 @@ public read API's — see that entry for what it does and does not cover.
 
   **The identity window setting is retired**: Session only, 24 hours, 7 days, 30 days and calendar month are gone, and values stored on sites have no effect. **Tracking script 1.7.0 keeps nothing in the browser** (no cookie, session storage or local storage) apart from the opt-out flag a site owner sets in their own browser, only when they open their own site with `?pulse-ignore`; a reload within five seconds still counts once because the server applies that rule. Visitor views keep working, but each profile covers up to one day: profiles of 26-08-2026..26-10-2026 were rebuilt as one-day profiles on 28-10-2026, so a link to a month-long profile no longer resolves.
 
+  **In the dashboard:** Settings → Privacy has no Visitor identity panel. The Visitor views caption now says how long a reader is recognised, and a note under the privacy-policy text asks you to replace it if you pasted the earlier version. The Visitors page reads "Data begins 26 Aug 2026 · each profile covers up to one day" and no longer shows a "% returning" share, which only ever described the rows on screen. A visitor's page shows when they were first seen, with no month ribbon and no reset date.
+
 - **One view switcher, the same on every page.** The date menu now lists the same
   twelve rows everywhere: *Today, Yesterday, Last 7 days, Last 30 days, Last 3 months,
   Last 12 months, All time*, then *This month, Last month, This year, Last year*, then
