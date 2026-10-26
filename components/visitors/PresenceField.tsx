@@ -204,8 +204,8 @@ export function PresenceField({
               key={d.key}
               // A stable hook for tests and the mock harness. The Tailwind classes
               // here (`-translate-y-1/2`) need escaping in a selector and are
-              // shared with nothing, but the gridlines and the month hairline are
-              // also positioned with `left`, so selecting on that picked them up.
+              // shared with nothing, but the gridlines are also positioned with
+              // `left`, so selecting on that picked them up.
               data-visitor-dot={d.key}
               // Hidden from assistive technology: the sr-only summary above
               // carries the field's meaning, and the roster below carries the

@@ -157,7 +157,7 @@ test('the Visitors surface renders the approved design on staging', async ({ pag
   await expect(page.getByText(/^First seen /)).toBeVisible()
   await expect(page.getByText(/identity resets?/)).toHaveCount(0)
   await expect(page.getByText(/day by day/)).toHaveCount(0)
-  await expect(page.getByText('newest first')).toBeVisible()
+  await expect(page.getByText(/oldest first · newest \d+/)).toBeVisible()
   await expect(page.getByText('first touch · latest observed')).toBeVisible()
   await page.screenshot({ path: `${SHOTS}/staging-detail.png`, fullPage: true })
 

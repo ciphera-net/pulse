@@ -67,8 +67,8 @@ describe('CommandDeck rail', () => {
   it('renders the five metrics with their honest context lines', () => {
     render(<CommandDeck {...baseProps} />)
     expect(screen.getByText('Unique visitors')).toBeTruthy()
-    // 26-08 identity rebuild: the headline deduplicates people (monthly
-    // visitor hash), so the D5 relabel "distinct sessions" is retired.
+    // The headline counts visitors (one IP address and browser per day), not
+    // visits, so the D5 relabel "distinct sessions" is retired.
     expect(screen.getByText('visitors, not visits')).toBeTruthy()
     expect(screen.getByText('single-page visits')).toBeTruthy()
     expect(screen.getByText('average')).toBeTruthy()

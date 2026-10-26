@@ -122,8 +122,11 @@ describe('no identity boundary (one-day identity)', () => {
   // the field draws no "identities reset" marker: there is nothing to mark. The
   // dashed now-line is the only line besides the gridlines.
   it('draws no reset marker, whatever the range', () => {
+    // FROM..TO spans 1 September, where the old field drew its month marker.
     const { container } = field({})
     expect(container.textContent).not.toMatch(/identities reset/)
+    // The one dashed line left is the now-line at the right edge.
+    expect(container.querySelectorAll('.border-dashed')).toHaveLength(1)
   })
 
   it('the page no longer computes month boundaries', async () => {
