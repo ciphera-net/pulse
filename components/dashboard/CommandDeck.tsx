@@ -22,11 +22,10 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import CardEmptyState from '@/components/dashboard/CardEmptyState'
 import type { DailyStat, ImportedProvenance, Stats } from '@/lib/api/stats'
 import { importBoundaryDay, importBoundaryLabel, importBoundaryX, railIncludesImported } from '@/lib/dashboard/importBoundary'
-import { METRIC_TERMS, visitorsTerm } from '@/lib/dashboard/terms'
+import { METRIC_TERMS } from '@/lib/dashboard/terms'
 import { MetricInfoTip, buildExample } from '@/components/dashboard/MetricInfoTip'
 import { pairPreviousSeries } from '@/lib/dashboard/previousSeries'
 import type { MetricType } from '@/lib/dashboard/metrics'
-import type { IdentityWindowDays } from '@/lib/visitors/identityWindow'
 
 // ---------------------------------------------------------------------------
 // The command deck — Direction C's headline device (dashboard overhaul Phase 2,
@@ -68,13 +67,6 @@ interface CommandDeckProps {
   // False on the public share surface, where the backend clamps every read to
   // day buckets (F2) and an interval selector would be a dead control.
   intervalPicker?: boolean
-  // The site's identity window (Settings → Privacy → Visitor identity, since
-  // 11-09-2026). It changes what "Unique visitors" MEANS — on "Session only" a
-  // returning reader is never recognised — so the rail row's sentence and the
-  // toolbar InfoTip say so here, where the number is shown, not only where it
-  // is configured. Omitted on the share surface, whose payload lacks the
-  // column; the window-neutral registry sentence is used there.
-  identityWindowDays?: IdentityWindowDays
   /**
    * Imported-history provenance, as the responses said it (PULSE-118, dashboard
    * option 2): the current range's (the dashboard's `imported`) and the
@@ -164,7 +156,7 @@ const METRICS: {
   isCount?: boolean
 }[] = [
   {
-    key: 'visitors', label: 'Unique visitors', context: 'unique people',
+    key: 'visitors', label: 'Unique visitors', context: 'visitors, not visits',
     title: METRIC_TERMS.visitors.definition,
     format: (v) => formatCompactNumber(v == null ? null : Math.round(v)),
     isCount: true,
@@ -205,7 +197,6 @@ export default function CommandDeck({
   period,
   multiDayInterval,
   setMultiDayInterval,
-  identityWindowDays,
   imported,
   prevImported,
   prevData,
@@ -283,12 +274,9 @@ export default function CommandDeck({
             ? guardedPointChange(value, previousValue, prevBase)
             : guardedPctChange(value, previousValue, prevBase))
         : null
-      // The visitors sentence follows the site's window; the other four are
-      // the same on every site.
-      const title = m.key === 'visitors' ? visitorsTerm(identityWindowDays).definition : m.title
-      return { ...m, title, value, change }
+      return { ...m, value, change }
     })
-  }, [stats, prevStats, identityWindowDays])
+  }, [stats, prevStats])
 
   // Imported history (M11-h), all server-said: the boundary line on the hero
   // chart, and the rail's word when this range or its comparison includes it.
@@ -381,7 +369,7 @@ export default function CommandDeck({
                 (metric info layer, 22-08-2026). */}
             <span data-tour="chart-toolbar" className="flex items-center gap-1 text-xs font-medium text-neutral-400">
               {metric === 'visitors' && interval === 'day' ? 'Daily unique visitors' : activeMetric?.label}
-              <MetricInfoTip metric={metric} example={buildExample(metric, stats)} identityWindowDays={identityWindowDays} />
+              <MetricInfoTip metric={metric} example={buildExample(metric, stats)} />
             </span>
             {/* The legend: one entry per series, so the two inks are never a
                 guess. On a phone it takes its own row under the toolbar. The

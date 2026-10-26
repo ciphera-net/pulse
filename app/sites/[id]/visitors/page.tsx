@@ -26,12 +26,12 @@ import { Avatar, visitorAvatarSeed } from '@ciphera-net/facet-avatar'
 import { formatLastSeen, SITE_TIMEZONE_FALLBACK } from '@/lib/visitors/format'
 import { CompactNumber } from '@/components/ui/compact-number'
 import {
-  IDENTITY_WINDOW_CALENDAR_MONTH,
+  IDENTITY_COPY,
   describeIdentityWindow,
   identityWindowOf,
   type IdentityWindowDays,
 } from '@/lib/visitors/identityWindow'
-import { VISITORS_MIN_DATE, monthBoundaries, presenceTicks } from '@/lib/visitors/range'
+import { VISITORS_MIN_DATE, presenceTicks } from '@/lib/visitors/range'
 import { formatLongDay } from '@/lib/view/view'
 import type { VisitorRow } from '@/lib/api/visitors'
 import { displayDomain } from '@/lib/utils/displayDomain'
@@ -169,29 +169,7 @@ export default function VisitorsPage() {
   // true of every window until it arrives.
   const identityWindow = identityWindowOf(site)
 
-  // 🔴 EVERYTHING BELOW IS ABOVE THE EARLY RETURNS ON PURPOSE. `boundaries` is a
-  // useMemo, and a hook after a conditional `return` runs in a different order on
-  // the render where the toggle-off room shows — React's rules-of-hooks error,
-  // caught by eslint before it could ship. The two lines it depends on come with
-  // it so the three stay together.
   const { from, to, ticks } = presenceTicks(dateRange, rollingMinutes, siteTimezone)
-  // A rolling window never spans a month, so live mode gets no boundary.
-  //
-  // 🔴 AND ONLY A CALENDAR-MONTH SITE GETS THE MONTH MARKERS. The field draws
-  // "identities reset" at each month boundary; on a site set to 7 days or
-  // Session only that is not where identities reset, so the marker would be a
-  // false label on a true line. A windowed site gets no markers rather than
-  // wrong ones — its bucket edges are the backend's civil-day arithmetic, and
-  // drawing them here would be a second implementation of it (the per-site
-  // marker on reads is owed in the design doc, §9.6 item 3). None while the
-  // site row is still unknown, either.
-  const boundaries = useMemo(
-    () =>
-      rollingMinutes != null || identityWindow !== IDENTITY_WINDOW_CALENDAR_MONTH
-        ? []
-        : monthBoundaries(from, to, siteTimezone),
-    [rollingMinutes, identityWindow, from, to, siteTimezone],
-  )
 
   if (site && site.visitor_views_enabled === false) {
     return (
@@ -245,9 +223,8 @@ export default function VisitorsPage() {
           ticks={ticks}
           activeCount={activeNow}
           undrawn={undrawn}
-          boundaries={boundaries}
           highlightKey={highlightKey}
-          caption="Each dot is one visitor · nearer the right, more recently seen"
+          caption="Each dot is one visitor · the same reader on two days can be two dots · nearer the right, more recently seen"
           emptyLabel={isLoading ? 'Loading…' : live ? REALTIME_EMPTY_LINE : 'No visitors in this range'}
         />
       </div>
@@ -272,10 +249,8 @@ export default function VisitorsPage() {
               same pixels — and it is the only way a screen-reader user can jump to the
               roster, or know that the rows beneath belong to it. */}
           <h2 className="flex items-center gap-1 text-sm font-medium text-white">
-            {/* The heading and its InfoTip follow the site's window: "This
-                month's readers" is only true of a calendar-month site. */}
-            {live ? 'On the site now' : describeIdentityWindow(identityWindow).rosterHeading}
-            <TermInfoTip term="visitor_identity" identityWindowDays={identityWindow} />
+            {live ? 'On the site now' : IDENTITY_COPY.rosterHeading}
+            <TermInfoTip term="visitor_identity" />
           </h2>
           <span className="bg-brand-orange/10 px-2 py-1 text-xs tabular-nums text-brand-ink">
             {live ? <><CompactNumber value={activeNow} /> right now</> : <><CompactNumber value={total} /> in range</>}
@@ -327,7 +302,7 @@ export default function VisitorsPage() {
             <EmptyState
               icon={<UsersThree className="size-6" weight="regular" />}
               title="No visitors in this range"
-              description={describeIdentityWindow(identityWindow).emptyRangeHint}
+              description={IDENTITY_COPY.emptyRangeHint}
             />
           )
         ) : (
@@ -491,8 +466,7 @@ function VisitorRowLink({
       onBlur={() => onHighlight(null)}
       className="flex items-center gap-3 border-b border-border/60 px-4 py-2.5 transition-colors duration-fast ease-apple last:border-b-0 hover:bg-neutral-800/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange"
     >
-      {/* Seeded by the visitor key, exactly as the pseudonym is (PUL-21): it
-          rotates with the key every month, and nothing new travels with the row. */}
+      {/* Seeded by the visitor key, exactly as the pseudonym is (PUL-21): it changes with the key, which lasts one day at most, and nothing new travels with the row. */}
       <Avatar seed={visitorAvatarSeed(visitor.visitor_key)} size={32} />
       <div className="min-w-0 flex-1">
         <span className="flex items-center gap-2">

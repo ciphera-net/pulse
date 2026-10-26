@@ -35,8 +35,8 @@ import {
   zonedMonthKey,
 } from '@/lib/visitors/format'
 import {
+  IDENTITY_COPY,
   IDENTITY_WINDOW_CALENDAR_MONTH,
-  describeIdentityWindow,
   identityWindowOf,
 } from '@/lib/visitors/identityWindow'
 import { deviceLabel } from '@/components/visitors/VisitorMeta'
@@ -134,7 +134,7 @@ export default function VisitorDetailPage() {
             title={status === 404 ? 'No such visitor in this range' : "Couldn't load this visitor"}
             description={
               status === 404
-                ? describeIdentityWindow(identityWindowOf(site)).notFoundHint
+                ? IDENTITY_COPY.notFoundHint
                 : 'The visitor did not come back. Try again.'
             }
           />

@@ -820,7 +820,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
           <SettingsPanel title="Exclude my visits" description="Stop tracking your own visits from this browser.">
             <div className="space-y-3 px-5 py-4">
               <p className="text-sm text-muted-foreground">
-                Open your site with a special parameter to set a flag in this browser&apos;s localStorage that tells the Pulse script to skip tracking. Visit the link again to re-enable tracking.
+                Open your site with a special parameter to set a flag in this browser’s storage that tells the Pulse script to skip tracking. Visit the link again to re-enable tracking.
               </p>
               {/* h-auto + py-2, not the outline rung's fixed height: the label
                   embeds the site domain, so on a phone it wraps to two lines
@@ -840,7 +840,7 @@ export default function SitePrivacyTab({ siteId }: { siteId: string }) {
                   Toggle exclusion on {site.domain}
                 </a>
               </Button>
-              <p className="text-xs text-muted-foreground">You need to do this once per browser. The flag persists until you clear localStorage or visit the link again to toggle it off.</p>
+              <p className="text-xs text-muted-foreground">You need to do this once per browser. The flag stays until you clear this browser’s site data or visit the link again to toggle it off.</p>
             </div>
           </SettingsPanel>
         </section>

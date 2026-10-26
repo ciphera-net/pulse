@@ -37,7 +37,7 @@ const footerColumns: { heading: string; links: FooterLink[] }[] = [
   {
     heading: 'Guides',
     links: [
-      { name: 'Cookieless analytics', href: '/cookieless-analytics' },
+      { name: 'Analytics without cookies', href: '/cookieless-analytics' },
       { name: 'GDPR-compliant analytics', href: '/gdpr-compliant-analytics' },
       { name: 'GA alternative', href: '/google-analytics-alternative' },
       { name: 'No cookie banner', href: '/analytics-without-cookie-banner' },
@@ -129,8 +129,7 @@ export function Footer({ LinkComponent = Link }: FooterProps) {
                 </span>
               </Link>
               <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
-                Simple, privacy-first web analytics. Sets no cookies and stores no
-                personal data — insight without surveillance.
+                Simple, privacy-first web analytics. Sets no cookies: insight without surveillance.
               </p>
               {/* Social block mirrors ciphera-website's Footer verbatim: same
                   order (GitHub, LinkedIn, X, Discord), same inline SVG glyphs, same

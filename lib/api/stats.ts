@@ -20,12 +20,10 @@ export interface Stats {
   // multiplied out in the browser.
   bounce_visits?: number
   duration_measured_visits?: number
-  // The rates' shared DENOMINATOR. Load-bearing since migration 163: `visitors`
-  // used to BE the session count and the examples divided by it; it now counts
-  // people (monthly dedup), so a visit numerator over `visitors` prints a
-  // fraction that cannot produce the rate beside it. Since the visits split
-  // (26-08-2026) this counts VISITS — 30-minute-inactivity runs — not days.
-  // Optional for the same reason as the two above: a backend that does not send
+  // The rates' shared DENOMINATOR. Over a range `visitors` is the sum of each day's unique
+  // visitors, so a visit numerator over `visitors` prints a fraction that cannot produce the
+  // rate beside it. Since the visits split (26-08-2026) this counts VISITS (30-minute-inactivity
+  // runs), not days. Optional for the same reason as the two above: a backend that does not send
   // it gets NO example, never a wrong one.
   visits?: number
 }

@@ -22,7 +22,7 @@ const SITE_URL = 'https://pulse.ciphera.net'
 // * the template appends the brand — see `title` below.
 const SITE_TITLE = 'Pulse Analytics — Privacy-First Web Analytics'
 const SITE_DESCRIPTION =
-  'Privacy-first web analytics. Sets no cookies, stores no personal data, no fingerprinting. Script under 3 KB, hosted in Switzerland.'
+  'Privacy-first web analytics. Sets no cookies and does no fingerprinting. Script under 3 KB, hosted in Switzerland.'
 
 const geist = Geist({
   subsets: ['latin'],

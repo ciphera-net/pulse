@@ -1,6 +1,6 @@
 import { DEFAULT_GEO_DATA_LEVEL, type Site } from '@/lib/api/sites'
 import { formatRetentionMonths } from '@/lib/plans'
-import { describeIdentityWindow, identityWindowOf } from '@/lib/visitors/identityWindow'
+import { IDENTITY_COPY } from '@/lib/visitors/identityWindow'
 import { env } from '@/lib/env'
 
 // Zod-validated URL, guaranteed to be a `string`. The schema for
@@ -53,11 +53,10 @@ export function generatePrivacySnippet(site: Site): string {
   if (retentionMonths > 0) {
     p2 += `Raw event data is automatically deleted after ${formatRetentionMonths(retentionMonths)}. `
   }
-  // How long a returning visitor is recognised (Settings → Privacy → Visitor
-  // identity). The snippet describes the SAVED window, like every other line
-  // here: a site on "Session only" tells its readers they are never recognised
-  // again, and a site on a rolling window names the ceiling as "at most".
-  p2 += `${describeIdentityWindow(identityWindowOf(site)).policySentence} `
+  // How a visitor is counted. One fixed sentence for every site: the identifier lasts one day at
+  // most and its key is deleted shortly after the day ends. Customers paste this into their own
+  // policy, so it names the inputs (IP address, user-agent string).
+  p2 += `${IDENTITY_COPY.policySentence} `
   p2 += `We do not use this data to identify individuals. For more information, see Pulse's documentation: ${DOCS_URL}`
 
   return `${p1}\n\n${p2}`

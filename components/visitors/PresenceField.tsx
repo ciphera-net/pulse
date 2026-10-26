@@ -15,7 +15,7 @@ import { visitorPseudonym } from '@/lib/visitors/pseudonym'
 // population of individuals rather than a scatter of identical points.
 //
 // Absolutely-positioned divs, not a canvas: at this cardinality (peak measured
-// 4 113 visitor-months on the busiest production site, and the field renders at
+// 4 113 visitor rows on the busiest production site, and the field renders at
 // most the 200 most recent) the DOM is cheaper than a canvas's redraw plumbing,
 // and the dots inherit hover and focus for free.
 
@@ -46,15 +46,6 @@ interface PresenceFieldProps {
    */
   undrawn: number
   /**
-   * Instants where the identity month rolls over, inside [from, to].
-   *
-   * The x axis is pure RECENCY and says nothing about identity, so across a
-   * month straddle the same person can be two dots with nothing between them.
-   * Resolved by the caller in the SITE's timezone — the field never computes a
-   * calendar.
-   */
-  boundaries?: { at: number; label: string }[]
-  /**
    * The visitor whose dot is lit, or null.
    *
    * Set by the roster on hover AND on keyboard focus. Hover alone would make the
@@ -82,7 +73,6 @@ export function PresenceField({
   caption,
   emptyLabel,
   undrawn,
-  boundaries = [],
   highlightKey = null,
 }: PresenceFieldProps) {
   const dots = useMemo(() => {
@@ -200,30 +190,6 @@ export function PresenceField({
         aria-hidden="true"
         className="absolute right-3 top-8 bottom-7 border-l border-dashed border-neutral-700"
       />
-
-      {/* 🔴 Where identities reset (approved round 5, §1 B).
-          The x axis is pure recency and says nothing about identity, so across a
-          month straddle the same person is two dots with nothing between them —
-          measured, 322 of one site's 517 rows in a 30-day range were already-reset
-          identities from the previous month. The instants are resolved by the
-          caller in the SITE's timezone; this component never computes a calendar. */}
-      {boundaries.map((b) => {
-        const x = Math.min(1, Math.max(0, (b.at - from) / Math.max(1, to - from)))
-        return (
-          <div key={b.at} aria-hidden="true">
-            <div
-              className="absolute top-8 bottom-7 border-l border-dashed border-neutral-700"
-              style={{ left: `calc(12px + ${x} * (100% - 36px))` }}
-            />
-            <span
-              className="absolute top-[34px] text-xs text-neutral-600"
-              style={{ left: `calc(12px + ${x} * (100% - 36px) + 6px)` }}
-            >
-              {b.label}
-            </span>
-          </div>
-        )
-      })}
 
       {dots.length === 0 ? (
         <p className="absolute inset-0 flex items-center justify-center text-sm text-neutral-500">

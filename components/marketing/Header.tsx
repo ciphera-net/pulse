@@ -82,7 +82,7 @@ const compareLinks: LinkItem[] = comparisons.map((c) => ({
 // Guides + Resources mirror the footer's link groups (owner: the header should
 // carry what the footer carries).
 const guidesLinks: LinkItem[] = [
-  { title: 'Cookieless analytics', href: '/cookieless-analytics', icon: Cookie, description: 'Counting without cookies' },
+  { title: 'Analytics without cookies', href: '/cookieless-analytics', icon: Cookie, description: 'Counting without cookies' },
   { title: 'GDPR-compliant analytics', href: '/gdpr-compliant-analytics', icon: ShieldCheck, description: 'Compliance by architecture' },
   { title: 'GA alternative', href: '/google-analytics-alternative', icon: Swap, description: 'Switching from Google Analytics' },
   { title: 'No cookie banner', href: '/analytics-without-cookie-banner', icon: Prohibit, description: 'Analytics with no consent UI' },
