@@ -237,8 +237,14 @@ describe('SetupDonePage completion gating (ruled B1 — F-B14)', () => {
     render(<SetupDonePage />)
     expect(await screen.findByText(SETUP_COPY.done.heading)).toBeTruthy()
     expect(screen.getByText(/Payment confirmed/)).toBeTruthy()
-    expect(completeStep).toHaveBeenCalledWith('done')
-    expect(completeOnboarding).toHaveBeenCalledWith('org_1')
+    // The heading is visible as soon as React commits the poll's result; the
+    // completion calls are passive effects of that commit and may flush a
+    // tick later on a busy runner (pipeline 2453 failed exactly here). Wait
+    // for them instead of asserting in the same tick as the heading.
+    await waitFor(() => {
+      expect(completeStep).toHaveBeenCalledWith('done')
+      expect(completeOnboarding).toHaveBeenCalledWith('org_1')
+    })
     expect(trackWelcomeCompleted).toHaveBeenCalledTimes(1)
   })
 })
