@@ -3,8 +3,8 @@
 // A row's name is derived CLIENT-SIDE from the visitor key. The wire carries the
 // key; it never carries a name. That is not an optimisation — a server-assigned
 // name would be a second identifier travelling with the row, and this feature's
-// whole claim is that the row carries one month-expiring pseudonymous key and
-// nothing else.
+// claim is that the row carries one key and nothing else. The key lasts one day at
+// most.
 //
 // D9: adjective + persona, not Rybbit's colour + animal.
 // D10: ONE mixed pool drawing on both vocabularies the owner reviewed — "ways of

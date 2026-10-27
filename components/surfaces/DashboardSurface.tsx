@@ -14,7 +14,6 @@ import { toast } from '@ciphera-net/facet'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { PERIOD_TO_API } from '@/lib/constants/periods'
 import { DEFAULT_GEO_DATA_LEVEL, type Site } from '@/lib/api/sites'
-import { identityWindowOf } from '@/lib/visitors/identityWindow'
 import { formatDate } from '@/lib/utils/format'
 import { useUrlDateRange } from '@/lib/hooks/useUrlDateRange'
 import { useRealtimeToggle } from '@/lib/hooks/useRealtimeToggle'
@@ -412,13 +411,9 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
   // A share link is never served the site record, so the public headers name it from this payload
   // (lib/swr/public-site-identity.ts); recorded under a public scope only.
   useRecordPublicSiteIdentity(siteId, site)
-  // 🔴 `dashboard.site` IS THE SANITIZED PUBLIC SHAPE — the backend builds it
-  // with NewPublicSiteResponse, the same whitelist the share surface gets — so
-  // it does not carry identity_window_days, and the deck rendered the
-  // window-NEUTRAL visitors sentence on a site set to 7 days (measured on
-  // staging, 11-09-2026). The authed site record does carry it; SWR dedupes
-  // the read with the sidebar's (and now with the range hook's own fetch
-  // above), and the deck says what "Unique visitors" means on THIS site.
+  // `dashboard.site` is the sanitized public shape (NewPublicSiteResponse). It carries no
+  // identity setting, and none is needed: the Unique visitors definition is the same on every
+  // site.
   // The four averages default to null ("not measured"), never 0 — a fabricated
   // zero is indistinguishable from a measured one (F11).
   const stats: Stats = dashboard?.stats ?? { pageviews: 0, visitors: 0, bounce_rate: null, avg_duration: null, avg_scroll_depth: null, avg_visible_duration: null }
@@ -667,7 +662,6 @@ function SiteDashboard({ scope, caps, facts }: { scope: SiteScope; caps: Dashboa
           // False on a share link, where the backend clamps every read to day buckets
           // and a selector would be a control wired to nothing.
           intervalPicker={caps.hourlyBuckets}
-          identityWindowDays={identityWindowOf(siteRecord)}
           imported={dashboard?.imported}
           prevImported={prevStats?.imported}
           prevData={comparesSeries ? (prevDaily ?? null) : null}

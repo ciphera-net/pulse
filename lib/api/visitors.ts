@@ -11,7 +11,7 @@ import apiRequest from './client'
 
 export interface VisitorRow {
   visitor_key: string
-  /** The identity's site-local calendar month, 'YYYY-MM'. */
+  /** The site-local month of the profile's day, 'YYYY-MM'. */
   month: string
   first_seen: string
   last_seen: string
@@ -56,13 +56,9 @@ export interface VisitorsResponse {
 
 export interface VisitorProfile extends Omit<VisitorRow, 'active_now'> {
   /**
-   * When this identity expires, as an RFC3339 INSTANT computed by the server in the
-   * SITE's timezone — never derived here from `month`.
-   *
-   * The client used to compute it as `new Date(y, m, 1)` from the 'YYYY-MM' string,
-   * which is midnight in the BROWSER against a month the server bucketed
-   * `AT TIME ZONE <site tz>`. Null when the server could not compute it, and the page
-   * then says nothing about the reset rather than printing a guess.
+   * The end of the profile's day (the next site-local midnight after its last visit), as
+   * an RFC3339 instant computed by the server. The page does not read it; the key is
+   * dropped one release after the page stops using it.
    */
   month_resets_at: string | null
   /** Null when no visit's duration was measured — never 0, which reads as "left instantly". */

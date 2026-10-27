@@ -56,7 +56,7 @@ describe('the deck on a range with imported days', () => {
 
   it('adds "incl. imported days" to the rows imported days merge into, and not to the two Pulse-only rates', () => {
     render(<CommandDeck {...base} imported={INCLUDED} />)
-    expect(screen.getByText('unique people · incl. imported days')).toBeInTheDocument()
+    expect(screen.getByText('visitors, not visits · incl. imported days')).toBeInTheDocument()
     expect(screen.getByText('across the site · incl. imported days')).toBeInTheDocument()
     expect(screen.getByText('depth · incl. imported days')).toBeInTheDocument()
     // Bounce rate and visit duration stay Pulse's own (D2): the word would be false there.
@@ -66,7 +66,7 @@ describe('the deck on a range with imported days', () => {
 
   it('says it when only the COMPARISON period includes imported days', () => {
     render(<CommandDeck {...base} imported={NONE} prevImported={INCLUDED} prevStats={stats} />)
-    expect(screen.getByText('unique people · incl. imported days')).toBeInTheDocument()
+    expect(screen.getByText('visitors, not visits · incl. imported days')).toBeInTheDocument()
     // No line: the current range holds no imported day.
     expect(drawn.lines).toHaveLength(0)
   })
@@ -74,7 +74,7 @@ describe('the deck on a range with imported days', () => {
   it('draws no line when the range is all imported', () => {
     render(<CommandDeck {...base} imported={{ ...INCLUDED, through: '2026-09-27' }} />)
     expect(drawn.lines).toHaveLength(0)
-    expect(screen.getByText('unique people · incl. imported days')).toBeInTheDocument()
+    expect(screen.getByText('visitors, not visits · incl. imported days')).toBeInTheDocument()
   })
 
   it('draws nothing and adds no word when the response says nothing was merged', () => {

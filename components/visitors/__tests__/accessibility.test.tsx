@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
-import { MonthRibbon } from '../MonthRibbon'
 import { PresenceField } from '../PresenceField'
 import { VisitorMeta } from '../VisitorMeta'
 import { JourneyStrand } from '../JourneyStrand'
@@ -158,49 +157,6 @@ describe('a roster row says what its numbers mean', () => {
     // so the name may be discarded entirely. This is the one defect on the
     // surface that automated tooling did catch.
     expect(prohibitedNames(container)).toEqual([])
-  })
-})
-
-describe('the month ribbon has a text equivalent', () => {
-  it('names every active day, not just the axis', () => {
-    const { container } = render(
-      <MonthRibbon month="2026-09" visitsByDay={{ 3: 1, 7: 2 }} today={9} resetsInDays={21} />,
-    )
-    const figure = container.querySelector('[role="img"]')
-    expect(figure).not.toBeNull()
-    const label = figure!.getAttribute('aria-label') ?? ''
-
-    // 🔴 THE MEASURED "BEFORE": the ribbon's entire accessible text was
-    //      "September, day by dayidentity resets in 21 days18152229"
-    // — the captions, then the bare day-axis numbers 1/8/15/22/29, and nothing
-    // about when this visitor was actually here. All 30 cells carried their data
-    // only in a `title` attribute, which is mouse-hover only.
-    expect(label).toMatch(/3 September, 1 visit/)
-    expect(label).toMatch(/7 September, 2 visits/)
-    expect(label).toMatch(/Visits on 2 of 30 days/)
-    expect(label).toMatch(/Today is 9 September/)
-  })
-
-  it('says "no visits" rather than "0 visits" for an empty month', () => {
-    // A day with a measured zero and a month with no visits are different
-    // statements, and the ribbon draws them differently too (outline vs fill).
-    const { container } = render(
-      <MonthRibbon month="2026-09" visitsByDay={{}} today={null} resetsInDays={null} />,
-    )
-    const label = container.querySelector('[role="img"]')!.getAttribute('aria-label') ?? ''
-    expect(label).toMatch(/no visits on any of its 30 days/)
-    expect(label).not.toMatch(/0 visits/)
-  })
-
-  it('keeps its captions OUTSIDE the graphic, as page text', () => {
-    const { container } = render(
-      <MonthRibbon month="2026-09" visitsByDay={{ 3: 1 }} today={9} resetsInDays={21} />,
-    )
-    const figure = container.querySelector('[role="img"]')!
-    // role="img" makes a subtree presentational, so anything a reader should hear
-    // in the page's flow has to sit outside it.
-    expect(figure.textContent).not.toMatch(/identity resets/)
-    expect(container.textContent).toMatch(/identity resets in 21 days/)
   })
 })
 
