@@ -94,30 +94,32 @@ public read API's — see that entry for what it does and does not cover.
   with optional filters. It is additive, like every change to the public API, and it
   is what the assistant's breakdown tool calls.
 
-- **Choose how long a returning reader is recognised.** Settings → Privacy has a new
-  **Visitor identity** panel: *Session only*, *24 hours*, *7 days* or *30 days*. Until
-  you choose, a site keeps today's behaviour — a returning reader is recognised for the
-  rest of the calendar month in your site's timezone — and the menu shows that as
-  *Calendar month (current)*.
+- **Choose how long a returning reader is recognised (retired 27-10-2026).** Settings →
+  Privacy had a **Visitor identity** panel: *Session only*, *24 hours*, *7 days* or *30
+  days*. Until a site chose, it kept the calendar-month behaviour that ran from
+  26-08-2026 to 26-10-2026: a returning reader was recognised for the rest of the
+  calendar month in the site's timezone, and the menu showed that as *Calendar month
+  (current)*. A visitor is now recognised for one day at most (see *A visitor is
+  recognised for one day, at most*, under Changed). This entry is kept as history.
 
-  **A window is a ceiling, not a promise.** A reader first seen near the end of a
-  window is recognised for less than it, exactly as a reader first seen on the 30th is
-  recognised for one day today. Every sentence in the product now says "up to".
+  **A window was a ceiling, not a promise.** A reader first seen near the end of a
+  window was recognised for less than it, exactly as a reader first seen on the 30th was
+  recognised for one day. Every sentence in the product said "up to".
 
-  **Session only changes what "visitors" means on that site.** No visitor identity is
-  written at all, so a reader is counted once per day and never recognised on a later
-  visit — the number becomes daily session counting, the way it was for every site
-  before 26 August 2026. The dashboard's *Unique visitors* definition, the Visitors
-  page and the privacy-policy snippet all say so on a site set that way, rather than
-  asserting the month. The public read API's `visitors` field keeps its name and its
-  shape; on such a site it inherits the same meaning, and **the day you change the
-  window is a measurement boundary for that site** — identities before it cannot be
-  re-derived, so a range that crosses it counts a returning reader once on each side.
+  **Session only changed what "visitors" meant on that site.** No visitor identity was
+  written at all, so a reader was counted once per day and never recognised on a later
+  visit: the number became daily session counting, the way it was for every site before
+  26 August 2026. The dashboard's *Unique visitors* definition, the Visitors page and
+  the privacy-policy snippet all said so on a site set that way, rather than asserting
+  the month. The public read API's `visitors` field kept its name and its shape; on such
+  a site it inherited the same meaning, and **the day you changed the window was a
+  measurement boundary for that site**: identities before it could not be re-derived, so
+  a range that crossed it counted a returning reader once on each side.
 
-  **Changing the window is deliberate and recorded.** The panel says what the change
-  costs before you save it — every identity is re-minted from that moment, readers
-  recognised under the old window count as new people, and nothing can be applied
-  backwards — and every change is written to your audit trail.
+  **Changing the window was deliberate and recorded.** The panel said what the change
+  cost before you saved it: every identity was re-minted from that moment, readers
+  recognised under the old window counted as new people, and nothing could be applied
+  backwards. Every change was written to your audit trail.
 
 - **Optional interaction capture: see what visitors did, not only which pages they
   saw.** A second, optional script records the **label of a button or link that was
@@ -207,15 +209,17 @@ public read API's — see that entry for what it does and does not cover.
   ones**, and turning it on is a deliberate act by a site owner that is recorded in
   your organisation's audit trail. Settings → Site → Privacy → Visitor views.
 
-  **What a "visitor" is here, exactly.** A server-derived pseudonymous key, re-minted
-  at the start of every calendar month in your site's timezone. It carries no name, no
-  email, no account, no cookie and nothing stored on the reader's device, it cannot be
-  linked to the same person on another site, and at the end of the month it stops
-  existing — a returning reader comes back as a new visitor, under a new name. The
-  page says so on its face rather than in a footnote. History begins **26 Aug 2026**,
-  the day monthly identity was introduced; the date picker will not offer earlier days,
-  because earlier rows have no monthly key at all and showing them would label
-  per-day identities as if they were per-month ones.
+  **What a "visitor" was here, exactly (26-08-2026 to 26-10-2026).** A server-derived
+  pseudonymous key, re-minted at the start of every calendar month in your site's
+  timezone. It carried no name, no email, no account, no cookie and nothing stored on
+  the reader's device, it could not be linked to the same person on another site, and at
+  the end of the month it stopped existing: a returning reader came back as a new
+  visitor, under a new name. The page said so on its face rather than in a footnote.
+  History began **26 Aug 2026**, the day monthly identity was introduced; the date
+  picker did not offer earlier days, because earlier rows had no monthly key at all and
+  showing them would have labelled per-day identities as if they were per-month ones.
+  Since 27-10-2026 each profile covers one IP address and browser on one day (see *A
+  visitor is recognised for one day, at most*, under Changed).
 
   **What it deliberately cannot reach.** Visitor-level data never appears on a public
   share link, in the public read API, in an export, or on the internal admin surface —
@@ -392,19 +396,17 @@ public read API's — see that entry for what it does and does not cover.
   `js.ciphera.net/script.js` embed, which carries no integrity attribute, picks the
   fix up automatically.
 
-- **"Unique visitors" now counts people, and 26-08-2026 is a measurement boundary.**
-  Visitor identity used to rotate every day, so a returning reader was re-counted
-  once per day (and the public API's `visitors` field inherited that). Since
-  26-08-2026, identity is deduplicated within each calendar month in the site's own
-  timezone: a returning reader counts once, on the dashboard and in the public read
-  API's `visitors` field alike — same field, corrected meaning, no wire change.
-  Expect the number to step down; that is the correction, not a traffic drop. Days
-  before the boundary can never be re-deduplicated (the address the identity derives
-  from is discarded on arrival and was never stored), so ranges reaching back keep
-  per-day counting for those days. Session boundaries also moved from UTC midnight
-  to the site's own midnight, which ends the long-standing off-by-one between the
-  headline and the daily chart — and means the chart's daily values can now sum to
-  more than the headline, correctly: the difference is your returning readers.
+- **"Unique visitors" counted a returning reader once per calendar month, from 26-08-2026
+  to 26-10-2026.** Visitor identity used to rotate every day, so a returning reader was
+  re-counted once per day (and the public API's `visitors` field inherited that). From
+  26-08-2026 to 26-10-2026, identity was deduplicated within each calendar month in the
+  site's own timezone: a returning reader counted once, on the dashboard and in the
+  public read API's `visitors` field alike (same field, no wire change). Since
+  27-10-2026 a visitor is recognised for one day at most, and multi-day visitor figures
+  for that period are restated upward as the sum of each day's unique visitors (see *A
+  visitor is recognised for one day, at most*, under Changed). Session boundaries also
+  moved from UTC midnight to the site's own midnight on 26-08-2026, which ended the
+  long-standing off-by-one between the headline and the daily chart.
 
 ### Removed
 
