@@ -19,7 +19,7 @@ import { formatSiteTime, shiftDayKey, zoneDayStartMs, zoneParts } from '@/lib/ut
  *
  * Every row written before a site's switch to one-day identity has visitor_id NULL: rows
  * before 26-08-2026 never had one (the IP it derives from was never stored), and the ids
- * written from 26-08-2026 to each site's switch were nulled on 28-10-2026. Every day counts
+ * written from 26-08-2026 to each site's switch were nulled on 27-10-2026. Every day counts
  * visitors per day, so the page draws no boundary and names no date on which counting changed.
  */
 export const VISITORS_MIN_DATE = '2026-08-26'

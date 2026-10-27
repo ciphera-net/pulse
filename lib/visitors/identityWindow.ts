@@ -32,7 +32,7 @@ export const IDENTITY_COPY = {
   emptyRangeHint: 'Visitors are listed from 26 August 2026. Try a wider range.',
   /** The visitor page's 404: a profile with no activity in the selected range (R6). */
   notFoundHint:
-    'This profile has no activity in the selected range. A profile covers up to one day, so it may belong to another day. Links to month-long profiles no longer work: on 28 October 2026 they were rebuilt as one-day profiles.',
+    'This profile has no activity in the selected range. A profile covers up to one day, so it may belong to another day. Links to month-long profiles no longer work: on 27 October 2026 they were rebuilt as one-day profiles.',
   /** The deck's "Unique visitors" InfoTip definition (A1); the glossary and dashboard.mdx copy it word for word. */
   metricDefinition:
     'Visitors, not visits, counted one day at a time in your site’s timezone: one IP address and browser counts once per day. A reader who returns on another day counts again, so visitors over a range add up each day’s unique visitors.',

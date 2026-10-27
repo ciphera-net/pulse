@@ -45,9 +45,9 @@ describe('IDENTITY_COPY', () => {
    */
   it('names only the Visitors floor and the restatement date', () => {
     const dates = KEYS.flatMap((k) => IDENTITY_COPY[k].match(DATE) ?? [])
-    expect(new Set(dates)).toEqual(new Set(['26 August 2026', '28 October 2026']))
+    expect(new Set(dates)).toEqual(new Set(['26 August 2026', '27 October 2026']))
     expect(IDENTITY_COPY.emptyRangeHint).toContain('26 August 2026')
-    expect(IDENTITY_COPY.notFoundHint).toContain('28 October 2026')
+    expect(IDENTITY_COPY.notFoundHint).toContain('27 October 2026')
   })
 
   it('carries the chosen Settings statement, Visitors caption and policy notice word for word', () => {
