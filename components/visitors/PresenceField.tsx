@@ -19,7 +19,12 @@ import { visitorPseudonym } from '@/lib/visitors/pseudonym'
 // most the 200 most recent) the DOM is cheaper than a canvas's redraw plumbing,
 // and the dots inherit hover and focus for free.
 
+/** The field's height while its caption fits on one line; a wrapped caption adds its extra lines. */
 const FIELD_HEIGHT = 186
+/** The header row with a one-line caption: pt-2.5 (10px) + one 12px line (16px) + mt-1.5 (6px). */
+const HEADER_HEIGHT = 32
+/** The plot under it. FIELD_HEIGHT counts the field's 1px top and bottom borders: 186 − 2 − 32 = 152. */
+const PLOT_HEIGHT = FIELD_HEIGHT - 2 - HEADER_HEIGHT
 const MAX_DOTS = 200
 
 /** How much a highlighted dot grows, in px. Approved round 5b (§3 B). */
@@ -148,29 +153,41 @@ export function PresenceField({
         'Every visitor drawn here also appears in the roster below, as text.'
 
   return (
-    <div className="relative rounded-none border border-border bg-card" style={{ height: FIELD_HEIGHT }}>
+    <div className="relative flex flex-col rounded-none border border-border bg-card">
       <p className="sr-only">{summary}</p>
-      {/* 🔴 The "+N more" note lives HERE, not at `bottom-2 left-1/2`.
-          There it shared a line with the date labels (`inset-x-3 bottom-2
-          justify-between`) and landed on top of the middle one. Nobody had seen
-          it because the note could never render — the dead code was hiding a
-          layout bug as well as a lie. It qualifies the caption, so it sits in it. */}
-      <p className="absolute left-3 top-2.5 z-10 text-xs text-neutral-500">
-        {caption}
-        {hidden > 0 && (
-          <>
-            {' · '}
-            <span className="text-neutral-600">{hidden} more not drawn</span>
-          </>
-        )}
-      </p>
-      {activeCount > 0 && (
-        <p className="absolute right-3 top-2.5 z-10 flex items-center gap-1.5 text-xs text-brand-ink">
-          <span className="size-1.5 rounded-full bg-brand-orange" aria-hidden="true" />
-          {activeCount} on the site now
+      {/* 🔴 THE CAPTION AND THE LIVE LABEL ARE A HEADER ROW, IN NORMAL FLOW (decision L-A,
+          27-10-2026). Both used to be absolutely placed over the plot, so neither could
+          wrap without landing on something. The one-day caption, 700px with its
+          "130 more not drawn" tail against 441px before, ran into "N on the site now"
+          from ~960px down and over the dots from ~820px (measured on production); the
+          old caption already did both on a phone. Now a caption that needs a second line
+          wraps beside the label and the field grows by that line. Where one line fits,
+          this draws exactly what the absolute layout drew: 10 + 16 + 6 = the plot's old
+          32px top. Record: docs/data/26-10-2026-one-day-identity-ui-mocks, "Round 2". */}
+      <div className="flex items-start justify-between gap-x-4 px-3 pt-2.5">
+        {/* 🔴 The "+N more" note lives HERE, not at `bottom-2 left-1/2`.
+            There it shared a line with the date labels (`inset-x-3 bottom-2
+            justify-between`) and landed on top of the middle one. Nobody had seen
+            it because the note could never render — the dead code was hiding a
+            layout bug as well as a lie. It qualifies the caption, so it sits in it. */}
+        <p className="min-w-0 text-xs text-neutral-500">
+          {caption}
+          {hidden > 0 && (
+            <>
+              {' · '}
+              <span className="text-neutral-600">{hidden} more not drawn</span>
+            </>
+          )}
         </p>
-      )}
+        {activeCount > 0 && (
+          <p className="flex shrink-0 items-center gap-1.5 text-xs text-brand-ink">
+            <span className="size-1.5 rounded-full bg-brand-orange" aria-hidden="true" />
+            {activeCount} on the site now
+          </p>
+        )}
+      </div>
 
+      <div data-presence-plot className="relative mt-1.5" style={{ height: PLOT_HEIGHT }}>
       {/* Week / time gridlines. aria-hidden — the tick labels below carry the scale. */}
       {ticks.map((t) => {
         const x = Math.min(1, Math.max(0, (t.at - from) / Math.max(1, to - from)))
@@ -178,7 +195,7 @@ export function PresenceField({
           <div
             key={t.at}
             aria-hidden="true"
-            className="absolute top-8 bottom-7 w-px bg-border/60"
+            className="absolute top-0 bottom-7 w-px bg-border/60"
             style={{ left: `${x * 100}%` }}
           />
         )
@@ -188,14 +205,10 @@ export function PresenceField({
           more recently seen" has something to be near. */}
       <div
         aria-hidden="true"
-        className="absolute right-3 top-8 bottom-7 border-l border-dashed border-neutral-700"
+        className="absolute right-3 top-0 bottom-7 border-l border-dashed border-neutral-700"
       />
 
-      {dots.length === 0 ? (
-        <p className="absolute inset-0 flex items-center justify-center text-sm text-neutral-500">
-          {emptyLabel}
-        </p>
-      ) : (
+      {dots.length === 0 ? null : (
         dots.map((d) => {
           const lit = highlightKey !== null && d.key === highlightKey
           const size = lit ? d.size + HIGHLIGHT_GROWTH : d.size
@@ -215,7 +228,7 @@ export function PresenceField({
               style={{
                 // Inset the plot so a dot at either extreme is not clipped.
                 left: `calc(12px + ${d.x} * (100% - 36px))`,
-                top: 32 + d.y * (FIELD_HEIGHT - 32 - 28),
+                top: d.y * (FIELD_HEIGHT - HEADER_HEIGHT - 28),
                 // A lit dot must sit above its neighbours or its glow is cut by
                 // whichever dot happens to render after it.
                 zIndex: lit ? 5 : undefined,
@@ -266,6 +279,15 @@ export function PresenceField({
           </span>
         ))}
       </div>
+      </div>
+
+      {/* Centred on the whole field, as before; it must not catch the pointer over the
+          caption, which is no longer positioned above it. */}
+      {dots.length === 0 && (
+        <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-neutral-500">
+          {emptyLabel}
+        </p>
+      )}
     </div>
   )
 }

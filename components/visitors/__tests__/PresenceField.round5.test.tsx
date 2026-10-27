@@ -61,7 +61,28 @@ describe('the field draws the range, and says what it is not drawing', () => {
     const axis = [...container.querySelectorAll('div')].find((d) =>
       d.className.includes('bottom-2') && d.className.includes('justify-between'))!
     expect(note.closest('div')).not.toBe(axis)
-    expect(note.closest('p')?.className).toContain('top-2.5')
+    expect(note.closest('p')?.textContent).toMatch(/^Each dot is one visitor/)
+    expect(note.closest('[data-presence-plot]')).toBeNull()
+  })
+
+  // Decision L-A (27-10-2026): the caption and the live label are a header row in normal
+  // flow above the plot, so a caption that wraps grows the field instead of covering the
+  // dots or running into the label. jsdom has no layout; the structure is what is pinned.
+  it('puts the caption and the live label in one header row above the plot', () => {
+    const { container } = field({ activeCount: 3, undrawn: 130 })
+    const caption = [...container.querySelectorAll('p')].find((p) =>
+      (p.textContent ?? '').startsWith('Each dot is one visitor'))!
+    const live = [...container.querySelectorAll('p')].find((p) =>
+      (p.textContent ?? '').trim() === '3 on the site now')!
+    expect(caption.className).not.toMatch(/\babsolute\b/)
+    expect(live.className).not.toMatch(/\babsolute\b/)
+    expect(live.className).toContain('shrink-0')
+    expect(caption.parentElement).toBe(live.parentElement)
+    const plot = container.querySelector('[data-presence-plot]') as HTMLElement
+    expect(plot.style.height).toBe('152px')
+    expect(caption.parentElement!.nextElementSibling).toBe(plot)
+    expect(plot.querySelectorAll('[data-visitor-dot]').length).toBe(3)
+    expect(plot.querySelector('.border-dashed')).not.toBeNull()
   })
 
   it('takes the count from the CALLER — the field cannot know it', () => {
