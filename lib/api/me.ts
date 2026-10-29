@@ -19,6 +19,13 @@ export interface MeTeam {
   onboarding_completed_at: string | null
   last_active_at: string | null
   joined_at: string
+  /**
+   * The feature flags that are ON for this person in this team (OPS-27): betas switched on per
+   * team or per person, evaluated by pulse-backend. Read it through `useFeature` (lib/features.ts),
+   * which picks the active team. Optional only so a response from an older backend reads as "no
+   * betas" instead of crashing.
+   */
+  features?: string[]
 }
 
 export interface MeResponse {
