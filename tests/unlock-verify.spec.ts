@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { existsSync, statSync } from 'node:fs'
+import { BASE_URL } from './support/base'
 import { login, requireCredentials } from './support/login'
 
 /**
@@ -28,8 +29,6 @@ const stateIsFresh = () =>
  *
  * baseURL from SMOKE_BASE_URL (default pulse-staging).
  */
-
-const BASE_URL = process.env.SMOKE_BASE_URL ?? 'https://pulse-staging.ciphera.net'
 
 test('vault read-unlock reveals the real email on the profile tab', async ({ browser }) => {
   const reusing = stateIsFresh()

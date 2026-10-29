@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { BASE_URL } from './support/base'
 import { login } from './support/login'
 import { collectConsoleErrors, type ConsoleErrorCollector } from './support/console-errors'
 
@@ -20,8 +21,6 @@ import { collectConsoleErrors, type ConsoleErrorCollector } from './support/cons
  *
  * baseURL comes from SMOKE_BASE_URL (default: the pulse-frontend-staging host).
  */
-
-const BASE_URL = process.env.SMOKE_BASE_URL ?? 'https://pulse-staging.ciphera.net'
 
 /** Section routes: one representative tab per top-level settings section. */
 const SECTION_ROUTES: { path: string; section: string; label: string }[] = [

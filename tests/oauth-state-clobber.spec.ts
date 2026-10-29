@@ -16,7 +16,8 @@ import { test, expect, type Page, type BrowserContext } from '@playwright/test'
  *   CIPHERA_ID_PASSWORD  the login password
  *
  * Run against a specific deployment with SMOKE_BASE_URL, e.g.
- *   SMOKE_BASE_URL=https://pulse-staging.ciphera.net npx playwright test tests/oauth-state-clobber.spec.ts
+ *   SMOKE_BASE_URL=http://localhost:3003 npx playwright test tests/oauth-state-clobber.spec.ts
+ * (the default is the staging app; its access certificate comes from the environment: tests/support/base.ts)
  */
 
 const EMAIL = process.env.CIPHERA_ID_EMAIL

@@ -272,7 +272,8 @@ steps:
       NODE_OPTIONS: --max-old-space-size=1280
       # 🔑 NEXT_PUBLIC_* MOVED HERE FROM THE DOCKERFILE'S ARG/ENV PAIR. Next.js
       # inlines them during `next build`, so this is now the only place they can
-      # reach the bundle. deploy.yml asserts the result against LIVE HTML.
+      # reach the bundle. deploy.yml's upload-static-staging step asserts the result
+      # against the built image, before the rollout.
       NEXT_PUBLIC_API_URL:
         from_secret: staging_next_public_api_url
       NEXT_PUBLIC_APP_URL:

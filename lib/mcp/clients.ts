@@ -32,8 +32,9 @@ export interface McpClient {
 
 /**
  * The MCP endpoint of THIS environment's API: production shows pulse-api.ciphera.net/mcp,
- * staging shows pulse-api-staging. Derived from the API origin the app already talks to, so a
- * build can never show another environment's URL.
+ * staging shows its own origin plus /mcp (there the API is served from the app's origin).
+ * Derived from the API origin the app already talks to, so a build can never show another
+ * environment's URL.
  */
 export function mcpServerUrl(apiUrl: string = API_URL): string {
   return new URL(apiUrl).origin + '/mcp'
