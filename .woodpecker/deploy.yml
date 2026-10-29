@@ -689,11 +689,15 @@ steps:
       - event: push
         branch: main
     environment:
+      # The backup copy is on Infomaniak object storage (path-style, region us-east-1, checksums only when
+      # required) with a key that can write this one bucket.
       AWS_ACCESS_KEY_ID:
-        from_secret: exoscale_cdn_scripts_key
+        from_secret: cdn_scripts_backup_access_key
       AWS_SECRET_ACCESS_KEY:
-        from_secret: exoscale_cdn_scripts_secret
-      AWS_DEFAULT_REGION: ch-dk-2
+        from_secret: cdn_scripts_backup_secret_key
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
       BUNNY_API_KEY:
         from_secret: bunny_api_key
       BUNNY_STORAGE_PASSWORD:
@@ -714,7 +718,7 @@ steps:
         cat public/script-sri.json
       # Primary origin: Bunny Edge Storage (js.ciphera.net reads from the ciphera-cdn-scripts zone).
       - |
-      # Backup origin: Exoscale SOS (write-through durability copy).
+      # Backup copy: Infomaniak object storage since 29-10-2026 (write-through durability copy; Exoscale SOS before).
       # ⚠️ FIXED 25-07-2026 — THIS UPLOADED ONLY TO A BUCKET NOBODY SERVES.
       # js.ciphera.net is Bunny pull zone 5736065, which has an EMPTY OriginUrl and
       # StorageZoneId 1688531: it serves from BUNNY STORAGE (zone ciphera-cdn-scripts),
@@ -749,13 +753,12 @@ steps:
             "https://storage.bunnycdn.com/ciphera-cdn-scripts/$file" >/dev/null \
             || { echo "PRIMARY (Bunny Storage) upload FAILED for $file — production would stay stale"; exit 1; }
           aws s3 cp "public/$file" "s3://ciphera-scripts/$file" \
-            --endpoint-url https://sos-ch-dk-2.exo.io \
+            --endpoint-url https://s3.pub1.infomaniak.cloud \
             --content-type "$ct" \
             --cache-control "public, max-age=7200" \
-            --acl public-read \
             --quiet
         done
-        echo "Scripts uploaded to Bunny Storage (primary) + SOS (backup)"
+        echo "Scripts uploaded to Bunny Storage (primary) + the object-storage backup copy"
       # Versioned copies for the dashboard's SRI snippet, which pins
       # https://js.ciphera.net/v<version>/<file> with an integrity hash (public/script-versions.json).
       # Until 25-10-2026 nothing published them, so every versioned URL answered 404 and a site
@@ -787,10 +790,9 @@ steps:
             "https://storage.bunnycdn.com/ciphera-cdn-scripts/v$ver/$file" >/dev/null \
             || { echo "🔴 PRIMARY (Bunny Storage) upload FAILED for v$ver/$file"; exit 1; }
           aws s3 cp "public/$file" "s3://ciphera-scripts/v$ver/$file" \
-            --endpoint-url https://sos-ch-dk-2.exo.io \
+            --endpoint-url https://s3.pub1.infomaniak.cloud \
             --content-type application/javascript \
             --cache-control "public, max-age=31536000, immutable" \
-            --acl public-read \
             --quiet
           echo "v$ver/$file: published"
         done
