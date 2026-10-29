@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { BASE_URL as STAGING } from './support/base'
 
 /**
  * The companion script, verified END TO END against the bytes staging serves.
@@ -17,7 +18,6 @@ import { test, expect } from '@playwright/test'
  */
 
 const ORIGIN = process.env.INT_ORIGIN ?? 'https://qa-interactions.example.com'
-const STAGING = process.env.SMOKE_BASE_URL ?? 'https://pulse-staging.ciphera.net'
 
 const PAGE = `<!doctype html><html><head><title>Interaction capture</title>
 <script defer data-domain="qa-interactions.example.com" data-api="${STAGING}" src="${STAGING}/script.js"></script>

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { BASE_URL } from './support/base'
 import { login } from './support/login'
 
 /**
@@ -16,7 +17,6 @@ import { login } from './support/login'
  *
  * ⚠️ The state file is a live credential — scratch directory only.
  */
-const BASE_URL = process.env.SMOKE_BASE_URL ?? 'https://pulse-staging.ciphera.net'
 const STATE_PATH = process.env.VISITORS_STORAGE_STATE ?? ''
 const SITE_ID = process.env.VISITORS_SITE_ID ?? ''
 

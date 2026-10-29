@@ -4,9 +4,9 @@
  * cleared key, enabled Skip, full 6-step walk, no re-auto-start, ⌘K re-entry.
  */
 import { test, expect } from '@playwright/test'
+import { BASE_URL as BASE } from './support/base'
 import { login } from './support/login'
 
-const BASE = process.env.SMOKE_BASE_URL ?? 'https://pulse-staging.ciphera.net'
 const OUT = process.env.SHOT_DIR ?? '.'
 
 test.setTimeout(420_000)

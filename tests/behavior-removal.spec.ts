@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { BASE_URL } from './support/base'
 import { login } from './support/login'
 import { collectConsoleErrors } from './support/console-errors'
 
@@ -16,8 +17,6 @@ import { collectConsoleErrors } from './support/console-errors'
  * depth survived. Either alone would be a misleading pass — a build that dropped
  * both would satisfy "Behavior is gone".
  */
-
-const BASE_URL = process.env.SMOKE_BASE_URL ?? 'https://pulse-staging.ciphera.net'
 
 test.describe('behavior page removal', () => {
   test('dashboard renders scroll depth; Behavior surface is gone', async ({ page }) => {

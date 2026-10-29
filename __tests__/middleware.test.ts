@@ -2,9 +2,10 @@ import { describe, it, expect } from 'vitest'
 import { NextRequest } from 'next/server'
 import { middleware } from '../middleware'
 
-function createRequest(path: string, cookies: Record<string, string> = {}): NextRequest {
+function createRequest(path: string, cookies: Record<string, string> = {}, host?: string): NextRequest {
   const url = new URL(path, 'http://localhost:3000')
-  const req = new NextRequest(url)
+  // * `host` is the Host HEADER, which is what the middleware reads. The URL above never carries it.
+  const req = new NextRequest(url, host === undefined ? undefined : { headers: { host } })
   for (const [name, value] of Object.entries(cookies)) {
     req.cookies.set(name, value)
   }
@@ -269,3 +270,113 @@ describe('middleware — a cold visit keeps where it was going', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// Staging is reached under more than one name, and every one of them must be noindex.
+//
+// Behind the access proxy the pod is asked for the ORIGIN'S OWN NAME, not the name in the
+// browser's address bar, so a check against the public name alone saw no staging request at all:
+// no X-Robots-Tag on any response and no blanket-Disallow robots.txt. The match is POSITIVE (a
+// set of exact hosts), so production can never be tagged by accident, whatever Host its edge
+// forwards.
+// ---------------------------------------------------------------------------
+describe('middleware — staging hosts are noindex, and only staging hosts', () => {
+  const STAGING_HOSTS = [
+    'pulse-staging.teleport.ciphera.net', // the name in the browser
+    'pulse-staging-sks.ciphera.net', // the Host the access proxy sends to the pod
+    'pulse-staging.ciphera.net', // the former public name, until it is retired
+  ]
+
+  // * Production's hosts, local development, and near-misses of every staging host. A near-miss is
+  // * a host that merely CONTAINS a staging name; none of them is staging.
+  const NOT_STAGING = [
+    'pulse.ciphera.net',
+    'pulse-api.ciphera.net',
+    'ciphera.net',
+    'www.ciphera.net',
+    'id.ciphera.net',
+    'teleport.ciphera.net',
+    'localhost',
+    'localhost:3000',
+    'localhost:3003',
+    'pulse-staging.teleport.ciphera.net.example.com',
+    'evil-pulse-staging.teleport.ciphera.net',
+    'pulse-staging-sks.ciphera.net.example.com',
+    'x.pulse-staging.ciphera.net',
+    'pulse-staging.ciphera.net:8443',
+    'staging.ciphera.net',
+    '',
+  ]
+
+  const NOINDEX = 'noindex, nofollow'
+  const BLANKET_DISALLOW = 'User-agent: *\nDisallow: /\n'
+
+  describe.each(STAGING_HOSTS)('on %s', (host) => {
+    it('answers /robots.txt with a blanket Disallow', async () => {
+      const res = middleware(createRequest('/robots.txt', {}, host))
+      expect(await res.text()).toBe(BLANKET_DISALLOW)
+      expect(res.headers.get('content-type')).toContain('text/plain')
+    })
+
+    it('tags a public page noindex', () => {
+      expect(middleware(createRequest('/login', {}, host)).headers.get('X-Robots-Tag')).toBe(NOINDEX)
+    })
+
+    it('tags a redirect to the sign-in page noindex', () => {
+      const res = middleware(createRequest('/sites', {}, host))
+      expect(res.headers.get('Location')).toContain('/login')
+      expect(res.headers.get('X-Robots-Tag')).toBe(NOINDEX)
+    })
+
+    it('tags a signed-in redirect noindex', () => {
+      const home = middleware(createRequest('/', { pulse_access: 'tok' }, host))
+      expect(home.headers.get('Location')).not.toBeNull()
+      expect(home.headers.get('X-Robots-Tag')).toBe(NOINDEX)
+      const login = middleware(createRequest('/login', { pulse_access: 'tok' }, host))
+      expect(login.headers.get('Location')).not.toBeNull()
+      expect(login.headers.get('X-Robots-Tag')).toBe(NOINDEX)
+    })
+
+    it('tags a signed-in page noindex', () => {
+      expect(middleware(createRequest('/sites', { pulse_access: 'tok' }, host)).headers.get('X-Robots-Tag')).toBe(NOINDEX)
+    })
+  })
+
+  describe.each(NOT_STAGING)('on %j', (host) => {
+    it('does not answer /robots.txt itself', async () => {
+      const res = middleware(createRequest('/robots.txt', {}, host))
+      expect(await res.text()).not.toContain('Disallow')
+      expect(res.headers.get('X-Robots-Tag')).toBeNull()
+    })
+
+    it('adds no X-Robots-Tag to a public page, a redirect or a signed-in page', () => {
+      for (const [path, cookies] of [
+        ['/login', {}],
+        ['/demo/pages', {}],
+        ['/sites', {}],
+        ['/', { pulse_access: 'tok' }],
+        ['/login', { pulse_access: 'tok' }],
+        ['/sites', { pulse_access: 'tok' }],
+      ] as [string, Record<string, string>][]) {
+        const res = middleware(createRequest(path, cookies, host))
+        expect(res.headers.get('X-Robots-Tag'), `${host} ${path}`).toBeNull()
+      }
+    })
+  })
+
+  it('adds no X-Robots-Tag when the request carries no Host header at all', () => {
+    expect(middleware(createRequest('/login')).headers.get('X-Robots-Tag')).toBeNull()
+    expect(middleware(createRequest('/sites')).headers.get('X-Robots-Tag')).toBeNull()
+  })
+
+  // * The controls: every check above is only worth something if it can come out the other way.
+  it('control: the same request is tagged under a staging host and untagged under a production one', () => {
+    const staging = middleware(createRequest('/login', {}, STAGING_HOSTS[0])).headers.get('X-Robots-Tag')
+    const production = middleware(createRequest('/login', {}, 'pulse.ciphera.net')).headers.get('X-Robots-Tag')
+    expect(staging).toBe(NOINDEX)
+    expect(production).toBeNull()
+  })
+
+  it('control: no host is in both lists', () => {
+    expect(NOT_STAGING.filter((h) => STAGING_HOSTS.includes(h))).toEqual([])
+  })
+})

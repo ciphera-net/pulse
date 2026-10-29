@@ -91,17 +91,34 @@ const AUTH_ONLY_ROUTES = new Set(['/login', '/signup'])
 // * sites" on a brand-new account. The callback resolves its own destination
 // * now, and this is the string it names when there is nothing else to resume.
 
-const STAGING_HOST = 'pulse-staging.ciphera.net'
+// * The Host header of a request for the STAGING app. A set, because one deployment is
+// * reached under more than one name, and matched POSITIVELY: an exact entry here is staging,
+// * and anything else, including a host nobody has thought of, is not. A "not the production
+// * host" test would noindex production the day the Host its edge forwards changed.
+// *
+// * 🔑 Behind the access proxy the pod is asked for the ORIGIN'S OWN NAME, not the name in the
+// * browser's address bar, so the first entry is the one a request really carries; the second is
+// * here in case the proxy ever forwards the Host unchanged.
+// * Production hosts must never be added: __tests__/middleware.test.ts holds the list.
+const STAGING_HOSTS: ReadonlySet<string> = new Set([
+  // * The origin's own name: the Host the access proxy sends to the pod.
+  'pulse-staging-sks.ciphera.net',
+  // * The staging app's public name, the one in the browser.
+  'pulse-staging.teleport.ciphera.net',
+  // * The former public name. Drop it from the set once that name is retired.
+  'pulse-staging.ciphera.net',
+])
 const STAGING_ROBOTS = 'User-agent: *\nDisallow: /\n'
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const isStaging = request.headers.get('host') === STAGING_HOST
+  const host = request.headers.get('host')
+  const isStaging = host !== null && STAGING_HOSTS.has(host)
 
-  // * Staging defence-in-depth (the edge already ships X-Robots-Tag; this is a
-  // * second, app-level guarantee independent of the CDN config). Answer
-  // * /robots.txt with a blanket Disallow and tag every response noindex so a
-  // * stray crawl of the staging host can never pollute the brand SERP.
+  // * Staging defence-in-depth. The former public name's CDN zone ships X-Robots-Tag too, but the
+  // * access proxy adds nothing of the kind, so this app-level guarantee is the one that holds
+  // * under every staging name. Answer /robots.txt with a blanket Disallow and tag every
+  // * response noindex so a stray crawl of a staging host can never pollute the brand SERP.
   if (pathname === '/robots.txt') {
     // robots.txt is not auth-gated — handle it before any redirect logic.
     if (isStaging) {

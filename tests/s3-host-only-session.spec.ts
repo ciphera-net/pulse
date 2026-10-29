@@ -1,13 +1,13 @@
 import { test, expect, type Cookie, type Page, type BrowserContext, request as playwrightRequest } from '@playwright/test'
 import { resolve } from 'node:path'
+import { BASE_URL as BASE } from './support/base'
 import { login } from './support/login'
 
 /**
  * S3 soak — Pulse's host-only session, on the deployed staging stack.
  *
  * Design §10.11. What can only be proven in a real browser against the real
- * two-host layout (pulse-staging + pulse-api-staging, both under ciphera.net,
- * NODE_ENV=production so getCookieDomain-era behaviour is faithful):
+ * deployed stack (NODE_ENV=production so getCookieDomain-era behaviour is faithful):
  *
  *   0. THE GATE, by raw request (no session): a browser holding only the
  *      ceremony's apex cookie is NOT signed in to Pulse — /sites redirects it to
@@ -17,7 +17,7 @@ import { login } from './support/login'
  *      BOTH the apex trio (the ceremony writes them, Domain=.ciphera.net) AND
  *      Pulse's own pulse_access/pulse_refresh/pulse_csrf — host-only on this
  *      host, httpOnly. NOTHING named pulse_* is ever an apex cookie.
- *   2. Every request to pulse-api carries Authorization: Bearer, and no answer
+ *   2. Every request to the API carries Authorization: Bearer, and no answer
  *      sets a csrf_token cookie (the third writer is gone).
  *   3. A forced renewal rotates pulse_refresh only; the apex values are
  *      byte-identical before and after — Pulse never touches the ceremony's.
@@ -25,18 +25,33 @@ import { login } from './support/login'
  *      httpOnly cookie).
  *   5. Sign-out expires pulse_* and leaves the apex trio untouched.
  *
+ * 🔑 ONE ORIGIN ON STAGING. The app and the backend's API paths (/api/v1, /api/billing,
+ * /api/audit) are served from the same host, so "an API request" there is a request for
+ * one of those PATHS, not a request to another host, and the app's own pages, assets and
+ * /api/auth/* are not API requests. The premise this suite was first written for, that
+ * pulse-api never receives pulse_* cookies, holds only where the API has its own host
+ * (production, SMOKE_BASE_URL=https://pulse.ciphera.net). On the single origin the browser
+ * sends the host-only cookies to the API paths as well; the backend reads only the Bearer,
+ * so nothing here asserts the old premise any more.
+ *
  * 🔴 A fresh login each run, not a cached storageState. Pulse rotates refresh
  * tokens, so a cached state is single-use (tests/cerberus-settings-mocks.spec.ts:67);
  * the ceremony also produces the exact apex+pulse browser this test needs. The
  * account's second factor is answered from CIPHERA_ID_TOTP_SECRET (unattended)
  * or a code written to /tmp/pulse-totp.txt (interactive) — see support/login.ts.
  *
- * Run: SMOKE_BASE_URL=https://pulse-staging.ciphera.net npx playwright test tests/s3-host-only-session.spec.ts
+ * Run: npx playwright test tests/s3-host-only-session.spec.ts
+ * (the origin and the access certificate come from the environment: tests/support/base.ts)
  */
 
-const BASE = process.env.SMOKE_BASE_URL ?? 'https://pulse-staging.ciphera.net'
 const HOST = new URL(BASE).hostname
-const API_HOST = process.env.SMOKE_API_HOST ?? (HOST === 'pulse.ciphera.net' ? 'pulse-api.ciphera.net' : 'pulse-api-staging.ciphera.net')
+// * Staging serves the API from the app's own host; production keeps pulse-api on its own.
+const API_HOST = process.env.SMOKE_API_HOST ?? (HOST === 'pulse.ciphera.net' ? 'pulse-api.ciphera.net' : HOST)
+// * With the API on the app's host, host alone cannot tell the two apart: the page, its assets and
+// * /api/auth/refresh are on it too. The backend's prefixes can (they never collide with the app's).
+const API_PATHS = ['/api/v1/', '/api/billing/', '/api/audit']
+const isApiRequest = (u: URL): boolean =>
+  u.hostname === API_HOST && (API_HOST !== HOST || API_PATHS.some((prefix) => u.pathname.startsWith(prefix)))
 const STATE_OUT = resolve(process.env.STAGING_STATE ?? '../docs/data/qa-harness/pulse-authed-state.json')
 
 const PULSE_COOKIES = ['pulse_access', 'pulse_refresh', 'pulse_csrf'] as const
@@ -115,15 +130,15 @@ test('1: a signed-in browser holds host-only pulse_* AND the ceremony\'s apex tr
   expect(apex.refresh_token, 'the ceremony\'s apex refresh_token must be present').toBeTruthy()
 })
 
-test('2: every pulse-api request carries a Bearer, and no answer mints a csrf_token cookie', async () => {
+test('2: every API request carries a Bearer, and no answer mints a csrf_token cookie', async () => {
   const requests: { url: string; authorization: string | null }[] = []
   const csrfSetCookies: string[] = []
   const onReq = (req: import('@playwright/test').Request) => {
     const u = new URL(req.url())
-    if (u.hostname === API_HOST && req.method() !== 'OPTIONS') requests.push({ url: req.url(), authorization: req.headers()['authorization'] ?? null })
+    if (isApiRequest(u) && req.method() !== 'OPTIONS') requests.push({ url: req.url(), authorization: req.headers()['authorization'] ?? null })
   }
   const onRes = async (res: import('@playwright/test').Response) => {
-    if (new URL(res.url()).hostname !== API_HOST) return
+    if (!isApiRequest(new URL(res.url()))) return
     const h = await res.allHeaders().catch(() => ({}) as Record<string, string>)
     if (h['set-cookie'] && /(^|\n)csrf_token=/.test(h['set-cookie'])) csrfSetCookies.push(res.url())
   }
@@ -136,10 +151,10 @@ test('2: every pulse-api request carries a Bearer, and no answer mints a csrf_to
   page.off('request', onReq)
   page.off('response', onRes)
 
-  expect(requests.length, 'the dashboard must call pulse-api').toBeGreaterThan(0)
+  expect(requests.length, 'the dashboard must call the API').toBeGreaterThan(0)
   const bare = requests.filter((r) => !r.authorization?.startsWith('Bearer '))
-  expect(bare, `pulse-api requests without a Bearer: ${JSON.stringify(bare.slice(0, 5))}`).toHaveLength(0)
-  expect(csrfSetCookies, 'pulse-api must not mint csrf_token for a Bearer session').toHaveLength(0)
+  expect(bare, `API requests without a Bearer: ${JSON.stringify(bare.slice(0, 5))}`).toHaveLength(0)
+  expect(csrfSetCookies, 'the API must not mint csrf_token for a Bearer session').toHaveLength(0)
 })
 
 test('3: a forced renewal rotates pulse_refresh only; the apex values are byte-identical', async () => {
@@ -170,7 +185,7 @@ test('4: a reload keeps the session — the Bearer is re-primed from the httpOnl
   const authed: string[] = []
   const onReq = (req: import('@playwright/test').Request) => {
     const u = new URL(req.url())
-    if (u.hostname === API_HOST && req.headers()['authorization']?.startsWith('Bearer ')) authed.push(req.url())
+    if (isApiRequest(u) && req.headers()['authorization']?.startsWith('Bearer ')) authed.push(req.url())
   }
   page.on('request', onReq)
   await page.reload()
@@ -178,7 +193,7 @@ test('4: a reload keeps the session — the Bearer is re-primed from the httpOnl
   await page.waitForTimeout(1_500)
   page.off('request', onReq)
   await expect(page.getByRole('button', { name: /sign back in|sign in to continue/i })).toHaveCount(0)
-  expect(authed.length, 'after the reload the dashboard must still call pulse-api with a Bearer').toBeGreaterThan(0)
+  expect(authed.length, 'after the reload the dashboard must still call the API with a Bearer').toBeGreaterThan(0)
 })
 
 test('5: signing out expires pulse_* and leaves the apex trio untouched', async () => {
