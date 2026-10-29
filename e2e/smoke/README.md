@@ -2,7 +2,7 @@
 
 Loads the real `public/*.js` tracking scripts against sample apps and asserts the
 wire behavior. **Mock-only by construction — this must never touch real Pulse
-ingest**, because Pulse staging shares the production database.
+ingest.**
 
 Two independent safety layers make that guarantee:
 
@@ -14,8 +14,8 @@ Two independent safety layers make that guarantee:
    test-traffic exclusion (`TEST_TRAFFIC_DOMAINS`, when configured) would drop it
    before persistence.
 
-Never repoint the sample apps at `pulse-api.ciphera.net` or
-`pulse-api-staging.ciphera.net`.
+Never repoint the sample apps at a live Pulse API: `pulse-api.ciphera.net`, or the
+staging app's origin, `pulse-staging.teleport.ciphera.net`.
 
 ## Run
 

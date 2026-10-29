@@ -1,17 +1,22 @@
 import { defineConfig, devices } from '@playwright/test'
+import { BASE_URL, clientCertificates } from './tests/support/base'
 
 /**
  * Playwright config for the read-only authed smoke suite (tests/*.spec.ts).
  *
- * baseURL is driven by SMOKE_BASE_URL and defaults to the pulse-frontend
- * staging host — the same origin the CI canary hits post-deploy. Credentials
- * are read from the environment by the spec's login helper; none live here.
+ * baseURL is driven by SMOKE_BASE_URL and defaults to the staging app, which is
+ * one origin behind an access proxy. Nothing in CI runs this suite: it is run
+ * by hand against a deployed stack. The proxy admits a browser that presents an
+ * application certificate, read from the environment (SMOKE_CLIENT_CERT and
+ * SMOKE_CLIENT_KEY, PEM file paths; see tests/support/base.ts). Credentials are
+ * read from the environment by the spec's login helper; none live here, and no
+ * certificate is committed.
  *
  * Note: the repo's unit tests are Vitest (`*.test.ts`, run via `npm test`).
  * Playwright only owns `*.spec.ts`, so the two never collide.
  */
 
-const BASE_URL = process.env.SMOKE_BASE_URL ?? 'https://pulse-staging.ciphera.net'
+const CLIENT_CERTIFICATES = clientCertificates()
 
 /**
  * Per-test budget, WIDENED to cover an interactive second-factor wait.
@@ -42,6 +47,7 @@ export default defineConfig({
   reporter: [['list']],
   use: {
     baseURL: BASE_URL,
+    ...(CLIENT_CERTIFICATES ? { clientCertificates: CLIENT_CERTIFICATES } : {}),
     headless: true,
     ignoreHTTPSErrors: true,
     viewport: { width: 1440, height: 900 },

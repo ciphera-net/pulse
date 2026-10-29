@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test'
+import { BASE_URL } from './support/base'
 import { login } from './support/login'
-
-const BASE_URL = process.env.SMOKE_BASE_URL ?? 'https://pulse-staging.ciphera.net'
 
 // Saving site settings is the write path that migration 114 constrains.
 //

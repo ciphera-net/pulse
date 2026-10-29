@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { test, expect } from '@playwright/test'
+import { BASE_URL } from './support/base'
 import { login } from './support/login'
 
 /**
@@ -24,11 +25,10 @@ import { login } from './support/login'
  * production data.
  *
  * Run:
- *   SMOKE_BASE_URL=https://pulse-staging.ciphera.net \
  *   VISITORS_SITE_ID=<uuid> npx playwright test tests/visitors-staging.spec.ts
+ * (the origin and the access certificate come from the environment: tests/support/base.ts)
  */
 
-const BASE_URL = process.env.SMOKE_BASE_URL ?? 'https://pulse-staging.ciphera.net'
 const SITE_ID = process.env.VISITORS_SITE_ID ?? ''
 const SHOTS = process.env.VISITORS_SHOT_DIR ?? '/tmp/visitors-staging'
 

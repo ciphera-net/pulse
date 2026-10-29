@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { test, expect, type Page } from '@playwright/test'
+import { BASE_URL as BASE } from './support/base'
 
 /**
  * Visitors surface — the 30-08-2026 AUDIT walkthrough.
@@ -19,7 +20,6 @@ import { test, expect, type Page } from '@playwright/test'
  * which has been a separate database since 17-07-2026.
  */
 
-const BASE = process.env.SMOKE_BASE_URL ?? 'https://pulse-staging.ciphera.net'
 const STATE = process.env.VISITORS_STORAGE_STATE ?? ''
 const SHOTS = process.env.VISITORS_SHOT_DIR ?? '/tmp/visitors-audit'
 

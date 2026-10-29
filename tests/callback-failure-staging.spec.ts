@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { BASE_URL as BASE } from './support/base'
 
 /**
  * Option C on a deployed stack (design §10.11.12): a failed code exchange must
@@ -9,9 +10,9 @@ import { test, expect } from '@playwright/test'
  * so the callback accepts the state, exchanges the bogus code, and id-backend
  * answers 400 invalid_grant for real. No session, no TOTP.
  *
- * Run: SMOKE_BASE_URL=https://pulse-staging.ciphera.net npx playwright test tests/callback-failure-staging.spec.ts
+ * Run: npx playwright test tests/callback-failure-staging.spec.ts
+ * (the origin and the access certificate come from the environment: tests/support/base.ts)
  */
-const BASE = process.env.SMOKE_BASE_URL ?? 'https://pulse-staging.ciphera.net'
 
 test('a spent code shows "This sign-in link has expired" and reports invalid_grant', async ({ browser }) => {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 } })

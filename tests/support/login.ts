@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test'
 import { createHmac } from 'node:crypto'
 import { existsSync, readFileSync, statSync, unlinkSync } from 'node:fs'
+import { onAccessProxy } from './base'
 
 /**
  * Shared OPAQUE login helper for authed smoke/E2E specs.
@@ -218,6 +219,18 @@ async function passThroughAccountChooser(page: Page): Promise<boolean> {
 
 export async function login(page: Page, baseURL: string): Promise<void> {
   await page.goto(`${baseURL}/settings`)
+
+  // * 🔴 AN ACCESS-PROXY PAGE IS NOT "ALREADY SIGNED IN". Staging sits behind a proxy that answers a
+  // * browser it does not admit with its OWN sign-in page, on its own host. onIdOrigin() is false for
+  // * that page, so the code below would fall through as if the app had loaded and the run would fail
+  // * several steps later at an assertion about something else. Say what is wrong, here, once.
+  if (onAccessProxy(page.url())) {
+    throw new Error(
+      `no valid Teleport app certificate: ${baseURL} was answered by the sign-in page of the access proxy ` +
+        `(${new URL(page.url()).origin}) instead of the app. Set SMOKE_CLIENT_CERT and SMOKE_CLIENT_KEY to ` +
+        'the PEM paths of a current application certificate for that origin.',
+    )
+  }
 
   // Wait to be bounced to the ID origin; if we never leave (already authed, or
   // no redirect), fall through — the guard below re-checks the real URL.

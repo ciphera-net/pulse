@@ -357,7 +357,83 @@ steps:
       STORAGE_PASSWORD:
         from_secret: app_static_storage_password
       DEST_PREFIX: pulse-staging
+      # The two values this build was meant to bake into the client code: the guard below
+      # compares the shipped chunks with them. They are the same secrets next-build-staging
+      # reads in push.yml, so a secret changed after the build shows up as a mismatch here.
+      EXPECT_API_URL:
+        from_secret: staging_next_public_api_url
+      EXPECT_APP_URL:
+        from_secret: staging_next_public_app_url
     commands:
+      # ═══ 🔴 ASSERT WHAT WAS BUILT IS WHAT WAS MEANT, BEFORE ANYTHING IS UPLOADED OR ROLLED ═══
+      # This replaces purge-cdn-staging. That step ran AFTER the rollout, purged a CDN zone this
+      # app no longer sits behind, and read the LIVE page through the public name. A check on the
+      # shipping image needs none of that: this step runs the new image by its own tag, before the
+      # rollout, so a failure leaves the old pod serving.
+      #
+      # EVERY CHECK IS POSITIVE: it looks for something that must be there. A negative check ("no
+      # chunk mentions the old host") can never pass, because shipped client code legitimately
+      # contains those names (a link test, a hostname list, a CSP snippet shown to customers).
+      # The single exception is the retired staging API host, which no client code mentions, so
+      # finding it means a stale value was baked.
+      #   1. assetPrefix in required-server-files.json is this environment's asset path: the one
+      #      the upload below writes to, so the HTML and the uploaded chunks cannot disagree.
+      #   2. The app's own host is in serverActions.allowedOrigins, in that file and in server.js
+      #      (the file that runs). Without it every Server Action is refused behind the access
+      #      proxy and nobody can sign in.
+      #   3. A client chunk carries the exact API base and the exact app URL the secrets hold now.
+      #      That also catches a secret changed after the build, or a restored .next/cache that
+      #      serves values compiled earlier.
+      #   4. No client chunk carries the retired staging API host.
+      # Both values must also be a bare origin (scheme and host): a trailing slash would bake
+      # double slashes into every request path. Secret values are masked in this log and the
+      # output is booleans and counts anyway, never the URLs.
+      #
+      # ⚠️ The script sits inside single quotes: DOUBLE QUOTES ONLY, no apostrophe even in a
+      # comment, no backtick. And NO dollar-brace form (top of this file): string concatenation,
+      # as the upload below does.
+      - |
+        node -e '
+        const fs = require("fs"), path = require("path");
+        const ROOT = "/app";
+        const fail = m => { console.error("FAIL: " + m); process.exit(1); };
+        const need = n => process.env[n] || fail(n + " is empty: the secret did not reach this step");
+        const origin = (n, v) => {
+          let o = "";
+          try { o = new URL(v).origin; } catch (e) { fail(n + " is not a URL"); }
+          if (o !== v) fail(n + " is not a bare origin (scheme and host: no path, no trailing slash)");
+          return v;
+        };
+        const API = origin("EXPECT_API_URL", need("EXPECT_API_URL"));
+        const APP = origin("EXPECT_APP_URL", need("EXPECT_APP_URL"));
+        const HOST = new URL(APP).host;
+        const PREFIX = "https://ciphera-app-static.b-cdn.net/" + need("DEST_PREFIX");
+        const RETIRED_API_HOST = "pulse-api-staging.ciphera.net";
+        let cfg = null;
+        try { cfg = JSON.parse(fs.readFileSync(ROOT + "/.next/required-server-files.json", "utf8")).config; }
+        catch (e) { fail("cannot read required-server-files.json: " + e.message); }
+        if (!cfg || cfg.assetPrefix !== PREFIX) fail("assetPrefix is [" + (cfg && cfg.assetPrefix) + "], expected [" + PREFIX + "]: NEXT_PUBLIC_ASSET_PREFIX did not reach the build, or the upload destination moved");
+        const allowed = (((cfg.experimental || {}).serverActions || {}).allowedOrigins) || [];
+        if (!allowed.includes(HOST)) fail("serverActions.allowedOrigins in required-server-files.json does not list the app host (" + allowed.length + " entries)");
+        const server = fs.readFileSync(ROOT + "/server.js", "utf8");
+        if (!server.includes("\"allowedOrigins\":" + JSON.stringify(allowed))) fail("server.js does not embed the same serverActions.allowedOrigins");
+        if (!server.includes("\"assetPrefix\":" + JSON.stringify(PREFIX))) fail("server.js does not embed the expected assetPrefix");
+        const walk = d => fs.readdirSync(d, {withFileTypes:true}).flatMap(e =>
+          e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]);
+        const chunks = walk(ROOT + "/.next/static/chunks").filter(f => f.endsWith(".js"));
+        if (chunks.length === 0) fail("no client chunks under .next/static/chunks");
+        let withApi = 0, withApp = 0, stale = 0;
+        for (const f of chunks) {
+          const t = fs.readFileSync(f, "utf8");
+          if (t.includes(API)) withApi++;
+          if (t.includes(APP)) withApp++;
+          if (t.includes(RETIRED_API_HOST)) stale++;
+        }
+        if (withApi === 0) fail("no client chunk carries the API base this build was meant to bake");
+        if (withApp === 0) fail("no client chunk carries the app URL this build was meant to bake");
+        if (stale > 0) fail(stale + " client chunk(s) still carry the retired staging API host: a stale value was baked");
+        console.log("staging build guard OK: assetPrefix and allowedOrigins as meant; API base in " + withApi + " and app URL in " + withApp + " of " + chunks.length + " client chunks; retired API host in none");
+        '
       # node is the image's own runtime; no apk, no curl, and global fetch is available.
       # Uploads are content-addressed and immutable, so a re-run is idempotent and a
       # partial previous run self-heals.
@@ -590,78 +666,6 @@ steps:
         case "$HTML" in
           *"https://ciphera-app-static.b-cdn.net/pulse/_next/static"*)
             echo "assetPrefix verified live: chunks come from https://ciphera-app-static.b-cdn.net/pulse" ;;
-          *)
-            echo "🔴 DEPLOY SHIPPED BUT assetPrefix IS NOT IN THE LIVE HTML."
-            echo "🔴 Chunks are served from the app itself, so the version-coupling protection"
-            echo "🔴 that gates the Magic Containers migration is OFF."
-            echo "🔴 Check NEXT_PUBLIC_ASSET_PREFIX reached the BuildKit build:"
-            echo "🔴   .woodpecker/push.yml -> the buildctl line MUST carry"
-            echo "🔴   --opt build-arg:NEXT_PUBLIC_ASSET_PREFIX=\$NEXT_PUBLIC_ASSET_PREFIX,"
-            echo "🔴   or the environment: entry above it is INERT."
-            echo "🔴   (This said settings.build-args-from-env until 21-08-2026, which was"
-            echo "🔴    the kaniko plugin setting and no longer exists.)"
-            echo "🔴 Then confirm the Dockerfile declares the matching ARG."
-            echo "🔴 NOTE: build.yml no longer exists on this branch (deleted 20-08-2026);"
-            echo "🔴 push.yml is the ONLY place a build arg can reach the shipped image."
-            exit 1 ;;
-        esac
-
-  # Purge AFTER the CLUSTER rollout converges (deploy-k8s asserts only the new ReplicaSet
-  # is serving). Purging mid-rollout re-caches the old build's 404s for the new chunk
-  # paths under a 30-day max-age — exactly what blanked pulse-staging on 22-07-2026.
-  purge-cdn-staging:
-    image: alpine:3.20
-    backend_options:
-      kubernetes:
-        resources:
-          requests: { memory: 128Mi, cpu: 100m }
-          limits: { memory: 512Mi }
-    depends_on: [deploy-k8s-staging]
-    when:
-      - event: push
-        branch: staging
-    environment:
-      BUNNY_API_KEY:
-        from_secret: bunny_api_key
-    commands:
-      - apk add --no-cache curl >/dev/null
-      # ⚠️ `/_next/static/*` IS NO LONGER PURGED (18-08-2026). Since assetPrefix those
-      # chunks are not served from this hostname at all — they live in their own zone
-      # (ciphera-app-static), and RETAINING EVERY BUILD'S OUTPUT IS THE ENTIRE POINT.
-      # Purging them here would be a no-op today; re-adding a purge against the asset
-      # zone would reintroduce exactly the blanking failure this change removes.
-      # HTML purge — staging mirrors production's purge set for THIS app (zone 5440501).
-      # Since B7 (06-10-2026) that is /demo alone: staging has no marketing app, and
-      # the marketing paths it used to serve from this app now default-deny to /login
-      # (since 06-10-2026); zone 5440501's HTML-caching allowlist was trimmed to /demo*
-      # to match. See the production step above for why '/' is absent.
-      - |
-        FAILED=""
-        for P in "/demo*"; do
-          curl -fsS --max-time 300 --retry 3 --retry-delay 10 --retry-all-errors -X POST \
-            "https://api.bunny.net/purge?url=https://pulse-staging.ciphera.net$P&async=false" \
-            -H "AccessKey: $BUNNY_API_KEY" >/dev/null \
-            && echo "  purged $P" \
-            || FAILED="$FAILED $P"
-        done
-        if [ -n "$FAILED" ]; then
-          echo "DEPLOY SHIPPED; HTML PURGE FAILED for:$FAILED — re-run the purge only, do NOT re-deploy"
-          exit 1
-        fi
-      - echo "Purged pulse-staging.ciphera.net cached HTML (/demo*)"
-      # ═══ 🔴 ASSERT THE PREFIX ACTUALLY SHIPPED ═══
-      # next.config.ts defaults NEXT_PUBLIC_ASSET_PREFIX to EMPTY, so a missing build arg
-      # degrades safely to same-origin assets instead of 404ing every chunk. The cost of
-      # that safe default is that the protection can be silently OFF — so it is ASSERTED
-      # here against the LIVE HTML rather than trusted. A feature that fails open needs a
-      # positive check; this is the same lesson as LIGHTHOUSE_RUNNER_URL being unset.
-      # Runs last, after the HTML purge, so what it reads is this build's markup.
-      - |
-        HTML=$(curl -fsS --max-time 30 --retry 3 --retry-all-errors "https://pulse-staging.ciphera.net/login") \
-          || { echo "FAIL: could not fetch https://pulse-staging.ciphera.net/login to verify assetPrefix"; exit 1; }
-        case "$HTML" in
-          *"https://ciphera-app-static.b-cdn.net/pulse-staging/_next/static"*)
-            echo "assetPrefix verified live: chunks come from https://ciphera-app-static.b-cdn.net/pulse-staging" ;;
           *)
             echo "🔴 DEPLOY SHIPPED BUT assetPrefix IS NOT IN THE LIVE HTML."
             echo "🔴 Chunks are served from the app itself, so the version-coupling protection"

@@ -67,9 +67,38 @@ const withPWA = withPWAInit({
 // * the app itself — the site works, it just loses the decoupling. The alternative
 // * (baking the production URL in as the default, which is what `help` did) would make a
 // * STAGING build silently serve PRODUCTION chunks, i.e. a different build's JavaScript.
-// * Safe degradation beats a wrong default. The pipeline asserts the live HTML actually
-// * references this host after deploy, so "silently off" is caught rather than trusted.
+// * Safe degradation beats a wrong default. The pipeline asserts the prefix actually shipped, so
+// * "silently off" is caught rather than trusted: production against the live HTML after deploy,
+// * staging against the built image before the rollout (.woodpecker/deploy.yml).
 const ASSET_PREFIX = process.env['NEXT_PUBLIC_ASSET_PREFIX'] ?? ''
+
+// * ═══ SERVER ACTIONS MUST ACCEPT THIS APP'S OWN PUBLIC HOST ═══
+// *
+// * Next answers a Server Action only if the request's `Origin` host equals the host the pod was
+// * asked for (x-forwarded-host, else Host), or is listed in experimental.serverActions.allowedOrigins.
+// * Otherwise it logs "does not match origin header ... Aborting the action." and answers 500
+// * "Invalid Server Actions request." This app's five actions (app/actions/auth.ts) carry the
+// * sign-in code exchange and the session read that every page load makes, so a refusal here is a
+// * dashboard that cannot sign in and cannot prime its Bearer.
+// *
+// * Behind a reverse proxy that presents the ORIGIN'S OWN NAME as Host (the staging app sits behind
+// * one), the browser's Origin is the public host and the pod sees another, so the two never match.
+// * The public host is what is registered as the OAuth redirect_uri and baked in as the app URL,
+// * so it is read from the one place that already says so, NEXT_PUBLIC_APP_URL, and no new setting
+// * exists to drift from it.
+// *
+// * In production this lists the production host and is a NO-OP: the Host the edge forwards already
+// * equals it. A standalone build embeds the resolved config in server.js, so the value is fixed at
+// * build time. Unset or unparsable gives [] (Next's own default), never a guess.
+// *
+// * lib/__tests__/server-actions-origins.test.ts holds the derivation.
+const APP_HOST = (() => {
+  try {
+    return new URL(process.env['NEXT_PUBLIC_APP_URL'] ?? '').host
+  } catch {
+    return ''
+  }
+})()
 
 // * The zone that serves those chunks. Kept as a constant because it appears in FOUR CSP
 // * directives and a typo in any one of them is a blank page, not an error.
@@ -148,6 +177,8 @@ const nextConfig: NextConfig = {
   productionBrowserSourceMaps: false,
   experimental: {
     optimizePackageImports: ['@phosphor-icons/react'],
+    // * See APP_HOST above.
+    serverActions: { allowedOrigins: APP_HOST ? [APP_HOST] : [] },
   },
   // @ciphera-net/tessera ships a WASM OPAQUE core (settings re-auth). Keep it out of
   // the server bundle — it is a client-only SDK loaded via init() in the browser — so
